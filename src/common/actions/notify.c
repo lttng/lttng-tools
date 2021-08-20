@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -20,7 +19,7 @@
 static struct lttng_action_notify *action_notify_from_action(
 		struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_notify, parent);
 }
@@ -28,7 +27,7 @@ static struct lttng_action_notify *action_notify_from_action(
 static const struct lttng_action_notify *action_notify_from_action_const(
 		const struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_notify, parent);
 }
@@ -92,13 +91,13 @@ static enum lttng_error_code lttng_action_notify_mi_serialize(
 	enum lttng_error_code ret_code;
 	const struct lttng_rate_policy *policy = NULL;
 
-	assert(action);
-	assert(IS_NOTIFY_ACTION(action));
-	assert(writer);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(IS_NOTIFY_ACTION(action));
+	LTTNG_ASSERT(writer);
 
 	status = lttng_action_notify_get_rate_policy(action, &policy);
-	assert(status == LTTNG_ACTION_STATUS_OK);
-	assert(policy != NULL);
+	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(policy != NULL);
 
 	/* Open action notify. */
 	ret = mi_lttng_writer_open_element(

@@ -7,7 +7,6 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include <assert.h>
 #include <string.h>
 #include <stdarg.h>
 #include <common/string-utils/string-utils.h>
@@ -31,7 +30,7 @@ static void test_one_split(const char *input, char delim, int escape_delim,
 	size_t i, string_count;
 
 	split_ret = strutils_split(input, delim, escape_delim, &strings);
-	assert(split_ret == 0);
+	LTTNG_ASSERT(split_ret == 0);
 	va_start(vl, escape_delim);
 
 	string_count = lttng_dynamic_pointer_array_get_count(&strings);
@@ -134,7 +133,7 @@ static void test_one_normalize_star_glob_pattern(const char *pattern,
 {
 	char *rw_pattern = strdup(pattern);
 
-	assert(rw_pattern);
+	LTTNG_ASSERT(rw_pattern);
 	strutils_normalize_star_glob_pattern(rw_pattern);
 	ok(strcmp(rw_pattern, expected) == 0,
 		"strutils_normalize_star_glob_pattern() produces the expected result: `%s` -> `%s`",

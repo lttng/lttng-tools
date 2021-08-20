@@ -9,7 +9,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -280,7 +279,7 @@ static void test_active_set_combinations(unsigned int fd_count)
 	unsigned int i, all_active_mask = 0;
 
 	/* Do you really want to test more than 4,294,967,295 combinations? */
-	assert(fd_count <= 32);
+	LTTNG_ASSERT(fd_count <= 32);
 
 	for (i = 0; i < fd_count; i++) {
 		all_active_mask |= (1 << i);

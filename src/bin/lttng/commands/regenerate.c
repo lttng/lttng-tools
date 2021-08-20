@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <ctype.h>
 #include <popt.h>
 #include <stdio.h>
@@ -60,7 +59,7 @@ static int count_arguments(const char **argv)
 {
 	int i = 0;
 
-	assert(argv);
+	LTTNG_ASSERT(argv);
 
 	while (argv[i] != NULL) {
 		i++;
@@ -117,7 +116,7 @@ static int handle_command(const char **argv)
 	}
 
 	argc = count_arguments(argv);
-	assert(argc >= 1);
+	LTTNG_ASSERT(argc >= 1);
 
 	cmd = &actions[i];
 	while (cmd->func != NULL) {

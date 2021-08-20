@@ -1105,7 +1105,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data)
 		ret = -EINVAL;
 		goto error;
 	}
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	DBG2("Creating consumer directory: %s", path);
 
@@ -1374,7 +1374,7 @@ static void unregister_all_triggers(void)
 	}
 
 	trigger_status = lttng_triggers_get_count(triggers, &trigger_count);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	for (i = 0; i < trigger_count; i++) {
 		uid_t trigger_owner;
@@ -1382,11 +1382,11 @@ static void unregister_all_triggers(void)
 		const struct lttng_trigger *trigger =
 				lttng_triggers_get_at_index(triggers, i);
 
-		assert(trigger);
+		LTTNG_ASSERT(trigger);
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_owner);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 		trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?

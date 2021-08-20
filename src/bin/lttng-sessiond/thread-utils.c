@@ -114,7 +114,7 @@ int __sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size,
 {
 	int ret;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	ret = lttng_poll_create(events, size, LTTNG_CLOEXEC);
 	if (ret < 0) {

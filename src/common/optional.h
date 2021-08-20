@@ -9,7 +9,6 @@
 #define LTTNG_OPTIONAL_H
 
 #include <stdint.h>
-#include <assert.h>
 
 /*
  * Define wrapper structure representing an optional value.
@@ -56,25 +55,25 @@
 
 /*
  * This macro is available as a 'convenience' to allow sites that assume
- * an optional value is set to assert() that it is set when accessing it.
+ * an optional value is set to LTTNG_ASSERT() that it is set when accessing it.
  *
  * Since this returns the 'optional' by value, it is not suitable for all
  * wrapped optional types. It is meant to be used with PODs.
  */
 #define LTTNG_OPTIONAL_GET(optional)			\
 	({						\
-		assert((optional).is_set);		\
+		LTTNG_ASSERT((optional).is_set);		\
 		(optional).value;			\
 	})
 
 /*
  * This macro is available as a 'convenience' to allow sites that assume
- * an optional value is set to assert() that it is set when fecthing the
+ * an optional value is set to LTTNG_ASSERT() that it is set when fecthing the
  * underlying value's address.
  */
 #define LTTNG_OPTIONAL_GET_PTR(optional)			\
 	({						\
-		assert((optional).is_set);		\
+		LTTNG_ASSERT((optional).is_set);		\
 		&(optional).value;			\
 	})
 

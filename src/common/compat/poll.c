@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -48,7 +47,7 @@ static int resize_poll_event(struct lttng_poll_event *events,
 {
 	struct epoll_event *ptr;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	ptr = realloc(events->events, new_size * sizeof(*ptr));
 	if (ptr == NULL) {
@@ -374,7 +373,7 @@ static int resize_poll_event(struct compat_poll_event_array *array,
 {
 	struct pollfd *ptr;
 
-	assert(array);
+	LTTNG_ASSERT(array);
 
 	/* Refuse to resize the array more than the max size. */
 	if (new_size > poll_max_size) {
@@ -408,7 +407,7 @@ static int update_current_events(struct lttng_poll_event *events)
 	int ret;
 	struct compat_poll_event_array *current, *wait;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	current = &events->current;
 	wait = &events->wait;
@@ -602,7 +601,7 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 	}
 
 	/* No fd duplicate should be ever added into array. */
-	assert(current->nb_fd - 1 == count);
+	LTTNG_ASSERT(current->nb_fd - 1 == count);
 	current->nb_fd = count;
 
 	/* Resize array if needed. */

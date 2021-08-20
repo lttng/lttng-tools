@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/credentials.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -127,14 +126,14 @@ static bool lttng_event_rule_kernel_uprobe_is_equal(const struct lttng_event_rul
 	b = container_of(_b, struct lttng_event_rule_kernel_uprobe, parent);
 
 	/* uprobe is invalid if this is not true. */
-	assert(a->name);
-	assert(b->name);
+	LTTNG_ASSERT(a->name);
+	LTTNG_ASSERT(b->name);
 	if (strcmp(a->name, b->name)) {
 		goto end;
 	}
 
-	assert(a->location);
-	assert(b->location);
+	LTTNG_ASSERT(a->location);
+	LTTNG_ASSERT(b->location);
 	is_equal = lttng_userspace_probe_location_is_equal(
 			a->location, b->location);
 end:
@@ -224,18 +223,18 @@ static enum lttng_error_code lttng_event_rule_kernel_uprobe_mi_serialize(
 	const char *event_name = NULL;
 	const struct lttng_userspace_probe_location *location = NULL;
 
-	assert(rule);
-	assert(writer);
-	assert(IS_UPROBE_EVENT_RULE(rule));
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_UPROBE_EVENT_RULE(rule));
 
 	status = lttng_event_rule_kernel_uprobe_get_event_name(
 			rule, &event_name);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	assert(event_name);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_name);
 
 	status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	assert(location);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(location);
 
 	/* Open event rule kernel uprobe element. */
 	ret = mi_lttng_writer_open_element(
@@ -377,7 +376,7 @@ ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(
 		}
 	}
 
-	assert(ret == uprobe_comm->location_len);
+	LTTNG_ASSERT(ret == uprobe_comm->location_len);
 
 	/* Skip after the location. */
 	offset += uprobe_comm->location_len;
@@ -438,7 +437,7 @@ lttng_event_rule_kernel_uprobe_get_location_mutable(
 {
 	struct lttng_event_rule_kernel_uprobe *uprobe;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 
 	return uprobe->location;

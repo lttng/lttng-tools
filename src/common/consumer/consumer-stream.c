@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -246,9 +245,9 @@ static int do_sync_metadata(struct lttng_consumer_stream *metadata,
 	int ret;
 	enum sync_metadata_status status;
 
-	assert(metadata);
-	assert(metadata->metadata_flag);
-	assert(ctx);
+	LTTNG_ASSERT(metadata);
+	LTTNG_ASSERT(metadata->metadata_flag);
+	LTTNG_ASSERT(ctx);
 
 	/*
 	 * In UST, since we have to write the metadata from the cache packet
@@ -366,7 +365,7 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	/* Ease our life a bit. */
 	ht = the_consumer_data.stream_list_ht;
@@ -408,7 +407,7 @@ static int consumer_stream_sync_metadata_index(
 
 	/* Block until all the metadata is sent. */
 	pthread_mutex_lock(&stream->metadata_timer_lock);
-	assert(!stream->missed_metadata_flush);
+	LTTNG_ASSERT(!stream->missed_metadata_flush);
 	stream->waiting_on_metadata = true;
 	pthread_mutex_unlock(&stream->metadata_timer_lock);
 
@@ -776,12 +775,12 @@ void consumer_stream_relayd_close(struct lttng_consumer_stream *stream,
 {
 	int ret;
 
-	assert(stream);
-	assert(relayd);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(relayd);
 
 	if (stream->sent_to_relayd) {
 		uatomic_dec(&relayd->refcount);
-		assert(uatomic_read(&relayd->refcount) >= 0);
+		LTTNG_ASSERT(uatomic_read(&relayd->refcount) >= 0);
 	}
 
 	/* Closing streams requires to lock the control socket. */
@@ -816,7 +815,7 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 	int ret;
 	struct consumer_relayd_sock_pair *relayd;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -865,7 +864,7 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 	}
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 	}
 
 	/* Close output fd. Could be a socket or local file at this point. */
@@ -906,16 +905,16 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 	/* Should NEVER be called not in monitor mode. */
-	assert(stream->chan->monitor);
+	LTTNG_ASSERT(stream->chan->monitor);
 
 	rcu_read_lock();
 
 	if (ht) {
 		iter.iter.node = &stream->node.node;
 		ret = lttng_ht_del(ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 
 	/* Delete from stream per channel ID hash table. */
@@ -937,7 +936,7 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
 
 	if (!stream->metadata_flag) {
 		/* Decrement the stream count of the global consumer data. */
-		assert(the_consumer_data.stream_count > 0);
+		LTTNG_ASSERT(the_consumer_data.stream_count > 0);
 		the_consumer_data.stream_count--;
 	}
 }
@@ -947,7 +946,7 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
  */
 void consumer_stream_free(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	metadata_bucket_destroy(stream->metadata_bucket);
 	call_rcu(&stream->node.head, free_stream_rcu);
@@ -958,7 +957,7 @@ void consumer_stream_free(struct lttng_consumer_stream *stream)
  */
 void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -969,7 +968,7 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream)
 		break;
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 	}
 }
 
@@ -978,7 +977,7 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream)
  */
 static void destroy_close_stream(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	DBG("Consumer stream destroy monitored key: %" PRIu64, stream->key);
 
@@ -997,8 +996,8 @@ static struct lttng_consumer_channel *unref_channel(
 {
 	struct lttng_consumer_channel *free_chan = NULL;
 
-	assert(stream);
-	assert(stream->chan);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->chan);
 
 	/* Update refcount of channel and see if we need to destroy it. */
 	if (!uatomic_sub_return(&stream->chan->refcount, 1)
@@ -1020,7 +1019,7 @@ static struct lttng_consumer_channel *unref_channel(
 void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	/* Stream is in monitor mode. */
 	if (stream->monitor) {
@@ -1081,8 +1080,8 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 {
 	int ret;
 
-	assert(stream);
-	assert(element);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(element);
 
 	rcu_read_lock();
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
@@ -1133,7 +1132,7 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
 	char stream_path[LTTNG_PATH_MAX];
 
 	ASSERT_LOCKED(stream->lock);
-	assert(stream->trace_chunk);
+	LTTNG_ASSERT(stream->trace_chunk);
 
 	ret = utils_stream_file_path(stream->chan->pathname, stream->name,
 			stream->chan->tracefile_size,
@@ -1213,7 +1212,7 @@ bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream)
 	 * This function does not take a const stream since
 	 * cds_lfht_is_node_deleted was not const before liburcu 0.12.
 	 */
-	assert(stream);
+	LTTNG_ASSERT(stream);
 	return cds_lfht_is_node_deleted(&stream->node.node);
 }
 
@@ -1257,9 +1256,9 @@ int consumer_stream_enable_metadata_bucketization(
 {
 	int ret = 0;
 
-	assert(stream->metadata_flag);
-	assert(!stream->metadata_bucket);
-	assert(stream->chan->output == CONSUMER_CHANNEL_MMAP);
+	LTTNG_ASSERT(stream->metadata_flag);
+	LTTNG_ASSERT(!stream->metadata_bucket);
+	LTTNG_ASSERT(stream->chan->output == CONSUMER_CHANNEL_MMAP);
 
 	stream->metadata_bucket = metadata_bucket_create(
 			metadata_bucket_flush, stream);
@@ -1276,7 +1275,7 @@ end:
 void consumer_stream_metadata_set_version(
 		struct lttng_consumer_stream *stream, uint64_t new_version)
 {
-	assert(new_version > stream->metadata_version);
+	LTTNG_ASSERT(new_version > stream->metadata_version);
 	stream->metadata_version = new_version;
 	stream->reset_metadata_flag = 1;
 

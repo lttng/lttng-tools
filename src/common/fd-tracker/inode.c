@@ -114,7 +114,7 @@ static int lttng_unlinked_file_pool_add_inode(
 	if (pool->file_count == 0) {
 		DBG("Creating unlinked files directory at %s",
 				pool->unlink_directory_path);
-		assert(!pool->unlink_directory_handle);
+		LTTNG_ASSERT(!pool->unlink_directory_handle);
 		ret = utils_mkdir(pool->unlink_directory_path,
 				S_IRWXU | S_IRWXG, -1, -1);
 		if (ret) {
@@ -152,7 +152,7 @@ static int lttng_unlinked_file_pool_add_inode(
 	inode->location.directory_handle = NULL;
 	reference_acquired = lttng_directory_handle_get(
 			pool->unlink_directory_handle);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 	inode->location.directory_handle = pool->unlink_directory_handle;
 
 	free(inode->location.path);
@@ -217,8 +217,8 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 	if (inode->unlink_pending) {
 		int ret;
 
-		assert(inode->location.directory_handle);
-		assert(inode->location.path);
+		LTTNG_ASSERT(inode->location.directory_handle);
+		LTTNG_ASSERT(inode->location.path);
 		DBG("Removing %s from unlinked file pool",
 				inode->location.path);
 		ret = lttng_unlinked_file_pool_remove_inode(inode->unlinked_file_pool, inode);
@@ -279,7 +279,7 @@ LTTNG_HIDDEN void lttng_unlinked_file_pool_destroy(
 		return;
 	}
 
-	assert(pool->file_count == 0);
+	LTTNG_ASSERT(pool->file_count == 0);
 	lttng_directory_handle_put(pool->unlink_directory_handle);
 	free(pool->unlink_directory_path);
 	free(pool);
@@ -298,7 +298,7 @@ lttng_inode_get_location_directory_handle(
 		const bool reference_acquired = lttng_directory_handle_get(
 				inode->location.directory_handle);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 	}
 	return inode->location.directory_handle;
 }
@@ -373,7 +373,7 @@ LTTNG_HIDDEN int lttng_inode_rename(
 	}
 
 	reference_acquired = lttng_directory_handle_get(new_directory_handle);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 	lttng_directory_handle_put(inode->location.directory_handle);
 	free(inode->location.path);
 	inode->location.directory_handle = new_directory_handle;
@@ -430,7 +430,7 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	}
 
 	reference_acquired = lttng_directory_handle_get(directory_handle);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 
 	inode = zmalloc(sizeof(*inode));
 	if (!inode) {
@@ -487,7 +487,7 @@ LTTNG_HIDDEN void lttng_inode_registry_destroy(
 	if (registry->inodes) {
 		int ret = cds_lfht_destroy(registry->inodes, NULL);
 
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	free(registry);
 }
@@ -535,7 +535,7 @@ LTTNG_HIDDEN struct lttng_inode *lttng_inode_registry_get_inode(
 	node = cds_lfht_add_unique(registry->inodes,
 			lttng_inode_id_hash(&inode->id), lttng_inode_match,
 			&inode->id, &inode->registry_node);
-	assert(node == &inode->registry_node);
+	LTTNG_ASSERT(node == &inode->registry_node);
 end_unlock:
 	rcu_read_unlock();
 end:

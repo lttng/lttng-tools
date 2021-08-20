@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <string.h>
 #include <urcu/uatomic.h>
@@ -178,15 +177,15 @@ void snapshot_delete_output(struct snapshot *snapshot,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(snapshot);
-	assert(snapshot->output_ht);
-	assert(output);
+	LTTNG_ASSERT(snapshot);
+	LTTNG_ASSERT(snapshot->output_ht);
+	LTTNG_ASSERT(output);
 
 	iter.iter.node = &output->node.node;
 	rcu_read_lock();
 	ret = lttng_ht_del(snapshot->output_ht, &iter);
 	rcu_read_unlock();
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	/*
 	 * This is safe because the ownership of a snapshot object is in a session
 	 * for which the session lock need to be acquired to read and modify it.
@@ -200,9 +199,9 @@ void snapshot_delete_output(struct snapshot *snapshot,
 void snapshot_add_output(struct snapshot *snapshot,
 		struct snapshot_output *output)
 {
-	assert(snapshot);
-	assert(snapshot->output_ht);
-	assert(output);
+	LTTNG_ASSERT(snapshot);
+	LTTNG_ASSERT(snapshot->output_ht);
+	LTTNG_ASSERT(output);
 
 	rcu_read_lock();
 	lttng_ht_add_unique_ulong(snapshot->output_ht, &output->node);
@@ -219,7 +218,7 @@ void snapshot_add_output(struct snapshot *snapshot,
  */
 void snapshot_output_destroy(struct snapshot_output *obj)
 {
-	assert(obj);
+	LTTNG_ASSERT(obj);
 
 	if (obj->consumer) {
 		consumer_output_send_destroy_relayd(obj->consumer);
@@ -240,8 +239,8 @@ struct snapshot_output *snapshot_find_output_by_name(const char *name,
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output = NULL;
 
-	assert(snapshot);
-	assert(name);
+	LTTNG_ASSERT(snapshot);
+	LTTNG_ASSERT(name);
 
 	cds_lfht_for_each_entry(snapshot->output_ht->ht, &iter.iter, output,
 		node.node) {
@@ -267,7 +266,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output = NULL;
 
-	assert(snapshot);
+	LTTNG_ASSERT(snapshot);
 
 	lttng_ht_lookup(snapshot->output_ht, (void *)((unsigned long) id), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -290,7 +289,7 @@ int snapshot_init(struct snapshot *obj)
 {
 	int ret;
 
-	assert(obj);
+	LTTNG_ASSERT(obj);
 
 	memset(obj, 0, sizeof(struct snapshot));
 

@@ -8,7 +8,6 @@
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 #include <common/utils.h>
-#include <assert.h>
 
 /*
  * Round to (upper) power of two, val is returned if it already is a power of
@@ -20,9 +19,9 @@ size_t round_to_power_of_2(size_t val)
 	size_t rounded;
 	const int order = utils_get_count_order_u64(val);
 
-	assert(order >= 0);
+	LTTNG_ASSERT(order >= 0);
 	rounded = (1ULL << order);
-	assert(rounded >= val);
+	LTTNG_ASSERT(rounded >= val);
 
 	return rounded;
 }
@@ -30,7 +29,7 @@ size_t round_to_power_of_2(size_t val)
 LTTNG_HIDDEN
 void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer)
 {
-	assert(buffer);
+	LTTNG_ASSERT(buffer);
 	memset(buffer, 0, sizeof(*buffer));
 }
 
@@ -50,7 +49,7 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	assert(buffer->_capacity >= buffer->size);
+	LTTNG_ASSERT(buffer->_capacity >= buffer->size);
 	if (buffer->_capacity < (len + buffer->size)) {
 		ret = lttng_dynamic_buffer_set_capacity(buffer,
 				buffer->_capacity +

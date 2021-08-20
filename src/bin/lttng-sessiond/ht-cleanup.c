@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 
 #include <common/hashtable/hashtable.h>
 #include <common/common.h>

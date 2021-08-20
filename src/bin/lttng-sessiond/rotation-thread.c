@@ -111,7 +111,7 @@ void rotation_thread_timer_queue_destroy(
 	lttng_pipe_destroy(queue->event_pipe);
 
 	pthread_mutex_lock(&queue->lock);
-	assert(cds_list_empty(&queue->list));
+	LTTNG_ASSERT(cds_list_empty(&queue->list));
 	pthread_mutex_unlock(&queue->lock);
 	pthread_mutex_destroy(&queue->lock);
 	free(queue);
@@ -325,7 +325,7 @@ void check_session_rotation_pending_on_consumers(struct ltt_session *session,
 	bool chunk_exists_on_peer = false;
 	enum lttng_trace_chunk_status chunk_status;
 
-	assert(session->chunk_being_archived);
+	LTTNG_ASSERT(session->chunk_being_archived);
 
 	/*
 	 * Check for a local pending rotation on all consumers (32-bit
@@ -398,7 +398,7 @@ end:
 		chunk_status = lttng_trace_chunk_get_id(
 				session->chunk_being_archived,
 				&chunk_being_archived_id);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		DBG("Rotation of trace archive %" PRIu64 " of session \"%s\" is complete on all consumers",
 				chunk_being_archived_id,
 				session->name);
@@ -437,7 +437,7 @@ int check_session_rotation_pending(struct ltt_session *session,
 
 	chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived,
 			&chunk_being_archived_id);
-	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	DBG("Checking for pending rotation on session \"%s\", trace archive %" PRIu64,
 			session->name, chunk_being_archived_id);
@@ -468,7 +468,7 @@ int check_session_rotation_pending(struct ltt_session *session,
 	 */
 	chunk_status = lttng_trace_chunk_get_name(session->chunk_being_archived,
 			&archived_chunk_name, NULL);
-	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 	free(session->last_archived_chunk_name);
 	session->last_archived_chunk_name = strdup(archived_chunk_name);
 	if (!session->last_archived_chunk_name) {
@@ -498,7 +498,7 @@ check_ongoing_rotation:
 		chunk_status = lttng_trace_chunk_get_id(
 				session->chunk_being_archived,
 				&chunk_being_archived_id);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 		DBG("Rotation of trace archive %" PRIu64 " is still pending for session %s",
 				chunk_being_archived_id, session->name);

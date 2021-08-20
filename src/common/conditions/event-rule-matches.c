@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -444,17 +443,17 @@ static enum lttng_error_code lttng_condition_event_rule_matches_mi_serialize(
 	const struct lttng_event_rule *rule = NULL;
 	unsigned int capture_descriptor_count, i;
 
-	assert(condition);
-	assert(writer);
-	assert(IS_EVENT_RULE_MATCHES_CONDITION(condition));
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_EVENT_RULE_MATCHES_CONDITION(condition));
 
 	status = lttng_condition_event_rule_matches_get_rule(condition, &rule);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
-	assert(rule != NULL);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(rule != NULL);
 
 	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_descriptor_count);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 	/* Open condition event rule matches element. */
 	ret = mi_lttng_writer_open_element(
@@ -481,7 +480,7 @@ static enum lttng_error_code lttng_condition_event_rule_matches_mi_serialize(
 
 		descriptor = lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 				condition, i);
-		assert(descriptor);
+		LTTNG_ASSERT(descriptor);
 
 		ret_code = lttng_event_expr_mi_serialize(descriptor, writer);
 		if (ret_code != LTTNG_OK) {
@@ -741,7 +740,7 @@ ssize_t lttng_condition_event_rule_matches_create_from_payload(
 	}
 
 	/* Capture descriptor count. */
-	assert(event_rule_length >= 0);
+	LTTNG_ASSERT(event_rule_length >= 0);
 	capture_descr_count = uint_from_buffer(&view->buffer, sizeof(uint32_t), &offset);
 	if (capture_descr_count == UINT32_C(-1)) {
 		goto error;
@@ -1051,7 +1050,7 @@ bool msgpack_str_is_equal(const struct msgpack_object *obj, const char *str)
 {
 	bool is_equal = true;
 
-	assert(obj->type == MSGPACK_OBJECT_STR);
+	LTTNG_ASSERT(obj->type == MSGPACK_OBJECT_STR);
 
 	if (obj->via.str.size != strlen(str)) {
 		is_equal = false;
@@ -1074,12 +1073,12 @@ const msgpack_object *get_msgpack_map_obj(const struct msgpack_object *map_obj,
 	const msgpack_object *ret = NULL;
 	size_t i;
 
-	assert(map_obj->type == MSGPACK_OBJECT_MAP);
+	LTTNG_ASSERT(map_obj->type == MSGPACK_OBJECT_MAP);
 
 	for (i = 0; i < map_obj->via.map.size; i++) {
 		const struct msgpack_object_kv *kv = &map_obj->via.map.ptr[i];
 
-		assert(kv->key.type == MSGPACK_OBJECT_STR);
+		LTTNG_ASSERT(kv->key.type == MSGPACK_OBJECT_STR);
 
 		if (msgpack_str_is_equal(&kv->key, name)) {
 			ret = &kv->val;
@@ -1109,8 +1108,8 @@ int event_field_value_from_obj(const msgpack_object *obj,
 {
 	int ret = 0;
 
-	assert(obj);
-	assert(field_val);
+	LTTNG_ASSERT(obj);
+	LTTNG_ASSERT(field_val);
 
 	switch (obj->type) {
 	case MSGPACK_OBJECT_NIL:
@@ -1292,8 +1291,8 @@ static struct lttng_event_field_value *event_field_value_from_capture_payload(
 	size_t i;
 	size_t count;
 
-	assert(condition);
-	assert(capture_payload);
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(capture_payload);
 
 	/* Initialize value. */
 	msgpack_unpacked_init(&unpacked);
@@ -1338,7 +1337,7 @@ static struct lttng_event_field_value *event_field_value_from_capture_payload(
 	 */
 	count = lttng_dynamic_pointer_array_get_count(
 			&condition->capture_descriptors);
-	assert(count > 0);
+	LTTNG_ASSERT(count > 0);
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_capture_descriptor *capture_descriptor =
@@ -1348,7 +1347,7 @@ static struct lttng_event_field_value *event_field_value_from_capture_payload(
 		struct lttng_event_field_value *elem_field_val;
 		int iret;
 
-		assert(capture_descriptor);
+		LTTNG_ASSERT(capture_descriptor);
 
 		elem_obj = &root_array_obj->ptr[i];
 		iret = event_field_value_from_obj(elem_obj,

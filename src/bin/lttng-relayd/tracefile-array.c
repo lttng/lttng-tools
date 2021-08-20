@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/defaults.h>
@@ -168,7 +167,7 @@ bool tracefile_array_seq_in_file(struct tracefile_array *tfa,
 		 */
 		return true;
 	}
-	assert(file_index < tfa->count);
+	LTTNG_ASSERT(file_index < tfa->count);
 	if (seq == -1ULL) {
 		return false;
 	}

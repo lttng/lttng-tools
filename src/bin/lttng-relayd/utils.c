@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +68,7 @@ exit:
  */
 char *create_output_path(const char *path_name)
 {
-	assert(path_name);
+	LTTNG_ASSERT(path_name);
 
 	if (opt_output_path == NULL) {
 		return create_output_path_auto(path_name);

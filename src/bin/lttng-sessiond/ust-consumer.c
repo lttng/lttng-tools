@@ -48,11 +48,11 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	bool is_local_trace;
 	size_t consumer_path_offset = 0;
 
-	assert(ua_sess);
-	assert(ua_chan);
-	assert(socket);
-	assert(consumer);
-	assert(registry);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(socket);
+	LTTNG_ASSERT(consumer);
+	LTTNG_ASSERT(registry);
 
 	DBG2("Asking UST consumer for channel");
 
@@ -106,7 +106,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		 */
 	} else {
 		ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
-		assert(ust_reg_chan);
+		LTTNG_ASSERT(ust_reg_chan);
 		chan_id = ust_reg_chan->chan_id;
 		if (ua_sess->shm_path[0]) {
 			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
@@ -170,10 +170,10 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		goto error;
 	}
 	/* Communication protocol error. */
-	assert(key == ua_chan->key);
+	LTTNG_ASSERT(key == ua_chan->key);
 	/* We need at least one where 1 stream for 1 cpu. */
 	if (ua_sess->output_traces) {
-		assert(ua_chan->expected_stream_count > 0);
+		LTTNG_ASSERT(ua_chan->expected_stream_count > 0);
 	}
 
 	DBG2("UST ask channel %" PRIu64 " successfully done with %u stream(s)", key,
@@ -201,11 +201,11 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 {
 	int ret;
 
-	assert(ua_sess);
-	assert(ua_chan);
-	assert(consumer);
-	assert(socket);
-	assert(registry);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(consumer);
+	LTTNG_ASSERT(socket);
+	LTTNG_ASSERT(registry);
 
 	if (!consumer->enabled) {
 		ret = -LTTNG_ERR_NO_CONSUMER;
@@ -238,8 +238,8 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 	int ret;
 	struct lttcomm_consumer_msg msg;
 
-	assert(ua_chan);
-	assert(socket);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(socket);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_GET_CHANNEL;
@@ -302,7 +302,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 	}
 
 	/* This MUST match or else we have a synchronization problem. */
-	assert(ua_chan->expected_stream_count == ua_chan->streams.count);
+	LTTNG_ASSERT(ua_chan->expected_stream_count == ua_chan->streams.count);
 
 	/* Wait for confirmation that we can proceed with the streams. */
 	ret = consumer_recv_status_reply(socket);
@@ -332,8 +332,8 @@ int ust_consumer_destroy_channel(struct consumer_socket *socket,
 	int ret;
 	struct lttcomm_consumer_msg msg;
 
-	assert(ua_chan);
-	assert(socket);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(socket);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
@@ -363,9 +363,9 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 {
 	int ret;
 
-	assert(app);
-	assert(stream);
-	assert(channel);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(channel);
 
 	DBG2("UST consumer send stream to app %d", app->sock);
 
@@ -398,10 +398,10 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 {
 	int ret;
 
-	assert(app);
-	assert(ua_sess);
-	assert(channel);
-	assert(channel->obj);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->obj);
 
 	DBG2("UST app send channel to sock %d pid %d (name: %s, key: %" PRIu64 ")",
 			app->sock, app->pid, channel->name, channel->tracing_channel_id);
@@ -438,7 +438,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	struct ust_registry_session *ust_reg;
 	struct lttcomm_consumer_msg msg;
 
-	assert(socket);
+	LTTNG_ASSERT(socket);
 
 	rcu_read_lock();
 	health_code_update();
@@ -481,7 +481,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 		}
 		ust_reg = reg_pid->registry->reg.ust;
 	}
-	assert(ust_reg);
+	LTTNG_ASSERT(ust_reg);
 
 	pthread_mutex_lock(&ust_reg->lock);
 	ret_push = ust_app_push_metadata(ust_reg, socket, 1);

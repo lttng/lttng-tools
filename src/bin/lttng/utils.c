@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <limits.h>
@@ -318,7 +317,7 @@ const char *get_event_type_str(enum lttng_event_type type)
 		break;
 	default:
 		/* Should not have an unknown event type or else define it. */
-		assert(0);
+		abort();
 	}
 
 	return str_event_type;
@@ -570,7 +569,7 @@ int show_cmd_help(const char *cmd_name, const char *help_msg)
 	char page_name[32];
 
 	ret = sprintf(page_name, "lttng-%s", cmd_name);
-	assert(ret > 0 && ret < 32);
+	LTTNG_ASSERT(ret > 0 && ret < 32);
 	ret = utils_show_help(1, page_name, help_msg);
 	if (ret && !help_msg) {
 		ERR("Cannot view man page `lttng-%s(1)`", cmd_name);

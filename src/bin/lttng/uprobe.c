@@ -209,7 +209,7 @@ int parse_userspace_probe_opts(const char *opt,
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	struct lttng_dynamic_pointer_array tokens;
 
-	assert(opt);
+	LTTNG_ASSERT(opt);
 
 	/*
 	 * userspace probe fields are separated by ':'.

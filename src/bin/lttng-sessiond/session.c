@@ -80,7 +80,7 @@ static int validate_name(const char *name)
 	int ret;
 	char *tok, *tmp_name;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	tmp_name = strdup(name);
 	if (!tmp_name) {
@@ -111,7 +111,7 @@ error:
  */
 static uint64_t add_session_list(struct ltt_session *ls)
 {
-	assert(ls);
+	LTTNG_ASSERT(ls);
 
 	cds_list_add(&ls->list, &ltt_session_list.head);
 	return ltt_session_list.next_uuid++;
@@ -124,7 +124,7 @@ static uint64_t add_session_list(struct ltt_session *ls)
  */
 static void del_session_list(struct ltt_session *ls)
 {
-	assert(ls);
+	LTTNG_ASSERT(ls);
 
 	cds_list_del(&ls->list);
 }
@@ -352,7 +352,7 @@ static void add_session_ht(struct ltt_session *ls)
 {
 	int ret;
 
-	assert(ls);
+	LTTNG_ASSERT(ls);
 
 	if (!ltt_sessions_ht_by_id) {
 		ret = ltt_sessions_ht_alloc();
@@ -363,7 +363,7 @@ static void add_session_ht(struct ltt_session *ls)
 	}
 
 	/* Should always be present with ltt_sessions_ht_by_id. */
-	assert(ltt_sessions_ht_by_name);
+	LTTNG_ASSERT(ltt_sessions_ht_by_name);
 
 	lttng_ht_node_init_u64(&ls->node, ls->id);
 	lttng_ht_add_unique_u64(ltt_sessions_ht_by_id, &ls->node);
@@ -389,10 +389,10 @@ static int ltt_sessions_ht_empty(void)
 		goto end;
 	}
 
-	assert(ltt_sessions_ht_by_name);
+	LTTNG_ASSERT(ltt_sessions_ht_by_name);
 
 	count = lttng_ht_get_count(ltt_sessions_ht_by_id);
-	assert(count == lttng_ht_get_count(ltt_sessions_ht_by_name));
+	LTTNG_ASSERT(count == lttng_ht_get_count(ltt_sessions_ht_by_name));
 end:
 	return count ? 0 : 1;
 }
@@ -407,17 +407,17 @@ static void del_session_ht(struct ltt_session *ls)
 	struct lttng_ht_iter iter;
 	int ret;
 
-	assert(ls);
-	assert(ltt_sessions_ht_by_id);
-	assert(ltt_sessions_ht_by_name);
+	LTTNG_ASSERT(ls);
+	LTTNG_ASSERT(ltt_sessions_ht_by_id);
+	LTTNG_ASSERT(ltt_sessions_ht_by_name);
 
 	iter.iter.node = &ls->node.node;
 	ret = lttng_ht_del(ltt_sessions_ht_by_id, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	iter.iter.node = &ls->node_by_name.node;
 	ret = lttng_ht_del(ltt_sessions_ht_by_name, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	if (ltt_sessions_ht_empty()) {
 		DBG("Empty ltt_sessions_ht_by_id/name, destroying hast tables");
@@ -430,7 +430,7 @@ static void del_session_ht(struct ltt_session *ls)
  */
 void session_lock(struct ltt_session *session)
 {
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	pthread_mutex_lock(&session->lock);
 }
@@ -440,7 +440,7 @@ void session_lock(struct ltt_session *session)
  */
 void session_unlock(struct ltt_session *session)
 {
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	pthread_mutex_unlock(&session->lock);
 }
@@ -480,7 +480,7 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 		goto end;
 	}
 	chunk_status = lttng_trace_chunk_get_id(new_trace_chunk, &chunk_id);
-	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	refs_to_acquire = 1;
 	refs_to_acquire += !!session->ust_session;
@@ -616,7 +616,7 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	if (consumer_output_override) {
 		output = consumer_output_override;
 	} else {
-		assert(session->ust_session || session->kernel_session);
+		LTTNG_ASSERT(session->ust_session || session->kernel_session);
 		output = session->ust_session ?
 					 session->ust_session->consumer :
 					 session->kernel_session->consumer;
@@ -959,7 +959,7 @@ void session_release(struct urcu_ref *ref)
 	struct ltt_session *session = container_of(ref, typeof(*session), ref);
 	const bool session_published = session->published;
 
-	assert(!session->chunk_being_archived);
+	LTTNG_ASSERT(!session->chunk_being_archived);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
@@ -1048,7 +1048,7 @@ void session_put(struct ltt_session *session)
 	 * may cause the removal of the session from the session_list.
 	 */
 	ASSERT_LOCKED(ltt_session_list.lock);
-	assert(session->ref.refcount);
+	LTTNG_ASSERT(session->ref.refcount);
 	urcu_ref_put(&session->ref, session_release);
 }
 
@@ -1065,7 +1065,7 @@ void session_put(struct ltt_session *session)
  */
 void session_destroy(struct ltt_session *session)
 {
-	assert(!session->destroyed);
+	LTTNG_ASSERT(!session->destroyed);
 	session->destroyed = true;
 	session_put(session);
 }
@@ -1104,7 +1104,7 @@ struct ltt_session *session_find_by_name(const char *name)
 {
 	struct ltt_session *iter;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 	ASSERT_LOCKED(ltt_session_list.lock);
 
 	DBG2("Trying to find session by name %s", name);
@@ -1334,7 +1334,7 @@ error:
  */
 bool session_access_ok(struct ltt_session *session, uid_t uid)
 {
-	assert(session);
+	LTTNG_ASSERT(session);
 	return (uid == session->uid) || uid == 0;
 }
 
@@ -1372,7 +1372,7 @@ int session_reset_rotation_state(struct ltt_session *session,
 		chunk_status = lttng_trace_chunk_get_id(
 				session->chunk_being_archived,
 				&chunk_id);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id,
 				chunk_id);
 		lttng_trace_chunk_put(session->chunk_being_archived);

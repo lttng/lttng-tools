@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>

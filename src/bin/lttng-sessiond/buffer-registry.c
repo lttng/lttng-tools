@@ -41,11 +41,11 @@ static int ht_match_reg_uid(struct cds_lfht_node *node, const void *_key)
 	struct buffer_reg_uid *reg;
 	const struct buffer_reg_uid *key;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	reg = caa_container_of(node, struct buffer_reg_uid, node.node);
-	assert(reg);
+	LTTNG_ASSERT(reg);
 	key = _key;
 
 	if (key->session_id != reg->session_id ||
@@ -69,7 +69,7 @@ static unsigned long ht_hash_reg_uid(const void *_key, unsigned long seed)
 	uint64_t xored_key;
 	const struct buffer_reg_uid *key = _key;
 
-	assert(key);
+	LTTNG_ASSERT(key);
 
 	xored_key = (uint64_t)(key->session_id ^ key->bits_per_long ^ key->uid);
 	return hash_key_u64(&xored_key, seed);
@@ -81,9 +81,9 @@ static unsigned long ht_hash_reg_uid(const void *_key, unsigned long seed)
 void buffer_reg_init_uid_registry(void)
 {
 	/* Should be called once. */
-	assert(!buffer_registry_uid);
+	LTTNG_ASSERT(!buffer_registry_uid);
 	buffer_registry_uid = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	assert(buffer_registry_uid);
+	LTTNG_ASSERT(buffer_registry_uid);
 	buffer_registry_uid->match_fct = ht_match_reg_uid;
 	buffer_registry_uid->hash_fct = ht_hash_reg_uid;
 
@@ -102,7 +102,7 @@ int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid
 	int ret = 0;
 	struct buffer_reg_uid *reg = NULL;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	reg = zmalloc(sizeof(*reg));
 	if (!reg) {
@@ -159,7 +159,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 	struct cds_lfht_node *nodep;
 	struct lttng_ht *ht = buffer_registry_uid;
 
-	assert(reg);
+	LTTNG_ASSERT(reg);
 
 	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64 ,
 			reg->session_id);
@@ -167,7 +167,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 	rcu_read_lock();
 	nodep = cds_lfht_add_unique(ht->ht, ht->hash_fct(reg, lttng_ht_seed),
 			ht->match_fct, reg, &reg->node.node);
-	assert(nodep == &reg->node.node);
+	LTTNG_ASSERT(nodep == &reg->node.node);
 	rcu_read_unlock();
 }
 
@@ -212,9 +212,9 @@ end:
 void buffer_reg_init_pid_registry(void)
 {
 	/* Should be called once. */
-	assert(!buffer_registry_pid);
+	LTTNG_ASSERT(!buffer_registry_pid);
 	buffer_registry_pid = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	assert(buffer_registry_pid);
+	LTTNG_ASSERT(buffer_registry_pid);
 
 	DBG3("Global buffer per PID registry initialized");
 }
@@ -230,7 +230,7 @@ int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
 	int ret = 0;
 	struct buffer_reg_pid *reg = NULL;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	reg = zmalloc(sizeof(*reg));
 	if (!reg) {
@@ -282,7 +282,7 @@ error:
  */
 void buffer_reg_pid_add(struct buffer_reg_pid *reg)
 {
-	assert(reg);
+	LTTNG_ASSERT(reg);
 
 	DBG3("Buffer registry per PID adding to global registry with id: %" PRIu64,
 			reg->session_id);
@@ -365,7 +365,7 @@ int buffer_reg_channel_create(uint64_t key, struct buffer_reg_channel **regp)
 {
 	struct buffer_reg_channel *reg;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	DBG3("Buffer registry channel create with key: %" PRIu64, key);
 
@@ -395,7 +395,7 @@ int buffer_reg_stream_create(struct buffer_reg_stream **regp)
 {
 	struct buffer_reg_stream *reg;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	DBG3("Buffer registry creating stream");
 
@@ -416,8 +416,8 @@ int buffer_reg_stream_create(struct buffer_reg_stream **regp)
 void buffer_reg_stream_add(struct buffer_reg_stream *stream,
 		struct buffer_reg_channel *channel)
 {
-	assert(stream);
-	assert(channel);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(channel);
 
 	pthread_mutex_lock(&channel->stream_list_lock);
 	cds_list_add_tail(&stream->lnode, &channel->streams);
@@ -431,8 +431,8 @@ void buffer_reg_stream_add(struct buffer_reg_stream *stream,
 void buffer_reg_channel_add(struct buffer_reg_session *session,
 		struct buffer_reg_channel *channel)
 {
-	assert(session);
-	assert(channel);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(channel);
 
 	rcu_read_lock();
 	lttng_ht_add_unique_u64(session->channels, &channel->node);
@@ -454,14 +454,14 @@ struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key,
 	struct buffer_reg_channel *chan = NULL;
 	struct lttng_ht *ht;
 
-	assert(reg);
+	LTTNG_ASSERT(reg);
 
 	switch (reg->domain) {
 	case LTTNG_DOMAIN_UST:
 		ht = reg->registry->channels;
 		break;
 	default:
-		assert(0);
+		abort();
 		goto end;
 	}
 
@@ -504,7 +504,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 	}
 
 	free(regp);
@@ -521,12 +521,12 @@ void buffer_reg_channel_remove(struct buffer_reg_session *session,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(session);
-	assert(regp);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(regp);
 
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(session->channels, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 /*
@@ -565,7 +565,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 	}
 
 	free(regp);
@@ -591,7 +591,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	cds_lfht_for_each_entry(regp->channels->ht, &iter.iter, reg_chan,
 			node.node) {
 		ret = lttng_ht_del(regp->channels, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		buffer_reg_channel_destroy(reg_chan, domain);
 	}
 	rcu_read_unlock();
@@ -604,7 +604,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 		free(regp->reg.ust);
 		break;
 	default:
-		assert(0);
+		abort();
 	}
 
 	free(regp);
@@ -619,12 +619,12 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	rcu_read_lock();
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(buffer_registry_uid, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	rcu_read_unlock();
 }
 
@@ -688,7 +688,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 		}
 		break;
 	default:
-		assert(0);
+		abort();
 		rcu_read_unlock();
 		return;
 	}
@@ -708,11 +708,11 @@ void buffer_reg_pid_remove(struct buffer_reg_pid *regp)
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(regp);
+	LTTNG_ASSERT(regp);
 
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(buffer_registry_pid, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 /*

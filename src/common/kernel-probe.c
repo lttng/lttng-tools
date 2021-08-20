@@ -6,7 +6,6 @@
  */
 
 #include "lttng/lttng-error.h"
-#include <assert.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
@@ -71,7 +70,7 @@ static
 void lttng_kernel_probe_location_address_destroy(
 		struct lttng_kernel_probe_location *location)
 {
-	assert(location);
+	LTTNG_ASSERT(location);
 	free(location);
 }
 
@@ -81,13 +80,13 @@ void lttng_kernel_probe_location_symbol_destroy(
 {
 	struct lttng_kernel_probe_location_symbol *location_symbol = NULL;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	location_symbol = container_of(location,
 			struct lttng_kernel_probe_location_symbol,
 			parent);
 
-	assert(location_symbol);
+	LTTNG_ASSERT(location_symbol);
 
 	free(location_symbol->symbol_name);
 	free(location);
@@ -187,7 +186,7 @@ lttng_kernel_probe_location_address_get_address(
 			LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
 	struct lttng_kernel_probe_location_address *address_location;
 
-	assert(offset);
+	LTTNG_ASSERT(offset);
 
 	if (!location || lttng_kernel_probe_location_get_type(location) !=
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS) {
@@ -231,7 +230,7 @@ lttng_kernel_probe_location_symbol_get_offset(
 			LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
 	struct lttng_kernel_probe_location_symbol *symbol_location;
 
-	assert(offset);
+	LTTNG_ASSERT(offset);
 
 	if (!location || lttng_kernel_probe_location_get_type(location) !=
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
@@ -264,7 +263,7 @@ int lttng_kernel_probe_location_symbol_serialize(
 		goto end;
 	}
 
-	assert(lttng_kernel_probe_location_get_type(location) ==
+	LTTNG_ASSERT(lttng_kernel_probe_location_get_type(location) ==
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
 	original_payload_size = payload->buffer.size;
@@ -315,8 +314,8 @@ int lttng_kernel_probe_location_address_serialize(
 	struct lttng_kernel_probe_location_address *location_address;
 	struct lttng_kernel_probe_location_address_comm location_address_comm;
 
-	assert(location);
-	assert(lttng_kernel_probe_location_get_type(location) ==
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(lttng_kernel_probe_location_get_type(location) ==
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 
 	original_payload_size = payload->buffer.size;
@@ -383,7 +382,7 @@ int lttng_kernel_probe_location_symbol_create_from_payload(
 	ssize_t ret = 0;
 	size_t expected_size;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	if (view->buffer.size < sizeof(*location_symbol_comm)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -430,7 +429,7 @@ ssize_t lttng_kernel_probe_location_address_create_from_payload(
 	ssize_t ret = 0;
 	size_t expected_size;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	expected_size = sizeof(*location_address_comm);
 
@@ -466,8 +465,8 @@ ssize_t lttng_kernel_probe_location_create_from_payload(
 			lttng_payload_view_from_view(
 					view, 0, sizeof(*probe_location_comm));
 
-	assert(view);
-	assert(location);
+	LTTNG_ASSERT(view);
+	LTTNG_ASSERT(location);
 
 	if (!lttng_payload_view_is_valid(&probe_location_comm_view)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -583,8 +582,8 @@ bool lttng_kernel_probe_location_symbol_is_equal(
 	b = container_of(_b, struct lttng_kernel_probe_location_symbol,
 			parent);
 
-	assert(a->symbol_name);
-	assert(b->symbol_name);
+	LTTNG_ASSERT(a->symbol_name);
+	LTTNG_ASSERT(b->symbol_name);
 	if (strcmp(a->symbol_name, b->symbol_name)) {
 		goto end;
 	}
@@ -634,8 +633,8 @@ lttng_kernel_probe_location_symbol_copy(
 	const char *symbol_name = NULL;
 	uint64_t offset;
 
-	assert(location);
-	assert(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 	symbol_location = container_of(
 			location, typeof(*symbol_location), parent);
 
@@ -672,8 +671,8 @@ lttng_kernel_probe_location_address_copy(
 	enum lttng_kernel_probe_location_status status;
 	uint64_t address;
 
-	assert(location);
-	assert(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 	address_location = container_of(
 			location, typeof(*address_location), parent);
 
@@ -748,13 +747,13 @@ enum lttng_error_code lttng_kernel_probe_location_address_mi_serialize(
 	enum lttng_kernel_probe_location_status status;
 	uint64_t address;
 
-	assert(location);
-	assert(writer);
-	assert(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 
 	status = lttng_kernel_probe_location_address_get_address(
 			location, &address);
-	assert(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 
 	/* Open kernel probe location address element. */
 	ret = mi_lttng_writer_open_element(
@@ -796,17 +795,17 @@ enum lttng_error_code lttng_kernel_probe_location_symbol_mi_serialize(
 	const char *name = NULL;
 	uint64_t offset;
 
-	assert(location);
-	assert(writer);
-	assert(location->type ==
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(location->type ==
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
 	name = lttng_kernel_probe_location_symbol_get_name(location);
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	status = lttng_kernel_probe_location_symbol_get_offset(
 			location, &offset);
-	assert(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 
 	/* Open kernel probe location symbol offset element. */
 	ret = mi_lttng_writer_open_element(writer,
@@ -854,8 +853,8 @@ enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
 	int ret;
 	enum lttng_error_code ret_code;
 
-	assert(location);
-	assert(writer);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
 
 	/* Open kernel probe location element. */
 	ret = mi_lttng_writer_open_element(

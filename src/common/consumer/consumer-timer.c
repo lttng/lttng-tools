@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <signal.h>
 
@@ -84,7 +83,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	struct lttng_consumer_channel *channel;
 
 	channel = si->si_value.sival_ptr;
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	if (channel->switch_timer_error) {
 		return;
@@ -115,7 +114,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 		break;
 	case LTTNG_CONSUMER_KERNEL:
 	case LTTNG_CONSUMER_UNKNOWN:
-		assert(0);
+		abort();
 		break;
 	}
 }
@@ -282,7 +281,7 @@ static void live_timer(struct lttng_consumer_local_data *ctx,
 					consumer_flush_ust_index;
 
 	channel = si->si_value.sival_ptr;
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	if (channel->switch_timer_error) {
 		goto error;
@@ -375,8 +374,8 @@ int consumer_channel_timer_start(timer_t *timer_id,
 	struct sigevent sev = {};
 	struct itimerspec its;
 
-	assert(channel);
-	assert(channel->key);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->key);
 
 	if (timer_interval_us == 0) {
 		/* No creation needed; not an error. */
@@ -438,8 +437,8 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 {
 	int ret;
 
-	assert(channel);
-	assert(channel->key);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->key);
 
 	ret = consumer_channel_timer_start(&channel->switch_timer, channel,
 			switch_timer_interval_us, LTTNG_CONSUMER_SIG_SWITCH);
@@ -454,7 +453,7 @@ void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 {
 	int ret;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	ret = consumer_channel_timer_stop(&channel->switch_timer,
 			LTTNG_CONSUMER_SIG_SWITCH);
@@ -473,8 +472,8 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 {
 	int ret;
 
-	assert(channel);
-	assert(channel->key);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->key);
 
 	ret = consumer_channel_timer_start(&channel->live_timer, channel,
 			live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
@@ -489,7 +488,7 @@ void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
 {
 	int ret;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	ret = consumer_channel_timer_stop(&channel->live_timer,
 			LTTNG_CONSUMER_SIG_LIVE);
@@ -511,9 +510,9 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 {
 	int ret;
 
-	assert(channel);
-	assert(channel->key);
-	assert(!channel->monitor_timer_enabled);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->monitor_timer_enabled);
 
 	ret = consumer_channel_timer_start(&channel->monitor_timer, channel,
 			monitor_timer_interval_us, LTTNG_CONSUMER_SIG_MONITOR);
@@ -528,8 +527,8 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 {
 	int ret;
 
-	assert(channel);
-	assert(channel->monitor_timer_enabled);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->monitor_timer_enabled);
 
 	ret = consumer_channel_timer_stop(&channel->monitor_timer,
 			LTTNG_CONSUMER_SIG_MONITOR);
@@ -655,7 +654,7 @@ void monitor_timer(struct lttng_consumer_channel *channel)
 	get_produced_cb get_produced;
 	uint64_t lowest = 0, highest = 0, total_consumed = 0;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	if (channel_monitor_pipe < 0) {
 		return;
@@ -690,7 +689,7 @@ void monitor_timer(struct lttng_consumer_channel *channel)
 	 * Writes performed here are assumed to be atomic which is only
 	 * guaranteed for sizes < than PIPE_BUF.
 	 */
-	assert(sizeof(msg) <= PIPE_BUF);
+	LTTNG_ASSERT(sizeof(msg) <= PIPE_BUF);
 
 	do {
 		ret = write(channel_monitor_pipe, &msg, sizeof(msg));
@@ -787,7 +786,7 @@ void *consumer_timer_thread(void *data)
 			channel = info.si_value.sival_ptr;
 			monitor_timer(channel);
 		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
-			assert(CMM_LOAD_SHARED(consumer_quit));
+			LTTNG_ASSERT(CMM_LOAD_SHARED(consumer_quit));
 			goto end;
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);

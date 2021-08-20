@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <signal.h>
 
@@ -23,7 +22,7 @@
 
 #define UINT_TO_PTR(value)				\
 	({						\
-		assert(value <= UINTPTR_MAX);		\
+		LTTNG_ASSERT(value <= UINTPTR_MAX);		\
 		(void *) (uintptr_t) value;		\
 	})
 #define PTR_TO_UINT(ptr) ((uintptr_t) ptr)
@@ -238,8 +237,8 @@ int timer_session_rotation_pending_check_stop(struct ltt_session *session)
 {
 	int ret;
 
-	assert(session);
-	assert(session->rotation_pending_check_timer_enabled);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(session->rotation_pending_check_timer_enabled);
 
 	DBG("Disabling session rotation pending check timer on session %" PRIu64,
 			session->id);
@@ -289,7 +288,7 @@ int timer_session_rotation_schedule_timer_stop(struct ltt_session *session)
 {
 	int ret = 0;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	if (!session->rotation_schedule_timer_enabled) {
 		goto end;

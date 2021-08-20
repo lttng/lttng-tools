@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <common/mi-lttng.h>
 #include <lttng/domain-internal.h>
@@ -111,8 +110,8 @@ static int mi_print_event(const char *event_name, int enabled, int success)
 {
 	int ret;
 
-	assert(writer);
-	assert(event_name);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(event_name);
 
 	/* Open event element */
 	ret = mi_lttng_writer_open_element(writer, config_element_event);
@@ -175,7 +174,7 @@ static int disable_events(char *session_name)
 		dom.type = LTTNG_DOMAIN_PYTHON;
 	} else {
 		/* Checked by the caller. */
-		assert(0);
+		abort();
 	}
 
 	channel_name = opt_channel_name;

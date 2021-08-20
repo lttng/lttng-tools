@@ -45,7 +45,7 @@ static void update_ust_app(int app_sock)
 	}
 
 	rcu_read_lock();
-	assert(app_sock >= 0);
+	LTTNG_ASSERT(app_sock >= 0);
 	app = ust_app_find_by_sock(app_sock);
 	if (app == NULL) {
 		/*
@@ -94,7 +94,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 	struct lttng_poll_event events;
 	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
 
-	assert(wait_queue);
+	LTTNG_ASSERT(wait_queue);
 
 	lttng_poll_init(&events);
 
@@ -110,7 +110,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 
 	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
 			&wait_queue->head, head) {
-		assert(wait_node->app);
+		LTTNG_ASSERT(wait_node->app);
 		ret = lttng_poll_add(&events, wait_node->app->sock,
 				LPOLLHUP | LPOLLERR);
 		if (ret < 0) {

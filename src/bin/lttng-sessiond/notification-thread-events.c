@@ -36,7 +36,6 @@
 
 #include <time.h>
 #include <unistd.h>
-#include <assert.h>
 #include <inttypes.h>
 #include <fcntl.h>
 
@@ -311,7 +310,7 @@ int match_client_list_condition(struct cds_lfht_node *node, const void *key)
 	struct notification_client_list *client_list;
 	const struct lttng_condition *condition;
 
-	assert(condition_key);
+	LTTNG_ASSERT(condition_key);
 
 	client_list = caa_container_of(node, struct notification_client_list,
 			notification_trigger_clients_ht_node);
@@ -526,7 +525,7 @@ void session_info_destroy(void *_data)
 	struct session_info *session_info = _data;
 	int ret;
 
-	assert(session_info);
+	LTTNG_ASSERT(session_info);
 	if (session_info->channel_infos_ht) {
 		ret = cds_lfht_destroy(session_info->channel_infos_ht, NULL);
 		if (ret) {
@@ -568,7 +567,7 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
 {
 	struct session_info *session_info;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	session_info = zmalloc(sizeof(*session_info));
 	if (!session_info) {
@@ -690,7 +689,7 @@ void notification_client_list_release(struct urcu_ref *list_ref)
 		free(client_list_element);
 	}
 
-	assert(cds_list_empty(&list->triggers_list));
+	LTTNG_ASSERT(cds_list_empty(&list->triggers_list));
 
 	pthread_mutex_destroy(&list->lock);
 	call_rcu(&list->rcu_node, free_notification_client_list_rcu);
@@ -852,7 +851,7 @@ int evaluate_channel_condition_for_client(
 					lttng_trigger_get_const_condition(
 						element->trigger);
 
-			assert(current_condition);
+			LTTNG_ASSERT(current_condition);
 			if (!lttng_condition_is_equal(condition,
 					current_condition)) {
 				continue;
@@ -882,7 +881,7 @@ int evaluate_channel_condition_for_client(
 			channel_key,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	assert(node);
+	LTTNG_ASSERT(node);
 	channel_info = caa_container_of(node, struct channel_info,
 			channels_ht_node);
 
@@ -1038,10 +1037,10 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 	uid_t object_uid = 0;
 	gid_t object_gid = 0;
 
-	assert(trigger);
-	assert(condition);
-	assert(client);
-	assert(state);
+	LTTNG_ASSERT(trigger);
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(client);
+	LTTNG_ASSERT(state);
 
 	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_SESSION:
@@ -1371,18 +1370,18 @@ bool buffer_usage_condition_applies_to_channel(
 
 	status = lttng_condition_buffer_usage_get_domain_type(condition,
 			&condition_domain);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 	if (channel_info->key.domain != condition_domain) {
 		goto fail;
 	}
 
 	status = lttng_condition_buffer_usage_get_session_name(
 			condition, &condition_session_name);
-	assert((status == LTTNG_CONDITION_STATUS_OK) && condition_session_name);
+	LTTNG_ASSERT((status == LTTNG_CONDITION_STATUS_OK) && condition_session_name);
 
 	status = lttng_condition_buffer_usage_get_channel_name(
 			condition, &condition_channel_name);
-	assert((status == LTTNG_CONDITION_STATUS_OK) && condition_channel_name);
+	LTTNG_ASSERT((status == LTTNG_CONDITION_STATUS_OK) && condition_channel_name);
 
 	if (strcmp(channel_info->session_info->name, condition_session_name)) {
 		goto fail;
@@ -1406,7 +1405,7 @@ bool session_consumed_size_condition_applies_to_channel(
 
 	status = lttng_condition_session_consumed_size_get_session_name(
 			condition, &condition_session_name);
-	assert((status == LTTNG_CONDITION_STATUS_OK) && condition_session_name);
+	LTTNG_ASSERT((status == LTTNG_CONDITION_STATUS_OK) && condition_session_name);
 
 	if (strcmp(channel_info->session_info->name, condition_session_name)) {
 		goto fail;
@@ -1582,7 +1581,7 @@ bool trigger_applies_to_session(const struct lttng_trigger *trigger,
 			goto end;
 		}
 
-		assert(condition_session_name);
+		LTTNG_ASSERT(condition_session_name);
 		applies = !strcmp(condition_session_name, session_name);
 		break;
 	}
@@ -1663,8 +1662,8 @@ struct session_info *find_or_create_session_info(
 				name, uid, gid);
 		session = caa_container_of(node, struct session_info,
 				sessions_ht_node);
-		assert(session->uid == uid);
-		assert(session->gid == gid);
+		LTTNG_ASSERT(session->uid == uid);
+		LTTNG_ASSERT(session->gid == gid);
 		session_info_get(session);
 		goto end;
 	}
@@ -1875,7 +1874,7 @@ int handle_notification_thread_command_remove_channel(
 			&key,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	assert(node);
+	LTTNG_ASSERT(node);
 	channel_info = caa_container_of(node, struct channel_info,
 			channels_ht_node);
 	cds_lfht_del(state->channels_ht, node);
@@ -1937,7 +1936,7 @@ int handle_notification_thread_command_session_rotation(
 
 		trigger = trigger_list_element->trigger;
 		condition = lttng_trigger_get_const_condition(trigger);
-		assert(condition);
+		LTTNG_ASSERT(condition);
 		condition_type = lttng_condition_get_type(condition);
 
 		if (condition_type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING &&
@@ -2135,7 +2134,7 @@ int remove_tracer_event_source_from_pollset(
 {
 	int ret = 0;
 
-	assert(source_element->is_fd_in_poll_set);
+	LTTNG_ASSERT(source_element->is_fd_in_poll_set);
 
 	DBG3("Removing tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
 			source_element->fd,
@@ -2177,7 +2176,7 @@ int handle_notification_thread_tracer_event_source_died(
 	source_element = find_tracer_event_source_element(state,
 			tracer_event_source_fd);
 
-	assert(source_element);
+	LTTNG_ASSERT(source_element);
 
 	ret = remove_tracer_event_source_from_pollset(state, source_element);
 	if (ret) {
@@ -2200,7 +2199,7 @@ int handle_notification_thread_command_remove_tracer_event_source(
 	source_element = find_tracer_event_source_element(state,
 			tracer_event_source_fd);
 
-	assert(source_element);
+	LTTNG_ASSERT(source_element);
 
 	/* Remove the tracer source from the list. */
 	cds_list_del(&source_element->node);
@@ -2296,7 +2295,7 @@ static inline void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger,
 			trigger_owner_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 }
 
 static int handle_notification_thread_command_get_trigger(
@@ -2354,7 +2353,7 @@ bool condition_is_supported(struct lttng_condition *condition)
 
 		ret = lttng_condition_buffer_usage_get_domain_type(condition,
 				&domain);
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 
 		if (domain != LTTNG_DOMAIN_KERNEL) {
 			is_supported = true;
@@ -2379,7 +2378,7 @@ bool condition_is_supported(struct lttng_condition *condition)
 				lttng_condition_event_rule_matches_get_rule(
 						condition, &event_rule);
 
-		assert(status == LTTNG_CONDITION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 		domain = lttng_event_rule_get_domain_type(event_rule);
 		if (domain != LTTNG_DOMAIN_KERNEL) {
@@ -2476,7 +2475,7 @@ int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 				&channel->key,
 				&lookup_iter);
 		node = cds_lfht_iter_get_node(&lookup_iter);
-		assert(node);
+		LTTNG_ASSERT(node);
 		trigger_list = caa_container_of(node,
 				struct lttng_channel_trigger_list,
 				channel_triggers_ht_node);
@@ -2506,7 +2505,7 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 			lttng_trigger_get_const_action(trigger);
 	enum lttng_action_type action_type;
 
-	assert(action);
+	LTTNG_ASSERT(action);
 	action_type = lttng_action_get_type(action);
 	if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 		is_notify = true;
@@ -2516,7 +2515,7 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 	}
 
 	action_status = lttng_action_list_get_count(action, &count);
-	assert(action_status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_action *inner_action =
@@ -2570,7 +2569,7 @@ enum lttng_error_code generate_trigger_name(
 		}
 
 		status = lttng_trigger_get_name(trigger, name);
-		assert(status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_TRIGGER_STATUS_OK);
 
 		taken = trigger_name_taken(state, trigger);
 	} while (taken || state->trigger_id.name_offset == UINT64_MAX);
@@ -2583,8 +2582,8 @@ void notif_thread_state_remove_trigger_ht_elem(
 		struct notification_thread_state *state,
 		struct lttng_trigger_ht_element *trigger_ht_element)
 {
-	assert(state);
-	assert(trigger_ht_element);
+	LTTNG_ASSERT(state);
+	LTTNG_ASSERT(trigger_ht_element);
 
 	cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
 	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
@@ -2717,7 +2716,7 @@ int handle_notification_thread_command_register_trigger(
 	}
 
 	condition = lttng_trigger_get_condition(trigger);
-	assert(condition);
+	LTTNG_ASSERT(condition);
 
 	/* Some conditions require tracers to implement a minimal ABI version. */
 	if (!condition_is_supported(condition)) {
@@ -3077,7 +3076,7 @@ int handle_notification_thread_command_unregister_trigger(
 		 * notification_trigger_clients_ht.
 		 */
 		client_list = get_client_list_from_condition(state, condition);
-		assert(client_list);
+		LTTNG_ASSERT(client_list);
 
 		pthread_mutex_lock(&client_list->lock);
 		cds_list_del(&trigger_ht_element->client_list_trigger_node);
@@ -3562,7 +3561,7 @@ enum client_transmission_status client_flush_outgoing_queue(
 		 * If both data and fds are equal to zero, we are in an invalid
 		 * state.
 		 */
-		assert(fds_to_send_count != 0);
+		LTTNG_ASSERT(fds_to_send_count != 0);
 		goto send_fds;
 	}
 
@@ -3740,7 +3739,7 @@ int client_handle_message_unknown(struct notification_client *client,
 	 */
 	const struct lttng_notification_channel_message *msg;
 
-	assert(sizeof(*msg) == client->communication.inbound.payload.buffer.size);
+	LTTNG_ASSERT(sizeof(*msg) == client->communication.inbound.payload.buffer.size);
 	msg = (const struct lttng_notification_channel_message *)
 			      client->communication.inbound.payload.buffer.data;
 
@@ -4011,7 +4010,7 @@ int handle_notification_thread_client_in(
 	}
 
 receive_fds:
-	assert(client->communication.inbound.bytes_to_receive == 0);
+	LTTNG_ASSERT(client->communication.inbound.bytes_to_receive == 0);
 
 	/* Receive fds. */
 	if (client->communication.inbound.fds_to_receive != 0) {
@@ -4029,7 +4028,7 @@ receive_fds:
 			expected_size = sizeof(int) *
 					client->communication.inbound
 							.fds_to_receive;
-			assert(ret == expected_size);
+			LTTNG_ASSERT(ret == expected_size);
 			client->communication.inbound.fds_to_receive = 0;
 		} else if (ret == 0) {
 			/* Received nothing. */
@@ -4041,7 +4040,7 @@ receive_fds:
 	}
 
 	/* At this point the message is complete.*/
-	assert(client->communication.inbound.bytes_to_receive == 0 &&
+	LTTNG_ASSERT(client->communication.inbound.bytes_to_receive == 0 &&
 			client->communication.inbound.fds_to_receive == 0);
 	ret = client_dispatch_message(client, state);
 	if (ret) {
@@ -4911,7 +4910,7 @@ int handle_notification_thread_channel_sample(
 		ret = 0;
 		trigger = trigger_list_element->trigger;
 		condition = lttng_trigger_get_const_condition(trigger);
-		assert(condition);
+		LTTNG_ASSERT(condition);
 
 		/*
 		 * Check if any client is subscribed to the result of this

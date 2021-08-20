@@ -10,7 +10,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -190,7 +189,7 @@ struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		goto error;
 	}
 
-	assert(val);
+	LTTNG_ASSERT(val);
 	field_val->val = strndup(val, size);
 	if (!field_val->val) {
 		goto error;
@@ -209,7 +208,7 @@ LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_string_create(
 		const char *val)
 {
-	assert(val);
+	LTTNG_ASSERT(val);
 	return lttng_event_field_value_string_create_with_size(val,
 			strlen(val));
 }
@@ -298,8 +297,8 @@ int lttng_event_field_value_enum_append_label_with_size(
 	int ret;
 	char *new_label;
 
-	assert(field_val);
-	assert(label);
+	LTTNG_ASSERT(field_val);
+	LTTNG_ASSERT(label);
 	new_label = strndup(label, size);
 	if (!new_label) {
 		ret = -1;
@@ -324,7 +323,7 @@ int lttng_event_field_value_enum_append_label(
 		struct lttng_event_field_value *field_val,
 		const char *label)
 {
-	assert(label);
+	LTTNG_ASSERT(label);
 	return lttng_event_field_value_enum_append_label_with_size(field_val,
 			label, strlen(label));
 }
@@ -334,8 +333,8 @@ int lttng_event_field_value_array_append(
 		struct lttng_event_field_value *array_field_val,
 		struct lttng_event_field_value *field_val)
 {
-	assert(array_field_val);
-	assert(field_val);
+	LTTNG_ASSERT(array_field_val);
+	LTTNG_ASSERT(field_val);
 	return lttng_dynamic_pointer_array_add_pointer(
 			&container_of(array_field_val,
 				struct lttng_event_field_value_array, parent)->elems,
@@ -346,7 +345,7 @@ LTTNG_HIDDEN
 int lttng_event_field_value_array_append_unavailable(
 		struct lttng_event_field_value *array_field_val)
 {
-	assert(array_field_val);
+	LTTNG_ASSERT(array_field_val);
 	return lttng_dynamic_pointer_array_add_pointer(
 			&container_of(array_field_val,
 				struct lttng_event_field_value_array, parent)->elems,

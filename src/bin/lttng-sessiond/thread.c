@@ -134,7 +134,7 @@ void lttng_thread_put(struct lttng_thread *thread)
 	if (!thread) {
 		return;
 	}
-	assert(thread->ref.refcount);
+	LTTNG_ASSERT(thread->ref.refcount);
 	urcu_ref_put(&thread->ref, lttng_thread_release);
 }
 

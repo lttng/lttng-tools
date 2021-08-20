@@ -356,7 +356,7 @@ error:
 		uatomic_set(&the_ust_consumerd_state, CONSUMER_ERROR);
 	} else {
 		/* Code flow error... */
-		assert(0);
+		abort();
 	}
 
 	if (consumer_data->err_sock >= 0) {

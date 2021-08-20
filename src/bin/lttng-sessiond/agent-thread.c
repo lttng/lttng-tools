@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -63,7 +62,7 @@ static void update_agent_app(const struct agent_app *app)
 	struct lttng_ht_iter iter;
 
 	list = session_get_list();
-	assert(list);
+	LTTNG_ASSERT(list);
 
 	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
 		if (!session_get(session)) {
@@ -113,8 +112,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	 * before this thread is launched.
 	 */
 	ret = uri_parse(default_reg_uri, &uri);
-	assert(ret);
-	assert(the_config.agent_tcp_port.begin > 0);
+	LTTNG_ASSERT(ret);
+	LTTNG_ASSERT(the_config.agent_tcp_port.begin > 0);
 	uri->port = the_config.agent_tcp_port.begin;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
@@ -194,7 +193,7 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 	int ret;
 	uint16_t port;
 
-	assert(sock);
+	LTTNG_ASSERT(sock);
 
 	ret = lttcomm_sock_get_port(sock, &port);
 	if (ret) {
@@ -263,7 +262,7 @@ static int accept_agent_connection(
 	struct agent_register_msg msg;
 	struct lttcomm_sock *new_sock;
 
-	assert(reg_sock);
+	LTTNG_ASSERT(reg_sock);
 
 	new_sock = reg_sock->ops->accept(reg_sock);
 	if (!new_sock) {
@@ -322,7 +321,7 @@ bool agent_tracing_is_enabled(void)
 	int enabled;
 
 	enabled = uatomic_read(&agent_tracing_enabled);
-	assert(enabled != -1);
+	LTTNG_ASSERT(enabled != -1);
 	return enabled == 1;
 }
 
@@ -369,7 +368,7 @@ static void *thread_agent_management(void *data)
 	rcu_thread_online();
 
 	/* Agent initialization call MUST be called before starting the thread. */
-	assert(the_agent_apps_ht_by_sock);
+	LTTNG_ASSERT(the_agent_apps_ht_by_sock);
 
 	/* Create pollset with size 2, quit pipe and registration socket. */
 	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
@@ -388,7 +387,7 @@ static void *thread_agent_management(void *data)
 		uint16_t port;
 
 		ret = lttcomm_sock_get_port(reg_sock, &port);
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 
 		ret = write_agent_port(port);
 		if (ret) {
@@ -454,7 +453,7 @@ restart:
 				struct lttcomm_sock *new_app_socket;
 				int new_app_socket_fd;
 
-				assert(pollfd == reg_sock->fd);
+				LTTNG_ASSERT(pollfd == reg_sock->fd);
 
 				ret = accept_agent_connection(
 					reg_sock, &new_app_id, &new_app_socket);

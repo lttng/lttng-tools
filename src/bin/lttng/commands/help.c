@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "../command.h"
 #include <common/utils.h>
@@ -112,7 +111,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	/* Show command's help */
 	cmd_argv[0] = cmd->name;
 	cmd_argv[1] = "--help";
-	assert(cmd->func);
+	LTTNG_ASSERT(cmd->func);
 	ret = cmd->func(2, cmd_argv);
 
 end:

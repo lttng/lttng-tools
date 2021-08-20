@@ -50,7 +50,7 @@ void notification_thread_handle_destroy(
 		goto end;
 	}
 
-	assert(cds_list_empty(&handle->cmd_queue.list));
+	LTTNG_ASSERT(cds_list_empty(&handle->cmd_queue.list));
 	pthread_mutex_destroy(&handle->cmd_queue.lock);
 	sem_destroy(&handle->ready);
 
@@ -335,48 +335,48 @@ void fini_thread_state(struct notification_thread_state *state)
 
 	if (state->client_socket_ht) {
 		ret = handle_notification_thread_client_disconnect_all(state);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		ret = cds_lfht_destroy(state->client_socket_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->client_id_ht) {
 		ret = cds_lfht_destroy(state->client_id_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->triggers_ht) {
 		ret = handle_notification_thread_trigger_unregister_all(state);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		ret = cds_lfht_destroy(state->triggers_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->channel_triggers_ht) {
 		ret = cds_lfht_destroy(state->channel_triggers_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->channel_state_ht) {
 		ret = cds_lfht_destroy(state->channel_state_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_trigger_clients_ht) {
 		ret = cds_lfht_destroy(state->notification_trigger_clients_ht,
 				NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->channels_ht) {
 		ret = cds_lfht_destroy(state->channels_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->sessions_ht) {
 		ret = cds_lfht_destroy(state->sessions_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->triggers_by_name_uid_ht) {
 		ret = cds_lfht_destroy(state->triggers_by_name_uid_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->trigger_tokens_ht) {
 		ret = cds_lfht_destroy(state->trigger_tokens_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	/*
 	 * Must be destroyed after all channels have been destroyed.
@@ -384,14 +384,14 @@ void fini_thread_state(struct notification_thread_state *state)
 	 */
 	if (state->session_triggers_ht) {
 		ret = cds_lfht_destroy(state->session_triggers_ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_channel_socket >= 0) {
 		notification_channel_socket_destroy(
 				state->notification_channel_socket);
 	}
 
-	assert(cds_list_empty(&state->tracer_event_sources_list));
+	LTTNG_ASSERT(cds_list_empty(&state->tracer_event_sources_list));
 
 	if (state->executor) {
 		action_executor_destroy(state->executor);
@@ -610,7 +610,7 @@ static bool fd_is_event_notification_source(const struct notification_thread_sta
 {
 	struct notification_event_tracer_event_source_element *source_element;
 
-	assert(domain);
+	LTTNG_ASSERT(domain);
 
 	cds_list_for_each_entry(source_element,
 			&state->tracer_event_sources_list, node) {

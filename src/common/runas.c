@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
@@ -1448,7 +1447,7 @@ int run_as_create_worker_no_lock(const char *procname,
 	struct run_as_ret recvret;
 	struct run_as_worker *worker;
 
-	assert(!global_worker);
+	LTTNG_ASSERT(!global_worker);
 	if (!use_clone()) {
 		/*
 		 * Don't initialize a worker, all run_as tasks will be performed
@@ -1642,7 +1641,7 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 	if (use_clone()) {
 		DBG("Using run_as worker");
 
-		assert(global_worker);
+		LTTNG_ASSERT(global_worker);
 
 		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
 		saved_errno = ret_value->_errno;

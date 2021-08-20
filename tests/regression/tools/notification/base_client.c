@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <assert.h>
 
 #include <lttng/action/action.h>
 #include <lttng/action/list.h>

@@ -44,8 +44,8 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 {
 	struct ltt_kernel_channel *chan;
 
-	assert(session);
-	assert(name);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(name);
 
 	/*
 	 * If we receive an empty string for channel name, it means the
@@ -77,8 +77,8 @@ struct ltt_kernel_event *trace_kernel_find_event(
 	struct ltt_kernel_event *ev;
 	int found = 0;
 
-	assert(name);
-	assert(channel);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(channel);
 
 	cds_list_for_each_entry(ev, &channel->events_list.head, list) {
 		if (type != LTTNG_EVENT_ALL && ev->type != type) {
@@ -119,8 +119,8 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
 	struct ltt_kernel_event *ev;
 	int found = 0;
 
-	assert(name);
-	assert(channel);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(channel);
 
 	cds_list_for_each_entry(ev, &channel->events_list.head, list) {
 		if (type != LTTNG_EVENT_ALL && ev->type != type) {
@@ -220,7 +220,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 	struct ltt_kernel_channel *lkc;
 	struct lttng_channel_extended *extended = NULL;
 
-	assert(chan);
+	LTTNG_ASSERT(chan);
 
 	lkc = zmalloc(sizeof(struct ltt_kernel_channel));
 	if (lkc == NULL) {
@@ -309,7 +309,7 @@ struct ltt_kernel_context *trace_kernel_copy_context(
 {
 	struct ltt_kernel_context *kctx_copy;
 
-	assert(kctx);
+	LTTNG_ASSERT(kctx);
 	kctx_copy = zmalloc(sizeof(*kctx_copy));
 	if (!kctx_copy) {
 		PERROR("zmalloc ltt_kernel_context");
@@ -339,7 +339,7 @@ enum lttng_error_code trace_kernel_create_event(
 	struct ltt_kernel_event *local_kernel_event;
 	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
 
-	assert(ev);
+	LTTNG_ASSERT(ev);
 
 	local_kernel_event = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_abi_event));
@@ -497,21 +497,21 @@ enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	const struct lttng_condition *condition = NULL;
 	const struct lttng_event_rule *event_rule = NULL;
 
-	assert(event_notifier_rule);
+	LTTNG_ASSERT(event_notifier_rule);
 
 	condition = lttng_trigger_get_const_condition(trigger);
-	assert(condition);
+	LTTNG_ASSERT(condition);
 
 	condition_type = lttng_condition_get_type(condition);
-	assert(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+	LTTNG_ASSERT(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
-	assert(event_rule);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(event_rule);
 
 	event_rule_type = lttng_event_rule_get_type(event_rule);
-	assert(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
+	LTTNG_ASSERT(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
 	local_kernel_token_event_rule =
 			zmalloc(sizeof(struct ltt_kernel_event_notifier_rule));
@@ -572,14 +572,14 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		{
 			k_status = lttng_kernel_probe_location_address_get_address(
 					location, &address);
-			assert(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 			break;
 		}
 		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
 		{
 			k_status = lttng_kernel_probe_location_symbol_get_offset(
 					location, &offset);
-			assert(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			LTTNG_ASSERT(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 			symbol_name = lttng_kernel_probe_location_symbol_get_name(
 					location);
 			break;
@@ -605,7 +605,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		kernel_event_notifier->event.u.kprobe.symbol_name[LTTNG_KERNEL_ABI_SYM_NAME_LEN - 1] = '\0';
 
 		status = lttng_event_rule_kernel_kprobe_get_event_name(rule, &name);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		ret_code = LTTNG_OK;
 		break;
 	}
@@ -652,7 +652,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 
 		status = lttng_event_rule_kernel_uprobe_get_event_name(
 				rule, &name);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		ret_code = LTTNG_OK;
 		break;
 	}
@@ -662,7 +662,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 				lttng_event_rule_kernel_tracepoint_get_name_pattern(
 						rule, &name);
 
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		kernel_event_notifier->event.instrumentation =
 				LTTNG_KERNEL_ABI_TRACEPOINT;
 
@@ -679,8 +679,8 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 			lttng_event_rule_kernel_syscall_get_emission_site(rule);
 		enum lttng_kernel_abi_syscall_entryexit entryexit;
 
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		assert(emission_site != LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_UNKNOWN);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(emission_site != LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_UNKNOWN);
 
 		switch(emission_site) {
 		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY:
@@ -798,7 +798,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 	int ret;
 	struct ltt_kernel_stream *lks;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	lks = zmalloc(sizeof(struct ltt_kernel_stream));
 	if (lks == NULL) {
@@ -830,7 +830,7 @@ error:
  */
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	DBG("[trace] Closing stream fd %d", stream->fd);
 	/* Close kernel fd */
@@ -853,7 +853,7 @@ void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream)
  */
 void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 {
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	if (event->fd >= 0) {
 		int ret;
@@ -892,7 +892,7 @@ static void free_token_event_rule_rcu(struct rcu_head *rcu_node)
 void trace_kernel_destroy_event_notifier_rule(
 		struct ltt_kernel_event_notifier_rule *event)
 {
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	if (event->fd >= 0) {
 		const int ret = close(event->fd);
@@ -915,7 +915,7 @@ void trace_kernel_destroy_event_notifier_rule(
  */
 void trace_kernel_destroy_context(struct ltt_kernel_context *ctx)
 {
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	if (ctx->in_list) {
 		cds_list_del(&ctx->list);
@@ -934,7 +934,7 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	int ret;
 	enum lttng_error_code status;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	DBG("[trace] Closing channel fd %d", channel->fd);
 	/* Close kernel fd */
@@ -968,7 +968,7 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 		status = notification_thread_command_remove_channel(
 				the_notification_thread_handle, channel->key,
 				LTTNG_DOMAIN_KERNEL);
-		assert(status == LTTNG_OK);
+		LTTNG_ASSERT(status == LTTNG_OK);
 	}
 	free(channel->channel->attr.extended.ptr);
 	free(channel->channel);
@@ -980,7 +980,7 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
  */
 void trace_kernel_destroy_metadata(struct ltt_kernel_metadata *metadata)
 {
-	assert(metadata);
+	LTTNG_ASSERT(metadata);
 
 	DBG("[trace] Closing metadata fd %d", metadata->fd);
 	/* Close kernel fd */
@@ -1007,7 +1007,7 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	struct ltt_kernel_channel *channel, *ctmp;
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG("[trace] Closing session fd %d", session->fd);
 	/* Close kernel fds */

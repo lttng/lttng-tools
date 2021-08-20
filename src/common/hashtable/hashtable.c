@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <string.h>
 #include <urcu.h>
 #include <urcu/compiler.h>
@@ -125,7 +124,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	 * There is already an assert in the RCU hashtable code so if the ht is
 	 * NULL here there is a *huge* problem.
 	 */
-	assert(ht->ht);
+	LTTNG_ASSERT(ht->ht);
 
 	switch (type) {
 	case LTTNG_HT_TYPE_STRING:
@@ -168,7 +167,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 	int ret;
 
 	ret = cds_lfht_destroy(ht->ht, NULL);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	free(ht);
 }
 
@@ -178,7 +177,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 LTTNG_HIDDEN
 void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 
 	node->key = key;
 	cds_lfht_node_init(&node->node);
@@ -191,7 +190,7 @@ LTTNG_HIDDEN
 void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 		unsigned long key)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 
 	node->key = key;
 	cds_lfht_node_init(&node->node);
@@ -204,7 +203,7 @@ LTTNG_HIDDEN
 void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 		uint64_t key)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 
 	node->key = key;
 	cds_lfht_node_init(&node->node);
@@ -217,7 +216,7 @@ LTTNG_HIDDEN
 void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
 		uint64_t key1, uint64_t key2)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 
 	node->key.key1 = key1;
 	node->key.key2 = key2;
@@ -230,7 +229,7 @@ void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
 LTTNG_HIDDEN
 void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 	free(node);
 }
 
@@ -240,7 +239,7 @@ void lttng_ht_node_free_str(struct lttng_ht_node_str *node)
 LTTNG_HIDDEN
 void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 	free(node);
 }
 
@@ -250,7 +249,7 @@ void lttng_ht_node_free_ulong(struct lttng_ht_node_ulong *node)
 LTTNG_HIDDEN
 void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 	free(node);
 }
 
@@ -260,7 +259,7 @@ void lttng_ht_node_free_u64(struct lttng_ht_node_u64 *node)
 LTTNG_HIDDEN
 void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node)
 {
-	assert(node);
+	LTTNG_ASSERT(node);
 	free(node);
 }
 
@@ -271,8 +270,8 @@ LTTNG_HIDDEN
 void lttng_ht_lookup(struct lttng_ht *ht, const void *key,
 		struct lttng_ht_iter *iter)
 {
-	assert(ht);
-	assert(ht->ht);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
 
 	cds_lfht_lookup(ht->ht, ht->hash_fct(key, lttng_ht_seed),
 			ht->match_fct, key, &iter->iter);
@@ -286,16 +285,16 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_unique(ht->ht, ht->hash_fct(node->key, lttng_ht_seed),
 			ht->match_fct, node->key, &node->node);
 	rcu_read_unlock();
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -305,9 +304,9 @@ LTTNG_HIDDEN
 void lttng_ht_add_str(struct lttng_ht *ht,
 		struct lttng_ht_node_str *node)
 {
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -322,9 +321,9 @@ void lttng_ht_add_str(struct lttng_ht *ht,
 LTTNG_HIDDEN
 void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 {
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -339,9 +338,9 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 LTTNG_HIDDEN
 void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 {
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -358,9 +357,9 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -368,7 +367,7 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
 			(void *) node->key, &node->node);
 	rcu_read_unlock();
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -379,9 +378,9 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -389,7 +388,7 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 			ht->hash_fct(&node->key, lttng_ht_seed), ht->match_fct,
 			&node->key, &node->node);
 	rcu_read_unlock();
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -400,9 +399,9 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_two_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -410,7 +409,7 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 			ht->hash_fct((void *) &node->key, lttng_ht_seed), ht->match_fct,
 			(void *) &node->key, &node->node);
 	rcu_read_unlock();
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -421,9 +420,9 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 		struct lttng_ht_node_ulong *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -436,7 +435,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	} else {
 		return caa_container_of(node_ptr, struct lttng_ht_node_ulong, node);
 	}
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -447,9 +446,9 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 		struct lttng_ht_node_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
-	assert(ht);
-	assert(ht->ht);
-	assert(node);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -462,7 +461,7 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 	} else {
 		return caa_container_of(node_ptr, struct lttng_ht_node_u64, node);
 	}
-	assert(node_ptr == &node->node);
+	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -473,9 +472,9 @@ int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
 	int ret;
 
-	assert(ht);
-	assert(ht->ht);
-	assert(iter);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(iter);
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
@@ -490,9 +489,9 @@ int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 LTTNG_HIDDEN
 void lttng_ht_get_first(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
-	assert(ht);
-	assert(ht->ht);
-	assert(iter);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(iter);
 
 	cds_lfht_first(ht->ht, &iter->iter);
 }
@@ -503,9 +502,9 @@ void lttng_ht_get_first(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 LTTNG_HIDDEN
 void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 {
-	assert(ht);
-	assert(ht->ht);
-	assert(iter);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(iter);
 
 	cds_lfht_next(ht->ht, &iter->iter);
 }
@@ -519,8 +518,8 @@ unsigned long lttng_ht_get_count(struct lttng_ht *ht)
 	long scb, sca;
 	unsigned long count;
 
-	assert(ht);
-	assert(ht->ht);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
 
 	/* RCU read lock protects from ABA and allows RCU traversal. */
 	rcu_read_lock();
@@ -539,7 +538,7 @@ struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 {
 	struct cds_lfht_node *node;
 
-	assert(iter);
+	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
 		return NULL;
@@ -556,7 +555,7 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 {
 	struct cds_lfht_node *node;
 
-	assert(iter);
+	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
 		return NULL;
@@ -573,7 +572,7 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 {
 	struct cds_lfht_node *node;
 
-	assert(iter);
+	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
 		return NULL;
@@ -590,7 +589,7 @@ struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 {
 	struct cds_lfht_node *node;
 
-	assert(iter);
+	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
 		return NULL;

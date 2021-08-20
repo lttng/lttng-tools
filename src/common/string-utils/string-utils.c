@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <assert.h>
 
 #include "string-utils.h"
 #include "../macros.h"
@@ -31,7 +30,7 @@ void strutils_normalize_star_glob_pattern(char *pattern)
 	char *np;
 	bool got_star = false;
 
-	assert(pattern);
+	LTTNG_ASSERT(pattern);
 
 	for (p = pattern, np = pattern; *p != '\0'; p++) {
 		switch (*p) {
@@ -75,7 +74,7 @@ enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *pattern
 		STAR_GLOB_PATTERN_TYPE_FLAG_NONE;
 	const char *p;
 
-	assert(pattern);
+	LTTNG_ASSERT(pattern);
 
 	for (p = pattern; *p != '\0'; p++) {
 		switch (*p) {
@@ -137,7 +136,7 @@ char *strutils_unescape_string(const char *input, char only_char)
 	char *o;
 	const char *i;
 
-	assert(input);
+	LTTNG_ASSERT(input);
 	output = zmalloc(strlen(input) + 1);
 	if (!output) {
 		goto end;
@@ -254,9 +253,9 @@ int strutils_split(const char *input,
 	const char *s;
 	const char *last;
 
-	assert(input);
-	assert(!(escape_delim && delim == '\\'));
-	assert(delim != '\0');
+	LTTNG_ASSERT(input);
+	LTTNG_ASSERT(!(escape_delim && delim == '\\'));
+	LTTNG_ASSERT(delim != '\0');
 	lttng_dynamic_pointer_array_init(out_strings, free);
 
 	/* First pass: count the number of substrings. */
@@ -362,7 +361,7 @@ size_t strutils_array_of_strings_len(char * const *array)
 	char * const *item;
 	size_t count = 0;
 
-	assert(array);
+	LTTNG_ASSERT(array);
 
 	for (item = array; *item; item++) {
 		count++;

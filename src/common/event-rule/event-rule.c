@@ -6,7 +6,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
@@ -69,7 +68,7 @@ static void lttng_event_rule_release(struct urcu_ref *ref)
 	struct lttng_event_rule *event_rule =
 			container_of(ref, typeof(*event_rule), ref);
 
-	assert(event_rule->destroy);
+	LTTNG_ASSERT(event_rule->destroy);
 	event_rule->destroy(event_rule);
 }
 
@@ -215,7 +214,7 @@ ssize_t lttng_event_rule_create_from_payload(
 		goto end;
 	}
 
-	assert(create_from_payload);
+	LTTNG_ASSERT(create_from_payload);
 
 	{
 		struct lttng_payload_view child_view =
@@ -261,7 +260,7 @@ void lttng_event_rule_put(struct lttng_event_rule *event_rule)
 		return;
 	}
 
-	assert(event_rule->ref.refcount);
+	LTTNG_ASSERT(event_rule->ref.refcount);
 	urcu_ref_put(&event_rule->ref, lttng_event_rule_release);
 }
 
@@ -270,14 +269,14 @@ enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
 		struct lttng_event_rule *rule,
 		const struct lttng_credentials *creds)
 {
-	assert(rule->generate_filter_bytecode);
+	LTTNG_ASSERT(rule->generate_filter_bytecode);
 	return rule->generate_filter_bytecode(rule, creds);
 }
 
 LTTNG_HIDDEN
 const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule)
 {
-	assert(rule->get_filter);
+	LTTNG_ASSERT(rule->get_filter);
 	return rule->get_filter(rule);
 }
 
@@ -285,7 +284,7 @@ LTTNG_HIDDEN
 const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 		const struct lttng_event_rule *rule)
 {
-	assert(rule->get_filter_bytecode);
+	LTTNG_ASSERT(rule->get_filter_bytecode);
 	return rule->get_filter_bytecode(rule);
 }
 
@@ -294,7 +293,7 @@ enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
 		struct lttng_event_exclusion **exclusions)
 {
-	assert(rule->generate_exclusions);
+	LTTNG_ASSERT(rule->generate_exclusions);
 	return rule->generate_exclusions(rule, exclusions);
 }
 
@@ -302,7 +301,7 @@ LTTNG_HIDDEN
 struct lttng_event *lttng_event_rule_generate_lttng_event(
 		const struct lttng_event_rule *rule)
 {
-	assert(rule->generate_lttng_event);
+	LTTNG_ASSERT(rule->generate_lttng_event);
 	return rule->generate_lttng_event(rule);
 }
 
@@ -359,7 +358,7 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 LTTNG_HIDDEN
 unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule)
 {
-	assert(rule->hash);
+	LTTNG_ASSERT(rule->hash);
 	return rule->hash(rule);
 }
 
@@ -370,9 +369,9 @@ enum lttng_error_code lttng_event_rule_mi_serialize(
 	int ret;
 	enum lttng_error_code ret_code;
 
-	assert(rule);
-	assert(writer);
-	assert(rule->mi_serialize);
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(rule->mi_serialize);
 
 	/* Open event rule element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_rule);

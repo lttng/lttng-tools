@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,7 +98,7 @@ static void empty_session_list(void)
 	session_unlock_list();
 
 	/* Session list must be 0 */
-	assert(!session_list_count());
+	LTTNG_ASSERT(!session_list_count());
 }
 
 /*
@@ -309,7 +308,7 @@ static void test_large_session_number(void)
 	session_lock_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
-			assert(session_get(iter));
+			LTTNG_ASSERT(session_get(iter));
 			ret = destroy_one_session(iter);
 			if (ret < 0) {
 				diag("session %d destroy failed", i);
@@ -332,7 +331,7 @@ int main(int argc, char **argv)
 
 	the_health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
 	ht_cleanup_thread = launch_ht_cleanup_thread();
-	assert(ht_cleanup_thread);
+	LTTNG_ASSERT(ht_cleanup_thread);
 	lttng_thread_put(ht_cleanup_thread);
 
 	diag("Sessions unit tests");

@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,7 +72,7 @@ static void test_create_one_kernel_session(void)
 
 static void test_create_kernel_metadata(void)
 {
-	assert(kern != NULL);
+	LTTNG_ASSERT(kern != NULL);
 
 	kern->metadata = trace_kernel_create_metadata();
 	ok(kern->metadata != NULL, "Create kernel metadata");

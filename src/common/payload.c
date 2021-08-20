@@ -21,7 +21,7 @@ void release_fd_handle_ref(void *ptr)
 LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload)
 {
-	assert(payload);
+	LTTNG_ASSERT(payload);
 	lttng_dynamic_buffer_init(&payload->buffer);
 	lttng_dynamic_pointer_array_init(&payload->_fd_handles,
 			release_fd_handle_ref);

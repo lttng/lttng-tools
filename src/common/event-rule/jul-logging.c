@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/credentials.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -152,8 +151,8 @@ static bool lttng_event_rule_jul_logging_is_equal(
 	}
 
 	/* Long check. */
-	assert(a->pattern);
-	assert(b->pattern);
+	LTTNG_ASSERT(a->pattern);
+	LTTNG_ASSERT(b->pattern);
 	if (strcmp(a->pattern, b->pattern)) {
 		goto end;
 	}
@@ -195,8 +194,8 @@ static int generate_agent_filter(
 	const struct lttng_log_level_rule *log_level_rule = NULL;
 	enum lttng_event_rule_status status;
 
-	assert(rule);
-	assert(_agent_filter);
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(_agent_filter);
 
 	status = lttng_event_rule_jul_logging_get_name_pattern(rule, &pattern);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
@@ -303,7 +302,7 @@ lttng_event_rule_jul_logging_generate_filter_bytecode(
 	struct lttng_bytecode *bytecode = NULL;
 	char *agent_filter;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 
 	jul_logging = container_of(
 			rule, struct lttng_event_rule_jul_logging, parent);
@@ -357,7 +356,7 @@ static const char *lttng_event_rule_jul_logging_get_internal_filter(
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	jul_logging = container_of(
 			rule, struct lttng_event_rule_jul_logging, parent);
 	return jul_logging->internal_filter.filter;
@@ -369,7 +368,7 @@ lttng_event_rule_jul_logging_get_internal_filter_bytecode(
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	jul_logging = container_of(
 			rule, struct lttng_event_rule_jul_logging, parent);
 	return jul_logging->internal_filter.bytecode;
@@ -490,22 +489,22 @@ static enum lttng_error_code lttng_event_rule_jul_logging_mi_serialize(
 	const char *name_pattern = NULL;
 	const struct lttng_log_level_rule *log_level_rule = NULL;
 
-	assert(rule);
-	assert(writer);
-	assert(IS_JUL_LOGGING_EVENT_RULE(rule));
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_JUL_LOGGING_EVENT_RULE(rule));
 
 	status = lttng_event_rule_jul_logging_get_name_pattern(
 			rule, &name_pattern);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	assert(name_pattern);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(name_pattern);
 
 	status = lttng_event_rule_jul_logging_get_filter(rule, &filter);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
 			status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	status = lttng_event_rule_jul_logging_get_log_level_rule(
 			rule, &log_level_rule);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
 			status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	/* Open event rule jul logging element. */
@@ -698,7 +697,7 @@ skip_filter_expression:
 			goto end;
 		}
 
-		assert(ret == jul_logging_comm->log_level_rule_len);
+		LTTNG_ASSERT(ret == jul_logging_comm->log_level_rule_len);
 	}
 
 	/* Skip after the log level rule. */

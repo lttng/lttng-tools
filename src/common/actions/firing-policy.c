@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
@@ -293,7 +292,7 @@ ssize_t lttng_firing_policy_create_from_payload(struct lttng_payload_view *view,
 		goto end;
 	}
 
-	assert(*firing_policy);
+	LTTNG_ASSERT(*firing_policy);
 
 	consumed_len = sizeof(struct lttng_firing_policy_comm) +
 			specific_firing_policy_consumed_len;
@@ -321,7 +320,7 @@ bool lttng_firing_policy_is_equal(const struct lttng_firing_policy *a,
 		goto end;
 	}
 
-	assert(a->equal);
+	LTTNG_ASSERT(a->equal);
 	is_equal = a->equal(a, b);
 end:
 	return is_equal;
@@ -349,7 +348,7 @@ static const struct lttng_firing_policy_every_n *
 firing_policy_every_n_from_firing_policy_const(
 		const struct lttng_firing_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(policy, const struct lttng_firing_policy_every_n,
 			parent);
@@ -363,8 +362,8 @@ static int lttng_firing_policy_every_n_serialize(
 	const struct lttng_firing_policy_every_n *every_n_policy;
 	struct lttng_firing_policy_every_n_comm comm = {};
 
-	assert(policy);
-	assert(payload);
+	LTTNG_ASSERT(policy);
+	LTTNG_ASSERT(payload);
 
 	every_n_policy = firing_policy_every_n_from_firing_policy_const(policy);
 	comm.interval = every_n_policy->interval;
@@ -474,7 +473,7 @@ static bool lttng_firing_policy_every_n_should_execute(
 		const struct lttng_firing_policy *policy, uint64_t counter)
 {
 	const struct lttng_firing_policy_every_n *every_n_policy;
-	assert(policy);
+	LTTNG_ASSERT(policy);
 	bool execute = false;
 
 	every_n_policy = firing_policy_every_n_from_firing_policy_const(policy);
@@ -499,7 +498,7 @@ static const struct lttng_firing_policy_once_after_n *
 firing_policy_once_after_n_from_firing_policy_const(
 		const struct lttng_firing_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(policy, struct lttng_firing_policy_once_after_n,
 			parent);
@@ -513,8 +512,8 @@ static int lttng_firing_policy_once_after_n_serialize(
 	const struct lttng_firing_policy_once_after_n *once_after_n_policy;
 	struct lttng_firing_policy_once_after_n_comm comm = {};
 
-	assert(policy);
-	assert(payload);
+	LTTNG_ASSERT(policy);
+	LTTNG_ASSERT(payload);
 
 	once_after_n_policy =
 			firing_policy_once_after_n_from_firing_policy_const(
@@ -628,7 +627,7 @@ LTTNG_HIDDEN
 struct lttng_firing_policy *lttng_firing_policy_copy(
 		const struct lttng_firing_policy *source)
 {
-	assert(source->copy);
+	LTTNG_ASSERT(source->copy);
 	return source->copy(source);
 }
 
@@ -637,7 +636,7 @@ static bool lttng_firing_policy_once_after_n_should_execute(
 {
 	const struct lttng_firing_policy_once_after_n *once_after_n_policy;
 	bool execute = false;
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	once_after_n_policy =
 			firing_policy_once_after_n_from_firing_policy_const(

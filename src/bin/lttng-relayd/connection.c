@@ -27,7 +27,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 	struct lttng_ht_iter iter;
 	struct relay_connection *conn = NULL;
 
-	assert(sock >= 0);
+	LTTNG_ASSERT(sock >= 0);
 
 	rcu_read_lock();
 	lttng_ht_lookup(relay_connections_ht, (void *)((unsigned long) sock),
@@ -140,7 +140,7 @@ static void connection_release(struct urcu_ref *ref)
 
 		iter.iter.node = &conn->sock_n.node;
 		ret = lttng_ht_del(conn->socket_ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 
 	if (conn->session) {
@@ -165,7 +165,7 @@ void connection_put(struct relay_connection *conn)
 void connection_ht_add(struct lttng_ht *relay_connections_ht,
 		struct relay_connection *conn)
 {
-	assert(!conn->in_socket_ht);
+	LTTNG_ASSERT(!conn->in_socket_ht);
 	lttng_ht_add_unique_ulong(relay_connections_ht, &conn->sock_n);
 	conn->in_socket_ht = 1;
 	conn->socket_ht = relay_connections_ht;
@@ -176,9 +176,9 @@ int connection_set_session(struct relay_connection *conn,
 {
 	int ret = 0;
 
-	assert(conn);
-	assert(session);
-	assert(!conn->session);
+	LTTNG_ASSERT(conn);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(!conn->session);
 
 	if (connection_get(conn)) {
 		if (session_get(session)) {

@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -371,7 +370,7 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 			}
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
-			assert(ret <= len_last);
+			LTTNG_ASSERT(ret <= len_last);
 		}
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 

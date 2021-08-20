@@ -13,7 +13,6 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
-#include <assert.h>
 
 LTTNG_HIDDEN
 struct lttng_notification *lttng_notification_create(

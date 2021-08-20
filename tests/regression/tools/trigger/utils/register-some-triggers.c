@@ -11,7 +11,6 @@
 #include <common/macros.h>
 #include <lttng/lttng.h>
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,7 +23,7 @@ static void register_trigger(const char *trigger_name,
 
 	trigger = lttng_trigger_create(condition, action);
 	ret = lttng_register_trigger_with_name(trigger, trigger_name);
-	assert(ret == LTTNG_OK);
+	LTTNG_ASSERT(ret == LTTNG_OK);
 }
 
 /*
@@ -42,7 +41,7 @@ static void register_trigger_action_list_notify(
 	action_notify = lttng_action_notify_create();
 	action_status = lttng_action_list_add_action(
 			action_list, action_notify);
-	assert(action_status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
 	register_trigger(trigger_name, condition, action_list);
 }
@@ -57,10 +56,10 @@ static struct lttng_condition *create_session_consumed_size_condition(
 	condition_status =
 			lttng_condition_session_consumed_size_set_session_name(
 					condition, session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 	condition_status = lttng_condition_session_consumed_size_set_threshold(
 			condition, threshold);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	return condition;
 }
@@ -82,13 +81,13 @@ static void fill_buffer_usage_condition(struct lttng_condition *condition,
 
 	condition_status = lttng_condition_buffer_usage_set_session_name(
 			condition, session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 	condition_status = lttng_condition_buffer_usage_set_channel_name(
 			condition, channel_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 	condition_status = lttng_condition_buffer_usage_set_domain_type(
 			condition, domain_type);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 }
 
 static void fill_buffer_usage_bytes_condition(struct lttng_condition *condition,
@@ -103,7 +102,7 @@ static void fill_buffer_usage_bytes_condition(struct lttng_condition *condition,
 			condition, session_name, channel_name, domain_type);
 	condition_status = lttng_condition_buffer_usage_set_threshold(
 			condition, threshold);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 }
 
 static void fill_buffer_usage_ratio_condition(struct lttng_condition *condition,
@@ -118,7 +117,7 @@ static void fill_buffer_usage_ratio_condition(struct lttng_condition *condition,
 			condition, session_name, channel_name, domain_type);
 	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
 			condition, ratio);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 }
 
 static struct lttng_condition *create_buffer_usage_high_bytes_condition(
@@ -215,7 +214,7 @@ static void fill_session_rotation_condition(
 
 	condition_status = lttng_condition_session_rotation_set_session_name(
 			condition, session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 }
 
 static struct lttng_condition *create_session_rotation_ongoing_condition(

@@ -9,7 +9,6 @@
 #include "waiter.h"
 #include <urcu/uatomic.h>
 #include <urcu/futex.h>
-#include <assert.h>
 #include "error.h"
 #include <poll.h>
 
@@ -85,7 +84,7 @@ skip_futex_wait:
 	while (!(uatomic_read(&waiter->state) & WAITER_TEARDOWN)) {
 		poll(NULL, 0, 10);
 	}
-	assert(uatomic_read(&waiter->state) & WAITER_TEARDOWN);
+	LTTNG_ASSERT(uatomic_read(&waiter->state) & WAITER_TEARDOWN);
 	DBG("End of waiter wait period");
 }
 
@@ -98,7 +97,7 @@ LTTNG_HIDDEN
 void lttng_waiter_wake_up(struct lttng_waiter *waiter)
 {
 	cmm_smp_mb();
-	assert(uatomic_read(&waiter->state) == WAITER_WAITING);
+	LTTNG_ASSERT(uatomic_read(&waiter->state) == WAITER_WAITING);
 	uatomic_set(&waiter->state, WAITER_WOKEN_UP);
 	if (!(uatomic_read(&waiter->state) & WAITER_RUNNING)) {
 		if (futex_noasync(&waiter->state, FUTEX_WAKE, 1,

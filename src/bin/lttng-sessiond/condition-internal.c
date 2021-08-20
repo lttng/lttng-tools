@@ -87,7 +87,7 @@ unsigned long lttng_condition_session_rotation_hash(
 			struct lttng_condition_session_rotation, parent);
 	condition_type = (unsigned long) condition->parent.type;
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
-	assert(condition->session_name);
+	LTTNG_ASSERT(condition->session_name);
 	hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
 	return hash;
 }
@@ -102,7 +102,7 @@ static unsigned long lttng_condition_event_rule_matches_hash(
 	condition_type = (unsigned long) condition->type;
 	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	return hash ^ lttng_event_rule_hash(event_rule);

@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -57,7 +56,7 @@ static int _pipe_read_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	if (!lttng_pipe_is_read_open(pipe)) {
 		goto end;
@@ -85,7 +84,7 @@ static int _pipe_write_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	if (!lttng_pipe_is_write_open(pipe)) {
 		goto end;
@@ -271,7 +270,7 @@ int lttng_pipe_read_close(struct lttng_pipe *pipe)
 {
 	int ret;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	/* Handle read side first. */
 	lock_read_side(pipe);
@@ -291,7 +290,7 @@ int lttng_pipe_write_close(struct lttng_pipe *pipe)
 {
 	int ret;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	lock_write_side(pipe);
 	ret = _pipe_write_close(pipe);
@@ -310,7 +309,7 @@ int lttng_pipe_close(struct lttng_pipe *pipe)
 {
 	int ret, ret_val = 0;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	ret = lttng_pipe_read_close(pipe);
 	if (ret < 0) {
@@ -342,9 +341,9 @@ void lttng_pipe_destroy(struct lttng_pipe *pipe)
 	 * succeed so we unlock them after the close pipe below.
 	 */
 	ret = pthread_mutex_trylock(&pipe->read_mutex);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	ret = pthread_mutex_trylock(&pipe->write_mutex);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	/* Close pipes WITHOUT trying to lock the pipes. */
 	(void) _pipe_read_close(pipe);
@@ -370,8 +369,8 @@ ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count)
 {
 	ssize_t ret;
 
-	assert(pipe);
-	assert(buf);
+	LTTNG_ASSERT(pipe);
+	LTTNG_ASSERT(buf);
 
 	lock_read_side(pipe);
 	if (!lttng_pipe_is_read_open(pipe)) {
@@ -397,8 +396,8 @@ ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 {
 	ssize_t ret;
 
-	assert(pipe);
-	assert(buf);
+	LTTNG_ASSERT(pipe);
+	LTTNG_ASSERT(buf);
 
 	lock_write_side(pipe);
 	if (!lttng_pipe_is_write_open(pipe)) {

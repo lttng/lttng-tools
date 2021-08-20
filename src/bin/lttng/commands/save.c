@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <common/mi-lttng.h>
 
@@ -49,8 +48,8 @@ static struct poptOption save_opts[] = {
 static int mi_partial_session(const char *session_name)
 {
 	int ret;
-	assert(writer);
-	assert(session_name);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session_name);
 
 	/* Open session element */
 	ret = mi_lttng_writer_open_element(writer, config_element_session);
@@ -76,7 +75,7 @@ end:
 static int mi_save_print(const char *session_name)
 {
 	int ret;
-	assert(writer);
+	LTTNG_ASSERT(writer);
 
 	if (opt_save_all) {
 		/* We use a wildcard to represent all sessions */

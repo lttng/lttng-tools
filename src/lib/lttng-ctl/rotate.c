@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <string.h>
 
 #include <lttng/lttng-error.h>
@@ -223,7 +222,7 @@ int lttng_rotate_session(const char *session_name,
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
 	/* Source length already validated. */
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &rotate_return);
 	if (ret <= 0) {
@@ -288,7 +287,7 @@ enum lttng_rotation_status lttng_rotation_update_schedule(
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 	/* Source length already validated. */
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 
 	lsm.u.rotation_set_schedule.type = (uint32_t) schedule->type;
 	switch (schedule->type) {

@@ -32,11 +32,11 @@ static void test_fd_push_pop_order(void)
 		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 		struct fd_handle *handle;
 
-		assert(fd >= 0);
+		LTTNG_ASSERT(fd >= 0);
 		fds[i] = fd;
 
 		handle = fd_handle_create(fd);
-		assert(handle);
+		LTTNG_ASSERT(handle);
 
 		ret = lttng_payload_push_fd_handle(&payload, handle);
 		fd_handle_put(handle);
@@ -80,10 +80,10 @@ static void test_fd_push_pop_imbalance(void)
 		struct fd_handle *handle;
 		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 
-		assert(fd >= 0);
+		LTTNG_ASSERT(fd >= 0);
 
 		handle = fd_handle_create(fd);
-		assert(handle);
+		LTTNG_ASSERT(handle);
 
 		ret = lttng_payload_push_fd_handle(&payload, handle);
 		fd_handle_put(handle);
@@ -126,9 +126,9 @@ static void test_fd_pop_fd_root_views(void)
 	struct lttng_payload payload;
 	const char * const test_description = "Same file descriptor returned when popping from different top-level views";
 
-	assert(fd >= 0);
+	LTTNG_ASSERT(fd >= 0);
 	handle = fd_handle_create(fd);
-	assert(handle);
+	LTTNG_ASSERT(handle);
 
 	lttng_payload_init(&payload);
 
@@ -178,8 +178,8 @@ static void test_fd_pop_fd_descendant_views(void)
 	const char * const test_description = "Different file descriptors returned when popping from descendant views";
 
 	lttng_payload_init(&payload);
-	assert(handle1);
-	assert(handle2);
+	LTTNG_ASSERT(handle1);
+	LTTNG_ASSERT(handle2);
 
 	diag("Validating descendant view fd pop behaviour");
 	ret = lttng_payload_push_fd_handle(&payload, handle1);

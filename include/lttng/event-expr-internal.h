@@ -8,7 +8,6 @@
 #ifndef LTTNG_EVENT_EXPR_INTERNAL_H
 #define LTTNG_EVENT_EXPR_INTERNAL_H
 
-#include <assert.h>
 #include <common/macros.h>
 #include <lttng/event-expr.h>
 
@@ -51,7 +50,7 @@ struct lttng_event_expr_array_field_element {
 static inline
 bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
 {
-	assert(expr);
+	LTTNG_ASSERT(expr);
 	return expr->type == LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD ||
 			expr->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD ||
 			expr->type == LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD ||

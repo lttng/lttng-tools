@@ -87,7 +87,7 @@ static inline void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger,
 			trigger_owner_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 }
 
 static inline
@@ -219,7 +219,7 @@ init_error_accounting_state(struct error_accounting_state *state,
 {
 	enum event_notifier_error_accounting_status status;
 
-	assert(state);
+	LTTNG_ASSERT(state);
 
 	state->number_indices = index_count;
 
@@ -251,7 +251,7 @@ end:
 static
 void fini_error_accounting_state(struct error_accounting_state *state)
 {
-	assert(state);
+	LTTNG_ASSERT(state);
 
 	/*
 	 * Will assert if some error counter indices were not released (an
@@ -1028,7 +1028,7 @@ enum event_notifier_error_accounting_status create_error_counter_index_for_token
 	uint64_t local_error_counter_index;
 	enum event_notifier_error_accounting_status status;
 
-	assert(state);
+	LTTNG_ASSERT(state);
 
 	/* Allocate a new index for that counter. */
 	index_alloc_status = lttng_index_allocator_alloc(state->index_allocator,
@@ -1180,7 +1180,7 @@ event_notifier_error_accounting_kernel_get_count(
 	counter_aggregate.index.number_dimensions = 1;
 	counter_aggregate.index.dimension_indexes[0] = error_counter_index;
 
-	assert(kernel_error_accounting_entry.error_counter_fd);
+	LTTNG_ASSERT(kernel_error_accounting_entry.error_counter_fd);
 
 	ret = kernctl_counter_get_aggregate_value(
 			kernel_error_accounting_entry.error_counter_fd,
@@ -1206,7 +1206,7 @@ event_notifier_error_accounting_kernel_get_count(
 	}
 
 	/* Error count can't be negative. */
-	assert(counter_aggregate.value.value >= 0);
+	LTTNG_ASSERT(counter_aggregate.value.value >= 0);
 	*count = (uint64_t) counter_aggregate.value.value;
 
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
@@ -1343,7 +1343,7 @@ void event_notifier_error_accounting_unregister_event_notifier(
 		}
 
 		del_ret = lttng_ht_del(state->indices_ht, &iter);
-		assert(!del_ret);
+		LTTNG_ASSERT(!del_ret);
 		call_rcu(&index_entry->rcu_head, free_index_ht_entry);
 	}
 

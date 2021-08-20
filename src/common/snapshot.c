@@ -13,7 +13,6 @@
 #include <lttng/snapshot-internal.h>
 #include <lttng/snapshot.h>
 
-#include <assert.h>
 #include <stdlib.h>
 
 LTTNG_HIDDEN
@@ -55,8 +54,8 @@ bool lttng_snapshot_output_is_equal(
 {
 	bool equal = false;
 
-	assert(a);
-	assert(b);
+	LTTNG_ASSERT(a);
+	LTTNG_ASSERT(b);
 
 	if (a->max_size != b->max_size) {
 		goto end;
@@ -188,8 +187,8 @@ enum lttng_error_code lttng_snapshot_output_mi_serialize(
 	int ret;
 	enum lttng_error_code ret_code;
 
-	assert(output);
-	assert(writer);
+	LTTNG_ASSERT(output);
+	LTTNG_ASSERT(writer);
 
 	/* Open output element. */
 	ret = mi_lttng_writer_open_element(writer,

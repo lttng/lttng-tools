@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -615,9 +614,9 @@ enum lttng_error_code lttng_condition_session_rotation_mi_serialize(
 	const char *session_name = NULL;
 	const char *type_element_str = NULL;
 
-	assert(condition);
-	assert(writer);
-	assert(is_rotation_condition(condition));
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(is_rotation_condition(condition));
 
 	switch (lttng_condition_get_type(condition)) {
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
@@ -635,8 +634,8 @@ enum lttng_error_code lttng_condition_session_rotation_mi_serialize(
 
 	status = lttng_condition_session_rotation_get_session_name(
 			condition, &session_name);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
-	assert(session_name);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(session_name);
 
 	/* Open condition session rotation_* element. */
 	ret = mi_lttng_writer_open_element(writer, type_element_str);

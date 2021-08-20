@@ -9,7 +9,6 @@
 
 #include "common/index/ctf-index.h"
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -105,7 +104,7 @@ static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 {
 	struct lttng_consumer_stream *null_stream = NULL;
 
-	assert(pipe);
+	LTTNG_ASSERT(pipe);
 
 	(void) lttng_pipe_write(pipe, &null_stream, sizeof(null_stream));
 }
@@ -173,7 +172,7 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 {
 	struct lttng_consumer_stream *stream, *stmp;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	/* Delete streams that might have been left in the stream list. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
@@ -201,7 +200,7 @@ static struct lttng_consumer_stream *find_stream(uint64_t key,
 	struct lttng_ht_node_u64 *node;
 	struct lttng_consumer_stream *stream = NULL;
 
-	assert(ht);
+	LTTNG_ASSERT(ht);
 
 	/* -1ULL keys are lookup failures */
 	if (key == (uint64_t) -1ULL) {
@@ -394,7 +393,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		break;
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		goto end;
 	}
 
@@ -407,12 +406,12 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		rcu_read_lock();
 		iter.iter.node = &channel->node.node;
 		ret = lttng_ht_del(the_consumer_data.channel_ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 
 		iter.iter.node = &channel->channels_by_session_id_ht_node.node;
 		ret = lttng_ht_del(the_consumer_data.channels_by_session_id_ht,
 				&iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		rcu_read_unlock();
 	}
 
@@ -491,7 +490,7 @@ void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd)
 {
 	uint64_t netidx;
 
-	assert(relayd);
+	LTTNG_ASSERT(relayd);
 
 	DBG("Cleaning up relayd object ID %"PRIu64, relayd->net_seq_idx);
 
@@ -525,7 +524,7 @@ void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd)
  */
 void consumer_flag_relayd_for_destroy(struct consumer_relayd_sock_pair *relayd)
 {
-	assert(relayd);
+	LTTNG_ASSERT(relayd);
 
 	/* Set destroy flag for this object */
 	uatomic_set(&relayd->destroy_flag, 1);
@@ -576,8 +575,8 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 {
 	struct lttng_ht *ht = data_ht;
 
-	assert(stream);
-	assert(ht);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(ht);
 
 	DBG3("Adding consumer stream %" PRIu64, stream->key);
 
@@ -637,7 +636,7 @@ static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
-	assert(relayd);
+	LTTNG_ASSERT(relayd);
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &relayd->net_seq_idx,
 			&iter);
@@ -721,9 +720,9 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream,
 	int ret = 0;
 	struct consumer_relayd_sock_pair *relayd;
 
-	assert(stream);
-	assert(stream->net_seq_idx != -1ULL);
-	assert(path);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->net_seq_idx != -1ULL);
+	LTTNG_ASSERT(path);
 
 	/* The stream is not metadata. Get relayd reference if exists. */
 	rcu_read_lock();
@@ -770,7 +769,7 @@ int consumer_send_relayd_streams_sent(uint64_t net_seq_idx)
 	int ret = 0;
 	struct consumer_relayd_sock_pair *relayd;
 
-	assert(net_seq_idx != -1ULL);
+	LTTNG_ASSERT(net_seq_idx != -1ULL);
 
 	/* The stream is not metadata. Get relayd reference if exists. */
 	rcu_read_lock();
@@ -830,8 +829,8 @@ static int write_relayd_stream_header(struct lttng_consumer_stream *stream,
 	struct lttcomm_relayd_data_hdr data_hdr;
 
 	/* Safety net */
-	assert(stream);
-	assert(relayd);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(relayd);
 
 	/* Reset data header */
 	memset(&data_hdr, 0, sizeof(data_hdr));
@@ -928,8 +927,8 @@ int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 
 	ASSERT_LOCKED(stream->chan->lock);
 	ASSERT_LOCKED(stream->lock);
-	assert(stream->metadata_flag);
-	assert(stream->chan->trace_chunk);
+	LTTNG_ASSERT(stream->metadata_flag);
+	LTTNG_ASSERT(stream->chan->trace_chunk);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -984,7 +983,7 @@ int lttng_consumer_channel_set_trace_chunk(
 		const bool acquired_reference = lttng_trace_chunk_get(
 				new_trace_chunk);
 
-		assert(acquired_reference);
+		LTTNG_ASSERT(acquired_reference);
 	}
 
 	lttng_trace_chunk_put(channel->trace_chunk);
@@ -1056,7 +1055,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		channel->output = CONSUMER_CHANNEL_MMAP;
 		break;
 	default:
-		assert(0);
+		abort();
 		free(channel);
 		channel = NULL;
 		goto end;
@@ -1168,10 +1167,10 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
-	assert(ctx);
-	assert(ht);
-	assert(pollfd);
-	assert(local_stream);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(pollfd);
+	LTTNG_ASSERT(local_stream);
 
 	DBG("Updating poll fd array");
 	*nb_inactive_fd = 0;
@@ -1421,7 +1420,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 	int ret;
 	struct lttng_consumer_local_data *ctx;
 
-	assert(the_consumer_data.type == LTTNG_CONSUMER_UNKNOWN ||
+	LTTNG_ASSERT(the_consumer_data.type == LTTNG_CONSUMER_UNKNOWN ||
 			the_consumer_data.type == type);
 	the_consumer_data.type = type;
 
@@ -1635,7 +1634,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 
 	/* RCU lock for the relayd pointer */
 	rcu_read_lock();
-	assert(stream->net_seq_idx != (uint64_t) -1ULL ||
+	LTTNG_ASSERT(stream->net_seq_idx != (uint64_t) -1ULL ||
 			stream->trace_chunk);
 
 	/* Flag that the current stream if set for network streaming. */
@@ -1811,7 +1810,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		return -ENOSYS;
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 	}
 
 	/* RCU lock for the relayd pointer */
@@ -2014,7 +2013,7 @@ int lttng_consumer_sample_snapshot_positions(struct lttng_consumer_stream *strea
 		return lttng_ustconsumer_sample_snapshot_positions(stream);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -2033,7 +2032,7 @@ int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream)
 		return lttng_ustconsumer_take_snapshot(stream);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -2054,7 +2053,7 @@ int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 		return lttng_ustconsumer_get_produced_snapshot(stream, pos);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -2075,7 +2074,7 @@ int lttng_consumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 		return lttng_ustconsumer_get_consumed_snapshot(stream, pos);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -2091,7 +2090,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		return lttng_ustconsumer_recv_cmd(ctx, sock, consumer_sockpoll);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -2119,7 +2118,7 @@ void lttng_consumer_close_all_metadata(void)
 		break;
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 	}
 }
 
@@ -2132,12 +2131,12 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	struct lttng_consumer_channel *channel = NULL;
 	bool free_channel = false;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 	/*
 	 * This call should NEVER receive regular stream. It must always be
 	 * metadata stream and this is crucial for data structure synchronization.
 	 */
-	assert(stream->metadata_flag);
+	LTTNG_ASSERT(stream->metadata_flag);
 
 	DBG3("Consumer delete metadata stream %d", stream->wait_fd);
 
@@ -2204,8 +2203,8 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 
-	assert(stream);
-	assert(ht);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(ht);
 
 	DBG3("Adding metadata stream %" PRIu64 " to hash table", stream->key);
 
@@ -2227,7 +2226,7 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 	 */
 	lttng_ht_lookup(ht, &stream->key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	assert(!node);
+	LTTNG_ASSERT(!node);
 
 	/*
 	 * When nb_init_stream_left reaches 0, we don't need to trigger any action
@@ -2296,7 +2295,7 @@ static void validate_endpoint_status_metadata_stream(
 
 	DBG("Consumer delete flagged metadata stream");
 
-	assert(pollset);
+	LTTNG_ASSERT(pollset);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(metadata_ht->ht, &iter.iter, stream, node.node) {
@@ -2448,7 +2447,7 @@ restart:
 				lttng_ht_lookup(metadata_ht, &tmp_id, &iter);
 			}
 			node = lttng_ht_iter_get_node_u64(&iter);
-			assert(node);
+			LTTNG_ASSERT(node);
 
 			stream = caa_container_of(node, struct lttng_consumer_stream,
 					node);
@@ -2456,7 +2455,7 @@ restart:
 			if (revents & (LPOLLIN | LPOLLPRI)) {
 				/* Get the data out of the metadata file descriptor */
 				DBG("Metadata available on fd %d", pollfd);
-				assert(stream->wait_fd == pollfd);
+				LTTNG_ASSERT(stream->wait_fd == pollfd);
 
 				do {
 					health_code_update();
@@ -2873,7 +2872,7 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 			break;
 		default:
 			ERR("Unknown consumer_data type");
-			assert(0);
+			abort();
 		}
 	next:
 		pthread_mutex_unlock(&stream->lock);
@@ -2894,7 +2893,7 @@ static void destroy_channel_ht(struct lttng_ht *ht)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, channel, wait_fd_node.node) {
 		ret = lttng_ht_del(ht, &iter);
-		assert(ret != 0);
+		LTTNG_ASSERT(ret != 0);
 	}
 	rcu_read_unlock();
 
@@ -3032,7 +3031,7 @@ restart:
 						lttng_poll_del(&events, chan->wait_fd);
 						iter.iter.node = &chan->wait_fd_node.node;
 						ret = lttng_ht_del(channel_ht, &iter);
-						assert(ret == 0);
+						LTTNG_ASSERT(ret == 0);
 
 						switch (the_consumer_data.type) {
 						case LTTNG_CONSUMER_KERNEL:
@@ -3045,7 +3044,7 @@ restart:
 							break;
 						default:
 							ERR("Unknown consumer_data type");
-							assert(0);
+							abort();
 						}
 
 						/*
@@ -3093,7 +3092,7 @@ restart:
 				lttng_ht_lookup(channel_ht, &tmp_id, &iter);
 			}
 			node = lttng_ht_iter_get_node_u64(&iter);
-			assert(node);
+			LTTNG_ASSERT(node);
 
 			chan = caa_container_of(node, struct lttng_consumer_channel,
 					wait_fd_node);
@@ -3104,7 +3103,7 @@ restart:
 
 				lttng_poll_del(&events, chan->wait_fd);
 				ret = lttng_ht_del(channel_ht, &iter);
-				assert(ret == 0);
+				LTTNG_ASSERT(ret == 0);
 
 				/*
 				 * This will close the wait fd for each stream associated to
@@ -3152,8 +3151,8 @@ static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
 {
 	int ret;
 
-	assert(ctx);
-	assert(sockpoll);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(sockpoll);
 
 	ret = lttng_consumer_poll_socket(sockpoll);
 	if (ret) {
@@ -3497,7 +3496,7 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 		return lttng_ustconsumer_on_recv_stream(stream);
 	default:
 		ERR("Unknown consumer_data type");
-		assert(0);
+		abort();
 		return -ENOSYS;
 	}
 }
@@ -3571,15 +3570,15 @@ error:
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
-	assert(ctx);
-	assert(relayd_sock);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(relayd_sock);
 
 	DBG("Consumer adding relayd socket (idx: %" PRIu64 ")", net_seq_idx);
 
 	/* Get relayd reference if exists. */
 	relayd = consumer_find_relayd(net_seq_idx);
 	if (relayd == NULL) {
-		assert(sock_type == LTTNG_STREAM_CONTROL);
+		LTTNG_ASSERT(sock_type == LTTNG_STREAM_CONTROL);
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
@@ -3599,7 +3598,7 @@ error:
 		/*
 		 * relayd key should never be found for control socket.
 		 */
-		assert(sock_type != LTTNG_STREAM_CONTROL);
+		LTTNG_ASSERT(sock_type != LTTNG_STREAM_CONTROL);
 	}
 
 	/* First send a status message before receiving the fds. */
@@ -3801,7 +3800,7 @@ int consumer_data_pending(uint64_t id)
 		break;
 	default:
 		ERR("Unknown consumer data type");
-		assert(0);
+		abort();
 	}
 
 	/* Ease our life a bit */
@@ -3928,7 +3927,7 @@ int consumer_send_status_channel(int sock,
 {
 	struct lttcomm_consumer_status_channel msg;
 
-	assert(sock >= 0);
+	LTTNG_ASSERT(sock >= 0);
 
 	memset(&msg, 0, sizeof(msg));
 	if (!channel) {
@@ -4025,7 +4024,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	rcu_read_lock();
 
 	pthread_mutex_lock(&channel->lock);
-	assert(channel->trace_chunk);
+	LTTNG_ASSERT(channel->trace_chunk);
 	chunk_status = lttng_trace_chunk_get_id(channel->trace_chunk,
 			&next_chunk_id);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -4125,7 +4124,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 						chunk_status = lttng_trace_chunk_get_id(
 								stream->trace_chunk,
 								&trace_chunk_id);
-						assert(chunk_status ==
+						LTTNG_ASSERT(chunk_status ==
 								LTTNG_TRACE_CHUNK_STATUS_OK);
 
 						DBG("Unable to open packet for stream during trace chunk's lifetime. "
@@ -4762,7 +4761,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	}
 
 	/* Local protocol error. */
-	assert(chunk_creation_timestamp);
+	LTTNG_ASSERT(chunk_creation_timestamp);
 	ret = time_to_iso8601_str(chunk_creation_timestamp,
 			creation_timestamp_buffer,
 			sizeof(creation_timestamp_buffer));

@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stddef.h>
 
 #include <common/bytecode/bytecode.h>
@@ -66,7 +65,7 @@ struct lttng_event_expr_field *create_field_event_expr(
 		goto error;
 	}
 
-	assert(name);
+	LTTNG_ASSERT(name);
 	expr->name = strdup(name);
 	if (!expr->name) {
 		goto error;
@@ -665,12 +664,12 @@ enum lttng_error_code lttng_event_expr_event_payload_field_mi_serialize(
 	enum lttng_error_code ret_code;
 	const char *name = NULL;
 
-	assert(expression);
-	assert(writer);
-	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD);
+	LTTNG_ASSERT(expression);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(expression->type == LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD);
 
 	name = lttng_event_expr_event_payload_field_get_name(expression);
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	/* Open event expr payload field element. */
 	ret = mi_lttng_writer_open_element(
@@ -710,12 +709,12 @@ enum lttng_error_code lttng_event_expr_channel_context_field_mi_serialize(
 	enum lttng_error_code ret_code;
 	const char *name = NULL;
 
-	assert(expression);
-	assert(writer);
-	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD);
+	LTTNG_ASSERT(expression);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(expression->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD);
 
 	name = lttng_event_expr_channel_context_field_get_name(expression);
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	/* Open event expr channel context field element. */
 	ret = mi_lttng_writer_open_element(writer,
@@ -756,18 +755,18 @@ enum lttng_error_code lttng_event_expr_app_specific_context_field_mi_serialize(
 	const char *provider_name = NULL;
 	const char *type_name = NULL;
 
-	assert(expression);
-	assert(writer);
-	assert(expression->type ==
+	LTTNG_ASSERT(expression);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(expression->type ==
 			LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD);
 
 	provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
 			expression);
-	assert(provider_name);
+	LTTNG_ASSERT(provider_name);
 
 	type_name = lttng_event_expr_app_specific_context_field_get_type_name(
 			expression);
-	assert(provider_name);
+	LTTNG_ASSERT(provider_name);
 
 	/* Open event expr app specific context field element. */
 	ret = mi_lttng_writer_open_element(writer,
@@ -817,17 +816,17 @@ enum lttng_error_code lttng_event_expr_array_field_element_mi_serialize(
 	const struct lttng_event_expr *parent_expr = NULL;
 	unsigned int index;
 
-	assert(expression);
-	assert(writer);
-	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT);
+	LTTNG_ASSERT(expression);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(expression->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT);
 
 	status = lttng_event_expr_array_field_element_get_index(
 			expression, &index);
-	assert(status == LTTNG_EVENT_EXPR_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
 	parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
 			expression);
-	assert(parent_expr != NULL);
+	LTTNG_ASSERT(parent_expr != NULL);
 
 	/* Open event expr array field element. */
 	ret = mi_lttng_writer_open_element(writer,
@@ -872,8 +871,8 @@ enum lttng_error_code lttng_event_expr_mi_serialize(
 	int ret;
 	enum lttng_error_code ret_code;
 
-	assert(expression);
-	assert(writer);
+	LTTNG_ASSERT(expression);
+	LTTNG_ASSERT(writer);
 
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_expr);
 	if (ret) {

@@ -14,7 +14,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -644,7 +643,7 @@ static int append_list_to_probes(const char *list)
 	int ret;
 	char *tmp_list, *cur_list, *saveptr;
 
-	assert(list);
+	LTTNG_ASSERT(list);
 
 	cur_list = tmp_list = strdup(list);
 	if (!tmp_list) {

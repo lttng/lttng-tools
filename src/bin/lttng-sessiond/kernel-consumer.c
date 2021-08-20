@@ -30,7 +30,7 @@ static char *create_channel_path(struct consumer_output *consumer,
 	char tmp_path[PATH_MAX];
 	char *pathname = NULL;
 
-	assert(consumer);
+	LTTNG_ASSERT(consumer);
 
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL ||
@@ -97,9 +97,9 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	size_t consumer_path_offset = 0;
 
 	/* Safety net */
-	assert(channel);
-	assert(ksession);
-	assert(ksession->consumer);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(ksession->consumer);
 
 	consumer = ksession->consumer;
 	channel_attr_extended = (struct lttng_channel_extended *)
@@ -170,9 +170,9 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	health_code_update();
 	rcu_read_lock();
 	session = session_find_by_id(ksession->id);
-	assert(session);
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
+	LTTNG_ASSERT(session_trylock_list());
 
 	status = notification_thread_command_add_channel(
 			the_notification_thread_handle, session->name,
@@ -211,9 +211,9 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	rcu_read_lock();
 
 	/* Safety net */
-	assert(ksession);
-	assert(ksession->consumer);
-	assert(sock);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(ksession->consumer);
+	LTTNG_ASSERT(sock);
 
 	DBG("Sending metadata %d to kernel consumer",
 			ksession->metadata_stream_fd);
@@ -285,11 +285,11 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 
-	assert(channel);
-	assert(stream);
-	assert(session);
-	assert(session->consumer);
-	assert(sock);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(session->consumer);
+	LTTNG_ASSERT(sock);
 
 	DBG("Sending stream %d of channel %s to kernel consumer",
 			stream->fd, channel->channel->name);
@@ -327,8 +327,8 @@ int kernel_consumer_streams_sent(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 
-	assert(sock);
-	assert(session);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(session);
 
 	DBG("Sending streams_sent");
 	/* Get consumer output pointer */
@@ -364,10 +364,10 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 	struct ltt_kernel_stream *stream;
 
 	/* Safety net */
-	assert(channel);
-	assert(ksession);
-	assert(ksession->consumer);
-	assert(sock);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(ksession->consumer);
+	LTTNG_ASSERT(sock);
 
 	rcu_read_lock();
 
@@ -420,9 +420,9 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 	struct ltt_kernel_channel *chan;
 
 	/* Safety net */
-	assert(session);
-	assert(session->consumer);
-	assert(sock);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(session->consumer);
+	LTTNG_ASSERT(sock);
 
 	/* Bail out if consumer is disabled */
 	if (!session->consumer->enabled) {
@@ -478,8 +478,8 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 	int ret;
 	struct lttcomm_consumer_msg msg;
 
-	assert(channel);
-	assert(socket);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(socket);
 
 	DBG("Sending kernel consumer destroy channel key %" PRIu64, channel->key);
 
@@ -507,8 +507,8 @@ int kernel_consumer_destroy_metadata(struct consumer_socket *socket,
 	int ret;
 	struct lttcomm_consumer_msg msg;
 
-	assert(metadata);
-	assert(socket);
+	LTTNG_ASSERT(metadata);
+	LTTNG_ASSERT(socket);
 
 	DBG("Sending kernel consumer destroy channel key %" PRIu64, metadata->key);
 

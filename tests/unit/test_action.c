@@ -9,7 +9,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -52,7 +51,7 @@ static void test_action_notify(void)
 	/* For comparison. */
 	default_policy = lttng_rate_policy_every_n_create(1);
 
-	assert(policy && default_policy);
+	LTTNG_ASSERT(policy && default_policy);
 
 	notify_action = lttng_action_notify_create();
 	ok(notify_action, "Create notify action");
@@ -128,7 +127,7 @@ static void test_action_rotate_session(void)
 	/* For comparison. */
 	default_policy = lttng_rate_policy_every_n_create(1);
 
-	assert(policy && default_policy);
+	LTTNG_ASSERT(policy && default_policy);
 
 	rotate_session_action = lttng_action_rotate_session_create();
 	ok(rotate_session_action, "Create rotate_session action");
@@ -233,7 +232,7 @@ static void test_action_start_session(void)
 	/* For comparison. */
 	default_policy = lttng_rate_policy_every_n_create(1);
 
-	assert(policy && default_policy);
+	LTTNG_ASSERT(policy && default_policy);
 
 	start_session_action = lttng_action_start_session_create();
 	ok(start_session_action, "Create start_session action");
@@ -338,7 +337,7 @@ static void test_action_stop_session(void)
 	/* For comparison. */
 	default_policy = lttng_rate_policy_every_n_create(1);
 
-	assert(policy && default_policy);
+	LTTNG_ASSERT(policy && default_policy);
 
 	stop_session_action = lttng_action_stop_session_create();
 	ok(stop_session_action, "Create stop_session action");
@@ -442,7 +441,7 @@ static void test_action_snapshot_session(void)
 	/* For comparison. */
 	default_policy = lttng_rate_policy_every_n_create(1);
 
-	assert(policy && default_policy);
+	LTTNG_ASSERT(policy && default_policy);
 
 	snapshot_session_action = lttng_action_snapshot_session_create();
 	ok(snapshot_session_action, "Create snapshot_session action");

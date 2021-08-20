@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <urcu/uatomic.h>
 #include <urcu/rculist.h>
 
@@ -97,8 +96,8 @@ static int ht_match_event_by_name(struct cds_lfht_node *node,
 	struct agent_event *event;
 	const struct agent_ht_key *key;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct agent_event, node.node);
 	key = _key;
@@ -127,8 +126,8 @@ static int ht_match_event(struct cds_lfht_node *node,
 	const struct agent_ht_key *key;
 	int ll_match;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct agent_event, node.node);
 	key = _key;
@@ -177,9 +176,9 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 	struct cds_lfht_node *node_ptr;
 	struct agent_ht_key key;
 
-	assert(ht);
-	assert(ht->ht);
-	assert(event);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(event);
 
 	key.name = event->name;
 	key.loglevel_value = event->loglevel_value;
@@ -189,7 +188,7 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
 			ht_match_event, &key, &event->node.node);
-	assert(node_ptr == &event->node.node);
+	LTTNG_ASSERT(node_ptr == &event->node.node);
 }
 
 /*
@@ -231,7 +230,7 @@ static int send_header(struct lttcomm_sock *sock, uint64_t data_size,
 	ssize_t size;
 	struct lttcomm_agent_hdr msg;
 
-	assert(sock);
+	LTTNG_ASSERT(sock);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.data_size = htobe64(data_size);
@@ -261,8 +260,8 @@ static int send_payload(struct lttcomm_sock *sock, const void *data,
 	int ret;
 	ssize_t len;
 
-	assert(sock);
-	assert(data);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(data);
 
 	len = sock->ops->sendmsg(sock, data, size, 0);
 	if (len < size) {
@@ -286,8 +285,8 @@ static int recv_reply(struct lttcomm_sock *sock, void *buf, size_t size)
 	int ret;
 	ssize_t len;
 
-	assert(sock);
-	assert(buf);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
 
 	len = sock->ops->recvmsg(sock, buf, size, 0);
 	if (len < size) {
@@ -317,9 +316,9 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	struct lttcomm_agent_list_reply *reply = NULL;
 	struct lttcomm_agent_list_reply_hdr reply_hdr;
 
-	assert(app);
-	assert(app->sock);
-	assert(events);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->sock);
+	LTTNG_ASSERT(events);
 
 	DBG2("Agent listing events for app pid: %d and socket %d", app->pid,
 			app->sock->fd);
@@ -407,9 +406,9 @@ static int enable_event(const struct agent_app *app, struct agent_event *event)
 	struct lttcomm_agent_enable_event msg;
 	struct lttcomm_agent_generic_reply reply;
 
-	assert(app);
-	assert(app->sock);
-	assert(event);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->sock);
+	LTTNG_ASSERT(event);
 
 	DBG2("Agent enabling event %s for app pid: %d and socket %d", event->name,
 			app->pid, app->sock->fd);
@@ -520,10 +519,10 @@ static int app_context_op(const struct agent_app *app,
 	struct lttcomm_agent_generic_reply reply;
 	size_t app_ctx_provider_name_len, app_ctx_name_len, data_size;
 
-	assert(app);
-	assert(app->sock);
-	assert(ctx);
-	assert(cmd == AGENT_CMD_APP_CTX_ENABLE ||
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->sock);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(cmd == AGENT_CMD_APP_CTX_ENABLE ||
 			cmd == AGENT_CMD_APP_CTX_DISABLE);
 
 	DBG2("Agent %s application %s:%s for app pid: %d and socket %d",
@@ -603,9 +602,9 @@ static int disable_event(struct agent_app *app, struct agent_event *event)
 	struct lttcomm_agent_disable_event msg;
 	struct lttcomm_agent_generic_reply reply;
 
-	assert(app);
-	assert(app->sock);
-	assert(event);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->sock);
+	LTTNG_ASSERT(event);
 
 	DBG2("Agent disabling event %s for app pid: %d and socket %d", event->name,
 			app->pid, app->sock->fd);
@@ -660,8 +659,8 @@ error:
  */
 int agent_send_registration_done(struct agent_app *app)
 {
-	assert(app);
-	assert(app->sock);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->sock);
 
 	DBG("Agent sending registration done to app socket %d", app->sock->fd);
 
@@ -681,7 +680,7 @@ int agent_enable_event(struct agent_event *event,
 	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	rcu_read_lock();
 
@@ -723,7 +722,7 @@ struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
 		goto end;
 	}
 
-	assert(ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
+	LTTNG_ASSERT(ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
 	agent_ctx = zmalloc(sizeof(*ctx));
 	if (!agent_ctx) {
 		goto end;
@@ -752,7 +751,7 @@ int agent_enable_context(const struct lttng_event_context *ctx,
 	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 	if (ctx->ctx != LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;
@@ -803,7 +802,7 @@ int agent_disable_event(struct agent_event *event,
 	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
-	assert(event);
+	LTTNG_ASSERT(event);
 	if (!AGENT_EVENT_IS_ENABLED(event)) {
 		goto end;
 	}
@@ -834,7 +833,7 @@ int agent_disable_event(struct agent_event *event,
 	}
 
 	/* event->enabled_count is now 0. */
-	assert(!AGENT_EVENT_IS_ENABLED(event));
+	LTTNG_ASSERT(!AGENT_EVENT_IS_ENABLED(event));
 
 error:
 	rcu_read_unlock();
@@ -855,7 +854,7 @@ static int disable_context(struct agent_app_ctx *ctx,
 	struct agent_app *app;
 	struct lttng_ht_iter iter;
 
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	rcu_read_lock();
 	DBG2("Disabling agent application context %s:%s",
@@ -891,7 +890,7 @@ int agent_list_events(struct lttng_event **events,
 	struct lttng_event *tmp_events = NULL;
 	struct lttng_ht_iter iter;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	DBG2("Agent listing events for domain %d", domain);
 
@@ -970,7 +969,7 @@ struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
 {
 	struct agent_app *app;
 
-	assert(sock);
+	LTTNG_ASSERT(sock);
 
 	app = zmalloc(sizeof(*app));
 	if (!app) {
@@ -1000,7 +999,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 	struct lttng_ht_iter iter;
 	struct agent_app *app;
 
-	assert(sock >= 0);
+	LTTNG_ASSERT(sock >= 0);
 
 	lttng_ht_lookup(the_agent_apps_ht_by_sock,
 			(void *) ((unsigned long) sock), &iter);
@@ -1023,7 +1022,7 @@ error:
  */
 void agent_add_app(struct agent_app *app)
 {
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	DBG3("Agent adding app sock: %d and pid: %d to ht", app->sock->fd, app->pid);
 	lttng_ht_add_unique_ulong(the_agent_apps_ht_by_sock, &app->node);
@@ -1039,13 +1038,13 @@ void agent_delete_app(struct agent_app *app)
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	DBG3("Agent deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
 
 	iter.iter.node = &app->node.node;
 	ret = lttng_ht_del(the_agent_apps_ht_by_sock, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 /*
@@ -1055,7 +1054,7 @@ void agent_delete_app(struct agent_app *app)
  */
 void agent_destroy_app(struct agent_app *app)
 {
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	if (app->sock) {
 		app->sock->ops->close(app->sock);
@@ -1074,7 +1073,7 @@ int agent_init(struct agent *agt)
 {
 	int ret;
 
-	assert(agt);
+	LTTNG_ASSERT(agt);
 
 	agt->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!agt->events) {
@@ -1095,8 +1094,8 @@ error:
  */
 void agent_add(struct agent *agt, struct lttng_ht *ht)
 {
-	assert(agt);
-	assert(ht);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(ht);
 
 	DBG3("Agent adding from domain %d", agt->domain);
 
@@ -1174,9 +1173,9 @@ error:
  */
 void agent_add_event(struct agent_event *event, struct agent *agt)
 {
-	assert(event);
-	assert(agt);
-	assert(agt->events);
+	LTTNG_ASSERT(event);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(agt->events);
 
 	DBG3("Agent adding event %s", event->name);
 	add_unique_agent_event(agt->events, event);
@@ -1191,10 +1190,10 @@ int agent_add_context(const struct lttng_event_context *ctx, struct agent *agt)
 	int ret = LTTNG_OK;
 	struct agent_app_ctx *agent_ctx = NULL;
 
-	assert(ctx);
-	assert(agt);
-	assert(agt->events);
-	assert(ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(agt->events);
+	LTTNG_ASSERT(ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
 
 	agent_ctx = create_app_ctx(ctx);
 	if (!agent_ctx) {
@@ -1223,10 +1222,10 @@ void agent_find_events_by_name(const char *name, struct agent *agt,
 	struct lttng_ht *ht;
 	struct agent_ht_key key;
 
-	assert(name);
-	assert(agt);
-	assert(agt->events);
-	assert(iter);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(agt->events);
+	LTTNG_ASSERT(iter);
 
 	ht = agt->events;
 	key.name = name;
@@ -1260,17 +1259,17 @@ struct agent_event *agent_find_event_by_trigger(
 	event_rule_logging_get_name_pattern logging_get_name_pattern;
 	event_rule_logging_get_log_level_rule logging_get_log_level_rule;
 
-	assert(agt);
-	assert(agt->events);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(agt->events);
 
 	condition = lttng_trigger_get_const_condition(trigger);
 
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	c_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &rule);
-	assert(c_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(c_status == LTTNG_CONDITION_STATUS_OK);
 
 	switch (lttng_event_rule_get_type(rule)) {
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
@@ -1297,12 +1296,12 @@ struct agent_event *agent_find_event_by_trigger(
 	}
 
 	domain = lttng_event_rule_get_domain_type(rule);
-	assert(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
+	LTTNG_ASSERT(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
 			domain == LTTNG_DOMAIN_PYTHON);
 
 	/* Get the event's pattern name ('name' in the legacy terminology). */
 	er_status = logging_get_name_pattern(rule, &name);
-	assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(er_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Get the internal filter expression. */
 	filter_expression = lttng_event_rule_get_filter(rule);
@@ -1359,9 +1358,9 @@ struct agent_event *agent_find_event(const char *name,
 	struct lttng_ht *ht;
 	struct agent_ht_key key;
 
-	assert(name);
-	assert(agt);
-	assert(agt->events);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(agt->events);
 
 	ht = agt->events;
 	key.name = name;
@@ -1391,7 +1390,7 @@ error:
  */
 void agent_destroy_event(struct agent_event *event)
 {
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	free(event->filter);
 	free(event->filter_expression);
@@ -1417,7 +1416,7 @@ void agent_destroy(struct agent *agt)
 	struct lttng_ht_iter iter;
 	struct agent_app_ctx *ctx;
 
-	assert(agt);
+	LTTNG_ASSERT(agt);
 
 	DBG3("Agent destroy");
 
@@ -1436,7 +1435,7 @@ void agent_destroy(struct agent *agt)
 		(void) agent_disable_event(event, agt->domain);
 
 		ret = lttng_ht_del(agt->events, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		call_rcu(&node->head, destroy_event_agent_rcu);
 	}
 
@@ -1466,7 +1465,7 @@ void agent_destroy_app_by_sock(int sock)
 {
 	struct agent_app *app;
 
-	assert(sock >= 0);
+	LTTNG_ASSERT(sock >= 0);
 
 	/*
 	 * Not finding an application is a very important error that should NEVER
@@ -1475,7 +1474,7 @@ void agent_destroy_app_by_sock(int sock)
 	 */
 	rcu_read_lock();
 	app = agent_find_app_by_sock(sock);
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	/* RCU read side lock is assumed to be held by this function. */
 	agent_delete_app(app);
@@ -1522,8 +1521,8 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
 	struct lttng_ht_iter iter;
 	struct agent_app_ctx *ctx;
 
-	assert(agt);
-	assert(app);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(app);
 
 	DBG("Agent updating app: pid = %ld", (long) app->pid);
 
@@ -1591,7 +1590,7 @@ void agent_by_event_notifier_domain_ht_destroy(void)
 		const int ret = lttng_ht_del(
 				the_trigger_agents_ht_by_domain, &iter);
 
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 		agent_destroy(agent);
 	}
 
@@ -1607,7 +1606,7 @@ struct agent *agent_find_by_event_notifier_domain(
 	struct lttng_ht_iter iter;
 	const uint64_t key = (uint64_t) domain_type;
 
-	assert(the_trigger_agents_ht_by_domain);
+	LTTNG_ASSERT(the_trigger_agents_ht_by_domain);
 
 	DBG3("Per-event notifier domain agent lookup for domain '%s'",
 			lttng_domain_type_str(domain_type));

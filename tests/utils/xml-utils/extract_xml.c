@@ -24,7 +24,6 @@
  *     node;b;
  *     node;c;
  */
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,11 +58,11 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 	xmlNodePtr cur;
 	xmlChar *node_child_value_string = NULL;
 
-	assert(output);
+	LTTNG_ASSERT(output);
 	size = (nodes) ? nodes->nodeNr : 0;
 
 	for (i = 0; i < size; ++i) {
-		assert(nodes->nodeTab[i]);
+		LTTNG_ASSERT(nodes->nodeTab[i]);
 
 		if (nodes->nodeTab[i]->type == XML_NAMESPACE_DECL) {
 			fprintf(stderr, "ERR:%s\n",
@@ -170,8 +169,8 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 	xmlXPathContextPtr xpathCtx = NULL;
 	xmlXPathObjectPtr xpathObj = NULL;
 
-	assert(xml_path);
-	assert(xpath);
+	LTTNG_ASSERT(xml_path);
+	LTTNG_ASSERT(xpath);
 
 	/* Parse the xml file */
 	doc = xmlParseFile(xml_path);

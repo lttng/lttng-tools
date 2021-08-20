@@ -168,7 +168,7 @@ static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len,
 	};
 	struct lttcomm_lttng_msg *p_llm;
 
-	assert(cmd_ctx->reply_payload.buffer.size >= sizeof(llm));
+	LTTNG_ASSERT(cmd_ctx->reply_payload.buffer.size >= sizeof(llm));
 
 	p_llm = (typeof(p_llm)) cmd_ctx->reply_payload.buffer.data;
 
@@ -425,8 +425,8 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	const char *dir_name;
 	struct consumer_output *consumer;
 
-	assert(session);
-	assert(session->consumer);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(session->consumer);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -490,9 +490,9 @@ static int create_ust_session(struct ltt_session *session,
 	int ret;
 	struct ltt_ust_session *lus = NULL;
 
-	assert(session);
-	assert(domain);
-	assert(session->consumer);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(domain);
+	LTTNG_ASSERT(session->consumer);
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_JUL:
@@ -560,7 +560,7 @@ static int create_kernel_session(struct ltt_session *session)
 	}
 
 	/* Code flow safety */
-	assert(session->kernel_session);
+	LTTNG_ASSERT(session->kernel_session);
 
 	/* Copy session output to the newly created Kernel session */
 	ret = copy_session_consumer(LTTNG_DOMAIN_KERNEL, session);
@@ -934,7 +934,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		lttcomm_sessiond_command_str(cmd_ctx->lsm.cmd_type),
 		cmd_ctx->lsm.cmd_type);
 
-	assert(!rcu_read_ongoing());
+	LTTNG_ASSERT(!rcu_read_ongoing());
 
 	*sock_error = 0;
 
@@ -2149,7 +2149,7 @@ error_add_context:
 			goto error;
 		}
 
-		assert((nb_output > 0 && outputs) || nb_output == 0);
+		LTTNG_ASSERT((nb_output > 0 && outputs) || nb_output == 0);
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, outputs,
 				nb_output * sizeof(struct lttng_snapshot_output));
 		free(outputs);
@@ -2413,7 +2413,7 @@ error_add_context:
 			goto error;
 		}
 
-		assert(return_triggers);
+		LTTNG_ASSERT(return_triggers);
 		ret = lttng_triggers_serialize(
 				return_triggers, &cmd_ctx->reply_payload);
 		lttng_triggers_destroy(return_triggers);
@@ -2463,7 +2463,7 @@ error_add_context:
 			goto error;
 		}
 
-		assert(results);
+		LTTNG_ASSERT(results);
 		ret = lttng_error_query_results_serialize(
 				results, &cmd_ctx->reply_payload);
 		lttng_error_query_results_destroy(results);
@@ -2506,7 +2506,7 @@ setup_error:
 		session_unlock_list();
 	}
 init_setup_error:
-	assert(!rcu_read_ongoing());
+	LTTNG_ASSERT(!rcu_read_ongoing());
 	return ret;
 }
 
@@ -2788,8 +2788,8 @@ static void *thread_manage_clients(void *data)
 			struct lttcomm_lttng_msg *llm = (typeof(
 					llm)) cmd_ctx.reply_payload.buffer.data;
 
-			assert(cmd_ctx.reply_payload.buffer.size >= sizeof(*llm));
-			assert(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
+			LTTNG_ASSERT(cmd_ctx.reply_payload.buffer.size >= sizeof(*llm));
+			LTTNG_ASSERT(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
 
 			llm->fd_count = lttng_payload_view_get_fd_handle_count(&view);
 

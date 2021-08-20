@@ -162,7 +162,7 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 		int ret;
 
 		ret = lttng_ht_del(ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		free(ksyscall);
 	}
 	ht_cleanup_push(ht);
@@ -198,8 +198,8 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 	struct lttng_ht_iter iter;
 	struct syscall *ksyscall = NULL;
 
-	assert(ht);
-	assert(name);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(name);
 
 	lttng_ht_lookup(ht, (void *) name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
@@ -217,7 +217,7 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 static void update_event_syscall_bitness(struct lttng_event *events,
 		unsigned int index, unsigned int syscall_index)
 {
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	if (syscall_table[index].bitness == 32) {
 		events[syscall_index].flags |= LTTNG_EVENT_FLAG_SYSCALL_32;
@@ -237,7 +237,7 @@ static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index,
 	int ret;
 	struct syscall *ksyscall;
 
-	assert(ht);
+	LTTNG_ASSERT(ht);
 
 	ksyscall = zmalloc(sizeof(*ksyscall));
 	if (!ksyscall) {
@@ -271,7 +271,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 	/* Hash table used to filter duplicate out. */
 	struct lttng_ht *syscalls_ht = NULL;
 
-	assert(_events);
+	LTTNG_ASSERT(_events);
 
 	DBG("Syscall table listing.");
 

@@ -33,8 +33,8 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	int ret;
 	struct ltt_kernel_channel *kchan;
 
-	assert(ksession);
-	assert(kctx);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(kctx);
 
 	DBG("Adding kernel context to all channels");
 
@@ -74,8 +74,8 @@ static int add_kctx_to_channel(struct ltt_kernel_context *kctx,
 {
 	int ret;
 
-	assert(kchan);
-	assert(kctx);
+	LTTNG_ASSERT(kchan);
+	LTTNG_ASSERT(kctx);
 
 	DBG("Add kernel context to channel '%s'", kchan->channel->name);
 
@@ -103,9 +103,9 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	int ret;
 	struct ltt_ust_context *uctx = NULL;
 
-	assert(usess);
-	assert(uchan);
-	assert(ctx);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
+	LTTNG_ASSERT(ctx);
 
 	/* Check if context is duplicate */
 	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
@@ -150,7 +150,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	case LTTNG_DOMAIN_UST:
 		break;
 	default:
-		assert(0);
+		abort();
 	}
 
 	/* Create ltt UST context */
@@ -193,9 +193,9 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_context *kctx;
 
-	assert(ksession);
-	assert(ctx);
-	assert(channel_name);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(channel_name);
 
 	kctx = trace_kernel_create_context(NULL);
 	if (!kctx) {
@@ -373,9 +373,9 @@ int context_ust_add(struct ltt_ust_session *usess,
 	struct lttng_ht *chan_ht;
 	struct ltt_ust_channel *uchan = NULL;
 
-	assert(usess);
-	assert(ctx);
-	assert(channel_name);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(channel_name);
 
 	rcu_read_lock();
 

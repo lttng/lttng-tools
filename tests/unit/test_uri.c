@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <string.h>
 
 #include <tap/tap.h>
@@ -180,12 +179,12 @@ static void test_uri_parsing(void)
 	s_uri1 = "file/my/test/path";
 	size = uri_parse(s_uri1, &uri);
 	ok(size == -1, "Bad URI set to file/my/test/path");
-	assert(!uri);
+	LTTNG_ASSERT(!uri);
 
 	s_uri1 = "net://:8999";
 	size = uri_parse(s_uri1, &uri);
 	ok(size == -1, "Bad URI set to net://:8999");
-	assert(!uri);
+	LTTNG_ASSERT(!uri);
 }
 
 static void test_uri_cmp(void)
@@ -199,35 +198,35 @@ static void test_uri_cmp(void)
 	size1 = uri_parse(s_uri1, &uri1);
 
 	/* Sanity checks */
-	assert(size1 == 2);
-	assert(uri1[0].dtype == LTTNG_DST_IPV4);
-	assert(uri1[0].utype == LTTNG_URI_DST);
-	assert(uri1[0].stype == 0);
-	assert(uri1[0].port == 0);
-	assert(strlen(uri1[0].subdir) == 0);
-	assert(strcmp(uri1[0].dst.ipv4, "127.0.0.1") == 0);
-	assert(uri1[1].dtype == LTTNG_DST_IPV4);
-	assert(uri1[1].utype == LTTNG_URI_DST);
-	assert(uri1[1].stype == 0);
-	assert(uri1[1].port == 0);
-	assert(strlen(uri1[1].subdir) == 0);
-	assert(strcmp(uri1[1].dst.ipv4, "127.0.0.1") == 0);
+	LTTNG_ASSERT(size1 == 2);
+	LTTNG_ASSERT(uri1[0].dtype == LTTNG_DST_IPV4);
+	LTTNG_ASSERT(uri1[0].utype == LTTNG_URI_DST);
+	LTTNG_ASSERT(uri1[0].stype == 0);
+	LTTNG_ASSERT(uri1[0].port == 0);
+	LTTNG_ASSERT(strlen(uri1[0].subdir) == 0);
+	LTTNG_ASSERT(strcmp(uri1[0].dst.ipv4, "127.0.0.1") == 0);
+	LTTNG_ASSERT(uri1[1].dtype == LTTNG_DST_IPV4);
+	LTTNG_ASSERT(uri1[1].utype == LTTNG_URI_DST);
+	LTTNG_ASSERT(uri1[1].stype == 0);
+	LTTNG_ASSERT(uri1[1].port == 0);
+	LTTNG_ASSERT(strlen(uri1[1].subdir) == 0);
+	LTTNG_ASSERT(strcmp(uri1[1].dst.ipv4, "127.0.0.1") == 0);
 
 	size2 = uri_parse(s_uri2, &uri2);
 
-	assert(size2 == 2);
-	assert(uri2[0].dtype == LTTNG_DST_IPV4);
-	assert(uri2[0].utype == LTTNG_URI_DST);
-	assert(uri2[0].stype == 0);
-	assert(uri2[0].port == 8989);
-	assert(strlen(uri2[0].subdir) == 0);
-	assert(strcmp(uri2[0].dst.ipv4, "127.0.0.1") == 0);
-	assert(uri2[1].dtype == LTTNG_DST_IPV4);
-	assert(uri2[1].utype == LTTNG_URI_DST);
-	assert(uri2[1].stype == 0);
-	assert(uri2[1].port == 4242);
-	assert(strlen(uri2[1].subdir) == 0);
-	assert(strcmp(uri2[1].dst.ipv4, "127.0.0.1") == 0);
+	LTTNG_ASSERT(size2 == 2);
+	LTTNG_ASSERT(uri2[0].dtype == LTTNG_DST_IPV4);
+	LTTNG_ASSERT(uri2[0].utype == LTTNG_URI_DST);
+	LTTNG_ASSERT(uri2[0].stype == 0);
+	LTTNG_ASSERT(uri2[0].port == 8989);
+	LTTNG_ASSERT(strlen(uri2[0].subdir) == 0);
+	LTTNG_ASSERT(strcmp(uri2[0].dst.ipv4, "127.0.0.1") == 0);
+	LTTNG_ASSERT(uri2[1].dtype == LTTNG_DST_IPV4);
+	LTTNG_ASSERT(uri2[1].utype == LTTNG_URI_DST);
+	LTTNG_ASSERT(uri2[1].stype == 0);
+	LTTNG_ASSERT(uri2[1].port == 4242);
+	LTTNG_ASSERT(strlen(uri2[1].subdir) == 0);
+	LTTNG_ASSERT(strcmp(uri2[1].dst.ipv4, "127.0.0.1") == 0);
 
 	res = uri_compare(uri1, uri1);
 

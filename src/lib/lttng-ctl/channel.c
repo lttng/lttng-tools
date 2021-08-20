@@ -17,7 +17,6 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/unix.h>
-#include <assert.h>
 #include "lttng-ctl-helper.h"
 #include <common/compat/poll.h>
 
@@ -92,7 +91,7 @@ enum lttng_notification_channel_message_type get_current_message_type(
 {
 	struct lttng_notification_channel_message *msg;
 
-	assert(channel->reception_payload.buffer.size >= sizeof(*msg));
+	LTTNG_ASSERT(channel->reception_payload.buffer.size >= sizeof(*msg));
 
 	msg = (struct lttng_notification_channel_message *)
 			channel->reception_payload.buffer.data;
@@ -230,7 +229,7 @@ lttng_notification_channel_get_next_notification(
 	if (channel->pending_notifications.count) {
 		struct pending_notification *pending_notification;
 
-		assert(!cds_list_empty(&channel->pending_notifications.list));
+		LTTNG_ASSERT(!cds_list_empty(&channel->pending_notifications.list));
 
 		/* Deliver one of the pending notifications. */
 		pending_notification = cds_list_first_entry(
@@ -633,7 +632,7 @@ enum lttng_notification_channel_status send_condition_command(
 		goto end;
 	}
 
-	assert(type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE ||
+	LTTNG_ASSERT(type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE ||
 		type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNSUBSCRIBE);
 
 	pthread_mutex_lock(&channel->lock);

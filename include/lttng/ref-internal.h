@@ -10,7 +10,6 @@
  *
  */
 
-#include <assert.h>
 
 typedef void (*lttng_release_func)(void *);
 
@@ -22,7 +21,7 @@ struct lttng_ref {
 static inline
 void lttng_ref_init(struct lttng_ref *ref, lttng_release_func release)
 {
-	assert(ref);
+	LTTNG_ASSERT(ref);
 	ref->count = 1;
 	ref->release = release;
 }
@@ -30,18 +29,18 @@ void lttng_ref_init(struct lttng_ref *ref, lttng_release_func release)
 static inline
 void lttng_ref_get(struct lttng_ref *ref)
 {
-	assert(ref);
+	LTTNG_ASSERT(ref);
 	ref->count++;
 	/* Overflow check. */
-	assert(ref->count);
+	LTTNG_ASSERT(ref->count);
 }
 
 static inline
 void lttng_ref_put(struct lttng_ref *ref)
 {
-	assert(ref);
+	LTTNG_ASSERT(ref);
 	/* Underflow check. */
-	assert(ref->count);
+	LTTNG_ASSERT(ref->count);
 	if (caa_unlikely((--ref->count) == 0)) {
 		ref->release(ref);
 	}

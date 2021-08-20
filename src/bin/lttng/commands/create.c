@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <ctype.h>
 #include <popt.h>
 #include <stdio.h>
@@ -89,8 +88,8 @@ static int mi_created_session(const char *session_name)
 	struct lttng_session *sessions;
 
 	/* session_name should not be null */
-	assert(session_name);
-	assert(writer);
+	LTTNG_ASSERT(session_name);
+	LTTNG_ASSERT(writer);
 
 	count = lttng_list_sessions(&sessions);
 	if (count < 0) {

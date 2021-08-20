@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -74,7 +73,7 @@ void logger_set_thread_name(const char *name, bool set_pthread_name)
 {
 	int ret;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 	URCU_TLS(logger_thread_name) = name;
 
 	if (set_pthread_name) {

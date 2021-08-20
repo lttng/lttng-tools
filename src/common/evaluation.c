@@ -14,7 +14,6 @@
 #include <common/macros.h>
 #include <common/error.h>
 #include <stdbool.h>
-#include <assert.h>
 
 LTTNG_HIDDEN
 void lttng_evaluation_init(struct lttng_evaluation *evaluation,
@@ -118,8 +117,8 @@ ssize_t lttng_evaluation_create_from_payload(
 		evaluation_size += ret;
 		break;
 	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
-		assert(condition);
-		assert(condition->type ==
+		LTTNG_ASSERT(condition);
+		LTTNG_ASSERT(condition->type ==
 				LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 		ret = lttng_evaluation_event_rule_matches_create_from_payload(
 				container_of(condition,
@@ -155,6 +154,6 @@ void lttng_evaluation_destroy(struct lttng_evaluation *evaluation)
 		return;
 	}
 
-	assert(evaluation->destroy);
+	LTTNG_ASSERT(evaluation->destroy);
 	evaluation->destroy(evaluation);
 }

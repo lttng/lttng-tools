@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/mi-lttng.h>
@@ -49,8 +48,8 @@ static struct poptOption long_options[] = {
 static int mi_print_session(char *session_name, int enabled)
 {
 	int ret;
-	assert(writer);
-	assert(session_name);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session_name);
 
 	/* Open session element */
 	ret = mi_lttng_writer_open_element(writer, config_element_session);

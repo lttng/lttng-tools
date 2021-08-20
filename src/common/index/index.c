@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -44,7 +43,7 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 	const bool acquired_reference = lttng_trace_chunk_get(chunk);
 	const char *separator;
 
-	assert(acquired_reference);
+	LTTNG_ASSERT(acquired_reference);
 
 	index_file = zmalloc(sizeof(*index_file));
 	if (!index_file) {
@@ -200,8 +199,8 @@ int lttng_index_file_write(const struct lttng_index_file *index_file,
 	ssize_t ret;
 	const size_t len = index_file->element_len;;
 
-	assert(index_file);
-	assert(element);
+	LTTNG_ASSERT(index_file);
+	LTTNG_ASSERT(element);
 
 	if (!index_file->file) {
 		goto error;
@@ -229,7 +228,7 @@ int lttng_index_file_read(const struct lttng_index_file *index_file,
 	ssize_t ret;
 	const size_t len = index_file->element_len;
 
-	assert(element);
+	LTTNG_ASSERT(element);
 
 	if (!index_file->file) {
 		goto error;

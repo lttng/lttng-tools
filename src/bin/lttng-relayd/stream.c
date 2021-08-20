@@ -216,7 +216,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	 * trace chunk.
 	 */
 	acquired_reference = lttng_trace_chunk_get(stream->trace_chunk);
-	assert(acquired_reference);
+	LTTNG_ASSERT(acquired_reference);
 	previous_chunk = stream->trace_chunk;
 
 	/*
@@ -225,12 +225,12 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	 * the orinal stream_fd will be used to copy the "extra" data
 	 * to the new file.
 	 */
-	assert(stream->file);
+	LTTNG_ASSERT(stream->file);
 	previous_stream_file = stream->file;
 	stream->file = NULL;
 
-	assert(!stream->is_metadata);
-	assert(stream->tracefile_size_current >
+	LTTNG_ASSERT(!stream->is_metadata);
+	LTTNG_ASSERT(stream->tracefile_size_current >
 			stream->pos_after_last_complete_data_index);
 	misplaced_data_size = stream->tracefile_size_current -
 			      stream->pos_after_last_complete_data_index;
@@ -242,7 +242,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 		goto end;
 	}
 
-	assert(stream->file);
+	LTTNG_ASSERT(stream->file);
 	/*
 	 * Seek the current tracefile to the position at which the rotation
 	 * should have occurred.
@@ -506,7 +506,7 @@ static int try_rotate_stream_index(struct relay_stream *stream)
 		 * In overwrite mode, the packet seq num may jump over the
 		 * rotation position.
 		 */
-		assert(LTTNG_OPTIONAL_GET(stream->received_packet_seq_num) + 1 >=
+		LTTNG_ASSERT(LTTNG_OPTIONAL_GET(stream->received_packet_seq_num) + 1 >=
 				stream->ongoing_rotation.value.packet_seq_num);
 		DBG("Rotating stream %" PRIu64 " index file",
 				stream->stream_handle);
@@ -551,7 +551,7 @@ static int stream_set_trace_chunk(struct relay_stream *stream,
 
 	lttng_trace_chunk_put(stream->trace_chunk);
 	acquired_reference = lttng_trace_chunk_get(chunk);
-	assert(acquired_reference);
+	LTTNG_ASSERT(acquired_reference);
 	stream->trace_chunk = chunk;
 
 	if (stream->file) {
@@ -726,7 +726,7 @@ static void stream_unpublish(struct relay_stream *stream)
 
 		iter.iter.node = &stream->node.node;
 		ret = lttng_ht_del(relay_streams_ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		stream->in_stream_ht = false;
 	}
 	if (stream->published) {
@@ -809,7 +809,7 @@ static void stream_release(struct urcu_ref *ref)
 void stream_put(struct relay_stream *stream)
 {
 	rcu_read_lock();
-	assert(stream->ref.refcount != 0);
+	LTTNG_ASSERT(stream->ref.refcount != 0);
 	/*
 	 * Wait until we have processed all the stream packets before
 	 * actually putting our last stream reference.
@@ -841,7 +841,7 @@ int stream_set_pending_rotation(struct relay_stream *stream,
 		const bool reference_acquired =
 				lttng_trace_chunk_get(next_trace_chunk);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 	}
 	LTTNG_OPTIONAL_SET(&stream->ongoing_rotation, rotation);
 
@@ -1132,7 +1132,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 	uint64_t data_offset;
 	struct relay_index *index;
 
-	assert(stream->trace_chunk);
+	LTTNG_ASSERT(stream->trace_chunk);
 	ASSERT_LOCKED(stream->lock);
 	/* Get data offset because we are about to update the index. */
 	data_offset = htobe64(stream->tracefile_size_current);

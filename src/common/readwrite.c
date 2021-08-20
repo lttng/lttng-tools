@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <limits.h>
 #include <unistd.h>
 
@@ -28,7 +27,7 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 	size_t i = 0;
 	ssize_t ret;
 
-	assert(buf);
+	LTTNG_ASSERT(buf);
 
 	/*
 	 * Deny a read count that can be bigger then the returned value max size.
@@ -48,7 +47,7 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 			}
 		}
 		i += ret;
-		assert(i <= count);
+		LTTNG_ASSERT(i <= count);
 	} while (count - i > 0 && ret > 0);
 	return i;
 
@@ -66,7 +65,7 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 	size_t i = 0;
 	ssize_t ret;
 
-	assert(buf);
+	LTTNG_ASSERT(buf);
 
 	/*
 	 * Deny a write count that can be bigger then the returned value max size.
@@ -86,7 +85,7 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 			}
 		}
 		i += ret;
-		assert(i <= count);
+		LTTNG_ASSERT(i <= count);
 	} while (count - i > 0 && ret > 0);
 	return i;
 

@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <ctype.h>
-#include <assert.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/mi-lttng.h>

@@ -54,7 +54,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		const bool acquired_reference = lttng_trace_chunk_get(
 				trace_chunk);
 
-		assert(acquired_reference);
+		LTTNG_ASSERT(acquired_reference);
 	}
 
 	vstream->stream_file.trace_chunk = trace_chunk;
@@ -209,7 +209,7 @@ static void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
 
 	iter.iter.node = &vstream->stream_n.node;
 	ret = lttng_ht_del(viewer_streams_ht, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 static void viewer_stream_release(struct urcu_ref *ref)
@@ -347,7 +347,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 		 * has been data written at some point, which will have set the
 		 * tail.
 		 */
-		assert(seq_tail != -1ULL);
+		LTTNG_ASSERT(seq_tail != -1ULL);
 		/*
 		 * We need to resync because we lag behind tail.
 		 */

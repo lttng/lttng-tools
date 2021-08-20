@@ -33,7 +33,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	int wait_shm_fd, ret;
 	mode_t mode;
 
-	assert(shm_path);
+	LTTNG_ASSERT(shm_path);
 
 	/* Default permissions */
 	mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
@@ -164,7 +164,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	char *wait_shm_mmap;
 	long sys_page_size;
 
-	assert(shm_path);
+	LTTNG_ASSERT(shm_path);
 
 	sys_page_size = sysconf(_SC_PAGE_SIZE);
 	if (sys_page_size < 0) {

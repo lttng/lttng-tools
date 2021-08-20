@@ -35,8 +35,8 @@ int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
 	struct ltt_ust_event *event;
 	const char *name;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct ltt_ust_event, node.node);
 	name = _key;
@@ -66,8 +66,8 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	int ev_loglevel_value;
 	int ll_match;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct ltt_ust_event, node.node);
 	key = _key;
@@ -202,8 +202,8 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 	struct lttng_ht_iter iter;
 	struct ltt_ust_ht_key key;
 
-	assert(name);
-	assert(ht);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(ht);
 
 	key.name = name;
 	key.filter = filter;
@@ -242,7 +242,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 	struct lttng_ht_iter iter;
 	uint64_t key;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG3("Trace ust agent lookup for domain %d", domain_type);
 
@@ -346,7 +346,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 {
 	struct ltt_ust_channel *luc;
 
-	assert(chan);
+	LTTNG_ASSERT(chan);
 
 	luc = zmalloc(sizeof(struct ltt_ust_channel));
 	if (luc == NULL) {
@@ -415,7 +415,7 @@ static int validate_exclusion(struct lttng_event_exclusion *exclusion)
 	size_t i;
 	int ret = 0;
 
-	assert(exclusion);
+	LTTNG_ASSERT(exclusion);
 
 	for (i = 0; i < exclusion->count; ++i) {
 		size_t j;
@@ -454,7 +454,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	struct ltt_ust_event *local_ust_event;
 	enum lttng_error_code ret = LTTNG_OK;
 
-	assert(ev);
+	LTTNG_ASSERT(ev);
 
 	if (exclusion && validate_exclusion(exclusion)) {
 		ret = LTTNG_ERR_INVALID;
@@ -651,8 +651,8 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 		}
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
-		assert(uctx->ctx.u.app_ctx.provider_name);
-		assert(uctx->ctx.u.app_ctx.ctx_name);
+		LTTNG_ASSERT(uctx->ctx.u.app_ctx.provider_name);
+		LTTNG_ASSERT(uctx->ctx.u.app_ctx.ctx_name);
 		if (strcmp(uctx->ctx.u.app_ctx.provider_name,
 				ctx->u.app_ctx.provider_name) ||
 				strcmp(uctx->ctx.u.app_ctx.ctx_name,
@@ -677,7 +677,7 @@ struct ltt_ust_context *trace_ust_create_context(
 	struct ltt_ust_context *uctx = NULL;
 	int utype;
 
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
 	if (utype < 0) {
@@ -770,7 +770,7 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 			node.node) {
 		int ret = lttng_ht_del(id_tracker->ht, &iter);
 
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		destroy_id_tracker_node(tracker_node);
 	}
 	rcu_read_unlock();
@@ -839,7 +839,7 @@ static int id_tracker_del_id(struct ust_id_tracker *id_tracker, int id)
 		goto end;
 	}
 	ret = lttng_ht_del(id_tracker->ht, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	destroy_id_tracker_node(tracker_node);
 end:
@@ -1216,7 +1216,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct ltt_ust_context *ctx;
 
-	assert(ht);
+	LTTNG_ASSERT(ht);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
@@ -1239,7 +1239,7 @@ static void destroy_contexts(struct lttng_ht *ht)
  */
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	DBG2("Trace destroy UST event %s", event->attr.name);
 	free(event->filter_expression);
@@ -1253,7 +1253,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
  */
 void trace_ust_destroy_context(struct ltt_ust_context *ctx)
 {
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	if (ctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
 		free(ctx->ctx.u.app_ctx.provider_name);
@@ -1284,12 +1284,12 @@ static void destroy_events(struct lttng_ht *events)
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(events, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		call_rcu(&node->head, destroy_event_rcu);
 	}
 	rcu_read_unlock();
@@ -1304,7 +1304,7 @@ static void destroy_events(struct lttng_ht *events)
  */
 static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 {
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	DBG2("Trace destroy UST channel %s", channel->name);
 
@@ -1343,12 +1343,12 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(ht);
-	assert(channel);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(channel);
 
 	iter.iter.node = &channel->node.node;
 	ret = lttng_ht_del(ht, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 /*
@@ -1359,7 +1359,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
-	assert(channels);
+	LTTNG_ASSERT(channels);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
@@ -1379,7 +1379,7 @@ static void destroy_channels(struct lttng_ht *channels)
  */
 static void destroy_domain_global(struct ltt_ust_domain_global *dom)
 {
-	assert(dom);
+	LTTNG_ASSERT(dom);
 
 	destroy_channels(dom->channels);
 }
@@ -1396,7 +1396,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	struct buffer_reg_uid *reg, *sreg;
 	struct lttng_ht_iter iter;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG2("Trace UST destroy session %" PRIu64, session->id);
 
@@ -1407,7 +1407,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	cds_lfht_for_each_entry(session->agents->ht, &iter.iter, agt, node.node) {
 		int ret = lttng_ht_del(session->agents, &iter);
 
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		agent_destroy(agt);
 	}
 	rcu_read_unlock();

@@ -221,7 +221,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 			DBG3(fmt, ## args);	\
 			break;			\
 		default:			\
-			assert(0);		\
+			abort();		\
 		}				\
 	} while(0);
 

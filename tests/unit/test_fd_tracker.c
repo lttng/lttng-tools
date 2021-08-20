@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <assert.h>
 #include <string.h>
 #include <stdarg.h>
 #include <tap/tap.h>
@@ -72,15 +71,15 @@ void get_temporary_directories(char **_test_directory, char **_unlink_directory)
 	if (!output_dir) {
 		diag("Failed to create temporary path of the form %s",
 				TMP_DIR_PATTERN);
-		assert(0);
+		abort();
 	}
 
 	*_test_directory = strdup(output_dir);
-	assert(*_test_directory);
+	LTTNG_ASSERT(*_test_directory);
 	ret = asprintf(_unlink_directory, "%s/%s", output_dir,
 			TEST_UNLINK_DIRECTORY_NAME);
 	if (ret < 0) {
-		assert(0);
+		abort();
 	}
 }
 
@@ -151,7 +150,7 @@ void track_std_fds(struct fd_tracker *tracker)
 
 		ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 				&files[i].name, 1, noop_open, &files[i].fd);
-		assert(out_fd == files[i].fd);
+		LTTNG_ASSERT(out_fd == files[i].fd);
 
 		ok(ret == 0, "Track unsuspendable fd %d (%s)", files[i].fd,
 				files[i].name);
@@ -237,7 +236,7 @@ void test_unsuspendable_cb_return(void)
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
 	tracker = fd_tracker_create(test_directory, TRACKER_FD_LIMIT);
-	assert(tracker);
+	LTTNG_ASSERT(tracker);
 
 	/* The error_open callback should fail and return 'expected_error'. */
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
@@ -252,14 +251,14 @@ void test_unsuspendable_cb_return(void)
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 			NULL, 1, noop_open, &stdout_fd);
 	ok(out_fd == stdout_fd, "fd_tracker_open_unsuspendable_fd() sets the output fd parameter to the newly-tracked fd's value");
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			&stdout_fd, 1, error_close, &expected_error);
 	ok(ret == expected_error, "fd_tracker_close_unsuspendable_fd() forwards the user callback's error code");
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			&stdout_fd, 1, noop_close, &expected_error);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
@@ -282,18 +281,18 @@ void test_unsuspendable_duplicate(void)
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
 	tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
-	assert(tracker);
+	LTTNG_ASSERT(tracker);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 			NULL, 1, noop_open, &stdout_fd);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 			NULL, 1, noop_open, &stdout_fd);
 	ok(ret == -EEXIST, "EEXIST reported on open of an already tracked file descriptor");
 
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			&stdout_fd, 1, noop_close, NULL);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
@@ -349,10 +348,10 @@ void test_unsuspendable_limit(void)
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
 	/* This test assumes TRACKER_FD_LIMIT is a multiple of 2. */
-	assert((TRACKER_FD_LIMIT % 2 == 0) && TRACKER_FD_LIMIT);
+	LTTNG_ASSERT((TRACKER_FD_LIMIT % 2 == 0) && TRACKER_FD_LIMIT);
 
 	tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
-	assert(tracker);
+	LTTNG_ASSERT(tracker);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, fds,
 			NULL, TRACKER_FD_LIMIT, open_pipes, NULL);
@@ -365,7 +364,7 @@ void test_unsuspendable_limit(void)
 
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			fds, TRACKER_FD_LIMIT, close_pipes, NULL);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
@@ -393,15 +392,15 @@ void test_unsuspendable_close_untracked(void)
 	}
 
 	ret = pipe(unknown_fds);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	ret = close(unknown_fds[0]);
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 	ret = close(unknown_fds[1]);
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 			NULL, 1, noop_open, &stdout_fd);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			unknown_fds, 1, noop_close, NULL);
@@ -409,7 +408,7 @@ void test_unsuspendable_close_untracked(void)
 
 	ret = fd_tracker_close_unsuspendable_fd(tracker,
 			&stdout_fd, 1, noop_close, NULL);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
@@ -435,7 +434,7 @@ static int open_files(struct fd_tracker *tracker,
 		mode_t mode = S_IWUSR | S_IRUSR;
 
 		p_ret = asprintf(&file_path, "file-%u", i);
-		assert(p_ret >= 0);
+		LTTNG_ASSERT(p_ret >= 0);
 		file_paths[i] = file_path;
 
 		handle = fd_tracker_open_fs_handle(tracker, directory, file_path,
@@ -523,7 +522,7 @@ void test_suspendable_limit(void)
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
-	assert(dir_handle);
+	LTTNG_ASSERT(dir_handle);
 	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
 	ret = open_files(tracker, dir_handle, files_to_create, handles,
@@ -568,7 +567,7 @@ void test_mixed_limit(void)
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
-	assert(dir_handle);
+	LTTNG_ASSERT(dir_handle);
 	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
 	ret = open_files(tracker, dir_handle, files_to_create, handles,
@@ -641,7 +640,7 @@ void test_suspendable_restore(void)
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
-	assert(dir_handle);
+	LTTNG_ASSERT(dir_handle);
 	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
 	ret = open_files(tracker, dir_handle, files_to_create, handles,
@@ -701,9 +700,9 @@ skip_write:
 
 		fd = lttng_directory_handle_open_file(
 				dir_handle, path, O_RDONLY, 0);
-		assert(fd >= 0);
+		LTTNG_ASSERT(fd >= 0);
 		ret = fstat(fd, &fd_stat);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		if (fd_stat.st_size != sizeof(file_contents)) {
 			diag("Content size of file %s doesn't match, got %" PRId64 ", expected %zu",
 					path, (int64_t) fd_stat.st_size,
@@ -767,10 +766,10 @@ void test_unlink(void)
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 	ret = asprintf(&unlinked_file_zero, "%s/%u", unlinked_files_directory,
 			0);
-	assert(ret > 0);
+	LTTNG_ASSERT(ret > 0);
 	ret = asprintf(&unlinked_file_one, "%s/%u", unlinked_files_directory,
 			1);
-	assert(ret > 0);
+	LTTNG_ASSERT(ret > 0);
 
 	tracker = fd_tracker_create(unlinked_files_directory, 1);
 	if (!tracker) {
@@ -778,7 +777,7 @@ void test_unlink(void)
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
-	assert(dir_handle);
+	LTTNG_ASSERT(dir_handle);
 
 	/* Open two handles to the same file. */
 	ret = open_same_file(tracker, dir_handle, file_name, handles_to_open,
@@ -838,7 +837,7 @@ void test_unlink(void)
 	ret = open_same_file(tracker, dir_handle, file_name, 1, &new_handle);
 	ok(!ret, "Successfully opened a new handle to previously unlinked file %s/%s",
 			test_directory, file_name);
-	assert(new_handle);
+	LTTNG_ASSERT(new_handle);
 
 	/*
 	 * Unlinking the new handle should cause the file to be renamed
@@ -892,7 +891,7 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 
 	unknown_fds_count = fd_count() - STDIO_FD_COUNT;
-	assert(unknown_fds_count >= 0);
+	LTTNG_ASSERT(unknown_fds_count >= 0);
 
 	diag("Unsuspendable - basic");
 	test_unsuspendable_basic();

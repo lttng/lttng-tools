@@ -169,7 +169,7 @@ static const char *get_action_name(const struct lttng_action *action)
 {
 	const enum lttng_action_type action_type = lttng_action_get_type(action);
 
-	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
+	LTTNG_ASSERT(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
 
 	return lttng_action_type_string(action_type);
 }
@@ -676,7 +676,7 @@ static int action_executor_generic_handler(struct action_executor *executor,
 	struct lttng_action *action = item->action;
 	const enum lttng_action_type action_type = lttng_action_get_type(action);
 
-	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
+	LTTNG_ASSERT(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
 
 	lttng_action_increase_execution_request_count(action);
 	if (!lttng_action_should_execute(action)) {
@@ -737,7 +737,7 @@ static void *action_executor_thread(void *_data)
 {
 	struct action_executor *executor = _data;
 
-	assert(executor);
+	LTTNG_ASSERT(executor);
 
 	health_register(the_health_sessiond,
 			HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR);
@@ -785,7 +785,7 @@ static void *action_executor_thread(void *_data)
 
 			trigger_status = lttng_trigger_get_owner_uid(
 					work_item->trigger, &trigger_owner_uid);
-			assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+			LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64 ", trigger name = '%s', trigger owner uid = %d",
 					work_item->id, trigger_name,
@@ -837,7 +837,7 @@ static void clean_up_action_executor_thread(void *_data)
 {
 	struct action_executor *executor = _data;
 
-	assert(cds_list_empty(&executor->work.list));
+	LTTNG_ASSERT(cds_list_empty(&executor->work.list));
 
 	pthread_mutex_destroy(&executor->work.lock);
 	pthread_cond_destroy(&executor->work.cond);
@@ -906,7 +906,7 @@ enum action_executor_status action_executor_enqueue_trigger(
 	struct action_work_item *work_item;
 	bool signal = false;
 
-	assert(trigger);
+	LTTNG_ASSERT(trigger);
 
 	pthread_mutex_lock(&executor->work.lock);
 	/* Check for queue overflow. */
@@ -931,7 +931,7 @@ enum action_executor_status action_executor_enqueue_trigger(
 		const bool reference_acquired =
 				notification_client_list_get(client_list);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 	}
 
 	*work_item = (typeof(*work_item)){
@@ -994,21 +994,21 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 		},
 	};
 
-	assert(action);
-	assert(subitems);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(subitems);
 
 	if (type == LTTNG_ACTION_TYPE_LIST) {
 		unsigned int count, i;
 
 		status = lttng_action_list_get_count(action, &count);
-		assert(status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
 			struct lttng_action *inner_action = NULL;
 
 			inner_action = lttng_action_list_borrow_mutable_at_index(
 					action, i);
-			assert(inner_action);
+			LTTNG_ASSERT(inner_action);
 			ret = add_action_to_subitem_array(
 					inner_action, subitems);
 			if (ret) {
@@ -1030,22 +1030,22 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	case LTTNG_ACTION_TYPE_START_SESSION:
 		status = lttng_action_start_session_get_session_name(
 				action, &session_name);
-		assert(status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
 		status = lttng_action_stop_session_get_session_name(
 				action, &session_name);
-		assert(status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
 		status = lttng_action_rotate_session_get_session_name(
 				action, &session_name);
-		assert(status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
 		status = lttng_action_snapshot_session_get_session_name(
 				action, &session_name);
-		assert(status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
 	case LTTNG_ACTION_TYPE_UNKNOWN:
@@ -1107,7 +1107,7 @@ static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
 	struct lttng_action *action;
 
 	action = lttng_trigger_get_action(trigger);
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return add_action_to_subitem_array(action, subitems);
 }

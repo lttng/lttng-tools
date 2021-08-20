@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -41,7 +40,7 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 	 * have put back their ref since the've been closed by the
 	 * control side.
 	 */
-	assert(cds_list_empty(&trace->stream_list));
+	LTTNG_ASSERT(cds_list_empty(&trace->stream_list));
 	session_put(trace->session);
 	trace->session = NULL;
 	free(trace->path);
@@ -58,7 +57,7 @@ static void ctf_trace_release(struct urcu_ref *ref)
 
 	iter.iter.node = &trace->node.node;
 	ret = lttng_ht_del(trace->session->ctf_traces_ht, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	ctf_trace_destroy(trace);
 }
 

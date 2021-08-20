@@ -437,10 +437,10 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		const char *field_name;
 
 		load_expr_op = load_expr_op->next;
-		assert(load_expr_op);
-		assert(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
+		LTTNG_ASSERT(load_expr_op);
+		LTTNG_ASSERT(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
 		field_name = load_expr_op->u.symbol;
-		assert(field_name);
+		LTTNG_ASSERT(field_name);
 
 		event_expr = load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
 				lttng_event_expr_event_payload_field_create(field_name) :
@@ -462,10 +462,10 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		const char *field_name;
 
 		load_expr_op = load_expr_op->next;
-		assert(load_expr_op);
-		assert(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
+		LTTNG_ASSERT(load_expr_op);
+		LTTNG_ASSERT(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
 		field_name = load_expr_op->u.symbol;
-		assert(field_name);
+		LTTNG_ASSERT(field_name);
 
 		/*
 		 * The field name needs to be of the form PROVIDER:TYPE. We
@@ -560,7 +560,7 @@ struct lttng_event_expr *ir_op_load_to_event_expr(
 {
 	struct lttng_event_expr *event_expr = NULL;
 
-	assert(ir->op == IR_OP_LOAD);
+	LTTNG_ASSERT(ir->op == IR_OP_LOAD);
 
 	switch (ir->data_type) {
 	case IR_DATA_EXPRESSION:
@@ -609,7 +609,7 @@ struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
 {
 	struct lttng_event_expr *event_expr = NULL;
 
-	assert(ir->op == IR_OP_ROOT);
+	LTTNG_ASSERT(ir->op == IR_OP_ROOT);
 	ir = ir->u.root.child;
 
 	switch (ir->op) {
@@ -706,7 +706,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			break;
 		}
 
-		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
 
 		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
 			const struct argpar_item_opt *item_opt =
@@ -909,7 +909,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	 * Update *argc and *argv so our caller can keep parsing what follows.
 	 */
 	consumed_args = argpar_state_get_ingested_orig_args(state);
-	assert(consumed_args >= 0);
+	LTTNG_ASSERT(consumed_args >= 0);
 	*argc -= consumed_args;
 	*argv += consumed_args;
 
@@ -1238,7 +1238,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		assert(kernel_probe_location);
+		LTTNG_ASSERT(kernel_probe_location);
 		res.er = lttng_event_rule_kernel_kprobe_create(kernel_probe_location);
 		if (!res.er) {
 			ERR("Failed to create kprobe event rule.");
@@ -1384,8 +1384,8 @@ struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
 				lttng_dynamic_array_get_element(
 					&res.capture_descriptors.array, i);
 
-		assert(expr);
-		assert(*expr);
+		LTTNG_ASSERT(expr);
+		LTTNG_ASSERT(*expr);
 		status = lttng_condition_event_rule_matches_append_capture_descriptor(
 				c, *expr);
 		if (status != LTTNG_CONDITION_STATUS_OK) {
@@ -1466,7 +1466,7 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 	char *policy_type_str;
 	char *policy_value_str;
 
-	assert(policy_str);
+	LTTNG_ASSERT(policy_str);
 	lttng_dynamic_pointer_array_init(&tokens, NULL);
 
 	/* Rate policy fields are separated by ':'. */
@@ -1564,7 +1564,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 			break;
 		}
 
-		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
 
 		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
 			const struct argpar_item_opt *item_opt =
@@ -1585,7 +1585,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 		} else {
 			const struct argpar_item_non_opt *item_non_opt;
 
-			assert(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
+			LTTNG_ASSERT(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
 
 			item_non_opt = (const struct argpar_item_non_opt *) item;
 
@@ -1652,8 +1652,8 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	enum lttng_action_status action_status;
 	struct lttng_rate_policy *policy = NULL;
 
-	assert(set_session_name_cb);
-	assert(set_rate_policy_cb);
+	LTTNG_ASSERT(set_session_name_cb);
+	LTTNG_ASSERT(set_rate_policy_cb);
 
 	const struct argpar_opt_descr rate_policy_opt_descrs[] = {
 		{ OPT_RATE_POLICY, '\0', "rate-policy", true },
@@ -1682,7 +1682,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 			break;
 		}
 
-		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
 		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
 			const struct argpar_item_opt *item_opt =
 					(const struct argpar_item_opt *) item;
@@ -1841,7 +1841,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 			break;
 		}
 
-		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
 
 		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
 			const struct argpar_item_opt *item_opt =
@@ -1898,7 +1898,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		} else {
 			const struct argpar_item_non_opt *item_non_opt;
 
-			assert(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
+			LTTNG_ASSERT(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
 
 			item_non_opt = (const struct argpar_item_non_opt *) item;
 
@@ -2242,7 +2242,7 @@ int cmd_add_trigger(int argc, const char **argv)
 			break;
 		}
 
-		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
 
 		if (argpar_item->type == ARGPAR_ITEM_TYPE_NON_OPT) {
 			const struct argpar_item_non_opt *item_non_opt =

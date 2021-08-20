@@ -14,7 +14,6 @@
 #include <lttng/constant.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-#include <assert.h>
 #include <stdio.h>
 
 static char *pause_pipe_path;
@@ -67,9 +66,9 @@ int __testpoint_consumerd_thread_data(void)
 	 * when launching the session daemon.
 	 */
 	data_consumption_state = dlsym(NULL, "data_consumption_paused");
-	assert(data_consumption_state);
+	LTTNG_ASSERT(data_consumption_state);
 	lttng_consumer_get_type = dlsym(NULL, "lttng_consumer_get_type");
-	assert(lttng_consumer_get_type);
+	LTTNG_ASSERT(lttng_consumer_get_type);
 
 	switch (lttng_consumer_get_type()) {
 	case LTTNG_CONSUMER_KERNEL:

@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,7 +91,7 @@ int lttcomm_create_sock(struct lttcomm_sock *sock)
 {
 	int ret, _sock_type, _sock_proto, domain;
 
-	assert(sock);
+	LTTNG_ASSERT(sock);
 
 	domain = sock->sockaddr.type;
 	if (domain != LTTCOMM_INET && domain != LTTCOMM_INET6) {
@@ -158,7 +157,7 @@ struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src)
 	struct lttcomm_sock *sock;
 
 	/* Safety net */
-	assert(src);
+	LTTNG_ASSERT(src);
 
 	sock = lttcomm_alloc_sock(src->proto);
 	if (sock == NULL) {
@@ -181,8 +180,8 @@ LTTNG_HIDDEN
 void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 {
 	/* Safety net */
-	assert(dst);
-	assert(src);
+	LTTNG_ASSERT(dst);
+	LTTNG_ASSERT(src);
 
 	dst->proto = src->proto;
 	dst->fd = src->fd;
@@ -200,9 +199,9 @@ int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 {
 	int ret;
 
-	assert(sockaddr);
-	assert(ip);
-	assert(port > 0 && port <= 65535);
+	LTTNG_ASSERT(sockaddr);
+	LTTNG_ASSERT(ip);
+	LTTNG_ASSERT(port > 0 && port <= 65535);
 
 	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
 
@@ -231,9 +230,9 @@ int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 {
 	int ret;
 
-	assert(sockaddr);
-	assert(ip);
-	assert(port > 0 && port <= 65535);
+	LTTNG_ASSERT(sockaddr);
+	LTTNG_ASSERT(ip);
+	LTTNG_ASSERT(port > 0 && port <= 65535);
 
 	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
 
@@ -262,7 +261,7 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 	struct lttcomm_sock *sock = NULL;
 
 	/* Safety net */
-	assert(uri);
+	LTTNG_ASSERT(uri);
 
 	/* Check URI protocol */
 	if (uri->proto == LTTNG_TCP) {
@@ -327,7 +326,7 @@ struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
 	struct lttcomm_sock *tmp_sock = NULL;
 	struct lttcomm_relayd_sock *rsock = NULL;
 
-	assert(uri);
+	LTTNG_ASSERT(uri);
 
 	rsock = zmalloc(sizeof(*rsock));
 	if (!rsock) {
@@ -407,11 +406,11 @@ int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
 LTTNG_HIDDEN
 int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 {
-	assert(sock);
-	assert(port);
-	assert(sock->sockaddr.type == LTTCOMM_INET ||
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(port);
+	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET ||
 			sock->sockaddr.type == LTTCOMM_INET6);
-	assert(sock->proto == LTTCOMM_SOCK_TCP ||
+	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP ||
 			sock->proto == LTTCOMM_SOCK_UDP);
 
 	switch (sock->sockaddr.type) {
@@ -431,10 +430,10 @@ int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 LTTNG_HIDDEN
 int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
 {
-	assert(sock);
-	assert(sock->sockaddr.type == LTTCOMM_INET ||
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET ||
 			sock->sockaddr.type == LTTCOMM_INET6);
-	assert(sock->proto == LTTCOMM_SOCK_TCP ||
+	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP ||
 			sock->proto == LTTCOMM_SOCK_UDP);
 
 	switch (sock->sockaddr.type) {

@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/credentials.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -122,8 +121,8 @@ static bool lttng_event_rule_kernel_syscall_is_equal(const struct lttng_event_ru
 		goto end;
 	}
 
-	assert(a->pattern);
-	assert(b->pattern);
+	LTTNG_ASSERT(a->pattern);
+	LTTNG_ASSERT(b->pattern);
 	if (strcmp(a->pattern, b->pattern)) {
 		goto end;
 	}
@@ -153,7 +152,7 @@ static enum lttng_error_code lttng_event_rule_kernel_syscall_generate_filter_byt
 	const char *filter;
 	struct lttng_bytecode *bytecode = NULL;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 
 	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
 
@@ -202,7 +201,7 @@ static const char *lttng_event_rule_kernel_syscall_get_internal_filter(
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
 
 	return syscall->internal_filter.filter;
@@ -214,7 +213,7 @@ lttng_event_rule_kernel_syscall_get_internal_filter_bytecode(
 {
 	struct lttng_event_rule_kernel_syscall *syscall;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
 
 	return syscall->internal_filter.bytecode;
@@ -260,17 +259,17 @@ static enum lttng_error_code lttng_event_rule_kernel_syscall_mi_serialize(
 	const char *name_pattern = NULL;
 	const char *site_type_str = NULL;
 
-	assert(rule);
-	assert(writer);
-	assert(IS_SYSCALL_EVENT_RULE(rule));
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_SYSCALL_EVENT_RULE(rule));
 
 	status = lttng_event_rule_kernel_syscall_get_name_pattern(
 			rule, &name_pattern);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	assert(name_pattern);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(name_pattern);
 
 	status = lttng_event_rule_kernel_syscall_get_filter(rule, &filter);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
 			status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	site_type = lttng_event_rule_kernel_syscall_get_emission_site(rule);

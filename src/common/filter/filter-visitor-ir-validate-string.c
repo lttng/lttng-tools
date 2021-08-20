@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 
 #include <common/macros.h>
@@ -67,7 +66,7 @@ int validate_string(struct ir_op *node)
 		if (node->data_type == IR_DATA_STRING) {
 			const char *str;
 
-			assert(node->u.load.u.string.value);
+			LTTNG_ASSERT(node->u.load.u.string.value);
 			str = node->u.load.u.string.value;
 
 			for (;;) {

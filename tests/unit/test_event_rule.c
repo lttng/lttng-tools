@@ -7,7 +7,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,7 +127,7 @@ void test_event_rule_user_tracepoint(void)
 	lttng_payload_init(&payload);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	tracepoint = lttng_event_rule_user_tracepoint_create();
 	ok(tracepoint, "user tracepoint object.");
@@ -268,7 +267,7 @@ void test_event_rule_jul_logging(void)
 	lttng_payload_init(&payload);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	jul_logging = lttng_event_rule_jul_logging_create();
 	ok(jul_logging, "jul_logging object.");
@@ -333,7 +332,7 @@ void test_event_rule_log4j_logging(void)
 	lttng_payload_init(&payload);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	log4j_logging = lttng_event_rule_log4j_logging_create();
 	ok(log4j_logging, "log4j_logging object.");
@@ -398,7 +397,7 @@ void test_event_rule_python_logging(void)
 	lttng_payload_init(&payload);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	python_logging = lttng_event_rule_python_logging_create();
 	ok(python_logging, "python_logging object.");
@@ -581,8 +580,8 @@ static void test_event_rule_kernel_probe(void)
 
 	address_location = lttng_kernel_probe_location_address_create(50);
 	symbol_location = lttng_kernel_probe_location_symbol_create("une_bonne", 50);
-	assert(address_location);
-	assert(symbol_location);
+	LTTNG_ASSERT(address_location);
+	LTTNG_ASSERT(symbol_location);
 
 	test_event_rule_kernel_probe_by_location(address_location);
 	test_event_rule_kernel_probe_by_location(symbol_location);
@@ -602,14 +601,14 @@ static void test_set_event_rule_log_level_rules(
 
 	log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(
 			log_level);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	*as_severe_status = set_log_level(
 			event_rule, log_level_rule);
 	lttng_log_level_rule_destroy(log_level_rule);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(log_level);
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	*exactly_status = set_log_level(
 			event_rule, log_level_rule);
@@ -636,7 +635,7 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 	diag("Test %s event rule + log level rule", event_rule_type_str);
 
 	rule = create_event_rule();
-	assert(rule);
+	LTTNG_ASSERT(rule);
 
 	for (i = 0; i < tagged_log_level_values_count; i++) {
 		const int tagged_log_level_value = tagged_log_level_values[i];

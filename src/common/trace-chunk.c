@@ -182,7 +182,7 @@ struct fs_handle *fs_handle_untracked_create(
 	bool reference_acquired;
 	char *path_copy = strdup(path);
 
-	assert(fd >= 0);
+	LTTNG_ASSERT(fd >= 0);
 	if (!path_copy) {
 		PERROR("Failed to copy file path while creating untracked filesystem handle");
 		goto end;
@@ -203,7 +203,7 @@ struct fs_handle *fs_handle_untracked_create(
 
 	handle->fd = fd;
 	reference_acquired = lttng_directory_handle_get(directory_handle);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 	handle->location.directory_handle = directory_handle;
 	/* Ownership is transferred. */
 	handle->location.path = path_copy;
@@ -467,9 +467,9 @@ LTTNG_HIDDEN
 void lttng_trace_chunk_set_fd_tracker(struct lttng_trace_chunk *chunk,
 		struct fd_tracker *fd_tracker)
 {
-	assert(!chunk->session_output_directory);
-	assert(!chunk->chunk_directory);
-	assert(lttng_dynamic_pointer_array_get_count(&chunk->files) == 0);
+	LTTNG_ASSERT(!chunk->session_output_directory);
+	LTTNG_ASSERT(!chunk->chunk_directory);
+	LTTNG_ASSERT(lttng_dynamic_pointer_array_get_count(&chunk->files) == 0);
 	chunk->fd_tracker = fd_tracker;
 }
 
@@ -522,7 +522,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_copy(
 		const bool reference_acquired = lttng_directory_handle_get(
 				source_chunk->session_output_directory);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 		new_chunk->session_output_directory =
 				source_chunk->session_output_directory;
 	}
@@ -530,7 +530,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_copy(
 		const bool reference_acquired = lttng_directory_handle_get(
 				source_chunk->chunk_directory);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 		new_chunk->chunk_directory = source_chunk->chunk_directory;
 	}
 	new_chunk->close_command = source_chunk->close_command;
@@ -880,7 +880,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		const bool reference_acquired = lttng_directory_handle_get(
 				chunk->session_output_directory);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 		rename_directory = chunk->session_output_directory;
 
 		/* Move toplevel directories. */
@@ -1080,14 +1080,14 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 		reference_acquired = lttng_directory_handle_get(
 				session_output_directory);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 		chunk_directory_handle = session_output_directory;
 	}
 	chunk->chunk_directory = chunk_directory_handle;
 	chunk_directory_handle = NULL;
 	reference_acquired = lttng_directory_handle_get(
 			session_output_directory);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 	chunk->session_output_directory = session_output_directory;
 	LTTNG_OPTIONAL_SET(&chunk->mode, TRACE_CHUNK_MODE_OWNER);
 end:
@@ -1114,7 +1114,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_user(
 		goto end;
 	}
 	reference_acquired = lttng_directory_handle_get(chunk_directory);
-	assert(reference_acquired);
+	LTTNG_ASSERT(reference_acquired);
 	chunk->chunk_directory = chunk_directory;
 	LTTNG_OPTIONAL_SET(&chunk->mode, TRACE_CHUNK_MODE_USER);
 end:
@@ -1139,7 +1139,7 @@ lttng_trace_chunk_get_session_output_directory_handle(
 		const bool reference_acquired = lttng_directory_handle_get(
 				chunk->session_output_directory);
 
-		assert(reference_acquired);
+		LTTNG_ASSERT(reference_acquired);
 		*handle = chunk->session_output_directory;
 	}
 end:
@@ -1346,7 +1346,7 @@ void lttng_trace_chunk_remove_file(
 	}
 	ret = lttng_dynamic_pointer_array_remove_pointer(
 			&chunk->files, index);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 static
@@ -1383,7 +1383,7 @@ enum lttng_trace_chunk_status _lttng_trace_chunk_open_fs_handle_locked(
 		goto end;
 	}
 	if (chunk->fd_tracker) {
-		assert(chunk->credentials.value.use_current_user);
+		LTTNG_ASSERT(chunk->credentials.value.use_current_user);
 		*out_handle = fd_tracker_open_fs_handle(chunk->fd_tracker,
 				chunk->chunk_directory, file_path, flags, &mode);
 		ret = *out_handle ? 0 : -1;
@@ -1452,7 +1452,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 	 * Using this method is never valid when an fd_tracker is being
 	 * used since the resulting file descriptor would not be tracked.
 	 */
-	assert(!chunk->fd_tracker);
+	LTTNG_ASSERT(!chunk->fd_tracker);
 	status = _lttng_trace_chunk_open_fs_handle_locked(chunk, file_path,
 			flags, mode, &fs_handle, expect_no_file);
 	pthread_mutex_unlock(&chunk->lock);
@@ -1571,9 +1571,9 @@ int lttng_trace_chunk_move_to_completed_post_release(
 		goto end;
 	}
 
-	assert(trace_chunk->mode.value == TRACE_CHUNK_MODE_OWNER);
-	assert(!trace_chunk->name_overridden);
-	assert(trace_chunk->path);
+	LTTNG_ASSERT(trace_chunk->mode.value == TRACE_CHUNK_MODE_OWNER);
+	LTTNG_ASSERT(!trace_chunk->name_overridden);
+	LTTNG_ASSERT(trace_chunk->path);
 
 	archived_chunk_name = generate_chunk_name(chunk_id, creation_timestamp,
 			&close_timestamp);
@@ -1695,8 +1695,8 @@ int lttng_trace_chunk_delete_post_release_owner(
 
 	DBG("Trace chunk \"delete\" close command post-release (Owner)");
 
-	assert(trace_chunk->session_output_directory);
-	assert(trace_chunk->chunk_directory);
+	LTTNG_ASSERT(trace_chunk->session_output_directory);
+	LTTNG_ASSERT(trace_chunk->chunk_directory);
 
 	/* Remove empty directories. */
 	count = lttng_dynamic_pointer_array_get_count(
@@ -1917,7 +1917,7 @@ void lttng_trace_chunk_put(struct lttng_trace_chunk *chunk)
 	if (!chunk) {
 		return;
 	}
-	assert(chunk->ref.refcount);
+	LTTNG_ASSERT(chunk->ref.refcount);
 	urcu_ref_put(&chunk->ref, lttng_trace_chunk_release);
 }
 
@@ -1952,7 +1952,7 @@ void lttng_trace_chunk_registry_destroy(
 	}
 	if (registry->ht) {
 		int ret = cds_lfht_destroy(registry->ht, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 	free(registry);
 }

@@ -8,7 +8,6 @@
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
-#include <assert.h>
 
 LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_init(
@@ -31,7 +30,7 @@ struct lttng_buffer_view lttng_buffer_view_from_view(
 {
 	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
 
-	assert(src);
+	LTTNG_ASSERT(src);
 
 	if (offset > src->size) {
 		ERR("Attempt to create buffer view from another view with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",
@@ -58,7 +57,7 @@ struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 {
 	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
 
-	assert(src);
+	LTTNG_ASSERT(src);
 
 	if (offset > src->size) {
 		ERR("Attempt to create buffer view from a dynamic buffer with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",

@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -63,7 +62,7 @@ lttng_action_snapshot_session_internal_get_rate_policy(
 static struct lttng_action_snapshot_session *
 action_snapshot_session_from_action(struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(
 			action, struct lttng_action_snapshot_session, parent);
@@ -72,7 +71,7 @@ action_snapshot_session_from_action(struct lttng_action *action)
 static const struct lttng_action_snapshot_session *
 action_snapshot_session_from_action_const(const struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(
 			action, struct lttng_action_snapshot_session, parent);
@@ -115,8 +114,8 @@ static bool lttng_action_snapshot_session_is_equal(
 	b = action_snapshot_session_from_action_const(_b);
 
 	/* Action is not valid if this is not true. */
-	assert(a->session_name);
-	assert(b->session_name);
+	LTTNG_ASSERT(a->session_name);
+	LTTNG_ASSERT(b->session_name);
 	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
@@ -146,8 +145,8 @@ static int lttng_action_snapshot_session_serialize(
 	int ret;
 	size_t size_before_comm;
 
-	assert(action);
-	assert(payload);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(payload);
 
 	size_before_comm = payload->buffer.size;
 
@@ -162,7 +161,7 @@ static int lttng_action_snapshot_session_serialize(
 		goto end;
 	}
 
-	assert(action_snapshot_session->session_name);
+	LTTNG_ASSERT(action_snapshot_session->session_name);
 	DBG("Serializing snapshot session action: session-name: %s",
 			action_snapshot_session->session_name);
 
@@ -384,17 +383,17 @@ static enum lttng_error_code lttng_action_snapshot_session_mi_serialize(
 	const struct lttng_snapshot_output *output = NULL;
 	const struct lttng_rate_policy *policy = NULL;
 
-	assert(action);
-	assert(IS_SNAPSHOT_SESSION_ACTION(action));
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(IS_SNAPSHOT_SESSION_ACTION(action));
 
 	status = lttng_action_snapshot_session_get_session_name(
 			action, &session_name);
-	assert(status == LTTNG_ACTION_STATUS_OK);
-	assert(session_name != NULL);
+	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(session_name != NULL);
 
 	status = lttng_action_snapshot_session_get_rate_policy(action, &policy);
-	assert(status == LTTNG_ACTION_STATUS_OK);
-	assert(policy != NULL);
+	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(policy != NULL);
 
 	/* Open action snapshot session element. */
 	ret = mi_lttng_writer_open_element(
@@ -413,7 +412,7 @@ static enum lttng_error_code lttng_action_snapshot_session_mi_serialize(
 	/* Output if any. */
 	status = lttng_action_snapshot_session_get_output(action, &output);
 	if (status == LTTNG_ACTION_STATUS_OK) {
-		assert(output != NULL);
+		LTTNG_ASSERT(output != NULL);
 		ret_code = lttng_snapshot_output_mi_serialize(output, writer);
 		if (ret_code != LTTNG_OK) {
 			goto end;

@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <common/mi-lttng.h>
 #include <common/time.h>
@@ -426,7 +425,7 @@ static void print_events(struct lttng_event *event)
 		/* Fall-through. */
 	default:
 		/* We should never have "all" events in list. */
-		assert(0);
+		abort();
 		break;
 	}
 

@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <arpa/inet.h>
 #include <common/compat/netdb.h>
 #include <stdlib.h>
@@ -98,8 +97,8 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 	unsigned char buf[sizeof(struct in6_addr)];
 	struct hostent *record;
 
-	assert(addr);
-	assert(dst);
+	LTTNG_ASSERT(addr);
+	LTTNG_ASSERT(dst);
 
 	memset(dst, 0, size);
 
@@ -183,8 +182,8 @@ static int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
 {
 	int ret;
 
-	assert(ctrl);
-	assert(data);
+	LTTNG_ASSERT(ctrl);
+	LTTNG_ASSERT(data);
 
 	switch (ctrl->dtype) {
 	case LTTNG_DST_IPV4:
@@ -211,8 +210,8 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 	const char *addr;
 	char proto[5], port[7];
 
-	assert(uri);
-	assert(dst);
+	LTTNG_ASSERT(uri);
+	LTTNG_ASSERT(dst);
 
 	if (uri->dtype == LTTNG_DST_PATH) {
 		ipver = 0;
@@ -514,7 +513,7 @@ end:
 	free(addr_f);
 
 	*uris = tmp_uris;
-	assert(size == 1 || size == 2);
+	LTTNG_ASSERT(size == 1 || size == 2);
 	return size;
 
 free_error:
@@ -579,7 +578,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		}
 
 		/* 1 and 2 are the only expected values on success. */
-		assert(ctrl_uri_count == 1 || ctrl_uri_count == 2);
+		LTTNG_ASSERT(ctrl_uri_count == 1 || ctrl_uri_count == 2);
 
 		/* At this point, we know there is at least one URI in the array */
 		set_default_uri_attr(&ctrl_uris[0], LTTNG_STREAM_CONTROL);
@@ -620,7 +619,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 			goto error;
 		} else {
 			/* 1 and 2 are the only expected values on success. */
-			assert(data_uri_count == 1);
+			LTTNG_ASSERT(data_uri_count == 1);
 		}
 
 		set_default_uri_attr(&data_uris[0], LTTNG_STREAM_DATA);

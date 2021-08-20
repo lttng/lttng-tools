@@ -4,7 +4,6 @@
  * Copyright 2019 Philippe Proulx <pproulx@efficios.com>
  */
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,7 +16,7 @@
 #define argpar_calloc(_type, _nmemb) ((_type *) calloc((_nmemb), sizeof(_type)))
 #define argpar_zalloc(_type) argpar_calloc(_type, 1)
 
-#define ARGPAR_ASSERT(_cond) assert(_cond)
+#define ARGPAR_ASSERT(_cond)  ((void) sizeof((void) (_cond), 0))
 
 #ifdef __MINGW_PRINTF_FORMAT
 # define ARGPAR_PRINTF_FORMAT __MINGW_PRINTF_FORMAT

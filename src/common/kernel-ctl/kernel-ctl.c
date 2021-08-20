@@ -16,7 +16,6 @@
 #include <common/macros.h>
 #include <common/compat/errno.h>
 #include <stdarg.h>
-#include <assert.h>
 #include <common/time.h>
 
 #include "kernel-ctl.h"
@@ -25,7 +24,7 @@
 #define LTTNG_IOCTL_CHECK(fildes, request, ...)                         \
 	({                                                              \
 		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
-		assert(_ioctl_ret <= 0);                                \
+		LTTNG_ASSERT(_ioctl_ret <= 0);                                \
 		!_ioctl_ret ? 0 : -errno;                               \
 	})
 

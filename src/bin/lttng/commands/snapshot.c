@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
@@ -15,7 +14,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <common/utils.h>
 #include <common/mi-lttng.h>
@@ -81,7 +79,7 @@ static int count_arguments(const char **argv)
 {
 	int i = 0;
 
-	assert(argv);
+	LTTNG_ASSERT(argv);
 
 	while (argv[i] != NULL) {
 		i++;
@@ -473,7 +471,7 @@ static enum cmd_error_code handle_command(const char **argv)
 
 	argc = count_arguments(argv);
 	/* popt should have passed NULL if no arguments are present. */
-	assert(argc > 0);
+	LTTNG_ASSERT(argc > 0);
 
 	cmd = &actions[i];
 	while (cmd->func != NULL) {

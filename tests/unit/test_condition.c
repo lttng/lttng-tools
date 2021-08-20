@@ -9,7 +9,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +55,7 @@ void test_condition_event_rule(void)
 	log_level_rule_at_least_as_severe =
 			lttng_log_level_rule_at_least_as_severe_as_create(
 					LTTNG_LOGLEVEL_WARNING);
-	assert(log_level_rule_at_least_as_severe);
+	LTTNG_ASSERT(log_level_rule_at_least_as_severe);
 
 	tracepoint = lttng_event_rule_user_tracepoint_create();
 	ok(tracepoint, "user tracepoint");

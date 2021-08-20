@@ -16,7 +16,6 @@
 #include <lttng/channel.h>
 #include <lttng/snapshot-internal.h>
 
-#include <assert.h>
 
 #define MI_SCHEMA_MAJOR_VERSION 4
 #define MI_SCHEMA_MINOR_VERSION 1
@@ -723,7 +722,7 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 		return config_domain_type_python;
 	default:
 		/* Should not have an unknown domain */
-		assert(0);
+		abort();
 		return NULL;
 	}
 }
@@ -740,7 +739,7 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 		return config_buffer_type_global;
 	default:
 		/* Should not have an unknow buffer type */
-		assert(0);
+		abort();
 		return NULL;
 	}
 }
@@ -759,7 +758,7 @@ const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value)
 		return mi_lttng_rotation_state_str_error;
 	default:
 		/* Should not have an unknow rotation state. */
-		assert(0);
+		abort();
 		return NULL;
 	}
 }
@@ -773,7 +772,7 @@ const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
 		return mi_lttng_rotation_location_relay_protocol_str_tcp;
 	default:
 		/* Should not have an unknown relay protocol. */
-		assert(0);
+		abort();
 		return NULL;
 	}
 }
@@ -1047,7 +1046,7 @@ int mi_lttng_session(struct mi_writer *writer,
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	/* Open sessions element */
 	ret = mi_lttng_writer_open_element(writer,
@@ -1115,7 +1114,7 @@ int mi_lttng_domain(struct mi_writer *writer,
 	const char *str_domain;
 	const char *str_buffer;
 
-	assert(domain);
+	LTTNG_ASSERT(domain);
 
 	/* Open domain element */
 	ret = mi_lttng_writer_open_element(writer, config_element_domain);
@@ -1167,7 +1166,7 @@ int mi_lttng_channel(struct mi_writer *writer,
 {
 	int ret = 0;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	/* Opening channel element */
 	ret = mi_lttng_writer_open_element(writer, config_element_channel);
@@ -1216,7 +1215,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	uint64_t discarded_events, lost_packets, monitor_timer_interval;
 	int64_t blocking_timeout;
 
-	assert(attr);
+	LTTNG_ASSERT(attr);
 
 	ret = lttng_channel_get_discarded_event_count(chan, &discarded_events);
 	if (ret) {

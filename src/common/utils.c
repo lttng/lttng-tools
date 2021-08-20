@@ -9,7 +9,6 @@
 
 #include "common/macros.h"
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -598,7 +597,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	int ret;
 	FILE *fp;
 
-	assert(filepath);
+	LTTNG_ASSERT(filepath);
 
 	fp = fopen(filepath, "w");
 	if (fp == NULL) {
@@ -633,7 +632,7 @@ int utils_create_lock_file(const char *filepath)
 	int fd;
 	struct flock lock;
 
-	assert(filepath);
+	LTTNG_ASSERT(filepath);
 
 	memset(&lock, 0, sizeof(lock));
 	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR |
@@ -751,7 +750,7 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
 	if (size > 0) {
 		ret = snprintf(count_str, sizeof(count_str), "_%" PRIu64,
 				count);
-		assert(ret > 0 && ret < sizeof(count_str));
+		LTTNG_ASSERT(ret > 0 && ret < sizeof(count_str));
 	}
 
 	ret = snprintf(out_stream_path, stream_path_len, "%s%s%s%s%s",
@@ -1209,8 +1208,8 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	time_t rawtime;
 	struct tm *timeinfo;
 
-	assert(format);
-	assert(dst);
+	LTTNG_ASSERT(format);
+	LTTNG_ASSERT(dst);
 
 	/* Get date and time for session path */
 	time(&rawtime);
@@ -1417,7 +1416,7 @@ int utils_show_help(int section, const char *page_name,
 
 	/* Section integer -> section string */
 	ret = sprintf(section_string, "%d", section);
-	assert(ret > 0 && ret < 8);
+	LTTNG_ASSERT(ret > 0 && ret < 8);
 
 	/*
 	 * Execute man pager.
@@ -1512,7 +1511,7 @@ int utils_change_working_directory(const char *path)
 {
 	int ret;
 
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	DBG("Changing working directory to \"%s\"", path);
 	ret = chdir(path);
@@ -1677,8 +1676,8 @@ int utils_parse_unsigned_long_long(const char *str,
 	int ret;
 	char *endptr;
 
-	assert(str);
-	assert(value);
+	LTTNG_ASSERT(str);
+	LTTNG_ASSERT(value);
 
 	errno = 0;
 	*value = strtoull(str, &endptr, 10);

@@ -118,7 +118,7 @@ enum lttng_error_code notification_thread_command_register_trigger(
 	enum lttng_error_code ret_code;
 	struct notification_thread_command cmd = {};
 
-	assert(trigger);
+	LTTNG_ASSERT(trigger);
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER;
@@ -282,7 +282,7 @@ enum lttng_error_code notification_thread_command_add_tracer_event_source(
 	enum lttng_error_code ret_code;
 	struct notification_thread_command cmd = {};
 
-	assert(tracer_event_source_fd >= 0);
+	LTTNG_ASSERT(tracer_event_source_fd >= 0);
 
 	init_notification_thread_command(&cmd);
 
@@ -336,8 +336,8 @@ enum lttng_error_code notification_thread_command_list_triggers(
 	enum lttng_error_code ret_code;
 	struct notification_thread_command cmd = {};
 
-	assert(handle);
-	assert(triggers);
+	LTTNG_ASSERT(handle);
+	LTTNG_ASSERT(triggers);
 
 	init_notification_thread_command(&cmd);
 
@@ -367,7 +367,7 @@ void notification_thread_command_quit(
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_QUIT;
 	ret = run_command_wait(handle, &cmd);
-	assert(!ret && cmd.reply_code == LTTNG_OK);
+	LTTNG_ASSERT(!ret && cmd.reply_code == LTTNG_OK);
 }
 
 int notification_thread_client_communication_update(
@@ -423,8 +423,8 @@ struct lttng_event_notifier_notification *lttng_event_notifier_notification_crea
 {
 	struct lttng_event_notifier_notification *notification = NULL;
 
-	assert(domain != LTTNG_DOMAIN_NONE);
-	assert((payload && payload_size) || (!payload && !payload_size));
+	LTTNG_ASSERT(domain != LTTNG_DOMAIN_NONE);
+	LTTNG_ASSERT((payload && payload_size) || (!payload && !payload_size));
 
 	notification = zmalloc(sizeof(struct lttng_event_notifier_notification));
 	if (notification == NULL) {

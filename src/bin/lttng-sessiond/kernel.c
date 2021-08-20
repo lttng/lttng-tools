@@ -72,8 +72,8 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 {
 	int ret;
 
-	assert(chan);
-	assert(ctx);
+	LTTNG_ASSERT(chan);
+	LTTNG_ASSERT(ctx);
 
 	DBG("Adding context to channel %s", chan->channel->name);
 	ret = kernctl_add_context(chan->fd, &ctx->ctx);
@@ -115,7 +115,7 @@ int kernel_create_session(struct ltt_session *session)
 	int ret;
 	struct ltt_kernel_session *lks;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	/* Allocate data structure */
 	lks = trace_kernel_create_session();
@@ -184,8 +184,8 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	int ret;
 	struct ltt_kernel_channel *lkc;
 
-	assert(session);
-	assert(chan);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(chan);
 
 	/* Allocate kernel channel */
 	lkc = trace_kernel_create_channel(chan);
@@ -242,7 +242,7 @@ static int kernel_create_event_notifier_group(int *event_notifier_group_fd)
 	int ret;
 	int local_fd = -1;
 
-	assert(event_notifier_group_fd);
+	LTTNG_ASSERT(event_notifier_group_fd);
 
 	/* Kernel event notifier group creation. */
 	ret = kernctl_create_event_notifier_group(kernel_tracer_fd);
@@ -297,7 +297,7 @@ int extract_userspace_probe_offset_function_elf(
 	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
 
-	assert(lttng_userspace_probe_location_get_type(probe_location) ==
+	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(probe_location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
 	lookup = lttng_userspace_probe_location_get_lookup_method(
@@ -310,7 +310,7 @@ int extract_userspace_probe_offset_function_elf(
 	lookup_method_type =
 			lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
-	assert(lookup_method_type ==
+	LTTNG_ASSERT(lookup_method_type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
 	symbol = lttng_userspace_probe_location_function_get_function_name(
@@ -359,7 +359,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	int ret = 0;
 	int fd, i;
 
-	assert(lttng_userspace_probe_location_get_type(probe_location) ==
+	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(probe_location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
@@ -371,7 +371,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	lookup_method_type =
 			lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
-	assert(lookup_method_type ==
+	LTTNG_ASSERT(lookup_method_type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
 
@@ -504,8 +504,8 @@ int userspace_probe_event_add_callsites(struct lttng_event *ev,
 	int ret;
 	const struct lttng_userspace_probe_location *location = NULL;
 
-	assert(ev);
-	assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
+	LTTNG_ASSERT(ev);
+	LTTNG_ASSERT(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
 
 	location = lttng_event_get_userspace_probe_location(ev);
 	if (!location) {
@@ -538,11 +538,11 @@ static int userspace_probe_event_rule_add_callsites(
 	enum lttng_event_rule_type event_rule_type;
 	const struct lttng_userspace_probe_location *location = NULL;
 
-	assert(rule);
-	assert(creds);
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(creds);
 
 	event_rule_type = lttng_event_rule_get_type(rule);
-	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
+	LTTNG_ASSERT(event_rule_type == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
 
 	status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK || !location) {
@@ -576,8 +576,8 @@ int kernel_create_event(struct lttng_event *ev,
 	enum lttng_error_code ret;
 	struct ltt_kernel_event *event;
 
-	assert(ev);
-	assert(channel);
+	LTTNG_ASSERT(ev);
+	LTTNG_ASSERT(channel);
 
 	/* We pass ownership of filter_expression and filter */
 	ret = trace_kernel_create_event(ev, filter_expression,
@@ -684,7 +684,7 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 {
 	int ret;
 
-	assert(chan);
+	LTTNG_ASSERT(chan);
 
 	ret = kernctl_disable(chan->fd);
 	if (ret < 0) {
@@ -709,7 +709,7 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 {
 	int ret;
 
-	assert(chan);
+	LTTNG_ASSERT(chan);
 
 	ret = kernctl_enable(chan->fd);
 	if (ret < 0 && ret != -EEXIST) {
@@ -734,7 +734,7 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 {
 	int ret;
 
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	ret = kernctl_enable(event->fd);
 	if (ret < 0) {
@@ -765,7 +765,7 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 {
 	int ret;
 
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
@@ -791,7 +791,7 @@ int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *ev
 {
 	int ret;
 
-	assert(event);
+	LTTNG_ASSERT(event);
 
 	rcu_read_lock();
 	cds_lfht_del(kernel_token_to_event_notifier_rule_ht, &event->ht_node);
@@ -1187,7 +1187,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 	int ret;
 	struct ltt_kernel_metadata *lkm = NULL;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	/* Allocate kernel metadata */
 	lkm = trace_kernel_create_metadata();
@@ -1228,7 +1228,7 @@ int kernel_start_session(struct ltt_kernel_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	ret = kernctl_start_session(session->fd);
 	if (ret < 0) {
@@ -1286,7 +1286,7 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 	int ret;
 	struct ltt_kernel_stream *stream;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	DBG("Flush buffer for channel %s", channel->channel->name);
 
@@ -1310,7 +1310,7 @@ int kernel_stop_session(struct ltt_kernel_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	ret = kernctl_stop_session(session->fd);
 	if (ret < 0) {
@@ -1340,7 +1340,7 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	int ret;
 	struct ltt_kernel_stream *lks;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
 		lks = trace_kernel_create_stream(channel->channel->name,
@@ -1384,7 +1384,7 @@ int kernel_open_metadata_stream(struct ltt_kernel_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	ret = kernctl_create_stream(session->metadata->fd);
 	if (ret < 0) {
@@ -1417,7 +1417,7 @@ ssize_t kernel_list_events(struct lttng_event **events)
 	FILE *fp;
 	struct lttng_event *elist;
 
-	assert(events);
+	LTTNG_ASSERT(events);
 
 	fd = kernctl_tracepoint_list(kernel_tracer_fd);
 	if (fd < 0) {
@@ -1633,8 +1633,8 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
 {
 	struct ltt_kernel_session *ksess = NULL;
 
-	assert(kchan);
-	assert(kchan->channel);
+	LTTNG_ASSERT(kchan);
+	LTTNG_ASSERT(kchan->channel);
 
 	DBG3("Kernel destroy channel %s", kchan->channel->name);
 
@@ -1674,9 +1674,9 @@ enum lttng_error_code kernel_snapshot_record(
 	char *trace_path = NULL;
 	size_t consumer_path_offset = 0;
 
-	assert(ksess);
-	assert(ksess->consumer);
-	assert(output);
+	LTTNG_ASSERT(ksess);
+	LTTNG_ASSERT(ksess->consumer);
+	LTTNG_ASSERT(output);
 
 	DBG("Kernel snapshot record started");
 
@@ -1772,8 +1772,8 @@ error:
  */
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
 {
-	assert(syscall_mask);
-	assert(nr_bits);
+	LTTNG_ASSERT(syscall_mask);
+	LTTNG_ASSERT(nr_bits);
 
 	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
@@ -1852,8 +1852,8 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 
-	assert(ksess);
-	assert(ksess->consumer);
+	LTTNG_ASSERT(ksess);
+	LTTNG_ASSERT(ksess->consumer);
 
 	DBG("Rotate kernel session %s started (session %" PRIu64 ")",
 			session->name, session->id);
@@ -1905,7 +1905,7 @@ enum lttng_error_code kernel_create_channel_subdirectories(
 	enum lttng_trace_chunk_status chunk_status;
 
 	rcu_read_lock();
-	assert(ksess->current_trace_chunk);
+	LTTNG_ASSERT(ksess->current_trace_chunk);
 
 	/*
 	 * Create the index subdirectory which will take care
@@ -2091,7 +2091,7 @@ void cleanup_kernel_tracer(void)
 	if (kernel_token_to_event_notifier_rule_ht) {
 		const int ret = cds_lfht_destroy(
 				kernel_token_to_event_notifier_rule_ht, NULL);
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 	}
 
 	DBG2("Closing kernel event notifier group file descriptor");
@@ -2140,8 +2140,8 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session)
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 
-	assert(ksess);
-	assert(ksess->consumer);
+	LTTNG_ASSERT(ksess);
+	LTTNG_ASSERT(ksess->consumer);
 
 	DBG("Clear kernel session %s (session %" PRIu64 ")",
 			session->name, session->id);
@@ -2213,7 +2213,7 @@ enum lttng_error_code kernel_create_event_notifier_group_notification_fd(
 	int local_fd = -1, ret;
 	enum lttng_error_code error_code_ret;
 
-	assert(event_notifier_group_notification_fd);
+	LTTNG_ASSERT(event_notifier_group_notification_fd);
 
 	ret = kernctl_create_event_notifier_group_notification_fd(
 			kernel_tracer_event_notifier_group_fd);
@@ -2307,22 +2307,22 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	const struct lttng_event_rule *event_rule = NULL;
 	enum lttng_condition_status cond_status;
 
-	assert(trigger);
+	LTTNG_ASSERT(trigger);
 
 	condition = lttng_trigger_get_const_condition(trigger);
-	assert(condition);
+	LTTNG_ASSERT(condition);
 
 	condition_type = lttng_condition_get_type(condition);
-	assert(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+	LTTNG_ASSERT(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	/* Does not acquire a reference. */
 	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
-	assert(event_rule);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(event_rule);
 
 	event_rule_type = lttng_event_rule_get_type(event_rule);
-	assert(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
+	LTTNG_ASSERT(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
 	error_code_ret = trace_kernel_create_event_notifier_rule(trigger, token,
 			lttng_condition_event_rule_matches_get_error_counter_index(
@@ -2406,7 +2406,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	/* Set the capture bytecode if any. */
 	cond_status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_bytecode_count);
-	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
 
 	for (i = 0; i < capture_bytecode_count; i++) {
 		const struct lttng_bytecode *capture_bytecode =
@@ -2485,15 +2485,15 @@ enum lttng_error_code kernel_register_event_notifier(
 			lttng_trigger_get_const_condition(trigger);
 	const uint64_t token = lttng_trigger_get_tracer_token(trigger);
 
-	assert(condition);
+	LTTNG_ASSERT(condition);
 
 	/* Does not acquire a reference to the event rule. */
 	status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 	domain_type = lttng_event_rule_get_domain_type(event_rule);
-	assert(domain_type == LTTNG_DOMAIN_KERNEL);
+	LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
 	ret = kernel_create_event_notifier_rule(trigger, cmd_creds, token);
 	if (ret != LTTNG_OK) {

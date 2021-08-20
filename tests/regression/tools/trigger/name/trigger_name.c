@@ -11,7 +11,6 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <assert.h>
 #include <tap/tap.h>
 #include <stdint.h>
 #include <string.h>
@@ -99,7 +98,7 @@ int unregister_all_triggers(void)
 		const struct lttng_trigger *trigger;
 
 		trigger = lttng_triggers_get_at_index(triggers, i);
-		assert(trigger);
+		LTTNG_ASSERT(trigger);
 
 		ret = lttng_unregister_trigger(trigger);
 		if (ret) {
@@ -246,7 +245,7 @@ void register_anonymous_trigger(
 		const struct lttng_trigger *trigger_from_listing;
 
 		trigger_from_listing = lttng_triggers_get_at_index(triggers, i);
-		assert(trigger_from_listing);
+		LTTNG_ASSERT(trigger_from_listing);
 
 		trigger_status = lttng_trigger_get_name(trigger_from_listing, &trigger_name);
 		ok(trigger_status == LTTNG_TRIGGER_STATUS_UNSET,
@@ -323,7 +322,7 @@ void register_named_trigger(
 		const struct lttng_trigger *trigger_from_listing;
 
 		trigger_from_listing = lttng_triggers_get_at_index(triggers, i);
-		assert(trigger_from_listing);
+		LTTNG_ASSERT(trigger_from_listing);
 
 		trigger_status = lttng_trigger_get_name(trigger_from_listing, &returned_trigger_name);
 		ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
@@ -404,7 +403,7 @@ void register_automatic_name_trigger(
 		const struct lttng_trigger *trigger_from_listing;
 
 		trigger_from_listing = lttng_triggers_get_at_index(triggers, i);
-		assert(trigger_from_listing);
+		LTTNG_ASSERT(trigger_from_listing);
 
 		trigger_status = lttng_trigger_get_name(trigger_from_listing, &returned_trigger_name);
 		ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,

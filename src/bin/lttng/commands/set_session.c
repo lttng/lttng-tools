@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <common/mi-lttng.h>
 
@@ -48,8 +47,8 @@ static int mi_print(char *session_name)
 {
 	int ret;
 
-	assert(writer);
-	assert(session_name);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session_name);
 
 	/*
 	 * Open a sessions element

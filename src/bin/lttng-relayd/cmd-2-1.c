@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/relayd.h>

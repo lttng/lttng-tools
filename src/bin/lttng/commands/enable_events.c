@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,7 +199,7 @@ int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 	size_t i;
 	const size_t count = lttng_dynamic_pointer_array_get_count(exclusions);
 
-	assert(writer);
+	LTTNG_ASSERT(writer);
 
 	if (count == 0) {
 		ret = 0;
@@ -477,7 +476,7 @@ static int enable_events(char *session_name)
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else {
 		/* Checked by the caller. */
-		assert(0);
+		abort();
 	}
 
 	if (opt_exclude) {
@@ -494,7 +493,7 @@ static int enable_events(char *session_name)
 			/* Exclusions supported */
 			break;
 		default:
-			assert(0);
+			abort();
 		}
 	}
 
@@ -554,7 +553,7 @@ static int enable_events(char *session_name)
 			if (opt_loglevel) {
 				int name_search_ret;
 
-				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
+				LTTNG_ASSERT(opt_userspace || opt_jul || opt_log4j || opt_python);
 
 				if (opt_userspace) {
 					enum lttng_loglevel loglevel;
@@ -585,7 +584,7 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 			} else {
-				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
+				LTTNG_ASSERT(opt_userspace || opt_jul || opt_log4j || opt_python);
 				if (opt_userspace) {
 					ev->loglevel = -1;
 				} else if (opt_jul) {
@@ -844,7 +843,7 @@ static int enable_events(char *session_name)
 				}
 				break;
 			case LTTNG_EVENT_USERSPACE_PROBE:
-				assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
+				LTTNG_ASSERT(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
 
 				ret = parse_userspace_probe_opts(opt_userspace_probe, &uprobe_loc);
 				if (ret) {
@@ -999,7 +998,7 @@ static int enable_events(char *session_name)
 			strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
 			ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
-			assert(0);
+			abort();
 		}
 
 		if (!opt_filter) {
@@ -1078,7 +1077,7 @@ static int enable_events(char *session_name)
 						exclusion_string);
 					break;
 				default:
-					assert(0);
+					abort();
 				}
 			}
 			free(exclusion_string);

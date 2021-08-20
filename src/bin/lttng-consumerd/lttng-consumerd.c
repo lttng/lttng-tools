@@ -26,7 +26,6 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <assert.h>
 #include <urcu/compiler.h>
 #include <ulimit.h>
 

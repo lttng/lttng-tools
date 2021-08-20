@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +155,7 @@ static int validate_state(struct health_app *ha, struct health_state *state)
 	unsigned long current, last;
 	struct timespec current_time;
 
-	assert(state);
+	LTTNG_ASSERT(state);
 
 	last = state->last;
 	current = uatomic_read(&state->current);
@@ -224,7 +223,7 @@ int health_check_state(struct health_app *ha, int type)
 	int retval = 1;
 	struct health_state *state;
 
-	assert(type < ha->nr_types);
+	LTTNG_ASSERT(type < ha->nr_types);
 
 	state_lock(ha);
 
@@ -260,7 +259,7 @@ end:
  */
 void health_register(struct health_app *ha, int type)
 {
-	assert(type < ha->nr_types);
+	LTTNG_ASSERT(type < ha->nr_types);
 
 	/* Init TLS state. */
 	uatomic_set(&URCU_TLS(health_state).last, 0);

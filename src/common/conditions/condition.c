@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
@@ -51,7 +50,7 @@ void lttng_condition_put(struct lttng_condition *condition)
 		return;
 	}
 
-	assert(condition->destroy);
+	LTTNG_ASSERT(condition->destroy);
 	urcu_ref_put(&condition->ref, condition_destroy_ref);
 }
 
@@ -252,9 +251,9 @@ enum lttng_error_code lttng_condition_mi_serialize(
 	enum lttng_error_code ret_code;
 	struct lttng_error_query_results *error_query_results = NULL;
 
-	assert(condition);
-	assert(writer);
-	assert(condition->mi_serialize);
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(condition->mi_serialize);
 
 	/* Open condition element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_condition);

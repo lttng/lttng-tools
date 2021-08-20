@@ -60,7 +60,7 @@ void ht_cleanup_push(struct lttng_ht *ht)
 	/* All good. Don't send back the write positive ret value. */
 	ret = 0;
 error:
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 }
 
 int loglevels_match(int a_loglevel_type, int a_loglevel_value,

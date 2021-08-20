@@ -9,7 +9,6 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
-#include <assert.h>
 
 struct loglevel_name_value {
 	const char *name;

@@ -6,7 +6,6 @@
  */
 
 #include "lttng/lttng-error.h"
-#include <assert.h>
 #include <common/compat/string.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -115,12 +114,12 @@ void lttng_userspace_probe_location_function_destroy(
 {
 	struct lttng_userspace_probe_location_function *location_function = NULL;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	location_function = container_of(location,
 			struct lttng_userspace_probe_location_function, parent);
 
-	assert(location_function);
+	LTTNG_ASSERT(location_function);
 
 	free(location_function->function_name);
 	free(location_function->binary_path);
@@ -134,13 +133,13 @@ void lttng_userspace_probe_location_tracepoint_destroy(
 {
 	struct lttng_userspace_probe_location_tracepoint *location_tracepoint = NULL;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	location_tracepoint = container_of(location,
 			struct lttng_userspace_probe_location_tracepoint,
 			parent);
 
-	assert(location_tracepoint);
+	LTTNG_ASSERT(location_tracepoint);
 
 	free(location_tracepoint->probe_name);
 	free(location_tracepoint->provider_name);
@@ -253,14 +252,14 @@ static bool lttng_userspace_probe_location_function_is_equal(
 		goto end;
 	}
 
-	assert(a->function_name);
-	assert(b->function_name);
+	LTTNG_ASSERT(a->function_name);
+	LTTNG_ASSERT(b->function_name);
 	if (strcmp(a->function_name, b->function_name)) {
 		goto end;
 	}
 
-	assert(a->binary_path);
-	assert(b->binary_path);
+	LTTNG_ASSERT(a->binary_path);
+	LTTNG_ASSERT(b->binary_path);
 	if (strcmp(a->binary_path, b->binary_path)) {
 		goto end;
 	}
@@ -375,20 +374,20 @@ static bool lttng_userspace_probe_location_tracepoint_is_equal(
 	b = container_of(_b, struct lttng_userspace_probe_location_tracepoint,
 			parent);
 
-	assert(a->probe_name);
-	assert(b->probe_name);
+	LTTNG_ASSERT(a->probe_name);
+	LTTNG_ASSERT(b->probe_name);
 	if (strcmp(a->probe_name, b->probe_name)) {
 		goto end;
 	}
 
-	assert(a->provider_name);
-	assert(b->provider_name);
+	LTTNG_ASSERT(a->provider_name);
+	LTTNG_ASSERT(b->provider_name);
 	if (strcmp(a->provider_name, b->provider_name)) {
 		goto end;
 	}
 
-	assert(a->binary_path);
-	assert(b->binary_path);
+	LTTNG_ASSERT(a->binary_path);
+	LTTNG_ASSERT(b->binary_path);
 	if (strcmp(a->binary_path, b->binary_path)) {
 		goto end;
 	}
@@ -543,8 +542,8 @@ lttng_userspace_probe_location_lookup_method_function_elf_copy(
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 
-	assert(lookup_method);
-	assert(lookup_method->type ==
+	LTTNG_ASSERT(lookup_method);
+	LTTNG_ASSERT(lookup_method->type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
 	elf_method = zmalloc(sizeof(*elf_method));
@@ -570,8 +569,8 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 
-	assert(lookup_method);
-	assert(lookup_method->type ==
+	LTTNG_ASSERT(lookup_method);
+	LTTNG_ASSERT(lookup_method->type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
 	sdt_method = zmalloc(sizeof(*sdt_method));
@@ -602,8 +601,8 @@ lttng_userspace_probe_location_function_copy(
 	const char *function_name = NULL;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	assert(location);
-	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 	function_location = container_of(
 			location, typeof(*function_location), parent);
 
@@ -676,8 +675,8 @@ lttng_userspace_probe_location_tracepoint_copy(
 	const char *provider_name = NULL;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	assert(location);
-	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 	tracepoint_location = container_of(
 			location, typeof(*tracepoint_location), parent);
 
@@ -967,7 +966,7 @@ lttng_userspace_probe_location_get_lookup_method(
 {
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 	switch (location->type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	ret = lttng_userspace_probe_location_function_get_lookup_method(
@@ -1017,8 +1016,8 @@ int lttng_userspace_probe_location_function_serialize(
 	struct lttng_userspace_probe_location_function *location_function;
 	struct lttng_userspace_probe_location_function_comm location_function_comm;
 
-	assert(location);
-	assert(lttng_userspace_probe_location_get_type(location) ==
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
 	location_function = container_of(location,
@@ -1094,8 +1093,8 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 	struct lttng_userspace_probe_location_tracepoint *location_tracepoint;
 	struct lttng_userspace_probe_location_tracepoint_comm location_tracepoint_comm;
 
-	assert(location);
-	assert(lttng_userspace_probe_location_get_type(location) ==
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	location_tracepoint = container_of(location,
@@ -1248,7 +1247,7 @@ int lttng_userspace_probe_location_function_create_from_payload(
 	size_t expected_size;
 	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	if (view->buffer.size < sizeof(*location_function_comm)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1331,7 +1330,7 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	size_t expected_size;
 	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	if (!binary_fd_handle) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1429,8 +1428,8 @@ int lttng_userspace_probe_location_lookup_method_create_from_payload(
 	struct lttng_userspace_probe_location_lookup_method_comm *lookup_comm;
 	enum lttng_userspace_probe_location_lookup_method_type type;
 
-	assert(view);
-	assert(lookup_method);
+	LTTNG_ASSERT(view);
+	LTTNG_ASSERT(lookup_method);
 
 	if (view->buffer.size < sizeof(*lookup_comm)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1484,8 +1483,8 @@ int lttng_userspace_probe_location_create_from_payload(
 			lttng_payload_view_from_view(
 					view, 0, sizeof(*probe_location_comm));
 
-	assert(view);
-	assert(location);
+	LTTNG_ASSERT(view);
+	LTTNG_ASSERT(location);
 
 	lookup_method = NULL;
 
@@ -1548,7 +1547,7 @@ int lttng_userspace_probe_location_create_from_payload(
 		goto end;
 	}
 
-	assert(lookup_method);
+	LTTNG_ASSERT(lookup_method);
 	(*location)->lookup_method = lookup_method;
 	lookup_method = NULL;
 	ret += consumed;
@@ -1564,8 +1563,8 @@ int lttng_userspace_probe_location_function_set_binary_fd_handle(
 	int ret = 0;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	assert(location);
-	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
 	function_location = container_of(location,
 			struct lttng_userspace_probe_location_function, parent);
@@ -1583,8 +1582,8 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 	int ret = 0;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	assert(location);
-	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	tracepoint_location = container_of(location,
 			struct lttng_userspace_probe_location_tracepoint, parent);
@@ -1608,7 +1607,7 @@ int lttng_userspace_probe_location_function_flatten(
 	int storage_needed = 0;
 	int ret;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	if (location->lookup_method && location->lookup_method->type !=
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF) {
@@ -1619,8 +1618,8 @@ int lttng_userspace_probe_location_function_flatten(
 	probe_function = container_of(location,
 			struct lttng_userspace_probe_location_function,
 			parent);
-	assert(probe_function->function_name);
-	assert(probe_function->binary_path);
+	LTTNG_ASSERT(probe_function->function_name);
+	LTTNG_ASSERT(probe_function->binary_path);
 
 	storage_needed +=
 			sizeof(struct lttng_userspace_probe_location_function);
@@ -1732,7 +1731,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	char *flat_probe_start;
 	int ret = 0;
 
-	assert(location);
+	LTTNG_ASSERT(location);
 
 	/* Only SDT tracepoints are supported at the moment */
 	if (location->lookup_method && location->lookup_method->type !=
@@ -1743,9 +1742,9 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	probe_tracepoint = container_of(location,
 			struct lttng_userspace_probe_location_tracepoint,
 			parent);
-	assert(probe_tracepoint->probe_name);
-	assert(probe_tracepoint->provider_name);
-	assert(probe_tracepoint->binary_path);
+	LTTNG_ASSERT(probe_tracepoint->probe_name);
+	LTTNG_ASSERT(probe_tracepoint->provider_name);
+	LTTNG_ASSERT(probe_tracepoint->binary_path);
 
 	/* Compute the storage space needed to flatten the probe location */
 	storage_needed += sizeof(struct lttng_userspace_probe_location_tracepoint);
@@ -1996,8 +1995,8 @@ enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
 	enum lttng_error_code ret_code;
 	mi_fp mi_function = NULL;
 
-	assert(location);
-	assert(writer);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
 
 	switch (lttng_userspace_probe_location_get_type(location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
@@ -2048,8 +2047,8 @@ enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
 	enum lttng_error_code ret_code;
 	const char *type_element_str;
 
-	assert(method);
-	assert(writer);
+	LTTNG_ASSERT(method);
+	LTTNG_ASSERT(writer);
 
 	switch (lttng_userspace_probe_location_lookup_method_get_type(method)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
@@ -2109,8 +2108,8 @@ static enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serial
 	const struct lttng_userspace_probe_location_lookup_method
 			*lookup_method = NULL;
 
-	assert(location);
-	assert(writer);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
 
 	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
 			location);
@@ -2188,8 +2187,8 @@ static enum lttng_error_code lttng_userspace_probe_location_function_mi_serializ
 	const struct lttng_userspace_probe_location_lookup_method
 			*lookup_method = NULL;
 
-	assert(location);
-	assert(writer);
+	LTTNG_ASSERT(location);
+	LTTNG_ASSERT(writer);
 
 	function_name = lttng_userspace_probe_location_function_get_function_name(
 			location);

@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 
 #include <common/compat/errno.h>
@@ -42,7 +41,7 @@ int normalize_glob_patterns(struct ir_op *node)
 				node->u.load.u.string.type;
 			if (type == IR_LOAD_STRING_TYPE_GLOB_STAR_END ||
 					type == IR_LOAD_STRING_TYPE_GLOB_STAR) {
-				assert(node->u.load.u.string.value);
+				LTTNG_ASSERT(node->u.load.u.string.value);
 				strutils_normalize_star_glob_pattern(
 					node->u.load.u.string.value);
 			}

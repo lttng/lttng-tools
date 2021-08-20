@@ -98,14 +98,14 @@ static void process_attr_tracker_clear_inclusion_set(
 	}
 	rcu_read_unlock();
 	ret = cds_lfht_destroy(tracker->inclusion_set_ht, NULL);
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 	tracker->inclusion_set_ht = NULL;
 }
 
 static int process_attr_tracker_create_inclusion_set(
 		struct process_attr_tracker *tracker)
 {
-	assert(!tracker->inclusion_set_ht);
+	LTTNG_ASSERT(!tracker->inclusion_set_ht);
 	tracker->inclusion_set_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
 			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	return tracker->inclusion_set_ht ? 0 : -1;
@@ -166,7 +166,7 @@ static struct process_attr_tracker_value_node *process_attr_tracker_lookup(
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
 
-	assert(tracker->policy == LTTNG_TRACKING_POLICY_INCLUDE_SET);
+	LTTNG_ASSERT(tracker->policy == LTTNG_TRACKING_POLICY_INCLUDE_SET);
 
 	rcu_read_lock();
 	cds_lfht_lookup(tracker->inclusion_set_ht,

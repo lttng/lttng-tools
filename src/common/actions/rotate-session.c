@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -46,7 +45,7 @@ lttng_action_rotate_session_internal_get_rate_policy(
 static struct lttng_action_rotate_session *action_rotate_session_from_action(
 		struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_rotate_session, parent);
 }
@@ -54,7 +53,7 @@ static struct lttng_action_rotate_session *action_rotate_session_from_action(
 static const struct lttng_action_rotate_session *
 action_rotate_session_from_action_const(const struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_rotate_session, parent);
 }
@@ -93,8 +92,8 @@ static bool lttng_action_rotate_session_is_equal(
 	b = action_rotate_session_from_action_const(_b);
 
 	/* Action is not valid if this is not true. */
-	assert(a->session_name);
-	assert(b->session_name);
+	LTTNG_ASSERT(a->session_name);
+	LTTNG_ASSERT(b->session_name);
 	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
@@ -111,12 +110,12 @@ static int lttng_action_rotate_session_serialize(
 	size_t session_name_len;
 	int ret;
 
-	assert(action);
-	assert(payload);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(payload);
 
 	action_rotate_session = action_rotate_session_from_action(action);
 
-	assert(action_rotate_session->session_name);
+	LTTNG_ASSERT(action_rotate_session->session_name);
 
 	DBG("Serializing rotate session action: session-name: %s",
 			action_rotate_session->session_name);
@@ -214,7 +213,7 @@ ssize_t lttng_action_rotate_session_create_from_payload(
 		goto end;
 	}
 
-	assert(policy);
+	LTTNG_ASSERT(policy);
 	status = lttng_action_rotate_session_set_rate_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		consumed_len = -1;
@@ -240,17 +239,17 @@ static enum lttng_error_code lttng_action_rotate_session_mi_serialize(
 	const char *session_name = NULL;
 	const struct lttng_rate_policy *policy = NULL;
 
-	assert(action);
-	assert(IS_ROTATE_SESSION_ACTION(action));
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(IS_ROTATE_SESSION_ACTION(action));
 
 	status = lttng_action_rotate_session_get_session_name(
 			action, &session_name);
-	assert(status == LTTNG_ACTION_STATUS_OK);
-	assert(session_name != NULL);
+	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(session_name != NULL);
 
 	status = lttng_action_notify_get_rate_policy(action, &policy);
-	assert(status == LTTNG_ACTION_STATUS_OK);
-	assert(policy != NULL);
+	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
+	LTTNG_ASSERT(policy != NULL);
 
 	/* Open action rotate session element. */
 	ret = mi_lttng_writer_open_element(

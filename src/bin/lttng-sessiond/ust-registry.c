@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 
 #include <common/common.h>
@@ -30,11 +29,11 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 	struct ust_registry_event *event;
 	int i;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct ust_registry_event, node.node);
-	assert(event);
+	LTTNG_ASSERT(event);
 	key = _key;
 
 	/* It has to be a perfect match. First, compare the event names. */
@@ -82,7 +81,7 @@ static unsigned long ht_hash_event(const void *_key, unsigned long seed)
 	uint64_t hashed_key;
 	const struct ust_registry_event *key = _key;
 
-	assert(key);
+	LTTNG_ASSERT(key);
 
 	hashed_key = (uint64_t) hash_key_str(key->name, seed);
 
@@ -95,7 +94,7 @@ static int compare_enums(const struct ust_registry_enum *reg_enum_a,
 	int ret = 0;
 	size_t i;
 
-	assert(strcmp(reg_enum_a->name, reg_enum_b->name) == 0);
+	LTTNG_ASSERT(strcmp(reg_enum_a->name, reg_enum_b->name) == 0);
 	if (reg_enum_a->nr_entries != reg_enum_b->nr_entries) {
 		ret = -1;
 		goto end;
@@ -141,12 +140,12 @@ static int ht_match_enum(struct cds_lfht_node *node, const void *_key)
 	struct ust_registry_enum *_enum;
 	const struct ust_registry_enum *key;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	_enum = caa_container_of(node, struct ust_registry_enum,
 			node.node);
-	assert(_enum);
+	LTTNG_ASSERT(_enum);
 	key = _key;
 
 	if (strncmp(_enum->name, key->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
@@ -172,11 +171,11 @@ static int ht_match_enum_id(struct cds_lfht_node *node, const void *_key)
 	struct ust_registry_enum *_enum;
 	const struct ust_registry_enum *key = _key;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	_enum = caa_container_of(node, struct ust_registry_enum, node.node);
-	assert(_enum);
+	LTTNG_ASSERT(_enum);
 
 	if (_enum->id != key->id) {
 		goto no_match;
@@ -197,7 +196,7 @@ static unsigned long ht_hash_enum(void *_key, unsigned long seed)
 {
 	struct ust_registry_enum *key = _key;
 
-	assert(key);
+	LTTNG_ASSERT(key);
 	return hash_key_str(key->name, seed);
 }
 
@@ -367,9 +366,9 @@ struct ust_registry_event *ust_registry_find_event(
 	struct ust_registry_event *event = NULL;
 	struct ust_registry_event key;
 
-	assert(chan);
-	assert(name);
-	assert(sig);
+	LTTNG_ASSERT(chan);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(sig);
 
 	/* Setup key for the match function. */
 	strncpy(key.name, name, sizeof(key.name));
@@ -410,10 +409,10 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	struct ust_registry_event *event = NULL;
 	struct ust_registry_channel *chan;
 
-	assert(session);
-	assert(name);
-	assert(sig);
-	assert(event_id_p);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(sig);
+	LTTNG_ASSERT(event_id_p);
 
 	rcu_read_lock();
 
@@ -466,7 +465,7 @@ int ust_registry_create_event(struct ust_registry_session *session,
 			destroy_event(event);
 			event = caa_container_of(nptr, struct ust_registry_event,
 					node.node);
-			assert(event);
+			LTTNG_ASSERT(event);
 			event_id = event->id;
 		} else {
 			ERR("UST registry create event add unique failed for event: %s, "
@@ -516,13 +515,13 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(chan);
-	assert(event);
+	LTTNG_ASSERT(chan);
+	LTTNG_ASSERT(event);
 
 	/* Delete the node first. */
 	iter.iter.node = &event->node.node;
 	ret = lttng_ht_del(chan->ht, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	call_rcu(&event->node.head, destroy_event_rcu);
 
@@ -618,8 +617,8 @@ int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 	struct cds_lfht_node *nodep;
 	struct ust_registry_enum *reg_enum = NULL, *old_reg_enum;
 
-	assert(session);
-	assert(enum_name);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(enum_name);
 
 	rcu_read_lock();
 
@@ -666,7 +665,7 @@ int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 				ht_hash_enum(reg_enum, lttng_ht_seed),
 				ht_match_enum_id, reg_enum,
 				&reg_enum->node.node);
-		assert(nodep == &reg_enum->node.node);
+		LTTNG_ASSERT(nodep == &reg_enum->node.node);
 	}
 	DBG("UST registry reply with enum %s with id %" PRIu64 " in sess_objd: %u",
 			enum_name, reg_enum->id, session_objd);
@@ -688,13 +687,13 @@ static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(reg_session);
-	assert(reg_enum);
+	LTTNG_ASSERT(reg_session);
+	LTTNG_ASSERT(reg_enum);
 
 	/* Delete the node first. */
 	iter.iter.node = &reg_enum->node.node;
 	ret = lttng_ht_del(reg_session->enums, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
@@ -728,7 +727,7 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 	struct ust_registry_event *event;
 	enum lttng_error_code cmd_ret;
 
-	assert(chan);
+	LTTNG_ASSERT(chan);
 
 	if (notif) {
 		cmd_ret = notification_thread_command_remove_channel(
@@ -761,7 +760,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 	int ret = 0;
 	struct ust_registry_channel *chan;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	chan = zmalloc(sizeof(*chan));
 	if (!chan) {
@@ -818,8 +817,8 @@ struct ust_registry_channel *ust_registry_channel_find(
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan = NULL;
 
-	assert(session);
-	assert(session->channels);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(session->channels);
 
 	DBG3("UST registry channel finding key %" PRIu64, key);
 
@@ -844,7 +843,7 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 	struct ust_registry_channel *chan;
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	rcu_read_lock();
 	chan = ust_registry_channel_find(session, key);
@@ -855,7 +854,7 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 
 	iter.iter.node = &chan->node.node;
 	ret = lttng_ht_del(session->channels, &iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	rcu_read_unlock();
 	destroy_channel(chan, notif);
 
@@ -891,7 +890,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	int ret;
 	struct ust_registry_session *session;
 
-	assert(sessionp);
+	LTTNG_ASSERT(sessionp);
 
 	session = zmalloc(sizeof(*session));
 	if (!session) {
@@ -1007,7 +1006,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 
 	/* On error, EBUSY can be returned if lock. Code flow error. */
 	ret = pthread_mutex_destroy(&reg->lock);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	if (reg->channels) {
 		rcu_read_lock();
@@ -1016,7 +1015,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 				node.node) {
 			/* Delete the node from the ht and free it. */
 			ret = lttng_ht_del(reg->channels, &iter);
-			assert(!ret);
+			LTTNG_ASSERT(!ret);
 			destroy_channel(chan, true);
 		}
 		rcu_read_unlock();

@@ -43,9 +43,9 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 	struct cds_lfht_node *node_ptr;
 	struct ltt_ust_ht_key key;
 
-	assert(ht);
-	assert(ht->ht);
-	assert(event);
+	LTTNG_ASSERT(ht);
+	LTTNG_ASSERT(ht->ht);
+	LTTNG_ASSERT(event);
 
 	key.name = event->attr.name;
 	key.filter = (struct lttng_bytecode *) event->filter;
@@ -56,7 +56,7 @@ static void add_unique_ust_event(struct lttng_ht *ht,
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
 			trace_ust_ht_match_event, &key, &event->node.node);
-	assert(node_ptr == &event->node.node);
+	LTTNG_ASSERT(node_ptr == &event->node.node);
 }
 
 /*
@@ -71,7 +71,7 @@ int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 	int ret, error = 0, found = 0;
 	struct ltt_kernel_event *kevent;
 
-	assert(kchan);
+	LTTNG_ASSERT(kchan);
 
 	/* For each event in the kernel session */
 	cds_list_for_each_entry(kevent, &kchan->events_list.head, list) {
@@ -110,8 +110,8 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	int ret;
 	struct ltt_kernel_event *kevent;
 
-	assert(kchan);
-	assert(event);
+	LTTNG_ASSERT(kchan);
+	LTTNG_ASSERT(event);
 
 	kevent = trace_kernel_find_event(event->name, kchan,
 			event->type, filter);
@@ -162,9 +162,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
 
-	assert(usess);
-	assert(uchan);
-	assert(event);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
+	LTTNG_ASSERT(event);
 
 	rcu_read_lock();
 
@@ -188,7 +188,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 
 	if (uevent->enabled) {
 		/* It's already enabled so everything is OK */
-		assert(!to_create);
+		LTTNG_ASSERT(!to_create);
 		ret = LTTNG_ERR_UST_EVENT_ENABLED;
 		goto end;
 	}
@@ -264,9 +264,9 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 
-	assert(usess);
-	assert(uchan);
-	assert(event_name);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
+	LTTNG_ASSERT(event_name);
 
 	ht = uchan->events;
 
@@ -287,7 +287,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 
 	do {
 		uevent = caa_container_of(node, struct ltt_ust_event, node);
-		assert(uevent);
+		LTTNG_ASSERT(uevent);
 
 		if (uevent->enabled == 0) {
 			/* It's already disabled so everything is OK */
@@ -330,8 +330,8 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess,
 	struct ltt_ust_event *uevent = NULL;
 	struct lttng_event *events = NULL;
 
-	assert(usess);
-	assert(uchan);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
 
 	rcu_read_lock();
 
@@ -397,7 +397,7 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 {
 	int ret;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	DBG("Event agent enabling ALL events for session %" PRIu64, usess->id);
 
@@ -487,8 +487,8 @@ static int agent_enable(struct agent *agt,
 	int ret, created = 0;
 	struct agent_event *aevent;
 
-	assert(event);
-	assert(agt);
+	LTTNG_ASSERT(event);
+	LTTNG_ASSERT(agt);
 
 	aevent = agent_find_event(event->name, event->loglevel_type,
 			event->loglevel, filter_expression, agt);
@@ -503,7 +503,7 @@ static int agent_enable(struct agent *agt,
 		filter = NULL;
 		filter_expression = NULL;
 		created = 1;
-		assert(!AGENT_EVENT_IS_ENABLED(aevent));
+		LTTNG_ASSERT(!AGENT_EVENT_IS_ENABLED(aevent));
 	}
 
 	if (created && aevent->filter) {
@@ -554,9 +554,9 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		struct lttng_bytecode *filter,
 		char *filter_expression)
 {
-	assert(usess);
-	assert(event);
-	assert(agt);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(event);
+	LTTNG_ASSERT(agt);
 
 	DBG("Enabling agent event: event pattern = '%s', session id = %" PRIu64 ", loglevel type = %d, loglevel = %d, filter expression = '%s'",
 			event->name, usess->id, event->loglevel_type,
@@ -587,8 +587,8 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	uid_t trigger_owner_uid = 0;
 	const char *trigger_name;
 
-	assert(trigger);
-	assert(agt);
+	LTTNG_ASSERT(trigger);
+	LTTNG_ASSERT(agt);
 
 	t_status = lttng_trigger_get_name(trigger, &trigger_name);
 	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
@@ -596,16 +596,16 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	}
 
 	t_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner_uid);
-	assert(t_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(t_status == LTTNG_TRIGGER_STATUS_OK);
 
 	condition = lttng_trigger_get_const_condition(trigger);
 
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	c_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &rule);
-	assert(c_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(c_status == LTTNG_CONDITION_STATUS_OK);
 
 	switch (lttng_event_rule_get_type(rule)) {
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
@@ -618,7 +618,7 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	}
 
 	d_type = lttng_event_rule_get_domain_type(rule);
-	assert(d_type == agt->domain);
+	LTTNG_ASSERT(d_type == agt->domain);
 
 	event = lttng_event_rule_generate_lttng_event(rule);
 	if (!event) {
@@ -683,7 +683,7 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 		default_event_name = DEFAULT_PYTHON_EVENT_NAME;
 		break;
 	default:
-		assert(0);
+		abort();
 	}
 
 	return default_event_name;
@@ -696,9 +696,9 @@ static int trigger_agent_disable_one(const struct lttng_trigger *trigger,
 {
 	int ret;
 
-	assert(agt);
-	assert(trigger);
-	assert(aevent);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(trigger);
+	LTTNG_ASSERT(aevent);
 
 	/*
 	 * Actual ust event un-registration happens on the trigger
@@ -740,9 +740,9 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan = NULL;
 	const char *ust_event_name, *ust_channel_name;
 
-	assert(agt);
-	assert(usess);
-	assert(aevent);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(aevent);
 
 	DBG("Event agent disabling %s (loglevel type %d, loglevel value %d) for session %" PRIu64,
 		aevent->name, aevent->loglevel_type, aevent->loglevel_value,
@@ -790,7 +790,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	uevent = trace_ust_find_event(uchan->events, (char *) ust_event_name,
 			aevent->filter, LTTNG_UST_ABI_LOGLEVEL_ALL, -1, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
-	assert(uevent);
+	LTTNG_ASSERT(uevent);
 
 	if (usess->active) {
 		ret = ust_app_disable_event_glb(usess, uchan, uevent);
@@ -829,8 +829,8 @@ int trigger_agent_disable(
 	int ret = LTTNG_OK;
 	struct agent_event *aevent;
 
-	assert(trigger);
-	assert(agt);
+	LTTNG_ASSERT(trigger);
+	LTTNG_ASSERT(agt);
 
 	DBG("Event agent disabling for trigger %" PRIu64,
 			lttng_trigger_get_tracer_token(trigger));
@@ -869,9 +869,9 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *node;
 
-	assert(agt);
-	assert(usess);
-	assert(event_name);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(event_name);
 
 	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64, event_name, usess->id);
 
@@ -913,8 +913,8 @@ int event_agent_disable_all(struct ltt_ust_session *usess,
 	struct agent_event *aevent;
 	struct lttng_ht_iter iter;
 
-	assert(agt);
-	assert(usess);
+	LTTNG_ASSERT(agt);
+	LTTNG_ASSERT(usess);
 
 	/*
 	 * Disable event on agent application. Continue to disable all other events

@@ -15,7 +15,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 #include "common/bytecode/bytecode.h"
 #include "filter-ast.h"
@@ -317,8 +316,8 @@ int filter_parser_ctx_create_from_filter_expression(
 	struct filter_parser_ctx *ctx = NULL;
 	FILE *fmem = NULL;
 
-	assert(filter_expression);
-	assert(ctxp);
+	LTTNG_ASSERT(filter_expression);
+	LTTNG_ASSERT(ctxp);
 
 	/*
 	 * Casting const to non-const, as the underlying function will use it in

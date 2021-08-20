@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -172,13 +171,13 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 
-	assert(session_name_len <= UINT32_MAX);
+	LTTNG_ASSERT(session_name_len <= UINT32_MAX);
 	msg->session_name_len = htobe32(session_name_len);
 
-	assert(hostname_len <= UINT32_MAX);
+	LTTNG_ASSERT(hostname_len <= UINT32_MAX);
 	msg->hostname_len = htobe32(hostname_len);
 
-	assert(base_path_len <= UINT32_MAX);
+	LTTNG_ASSERT(base_path_len <= UINT32_MAX);
 	msg->base_path_len = htobe32(base_path_len);
 
 	dst = msg->names;
@@ -323,8 +322,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 	int ret;
 	struct lttcomm_relayd_create_session_reply_2_11 reply = {};
 
-	assert(rsock);
-	assert(relayd_session_id);
+	LTTNG_ASSERT(rsock);
+	LTTNG_ASSERT(relayd_session_id);
 
 	DBG("Relayd create session");
 
@@ -452,10 +451,10 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 
-	assert(channel_name_len <= UINT32_MAX);
+	LTTNG_ASSERT(channel_name_len <= UINT32_MAX);
 	msg->channel_name_len = htobe32(channel_name_len);
 
-	assert(pathname_len <= UINT32_MAX);
+	LTTNG_ASSERT(pathname_len <= UINT32_MAX);
 	msg->pathname_len = htobe32(pathname_len);
 
 	if (lttng_strncpy(msg->names, channel_name, channel_name_len)) {
@@ -501,11 +500,11 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
-	assert(channel_name);
-	assert(domain_name);
-	assert(_pathname);
-	assert(trace_chunk);
+	LTTNG_ASSERT(rsock);
+	LTTNG_ASSERT(channel_name);
+	LTTNG_ASSERT(domain_name);
+	LTTNG_ASSERT(_pathname);
+	LTTNG_ASSERT(trace_chunk);
 
 	DBG("Relayd adding stream for channel name %s", channel_name);
 
@@ -541,7 +540,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk,
 				&chunk_id);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 		/* From 2.11 to ...*/
 		ret = relayd_add_stream_2_11(rsock, channel_name, pathname,
@@ -592,7 +591,7 @@ int relayd_streams_sent(struct lttcomm_relayd_sock *rsock)
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd sending streams sent.");
 
@@ -648,7 +647,7 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 	struct lttcomm_relayd_version msg;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd version check for major.minor %u.%u", rsock->major,
 			rsock->minor);
@@ -716,7 +715,7 @@ int relayd_send_metadata(struct lttcomm_relayd_sock *rsock, size_t len)
 	int ret;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd sending metadata of size %zu", len);
 
@@ -744,7 +743,7 @@ error:
 int relayd_connect(struct lttcomm_relayd_sock *rsock)
 {
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	if (!rsock->sock.ops) {
 		/*
@@ -776,7 +775,7 @@ int relayd_close(struct lttcomm_relayd_sock *rsock)
 	int ret;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	/* An invalid fd is fine, return success. */
 	if (rsock->sock.fd < 0) {
@@ -810,8 +809,8 @@ int relayd_send_data_hdr(struct lttcomm_relayd_sock *rsock,
 	int ret;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
-	assert(hdr);
+	LTTNG_ASSERT(rsock);
+	LTTNG_ASSERT(hdr);
 
 	if (rsock->sock.fd < 0) {
 		return -ECONNRESET;
@@ -851,7 +850,7 @@ int relayd_send_close_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd closing stream id %" PRIu64, stream_id);
 
@@ -901,7 +900,7 @@ int relayd_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd data pending for stream id %" PRIu64, stream_id);
 
@@ -950,7 +949,7 @@ int relayd_quiescent_control(struct lttcomm_relayd_sock *rsock,
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd checking quiescent control state");
 
@@ -995,7 +994,7 @@ int relayd_begin_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id)
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd begin data pending");
 
@@ -1043,7 +1042,7 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	DBG("Relayd end data pending");
 
@@ -1090,7 +1089,7 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	if (rsock->minor < 4) {
 		DBG("Not sending indexes before protocol 2.4");
@@ -1159,7 +1158,7 @@ int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 	struct lttcomm_relayd_generic_reply reply;
 
 	/* Code flow error. Safety net. */
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	/* Should have been prevented by the sessiond. */
 	if (rsock->minor < 8) {
@@ -1229,7 +1228,7 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	lttng_dynamic_buffer_init(&payload);
 
 	/* Code flow error. Safety net. */
-	assert(sock);
+	LTTNG_ASSERT(sock);
 
 	if (new_chunk_id) {
 		ret = snprintf(new_chunk_id_buf, sizeof(new_chunk_id_buf),

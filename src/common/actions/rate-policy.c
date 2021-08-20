@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
@@ -296,7 +295,7 @@ ssize_t lttng_rate_policy_create_from_payload(struct lttng_payload_view *view,
 		goto end;
 	}
 
-	assert(*rate_policy);
+	LTTNG_ASSERT(*rate_policy);
 
 	consumed_len = sizeof(struct lttng_rate_policy_comm) +
 			specific_rate_policy_consumed_len;
@@ -324,7 +323,7 @@ bool lttng_rate_policy_is_equal(const struct lttng_rate_policy *a,
 		goto end;
 	}
 
-	assert(a->equal);
+	LTTNG_ASSERT(a->equal);
 	is_equal = a->equal(a, b);
 end:
 	return is_equal;
@@ -351,7 +350,7 @@ bool lttng_rate_policy_should_execute(
 static struct lttng_rate_policy_every_n *rate_policy_every_n_from_rate_policy(
 		struct lttng_rate_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(policy, struct lttng_rate_policy_every_n, parent);
 }
@@ -360,7 +359,7 @@ static const struct lttng_rate_policy_every_n *
 rate_policy_every_n_from_rate_policy_const(
 		const struct lttng_rate_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(policy, struct lttng_rate_policy_every_n, parent);
 }
@@ -373,8 +372,8 @@ static int lttng_rate_policy_every_n_serialize(
 	struct lttng_rate_policy_every_n *every_n_policy;
 	struct lttng_rate_policy_every_n_comm comm = {};
 
-	assert(policy);
-	assert(payload);
+	LTTNG_ASSERT(policy);
+	LTTNG_ASSERT(payload);
 
 	every_n_policy = rate_policy_every_n_from_rate_policy(policy);
 	comm.interval = every_n_policy->interval;
@@ -445,9 +444,9 @@ static enum lttng_error_code lttng_rate_policy_every_n_mi_serialize(
 	enum lttng_error_code ret_code;
 	const struct lttng_rate_policy_every_n *every_n_policy = NULL;
 
-	assert(rate_policy);
-	assert(IS_EVERY_N_RATE_POLICY(rate_policy));
-	assert(writer);
+	LTTNG_ASSERT(rate_policy);
+	LTTNG_ASSERT(IS_EVERY_N_RATE_POLICY(rate_policy));
+	LTTNG_ASSERT(writer);
 
 	every_n_policy = rate_policy_every_n_from_rate_policy_const(
 			rate_policy);
@@ -539,7 +538,7 @@ static bool lttng_rate_policy_every_n_should_execute(
 		const struct lttng_rate_policy *policy, uint64_t counter)
 {
 	const struct lttng_rate_policy_every_n *every_n_policy;
-	assert(policy);
+	LTTNG_ASSERT(policy);
 	bool execute = false;
 
 	every_n_policy = rate_policy_every_n_from_rate_policy_const(policy);
@@ -563,7 +562,7 @@ static bool lttng_rate_policy_every_n_should_execute(
 static struct lttng_rate_policy_once_after_n *
 rate_policy_once_after_n_from_rate_policy(struct lttng_rate_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(
 			policy, struct lttng_rate_policy_once_after_n, parent);
@@ -573,7 +572,7 @@ static const struct lttng_rate_policy_once_after_n *
 rate_policy_once_after_n_from_rate_policy_const(
 		const struct lttng_rate_policy *policy)
 {
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	return container_of(
 			policy, struct lttng_rate_policy_once_after_n, parent);
@@ -586,8 +585,8 @@ static int lttng_rate_policy_once_after_n_serialize(
 	struct lttng_rate_policy_once_after_n *once_after_n_policy;
 	struct lttng_rate_policy_once_after_n_comm comm = {};
 
-	assert(policy);
-	assert(payload);
+	LTTNG_ASSERT(policy);
+	LTTNG_ASSERT(payload);
 
 	once_after_n_policy = rate_policy_once_after_n_from_rate_policy(policy);
 	comm.threshold = once_after_n_policy->threshold;
@@ -661,9 +660,9 @@ static enum lttng_error_code lttng_rate_policy_once_after_n_mi_serialize(
 	enum lttng_error_code ret_code;
 	const struct lttng_rate_policy_once_after_n *once_after_n_policy = NULL;
 
-	assert(rate_policy);
-	assert(IS_ONCE_AFTER_N_RATE_POLICY(rate_policy));
-	assert(writer);
+	LTTNG_ASSERT(rate_policy);
+	LTTNG_ASSERT(IS_ONCE_AFTER_N_RATE_POLICY(rate_policy));
+	LTTNG_ASSERT(writer);
 
 	once_after_n_policy = rate_policy_once_after_n_from_rate_policy_const(
 			rate_policy);
@@ -756,7 +755,7 @@ LTTNG_HIDDEN
 struct lttng_rate_policy *lttng_rate_policy_copy(
 		const struct lttng_rate_policy *source)
 {
-	assert(source->copy);
+	LTTNG_ASSERT(source->copy);
 	return source->copy(source);
 }
 
@@ -765,7 +764,7 @@ static bool lttng_rate_policy_once_after_n_should_execute(
 {
 	const struct lttng_rate_policy_once_after_n *once_after_n_policy;
 	bool execute = false;
-	assert(policy);
+	LTTNG_ASSERT(policy);
 
 	once_after_n_policy =
 			rate_policy_once_after_n_from_rate_policy_const(policy);
@@ -788,9 +787,9 @@ enum lttng_error_code lttng_rate_policy_mi_serialize(
 	int ret;
 	enum lttng_error_code ret_code;
 
-	assert(rate_policy);
-	assert(writer);
-	assert(rate_policy->mi_serialize);
+	LTTNG_ASSERT(rate_policy);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(rate_policy->mi_serialize);
 
 	/* Open rate policy element. */
 	ret = mi_lttng_writer_open_element(

@@ -306,7 +306,7 @@ close_error:
 		int closeret;
 
 		closeret = close(sock);
-		assert(!closeret);
+		LTTNG_ASSERT(!closeret);
 	}
 
 error:

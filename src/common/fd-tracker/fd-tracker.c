@@ -232,7 +232,7 @@ static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle)
 	pthread_mutex_lock(&handle->lock);
 	lttng_inode_borrow_location(
 			handle->inode, &node_directory_handle, &path);
-	assert(handle->fd >= 0);
+	LTTNG_ASSERT(handle->fd >= 0);
 	if (handle->in_use) {
 		/* This handle can't be suspended as it is currently in use. */
 		ret = -EAGAIN;
@@ -292,8 +292,8 @@ static int fs_handle_tracked_restore(struct fs_handle_tracked *handle)
 	lttng_inode_borrow_location(
 			handle->inode, &node_directory_handle, &path);
 
-	assert(handle->fd == -1);
-	assert(path);
+	LTTNG_ASSERT(handle->fd == -1);
+	LTTNG_ASSERT(path);
 	ret = open_from_properties(
 			node_directory_handle, path, &handle->properties);
 	if (ret < 0) {
@@ -480,7 +480,7 @@ int fd_tracker_destroy(struct fd_tracker *tracker)
 
 	if (tracker->unsuspendable_fds) {
 		ret = cds_lfht_destroy(tracker->unsuspendable_fds, NULL);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 
 	lttng_inode_registry_destroy(tracker->inode_registry);
@@ -840,7 +840,7 @@ static int fs_handle_tracked_get_fd(struct fs_handle *_handle)
 	 */
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
-	assert(!handle->in_use);
+	LTTNG_ASSERT(!handle->in_use);
 
 	handle->tracker->stats.uses++;
 	if (handle->fd >= 0) {

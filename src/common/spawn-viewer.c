@@ -7,7 +7,6 @@
  *
  */
 
-#include <assert.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -249,7 +248,7 @@ retry_viewer:
 	 * This function should never return if successfull because `execvp(3)`
 	 * onle returns if an error has occurred.
 	 */
-	assert(ret != 0);
+	LTTNG_ASSERT(ret != 0);
 error:
 	free(argv);
 	return ret;

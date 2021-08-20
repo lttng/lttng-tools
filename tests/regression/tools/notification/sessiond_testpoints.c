@@ -15,7 +15,6 @@
 #include <lttng/constant.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-#include <assert.h>
 #include <stdio.h>
 
 static char *pause_pipe_path;
@@ -57,7 +56,7 @@ int __testpoint_sessiond_thread_notification(void)
 	}
 
 	notifier_notif_consumption_state = dlsym(NULL, "notifier_consumption_paused");
-	assert(notifier_notif_consumption_state);
+	LTTNG_ASSERT(notifier_notif_consumption_state);
 
 	ret = asprintf(&pause_pipe_path, "%s", pause_pipe_path_prefix);
 	if (ret < 1) {

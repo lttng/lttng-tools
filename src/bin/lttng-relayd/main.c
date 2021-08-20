@@ -1182,7 +1182,7 @@ restart:
 					newsock = accept_relayd_sock(data_sock,
 							"Data socket to relayd");
 				} else {
-					assert(pollfd == control_sock->fd);
+					LTTNG_ASSERT(pollfd == control_sock->fd);
 					type = RELAY_CONTROL;
 					newsock = accept_relayd_sock(control_sock,
 							"Control socket to relayd");
@@ -1438,7 +1438,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto send_reply;
 	}
-	assert(!conn->session);
+	LTTNG_ASSERT(!conn->session);
 	conn->session = session;
 	DBG("Created session %" PRIu64, session->id);
 
@@ -1629,7 +1629,7 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 		} else if (conn->minor >= 4 && conn->minor < 11) {
 			char *group_by_session_path_name;
 
-			assert(session->session_name[0] != '\0');
+			LTTNG_ASSERT(session->session_name[0] != '\0');
 
 			group_by_session_path_name =
 					backward_compat_group_by_session(
@@ -2216,8 +2216,8 @@ static int relay_begin_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 
-	assert(recv_hdr);
-	assert(conn);
+	LTTNG_ASSERT(recv_hdr);
+	LTTNG_ASSERT(conn);
 
 	DBG("Init streams for data pending");
 
@@ -2389,7 +2389,7 @@ static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
 	struct relay_stream *stream;
 	size_t msg_len;
 
-	assert(conn);
+	LTTNG_ASSERT(conn);
 
 	DBG("Relay receiving index");
 
@@ -2473,7 +2473,7 @@ static int relay_streams_sent(const struct lttcomm_relayd_hdr *recv_hdr,
 	ssize_t send_ret;
 	struct lttcomm_relayd_generic_reply reply;
 
-	assert(conn);
+	LTTNG_ASSERT(conn);
 
 	DBG("Relay receiving streams_sent");
 
@@ -2777,7 +2777,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	assert(conn->session->output_directory);
+	LTTNG_ASSERT(conn->session->output_directory);
 	chunk_status = lttng_trace_chunk_set_as_owner(chunk,
 			conn->session->output_directory);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -3339,8 +3339,8 @@ static enum relay_connection_status relay_process_control_receive_payload(
 		goto end;
 	}
 
-	assert(ret > 0);
-	assert(ret <= state->left_to_receive);
+	LTTNG_ASSERT(ret > 0);
+	LTTNG_ASSERT(ret <= state->left_to_receive);
 
 	state->left_to_receive -= ret;
 	state->received += ret;
@@ -3394,7 +3394,7 @@ static enum relay_connection_status relay_process_control_receive_header(
 	struct ctrl_connection_state_receive_header *state =
 			&conn->protocol.ctrl.state.receive_header;
 
-	assert(state->left_to_receive != 0);
+	LTTNG_ASSERT(state->left_to_receive != 0);
 
 	ret = conn->sock->ops->recvmsg(conn->sock,
 			reception_buffer->data + state->received,
@@ -3412,8 +3412,8 @@ static enum relay_connection_status relay_process_control_receive_header(
 		goto end;
 	}
 
-	assert(ret > 0);
-	assert(ret <= state->left_to_receive);
+	LTTNG_ASSERT(ret > 0);
+	LTTNG_ASSERT(ret <= state->left_to_receive);
 
 	state->left_to_receive -= ret;
 	state->received += ret;
@@ -3505,7 +3505,7 @@ static enum relay_connection_status relay_process_data_receive_header(
 	struct lttcomm_relayd_data_hdr header;
 	struct relay_stream *stream;
 
-	assert(state->left_to_receive != 0);
+	LTTNG_ASSERT(state->left_to_receive != 0);
 
 	ret = conn->sock->ops->recvmsg(conn->sock,
 			state->header_reception_buffer + state->received,
@@ -3523,8 +3523,8 @@ static enum relay_connection_status relay_process_data_receive_header(
 		goto end;
 	}
 
-	assert(ret > 0);
-	assert(ret <= state->left_to_receive);
+	LTTNG_ASSERT(ret > 0);
+	LTTNG_ASSERT(ret <= state->left_to_receive);
 
 	state->left_to_receive -= ret;
 	state->received += ret;
@@ -3660,7 +3660,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 
 		packet_chunk = lttng_buffer_view_init(data_buffer,
 				0, recv_size);
-		assert(packet_chunk.data);
+		LTTNG_ASSERT(packet_chunk.data);
 
 		ret = stream_write(stream, &packet_chunk, 0);
 		if (ret) {
@@ -3916,7 +3916,7 @@ restart:
 
 				ctrl_conn = connection_get_by_sock(relay_connections_ht, pollfd);
 				/* If not found, there is a synchronization issue. */
-				assert(ctrl_conn);
+				LTTNG_ASSERT(ctrl_conn);
 
 				if (ctrl_conn->type == RELAY_DATA) {
 					if (revents & LPOLLIN) {
@@ -3929,7 +3929,7 @@ restart:
 					}
 					goto put_ctrl_connection;
 				}
-				assert(ctrl_conn->type == RELAY_CONTROL);
+				LTTNG_ASSERT(ctrl_conn->type == RELAY_CONTROL);
 
 				if (revents & LPOLLIN) {
 					enum relay_connection_status status;
@@ -4027,7 +4027,7 @@ restart:
 			if (data_conn->type == RELAY_CONTROL) {
 				goto put_data_connection;
 			}
-			assert(data_conn->type == RELAY_DATA);
+			LTTNG_ASSERT(data_conn->type == RELAY_DATA);
 
 			if (revents & LPOLLIN) {
 				enum relay_connection_status status;

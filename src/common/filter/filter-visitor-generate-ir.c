@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 #include "filter-ast.h"
 #include "filter-parser.h"
@@ -63,7 +62,7 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 static
 enum ir_load_string_type get_literal_string_type(const char *string)
 {
-	assert(string);
+	LTTNG_ASSERT(string);
 
 	if (strutils_is_star_glob_pattern(string)) {
 		if (strutils_is_star_at_the_end_only_glob_pattern(string)) {
@@ -171,7 +170,7 @@ struct filter_node *load_expression_get_forward_chain(struct filter_node *node)
 	struct filter_node *prev_node;
 
 	for (;;) {
-		assert(node->type == NODE_EXPRESSION);
+		LTTNG_ASSERT(node->type == NODE_EXPRESSION);
 		prev_node = node;
 		node = node->u.expression.prev;
 		if (!node) {

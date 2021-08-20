@@ -35,7 +35,7 @@ enum lttng_trigger_status lttng_trigger_condition_add_error_results(
 			trigger_name : "(anonymous)";
 	status = lttng_trigger_get_owner_uid(trigger,
 			&trigger_owner);
-	assert(status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_TRIGGER_STATUS_OK);
 
 	/*
 	 * Only add discarded tracer messages count for applicable conditions.
@@ -96,7 +96,7 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 			trigger_name : "(anonymous)";
 	status = lttng_trigger_get_owner_uid(trigger,
 			&trigger_owner);
-	assert(status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_TRIGGER_STATUS_OK);
 
 	action_status = lttng_action_add_error_query_results(
 			lttng_trigger_get_action(trigger), results);

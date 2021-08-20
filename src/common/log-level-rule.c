@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -230,7 +229,7 @@ struct lttng_log_level_rule *lttng_log_level_rule_copy(
 {
 	struct lttng_log_level_rule *copy = NULL;
 
-	assert(source);
+	LTTNG_ASSERT(source);
 
 	copy = zmalloc(sizeof(struct lttng_log_level_rule));
 	if (!copy) {
@@ -249,7 +248,7 @@ void lttng_log_level_rule_to_loglevel(
 		enum lttng_loglevel_type *loglevel_type,
 		int *loglevel_value)
 {
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	switch (log_level_rule->type) {
 	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
@@ -274,7 +273,7 @@ unsigned long lttng_log_level_rule_hash(
 	int log_level_value;
 	enum lttng_log_level_rule_type type;
 
-	assert(log_level_rule);
+	LTTNG_ASSERT(log_level_rule);
 
 	type = lttng_log_level_rule_get_type(log_level_rule);
 
@@ -292,7 +291,7 @@ unsigned long lttng_log_level_rule_hash(
 		break;
 	}
 
-	assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+	LTTNG_ASSERT(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 	hash = hash_key_ulong((void *) (unsigned long) type, lttng_ht_seed);
 
@@ -313,8 +312,8 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(
 	const char *element_str = NULL;
 	int level;
 
-	assert(rule);
-	assert(writer);
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
 
 	switch (lttng_log_level_rule_get_type(rule)) {
 	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
@@ -331,7 +330,7 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(
 		break;
 	}
 
-	assert(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 	/* Open log level rule element. */
 	ret = mi_lttng_writer_open_element(

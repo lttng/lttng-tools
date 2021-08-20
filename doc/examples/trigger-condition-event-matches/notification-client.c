@@ -7,7 +7,6 @@
 
 #include <lttng/lttng.h>
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -16,6 +15,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+
+#include <common/macros.h>
 
 static int print_capture(const struct lttng_condition *condition,
 		const struct lttng_event_field_value *capture,
@@ -84,13 +85,13 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 
 		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
 				event_expr);
-		assert(parent_expr != NULL);
+		LTTNG_ASSERT(parent_expr != NULL);
 
 		print_one_event_expr(parent_expr);
 
 		status = lttng_event_expr_array_field_element_get_index(
 				event_expr, &index);
-		assert(status == LTTNG_EVENT_EXPR_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
 		printf("[%u]", index);
 
@@ -257,7 +258,7 @@ static int print_array(const struct lttng_condition *condition,
 		const struct lttng_event_expr *expr =
 				lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 						condition, i);
-		assert(expr);
+		LTTNG_ASSERT(expr);
 
 		indent(indent_level + 1);
 
@@ -308,7 +309,7 @@ static int print_captures(struct lttng_notification *notification)
 	const struct lttng_event_field_value *captured_field_array = NULL;
 	unsigned int expected_capture_field_count;
 
-	assert(lttng_evaluation_get_type(evaluation) ==
+	LTTNG_ASSERT(lttng_evaluation_get_type(evaluation) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	condition_status =

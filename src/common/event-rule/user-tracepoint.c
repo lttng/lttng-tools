@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/credentials.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
@@ -95,7 +94,7 @@ static int lttng_event_rule_user_tracepoint_serialize(
 			rule, struct lttng_event_rule_user_tracepoint, parent);
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(rule, &exclusion_count);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	pattern_len = strlen(tracepoint->pattern) + 1;
 
@@ -112,7 +111,7 @@ static int lttng_event_rule_user_tracepoint_serialize(
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 		/* Length field. */
 		exclusions_len += sizeof(uint32_t);
@@ -160,7 +159,7 @@ static int lttng_event_rule_user_tracepoint_serialize(
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 		len = strlen(exclusion) + 1;
 		/* Append exclusion length, includes the null terminator. */
@@ -182,7 +181,7 @@ static int lttng_event_rule_user_tracepoint_serialize(
 		exclusions_appended_len += len;
 	}
 
-	assert(exclusions_len == exclusions_appended_len);
+	LTTNG_ASSERT(exclusions_len == exclusions_appended_len);
 
 end:
 	return ret;
@@ -202,9 +201,9 @@ static bool lttng_event_rule_user_tracepoint_is_equal(
 	b = container_of(_b, struct lttng_event_rule_user_tracepoint, parent);
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(_a, &count_a);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(_b, &count_b);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Quick checks. */
 	if (count_a != count_b) {
@@ -216,8 +215,8 @@ static bool lttng_event_rule_user_tracepoint_is_equal(
 	}
 
 	/* Long check. */
-	assert(a->pattern);
-	assert(b->pattern);
+	LTTNG_ASSERT(a->pattern);
+	LTTNG_ASSERT(b->pattern);
 	if (strcmp(a->pattern, b->pattern)) {
 		goto end;
 	}
@@ -241,10 +240,10 @@ static bool lttng_event_rule_user_tracepoint_is_equal(
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 				_a, i, &exclusion_a);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 				_b, i, &exclusion_b);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		if (strcmp(exclusion_a, exclusion_b)) {
 			goto end;
 		}
@@ -267,7 +266,7 @@ lttng_event_rule_user_tracepoint_generate_filter_bytecode(
 	const char *filter;
 	struct lttng_bytecode *bytecode = NULL;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_user_tracepoint, parent);
@@ -323,7 +322,7 @@ static const char *lttng_event_rule_user_tracepoint_get_internal_filter(
 {
 	struct lttng_event_rule_user_tracepoint *tracepoint;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_user_tracepoint, parent);
 	return tracepoint->internal_filter.filter;
@@ -335,7 +334,7 @@ lttng_event_rule_user_tracepoint_get_internal_filter_bytecode(
 {
 	struct lttng_event_rule_user_tracepoint *tracepoint;
 
-	assert(rule);
+	LTTNG_ASSERT(rule);
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_user_tracepoint, parent);
 	return tracepoint->internal_filter.bytecode;
@@ -351,11 +350,11 @@ lttng_event_rule_user_tracepoint_generate_exclusions(
 	enum lttng_event_rule_status event_rule_status;
 	enum lttng_event_rule_generate_exclusions_status ret_status;
 
-	assert(_exclusions);
+	LTTNG_ASSERT(_exclusions);
 
 	event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
 			rule, &nb_exclusions);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 	if (nb_exclusions == 0) {
 		/* Nothing to do. */
 		exclusions = NULL;
@@ -379,7 +378,7 @@ lttng_event_rule_user_tracepoint_generate_exclusions(
 		event_rule_status =
 				lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 						rule, i, &exclusion_str);
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 		copy_ret = lttng_strncpy(exclusions->names[i], exclusion_str,
 				LTTNG_SYMBOL_NAME_LEN);
@@ -426,14 +425,14 @@ static unsigned long lttng_event_rule_user_tracepoint_hash(
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(rule,
 			&exclusion_count);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	for (i = 0; i < exclusion_count; i++) {
 		const char *exclusion;
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 		hash ^= hash_key_str(exclusion, lttng_ht_seed);
 	}
 
@@ -451,27 +450,27 @@ static enum lttng_error_code lttng_event_rule_user_tracepoint_mi_serialize(
 	const struct lttng_log_level_rule *log_level_rule = NULL;
 	unsigned int exclusion_count = 0;
 
-	assert(rule);
-	assert(writer);
-	assert(IS_USER_TRACEPOINT_EVENT_RULE(rule));
+	LTTNG_ASSERT(rule);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_USER_TRACEPOINT_EVENT_RULE(rule));
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern(
 			rule, &name_pattern);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	assert(name_pattern);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(name_pattern);
 
 	status = lttng_event_rule_user_tracepoint_get_filter(rule, &filter);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
 			status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	status = lttng_event_rule_user_tracepoint_get_log_level_rule(
 			rule, &log_level_rule);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
 			status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
 			rule, &exclusion_count);
-	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Open event rule user tracepoint element. */
 	ret = mi_lttng_writer_open_element(
@@ -521,7 +520,7 @@ static enum lttng_error_code lttng_event_rule_user_tracepoint_mi_serialize(
 
 			status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 					rule, i, &exclusion);
-			assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+			LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 			ret = mi_lttng_writer_write_element_string(writer,
 					mi_lttng_element_event_rule_user_tracepoint_name_pattern_exclusion,
@@ -703,7 +702,7 @@ skip_filter_expression:
 			goto end;
 		}
 
-		assert(ret == tracepoint_comm->log_level_rule_len);
+		LTTNG_ASSERT(ret == tracepoint_comm->log_level_rule_len);
 	}
 
 	/* Skip after the log level rule. */
@@ -912,7 +911,7 @@ static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
 		abort();
 	}
 
-	assert(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 	if (level < LTTNG_LOGLEVEL_EMERG) {
 		/* Invalid. */

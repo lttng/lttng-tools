@@ -10,7 +10,6 @@
 #include <common/defaults.h>
 #include <common/error.h>
 #include <time.h>
-#include <assert.h>
 #include <stdio.h>
 
 struct lttng_session_descriptor_network_location {
@@ -1043,7 +1042,7 @@ enum lttng_error_code lttng_session_descriptor_set_default_output(
 				goto end;
 			}
 		}
-		assert(descriptor->name);
+		LTTNG_ASSERT(descriptor->name);
 		ret = snprintf(local_uri, sizeof(local_uri),
 				"file://%s/%s/%s%s",
 				absolute_home_path,

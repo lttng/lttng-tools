@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -128,8 +127,8 @@ bool lttng_condition_session_consumed_size_is_equal(const struct lttng_condition
 		}
 	}
 
-	assert(a->session_name);
-	assert(b->session_name);
+	LTTNG_ASSERT(a->session_name);
+	LTTNG_ASSERT(b->session_name);
 	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
@@ -150,18 +149,18 @@ enum lttng_error_code lttng_condition_session_consumed_size_mi_serialize(
 	const char *session_name = NULL;
 	uint64_t threshold_bytes;
 
-	assert(condition);
-	assert(writer);
-	assert(IS_CONSUMED_SIZE_CONDITION(condition));
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(IS_CONSUMED_SIZE_CONDITION(condition));
 
 	status = lttng_condition_session_consumed_size_get_session_name(
 			condition, &session_name);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
-	assert(session_name);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(session_name);
 
 	status = lttng_condition_session_consumed_size_get_threshold(
 			condition, &threshold_bytes);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 	/* Open condition session consumed size element. */
 	ret = mi_lttng_writer_open_element(writer,

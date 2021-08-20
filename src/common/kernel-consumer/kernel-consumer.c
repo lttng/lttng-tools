@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -74,7 +73,7 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 int lttng_kconsumer_sample_snapshot_positions(
 		struct lttng_consumer_stream *stream)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	return kernctl_snapshot_sample_positions(stream->wait_fd);
 }
@@ -174,7 +173,7 @@ static int lttng_kconsumer_snapshot_channel(
 		 */
 		pthread_mutex_lock(&stream->lock);
 
-		assert(channel->trace_chunk);
+		LTTNG_ASSERT(channel->trace_chunk);
 		if (!lttng_trace_chunk_get(channel->trace_chunk)) {
 			/*
 			 * Can't happen barring an internal error as the channel
@@ -184,7 +183,7 @@ static int lttng_kconsumer_snapshot_channel(
 			ret = -1;
 			goto end_unlock;
 		}
-		assert(!stream->trace_chunk);
+		LTTNG_ASSERT(!stream->trace_chunk);
 		stream->trace_chunk = channel->trace_chunk;
 
 		/*
@@ -366,7 +365,7 @@ static int lttng_kconsumer_snapshot_metadata(
 	ssize_t ret_read;
 	struct lttng_consumer_stream *metadata_stream;
 
-	assert(ctx);
+	LTTNG_ASSERT(ctx);
 
 	DBG("Kernel consumer snapshot metadata with key %" PRIu64 " at path %s",
 			key, path);
@@ -374,11 +373,11 @@ static int lttng_kconsumer_snapshot_metadata(
 	rcu_read_lock();
 
 	metadata_stream = metadata_channel->metadata_stream;
-	assert(metadata_stream);
+	LTTNG_ASSERT(metadata_stream);
 
 	pthread_mutex_lock(&metadata_stream->lock);
-	assert(metadata_channel->trace_chunk);
-	assert(metadata_stream->trace_chunk);
+	LTTNG_ASSERT(metadata_channel->trace_chunk);
+	LTTNG_ASSERT(metadata_stream->trace_chunk);
 
 	/* Flag once that we have a valid relayd for the stream. */
 	if (relayd_id != (uint64_t) -1ULL) {
@@ -470,7 +469,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* Deprecated command */
-	assert(msg.cmd_type != LTTNG_CONSUMER_STOP);
+	LTTNG_ASSERT(msg.cmd_type != LTTNG_CONSUMER_STOP);
 
 	health_code_update();
 
@@ -542,7 +541,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			new_channel->type = msg.u.channel.type;
 			break;
 		default:
-			assert(0);
+			abort();
 			goto end_nosignal;
 		};
 
@@ -1031,13 +1030,13 @@ error_streams_sent_nosignal:
 		 * This command should ONLY be issued for channel with streams set in
 		 * no monitor mode.
 		 */
-		assert(!channel->monitor);
+		LTTNG_ASSERT(!channel->monitor);
 
 		/*
 		 * The refcount should ALWAYS be 0 in the case of a channel in no
 		 * monitor mode.
 		 */
-		assert(!uatomic_sub_return(&channel->refcount, 1));
+		LTTNG_ASSERT(!uatomic_sub_return(&channel->refcount, 1));
 
 		consumer_del_channel(channel);
 end_destroy_channel:
@@ -1432,7 +1431,7 @@ enum sync_metadata_status lttng_kconsumer_sync_metadata(
 	int ret;
 	enum sync_metadata_status status;
 
-	assert(metadata);
+	LTTNG_ASSERT(metadata);
 
 	ret = kernctl_buffer_flush(metadata->wait_fd);
 	if (ret < 0) {
@@ -1831,7 +1830,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	/*
 	 * Don't create anything if this is set for streaming or if there is
@@ -1878,7 +1877,7 @@ error_close_fd:
 		int err;
 
 		err = close(stream->out_fd);
-		assert(!err);
+		LTTNG_ASSERT(!err);
 		stream->out_fd = -1;
 	}
 error:
@@ -1897,7 +1896,7 @@ int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	if (stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
 		ret = 0;
@@ -1908,7 +1907,7 @@ int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream)
 	if (ret == 0) {
 		/* There is still data so let's put back this subbuffer. */
 		ret = kernctl_put_subbuf(stream->wait_fd);
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 		ret = 1;   /* Data is pending */
 		goto end;
 	}

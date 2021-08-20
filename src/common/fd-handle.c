@@ -21,7 +21,7 @@ static void fd_handle_release(struct urcu_ref *ref)
 	int ret;
 	struct fd_handle *handle = container_of(ref, struct fd_handle, ref);
 
-	assert(handle->fd >= 0);
+	LTTNG_ASSERT(handle->fd >= 0);
 	ret = close(handle->fd);
 	if (ret == -1) {
 		PERROR("Failed to close file descriptor of fd_handle upon release: fd = %d",
@@ -78,7 +78,7 @@ void fd_handle_put(struct fd_handle *handle)
 LTTNG_HIDDEN
 int fd_handle_get_fd(struct fd_handle *handle)
 {
-	assert(handle);
+	LTTNG_ASSERT(handle);
 	return handle->fd;
 }
 

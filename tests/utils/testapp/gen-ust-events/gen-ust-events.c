@@ -7,7 +7,6 @@
 
 #define _LGPL_SOURCE
 #include <getopt.h>
-#include <assert.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <stdarg.h>

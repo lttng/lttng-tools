@@ -11,7 +11,6 @@
   * argv[2] Path to the XML to be validated
   */
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +25,7 @@
 #include <libxml/parser.h>
 
 #include <lttng/lttng-error.h>
+#include <common/macros.h>
 
 struct validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;
@@ -124,8 +124,8 @@ static int validate_xml(const char *xml_file_path, struct validation_ctx *ctx)
 	int ret;
 	xmlDocPtr doc = NULL;
 
-	assert(xml_file_path);
-	assert(ctx);
+	LTTNG_ASSERT(xml_file_path);
+	LTTNG_ASSERT(ctx);
 
 	/* Open the document */
 	doc = xmlParseFile(xml_file_path);

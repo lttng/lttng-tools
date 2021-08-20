@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <string.h>
 #include <urcu/uatomic.h>
@@ -555,7 +554,7 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 		symbol_name = addr ? NULL : event->event->u.kretprobe.symbol_name;
 		break;
 	default:
-		assert(1);
+		LTTNG_ASSERT(1);
 		ERR("Unsupported kernel instrumentation type.");
 		ret = LTTNG_ERR_INVALID;
 		goto end;
@@ -1404,8 +1403,8 @@ int save_ust_context_perf_thread_counter(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(ctx);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ctx);
 
 	/* Perf contexts are saved as event_perf_context_type */
 	ret = config_writer_open_element(writer, config_element_context_perf);
@@ -1454,8 +1453,8 @@ int save_ust_context_app_ctx(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(ctx);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ctx);
 
 	/* Application contexts are saved as application_context_type */
 	ret = config_writer_open_element(writer, config_element_context_app);
@@ -1500,8 +1499,8 @@ int save_ust_context_generic(struct config_writer *writer,
 	int ret;
 	const char *context_type_string;
 
-	assert(writer);
-	assert(ctx);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ctx);
 
 	/* Save context as event_context_type_type */
 	context_type_string = get_ust_context_type_string(
@@ -1532,8 +1531,8 @@ int save_ust_context(struct config_writer *writer,
 	int ret;
 	struct ltt_ust_context *ctx;
 
-	assert(writer);
-	assert(ctx_list);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ctx_list);
 
 	ret = config_writer_open_element(writer, config_element_contexts);
 	if (ret) {
@@ -1591,8 +1590,8 @@ int save_kernel_channel(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(kchan);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(kchan);
 
 	ret = config_writer_open_element(writer, config_element_channel);
 	if (ret) {
@@ -1649,9 +1648,9 @@ int save_ust_channel(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(ust_chan);
-	assert(session);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(ust_chan);
+	LTTNG_ASSERT(session);
 
 	ret = config_writer_open_element(writer, config_element_channel);
 	if (ret) {
@@ -1752,8 +1751,8 @@ int save_kernel_session(struct config_writer *writer,
 	int ret;
 	struct ltt_kernel_channel *kchan;
 
-	assert(writer);
-	assert(session);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session);
 
 	ret = config_writer_write_element_string(writer, config_element_type,
 		config_domain_type_kernel);
@@ -1818,7 +1817,7 @@ const char *get_config_domain_str(enum lttng_domain_type domain)
 		str_dom = config_domain_type_python;
 		break;
 	default:
-		assert(0);
+		abort();
 	}
 
 	return str_dom;
@@ -1877,14 +1876,14 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	{
 		tracker = kernel_get_process_attr_tracker(
 				sess->kernel_session, process_attr);
-		assert(tracker);
+		LTTNG_ASSERT(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
 	{
 		tracker = trace_ust_get_process_attr_tracker(
 				sess->ust_session, process_attr);
-		assert(tracker);
+		LTTNG_ASSERT(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_JUL:
@@ -1935,7 +1934,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 					lttng_process_attr_tracker_values_get_at_index(
 							values, i);
 
-			assert(value);
+			LTTNG_ASSERT(value);
 			ret = config_writer_open_element(
 					writer, element_target_id);
 			if (ret) {
@@ -1958,11 +1957,11 @@ static int save_process_attr_tracker(struct config_writer *writer,
 				break;
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 				name = value->value.user_name;
-				assert(name);
+				LTTNG_ASSERT(name);
 				break;
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME:
 				name = value->value.group_name;
-				assert(name);
+				LTTNG_ASSERT(name);
 				break;
 			default:
 				abort();
@@ -2089,8 +2088,8 @@ int save_ust_domain(struct config_writer *writer,
 	struct lttng_ht_iter iter;
 	const char *config_domain_name;
 
-	assert(writer);
-	assert(session);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session);
 
 	ret = config_writer_open_element(writer,
 			config_element_domain);
@@ -2194,8 +2193,8 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 {
 	int ret = LTTNG_OK;
 
-	assert(writer);
-	assert(session);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session);
 
 	if (!session->kernel_session && !session->ust_session) {
 		goto end;
@@ -2288,8 +2287,8 @@ int save_consumer_output(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(output);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(output);
 
 	ret = config_writer_open_element(writer, config_element_consumer_output);
 	if (ret) {
@@ -2417,8 +2416,8 @@ int save_snapshot_outputs(struct config_writer *writer,
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
-	assert(writer);
-	assert(snapshot);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(snapshot);
 
 	ret = config_writer_open_element(writer, config_element_snapshot_outputs);
 	if (ret) {
@@ -2486,8 +2485,8 @@ int save_session_output(struct config_writer *writer,
 {
 	int ret;
 
-	assert(writer);
-	assert(session);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(session);
 
 	if ((session->snapshot_mode && session->snapshot.nb_output == 0) ||
 		(!session->snapshot_mode && !session->consumer)) {
@@ -2624,9 +2623,9 @@ int save_session(struct ltt_session *session,
 	const char *provided_path;
 	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;
 
-	assert(session);
-	assert(attr);
-	assert(creds);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(attr);
+	LTTNG_ASSERT(creds);
 
 	session_name_len = strlen(session->name);
 	memset(config_file_path, 0, sizeof(config_file_path));

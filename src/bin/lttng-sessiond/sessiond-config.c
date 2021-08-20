@@ -7,7 +7,6 @@
 
 #include "version.h"
 #include "sessiond-config.h"
-#include <assert.h>
 #include "lttng-ust-ctl.h"
 #include <common/defaults.h>
 #include <limits.h>
@@ -84,7 +83,7 @@ void config_string_set_static(struct config_string *config_str,
 LTTNG_HIDDEN
 void config_string_set(struct config_string *config_str, char *value)
 {
-	assert(config_str);
+	LTTNG_ASSERT(config_str);
 	if (config_str->should_free) {
 		free(config_str->value);
 		config_str->should_free = false;
@@ -254,7 +253,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	bool is_root = (getuid() == 0);
 	char *str;
 
-	assert(config);
+	LTTNG_ASSERT(config);
 	memcpy(config, &sessiond_config_build_defaults, sizeof(*config));
 
 	if (is_root) {

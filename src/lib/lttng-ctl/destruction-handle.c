@@ -101,7 +101,7 @@ int handle_state_transition(struct lttng_destruction_handle *handle)
 {
 	int ret = 0;
 
-	assert(handle->communication.bytes_left_to_receive == 0);
+	LTTNG_ASSERT(handle->communication.bytes_left_to_receive == 0);
 
 	switch (handle->communication.state) {
 	case COMMUNICATION_STATE_RECEIVE_LTTNG_MSG:
@@ -129,7 +129,7 @@ int handle_state_transition(struct lttng_destruction_handle *handle)
 				msg->data_size);
 		ret = lttng_dynamic_buffer_set_size(
 				&handle->communication.buffer, 0);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		break;
 	}
 	case COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER:

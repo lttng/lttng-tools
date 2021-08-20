@@ -8,7 +8,6 @@
 
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -133,8 +132,8 @@ static int build_network_session_path(char *dst, size_t size,
 	struct lttng_uri *kuri = NULL, *uuri = NULL, *uri = NULL;
 	char tmp_uurl[PATH_MAX], tmp_urls[PATH_MAX];
 
-	assert(session);
-	assert(dst);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(dst);
 
 	memset(tmp_urls, 0, sizeof(tmp_urls));
 	memset(tmp_uurl, 0, sizeof(tmp_uurl));
@@ -252,8 +251,8 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 	}
 
 	usess = session->ust_session;
-	assert(discarded_events);
-	assert(lost_packets);
+	LTTNG_ASSERT(discarded_events);
+	LTTNG_ASSERT(lost_packets);
 
 	if (!usess || !session->has_been_started) {
 		*discarded_events = 0;
@@ -282,7 +281,7 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 		*lost_packets += uchan->per_pid_closed_app_lost;
 	} else {
 		ERR("Unsupported buffer type");
-		assert(0);
+		abort();
 		ret = -1;
 		goto end;
 	}
@@ -370,7 +369,7 @@ static ssize_t list_lttng_channels(enum lttng_domain_type domain,
 				 * LTTNG_UST_MMAP is the only supported UST
 				 * output mode.
 				 */
-				assert(0);
+				abort();
 				break;
 			}
 
@@ -483,7 +482,7 @@ static int list_lttng_agent_events(struct agent *agt,
 	const struct agent_event *agent_event;
 	struct lttng_ht_iter iter;
 
-	assert(agt);
+	LTTNG_ASSERT(agt);
 
 	DBG3("Listing agent events");
 
@@ -711,7 +710,7 @@ static int list_lttng_kernel_events(char *channel_name,
 		case LTTNG_KERNEL_ABI_ALL:
 			/* fall-through. */
 		default:
-			assert(0);
+			abort();
 			break;
 		}
 
@@ -753,7 +752,7 @@ static enum lttng_error_code add_uri_to_consumer(
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 
-	assert(uri);
+	LTTNG_ASSERT(uri);
 
 	if (consumer == NULL) {
 		DBG("No consumer detected. Don't add URI. Stopping.");
@@ -853,7 +852,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	rcu_read_lock();
 
@@ -987,7 +986,7 @@ static enum lttng_error_code send_consumer_relayd_socket(
 	if (status != LTTNG_OK) {
 		goto relayd_comm_error;
 	}
-	assert(rsock);
+	LTTNG_ASSERT(rsock);
 
 	/* Set the network sequence index if not set. */
 	if (consumer->net_seq_index == (uint64_t) -1ULL) {
@@ -1059,8 +1058,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 {
 	enum lttng_error_code status = LTTNG_OK;
 
-	assert(consumer);
-	assert(sock);
+	LTTNG_ASSERT(consumer);
+	LTTNG_ASSERT(sock);
 
 	/* Sending control relayd socket. */
 	if (!sock->control_sock_sent) {
@@ -1104,7 +1103,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 	struct lttng_ht_iter iter;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
@@ -1369,9 +1368,9 @@ int cmd_enable_channel(struct ltt_session *session,
 	size_t len;
 	struct lttng_channel attr;
 
-	assert(session);
-	assert(_attr);
-	assert(domain);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(_attr);
+	LTTNG_ASSERT(domain);
 
 	attr = *_attr;
 	len = lttng_strnlen(attr.name, sizeof(attr.name));
@@ -1865,7 +1864,7 @@ int cmd_disable_event(struct ltt_session *session,
 		struct agent *agt;
 		struct ltt_ust_session *usess = session->ust_session;
 
-		assert(usess);
+		LTTNG_ASSERT(usess);
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
@@ -1934,7 +1933,7 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		assert(session->kernel_session);
+		LTTNG_ASSERT(session->kernel_session);
 
 		if (session->kernel_session->channel_count == 0) {
 			/* Create default channel */
@@ -1978,7 +1977,7 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		struct ltt_ust_session *usess = session->ust_session;
 		unsigned int chan_count;
 
-		assert(usess);
+		LTTNG_ASSERT(usess);
 
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
@@ -2023,7 +2022,7 @@ error:
 			trace_kernel_get_channel_by_name(DEFAULT_CHANNEL_NAME,
 					session->kernel_session);
 		/* Created previously, this should NOT fail. */
-		assert(kchan);
+		LTTNG_ASSERT(kchan);
 		kernel_destroy_channel(kchan);
 	}
 
@@ -2033,7 +2032,7 @@ error:
 					session->ust_session->domain_global.channels,
 					DEFAULT_CHANNEL_NAME);
 		/* Created previously, this should NOT fail. */
-		assert(uchan);
+		LTTNG_ASSERT(uchan);
 		/* Remove from the channel list of the session. */
 		trace_ust_delete_channel(session->ust_session->domain_global.channels,
 				uchan);
@@ -2093,12 +2092,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = NULL;
 
-	assert(session);
-	assert(event);
-	assert(channel_name);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(event);
+	LTTNG_ASSERT(channel_name);
 
 	/* If we have a filter, we must have its filter expression */
-	assert(!(!!filter_expression ^ !!filter));
+	LTTNG_ASSERT(!(!!filter_expression ^ !!filter));
 
 	/* Normalize event name as a globbing pattern */
 	strutils_normalize_star_glob_pattern(event->name);
@@ -2259,7 +2258,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess = session->ust_session;
 
-		assert(usess);
+		LTTNG_ASSERT(usess);
 
 		/*
 		 * If a non-default channel has been created in the
@@ -2296,7 +2295,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			/* Get the newly created channel reference back */
 			uchan = trace_ust_find_channel_by_name(
 					usess->domain_global.channels, channel_name);
-			assert(uchan);
+			LTTNG_ASSERT(uchan);
 		}
 
 		if (uchan->domain != LTTNG_DOMAIN_UST && !internal_event) {
@@ -2348,7 +2347,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct lttng_domain tmp_dom;
 		struct ltt_ust_session *usess = session->ust_session;
 
-		assert(usess);
+		LTTNG_ASSERT(usess);
 
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable an event in an agent domain but the agent thread is not running");
@@ -2399,7 +2398,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			break;
 		default:
 			/* The switch/case we are in makes this impossible */
-			assert(0);
+			abort();
 		}
 
 		{
@@ -2605,7 +2604,7 @@ int cmd_start_trace(struct ltt_session *session)
 	const bool session_cleared_after_last_stop =
 			session->cleared_after_last_stop;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	/* Ease our life a bit ;) */
 	ksession = session->kernel_session;
@@ -2664,7 +2663,7 @@ int cmd_start_trace(struct ltt_session *session)
 				ret = LTTNG_ERR_CREATE_DIR_FAIL;
 				goto error;
 			}
-			assert(!session->current_trace_chunk);
+			LTTNG_ASSERT(!session->current_trace_chunk);
 			ret = session_set_trace_chunk(session, trace_chunk,
 					NULL);
 			lttng_trace_chunk_put(trace_chunk);
@@ -2766,7 +2765,7 @@ int cmd_stop_trace(struct ltt_session *session)
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG("Begin stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
 	/* Short cut */
@@ -2851,9 +2850,9 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	assert(session);
-	assert(uris);
-	assert(nb_uri > 0);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(uris);
+	LTTNG_ASSERT(nb_uri > 0);
 
 	/* Can't set consumer URI if the session is active. */
 	if (session->active) {
@@ -3289,7 +3288,7 @@ int cmd_destroy_session(struct ltt_session *session,
 	}
 
 	/* Safety net */
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name,
 			session->id);
@@ -3412,7 +3411,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		ret = lttng_strncpy(destroy_completion_handler.shm_path,
 				session->shm_path,
 				sizeof(destroy_completion_handler.shm_path));
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 
 	/*
@@ -3448,16 +3447,16 @@ int cmd_register_consumer(struct ltt_session *session,
 	int ret, sock;
 	struct consumer_socket *socket = NULL;
 
-	assert(session);
-	assert(cdata);
-	assert(sock_path);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(cdata);
+	LTTNG_ASSERT(sock_path);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		struct ltt_kernel_session *ksess = session->kernel_session;
 
-		assert(ksess);
+		LTTNG_ASSERT(ksess);
 
 		/* Can't register a consumer if there is already one */
 		if (ksess->consumer_fds_sent != 0) {
@@ -3802,7 +3801,7 @@ int cmd_data_pending(struct ltt_session *session)
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG("Data pending for session %s", session->name);
 
@@ -3868,8 +3867,8 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 	int ret;
 	struct snapshot_output *new_output;
 
-	assert(session);
-	assert(output);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(output);
 
 	DBG("Cmd snapshot add output for session %s", session->name);
 
@@ -3936,8 +3935,8 @@ int cmd_snapshot_del_output(struct ltt_session *session,
 	int ret;
 	struct snapshot_output *sout = NULL;
 
-	assert(session);
-	assert(output);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(output);
 
 	rcu_read_lock();
 
@@ -3988,8 +3987,8 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
-	assert(session);
-	assert(outputs);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(outputs);
 
 	DBG("Cmd snapshot list outputs for session %s", session->name);
 
@@ -4017,7 +4016,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->snapshot.output_ht->ht, &iter.iter,
 			output, node.node) {
-		assert(output->consumer);
+		LTTNG_ASSERT(output->consumer);
 		list[idx].id = output->id;
 		list[idx].max_size = output->max_size;
 		if (lttng_strncpy(list[idx].name, output->name,
@@ -4073,7 +4072,7 @@ int check_regenerate_metadata_support(struct ltt_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	if (session->live_timer != 0) {
 		ret = LTTNG_ERR_LIVE_SESSION;
@@ -4091,7 +4090,7 @@ int check_regenerate_metadata_support(struct ltt_session *session)
 			ret = LTTNG_ERR_PER_PID_SESSION;
 			goto end;
 		default:
-			assert(0);
+			abort();
 			ret = LTTNG_ERR_UNK;
 			goto end;
 		}
@@ -4213,7 +4212,7 @@ int cmd_regenerate_metadata(struct ltt_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	ret = check_regenerate_metadata_support(session);
 	if (ret) {
@@ -4254,7 +4253,7 @@ int cmd_regenerate_statedump(struct ltt_session *session)
 {
 	int ret;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	if (!session->active) {
 		ret = LTTNG_ERR_SESSION_NOT_STARTED;
@@ -4313,10 +4312,10 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 					trigger);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
-	assert(condition);
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
@@ -4401,7 +4400,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 
 	trigger_status = lttng_trigger_get_owner_uid(
 		trigger, &trigger_owner);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	DBG("Running register trigger command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
 			trigger_name, (int) trigger_owner,
@@ -4498,8 +4497,8 @@ enum lttng_error_code synchronize_tracer_notifier_unregister(
 			lttng_trigger_get_underlying_domain_type_restriction(
 					trigger);
 
-	assert(condition);
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	session_lock_list();
@@ -4526,7 +4525,7 @@ enum lttng_error_code synchronize_tracer_notifier_unregister(
 		 * This trigger was never registered in the first place. Calling
 		 * this function under those circumstances is an internal error.
 		 */
-		assert(agt);
+		LTTNG_ASSERT(agt);
 		ret_code = trigger_agent_disable(trigger, agt);
 		if (ret_code != LTTNG_OK) {
 			goto end_unlock_session_list;
@@ -4559,7 +4558,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	DBG("Running unregister trigger command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
 			trigger_name, (int) trigger_owner,
@@ -4591,7 +4590,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		goto end;
 	}
 
-	assert(sessiond_trigger);
+	LTTNG_ASSERT(sessiond_trigger);
 
 	/*
 	 * From this point on, no matter what, consider the trigger
@@ -4691,7 +4690,7 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 		abort();
 	}
 
-	assert(query_target_trigger);
+	LTTNG_ASSERT(query_target_trigger);
 
 	ret_code = notification_thread_command_get_trigger(notification_thread,
 			query_target_trigger, &matching_trigger);
@@ -4715,7 +4714,7 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 			trigger_name : "(anonymous)";
 	trigger_status = lttng_trigger_get_owner_uid(matching_trigger,
 			&trigger_owner);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	results = lttng_error_query_results_create();
 	if (!results) {
@@ -4819,8 +4818,8 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 	const char *base_path;
 
-	assert(output);
-	assert(session);
+	LTTNG_ASSERT(output);
+	LTTNG_ASSERT(session);
 
 	DBG2("Set relayd object from snapshot output");
 
@@ -4895,9 +4894,9 @@ static enum lttng_error_code record_kernel_snapshot(
 {
 	enum lttng_error_code status;
 
-	assert(ksess);
-	assert(output);
-	assert(session);
+	LTTNG_ASSERT(ksess);
+	LTTNG_ASSERT(output);
+	LTTNG_ASSERT(session);
 
 	status = kernel_snapshot_record(
 			ksess, output, wait, nb_packets_per_stream);
@@ -4916,9 +4915,9 @@ static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 {
 	enum lttng_error_code status;
 
-	assert(usess);
-	assert(output);
-	assert(session);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(output);
+	LTTNG_ASSERT(session);
 
 	status = ust_app_snapshot_record(
 			usess, output, wait, nb_packets_per_stream);
@@ -5114,7 +5113,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 		ret_code = LTTNG_ERR_CREATE_DIR_FAIL;
 		goto error;
 	}
-	assert(!session->current_trace_chunk);
+	LTTNG_ASSERT(!session->current_trace_chunk);
 	ret = session_set_trace_chunk(session, snapshot_trace_chunk, NULL);
 	lttng_trace_chunk_put(snapshot_trace_chunk);
 	snapshot_trace_chunk = NULL;
@@ -5197,8 +5196,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 	char datetime[16];
 	struct snapshot_output *tmp_output = NULL;
 
-	assert(session);
-	assert(output);
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(output);
 
 	DBG("Cmd snapshot record for session %s", session->name);
 
@@ -5321,7 +5320,7 @@ int cmd_set_session_shm_path(struct ltt_session *session,
 		const char *shm_path)
 {
 	/* Safety net */
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	/*
 	 * Can only set shm path before session is started.
@@ -5359,7 +5358,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	bool failed_to_rotate = false;
 	enum lttng_error_code rotation_fail_code = LTTNG_OK;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	if (!session->has_been_started) {
 		cmd_ret = LTTNG_ERR_START_SESSION_ONCE;
@@ -5477,7 +5476,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 	chunk_status = lttng_trace_chunk_get_id(chunk_being_archived,
 			&ongoing_rotation_chunk_id);
-	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	ret = session_close_trace_chunk(session, chunk_being_archived,
 		command, session->last_chunk_path);
@@ -5557,7 +5556,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 		chunk_status = lttng_trace_chunk_get_id(
 				session->chunk_being_archived,
 				&chunk_id);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
+		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 		rotation_state = rotation_id == chunk_id ?
 				LTTNG_ROTATION_STATE_ONGOING :
@@ -5697,7 +5696,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 	int ret;
 	uint64_t *parameter_value;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	DBG("Cmd rotate set schedule session %s", session->name);
 

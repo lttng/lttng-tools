@@ -8,7 +8,6 @@
 #ifndef LTTNG_EVENT_FIELD_VALUE_INTERNAL_H
 #define LTTNG_EVENT_FIELD_VALUE_INTERNAL_H
 
-#include <assert.h>
 #include <stdint.h>
 #include <lttng/event-field-value.h>
 #include <common/dynamic-array.h>

@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/dynamic-array.h>
 #include <common/error.h>
 #include <common/macros.h>
@@ -45,7 +44,7 @@ static void destroy_lttng_action_list_element(void *ptr)
 static struct lttng_action_list *action_list_from_action(
 		const struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_list, parent);
 }
@@ -53,7 +52,7 @@ static struct lttng_action_list *action_list_from_action(
 static const struct lttng_action_list *action_list_from_action_const(
 		const struct lttng_action *action)
 {
-	assert(action);
+	LTTNG_ASSERT(action);
 
 	return container_of(action, struct lttng_action_list, parent);
 }
@@ -64,7 +63,7 @@ static bool lttng_action_list_validate(struct lttng_action *action)
 	struct lttng_action_list *action_list;
 	bool valid;
 
-	assert(IS_LIST_ACTION(action));
+	LTTNG_ASSERT(IS_LIST_ACTION(action));
 
 	action_list = action_list_from_action(action);
 
@@ -75,7 +74,7 @@ static bool lttng_action_list_validate(struct lttng_action *action)
 				lttng_dynamic_pointer_array_get_pointer(
 						&action_list->actions, i);
 
-		assert(child);
+		LTTNG_ASSERT(child);
 
 		if (!lttng_action_validate(child)) {
 			valid = false;
@@ -116,8 +115,8 @@ static bool lttng_action_list_is_equal(
 		const struct lttng_action *child_b =
 			lttng_action_list_get_at_index(_b, i);
 
-		assert(child_a);
-		assert(child_b);
+		LTTNG_ASSERT(child_a);
+		LTTNG_ASSERT(child_b);
 
 		if (!lttng_action_is_equal(child_a, child_b)) {
 			goto end;
@@ -137,9 +136,9 @@ static int lttng_action_list_serialize(
 	int ret;
 	unsigned int i, count;
 
-	assert(action);
-	assert(payload);
-	assert(IS_LIST_ACTION(action));
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(payload);
+	LTTNG_ASSERT(IS_LIST_ACTION(action));
 
 	action_list = action_list_from_action(action);
 
@@ -161,7 +160,7 @@ static int lttng_action_list_serialize(
 				lttng_dynamic_pointer_array_get_pointer(
 						&action_list->actions, i);
 
-		assert(child);
+		LTTNG_ASSERT(child);
 
 		ret = lttng_action_serialize(child, payload);
 		if (ret) {
@@ -293,9 +292,9 @@ enum lttng_error_code lttng_action_list_mi_serialize(
 	unsigned int i, count;
 	enum lttng_error_code ret_code;
 
-	assert(action);
-	assert(IS_LIST_ACTION(action));
-	assert(writer);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(IS_LIST_ACTION(action));
+	LTTNG_ASSERT(writer);
 
 	/* Open action list. */
 	ret = mi_lttng_writer_open_element(
@@ -312,7 +311,7 @@ enum lttng_error_code lttng_action_list_mi_serialize(
 				lttng_action_list_get_at_index(action, i);
 		const uint64_t index = (uint64_t) i;
 
-		assert(child);
+		LTTNG_ASSERT(child);
 
 		/*
 		 * Add the index to the action path.

@@ -287,7 +287,7 @@ void sessiond_trace_chunk_registry_destroy(
 {
 	int ret = cds_lfht_destroy(sessiond_registry->ht, NULL);
 
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	free(sessiond_registry);
 }
 

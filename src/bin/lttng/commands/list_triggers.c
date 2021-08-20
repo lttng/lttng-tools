@@ -61,11 +61,11 @@ static void print_condition_session_consumed_size(
 	condition_status =
 			lttng_condition_session_consumed_size_get_session_name(
 					condition, &session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	lttng_condition_session_consumed_size_get_threshold(
 			condition, &threshold);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	MSG("    session name: %s", session_name);
 	MSG("    threshold: %" PRIu64 " bytes", threshold);
@@ -81,15 +81,15 @@ static void print_condition_buffer_usage(
 
 	condition_status = lttng_condition_buffer_usage_get_session_name(
 			condition, &session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	condition_status = lttng_condition_buffer_usage_get_channel_name(
 			condition, &channel_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	condition_status = lttng_condition_buffer_usage_get_domain_type(
 			condition, &domain_type);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	MSG("    session name: %s", session_name);
 	MSG("    channel name: %s", channel_name);
@@ -102,12 +102,12 @@ static void print_condition_buffer_usage(
 	} else {
 		double threshold_ratio;
 
-		assert(condition_status == LTTNG_CONDITION_STATUS_UNSET);
+		LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_UNSET);
 
 		condition_status =
 				lttng_condition_buffer_usage_get_threshold_ratio(
 						condition, &threshold_ratio);
-		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+		LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 		MSG("    threshold (ratio): %.2f", threshold_ratio);
 	}
@@ -121,7 +121,7 @@ static void print_condition_session_rotation(
 
 	condition_status = lttng_condition_session_rotation_get_session_name(
 			condition, &session_name);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	MSG("    session name: %s", session_name);
 }
@@ -170,7 +170,7 @@ void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 
 	event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern(
 			event_rule, &pattern);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	_MSG("    rule: %s (type: user tracepoint", pattern);
 
@@ -179,7 +179,7 @@ void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	event_rule_status = lttng_event_rule_user_tracepoint_get_log_level_rule(
@@ -204,7 +204,7 @@ void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 			abort();
 		}
 
-		assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+		LTTNG_ASSERT(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 		pretty_loglevel_name = get_pretty_loglevel_name(
 				LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT, log_level);
@@ -215,12 +215,12 @@ void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 			_MSG(", log level %s %d", log_level_op, log_level);
 		}
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
 			event_rule, &exclusions_count);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 	if (exclusions_count > 0) {
 		_MSG(", exclusions: ");
 		for (i = 0; i < exclusions_count; i++) {
@@ -228,7 +228,7 @@ void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 
 			event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 					event_rule, i, &exclusion);
-			assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+			LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 			_MSG("%s%s", i > 0 ? "," : "", exclusion);
 		}
@@ -246,7 +246,7 @@ void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *event_rul
 
 	event_rule_status = lttng_event_rule_kernel_tracepoint_get_name_pattern(
 			event_rule, &pattern);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	_MSG("    rule: %s (type: kernel tracepoint", pattern);
 
@@ -255,7 +255,7 @@ void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *event_rul
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	MSG(")");
@@ -308,7 +308,7 @@ void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 
 	event_rule_status = logging_get_name_pattern(
 			event_rule, &pattern);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	_MSG("    rule: %s (type: %s:logging", pattern, type_str);
 
@@ -317,7 +317,7 @@ void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	event_rule_status = logging_get_log_level_rule(
@@ -342,7 +342,7 @@ void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 			abort();
 		}
 
-		assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+		LTTNG_ASSERT(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 		pretty_loglevel_name = get_pretty_loglevel_name(
 				event_rule_type, log_level);
@@ -353,7 +353,7 @@ void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 			_MSG(", log level %s %d", log_level_op, log_level);
 		}
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	MSG(")");
@@ -420,7 +420,7 @@ void print_event_rule_kernel_probe(const struct lttng_event_rule *event_rule)
 	const char *name;
 	const struct lttng_kernel_probe_location *location;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE);
+	LTTNG_ASSERT(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE);
 
 	event_rule_status = lttng_event_rule_kernel_kprobe_get_event_name(event_rule, &name);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
@@ -453,7 +453,7 @@ void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 	const struct lttng_userspace_probe_location *location;
 	enum lttng_userspace_probe_location_type userspace_probe_location_type;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
+	LTTNG_ASSERT(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
 
 	event_rule_status = lttng_event_rule_kernel_uprobe_get_event_name(
 			event_rule, &name);
@@ -517,14 +517,14 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 	enum lttng_event_rule_status event_rule_status;
 	enum lttng_event_rule_kernel_syscall_emission_site emission_site;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL);
+	LTTNG_ASSERT(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL);
 
 	emission_site =
 		lttng_event_rule_kernel_syscall_get_emission_site(event_rule);
 
 	event_rule_status = lttng_event_rule_kernel_syscall_get_name_pattern(
 			event_rule, &pattern);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	_MSG("    rule: %s (type: kernel:syscall:%s", pattern,
 			lttng_event_rule_kernel_syscall_emission_site_str(
@@ -535,7 +535,7 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
 	} else {
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	MSG(")");
@@ -623,13 +623,13 @@ void print_one_event_expr(const struct lttng_event_expr *event_expr)
 
 		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
 				event_expr);
-		assert(parent_expr != NULL);
+		LTTNG_ASSERT(parent_expr != NULL);
 
 		print_one_event_expr(parent_expr);
 
 		status = lttng_event_expr_array_field_element_get_index(
 				event_expr, &index);
-		assert(status == LTTNG_EVENT_EXPR_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
 		_MSG("[%u]", index);
 
@@ -658,9 +658,9 @@ void print_error_query_results(struct lttng_error_query_results *results,
 	enum lttng_error_query_results_status results_status;
 
 	results_status = lttng_error_query_results_get_count(results, &count);
-	assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+	LTTNG_ASSERT(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
 
-	assert(results);
+	LTTNG_ASSERT(results);
 
 	print_indentation(base_indentation_level);
 	_MSG("errors:");
@@ -674,21 +674,21 @@ void print_error_query_results(struct lttng_error_query_results *results,
 
 		results_status = lttng_error_query_results_get_result(
 				results, &result, i);
-		assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+		LTTNG_ASSERT(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
 
 		result_status = lttng_error_query_result_get_name(
 				result, &result_name);
-		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+		LTTNG_ASSERT(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 		result_status = lttng_error_query_result_get_description(
 				result, &result_description);
-		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+		LTTNG_ASSERT(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 
 
 		if (lttng_error_query_result_get_type(result) ==
 				LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER) {
 			result_status = lttng_error_query_result_counter_get_value(
 					result, &result_value);
-			assert(result_status ==
+			LTTNG_ASSERT(result_status ==
 					LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 			if (result_value == 0) {
 				continue;
@@ -722,14 +722,14 @@ static void print_condition_event_rule_matches(
 
 	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	print_event_rule(event_rule);
 
 	condition_status =
 			lttng_condition_event_rule_matches_get_capture_descriptor_count(
 					condition, &cap_desc_count);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	if (cap_desc_count > 0) {
 		MSG("    captures:");
@@ -760,19 +760,19 @@ static void print_action_errors(const struct lttng_trigger *trigger,
 	struct lttng_action_path *action_path = lttng_action_path_create(
 			action_path_indexes, action_path_length);
 
-	assert(action_path);
+	LTTNG_ASSERT(action_path);
 
 	query = lttng_error_query_action_create(trigger, action_path);
-	assert(query);
+	LTTNG_ASSERT(query);
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	/*
 	 * Anonymous triggers are not listed; this would be an internal error.
 	 */
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	error_query_ret = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, &results);
@@ -804,7 +804,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	const char *value;
 
 	action_type = lttng_action_get_type(action);
-	assert(action_type != LTTNG_ACTION_TYPE_LIST);
+	LTTNG_ASSERT(action_type != LTTNG_ACTION_TYPE_LIST);
 
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
@@ -820,7 +820,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	case LTTNG_ACTION_TYPE_START_SESSION:
 		action_status = lttng_action_start_session_get_session_name(
 				action, &value);
-		assert(action_status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("start session `%s`", value);
 
 		action_status = lttng_action_start_session_get_rate_policy(
@@ -833,7 +833,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
 		action_status = lttng_action_stop_session_get_session_name(
 				action, &value);
-		assert(action_status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("stop session `%s`", value);
 
 		action_status = lttng_action_stop_session_get_rate_policy(
@@ -846,7 +846,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
 		action_status = lttng_action_rotate_session_get_session_name(
 				action, &value);
-		assert(action_status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("rotate session `%s`", value);
 
 		action_status = lttng_action_rotate_session_get_rate_policy(
@@ -862,7 +862,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 
 		action_status = lttng_action_snapshot_session_get_session_name(
 				action, &value);
-		assert(action_status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("snapshot session `%s`", value);
 
 		action_status = lttng_action_snapshot_session_get_output(
@@ -874,10 +874,10 @@ void print_one_action(const struct lttng_trigger *trigger,
 			bool starts_with_file, starts_with_net, starts_with_net6;
 
 			ctrl_url = lttng_snapshot_output_get_ctrl_url(output);
-			assert(ctrl_url && strlen(ctrl_url) > 0);
+			LTTNG_ASSERT(ctrl_url && strlen(ctrl_url) > 0);
 
 			data_url = lttng_snapshot_output_get_data_url(output);
-			assert(data_url);
+			LTTNG_ASSERT(data_url);
 
 			starts_with_file = strncmp(ctrl_url, "file://", strlen("file://")) == 0;
 			starts_with_net = strncmp(ctrl_url, "net://", strlen("net://")) == 0;
@@ -892,13 +892,13 @@ void print_one_action(const struct lttng_trigger *trigger,
 			} else if (starts_with_net || starts_with_net6) {
 				_MSG(", url: %s", ctrl_url);
 			} else {
-				assert(strlen(data_url) > 0);
+				LTTNG_ASSERT(strlen(data_url) > 0);
 
 				_MSG(", control url: %s, data url: %s", ctrl_url, data_url);
 			}
 
 			name = lttng_snapshot_output_get_name(output);
-			assert(name);
+			LTTNG_ASSERT(name);
 			if (strlen(name) > 0) {
 				_MSG(", name: %s", name);
 			}
@@ -980,15 +980,15 @@ void print_trigger_errors(const struct lttng_trigger *trigger)
 	struct lttng_error_query *query =
 			lttng_error_query_trigger_create(trigger);
 
-	assert(query);
+	LTTNG_ASSERT(query);
 	/*
 	 * Anonymous triggers are not listed; this would be an internal error.
 	 */
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	error_query_ret = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, &results);
@@ -1018,15 +1018,15 @@ void print_condition_errors(const struct lttng_trigger *trigger)
 	struct lttng_error_query *query =
 			lttng_error_query_condition_create(trigger);
 
-	assert(query);
+	LTTNG_ASSERT(query);
 	/*
 	 * Anonymous triggers are not listed; this would be an internal error.
 	 */
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	error_query_ret = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, &results);
@@ -1065,10 +1065,10 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	MSG("- name: %s", name);
 	MSG("  owner uid: %d", trigger_uid);
@@ -1106,7 +1106,7 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 		MSG("  actions:");
 
 		action_status = lttng_action_list_get_count(action, &count);
-		assert(action_status == LTTNG_ACTION_STATUS_OK);
+		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
 			const uint64_t action_path_index = i;
@@ -1138,10 +1138,10 @@ int compare_triggers_by_name(const void *a, const void *b)
 
 	/* Anonymous triggers are not reachable here. */
 	trigger_status = lttng_trigger_get_name(trigger_a, &name_a);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_name(trigger_b, &name_b);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	return strcmp(name_a, name_b);
 }
@@ -1219,8 +1219,8 @@ static enum lttng_error_code mi_error_query_trigger_callback(
 	struct lttng_error_query *query =
 			lttng_error_query_trigger_create(trigger);
 
-	assert(results);
-	assert(query);
+	LTTNG_ASSERT(results);
+	LTTNG_ASSERT(query);
 
 	ret_code = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, results);
@@ -1230,11 +1230,11 @@ static enum lttng_error_code mi_error_query_trigger_callback(
 		uid_t trigger_uid;
 
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_uid);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		ERR("Failed to query errors of trigger '%s' (owner uid: %d): %s",
 				trigger_name, (int) trigger_uid,
@@ -1254,8 +1254,8 @@ static enum lttng_error_code mi_error_query_action_callback(
 	struct lttng_error_query *query =
 			lttng_error_query_action_create(trigger, action_path);
 
-	assert(results);
-	assert(query);
+	LTTNG_ASSERT(results);
+	LTTNG_ASSERT(query);
 
 	ret_code = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, results);
@@ -1265,11 +1265,11 @@ static enum lttng_error_code mi_error_query_action_callback(
 		uid_t trigger_uid;
 
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_uid);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		ERR("Failed to query errors of an action for trigger '%s' (owner uid: %d): %s",
 				trigger_name, (int) trigger_uid,
@@ -1288,8 +1288,8 @@ static enum lttng_error_code mi_error_query_condition_callback(
 	struct lttng_error_query *query =
 			lttng_error_query_condition_create(trigger);
 
-	assert(results);
-	assert(query);
+	LTTNG_ASSERT(results);
+	LTTNG_ASSERT(query);
 
 	ret_code = lttng_error_query_execute(
 			query, lttng_session_daemon_command_endpoint, results);
@@ -1299,11 +1299,11 @@ static enum lttng_error_code mi_error_query_condition_callback(
 		uid_t trigger_uid;
 
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_uid);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		ERR("Failed to query errors of of condition for condition of trigger '%s' (owner uid: %d): %s",
 				trigger_name, (int) trigger_uid,

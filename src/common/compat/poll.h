@@ -8,7 +8,6 @@
 #ifndef _LTT_POLL_H
 #define _LTT_POLL_H
 
-#include <assert.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -74,8 +73,8 @@ struct compat_epoll_event {
 static inline int __lttng_epoll_get_prev_fd(struct lttng_poll_event *events,
 		int index, uint32_t nb_fd)
 {
-	assert(events);
-	assert(index != nb_fd);
+	LTTNG_ASSERT(events);
+	LTTNG_ASSERT(index != nb_fd);
 
 	if (index == 0 || nb_fd == 0) {
 		return -1;
@@ -117,7 +116,7 @@ static inline int compat_glibc_epoll_create(int size, int flags)
 	 * fcntl(..).
 	 */
 	int efd = epoll_create(size);
-	assert(fcntl(efd, F_SETFD, flags) != -1);
+	LTTNG_ASSERT(fcntl(efd, F_SETFD, flags) != -1);
 	return efd;
 }
 #endif
@@ -279,8 +278,8 @@ struct compat_poll_event {
 static inline int __lttng_poll_get_prev_fd(struct lttng_poll_event *events,
 		int index, uint32_t nb_fd)
 {
-	assert(events);
-	assert(index != nb_fd);
+	LTTNG_ASSERT(events);
+	LTTNG_ASSERT(index != nb_fd);
 
 	if (index == 0 || nb_fd == 0) {
 		return -1;

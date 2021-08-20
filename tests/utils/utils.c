@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/compat/time.h>
 #include <common/time.h>
 #include <fcntl.h>
@@ -19,6 +18,7 @@
 #include <unistd.h>
 
 #include <common/compat/errno.h>
+#include <common/macros.h>
 
 #include "utils.h"
 
@@ -27,7 +27,7 @@ int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
 {
 	struct timespec delta;
 
-	assert(t1 && t2);
+	LTTNG_ASSERT(t1 && t2);
 	delta.tv_sec = t2->tv_sec - t1->tv_sec;
 	delta.tv_nsec = t2->tv_nsec - t1->tv_nsec;
 	return ((int64_t) NSEC_PER_SEC * (int64_t) delta.tv_sec) +

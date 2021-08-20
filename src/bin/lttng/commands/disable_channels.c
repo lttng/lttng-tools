@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <common/mi-lttng.h>
 #include <lttng/domain-internal.h>
@@ -55,8 +54,8 @@ static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
 {
 	int ret;
 
-	assert(writer);
-	assert(channel_name);
+	LTTNG_ASSERT(writer);
+	LTTNG_ASSERT(channel_name);
 
 	/* Open channel element */
 	ret = mi_lttng_writer_open_element(writer, config_element_channel);
@@ -113,7 +112,7 @@ static int disable_channels(char *session_name)
 		dom.type = LTTNG_DOMAIN_UST;
 	} else {
 		/* Checked by the caller. */
-		assert(0);
+		abort();
 	}
 
 	handle = lttng_create_handle(session_name, &dom);

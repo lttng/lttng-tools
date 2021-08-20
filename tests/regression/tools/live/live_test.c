@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,7 +77,7 @@ ssize_t lttng_live_recv(int fd, void *buf, size_t len)
 	do {
 		ret = recv(fd, buf + copied, to_copy, 0);
 		if (ret > 0) {
-			assert(ret <= to_copy);
+			LTTNG_ASSERT(ret <= to_copy);
 			copied += ret;
 			to_copy -= ret;
 		}
@@ -252,7 +251,7 @@ int create_viewer_session(void)
 		diag("[error] Error sending cmd");
 		goto error;
 	}
-	assert(ret_len == sizeof(cmd));
+	LTTNG_ASSERT(ret_len == sizeof(cmd));
 
 	ret_len = lttng_live_recv(control_sock, &resp, sizeof(resp));
 	if (ret_len == 0) {
@@ -263,7 +262,7 @@ int create_viewer_session(void)
 		diag("[error] Error receiving create session reply");
 		goto error;
 	}
-	assert(ret_len == sizeof(resp));
+	LTTNG_ASSERT(ret_len == sizeof(resp));
 
 	if (be32toh(resp.status) != LTTNG_VIEWER_CREATE_SESSION_OK) {
 		diag("[error] Error creating viewer session");

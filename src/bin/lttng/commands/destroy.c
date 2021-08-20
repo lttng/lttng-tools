@@ -241,7 +241,7 @@ static int destroy_all_sessions(struct lttng_session *sessions, int count)
 	int i;
 	bool error_occurred = false;
 
-	assert(count >= 0);
+	LTTNG_ASSERT(count >= 0);
 	if (count == 0) {
 		MSG("No session found, nothing to do.");
 	}

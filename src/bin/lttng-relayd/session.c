@@ -292,9 +292,9 @@ struct relay_session *session_create(const char *session_name,
 	int ret;
 	struct relay_session *session = NULL;
 
-	assert(session_name);
-	assert(hostname);
-	assert(base_path);
+	LTTNG_ASSERT(session_name);
+	LTTNG_ASSERT(hostname);
+	LTTNG_ASSERT(base_path);
 
 	if (!is_name_path_safe(session_name)) {
 		ERR("Refusing to create session as the provided session name is not path-safe");
@@ -410,7 +410,7 @@ struct relay_session *session_create(const char *session_name,
 			goto error;
 		}
 
-		assert(session_output_directory);
+		LTTNG_ASSERT(session_output_directory);
 		session->output_directory = session_output_directory;
 	} else if (!id_sessiond) {
 		/*
@@ -509,14 +509,14 @@ static void destroy_session(struct relay_session *session)
 	int ret;
 
 	ret = session_delete(session);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	lttng_trace_chunk_put(session->current_trace_chunk);
 	session->current_trace_chunk = NULL;
 	lttng_trace_chunk_put(session->pending_closure_trace_chunk);
 	session->pending_closure_trace_chunk = NULL;
 	ret = sessiond_trace_chunk_registry_session_destroyed(
 			sessiond_trace_chunk_registry, session->sessiond_uuid);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 	lttng_directory_handle_put(session->output_directory);
 	session->output_directory = NULL;
 	call_rcu(&session->rcu_node, rcu_destroy_session);

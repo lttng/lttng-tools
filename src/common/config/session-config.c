@@ -7,7 +7,6 @@
 
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -260,7 +259,7 @@ static int config_entry_handler_filter(struct handler_filter_args *args,
 	int ret = 0;
 	struct config_entry entry = { section, name, value };
 
-	assert(args);
+	LTTNG_ASSERT(args);
 
 	if (!section || !name || !value) {
 		ret = -EIO;
@@ -410,7 +409,7 @@ static xmlChar *encode_string(const char *in_str)
 	xmlCharEncodingHandlerPtr handler;
 	int out_len, ret, in_len;
 
-	assert(in_str);
+	LTTNG_ASSERT(in_str);
 
 	handler = xmlFindCharEncodingHandler(config_xml_encoding);
 	if (!handler) {
@@ -1258,7 +1257,7 @@ int process_consumer_output(xmlNodePtr consumer_output_node,
 	int ret;
 	xmlNodePtr node;
 
-	assert(output);
+	LTTNG_ASSERT(output);
 
 	for (node = xmlFirstElementChild(consumer_output_node); node;
 			node = xmlNextElementSibling(node)) {
@@ -1324,7 +1323,7 @@ int create_session_net_output(const char *name, const char *control_uri,
 	struct lttng_handle *handle;
 	const char *uri = NULL;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	handle = lttng_create_handle(name, NULL);
 	if (!handle) {
@@ -1353,7 +1352,7 @@ int create_snapshot_session(const char *session_name, xmlNodePtr output_node,
 	xmlNodePtr snapshot_output_list_node;
 	xmlNodePtr snapshot_output_node;
 
-	assert(session_name);
+	LTTNG_ASSERT(session_name);
 
 	ret = lttng_create_session_snapshot(session_name, NULL);
 	if (ret) {
@@ -1506,7 +1505,7 @@ int create_session(const char *name,
 	const char *data_uri = NULL;
 	const char *path = NULL;
 
-	assert(name);
+	LTTNG_ASSERT(name);
 
 	if (output_node) {
 		consumer_output_node = xmlFirstElementChild(output_node);
@@ -1772,8 +1771,8 @@ int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
 {
 	int ret;
 
-	assert(probe_attribute_node);
-	assert(attr);
+	LTTNG_ASSERT(probe_attribute_node);
+	LTTNG_ASSERT(attr);
 
 	if (!strcmp((const char *) probe_attribute_node->name,
 		config_element_address)) {
@@ -1856,9 +1855,9 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 	unsigned long exclusion_count = 0;
 	char *filter_expression = NULL;
 
-	assert(event_node);
-	assert(handle);
-	assert(channel_name);
+	LTTNG_ASSERT(event_node);
+	LTTNG_ASSERT(handle);
+	LTTNG_ASSERT(channel_name);
 
 	event = lttng_event_create();
 	if (!event) {
@@ -1883,7 +1882,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 		event->loglevel = LTTNG_LOGLEVEL_DEBUG;
 		break;
 	default:
-		assert(0);
+		abort();
 	}
 
 	for (node = xmlFirstElementChild(event_node); node;
@@ -2188,9 +2187,9 @@ int process_events_node(xmlNodePtr events_node, struct lttng_handle *handle,
 	struct lttng_event event;
 	xmlNodePtr node;
 
-	assert(events_node);
-	assert(handle);
-	assert(channel_name);
+	LTTNG_ASSERT(events_node);
+	LTTNG_ASSERT(handle);
+	LTTNG_ASSERT(channel_name);
 
 	for (node = xmlFirstElementChild(events_node); node;
 		node = xmlNextElementSibling(node)) {
@@ -2232,10 +2231,10 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 {
 	int ret;
 
-	assert(attr_node);
-	assert(channel);
-	assert(contexts_node);
-	assert(events_node);
+	LTTNG_ASSERT(attr_node);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(contexts_node);
+	LTTNG_ASSERT(events_node);
 
 	if (!strcmp((const char *) attr_node->name, config_element_name)) {
 		xmlChar *content;
@@ -2538,8 +2537,8 @@ int process_context_node(xmlNodePtr context_node,
 	struct lttng_event_context context;
 	xmlNodePtr context_child_node = xmlFirstElementChild(context_node);
 
-	assert(handle);
-	assert(channel_name);
+	LTTNG_ASSERT(handle);
+	LTTNG_ASSERT(channel_name);
 
 	if (!context_child_node) {
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -2783,7 +2782,7 @@ static int process_legacy_pid_tracker_node(
 					LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID :
 					LTTNG_PROCESS_ATTR_PROCESS_ID;
 
-	assert(handle);
+	LTTNG_ASSERT(handle);
 
 	tracker_handle_ret_code = lttng_session_get_tracker_handle(
 			handle->session_name, handle->domain.type,
@@ -2911,8 +2910,8 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
 	enum lttng_process_attr_tracker_handle_status status;
 
-	assert(handle);
-	assert(id_tracker_node);
+	LTTNG_ASSERT(handle);
+	LTTNG_ASSERT(id_tracker_node);
 
 	tracker_handle_ret_code = lttng_session_get_tracker_handle(
 			handle->session_name, handle->domain.type, process_attr,
@@ -3099,7 +3098,7 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	xmlNodePtr vgid_tracker_node = NULL;
 	xmlNodePtr node;
 
-	assert(session_name);
+	LTTNG_ASSERT(session_name);
 
 	ret = init_domain(domain_node, &domain);
 	if (ret) {
@@ -3735,7 +3734,7 @@ static int validate_file_read_creds(const char *path)
 {
 	int ret;
 
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	/* Can we read the file. */
 	ret = access(path, R_OK);
@@ -3762,8 +3761,8 @@ int load_session_from_file(const char *path, const char *session_name,
 	xmlNodePtr sessions_node;
 	xmlNodePtr session_node;
 
-	assert(path);
-	assert(validation_ctx);
+	LTTNG_ASSERT(path);
+	LTTNG_ASSERT(validation_ctx);
 
 	ret = validate_file_read_creds(path);
 	if (ret != 1) {
@@ -3837,8 +3836,8 @@ int load_session_from_path(const char *path, const char *session_name,
 	struct lttng_dynamic_buffer file_path;
 	size_t path_len;
 
-	assert(path);
-	assert(validation_ctx);
+	LTTNG_ASSERT(path);
+	LTTNG_ASSERT(validation_ctx);
 	path_len = strlen(path);
 	lttng_dynamic_buffer_init(&file_path);
 	if (path_len >= LTTNG_PATH_MAX) {
@@ -3999,7 +3998,7 @@ static int validate_path_creds(const char *path)
 	int ret, uid = getuid();
 	struct stat buf;
 
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	if (uid == 0) {
 		goto valid;

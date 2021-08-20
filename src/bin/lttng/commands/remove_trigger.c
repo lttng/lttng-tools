@@ -170,7 +170,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	}
 
 	trigger_status = lttng_triggers_get_count(triggers, &triggers_count);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	for (i = 0; i < triggers_count; i++) {
 		const struct lttng_trigger *trigger;
@@ -191,7 +191,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_uid);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		if (trigger_uid == uid && strcmp(trigger_name, name) == 0) {
 			trigger_to_remove = trigger;

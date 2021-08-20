@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/mi-lttng.h>
 #include <lttng/action/action-internal.h>
@@ -94,7 +93,7 @@ void lttng_action_put(struct lttng_action *action)
 		return;
 	}
 
-	assert(action->destroy);
+	LTTNG_ASSERT(action->destroy);
 	urcu_ref_put(&action->ref, action_destroy_ref);
 }
 
@@ -222,7 +221,7 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		goto end;
 	}
 
-	assert(*action);
+	LTTNG_ASSERT(*action);
 
 	consumed_len = sizeof(struct lttng_action_comm) +
 		       specific_action_consumed_len;
@@ -250,7 +249,7 @@ bool lttng_action_is_equal(const struct lttng_action *a,
 		goto end;
 	}
 
-	assert(a->equal);
+	LTTNG_ASSERT(a->equal);
 	is_equal = a->equal(a, b);
 end:
 	return is_equal;
@@ -351,8 +350,8 @@ enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trig
 	struct lttng_action_path *action_path = NULL;
 	struct lttng_error_query_results *error_query_results = NULL;
 
-	assert(action);
-	assert(writer);
+	LTTNG_ASSERT(action);
+	LTTNG_ASSERT(writer);
 
 	/* Open action. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action);
@@ -375,7 +374,7 @@ enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trig
 		goto close_action_element;
 	}
 
-	assert(action->mi_serialize);
+	LTTNG_ASSERT(action->mi_serialize);
 	ret_code = action->mi_serialize(action, writer);
 	if (ret_code != LTTNG_OK) {
 		goto end;
@@ -397,7 +396,7 @@ enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trig
 		action_path = lttng_action_path_create(
 				action_path_indexes_raw_pointer,
 				action_path_indexes_size);
-		assert(action_path);
+		LTTNG_ASSERT(action_path);
 
 		ret_code = error_query_callbacks->action_cb(
 				trigger, action_path, &error_query_results);

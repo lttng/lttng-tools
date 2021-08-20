@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,9 +180,9 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 	ssize_t ret = -1;
 	size_t len_last;
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -198,7 +197,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 		if (ret > 0) {
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
-			assert(ret <= len_last);
+			LTTNG_ASSERT(ret <= len_last);
 		}
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 	if (ret < 0) {
@@ -227,9 +226,9 @@ ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len)
 	struct iovec iov[1];
 	ssize_t ret;
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -279,9 +278,9 @@ ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 	struct iovec iov[1];
 	ssize_t ret;
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -333,9 +332,9 @@ ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len)
 	struct iovec iov[1];
 	ssize_t ret;
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -411,9 +410,9 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
-	assert(sock);
-	assert(fds);
-	assert(nb_fd > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(fds);
+	LTTNG_ASSERT(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
 	memset(tmp, 0, sizeof(tmp));
@@ -545,9 +544,9 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
-	assert(sock);
-	assert(fds);
-	assert(nb_fd > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(fds);
+	LTTNG_ASSERT(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
 	memset(tmp, 0, sizeof(tmp));
@@ -638,9 +637,9 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	struct msghdr msg;
 	char dummy;
 
-	assert(sock);
-	assert(fds);
-	assert(nb_fd > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(fds);
+	LTTNG_ASSERT(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -758,7 +757,7 @@ enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
 		int *raw_fd = (int *) lttng_dynamic_array_get_element(
 			raw_fds, i);
 
-		assert(*raw_fd != -1);
+		LTTNG_ASSERT(*raw_fd != -1);
 
 		handle = fd_handle_create(*raw_fd);
 		if (!handle) {
@@ -791,9 +790,9 @@ ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 	int default_value = -1;
 	struct lttng_dynamic_array raw_fds;
 
-	assert(sock);
-	assert(payload);
-	assert(nb_fd > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(payload);
+	LTTNG_ASSERT(nb_fd > 0);
 
 	lttng_dynamic_array_init(&raw_fds, sizeof(int), close_raw_fd);
 
@@ -861,9 +860,9 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	struct cmsghdr *cmsg;
 	size_t sizeof_fds = nb_fd * sizeof(int);
 
-	assert(sock);
-	assert(fds);
-	assert(nb_fd > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(fds);
+	LTTNG_ASSERT(nb_fd > 0);
 
 #ifdef __linux__
 /* Account for the struct ucred cmsg in the buffer size */
@@ -1003,9 +1002,9 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 
 	memset(&msg, 0, sizeof(msg));
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
 
 	iov[0].iov_base = (void *) buf;
 	iov[0].iov_len = len;
@@ -1065,10 +1064,10 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 #endif	/* __linux__, __CYGWIN__ */
 
-	assert(sock);
-	assert(buf);
-	assert(len > 0);
-	assert(creds);
+	LTTNG_ASSERT(sock);
+	LTTNG_ASSERT(buf);
+	LTTNG_ASSERT(len > 0);
+	LTTNG_ASSERT(creds);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -1089,7 +1088,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		if (ret > 0) {
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
-			assert(ret <= len_last);
+			LTTNG_ASSERT(ret <= len_last);
 		}
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 	if (ret < 0) {

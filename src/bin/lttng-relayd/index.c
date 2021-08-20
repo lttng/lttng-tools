@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 
 #include <common/common.h>
 #include <common/utils.h>
@@ -218,7 +217,7 @@ static void index_release(struct urcu_ref *ref)
 		/* Delete index from hash table. */
 		iter.iter.node = &index->index_n.node;
 		ret = lttng_ht_del(stream->indexes_ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		stream->indexes_in_flight--;
 	}
 
@@ -246,7 +245,7 @@ void relay_index_put(struct relay_index *index)
 	 * Index lock ensures that concurrent test and update of stream
 	 * ref is atomic.
 	 */
-	assert(index->ref.refcount != 0);
+	LTTNG_ASSERT(index->ref.refcount != 0);
 	urcu_ref_put(&index->ref, index_release);
 	rcu_read_unlock();
 }

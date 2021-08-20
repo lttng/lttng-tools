@@ -102,8 +102,8 @@ int lttng_action_path_copy(const struct lttng_action_path *src,
 	int ret;
 	size_t i, src_count;
 
-	assert(src);
-	assert(dst);
+	LTTNG_ASSERT(src);
+	LTTNG_ASSERT(dst);
 
 	lttng_dynamic_array_init(&dst->indexes, sizeof(uint64_t), NULL);
 	src_count = lttng_dynamic_array_get_count(&src->indexes);

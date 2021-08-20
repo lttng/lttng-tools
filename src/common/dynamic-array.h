@@ -9,7 +9,6 @@
 #define LTTNG_DYNAMIC_ARRAY_H
 
 #include <common/dynamic-buffer.h>
-#include <assert.h>
 
 typedef void (*lttng_dynamic_array_element_destructor)(void *element);
 typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
@@ -52,7 +51,7 @@ static inline
 void *lttng_dynamic_array_get_element(const struct lttng_dynamic_array *array,
 		size_t element_index)
 {
-	assert(element_index < array->size);
+	LTTNG_ASSERT(element_index < array->size);
 	return array->buffer.data + (element_index * array->element_size);
 }
 

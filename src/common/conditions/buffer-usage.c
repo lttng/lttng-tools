@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/mi-lttng.h>
@@ -172,20 +171,20 @@ bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *_a,
 	}
 
 	/* Condition is not valid if this is not true. */
-	assert(a->session_name);
-	assert(b->session_name);
+	LTTNG_ASSERT(a->session_name);
+	LTTNG_ASSERT(b->session_name);
 	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
 
-	assert(a->channel_name);
-	assert(b->channel_name);
+	LTTNG_ASSERT(a->channel_name);
+	LTTNG_ASSERT(b->channel_name);
 	if (strcmp(a->channel_name, b->channel_name)) {
 		goto end;
 	}
 
-	assert(a->domain.set);
-	assert(b->domain.set);
+	LTTNG_ASSERT(a->domain.set);
+	LTTNG_ASSERT(b->domain.set);
 	if (a->domain.type != b->domain.type) {
 		goto end;
 	}
@@ -208,22 +207,22 @@ static enum lttng_error_code lttng_condition_buffer_usage_mi_serialize(
 	uint64_t threshold_bytes;
 	const char *condition_type_str = NULL;
 
-	assert(condition);
-	assert(IS_USAGE_CONDITION(condition));
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(IS_USAGE_CONDITION(condition));
 
 	status = lttng_condition_buffer_usage_get_session_name(
 			condition, &session_name);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
-	assert(session_name);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(session_name);
 
 	status = lttng_condition_buffer_usage_get_channel_name(
 			condition, &channel_name);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
-	assert(session_name);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(session_name);
 
 	status = lttng_condition_buffer_usage_get_domain_type(
 			condition, &domain_type);
-	assert(status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 	status = lttng_condition_buffer_usage_get_threshold(
 			condition, &threshold_bytes);
@@ -238,7 +237,7 @@ static enum lttng_error_code lttng_condition_buffer_usage_mi_serialize(
 	if (!is_threshold_bytes) {
 		status = lttng_condition_buffer_usage_get_threshold_ratio(
 				condition, &threshold_ratio);
-		assert(status == LTTNG_CONDITION_STATUS_OK);
+		LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 	}
 
 	switch (lttng_condition_get_type(condition)) {

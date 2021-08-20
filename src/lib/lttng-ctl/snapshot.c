@@ -6,7 +6,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <string.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>

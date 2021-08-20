@@ -55,7 +55,7 @@ struct lttng_channel *channel_new_default_attr(int dom,
 
 	switch (dom) {
 	case LTTNG_DOMAIN_KERNEL:
-		assert(type == LTTNG_BUFFER_GLOBAL);
+		LTTNG_ASSERT(type == LTTNG_BUFFER_GLOBAL);
 		chan->attr.subbuf_size =
 			default_get_kernel_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
@@ -146,8 +146,8 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession,
 	int ret;
 	struct ltt_kernel_channel *kchan;
 
-	assert(ksession);
-	assert(channel_name);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(channel_name);
 
 	kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
 	if (kchan == NULL) {
@@ -178,8 +178,8 @@ int channel_kernel_enable(struct ltt_kernel_session *ksession,
 {
 	int ret;
 
-	assert(ksession);
-	assert(kchan);
+	LTTNG_ASSERT(ksession);
+	LTTNG_ASSERT(kchan);
 
 	if (kchan->enabled == 0) {
 		ret = kernel_enable_channel(kchan);
@@ -229,7 +229,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 	int ret;
 	struct lttng_channel *defattr = NULL;
 
-	assert(ksession);
+	LTTNG_ASSERT(ksession);
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
@@ -289,8 +289,8 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 {
 	int ret = LTTNG_OK;
 
-	assert(usess);
-	assert(uchan);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
 
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
@@ -340,7 +340,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 	bool chan_published = false;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
@@ -514,8 +514,8 @@ int channel_ust_disable(struct ltt_ust_session *usess,
 {
 	int ret = LTTNG_OK;
 
-	assert(usess);
-	assert(uchan);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(uchan);
 
 	/* Already disabled */
 	if (uchan->enabled == 0) {

@@ -6,7 +6,6 @@
  */
 
 #include "common/time.h"
-#include <assert.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,9 +43,9 @@ char *backward_compat_group_by_session(const char *path,
 	const char *hostname_ptr;
 	regex_t regex;
 
-	assert(path);
-	assert(local_session_name);
-	assert(local_session_name[0] != '\0');
+	LTTNG_ASSERT(path);
+	LTTNG_ASSERT(local_session_name);
+	LTTNG_ASSERT(local_session_name[0] != '\0');
 
 	DBG("Parsing path \"%s\" of session \"%s\" to create a new path that is grouped by session",
 			path, local_session_name);
@@ -165,7 +164,7 @@ char *backward_compat_group_by_session(const char *path,
 			const ssize_t local_session_name_offset =
 					strlen(local_session_name) - DATETIME_STR_LEN + 1;
 
-			assert(local_session_name_offset >= 0);
+			LTTNG_ASSERT(local_session_name_offset >= 0);
 			datetime = strdup(local_session_name +
 					local_session_name_offset);
 			if (!datetime) {
@@ -207,8 +206,8 @@ char *backward_compat_group_by_session(const char *path,
 		 * "name-<datetime>" format. Using the datetime from such a
 		 * session would be invalid.
 		 * */
-		assert(partial_base_path == NULL);
-		assert(datetime == NULL);
+		LTTNG_ASSERT(partial_base_path == NULL);
+		LTTNG_ASSERT(datetime == NULL);
 
 		partial_base_path = strdup(second_token_ptr);
 		if (!partial_base_path) {

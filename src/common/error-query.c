@@ -264,7 +264,7 @@ int lttng_error_query_result_counter_serialize(
 {
 	const struct lttng_error_query_result_counter *counter_result;
 
-	assert(result->type == LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER);
+	LTTNG_ASSERT(result->type == LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER);
 	counter_result = container_of(result, typeof(*counter_result), parent);
 
 	return lttng_dynamic_buffer_append(&payload->buffer,
@@ -337,8 +337,8 @@ int lttng_error_query_result_init(
 {
 	int ret;
 
-	assert(name);
-	assert(description);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(description);
 
 	result->type = result_type;
 
@@ -982,7 +982,7 @@ lttng_error_query_results_get_result(
 
 	*result = (typeof(*result)) lttng_dynamic_pointer_array_get_pointer(
 			&results->results, index);
-	assert(*result);
+	LTTNG_ASSERT(*result);
 	status = LTTNG_ERROR_QUERY_RESULTS_STATUS_OK;
 end:
 	return status;
@@ -1070,11 +1070,11 @@ enum lttng_error_code lttng_error_query_result_counter_mi_serialize(
 	enum lttng_error_query_result_status status;
 	uint64_t value;
 
-	assert(result);
-	assert(writer);
+	LTTNG_ASSERT(result);
+	LTTNG_ASSERT(writer);
 
 	status = lttng_error_query_result_counter_get_value(result, &value);
-	assert(status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+	LTTNG_ASSERT(status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 
 	/* Open error query result counter element. */
 	ret = mi_lttng_writer_open_element(
@@ -1118,17 +1118,17 @@ enum lttng_error_code lttng_error_query_result_mi_serialize(
 	const char *name = NULL;
 	const char *description = NULL;
 
-	assert(result);
-	assert(writer);
+	LTTNG_ASSERT(result);
+	LTTNG_ASSERT(writer);
 
 	type = lttng_error_query_result_get_type(result);
 
 	result_status = lttng_error_query_result_get_name(result, &name);
-	assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+	LTTNG_ASSERT(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 
 	result_status = lttng_error_query_result_get_description(
 			result, &description);
-	assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+	LTTNG_ASSERT(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
 
 	/* Open error query result element. */
 	ret = mi_lttng_writer_open_element(
@@ -1191,8 +1191,8 @@ enum lttng_error_code lttng_error_query_results_mi_serialize(
 	unsigned int i, count;
 	enum lttng_error_query_results_status results_status;
 
-	assert(results);
-	assert(writer);
+	LTTNG_ASSERT(results);
+	LTTNG_ASSERT(writer);
 
 	/* Open error query results element. */
 	ret = mi_lttng_writer_open_element(
@@ -1202,14 +1202,14 @@ enum lttng_error_code lttng_error_query_results_mi_serialize(
 	}
 
 	results_status = lttng_error_query_results_get_count(results, &count);
-	assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+	LTTNG_ASSERT(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_error_query_result *result;
 
 		results_status = lttng_error_query_results_get_result(
 				results, &result, i);
-		assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+		LTTNG_ASSERT(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
 
 		/* A single error query result. */
 		ret_code = lttng_error_query_result_mi_serialize(result, writer);

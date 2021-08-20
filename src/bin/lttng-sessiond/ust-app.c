@@ -118,8 +118,8 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 	const struct ust_app_ht_key *key;
 	int ev_loglevel_value;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct ust_app_event, node.node);
 	key = _key;
@@ -195,9 +195,9 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan,
 	struct ust_app_ht_key key;
 	struct lttng_ht *ht;
 
-	assert(ua_chan);
-	assert(ua_chan->events);
-	assert(event);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(ua_chan->events);
+	LTTNG_ASSERT(event);
 
 	ht = ua_chan->events;
 	key.name = event->attr.name;
@@ -208,7 +208,7 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan,
 	node_ptr = cds_lfht_add_unique(ht->ht,
 			ht->hash_fct(event->node.key, lttng_ht_seed),
 			ht_match_ust_app_event, &key, &event->node.node);
-	assert(node_ptr == &event->node.node);
+	LTTNG_ASSERT(node_ptr == &event->node.node);
 }
 
 /*
@@ -222,7 +222,7 @@ static void close_notify_sock_rcu(struct rcu_head *head)
 		caa_container_of(head, struct ust_app_notify_sock_obj, head);
 
 	/* Must have a valid fd here. */
-	assert(obj->fd >= 0);
+	LTTNG_ASSERT(obj->fd >= 0);
 
 	ret = close(obj->fd);
 	if (ret) {
@@ -238,14 +238,14 @@ static void close_notify_sock_rcu(struct rcu_head *head)
  * session.
  *
  * A registry per UID object MUST exists before calling this function or else
- * it assert() if not found. RCU read side lock must be acquired.
+ * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
 static struct ust_registry_session *get_session_registry(
 		struct ust_app_session *ua_sess)
 {
 	struct ust_registry_session *registry = NULL;
 
-	assert(ua_sess);
+	LTTNG_ASSERT(ua_sess);
 
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
@@ -269,7 +269,7 @@ static struct ust_registry_session *get_session_registry(
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 	};
 
 error:
@@ -286,7 +286,7 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx,
 {
 	int ret;
 
-	assert(ua_ctx);
+	LTTNG_ASSERT(ua_ctx);
 
 	if (ua_ctx->obj) {
 		pthread_mutex_lock(&app->sock_lock);
@@ -311,7 +311,7 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event,
 {
 	int ret;
 
-	assert(ua_event);
+	LTTNG_ASSERT(ua_event);
 
 	free(ua_event->filter);
 	if (ua_event->exclusion != NULL)
@@ -351,7 +351,7 @@ static void delete_ust_app_event_notifier_rule(int sock,
 {
 	int ret;
 
-	assert(ua_event_notifier_rule);
+	LTTNG_ASSERT(ua_event_notifier_rule);
 
 	if (ua_event_notifier_rule->exclusion != NULL) {
 		free(ua_event_notifier_rule->exclusion);
@@ -384,7 +384,7 @@ static int release_ust_app_stream(int sock, struct ust_app_stream *stream,
 {
 	int ret = 0;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	if (stream->obj) {
 		pthread_mutex_lock(&app->sock_lock);
@@ -409,7 +409,7 @@ static
 void delete_ust_app_stream(int sock, struct ust_app_stream *stream,
 		struct ust_app *app)
 {
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	(void) release_ust_app_stream(sock, stream, app);
 	free(stream);
@@ -515,7 +515,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	struct ust_app_stream *stream, *stmp;
 	struct ust_registry_session *registry;
 
-	assert(ua_chan);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG3("UST app deleting channel %s", ua_chan->name);
 
@@ -529,7 +529,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	cds_lfht_for_each_entry(ua_chan->ctx->ht, &iter.iter, ua_ctx, node.node) {
 		cds_list_del(&ua_ctx->list);
 		ret = lttng_ht_del(ua_chan->ctx, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		delete_ust_app_ctx(sock, ua_ctx, app);
 	}
 
@@ -537,7 +537,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	cds_lfht_for_each_entry(ua_chan->events->ht, &iter.iter, ua_event,
 			node.node) {
 		ret = lttng_ht_del(ua_chan->events, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		delete_ust_app_event(sock, ua_event, app);
 	}
 
@@ -562,7 +562,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		/* Remove channel from application UST object descriptor. */
 		iter.iter.node = &ua_chan->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_objd, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		pthread_mutex_lock(&app->sock_lock);
 		ret = lttng_ust_ctl_release_object(sock, ua_chan->obj);
 		pthread_mutex_unlock(&app->sock_lock);
@@ -624,8 +624,8 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	ssize_t ret_val;
 	uint64_t metadata_key, metadata_version;
 
-	assert(registry);
-	assert(socket);
+	LTTNG_ASSERT(registry);
+	LTTNG_ASSERT(socket);
 
 	metadata_key = registry->metadata_key;
 
@@ -760,8 +760,8 @@ static int push_metadata(struct ust_registry_session *registry,
 	ssize_t ret;
 	struct consumer_socket *socket;
 
-	assert(registry);
-	assert(consumer);
+	LTTNG_ASSERT(registry);
+	LTTNG_ASSERT(consumer);
 
 	pthread_mutex_lock(&registry->lock);
 	if (registry->metadata_closed) {
@@ -810,8 +810,8 @@ static int close_metadata(struct ust_registry_session *registry,
 	uint64_t metadata_key;
 	bool registry_was_already_closed;
 
-	assert(registry);
-	assert(consumer);
+	LTTNG_ASSERT(registry);
+	LTTNG_ASSERT(consumer);
 
 	rcu_read_lock();
 
@@ -882,11 +882,11 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	struct ust_app_channel *ua_chan;
 	struct ust_registry_session *registry;
 
-	assert(ua_sess);
+	LTTNG_ASSERT(ua_sess);
 
 	pthread_mutex_lock(&ua_sess->lock);
 
-	assert(!ua_sess->deleted);
+	LTTNG_ASSERT(!ua_sess->deleted);
 	ua_sess->deleted = true;
 
 	registry = get_session_registry(ua_sess);
@@ -910,7 +910,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 			node.node) {
 		ret = lttng_ht_del(ua_sess->channels, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		delete_ust_app_channel(sock, ua_chan, app);
 	}
 
@@ -938,7 +938,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 		/* Remove session from application UST object descriptor. */
 		iter.iter.node = &ua_sess->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_sessions_objd, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 	}
 
 	pthread_mutex_unlock(&ua_sess->lock);
@@ -986,7 +986,7 @@ void delete_ust_app(struct ust_app *app)
 	cds_lfht_for_each_entry (app->token_to_event_notifier_rule_ht->ht,
 			&iter.iter, event_notifier_rule, node.node) {
 		ret = lttng_ht_del(app->token_to_event_notifier_rule_ht, &iter);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 
 		delete_ust_app_event_notifier_rule(
 				app->sock, event_notifier_rule, app);
@@ -1088,8 +1088,8 @@ static void destroy_app_session(struct ust_app *app,
 	int ret;
 	struct lttng_ht_iter iter;
 
-	assert(app);
-	assert(ua_sess);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess);
 
 	iter.iter.node = &ua_sess->node.node;
 	ret = lttng_ht_del(app->sessions, &iter);
@@ -1266,14 +1266,14 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 			ua_event_notifier_rule->token);
 
 	condition = lttng_trigger_get_condition(trigger);
-	assert(condition);
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	cond_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
-	assert(event_rule);
+	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(event_rule);
 
 	ua_event_notifier_rule->error_counter_index =
 			lttng_condition_event_rule_matches_get_error_counter_index(condition);
@@ -1363,7 +1363,7 @@ static struct lttng_ust_abi_filter_bytecode *create_ust_filter_bytecode_from_byt
 		goto error;
 	}
 
-	assert(sizeof(struct lttng_bytecode) ==
+	LTTNG_ASSERT(sizeof(struct lttng_bytecode) ==
 			sizeof(struct lttng_ust_abi_filter_bytecode));
 	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
 error:
@@ -1387,7 +1387,7 @@ create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 		goto error;
 	}
 
-	assert(sizeof(struct lttng_bytecode) ==
+	LTTNG_ASSERT(sizeof(struct lttng_bytecode) ==
 			sizeof(struct lttng_ust_abi_capture_bytecode));
 	memcpy(capture, orig_f, sizeof(*capture) + orig_f->len);
 error:
@@ -1455,8 +1455,8 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	struct ust_app_event *event = NULL;
 	struct ust_app_ht_key key;
 
-	assert(name);
-	assert(ht);
+	LTTNG_ASSERT(name);
+	LTTNG_ASSERT(ht);
 
 	/* Setup key for event lookup. */
 	key.name = name;
@@ -1492,7 +1492,7 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(
 	struct lttng_ht_node_u64 *node;
 	struct ust_app_event_notifier_rule *event_notifier_rule = NULL;
 
-	assert(ht);
+	LTTNG_ASSERT(ht);
 
 	lttng_ht_lookup(ht, &token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
@@ -1665,7 +1665,7 @@ struct lttng_ust_abi_event_exclusion *create_ust_exclusion_from_exclusion(
 		goto end;
 	}
 
-	assert(sizeof(struct lttng_event_exclusion) ==
+	LTTNG_ASSERT(sizeof(struct lttng_event_exclusion) ==
 			sizeof(struct lttng_ust_abi_event_exclusion));
 	memcpy(ust_exclusion, exclusion, exclusion_alloc_size);
 end:
@@ -1682,7 +1682,7 @@ static int set_ust_object_exclusions(struct ust_app *app,
 	int ret;
 	struct lttng_ust_abi_event_exclusion *ust_exclusions = NULL;
 
-	assert(exclusions && exclusions->count > 0);
+	LTTNG_ASSERT(exclusions && exclusions->count > 0);
 
 	health_code_update();
 
@@ -1882,9 +1882,9 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	int ret;
 	struct ust_app_stream *stream, *stmp;
 
-	assert(app);
-	assert(ua_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	health_code_update();
 
@@ -1997,7 +1997,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			switch (ret) {
 			case -LTTNG_UST_ERR_PERM:
 				/* Code flow problem */
-				assert(0);
+				abort();
 			case -LTTNG_UST_ERR_EXIST:
 				/* It's OK for our use case. */
 				ret = 0;
@@ -2040,7 +2040,7 @@ static int init_ust_event_notifier_from_event_rule(
 	} else {
 		const struct lttng_log_level_rule *log_level_rule;
 
-		assert(lttng_event_rule_get_type(rule) ==
+		LTTNG_ASSERT(lttng_event_rule_get_type(rule) ==
 				LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT);
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern(rule, &pattern);
@@ -2071,7 +2071,7 @@ static int init_ust_event_notifier_from_event_rule(
 				abort();
 			}
 
-			assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+			LTTNG_ASSERT(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 		} else {
 			/* At this point this is a fatal error. */
 			abort();
@@ -2110,22 +2110,22 @@ static int create_ust_event_notifier(struct ust_app *app,
 	enum lttng_event_rule_type event_rule_type;
 
 	health_code_update();
-	assert(app->event_notifier_group.object);
+	LTTNG_ASSERT(app->event_notifier_group.object);
 
 	condition = lttng_trigger_get_const_condition(
 			ua_event_notifier_rule->trigger);
-	assert(condition);
-	assert(lttng_condition_get_type(condition) ==
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
-	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
-	assert(event_rule);
+	LTTNG_ASSERT(event_rule);
 
 	event_rule_type = lttng_event_rule_get_type(event_rule);
-	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT ||
+	LTTNG_ASSERT(event_rule_type == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT ||
 			event_rule_type == LTTNG_EVENT_RULE_TYPE_JUL_LOGGING ||
 			event_rule_type ==
 					LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING ||
@@ -2191,7 +2191,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 	/* Set the capture bytecodes. */
 	cond_status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_bytecode_count);
-	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
+	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
 
 	for (i = 0; i < capture_bytecode_count; i++) {
 		const struct lttng_bytecode *capture_bytecode =
@@ -2356,12 +2356,12 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 				app->bits_per_long);
 		break;
 	default:
-		assert(0);
+		abort();
 		goto error;
 	}
 	if (ret < 0) {
 		PERROR("asprintf UST shadow copy session");
-		assert(0);
+		abort();
 		goto error;
 	}
 
@@ -2384,12 +2384,12 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 					app->uid, app->bits_per_long);
 			break;
 		default:
-			assert(0);
+			abort();
 			goto error;
 		}
 		if (ret < 0) {
 			PERROR("sprintf UST shadow copy session");
-			assert(0);
+			abort();
 			goto error;
 		}
 		strncat(ua_sess->shm_path, tmp_shm_path,
@@ -2448,8 +2448,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 	int ret = 0;
 	struct buffer_reg_pid *reg_pid;
 
-	assert(ua_sess);
-	assert(app);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(app);
 
 	rcu_read_lock();
 
@@ -2517,8 +2517,8 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 	int ret = 0;
 	struct buffer_reg_uid *reg_uid;
 
-	assert(usess);
-	assert(app);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(app);
 
 	rcu_read_lock();
 
@@ -2590,9 +2590,9 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 	int ret, created = 0;
 	struct ust_app_session *ua_sess;
 
-	assert(usess);
-	assert(app);
-	assert(ua_sess_ptr);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess_ptr);
 
 	health_code_update();
 
@@ -2628,7 +2628,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		}
 		break;
 	default:
-		assert(0);
+		abort();
 		ret = -EINVAL;
 		goto error;
 	}
@@ -2701,8 +2701,8 @@ static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 	struct ust_app_ctx *ctx;
 	const struct lttng_ust_context_attr *key;
 
-	assert(node);
-	assert(_key);
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
 
 	ctx = caa_container_of(node, struct ust_app_ctx, node.node);
 	key = _key;
@@ -2753,8 +2753,8 @@ struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
 	struct lttng_ht_node_ulong *node;
 	struct ust_app_ctx *app_ctx = NULL;
 
-	assert(uctx);
-	assert(ht);
+	LTTNG_ASSERT(uctx);
+	LTTNG_ASSERT(ht);
 
 	/* Lookup using the lttng_ust_context_type and a custom match fct. */
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) uctx->ctx, lttng_ht_seed),
@@ -2919,10 +2919,10 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	unsigned int nb_fd = 0;
 	struct consumer_socket *socket;
 
-	assert(usess);
-	assert(ua_sess);
-	assert(ua_chan);
-	assert(registry);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(registry);
 
 	rcu_read_lock();
 	health_code_update();
@@ -3011,8 +3011,8 @@ static int duplicate_stream_object(struct buffer_reg_stream *reg_stream,
 {
 	int ret;
 
-	assert(reg_stream);
-	assert(stream);
+	LTTNG_ASSERT(reg_stream);
+	LTTNG_ASSERT(stream);
 
 	/* Duplicating a stream requires 2 new fds. Reserve them. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
@@ -3047,8 +3047,8 @@ static int duplicate_channel_object(struct buffer_reg_channel *buf_reg_chan,
 {
 	int ret;
 
-	assert(buf_reg_chan);
-	assert(ua_chan);
+	LTTNG_ASSERT(buf_reg_chan);
+	LTTNG_ASSERT(ua_chan);
 
 	/* Duplicating a channel requires 1 new fd. Reserve it. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
@@ -3087,8 +3087,8 @@ static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
 	int ret = 0;
 	struct ust_app_stream *stream, *stmp;
 
-	assert(buf_reg_chan);
-	assert(ua_chan);
+	LTTNG_ASSERT(buf_reg_chan);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG2("UST app setup buffer registry stream");
 
@@ -3132,8 +3132,8 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	int ret;
 	struct buffer_reg_channel *buf_reg_chan = NULL;
 
-	assert(reg_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(reg_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG2("UST app creating buffer registry channel for %s", ua_chan->name);
 
@@ -3142,7 +3142,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	if (ret < 0) {
 		goto error_create;
 	}
-	assert(buf_reg_chan);
+	LTTNG_ASSERT(buf_reg_chan);
 	buf_reg_chan->consumer_key = ua_chan->key;
 	buf_reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
 	buf_reg_chan->num_subbuf = ua_chan->attr.num_subbuf;
@@ -3180,10 +3180,10 @@ static int setup_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 {
 	int ret;
 
-	assert(reg_sess);
-	assert(buf_reg_chan);
-	assert(ua_chan);
-	assert(ua_chan->obj);
+	LTTNG_ASSERT(reg_sess);
+	LTTNG_ASSERT(buf_reg_chan);
+	LTTNG_ASSERT(ua_chan);
+	LTTNG_ASSERT(ua_chan->obj);
 
 	DBG2("UST app setup buffer registry channel for %s", ua_chan->name);
 
@@ -3216,10 +3216,10 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 	int ret;
 	struct buffer_reg_stream *reg_stream;
 
-	assert(buf_reg_chan);
-	assert(app);
-	assert(ua_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(buf_reg_chan);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG("UST app sending buffer registry channel to ust sock %d", app->sock);
 
@@ -3291,10 +3291,10 @@ static int create_channel_per_uid(struct ust_app *app,
 	enum lttng_error_code notification_ret;
 	struct ust_registry_channel *ust_reg_chan;
 
-	assert(app);
-	assert(usess);
-	assert(ua_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
 
@@ -3304,7 +3304,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 * object. If none can be find, there is a code flow problem or a
 	 * teardown race.
 	 */
-	assert(reg_uid);
+	LTTNG_ASSERT(reg_uid);
 
 	buf_reg_chan = buffer_reg_channel_find(ua_chan->tracing_channel_id,
 			reg_uid);
@@ -3321,9 +3321,9 @@ static int create_channel_per_uid(struct ust_app *app,
 	}
 
 	session = session_find_by_id(ua_sess->tracing_id);
-	assert(session);
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
+	LTTNG_ASSERT(session);
+	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
+	LTTNG_ASSERT(session_trylock_list());
 
 	/*
 	 * Create the buffers on the consumer side. This call populates the
@@ -3361,7 +3361,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
 	ust_reg_chan = ust_registry_channel_find(reg_uid->registry->reg.ust,
 			ua_chan->tracing_channel_id);
-	assert(ust_reg_chan);
+	LTTNG_ASSERT(ust_reg_chan);
 	ust_reg_chan->consumer_key = ua_chan->key;
 	ust_reg_chan = NULL;
 	pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
@@ -3416,10 +3416,10 @@ static int create_channel_per_pid(struct ust_app *app,
 	uint64_t chan_reg_key;
 	struct ust_registry_channel *ust_reg_chan;
 
-	assert(app);
-	assert(usess);
-	assert(ua_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	DBG("UST app creating channel %s with per PID buffers", ua_chan->name);
 
@@ -3427,7 +3427,7 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	registry = get_session_registry(ua_sess);
 	/* The UST app session lock is held, registry shall not be null. */
-	assert(registry);
+	LTTNG_ASSERT(registry);
 
 	/* Create and add a new channel registry to session. */
 	ret = ust_registry_channel_add(registry, ua_chan->key);
@@ -3438,10 +3438,10 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	session = session_find_by_id(ua_sess->tracing_id);
-	assert(session);
+	LTTNG_ASSERT(session);
 
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
+	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
+	LTTNG_ASSERT(session_trylock_list());
 
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
@@ -3464,7 +3464,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	chan_reg_key = ua_chan->key;
 	pthread_mutex_lock(&registry->lock);
 	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
-	assert(ust_reg_chan);
+	LTTNG_ASSERT(ust_reg_chan);
 	ust_reg_chan->consumer_key = ua_chan->key;
 	pthread_mutex_unlock(&registry->lock);
 
@@ -3510,11 +3510,11 @@ static int ust_app_channel_send(struct ust_app *app,
 {
 	int ret;
 
-	assert(app);
-	assert(usess);
-	assert(usess->active);
-	assert(ua_sess);
-	assert(ua_chan);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(usess->active);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(ua_chan);
 
 	/* Handle buffer type before sending the channel to the application. */
 	switch (usess->buffer_type) {
@@ -3535,7 +3535,7 @@ static int ust_app_channel_send(struct ust_app *app,
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 		ret = -EINVAL;
 		goto error;
 	}
@@ -3728,13 +3728,13 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	struct ust_registry_session *registry;
 	struct ltt_session *session = NULL;
 
-	assert(ua_sess);
-	assert(app);
-	assert(consumer);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(consumer);
 
 	registry = get_session_registry(ua_sess);
 	/* The UST app session is held registry shall not be null. */
-	assert(registry);
+	LTTNG_ASSERT(registry);
 
 	pthread_mutex_lock(&registry->lock);
 
@@ -3777,10 +3777,10 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	registry->metadata_key = metadata->key;
 
 	session = session_find_by_id(ua_sess->tracing_id);
-	assert(session);
+	LTTNG_ASSERT(session);
 
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
+	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
+	LTTNG_ASSERT(session_trylock_list());
 
 	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
@@ -3861,8 +3861,8 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	struct ust_app *lta = NULL;
 	struct lttng_pipe *event_notifier_event_source_pipe = NULL;
 
-	assert(msg);
-	assert(sock >= 0);
+	LTTNG_ASSERT(msg);
+	LTTNG_ASSERT(sock >= 0);
 
 	DBG3("UST app creating application for socket %d", sock);
 
@@ -3957,8 +3957,8 @@ error:
  */
 void ust_app_add(struct ust_app *app)
 {
-	assert(app);
-	assert(app->notify_sock >= 0);
+	LTTNG_ASSERT(app);
+	LTTNG_ASSERT(app->notify_sock >= 0);
 
 	app->registration_time = time(NULL);
 
@@ -3999,7 +3999,7 @@ int ust_app_version(struct ust_app *app)
 {
 	int ret;
 
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	pthread_mutex_lock(&app->sock_lock);
 	ret = lttng_ust_ctl_tracer_version(app->sock, &app->version);
@@ -4039,7 +4039,7 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 	enum lttng_error_code lttng_ret;
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	if (!ust_app_supports_notifiers(app)) {
 		ret = -ENOSYS;
@@ -4152,7 +4152,7 @@ void ust_app_unregister(int sock)
 	/* Get the node reference for a call_rcu */
 	lttng_ht_lookup(ust_app_ht_by_sock, (void *)((unsigned long) sock), &ust_app_sock_iter);
 	node = lttng_ht_iter_get_node_ulong(&ust_app_sock_iter);
-	assert(node);
+	LTTNG_ASSERT(node);
 
 	lta = caa_container_of(node, struct ust_app, sock_n);
 	DBG("PID %d unregistering with sock %d", lta->pid, sock);
@@ -4222,7 +4222,7 @@ void ust_app_unregister(int sock)
 
 	/* Remove application from PID hash table */
 	ret = lttng_ht_del(ust_app_ht_by_sock, &ust_app_sock_iter);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	/*
 	 * Remove application from notify hash table. The thread handling the
@@ -4545,7 +4545,7 @@ void ust_app_clean_list(void)
 			 * Assert that all notifiers are gone as all triggers
 			 * are unregistered prior to this clean-up.
 			 */
-			assert(lttng_ht_get_count(app->token_to_event_notifier_rule_ht) == 0);
+			LTTNG_ASSERT(lttng_ht_get_count(app->token_to_event_notifier_rule_ht) == 0);
 
 			ust_app_notify_sock_unregister(app->notify_sock);
 		}
@@ -4554,7 +4554,7 @@ void ust_app_clean_list(void)
 	if (ust_app_ht) {
 		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 			ret = lttng_ht_del(ust_app_ht, &iter);
-			assert(!ret);
+			LTTNG_ASSERT(!ret);
 			call_rcu(&app->pid_n.head, delete_ust_app_rcu);
 		}
 	}
@@ -4564,7 +4564,7 @@ void ust_app_clean_list(void)
 		cds_lfht_for_each_entry(ust_app_ht_by_sock->ht, &iter.iter, app,
 				sock_n.node) {
 			ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
-			assert(!ret);
+			LTTNG_ASSERT(!ret);
 		}
 	}
 
@@ -4615,7 +4615,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
@@ -4640,11 +4640,11 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the session if found for the app, the channel must be there */
-		assert(ua_chan_node);
+		LTTNG_ASSERT(ua_chan_node);
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 		/* The channel must not be already disabled */
-		assert(ua_chan->enabled == 1);
+		LTTNG_ASSERT(ua_chan->enabled == 1);
 
 		/* Disable channel onto application */
 		ret = disable_ust_app_channel(ua_sess, ua_chan, app);
@@ -4669,7 +4669,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
@@ -4715,7 +4715,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 	DBG("UST app disabling event %s for all apps in channel "
 			"%s for session id %" PRIu64,
 			uevent->attr.name, uchan->name, usess->id);
@@ -4777,7 +4777,7 @@ int ust_app_channel_create(struct ltt_ust_session *usess,
 	int ret = 0;
 	struct ust_app_channel *ua_chan = NULL;
 
-	assert(ua_sess);
+	LTTNG_ASSERT(ua_sess);
 	ASSERT_LOCKED(ua_sess->lock);
 
 	if (!strncmp(uchan->name, DEFAULT_METADATA_NAME,
@@ -4857,7 +4857,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 	DBG("UST app enabling event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
 
@@ -4943,7 +4943,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 	DBG("UST app creating event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
 
@@ -4975,7 +4975,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the channel is not found, there is a code flow error */
-		assert(ua_chan_node);
+		LTTNG_ASSERT(ua_chan_node);
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
@@ -5171,7 +5171,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	registry = get_session_registry(ua_sess);
 
 	/* The UST app session is held registry shall not be null. */
-	assert(registry);
+	LTTNG_ASSERT(registry);
 
 	/* Push metadata for application before freeing the application. */
 	(void) push_metadata(registry, ua_sess->consumer);
@@ -5235,7 +5235,7 @@ int ust_app_flush_app_session(struct ust_app *app,
 		break;
 	case LTTNG_BUFFER_PER_UID:
 	default:
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -5318,7 +5318,7 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 	}
 	default:
 		ret = -1;
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -5378,7 +5378,7 @@ int ust_app_clear_quiescent_app_session(struct ust_app *app,
 		break;
 	case LTTNG_BUFFER_PER_UID:
 	default:
-		assert(0);
+		abort();
 		ret = -1;
 		break;
 	}
@@ -5467,7 +5467,7 @@ int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	}
 	default:
 		ret = -1;
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -5713,7 +5713,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		goto end;
 	}
 
-	assert(triggers);
+	LTTNG_ASSERT(triggers);
 
 	t_status = lttng_triggers_get_count(triggers, &count);
 	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
@@ -5729,7 +5729,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		uint64_t token;
 
 		trigger = lttng_triggers_borrow_mutable_at_index(triggers, i);
-		assert(trigger);
+		LTTNG_ASSERT(trigger);
 
 		token = lttng_trigger_get_tracer_token(trigger);
 		condition = lttng_trigger_get_condition(trigger);
@@ -5743,7 +5743,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		condition_status =
 				lttng_condition_event_rule_matches_borrow_rule_mutable(
 						condition, &event_rule);
-		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+		LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 		if (lttng_event_rule_get_domain_type(event_rule) == LTTNG_DOMAIN_KERNEL) {
 			/* Skip kernel related triggers. */
@@ -5783,7 +5783,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 					lttng_triggers_get_at_index(
 							triggers, i);
 
-			assert(trigger);
+			LTTNG_ASSERT(trigger);
 
 			notification_thread_token =
 					lttng_trigger_get_tracer_token(trigger);
@@ -5805,7 +5805,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		 */
 		ret = lttng_ht_del(app->token_to_event_notifier_rule_ht,
 				&app_trigger_iter);
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 
 		/* Callee logs errors. */
 		(void) disable_ust_object(app, event_notifier_rule->obj);
@@ -5833,9 +5833,9 @@ void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 	struct cds_lfht_iter uchan_iter;
 	struct ltt_ust_channel *uchan;
 
-	assert(usess);
-	assert(ua_sess);
-	assert(app);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(ua_sess);
+	LTTNG_ASSERT(app);
 
 	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &uchan_iter,
 			uchan, node.node) {
@@ -5899,7 +5899,7 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 	 * The application's configuration should only be synchronized for
 	 * active sessions.
 	 */
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 
 	ret = find_or_create_ust_app_session(usess, app, &ua_sess, NULL);
 	if (ret < 0) {
@@ -5909,7 +5909,7 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 		}
 		goto end;
 	}
-	assert(ua_sess);
+	LTTNG_ASSERT(ua_sess);
 
 	pthread_mutex_lock(&ua_sess->lock);
 	if (ua_sess->deleted) {
@@ -5963,8 +5963,8 @@ void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app *app)
  */
 void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 {
-	assert(usess);
-	assert(usess->active);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(usess->active);
 
 	DBG2("UST app global update for app sock %d for session id %" PRIu64,
 			app->sock, usess->id);
@@ -6056,7 +6056,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app *app;
 
-	assert(usess->active);
+	LTTNG_ASSERT(usess->active);
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
@@ -6109,7 +6109,7 @@ int ust_app_recv_registration(int sock, struct ust_register_msg *msg)
 	int ret;
 	uint32_t pid, ppid, uid, gid;
 
-	assert(msg);
+	LTTNG_ASSERT(msg);
 
 	ret = lttng_ust_ctl_recv_reg_msg(sock, &msg->type, &msg->major, &msg->minor,
 			&pid, &ppid, &uid, &gid,
@@ -6160,7 +6160,7 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app,
 	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess = NULL;
 
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	lttng_ht_lookup(app->ust_sessions_objd, (void *)((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -6187,7 +6187,7 @@ static struct ust_app_channel *find_channel_by_objd(struct ust_app *app,
 	struct lttng_ht_iter iter;
 	struct ust_app_channel *ua_chan = NULL;
 
-	assert(app);
+	LTTNG_ASSERT(app);
 
 	lttng_ht_lookup(app->ust_objd, (void *)((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -6242,7 +6242,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 		goto error_rcu_unlock;
 	}
 
-	assert(ua_chan->session);
+	LTTNG_ASSERT(ua_chan->session);
 	ua_sess = ua_chan->session;
 
 	/* Get right session registry depending on the session buffer type. */
@@ -6263,7 +6263,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	pthread_mutex_lock(&registry->lock);
 
 	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
-	assert(ust_reg_chan);
+	LTTNG_ASSERT(ust_reg_chan);
 
 	if (!ust_reg_chan->register_done) {
 		/*
@@ -6358,7 +6358,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		goto error_rcu_unlock;
 	}
 
-	assert(ua_chan->session);
+	LTTNG_ASSERT(ua_chan->session);
 	ua_sess = ua_chan->session;
 
 	registry = get_session_registry(ua_sess);
@@ -6626,7 +6626,7 @@ int ust_app_recv_notify(int sock)
 	}
 	default:
 		/* Should NEVER happen. */
-		assert(0);
+		abort();
 	}
 
 error:
@@ -6649,7 +6649,7 @@ void ust_app_notify_sock_unregister(int sock)
 	struct ust_app *app;
 	struct ust_app_notify_sock_obj *obj;
 
-	assert(sock >= 0);
+	LTTNG_ASSERT(sock >= 0);
 
 	rcu_read_lock();
 
@@ -6739,8 +6739,8 @@ enum lttng_error_code ust_app_snapshot_record(
 	struct ust_app *app;
 	char *trace_path = NULL;
 
-	assert(usess);
-	assert(output);
+	LTTNG_ASSERT(usess);
+	LTTNG_ASSERT(output);
 
 	rcu_read_lock();
 
@@ -6889,7 +6889,7 @@ enum lttng_error_code ust_app_snapshot_record(
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -6909,7 +6909,7 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(
 	struct ust_app *app;
 	struct lttng_ht_iter iter;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
@@ -6965,7 +6965,7 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -7035,7 +7035,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the session is found for the app, the channel must be there */
-		assert(ua_chan_node);
+		LTTNG_ASSERT(ua_chan_node);
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
@@ -7143,7 +7143,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 	struct ust_app *app;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	rcu_read_lock();
 
@@ -7271,7 +7271,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -7291,7 +7291,7 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 	char *pathname_index;
 	int fmt_ret;
 
-	assert(usess->current_trace_chunk);
+	LTTNG_ASSERT(usess->current_trace_chunk);
 	rcu_read_lock();
 
 	switch (usess->buffer_type) {
@@ -7402,7 +7402,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 	struct ust_app *app;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	rcu_read_lock();
 
@@ -7515,7 +7515,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 		break;
 	}
 	default:
-		assert(0);
+		abort();
 		break;
 	}
 
@@ -7559,7 +7559,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 	struct lttng_ht_iter iter;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	assert(usess);
+	LTTNG_ASSERT(usess);
 
 	rcu_read_lock();
 

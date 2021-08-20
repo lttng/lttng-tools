@@ -14,7 +14,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <assert.h>
 #include <ctype.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -181,7 +180,7 @@ static int enable_channel(char *session_name)
 		}
 	} else {
 		/* Checked by the caller. */
-		assert(0);
+		abort();
 	}
 
 	set_default_attr(&dom);
@@ -222,7 +221,7 @@ static int enable_channel(char *session_name)
 
 	/* Mi open channels element */
 	if (lttng_opt_mi) {
-		assert(writer);
+		LTTNG_ASSERT(writer);
 		ret = mi_lttng_channels_open(writer);
 		if (ret) {
 			ret = CMD_ERROR;
@@ -427,7 +426,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 
 			order = get_count_order_u64(chan_opts.attr.subbuf_size);
-			assert(order >= 0);
+			LTTNG_ASSERT(order >= 0);
 			rounded_size = 1ULL << order;
 			if (rounded_size < chan_opts.attr.subbuf_size) {
 				ERR("The subbuf size (%" PRIu64 ") is rounded and overflows!",
@@ -443,7 +442,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 
 			/* Should now be power of 2 */
-			assert(!((chan_opts.attr.subbuf_size - 1) & chan_opts.attr.subbuf_size));
+			LTTNG_ASSERT(!((chan_opts.attr.subbuf_size - 1) & chan_opts.attr.subbuf_size));
 
 			DBG("Channel subbuf size set to %" PRIu64, chan_opts.attr.subbuf_size);
 			break;
@@ -463,7 +462,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 
 			order = get_count_order_u64(chan_opts.attr.num_subbuf);
-			assert(order >= 0);
+			LTTNG_ASSERT(order >= 0);
 			rounded_size = 1ULL << order;
 			if (rounded_size < chan_opts.attr.num_subbuf) {
 				ERR("The number of subbuffers (%" PRIu64 ") is rounded and overflows!",
@@ -479,7 +478,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 
 			/* Should now be power of 2 */
-			assert(!((chan_opts.attr.num_subbuf - 1) & chan_opts.attr.num_subbuf));
+			LTTNG_ASSERT(!((chan_opts.attr.num_subbuf - 1) & chan_opts.attr.num_subbuf));
 
 			DBG("Channel subbuf num set to %" PRIu64, chan_opts.attr.num_subbuf);
 			break;

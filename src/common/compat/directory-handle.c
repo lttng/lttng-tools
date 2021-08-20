@@ -13,7 +13,6 @@
 #include <lttng/constant.h>
 #include <common/dynamic-array.h>
 
-#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -485,7 +484,7 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_handle(
 	struct lttng_directory_handle *new_handle = NULL;
 	char *new_path = NULL;
 
-	assert(ref_handle && ref_handle->base_path);
+	LTTNG_ASSERT(ref_handle && ref_handle->base_path);
 
 	ret = lttng_directory_handle_stat(ref_handle, path, &stat_buf);
 	if (ret == -1) {
@@ -561,7 +560,7 @@ LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		int dirfd)
 {
-	assert(dirfd == AT_FDCWD);
+	LTTNG_ASSERT(dirfd == AT_FDCWD);
 	return lttng_directory_handle_create(NULL);
 }
 
@@ -943,7 +942,7 @@ int create_directory_recursive(const struct lttng_directory_handle *handle,
 	size_t len;
 	int ret;
 
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	ret = lttng_strncpy(tmp, path, sizeof(tmp));
 	if (ret) {
@@ -1002,7 +1001,7 @@ void lttng_directory_handle_put(struct lttng_directory_handle *handle)
 	if (!handle) {
 		return;
 	}
-	assert(handle->ref.refcount);
+	LTTNG_ASSERT(handle->ref.refcount);
 	urcu_ref_put(&handle->ref, lttng_directory_handle_release);
 }
 
@@ -1262,10 +1261,10 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 				lttng_dynamic_array_get_element(
 						&frames, current_frame_idx);
 
-		assert(current_frame->dir);
+		LTTNG_ASSERT(current_frame->dir);
 		ret = lttng_dynamic_buffer_set_size(
 				&current_path, current_frame->path_size);
-		assert(!ret);
+		LTTNG_ASSERT(!ret);
 		current_path.data[current_path.size - 1] = '\0';
 
 		while ((entry = readdir(current_frame->dir))) {
@@ -1279,7 +1278,7 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 			/* Set current_path to the entry's path. */
 			ret = lttng_dynamic_buffer_set_size(
 					&current_path, current_path.size - 1);
-			assert(!ret);
+			LTTNG_ASSERT(!ret);
 			ret = lttng_dynamic_buffer_append(&current_path,
 					&separator, sizeof(separator));
 			if (ret) {
@@ -1370,7 +1369,7 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 
 			parent_frame = lttng_dynamic_array_get_element(&frames,
 					current_frame->parent_frame_idx);
-			assert(parent_frame);
+			LTTNG_ASSERT(parent_frame);
 			parent_frame->empty = false;
 		}
 		ret = lttng_dynamic_array_remove_element(

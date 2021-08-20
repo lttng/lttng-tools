@@ -25,7 +25,6 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <assert.h>
 #include <urcu/compiler.h>
 #include <inttypes.h>
 
@@ -441,7 +440,7 @@ restart:
 
 		rcu_thread_online();
 
-		assert(msg.cmd == HEALTH_CMD_CHECK);
+		LTTNG_ASSERT(msg.cmd == HEALTH_CMD_CHECK);
 
 		memset(&reply, 0, sizeof(reply));
 		for (i = 0; i < NR_HEALTH_RELAYD_TYPES; i++) {

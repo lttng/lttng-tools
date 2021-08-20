@@ -10,7 +10,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <stddef.h>
 
 #include <common/error.h>
@@ -187,7 +186,7 @@ int lttng_event_set_userspace_probe_location(struct lttng_event *event,
 	}
 
 	event_extended = (struct lttng_event_extended *) event->extended.ptr;
-	assert(event_extended);
+	LTTNG_ASSERT(event_extended);
 	if (event_extended->probe_location) {
 		lttng_userspace_probe_location_destroy(
 			event_extended->probe_location);

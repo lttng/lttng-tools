@@ -9,7 +9,6 @@
  *
  */
 
-#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -24,6 +23,7 @@
 #include <poll.h>
 
 #include <common/compat/errno.h>
+#include <common/macros.h>
 #include <lttng/lttng.h>
 
 #include <tap/tap.h>
@@ -613,8 +613,8 @@ static int validator_notification_trigger_name(
 	bool name_is_equal;
 	const char *name;
 
-	assert(notification);
-	assert(trigger_name);
+	LTTNG_ASSERT(notification);
+	LTTNG_ASSERT(trigger_name);
 
 	name = get_notification_trigger_name(notification);
 	if (name == NULL) {
@@ -742,7 +742,7 @@ int suspend_application(void)
 	/*
 	 * Send SIGUSR1 to application instructing it to bypass tracepoint.
 	 */
-	assert(app_pid > 1);
+	LTTNG_ASSERT(app_pid > 1);
 
 	ret = kill(app_pid, SIGUSR1);
 	if (ret) {
@@ -774,7 +774,7 @@ int resume_application(void)
 		goto error;
 	}
 
-	assert(app_pid > 1);
+	LTTNG_ASSERT(app_pid > 1);
 
 	ret = kill(app_pid, SIGUSR1);
 	if (ret) {
@@ -908,7 +908,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 		/* Safety check */
 		if (mask_position != test_vector_size -1) {
-			assert("Logic error for test vector generation");
+			LTTNG_ASSERT("Logic error for test vector generation");
 		}
 
 		loop_ret = asprintf(&test_tuple_string, "session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
@@ -981,7 +981,7 @@ void wait_data_pending(const char *session_name)
 
 	do {
 		ret = lttng_data_pending(session_name);
-		assert(ret >= 0);
+		LTTNG_ASSERT(ret >= 0);
 	} while (ret != 0);
 }
 
@@ -1477,10 +1477,10 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 	event_rule_set_filter set_filter;
 	event_rule_add_name_pattern_exclusion add_name_pattern_exclusion;
 
-	assert(event_pattern);
-	assert(trigger_name);
-	assert(condition);
-	assert(trigger);
+	LTTNG_ASSERT(event_pattern);
+	LTTNG_ASSERT(trigger_name);
+	LTTNG_ASSERT(condition);
+	LTTNG_ASSERT(trigger);
 
 	/* Set the function pointers based on the domain type. */
 	switch (domain_type) {
@@ -1520,9 +1520,9 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		int i;
 		bool success = true;
 
-		assert(domain_type == LTTNG_DOMAIN_UST);
-		assert(add_name_pattern_exclusion != NULL);
-		assert(exclusion_count > 0);
+		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_UST);
+		LTTNG_ASSERT(add_name_pattern_exclusion != NULL);
+		LTTNG_ASSERT(exclusion_count > 0);
 
 		for (i = 0; i < exclusion_count; i++) {
 			event_rule_status = add_name_pattern_exclusion(
@@ -2408,7 +2408,7 @@ static int validator_notification_trigger_capture(
 				field_value_type_to_str(
 					lttng_event_field_value_get_type(captured_field)));
 
-		assert(validate);
+		LTTNG_ASSERT(validate);
 		ret = validate(captured_field, iteration);
 		if (ret) {
 			at_least_one_error = true;
@@ -2597,7 +2597,7 @@ int main(int argc, const char *argv[])
 		 * At the moment, the only test case of this scenario is
 		 * exclusion which is only supported by UST.
 		 */
-		assert(domain_type == LTTNG_DOMAIN_UST);
+		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_UST);
 		diag("Test tracepoint event rule notifications with exclusion for domain %s",
 				domain_type_string);
 		test_tracepoint_event_rule_notification_exclusion(domain_type);
@@ -2608,7 +2608,7 @@ int main(int argc, const char *argv[])
 	{
 		plan_tests(11);
 		/* Test cases that need the kernel tracer. */
-		assert(domain_type == LTTNG_DOMAIN_KERNEL);
+		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
 		diag("Test kprobe event rule notifications for domain %s",
 				domain_type_string);
@@ -2621,7 +2621,7 @@ int main(int argc, const char *argv[])
 	{
 		plan_tests(23);
 		/* Test cases that need the kernel tracer. */
-		assert(domain_type == LTTNG_DOMAIN_KERNEL);
+		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
 		diag("Test syscall event rule notifications for domain %s",
 				domain_type_string);
@@ -2649,7 +2649,7 @@ int main(int argc, const char *argv[])
 		testapp_path = argv[5];
 		test_symbol_name = argv[6];
 		/* Test cases that need the kernel tracer. */
-		assert(domain_type == LTTNG_DOMAIN_KERNEL);
+		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
 		diag("Test userspace-probe event rule notifications for domain %s",
 				domain_type_string);
@@ -2669,7 +2669,7 @@ int main(int argc, const char *argv[])
 			plan_tests(215);
 			break;
 		default:
-			assert(0);
+			abort();
 		}
 
 		diag("Test tracepoint event rule notification captures for domain %s",

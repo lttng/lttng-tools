@@ -45,7 +45,7 @@ int get_count_order(unsigned int count)
 	if (count & (count - 1)) {
 		order++;
 	}
-	assert(order >= 0);
+	LTTNG_ASSERT(order >= 0);
 	return order;
 }
 
@@ -1183,7 +1183,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		clock_uuid_s[LTTNG_UUID_STR_LEN];
 	int ret = 0;
 
-	assert(session);
+	LTTNG_ASSERT(session);
 
 	lttng_uuid_to_str(session->uuid, uuid_s);
 

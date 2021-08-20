@@ -106,7 +106,7 @@ void *zmalloc(size_t len)
 
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
-#define ASSERT_LOCKED(lock) assert(pthread_mutex_trylock(&lock))
+#define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))
 
 /*
  * Get an aligned pointer to a value. This is meant
@@ -132,5 +132,16 @@ int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 	strcpy(dst, src);
 	return 0;
 }
+
+#ifdef NDEBUG
+/*
+* Force usage of the assertion condition to prevent unused variable warnings
+* when `assert()` are disabled by the `NDEBUG` definition.
+*/
+# define LTTNG_ASSERT(_cond) ((void) sizeof((void) (_cond), 0))
+#else
+# include <assert.h>
+# define LTTNG_ASSERT(_cond) assert(_cond)
+#endif
 
 #endif /* _MACROS_H */

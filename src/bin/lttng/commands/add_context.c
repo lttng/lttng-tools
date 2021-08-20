@@ -15,7 +15,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <urcu/list.h>
 
@@ -559,7 +558,7 @@ enum lttng_domain_type get_domain(void)
 	} else if (opt_log4j) {
 		return LTTNG_DOMAIN_LOG4J;
 	} else {
-		assert(0);
+		abort();
 	}
 }
 

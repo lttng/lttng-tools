@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 #include "filter-ast.h"
 #include "filter-parser.h"

@@ -11,7 +11,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <grp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -198,7 +197,7 @@ static int recv_data_sessiond(void *buf, size_t len)
 {
 	int ret;
 
-	assert(len > 0);
+	LTTNG_ASSERT(len > 0);
 
 	if (!connected) {
 		ret = -LTTNG_ERR_NO_SESSIOND;
@@ -614,8 +613,8 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 	struct lttcomm_lttng_msg llm;
 	const int fd_count = lttng_payload_view_get_fd_handle_count(message);
 
-	assert(reply->buffer.size == 0);
-	assert(lttng_dynamic_pointer_array_get_count(&reply->_fd_handles) == 0);
+	LTTNG_ASSERT(reply->buffer.size == 0);
+	LTTNG_ASSERT(lttng_dynamic_pointer_array_get_count(&reply->_fd_handles) == 0);
 
 	ret = connect_sessiond();
 	if (ret < 0) {
@@ -1021,7 +1020,7 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 	int err;
 	char *agent_filter = NULL;
 
-	assert(ev);
+	LTTNG_ASSERT(ev);
 
 	/* Don't add filter for the '*' event. */
 	if (strcmp(ev->name, "*") != 0) {
@@ -1134,7 +1133,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	if (ev->name[0] == '\0') {
 		/* Enable all events. */
 		ret = lttng_strncpy(ev->name, "*", sizeof(ev->name));
-		assert(ret == 0);
+		LTTNG_ASSERT(ret == 0);
 	}
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
@@ -1279,7 +1278,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			goto mem_error;
 		}
 
-		assert(fd_count == 0 || fd_count == 1);
+		LTTNG_ASSERT(fd_count == 0 || fd_count == 1);
 		if (fd_count == 1) {
 			struct fd_handle *h =
 					lttng_payload_view_pop_fd_handle(&view);
@@ -2053,7 +2052,7 @@ int lttng_destroy_session(const char *session_name)
 		ret = (int) -ret_code;
 		goto end;
 	}
-	assert(handle);
+	LTTNG_ASSERT(handle);
 
 	/* Block until the completion of the destruction of the session. */
 	status = lttng_destruction_handle_wait_for_completion(handle, -1);
@@ -2883,7 +2882,7 @@ int lttng_session_daemon_alive(void)
 		 * No socket path set. Weird error which means the constructor
 		 * was not called.
 		 */
-		assert(0);
+		abort();
 	}
 
 	ret = try_connect_sessiond(sessiond_sock_path);

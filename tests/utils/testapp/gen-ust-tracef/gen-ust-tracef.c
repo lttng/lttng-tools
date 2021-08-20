@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -18,6 +17,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/macros.h>
 #include <lttng/tracef.h>
 #include "signal-helper.h"
 
@@ -28,7 +28,7 @@ void create_file(const char *path)
 {
 	int ret;
 
-	assert(path);
+	LTTNG_ASSERT(path);
 
 	ret = creat(path, S_IRWXU);
 	if (ret < 0) {

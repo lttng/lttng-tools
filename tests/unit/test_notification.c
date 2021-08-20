@@ -9,7 +9,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,6 +23,8 @@
 #include <lttng/domain.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
+
+#include <common/macros.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -43,7 +44,7 @@ static void test_condition_buffer_usage(
 	double threshold_ratio;
 	uint64_t threshold_bytes;
 
-	assert(buffer_usage_condition);
+	LTTNG_ASSERT(buffer_usage_condition);
 
 	diag("Validating initialization");
 	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);

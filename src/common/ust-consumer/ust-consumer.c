@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-sigbus.h>
 #include <poll.h>
@@ -59,7 +58,7 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 {
 	struct lttng_consumer_stream *stream, *stmp;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	DBG("UST consumer cleaning stream list");
 
@@ -100,8 +99,8 @@ static int add_channel(struct lttng_consumer_channel *channel,
 {
 	int ret = 0;
 
-	assert(channel);
-	assert(ctx);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ctx);
 
 	if (ctx->on_recv_channel != NULL) {
 		ret = ctx->on_recv_channel(channel);
@@ -135,8 +134,8 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 	int alloc_ret;
 	struct lttng_consumer_stream *stream = NULL;
 
-	assert(channel);
-	assert(ctx);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ctx);
 
 	stream = consumer_stream_create(
 			channel,
@@ -257,8 +256,8 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 	struct lttng_consumer_stream *stream;
 	pthread_mutex_t *current_stream_lock = NULL;
 
-	assert(channel);
-	assert(ctx);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ctx);
 
 	/*
 	 * While a stream is available from ustctl. When NULL is returned, we've
@@ -392,10 +391,10 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 	int *stream_fds;
 	struct lttng_ust_ctl_consumer_channel *ust_channel;
 
-	assert(channel);
-	assert(attr);
-	assert(ust_chanp);
-	assert(channel->buffer_credentials.is_set);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(attr);
+	LTTNG_ASSERT(ust_chanp);
+	LTTNG_ASSERT(channel->buffer_credentials.is_set);
 
 	DBG3("Creating channel to ustctl with attr: [overwrite: %d, "
 			"subbuf_size: %" PRIu64 ", num_subbuf: %" PRIu64 ", "
@@ -482,8 +481,8 @@ static int send_sessiond_stream(int sock, struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	assert(stream);
-	assert(sock >= 0);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(sock >= 0);
 
 	DBG("UST consumer sending stream %" PRIu64 " to sessiond", stream->key);
 
@@ -510,9 +509,9 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 	struct lttng_consumer_stream *stream;
 	uint64_t net_seq_idx = -1ULL;
 
-	assert(channel);
-	assert(ctx);
-	assert(sock >= 0);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(sock >= 0);
 
 	DBG("UST consumer sending channel %s to sessiond", channel->name);
 
@@ -605,9 +604,9 @@ static int ask_channel(struct lttng_consumer_local_data *ctx,
 {
 	int ret;
 
-	assert(ctx);
-	assert(channel);
-	assert(attr);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(attr);
 
 	/*
 	 * This value is still used by the kernel consumer since for the kernel,
@@ -664,8 +663,8 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 	int ret = 0;
 	struct lttng_consumer_stream *stream, *stmp;
 
-	assert(channel);
-	assert(ctx);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(ctx);
 
 	/* Send streams to the corresponding thread. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
@@ -936,7 +935,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 		goto send_streams_error;
 	}
 	/* List MUST be empty after or else it could be reused. */
-	assert(cds_list_empty(&metadata->streams.head));
+	LTTNG_ASSERT(cds_list_empty(&metadata->streams.head));
 
 	ret = 0;
 	goto end;
@@ -970,15 +969,15 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	int ret = 0;
 	struct lttng_consumer_stream *metadata_stream;
 
-	assert(path);
-	assert(ctx);
+	LTTNG_ASSERT(path);
+	LTTNG_ASSERT(ctx);
 
 	DBG("UST consumer snapshot metadata with key %" PRIu64 " at path %s",
 			key, path);
 
 	rcu_read_lock();
 
-	assert(!metadata_channel->monitor);
+	LTTNG_ASSERT(!metadata_channel->monitor);
 
 	health_code_update();
 
@@ -1003,7 +1002,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	}
 
 	metadata_stream = metadata_channel->metadata_stream;
-	assert(metadata_stream);
+	LTTNG_ASSERT(metadata_stream);
 
 	pthread_mutex_lock(&metadata_stream->lock);
 	if (relayd_id != (uint64_t) -1ULL) {
@@ -1086,8 +1085,8 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	unsigned long consumed_pos, produced_pos;
 	struct lttng_consumer_stream *stream;
 
-	assert(path);
-	assert(ctx);
+	LTTNG_ASSERT(path);
+	LTTNG_ASSERT(ctx);
 
 	rcu_read_lock();
 
@@ -1095,7 +1094,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		use_relayd = 1;
 	}
 
-	assert(!channel->monitor);
+	LTTNG_ASSERT(!channel->monitor);
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
@@ -1103,7 +1102,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 
 		/* Lock stream because we are about to change its state. */
 		pthread_mutex_lock(&stream->lock);
-		assert(channel->trace_chunk);
+		LTTNG_ASSERT(channel->trace_chunk);
 		if (!lttng_trace_chunk_get(channel->trace_chunk)) {
 			/*
 			 * Can't happen barring an internal error as the channel
@@ -1113,7 +1112,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			ret = -1;
 			goto error_unlock;
 		}
-		assert(!stream->trace_chunk);
+		LTTNG_ASSERT(!stream->trace_chunk);
 		stream->trace_chunk = channel->trace_chunk;
 
 		stream->net_seq_idx = relayd_id;
@@ -1408,7 +1407,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* deprecated */
-	assert(msg.cmd_type != LTTNG_CONSUMER_STOP);
+	LTTNG_ASSERT(msg.cmd_type != LTTNG_CONSUMER_STOP);
 
 	health_code_update();
 
@@ -1562,7 +1561,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 			break;
 		default:
-			assert(0);
+			abort();
 			goto error_fatal;
 		};
 
@@ -1695,7 +1694,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_get_channel_fatal;
 		}
 		/* List MUST be empty after or else it could be reused. */
-		assert(cds_list_empty(&found_channel->streams.head));
+		LTTNG_ASSERT(cds_list_empty(&found_channel->streams.head));
 end_get_channel:
 		goto end_msg_sessiond;
 error_get_channel_fatal:
@@ -2332,8 +2331,8 @@ end:
 int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer_active)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_flush_buffer(stream->ustream, producer_active);
 }
@@ -2345,8 +2344,8 @@ int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
  */
 int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_snapshot(stream->ustream);
 }
@@ -2359,8 +2358,8 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 int lttng_ustconsumer_sample_snapshot_positions(
 		struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_snapshot_sample_positions(stream->ustream);
 }
@@ -2373,9 +2372,9 @@ int lttng_ustconsumer_sample_snapshot_positions(
 int lttng_ustconsumer_get_produced_snapshot(
 		struct lttng_consumer_stream *stream, unsigned long *pos)
 {
-	assert(stream);
-	assert(stream->ustream);
-	assert(pos);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
+	LTTNG_ASSERT(pos);
 
 	return lttng_ust_ctl_snapshot_get_produced(stream->ustream, pos);
 }
@@ -2388,9 +2387,9 @@ int lttng_ustconsumer_get_produced_snapshot(
 int lttng_ustconsumer_get_consumed_snapshot(
 		struct lttng_consumer_stream *stream, unsigned long *pos)
 {
-	assert(stream);
-	assert(stream->ustream);
-	assert(pos);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
+	LTTNG_ASSERT(pos);
 
 	return lttng_ust_ctl_snapshot_get_consumed(stream->ustream, pos);
 }
@@ -2398,16 +2397,16 @@ int lttng_ustconsumer_get_consumed_snapshot(
 int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_flush_buffer(stream->ustream, producer);
 }
 
 int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_clear_buffer(stream->ustream);
 }
@@ -2415,9 +2414,9 @@ int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts)
 {
-	assert(stream);
-	assert(stream->ustream);
-	assert(ts);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
+	LTTNG_ASSERT(ts);
 
 	return lttng_ust_ctl_get_current_timestamp(stream->ustream, ts);
 }
@@ -2425,9 +2424,9 @@ int lttng_ustconsumer_get_current_timestamp(
 int lttng_ustconsumer_get_sequence_number(
 		struct lttng_consumer_stream *stream, uint64_t *seq)
 {
-	assert(stream);
-	assert(stream->ustream);
-	assert(seq);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
+	LTTNG_ASSERT(seq);
 
 	return lttng_ust_ctl_get_sequence_number(stream->ustream, seq);
 }
@@ -2437,8 +2436,8 @@ int lttng_ustconsumer_get_sequence_number(
  */
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	pthread_mutex_lock(&stream->lock);
 	if (!stream->quiescent) {
@@ -2456,9 +2455,9 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 {
 	int i;
 
-	assert(chan);
-	assert(chan->uchan);
-	assert(chan->buffer_credentials.is_set);
+	LTTNG_ASSERT(chan);
+	LTTNG_ASSERT(chan->uchan);
+	LTTNG_ASSERT(chan->buffer_credentials.is_set);
 
 	if (chan->switch_timer_enabled == 1) {
 		consumer_timer_switch_stop(chan);
@@ -2491,9 +2490,9 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 
 void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 {
-	assert(chan);
-	assert(chan->uchan);
-	assert(chan->buffer_credentials.is_set);
+	LTTNG_ASSERT(chan);
+	LTTNG_ASSERT(chan->uchan);
+	LTTNG_ASSERT(chan->buffer_credentials.is_set);
 
 	consumer_metadata_cache_destroy(chan);
 	lttng_ust_ctl_destroy_channel(chan->uchan);
@@ -2511,8 +2510,8 @@ void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 
 void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	if (stream->chan->switch_timer_enabled == 1) {
 		consumer_timer_switch_stop(stream->chan);
@@ -2522,16 +2521,16 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 
 int lttng_ustconsumer_get_wakeup_fd(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_stream_get_wakeup_fd(stream->ustream);
 }
 
 int lttng_ustconsumer_close_wakeup_fd(struct lttng_consumer_stream *stream)
 {
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_stream_close_wakeup_fd(stream->ustream);
 }
@@ -2590,7 +2589,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 			&stream->chan->metadata_cache->contents.data[stream->ust_metadata_pushed],
 			stream->chan->metadata_cache->contents.size -
 					stream->ust_metadata_pushed);
-	assert(write_len != 0);
+	LTTNG_ASSERT(write_len != 0);
 	if (write_len < 0) {
 		ERR("Writing one metadata packet");
 		ret = write_len;
@@ -2598,7 +2597,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	}
 	stream->ust_metadata_pushed += write_len;
 
-	assert(stream->chan->metadata_cache->contents.size >=
+	LTTNG_ASSERT(stream->chan->metadata_cache->contents.size >=
 			stream->ust_metadata_pushed);
 	ret = write_len;
 
@@ -2637,8 +2636,8 @@ enum sync_metadata_status lttng_ustconsumer_sync_metadata(
 	enum sync_metadata_status status;
 	struct lttng_consumer_channel *metadata_channel;
 
-	assert(ctx);
-	assert(metadata_stream);
+	LTTNG_ASSERT(ctx);
+	LTTNG_ASSERT(metadata_stream);
 
 	metadata_channel = metadata_stream->chan;
 	pthread_mutex_unlock(&metadata_stream->lock);
@@ -2702,8 +2701,8 @@ static int notify_if_more_data(struct lttng_consumer_stream *stream,
 	int ret;
 	struct lttng_ust_ctl_consumer_stream *ustream;
 
-	assert(stream);
-	assert(ctx);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(ctx);
 
 	ustream = stream->ustream;
 
@@ -2721,7 +2720,7 @@ static int notify_if_more_data(struct lttng_consumer_stream *stream,
 	}
 
 	ret = lttng_ust_ctl_put_subbuf(ustream);
-	assert(!ret);
+	LTTNG_ASSERT(!ret);
 
 	/* This stream still has data. Flag it and wake up the data thread. */
 	stream->has_data = 1;
@@ -2907,7 +2906,7 @@ static int get_next_subbuffer_common(struct lttng_consumer_stream *stream,
 
 	subbuffer->buffer.buffer = lttng_buffer_view_init(
 			addr, 0, subbuffer->info.data.padded_subbuf_size);
-	assert(subbuffer->buffer.buffer.data != NULL);
+	LTTNG_ASSERT(subbuffer->buffer.buffer.data != NULL);
 end:
 	return ret;
 }
@@ -3053,7 +3052,7 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 {
 	const int ret = lttng_ust_ctl_put_next_subbuf(stream->ustream);
 
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 	return ret;
 }
 
@@ -3111,7 +3110,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	assert(stream);
+	LTTNG_ASSERT(stream);
 
 	/*
 	 * Don't create anything if this is set for streaming or if there is
@@ -3144,8 +3143,8 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	assert(stream);
-	assert(stream->ustream);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
 	ASSERT_LOCKED(stream->lock);
 
 	DBG("UST consumer checking data pending");
@@ -3176,7 +3175,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		 */
 		DBG("UST consumer metadata pending check: contiguous %" PRIu64 " vs pushed %" PRIu64,
 				contiguous, pushed);
-		assert(((int64_t) (contiguous - pushed)) >= 0);
+		LTTNG_ASSERT(((int64_t) (contiguous - pushed)) >= 0);
 		if ((contiguous != pushed) ||
 				(((int64_t) contiguous - pushed) > 0 || contiguous == 0)) {
 			ret = 1;	/* Data is pending */
@@ -3190,7 +3189,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 			 * subbuffer.
 			 */
 			ret = lttng_ust_ctl_put_subbuf(stream->ustream);
-			assert(ret == 0);
+			LTTNG_ASSERT(ret == 0);
 			ret = 1;	/* Data is pending */
 			goto end;
 		}
@@ -3213,8 +3212,8 @@ void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata)
 {
 	int ret;
 
-	assert(metadata);
-	assert(metadata->type == CONSUMER_CHANNEL_TYPE_METADATA);
+	LTTNG_ASSERT(metadata);
+	LTTNG_ASSERT(metadata->type == CONSUMER_CHANNEL_TYPE_METADATA);
 
 	DBG("Closing metadata channel key %" PRIu64, metadata->key);
 
@@ -3256,8 +3255,8 @@ void lttng_ustconsumer_close_all_metadata(struct lttng_ht *metadata_ht)
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
-	assert(metadata_ht);
-	assert(metadata_ht->ht);
+	LTTNG_ASSERT(metadata_ht);
+	LTTNG_ASSERT(metadata_ht->ht);
 
 	DBG("UST consumer closing all metadata streams");
 
@@ -3304,8 +3303,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	uint64_t len, key, offset, version;
 	int ret;
 
-	assert(channel);
-	assert(channel->metadata_cache);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->metadata_cache);
 
 	memset(&request, 0, sizeof(request));
 
@@ -3383,7 +3382,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	offset = msg.u.push_metadata.target_offset;
 	version = msg.u.push_metadata.version;
 
-	assert(key == channel->key);
+	LTTNG_ASSERT(key == channel->key);
 	if (len == 0) {
 		DBG("No new metadata to receive for key %" PRIu64, key);
 	}
@@ -3427,8 +3426,8 @@ end:
 int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
 		uint64_t *stream_id)
 {
-	assert(stream);
-	assert(stream_id);
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream_id);
 
 	return lttng_ust_ctl_get_stream_id(stream->ustream, stream_id);
 }

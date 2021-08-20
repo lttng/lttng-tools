@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <assert.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +37,7 @@ void metadata_cache_reset(struct consumer_metadata_cache *cache)
 {
 	const int ret = lttng_dynamic_buffer_set_size(&cache->contents, 0);
 
-	assert(ret == 0);
+	LTTNG_ASSERT(ret == 0);
 }
 
 /*
@@ -83,7 +82,7 @@ consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 	bool cache_is_invalidated = false;
 	uint64_t original_size;
 
-	assert(cache);
+	LTTNG_ASSERT(cache);
 	ASSERT_LOCKED(cache->lock);
 	original_size = cache->contents.size;
 
@@ -112,7 +111,7 @@ consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT;
 	} else {
 		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE;
-		assert(cache->contents.size == original_size);
+		LTTNG_ASSERT(cache->contents.size == original_size);
 	}
 
 end:
@@ -128,7 +127,7 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel)
 {
 	int ret;
 
-	assert(channel);
+	LTTNG_ASSERT(channel);
 
 	channel->metadata_cache = zmalloc(
 			sizeof(struct consumer_metadata_cache));
@@ -196,8 +195,8 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	int ret = 0;
 	struct lttng_consumer_stream *metadata_stream;
 
-	assert(channel);
-	assert(channel->metadata_cache);
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->metadata_cache);
 
 	/*
 	 * If not called from a timer handler, we have to take the

@@ -5,7 +5,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 
 #include <urcu.h>
@@ -91,7 +90,7 @@ enum lttng_index_allocator_status lttng_index_allocator_release(
 	enum lttng_index_allocator_status status =
 			LTTNG_INDEX_ALLOCATOR_STATUS_OK;
 
-	assert(idx < allocator->size);
+	LTTNG_ASSERT(idx < allocator->size);
 
 	index = zmalloc(sizeof(*index));
 	if (!index) {

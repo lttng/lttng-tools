@@ -7,7 +7,6 @@
  *
  */
 
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -91,7 +90,7 @@ void test_log_level_rule_is_equal_exactly(void)
 	/* Different type. */
 	different_type = lttng_log_level_rule_at_least_as_severe_as_create(level);
 
-	assert(a && b && different_level && different_type);
+	LTTNG_ASSERT(a && b && different_level && different_type);
 
 	ok(lttng_log_level_rule_is_equal(a, a), "Same object is equal");
 	ok(lttng_log_level_rule_is_equal(a, b), "Object a and b are equal");
@@ -120,7 +119,7 @@ void test_log_level_rule_is_equal_at_least_as_severe_as(void)
 	/* Different type. */
 	different_type = lttng_log_level_rule_exactly_create(level);
 
-	assert(a && b && different_level && different_type);
+	LTTNG_ASSERT(a && b && different_level && different_type);
 
 	ok(lttng_log_level_rule_is_equal(a, a), "Same object is equal");
 	ok(lttng_log_level_rule_is_equal(a, b), "Object a and b are equal");
