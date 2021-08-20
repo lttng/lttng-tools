@@ -101,6 +101,13 @@ void *zmalloc(size_t len)
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 #endif
 
+/* Used to make specific C++ functions to C code. */
+#ifdef __cplusplus
+#define C_LINKAGE extern "C"
+#else
+#define C_LINKAGE
+#endif
+
 /*
  * lttng_strncpy returns 0 on success, or nonzero on failure.
  * It checks that the @src string fits into @dst_len before performing

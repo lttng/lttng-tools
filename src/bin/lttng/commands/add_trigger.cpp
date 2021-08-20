@@ -8,12 +8,14 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "../command.h"
 #include "../loglevel.h"
 #include "../uprobe.h"
 
 #include "common/argpar/argpar.h"
+#include "common/argpar-utils/argpar-utils.h"
 #include "common/dynamic-array.h"
 #include "common/mi-lttng.h"
 #include "common/string-utils/string-utils.h"
@@ -651,9 +653,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 {
 	enum lttng_event_rule_type event_rule_type =
 			LTTNG_EVENT_RULE_TYPE_UNKNOWN;
-	struct argpar_state *state;
-	struct argpar_item *item = NULL;
-	char *error = NULL;
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	int consumed_args = -1;
 	struct lttng_kernel_probe_location *kernel_probe_location = NULL;
 	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
@@ -685,74 +686,67 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	lttng_dynamic_pointer_array_init(&exclude_names, free);
 
-	state = argpar_state_create(*argc, *argv, event_rule_opt_descrs);
-	if (!state) {
-		ERR("Failed to allocate an argpar state.");
+	argpar_iter = argpar_iter_create(*argc, *argv, event_rule_opt_descrs);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
 	while (true) {
-		enum argpar_state_parse_next_status status;
+		enum parse_next_item_status status;
 
-		ARGPAR_ITEM_DESTROY_AND_RESET(item);
-		status = argpar_state_parse_next(state, &item, &error);
-		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
-			ERR("%s", error);
+		status = parse_next_item(argpar_iter, &argpar_item, *argv,
+			false, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
-			/* Just stop parsing here. */
-			break;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
 		}
 
-		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
 
-			switch (item_opt->descr->id) {
+			switch (descr->id) {
 			case OPT_TYPE:
-				if (!assign_event_rule_type(&event_rule_type,
-						item_opt->arg)) {
+				if (!assign_event_rule_type(&event_rule_type, arg)) {
 					goto error;
 				}
 
 				/* Save the string for later use. */
-				if (!assign_string(&event_rule_type_str,
-						    item_opt->arg,
-						    "--type/-t")) {
+				if (!assign_string(&event_rule_type_str, arg,
+						"--type/-t")) {
 					goto error;
 				}
 
 				break;
 			case OPT_LOCATION:
-				if (!assign_string(&location,
-						item_opt->arg,
+				if (!assign_string(&location, arg,
 						"--location/-L")) {
 					goto error;
 				}
 
 				break;
 			case OPT_EVENT_NAME:
-				if (!assign_string(&event_name,
-						    item_opt->arg,
-						    "--event-name/-E")) {
+				if (!assign_string(&event_name, arg,
+						"--event-name/-E")) {
 					goto error;
 				}
 
 				break;
 			case OPT_FILTER:
-				if (!assign_string(&filter, item_opt->arg,
-						    "--filter/-f")) {
+				if (!assign_string(&filter, arg,
+						"--filter/-f")) {
 					goto error;
 				}
 
 				break;
 			case OPT_NAME:
-				if (!assign_string(&name, item_opt->arg,
-						    "--name/-n")) {
+				if (!assign_string(&name, arg,
+						"--name/-n")) {
 					goto error;
 				}
 
@@ -763,7 +757,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 				ret = lttng_dynamic_pointer_array_add_pointer(
 						&exclude_names,
-						strdup(item_opt->arg));
+						strdup(arg));
 				if (ret != 0) {
 					ERR("Failed to add pointer to dynamic pointer array.");
 					goto error;
@@ -772,8 +766,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				break;
 			}
 			case OPT_LOG_LEVEL:
-				if (!assign_string(&log_level_str,
-						    item_opt->arg, "--log-level/-l")) {
+				if (!assign_string(&log_level_str, arg,
+						"--log-level/-l")) {
 					goto error;
 				}
 
@@ -781,19 +775,16 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			case OPT_CAPTURE:
 			{
 				int ret;
-				const char *capture_str = item_opt->arg;
 
 				ret = filter_parser_ctx_create_from_filter_expression(
-						capture_str, &parser_ctx);
+						arg, &parser_ctx);
 				if (ret) {
-					ERR("Failed to parse capture expression `%s`.",
-							capture_str);
+					ERR("Failed to parse capture expression `%s`.", arg);
 					goto error;
 				}
 
 				event_expr = ir_op_root_to_event_expr(
-						parser_ctx->ir_root,
-						capture_str);
+						parser_ctx->ir_root, arg);
 				if (!event_expr) {
 					/*
 					 * ir_op_root_to_event_expr has printed
@@ -821,12 +812,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				abort();
 			}
 		} else {
-			const struct argpar_item_non_opt *item_non_opt =
-					(const struct argpar_item_non_opt *)
-							item;
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
 
 			/* Don't accept non-option arguments. */
-			ERR("Unexpected argument '%s'", item_non_opt->arg);
+			ERR("Unexpected argument '%s'", arg);
 			goto error;
 		}
 	}
@@ -909,7 +898,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	/*
 	 * Update *argc and *argv so our caller can keep parsing what follows.
 	 */
-	consumed_args = argpar_state_get_ingested_orig_args(state);
+	consumed_args = argpar_iter_ingested_orig_args(argpar_iter);
 	LTTNG_ASSERT(consumed_args >= 0);
 	*argc -= consumed_args;
 	*argv += consumed_args;
@@ -1341,9 +1330,8 @@ end:
 	}
 
 	lttng_event_expr_destroy(event_expr);
-	argpar_item_destroy(item);
-	free(error);
-	argpar_state_destroy(state);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	free(filter);
 	free(name);
 	lttng_dynamic_pointer_array_reset(&exclude_names);
@@ -1539,42 +1527,38 @@ static
 struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 {
 	struct lttng_action *action = NULL;
-	struct argpar_state *state = NULL;
-	struct argpar_item *item = NULL;
-	char *error = NULL;
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	struct lttng_rate_policy *policy = NULL;
 
-	state = argpar_state_create(*argc, *argv, notify_action_opt_descrs);
-	if (!state) {
-		ERR("Failed to allocate an argpar state.");
+	argpar_iter = argpar_iter_create(*argc, *argv, notify_action_opt_descrs);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
 	while (true) {
-		enum argpar_state_parse_next_status status;
+		enum parse_next_item_status status;
 
-		ARGPAR_ITEM_DESTROY_AND_RESET(item);
-		status = argpar_state_parse_next(state, &item, &error);
-		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
-			ERR("%s", error);
+		status = parse_next_item(argpar_iter, &argpar_item, *argv,
+			false, "While parsing `notify` action:");
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
-			/* Just stop parsing here. */
-			break;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
 		}
 
-		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
 
-			switch (item_opt->descr->id) {
+			switch (descr->id) {
 			case OPT_RATE_POLICY:
 			{
-				policy = parse_rate_policy(item_opt->arg);
+				policy = parse_rate_policy(arg);
 				if (!policy) {
 					goto error;
 				}
@@ -1584,23 +1568,15 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 				abort();
 			}
 		} else {
-			const struct argpar_item_non_opt *item_non_opt;
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
 
-			LTTNG_ASSERT(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
-
-			item_non_opt = (const struct argpar_item_non_opt *) item;
-
-			switch (item_non_opt->non_opt_index) {
-			default:
-				ERR("Unexpected argument `%s`.",
-						item_non_opt->arg);
-				goto error;
-			}
+			ERR("Unexpected argument `%s`.", arg);
+			goto error;
 		}
 	}
 
-	*argc -= argpar_state_get_ingested_orig_args(state);
-	*argv += argpar_state_get_ingested_orig_args(state);
+	*argc -= argpar_iter_ingested_orig_args(argpar_iter);
+	*argv += argpar_iter_ingested_orig_args(argpar_iter);
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -1623,10 +1599,9 @@ error:
 	lttng_action_destroy(action);
 	action = NULL;
 end:
-	free(error);
 	lttng_rate_policy_destroy(policy);
-	argpar_state_destroy(state);
-	argpar_item_destroy(item);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	return action;
 }
 
@@ -1646,10 +1621,9 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		const char *action_name)
 {
 	struct lttng_action *action = NULL;
-	struct argpar_state *state = NULL;
-	struct argpar_item *item = NULL;
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	const char *session_name_arg = NULL;
-	char *error = NULL;
 	enum lttng_action_status action_status;
 	struct lttng_rate_policy *policy = NULL;
 
@@ -1661,37 +1635,34 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		ARGPAR_OPT_DESCR_SENTINEL
 	};
 
-	state = argpar_state_create(*argc, *argv, rate_policy_opt_descrs);
-	if (!state) {
-		ERR("Failed to allocate an argpar state.");
+	argpar_iter = argpar_iter_create(*argc, *argv, rate_policy_opt_descrs);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
 	while (true) {
-		enum argpar_state_parse_next_status status;
+		enum parse_next_item_status status;
 
-		ARGPAR_ITEM_DESTROY_AND_RESET(item);
-		status = argpar_state_parse_next(state, &item, &error);
-		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
-			ERR("%s", error);
+		status = parse_next_item(argpar_iter, &argpar_item, *argv,
+			false, "While parsing `%s` action:", action_name);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
-		} else if (status ==
-				ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
-			/* Just stop parsing here. */
-			break;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
 		}
 
-		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
-			switch (item_opt->descr->id) {
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
+
+			switch (descr->id) {
 			case OPT_RATE_POLICY:
 			{
-				policy = parse_rate_policy(item_opt->arg);
+				policy = parse_rate_policy(arg);
 				if (!policy) {
 					goto error;
 				}
@@ -1701,23 +1672,22 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 				abort();
 			}
 		} else {
-			const struct argpar_item_non_opt *item_non_opt;
-			item_non_opt = (const struct argpar_item_non_opt *) item;
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
+			unsigned int idx = argpar_item_non_opt_non_opt_index(argpar_item);
 
-			switch (item_non_opt->non_opt_index) {
+			switch (idx) {
 			case 0:
-				session_name_arg = item_non_opt->arg;
+				session_name_arg = arg;
 				break;
 			default:
-				ERR("Unexpected argument `%s`.",
-						item_non_opt->arg);
+				ERR("Unexpected argument `%s`.", arg);
 				goto error;
 			}
 		}
 	}
 
-	*argc -= argpar_state_get_ingested_orig_args(state);
-	*argv += argpar_state_get_ingested_orig_args(state);
+	*argc -= argpar_iter_ingested_orig_args(argpar_iter);
+	*argv += argpar_iter_ingested_orig_args(argpar_iter);
 
 	if (!session_name_arg) {
 		ERR("Missing session name.");
@@ -1750,11 +1720,11 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 error:
 	lttng_action_destroy(action);
 	action = NULL;
-	argpar_item_destroy(item);
+
 end:
 	lttng_rate_policy_destroy(policy);
-	free(error);
-	argpar_state_destroy(state);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	return action;
 }
 
@@ -1805,8 +1775,8 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		const char ***argv)
 {
 	struct lttng_action *action = NULL;
-	struct argpar_state *state = NULL;
-	struct argpar_item *item = NULL;
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	const char *session_name_arg = NULL;
 	char *snapshot_name_arg = NULL;
 	char *ctrl_url_arg = NULL;
@@ -1821,73 +1791,70 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	int ret;
 	unsigned int locations_specified = 0;
 
-	state = argpar_state_create(*argc, *argv, snapshot_action_opt_descrs);
-	if (!state) {
-		ERR("Failed to allocate an argpar state.");
+	argpar_iter = argpar_iter_create(*argc, *argv, snapshot_action_opt_descrs);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
 	while (true) {
-		enum argpar_state_parse_next_status status;
+		enum parse_next_item_status status;
 
-		ARGPAR_ITEM_DESTROY_AND_RESET(item);
-		status = argpar_state_parse_next(state, &item, &error);
-		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
-			ERR("%s", error);
+		status = parse_next_item(argpar_iter, &argpar_item, *argv,
+			false, "While parsing `snapshot` action:");
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
-			/* Just stop parsing here. */
-			break;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
 		}
 
-		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
 
-			switch (item_opt->descr->id) {
+			switch (descr->id) {
 			case OPT_NAME:
-				if (!assign_string(&snapshot_name_arg, item_opt->arg, "--name/-n")) {
+				if (!assign_string(&snapshot_name_arg, arg, "--name/-n")) {
 					goto error;
 				}
 
 				break;
 			case OPT_MAX_SIZE:
-				if (!assign_string(&max_size_arg, item_opt->arg, "--max-size/-m")) {
+				if (!assign_string(&max_size_arg, arg, "--max-size/-m")) {
 					goto error;
 				}
 
 				break;
 			case OPT_CTRL_URL:
-				if (!assign_string(&ctrl_url_arg, item_opt->arg, "--ctrl-url")) {
+				if (!assign_string(&ctrl_url_arg, arg, "--ctrl-url")) {
 					goto error;
 				}
 
 				break;
 			case OPT_DATA_URL:
-				if (!assign_string(&data_url_arg, item_opt->arg, "--data-url")) {
+				if (!assign_string(&data_url_arg, arg, "--data-url")) {
 					goto error;
 				}
 
 				break;
 			case OPT_URL:
-				if (!assign_string(&url_arg, item_opt->arg, "--url")) {
+				if (!assign_string(&url_arg, arg, "--url")) {
 					goto error;
 				}
 
 				break;
 			case OPT_PATH:
-				if (!assign_string(&path_arg, item_opt->arg, "--path")) {
+				if (!assign_string(&path_arg, arg, "--path")) {
 					goto error;
 				}
 
 				break;
 			case OPT_RATE_POLICY:
 			{
-				policy = parse_rate_policy(item_opt->arg);
+				policy = parse_rate_policy(arg);
 				if (!policy) {
 					goto error;
 				}
@@ -1897,26 +1864,22 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 				abort();
 			}
 		} else {
-			const struct argpar_item_non_opt *item_non_opt;
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
+			const unsigned int idx = argpar_item_non_opt_non_opt_index(argpar_item);
 
-			LTTNG_ASSERT(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
-
-			item_non_opt = (const struct argpar_item_non_opt *) item;
-
-			switch (item_non_opt->non_opt_index) {
+			switch (idx) {
 			case 0:
-				session_name_arg = item_non_opt->arg;
+				session_name_arg = arg;
 				break;
 			default:
-				ERR("Unexpected argument `%s`.",
-						item_non_opt->arg);
+				ERR("Unexpected argument `%s`.", arg);
 				goto error;
 			}
 		}
 	}
 
-	*argc -= argpar_state_get_ingested_orig_args(state);
-	*argv += argpar_state_get_ingested_orig_args(state);
+	*argc -= argpar_iter_ingested_orig_args(argpar_iter);
+	*argv += argpar_iter_ingested_orig_args(argpar_iter);
 
 	if (!session_name_arg) {
 		ERR("Missing session name.");
@@ -2102,8 +2065,8 @@ end:
 	free(snapshot_output);
 	free(max_size_arg);
 	lttng_rate_policy_destroy(policy);
-	argpar_state_destroy(state);
-	argpar_item_destroy(item);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	return action;
 }
 
@@ -2179,12 +2142,11 @@ int cmd_add_trigger(int argc, const char **argv)
 	const char **my_argv = argv + 1;
 	struct lttng_condition *condition = NULL;
 	struct lttng_dynamic_pointer_array actions;
-	struct argpar_state *argpar_state = NULL;
-	struct argpar_item *argpar_item = NULL;
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	struct lttng_action *action_list = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
-	char *error = NULL;
 	char *name = NULL;
 	int i;
 	char *owner_uid = NULL;
@@ -2219,50 +2181,44 @@ int cmd_add_trigger(int argc, const char **argv)
 	}
 
 	while (true) {
-		enum argpar_state_parse_next_status status;
-		const struct argpar_item_opt *item_opt;
+		enum parse_next_item_status status;
 		int ingested_args;
+		const struct argpar_opt_descr *descr;
+		const char *arg;
 
-		argpar_state_destroy(argpar_state);
-		argpar_state = argpar_state_create(my_argc, my_argv,
+		argpar_iter_destroy(argpar_iter);
+		argpar_iter = argpar_iter_create(my_argc, my_argv,
 			add_trigger_options);
-		if (!argpar_state) {
-			ERR("Failed to create argpar state.");
+		if (!argpar_iter) {
+			ERR("Failed to create argpar iter.");
 			goto error;
 		}
 
-		ARGPAR_ITEM_DESTROY_AND_RESET(argpar_item);
-		status = argpar_state_parse_next(argpar_state, &argpar_item, &error);
-		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
-			ERR("%s", error);
+		status = parse_next_item(argpar_iter, &argpar_item, my_argv,
+			true, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
-			ERR("%s", error);
-			goto error;
-		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
 		}
 
-		LTTNG_ASSERT(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
-		if (argpar_item->type == ARGPAR_ITEM_TYPE_NON_OPT) {
-			const struct argpar_item_non_opt *item_non_opt =
-					(const struct argpar_item_non_opt *)
-							argpar_item;
-
-			ERR("Unexpected argument `%s`.", item_non_opt->arg);
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_NON_OPT) {
+			ERR("Unexpected argument `%s`.",
+				argpar_item_non_opt_arg(argpar_item));
 			goto error;
 		}
 
-		item_opt = (const struct argpar_item_opt *) argpar_item;
-
-		ingested_args = argpar_state_get_ingested_orig_args(
-				argpar_state);
+		ingested_args = argpar_iter_ingested_orig_args(argpar_iter);
 
 		my_argc -= ingested_args;
 		my_argv += ingested_args;
 
-		switch (item_opt->descr->id) {
+		descr = argpar_item_opt_descr(argpar_item);
+		arg = argpar_item_opt_arg(argpar_item);
+
+		switch (descr->id) {
 		case OPT_HELP:
 			SHOW_HELP();
 			ret = 0;
@@ -2278,7 +2234,7 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			condition = parse_condition(item_opt->arg, &my_argc, &my_argv);
+			condition = parse_condition(arg, &my_argc, &my_argv);
 			if (!condition) {
 				/*
 				 * An error message was already printed by
@@ -2291,7 +2247,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_ACTION:
 		{
-			action = parse_action(item_opt->arg, &my_argc, &my_argv);
+			action = parse_action(arg, &my_argc, &my_argv);
 			if (!action) {
 				/*
 				 * An error message was already printed by
@@ -2314,7 +2270,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_NAME:
 		{
-			if (!assign_string(&name, item_opt->arg, "--name")) {
+			if (!assign_string(&name, arg, "--name")) {
 				goto error;
 			}
 
@@ -2322,7 +2278,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_OWNER_UID:
 		{
-			if (!assign_string(&owner_uid, item_opt->arg,
+			if (!assign_string(&owner_uid, arg,
 					"--owner-uid")) {
 				goto error;
 			}
@@ -2456,14 +2412,13 @@ end:
 	}
 
 cleanup:
-	argpar_state_destroy(argpar_state);
+	argpar_iter_destroy(argpar_iter);
 	argpar_item_destroy(argpar_item);
 	lttng_dynamic_pointer_array_reset(&actions);
 	lttng_condition_destroy(condition);
 	lttng_action_destroy(action_list);
 	lttng_action_destroy(action);
 	lttng_trigger_destroy(trigger);
-	free(error);
 	free(name);
 	free(owner_uid);
 	if (mi_writer && mi_lttng_writer_destroy(mi_writer)) {

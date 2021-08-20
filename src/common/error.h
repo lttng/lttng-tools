@@ -108,7 +108,7 @@ static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 	return true;
 }
 
-void lttng_abort_on_error(void);
+C_LINKAGE void lttng_abort_on_error(void);
 
 static inline void __lttng_print_check_abort(enum lttng_error_level type)
 {

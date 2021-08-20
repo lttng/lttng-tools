@@ -10,6 +10,7 @@
 #include "../command.h"
 
 #include "common/argpar/argpar.h"
+#include "common/argpar-utils/argpar-utils.h"
 #include "common/dynamic-array.h"
 #include "common/mi-lttng.h"
 /* For lttng_condition_type_str(). */
@@ -1317,27 +1318,38 @@ static enum lttng_error_code mi_error_query_condition_callback(
 int cmd_list_triggers(int argc, const char **argv)
 {
 	int ret;
-	struct argpar_parse_ret argpar_parse_ret = {};
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	struct lttng_triggers *triggers = NULL;
-	int i;
 	struct mi_writer *mi_writer = NULL;
 
-	argpar_parse_ret = argpar_parse(
-			argc - 1, argv + 1, list_trigger_options, true);
-	if (!argpar_parse_ret.items) {
-		ERR("%s", argpar_parse_ret.error);
+	argc--;
+	argv++;
+
+	argpar_iter = argpar_iter_create(argc, argv, list_trigger_options);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
-	for (i = 0; i < argpar_parse_ret.items->n_items; i++) {
-		const struct argpar_item *item =
-				argpar_parse_ret.items->items[i];
+	while (true) {
+		enum parse_next_item_status status;
 
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		status = parse_next_item(argpar_iter, &argpar_item, argv,
+			true, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+			goto error;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
 
-			switch (item_opt->descr->id) {
+		assert(status == PARSE_NEXT_ITEM_STATUS_OK);
+
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+
+			switch (descr->id) {
 			case OPT_HELP:
 				SHOW_HELP();
 				ret = 0;
@@ -1354,10 +1366,8 @@ int cmd_list_triggers(int argc, const char **argv)
 			}
 
 		} else {
-			const struct argpar_item_non_opt *item_non_opt =
-				(const struct argpar_item_non_opt *) item;
-
-			ERR("Unexpected argument: %s", item_non_opt->arg);
+			ERR("Unexpected argument: %s",
+				argpar_item_non_opt_arg(argpar_item));
 		}
 	}
 
@@ -1438,7 +1448,8 @@ error:
 	ret = 1;
 
 end:
-	argpar_parse_ret_fini(&argpar_parse_ret);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	lttng_triggers_destroy(triggers);
 	/* Mi clean-up. */
 	if (mi_writer && mi_lttng_writer_destroy(mi_writer)) {
