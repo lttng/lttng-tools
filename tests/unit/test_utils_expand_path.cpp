@@ -271,7 +271,7 @@ static void test_utils_expand_path(void)
 
 		result = utils_expand_path(valid_tests_inputs[i].input);
 		ok(result != NULL &&
-				strcmp(result, valid_tests_expected_results[i]) == 0, name);
+			strcmp(result, valid_tests_expected_results[i]) == 0, "%s", name);
 
 		free(result);
 	}
@@ -301,12 +301,12 @@ static void test_utils_expand_path(void)
 			PRINT_ERR("truncation occurred while concatenating paths \"%s\" and \"%s\"",
 					real_tree_origin,
 					symlink_tests_inputs[i].input);
-			fail(name);
+			fail("%s", name);
 			continue;
 		}
 		result = utils_expand_path(tmppath);
 		ok(result != NULL && strcmp(result + treelen,
-					symlink_tests_inputs[i].expected_result) == 0, name);
+			symlink_tests_inputs[i].expected_result) == 0, "%s", name);
 
 		free(result);
 	}
@@ -322,7 +322,7 @@ static void test_utils_expand_path(void)
 		if (result != NULL) {
 			free(result);
 		}
-		ok(result == NULL, name);
+		ok(result == NULL, "%s", name);
 	}
 }
 

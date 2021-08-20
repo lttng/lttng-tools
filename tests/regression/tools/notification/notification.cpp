@@ -272,7 +272,7 @@ static int validate_array_unsigned_int_field_at_index(
 	}
 
 	ok(value == expected_value,
-			"Expected unsigned integer value %u, got %" PRIu64,
+			"Expected unsigned integer value %" PRIu64 ", got %" PRIu64,
 			expected_value, value);
 
 	ret = 0;

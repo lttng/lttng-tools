@@ -102,7 +102,14 @@ int unregister_all_triggers(void)
 
 		ret = lttng_unregister_trigger(trigger);
 		if (ret) {
-			fail("Failed to unregister trigger: trigger name = '%s'");
+			const char *name;
+			enum lttng_trigger_status get_name_status =
+				lttng_trigger_get_name(trigger, &name);
+			if (get_name_status == LTTNG_TRIGGER_STATUS_OK) {
+				fail("Failed to unregister trigger: trigger name = '%s'", name);
+			} else {
+				fail("Failed to unregister trigger");
+			}
 			goto end;
 		}
 

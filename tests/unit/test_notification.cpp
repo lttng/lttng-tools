@@ -193,7 +193,7 @@ static void test_condition_buffer_usage(
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold > 0");
 	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold is set");
-	ok(threshold_bytes == 100000, "Threshold is %" PRIu64 , 100000);
+	ok(threshold_bytes == 100000, "Threshold is 100000");
 
 	status = lttng_condition_buffer_usage_set_threshold(buffer_usage_condition, UINT64_MAX);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold UINT64_MAX");

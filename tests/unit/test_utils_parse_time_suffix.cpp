@@ -101,7 +101,7 @@ static void test_utils_parse_time_suffix(void)
 
 		ret = utils_parse_time_suffix(valid_tests_inputs[i].input, &result);
 		sprintf(name, "valid test case: %s expected %" PRIu64, valid_tests_inputs[i].input, result);
-		ok(ret == 0 && result == valid_tests_inputs[i].expected_result, name);
+		ok(ret == 0 && result == valid_tests_inputs[i].expected_result, "%s", name);
 	}
 
 	/* Test invalid cases */
@@ -111,7 +111,7 @@ static void test_utils_parse_time_suffix(void)
 		sprintf(name, "invalid test case: %s", invalid_tests_inputs[i]);
 
 		ret = utils_parse_time_suffix(invalid_tests_inputs[i], &result);
-		ok(ret != 0, name);
+		ok(ret != 0, "%s", name);
 	}
 }
 

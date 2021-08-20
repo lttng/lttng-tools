@@ -104,7 +104,7 @@ static void test_utils_parse_size_suffix(void)
 		sprintf(name, "valid test case: %s", valid_tests_inputs[i].input);
 
 		ret = utils_parse_size_suffix(valid_tests_inputs[i].input, &result);
-		ok(ret == 0 && result == valid_tests_inputs[i].expected_result, name);
+		ok(ret == 0 && result == valid_tests_inputs[i].expected_result, "%s", name);
 	}
 
 	/* Test invalid cases */
@@ -113,7 +113,7 @@ static void test_utils_parse_size_suffix(void)
 		sprintf(name, "invalid test case: %s", invalid_tests_inputs[i]);
 
 		ret = utils_parse_size_suffix(invalid_tests_inputs[i], &result);
-		ok(ret != 0, name);
+		ok(ret != 0, "%s", name);
 	}
 }
 

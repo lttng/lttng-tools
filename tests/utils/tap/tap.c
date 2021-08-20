@@ -1,35 +1,17 @@
-/*-
- * Copyright (C) 2004 Nik Clayton
- * All rights reserved.
- *
+/*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * Copyright (C) 2004 Nik Clayton
+ * Copyright (C) 2017 Jérémie Galarneau
  */
 
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+#include <assert.h>
 
 #include "tap.h"
 
@@ -59,6 +41,18 @@ static pthread_mutex_t M = PTHREAD_MUTEX_INITIALIZER;
 static void _expected_tests(unsigned int);
 static void _tap_init(void);
 static void _cleanup(void);
+
+#ifdef __MINGW32__
+static inline
+void flockfile (FILE * filehandle) {
+       return;
+}
+
+static inline
+void funlockfile(FILE * filehandle) {
+       return;
+}
+#endif
 
 /*
  * Generate a test result.
@@ -95,7 +89,7 @@ _gen_result(int ok, const char *func, const char *file, unsigned int line,
 		if(local_test_name) {
 			name_is_digits = 1;
 			for(c = local_test_name; *c != '\0'; c++) {
-				if(!isdigit(*c) && !isspace(*c)) {
+				if(!isdigit((unsigned char) *c) && !isspace((unsigned char) *c)) {
 					name_is_digits = 0;
 					break;
 				}
@@ -214,7 +208,7 @@ plan_no_plan(void)
  * Note that the plan is to skip all tests
  */
 int
-plan_skip_all(char *reason)
+plan_skip_all(const char *reason)
 {
 
 	LOCK;
@@ -286,6 +280,28 @@ diag(const char *fmt, ...)
 }
 
 void
+diag_multiline(const char *val)
+{
+	size_t len, i, line_start_idx = 0;
+
+	assert(val);
+	len = strlen(val);
+
+	for (i = 0; i < len; i++) {
+		int line_length;
+
+		if (val[i] != '\n') {
+			continue;
+		}
+
+		assert((i - line_start_idx + 1) <= INT_MAX);
+		line_length = i - line_start_idx + 1;
+		fprintf(stderr, "# %.*s", line_length, &val[line_start_idx]);
+		line_start_idx = i + 1;
+	}
+}
+
+void
 _expected_tests(unsigned int tests)
 {
 
@@ -302,7 +318,7 @@ skip(unsigned int n, const char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	if (asprintf(&skip_msg, fmt, ap) == -1) {
+	if (vasprintf(&skip_msg, fmt, ap) == -1) {
 		skip_msg = NULL;
 	}
 	va_end(ap);
@@ -322,7 +338,7 @@ skip(unsigned int n, const char *fmt, ...)
 }
 
 void
-todo_start(char *fmt, ...)
+todo_start(const char *fmt, ...)
 {
 	va_list ap;
 
