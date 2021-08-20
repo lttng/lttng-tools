@@ -27,4 +27,14 @@ void strutils_free_null_terminated_array_of_strings(char **array);
 
 size_t strutils_array_of_strings_len(char * const *array);
 
+/*
+ * Append `append` to the malloc-end string `str`.
+ *
+ * On success, `str` is free'd (if not NULL) and assigned a new malloc-ed
+ * string.  On failure, `str` is not modified.
+ *
+ * Return 0 on success, -ENOMEM on failure.
+ */
+int strutils_append_str(char **str, const char *append);
+
 #endif /* _STRING_UTILS_H */

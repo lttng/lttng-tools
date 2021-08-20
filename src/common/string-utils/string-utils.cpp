@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <type_traits>
+#include <assert.h>
+#include <errno.h>
 
 #include "string-utils.h"
 #include "../macros.h"
@@ -372,4 +374,24 @@ size_t strutils_array_of_strings_len(char * const *array)
 	}
 
 	return count;
+}
+
+int strutils_append_str(char **s, const char *append)
+{
+	char *old = *s;
+	char *new_str;
+	size_t oldlen = (old == NULL) ? 0 : strlen(old);
+	size_t appendlen = strlen(append);
+
+	new_str = (char *) zmalloc(oldlen + appendlen + 1);
+	if (!new_str) {
+		return -ENOMEM;
+	}
+	if (oldlen) {
+		strcpy(new_str, old);
+	}
+	strcat(new_str, append);
+	*s = new_str;
+	free(old);
+	return 0;
 }

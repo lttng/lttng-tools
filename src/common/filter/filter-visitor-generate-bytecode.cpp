@@ -19,6 +19,7 @@
 #include "common/bytecode/bytecode.h"
 #include "common/compat/string.h"
 #include "common/macros.h"
+#include "common/string-utils/string-utils.h"
 #include "filter-ast.h"
 #include "filter-ir.h"
 
@@ -59,27 +60,6 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 	return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 }
 
-static
-int append_str(char **s, const char *append)
-{
-	char *old_str = *s;
-	char *new_str;
-	size_t oldlen = (old_str == NULL) ? 0 : strlen(old_str);
-	size_t appendlen = strlen(append);
-
-	new_str = (char *) calloc(oldlen + appendlen + 1, 1);
-	if (!new_str) {
-		return -ENOMEM;
-	}
-	if (oldlen) {
-		strcpy(new_str, old_str);
-	}
-	strcat(new_str, append);
-	*s = new_str;
-	free(old_str);
-	return 0;
-}
-
 /*
  * 1: match
  * 0: no match
@@ -97,14 +77,14 @@ int load_expression_legacy_match(const struct ir_load_expression *exp,
 	switch (op->type) {
 	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
 		*op_type = BYTECODE_OP_GET_CONTEXT_REF;
-		if (append_str(symbol, "$ctx.")) {
+		if (strutils_append_str(symbol, "$ctx.")) {
 			return -ENOMEM;
 		}
 		need_dot = false;
 		break;
 	case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
 		*op_type = BYTECODE_OP_GET_CONTEXT_REF;
-		if (append_str(symbol, "$app.")) {
+		if (strutils_append_str(symbol, "$app.")) {
 			return -ENOMEM;
 		}
 		need_dot = false;
@@ -130,10 +110,10 @@ int load_expression_legacy_match(const struct ir_load_expression *exp,
 		case IR_LOAD_EXPRESSION_LOAD_FIELD:
 			goto end;
 		case IR_LOAD_EXPRESSION_GET_SYMBOL:
-			if (need_dot && append_str(symbol, ".")) {
+			if (need_dot && strutils_append_str(symbol, ".")) {
 				return -ENOMEM;
 			}
-			if (append_str(symbol, op->u.symbol)) {
+			if (strutils_append_str(symbol, op->u.symbol)) {
 				return -ENOMEM;
 			}
 			break;
