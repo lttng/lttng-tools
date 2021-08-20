@@ -248,7 +248,8 @@ static int probes_capacity;
 /**
  * @brief Logging function for libkmod integration.
  */
-static void log_kmod(void *data, int priority, const char *file, int line,
+static ATTR_FORMAT_PRINTF(6, 0)
+void log_kmod(void *data, int priority, const char *file, int line,
 		const char *fn, const char *format, va_list args)
 {
 	char *str;
@@ -281,7 +282,15 @@ static int setup_kmod_ctx(struct kmod_ctx **ctx)
 		goto error;
 	}
 
+	/*
+	 * Parameter 2 of kmod_set_log_fn generates a
+	 * -Wsuggest-attribute=formatkmod_set_log_fn warning that we can't fix,
+	 * ignore it.
+	 */
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
 	kmod_set_log_fn(*ctx, log_kmod, NULL);
+	DIAGNOSTIC_POP
 	ret = kmod_load_resources(*ctx);
 	if (ret < 0) {
 		ERR("Failed to load kmod library resources");

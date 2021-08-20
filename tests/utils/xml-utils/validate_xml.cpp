@@ -27,6 +27,8 @@
 #include <lttng/lttng-error.h>
 #include <common/macros.h>
 
+#include <common/macros.h>
+
 struct validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;
 	xmlSchemaPtr schema;
@@ -38,7 +40,7 @@ enum command_err_code {
 	CMD_ERROR
 };
 
-static
+static ATTR_FORMAT_PRINTF(2, 3)
 void xml_error_handler(void *ctx, const char *format, ...)
 {
 	char *err_msg;

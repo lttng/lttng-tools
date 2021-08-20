@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <common/compat/tid.h>
+#include <common/macros.h>
 
 #include "signal-helper.h"
 #include "utils.h"
@@ -77,7 +78,8 @@ struct poptOption opts[] = {
 	{ NULL, 0, 0, NULL, 0 }
 };
 
-static void debug_printf(const char *format, ...)
+static ATTR_FORMAT_PRINTF(1, 2)
+void debug_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);

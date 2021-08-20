@@ -106,7 +106,7 @@ int metadata_file_append(struct ust_registry_session *session,
  * remaining space left in packet and write, since mutual exclusion
  * protects us from concurrent writes.
  */
-static
+static ATTR_FORMAT_PRINTF(2, 3)
 int lttng_metadata_printf(struct ust_registry_session *session,
 		const char *fmt, ...)
 {
@@ -315,10 +315,10 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 
 			if (entry->start.signedness) {
 				ret = lttng_metadata_printf(session,
-					"%lld", (long long) entry->start.value);
+					"%" PRId64, entry->start.value);
 			} else {
 				ret = lttng_metadata_printf(session,
-					"%llu", entry->start.value);
+					"%" PRIu64, entry->start.value);
 			}
 			if (ret) {
 				goto end;
@@ -331,11 +331,11 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 			} else {
 				if (entry->end.signedness) {
 					ret = lttng_metadata_printf(session,
-						" ... %lld,\n",
-						(long long) entry->end.value);
+						" ... %" PRId64 ",\n",
+						entry->end.value);
 				} else {
 					ret = lttng_metadata_printf(session,
-						" ... %llu,\n",
+						" ... %" PRIu64 ",\n",
 						entry->end.value);
 				}
 			}

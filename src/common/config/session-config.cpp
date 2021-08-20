@@ -528,7 +528,7 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-static
+static ATTR_FORMAT_PRINTF(2, 3)
 void xml_error_handler(void *ctx, const char *format, ...)
 {
 	char *errMsg;

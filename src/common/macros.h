@@ -75,6 +75,24 @@ void *zmalloc(size_t len)
 
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))
 
+/* Attribute suitable to tag functions as having printf()-like arguments. */
+#define ATTR_FORMAT_PRINTF(_string_index, _first_to_check) \
+	__attribute__((format(printf, _string_index, _first_to_check)))
+
+/* Macros used to ignore specific compiler diagnostics. */
+
+#define DIAGNOSTIC_PUSH _Pragma("GCC diagnostic push")
+#define DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+
+#if defined(__clang__)
+  /* Clang */
+# define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
+#else
+  /* GCC */
+# define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
+	_Pragma("GCC diagnostic ignored \"-Wsuggest-attribute=format\"")
+#endif
+
 /*
  * lttng_strncpy returns 0 on success, or nonzero on failure.
  * It checks that the @src string fits into @dst_len before performing
