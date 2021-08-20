@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	}
 	path = utils_expand_path(argv[1]);
 	if (!path) {
-		fail("Failed to resolve sample INI file path")
+		fail("Failed to resolve sample INI file path");
 	}
 
 	plan_no_plan();
