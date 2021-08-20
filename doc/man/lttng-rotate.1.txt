@@ -143,10 +143,6 @@ The `lttng rotate` command only works when:
 * The tracing session is created in normal mode or in network streaming
   mode (see man:lttng-create(1)).
 
-* No channel was created with a configured trace file count or size
-  limit (see the nloption:--tracefile-size and
-  nloption:--tracefile-count options in man:lttng-enable-channel(1)).
-
 * No immediate rotation (`lttng rotate`) is currently happening.
 
 
