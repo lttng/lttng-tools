@@ -7,6 +7,7 @@
 
 #include "../command.h"
 #include "common/argpar/argpar.h"
+#include "common/argpar-utils/argpar-utils.h"
 #include "common/mi-lttng.h"
 #include <lttng/lttng.h>
 #include <stdio.h>
@@ -61,7 +62,8 @@ int cmd_remove_trigger(int argc, const char **argv)
 {
 	enum lttng_error_code ret_code;
 	int ret;
-	struct argpar_parse_ret argpar_parse_ret = {};
+	struct argpar_iter *argpar_iter = NULL;
+	const struct argpar_item *argpar_item = NULL;
 	const char *name = NULL;
 	int i;
 	struct lttng_triggers *triggers = NULL;
@@ -97,22 +99,34 @@ int cmd_remove_trigger(int argc, const char **argv)
 		}
 	}
 
-	argpar_parse_ret = argpar_parse(argc - 1, argv + 1,
-		remove_trigger_options, true);
-	if (!argpar_parse_ret.items) {
-		ERR("%s", argpar_parse_ret.error);
+	argc--;
+	argv++;
+
+	argpar_iter = argpar_iter_create(argc, argv, remove_trigger_options);
+	if (!argpar_iter) {
+		ERR("Failed to allocate an argpar iter.");
 		goto error;
 	}
 
-	for (i = 0; i < argpar_parse_ret.items->n_items; i++) {
-		const struct argpar_item *item =
-				argpar_parse_ret.items->items[i];
+	while (true) {
+		enum parse_next_item_status status;
 
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
+		status = parse_next_item(argpar_iter, &argpar_item, argv,
+			true, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+			goto error;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
+			break;
+		}
 
-			switch (item_opt->descr->id) {
+		assert(status == PARSE_NEXT_ITEM_STATUS_OK);
+
+		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_opt_descr *descr =
+				argpar_item_opt_descr(argpar_item);
+			const char *arg = argpar_item_opt_arg(argpar_item);
+
+			switch (descr->id) {
 			case OPT_HELP:
 				SHOW_HELP();
 				ret = 0;
@@ -124,7 +138,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 				goto end;
 			case OPT_OWNER_UID:
 			{
-				if (!assign_string(&owner_uid, item_opt->arg,
+				if (!assign_string(&owner_uid, arg,
 						"--owner-uid")) {
 					goto error;
 				}
@@ -134,15 +148,14 @@ int cmd_remove_trigger(int argc, const char **argv)
 				abort();
 			}
 		} else {
-			const struct argpar_item_non_opt *item_non_opt =
-					(const struct argpar_item_non_opt *) item;
+			const char *arg = argpar_item_non_opt_arg(argpar_item);
 
 			if (name) {
-				ERR("Unexpected argument '%s'", item_non_opt->arg);
+				ERR("Unexpected argument '%s'", arg);
 				goto error;
 			}
 
-			name = item_non_opt->arg;
+			name = arg;
 		}
 	}
 
@@ -251,7 +264,8 @@ end:
 	}
 
 cleanup:
-	argpar_parse_ret_fini(&argpar_parse_ret);
+	argpar_item_destroy(argpar_item);
+	argpar_iter_destroy(argpar_iter);
 	lttng_triggers_destroy(triggers);
 	free(owner_uid);
 

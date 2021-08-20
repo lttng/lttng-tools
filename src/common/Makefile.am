@@ -10,7 +10,8 @@ SUBDIRS = \
 	fd-tracker \
 	string-utils \
 	filter \
-	hashtable
+	hashtable \
+	argpar-utils
 
 # Make sure to always distribute all folders
 # since SUBDIRS is decided at configure time.
@@ -31,7 +32,8 @@ DIST_SUBDIRS = \
 	fd-tracker \
 	bytecode \
 	filter \
-	argpar
+	argpar \
+	argpar-utils
 
 # Common library
 noinst_LTLIBRARIES = libcommon.la

@@ -45,4 +45,11 @@ size_t strutils_array_of_strings_len(char * const *array);
 LTTNG_HIDDEN
 int strutils_append_str(char **str, const char *append);
 
+/*
+ * Like `strutils_append_str`, but the appended string is formatted using
+ * `fmt` and the following arguments.
+ */
+LTTNG_HIDDEN
+int strutils_appendf(char **s, const char *fmt, ...);
+
 #endif /* _STRING_UTILS_H */
