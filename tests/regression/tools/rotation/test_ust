@@ -17,7 +17,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_ust_rotation_trace_path.XXXXXX)
 
-NUM_TESTS=136
+NUM_TESTS=138
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -25,6 +25,9 @@ source $CURDIR/rotate_utils.sh
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
+
+XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
+XPATH_PID="$XPATH_CMD_OUTPUT/lttng:domains/lttng:domain[./lttng:type = 'UST']/lttng:pids/lttng:pid/lttng:id"
 
 function enable_channel_per_pid ()
 {
@@ -97,6 +100,36 @@ function test_ust_local_pid ()
 	rotate_ust_test "${TRACE_PATH}/archives" "ust/pid/*/" 1
 }
 
+function wait_until_app_unregistration ()
+{
+	local pid=$1
+	local mi_output
+	local value=1
+
+	mi_output=$(mktemp)
+
+	while [ $value -ne 0 ]; do
+		# Extract from lttng list tracepoint the registered apps.
+		# This should give us enough guarantee since that if the app is not
+		# present it is unregistered from lttng-sessiond point of view.
+		LTTNG_BIN="lttng --mi xml" OUTPUT_DEST="$mi_output" list_lttng_notap -u
+		if ! $MI_VALIDATE "$mi_output"; then
+			return 1
+		fi
+
+		value=$("$MI_VALIDATE" "$mi_output" "$XPATH_PID" | wc -l)
+		if [ $value -ne 0 ]; then
+			diag "At least one app is still registred from lttng-sessiond point of view"
+			sleep 1
+		else
+			# No app present on listing.
+			break;
+		fi
+	done
+
+	return 0
+}
+
 function test_ust_local_timer_uid ()
 {
 	diag "Test ust local with session rotation timer per-uid"
@@ -125,14 +158,34 @@ function test_ust_streaming_timer_uid ()
 
 function test_ust_local_timer_pid ()
 {
+	local app_pid
+
 	diag "Test ust local with session rotation timer per-pid"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
-	# We just want the app to register, no event generated
-	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
+
+	# We just want the app to register, no event generated.
+	# But we want the pid for the app since we need to validate its
+	# unregistration on lttng listing.
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1 &
+	app_pid=$!
+	wait $app_pid
+
+	wait_until_app_unregistration $app_pid
+	ok $? "App is un-registered"
+
+	# Set the rotation after that the app is done and that it was
+	# unregistered from lttng-sessiond.
+	# This is necessary since the rotate_timer_test function expects the
+	# second rotation archive to be empty. On slow machine it can take more
+	# than 500ms for the lttng-sessiond to receive and handle an app
+	# termination. This can lead to situation where the second rotation
+	# archive still have the channels for the pid for the app since that
+	# from the point of view of the lttng-sessiond/consumer the app is still
+	# "alive" and "kicking". This is a problem only for per-pid testing.
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 
 	rotate_timer_test "${TRACE_PATH}/archives" 1
 }
@@ -143,10 +196,28 @@ function test_ust_streaming_timer_pid ()
 	create_lttng_session_uri $SESSION_NAME net://localhost
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
-	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
-	# We just want the app to register, no event generated
-	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
+
+	# We just want the app to register, no event generated.
+	# But we want the pid for the app since we need to validate its
+	# unregistration on lttng listing.
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1 &
+	app_pid=$!
+	wait $app_pid
+
+	wait_until_app_unregistration $app_pid
+	ok $? "App is un-registered"
+
+	# Set the rotation after that the app is done and that it was
+	# unregistered from lttng-sessiond.
+	# This is necessary since the rotate_timer_test function expects the
+	# second rotation archive to be empty. On slow machine it can take more
+	# than 500ms for the lttng-sessiond to receive and handle an app
+	# termination. This can lead to situation where the second rotation
+	# archive still have the channels for the pid for the app since that
+	# from the point of view of the lttng-sessiond/consumer the app is still
+	# "alive" and "kicking". This is a problem only for per-pid testing.
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 1
 }

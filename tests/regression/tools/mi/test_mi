@@ -217,7 +217,7 @@ function test_list_sessions ()
 	done
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	list_lttng_with_opts
+	list_lttng_ok
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list sessions xsd validation"
 
@@ -248,7 +248,7 @@ function test_list_session_long_path ()
 	create_lttng_session_ok $session_name ${output_basedir}
 
 	OUTPUT_DEST=${output_basedir}/$OUTPUT_FILE
-	list_lttng_with_opts
+	list_lttng_ok
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list session with long path xsd validation"
 
@@ -410,7 +410,7 @@ function test_list_channel ()
 
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	list_lttng_with_opts "$session_name -c $channel_name"
+	list_lttng_ok "$session_name -c $channel_name"
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list channel xsd validation"
 
@@ -460,7 +460,7 @@ function test_list_domain ()
 
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	list_lttng_with_opts "$session_name -d"
+	list_lttng_ok "$session_name -d"
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list domain xsd validation"
 
@@ -511,7 +511,7 @@ function test_list_session ()
 
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
-	list_lttng_with_opts $session_name
+	list_lttng_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list session xsd validation"
 
@@ -553,7 +553,7 @@ function test_list_ust_event ()
 		sleep 0.5
 	done
 
-	list_lttng_with_opts "-u -f"
+	list_lttng_ok "-u -f"
 
 	touch ${file_sync_before_last}
 
@@ -779,7 +779,7 @@ function test_track_untrack ()
 	ok $? "Mi test: track pid expecting 3 processes got $num"
 
 	#Test the pid_tracker listing
-	list_lttng_with_opts $session_name
+	list_lttng_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
@@ -806,7 +806,7 @@ function test_track_untrack ()
 	ok $? "Mi test: untrack pid expecting 2 process got $num"
 
 	#Check pid_tracker listing
-	list_lttng_with_opts $session_name
+	list_lttng_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
@@ -839,7 +839,7 @@ function test_track_untrack ()
 	#Test if pid_tracker is enabled as definied by pid_tracker
 	#behavior. If all pid are untrack than the pid_tracker is still
 	#enabled (pid_tracker node is present).
-	list_lttng_with_opts $session_name
+	list_lttng_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
@@ -872,7 +872,7 @@ function test_track_untrack ()
 	#Test if pid_tracker is enabled as definied by pid_tracker
 	#behavior. If all pid are untrack thant the pid_tracker is
 	#disabled (node pid_tracker do not exist)
-	list_lttng_with_opts $session_name
+	list_lttng_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 

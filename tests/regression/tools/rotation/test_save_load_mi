@@ -57,7 +57,7 @@ function test_save_load_mi ()
 	ok $? "Found the right rotation size value in XML"
 
 	# Check the output of lttng list with the 2 rotation parameters
-	list_lttng_with_opts $SESSION_NAME
+	list_lttng_ok $SESSION_NAME
 	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML"
 
@@ -77,7 +77,7 @@ function test_save_load_mi ()
 
 	OUTPUT_DEST=${tmp_xml_output}
 	# Check the output of lttng list with the 2 rotation parameters after the load
-	list_lttng_with_opts $SESSION_NAME
+	list_lttng_ok $SESSION_NAME
 	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML after load"
 
