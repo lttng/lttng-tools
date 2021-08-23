@@ -44,6 +44,7 @@ AX_APPEND_COMPILE_FLAGS([ dnl
 		-Wold-style-definition dnl
 		-Wstrict-prototypes dnl
 		-Wshadow dnl
+		-Wno-gnu-folding-constant dnl
 	],
 	[WARN_CFLAGS],
 	[-Werror])
