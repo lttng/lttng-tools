@@ -41,7 +41,10 @@ int utils_get_count_order_u32(uint32_t x);
 int utils_get_count_order_u64(uint64_t x);
 const char *utils_get_home_dir(void);
 char *utils_get_user_home_dir(uid_t uid);
-size_t utils_get_current_time_str(const char *format, char *dst, size_t len);
+
+size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
+	ATTR_FORMAT_STRFTIME(1);
+
 int utils_get_group_id(const char *name, bool warn, gid_t *gid);
 char *utils_generate_optstring(const struct option *long_options,
 		size_t opt_count);

@@ -107,14 +107,14 @@ static void test_fd_push_pop_imbalance(void)
 		}
 
 		handle = lttng_payload_view_pop_fd_handle(&view);
-		ok(!handle, test_description);
+		ok(!handle, "%s", test_description);
 		fd_handle_put(handle);
 	}
 
 	lttng_payload_reset(&payload);
 	return;
 fail:
-	fail(test_description);
+	fail("%s", test_description);
 	lttng_payload_reset(&payload);
 }
 
@@ -158,12 +158,12 @@ static void test_fd_pop_fd_root_views(void)
 	}
 
 	lttng_payload_reset(&payload);
-	pass(test_description);
+	pass("%s", test_description);
 	fd_handle_put(handle);
 	return;
 fail:
 	lttng_payload_reset(&payload);
-	fail(test_description);
+	fail("%s", test_description);
 	fd_handle_put(handle);
 }
 
@@ -212,7 +212,7 @@ static void test_fd_pop_fd_descendant_views(void)
 	}
 
 	lttng_payload_reset(&payload);
-	pass(test_description);
+	pass("%s", test_description);
 	fd_handle_put(handle1);
 	fd_handle_put(handle2);
 	fd_handle_put(view_handle1);
@@ -220,7 +220,7 @@ static void test_fd_pop_fd_descendant_views(void)
 	return;
 fail:
 	lttng_payload_reset(&payload);
-	fail(test_description);
+	fail("%s", test_description);
 	fd_handle_put(handle1);
 	fd_handle_put(handle2);
 	fd_handle_put(view_handle1);

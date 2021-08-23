@@ -79,6 +79,10 @@ void *zmalloc(size_t len)
 #define ATTR_FORMAT_PRINTF(_string_index, _first_to_check) \
 	__attribute__((format(printf, _string_index, _first_to_check)))
 
+/* Attribute suitable to tag functions as having strftime()-like arguments. */
+#define ATTR_FORMAT_STRFTIME(_string_index) \
+	__attribute__((format(strftime, _string_index, 0)))
+
 /* Macros used to ignore specific compiler diagnostics. */
 
 #define DIAGNOSTIC_PUSH _Pragma("GCC diagnostic push")
@@ -87,10 +91,14 @@ void *zmalloc(size_t len)
 #if defined(__clang__)
   /* Clang */
 # define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
+# define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
+	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 #else
   /* GCC */
 # define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
 	_Pragma("GCC diagnostic ignored \"-Wsuggest-attribute=format\"")
+# define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
+	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 #endif
 
 /*

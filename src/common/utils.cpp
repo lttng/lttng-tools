@@ -1194,7 +1194,10 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	/* Get date and time for session path */
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
 	ret = strftime(dst, len, format, timeinfo);
+	DIAGNOSTIC_POP
 	if (ret == 0) {
 		ERR("Unable to strftime with format %s at dst %p of len %zu", format,
 				dst, len);

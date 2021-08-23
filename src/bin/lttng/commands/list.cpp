@@ -338,13 +338,8 @@ static void print_events(struct lttng_event *event)
 	if (ret) {
 		filter_msg = strdup(" [failed to retrieve filter]");
 	} else if (filter_str) {
-		const char * const filter_fmt = " [filter: '%s']";
-
-		filter_msg = (char *) malloc(strlen(filter_str) +
-				strlen(filter_fmt) + 1);
-		if (filter_msg) {
-			sprintf(filter_msg, filter_fmt,
-					filter_str);
+		if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
+			filter_msg = NULL;
 		}
 	}
 
@@ -1151,14 +1146,8 @@ static int list_session_agent_events(void)
 			if (ret) {
 				filter_msg = strdup(" [failed to retrieve filter]");
 			} else if (filter_str) {
-				const char * const filter_fmt =
-						" [filter: '%s']";
-
-				filter_msg = (char *) malloc(strlen(filter_str) +
-						strlen(filter_fmt) + 1);
-				if (filter_msg) {
-					sprintf(filter_msg, filter_fmt,
-							filter_str);
+				if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
+					filter_msg = NULL;
 				}
 			}
 

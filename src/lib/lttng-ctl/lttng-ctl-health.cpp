@@ -214,8 +214,11 @@ int set_health_socket_path(struct lttng_health *lh,
 		home = "/tmp";
 	}
 
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
 	ret = snprintf(lh->health_sock_path, sizeof(lh->health_sock_path),
 			home_str, home);
+	DIAGNOSTIC_POP
 	if ((ret < 0) || (ret >= sizeof(lh->health_sock_path))) {
 		return -ENOMEM;
 	}

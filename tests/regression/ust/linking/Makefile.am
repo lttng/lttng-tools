@@ -2,7 +2,10 @@
 
 # -Wsystem-headers is needed to print warnings in the tracepoint
 # description file.
-AM_CPPFLAGS += -I$(srcdir) -Wsystem-headers
+#
+# However, we see some -Wformat-nonliteral warnings in some system headers,
+# so disable that.
+AM_CPPFLAGS += -I$(srcdir) -Wsystem-headers -Wno-format-nonliteral
 
 # Set LIBS to nothing so the application does not link on useless
 # libraries.

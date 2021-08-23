@@ -72,6 +72,7 @@ m4_define([WARN_FLAGS_LIST], [ dnl
   -Wshadow dnl
   -Wno-gnu-folding-constant dnl
   -Wsuggest-attribute=format dnl
+  -Wformat=2 dnl
   dnl GCC enables this with -Wall in C++, and that generates a
   dnl lot of warnings that have on average a low value to fix.
   -Wno-sign-compare dnl
