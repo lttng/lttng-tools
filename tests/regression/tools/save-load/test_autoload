@@ -27,7 +27,7 @@ function test_auto_load_file()
 	diag "Test auto load file"
 
 	start_lttng_sessiond $CURDIR/load-42.lttng
-	list_lttng_with_opts load-42
+	list_lttng_ok load-42
 	stop_lttng_sessiond
 }
 
@@ -38,7 +38,7 @@ function test_auto_load_dir()
 	cp -f $CURDIR/load-42.lttng $LTTNG_DIR/
 
 	start_lttng_sessiond $LTTNG_DIR
-	list_lttng_with_opts load-42
+	list_lttng_ok load-42
 	stop_lttng_sessiond
 }
 
@@ -50,7 +50,7 @@ function test_auto_load_lttng_home()
 	cp -f $CURDIR/load-42.lttng $LTTNG_HOME/.lttng/sessions/auto
 
 	start_lttng_sessiond
-	list_lttng_with_opts load-42
+	list_lttng_ok load-42
 	stop_lttng_sessiond
 }
 

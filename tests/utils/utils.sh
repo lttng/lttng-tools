@@ -1028,10 +1028,26 @@ function sigstop_lttng_consumerd_notap()
 
 function list_lttng_with_opts ()
 {
+	local ret
+	local withtap=$1
+	shift
 	local opts=$1
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
 		list $opts
-	ok $? "Lttng-tool list command with option $opts"
+	ret=$?
+	if [ $withtap -eq "1" ]; then
+		ok $ret "Lttng-tool list command with option $opts"
+	fi
+}
+
+function list_lttng_ok ()
+{
+	list_lttng_with_opts 1 "$@"
+}
+
+function list_lttng_notap ()
+{
+	list_lttng_with_opts 0 "$@"
 }
 
 function create_lttng_session_no_output ()
