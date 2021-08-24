@@ -409,7 +409,7 @@ test_success "--action snapshot-session with ctrl/data URIs" "notify-15"\
 test_failure "no args" "Error: Missing --condition."
 
 test_failure "unknown option" \
-	"Error: Unknown option \`--hello\`" \
+	"Error: While parsing argument #1 (\`--hello\`): Unknown option \`--hello\`" \
 	--hello
 
 test_failure "missing --action" \

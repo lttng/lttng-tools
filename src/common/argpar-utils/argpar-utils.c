@@ -92,10 +92,12 @@ char *format_arg_error_v(const struct argpar_error *error,
 	}
 	case ARGPAR_ERROR_TYPE_UNKNOWN_OPT:
 	{
+		int orig_index = argpar_error_orig_index(error);
 		const char *unknown_opt = argpar_error_unknown_opt_name(error);
 
 		ret = strutils_appendf(&str,
-			"Unknown option `%s`", unknown_opt);
+			WHILE_PARSING_ARG_N_ARG_FMT "Unknown option `%s`",
+			orig_index + 1, argv[orig_index], unknown_opt);
 
 		if (ret < 0) {
 			goto end;
