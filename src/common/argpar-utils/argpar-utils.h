@@ -14,6 +14,8 @@
 #include <common/argpar/argpar.h>
 #include <common/string-utils/format.h>
 
+#define WHILE_PARSING_ARG_N_ARG_FMT "While parsing argument #%d (`%s`): "
+
 enum parse_next_item_status
 {
 	PARSE_NEXT_ITEM_STATUS_OK = 0,

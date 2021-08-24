@@ -1416,7 +1416,8 @@ struct condition_descr condition_descrs[] = {
 
 static
 struct lttng_condition *parse_condition(const char *condition_name, int *argc,
-		const char ***argv, int argc_offset)
+		const char ***argv, int argc_offset, int orig_arg_index,
+		const char *orig_arg)
 {
 	int i;
 	struct lttng_condition *cond;
@@ -1430,7 +1431,8 @@ struct lttng_condition *parse_condition(const char *condition_name, int *argc,
 	}
 
 	if (!descr) {
-		ERR("Unknown condition name '%s'", condition_name);
+		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown condition name '%s'",
+			orig_arg_index + 1, orig_arg, condition_name);
 		goto error;
 	}
 
@@ -2097,7 +2099,8 @@ struct action_descr action_descrs[] = {
 
 static
 struct lttng_action *parse_action(const char *action_name, int *argc,
-		const char ***argv, int argc_offset)
+		const char ***argv, int argc_offset, int orig_arg_index,
+		const char *orig_arg)
 {
 	int i;
 	struct lttng_action *action;
@@ -2111,7 +2114,8 @@ struct lttng_action *parse_action(const char *action_name, int *argc,
 	}
 
 	if (!descr) {
-		ERR("Unknown action name: %s", action_name);
+		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown action name: %s",
+			orig_arg_index + 1, orig_arg, action_name);
 		goto error;
 	}
 
@@ -2247,7 +2251,8 @@ int cmd_add_trigger(int argc, const char **argv)
 			}
 
 			condition = parse_condition(arg, &my_argc, &my_argv,
-				argc - my_argc);
+				argc - my_argc, argc - my_argc - ingested_args,
+				my_argv[-ingested_args]);
 			if (!condition) {
 				/*
 				 * An error message was already printed by
@@ -2261,7 +2266,8 @@ int cmd_add_trigger(int argc, const char **argv)
 		case OPT_ACTION:
 		{
 			action = parse_action(arg, &my_argc, &my_argv,
-				argc - my_argc);
+				argc - my_argc,  argc - my_argc - ingested_args,
+				my_argv[-ingested_args]);
 			if (!action) {
 				/*
 				 * An error message was already printed by
