@@ -12,8 +12,6 @@
 #include <common/error.h>
 #include <common/string-utils/string-utils.h>
 
-#define WHILE_PARSING_ARG_N_ARG_FMT "While parsing argument #%d (`%s`): "
-
 /*
  * Given argpar error status `status` and error `error`, return a formatted
  * error message describing the error.

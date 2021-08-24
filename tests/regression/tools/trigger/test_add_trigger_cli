@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 286
+plan_tests 289
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -453,8 +453,11 @@ test_failure "missing args after --condition" \
 	"Error: While parsing argument #2 (\`--condition\`): Missing required argument for option \`--condition\`" \
 	--condition
 test_failure "unknown --condition" \
-	"Error: Unknown condition name 'zoofest'" \
+	"Error: While parsing argument #2 (\`--condition\`): Unknown condition name 'zoofest'" \
 	--condition zoofest
+test_failure "unknown --condition=" \
+	"Error: While parsing argument #2 (\`--condition=zoofest\`): Unknown condition name 'zoofest'" \
+	--condition=zoofest
 
 # `--condition event-rule-matches` failures
 test_failure "missing args after --condition event-rule-matches" \
