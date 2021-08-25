@@ -649,7 +649,8 @@ struct parse_event_rule_res {
 };
 
 static
-struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
+struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
+		int argc_offset)
 {
 	enum lttng_event_rule_type event_rule_type =
 			LTTNG_EVENT_RULE_TYPE_UNKNOWN;
@@ -695,8 +696,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, *argv,
-			false, NULL);
+		status = parse_next_item(argpar_iter, &argpar_item,
+			argc_offset, *argv, false, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
@@ -1347,13 +1348,14 @@ end:
 }
 
 static
-struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
+struct lttng_condition *handle_condition_event(int *argc, const char ***argv,
+		int argc_offset)
 {
 	struct parse_event_rule_res res;
 	struct lttng_condition *c;
 	size_t i;
 
-	res = parse_event_rule(argc, argv);
+	res = parse_event_rule(argc, argv, argc_offset);
 	if (!res.er) {
 		c = NULL;
 		goto error;
@@ -1403,7 +1405,8 @@ end:
 
 struct condition_descr {
 	const char *name;
-	struct lttng_condition *(*handler) (int *argc, const char ***argv);
+	struct lttng_condition *(*handler) (int *argc, const char ***argv,
+		int argc_offset);
 };
 
 static const
@@ -1413,7 +1416,7 @@ struct condition_descr condition_descrs[] = {
 
 static
 struct lttng_condition *parse_condition(const char *condition_name, int *argc,
-		const char ***argv)
+		const char ***argv, int argc_offset)
 {
 	int i;
 	struct lttng_condition *cond;
@@ -1431,7 +1434,7 @@ struct lttng_condition *parse_condition(const char *condition_name, int *argc,
 		goto error;
 	}
 
-	cond = descr->handler(argc, argv);
+	cond = descr->handler(argc, argv, argc_offset);
 	if (!cond) {
 		/* The handler has already printed an error message. */
 		goto error;
@@ -1524,7 +1527,8 @@ static const struct argpar_opt_descr notify_action_opt_descrs[] = {
 };
 
 static
-struct lttng_action *handle_action_notify(int *argc, const char ***argv)
+struct lttng_action *handle_action_notify(int *argc, const char ***argv,
+		int argc_offset)
 {
 	struct lttng_action *action = NULL;
 	struct argpar_iter *argpar_iter = NULL;
@@ -1540,8 +1544,9 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, *argv,
-			false, "While parsing `notify` action:");
+		status = parse_next_item(argpar_iter, &argpar_item,
+			argc_offset, *argv, false,
+			"While parsing `notify` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
@@ -1612,6 +1617,7 @@ end:
 
 static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		const char ***argv,
+		int argc_offset,
 		struct lttng_action *(*create_action_cb)(void),
 		enum lttng_action_status (*set_session_name_cb)(
 				struct lttng_action *, const char *),
@@ -1644,8 +1650,9 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, *argv,
-			false, "While parsing `%s` action:", action_name);
+		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
+			*argv, false,
+			"While parsing `%s` action:", action_name);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
@@ -1730,9 +1737,10 @@ end:
 
 static
 struct lttng_action *handle_action_start_session(int *argc,
-		const char ***argv)
+		const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(argc, argv,
+			argc_offset,
 			lttng_action_start_session_create,
 			lttng_action_start_session_set_session_name,
 			lttng_action_start_session_set_rate_policy, "start");
@@ -1740,9 +1748,10 @@ struct lttng_action *handle_action_start_session(int *argc,
 
 static
 struct lttng_action *handle_action_stop_session(int *argc,
-		const char ***argv)
+		const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(argc, argv,
+			argc_offset,
 			lttng_action_stop_session_create,
 			lttng_action_stop_session_set_session_name,
 			lttng_action_stop_session_set_rate_policy, "stop");
@@ -1750,9 +1759,10 @@ struct lttng_action *handle_action_stop_session(int *argc,
 
 static
 struct lttng_action *handle_action_rotate_session(int *argc,
-		const char ***argv)
+		const char ***argv, int argc_offset)
 {
 	return handle_action_simple_session_with_policy(argc, argv,
+		argc_offset,
 		lttng_action_rotate_session_create,
 		lttng_action_rotate_session_set_session_name,
 		lttng_action_rotate_session_set_rate_policy,
@@ -1772,7 +1782,7 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 
 static
 struct lttng_action *handle_action_snapshot_session(int *argc,
-		const char ***argv)
+		const char ***argv, int argc_offset)
 {
 	struct lttng_action *action = NULL;
 	struct argpar_iter *argpar_iter = NULL;
@@ -1800,8 +1810,8 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, *argv,
-			false, "While parsing `snapshot` action:");
+		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
+			*argv, false, "While parsing `snapshot` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
@@ -2072,7 +2082,8 @@ end:
 
 struct action_descr {
 	const char *name;
-	struct lttng_action *(*handler) (int *argc, const char ***argv);
+	struct lttng_action *(*handler) (int *argc, const char ***argv,
+		int argc_offset);
 };
 
 static const
@@ -2085,7 +2096,8 @@ struct action_descr action_descrs[] = {
 };
 
 static
-struct lttng_action *parse_action(const char *action_name, int *argc, const char ***argv)
+struct lttng_action *parse_action(const char *action_name, int *argc,
+		const char ***argv, int argc_offset)
 {
 	int i;
 	struct lttng_action *action;
@@ -2103,7 +2115,7 @@ struct lttng_action *parse_action(const char *action_name, int *argc, const char
 		goto error;
 	}
 
-	action = descr->handler(argc, argv);
+	action = descr->handler(argc, argv, argc_offset);
 	if (!action) {
 		/* The handler has already printed an error message. */
 		goto error;
@@ -2194,8 +2206,8 @@ int cmd_add_trigger(int argc, const char **argv)
 			goto error;
 		}
 
-		status = parse_next_item(argpar_iter, &argpar_item, my_argv,
-			true, NULL);
+		status = parse_next_item(argpar_iter, &argpar_item,
+			argc - my_argc, my_argv, true, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
@@ -2234,7 +2246,8 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			condition = parse_condition(arg, &my_argc, &my_argv);
+			condition = parse_condition(arg, &my_argc, &my_argv,
+				argc - my_argc);
 			if (!condition) {
 				/*
 				 * An error message was already printed by
@@ -2247,7 +2260,8 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_ACTION:
 		{
-			action = parse_action(arg, &my_argc, &my_argv);
+			action = parse_action(arg, &my_argc, &my_argv,
+				argc - my_argc);
 			if (!action) {
 				/*
 				 * An error message was already printed by

@@ -1335,7 +1335,7 @@ int cmd_list_triggers(int argc, const char **argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, argv,
+		status = parse_next_item(argpar_iter, &argpar_item, 1, argv,
 			true, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			goto error;
