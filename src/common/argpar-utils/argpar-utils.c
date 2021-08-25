@@ -23,10 +23,12 @@
  * `context_fmt`, if non-NULL, is formatted using `args` and prepended to the
  * error message.
  *
+ * Add `argc_offset` the the argument index mentioned in the error message.
+ *
  * The returned string must be freed by the caller.
  */
-static ATTR_FORMAT_PRINTF(3, 0)
-char *format_arg_error_v(const struct argpar_error *error,
+static ATTR_FORMAT_PRINTF(4, 0)
+char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
 		const char **argv, const char *context_fmt, va_list args)
 {
 	char *str = NULL;
@@ -59,7 +61,7 @@ char *format_arg_error_v(const struct argpar_error *error,
 
 		ret = strutils_appendf(&str,
 			WHILE_PARSING_ARG_N_ARG_FMT "Missing required argument for option `%s`",
-			orig_index + 1, arg, arg);
+			orig_index + 1 + argc_offset, argv[orig_index], arg);
 		if (ret < 0) {
 			goto end;
 		}
@@ -77,11 +79,11 @@ char *format_arg_error_v(const struct argpar_error *error,
 		if (is_short) {
 			ret = strutils_appendf(&str,
 				WHILE_PARSING_ARG_N_ARG_FMT "Unexpected argument for option `-%c`",
-				orig_index + 1, arg, descr->short_name);
+				orig_index + 1 + argc_offset, arg, descr->short_name);
 		} else {
 			ret = strutils_appendf(&str,
 				WHILE_PARSING_ARG_N_ARG_FMT "Unexpected argument for option `--%s`",
-				orig_index + 1, arg, descr->long_name);
+				orig_index + 1 + argc_offset, arg, descr->long_name);
 		}
 
 		if (ret < 0) {
@@ -97,7 +99,7 @@ char *format_arg_error_v(const struct argpar_error *error,
 
 		ret = strutils_appendf(&str,
 			WHILE_PARSING_ARG_N_ARG_FMT "Unknown option `%s`",
-			orig_index + 1, argv[orig_index], unknown_opt);
+			orig_index + 1 + argc_offset, argv[orig_index], unknown_opt);
 
 		if (ret < 0) {
 			goto end;
@@ -118,8 +120,9 @@ end:
 }
 
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
-		const struct argpar_item **item, const char **argv,
-		bool unknown_opt_is_error, const char *context_fmt, ...)
+		const struct argpar_item **item, int argc_offset,
+		const char **argv, bool unknown_opt_is_error,
+		const char *context_fmt, ...)
 {
 	enum argpar_iter_next_status status;
 	const struct argpar_error *error = NULL;
@@ -145,7 +148,8 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 		}
 
 		va_start(args, context_fmt);
-		err_str = format_arg_error_v(error, argv, context_fmt, args);
+		err_str = format_arg_error_v(error, argc_offset, argv,
+			context_fmt, args);
 		va_end(args);
 
 		if (err_str) {

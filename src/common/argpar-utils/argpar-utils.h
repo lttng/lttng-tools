@@ -39,14 +39,16 @@ enum parse_next_item_status
  * On error, print a descriptive error message and return
  * PARSE_NEXT_ITEM_STATUS_ERROR.  If `context_fmt` is non-NULL, it is formatted
  * using the following arguments and prepended to the error message.
+ * Add `argc_offset` to the argument index mentioned in the error message.
  *
  * If `unknown_opt_is_error` is true, an unknown option is considered an error.
  * Otherwise, it is considered as the end of the argument list.
  */
-ATTR_FORMAT_PRINTF(5, 6)
+ATTR_FORMAT_PRINTF(6, 7)
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
-		const struct argpar_item **item, const char **argv,
-		bool unknown_opt_is_error, const char *context_fmt, ...);
+		const struct argpar_item **item, int argc_offset,
+		const char **argv, bool unknown_opt_is_error,
+		const char *context_fmt, ...);
 
 #ifdef __cplusplus
 }

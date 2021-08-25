@@ -409,7 +409,7 @@ test_success "--action snapshot-session with ctrl/data URIs" "notify-15"\
 test_failure "no args" "Error: Missing --condition."
 
 test_failure "unknown option" \
-	"Error: While parsing argument #1 (\`--hello\`): Unknown option \`--hello\`" \
+	"Error: While parsing argument #2 (\`--hello\`): Unknown option \`--hello\`" \
 	--hello
 
 test_failure "missing --action" \
@@ -423,7 +423,7 @@ test_failure "two --condition" \
 	--action notify
 
 test_failure "missing argument to --name" \
-	"Error: While parsing argument #1 (\`--name\`): Missing required argument for option \`--name\`" \
+	"Error: While parsing argument #2 (\`--name\`): Missing required argument for option \`--name\`" \
 	--name
 
 for cmd in rate-policy=once-after rate-policy=every; do
@@ -450,7 +450,7 @@ test_failure "invalid argument to --rate-policy: unknown policy type" \
 
 # `--condition` failures
 test_failure "missing args after --condition" \
-	"Error: While parsing argument #1 (\`--condition\`): Missing required argument for option \`--condition\`" \
+	"Error: While parsing argument #2 (\`--condition\`): Missing required argument for option \`--condition\`" \
 	--condition
 test_failure "unknown --condition" \
 	"Error: Unknown condition name 'zoofest'" \
@@ -502,7 +502,7 @@ test_failure "--exclude-name with non-glob name" \
 	--action notify
 
 test_failure "--condition event-rule-matches --capture: missing argument (end of arg list)" \
-	'Error: While parsing argument #2 (`--capture`): Missing required argument for option `--capture`' \
+	'Error: While parsing argument #7 (`--capture`): Missing required argument for option `--capture`' \
 	--action notify \
 	--condition event-rule-matches --type=user --capture
 
@@ -548,7 +548,7 @@ test_failure "--condition event-rule-matches --capture: missing colon in app-spe
 
 # `--action` failures
 test_failure "missing args after --action" \
-	"Error: While parsing argument #1 (\`--action\`): Missing required argument for option \`--action\`" \
+	"Error: While parsing argument #5 (\`--action\`): Missing required argument for option \`--action\`" \
 	--condition event-rule-matches --type=user \
 	--action
 
