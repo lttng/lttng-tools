@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 289
+plan_tests 295
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -450,13 +450,19 @@ test_failure "invalid argument to --rate-policy: unknown policy type" \
 
 # `--condition` failures
 test_failure "missing args after --condition" \
-	"Error: While parsing argument #2 (\`--condition\`): Missing required argument for option \`--condition\`" \
+	"Error: While parsing argument #2 (\`--condition\`): Missing required argument for option \`--condition\`
+Error: Valid condition names are:
+Error:   event-rule-matches" \
 	--condition
 test_failure "unknown --condition" \
-	"Error: While parsing argument #2 (\`--condition\`): Unknown condition name 'zoofest'" \
+	"Error: While parsing argument #2 (\`--condition\`): Unknown condition name 'zoofest'
+Error: Valid condition names are:
+Error:   event-rule-matches" \
 	--condition zoofest
 test_failure "unknown --condition=" \
-	"Error: While parsing argument #2 (\`--condition=zoofest\`): Unknown condition name 'zoofest'" \
+	"Error: While parsing argument #2 (\`--condition=zoofest\`): Unknown condition name 'zoofest'
+Error: Valid condition names are:
+Error:   event-rule-matches" \
 	--condition=zoofest
 
 # `--condition event-rule-matches` failures
@@ -551,9 +557,25 @@ test_failure "--condition event-rule-matches --capture: missing colon in app-spe
 
 # `--action` failures
 test_failure "missing args after --action" \
-	"Error: While parsing argument #5 (\`--action\`): Missing required argument for option \`--action\`" \
+	"Error: While parsing argument #5 (\`--action\`): Missing required argument for option \`--action\`
+Error: Valid action names are:
+Error:   notify" \
 	--condition event-rule-matches --type=user \
 	--action
+
+test_failure "unknown --action" \
+	"Error: While parsing argument #5 (\`--action\`): Unknown action name 'zoofest'
+Error: Valid action names are:
+Error:   notify" \
+	--condition event-rule-matches --type=user \
+	--action zoofest
+
+test_failure "unknown --action=" \
+	"Error: While parsing argument #5 (\`--action=zoofest\`): Unknown action name 'zoofest'
+Error: Valid action names are:
+Error:   notify" \
+	--condition event-rule-matches --type=user \
+	--action=zoofest
 
 # `--action notify` failures
 test_failure "extra arg after --action notify" \

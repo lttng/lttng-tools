@@ -121,6 +121,7 @@ LTTNG_HIDDEN
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 		const struct argpar_item **item, int argc_offset,
 		const char **argv, bool unknown_opt_is_error,
+		const struct argpar_error **error_out,
 		const char *context_fmt, ...)
 {
 	enum argpar_iter_next_status status;
@@ -133,7 +134,7 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 	switch (status) {
 	case ARGPAR_ITER_NEXT_STATUS_ERROR_MEMORY:
 		ERR("Failed to get next argpar item.");
-		ret = PARSE_NEXT_ITEM_STATUS_ERROR;
+		ret = PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY;
 		break;
 	case ARGPAR_ITER_NEXT_STATUS_ERROR:
 	{
@@ -169,6 +170,12 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 		break;
 	default:
 		abort();
+	}
+
+	if (error_out) {
+		argpar_error_destroy(*error_out);
+		*error_out = error;
+		error = NULL;
 	}
 
 	argpar_error_destroy(error);
