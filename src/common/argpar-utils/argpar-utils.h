@@ -25,6 +25,7 @@ enum parse_next_item_status
 	PARSE_NEXT_ITEM_STATUS_OK = 0,
 	PARSE_NEXT_ITEM_STATUS_END = 1,
 	PARSE_NEXT_ITEM_STATUS_ERROR = -1,
+	PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY = -2,
 };
 
 /*
@@ -45,11 +46,16 @@ enum parse_next_item_status
  *
  * If `unknown_opt_is_error` is true, an unknown option is considered an error.
  * Otherwise, it is considered as the end of the argument list.
+ *
+ * If `error_out` is given and PARSE_NEXT_ITEM_STATUS_ERROR is returned, set
+ * `*error_out` to the argpar_error object corresponding to the error.  The
+ * caller must free the object with `argpar_error_destroy`.
  */
-ATTR_FORMAT_PRINTF(6, 7)
+ATTR_FORMAT_PRINTF(7, 8)
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 		const struct argpar_item **item, int argc_offset,
 		const char **argv, bool unknown_opt_is_error,
+		const struct argpar_error **error_out,
 		const char *context_fmt, ...);
 
 #ifdef __cplusplus

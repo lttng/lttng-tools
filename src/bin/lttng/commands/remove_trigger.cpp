@@ -112,8 +112,9 @@ int cmd_remove_trigger(int argc, const char **argv)
 		enum parse_next_item_status status;
 
 		status = parse_next_item(argpar_iter, &argpar_item, 1, argv,
-			true, NULL);
-		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+			true, NULL, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;

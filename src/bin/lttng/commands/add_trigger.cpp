@@ -697,8 +697,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		enum parse_next_item_status status;
 
 		status = parse_next_item(argpar_iter, &argpar_item,
-			argc_offset, *argv, false, NULL);
-		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+			argc_offset, *argv, false, NULL, NULL);
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1415,6 +1416,18 @@ struct condition_descr condition_descrs[] = {
 };
 
 static
+void print_valid_condition_names(void)
+{
+	unsigned int i;
+
+	ERR("Valid condition names are:");
+
+	for (i = 0; i < ARRAY_SIZE(condition_descrs); ++i) {
+		ERR("  %s", condition_descrs[i].name);
+	}
+}
+
+static
 struct lttng_condition *parse_condition(const char *condition_name, int *argc,
 		const char ***argv, int argc_offset, int orig_arg_index,
 		const char *orig_arg)
@@ -1433,6 +1446,7 @@ struct lttng_condition *parse_condition(const char *condition_name, int *argc,
 	if (!descr) {
 		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown condition name '%s'",
 			orig_arg_index + 1, orig_arg, condition_name);
+		print_valid_condition_names();
 		goto error;
 	}
 
@@ -1547,9 +1561,10 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv,
 		enum parse_next_item_status status;
 
 		status = parse_next_item(argpar_iter, &argpar_item,
-			argc_offset, *argv, false,
+			argc_offset, *argv, false, NULL,
 			"While parsing `notify` action:");
-		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1653,9 +1668,10 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		enum parse_next_item_status status;
 
 		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
-			*argv, false,
+			*argv, false, NULL,
 			"While parsing `%s` action:", action_name);
-		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1813,8 +1829,9 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		enum parse_next_item_status status;
 
 		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
-			*argv, false, "While parsing `snapshot` action:");
-		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+			*argv, false, NULL, "While parsing `snapshot` action:");
+		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
+				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -2098,6 +2115,18 @@ struct action_descr action_descrs[] = {
 };
 
 static
+void print_valid_action_names(void)
+{
+	unsigned int i;
+
+	ERR("Valid action names are:");
+
+	for (i = 0; i < ARRAY_SIZE(condition_descrs); ++i) {
+		ERR("  %s", action_descrs[i].name);
+	}
+}
+
+static
 struct lttng_action *parse_action(const char *action_name, int *argc,
 		const char ***argv, int argc_offset, int orig_arg_index,
 		const char *orig_arg)
@@ -2114,8 +2143,9 @@ struct lttng_action *parse_action(const char *action_name, int *argc,
 	}
 
 	if (!descr) {
-		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown action name: %s",
+		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown action name '%s'",
 			orig_arg_index + 1, orig_arg, action_name);
+		print_valid_action_names();
 		goto error;
 	}
 
@@ -2160,6 +2190,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	struct lttng_dynamic_pointer_array actions;
 	struct argpar_iter *argpar_iter = NULL;
 	const struct argpar_item *argpar_item = NULL;
+	const struct argpar_error *argpar_error = NULL;
 	struct lttng_action *action_list = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
@@ -2211,8 +2242,22 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 
 		status = parse_next_item(argpar_iter, &argpar_item,
-			argc - my_argc, my_argv, true, NULL);
+			argc - my_argc, my_argv, true, &argpar_error, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
+
+			if (argpar_error_type(argpar_error) ==
+					ARGPAR_ERROR_TYPE_MISSING_OPT_ARG) {
+				int opt_id = argpar_error_opt_descr(argpar_error, NULL)->id;
+
+				if (opt_id == OPT_CONDITION) {
+					print_valid_condition_names();
+				} else if (opt_id == OPT_ACTION) {
+					print_valid_action_names();
+				}
+			}
+
+			goto error;
+		} else if (status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -2432,6 +2477,7 @@ end:
 	}
 
 cleanup:
+	argpar_error_destroy(argpar_error);
 	argpar_iter_destroy(argpar_iter);
 	argpar_item_destroy(argpar_item);
 	lttng_dynamic_pointer_array_reset(&actions);
