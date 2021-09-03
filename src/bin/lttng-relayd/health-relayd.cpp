@@ -243,7 +243,7 @@ static
 int open_unix_socket(void *data, int *out_fd)
 {
 	int ret;
-	const char *path = data;
+	const char *path = (const char *) data;
 
 	ret = lttcomm_create_unix_sock(path);
 	if (ret < 0) {

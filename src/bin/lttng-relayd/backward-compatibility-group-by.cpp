@@ -172,7 +172,7 @@ char *backward_compat_group_by_session(const char *path,
 				goto error_regex;
 			}
 		} else {
-			datetime = zmalloc(DATETIME_STR_LEN);
+			datetime = (char *) zmalloc(DATETIME_STR_LEN);
 			if (!datetime) {
 				PERROR("Failed to allocate DATETIME string");
 				goto error;

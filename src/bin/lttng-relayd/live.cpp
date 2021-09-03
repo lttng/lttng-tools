@@ -552,7 +552,7 @@ static
 int create_sock(void *data, int *out_fd)
 {
 	int ret;
-	struct lttcomm_sock *sock = data;
+	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
 	ret = lttcomm_create_sock(sock);
 	if (ret < 0) {
@@ -567,7 +567,7 @@ end:
 static
 int close_sock(void *data, int *in_fd)
 {
-	struct lttcomm_sock *sock = data;
+	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
 	return sock->ops->close(sock);
 }
@@ -576,7 +576,7 @@ static int accept_sock(void *data, int *out_fd)
 {
 	int ret = 0;
 	/* Socks is an array of in_sock, out_sock. */
-	struct lttcomm_sock **socks = data;
+	struct lttcomm_sock **socks = (lttcomm_sock **) data;
 	struct lttcomm_sock *in_sock = socks[0];
 
 	socks[1] = in_sock->ops->accept(in_sock);
@@ -784,7 +784,9 @@ restart:
 				newsock = NULL;
 
 				/* Enqueue request for the dispatcher thread. */
-				cds_wfcq_enqueue(&viewer_conn_queue.head, &viewer_conn_queue.tail,
+				cds_wfcq_head_ptr_t head;
+				head.h = &viewer_conn_queue.head;
+				cds_wfcq_enqueue(head, &viewer_conn_queue.tail,
 						 &new_conn->qnode);
 
 				/*
@@ -1024,7 +1026,7 @@ int viewer_list_sessions(struct relay_connection *conn)
 
 	DBG("List sessions received");
 
-	send_session_buf = zmalloc(SESSION_BUF_DEFAULT_COUNT * sizeof(*send_session_buf));
+	send_session_buf = (lttng_viewer_session *) zmalloc(SESSION_BUF_DEFAULT_COUNT * sizeof(*send_session_buf));
 	if (!send_session_buf) {
 		return -1;
 	}
@@ -1046,7 +1048,7 @@ int viewer_list_sessions(struct relay_connection *conn)
 			struct lttng_viewer_session *newbuf;
 			uint32_t new_buf_count = buf_count << 1;
 
-			newbuf = realloc(send_session_buf,
+			newbuf = (lttng_viewer_session *) realloc(send_session_buf,
 				new_buf_count * sizeof(*send_session_buf));
 			if (!newbuf) {
 				ret = -1;
@@ -1296,7 +1298,7 @@ int viewer_attach_session(struct relay_connection *conn)
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_OK);
-		seek_type = be32toh(request.seek);
+		seek_type = (lttng_viewer_seek) be32toh(request.seek);
 		break;
 	default:
 		ERR("Wrong seek parameter");
@@ -1868,7 +1870,7 @@ int viewer_get_packet(struct relay_connection *conn)
 		reply_size += packet_data_len;
 	}
 
-	reply = zmalloc(reply_size);
+	reply = (char *) zmalloc(reply_size);
 	if (!reply) {
 		PERROR("packet reply zmalloc");
 		reply_size = sizeof(reply_header);
@@ -2122,7 +2124,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 	}
 
 	reply.len = htobe64(len);
-	data = zmalloc(len);
+	data = (char *) zmalloc(len);
 	if (!data) {
 		PERROR("viewer metadata zmalloc");
 		goto error;

@@ -146,7 +146,7 @@ test_condition_SOURCES = test_condition.c
 test_condition_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # relayd backward compat for groou-by-session utilities
-test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
+test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.cpp
 test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(RELAYD_OBJS)
 test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/bin/lttng-relayd
 

@@ -11,6 +11,10 @@
 #include <common/macros.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct fs_handle;
 
 /*
@@ -62,5 +66,9 @@ ssize_t fs_handle_write(struct fs_handle *handle, const void *buf, size_t count)
 int fs_handle_truncate(struct fs_handle *handle, off_t offset);
 
 off_t fs_handle_seek(struct fs_handle *handle, off_t offset, int whence);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FS_HANDLE_H */

@@ -9,6 +9,7 @@
  */
 
 #define _LGPL_SOURCE
+#include <algorithm>
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/fs-handle.h>
@@ -103,7 +104,7 @@ static int stream_create_data_output_file_from_trace_chunk(
 		 * to be replaced is unlinked in order to not overwrite its
 		 * content.
 		 */
-		status = lttng_trace_chunk_unlink_file(trace_chunk,
+		status = (lttng_trace_chunk_status) lttng_trace_chunk_unlink_file(trace_chunk,
 				stream_path);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			PERROR("Failed to unlink stream file \"%s\" during trace file rotation",
@@ -260,8 +261,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	while (copy_bytes_left) {
 		ssize_t io_ret;
 		char copy_buffer[FILE_IO_STACK_BUFFER_SIZE];
-		const off_t copy_size_this_pass = min_t(
-				off_t, copy_bytes_left, sizeof(copy_buffer));
+		const off_t copy_size_this_pass = std::min(copy_bytes_left, sizeof(copy_buffer));
 
 		io_ret = fs_handle_read(previous_stream_file, copy_buffer,
 				copy_size_this_pass);
@@ -578,7 +578,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	bool acquired_reference = false;
 	struct lttng_trace_chunk *current_trace_chunk;
 
-	stream = zmalloc(sizeof(struct relay_stream));
+	stream = (relay_stream *) zmalloc(sizeof(struct relay_stream));
 	if (stream == NULL) {
 		PERROR("relay stream zmalloc");
 		goto error_no_alloc;
@@ -1063,7 +1063,7 @@ int stream_write(struct relay_stream *stream,
 
 	ASSERT_LOCKED(stream->lock);
 	memset(padding_buffer, 0,
-			min(sizeof(padding_buffer), padding_to_write));
+			std::min(sizeof(padding_buffer), padding_to_write));
 
 	if (!stream->file || !stream->trace_chunk) {
 		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64 ", channel_name = %s",
@@ -1085,7 +1085,7 @@ int stream_write(struct relay_stream *stream,
 
 	while (padding_to_write > 0) {
 		const size_t padding_to_write_this_pass =
-				min(padding_to_write, sizeof(padding_buffer));
+				std::min(padding_to_write, sizeof(padding_buffer));
 
 		write_ret = fs_handle_write(stream->file, padding_buffer,
 				padding_to_write_this_pass);

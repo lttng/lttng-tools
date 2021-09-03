@@ -24,6 +24,7 @@
 #include <common/compat/directory-handle.h>
 #include <common/compat/errno.h>
 #include <common/error.h>
+#include <common/fs-handle.h>
 #include <common/fd-tracker/fd-tracker.h>
 
 /* For error.h */

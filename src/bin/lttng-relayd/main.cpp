@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <strings.h>
 #include <ctype.h>
+#include <algorithm>
 
 #include <lttng/lttng.h>
 #include <common/common.h>
@@ -954,7 +955,7 @@ static int check_thread_quit_pipe(int fd, uint32_t events)
 static int create_sock(void *data, int *out_fd)
 {
 	int ret;
-	struct lttcomm_sock *sock = data;
+	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
 	ret = lttcomm_create_sock(sock);
 	if (ret < 0) {
@@ -968,7 +969,7 @@ end:
 
 static int close_sock(void *data, int *in_fd)
 {
-	struct lttcomm_sock *sock = data;
+	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
 	return sock->ops->close(sock);
 }
@@ -977,7 +978,7 @@ static int accept_sock(void *data, int *out_fd)
 {
 	int ret = 0;
 	/* Socks is an array of in_sock, out_sock. */
-	struct lttcomm_sock **socks = data;
+	struct lttcomm_sock **socks = (lttcomm_sock **) data;
 	struct lttcomm_sock *in_sock = socks[0];
 
 	socks[1] = in_sock->ops->accept(in_sock);
@@ -1215,7 +1216,9 @@ restart:
 				}
 
 				/* Enqueue request for the dispatcher thread. */
-				cds_wfcq_enqueue(&relay_conn_queue.head, &relay_conn_queue.tail,
+				cds_wfcq_head_ptr_t head;
+				head.h = &relay_conn_queue.head;
+				cds_wfcq_enqueue(head, &relay_conn_queue.tail,
 						 &new_conn->qnode);
 
 				/*
@@ -2099,7 +2102,7 @@ static int relay_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 		 * Ensure that both the index and stream data have been
 		 * flushed up to the requested point.
 		 */
-		stream_seq = min(stream->prev_data_seq, stream->prev_index_seq);
+		stream_seq = std::min(stream->prev_data_seq, stream->prev_index_seq);
 	} else {
 		stream_seq = stream->prev_data_seq;
 	}
@@ -2337,7 +2340,7 @@ static int relay_end_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 				 * Ensure that both the index and stream data have been
 				 * flushed up to the requested point.
 				 */
-				stream_seq = min(stream->prev_data_seq, stream->prev_index_seq);
+				stream_seq = std::min(stream->prev_data_seq, stream->prev_index_seq);
 			} else {
 				stream_seq = stream->prev_data_seq;
 			}
@@ -2891,10 +2894,8 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	msg = (typeof(msg)) header_view.data;
 	chunk_id = be64toh(msg->chunk_id);
 	close_timestamp = (time_t) be64toh(msg->close_timestamp);
-	close_command = (typeof(close_command)){
-		.value = be32toh(msg->close_command.value),
-		.is_set = msg->close_command.is_set,
-	};
+	close_command.value = (lttng_trace_chunk_command_type) be32toh(msg->close_command.value);
+	close_command.is_set = msg->close_command.is_set;
 
 	chunk = sessiond_trace_chunk_registry_get_chunk(
 			sessiond_trace_chunk_registry,
@@ -3146,11 +3147,9 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	 * It is a protocol (or internal) error and the session/connection
 	 * should be torn down.
 	 */
-	reply = (typeof(reply)){
-		.generic.ret_code = htobe32((uint32_t)
-			(ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL)),
-		.trace_chunk_exists = ret == 0 ? chunk_exists : 0,
-	};
+	reply.generic.ret_code = htobe32((uint32_t) (ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL));
+	reply.trace_chunk_exists = ret == 0 ? chunk_exists : 0;
+
 	send_ret = conn->sock->ops->sendmsg(
 			conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < (ssize_t) sizeof(reply)) {
@@ -3197,11 +3196,9 @@ static int relay_get_configuration(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 	ret = 0;
 reply:
-	reply = (typeof(reply)){
-		.generic.ret_code = htobe32((uint32_t)
-			(ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL)),
-		.relayd_configuration_flags = htobe64(result_flags),
-	};
+	reply.generic.ret_code = htobe32((uint32_t) (ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL));
+	reply.relayd_configuration_flags = htobe64(result_flags);
+
 	send_ret = conn->sock->ops->sendmsg(
 			conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < (ssize_t) sizeof(reply)) {
@@ -3632,7 +3629,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	 *   - the on-stack data buffer
 	 */
 	while (left_to_receive > 0 && !partial_recv) {
-		size_t recv_size = min(left_to_receive, chunk_size);
+		size_t recv_size = std::min(left_to_receive, chunk_size);
 		struct lttng_buffer_view packet_chunk;
 
 		ret = conn->sock->ops->recvmsg(conn->sock, data_buffer,

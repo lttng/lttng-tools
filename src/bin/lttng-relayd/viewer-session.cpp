@@ -22,7 +22,7 @@ struct relay_viewer_session *viewer_session_create(void)
 {
 	struct relay_viewer_session *vsession;
 
-	vsession = zmalloc(sizeof(*vsession));
+	vsession = (relay_viewer_session *) zmalloc(sizeof(*vsession));
 	if (!vsession) {
 		goto end;
 	}

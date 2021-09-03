@@ -44,7 +44,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 
 	ASSERT_LOCKED(stream->lock);
 
-	vstream = zmalloc(sizeof(*vstream));
+	vstream = (relay_viewer_stream *) zmalloc(sizeof(*vstream));
 	if (!vstream) {
 		PERROR("relay viewer stream zmalloc");
 		goto error;

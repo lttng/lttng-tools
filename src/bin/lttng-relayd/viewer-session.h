@@ -20,6 +20,7 @@
 #include <common/trace-chunk.h>
 
 #include "session.h"
+#include "lttng-viewer-abi.h"
 
 struct relay_viewer_session {
 	/*

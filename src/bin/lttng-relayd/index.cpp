@@ -34,7 +34,7 @@ static struct relay_index *relay_index_create(struct relay_stream *stream,
 	DBG2("Creating relay index for stream id %" PRIu64 " and seqnum %" PRIu64,
 			stream->stream_handle, net_seq_num);
 
-	index = zmalloc(sizeof(*index));
+	index = (relay_index *) zmalloc(sizeof(*index));
 	if (!index) {
 		PERROR("Relay index zmalloc");
 		goto end;
@@ -407,14 +407,14 @@ int relay_index_set_control_data(struct relay_index *index,
 		unsigned int minor_version)
 {
 	/* The index on disk is encoded in big endian. */
-	const struct ctf_packet_index index_data = {
-		.packet_size = htobe64(data->packet_size),
-		.content_size = htobe64(data->content_size),
-		.timestamp_begin = htobe64(data->timestamp_begin),
-		.timestamp_end = htobe64(data->timestamp_end),
-		.events_discarded = htobe64(data->events_discarded),
-		.stream_id = htobe64(data->stream_id),
-	};
+	ctf_packet_index index_data {};
+
+	index_data.packet_size = htobe64(data->packet_size);
+	index_data.content_size = htobe64(data->content_size);
+	index_data.timestamp_begin = htobe64(data->timestamp_begin);
+	index_data.timestamp_end = htobe64(data->timestamp_end);
+	index_data.events_discarded = htobe64(data->events_discarded);
+	index_data.stream_id = htobe64(data->stream_id);
 
 	if (minor_version >= 8) {
 		index->index_data.stream_instance_id = htobe64(data->stream_instance_id);

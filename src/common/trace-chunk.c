@@ -12,6 +12,7 @@
 #include <common/error.h>
 #include <common/fd-tracker/fd-tracker.h>
 #include <common/fd-tracker/utils.h>
+#include <common/fs-handle.h>
 #include <common/fs-handle-internal.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
