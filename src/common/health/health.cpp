@@ -7,6 +7,7 @@
  */
 
 #define _LGPL_SOURCE
+#include <algorithm>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,22 +56,22 @@ void health_init(struct health_app *ha)
 	 * Get the maximum value between the default delta value and the TCP
 	 * timeout with a safety net of the default health check delta.
 	 */
-	ha->time_delta.tv_sec = max_t(unsigned long,
+	ha->time_delta.tv_sec = std::max<unsigned long>(
 			lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S,
 			ha->time_delta.tv_sec);
 	DBG("Health check time delta in seconds set to %lu",
-		ha->time_delta.tv_sec);
+			ha->time_delta.tv_sec);
 }
 
 struct health_app *health_app_create(int nr_types)
 {
 	struct health_app *ha;
 
-	ha = zmalloc(sizeof(*ha));
+	ha = (health_app *) zmalloc(sizeof(*ha));
 	if (!ha) {
 		return NULL;
 	}
-	ha->flags = zmalloc(sizeof(*ha->flags) * nr_types);
+	ha->flags = (health_flags *) zmalloc(sizeof(*ha->flags) * nr_types);
 	if (!ha->flags) {
 		goto error_flags;
 	}
@@ -266,7 +267,7 @@ void health_register(struct health_app *ha, int type)
 	uatomic_set(&URCU_TLS(health_state).last_time.tv_sec, 0);
 	uatomic_set(&URCU_TLS(health_state).last_time.tv_nsec, 0);
 	uatomic_set(&URCU_TLS(health_state).current, 0);
-	uatomic_set(&URCU_TLS(health_state).flags, 0);
+	uatomic_set(&URCU_TLS(health_state).flags, (health_flags) 0);
 	uatomic_set(&URCU_TLS(health_state).type, type);
 
 	/* Add it to the global TLS state list. */
