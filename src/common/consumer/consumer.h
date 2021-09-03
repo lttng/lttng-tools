@@ -29,6 +29,10 @@
 #include <common/buffer-view.h>
 #include <common/dynamic-array.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_consumer_local_data;
 
 /* Commands for consumer */
@@ -1060,5 +1064,9 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(
 		struct lttng_consumer_channel *channel);
 int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel);
 void lttng_consumer_sigbus_handle(void *addr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LIB_CONSUMER_H */

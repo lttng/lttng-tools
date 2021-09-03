@@ -15,6 +15,10 @@ extern int lttng_consumer_ready;
 
 extern const char *tracing_group_name;
 
-enum lttng_consumer_type lttng_consumer_get_type(void);
+/*
+ * This function is dlsym-ed from a test, making it have a C linkage name
+ * makes it easier.
+ */
+extern "C" enum lttng_consumer_type lttng_consumer_get_type();
 
 #endif /* _LTTNG_CONSUMERD_H */
