@@ -44,11 +44,7 @@
 #include <common/string-utils/format.h>
 #include <common/dynamic-array.h>
 
-struct lttng_consumer_global_data the_consumer_data = {
-		.stream_count = 0,
-		.need_update = 1,
-		.type = LTTNG_CONSUMER_UNKNOWN,
-};
+lttng_consumer_global_data the_consumer_data;
 
 enum consumer_channel_action {
 	CONSUMER_CHANNEL_ADD,
@@ -492,7 +488,7 @@ void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd)
 
 	LTTNG_ASSERT(relayd);
 
-	DBG("Cleaning up relayd object ID %"PRIu64, relayd->net_seq_idx);
+	DBG("Cleaning up relayd object ID %" PRIu64, relayd->net_seq_idx);
 
 	/* Save the net sequence index before destroying the object */
 	netidx = relayd->net_seq_idx;
@@ -663,7 +659,7 @@ static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		goto error;
 	}
 
-	obj = zmalloc(sizeof(struct consumer_relayd_sock_pair));
+	obj = (consumer_relayd_sock_pair *) zmalloc(sizeof(struct consumer_relayd_sock_pair));
 	if (obj == NULL) {
 		PERROR("zmalloc relayd sock");
 		goto error;
@@ -1028,7 +1024,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		}
 	}
 
-	channel = zmalloc(sizeof(*channel));
+	channel = (lttng_consumer_channel *) zmalloc(sizeof(*channel));
 	if (channel == NULL) {
 		PERROR("malloc struct lttng_consumer_channel");
 		goto end;
@@ -1424,7 +1420,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 			the_consumer_data.type == type);
 	the_consumer_data.type = type;
 
-	ctx = zmalloc(sizeof(struct lttng_consumer_local_data));
+	ctx = (lttng_consumer_local_data *) zmalloc(sizeof(struct lttng_consumer_local_data));
 	if (ctx == NULL) {
 		PERROR("allocating context");
 		goto error;
@@ -2327,7 +2323,7 @@ void *consumer_thread_metadata_poll(void *data)
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_poll_event events;
-	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 	ssize_t len;
 
 	rcu_register_thread();
@@ -2547,7 +2543,7 @@ void *consumer_thread_data_poll(void *data)
 	const int nb_pipes_fd = 2;
 	/* Number of FDs with CONSUMER_ENDPOINT_INACTIVE but still open. */
 	int nb_inactive_fd = 0;
-	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 	ssize_t len;
 
 	rcu_register_thread();
@@ -2560,7 +2556,7 @@ void *consumer_thread_data_poll(void *data)
 
 	health_code_update();
 
-	local_stream = zmalloc(sizeof(struct lttng_consumer_stream *));
+	local_stream = (lttng_consumer_stream **) zmalloc(sizeof(struct lttng_consumer_stream *));
 	if (local_stream == NULL) {
 		PERROR("local_stream malloc");
 		goto end;
@@ -2585,7 +2581,7 @@ void *consumer_thread_data_poll(void *data)
 			local_stream = NULL;
 
 			/* Allocate for all fds */
-			pollfd = zmalloc((the_consumer_data.stream_count +
+			pollfd = (struct pollfd *) zmalloc((the_consumer_data.stream_count +
 							 nb_pipes_fd) *
 					sizeof(struct pollfd));
 			if (pollfd == NULL) {
@@ -2594,7 +2590,7 @@ void *consumer_thread_data_poll(void *data)
 				goto end;
 			}
 
-			local_stream = zmalloc((the_consumer_data.stream_count +
+			local_stream = (lttng_consumer_stream **) zmalloc((the_consumer_data.stream_count +
 							       nb_pipes_fd) *
 					sizeof(struct lttng_consumer_stream *));
 			if (local_stream == NULL) {
@@ -2915,7 +2911,7 @@ void *consumer_thread_channel_poll(void *data)
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_poll_event events;
-	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 	struct lttng_ht *channel_ht;
 
 	rcu_register_thread();
@@ -3185,7 +3181,7 @@ void *consumer_thread_sessiond_poll(void *data)
 	 * making blocking sockets.
 	 */
 	struct pollfd consumer_sockpoll[2];
-	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 
 	rcu_register_thread();
 
@@ -3912,7 +3908,7 @@ int consumer_send_status_msg(int sock, int ret_code)
 	struct lttcomm_consumer_status_msg msg;
 
 	memset(&msg, 0, sizeof(msg));
-	msg.ret_code = ret_code;
+	msg.ret_code = (lttcomm_return_code) ret_code;
 
 	return lttcomm_send_unix_sock(sock, &msg, sizeof(msg));
 }
@@ -4322,7 +4318,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			stream_idx++) {
 		enum consumer_stream_open_packet_status status;
 
-		stream = lttng_dynamic_pointer_array_get_pointer(
+		stream = (lttng_consumer_stream *) lttng_dynamic_pointer_array_get_pointer(
 				&streams_packet_to_open, stream_idx);
 
 		pthread_mutex_lock(&stream->lock);

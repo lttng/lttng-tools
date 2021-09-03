@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
- * Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -20,7 +19,8 @@
 
 static char *pause_pipe_path;
 static struct lttng_pipe *pause_pipe;
-static int *notifier_notif_consumption_state;;
+static int *data_consumption_state;
+static enum lttng_consumer_type (*lttng_consumer_get_type)(void);
 
 int lttng_opt_verbose;
 int lttng_opt_mi;
@@ -34,8 +34,7 @@ void __attribute__((destructor)) pause_pipe_fini(void)
 	if (pause_pipe_path) {
 		ret = unlink(pause_pipe_path);
 		if (ret) {
-			PERROR("Failed to unlink pause pipe: path = %s",
-					pause_pipe_path);
+			PERROR("unlink pause pipe");
 		}
 	}
 
@@ -43,23 +42,51 @@ void __attribute__((destructor)) pause_pipe_fini(void)
 	lttng_pipe_destroy(pause_pipe);
 }
 
-LTTNG_EXPORT int __testpoint_sessiond_thread_notification(void);
-int __testpoint_sessiond_thread_notification(void)
+/*
+ * We use this testpoint, invoked at the start of the consumerd's data handling
+ * thread to create a named pipe/FIFO which a test application can use to either
+ * pause or resume the consumption of data.
+ */
+extern "C" LTTNG_EXPORT int __testpoint_consumerd_thread_data(void);
+int __testpoint_consumerd_thread_data(void)
 {
 	int ret = 0;
-	const char *pause_pipe_path_prefix;
+	const char *pause_pipe_path_prefix, *domain;
 
 	pause_pipe_path_prefix = lttng_secure_getenv(
-			"NOTIFIER_PAUSE_PIPE_PATH");
+			"CONSUMER_PAUSE_PIPE_PATH");
 	if (!pause_pipe_path_prefix) {
 		ret = -1;
 		goto end;
 	}
 
-	notifier_notif_consumption_state = dlsym(NULL, "notifier_consumption_paused");
-	LTTNG_ASSERT(notifier_notif_consumption_state);
+	/*
+	 * These symbols are exclusive to the consumerd process, hence we can't
+	 * rely on their presence in the sessiond. Not looking-up these symbols
+	 * dynamically would not allow this shared object to be LD_PRELOAD-ed
+	 * when launching the session daemon.
+	 */
+	data_consumption_state = (int *) dlsym(NULL, "data_consumption_paused");
+	LTTNG_ASSERT(data_consumption_state);
+	lttng_consumer_get_type = (lttng_consumer_type (*)()) dlsym(NULL, "lttng_consumer_get_type");
+	LTTNG_ASSERT(lttng_consumer_get_type);
 
-	ret = asprintf(&pause_pipe_path, "%s", pause_pipe_path_prefix);
+	switch (lttng_consumer_get_type()) {
+	case LTTNG_CONSUMER_KERNEL:
+		domain = "kernel";
+		break;
+	case LTTNG_CONSUMER32_UST:
+		domain = "ust32";
+		break;
+	case LTTNG_CONSUMER64_UST:
+		domain = "ust64";
+		break;
+	default:
+		abort();
+	}
+
+	ret = asprintf(&pause_pipe_path, "%s-%s", pause_pipe_path_prefix,
+			domain);
 	if (ret < 1) {
 		ERR("Failed to allocate pause pipe path");
 		goto end;
@@ -80,8 +107,8 @@ end:
 	return ret;
 }
 
-LTTNG_EXPORT int __testpoint_sessiond_handle_notifier_event_pipe(void);
-int __testpoint_sessiond_handle_notifier_event_pipe(void)
+extern "C" LTTNG_EXPORT int __testpoint_consumerd_thread_data_poll(void);
+int __testpoint_consumerd_thread_data_poll(void)
 {
 	int ret = 0;
 	uint8_t value;
@@ -103,9 +130,9 @@ int __testpoint_sessiond_handle_notifier_event_pipe(void)
 	ret = (errno == EAGAIN) ? 0 : -errno;
 
 	if (value_read) {
-		*notifier_notif_consumption_state = !!value;
+		*data_consumption_state = !!value;
 		DBG("Message received on pause pipe: %s data consumption",
-				*notifier_notif_consumption_state ? "paused" : "resumed");
+				*data_consumption_state ? "paused" : "resumed");
 	}
 end:
 	return ret;

@@ -802,30 +802,30 @@ struct lttng_consumer_global_data {
 	 * This is nested OUTSIDE the stream lock.
 	 * This is nested OUTSIDE the consumer_relayd_sock_pair lock.
 	 */
-	pthread_mutex_t lock;
+	pthread_mutex_t lock {};
 
 	/*
 	 * Number of streams in the data stream hash table declared outside.
 	 * Protected by consumer_data.lock.
 	 */
-	int stream_count;
+	int stream_count = 0;
 
 	/* Channel hash table protected by consumer_data.lock. */
-	struct lttng_ht *channel_ht;
+	struct lttng_ht *channel_ht = nullptr;
 	/* Channel hash table indexed by session id. */
-	struct lttng_ht *channels_by_session_id_ht;
+	struct lttng_ht *channels_by_session_id_ht = nullptr;
 	/*
 	 * Flag specifying if the local array of FDs needs update in the
 	 * poll function. Protected by consumer_data.lock.
 	 */
-	unsigned int need_update;
-	enum lttng_consumer_type type;
+	unsigned int need_update = 1;
+	enum lttng_consumer_type type = LTTNG_CONSUMER_UNKNOWN;
 
 	/*
 	 * Relayd socket(s) hashtable indexed by network sequence number. Each
 	 * stream has an index which associate the right relayd socket to use.
 	 */
-	struct lttng_ht *relayd_ht;
+	struct lttng_ht *relayd_ht = nullptr;
 
 	/*
 	 * This hash table contains all streams (metadata and data) indexed by
@@ -834,17 +834,17 @@ struct lttng_consumer_global_data {
 	 *
 	 * This HT uses the "node_session_id" of the consumer stream.
 	 */
-	struct lttng_ht *stream_list_ht;
+	struct lttng_ht *stream_list_ht = nullptr;
 
 	/*
 	 * This HT uses the "node_channel_id" of the consumer stream.
 	 */
-	struct lttng_ht *stream_per_chan_id_ht;
+	struct lttng_ht *stream_per_chan_id_ht = nullptr;
 
 	/*
 	 * Trace chunk registry indexed by (session_id, chunk_id).
 	 */
-	struct lttng_trace_chunk_registry *chunk_registry;
+	struct lttng_trace_chunk_registry *chunk_registry = nullptr;
 };
 
 /*

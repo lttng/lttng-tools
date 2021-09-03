@@ -10,6 +10,10 @@
 
 #include "consumer.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum consumer_stream_open_packet_status {
 	CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED,
 	CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE,
@@ -165,5 +169,9 @@ enum consumer_stream_open_packet_status consumer_stream_open_packet(
  */
 int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream,
 		bool producer_active);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_CONSUMER_STREAM_H */

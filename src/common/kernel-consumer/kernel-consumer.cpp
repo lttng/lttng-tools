@@ -122,7 +122,7 @@ int get_current_subbuf_addr(struct lttng_consumer_stream *stream,
 {
 	int ret;
 	unsigned long mmap_offset;
-	const char *mmap_base = stream->mmap_base;
+	const char *mmap_base = (const char *) stream->mmap_base;
 
 	ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
 	if (ret < 0) {
@@ -538,7 +538,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		switch (msg.u.channel.type) {
 		case CONSUMER_CHANNEL_TYPE_DATA:
 		case CONSUMER_CHANNEL_TYPE_METADATA:
-			new_channel->type = msg.u.channel.type;
+			new_channel->type = (consumer_channel_type) msg.u.channel.type;
 			break;
 		default:
 			abort();
@@ -1223,7 +1223,7 @@ error_rotate_channel:
 					lttng_consumer_clear_channel(channel);
 			if (ret_clear_channel) {
 				ERR("Clear channel failed");
-				ret_code = ret_clear_channel;
+				ret_code = (lttcomm_return_code) ret_clear_channel;
 			}
 
 			health_code_update();
@@ -1321,7 +1321,7 @@ error_rotate_channel:
 	case LTTNG_CONSUMER_CLOSE_TRACE_CHUNK:
 	{
 		enum lttng_trace_chunk_command_type close_command =
-				msg.u.close_trace_chunk.close_command.value;
+				(lttng_trace_chunk_command_type) msg.u.close_trace_chunk.close_command.value;
 		const uint64_t relayd_id =
 				msg.u.close_trace_chunk.relayd_id.value;
 		struct lttcomm_consumer_close_trace_chunk_reply reply;

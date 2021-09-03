@@ -27,7 +27,7 @@ struct metadata_bucket *metadata_bucket_create(
 {
 	struct metadata_bucket *bucket;
 
-	bucket = zmalloc(sizeof(typeof(*bucket)));
+	bucket = (metadata_bucket *) zmalloc(sizeof(typeof(*bucket)));
 	if (!bucket) {
 		PERROR("Failed to allocate buffer bucket");
 		goto end;
@@ -126,11 +126,17 @@ enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
 	flush_size = flushed_view.size - padding_this_buffer;
 
 	flushed_subbuffer = (typeof(flushed_subbuffer)) {
-		.buffer.buffer = flushed_view,
-		.info.metadata.subbuf_size = flush_size,
-		.info.metadata.padded_subbuf_size = flushed_view.size,
-		.info.metadata.version = buffer->info.metadata.version,
-		.info.metadata.coherent = buffer->info.metadata.coherent,
+		.buffer = {
+			.buffer = flushed_view,
+		},
+		.info = {
+			.metadata = {
+				.subbuf_size = flush_size,
+				.padded_subbuf_size = flushed_view.size,
+				.version = buffer->info.metadata.version,
+				.coherent = buffer->info.metadata.coherent,
+			},
+		},
 	};
 
 	DBG("Metadata bucket flushing %zu bytes (%u sub-buffer%s)",

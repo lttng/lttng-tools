@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <common/consumer/consumer.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream);
 int lttng_kconsumer_sample_snapshot_positions(
 		struct lttng_consumer_stream *stream);
@@ -26,5 +30,9 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 int lttng_kconsumer_data_pending(struct lttng_consumer_stream *stream);
 enum sync_metadata_status lttng_kconsumer_sync_metadata(
 		struct lttng_consumer_stream *metadata);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LTTNG_KCONSUMER_H */

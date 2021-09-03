@@ -407,7 +407,7 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 		nr_stream_fds = 1;
 	else
 		nr_stream_fds = lttng_ust_ctl_get_nr_stream_per_channel();
-	stream_fds = zmalloc(nr_stream_fds * sizeof(*stream_fds));
+	stream_fds = (int *) zmalloc(nr_stream_fds * sizeof(*stream_fds));
 	if (!stream_fds) {
 		ret = -1;
 		goto error_alloc;
@@ -1048,7 +1048,7 @@ int get_current_subbuf_addr(struct lttng_consumer_stream *stream,
 	unsigned long mmap_offset;
 	const char *mmap_base;
 
-	mmap_base = lttng_ust_ctl_get_mmap_base(stream->ustream);
+	mmap_base = (const char *) lttng_ust_ctl_get_mmap_base(stream->ustream);
 	if (!mmap_base) {
 		ERR("Failed to get mmap base for stream `%s`",
 				stream->name);
@@ -1285,7 +1285,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 
 	DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
 
-	metadata_str = zmalloc(len * sizeof(char));
+	metadata_str = (char *) zmalloc(len * sizeof(char));
 	if (!metadata_str) {
 		PERROR("zmalloc metadata string");
 		ret_code = LTTCOMM_CONSUMERD_ENOMEM;
@@ -1720,7 +1720,7 @@ end_get_channel_nosignal:
 
 		ret = close_metadata(msg.u.close_metadata.key);
 		if (ret != 0) {
-			ret_code = ret;
+			ret_code = (lttcomm_return_code) ret;
 		}
 
 		goto end_msg_sessiond;
@@ -1731,7 +1731,7 @@ end_get_channel_nosignal:
 
 		ret = flush_channel(msg.u.flush_channel.key);
 		if (ret != 0) {
-			ret_code = ret;
+			ret_code = (lttcomm_return_code) ret;
 		}
 
 		goto end_msg_sessiond;
@@ -1743,7 +1743,7 @@ end_get_channel_nosignal:
 		ret = clear_quiescent_channel(
 				msg.u.clear_quiescent_channel.key);
 		if (ret != 0) {
-			ret_code = ret;
+			ret_code = (lttcomm_return_code) ret;
 		}
 
 		goto end_msg_sessiond;
@@ -1810,7 +1810,7 @@ end_get_channel_nosignal:
 			/* error receiving from sessiond */
 			goto error_push_metadata_fatal;
 		} else {
-			ret_code = ret;
+			ret_code = (lttcomm_return_code) ret;
 			goto end_push_metadata_msg_sessiond;
 		}
 end_push_metadata_msg_sessiond:
@@ -1824,7 +1824,7 @@ error_push_metadata_fatal:
 
 		ret = setup_metadata(ctx, msg.u.setup_metadata.key);
 		if (ret) {
-			ret_code = ret;
+			ret_code = (lttcomm_return_code) ret;
 		}
 		goto end_msg_sessiond;
 	}
@@ -2101,7 +2101,7 @@ end_rotate_channel_nosignal:
 					found_channel);
 			if (ret_clear_channel) {
 				ERR("Clear channel failed key %" PRIu64, key);
-				ret_code = ret_clear_channel;
+				ret_code = (lttcomm_return_code) ret_clear_channel;
 			}
 
 			health_code_update();
@@ -2200,6 +2200,7 @@ end_rotate_channel_nosignal:
 	case LTTNG_CONSUMER_CLOSE_TRACE_CHUNK:
 	{
 		enum lttng_trace_chunk_command_type close_command =
+			(lttng_trace_chunk_command_type)
 				msg.u.close_trace_chunk.close_command.value;
 		const uint64_t relayd_id =
 				msg.u.close_trace_chunk.relayd_id.value;

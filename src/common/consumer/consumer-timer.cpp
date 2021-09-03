@@ -82,7 +82,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	int ret;
 	struct lttng_consumer_channel *channel;
 
-	channel = si->si_value.sival_ptr;
+	channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
 
 	if (channel->switch_timer_error) {
@@ -280,7 +280,7 @@ static void live_timer(struct lttng_consumer_local_data *ctx,
 					consumer_flush_kernel_index :
 					consumer_flush_ust_index;
 
-	channel = si->si_value.sival_ptr;
+	channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
 
 	if (channel->switch_timer_error) {
@@ -697,14 +697,14 @@ void monitor_timer(struct lttng_consumer_channel *channel)
 	if (ret == -1) {
 		if (errno == EAGAIN) {
 			/* Not an error, the sample is merely dropped. */
-			DBG("Channel monitor pipe is full; dropping sample for channel key = %"PRIu64,
+			DBG("Channel monitor pipe is full; dropping sample for channel key = %" PRIu64,
 					channel->key);
 		} else {
 			PERROR("write to the channel monitor pipe");
 		}
 	} else {
 		DBG("Sent channel monitoring sample for channel key %" PRIu64
-				", (highest = %" PRIu64 ", lowest = %"PRIu64")",
+				", (highest = %" PRIu64 ", lowest = %" PRIu64 ")",
 				channel->key, msg.highest, msg.lowest);
 	}
 }
@@ -738,7 +738,7 @@ void *consumer_timer_thread(void *data)
 	int signr;
 	sigset_t mask;
 	siginfo_t info;
-	struct lttng_consumer_local_data *ctx = data;
+	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 
 	rcu_register_thread();
 
@@ -783,7 +783,7 @@ void *consumer_timer_thread(void *data)
 		} else if (signr == LTTNG_CONSUMER_SIG_MONITOR) {
 			struct lttng_consumer_channel *channel;
 
-			channel = info.si_value.sival_ptr;
+			channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
 			monitor_timer(channel);
 		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
 			LTTNG_ASSERT(CMM_LOAD_SHARED(consumer_quit));

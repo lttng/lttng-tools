@@ -12,8 +12,8 @@ if NO_SHARED
 CLEANFILES = libpause_consumer.so libpause_consumer.so.debug libpause_sessiond.so libpause_sessiond.so.debug
 EXTRA_DIST = \
 	     base_client.c \
-	     consumer_testpoints.c \
-	     sessiond_testpoints.c \
+	     consumer_testpoints.cpp \
+	     sessiond_testpoints.cpp \
 	     notification.c \
 	     test_notification_kernel_buffer_usage \
 	     test_notification_kernel_capture \
@@ -35,7 +35,7 @@ else
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 			   -rpath $(abs_builddir)
 
-libpause_consumer_la_SOURCES = consumer_testpoints.c
+libpause_consumer_la_SOURCES = consumer_testpoints.cpp
 libpause_consumer_la_LIBADD = \
 	$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 	$(top_builddir)/src/common/libcommon.la \
@@ -43,7 +43,7 @@ libpause_consumer_la_LIBADD = \
 	$(DL_LIBS)
 libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
-libpause_sessiond_la_SOURCES = sessiond_testpoints.c
+libpause_sessiond_la_SOURCES = sessiond_testpoints.cpp
 libpause_sessiond_la_LIBADD = \
 	$(top_builddir)/src/common/libcommon.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \

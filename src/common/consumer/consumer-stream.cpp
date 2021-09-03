@@ -621,7 +621,7 @@ struct lttng_consumer_stream *consumer_stream_create(
 	int ret;
 	struct lttng_consumer_stream *stream;
 
-	stream = zmalloc(sizeof(*stream));
+	stream = (lttng_consumer_stream *) zmalloc(sizeof(*stream));
 	if (stream == NULL) {
 		PERROR("malloc struct lttng_consumer_stream");
 		ret = -ENOMEM;
@@ -717,6 +717,8 @@ struct lttng_consumer_stream *consumer_stream_create(
 		const post_consume_cb post_consume_index_op = channel->is_live ?
 				consumer_stream_sync_metadata_index :
 				consumer_stream_send_index;
+		const post_consume_cb post_consume_open_new_packet_ =
+				post_consume_open_new_packet;
 
 		ret = lttng_dynamic_array_add_element(
 				&stream->read_subbuffer_ops.post_consume_cbs,
@@ -728,7 +730,7 @@ struct lttng_consumer_stream *consumer_stream_create(
 
 		ret = lttng_dynamic_array_add_element(
 				&stream->read_subbuffer_ops.post_consume_cbs,
-				&(post_consume_cb) { post_consume_open_new_packet });
+				&post_consume_open_new_packet_);
 		if (ret) {
 			PERROR("Failed to add `open new packet` callback to stream's post consumption callbacks");
 			goto error;
@@ -1220,7 +1222,7 @@ static ssize_t metadata_bucket_flush(
 		const struct stream_subbuffer *buffer, void *data)
 {
 	ssize_t ret;
-	struct lttng_consumer_stream *stream = data;
+	struct lttng_consumer_stream *stream = (lttng_consumer_stream *) data;
 
 	ret = consumer_stream_consume_mmap(NULL, stream, buffer);
 	if (ret < 0) {

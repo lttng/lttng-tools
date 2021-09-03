@@ -5,9 +5,15 @@ noinst_LTLIBRARIES = libconsumer.la
 noinst_HEADERS = consumer-metadata-cache.h consumer-timer.h \
 		 consumer-testpoint.h
 
-libconsumer_la_SOURCES = consumer.c consumer.h consumer-metadata-cache.c \
-                         consumer-timer.c consumer-stream.c consumer-stream.h \
-                         metadata-bucket.c metadata-bucket.h
+libconsumer_la_SOURCES = \
+	consumer.cpp \
+	consumer.h \
+	consumer-metadata-cache.cpp \
+	consumer-stream.cpp \
+	consumer-stream.h \
+	consumer-timer.cpp \
+	metadata-bucket.cpp \
+	metadata-bucket.h
 
 libconsumer_la_LIBADD = \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \

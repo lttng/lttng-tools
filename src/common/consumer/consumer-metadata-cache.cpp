@@ -129,7 +129,7 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel)
 
 	LTTNG_ASSERT(channel);
 
-	channel->metadata_cache = zmalloc(
+	channel->metadata_cache = (consumer_metadata_cache *) zmalloc(
 			sizeof(struct consumer_metadata_cache));
 	if (!channel->metadata_cache) {
 		PERROR("zmalloc metadata cache struct");
