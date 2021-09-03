@@ -511,7 +511,7 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd,
 				RB_CRASH_DUMP_ABI_LEN);
 		return -1;
 	}
-	map = mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE,
+	map = (char *) mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE,
 		fd, 0);
 	if (map == MAP_FAILED) {
 		PERROR("Mapping file");
@@ -781,7 +781,7 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest,
 		return ret;
 	}
 	src_file_len = layout->mmap_length;
-	buf = zmalloc(src_file_len);
+	buf = (char *) zmalloc(src_file_len);
 	if (!buf) {
 		return -1;
 	}
@@ -1129,7 +1129,7 @@ int delete_dir_recursive(const char *path)
 		}
 
 		if (S_ISDIR(st.st_mode)) {
-			char *subpath = zmalloc(PATH_MAX);
+			char *subpath = (char *) zmalloc(PATH_MAX);
 
 			if (!subpath) {
 				PERROR("zmalloc path");

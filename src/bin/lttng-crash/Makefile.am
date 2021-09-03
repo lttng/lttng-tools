@@ -8,7 +8,7 @@ endif
 
 bin_PROGRAMS = lttng-crash
 
-lttng_crash_SOURCES = lttng-crash.c
+lttng_crash_SOURCES = lttng-crash.cpp
 
 lttng_crash_LDADD = $(top_builddir)/src/common/libcommon.la \
 			$(top_builddir)/src/common/config/libconfig.la
