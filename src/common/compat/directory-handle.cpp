@@ -101,9 +101,8 @@ void lttng_directory_handle_release(struct urcu_ref *ref);
 
 struct lttng_directory_handle *lttng_directory_handle_create(const char *path)
 {
-	const struct lttng_directory_handle cwd_handle = {
-		.dirfd = AT_FDCWD,
-	};
+	lttng_directory_handle cwd_handle {};
+	cwd_handle.dirfd = AT_FDCWD;
 
 	/* Open a handle to the CWD if NULL is passed. */
 	return lttng_directory_handle_create_from_handle(path, &cwd_handle);
@@ -148,7 +147,7 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		int dirfd)
 {
 	int ret;
-	struct lttng_directory_handle *handle = zmalloc(sizeof(*handle));
+	struct lttng_directory_handle *handle = (lttng_directory_handle *) zmalloc(sizeof(*handle));
 	struct stat stat_buf;
 
 	if (!handle) {
@@ -1164,7 +1163,7 @@ static
 void rmdir_frame_fini(void *data)
 {
 	int ret;
-	struct rmdir_frame *frame = data;
+	struct rmdir_frame *frame = (rmdir_frame *) data;
 
 	ret = closedir(frame->dir);
 	if (ret == -1) {
@@ -1230,7 +1229,7 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 	while (lttng_dynamic_array_get_count(&frames) > 0) {
 		struct dirent *entry;
 		struct rmdir_frame *current_frame =
-				lttng_dynamic_array_get_element(
+				(rmdir_frame *) lttng_dynamic_array_get_element(
 						&frames, current_frame_idx);
 
 		LTTNG_ASSERT(current_frame->dir);
@@ -1288,12 +1287,12 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 				}
 			} else {
 				struct rmdir_frame new_frame = {
-					.path_size = current_path.size,
+					.parent_frame_idx = (ssize_t) current_frame_idx,
 					.dir = lttng_directory_handle_opendir(
 							handle,
 							current_path.data),
 					.empty = true,
-					.parent_frame_idx = current_frame_idx,
+					.path_size = current_path.size,
 				};
 
 				if (!new_frame.dir) {
@@ -1339,7 +1338,7 @@ int remove_directory_recursive(const struct lttng_directory_handle *handle,
 		} else if (current_frame->parent_frame_idx >= 0) {
 			struct rmdir_frame *parent_frame;
 
-			parent_frame = lttng_dynamic_array_get_element(&frames,
+			parent_frame = (rmdir_frame *) lttng_dynamic_array_get_element(&frames,
 					current_frame->parent_frame_idx);
 			LTTNG_ASSERT(parent_frame);
 			parent_frame->empty = false;

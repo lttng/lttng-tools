@@ -38,8 +38,8 @@ static void test_one_split(const char *input, char delim, int escape_delim,
 	for (i = 0; i < string_count; i++) {
 		const char *expected_substring = va_arg(vl, const char *);
 		const char *substring =
-				lttng_dynamic_pointer_array_get_pointer(
-						&strings, i);
+			(const char *) lttng_dynamic_pointer_array_get_pointer(
+				&strings, i);
 
 		diag("  got `%s`, expecting `%s`", substring, expected_substring);
 

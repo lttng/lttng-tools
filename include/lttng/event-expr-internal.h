@@ -11,6 +11,10 @@
 #include <common/macros.h>
 #include <lttng/event-expr.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_bytecode;
 struct mi_writer;
 
@@ -63,5 +67,9 @@ int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 enum lttng_error_code lttng_event_expr_mi_serialize(
 		const struct lttng_event_expr *expression,
 		struct mi_writer *writer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_EVENT_EXPR_INTERNAL_H */

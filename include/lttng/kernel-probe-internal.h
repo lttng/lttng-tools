@@ -11,9 +11,14 @@
 #include <common/fd-handle.h>
 #include <common/macros.h>
 #include <lttng/kernel-probe.h>
+#include <lttng/lttng-error.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct lttng_payload;
 struct lttng_payload_view;
@@ -105,5 +110,9 @@ unsigned long lttng_kernel_probe_location_hash(
 enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
 		const struct lttng_kernel_probe_location *location,
 		struct mi_writer *writer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_KERNEL_PROBE_INTERNAL_H */

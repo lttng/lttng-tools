@@ -13,6 +13,10 @@
 
 #include <common/compat/errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if (defined(__CYGWIN__))
 typedef long long off64_t;
 #endif
@@ -63,5 +67,9 @@ static inline ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_
 #if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
 #error "Please add support for your OS."
 #endif /* __linux__ , __FreeBSD__, __CYGWIN__, __sun__, __APPLE__ */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _COMPAT_FCNTL_H */

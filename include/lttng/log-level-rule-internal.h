@@ -17,6 +17,7 @@
 #include <common/payload.h>
 #include <lttng/event.h>
 #include <lttng/log-level-rule.h>
+#include <lttng/lttng-error.h>
 
 #ifdef __cplusplus
 extern "C" {

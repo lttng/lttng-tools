@@ -10,7 +10,7 @@ LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 noinst_PROGRAMS = ini_config
 EXTRA_DIST = test_ini_config sample.ini
 
-ini_config_SOURCES = ini_config.c
+ini_config_SOURCES = ini_config.cpp
 ini_config_LDADD = $(LIBTAP) $(LIBCONFIG) $(LIBCOMMON) $(LIBHASHTABLE) \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 

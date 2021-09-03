@@ -11,7 +11,12 @@
 #include <common/macros.h>
 #include <common/payload-view.h>
 #include <lttng/action/rate-policy.h>
+#include <lttng/lttng-error.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct mi_writer;
 
@@ -36,5 +41,9 @@ bool lttng_rate_policy_should_execute(
 enum lttng_error_code lttng_rate_policy_mi_serialize(
 		const struct lttng_rate_policy *policy,
 		struct mi_writer *writer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_RATE_POLICY */

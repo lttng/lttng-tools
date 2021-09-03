@@ -184,7 +184,7 @@ static void test_mod_wait(void)
 
 static void destroy_pipe(void *pipe)
 {
-	lttng_pipe_destroy(pipe);
+	lttng_pipe_destroy((lttng_pipe *) pipe);
 }
 
 static int run_active_set_combination(unsigned int fd_count,
@@ -244,11 +244,13 @@ static int run_active_set_combination(unsigned int fd_count,
 			continue;
 		}
 
-		borrowed_pipe = lttng_dynamic_pointer_array_get_pointer(
+		borrowed_pipe =
+			(lttng_pipe *) lttng_dynamic_pointer_array_get_pointer(
 				&pipes, i);
 
+		char c = 'a';
 		ret = lttng_pipe_write(
-				borrowed_pipe, &(char){'a'}, sizeof(char));
+			borrowed_pipe, &c, sizeof(char));
 		if (ret != sizeof(char)) {
 			diag("Failed to write to pipe");
 			ret = -1;

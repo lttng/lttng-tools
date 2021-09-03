@@ -5,6 +5,7 @@
  *
  */
 
+#include <algorithm>
 #include <common/compat/fcntl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/payload.h>
@@ -443,7 +444,8 @@ static void test_receive_in_chunks(
 	}
 
 	do {
-		const ssize_t to_receive_this_pass = min(max_recv_size,
+		const ssize_t to_receive_this_pass =
+			std::min<ssize_t>(max_recv_size,
 				sent_payload.buffer.size - received);
 
 		sock_ret = lttcomm_recv_unix_sock(sockets[1],

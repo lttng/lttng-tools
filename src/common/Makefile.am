@@ -175,7 +175,7 @@ noinst_HEADERS = \
 	utils.h
 
 noinst_PROGRAMS = filter-grammar-test
-filter_grammar_test_SOURCES = filter-grammar-test.c
+filter_grammar_test_SOURCES = filter-grammar-test.cpp
 filter_grammar_test_LDADD = \
 	libcommon.la
 

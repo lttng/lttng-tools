@@ -49,7 +49,7 @@ static int resize_poll_event(struct lttng_poll_event *events,
 
 	LTTNG_ASSERT(events);
 
-	ptr = realloc(events->events, new_size * sizeof(*ptr));
+	ptr = (epoll_event *) realloc(events->events, new_size * sizeof(*ptr));
 	if (ptr == NULL) {
 		PERROR("realloc epoll add");
 		goto error;
@@ -100,7 +100,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	events->epfd = ret;
 
 	/* This *must* be freed by using lttng_poll_free() */
-	events->events = zmalloc(size * sizeof(struct epoll_event));
+	events->events = (epoll_event *) zmalloc(size * sizeof(struct epoll_event));
 	if (events->events == NULL) {
 		PERROR("zmalloc epoll set");
 		goto error_close;
