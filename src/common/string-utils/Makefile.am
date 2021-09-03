@@ -2,4 +2,7 @@
 
 noinst_LTLIBRARIES = libstring-utils.la
 
-libstring_utils_la_SOURCES = string-utils.h string-utils.c format.h
+libstring_utils_la_SOURCES = \
+	format.h \
+	string-utils.cpp \
+	string-utils.h

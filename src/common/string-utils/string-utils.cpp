@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <type_traits>
 
 #include "string-utils.h"
 #include "../macros.h"
@@ -18,6 +19,16 @@ enum star_glob_pattern_type_flags {
 	STAR_GLOB_PATTERN_TYPE_FLAG_PATTERN = 1,
 	STAR_GLOB_PATTERN_TYPE_FLAG_END_ONLY = 2,
 };
+
+static
+star_glob_pattern_type_flags &operator|=(star_glob_pattern_type_flags &l,
+		star_glob_pattern_type_flags r)
+{
+	using T = std::underlying_type<star_glob_pattern_type_flags>::type;
+	l = static_cast<star_glob_pattern_type_flags> (
+		static_cast<T> (l) | static_cast<T> (r));
+	return l;
+}
 
 /*
  * Normalizes the star-only globbing pattern `pattern`, that is, crushes
@@ -133,7 +144,7 @@ char *strutils_unescape_string(const char *input, char only_char)
 	const char *i;
 
 	LTTNG_ASSERT(input);
-	output = zmalloc(strlen(input) + 1);
+	output = (char *) zmalloc(strlen(input) + 1);
 	if (!output) {
 		goto end;
 	}
@@ -284,7 +295,7 @@ int strutils_split(const char *input,
 	for (at = 0, s = input; at < number_of_substrings; at++) {
 		const char *ss;
 		char *d;
-		char *substring = zmalloc(longest_substring_len + 1);
+		char *substring = (char *) zmalloc(longest_substring_len + 1);
 
 		if (!substring) {
 			goto error;
