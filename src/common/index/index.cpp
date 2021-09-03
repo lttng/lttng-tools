@@ -45,7 +45,7 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 
 	LTTNG_ASSERT(acquired_reference);
 
-	index_file = zmalloc(sizeof(*index_file));
+	index_file = (lttng_index_file *) zmalloc(sizeof(*index_file));
 	if (!index_file) {
 		PERROR("Failed to allocate lttng_index_file");
 		chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -84,7 +84,7 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 		 * stays valid even if we re-create a new file with the
 		 * same name afterwards.
 		 */
-		chunk_status = lttng_trace_chunk_unlink_file(
+		chunk_status = (lttng_trace_chunk_status) lttng_trace_chunk_unlink_file(
 				chunk, index_file_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK &&
 				!(chunk_status == LTTNG_TRACE_CHUNK_STATUS_ERROR &&
