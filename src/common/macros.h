@@ -57,20 +57,30 @@ void *zmalloc(size_t len)
 	})
 #endif
 
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
 
-#ifndef max_t
-#define max_t(type, a, b)	max((type) a, (type) b)
-#endif
+/*
+ * The min and max macros are not needed in C++ (std::min and std::max are
+ * preferred) and they conflict with some C++ header file. Don't define them
+ * when compiling C++ source.
+ */
+#ifndef __cplusplus
 
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
+# ifndef max
+#  define max(a, b) ((a) > (b) ? (a) : (b))
+# endif
 
-#ifndef min_t
-#define min_t(type, a, b)	min((type) a, (type) b)
+# ifndef min
+#  define min(a, b) ((a) < (b) ? (a) : (b))
+# endif
+
+# ifndef max_t
+#  define max_t(type, a, b)	max((type) a, (type) b)
+# endif
+
+# ifndef min_t
+#  define min_t(type, a, b)	min((type) a, (type) b)
+# endif
+
 #endif
 
 #ifndef LTTNG_PACKED
