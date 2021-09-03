@@ -65,7 +65,7 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 		buf_size += size;
 	}
 
-	buf = zmalloc(buf_size);
+	buf = (char *) zmalloc(buf_size);
 	if (buf == NULL) {
 		PERROR("zmalloc relayd send command buf");
 		ret = -1;
@@ -164,7 +164,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	base_path_len = strlen(base_path) + 1;
 
 	msg_length = sizeof(*msg) + session_name_len + hostname_len + base_path_len;
-	msg = zmalloc(msg_length);
+	msg = (lttcomm_relayd_create_session_2_11 *) zmalloc(msg_length);
 	if (!msg) {
 		PERROR("zmalloc create_session_2_11 command message");
 		ret = -1;
@@ -444,7 +444,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 	pathname_len = strlen(pathname) + 1;
 
 	msg_length = sizeof(*msg) + channel_name_len + pathname_len;
-	msg = zmalloc(msg_length);
+	msg = (lttcomm_relayd_add_stream_2_11 *) zmalloc(msg_length);
 	if (!msg) {
 		PERROR("zmalloc add_stream_2_11 command message");
 		ret = -1;
@@ -512,7 +512,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	if (rsock->minor == 1) {
 		/* For 2.1 */
 		ret = relayd_add_stream_2_1(rsock, channel_name, _pathname);
-	
+
 	} else if (rsock->minor > 1 && rsock->minor < 11) {
 		/* From 2.2 to 2.10 */
 		ret = relayd_add_stream_2_2(rsock, channel_name, _pathname,
@@ -1440,8 +1440,8 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		.chunk_id = htobe64(chunk_id),
 		.close_timestamp = htobe64((uint64_t) close_timestamp),
 		.close_command = {
-			.value = htobe32((uint32_t) close_command.value),
 			.is_set = close_command.is_set,
+			.value = htobe32((uint32_t) close_command.value),
 		},
 	};
 
