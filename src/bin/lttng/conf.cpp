@@ -178,7 +178,7 @@ int _config_read_session_name(const char *path, char **name)
 #define NAME_MAX_SCANF_IS_A_BROKEN_API	"254"
 #endif
 
-	session_name = zmalloc(NAME_MAX);
+	session_name = (char *) zmalloc(NAME_MAX);
 	if (session_name == NULL) {
 		ret = -ENOMEM;
 		ERR("Out of memory");

@@ -49,8 +49,8 @@ static struct poptOption long_options[] = {
 };
 
 static const char *schedule_type_str[] = {
-	[LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC] = "periodic",
-	[LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD] = "size-based",
+	"periodic",
+	"size-based",
 };
 
 static const struct lttng_rotation_schedule *get_schedule(

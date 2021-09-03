@@ -12,6 +12,10 @@
 #include <lttng/lttng.h>
 #include <common/macros.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /* Destination type of lttng URI */
 enum lttng_dst_type {
 	LTTNG_DST_IPV4                        = 1,
@@ -71,5 +75,9 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris);
 ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		struct lttng_uri **uris);
 int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* _LTT_URI_H */

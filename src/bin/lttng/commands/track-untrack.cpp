@@ -529,7 +529,7 @@ static enum cmd_error_code run_command(enum cmd_type cmd_type,
 		bool error_occurred = false;
 
 		for (i = 0; i < string_arg_count; i++) {
-			const char *arg = lttng_dynamic_pointer_array_get_pointer(
+			const char *arg = (const char *) lttng_dynamic_pointer_array_get_pointer(
 					&command_args->string_args, i);
 
 			cmd_ret = run_command_string(cmd_type, session_name,
@@ -583,7 +583,7 @@ static int cmd_track_untrack(enum cmd_type cmd_type,
 	size_t i;
 
 	for (i = 0; i < command_count; i++) {
-		process_attr_command_init(&process_attr_commands[i], i);
+		process_attr_command_init(&process_attr_commands[i], (lttng_process_attr) i);
 	}
 
 	if (argc < 1) {

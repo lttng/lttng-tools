@@ -10,6 +10,10 @@
 
 #include <stdbool.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /*
  * Read the trace by `exec()ing` the provided viewer program if any. If
  * `opt_viewer` is NULL, try to read the trace with the default trace reader.
@@ -21,5 +25,9 @@
  * be removed (but it can be stubbed-out if necessary).
  */
 int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* ifndef LTTNG_SPAWN_VIEWER_H */

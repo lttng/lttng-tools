@@ -50,8 +50,8 @@ static struct poptOption long_options[] = {
 };
 
 static const char *schedule_type_str[] = {
-	[LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC] = "periodic",
-	[LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD] = "size-based",
+	"periodic",
+	"size-based",
 };
 
 static enum cmd_error_code add_schedule(const char *session_name,

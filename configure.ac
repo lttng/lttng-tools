@@ -71,6 +71,9 @@ m4_define([WARN_FLAGS_LIST], [ dnl
   -Wmissing-parameter-type dnl
   -Wshadow dnl
   -Wno-gnu-folding-constant dnl
+  dnl GCC enables this with -Wall in C++, and that generates a
+  dnl lot of warnings that have on average a low value to fix.
+  -Wno-sign-compare dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the

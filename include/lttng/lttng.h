@@ -148,8 +148,11 @@ extern int lttng_stop_tracing_no_wait(const char *session_name);
  * Deprecated: As of LTTng 2.9, this function always returns
  * -LTTNG_ERR_UND.
  */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);
+#pragma GCC diagnostic pop
 
 /*
  * Set URL for a consumer for a session and domain.

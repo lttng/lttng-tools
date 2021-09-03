@@ -113,7 +113,7 @@ static inline int lttng_fls(int val)
 static inline
 void *lttng_memrchr(const void *s, int c, size_t n)
 {
-	return memrchr(s, c, n);
+	return (void *) memrchr(s, c, n);
 }
 #else
 static inline

@@ -10,33 +10,33 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS = lttng
 
-lttng_SOURCES = command.h conf.c conf.h commands/start.c \
-				commands/list.c commands/create.c commands/destroy.c \
-				commands/stop.c commands/enable_events.c \
-				commands/disable_events.c commands/enable_channels.c \
-				commands/disable_channels.c commands/add_context.c \
-				commands/set_session.c commands/version.c \
-				commands/view.c \
-				commands/snapshot.c \
-				commands/save.c \
-				commands/load.c \
-				commands/track-untrack.c \
-				commands/status.c \
-				commands/metadata.c \
-				commands/regenerate.c \
-				commands/help.c \
-				commands/rotate.c \
-				commands/enable_rotation.c \
-				commands/disable_rotation.c \
-				commands/clear.c \
-				loglevel.c loglevel.h \
-				commands/add_trigger.c \
-				commands/list_triggers.c \
-				commands/remove_trigger.c \
-				utils.c utils.h lttng.c \
-				uprobe.c uprobe.h
+lttng_SOURCES = command.h conf.cpp conf.h commands/start.cpp \
+				commands/list.cpp commands/create.cpp commands/destroy.cpp \
+				commands/stop.cpp commands/enable_events.cpp \
+				commands/disable_events.cpp commands/enable_channels.cpp \
+				commands/disable_channels.cpp commands/add_context.cpp \
+				commands/set_session.cpp commands/version.cpp \
+				commands/view.cpp \
+				commands/snapshot.cpp \
+				commands/save.cpp \
+				commands/load.cpp \
+				commands/track-untrack.cpp \
+				commands/status.cpp \
+				commands/metadata.cpp \
+				commands/regenerate.cpp \
+				commands/help.cpp \
+				commands/rotate.cpp \
+				commands/enable_rotation.cpp \
+				commands/disable_rotation.cpp \
+				commands/clear.cpp \
+				loglevel.cpp loglevel.h \
+				commands/add_trigger.cpp \
+				commands/list_triggers.cpp \
+				commands/remove_trigger.cpp \
+				utils.cpp utils.h lttng.cpp \
+				uprobe.cpp uprobe.h
 
-lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
+lttng_CXXFLAGS = $(AM_CXXFLAGS) $(POPT_CFLAGS)
 
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/libcommon.la \

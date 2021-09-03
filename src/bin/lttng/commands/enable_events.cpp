@@ -212,7 +212,7 @@ int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 	}
 
 	for (i = 0; i < count; i++) {
-		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+		const char *exclusion = (const char *) lttng_dynamic_pointer_array_get_pointer(
 				exclusions, i);
 
 		ret = mi_lttng_writer_write_element_string(writer,
@@ -247,21 +247,21 @@ char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 
 	/* Calculate total required length. */
 	for (i = 0; i < count; i++) {
-		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+		const char *exclusion = (const char *) lttng_dynamic_pointer_array_get_pointer(
 				exclusions, i);
 
 		length += strlen(exclusion) + 4;
 	}
 
 	length += sizeof(preamble);
-	ret = zmalloc(length);
+	ret = (char *) zmalloc(length);
 	if (!ret) {
 		return NULL;
 	}
 
 	strncpy(ret, preamble, length);
 	for (i = 0; i < count; i++) {
-		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+		const char *exclusion = (const char *) lttng_dynamic_pointer_array_get_pointer(
 				exclusions, i);
 
 		strcat(ret, "\"");
@@ -359,7 +359,7 @@ int validate_exclusion_list(const char *event_name,
 
 		for (i = 0; i < num_exclusions; i++) {
 			const char *exclusion =
-					lttng_dynamic_pointer_array_get_pointer(
+					(const char *) lttng_dynamic_pointer_array_get_pointer(
 							exclusions, i);
 
 			if (!strutils_is_star_glob_pattern(exclusion) ||
@@ -416,7 +416,7 @@ static void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer
 	const size_t num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
 
 	for (i = 0; i < num_exclusions; i++) {
-		const char * const exclusion = lttng_dynamic_pointer_array_get_pointer(exclusions, i);
+		const char * const exclusion = (const char *) lttng_dynamic_pointer_array_get_pointer(exclusions, i);
 
 		if (strlen(exclusion) >= LTTNG_SYMBOL_NAME_LEN) {
 			WARN("Event exclusion \"%s\" will be truncated",
@@ -512,7 +512,7 @@ static int enable_events(char *session_name)
 		case LTTNG_EVENT_USERSPACE_PROBE:
 		case LTTNG_EVENT_FUNCTION:
 			ERR("Filter expressions are not supported for %s events",
-					get_event_type_str(opt_event_type));
+					get_event_type_str((lttng_event_type) opt_event_type));
 			ret = CMD_ERROR;
 			goto error;
 		default:
@@ -542,14 +542,14 @@ static int enable_events(char *session_name)
 	if (opt_enable_all) {
 		/* Default setup for enable all */
 		if (opt_kernel) {
-			ev->type = opt_event_type;
+			ev->type = (lttng_event_type) opt_event_type;
 			strcpy(ev->name, "*");
 			/* kernel loglevels not implemented */
 			ev->loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else {
 			ev->type = LTTNG_EVENT_TRACEPOINT;
 			strcpy(ev->name, "*");
-			ev->loglevel_type = opt_loglevel_type;
+			ev->loglevel_type = (lttng_loglevel_type) opt_loglevel_type;
 			if (opt_loglevel) {
 				int name_search_ret;
 
@@ -817,7 +817,7 @@ static int enable_events(char *session_name)
 		/* Copy name and type of the event */
 		strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
 		ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-		ev->type = opt_event_type;
+		ev->type = (lttng_event_type) opt_event_type;
 
 		/* Kernel tracer action */
 		if (opt_kernel) {
@@ -935,7 +935,7 @@ static int enable_events(char *session_name)
 					&exclusions, &warn);
 			}
 
-			ev->loglevel_type = opt_loglevel_type;
+			ev->loglevel_type = (lttng_loglevel_type) opt_loglevel_type;
 			if (opt_loglevel) {
 				enum lttng_loglevel loglevel;
 				const int name_search_ret = loglevel_name_to_value(opt_loglevel, &loglevel);
@@ -958,7 +958,7 @@ static int enable_events(char *session_name)
 				goto error;
 			}
 
-			ev->loglevel_type = opt_loglevel_type;
+			ev->loglevel_type = (lttng_loglevel_type) opt_loglevel_type;
 			if (opt_loglevel) {
 				int name_search_ret;
 

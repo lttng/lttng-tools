@@ -91,7 +91,7 @@ static char *get_cmdline_by_pid(pid_t pid)
 	}
 
 	/* Caller must free() *cmdline */
-	cmdline = zmalloc(PATH_MAX);
+	cmdline = (char *) zmalloc(PATH_MAX);
 	if (!cmdline) {
 		PERROR("malloc cmdline");
 		goto end;
@@ -207,7 +207,7 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 	 * a comma per entry, the entry count (fixed-size), a closing
 	 * bracket, and a trailing \0.
 	 */
-	exclusion_msg = malloc(exclusion_count +
+	exclusion_msg = (char *) malloc(exclusion_count +
 			exclusion_count * LTTNG_SYMBOL_NAME_LEN +
 			exclusion_fmt_len + 1);
 	if (!exclusion_msg) {
@@ -340,7 +340,7 @@ static void print_events(struct lttng_event *event)
 	} else if (filter_str) {
 		const char * const filter_fmt = " [filter: '%s']";
 
-		filter_msg = malloc(strlen(filter_str) +
+		filter_msg = (char *) malloc(strlen(filter_str) +
 				strlen(filter_fmt) + 1);
 		if (filter_msg) {
 			sprintf(filter_msg, filter_fmt,
@@ -1154,7 +1154,7 @@ static int list_session_agent_events(void)
 				const char * const filter_fmt =
 						" [filter: '%s']";
 
-				filter_msg = malloc(strlen(filter_str) +
+				filter_msg = (char *) malloc(strlen(filter_str) +
 						strlen(filter_fmt) + 1);
 				if (filter_msg) {
 					sprintf(filter_msg, filter_fmt,

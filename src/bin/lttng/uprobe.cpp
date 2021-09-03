@@ -57,7 +57,7 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 	 * This char array is used to concatenate path to binary to look for
 	 * the binary.
 	 */
-	tentative_binary_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
+	tentative_binary_path = (char *) zmalloc(LTTNG_PATH_MAX * sizeof(char));
 	if (!tentative_binary_path) {
 		ret = -1;
 		goto alloc_error;
@@ -238,12 +238,12 @@ int parse_userspace_probe_opts(const char *opt,
 	case 2:
 		/* When the probe type is omitted we assume ELF for now. */
 	case 3:
-		if (num_token == 3 && strcmp(lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "elf") == 0) {
-			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
-			symbol_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
+		if (num_token == 3 && strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "elf") == 0) {
+			target_path = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+			symbol_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
 		} else if (num_token == 2) {
-			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
-			symbol_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+			target_path = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
+			symbol_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
 		} else {
 			ret = CMD_ERROR;
 			goto end;
@@ -257,10 +257,10 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 		break;
 	case 4:
-		if (strcmp(lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "sdt") == 0) {
-			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
-			provider_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
-			probe_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 3);
+		if (strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "sdt") == 0) {
+			target_path = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+			provider_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
+			probe_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 3);
 		} else {
 			ret = CMD_ERROR;
 			goto end;
@@ -291,7 +291,7 @@ int parse_userspace_probe_opts(const char *opt,
 	 */
 	if (strchr(unescaped_target_path, '/') == NULL) {
 		/* Walk the $PATH variable to find the targeted binary. */
-		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
+		real_target_path = (char *) zmalloc(LTTNG_PATH_MAX * sizeof(char));
 		if (!real_target_path) {
 			PERROR("Error allocating path buffer");
 			ret = CMD_ERROR;

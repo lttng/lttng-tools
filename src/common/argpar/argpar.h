@@ -9,6 +9,10 @@
 
 #include <stdbool.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /*
  * argpar is a library that provides facilities for argument parsing.
  *
@@ -310,5 +314,8 @@ void argpar_item_destroy(struct argpar_item *item);
 		_item = NULL;			\
 	}
 
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* BABELTRACE_ARGPAR_H */

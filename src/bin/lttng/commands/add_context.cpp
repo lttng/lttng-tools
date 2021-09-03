@@ -185,25 +185,21 @@ static struct poptOption long_options[] = {
  */
 #define PERF_HW(optstr, name, type, hide)				\
 	{								\
-		(char *) optstr, type, hide,				\
-		.u.perf = { PERF_TYPE_HARDWARE, PERF_COUNT_HW_##name, },\
+		optstr, type, PERF_COUNT_HW_##name, hide		\
 	}
 
 #define PERF_SW(optstr, name, type, hide)				\
 	{								\
-		(char *) optstr, type, hide,				\
-		.u.perf = { PERF_TYPE_SOFTWARE, PERF_COUNT_SW_##name, },\
+		optstr, type, PERF_COUNT_SW_##name, hide		\
 	}
 
 #define _PERF_HW_CACHE(optstr, name, type, op, result, hide)		\
 	{								\
-		(char *) optstr, type, hide,				\
-		.u.perf = {						\
-			PERF_TYPE_HW_CACHE,				\
-			(uint64_t) PERF_COUNT_HW_CACHE_##name		\
-			| ((uint64_t) PERF_COUNT_HW_CACHE_OP_##op << 8)	\
-			| ((uint64_t) PERF_COUNT_HW_CACHE_RESULT_##result << 16), \
-		},							\
+		optstr, type,						\
+		PERF_COUNT_HW_CACHE_##name,				\
+		PERF_COUNT_HW_CACHE_OP_##op,				\
+		PERF_COUNT_HW_CACHE_RESULT_##result, 			\
+		hide,							\
 	}
 
 #define PERF_HW_CACHE(optstr, name, type, hide)				\
@@ -222,9 +218,43 @@ static struct poptOption long_options[] = {
 
 static
 const struct ctx_opts {
+	/* Needed for end-of-list item. */
+	ctx_opts()
+		: symbol(nullptr)
+	{}
+
+	ctx_opts(const char *symbol_, context_type ctx_type_, bool hide_help_ = false)
+		: symbol((char *) symbol_), ctx_type(ctx_type_), hide_help(hide_help_)
+	{}
+
+	ctx_opts(const char *symbol_, context_type ctx_type_, perf_count_hard perf_count_hard, bool hide_help_)
+		: ctx_opts(symbol_, ctx_type_, hide_help_)
+	{
+		u.perf.type = PERF_TYPE_HARDWARE;
+		u.perf.config = perf_count_hard;
+	}
+
+	ctx_opts(const char *symbol_, context_type ctx_type_, perf_count_soft perf_count_soft, bool hide_help_)
+		: ctx_opts(symbol_, ctx_type_, hide_help_)
+	{
+		u.perf.type = PERF_TYPE_SOFTWARE;
+		u.perf.config = perf_count_soft;
+	}
+
+	ctx_opts(const char *symbol_, context_type ctx_type_,
+			perf_hw_cache_id perf_hw_cache_id,
+			perf_hw_cache_op_id perf_hw_cache_op_id,
+			perf_hw_cache_op_result_id perf_hw_cache_op_result_id,
+			bool hide_help_)
+		: ctx_opts(symbol_, ctx_type_, hide_help_)
+	{
+		u.perf.type = PERF_TYPE_HW_CACHE;
+		u.perf.config = perf_hw_cache_id | perf_hw_cache_op_id << 8 | perf_hw_cache_op_result_id << 16;
+	}
+
 	char *symbol;
 	enum context_type ctx_type;
-	int hide_help;	/* Hide from --help */
+	bool hide_help;	/* Hide from --help */
 	union {
 		struct {
 			uint32_t type;
@@ -496,7 +526,7 @@ const struct ctx_opts {
 	PERF_SW("perf:emulation-faults", EMULATION_FAULTS,
 		CONTEXT_PERF_COUNTER, 1),
 
-	{ NULL, -1 },		/* Closure */
+	{},		/* Closure */
 };
 
 #undef PERF_HW_CACHE
@@ -744,7 +774,7 @@ int print_ctx_type(void)
 	}
 
 end:
-	ret = mi_close(ret);
+	ret = mi_close((cmd_error_code) ret);
 	if (ret) {
 		ret = CMD_ERROR;
 	}
@@ -878,14 +908,14 @@ void destroy_ctx_type(struct ctx_type *type)
 static
 struct ctx_type *create_ctx_type(void)
 {
-	struct ctx_type *type = zmalloc(sizeof(*type));
+	struct ctx_type *type = (ctx_type *) zmalloc(sizeof(*type));
 
 	if (!type) {
 		PERROR("malloc ctx_type");
 		goto end;
 	}
 
-	type->opt = zmalloc(sizeof(*type->opt));
+	type->opt = (struct ctx_opts *) zmalloc(sizeof(*type->opt));
 	if (!type->opt) {
 		PERROR("malloc ctx_type options");
 		destroy_ctx_type(type);
@@ -1060,7 +1090,7 @@ struct ctx_type *get_context_type(const char *ctx)
 	}
 
 	provider_name_len = colon_pos - sizeof(app_ctx_prefix) + 2;
-	provider_name = zmalloc(provider_name_len);
+	provider_name = (char *) zmalloc(provider_name_len);
 	if (!provider_name) {
 		PERROR("malloc provider_name");
 		goto not_found;
@@ -1070,7 +1100,7 @@ struct ctx_type *get_context_type(const char *ctx)
 	type->opt->u.app_ctx.provider_name = provider_name;
 
 	ctx_name_len = len - colon_pos;
-	ctx_name = zmalloc(ctx_name_len);
+	ctx_name = (char *) zmalloc(ctx_name_len);
 	if (!ctx_name) {
 		PERROR("malloc ctx_name");
 		goto not_found;
@@ -1180,7 +1210,7 @@ int cmd_add_context(int argc, const char **argv)
 	}
 
 	command_ret = add_context(session_name);
-	ret = mi_close(command_ret);
+	ret = mi_close((cmd_error_code) command_ret);
 	if (ret) {
 		goto end;
 	}

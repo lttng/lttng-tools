@@ -17,6 +17,10 @@
 #include <common/config/session-config.h>
 #include <lttng/lttng.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /* Don't want to reference snapshot-internal.h here */
 struct lttng_snapshot_output;
 
@@ -29,7 +33,7 @@ struct mi_writer {
 /*
  * Version information for the machine interface.
  */
-struct mi_lttng_version {
+struct mi_lttng_version_data {
 	char version[LTTNG_NAME_MAX]; /* Version number of package */
 	uint32_t version_major; /* LTTng-Tools major version number */
 	uint32_t version_minor; /* LTTng-Tools minor version number */
@@ -563,7 +567,7 @@ int mi_lttng_writer_write_element_double(struct mi_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version *version,
+int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version_data *version,
 		const char *lttng_description, const char *lttng_license);
 
 /*
@@ -1116,5 +1120,9 @@ int mi_lttng_rotate(struct mi_writer *writer,
 		const char *session_name,
 		enum lttng_rotation_state rotation_state,
 		const struct lttng_trace_archive_location *location);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* _MI_LTTNG_H */

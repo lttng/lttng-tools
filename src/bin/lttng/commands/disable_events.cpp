@@ -213,7 +213,7 @@ static int disable_events(char *session_name)
 	event.loglevel = -1;
 
 	/* opt_event_type contain the event type to disable at this point */
-	event.type = opt_event_type;
+	event.type = (lttng_event_type) opt_event_type;
 
 	if (opt_disable_all) {
 		command_ret = lttng_disable_event_ext(handle, &event, channel_name, NULL);
@@ -227,7 +227,7 @@ static int disable_events(char *session_name)
 			success = 1;
 			MSG("All %s events of type %s are disabled in channel %s",
 					lttng_domain_type_str(dom.type),
-					print_event_type(opt_event_type),
+					print_event_type((lttng_event_type) opt_event_type),
 					print_channel_name(channel_name));
 		}
 
@@ -250,7 +250,7 @@ static int disable_events(char *session_name)
 			if (command_ret < 0) {
 				ERR("%s of type %s : %s (channel %s, session %s)",
 						event_name,
-						print_event_type(opt_event_type),
+						print_event_type((lttng_event_type) opt_event_type),
 						lttng_strerror(command_ret),
 						command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME
 							? print_raw_channel_name(channel_name)
@@ -267,7 +267,7 @@ static int disable_events(char *session_name)
 				MSG("%s %s of type %s disabled in channel %s for session %s",
 						lttng_domain_type_str(dom.type),
 						event_name,
-						print_event_type(opt_event_type),
+						print_event_type((lttng_event_type) opt_event_type),
 						print_channel_name(channel_name),
 						session_name);
 				success = 1;

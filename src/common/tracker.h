@@ -17,6 +17,10 @@
 #include <common/macros.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 struct process_attr_value {
 	enum lttng_process_attr_value_type type;
 	union value {
@@ -75,5 +79,9 @@ enum lttng_error_code process_attr_value_from_comm(
 		const struct process_attr_integral_value_comm *integral_value,
 		const struct lttng_buffer_view *value_view,
 		struct process_attr_value **value);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* LTTNG_COMMON_TRACKER_H */

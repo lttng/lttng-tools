@@ -46,9 +46,9 @@ int run_as_rmdir(const char *path, uid_t uid, gid_t gid);
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid, int flags);
 int run_as_rmdirat(int dirfd, const char *path, uid_t uid, gid_t gid);
 int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid, int flags);
-int run_as_rename(const char *old, const char *new, uid_t uid, gid_t gid);
-int run_as_renameat(int old_dirfd, const char *old,
-		int new_dirfd, const char *new, uid_t uid, gid_t gid);
+int run_as_rename(const char *old_name, const char *new_name, uid_t uid, gid_t gid);
+int run_as_renameat(int old_dirfd, const char *old_name,
+		int new_dirfd, const char *new_name, uid_t uid, gid_t gid);
 int run_as_extract_elf_symbol_offset(int fd, const char* function,
 		uid_t uid, gid_t gid, uint64_t *offset);
 int run_as_extract_sdt_probe_offsets(int fd, const char *provider_name,

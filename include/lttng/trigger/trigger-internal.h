@@ -19,6 +19,10 @@
 #include <sys/types.h>
 #include <urcu/ref.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 struct lttng_payload;
 struct lttng_payload_view;
 struct mi_writer;
@@ -277,5 +281,9 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
  */
 enum lttng_trigger_status lttng_trigger_set_name(
 		struct lttng_trigger *trigger, const char *name);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

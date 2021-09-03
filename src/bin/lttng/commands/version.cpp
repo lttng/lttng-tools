@@ -42,7 +42,7 @@ static struct poptOption long_options[] = {
 /*
  *  create_version
  */
-static void create_version(struct mi_lttng_version *version)
+static void create_version(struct mi_lttng_version_data *version)
 {
 	strncpy(version->version, VERSION, NAME_MAX);
 	version->version_major = VERSION_MAJOR;
@@ -60,7 +60,7 @@ static int print_mi(void)
 {
 	int ret = CMD_SUCCESS;
 	struct mi_writer *writer = NULL;
-	struct mi_lttng_version version;
+	struct mi_lttng_version_data version;
 
 	create_version(&version);
 

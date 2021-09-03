@@ -635,7 +635,7 @@ struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
 static
 void destroy_event_expr(void *ptr)
 {
-	lttng_event_expr_destroy(ptr);
+	lttng_event_expr_destroy((lttng_event_expr *) ptr);
 }
 
 struct parse_event_rule_res {
@@ -1040,7 +1040,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 			for (n = 0; n < count; n++) {
 				const char *exclude_name =
-						lttng_dynamic_pointer_array_get_pointer(
+						(const char *) lttng_dynamic_pointer_array_get_pointer(
 								&exclude_names,
 								n);
 
@@ -1382,7 +1382,7 @@ struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
 			i++) {
 		enum lttng_condition_status status;
 		struct lttng_event_expr **expr =
-				lttng_dynamic_array_get_element(
+				(lttng_event_expr **) lttng_dynamic_array_get_element(
 					&res.capture_descriptors.array, i);
 
 		LTTNG_ASSERT(expr);
@@ -1485,8 +1485,8 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 		goto end;
 	}
 
-	policy_type_str = lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
-	policy_value_str = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+	policy_type_str = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
+	policy_value_str = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
 
 	/* Parse the type. */
 	if (strcmp(policy_type_str, "once-after") == 0) {
@@ -2167,7 +2167,7 @@ struct argpar_opt_descr add_trigger_options[] = {
 static
 void lttng_actions_destructor(void *p)
 {
-	struct lttng_action *action = p;
+	struct lttng_action *action = (lttng_action *) p;
 
 	lttng_action_destroy(action);
 }
@@ -2352,7 +2352,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&actions); i++) {
 		enum lttng_action_status status;
 
-		action = lttng_dynamic_pointer_array_steal_pointer(&actions, i);
+		action = (lttng_action *) lttng_dynamic_pointer_array_steal_pointer(&actions, i);
 
 		status = lttng_action_list_add_action(action_list, action);
 		if (status != LTTNG_ACTION_STATUS_OK) {

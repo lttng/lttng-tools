@@ -10,6 +10,10 @@
 
 #include <common/dynamic-buffer.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 typedef void (*lttng_dynamic_array_element_destructor)(void *element);
 typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
 
@@ -127,7 +131,7 @@ static inline
 void *lttng_dynamic_pointer_array_get_pointer(
 		const struct lttng_dynamic_pointer_array *array, size_t index)
 {
-	void **element = lttng_dynamic_array_get_element(&array->array, index);
+	void **element = (void **) lttng_dynamic_array_get_element(&array->array, index);
 
 	return *element;
 }
@@ -141,7 +145,7 @@ static inline
 void *lttng_dynamic_pointer_array_steal_pointer(
 		struct lttng_dynamic_pointer_array *array, size_t index)
 {
-	void **p_element = lttng_dynamic_array_get_element(&array->array, index);
+	void **p_element = (void **) lttng_dynamic_array_get_element(&array->array, index);
 	void *element = *p_element;
 
 	*p_element = NULL;
@@ -176,5 +180,9 @@ void lttng_dynamic_pointer_array_reset(
 /* Remove all elements from the dynamic pointer array. */
 void lttng_dynamic_pointer_array_clear(
 		struct lttng_dynamic_pointer_array *array);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* LTTNG_DYNAMIC_ARRAY_H */

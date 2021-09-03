@@ -221,7 +221,7 @@ int cmd_rotate(int argc, const char **argv)
 		}
 	}
 
-	cmd_ret = rotate_tracing(session_name);
+	cmd_ret = (cmd_error_code) rotate_tracing(session_name);
 
 	/* Mi closing */
 	if (lttng_opt_mi) {

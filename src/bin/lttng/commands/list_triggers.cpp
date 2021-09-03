@@ -1395,8 +1395,8 @@ int cmd_list_triggers(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		const struct mi_lttng_error_query_callbacks callbacks = {
 			.trigger_cb = mi_error_query_trigger_callback,
-			.action_cb = mi_error_query_action_callback,
 			.condition_cb = mi_error_query_condition_callback,
+			.action_cb = mi_error_query_action_callback,
 		};
 
 		ret = lttng_triggers_mi_serialize(

@@ -520,7 +520,7 @@ static enum cmd_error_code handle_command(const char **argv)
 					 * hack works since the values of the
 					 * two enums do not intersect.
 					 */
-					cmd_ret = result;
+					cmd_ret = (cmd_error_code) result;
 					break;
 				case -LTTNG_ERR_SNAPSHOT_NODATA:
 					WARN("%s", lttng_strerror(result));
@@ -610,7 +610,7 @@ int cmd_snapshot(int argc, const char **argv)
 
 			/* SHOW_HELP assigns to ret. */
 			SHOW_HELP();
-			cmd_ret = ret;
+			cmd_ret = (cmd_error_code) ret;
 			goto end;
 		}
 		case OPT_LIST_OPTIONS:

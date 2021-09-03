@@ -20,6 +20,10 @@
 #include <sys/types.h>
 #include <urcu/ref.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 struct lttng_payload;
 struct lttng_payload_view;
 struct mi_writer;
@@ -152,5 +156,9 @@ bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule);
 
 enum lttng_error_code lttng_event_rule_mi_serialize(
 		const struct lttng_event_rule *rule, struct mi_writer *writer);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* LTTNG_EVENT_RULE_INTERNAL_H */
