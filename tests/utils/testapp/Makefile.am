@@ -7,11 +7,8 @@ SUBDIRS = \
 	  gen-ust-nevents \
 	  gen-ust-nevents-str \
 	  gen-ust-tracef \
-	  userspace-probe-elf-binary
-
-if CXX_WORKS
-SUBDIRS += userspace-probe-elf-cxx-binary
-endif # CXX_WORKS
+	  userspace-probe-elf-binary \
+	  userspace-probe-elf-cxx-binary
 
 if TEST_SDT_UPROBE
 SUBDIRS += userspace-probe-sdt-binary

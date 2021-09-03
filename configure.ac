@@ -15,47 +15,113 @@ AM_MAINTAINER_MODE([enable])
 # Enable silent rules if available (Introduced in AM 1.11)
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-# Checks for C compiler
-AC_USE_SYSTEM_EXTENSIONS
-AC_SYS_LARGEFILE
+
+##                   ##
+## C compiler checks ##
+##                   ##
+
+# Choose the C compiler
 AC_PROG_CC
 # AC_PROG_CC_STDC was merged in AC_PROG_CC in autoconf 2.70
 m4_version_prereq([2.70], [], [AC_PROG_CC_STDC])
-AC_PROG_CXX
-RW_PROG_CXX_WORKS
-AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
 
-# Detect warning flags supported by the compiler, append them to WARN_CFLAGS.
-#
+# Make sure the C compiler supports C99
+AS_IF([test "$ac_cv_prog_cc_c99" = "no"], [AC_MSG_ERROR([The compiler does not support C99])])
+
+# Enable available system extensions and LFS support
+AC_USE_SYSTEM_EXTENSIONS
+AC_SYS_LARGEFILE
+
+# Make sure the C compiler supports __attribute__
+AX_C___ATTRIBUTE__
+AS_IF([test "x$ax_cv___attribute__" != "xyes"],
+  [AC_MSG_ERROR([The compiler does not support __attribute__ extensions])])
+
+# Make sure we have pthread support
+AX_PTHREAD([], [AC_MSG_ERROR([Could not configure pthread support])])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+# Detect warning flags supported by the C and C++ compilers and append them to
+# WARN_CFLAGS and WARN_CXXFLAGS.
+m4_define([WARN_FLAGS_LIST], [ dnl
+  -Wall dnl
+  dnl We currently get this warning when building with Clang:
+  dnl
+  dnl /usr/include/setjmp.h:54:12: error: declaration of built-in function '__sigsetjmp' requires the declaration of the 'jmp_buf' type, commonly provided in the header <setjmp.h>. [-Werror,-Wincomplete-setjmp-declaration]
+  dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
+  dnl            ^
+  -Wno-incomplete-setjmp-declaration dnl
+  -Wdiscarded-qualifiers dnl
+  -Wmissing-declarations dnl
+  -Wmissing-prototypes dnl
+  -Wmissing-parameter-type dnl
+  -Wshadow dnl
+  -Wno-gnu-folding-constant dnl
+])
+
 # Pass -Werror as an extra flag during the test: this is needed to make the
 # -Wunknown-warning-option diagnostic fatal with clang.
-AX_APPEND_COMPILE_FLAGS([ dnl
-		-Wall dnl
-		dnl We currently get this warning when building with Clang:
-		dnl
-		dnl /usr/include/setjmp.h:54:12: error: declaration of built-in function '__sigsetjmp' requires the declaration of the 'jmp_buf' type, commonly provided in the header <setjmp.h>. [-Werror,-Wincomplete-setjmp-declaration]
-		dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
-		dnl            ^
-		-Wno-incomplete-setjmp-declaration dnl
-		-Wdiscarded-qualifiers dnl
-		-Wmissing-declarations dnl
-		-Wmissing-prototypes dnl
-		-Wmissing-parameter-type dnl
-		-Wold-style-definition dnl
-		-Wstrict-prototypes dnl
-		-Wshadow dnl
-		-Wno-gnu-folding-constant dnl
-	],
-	[WARN_CFLAGS],
-	[-Werror])
+AC_LANG_PUSH([C])
+AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_LIST], [WARN_CFLAGS], [-Werror])
+AC_LANG_POP([C])
 
-# When given, add -Werror to WARN_CFLAGS.
-AC_ARG_ENABLE([Werror],
-	[AS_HELP_STRING([--enable-Werror], [Treat compiler warnings as errors.])]
-)
-AS_IF([test "x$enable_Werror" = "xyes"],
-	[WARN_CFLAGS="${WARN_CFLAGS} -Werror"]
-)
+# The test used in AX_APPEND_COMPILE_FLAGS, generated using AC_LANG_PROGRAM, is
+# written in such a way that it triggers warnings with the following warning
+# flags.  So they would always end up disabled if we put them there, because
+# the test program would not build.
+#
+# Enable them here unconditionally.  They are supported by GCC >= 4.8 and by
+# Clang >= 3.3 (required by the project) and are only valid for C code.
+WARN_CFLAGS="${WARN_CFLAGS} -Wold-style-definition -Wstrict-prototypes"
+
+# Disable 'strict aliasing' if the C compiler supports it.
+AC_LANG_PUSH([C])
+AX_APPEND_COMPILE_FLAGS([-fno-strict-aliasing], [OPT_CFLAGS], [-Werror])
+AC_LANG_POP([C])
+
+
+##                     ##
+## C++ compiler checks ##
+##                     ##
+
+# Find a C++11 compiler with GNU extensions (-std=gnu++11)
+AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
+
+# Pass -Werror as an extra flag during the test: this is needed to make the
+# -Wunknown-warning-option diagnostic fatal with clang.
+AC_LANG_PUSH([C++])
+AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_LIST], [WARN_CXXFLAGS], [-Werror])
+AC_LANG_POP([C++])
+
+# Disable 'strict aliasing' if the C++ compiler supports it.
+AC_LANG_PUSH([C++])
+AX_APPEND_COMPILE_FLAGS([-fno-strict-aliasing], [OPT_CXXFLAGS], [-Werror])
+AC_LANG_POP([C++])
+
+
+# When given, add -Werror to WARN_CFLAGS and WARN_CXXFLAGS.
+AC_ARG_ENABLE([Werror],[
+  AS_HELP_STRING([--enable-Werror], [Treat compiler warnings as errors.])
+])
+
+AS_IF([test "x$enable_Werror" = "xyes"], [
+  WARN_CFLAGS="${WARN_CFLAGS} -Werror"
+  WARN_CXXFLAGS="${WARN_CXXFLAGS} -Werror"
+])
 
 # Checks for programs.
 AC_PROG_GREP
@@ -127,27 +193,6 @@ detection.
 AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
 
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_MODE_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UID_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-
-AX_C___ATTRIBUTE__
-AS_IF([test "x$ax_cv___attribute__" = "xyes"],
-        [:],
-        [AC_MSG_ERROR([The compiler does not support __attribute__ extensions])])
-
-AX_PTHREAD(,[AC_MSG_ERROR([Could not configure pthreads support])])
 
 # Check if linker has the -no-pie option.
 AX_CHECK_LINK_FLAG([-no-pie], [linker_have_no_pie_option=yes])
@@ -1037,8 +1082,11 @@ AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
-AM_CFLAGS="${WARN_CFLAGS} -fno-strict-aliasing $PTHREAD_CFLAGS"
+AM_CFLAGS="$OPT_CFLAGS $WARN_CFLAGS $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)
+
+AM_CXXFLAGS="$OPT_CXXFLAGS $WARN_CXXFLAGS $PTHREAD_CFLAGS"
+AC_SUBST(AM_CXXFLAGS)
 
 # This is set even though it is empty, so Makefiles can do "AM_LDFLAGS += ...".
 AM_LDFLAGS=""
