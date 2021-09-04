@@ -10,6 +10,7 @@
 
 #include <common/fd-handle.h>
 #include <common/macros.h>
+#include <lttng/lttng-error.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/lttng-error.h>
 #include <stdbool.h>

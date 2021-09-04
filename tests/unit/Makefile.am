@@ -87,7 +87,7 @@ test_session_SOURCES = test_session.cpp
 test_session_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 if HAVE_LIBLTTNG_UST_CTL
-test_session_SOURCES += ust-sigbus.c
+test_session_SOURCES += ust-sigbus.cpp
 test_session_LDADD += $(UST_CTL_LIBS)
 endif
 
