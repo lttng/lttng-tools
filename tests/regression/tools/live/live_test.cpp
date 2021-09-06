@@ -76,7 +76,7 @@ ssize_t lttng_live_recv(int fd, void *buf, size_t len)
 	size_t copied = 0, to_copy = len;
 
 	do {
-		ret = recv(fd, buf + copied, to_copy, 0);
+		ret = recv(fd, (char *) buf + copied, to_copy, 0);
 		if (ret > 0) {
 			LTTNG_ASSERT(ret <= to_copy);
 			copied += ret;
@@ -285,7 +285,7 @@ int attach_session(uint64_t id)
 	int i;
 	ssize_t ret_len;
 
-	session = zmalloc(sizeof(struct live_session));
+	session = (live_session *) zmalloc(sizeof(struct live_session));
 	if (!session) {
 		goto error;
 	}
@@ -327,7 +327,7 @@ int attach_session(uint64_t id)
 		diag("Got session stream count == 0");
 		goto error;
 	}
-	session->streams = zmalloc(session->stream_count *
+	session->streams = (viewer_stream *) zmalloc(session->stream_count *
 			sizeof(struct viewer_stream));
 	if (!session->streams) {
 		goto error;
@@ -436,7 +436,7 @@ retry:
 		goto error;
 	}
 
-	data = zmalloc(len);
+	data = (char *) zmalloc(len);
 	if (!data) {
 		PERROR("relay data zmalloc");
 		goto error;

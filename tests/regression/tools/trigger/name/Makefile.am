@@ -7,8 +7,8 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 noinst_PROGRAMS = trigger_name
 # This test explicitly tests APIs that were marked as deprecated.
-trigger_name_CFLAGS = -Wno-deprecated-declarations $(AM_CFLAGS)
-trigger_name_SOURCES = trigger_name.c
+trigger_name_CXXFLAGS = -Wno-deprecated-declarations $(AM_CXXFLAGS)
+trigger_name_SOURCES = trigger_name.cpp
 trigger_name_LDADD = $(LIBTAP) $(LIBLTTNG_CTL)
 
 noinst_SCRIPTS = test_trigger_name_backwards_compat

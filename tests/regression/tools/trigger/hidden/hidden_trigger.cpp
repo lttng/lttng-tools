@@ -62,18 +62,21 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 	struct lttng_session_descriptor *session_desriptor = NULL;
 	enum lttng_error_code ret_code;
 	struct lttng_handle ust_channel_handle = {
-		.session_name = TEST_SESSION_NAME,
-		.domain.type = LTTNG_DOMAIN_UST,
-		.domain.buf_type = LTTNG_BUFFER_PER_UID,
+		TEST_SESSION_NAME,
+		{
+			.type = LTTNG_DOMAIN_UST,
+			.buf_type = LTTNG_BUFFER_PER_UID,
+		}
 	};
-	struct lttng_channel channel_cfg = {
-		.name = TEST_CHANNEL_NAME,
-		.enabled = 1,
-		.attr.overwrite = -1,
-		.attr.subbuf_size = sysconf(_SC_PAGE_SIZE) * 8,
-		.attr.num_subbuf = 8,
-		.attr.output = LTTNG_EVENT_MMAP,
-	};
+
+	lttng_channel channel_cfg {};
+	strcpy(channel_cfg.name, TEST_CHANNEL_NAME);
+	channel_cfg.enabled = 1;
+	channel_cfg.attr.overwrite = -1;
+	channel_cfg.attr.subbuf_size = (uint64_t) sysconf(_SC_PAGE_SIZE) * 8;
+	channel_cfg.attr.num_subbuf = 8;
+	channel_cfg.attr.output = LTTNG_EVENT_MMAP;
+
 	enum lttng_rotation_status rotation_status;
 	struct lttng_rotation_schedule *rotation_schedule = NULL;
 

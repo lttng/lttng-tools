@@ -7,7 +7,9 @@ EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh \
 dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl tap-driver.sh
 noinst_LTLIBRARIES = libtestutils.la
 
-libtestutils_la_SOURCES = utils.c utils.h
+libtestutils_la_SOURCES = \
+	utils.cpp \
+	utils.h
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 noinst_PROGRAMS = validate_xml extract_xml pretty_xml
-validate_xml_SOURCES = validate_xml.c
+validate_xml_SOURCES = validate_xml.cpp
 validate_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 validate_xml_LDADD = $(libxml2_LIBS)
 
-extract_xml_SOURCES = extract_xml.c
+extract_xml_SOURCES = extract_xml.cpp
 extract_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 extract_xml_LDADD = $(libxml2_LIBS)
 

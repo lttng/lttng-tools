@@ -8,6 +8,10 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #if !defined(__GLIBC__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
 
 /*
@@ -36,5 +40,9 @@
 int usleep_safe(useconds_t usec);
 int create_file(const char *path);
 int wait_on_file(const char *path);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* TEST_UTILS_H */

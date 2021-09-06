@@ -15,7 +15,7 @@ libtracepoint_trigger_example_a_SOURCES = tracepoint-trigger-example.c tracepoin
 instrumented_app_SOURCES = instrumented-app.c
 instrumented_app_LDADD = libtracepoint-trigger-example.a $(UST_LIBS) $(DL_LIBS)
 
-notification_client_SOURCES = notification-client.c
+notification_client_SOURCES = notification-client.cpp
 notification_client_LDADD = $(LIBLTTNG_CTL)
 
 endif

@@ -24,10 +24,9 @@ static
 int set_signal_handler(void)
 {
 	int ret;
-	struct sigaction sa = {
-		.sa_flags = 0,
-		.sa_handler = sighandler,
-	};
+	struct sigaction sa {};
+	sa.sa_flags = 0;
+	sa.sa_handler = sighandler;
 
 	ret = sigemptyset(&sa.sa_mask);
 	if (ret) {

@@ -49,7 +49,7 @@ enum field_type {
 };
 
 struct capture_base_field_tuple {
-	char* field_name;
+	const char *field_name;
 	enum field_type field_type;
 	/* Do we expect a userspace capture? */
 	bool expected_ust;

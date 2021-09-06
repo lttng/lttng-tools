@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-AM_CFLAGS += -I$(top_srcdir)/tests/utils
+AM_CPPFLAGS += -I$(top_srcdir)/tests/utils
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIB_LTTNG_CTL = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
@@ -14,7 +14,7 @@ EXTRA_DIST = \
 	     base_client.c \
 	     consumer_testpoints.cpp \
 	     sessiond_testpoints.cpp \
-	     notification.c \
+	     notification.cpp \
 	     test_notification_kernel_buffer_usage \
 	     test_notification_kernel_capture \
 	     test_notification_kernel_error \
@@ -54,9 +54,9 @@ noinst_LTLIBRARIES = libpause_sessiond.la libpause_consumer.la
 base_client_SOURCES = base_client.c
 base_client_LDADD = $(LIB_LTTNG_CTL)
 
-notification_SOURCES = notification.c
+notification_SOURCES = notification.cpp
 # Tests the deprecated lttng_register_trigger() interface
-notification_CFLAGS = -Wno-deprecated-declarations $(AM_CFLAGS)
+notification_CXXFLAGS = -Wno-deprecated-declarations $(AM_CXXFLAGS)
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 rotation_SOURCES = rotation.c

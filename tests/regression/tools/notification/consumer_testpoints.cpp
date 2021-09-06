@@ -20,7 +20,8 @@
 static char *pause_pipe_path;
 static struct lttng_pipe *pause_pipe;
 static int *data_consumption_state;
-static enum lttng_consumer_type (*lttng_consumer_get_type)(void);
+using lttng_consumer_get_type_func = enum lttng_consumer_type (*)();
+static lttng_consumer_get_type_func lttng_consumer_get_type;
 
 int lttng_opt_verbose;
 int lttng_opt_mi;

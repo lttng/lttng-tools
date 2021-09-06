@@ -19,7 +19,7 @@ if HAVE_LIBLTTNG_UST_CTL
 EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust
 endif
 
-live_test_SOURCES = live_test.c
+live_test_SOURCES = live_test.cpp
 live_test_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 all-local:

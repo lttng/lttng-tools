@@ -6,8 +6,7 @@ LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 noinst_PROGRAMS = hidden_trigger
-hidden_trigger_CFLAGS = $(AM_CFLAGS)
-hidden_trigger_SOURCES = hidden_trigger.c
+hidden_trigger_SOURCES = hidden_trigger.cpp
 hidden_trigger_LDADD = $(LIBTAP) $(LIBLTTNG_CTL)
 
 noinst_SCRIPTS = test_hidden_trigger
