@@ -459,14 +459,6 @@ void ust_app_unregister(int sock)
 {
 }
 static inline
-void ust_app_lock_list(void)
-{
-}
-static inline
-void ust_app_unlock_list(void)
-{
-}
-static inline
 void ust_app_clean_list(void)
 {
 }
