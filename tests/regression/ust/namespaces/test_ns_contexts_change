@@ -79,6 +79,9 @@ function test_ns()
 
 	touch "$file_sync_before_last"
 
+	# Wait for the test app to generate all expected events and exit.
+	wait $app_pid
+
 	# stop and destroy
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name"
