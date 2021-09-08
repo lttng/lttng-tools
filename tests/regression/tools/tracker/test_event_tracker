@@ -5,7 +5,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-TEST_DESC="LTTng - Event traker test"
+TEST_DESC="LTTng - Event tracker test"
 
 CURDIR=$(dirname "$0")/
 TESTDIR="$CURDIR/../../.."
@@ -15,7 +15,7 @@ TESTAPP_KERNEL_NAME="gen-kernel-test-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 TESTAPP_KERNEL_BIN="$TESTAPP_PATH/$TESTAPP_KERNEL_NAME/$TESTAPP_KERNEL_NAME"
 SESSION_NAME="tracker"
-NR_ITER=100
+NR_ITER=1
 NUM_GLOBAL_TESTS=2
 NUM_UST_TESTS=283
 NUM_KERNEL_TESTS=462
@@ -30,32 +30,46 @@ SCRIPT_GROUPNAME="$(id -gn)"
 
 CHILD_PID=-1
 WAIT_PATH=
-AFTER_FIRST_PATH=
-BEFORE_LAST_PATH=
+TOUCH_BEFORE_LAST_PATH=
+SYNC_BEFORE_LAST_PATH=
 
 source $TESTDIR/utils/utils.sh
 
+# Launch the testapp and execute it up until right before the last event. It is
+# useful to do it in two seperate steps in order to test tracking and
+# untracking on an active app.
 function prepare_ust_app
 {
-	AFTER_FIRST_PATH=$(mktemp -u)
-	BEFORE_LAST_PATH=$(mktemp -u)
+	TOUCH_BEFORE_LAST_PATH=$(mktemp --tmpdir -u tmp.${FUNCNAME[0]}_touch_before_last.XXXXXX)
+	SYNC_BEFORE_LAST_PATH=$(mktemp --tmpdir -u tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX)
 
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT -a "$AFTER_FIRST_PATH" -b "$BEFORE_LAST_PATH" &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-before-last-event-touch "$TOUCH_BEFORE_LAST_PATH" \
+		--sync-before-last-event "$SYNC_BEFORE_LAST_PATH" &
+
 	CHILD_PID=$!
+
+	# Wait for the app to execute all the way to right before the last
+	# event.
+	while [ ! -f "${TOUCH_BEFORE_LAST_PATH}" ]; do
+		sleep 0.5
+	done
 }
 
+# Generate the last event.
 function trace_ust_app
 {
-	touch "$BEFORE_LAST_PATH"
-	wait
+	# Ask the test app to generate the last event.
+	touch "$SYNC_BEFORE_LAST_PATH"
+	wait "$CHILD_PID"
 	ok $? "Traced application stopped."
-	rm "$BEFORE_LAST_PATH"
-	rm "$AFTER_FIRST_PATH"
+	rm "$SYNC_BEFORE_LAST_PATH"
+	rm "$TOUCH_BEFORE_LAST_PATH"
 }
 
 function prepare_kernel_app
 {
-	WAIT_PATH=$(mktemp -u)
+	WAIT_PATH=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_wait_path.XXXXXX")
 
 	"$TESTAPP_KERNEL_BIN" "$WAIT_PATH" $NR_ITER &
 	CHILD_PID=$!
@@ -64,7 +78,7 @@ function prepare_kernel_app
 function trace_kernel_app
 {
 	touch "$WAIT_PATH"
-	wait
+	wait "$CHILD_PID"
 	ok $? "Traced application stopped."
 	rm "$WAIT_PATH"
 }
@@ -78,7 +92,9 @@ function test_event_tracker()
 	local tracker="$4"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -117,7 +133,9 @@ function test_event_vpid_tracker()
 	local wildcard="$3"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -160,7 +178,9 @@ function test_event_pid_tracker()
 	local wildcard="$3"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -203,7 +223,9 @@ function test_event_tracker_fail()
 	local wildcard="$2"
 	local tracker="$3"
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard"
@@ -222,7 +244,9 @@ function test_event_track_untrack()
 	local tracker="$4"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -262,7 +286,9 @@ function test_event_vpid_track_untrack()
 	local wildcard="$3"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -302,7 +328,9 @@ function test_event_pid_track_untrack()
 	local wildcard="$3"
 	local channel=''
 
-	trace_path=$(mktemp -d)
+	diag "${FUNCNAME[0]} $*"
+
+	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -336,11 +364,9 @@ function test_event_pid_track_untrack()
 
 function test_event_ust_vpid_untrack_snapshot()
 {
-	local trace_path
+	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp -d)
-
-	diag "Test_event_ust_vpid_untrack_snapshot"
+	local trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path" "--snapshot"
 
