@@ -136,13 +136,44 @@ T *malloc(size_t size)
  */
 
 template<typename T>
-struct is_pod_or_void
+struct can_free
+{
+	static constexpr bool value = std::is_trivially_destructible<T>::value || std::is_void<T>::value;
+};
+
+template<typename T, typename = typename std::enable_if<!can_free<T>::value>::type>
+void free(T *p) = delete;
+
+template<typename T>
+struct can_memset
 {
 	static constexpr bool value = std::is_pod<T>::value || std::is_void<T>::value;
 };
 
-template<typename T, typename = typename std::enable_if<!is_pod_or_void<T>::value>::type>
-void free(T *p) = delete;
+template <typename T, typename = typename std::enable_if<!can_memset<T>::value>::type>
+void *memset(T *s, int c, size_t n) = delete;
+
+template<typename T>
+struct can_memcpy
+{
+	static constexpr bool value = std::is_trivially_copyable<T>::value;
+};
+
+template <typename T, typename U,
+		typename = typename std::enable_if<!can_memcpy<T>::value>::type,
+		typename = typename std::enable_if<!can_memcpy<U>::value>::type>
+void *memcpy(T *d, const U *s, size_t n) = delete;
+
+template<typename T>
+struct can_memmove
+{
+	static constexpr bool value = std::is_trivially_copyable<T>::value;
+};
+
+template <typename T, typename U,
+		typename = typename std::enable_if<!can_memmove<T>::value>::type,
+		typename = typename std::enable_if<!can_memmove<U>::value>::type>
+void *memmove(T *d, const U *s, size_t n) = delete;
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
