@@ -143,6 +143,13 @@ ssize_t lttng_action_path_create_from_payload(
 
 	header = (typeof(header)) header_view.buffer.data;
 	consumed_size += header_view.buffer.size;
+
+	/*
+	 * An action path of size 0 can exist and represents a trigger with a
+	 * single non-list action. Handle it differently since a payload view of
+	 * size 0 is considered invalid.
+	 */
+	if (header->index_count != 0)
 	{
 		const struct lttng_payload_view indexes_view =
 				lttng_payload_view_from_view(view,
@@ -158,6 +165,11 @@ ssize_t lttng_action_path_create_from_payload(
 		action_path = lttng_action_path_create(
 				(const uint64_t *) indexes_view.buffer.data,
 				header->index_count);
+		if (!action_path) {
+			goto end;
+		}
+	} else {
+		action_path = lttng_action_path_create(NULL, 0);
 		if (!action_path) {
 			goto end;
 		}
