@@ -24,6 +24,7 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <lttng/notification/channel-internal.h>
 #include <lttng/rotate-internal.h>
+#include <lttng/location-internal.h>
 
 #include "rotation-thread.h"
 #include "lttng-sessiond.h"
@@ -477,7 +478,6 @@ int check_session_rotation_pending(struct ltt_session *session,
 
 	if (!session->quiet_rotation) {
 		location = session_get_trace_archive_location(session);
-		/* Ownership of location is transferred. */
 		ret = notification_thread_command_session_rotation_completed(
 				notification_thread_handle,
 				session->name,
@@ -485,6 +485,7 @@ int check_session_rotation_pending(struct ltt_session *session,
 				session->gid,
 				session->last_archived_chunk_id.value,
 				location);
+		lttng_trace_archive_location_put(location);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to notify notification thread of completed rotation for session %s",
 					session->name);

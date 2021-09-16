@@ -73,6 +73,7 @@ struct notification_thread_command {
 			uid_t uid;
 			gid_t gid;
 			uint64_t trace_archive_chunk_id;
+			/* Weak reference. */
 			struct lttng_trace_archive_location *location;
 		} session_rotation;
 		/* Add/Remove tracer event source fd. */

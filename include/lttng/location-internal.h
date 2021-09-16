@@ -13,8 +13,16 @@
 #include <common/buffer-view.h>
 #include <common/macros.h>
 #include <sys/types.h>
+#include <urcu/ref.h>
 
+/*
+ * The public API assumes that trace archive locations are always
+ * provided as "constant". This means that the user of liblttng-ctl never
+ * has to destroy a trace archive location. Hence, users of liblttng-ctl
+ * have no visibility of the reference counting of archive locations.
+ */
 struct lttng_trace_archive_location {
+	struct urcu_ref ref;
 	enum lttng_trace_archive_location_type type;
 	union {
 		struct {
@@ -88,7 +96,11 @@ ssize_t lttng_trace_archive_location_serialize(
 		struct lttng_dynamic_buffer *buffer);
 
 LTTNG_HIDDEN
-void lttng_trace_archive_location_destroy(
+void lttng_trace_archive_location_get(
+		struct lttng_trace_archive_location *location);
+
+LTTNG_HIDDEN
+void lttng_trace_archive_location_put(
 		struct lttng_trace_archive_location *location);
 
 #endif /* LTTNG_LOCATION_INTERNAL_H */
