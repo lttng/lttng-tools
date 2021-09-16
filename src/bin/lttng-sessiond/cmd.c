@@ -3303,6 +3303,7 @@ void cmd_destroy_session_reply(const struct ltt_session *session,
 	payload_size_before_location = payload.size;
 	comm_ret = lttng_trace_archive_location_serialize(location,
 			&payload);
+	lttng_trace_archive_location_put(location);
 	if (comm_ret < 0) {
 		ERR("Failed to serialize the location of the trace archive produced during the destruction of session \"%s\"",
 				session->name);

@@ -169,7 +169,7 @@ void lttng_rotation_handle_destroy(
 	if (!rotation_handle) {
 		return;
 	}
-	lttng_trace_archive_location_destroy(rotation_handle->archive_location);
+	lttng_trace_archive_location_put(rotation_handle->archive_location);
 	free(rotation_handle);
 }
 

@@ -334,6 +334,9 @@ struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 			sizeof(evaluation->parent));
 	lttng_evaluation_init(&evaluation->parent, type);
 	evaluation->id = id;
+	if (location) {
+		lttng_trace_archive_location_get(location);
+	}
 	evaluation->location = location;
 	return &evaluation->parent;
 }
@@ -377,11 +380,12 @@ ssize_t create_evaluation_from_buffer(
 		goto error;
 	}
 
+	lttng_trace_archive_location_put(location);
 	ret = size;
 	*_evaluation = evaluation;
 	return ret;
 error:
-	lttng_trace_archive_location_destroy(location);
+	lttng_trace_archive_location_put(location);
 	evaluation = NULL;
 	return -1;
 }
@@ -536,7 +540,7 @@ void lttng_evaluation_session_rotation_destroy(
 
 	rotation = container_of(evaluation,
 			struct lttng_evaluation_session_rotation, parent);
-	lttng_trace_archive_location_destroy(rotation->location);
+	lttng_trace_archive_location_put(rotation->location);
 	free(rotation);
 }
 
@@ -559,6 +563,12 @@ end:
 	return status;
 }
 
+/*
+ * The public API assumes that trace archive locations are always provided as
+ * "constant". This means that the user of liblttng-ctl never has to destroy a
+ * trace archive location. Hence, users of liblttng-ctl have no visibility of
+ * the reference counting of archive locations.
+ */
 enum lttng_evaluation_status
 lttng_evaluation_session_rotation_completed_get_location(
 		const struct lttng_evaluation *evaluation,
