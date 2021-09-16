@@ -59,7 +59,7 @@ void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle)
 	}
 	lttng_poll_clean(&handle->communication.events);
 	lttng_dynamic_buffer_reset(&handle->communication.buffer);
-	lttng_trace_archive_location_destroy(handle->location);
+	lttng_trace_archive_location_put(handle->location);
 	free(handle);
 }
 
@@ -173,6 +173,7 @@ int handle_state_transition(struct lttng_destruction_handle *handle)
 			ret = -1;
 			break;
 		} else {
+			/* Ownership is transferred to the destruction handle. */
 			handle->location = location;
 			handle->communication.state = COMMUNICATION_STATE_END;
 		}
