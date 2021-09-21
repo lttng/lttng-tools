@@ -70,12 +70,6 @@ lttng_session_descriptor_live_get_timer_interval(
 		const struct lttng_session_descriptor *descriptor);
 
 LTTNG_HIDDEN
-enum lttng_session_descriptor_status
-lttng_session_descriptor_get_session_name(
-		const struct lttng_session_descriptor *descriptor,
-		const char **name);
-
-LTTNG_HIDDEN
 int lttng_session_descriptor_set_session_name(
 		struct lttng_session_descriptor *descriptor,
 		const char *name);
