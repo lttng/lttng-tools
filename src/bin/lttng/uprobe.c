@@ -195,7 +195,6 @@ error:
  * Set the userspace probe fields in the lttng_event struct and set the
  * target_path to the path to the binary.
  */
-LTTNG_HIDDEN
 int parse_userspace_probe_opts(const char *opt,
 		struct lttng_userspace_probe_location **probe_location)
 {

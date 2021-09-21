@@ -12,7 +12,12 @@ liblttng_ctl_la_SOURCES = lttng-ctl.c snapshot.c lttng-ctl-helper.h \
 		tracker.c
 
 liblttng_ctl_la_LDFLAGS = \
-		$(LT_NO_UNDEFINED)
+		$(LT_NO_UNDEFINED) \
+		-export-symbols $(srcdir)/liblttng-ctl.sym
+
+EXTRA_liblttng_ctl_la_DEPENDENCIES = liblttng-ctl.sym
+
+EXTRA_DIST = liblttng-ctl.sym
 
 liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \

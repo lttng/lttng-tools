@@ -74,32 +74,26 @@ struct lttng_trace_archive_location_comm {
 } LTTNG_PACKED;
 
 
-LTTNG_HIDDEN
 struct lttng_trace_archive_location *lttng_trace_archive_location_local_create(
 		const char *path);
 
-LTTNG_HIDDEN
 struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
 		const char *host,
 		enum lttng_trace_archive_location_relay_protocol_type protocol,
 		uint16_t control_port, uint16_t data_port,
 		const char *relative_path);
 
-LTTNG_HIDDEN
 ssize_t lttng_trace_archive_location_create_from_buffer(
 		const struct lttng_buffer_view *buffer,
 		struct lttng_trace_archive_location **location);
 
-LTTNG_HIDDEN
 ssize_t lttng_trace_archive_location_serialize(
 		const struct lttng_trace_archive_location *location,
 		struct lttng_dynamic_buffer *buffer);
 
-LTTNG_HIDDEN
 void lttng_trace_archive_location_get(
 		struct lttng_trace_archive_location *location);
 
-LTTNG_HIDDEN
 void lttng_trace_archive_location_put(
 		struct lttng_trace_archive_location *location);
 

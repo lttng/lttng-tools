@@ -116,7 +116,6 @@ end_load:
 	}
 }
 
-LTTNG_HIDDEN
 int filter_visitor_ir_validate_string(struct filter_parser_ctx *ctx)
 {
 	return validate_string(ctx->ir_root);

@@ -29,16 +29,13 @@ struct lttng_notification_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 struct lttng_notification *lttng_notification_create(
 		struct lttng_trigger *trigger,
 		struct lttng_evaluation *evaluation);
 
-LTTNG_HIDDEN
 int lttng_notification_serialize(const struct lttng_notification *notification,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 ssize_t lttng_notification_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_notification **notification);

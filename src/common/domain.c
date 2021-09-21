@@ -8,7 +8,6 @@
 #include "lttng/domain-internal.h"
 #include "common/macros.h"
 
-LTTNG_HIDDEN
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type)
 {
 	switch (domain_type) {

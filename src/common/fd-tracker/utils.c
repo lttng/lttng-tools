@@ -27,13 +27,11 @@ int close_pipe(void *data, int *pipe)
 	return 0;
 }
 
-LTTNG_HIDDEN
 int fd_tracker_util_close_fd(void *unused, int *fd)
 {
 	return close(*fd);
 }
 
-LTTNG_HIDDEN
 int fd_tracker_util_pipe_open_cloexec(
 		struct fd_tracker *tracker, const char *name, int *pipe)
 {
@@ -59,7 +57,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int fd_tracker_util_pipe_close(struct fd_tracker *tracker, int *pipe)
 {
 	return fd_tracker_close_unsuspendable_fd(
@@ -136,7 +133,6 @@ void directory_handle_destroy(
 }
 #endif
 
-LTTNG_HIDDEN
 struct lttng_directory_handle *fd_tracker_create_directory_handle(
 		struct fd_tracker *tracker, const char *path)
 {
@@ -144,7 +140,6 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle(
 			tracker, NULL, path);
 }
 
-LTTNG_HIDDEN
 struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 		struct fd_tracker *tracker,
 		struct lttng_directory_handle *in_handle,

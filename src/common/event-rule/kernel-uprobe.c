@@ -307,7 +307,6 @@ end:
 	return rule;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **_event_rule)
@@ -430,7 +429,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 struct lttng_userspace_probe_location *
 lttng_event_rule_kernel_uprobe_get_location_mutable(
 		const struct lttng_event_rule *rule)

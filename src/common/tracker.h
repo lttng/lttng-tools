@@ -33,53 +33,41 @@ struct lttng_process_attr_values {
 	struct lttng_dynamic_pointer_array array;
 };
 
-LTTNG_HIDDEN
 const char *lttng_process_attr_to_string(enum lttng_process_attr process_attr);
 
-LTTNG_HIDDEN
 struct lttng_process_attr_values *lttng_process_attr_values_create(void);
 
 /* Prefixed with '_' since the name conflicts with a public API. */
-LTTNG_HIDDEN
 unsigned int _lttng_process_attr_values_get_count(
 		const struct lttng_process_attr_values *values);
 
-LTTNG_HIDDEN
 const struct process_attr_value *lttng_process_attr_tracker_values_get_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index);
 
-LTTNG_HIDDEN
 int lttng_process_attr_values_serialize(
 		const struct lttng_process_attr_values *values,
 		struct lttng_dynamic_buffer *buffer);
 
-LTTNG_HIDDEN
 ssize_t lttng_process_attr_values_create_from_buffer(
 		enum lttng_domain_type domain,
 		enum lttng_process_attr process_attr,
 		const struct lttng_buffer_view *buffer_view,
 		struct lttng_process_attr_values **_values);
 
-LTTNG_HIDDEN
 void lttng_process_attr_values_destroy(
 		struct lttng_process_attr_values *values);
 
-LTTNG_HIDDEN
 struct process_attr_value *process_attr_value_copy(
 		const struct process_attr_value *value);
 
-LTTNG_HIDDEN
 unsigned long process_attr_value_hash(const struct process_attr_value *a);
 
-LTTNG_HIDDEN
 bool process_attr_tracker_value_equal(const struct process_attr_value *a,
 		const struct process_attr_value *b);
 
-LTTNG_HIDDEN
 void process_attr_value_destroy(struct process_attr_value *value);
 
-LTTNG_HIDDEN
 enum lttng_error_code process_attr_value_from_comm(
 		enum lttng_domain_type domain,
 		enum lttng_process_attr process_attr,

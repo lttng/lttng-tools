@@ -54,33 +54,25 @@ struct lttng_condition_comm {
 	char payload[];
 };
 
-LTTNG_HIDDEN
 void lttng_condition_get(struct lttng_condition *condition);
 
-LTTNG_HIDDEN
 void lttng_condition_put(struct lttng_condition *condition);
 
-LTTNG_HIDDEN
 void lttng_condition_init(struct lttng_condition *condition,
 		enum lttng_condition_type type);
 
-LTTNG_HIDDEN
 bool lttng_condition_validate(const struct lttng_condition *condition);
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
-LTTNG_HIDDEN
 int lttng_condition_serialize(const struct lttng_condition *condition,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 bool lttng_condition_is_equal(const struct lttng_condition *a,
 		const struct lttng_condition *b);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_condition_mi_serialize(
 		const struct lttng_trigger *trigger,
 		const struct lttng_condition *condition,
@@ -88,7 +80,6 @@ enum lttng_error_code lttng_condition_mi_serialize(
 		const struct mi_lttng_error_query_callbacks
 				*error_query_callbacks);
 
-LTTNG_HIDDEN
 const char *lttng_condition_type_str(enum lttng_condition_type type);
 
 #endif /* LTTNG_CONDITION_INTERNAL_H */

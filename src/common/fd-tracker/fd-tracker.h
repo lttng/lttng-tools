@@ -49,12 +49,10 @@ typedef int (*fd_close_cb)(void *, int *in_fds);
  * under which unlinked files will be stored for as long as a reference to them
  * is held.
  */
-LTTNG_HIDDEN
 struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
 		unsigned int capacity);
 
 /* Returns an error if file descriptors are leaked. */
-LTTNG_HIDDEN
 int fd_tracker_destroy(struct fd_tracker *tracker);
 
 /*
@@ -79,7 +77,6 @@ int fd_tracker_destroy(struct fd_tracker *tracker);
  * (e.g. truncation) may react differently than if the file descriptor was kept
  * open.
  */
-LTTNG_HIDDEN
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		struct lttng_directory_handle *directory,
 		const char *path,
@@ -108,7 +105,6 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
  *   - EMFILE: too many unsuspendable fds are opened and the tracker can't
  *             accommodates the request for a new unsuspendable entry.
  */
-LTTNG_HIDDEN
 int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 		int *out_fds,
 		const char **names,
@@ -131,7 +127,6 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
  * Closed fds are set to -1 in the fds array which, in the event of an error,
  * allows the user to know which file descriptors are no longer being tracked.
  */
-LTTNG_HIDDEN
 int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 		int *fds,
 		unsigned int fd_count,
@@ -141,7 +136,6 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 /*
  * Log the contents of the fd_tracker.
  */
-LTTNG_HIDDEN
 void fd_tracker_log(struct fd_tracker *tracker);
 
 /*
@@ -159,14 +153,12 @@ void fd_tracker_log(struct fd_tracker *tracker);
  * Returns the fd on success, otherwise a negative value may be returned
  * if the restoration of the fd failed.
  */
-LTTNG_HIDDEN
 int fs_handle_get_fd(struct fs_handle *handle);
 
 /*
  * Used by the application to signify that it is no longer using the
  * underlying fd and that it may be suspended.
  */
-LTTNG_HIDDEN
 void fs_handle_put_fd(struct fs_handle *handle);
 
 /*
@@ -181,13 +173,11 @@ void fs_handle_put_fd(struct fs_handle *handle);
  * Returns 0 on success, otherwise a negative value will be returned
  * if the operation failed.
  */
-LTTNG_HIDDEN
 int fs_handle_unlink(struct fs_handle *handle);
 
 /*
  * Frees the handle and discards the underlying fd.
  */
-LTTNG_HIDDEN
 int fs_handle_close(struct fs_handle *handle);
 
 #endif /* FD_TRACKER_H */

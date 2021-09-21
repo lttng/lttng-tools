@@ -44,7 +44,7 @@ struct log_time {
 	char str[19];
 };
 extern DECLARE_URCU_TLS(struct log_time, error_log_time);
-extern LTTNG_HIDDEN DECLARE_URCU_TLS(const char *, logger_thread_name);
+extern DECLARE_URCU_TLS(const char *, logger_thread_name);
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
@@ -262,7 +262,6 @@ const char *error_get_str(int32_t code);
 const char *log_add_time(void);
 
 /* Name must be a statically-allocated string. */
-LTTNG_HIDDEN
 void logger_set_thread_name(const char *name, bool set_pthread_name);
 
 #endif /* _ERROR_H */

@@ -307,7 +307,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_rotation_ongoing_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
@@ -317,7 +316,6 @@ ssize_t lttng_condition_session_rotation_ongoing_create_from_payload(
 			LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING);
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_rotation_completed_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
@@ -428,7 +426,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_rotation_ongoing_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation)
@@ -438,7 +435,6 @@ ssize_t lttng_evaluation_session_rotation_ongoing_create_from_payload(
 			view, evaluation);
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation)
@@ -448,7 +444,6 @@ ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
 			view, evaluation);
 }
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_rotation_ongoing_create(
 		uint64_t id)
 {
@@ -457,7 +452,6 @@ struct lttng_evaluation *lttng_evaluation_session_rotation_ongoing_create(
 			NULL);
 }
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_rotation_completed_create(
 		uint64_t id, struct lttng_trace_archive_location *location)
 {

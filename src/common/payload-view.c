@@ -11,13 +11,11 @@
 #include "payload.h"
 #include <stddef.h>
 
-LTTNG_HIDDEN
 bool lttng_payload_view_is_valid(const struct lttng_payload_view *view)
 {
 	return view && lttng_buffer_view_is_valid(&view->buffer);
 }
 
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_payload(
 		const struct lttng_payload *payload, size_t offset,
 		ptrdiff_t len)
@@ -29,7 +27,6 @@ struct lttng_payload_view lttng_payload_view_from_payload(
 		} : (struct lttng_payload_view) {};
 }
 
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_view(
 		struct lttng_payload_view *view, size_t offset,
 		ptrdiff_t len)
@@ -43,7 +40,6 @@ struct lttng_payload_view lttng_payload_view_from_view(
 		} : (struct lttng_payload_view) {};
 }
 
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *buffer, size_t offset,
 		ptrdiff_t len)
@@ -54,7 +50,6 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		} : (struct lttng_payload_view) {};
 }
 
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_buffer_view(
 		const struct lttng_buffer_view *view, size_t offset,
 		ptrdiff_t len)
@@ -65,7 +60,6 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
 		} : (struct lttng_payload_view) {};
 }
 
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_init_from_buffer(
 	const char *src, size_t offset, ptrdiff_t len)
 {
@@ -75,7 +69,6 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
 	};
 }
 
-LTTNG_HIDDEN
 int lttng_payload_view_get_fd_handle_count(
 		const struct lttng_payload_view *payload_view)
 {
@@ -100,7 +93,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 struct fd_handle *lttng_payload_view_pop_fd_handle(
 		struct lttng_payload_view *view)
 {

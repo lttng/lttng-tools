@@ -25,7 +25,6 @@
 /*
  * Connect to unix socket using the path name.
  */
-LTTNG_HIDDEN
 int lttcomm_connect_unix_sock(const char *pathname)
 {
 	struct sockaddr_un s_un;
@@ -75,7 +74,6 @@ error:
  * Do an accept(2) on the sock and return the new file descriptor. The socket
  * MUST be bind(2) before.
  */
-LTTNG_HIDDEN
 int lttcomm_accept_unix_sock(int sock)
 {
 	int new_fd;
@@ -91,7 +89,6 @@ int lttcomm_accept_unix_sock(int sock)
 	return new_fd;
 }
 
-LTTNG_HIDDEN
 int lttcomm_create_anon_unix_socketpair(int *fds)
 {
 	if (socketpair(PF_UNIX, SOCK_STREAM, 0, fds) < 0) {
@@ -105,7 +102,6 @@ int lttcomm_create_anon_unix_socketpair(int *fds)
  * Creates a AF_UNIX local socket using pathname bind the socket upon creation
  * and return the fd.
  */
-LTTNG_HIDDEN
 int lttcomm_create_unix_sock(const char *pathname)
 {
 	struct sockaddr_un s_un;
@@ -153,7 +149,6 @@ error:
 /*
  * Make the socket listen using LTTNG_SESSIOND_COMM_MAX_LISTEN.
  */
-LTTNG_HIDDEN
 int lttcomm_listen_unix_sock(int sock)
 {
 	int ret;
@@ -172,7 +167,6 @@ int lttcomm_listen_unix_sock(int sock)
  *
  * Return the size of received data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 {
 	struct msghdr msg;
@@ -219,7 +213,6 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  *
  * Return the size of received data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len)
 {
 	struct msghdr msg;
@@ -271,7 +264,6 @@ end:
  *
  * Return the size of sent data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 {
 	struct msghdr msg;
@@ -325,7 +317,6 @@ end:
  *
  * Return the size of sent data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len)
 {
 	struct msghdr msg;
@@ -375,7 +366,6 @@ end:
 /*
  * Shutdown cleanly a unix socket.
  */
-LTTNG_HIDDEN
 int lttcomm_close_unix_sock(int sock)
 {
 	int ret, closeret;
@@ -399,7 +389,6 @@ int lttcomm_close_unix_sock(int sock)
  *
  * Returns the size of data sent, or negative error value.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 {
 	struct msghdr msg;
@@ -513,14 +502,12 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock,
 		struct lttng_payload_view *view)
 {
 	return _lttcomm_send_payload_view_fds_unix_sock(sock, view, true);
 }
 
-LTTNG_HIDDEN
 ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock,
 		struct lttng_payload_view *view)
 {
@@ -533,7 +520,6 @@ ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock,
  *
  * Returns the size of data sent, or negative error value.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb_fd)
 {
 	struct msghdr msg;
@@ -618,7 +604,6 @@ end:
  * Expect at most "nb_fd" file descriptors. Returns the number of fd
  * actually received in nb_fd.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 {
 	struct iovec iov[1];
@@ -826,14 +811,12 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 			   struct lttng_payload *payload)
 {
 	return _lttcomm_recv_payload_fds_unix_sock(sock, nb_fd, payload, true);
 }
 
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd,
 			   struct lttng_payload *payload)
 {
@@ -852,7 +835,6 @@ ssize_t lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd,
  * possible since the FDs are actually in the control message. It is all or
  * nothing, still the sender side can send the wrong number of fds.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 {
 	struct iovec iov[1];
@@ -985,7 +967,6 @@ end:
  *
  * Returns the size of data sent, or negative error value.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 {
 	struct msghdr msg;
@@ -1050,7 +1031,6 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
  *
  * Returns the size of received data, or negative error value.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		lttng_sock_cred *creds)
 {
@@ -1146,7 +1126,6 @@ end:
  * Set socket option to use credentials passing.
  */
 #if defined(__linux__) || defined(__CYGWIN__)
-LTTNG_HIDDEN
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
 	int ret, on = 1;
@@ -1159,7 +1138,6 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	return ret;
 }
 #elif (defined(__FreeBSD__) || defined(__sun__) || defined(__APPLE__))
-LTTNG_HIDDEN
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
 	return 0;

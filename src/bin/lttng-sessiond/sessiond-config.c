@@ -80,7 +80,6 @@ void config_string_set_static(struct config_string *config_str,
 }
 
 /* Only use for dynamically-allocated strings. */
-LTTNG_HIDDEN
 void config_string_set(struct config_string *config_str, char *value)
 {
 	LTTNG_ASSERT(config_str);
@@ -93,7 +92,6 @@ void config_string_set(struct config_string *config_str, char *value)
 	config_str->value = value;
 }
 
-LTTNG_HIDDEN
 int sessiond_config_apply_env_config(struct sessiond_config *config)
 {
 	int ret = 0;
@@ -246,7 +244,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int sessiond_config_init(struct sessiond_config *config)
 {
 	int ret;
@@ -401,7 +398,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void sessiond_config_fini(struct sessiond_config *config)
 {
 	config_string_fini(&config->tracing_group_name);
@@ -457,7 +453,6 @@ end:
 	if (resolve_path(path_config_str))	\
 		return -1
 
-LTTNG_HIDDEN
 int sessiond_config_resolve_paths(struct sessiond_config *config)
 {
 	RESOLVE_CHECK(&config->apps_unix_sock_path);
@@ -485,7 +480,6 @@ int sessiond_config_resolve_paths(struct sessiond_config *config)
 	return 0;
 }
 
-LTTNG_HIDDEN
 void sessiond_config_log(struct sessiond_config *config)
 {
 	DBG_NO_LOC("[sessiond configuration]");

@@ -31,7 +31,6 @@ struct lttng_buffer_view {
  * Note that a buffer view never assumes the ownership of the memory it
  * references.
  */
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_init(
 		const char *src, size_t offset, ptrdiff_t len);
 
@@ -44,7 +43,6 @@ struct lttng_buffer_view lttng_buffer_view_init(
  *
  * @view	Buffer view to validate
  */
-LTTNG_HIDDEN
 bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);
 
 /**
@@ -60,7 +58,6 @@ bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);
  * Note that a buffer view never assumes the ownership of the memory it
  * references.
  */
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_view(
 		const struct lttng_buffer_view *src, size_t offset,
 		ptrdiff_t len);
@@ -78,7 +75,6 @@ struct lttng_buffer_view lttng_buffer_view_from_view(
  * Note that a buffer view never assumes the ownership of the memory it
  * references.
  */
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *src, size_t offset,
 		ptrdiff_t len);
@@ -92,7 +88,6 @@ struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
  * @len_with_null_terminator	Expected length of the string, including the
  * 				NULL terminator.
  */
-LTTNG_HIDDEN
 bool lttng_buffer_view_contains_string(const struct lttng_buffer_view *buf,
 		const char *str,
 		size_t len_with_null_terminator);

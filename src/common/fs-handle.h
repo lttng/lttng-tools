@@ -28,14 +28,12 @@ struct fs_handle;
  * Returns the fd on success, otherwise a negative value may be returned
  * if the restoration of the fd failed.
  */
-LTTNG_HIDDEN
 int fs_handle_get_fd(struct fs_handle *handle);
 
 /*
  * Used by the caller to signal that it is no longer using the underlying fd and
  * that it may be safely suspended.
  */
-LTTNG_HIDDEN
 void fs_handle_put_fd(struct fs_handle *handle);
 
 /*
@@ -50,25 +48,19 @@ void fs_handle_put_fd(struct fs_handle *handle);
  * Returns 0 on success, otherwise a negative value will be returned
  * if the operation failed.
  */
-LTTNG_HIDDEN
 int fs_handle_unlink(struct fs_handle *handle);
 
 /*
  * Frees the handle and discards the underlying fd.
  */
-LTTNG_HIDDEN
 int fs_handle_close(struct fs_handle *handle);
 
-LTTNG_HIDDEN
 ssize_t fs_handle_read(struct fs_handle *handle, void *buf, size_t count);
 
-LTTNG_HIDDEN
 ssize_t fs_handle_write(struct fs_handle *handle, const void *buf, size_t count);
 
-LTTNG_HIDDEN
 int fs_handle_truncate(struct fs_handle *handle, off_t offset);
 
-LTTNG_HIDDEN
 off_t fs_handle_seek(struct fs_handle *handle, off_t offset, int whence);
 
 #endif /* FS_HANDLE_H */

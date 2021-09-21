@@ -156,7 +156,6 @@ error:
  * This returned value is used by futex_wait_update() in futex.c to WAKE all
  * waiters which are UST application waiting for a session daemon.
  */
-LTTNG_HIDDEN
 char *shm_ust_get_mmap(char *shm_path, int global)
 {
 	size_t mmap_size;
@@ -203,7 +202,6 @@ error:
 /*
  * shm_create_anonymous is never called concurrently within a process.
  */
-LTTNG_HIDDEN
 int shm_create_anonymous(const char *owner_name)
 {
 	char tmp_name[NAME_MAX];

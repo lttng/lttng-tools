@@ -56,7 +56,6 @@ typedef int (*config_entry_handler_cb)(const struct config_entry *, void *);
  * Returns 0 on success. Negative values are error codes. If the return value
  * is positive, it represents the line number on which a parsing error occurred.
  */
-LTTNG_HIDDEN
 int config_get_section_entries(const char *path, const char *section,
 		config_entry_handler_cb handler, void *user_data);
 
@@ -69,7 +68,6 @@ int config_get_section_entries(const char *path, const char *section,
  * Returns either the value of the parsed integer, or 0/1 if a boolean text
  * string was recognized. Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_parse_value(const char *value);
 
 /*
@@ -84,7 +82,6 @@ int config_parse_value(const char *value);
  * Returns an instance of a configuration writer on success, NULL on
  * error.
  */
-LTTNG_HIDDEN
 struct config_writer *config_writer_create(int fd_output, int indent);
 
 /*
@@ -95,7 +92,6 @@ struct config_writer *config_writer_create(int fd_output, int indent);
  * Returns zero if the XML document could be closed cleanly. Negative values
  * indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_destroy(struct config_writer *writer);
 
 /*
@@ -108,7 +104,6 @@ int config_writer_destroy(struct config_writer *writer);
  * Returns zero if the XML element could be opened.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_open_element(struct config_writer *writer,
 		const char *element_name);
 
@@ -122,7 +117,6 @@ int config_writer_open_element(struct config_writer *writer,
  * Returns zero if the XML element's attribute could be written.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_write_attribute(struct config_writer *writer,
 		const char *name, const char *value);
 
@@ -134,7 +128,6 @@ int config_writer_write_attribute(struct config_writer *writer,
  * Returns zero if the XML document could be closed cleanly.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_close_element(struct config_writer *writer);
 
 /*
@@ -149,7 +142,6 @@ int config_writer_close_element(struct config_writer *writer);
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_write_element_unsigned_int(struct config_writer *writer,
 		const char *element_name, uint64_t value);
 
@@ -164,7 +156,7 @@ int config_writer_write_element_unsigned_int(struct config_writer *writer,
  *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
- */LTTNG_HIDDEN
+ */
 int config_writer_write_element_signed_int(struct config_writer *writer,
 		const char *element_name, int64_t value);
 
@@ -180,7 +172,6 @@ int config_writer_write_element_signed_int(struct config_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_write_element_bool(struct config_writer *writer,
 		const char *element_name, int value);
 
@@ -196,7 +187,6 @@ int config_writer_write_element_bool(struct config_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_write_element_string(struct config_writer *writer,
 		const char *element_name, const char *value);
 
@@ -212,7 +202,6 @@ int config_writer_write_element_string(struct config_writer *writer,
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-LTTNG_HIDDEN
 int config_writer_write_element_double(struct config_writer *writer,
 		const char *element_name,
 		double value);
@@ -236,7 +225,6 @@ int config_writer_write_element_double(struct config_writer *writer,
  * Returns zero if the session could be loaded successfully. Returns
  * a negative LTTNG_ERR code on error.
  */
-LTTNG_HIDDEN
 int config_load_session(const char *path, const char *session_name,
 		int overwrite, unsigned int autoload,
 		const struct config_load_session_override_attr *overrides);

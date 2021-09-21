@@ -61,7 +61,6 @@ struct lttng_directory_handle {
  * The reference to the directory handle must be released using
  * lttng_directory_handle_put().
  */
-LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create(
 		const char *path);
 
@@ -78,7 +77,6 @@ struct lttng_directory_handle *lttng_directory_handle_create(
  * The reference to the directory handle must be released using
  * lttng_directory_handle_put().
  */
-LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create_from_handle(
 		const char *path,
 		const struct lttng_directory_handle *ref_handle);
@@ -93,7 +91,6 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_handle(
  * The reference to the directory handle must be released using
  * lttng_directory_handle_put().
  */
-LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		int dirfd);
 
@@ -103,26 +100,22 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
  * The reference to the directory handle must be released using
  * lttng_directory_handle_put().
  */
-LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_copy(
 		const struct lttng_directory_handle *handle);
 
 /*
  * Acquire a reference to a directory handle.
  */
-LTTNG_HIDDEN
 bool lttng_directory_handle_get(struct lttng_directory_handle *handle);
 
 /*
  * Release a reference to a directory handle.
  */
-LTTNG_HIDDEN
 void lttng_directory_handle_put(struct lttng_directory_handle *handle);
 
 /*
  * Create a subdirectory relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory,
@@ -132,7 +125,6 @@ int lttng_directory_handle_create_subdirectory(
  * Create a subdirectory relative to a directory handle
  * as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory,
@@ -141,7 +133,6 @@ int lttng_directory_handle_create_subdirectory_as_user(
 /*
  * Recursively create a directory relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory_recursive(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory_path,
@@ -151,7 +142,6 @@ int lttng_directory_handle_create_subdirectory_recursive(
  * Recursively create a directory relative to a directory handle
  * as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory_path,
@@ -160,7 +150,6 @@ int lttng_directory_handle_create_subdirectory_recursive_as_user(
 /*
  * Open a file descriptor to a path relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_open_file(
 		const struct lttng_directory_handle *handle,
 		const char *filename,
@@ -170,7 +159,6 @@ int lttng_directory_handle_open_file(
  * Open a file descriptor to a path relative to a directory handle
  * as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_open_file_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *filename,
@@ -180,7 +168,6 @@ int lttng_directory_handle_open_file_as_user(
 /*
  * Unlink a file to a path relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_unlink_file(
 		const struct lttng_directory_handle *handle,
 		const char *filename);
@@ -188,7 +175,6 @@ int lttng_directory_handle_unlink_file(
 /*
  * Unlink a file to a path relative to a directory handle as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_unlink_file_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *filename,
@@ -198,7 +184,6 @@ int lttng_directory_handle_unlink_file_as_user(
  * Rename a file from a path relative to a directory handle to a new
  * name relative to another directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_rename(
 		const struct lttng_directory_handle *old_handle,
 		const char *old_name,
@@ -209,7 +194,6 @@ int lttng_directory_handle_rename(
  * Rename a file from a path relative to a directory handle to a new
  * name relative to another directory handle as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_rename_as_user(
 		const struct lttng_directory_handle *old_handle,
 		const char *old_name,
@@ -220,7 +204,6 @@ int lttng_directory_handle_rename_as_user(
 /*
  * Remove a subdirectory relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory(
 		const struct lttng_directory_handle *handle,
 		const char *name);
@@ -228,7 +211,6 @@ int lttng_directory_handle_remove_subdirectory(
 /*
  * Remove a subdirectory relative to a directory handle as a given user.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
@@ -239,7 +221,6 @@ int lttng_directory_handle_remove_subdirectory_as_user(
  * consists in empty directories.
  * @flags: enum lttng_directory_handle_rmdir_recursive_flags
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive(
 		const struct lttng_directory_handle *handle,
 		const char *name, int flags);
@@ -249,7 +230,6 @@ int lttng_directory_handle_remove_subdirectory_recursive(
  * consists in empty directories as a given user.
  * @flags: enum lttng_directory_handle_rmdir_recursive_flags
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
@@ -259,7 +239,6 @@ int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 /*
  * stat() a file relative to a directory handle.
  */
-LTTNG_HIDDEN
 int lttng_directory_handle_stat(
 		const struct lttng_directory_handle *handle,
 		const char *name,
@@ -269,7 +248,6 @@ int lttng_directory_handle_stat(
  * Returns true if this directory handle is backed by a file
  * descriptor, false otherwise.
  */
-LTTNG_HIDDEN
 bool lttng_directory_handle_uses_fd(
 		const struct lttng_directory_handle *handle);
 
@@ -278,7 +256,6 @@ bool lttng_directory_handle_uses_fd(
  *
  * Returns true if the two directory handles are equal, false otherwise.
  */
-LTTNG_HIDDEN
 bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
 		const struct lttng_directory_handle *rhs);
 

@@ -29,7 +29,6 @@
 #define ISO8601_STR_LEN sizeof("YYYYmmddTHHMMSS+HHMM")
 #define DATETIME_STR_LEN sizeof("YYYYmmdd-HHMMSS")
 
-LTTNG_HIDDEN
 bool locale_supports_utf8(void);
 
 #define NSEC_UNIT       "ns"
@@ -45,13 +44,11 @@ bool locale_supports_utf8(void);
  * Returns 0 on success, else -1 on error. errno is set to EOVERFLOW if
  * input would overflow the output in milliseconds.
  */
-LTTNG_HIDDEN
 int timespec_to_ms(struct timespec ts, unsigned long *ms);
 
 /*
  * timespec_abs_diff: Absolute difference between timespec.
  */
-LTTNG_HIDDEN
 struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
 
 /*
@@ -61,10 +58,8 @@ struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
  *
  * Returns 0 on success, else -1 on error.
  */
-LTTNG_HIDDEN
 int time_to_iso8601_str(time_t time, char *str, size_t len);
 
-LTTNG_HIDDEN
 int time_to_datetime_str(time_t time, char *str, size_t len);
 
 #endif /* LTTNG_TIME_H */

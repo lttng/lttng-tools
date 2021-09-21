@@ -414,7 +414,6 @@ end:
 /*
  * Takes ownership of the payload if present.
  */
-LTTNG_HIDDEN
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
 		uint64_t tracer_token,
 		enum lttng_domain_type domain,
@@ -441,7 +440,6 @@ end:
 	return notification;
 }
 
-LTTNG_HIDDEN
 void lttng_event_notifier_notification_destroy(
 		struct lttng_event_notifier_notification *notification)
 {

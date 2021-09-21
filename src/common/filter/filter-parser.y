@@ -43,20 +43,13 @@ do {								\
 } while (0)
 #endif
 
-LTTNG_HIDDEN
 int yydebug;
-LTTNG_HIDDEN
 int filter_parser_debug = 0;
 
-LTTNG_HIDDEN
 int yyparse(struct filter_parser_ctx *parser_ctx, yyscan_t scanner);
-LTTNG_HIDDEN
 int yylex(union YYSTYPE *yyval, yyscan_t scanner);
-LTTNG_HIDDEN
 int yylex_init_extra(struct filter_parser_ctx *parser_ctx, yyscan_t * ptr_yy_globals);
-LTTNG_HIDDEN
 int yylex_destroy(yyscan_t yyparser_ctx);
-LTTNG_HIDDEN
 void yyrestart(FILE * in_str, yyscan_t parser_ctx);
 
 struct gc_string {
@@ -73,7 +66,6 @@ static const char *node_type_to_str[] = {
 	[ NODE_UNARY_OP ] = "NODE_UNARY_OP",
 };
 
-LTTNG_HIDDEN
 const char *node_type(struct filter_node *node)
 {
 	if (node->type < NR_NODE_TYPES)
@@ -138,7 +130,6 @@ struct gc_string *gc_string_append(struct filter_parser_ctx *parser_ctx,
 	return gstr;
 }
 
-LTTNG_HIDDEN
 void setstring(struct filter_parser_ctx *parser_ctx, YYSTYPE *lvalp, const char *src)
 {
 	lvalp->gs = gc_string_alloc(parser_ctx, strlen(src) + 1);
@@ -242,13 +233,11 @@ static void filter_ast_free(struct filter_ast *ast)
 	free(ast);
 }
 
-LTTNG_HIDDEN
 int filter_parser_ctx_append_ast(struct filter_parser_ctx *parser_ctx)
 {
 	return yyparse(parser_ctx, parser_ctx->scanner);
 }
 
-LTTNG_HIDDEN
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input)
 {
 	struct filter_parser_ctx *parser_ctx;
@@ -290,7 +279,6 @@ cleanup_parser_ctx:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 {
 	int ret;
@@ -308,7 +296,6 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 	free(parser_ctx);
 }
 
-LTTNG_HIDDEN
 int filter_parser_ctx_create_from_filter_expression(
 		const char *filter_expression, struct filter_parser_ctx **ctxp)
 {
@@ -431,7 +418,6 @@ error:
 {
 #include "common/macros.h"
 
-LTTNG_HIDDEN
 void setstring(struct filter_parser_ctx *parser_ctx, YYSTYPE *lvalp, const char *src);
 }
 

@@ -57,11 +57,9 @@ bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
 			expr->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT;
 }
 
-LTTNG_HIDDEN
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 		struct lttng_bytecode **bytecode_out);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_expr_mi_serialize(
 		const struct lttng_event_expr *expression,
 		struct mi_writer *writer);

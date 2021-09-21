@@ -19,13 +19,11 @@
 
 static bool utf8_output_supported;
 
-LTTNG_HIDDEN
 bool locale_supports_utf8(void)
 {
 	return utf8_output_supported;
 }
 
-LTTNG_HIDDEN
 int timespec_to_ms(struct timespec ts, unsigned long *ms)
 {
 	unsigned long res, remain_ms;
@@ -45,7 +43,6 @@ int timespec_to_ms(struct timespec ts, unsigned long *ms)
 	return 0;
 }
 
-LTTNG_HIDDEN
 struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 {
 	uint64_t ts1 = (uint64_t) t1.tv_sec * (uint64_t) NSEC_PER_SEC +
@@ -73,7 +70,6 @@ void __attribute__((constructor)) init_locale_utf8_support(void)
 	}
 }
 
-LTTNG_HIDDEN
 int time_to_iso8601_str(time_t time, char *str, size_t len)
 {
 	int ret = 0;
@@ -105,7 +101,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int time_to_datetime_str(time_t time, char *str, size_t len)
 {
 	int ret = 0;

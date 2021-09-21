@@ -31,7 +31,6 @@ static int lttng_opt_abort_on_error = -1;
 DEFINE_URCU_TLS(struct log_time, error_log_time);
 DEFINE_URCU_TLS(const char *, logger_thread_name);
 
-LTTNG_HIDDEN
 const char *log_add_time(void)
 {
 	int ret;
@@ -68,7 +67,6 @@ error:
 	return "";
 }
 
-LTTNG_HIDDEN
 void logger_set_thread_name(const char *name, bool set_pthread_name)
 {
 	int ret;
@@ -255,7 +253,6 @@ static const char *error_string_array[] = {
  *
  * These code MUST be negative in other to treat that as an error value.
  */
-LTTNG_HIDDEN
 const char *error_get_str(int32_t code)
 {
 	code = -code;
@@ -267,7 +264,6 @@ const char *error_get_str(int32_t code)
 	return error_string_array[ERROR_INDEX(code)];
 }
 
-LTTNG_HIDDEN
 void lttng_abort_on_error(void)
 {
 	if (lttng_opt_abort_on_error < 0) {

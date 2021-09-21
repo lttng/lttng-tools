@@ -95,7 +95,6 @@ end:
 	return;
 }
 
-LTTNG_HIDDEN
 int lttng_action_path_copy(const struct lttng_action_path *src,
 		struct lttng_action_path *dst)
 {
@@ -126,7 +125,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_action_path_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_action_path **_action_path)
@@ -181,7 +179,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_action_path_serialize(const struct lttng_action_path *action_path,
 		struct lttng_payload *payload)
 {

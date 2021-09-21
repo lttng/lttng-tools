@@ -88,7 +88,6 @@ static bool lttng_rate_policy_every_n_should_execute(
 static bool lttng_rate_policy_once_after_n_should_execute(
 		const struct lttng_rate_policy *policy, uint64_t counter);
 
-LTTNG_HIDDEN
 const char *lttng_rate_policy_type_string(
 		enum lttng_rate_policy_type rate_policy_type)
 {
@@ -108,7 +107,6 @@ enum lttng_rate_policy_type lttng_rate_policy_get_type(
 	return policy ? policy->type : LTTNG_RATE_POLICY_TYPE_UNKNOWN;
 }
 
-LTTNG_HIDDEN
 void lttng_rate_policy_init(struct lttng_rate_policy *rate_policy,
 		enum lttng_rate_policy_type type,
 		rate_policy_serialize_cb serialize,
@@ -134,7 +132,6 @@ void lttng_rate_policy_destroy(struct lttng_rate_policy *rate_policy)
 	rate_policy->destroy(rate_policy);
 }
 
-LTTNG_HIDDEN
 int lttng_rate_policy_serialize(struct lttng_rate_policy *rate_policy,
 		struct lttng_payload *payload)
 {
@@ -231,7 +228,6 @@ end:
 	return consumed_len;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_rate_policy_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_rate_policy **rate_policy)
 {
@@ -304,7 +300,6 @@ end:
 	return consumed_len;
 }
 
-LTTNG_HIDDEN
 bool lttng_rate_policy_is_equal(const struct lttng_rate_policy *a,
 		const struct lttng_rate_policy *b)
 {
@@ -329,7 +324,6 @@ end:
 	return is_equal;
 }
 
-LTTNG_HIDDEN
 bool lttng_rate_policy_should_execute(
 		const struct lttng_rate_policy *policy, uint64_t counter)
 {
@@ -751,7 +745,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 struct lttng_rate_policy *lttng_rate_policy_copy(
 		const struct lttng_rate_policy *source)
 {
@@ -779,7 +772,6 @@ static bool lttng_rate_policy_once_after_n_should_execute(
 	return counter == once_after_n_policy->threshold;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_rate_policy_mi_serialize(
 		const struct lttng_rate_policy *rate_policy,
 		struct mi_writer *writer)

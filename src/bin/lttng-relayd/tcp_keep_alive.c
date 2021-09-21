@@ -518,7 +518,6 @@ void tcp_keep_alive_init(void)
 /*
  * Set the socket options regarding TCP keep-alive.
  */
-LTTNG_HIDDEN
 int socket_apply_keep_alive_config(int socket_fd)
 {
 	int ret;

@@ -27,16 +27,13 @@ struct lttng_payload {
  * Initialize a payload. This performs no allocation and is meant
  * to be used instead of zero-ing the payload structure.
  */
-LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload);
 
 /* Copy a payload. */
-LTTNG_HIDDEN
 int lttng_payload_copy(const struct lttng_payload *src_payload,
 		struct lttng_payload *dst_payload);
 
 /* Release any memory and references held by the payload. */
-LTTNG_HIDDEN
 void lttng_payload_reset(struct lttng_payload *payload);
 
 /*
@@ -46,7 +43,6 @@ void lttng_payload_reset(struct lttng_payload *payload);
  * lttng_payload_reset must still be called on an lttng_payload to
  * free all allocated memory.
  */
-LTTNG_HIDDEN
 void lttng_payload_clear(struct lttng_payload *payload);
 
 /**
@@ -58,7 +54,6 @@ void lttng_payload_clear(struct lttng_payload *payload);
  *
  * Returns 0 on success, -1 on allocation error.
  */
-LTTNG_HIDDEN
 int lttng_payload_push_fd_handle(struct lttng_payload *payload,
 		struct fd_handle *fd_handle);
 

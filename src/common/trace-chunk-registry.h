@@ -31,7 +31,6 @@ struct lttng_trace_chunk_registry;
  *
  * Note that a trace chunk registry may only be accessed by an RCU thread.
  */
-LTTNG_HIDDEN
 struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void);
 
 /*
@@ -39,7 +38,6 @@ struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void);
  * (i.e. all references to the trace chunks it contains must be released) before
  * it is destroyed.
  */
-LTTNG_HIDDEN
 void lttng_trace_chunk_registry_destroy(
 		struct lttng_trace_chunk_registry *registry);
 
@@ -56,7 +54,6 @@ void lttng_trace_chunk_registry_destroy(
  *
  * Returns an lttng_trace_chunk on success, NULL on error.
  */
-LTTNG_HIDDEN
 struct lttng_trace_chunk *lttng_trace_chunk_registry_publish_chunk(
 		struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id, struct lttng_trace_chunk *chunk);
@@ -67,7 +64,6 @@ struct lttng_trace_chunk *lttng_trace_chunk_registry_publish_chunk(
  *
  * Returns an lttng_trace_chunk on success, NULL if the chunk does not exist.
  */
-LTTNG_HIDDEN
 struct lttng_trace_chunk *
 lttng_trace_chunk_registry_find_chunk(
 		const struct lttng_trace_chunk_registry *registry,
@@ -78,7 +74,6 @@ lttng_trace_chunk_registry_find_chunk(
  *
  * Returns 0 on success, a negative value on error.
  */
-LTTNG_HIDDEN
 int lttng_trace_chunk_registry_chunk_exists(
 		const struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists);
@@ -89,13 +84,11 @@ int lttng_trace_chunk_registry_chunk_exists(
  *
  * Returns an lttng_trace_chunk on success, NULL if the chunk does not exist.
  */
-LTTNG_HIDDEN
 struct lttng_trace_chunk *
 lttng_trace_chunk_registry_find_anonymous_chunk(
 		const struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id);
 
-LTTNG_HIDDEN
 unsigned int lttng_trace_chunk_registry_put_each_chunk(
 		const struct lttng_trace_chunk_registry *registry);
 

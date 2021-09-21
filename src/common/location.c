@@ -48,13 +48,11 @@ void trace_archive_location_destroy_ref(struct urcu_ref *ref)
 	free(location);
 }
 
-LTTNG_HIDDEN
 void lttng_trace_archive_location_get(struct lttng_trace_archive_location *location)
 {
 	urcu_ref_get(&location->ref);
 }
 
-LTTNG_HIDDEN
 void lttng_trace_archive_location_put(struct lttng_trace_archive_location *location)
 {
 	if (!location) {
@@ -64,7 +62,6 @@ void lttng_trace_archive_location_put(struct lttng_trace_archive_location *locat
 	urcu_ref_put(&location->ref, trace_archive_location_destroy_ref);
 }
 
-LTTNG_HIDDEN
 struct lttng_trace_archive_location *lttng_trace_archive_location_local_create(
 		const char *absolute_path)
 {
@@ -92,7 +89,6 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
 		const char *host,
 		enum lttng_trace_archive_location_relay_protocol_type protocol,
@@ -130,7 +126,6 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_trace_archive_location_create_from_buffer(
 		const struct lttng_buffer_view *view,
 		struct lttng_trace_archive_location **location)
@@ -215,7 +210,6 @@ error:
 	return -1;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_trace_archive_location_serialize(
 		const struct lttng_trace_archive_location *location,
 		struct lttng_dynamic_buffer *buffer)

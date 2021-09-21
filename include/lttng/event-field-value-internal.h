@@ -113,7 +113,6 @@ struct lttng_event_field_value_array {
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM`.
  *     * `count` is `NULL`.
  */
-LTTNG_HIDDEN
 enum lttng_event_field_value_status
 lttng_event_field_value_enum_get_label_count(
 		const struct lttng_event_field_value *field_val,
@@ -130,60 +129,46 @@ lttng_event_field_value_enum_get_label_count(
  * * `index` is greater than or equal to the label count of `field_val`,
  *   as returned by lttng_event_field_value_enum_get_label_count().
  */
-LTTNG_HIDDEN
 const char *lttng_event_field_value_enum_get_label_at_index(
 		const struct lttng_event_field_value *field_val,
 		unsigned int index);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_uint_create(
 		uint64_t val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_int_create(
 		int64_t val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(
 		uint64_t val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_enum_int_create(
 		int64_t val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_real_create(double val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_string_create(
 		const char *val);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		const char *val, size_t size);
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_array_create(void);
 
-LTTNG_HIDDEN
 int lttng_event_field_value_enum_append_label(
 		struct lttng_event_field_value *field_val, const char *label);
 
-LTTNG_HIDDEN
 int lttng_event_field_value_enum_append_label_with_size(
 		struct lttng_event_field_value *field_val, const char *label,
 		size_t size);
 
-LTTNG_HIDDEN
 int lttng_event_field_value_array_append(
 		struct lttng_event_field_value *array_field_val,
 		struct lttng_event_field_value *field_val);
 
-LTTNG_HIDDEN
 int lttng_event_field_value_array_append_unavailable(
 		struct lttng_event_field_value *array_field_val);
 
-LTTNG_HIDDEN
 void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val);
 
 #endif /* LTTNG_EVENT_FIELD_VALUE_INTERNAL_H */

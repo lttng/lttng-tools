@@ -203,7 +203,6 @@ static int compare_destination(struct lttng_uri *ctrl, struct lttng_uri *data)
 /*
  * Build a string URL from a lttng_uri object.
  */
-LTTNG_HIDDEN
 int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 {
 	int ipver, ret;
@@ -240,7 +239,6 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
  *
  * Return 0 if equal else 1.
  */
-LTTNG_HIDDEN
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 {
 	return memcmp(uri1, uri2, sizeof(struct lttng_uri));
@@ -249,7 +247,6 @@ int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2)
 /*
  * Free URI memory.
  */
-LTTNG_HIDDEN
 void uri_free(struct lttng_uri *uri)
 {
 	free(uri);
@@ -271,7 +268,6 @@ void uri_free(struct lttng_uri *uri)
  * This code was originally licensed GPLv2 so we acknolwedge the Free Software
  * Foundation here for the work and to make sure we are compliant with it.
  */
-LTTNG_HIDDEN
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 {
 	int ret, i = 0;
@@ -527,7 +523,6 @@ error:
  * Parse a string URL and creates URI(s) returning the size of the populated
  * array.
  */
-LTTNG_HIDDEN
 ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		struct lttng_uri **uris)
 {

@@ -14,7 +14,6 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 
-LTTNG_HIDDEN
 struct lttng_notification *lttng_notification_create(
 		struct lttng_trigger *trigger,
 		struct lttng_evaluation *evaluation)
@@ -36,7 +35,6 @@ end:
 	return notification;
 }
 
-LTTNG_HIDDEN
 int lttng_notification_serialize(const struct lttng_notification *notification,
 		struct lttng_payload *payload)
 {
@@ -72,7 +70,6 @@ end:
 
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_notification_create_from_payload(
 		struct lttng_payload_view *src_view,
 		struct lttng_notification **notification)

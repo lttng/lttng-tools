@@ -34,17 +34,14 @@ struct lttng_evaluation {
 	evaluation_destroy_cb destroy;
 };
 
-LTTNG_HIDDEN
 void lttng_evaluation_init(struct lttng_evaluation *evaluation,
 		enum lttng_condition_type type);
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_create_from_payload(
 		const struct lttng_condition *condition,
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
-LTTNG_HIDDEN
 int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
 		struct lttng_payload *payload);
 

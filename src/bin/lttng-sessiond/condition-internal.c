@@ -131,7 +131,6 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 	}
 }
 
-LTTNG_HIDDEN
 struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condition)
 {
 	int ret;

@@ -15,7 +15,6 @@
 extern "C" {
 #endif
 
-LTTNG_HIDDEN
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type);
 
 #ifdef __cplusplus

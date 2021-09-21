@@ -597,7 +597,6 @@ void lttng_session_descriptor_destroy(
 	free(descriptor);
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_session_descriptor_create_from_buffer(
 		const struct lttng_buffer_view *payload,
 		struct lttng_session_descriptor **descriptor)
@@ -802,7 +801,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_session_descriptor_serialize(
 		const struct lttng_session_descriptor *descriptor,
 		struct lttng_dynamic_buffer *buffer)
@@ -875,7 +873,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 enum lttng_session_descriptor_type
 lttng_session_descriptor_get_type(
 		const struct lttng_session_descriptor *descriptor)
@@ -883,7 +880,6 @@ lttng_session_descriptor_get_type(
 	return descriptor->type;
 }
 
-LTTNG_HIDDEN
 enum lttng_session_descriptor_output_type
 lttng_session_descriptor_get_output_type(
 		const struct lttng_session_descriptor *descriptor)
@@ -891,7 +887,6 @@ lttng_session_descriptor_get_output_type(
 	return descriptor->output_type;
 }
 
-LTTNG_HIDDEN
 void lttng_session_descriptor_get_local_output_uri(
 		const struct lttng_session_descriptor *descriptor,
 		struct lttng_uri *local_uri)
@@ -899,7 +894,6 @@ void lttng_session_descriptor_get_local_output_uri(
 	memcpy(local_uri, descriptor->output.local, sizeof(*local_uri));
 }
 
-LTTNG_HIDDEN
 void lttng_session_descriptor_get_network_output_uris(
 		const struct lttng_session_descriptor *descriptor,
 		struct lttng_uri *control,
@@ -909,7 +903,6 @@ void lttng_session_descriptor_get_network_output_uris(
 	memcpy(data, descriptor->output.network.data, sizeof(*data));
 }
 
-LTTNG_HIDDEN
 unsigned long long
 lttng_session_descriptor_live_get_timer_interval(
 		const struct lttng_session_descriptor *descriptor)
@@ -940,7 +933,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 int lttng_session_descriptor_set_session_name(
 		struct lttng_session_descriptor *descriptor,
 		const char *name)
@@ -966,7 +958,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 bool lttng_session_descriptor_is_output_destination_initialized(
 		const struct lttng_session_descriptor *descriptor)
 {
@@ -982,7 +973,6 @@ bool lttng_session_descriptor_is_output_destination_initialized(
 	}
 }
 
-LTTNG_HIDDEN
 bool lttng_session_descriptor_has_output_directory(
 		const struct lttng_session_descriptor *descriptor)
 {
@@ -1005,7 +995,6 @@ bool lttng_session_descriptor_has_output_directory(
 	return false;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_session_descriptor_set_default_output(
 		struct lttng_session_descriptor *descriptor,
 		time_t *session_creation_time,
@@ -1112,7 +1101,6 @@ end:
  * Note that only properties that can be populated by the session daemon
  * (output destination and name) are assigned.
  */
-LTTNG_HIDDEN
 int lttng_session_descriptor_assign(
 		struct lttng_session_descriptor *dst,
 		const struct lttng_session_descriptor *src)

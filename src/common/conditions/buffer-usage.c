@@ -461,7 +461,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_buffer_usage_low_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
@@ -487,7 +486,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_buffer_usage_high_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
@@ -532,7 +530,6 @@ end:
 	return evaluation;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
@@ -560,7 +557,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_buffer_usage_high_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
@@ -863,7 +859,6 @@ void lttng_evaluation_buffer_usage_destroy(
 	free(usage);
 }
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_buffer_usage_create(
 		enum lttng_condition_type type, uint64_t use, uint64_t capacity)
 {

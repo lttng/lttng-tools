@@ -360,7 +360,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
 		unsigned int capacity)
 {
@@ -406,7 +405,6 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 void fd_tracker_log(struct fd_tracker *tracker)
 {
 	struct fs_handle_tracked *handle;
@@ -455,7 +453,6 @@ void fd_tracker_log(struct fd_tracker *tracker)
 	pthread_mutex_unlock(&tracker->lock);
 }
 
-LTTNG_HIDDEN
 int fd_tracker_destroy(struct fd_tracker *tracker)
 {
 	int ret = 0;
@@ -491,7 +488,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		struct lttng_directory_handle *directory,
 		const char *path,
@@ -609,7 +605,6 @@ static int fd_tracker_suspend_handles(
 	return left_to_close ? -EMFILE : 0;
 }
 
-LTTNG_HIDDEN
 int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 		int *out_fds,
 		const char **names,
@@ -707,7 +702,6 @@ end_free_entries:
 	goto end_unlock;
 }
 
-LTTNG_HIDDEN
 int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 		int *fds_in,
 		unsigned int fd_count,

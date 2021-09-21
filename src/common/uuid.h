@@ -38,7 +38,6 @@
 
 typedef uint8_t lttng_uuid[LTTNG_UUID_LEN];
 
-LTTNG_HIDDEN
 int lttng_uuid_from_str(const char *str_in, lttng_uuid uuid_out);
 
 /*
@@ -47,22 +46,17 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid uuid_out);
  *
  * Assumes uuid_str is at least LTTNG_UUID_STR_LEN byte long.
  */
-LTTNG_HIDDEN
 void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str);
 
-LTTNG_HIDDEN
 bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b);
 
-LTTNG_HIDDEN
 bool lttng_uuid_is_nil(const lttng_uuid uuid);
 
-LTTNG_HIDDEN
 void lttng_uuid_copy(lttng_uuid dst, const lttng_uuid src);
 
 /*
  * Generate a random UUID according to RFC4122, section 4.4.
  */
-LTTNG_HIDDEN
 int lttng_uuid_generate(lttng_uuid uuid_out);
 
 #endif /* LTTNG_UUID_H */

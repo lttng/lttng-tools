@@ -93,17 +93,6 @@ void *zmalloc(size_t len)
  */
 #define ALIGN_TO(value, align) ((value + (align - 1)) & ~(align - 1))
 
-/*
- * LTTNG_HIDDEN: set the hidden attribute for internal functions
- * On Windows, symbols are local unless explicitly exported,
- * see https://gcc.gnu.org/wiki/Visibility
- */
-#if defined(_WIN32) || defined(__CYGWIN__)
-#define LTTNG_HIDDEN
-#else
-#define LTTNG_HIDDEN __attribute__((visibility("hidden")))
-#endif
-
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))

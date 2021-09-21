@@ -15,7 +15,6 @@
 
 #include <stdlib.h>
 
-LTTNG_HIDDEN
 bool lttng_snapshot_output_validate(const struct lttng_snapshot_output *output)
 {
 	bool valid = false;
@@ -47,7 +46,6 @@ end:
 	return valid;
 }
 
-LTTNG_HIDDEN
 bool lttng_snapshot_output_is_equal(
 		const struct lttng_snapshot_output *a,
 		const struct lttng_snapshot_output *b)
@@ -90,7 +88,6 @@ struct lttng_snapshot_output_comm {
 	char data_url[PATH_MAX];
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 int lttng_snapshot_output_serialize(
 		const struct lttng_snapshot_output *output,
 		struct lttng_payload *payload)
@@ -128,7 +125,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_snapshot_output_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_snapshot_output **output_p)
@@ -179,7 +175,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_snapshot_output_mi_serialize(
 		const struct lttng_snapshot_output *output,
 		struct mi_writer *writer)

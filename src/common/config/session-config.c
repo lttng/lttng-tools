@@ -51,7 +51,7 @@ struct session_config_validation_ctx {
 	xmlSchemaValidCtxtPtr schema_validation_ctx;
 };
 
-LTTNG_HIDDEN const char * const config_element_all = "all";
+const char * const config_element_all = "all";
 const char * const config_str_yes = "yes";
 const char * const config_str_true = "true";
 const char * const config_str_on = "on";
@@ -81,16 +81,16 @@ const char * const config_element_symbol_name = "symbol_name";
 const char * const config_element_address = "address";
 const char * const config_element_offset = "offset";
 
-LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup = "lookup_method";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_function_default = "DEFAULT";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_function_elf = "ELF";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_tracepoint_sdt = "SDT";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_location_binary_path = "binary_path";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_function_attributes = "userspace_probe_function_attributes";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_function_location_function_name = "function_name";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_attributes = "userspace_probe_tracepoint_attributes";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_location_provider_name = "provider_name";
-LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_location_probe_name = "probe_name";
+const char * const config_element_userspace_probe_lookup = "lookup_method";
+const char * const config_element_userspace_probe_lookup_function_default = "DEFAULT";
+const char * const config_element_userspace_probe_lookup_function_elf = "ELF";
+const char * const config_element_userspace_probe_lookup_tracepoint_sdt = "SDT";
+const char * const config_element_userspace_probe_location_binary_path = "binary_path";
+const char * const config_element_userspace_probe_function_attributes = "userspace_probe_function_attributes";
+const char * const config_element_userspace_probe_function_location_function_name = "function_name";
+const char * const config_element_userspace_probe_tracepoint_attributes = "userspace_probe_tracepoint_attributes";
+const char * const config_element_userspace_probe_tracepoint_location_provider_name = "provider_name";
+const char * const config_element_userspace_probe_tracepoint_location_probe_name = "probe_name";
 
 const char * const config_element_name = "name";
 const char * const config_element_enabled = "enabled";
@@ -99,30 +99,30 @@ const char * const config_element_subbuf_size = "subbuffer_size";
 const char * const config_element_num_subbuf = "subbuffer_count";
 const char * const config_element_switch_timer_interval = "switch_timer_interval";
 const char * const config_element_read_timer_interval = "read_timer_interval";
-LTTNG_HIDDEN const char * const config_element_monitor_timer_interval = "monitor_timer_interval";
-LTTNG_HIDDEN const char * const config_element_blocking_timeout = "blocking_timeout";
+const char * const config_element_monitor_timer_interval = "monitor_timer_interval";
+const char * const config_element_blocking_timeout = "blocking_timeout";
 const char * const config_element_output = "output";
 const char * const config_element_output_type = "output_type";
 const char * const config_element_tracefile_size = "tracefile_size";
 const char * const config_element_tracefile_count = "tracefile_count";
 const char * const config_element_live_timer_interval = "live_timer_interval";
-LTTNG_HIDDEN const char * const config_element_discarded_events = "discarded_events";
-LTTNG_HIDDEN const char * const config_element_lost_packets = "lost_packets";
+const char * const config_element_discarded_events = "discarded_events";
+const char * const config_element_lost_packets = "lost_packets";
 const char * const config_element_type = "type";
 const char * const config_element_buffer_type = "buffer_type";
 const char * const config_element_session = "session";
 const char * const config_element_sessions = "sessions";
-LTTNG_HIDDEN const char * const config_element_context_perf = "perf";
-LTTNG_HIDDEN const char * const config_element_context_app = "app";
-LTTNG_HIDDEN const char * const config_element_context_app_provider_name = "provider_name";
-LTTNG_HIDDEN const char * const config_element_context_app_ctx_name = "ctx_name";
+const char * const config_element_context_perf = "perf";
+const char * const config_element_context_app = "app";
+const char * const config_element_context_app_provider_name = "provider_name";
+const char * const config_element_context_app_ctx_name = "ctx_name";
 const char * const config_element_config = "config";
 const char * const config_element_started = "started";
 const char * const config_element_snapshot_mode = "snapshot_mode";
 const char * const config_element_loglevel = "loglevel";
 const char * const config_element_loglevel_type = "loglevel_type";
 const char * const config_element_filter = "filter";
-LTTNG_HIDDEN const char * const config_element_filter_expression = "filter_expression";
+const char * const config_element_filter_expression = "filter_expression";
 const char * const config_element_snapshot_outputs = "snapshot_outputs";
 const char * const config_element_consumer_output = "consumer_output";
 const char * const config_element_destination = "destination";
@@ -135,36 +135,36 @@ const char * const config_element_pid = "pid";
 const char * const config_element_pids = "pids";
 const char * const config_element_shared_memory_path = "shared_memory_path";
 
-LTTNG_HIDDEN const char * const config_element_process_attr_id = "id";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_pid = "pid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vpid = "vpid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_uid = "uid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vuid = "vuid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_gid = "gid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vgid = "vgid_process_attr_tracker";
-LTTNG_HIDDEN const char * const config_element_process_attr_trackers = "process_attr_trackers";
-LTTNG_HIDDEN const char * const config_element_process_attr_values = "process_attr_values";
-LTTNG_HIDDEN const char * const config_element_process_attr_value_type = "process_attr_value_type";
-LTTNG_HIDDEN const char * const config_element_process_attr_pid_value = "pid";
-LTTNG_HIDDEN const char * const config_element_process_attr_vpid_value = "vpid";
-LTTNG_HIDDEN const char * const config_element_process_attr_uid_value = "uid";
-LTTNG_HIDDEN const char * const config_element_process_attr_vuid_value = "vuid";
-LTTNG_HIDDEN const char * const config_element_process_attr_gid_value = "gid";
-LTTNG_HIDDEN const char * const config_element_process_attr_vgid_value = "vgid";
-LTTNG_HIDDEN const char * const config_element_process_attr_tracker_type = "process_attr_tracker_type";
+const char * const config_element_process_attr_id = "id";
+const char * const config_element_process_attr_tracker_pid = "pid_process_attr_tracker";
+const char * const config_element_process_attr_tracker_vpid = "vpid_process_attr_tracker";
+const char * const config_element_process_attr_tracker_uid = "uid_process_attr_tracker";
+const char * const config_element_process_attr_tracker_vuid = "vuid_process_attr_tracker";
+const char * const config_element_process_attr_tracker_gid = "gid_process_attr_tracker";
+const char * const config_element_process_attr_tracker_vgid = "vgid_process_attr_tracker";
+const char * const config_element_process_attr_trackers = "process_attr_trackers";
+const char * const config_element_process_attr_values = "process_attr_values";
+const char * const config_element_process_attr_value_type = "process_attr_value_type";
+const char * const config_element_process_attr_pid_value = "pid";
+const char * const config_element_process_attr_vpid_value = "vpid";
+const char * const config_element_process_attr_uid_value = "uid";
+const char * const config_element_process_attr_vuid_value = "vuid";
+const char * const config_element_process_attr_gid_value = "gid";
+const char * const config_element_process_attr_vgid_value = "vgid";
+const char * const config_element_process_attr_tracker_type = "process_attr_tracker_type";
 
 /* Used for support of legacy tracker serialization (< 2.12). */
-LTTNG_HIDDEN const char * const config_element_trackers_legacy = "trackers";
-LTTNG_HIDDEN const char * const config_element_pid_tracker_legacy = "pid_tracker";
-LTTNG_HIDDEN const char * const config_element_tracker_targets_legacy = "targets";
-LTTNG_HIDDEN const char * const config_element_tracker_pid_target_legacy = "pid_target";
-LTTNG_HIDDEN const char * const config_element_tracker_pid_legacy = "pid";
+const char * const config_element_trackers_legacy = "trackers";
+const char * const config_element_pid_tracker_legacy = "pid_tracker";
+const char * const config_element_tracker_targets_legacy = "targets";
+const char * const config_element_tracker_pid_target_legacy = "pid_target";
+const char * const config_element_tracker_pid_legacy = "pid";
 
-LTTNG_HIDDEN const char * const config_element_rotation_schedules = "rotation_schedules";
-LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic = "periodic";
-LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic_time_us = "time_us";
-LTTNG_HIDDEN const char * const config_element_rotation_schedule_size_threshold = "size_threshold";
-LTTNG_HIDDEN const char * const config_element_rotation_schedule_size_threshold_bytes = "bytes";
+const char * const config_element_rotation_schedules = "rotation_schedules";
+const char * const config_element_rotation_schedule_periodic = "periodic";
+const char * const config_element_rotation_schedule_periodic_time_us = "time_us";
+const char * const config_element_rotation_schedule_size_threshold = "size_threshold";
+const char * const config_element_rotation_schedule_size_threshold_bytes = "bytes";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
@@ -189,7 +189,7 @@ const char * const config_loglevel_type_single = "SINGLE";
 const char * const config_event_type_all = "ALL";
 const char * const config_event_type_tracepoint = "TRACEPOINT";
 const char * const config_event_type_probe = "PROBE";
-LTTNG_HIDDEN const char * const config_event_type_userspace_probe = "USERSPACE_PROBE";
+const char * const config_event_type_userspace_probe = "USERSPACE_PROBE";
 const char * const config_event_type_function = "FUNCTION";
 const char * const config_event_type_function_entry = "FUNCTION_ENTRY";
 const char * const config_event_type_noop = "NOOP";
@@ -210,33 +210,33 @@ const char * const config_event_context_pthread_id = "PTHREAD_ID";
 const char * const config_event_context_hostname = "HOSTNAME";
 const char * const config_event_context_ip = "IP";
 const char * const config_event_context_perf_thread_counter = "PERF_THREAD_COUNTER";
-LTTNG_HIDDEN const char * const config_event_context_app = "APP";
-LTTNG_HIDDEN const char * const config_event_context_interruptible = "INTERRUPTIBLE";
-LTTNG_HIDDEN const char * const config_event_context_preemptible = "PREEMPTIBLE";
-LTTNG_HIDDEN const char * const config_event_context_need_reschedule = "NEED_RESCHEDULE";
-LTTNG_HIDDEN const char * const config_event_context_migratable = "MIGRATABLE";
-LTTNG_HIDDEN const char * const config_event_context_callstack_user= "CALLSTACK_USER";
-LTTNG_HIDDEN const char * const config_event_context_callstack_kernel = "CALLSTACK_KERNEL";
-LTTNG_HIDDEN const char * const config_event_context_cgroup_ns = "CGROUP_NS";
-LTTNG_HIDDEN const char * const config_event_context_ipc_ns = "IPC_NS";
-LTTNG_HIDDEN const char * const config_event_context_mnt_ns = "MNT_NS";
-LTTNG_HIDDEN const char * const config_event_context_net_ns = "NET_NS";
-LTTNG_HIDDEN const char * const config_event_context_pid_ns = "PID_NS";
-LTTNG_HIDDEN const char * const config_event_context_time_ns = "TIME_NS";
-LTTNG_HIDDEN const char * const config_event_context_user_ns = "USER_NS";
-LTTNG_HIDDEN const char * const config_event_context_uts_ns = "UTS_NS";
-LTTNG_HIDDEN const char * const config_event_context_uid = "UID";
-LTTNG_HIDDEN const char * const config_event_context_euid = "EUID";
-LTTNG_HIDDEN const char * const config_event_context_suid = "SUID";
-LTTNG_HIDDEN const char * const config_event_context_gid = "GID";
-LTTNG_HIDDEN const char * const config_event_context_egid = "EGID";
-LTTNG_HIDDEN const char * const config_event_context_sgid = "SGID";
-LTTNG_HIDDEN const char * const config_event_context_vuid = "VUID";
-LTTNG_HIDDEN const char * const config_event_context_veuid = "VEUID";
-LTTNG_HIDDEN const char * const config_event_context_vsuid = "VSUID";
-LTTNG_HIDDEN const char * const config_event_context_vgid = "VGID";
-LTTNG_HIDDEN const char * const config_event_context_vegid = "VEGID";
-LTTNG_HIDDEN const char * const config_event_context_vsgid = "VSGID";
+const char * const config_event_context_app = "APP";
+const char * const config_event_context_interruptible = "INTERRUPTIBLE";
+const char * const config_event_context_preemptible = "PREEMPTIBLE";
+const char * const config_event_context_need_reschedule = "NEED_RESCHEDULE";
+const char * const config_event_context_migratable = "MIGRATABLE";
+const char * const config_event_context_callstack_user= "CALLSTACK_USER";
+const char * const config_event_context_callstack_kernel = "CALLSTACK_KERNEL";
+const char * const config_event_context_cgroup_ns = "CGROUP_NS";
+const char * const config_event_context_ipc_ns = "IPC_NS";
+const char * const config_event_context_mnt_ns = "MNT_NS";
+const char * const config_event_context_net_ns = "NET_NS";
+const char * const config_event_context_pid_ns = "PID_NS";
+const char * const config_event_context_time_ns = "TIME_NS";
+const char * const config_event_context_user_ns = "USER_NS";
+const char * const config_event_context_uts_ns = "UTS_NS";
+const char * const config_event_context_uid = "UID";
+const char * const config_event_context_euid = "EUID";
+const char * const config_event_context_suid = "SUID";
+const char * const config_event_context_gid = "GID";
+const char * const config_event_context_egid = "EGID";
+const char * const config_event_context_sgid = "SGID";
+const char * const config_event_context_vuid = "VUID";
+const char * const config_event_context_veuid = "VEUID";
+const char * const config_event_context_vsuid = "VSUID";
+const char * const config_event_context_vgid = "VGID";
+const char * const config_event_context_vegid = "VEGID";
+const char * const config_event_context_vsgid = "VSGID";
 
 /* Deprecated symbols */
 const char * const config_element_perf;
@@ -277,7 +277,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int config_get_section_entries(const char *override_path, const char *section,
 		config_entry_handler_cb handler, void *user_data)
 {
@@ -352,7 +351,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int config_parse_value(const char *value)
 {
 	int i, ret = 0;
@@ -441,7 +439,6 @@ end:
 	return out_str;
 }
 
-LTTNG_HIDDEN
 struct config_writer *config_writer_create(int fd_output, int indent)
 {
 	int ret;
@@ -484,7 +481,6 @@ error_destroy:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 int config_writer_destroy(struct config_writer *writer)
 {
 	int ret = 0;
@@ -508,7 +504,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_open_element(struct config_writer *writer,
 	const char *element_name)
 {
@@ -532,7 +527,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_write_attribute(struct config_writer *writer,
 		const char *name, const char *value)
 {
@@ -565,7 +559,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_close_element(struct config_writer *writer)
 {
 	int ret;
@@ -580,7 +573,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_write_element_unsigned_int(struct config_writer *writer,
 		const char *element_name, uint64_t value)
 {
@@ -605,7 +597,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_write_element_signed_int(struct config_writer *writer,
 		const char *element_name, int64_t value)
 {
@@ -630,7 +621,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_write_element_bool(struct config_writer *writer,
 		const char *element_name, int value)
 {
@@ -638,7 +628,6 @@ int config_writer_write_element_bool(struct config_writer *writer,
 		value ? config_xml_true : config_xml_false);
 }
 
-LTTNG_HIDDEN
 int config_writer_write_element_double(struct config_writer *writer,
 		const char *element_name,
 		double value)
@@ -664,7 +653,6 @@ end:
 	return ret >= 0 ? 0 : ret;
 }
 
-LTTNG_HIDDEN
 int config_writer_write_element_string(struct config_writer *writer,
 		const char *element_name, const char *value)
 {
@@ -4022,7 +4010,6 @@ invalid:
 	return 0;
 }
 
-LTTNG_HIDDEN
 int config_load_session(const char *path, const char *session_name,
 		int overwrite, unsigned int autoload,
 		const struct config_load_session_override_attr *overrides)

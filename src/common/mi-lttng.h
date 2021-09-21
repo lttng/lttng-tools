@@ -61,7 +61,7 @@ struct mi_lttng_error_query_callbacks {
 extern const char * const mi_lttng_element_command;
 extern const char * const mi_lttng_element_command_action;
 extern const char * const mi_lttng_element_command_add_context;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_command_add_trigger;
+extern const char * const mi_lttng_element_command_add_trigger;
 extern const char * const mi_lttng_element_command_create;
 extern const char * const mi_lttng_element_command_destroy;
 extern const char * const mi_lttng_element_command_disable_channel;
@@ -69,7 +69,7 @@ extern const char * const mi_lttng_element_command_disable_event;
 extern const char * const mi_lttng_element_command_enable_channels;
 extern const char * const mi_lttng_element_command_enable_event;
 extern const char * const mi_lttng_element_command_list;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_command_list_trigger;
+extern const char * const mi_lttng_element_command_list_trigger;
 extern const char * const mi_lttng_element_command_load;
 extern const char * const mi_lttng_element_command_metadata;
 extern const char * const mi_lttng_element_command_metadata_action;
@@ -77,7 +77,7 @@ extern const char * const mi_lttng_element_command_regenerate;
 extern const char * const mi_lttng_element_command_regenerate_action;
 extern const char * const mi_lttng_element_command_name;
 extern const char * const mi_lttng_element_command_output;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_command_remove_trigger;
+extern const char * const mi_lttng_element_command_remove_trigger;
 extern const char * const mi_lttng_element_command_save;
 extern const char * const mi_lttng_element_command_set_session;
 extern const char * const mi_lttng_element_command_snapshot;
@@ -122,8 +122,8 @@ extern const char * const mi_lttng_element_save;
 
 /* Strings related to load command */
 extern const char * const mi_lttng_element_load;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_load_overrides;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_load_override_url;
+extern const char * const mi_lttng_element_load_overrides;
+extern const char * const mi_lttng_element_load_override_url;
 
 /* General element of mi_lttng */
 extern const char * const mi_lttng_element_empty;
@@ -200,205 +200,205 @@ extern const char * const mi_lttng_element_snapshots;
 /* String related to track/untrack command */
 extern const char * const mi_lttng_element_track_untrack_all_wildcard;
 
-LTTNG_HIDDEN extern const char * const mi_lttng_element_session_name;
+extern const char * const mi_lttng_element_session_name;
 
 /* String related to rotate command */
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotate_status;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedules;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_periodic;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_periodic_time_us;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_size_threshold;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_result;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_results;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_state;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_local;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_local_absolute_path;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_host;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_control_port;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_data_port;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_protocol;
-LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_relative_path;
+extern const char * const mi_lttng_element_rotation;
+extern const char * const mi_lttng_element_rotate_status;
+extern const char * const mi_lttng_element_rotation_schedule;
+extern const char * const mi_lttng_element_rotation_schedules;
+extern const char * const mi_lttng_element_rotation_schedule_periodic;
+extern const char * const mi_lttng_element_rotation_schedule_periodic_time_us;
+extern const char * const mi_lttng_element_rotation_schedule_size_threshold;
+extern const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
+extern const char * const mi_lttng_element_rotation_schedule_result;
+extern const char * const mi_lttng_element_rotation_schedule_results;
+extern const char * const mi_lttng_element_rotation_state;
+extern const char * const mi_lttng_element_rotation_location;
+extern const char * const mi_lttng_element_rotation_location_local;
+extern const char * const mi_lttng_element_rotation_location_local_absolute_path;
+extern const char * const mi_lttng_element_rotation_location_relay;
+extern const char * const mi_lttng_element_rotation_location_relay_host;
+extern const char * const mi_lttng_element_rotation_location_relay_control_port;
+extern const char * const mi_lttng_element_rotation_location_relay_data_port;
+extern const char * const mi_lttng_element_rotation_location_relay_protocol;
+extern const char * const mi_lttng_element_rotation_location_relay_relative_path;
 
 /* String related to enum lttng_rotation_state */
-LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_ongoing;
-LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_completed;
-LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_expired;
-LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_error;
+extern const char * const mi_lttng_rotation_state_str_ongoing;
+extern const char * const mi_lttng_rotation_state_str_completed;
+extern const char * const mi_lttng_rotation_state_str_expired;
+extern const char * const mi_lttng_rotation_state_str_error;
 
 /* String related to enum lttng_trace_archive_location_relay_protocol_type */
-LTTNG_HIDDEN extern const char * const mi_lttng_rotation_location_relay_protocol_str_tcp;
+extern const char * const mi_lttng_rotation_location_relay_protocol_str_tcp;
 
 /* String related to rate_policy elements */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_rate_policy;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_rate_policy_every_n;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_rate_policy_once_after_n;
+extern const char *const mi_lttng_element_rate_policy;
+extern const char *const mi_lttng_element_rate_policy_every_n;
+extern const char *const mi_lttng_element_rate_policy_once_after_n;
 
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_rate_policy_every_n_interval;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_rate_policy_once_after_n_threshold;
 
 /* String related to action elements */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_list;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_notify;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_start_session;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_stop_session;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_rotate_session;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_action_snapshot_session;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_action;
+extern const char *const mi_lttng_element_action_list;
+extern const char *const mi_lttng_element_action_notify;
+extern const char *const mi_lttng_element_action_start_session;
+extern const char *const mi_lttng_element_action_stop_session;
+extern const char *const mi_lttng_element_action_rotate_session;
+extern const char *const mi_lttng_element_action_snapshot_session;
+extern const char
 		*const mi_lttng_element_action_snapshot_session_output;
 
 /* String related to condition */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_condition;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_condition;
+extern const char
 		*const mi_lttng_element_condition_buffer_usage_high;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_buffer_usage_low;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_event_rule_matches;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_session_consumed_size;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_session_rotation;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_session_rotation_completed;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_condition_session_rotation_ongoing;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_condition_channel_name;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_condition_threshold_ratio;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_condition_threshold_bytes;
+extern const char *const mi_lttng_element_condition_channel_name;
+extern const char *const mi_lttng_element_condition_threshold_ratio;
+extern const char *const mi_lttng_element_condition_threshold_bytes;
 
 /* String related to capture descriptor */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_capture_descriptor;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_capture_descriptors;
+extern const char *const mi_lttng_element_capture_descriptor;
+extern const char *const mi_lttng_element_capture_descriptors;
 
 /* String related to event expression */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_expr;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_expr_payload_field;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_event_expr;
+extern const char *const mi_lttng_element_event_expr_payload_field;
+extern const char
 		*const mi_lttng_element_event_expr_channel_context_field;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_event_expr_app_specific_context_field;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_event_expr_array_field_element;
 
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_expr_provider_name;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_expr_type_name;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_expr_index;
+extern const char *const mi_lttng_element_event_expr_provider_name;
+extern const char *const mi_lttng_element_event_expr_type_name;
+extern const char *const mi_lttng_element_event_expr_index;
 
 /* String related to event rule */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule;
+extern const char *const mi_lttng_element_event_rule;
 
 /* String related to lttng_event_rule */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_event_name;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_name_pattern;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_event_rule_event_name;
+extern const char *const mi_lttng_element_event_rule_name_pattern;
+extern const char
 		*const mi_lttng_element_event_rule_filter_expression;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_jul_logging;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_kernel_kprobe;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_kernel_syscall;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_event_rule_jul_logging;
+extern const char *const mi_lttng_element_event_rule_kernel_kprobe;
+extern const char *const mi_lttng_element_event_rule_kernel_syscall;
+extern const char
 		*const mi_lttng_element_event_rule_kernel_tracepoint;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_kernel_uprobe;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_log4j_logging;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_event_rule_python_logging;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_event_rule_kernel_uprobe;
+extern const char *const mi_lttng_element_event_rule_log4j_logging;
+extern const char *const mi_lttng_element_event_rule_python_logging;
+extern const char
 		*const mi_lttng_element_event_rule_user_tracepoint;
 
 /* String related to lttng_event_rule_kernel_syscall. */
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_event_rule_kernel_syscall_emission_site;
 
 /* String related to enum lttng_event_rule_kernel_syscall_emission_site. */
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_event_rule_kernel_syscall_emission_site_entry_exit;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_event_rule_kernel_syscall_emission_site_entry;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_event_rule_kernel_syscall_emission_site_exit;
 
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_event_rule_user_tracepoint_name_pattern_exclusions;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_event_rule_user_tracepoint_name_pattern_exclusion;
 
 /* String related to log level rule. */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_log_level_rule;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_log_level_rule_exactly;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_log_level_rule;
+extern const char *const mi_lttng_element_log_level_rule_exactly;
+extern const char
 		*const mi_lttng_element_log_level_rule_at_least_as_severe_as;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_log_level_rule_at_least_as_severe_as_thre;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_log_level_rule_level;
+extern const char *const mi_lttng_element_log_level_rule_level;
 
 /* String related to kernel probe location. */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_kernel_probe_location;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_kernel_probe_location;
+extern const char
 		*const mi_lttng_element_kernel_probe_location_symbol_offset;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_kernel_probe_location_symbol_offset_name;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_kernel_probe_location_symbol_offset_offset;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_kernel_probe_location_address;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_kernel_probe_location_address_address;
 
 /* String related to userspace probe location. */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_userspace_probe_location;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_userspace_probe_location;
+extern const char
 		*const mi_lttng_element_userspace_probe_location_binary_path;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_userspace_probe_location_function;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_userspace_probe_location_function_name;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_userspace_probe_location_lookup_method;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_function_default;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_function_elf;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_tracepoint_sdt;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_userspace_probe_location_tracepoint;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_tracepoint_probe_name;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_tracepoint_provider_name;
 
 /* String related to enum
  * lttng_userspace_probe_location_function_instrumentation_type */
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_element_userspace_probe_location_function_instrumentation_type;
-LTTNG_HIDDEN extern const char *const
+extern const char *const
 		mi_lttng_userspace_probe_location_function_instrumentation_type_entry;
 
 /* String related to trigger */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_triggers;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_trigger;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_trigger_owner_uid;
+extern const char *const mi_lttng_element_triggers;
+extern const char *const mi_lttng_element_trigger;
+extern const char *const mi_lttng_element_trigger_owner_uid;
 
 /* String related to error_query. */
-LTTNG_HIDDEN extern const char *const mi_lttng_element_error_query_result;
-LTTNG_HIDDEN extern const char
+extern const char *const mi_lttng_element_error_query_result;
+extern const char
 		*const mi_lttng_element_error_query_result_counter;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_error_query_result_counter_value;
-LTTNG_HIDDEN extern const char
+extern const char
 		*const mi_lttng_element_error_query_result_description;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_error_query_result_name;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_error_query_result_type;
-LTTNG_HIDDEN extern const char *const mi_lttng_element_error_query_results;
+extern const char *const mi_lttng_element_error_query_result_name;
+extern const char *const mi_lttng_element_error_query_result_type;
+extern const char *const mi_lttng_element_error_query_results;
 
 /* String related to add-context command */
-LTTNG_HIDDEN extern const char * const mi_lttng_element_context_symbol;
+extern const char * const mi_lttng_element_context_symbol;
 
 /* Utility string function  */
 const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain);

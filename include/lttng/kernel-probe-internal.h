@@ -84,30 +84,24 @@ struct lttng_kernel_probe_location_address {
 	uint64_t address;
 };
 
-LTTNG_HIDDEN
 int lttng_kernel_probe_location_serialize(
 		const struct lttng_kernel_probe_location *location,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 ssize_t lttng_kernel_probe_location_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_kernel_probe_location **probe_location);
 
-LTTNG_HIDDEN
 bool lttng_kernel_probe_location_is_equal(
 		const struct lttng_kernel_probe_location *a,
 		const struct lttng_kernel_probe_location *b);
 
-LTTNG_HIDDEN
 struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
 		const struct lttng_kernel_probe_location *location);
 
-LTTNG_HIDDEN
 unsigned long lttng_kernel_probe_location_hash(
 		const struct lttng_kernel_probe_location *location);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
 		const struct lttng_kernel_probe_location *location,
 		struct mi_writer *writer);

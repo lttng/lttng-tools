@@ -58,7 +58,6 @@ struct lttng_event_rule_user_tracepoint_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_user_tracepoint_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **rule);

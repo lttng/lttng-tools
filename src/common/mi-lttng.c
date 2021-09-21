@@ -21,17 +21,17 @@
 #define MI_SCHEMA_MINOR_VERSION 1
 
 /* Machine interface namespace URI */
-LTTNG_HIDDEN const char * const mi_lttng_xmlns = "xmlns";
-LTTNG_HIDDEN const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
-LTTNG_HIDDEN const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
-LTTNG_HIDDEN const char * const mi_lttng_schema_location = "xsi:schemaLocation";
-LTTNG_HIDDEN const char * const mi_lttng_schema_location_uri =
+const char * const mi_lttng_xmlns = "xmlns";
+const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
+const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
+const char * const mi_lttng_schema_location = "xsi:schemaLocation";
+const char * const mi_lttng_schema_location_uri =
 	DEFAULT_LTTNG_MI_NAMESPACE " "
 	"https://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"/lttng-mi-" XSTR(MI_SCHEMA_MAJOR_VERSION) "."
 	XSTR(MI_SCHEMA_MINOR_VERSION) ".xsd";
-LTTNG_HIDDEN const char * const mi_lttng_schema_version = "schemaVersion";
-LTTNG_HIDDEN const char * const mi_lttng_schema_version_value = XSTR(MI_SCHEMA_MAJOR_VERSION)
+const char * const mi_lttng_schema_version = "schemaVersion";
+const char * const mi_lttng_schema_version_value = XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"." XSTR(MI_SCHEMA_MINOR_VERSION);
 
 /* Strings related to command */
@@ -48,10 +48,10 @@ const char * const mi_lttng_element_command_enable_event = "enable-event";
 const char * const mi_lttng_element_command_list = "list";
 const char *const mi_lttng_element_command_list_trigger = "list-trigger";
 const char * const mi_lttng_element_command_load = "load";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_metadata = "metadata";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_metadata_action = "metadata_action";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_regenerate = "regenerate";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_regenerate_action = "regenerate_action";
+const char * const mi_lttng_element_command_metadata = "metadata";
+const char * const mi_lttng_element_command_metadata_action = "metadata_action";
+const char * const mi_lttng_element_command_regenerate = "regenerate";
+const char * const mi_lttng_element_command_regenerate_action = "regenerate_action";
 const char * const mi_lttng_element_command_name = "name";
 const char * const mi_lttng_element_command_output = "output";
 const char *const mi_lttng_element_command_remove_trigger = "remove-trigger";
@@ -68,10 +68,10 @@ const char * const mi_lttng_element_command_success = "success";
 const char * const mi_lttng_element_command_track = "track";
 const char * const mi_lttng_element_command_untrack = "untrack";
 const char * const mi_lttng_element_command_version = "version";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_rotate = "rotate";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_enable_rotation = "enable-rotation";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_disable_rotation = "disable-rotation";
-LTTNG_HIDDEN const char * const mi_lttng_element_command_clear = "clear";
+const char * const mi_lttng_element_command_rotate = "rotate";
+const char * const mi_lttng_element_command_enable_rotation = "enable-rotation";
+const char * const mi_lttng_element_command_disable_rotation = "disable-rotation";
+const char * const mi_lttng_element_command_clear = "clear";
 
 /* Strings related to version command */
 const char * const mi_lttng_element_version = "version";
@@ -99,8 +99,8 @@ const char * const mi_lttng_element_save = "save";
 
 /* Strings related to load command */
 const char * const mi_lttng_element_load = "load";
-LTTNG_HIDDEN const char * const mi_lttng_element_load_overrides = "overrides";
-LTTNG_HIDDEN const char * const mi_lttng_element_load_override_url = "url";
+const char * const mi_lttng_element_load_overrides = "overrides";
+const char * const mi_lttng_element_load_override_url = "url";
 
 /* General elements of mi_lttng */
 const char * const mi_lttng_element_empty = "";
@@ -177,262 +177,262 @@ const char * const mi_lttng_element_snapshots = "snapshots";
 /* String related to track/untrack command */
 const char * const mi_lttng_element_track_untrack_all_wildcard = "*";
 
-LTTNG_HIDDEN const char * const mi_lttng_element_session_name = "session_name";
+const char * const mi_lttng_element_session_name = "session_name";
 
 /* String related to rotate command */
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation = "rotation";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status = "status";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule = "rotation_schedule";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedules = "rotation_schedules";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_result = "rotation_schedule_result";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_results = "rotation_schedule_results";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic = "periodic";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic_time_us = "time_us";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold = "size_threshold";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes = "bytes";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_state = "state";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location = "location";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local = "local";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local_absolute_path = "absolute_path";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay = "relay";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_host = "host";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_control_port = "control_port";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_data_port = "data_port";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_protocol = "protocol";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_relative_path = "relative_path";
+const char * const mi_lttng_element_rotation = "rotation";
+const char * const mi_lttng_element_rotate_status = "status";
+const char * const mi_lttng_element_rotation_schedule = "rotation_schedule";
+const char * const mi_lttng_element_rotation_schedules = "rotation_schedules";
+const char * const mi_lttng_element_rotation_schedule_result = "rotation_schedule_result";
+const char * const mi_lttng_element_rotation_schedule_results = "rotation_schedule_results";
+const char * const mi_lttng_element_rotation_schedule_periodic = "periodic";
+const char * const mi_lttng_element_rotation_schedule_periodic_time_us = "time_us";
+const char * const mi_lttng_element_rotation_schedule_size_threshold = "size_threshold";
+const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes = "bytes";
+const char * const mi_lttng_element_rotation_state = "state";
+const char * const mi_lttng_element_rotation_location = "location";
+const char * const mi_lttng_element_rotation_location_local = "local";
+const char * const mi_lttng_element_rotation_location_local_absolute_path = "absolute_path";
+const char * const mi_lttng_element_rotation_location_relay = "relay";
+const char * const mi_lttng_element_rotation_location_relay_host = "host";
+const char * const mi_lttng_element_rotation_location_relay_control_port = "control_port";
+const char * const mi_lttng_element_rotation_location_relay_data_port = "data_port";
+const char * const mi_lttng_element_rotation_location_relay_protocol = "protocol";
+const char * const mi_lttng_element_rotation_location_relay_relative_path = "relative_path";
 
 /* String related to enum lttng_rotation_state */
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_ongoing = "ONGOING";
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_completed = "COMPLETED";
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_expired = "EXPIRED";
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_error = "ERROR";
+const char * const mi_lttng_rotation_state_str_ongoing = "ONGOING";
+const char * const mi_lttng_rotation_state_str_completed = "COMPLETED";
+const char * const mi_lttng_rotation_state_str_expired = "EXPIRED";
+const char * const mi_lttng_rotation_state_str_error = "ERROR";
 
 /* String related to enum lttng_trace_archive_location_relay_protocol_type */
-LTTNG_HIDDEN const char * const mi_lttng_rotation_location_relay_protocol_str_tcp = "TCP";
+const char * const mi_lttng_rotation_location_relay_protocol_str_tcp = "TCP";
 
 /* String related to rate_policy elements */
-LTTNG_HIDDEN const char *const mi_lttng_element_rate_policy = "rate_policy";
-LTTNG_HIDDEN const char *const mi_lttng_element_rate_policy_every_n =
+const char *const mi_lttng_element_rate_policy = "rate_policy";
+const char *const mi_lttng_element_rate_policy_every_n =
 		"rate_policy_every_n";
-LTTNG_HIDDEN const char *const mi_lttng_element_rate_policy_once_after_n =
+const char *const mi_lttng_element_rate_policy_once_after_n =
 		"rate_policy_once_after_n";
 
-LTTNG_HIDDEN const char *const mi_lttng_element_rate_policy_every_n_interval =
+const char *const mi_lttng_element_rate_policy_every_n_interval =
 		"interval";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_rate_policy_once_after_n_threshold =
 				"threshold";
 
 /* String related to action elements */
-LTTNG_HIDDEN const char *const mi_lttng_element_action = "action";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_list = "action_list";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_notify = "action_notify";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_start_session =
+const char *const mi_lttng_element_action = "action";
+const char *const mi_lttng_element_action_list = "action_list";
+const char *const mi_lttng_element_action_notify = "action_notify";
+const char *const mi_lttng_element_action_start_session =
 		"action_start_session";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_stop_session =
+const char *const mi_lttng_element_action_stop_session =
 		"action_stop_session";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_rotate_session =
+const char *const mi_lttng_element_action_rotate_session =
 		"action_rotate_session";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_snapshot_session =
+const char *const mi_lttng_element_action_snapshot_session =
 		"action_snapshot_session";
-LTTNG_HIDDEN const char *const mi_lttng_element_action_snapshot_session_output =
+const char *const mi_lttng_element_action_snapshot_session_output =
 		"output";
 
 /* String related to condition */
-LTTNG_HIDDEN const char *const mi_lttng_element_condition = "condition";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_buffer_usage_high =
+const char *const mi_lttng_element_condition = "condition";
+const char *const mi_lttng_element_condition_buffer_usage_high =
 		"condition_buffer_usage_high";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_buffer_usage_low =
+const char *const mi_lttng_element_condition_buffer_usage_low =
 		"condition_buffer_usage_low";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_event_rule_matches =
+const char *const mi_lttng_element_condition_event_rule_matches =
 		"condition_event_rule_matches";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_session_consumed_size =
+const char *const mi_lttng_element_condition_session_consumed_size =
 		"condition_session_consumed_size";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_session_rotation =
+const char *const mi_lttng_element_condition_session_rotation =
 		"condition_session_rotation";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_condition_session_rotation_completed =
 				"condition_session_rotation_completed";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_condition_session_rotation_ongoing =
 				"condition_session_rotation_ongoing";
 
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_channel_name =
+const char *const mi_lttng_element_condition_channel_name =
 		"channel_name";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_threshold_bytes =
+const char *const mi_lttng_element_condition_threshold_bytes =
 		"threshold_bytes";
-LTTNG_HIDDEN const char *const mi_lttng_element_condition_threshold_ratio =
+const char *const mi_lttng_element_condition_threshold_ratio =
 		"threshold_ratio";
 
 /* String related to capture descriptor */
-LTTNG_HIDDEN const char *const mi_lttng_element_capture_descriptor =
+const char *const mi_lttng_element_capture_descriptor =
 		"capture_descriptor";
-LTTNG_HIDDEN const char *const mi_lttng_element_capture_descriptors =
+const char *const mi_lttng_element_capture_descriptors =
 		"capture_descriptors";
 
 /* String related to event expression */
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr = "event_expr";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_payload_field =
+const char *const mi_lttng_element_event_expr = "event_expr";
+const char *const mi_lttng_element_event_expr_payload_field =
 		"event_expr_payload_field";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_channel_context_field =
+const char *const mi_lttng_element_event_expr_channel_context_field =
 		"event_expr_channel_context_field";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_event_expr_app_specific_context_field =
 				"event_expr_app_specific_context_field";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_array_field_element =
+const char *const mi_lttng_element_event_expr_array_field_element =
 		"event_expr_array_field_element";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_provider_name =
+const char *const mi_lttng_element_event_expr_provider_name =
 		"provider_name";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_type_name =
+const char *const mi_lttng_element_event_expr_type_name =
 		"type_name";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_expr_index = "index";
+const char *const mi_lttng_element_event_expr_index = "index";
 
 /* String related to event rule */
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule = "event_rule";
+const char *const mi_lttng_element_event_rule = "event_rule";
 
 /* String related to lttng_event_rule_type */
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_event_name =
+const char *const mi_lttng_element_event_rule_event_name =
 		"event_name";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_name_pattern =
+const char *const mi_lttng_element_event_rule_name_pattern =
 		"name_pattern";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_filter_expression =
+const char *const mi_lttng_element_event_rule_filter_expression =
 		"filter_expression";
 
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_jul_logging =
+const char *const mi_lttng_element_event_rule_jul_logging =
 		"event_rule_jul_logging";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_kernel_kprobe =
+const char *const mi_lttng_element_event_rule_kernel_kprobe =
 		"event_rule_kernel_kprobe";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_kernel_syscall =
+const char *const mi_lttng_element_event_rule_kernel_syscall =
 		"event_rule_kernel_syscall";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_kernel_tracepoint =
+const char *const mi_lttng_element_event_rule_kernel_tracepoint =
 		"event_rule_kernel_tracepoint";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_kernel_uprobe =
+const char *const mi_lttng_element_event_rule_kernel_uprobe =
 		"event_rule_kernel_uprobe";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_log4j_logging =
+const char *const mi_lttng_element_event_rule_log4j_logging =
 		"event_rule_log4j_logging";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_python_logging =
+const char *const mi_lttng_element_event_rule_python_logging =
 		"event_rule_python_logging";
-LTTNG_HIDDEN const char *const mi_lttng_element_event_rule_user_tracepoint =
+const char *const mi_lttng_element_event_rule_user_tracepoint =
 		"event_rule_user_tracepoint";
 
 /* String related to lttng_event_rule_kernel_syscall. */
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_event_rule_kernel_syscall_emission_site =
 				"emission_site";
 
 /* String related to enum lttng_event_rule_kernel_syscall_emission_site. */
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_event_rule_kernel_syscall_emission_site_entry_exit =
 				"entry+exit";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_event_rule_kernel_syscall_emission_site_entry =
 				"entry";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_event_rule_kernel_syscall_emission_site_exit = "exit";
 
 /* String related to lttng_event_rule_user_tracepoint */
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_event_rule_user_tracepoint_name_pattern_exclusions =
 				"name_pattern_exclusions";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_event_rule_user_tracepoint_name_pattern_exclusion =
 				"name_pattern_exclusion";
 
 /* String related to log level rule. */
-LTTNG_HIDDEN const char *const mi_lttng_element_log_level_rule =
+const char *const mi_lttng_element_log_level_rule =
 		"log_level_rule";
-LTTNG_HIDDEN const char *const mi_lttng_element_log_level_rule_exactly =
+const char *const mi_lttng_element_log_level_rule_exactly =
 		"log_level_rule_exactly";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_log_level_rule_at_least_as_severe_as =
 				"log_level_rule_at_least_as_severe_as";
-LTTNG_HIDDEN const char *const mi_lttng_element_log_level_rule_level = "level";
+const char *const mi_lttng_element_log_level_rule_level = "level";
 
 /* String related to kernel probe location. */
-LTTNG_HIDDEN const char *const mi_lttng_element_kernel_probe_location =
+const char *const mi_lttng_element_kernel_probe_location =
 		"kernel_probe_location";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_kernel_probe_location_symbol_offset =
 				"kernel_probe_location_symbol_offset";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_kernel_probe_location_symbol_offset_name =
 				"name";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_kernel_probe_location_symbol_offset_offset =
 				"offset";
 
-LTTNG_HIDDEN const char *const mi_lttng_element_kernel_probe_location_address =
+const char *const mi_lttng_element_kernel_probe_location_address =
 		"kernel_probe_location_address";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_kernel_probe_location_address_address =
 				"address";
 
 /* String related to userspace probe location. */
-LTTNG_HIDDEN const char *const mi_lttng_element_userspace_probe_location =
+const char *const mi_lttng_element_userspace_probe_location =
 		"userspace_probe_location";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_userspace_probe_location_binary_path =
 				"binary_path";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_userspace_probe_location_function =
 				"userspace_probe_location_function";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_userspace_probe_location_function_name =
 				"name";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_userspace_probe_location_lookup_method =
 				"userspace_probe_location_lookup_method";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_function_default =
 				"userspace_probe_location_lookup_method_function_default";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_function_elf =
 				"userspace_probe_location_lookup_method_function_elf";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_lookup_method_tracepoint_sdt =
 				"userspace_probe_location_lookup_method_tracepoint_sdt";
-LTTNG_HIDDEN const char
+const char
 		*const mi_lttng_element_userspace_probe_location_tracepoint =
 				"userspace_probe_location_tracepoint";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_tracepoint_probe_name =
 				"probe_name";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_tracepoint_provider_name =
 				"provider_name";
 
 /* String related to enum
  * lttng_userspace_probe_location_function_instrumentation_type */
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_userspace_probe_location_function_instrumentation_type =
 				"instrumentation_type";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_userspace_probe_location_function_instrumentation_type_entry =
 				"ENTRY";
 
 /* String related to trigger */
-LTTNG_HIDDEN const char *const mi_lttng_element_triggers = "triggers";
-LTTNG_HIDDEN const char *const mi_lttng_element_trigger = "trigger";
-LTTNG_HIDDEN const char *const mi_lttng_element_trigger_owner_uid = "owner_uid";
+const char *const mi_lttng_element_triggers = "triggers";
+const char *const mi_lttng_element_trigger = "trigger";
+const char *const mi_lttng_element_trigger_owner_uid = "owner_uid";
 
 /* String related to error_query. */
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_result =
+const char *const mi_lttng_element_error_query_result =
 		"error_query_result";
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_result_counter =
+const char *const mi_lttng_element_error_query_result_counter =
 		"error_query_result_counter";
-LTTNG_HIDDEN const char *const
+const char *const
 		mi_lttng_element_error_query_result_counter_value = "value";
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_result_description =
+const char *const mi_lttng_element_error_query_result_description =
 		"description";
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_result_name =
+const char *const mi_lttng_element_error_query_result_name =
 		"name";
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_result_type =
+const char *const mi_lttng_element_error_query_result_type =
 		"type";
-LTTNG_HIDDEN const char *const mi_lttng_element_error_query_results =
+const char *const mi_lttng_element_error_query_results =
 		"error_query_results";
 
 /* String related to add-context command */
-LTTNG_HIDDEN const char * const mi_lttng_element_context_symbol = "symbol";
+const char * const mi_lttng_element_context_symbol = "symbol";
 
 /* Deprecated symbols preserved for ABI compatibility. */
 const char * const mi_lttng_context_type_perf_counter;
@@ -448,7 +448,6 @@ const char * const mi_lttng_element_command_calibrate;
  * Those should never overlap by definition
  * (see struct lttng_event loglevel)
  */
-LTTNG_HIDDEN
 const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 {
 	switch (domain) {
@@ -564,7 +563,6 @@ const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value)
 {
 	switch (value) {
@@ -689,7 +687,6 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 {
 	switch (val) {
@@ -706,7 +703,6 @@ const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 {
 	switch (value) {
@@ -727,7 +723,6 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 {
 	switch (value) {
@@ -744,7 +739,6 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value)
 {
 	switch (value) {
@@ -763,7 +757,6 @@ const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value)
 	}
 }
 
-LTTNG_HIDDEN
 const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
 		enum lttng_trace_archive_location_relay_protocol_type value)
 {
@@ -777,7 +770,6 @@ const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
 	}
 }
 
-LTTNG_HIDDEN
 struct mi_writer *mi_lttng_writer_create(int fd_output, int mi_output_type)
 {
 	struct mi_writer *mi_writer;
@@ -805,7 +797,6 @@ err_destroy:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_destroy(struct mi_writer *writer)
 {
 	int ret;
@@ -825,7 +816,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_command_open(struct mi_writer *writer, const char *command)
 {
 	int ret;
@@ -872,26 +862,22 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_command_close(struct mi_writer *writer)
 {
 	return mi_lttng_writer_close_element(writer);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_open_element(struct mi_writer *writer,
 		const char *element_name)
 {
 	return config_writer_open_element(writer->writer, element_name);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_close_element(struct mi_writer *writer)
 {
 	return config_writer_close_element(writer->writer);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_close_multi_element(struct mi_writer *writer,
 		unsigned int nb_element)
 {
@@ -911,7 +897,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_write_element_unsigned_int(struct mi_writer *writer,
 		const char *element_name, uint64_t value)
 {
@@ -919,7 +904,6 @@ int mi_lttng_writer_write_element_unsigned_int(struct mi_writer *writer,
 			element_name, value);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_write_element_signed_int(struct mi_writer *writer,
 		const char *element_name, int64_t value)
 {
@@ -927,7 +911,6 @@ int mi_lttng_writer_write_element_signed_int(struct mi_writer *writer,
 			element_name, value);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_write_element_bool(struct mi_writer *writer,
 		const char *element_name, int value)
 {
@@ -935,7 +918,6 @@ int mi_lttng_writer_write_element_bool(struct mi_writer *writer,
 			element_name, value);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_write_element_string(struct mi_writer *writer,
 		const char *element_name, const char *value)
 {
@@ -943,7 +925,6 @@ int mi_lttng_writer_write_element_string(struct mi_writer *writer,
 			element_name, value);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_writer_write_element_double(struct mi_writer *writer,
 		const char *element_name,
 		double value)
@@ -952,7 +933,6 @@ int mi_lttng_writer_write_element_double(struct mi_writer *writer,
 			writer->writer, element_name, value);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version *version,
 	const char *lttng_description, const char *lttng_license)
 {
@@ -1034,13 +1014,11 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_sessions_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, config_element_sessions);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_session(struct mi_writer *writer,
 		struct lttng_session *session, int is_open)
 {
@@ -1100,13 +1078,11 @@ end:
 
 }
 
-LTTNG_HIDDEN
 int mi_lttng_domains_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, config_element_domains);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_domain(struct mi_writer *writer,
 		struct lttng_domain *domain, int is_open)
 {
@@ -1154,13 +1130,11 @@ end:
 
 }
 
-LTTNG_HIDDEN
 int mi_lttng_channels_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, config_element_channels);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_channel(struct mi_writer *writer,
 		struct lttng_channel *channel, int is_open)
 {
@@ -1205,7 +1179,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_channel_attr(struct mi_writer *writer,
 		struct lttng_channel_attr *attr)
 {
@@ -1359,7 +1332,6 @@ end:
 
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_common_attributes(struct mi_writer *writer,
 		struct lttng_event *event)
 {
@@ -1457,7 +1429,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_tracepoint_loglevel(struct mi_writer *writer,
 		struct lttng_event *event, enum lttng_domain_type domain)
 {
@@ -1486,7 +1457,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer,
 		struct lttng_event *event)
 {
@@ -1494,7 +1464,6 @@ int mi_lttng_event_tracepoint_no_loglevel(struct mi_writer *writer,
 	return write_event_exclusions(writer, event);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_function_probe(struct mi_writer *writer,
 		struct lttng_event *event)
 {
@@ -1674,7 +1643,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_function_entry(struct mi_writer *writer,
 		struct lttng_event *event)
 {
@@ -1703,13 +1671,11 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_events_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, config_element_events);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event(struct mi_writer *writer,
 		struct lttng_event *event, int is_open, enum lttng_domain_type domain)
 {
@@ -1759,7 +1725,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_trackers_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(
@@ -1815,7 +1780,6 @@ static int get_tracker_elements(enum lttng_process_attr process_attr,
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_process_attribute_tracker_open(
 		struct mi_writer *writer, enum lttng_process_attr process_attr)
 {
@@ -1840,7 +1804,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_pids_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, config_element_pids);
@@ -1850,7 +1813,6 @@ int mi_lttng_pids_open(struct mi_writer *writer)
  * TODO: move the listing of pid for user agent to process semantic on
  * mi api bump. The use of process element break the mi api.
  */
-LTTNG_HIDDEN
 int mi_lttng_pid(struct mi_writer *writer,
 		pid_t pid,
 		const char *name,
@@ -1889,14 +1851,12 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_process_attr_values_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(
 			writer, config_element_process_attr_values);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_all_process_attribute_value(struct mi_writer *writer,
 		enum lttng_process_attr process_attr,
 		bool is_open)
@@ -1940,7 +1900,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_integral_process_attribute_value(struct mi_writer *writer,
 		enum lttng_process_attr process_attr,
 		int64_t value,
@@ -1987,7 +1946,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_string_process_attribute_value(struct mi_writer *writer,
 		enum lttng_process_attr process_attr,
 		const char *value,
@@ -2035,13 +1993,11 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_fields_open(struct mi_writer *writer)
 {
 	return mi_lttng_writer_open_element(writer, mi_lttng_element_event_fields);
 }
 
-LTTNG_HIDDEN
 int mi_lttng_event_field(struct mi_writer *writer,
 		struct lttng_event_field *field)
 {
@@ -2091,7 +2047,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_perf_counter_context(struct mi_writer *writer,
 		struct lttng_event_perf_counter_ctx  *perf_context)
 {
@@ -2165,7 +2120,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_context(struct mi_writer *writer,
 		struct lttng_event_context *context, int is_open)
 {
@@ -2227,7 +2181,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_snapshot_output_session_name(struct mi_writer *writer,
 		const char *session_name)
 {
@@ -2256,7 +2209,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_snapshot_list_output(struct mi_writer *writer,
 		const struct lttng_snapshot_output *output)
 {
@@ -2311,7 +2263,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_snapshot_del_output(struct mi_writer *writer, int id,
 		const char *name, const char *current_session_name)
 {
@@ -2362,7 +2313,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_snapshot_add_output(struct mi_writer *writer,
 		const char *current_session_name, const char *n_ptr,
 		struct lttng_snapshot_output *output)
@@ -2418,7 +2368,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_snapshot_record(struct mi_writer *writer,
 		const char *current_session_name, const char *url,
 		const char *cmdline_ctrl_url, const char *cmdline_data_url)
@@ -2465,7 +2414,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_rotation_schedule(struct mi_writer *writer,
 		const struct lttng_rotation_schedule *schedule)
 {
@@ -2525,7 +2473,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
 		const struct lttng_rotation_schedule *schedule,
 		bool success)
@@ -2710,7 +2657,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int mi_lttng_rotate(struct mi_writer *writer,
 		const char *session_name,
 		enum lttng_rotation_state rotation_state,

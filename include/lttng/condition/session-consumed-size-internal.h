@@ -42,16 +42,13 @@ struct lttng_evaluation_session_consumed_size_comm {
 	uint64_t session_consumed;
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
 		uint64_t consumed);
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_consumed_size_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_consumed_size_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);

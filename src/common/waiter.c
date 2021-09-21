@@ -26,7 +26,6 @@ enum waiter_state {
 	WAITER_TEARDOWN =	(1 << 2),
 };
 
-LTTNG_HIDDEN
 void lttng_waiter_init(struct lttng_waiter *waiter)
 {
 	cds_wfs_node_init(&waiter->wait_queue_node);
@@ -37,7 +36,6 @@ void lttng_waiter_init(struct lttng_waiter *waiter)
 /*
  * User must init "waiter" before passing its memory to waker thread.
  */
-LTTNG_HIDDEN
 void lttng_waiter_wait(struct lttng_waiter *waiter)
 {
 	unsigned int i;
@@ -93,7 +91,6 @@ skip_futex_wait:
  * execution. In this scheme, the waiter owns the node memory, and we only allow
  * it to free this memory when it sees the WAITER_TEARDOWN flag.
  */
-LTTNG_HIDDEN
 void lttng_waiter_wake_up(struct lttng_waiter *waiter)
 {
 	cmm_smp_mb();

@@ -17,7 +17,6 @@
 #include <lttng/action/stop-session-internal.h>
 #include <lttng/error-query-internal.h>
 
-LTTNG_HIDDEN
 const char *lttng_action_type_string(enum lttng_action_type action_type)
 {
 	switch (action_type) {
@@ -45,7 +44,6 @@ enum lttng_action_type lttng_action_get_type(const struct lttng_action *action)
 	return action ? action->type : LTTNG_ACTION_TYPE_UNKNOWN;
 }
 
-LTTNG_HIDDEN
 void lttng_action_init(struct lttng_action *action,
 		enum lttng_action_type type,
 		action_validate_cb validate,
@@ -80,13 +78,11 @@ void action_destroy_ref(struct urcu_ref *ref)
 	action->destroy(action);
 }
 
-LTTNG_HIDDEN
 void lttng_action_get(struct lttng_action *action)
 {
 	urcu_ref_get(&action->ref);
 }
 
-LTTNG_HIDDEN
 void lttng_action_put(struct lttng_action *action)
 {
 	if (!action) {
@@ -102,7 +98,6 @@ void lttng_action_destroy(struct lttng_action *action)
 	lttng_action_put(action);
 }
 
-LTTNG_HIDDEN
 bool lttng_action_validate(struct lttng_action *action)
 {
 	bool valid;
@@ -123,7 +118,6 @@ end:
 	return valid;
 }
 
-LTTNG_HIDDEN
 int lttng_action_serialize(struct lttng_action *action,
 		struct lttng_payload *payload)
 {
@@ -146,7 +140,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action)
 {
@@ -230,7 +223,6 @@ end:
 	return consumed_len;
 }
 
-LTTNG_HIDDEN
 bool lttng_action_is_equal(const struct lttng_action *a,
 		const struct lttng_action *b)
 {
@@ -255,25 +247,21 @@ end:
 	return is_equal;
 }
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_request_count(struct lttng_action *action)
 {
 	action->execution_request_counter++;
 }
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_count(struct lttng_action *action)
 {
 	action->execution_counter++;
 }
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_failure_count(struct lttng_action *action)
 {
 	uatomic_inc(&action->execution_failure_counter);
 }
 
-LTTNG_HIDDEN
 bool lttng_action_should_execute(const struct lttng_action *action)
 {
 	const struct lttng_rate_policy *policy = NULL;
@@ -296,7 +284,6 @@ end:
 	return execute;
 }
 
-LTTNG_HIDDEN
 enum lttng_action_status lttng_action_add_error_query_results(
 		const struct lttng_action *action,
 		struct lttng_error_query_results *results)
@@ -304,7 +291,6 @@ enum lttng_action_status lttng_action_add_error_query_results(
 	return action->add_error_query_results(action, results);
 }
 
-LTTNG_HIDDEN
 enum lttng_action_status lttng_action_generic_add_error_query_results(
 		const struct lttng_action *action,
 		struct lttng_error_query_results *results)
@@ -337,7 +323,6 @@ end:
 	return action_status;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trigger,
 		const struct lttng_action *action,
 		struct mi_writer *writer,

@@ -10,7 +10,6 @@
 
 #include <common/macros.h>
 
-LTTNG_HIDDEN
 int socket_apply_keep_alive_config(int socket_fd);
 
 #endif /* RELAYD_TCP_KEEP_ALIVE_H */

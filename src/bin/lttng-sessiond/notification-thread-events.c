@@ -654,7 +654,6 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 bool notification_client_list_get(struct notification_client_list *list)
 {
 	return urcu_ref_get_unless_zero(&list->ref);
@@ -4345,7 +4344,6 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
  * interference from external users (those could, for instance, unregister
  * their triggers).
  */
-LTTNG_HIDDEN
 int notification_client_list_send_evaluation(
 		struct notification_client_list *client_list,
 		const struct lttng_trigger *trigger,

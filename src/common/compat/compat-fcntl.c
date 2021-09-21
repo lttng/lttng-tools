@@ -12,7 +12,6 @@
 
 #ifdef __linux__
 
-LTTNG_HIDDEN
 int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 		unsigned int flags)
 {

@@ -25,7 +25,6 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <pthread.h>
 
-LTTNG_HIDDEN
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 {
 	bool valid;
@@ -136,7 +135,6 @@ void lttng_trigger_destroy(struct lttng_trigger *trigger)
 	lttng_trigger_put(trigger);
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_trigger_create_from_payload(
 		struct lttng_payload_view *src_view,
 		struct lttng_trigger **_trigger)
@@ -287,7 +285,6 @@ end:
  * Both elements are stored contiguously, see their "*_comm" structure
  * for the detailed format.
  */
-LTTNG_HIDDEN
 int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 		struct lttng_payload *payload)
 {
@@ -343,7 +340,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 bool lttng_trigger_is_equal(
 		const struct lttng_trigger *a, const struct lttng_trigger *b)
 {
@@ -376,20 +372,17 @@ bool lttng_trigger_is_equal(
 	return true;
 }
 
-LTTNG_HIDDEN
 bool lttng_trigger_is_hidden(const struct lttng_trigger *trigger)
 {
 	return trigger->is_hidden;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_set_hidden(struct lttng_trigger *trigger)
 {
 	LTTNG_ASSERT(!trigger->is_hidden);
 	trigger->is_hidden = true;
 }
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_set_name(struct lttng_trigger *trigger,
 		const char* name)
 {
@@ -436,7 +429,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 int lttng_trigger_assign_name(struct lttng_trigger *dst,
 		const struct lttng_trigger *src)
 {
@@ -453,7 +445,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_set_tracer_token(struct lttng_trigger *trigger,
 		uint64_t token)
 {
@@ -461,7 +452,6 @@ void lttng_trigger_set_tracer_token(struct lttng_trigger *trigger,
 	LTTNG_OPTIONAL_SET(&trigger->tracer_token, token);
 }
 
-LTTNG_HIDDEN
 uint64_t lttng_trigger_get_tracer_token(const struct lttng_trigger *trigger)
 {
 	LTTNG_ASSERT(trigger);
@@ -469,7 +459,6 @@ uint64_t lttng_trigger_get_tracer_token(const struct lttng_trigger *trigger)
 	return LTTNG_OPTIONAL_GET(trigger->tracer_token);
 }
 
-LTTNG_HIDDEN
 int lttng_trigger_generate_name(struct lttng_trigger *trigger,
 		uint64_t unique_id)
 {
@@ -490,13 +479,11 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_get(struct lttng_trigger *trigger)
 {
 	urcu_ref_get(&trigger->ref);
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_put(struct lttng_trigger *trigger)
 {
 	if (!trigger) {
@@ -513,7 +500,6 @@ static void delete_trigger_array_element(void *ptr)
 	lttng_trigger_put(trigger);
 }
 
-LTTNG_HIDDEN
 struct lttng_triggers *lttng_triggers_create(void)
 {
 	struct lttng_triggers *triggers = NULL;
@@ -529,7 +515,6 @@ end:
 	return triggers;
 }
 
-LTTNG_HIDDEN
 struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
 		const struct lttng_triggers *triggers, unsigned int index)
 {
@@ -547,7 +532,6 @@ end:
 	return trigger;
 }
 
-LTTNG_HIDDEN
 int lttng_triggers_add(
 		struct lttng_triggers *triggers, struct lttng_trigger *trigger)
 {
@@ -566,7 +550,6 @@ int lttng_triggers_add(
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_triggers_remove_hidden_triggers(struct lttng_triggers *triggers)
 {
 	int ret;
@@ -677,7 +660,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_triggers_create_from_payload(
 		struct lttng_payload_view *src_view,
 		struct lttng_triggers **triggers)
@@ -744,14 +726,12 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 const struct lttng_credentials *lttng_trigger_get_credentials(
 		const struct lttng_trigger *trigger)
 {
 	return &trigger->creds;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds)
 {
@@ -809,7 +789,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 		const struct lttng_trigger *trigger)
 {
@@ -856,7 +835,6 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
  * Generate bytecode related to the trigger.
  * On success LTTNG_OK. On error, returns lttng_error code.
  */
-LTTNG_HIDDEN
 enum lttng_error_code lttng_trigger_generate_bytecode(
 		struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds)
@@ -905,7 +883,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 {
 	int ret;
@@ -1005,7 +982,6 @@ end:
 	return copy;
 }
 
-LTTNG_HIDDEN
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
 {
 	bool needs_tracer_notifier = false;
@@ -1030,7 +1006,6 @@ end:
 	return needs_tracer_notifier;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_set_as_registered(struct lttng_trigger *trigger)
 {
 	pthread_mutex_lock(&trigger->lock);
@@ -1038,7 +1013,6 @@ void lttng_trigger_set_as_registered(struct lttng_trigger *trigger)
 	pthread_mutex_unlock(&trigger->lock);
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger)
 {
 	pthread_mutex_lock(&trigger->lock);
@@ -1053,26 +1027,22 @@ void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger)
  * the trigger lock for the duration of the manipulation using
  * `lttng_trigger_lock` and `lttng_trigger_unlock`.
  */
-LTTNG_HIDDEN
 bool lttng_trigger_is_registered(struct lttng_trigger *trigger)
 {
 	ASSERT_LOCKED(trigger->lock);
 	return trigger->registered;
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_lock(struct lttng_trigger *trigger)
 {
 	pthread_mutex_lock(&trigger->lock);
 }
 
-LTTNG_HIDDEN
 void lttng_trigger_unlock(struct lttng_trigger *trigger)
 {
 	pthread_mutex_unlock(&trigger->lock);
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 		struct mi_writer *writer,
 		const struct mi_lttng_error_query_callbacks
@@ -1185,7 +1155,6 @@ static int compare_triggers_by_name(const void *a, const void *b)
 	return strcmp(name_a, name_b);
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
 		struct mi_writer *writer,
 		const struct mi_lttng_error_query_callbacks

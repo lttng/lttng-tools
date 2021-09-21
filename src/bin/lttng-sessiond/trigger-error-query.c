@@ -10,7 +10,6 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/action/action-internal.h>
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_add_error_results(
 		const struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results)
@@ -18,7 +17,6 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 	return LTTNG_TRIGGER_STATUS_OK;
 }
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_condition_add_error_results(
 		const struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results)
@@ -81,7 +79,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 		struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results)

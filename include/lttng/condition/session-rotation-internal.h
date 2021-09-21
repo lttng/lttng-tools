@@ -37,32 +37,26 @@ struct lttng_evaluation_session_rotation_comm {
 	uint8_t has_location;
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_rotation_ongoing_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_rotation_completed_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_rotation_ongoing_create(
 		 uint64_t id);
 
 /* Ownership of location is transferred to the evaluation. */
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_rotation_completed_create(
 		uint64_t id,
 		struct lttng_trace_archive_location *location);
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_rotation_ongoing_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);

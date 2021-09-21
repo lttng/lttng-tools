@@ -24,19 +24,15 @@ struct lttng_directory_handle;
  * by the fd-tracker. Users of the fd-tracker should account for this extra
  * file descriptor.
  */
-LTTNG_HIDDEN
 struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 		const char *path);
 
-LTTNG_HIDDEN
 void lttng_unlinked_file_pool_destroy(
 		struct lttng_unlinked_file_pool *pool);
 
 /* The inode registry is protected by the fd-tracker's lock. */
-LTTNG_HIDDEN
 struct lttng_inode_registry *lttng_inode_registry_create(void);
 
-LTTNG_HIDDEN
 struct lttng_inode *lttng_inode_registry_get_inode(
 		struct lttng_inode_registry *registry,
 		struct lttng_directory_handle *handle,
@@ -44,20 +40,16 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 		int fd,
 		struct lttng_unlinked_file_pool *pool);
 
-LTTNG_HIDDEN
 void lttng_inode_registry_destroy(struct lttng_inode_registry *registry);
 
-LTTNG_HIDDEN
 void lttng_inode_borrow_location(struct lttng_inode *inode,
 		const struct lttng_directory_handle **out_directory_handle,
 		const char **out_path);
 
 /* Returns a new reference to the inode's location directory handle. */
-LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_inode_get_location_directory_handle(
 		struct lttng_inode *inode);
 
-LTTNG_HIDDEN
 int lttng_inode_rename(struct lttng_inode *inode,
 		struct lttng_directory_handle *old_directory_handle,
 		const char *old_path,
@@ -65,10 +57,8 @@ int lttng_inode_rename(struct lttng_inode *inode,
 		const char *new_path,
 		bool overwrite);
 
-LTTNG_HIDDEN
 int lttng_inode_unlink(struct lttng_inode *inode);
 
-LTTNG_HIDDEN
 void lttng_inode_put(struct lttng_inode *inode);
 
 #endif /* FD_TRACKER_INODE_H */

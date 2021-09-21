@@ -90,7 +90,6 @@ static char* strncpy0(char* dest, const char* src, size_t size)
 }
 
 /* See documentation in header file. */
-LTTNG_HIDDEN
 int ini_parse_file(FILE* file, ini_entry_handler handler, void* user)
 {
 	/* Uses a fair bit of stack (use heap instead if you need to) */
@@ -203,7 +202,6 @@ int ini_parse_file(FILE* file, ini_entry_handler handler, void* user)
 }
 
 /* See documentation in header file. */
-LTTNG_HIDDEN
 int ini_parse(const char* filename, ini_entry_handler handler, void* user)
 {
 	FILE* file;

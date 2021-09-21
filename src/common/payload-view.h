@@ -62,7 +62,6 @@ struct lttng_payload_view {
  *
  * @view	Payload to validate
  */
-LTTNG_HIDDEN
 bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
 
 /**
@@ -74,7 +73,6 @@ bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
  *		cause the view to reference the whole payload from the
  *		offset provided.
  */
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_payload(
 		const struct lttng_payload *payload, size_t offset,
 		ptrdiff_t len);
@@ -89,7 +87,6 @@ struct lttng_payload_view lttng_payload_view_from_payload(
  *		cause the payload view to reference the whole payload view's
  *		buffer view from the offset provided.
  */
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_view(
 		struct lttng_payload_view *view, size_t offset,
 		ptrdiff_t len);
@@ -106,7 +103,6 @@ struct lttng_payload_view lttng_payload_view_from_view(
  *		cause the payload view to reference the whole payload from the
  *		offset provided.
  */
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *buffer, size_t offset,
 		ptrdiff_t len);
@@ -123,7 +119,6 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
  *		cause the payload view to reference the whole payload from the
  *		offset provided.
  */
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_buffer_view(
 		const struct lttng_buffer_view *view, size_t offset,
 		ptrdiff_t len);
@@ -139,7 +134,6 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
  * Note that a payload view never assumes the ownership of the memory it
  * references.
  */
-LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_init_from_buffer(
 		const char *src, size_t offset, ptrdiff_t len);
 
@@ -150,7 +144,6 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
  *
  * Returns the number of file descriptor handles left on success, -1 on error.
  */
-LTTNG_HIDDEN
 int lttng_payload_view_get_fd_handle_count(
 		const struct lttng_payload_view *payload_view);
 
@@ -163,7 +156,6 @@ int lttng_payload_view_get_fd_handle_count(
  *
  * Returns an fd_handle on success, -1 on error.
  */
-LTTNG_HIDDEN
 struct fd_handle *lttng_payload_view_pop_fd_handle(
 		struct lttng_payload_view *payload_view);
 

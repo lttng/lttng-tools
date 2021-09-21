@@ -31,7 +31,6 @@ static void fd_handle_release(struct urcu_ref *ref)
 	free(handle);
 }
 
-LTTNG_HIDDEN
 struct fd_handle *fd_handle_create(int fd)
 {
 	struct fd_handle *handle = NULL;
@@ -55,7 +54,6 @@ end:
 	return handle;
 }
 
-LTTNG_HIDDEN
 void fd_handle_get(struct fd_handle *handle)
 {
 	if (!handle) {
@@ -65,7 +63,6 @@ void fd_handle_get(struct fd_handle *handle)
 	urcu_ref_get(&handle->ref);
 }
 
-LTTNG_HIDDEN
 void fd_handle_put(struct fd_handle *handle)
 {
 	if (!handle) {
@@ -75,14 +72,12 @@ void fd_handle_put(struct fd_handle *handle)
 	urcu_ref_put(&handle->ref, fd_handle_release);
 }
 
-LTTNG_HIDDEN
 int fd_handle_get_fd(struct fd_handle *handle)
 {
 	LTTNG_ASSERT(handle);
 	return handle->fd;
 }
 
-LTTNG_HIDDEN
 struct fd_handle *fd_handle_copy(const struct fd_handle *handle)
 {
 	struct fd_handle *new_handle = NULL;

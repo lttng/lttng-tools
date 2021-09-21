@@ -38,7 +38,6 @@
  * futex() call. If active, we set the value and wake everyone else we indicate
  * that we are gone (cleanup() case).
  */
-LTTNG_HIDDEN
 void futex_wait_update(int32_t *futex, int active)
 {
 	if (active) {
@@ -58,7 +57,6 @@ void futex_wait_update(int32_t *futex, int active)
 /*
  * Prepare futex.
  */
-LTTNG_HIDDEN
 void futex_nto1_prepare(int32_t *futex)
 {
 	uatomic_set(futex, -1);
@@ -70,7 +68,6 @@ void futex_nto1_prepare(int32_t *futex)
 /*
  * Wait futex.
  */
-LTTNG_HIDDEN
 void futex_nto1_wait(int32_t *futex)
 {
 	cmm_smp_mb();
@@ -98,7 +95,6 @@ end:
 /*
  * Wake 1 futex.
  */
-LTTNG_HIDDEN
 void futex_nto1_wake(int32_t *futex)
 {
 	if (caa_unlikely(uatomic_read(futex) != -1))

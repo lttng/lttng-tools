@@ -702,7 +702,6 @@ end:
 	return expr;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_event_rule_matches_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
@@ -780,7 +779,6 @@ end:
 	return consumed_length;
 }
 
-LTTNG_HIDDEN
 enum lttng_condition_status
 lttng_condition_event_rule_matches_borrow_rule_mutable(
 		const struct lttng_condition *condition,
@@ -820,7 +818,6 @@ enum lttng_condition_status lttng_condition_event_rule_matches_get_rule(
 	return status;
 }
 
-LTTNG_HIDDEN
 void lttng_condition_event_rule_matches_set_error_counter_index(
 		struct lttng_condition *condition, uint64_t error_counter_index)
 {
@@ -833,7 +830,6 @@ void lttng_condition_event_rule_matches_set_error_counter_index(
 			error_counter_index);
 }
 
-LTTNG_HIDDEN
 uint64_t lttng_condition_event_rule_matches_get_error_counter_index(
 		const struct lttng_condition *condition)
 {
@@ -958,7 +954,6 @@ end:
 	return expr;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_event_rule_matches_create_from_payload(
 		const struct lttng_condition_event_rule_matches *condition,
 		struct lttng_payload_view *view,
@@ -1381,7 +1376,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
 		const struct lttng_condition_event_rule_matches *condition,
 		const char *capture_payload,
@@ -1464,7 +1458,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code
 lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
 		struct lttng_condition *condition)
@@ -1512,7 +1505,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 const struct lttng_bytecode *
 lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
 		const struct lttng_condition *condition, unsigned int index)

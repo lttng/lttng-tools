@@ -413,13 +413,11 @@ error:
 	free(absolute_path);
 	return NULL;
 }
-LTTNG_HIDDEN
 char *utils_expand_path(const char *path)
 {
 	return _utils_expand_path(path, true);
 }
 
-LTTNG_HIDDEN
 char *utils_expand_path_keep_symlink(const char *path)
 {
 	return _utils_expand_path(path, false);
@@ -427,7 +425,6 @@ char *utils_expand_path_keep_symlink(const char *path)
 /*
  * Create a pipe in dst.
  */
-LTTNG_HIDDEN
 int utils_create_pipe(int *dst)
 {
 	int ret;
@@ -450,7 +447,6 @@ int utils_create_pipe(int *dst)
  * Make sure the pipe opened by this function are closed at some point. Use
  * utils_close_pipe().
  */
-LTTNG_HIDDEN
 int utils_create_pipe_cloexec(int *dst)
 {
 	int ret, i;
@@ -483,7 +479,6 @@ error:
  * utils_close_pipe(). Using pipe() and fcntl rather than pipe2() to
  * support OSes other than Linux 2.6.23+.
  */
-LTTNG_HIDDEN
 int utils_create_pipe_cloexec_nonblock(int *dst)
 {
 	int ret, i;
@@ -521,7 +516,6 @@ error:
 /*
  * Close both read and write side of the pipe.
  */
-LTTNG_HIDDEN
 void utils_close_pipe(int *src)
 {
 	int i, ret;
@@ -547,7 +541,6 @@ void utils_close_pipe(int *src)
 /*
  * Create a new string using two strings range.
  */
-LTTNG_HIDDEN
 char *utils_strdupdelim(const char *begin, const char *end)
 {
 	char *str;
@@ -568,7 +561,6 @@ error:
 /*
  * Set CLOEXEC flag to the give file descriptor.
  */
-LTTNG_HIDDEN
 int utils_set_fd_cloexec(int fd)
 {
 	int ret;
@@ -591,7 +583,6 @@ end:
 /*
  * Create pid file to the given path and filename.
  */
-LTTNG_HIDDEN
 int utils_create_pid_file(pid_t pid, const char *filepath)
 {
 	int ret;
@@ -625,7 +616,6 @@ error:
  * Create lock file to the given path and filename.
  * Returns the associated file descriptor, -1 on error.
  */
-LTTNG_HIDDEN
 int utils_create_lock_file(const char *filepath)
 {
 	int ret;
@@ -672,7 +662,6 @@ error:
  *
  * On success, return 0 else a negative error code.
  */
-LTTNG_HIDDEN
 int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
@@ -701,7 +690,6 @@ end:
  *
  * On success, return 0 else a negative error code.
  */
-LTTNG_HIDDEN
 int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
@@ -729,7 +717,6 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-LTTNG_HIDDEN
 int utils_stream_file_path(const char *path_name, const char *file_name,
 		uint64_t size, uint64_t count, const char *suffix,
 		char *out_stream_path, size_t stream_path_len)
@@ -780,7 +767,6 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
  *
  * @return 0 on success, -1 on failure.
  */
-LTTNG_HIDDEN
 int utils_parse_size_suffix(const char * const str, uint64_t * const size)
 {
 	int ret;
@@ -887,7 +873,6 @@ end:
  *
  * @return 0 on success, -1 on failure.
  */
-LTTNG_HIDDEN
 int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
 {
 	int ret;
@@ -1100,7 +1085,6 @@ static __attribute__((unused)) unsigned int fls_u32(uint32_t x)
  * Return the minimum order for which x <= (1UL << order).
  * Return -1 if x is 0.
  */
-LTTNG_HIDDEN
 int utils_get_count_order_u32(uint32_t x)
 {
 	if (!x) {
@@ -1114,7 +1098,6 @@ int utils_get_count_order_u32(uint32_t x)
  * Return the minimum order for which x <= (1UL << order).
  * Return -1 if x is 0.
  */
-LTTNG_HIDDEN
 int utils_get_count_order_u64(uint64_t x)
 {
 	if (!x) {
@@ -1128,7 +1111,6 @@ int utils_get_count_order_u64(uint64_t x)
  * Obtain the value of LTTNG_HOME environment variable, if exists.
  * Otherwise returns the value of HOME.
  */
-LTTNG_HIDDEN
 const char *utils_get_home_dir(void)
 {
 	char *val = NULL;
@@ -1160,7 +1142,6 @@ end:
  * Get user's home directory. Dynamically allocated, must be freed
  * by the caller.
  */
-LTTNG_HIDDEN
 char *utils_get_user_home_dir(uid_t uid)
 {
 	struct passwd pwd;
@@ -1201,7 +1182,6 @@ end:
  *
  * Return amount of bytes set in the buffer or else 0 on error.
  */
-LTTNG_HIDDEN
 size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 {
 	size_t ret;
@@ -1227,7 +1207,6 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
  * Return 0 on success and set *gid to the group_ID matching the passed name.
  * Else -1 if it cannot be found or an error occurred.
  */
-LTTNG_HIDDEN
 int utils_get_group_id(const char *name, bool warn, gid_t *gid)
 {
 	static volatile int warn_once;
@@ -1309,7 +1288,6 @@ error:
  * of elements in the long_options array. Returns NULL if the string's
  * allocation fails.
  */
-LTTNG_HIDDEN
 char *utils_generate_optstring(const struct option *long_options,
 		size_t opt_count)
 {
@@ -1352,7 +1330,6 @@ end:
  * Try to remove a hierarchy of empty directories, recursively. Don't unlink
  * any file. Try to rmdir any empty directory within the hierarchy.
  */
-LTTNG_HIDDEN
 int utils_recursive_rmdir(const char *path)
 {
 	int ret;
@@ -1369,7 +1346,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int utils_truncate_stream_file(int fd, off_t length)
 {
 	int ret;
@@ -1401,7 +1377,6 @@ static const char *get_man_bin_path(void)
 	return DEFAULT_MAN_BIN_PATH;
 }
 
-LTTNG_HIDDEN
 int utils_show_help(int section, const char *page_name,
 		const char *help_msg)
 {
@@ -1490,7 +1465,6 @@ fopen_error:
  * the information in `/proc/meminfo`. The number returned by this function is
  * a best guess.
  */
-LTTNG_HIDDEN
 int utils_get_memory_available(size_t *value)
 {
 	return read_proc_meminfo_field(PROC_MEMINFO_MEMAVAILABLE_LINE, value);
@@ -1500,13 +1474,11 @@ int utils_get_memory_available(size_t *value)
  * Returns the total size of the memory on the system in bytes based on the
  * the information in `/proc/meminfo`.
  */
-LTTNG_HIDDEN
 int utils_get_memory_total(size_t *value)
 {
 	return read_proc_meminfo_field(PROC_MEMINFO_MEMTOTAL_LINE, value);
 }
 
-LTTNG_HIDDEN
 int utils_change_working_directory(const char *path)
 {
 	int ret;
@@ -1538,7 +1510,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *uid)
 {
 	struct passwd p, *pres;
@@ -1603,7 +1574,6 @@ end:
 	return ret_val;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code utils_group_id_from_name(
 		const char *group_name, gid_t *gid)
 {
@@ -1669,7 +1639,6 @@ end:
 	return ret_val;
 }
 
-LTTNG_HIDDEN
 int utils_parse_unsigned_long_long(const char *str,
 		unsigned long long *value)
 {

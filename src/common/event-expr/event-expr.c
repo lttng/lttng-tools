@@ -596,7 +596,6 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 		struct lttng_bytecode **bytecode_out)
 {
@@ -863,7 +862,6 @@ end:
 	return ret_code;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_expr_mi_serialize(
 		const struct lttng_event_expr *expression,
 		struct mi_writer *writer)

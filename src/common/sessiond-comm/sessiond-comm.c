@@ -70,7 +70,6 @@ static unsigned long network_timeout;
  *
  * These code MUST be negative in other to treat that as an error value.
  */
-LTTNG_HIDDEN
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
 	code = -code;
@@ -86,7 +85,6 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
  * Create socket from an already allocated lttcomm socket structure and init
  * sockaddr in the lttcomm sock.
  */
-LTTNG_HIDDEN
 int lttcomm_create_sock(struct lttcomm_sock *sock)
 {
 	int ret, _sock_type, _sock_proto, domain;
@@ -126,7 +124,6 @@ error:
 /*
  * Return allocated lttcomm socket structure.
  */
-LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
 	struct lttcomm_sock *sock;
@@ -151,7 +148,6 @@ end:
  * This is mostly useful when lttcomm_sock are passed between process where the
  * fd and ops have to be changed within the correct address space.
  */
-LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src)
 {
 	struct lttcomm_sock *sock;
@@ -176,7 +172,6 @@ alloc_error:
  * This is mostly useful when lttcomm_sock are passed between process where the
  * fd and ops have to be changed within the correct address space.
  */
-LTTNG_HIDDEN
 void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 {
 	/* Safety net */
@@ -193,7 +188,6 @@ void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 /*
  * Init IPv4 sockaddr structure.
  */
-LTTNG_HIDDEN
 int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port)
 {
@@ -224,7 +218,6 @@ error:
 /*
  * Init IPv6 sockaddr structure.
  */
-LTTNG_HIDDEN
 int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port)
 {
@@ -253,7 +246,6 @@ error:
 /*
  * Return allocated lttcomm socket structure from lttng URI.
  */
-LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 {
 	int ret;
@@ -306,7 +298,6 @@ alloc_error:
 /*
  * Destroy and free lttcomm socket.
  */
-LTTNG_HIDDEN
 void lttcomm_destroy_sock(struct lttcomm_sock *sock)
 {
 	free(sock);
@@ -318,7 +309,6 @@ void lttcomm_destroy_sock(struct lttcomm_sock *sock)
  *
  * On error, NULL is returned.
  */
-LTTNG_HIDDEN
 struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
 		uint32_t major, uint32_t minor)
 {
@@ -366,7 +356,6 @@ error:
 /*
  * Set socket receiving timeout.
  */
-LTTNG_HIDDEN
 int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec)
 {
 	int ret;
@@ -386,7 +375,6 @@ int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec)
 /*
  * Set socket sending timeout.
  */
-LTTNG_HIDDEN
 int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
 {
 	int ret;
@@ -403,7 +391,6 @@ int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 {
 	LTTNG_ASSERT(sock);
@@ -427,7 +414,6 @@ int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 	return 0;
 }
 
-LTTNG_HIDDEN
 int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
 {
 	LTTNG_ASSERT(sock);
@@ -450,7 +436,6 @@ int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
 	return 0;
 }
 
-LTTNG_HIDDEN
 void lttcomm_init(void)
 {
 	const char *env;
@@ -471,7 +456,6 @@ void lttcomm_init(void)
 	}
 }
 
-LTTNG_HIDDEN
 unsigned long lttcomm_get_network_timeout(void)
 {
 	return network_timeout;

@@ -25,16 +25,13 @@ struct lttng_trigger;
  * On success, return the number of bytes consumed from `view`, and the created
  * list in `*list`. On failure, return -1.
  */
-LTTNG_HIDDEN
 extern ssize_t lttng_action_list_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_action **list);
 
-LTTNG_HIDDEN
 extern struct lttng_action *lttng_action_list_borrow_mutable_at_index(
 		const struct lttng_action *list, unsigned int index);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,
 		const struct lttng_action *action,
 		struct mi_writer *writer,

@@ -1926,7 +1926,6 @@ error:
 /*
  * Setup necessary data for kernel tracer action.
  */
-LTTNG_HIDDEN
 int init_kernel_tracer(void)
 {
 	int ret;
@@ -2067,7 +2066,6 @@ error:
 	}
 }
 
-LTTNG_HIDDEN
 void cleanup_kernel_tracer(void)
 {
 	DBG2("Closing kernel event notifier group notification file descriptor");
@@ -2121,7 +2119,6 @@ void cleanup_kernel_tracer(void)
 	free(syscall_table);
 }
 
-LTTNG_HIDDEN
 bool kernel_tracer_is_initialized(void)
 {
 	return kernel_tracer_fd >= 0;

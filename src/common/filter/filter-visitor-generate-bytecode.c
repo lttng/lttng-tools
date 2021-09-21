@@ -628,7 +628,6 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 	}
 }
 
-LTTNG_HIDDEN
 void filter_bytecode_free(struct filter_parser_ctx *ctx)
 {
 	if (!ctx) {
@@ -646,7 +645,6 @@ void filter_bytecode_free(struct filter_parser_ctx *ctx)
 	}
 }
 
-LTTNG_HIDDEN
 int filter_visitor_bytecode_generate(struct filter_parser_ctx *ctx)
 {
 	int ret;

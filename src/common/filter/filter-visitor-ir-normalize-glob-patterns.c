@@ -76,7 +76,6 @@ int normalize_glob_patterns(struct ir_op *node)
  * utils_normalize_glob_pattern(). See the documentation of
  * utils_normalize_glob_pattern() for more details.
  */
-LTTNG_HIDDEN
 int filter_visitor_ir_normalize_glob_patterns(struct filter_parser_ctx *ctx)
 {
 	return normalize_glob_patterns(ctx->ir_root);

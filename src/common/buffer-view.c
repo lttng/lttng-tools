@@ -9,7 +9,6 @@
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
 
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_init(
 		const char *src, size_t offset, ptrdiff_t len)
 {
@@ -17,13 +16,11 @@ struct lttng_buffer_view lttng_buffer_view_init(
 	return view;
 }
 
-LTTNG_HIDDEN
 bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view)
 {
 	return view && view->data && view->size > 0;
 }
 
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_view(
 		const struct lttng_buffer_view *src, size_t offset,
 		ptrdiff_t len)
@@ -50,7 +47,6 @@ end:
 	return view;
 }
 
-LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *src, size_t offset,
 		ptrdiff_t len)
@@ -77,7 +73,6 @@ end:
 	return view;
 }
 
-LTTNG_HIDDEN
 bool lttng_buffer_view_contains_string(const struct lttng_buffer_view *buf,
 		const char *str,
 		size_t len_with_null_terminator)

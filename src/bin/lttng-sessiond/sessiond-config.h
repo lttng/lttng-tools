@@ -21,7 +21,6 @@ struct config_int_range {
 };
 
 /* Config string takes ownership of value. */
-LTTNG_HIDDEN
 void config_string_set(struct config_string *string, char *value);
 
 struct sessiond_config {
@@ -84,20 +83,15 @@ struct sessiond_config {
 };
 
 /* Initialize the sessiond_config values to build-defaults. */
-LTTNG_HIDDEN
 int sessiond_config_init(struct sessiond_config *config);
 
 /* Override sessiond_config values with values specified by the environment. */
-LTTNG_HIDDEN
 int sessiond_config_apply_env_config(struct sessiond_config *config);
 
-LTTNG_HIDDEN
 void sessiond_config_fini(struct sessiond_config *config);
 
-LTTNG_HIDDEN
 int sessiond_config_resolve_paths(struct sessiond_config *config);
 
-LTTNG_HIDDEN
 void sessiond_config_log(struct sessiond_config *config);
 
 #endif /* LTTNG_SESSIOND_CONFIG_H */

@@ -59,7 +59,6 @@ static inline bool is_value_type_name(
 	       value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code process_attr_value_from_comm(
 		enum lttng_domain_type domain,
 		enum lttng_process_attr process_attr,
@@ -184,7 +183,6 @@ error:
 	return ret;
 }
 
-LTTNG_HIDDEN
 const char *lttng_process_attr_to_string(enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
@@ -212,7 +210,6 @@ static void process_attr_tracker_value_destructor(void *ptr)
 	process_attr_value_destroy(value);
 }
 
-LTTNG_HIDDEN
 struct lttng_process_attr_values *lttng_process_attr_values_create(void)
 {
 	struct lttng_process_attr_values *values = zmalloc(sizeof(*values));
@@ -227,7 +224,6 @@ end:
 	return values;
 }
 
-LTTNG_HIDDEN
 unsigned int _lttng_process_attr_values_get_count(
 		const struct lttng_process_attr_values *values)
 {
@@ -235,7 +231,6 @@ unsigned int _lttng_process_attr_values_get_count(
 			&values->array);
 }
 
-LTTNG_HIDDEN
 const struct process_attr_value *lttng_process_attr_tracker_values_get_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index)
@@ -294,7 +289,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_process_attr_values_serialize(
 		const struct lttng_process_attr_values *values,
 		struct lttng_dynamic_buffer *buffer)
@@ -325,7 +319,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_process_attr_values_create_from_buffer(
 		enum lttng_domain_type domain,
 		enum lttng_process_attr process_attr,
@@ -412,7 +405,6 @@ error:
 	return -1;
 }
 
-LTTNG_HIDDEN
 void lttng_process_attr_values_destroy(struct lttng_process_attr_values *values)
 {
 	if (!values) {
@@ -422,7 +414,6 @@ void lttng_process_attr_values_destroy(struct lttng_process_attr_values *values)
 	free(values);
 }
 
-LTTNG_HIDDEN
 struct process_attr_value *process_attr_value_copy(
 		const struct process_attr_value *value)
 {
@@ -460,7 +451,6 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN
 unsigned long process_attr_value_hash(const struct process_attr_value *a)
 {
 	unsigned long hash = hash_key_ulong((void *) a->type, lttng_ht_seed);
@@ -491,7 +481,6 @@ unsigned long process_attr_value_hash(const struct process_attr_value *a)
 	return hash;
 }
 
-LTTNG_HIDDEN
 bool process_attr_tracker_value_equal(const struct process_attr_value *a,
 		const struct process_attr_value *b)
 {
@@ -514,7 +503,6 @@ bool process_attr_tracker_value_equal(const struct process_attr_value *a,
 	}
 }
 
-LTTNG_HIDDEN
 void process_attr_value_destroy(struct process_attr_value *value)
 {
 	if (!value) {

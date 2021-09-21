@@ -84,37 +84,28 @@ struct lttng_event_rule_comm {
 	char payload[];
 };
 
-LTTNG_HIDDEN
 void lttng_event_rule_init(struct lttng_event_rule *event_rule,
 		enum lttng_event_rule_type type);
 
-LTTNG_HIDDEN
 bool lttng_event_rule_validate(const struct lttng_event_rule *event_rule);
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_create_from_payload(
 		struct lttng_payload_view *payload,
 		struct lttng_event_rule **event_rule);
 
-LTTNG_HIDDEN
 int lttng_event_rule_serialize(const struct lttng_event_rule *event_rule,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 bool lttng_event_rule_is_equal(const struct lttng_event_rule *a,
 		const struct lttng_event_rule *b);
 
-LTTNG_HIDDEN
 bool lttng_event_rule_get(struct lttng_event_rule *rule);
 
-LTTNG_HIDDEN
 void lttng_event_rule_put(struct lttng_event_rule *rule);
 
-LTTNG_HIDDEN
 enum lttng_domain_type lttng_event_rule_get_domain_type(
 		const struct lttng_event_rule *rule);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
 		struct lttng_event_rule *rule,
 		const struct lttng_credentials *creds);
@@ -123,14 +114,12 @@ enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
  * If not present/implemented returns NULL.
  * Caller DOES NOT own the returned object.
  */
-LTTNG_HIDDEN
 const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule);
 
 /*
  * If not present/implemented returns NULL.
  * Caller DOES NOT own the returned object.
  */
-LTTNG_HIDDEN
 const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 		const struct lttng_event_rule *rule);
 
@@ -138,15 +127,12 @@ const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
  * If not present/implemented return NULL.
  * Caller OWNS the returned object.
  */
-LTTNG_HIDDEN
 enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
 		struct lttng_event_exclusion **exclusions);
 
-LTTNG_HIDDEN
 const char *lttng_event_rule_type_str(enum lttng_event_rule_type type);
 
-LTTNG_HIDDEN
 unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
 
 /*
@@ -158,15 +144,12 @@ unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
  *
  * The caller owns the returned object.
  */
-LTTNG_HIDDEN
 struct lttng_event *lttng_event_rule_generate_lttng_event(
 		const struct lttng_event_rule *rule);
 
 /* Test if an event rule targets an agent domain. */
-LTTNG_HIDDEN
 bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_mi_serialize(
 		const struct lttng_event_rule *rule, struct mi_writer *writer);
 

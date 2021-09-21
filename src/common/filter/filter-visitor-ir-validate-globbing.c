@@ -104,7 +104,6 @@ int validate_globbing(struct ir_op *node)
  *    one of them is a (full) star globbing pattern, the binary
  *    operation is either == or !=.
  */
-LTTNG_HIDDEN
 int filter_visitor_ir_validate_globbing(struct filter_parser_ctx *ctx)
 {
 	return validate_globbing(ctx->ir_root);

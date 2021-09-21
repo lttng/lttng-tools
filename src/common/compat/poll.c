@@ -71,7 +71,6 @@ error:
 /*
  * Create epoll set and allocate returned events structure.
  */
-LTTNG_HIDDEN
 int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 {
 	int ret;
@@ -124,7 +123,6 @@ error:
 /*
  * Add a fd to the epoll set with requesting events.
  */
-LTTNG_HIDDEN
 int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int ret;
@@ -172,7 +170,6 @@ error:
 /*
  * Remove a fd from the epoll set.
  */
-LTTNG_HIDDEN
 int compat_epoll_del(struct lttng_poll_event *events, int fd)
 {
 	int ret;
@@ -207,7 +204,6 @@ error:
 /*
  * Set an fd's events.
  */
-LTTNG_HIDDEN
 int compat_epoll_mod(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int ret;
@@ -249,7 +245,6 @@ error:
 /*
  * Wait on epoll set. This is a blocking call of timeout value.
  */
-LTTNG_HIDDEN
 int compat_epoll_wait(struct lttng_poll_event *events, int timeout,
 		bool interruptible)
 {
@@ -304,7 +299,6 @@ error:
 /*
  * Setup poll set maximum size.
  */
-LTTNG_HIDDEN
 int compat_epoll_set_max_size(void)
 {
 	int ret, fd, retval = 0;
@@ -434,7 +428,6 @@ error:
 /*
  * Create pollfd data structure.
  */
-LTTNG_HIDDEN
 int compat_poll_create(struct lttng_poll_event *events, int size)
 {
 	struct compat_poll_event_array *current, *wait;
@@ -487,7 +480,6 @@ error:
 /*
  * Add fd to pollfd data structure with requested events.
  */
-LTTNG_HIDDEN
 int compat_poll_add(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
@@ -534,7 +526,6 @@ error:
 /*
  * Modify an fd's events..
  */
-LTTNG_HIDDEN
 int compat_poll_mod(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
@@ -571,7 +562,6 @@ error:
 /*
  * Remove a fd from the pollfd structure.
  */
-LTTNG_HIDDEN
 int compat_poll_del(struct lttng_poll_event *events, int fd)
 {
 	int i, count = 0, ret;
@@ -626,7 +616,6 @@ error:
 /*
  * Wait on poll() with timeout. Blocking call.
  */
-LTTNG_HIDDEN
 int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 		bool interruptible)
 {
@@ -706,7 +695,6 @@ error:
 /*
  * Setup poll set maximum size.
  */
-LTTNG_HIDDEN
 int compat_poll_set_max_size(void)
 {
 	int ret, retval = 0;

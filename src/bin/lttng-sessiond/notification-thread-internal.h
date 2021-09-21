@@ -225,10 +225,8 @@ enum client_transmission_status {
 	CLIENT_TRANSMISSION_STATUS_ERROR,
 };
 
-LTTNG_HIDDEN
 bool notification_client_list_get(struct notification_client_list *list);
 
-LTTNG_HIDDEN
 void notification_client_list_put(struct notification_client_list *list);
 
 /* Only returns a non-zero value if a fatal error occurred. */
@@ -237,7 +235,6 @@ typedef int (*report_client_transmission_result_cb)(
 		enum client_transmission_status status,
 		void *user_data);
 
-LTTNG_HIDDEN
 int notification_client_list_send_evaluation(
 		struct notification_client_list *list,
 		const struct lttng_trigger *trigger,
@@ -246,7 +243,6 @@ int notification_client_list_send_evaluation(
 		report_client_transmission_result_cb client_report,
 		void *user_data);
 
-LTTNG_HIDDEN
 int notification_thread_client_communication_update(
 		struct notification_thread_handle *handle,
 		notification_client_id id,
@@ -255,14 +251,12 @@ int notification_thread_client_communication_update(
 /*
  * Takes ownership of the payload if present.
  */
-LTTNG_HIDDEN
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
 		uint64_t tracer_token,
 		enum lttng_domain_type domain,
 		char *payload,
 		size_t payload_size);
 
-LTTNG_HIDDEN
 void lttng_event_notifier_notification_destroy(
 		struct lttng_event_notifier_notification *event_notifier_notification);
 

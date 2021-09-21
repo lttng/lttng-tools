@@ -34,7 +34,6 @@ end:
 	return field_val;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_uint_create(
 		uint64_t val)
 {
@@ -58,7 +57,6 @@ end:
 	return &field_val->parent;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_int_create(
 		int64_t val)
 {
@@ -104,7 +102,6 @@ end:
 	return field_val;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(
 		uint64_t val)
 {
@@ -128,7 +125,6 @@ end:
 	return &field_val->parent.parent;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_enum_int_create(
 		int64_t val)
 {
@@ -152,7 +148,6 @@ end:
 	return &field_val->parent.parent;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_real_create(double val)
 {
 	struct lttng_event_field_value_real *field_val = container_of(
@@ -175,7 +170,6 @@ end:
 	return &field_val->parent;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		const char *val, size_t size)
 {
@@ -204,7 +198,6 @@ end:
 	return &field_val->parent;
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_string_create(
 		const char *val)
 {
@@ -219,7 +212,6 @@ void destroy_field_val(void *field_val)
 	lttng_event_field_value_destroy(field_val);
 }
 
-LTTNG_HIDDEN
 struct lttng_event_field_value *lttng_event_field_value_array_create(void)
 {
 	struct lttng_event_field_value_array *field_val = container_of(
@@ -242,7 +234,6 @@ end:
 	return &field_val->parent;
 }
 
-LTTNG_HIDDEN
 void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 {
 	if (!field_val) {
@@ -289,7 +280,6 @@ end:
 	return;
 }
 
-LTTNG_HIDDEN
 int lttng_event_field_value_enum_append_label_with_size(
 		struct lttng_event_field_value *field_val,
 		const char *label, size_t size)
@@ -318,7 +308,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_event_field_value_enum_append_label(
 		struct lttng_event_field_value *field_val,
 		const char *label)
@@ -328,7 +317,6 @@ int lttng_event_field_value_enum_append_label(
 			label, strlen(label));
 }
 
-LTTNG_HIDDEN
 int lttng_event_field_value_array_append(
 		struct lttng_event_field_value *array_field_val,
 		struct lttng_event_field_value *field_val)
@@ -341,7 +329,6 @@ int lttng_event_field_value_array_append(
 			field_val);
 }
 
-LTTNG_HIDDEN
 int lttng_event_field_value_array_append_unavailable(
 		struct lttng_event_field_value *array_field_val)
 {

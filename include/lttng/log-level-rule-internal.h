@@ -35,34 +35,27 @@ struct lttng_log_level_rule_comm {
 	int32_t level;
 };
 
-LTTNG_HIDDEN
 ssize_t lttng_log_level_rule_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_log_level_rule **rule);
 
-LTTNG_HIDDEN
 int lttng_log_level_rule_serialize(const struct lttng_log_level_rule *rule,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 bool lttng_log_level_rule_is_equal(const struct lttng_log_level_rule *a,
 		const struct lttng_log_level_rule *b);
 
-LTTNG_HIDDEN
 struct lttng_log_level_rule *lttng_log_level_rule_copy(
 		const struct lttng_log_level_rule *source);
 
-LTTNG_HIDDEN
 void lttng_log_level_rule_to_loglevel(
 		const struct lttng_log_level_rule *log_level_rule,
 		enum lttng_loglevel_type *loglevel_type,
 		int *loglevel_value);
 
-LTTNG_HIDDEN
 unsigned long lttng_log_level_rule_hash(
 		const struct lttng_log_level_rule *log_level_rule);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_log_level_rule_mi_serialize(
 		const struct lttng_log_level_rule *rule,
 		struct mi_writer *writer);

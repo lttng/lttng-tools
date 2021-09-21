@@ -18,7 +18,6 @@ void release_fd_handle_ref(void *ptr)
 	fd_handle_put(fd_handle);
 }
 
-LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload)
 {
 	LTTNG_ASSERT(payload);
@@ -27,7 +26,6 @@ void lttng_payload_init(struct lttng_payload *payload)
 			release_fd_handle_ref);
 }
 
-LTTNG_HIDDEN
 int lttng_payload_copy(const struct lttng_payload *src_payload,
 		       struct lttng_payload *dst_payload)
 {
@@ -66,7 +64,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void lttng_payload_reset(struct lttng_payload *payload)
 {
 	if (!payload) {
@@ -77,14 +74,12 @@ void lttng_payload_reset(struct lttng_payload *payload)
 	lttng_dynamic_pointer_array_reset(&payload->_fd_handles);
 }
 
-LTTNG_HIDDEN
 void lttng_payload_clear(struct lttng_payload *payload)
 {
 	(void) lttng_dynamic_buffer_set_size(&payload->buffer, 0);
 	lttng_dynamic_pointer_array_clear(&payload->_fd_handles);
 }
 
-LTTNG_HIDDEN
 int lttng_payload_push_fd_handle(struct lttng_payload *payload,
 		struct fd_handle *fd_handle)
 {

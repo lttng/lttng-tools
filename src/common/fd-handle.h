@@ -19,15 +19,12 @@
 struct fd_handle;
 
 /* Create a file descriptor handle. */
-LTTNG_HIDDEN
 struct fd_handle *fd_handle_create(int fd);
 
 /* Acquire reference to a file descriptor handle. */
-LTTNG_HIDDEN
 void fd_handle_get(struct fd_handle *handle);
 
 /* Release reference to a file descriptor handle. */
-LTTNG_HIDDEN
 void fd_handle_put(struct fd_handle *handle);
 
 /*
@@ -35,7 +32,6 @@ void fd_handle_put(struct fd_handle *handle);
  *
  * This function can't fail.
  */
-LTTNG_HIDDEN
 int fd_handle_get_fd(struct fd_handle *handle);
 
 /*
@@ -46,7 +42,6 @@ int fd_handle_get_fd(struct fd_handle *handle);
  * the system documentation for the semantics of dup() for this particular file
  * descriptor type.
  */
-LTTNG_HIDDEN
 struct fd_handle *fd_handle_copy(const struct fd_handle *handle);
 
 #endif /* FS_HANDLE_H */

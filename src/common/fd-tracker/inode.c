@@ -245,7 +245,7 @@ static void lttng_inode_get(struct lttng_inode *inode)
 	urcu_ref_get(&inode->ref);
 }
 
-LTTNG_HIDDEN struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
+struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 		const char *path)
 {
 	struct lttng_unlinked_file_pool *pool = zmalloc(sizeof(*pool));
@@ -272,7 +272,7 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN void lttng_unlinked_file_pool_destroy(
+void lttng_unlinked_file_pool_destroy(
 		struct lttng_unlinked_file_pool *pool)
 {
 	if (!pool) {
@@ -285,12 +285,12 @@ LTTNG_HIDDEN void lttng_unlinked_file_pool_destroy(
 	free(pool);
 }
 
-LTTNG_HIDDEN void lttng_inode_put(struct lttng_inode *inode)
+void lttng_inode_put(struct lttng_inode *inode)
 {
 	urcu_ref_put(&inode->ref, lttng_inode_release);
 }
 
-LTTNG_HIDDEN struct lttng_directory_handle *
+struct lttng_directory_handle *
 lttng_inode_get_location_directory_handle(
 		struct lttng_inode *inode)
 {
@@ -303,7 +303,7 @@ lttng_inode_get_location_directory_handle(
 	return inode->location.directory_handle;
 }
 
-LTTNG_HIDDEN void lttng_inode_borrow_location(struct lttng_inode *inode,
+void lttng_inode_borrow_location(struct lttng_inode *inode,
 		const struct lttng_directory_handle **out_directory_handle,
 		const char **out_path)
 {
@@ -315,7 +315,7 @@ LTTNG_HIDDEN void lttng_inode_borrow_location(struct lttng_inode *inode,
 	}
 }
 
-LTTNG_HIDDEN int lttng_inode_rename(
+int lttng_inode_rename(
 		struct lttng_inode *inode,
 		struct lttng_directory_handle *old_directory_handle,
 		const char *old_path,
@@ -385,7 +385,7 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN int lttng_inode_unlink(struct lttng_inode *inode)
+int lttng_inode_unlink(struct lttng_inode *inode)
 {
 	int ret = 0;
 
@@ -451,7 +451,7 @@ end:
 	return inode;
 }
 
-LTTNG_HIDDEN struct lttng_inode_registry *lttng_inode_registry_create(void)
+struct lttng_inode_registry *lttng_inode_registry_create(void)
 {
 	struct lttng_inode_registry *registry = zmalloc(sizeof(*registry));
 
@@ -478,7 +478,7 @@ error:
 	return NULL;
 }
 
-LTTNG_HIDDEN void lttng_inode_registry_destroy(
+void lttng_inode_registry_destroy(
 		struct lttng_inode_registry *registry)
 {
 	if (!registry) {
@@ -492,7 +492,7 @@ LTTNG_HIDDEN void lttng_inode_registry_destroy(
 	free(registry);
 }
 
-LTTNG_HIDDEN struct lttng_inode *lttng_inode_registry_get_inode(
+struct lttng_inode *lttng_inode_registry_get_inode(
 		struct lttng_inode_registry *registry,
 		struct lttng_directory_handle *handle,
 		const char *path,

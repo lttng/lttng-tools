@@ -41,7 +41,6 @@ static const struct lttcomm_proto_ops inet6_ops = {
 /*
  * Creates an PF_INET socket.
  */
-LTTNG_HIDDEN
 int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
 {
 	int val = 1, ret;
@@ -84,7 +83,6 @@ error:
 /*
  * Bind socket and return.
  */
-LTTNG_HIDDEN
 int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 {
 	return bind(sock->fd,
@@ -215,7 +213,6 @@ error:
 /*
  * Connect PF_INET socket.
  */
-LTTNG_HIDDEN
 int lttcomm_connect_inet6_sock(struct lttcomm_sock *sock)
 {
 	int ret, closeret;
@@ -245,7 +242,6 @@ error_connect:
  * Do an accept(2) on the sock and return the new lttcomm socket. The socket
  * MUST be bind(2) before.
  */
-LTTNG_HIDDEN
 struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
 {
 	int new_fd;
@@ -289,7 +285,6 @@ error:
 /*
  * Make the socket listen using LTTNG_SESSIOND_COMM_MAX_LISTEN.
  */
-LTTNG_HIDDEN
 int lttcomm_listen_inet6_sock(struct lttcomm_sock *sock, int backlog)
 {
 	int ret;
@@ -320,7 +315,6 @@ end:
  *
  * Return the size of received data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 		size_t len, int flags)
 {
@@ -367,7 +361,6 @@ end:
  *
  * Return the size of sent data.
  */
-LTTNG_HIDDEN
 ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 		size_t len, int flags)
 {
@@ -414,7 +407,6 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 /*
  * Shutdown cleanly and close.
  */
-LTTNG_HIDDEN
 int lttcomm_close_inet6_sock(struct lttcomm_sock *sock)
 {
 	int ret;

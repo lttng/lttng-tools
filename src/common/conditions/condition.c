@@ -37,13 +37,11 @@ static void condition_destroy_ref(struct urcu_ref *ref)
 	condition->destroy(condition);
 }
 
-LTTNG_HIDDEN
 void lttng_condition_get(struct lttng_condition *condition)
 {
 	urcu_ref_get(&condition->ref);
 }
 
-LTTNG_HIDDEN
 void lttng_condition_put(struct lttng_condition *condition)
 {
 	if (!condition) {
@@ -55,7 +53,6 @@ void lttng_condition_put(struct lttng_condition *condition)
 }
 
 
-LTTNG_HIDDEN
 bool lttng_condition_validate(const struct lttng_condition *condition)
 {
 	bool valid;
@@ -76,7 +73,6 @@ end:
 	return valid;
 }
 
-LTTNG_HIDDEN
 int lttng_condition_serialize(const struct lttng_condition *condition,
 		struct lttng_payload *payload)
 {
@@ -104,7 +100,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 bool lttng_condition_is_equal(const struct lttng_condition *a,
 		const struct lttng_condition *b)
 {
@@ -128,7 +123,6 @@ end:
 	return is_equal;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
@@ -202,7 +196,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void lttng_condition_init(struct lttng_condition *condition,
 		enum lttng_condition_type type)
 {
@@ -210,7 +203,6 @@ void lttng_condition_init(struct lttng_condition *condition,
 	urcu_ref_init(&condition->ref);
 }
 
-LTTNG_HIDDEN
 const char *lttng_condition_type_str(enum lttng_condition_type type)
 {
 	switch (type) {
@@ -240,7 +232,6 @@ const char *lttng_condition_type_str(enum lttng_condition_type type)
 	}
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_condition_mi_serialize(
 		const struct lttng_trigger *trigger,
 		const struct lttng_condition *condition,

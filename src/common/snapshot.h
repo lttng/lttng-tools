@@ -18,25 +18,20 @@ struct lttng_payload;
 struct lttng_snapshot_output;
 struct mi_writer;
 
-LTTNG_HIDDEN
 bool lttng_snapshot_output_validate(const struct lttng_snapshot_output *output);
 
-LTTNG_HIDDEN
 bool lttng_snapshot_output_is_equal(
 		const struct lttng_snapshot_output *a,
 		const struct lttng_snapshot_output *b);
 
-LTTNG_HIDDEN
 int lttng_snapshot_output_serialize(
 		const struct lttng_snapshot_output *output,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 ssize_t lttng_snapshot_output_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_snapshot_output **output_p);
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_snapshot_output_mi_serialize(
 		const struct lttng_snapshot_output *output,
 		struct mi_writer *writer);

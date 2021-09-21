@@ -7,7 +7,6 @@
 
 #include <common/dynamic-array.h>
 
-LTTNG_HIDDEN
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 		size_t element_size,
 		lttng_dynamic_array_element_destructor destructor)
@@ -18,7 +17,6 @@ void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 	array->destructor = destructor;
 }
 
-LTTNG_HIDDEN
 int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
 		size_t new_element_count)
 {
@@ -47,7 +45,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
 		const void *element)
 {
@@ -68,7 +65,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
 		size_t element_index)
 {
@@ -90,7 +86,6 @@ int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
 			array->buffer.size - array->element_size);
 }
 
-LTTNG_HIDDEN
 void lttng_dynamic_array_reset(struct lttng_dynamic_array *array)
 {
 	if (array->destructor) {
@@ -106,7 +101,6 @@ void lttng_dynamic_array_reset(struct lttng_dynamic_array *array)
 	array->size = 0;
 }
 
-LTTNG_HIDDEN
 void lttng_dynamic_array_clear(struct lttng_dynamic_array *array)
 {
 	if (array->destructor) {
@@ -122,7 +116,6 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array)
 	array->size = 0;
 }
 
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_init(
 		struct lttng_dynamic_pointer_array *array,
 		lttng_dynamic_pointer_array_destructor destructor)
@@ -130,7 +123,6 @@ void lttng_dynamic_pointer_array_init(
 	lttng_dynamic_array_init(&array->array, sizeof(void *), destructor);
 }	
 
-LTTNG_HIDDEN
 int lttng_dynamic_pointer_array_remove_pointer(
 		struct lttng_dynamic_pointer_array *array, size_t index)
 {
@@ -153,7 +145,6 @@ int lttng_dynamic_pointer_array_remove_pointer(
 }
 
 /* Release any memory used by the dynamic array. */
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_reset(
 		struct lttng_dynamic_pointer_array *array)
 {
@@ -174,7 +165,6 @@ void lttng_dynamic_pointer_array_reset(
 	lttng_dynamic_array_reset(&array->array);
 }
 
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_clear(
 		struct lttng_dynamic_pointer_array *array)
 {

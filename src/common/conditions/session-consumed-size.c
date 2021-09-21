@@ -286,7 +286,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_condition_session_consumed_size_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
@@ -330,7 +329,6 @@ end:
 	return evaluation;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_evaluation_session_consumed_size_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
@@ -481,7 +479,6 @@ void lttng_evaluation_session_consumed_size_destroy(
 	free(consumed);
 }
 
-LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
 		uint64_t consumed)
 {

@@ -81,7 +81,6 @@ int lttng_opt_mi;
  *
  * If domain is unknown, default domain will be the kernel.
  */
-LTTNG_HIDDEN
 void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		struct lttng_domain *src)
 {
@@ -244,7 +243,6 @@ end:
  *
  * If yes return 1, else return -1.
  */
-LTTNG_HIDDEN
 int lttng_check_tracing_group(void)
 {
 	gid_t *grp_list, tracing_gid;
@@ -434,7 +432,7 @@ error:
  *
  * On success, return the socket's file descriptor. On error, return -1.
  */
-LTTNG_HIDDEN int connect_sessiond(void)
+int connect_sessiond(void)
 {
 	int ret;
 
@@ -533,7 +531,6 @@ end:
  *
  * Return size of data (only payload, not header) or a negative error code.
  */
-LTTNG_HIDDEN
 int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
 		const int *fds, size_t nb_fd, const void *vardata,
 		size_t vardata_len, void **user_payload_buf,
@@ -605,7 +602,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 	struct lttng_payload *reply)
 {

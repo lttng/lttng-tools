@@ -24,7 +24,6 @@ int get_count_order(unsigned int count)
 	return order;
 }
 
-LTTNG_HIDDEN
 int bytecode_init(struct lttng_bytecode_alloc **fb)
 {
 	uint32_t alloc_len;
@@ -70,7 +69,6 @@ int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint3
 	return ret;
 }
 
-LTTNG_HIDDEN
 int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data,
 		uint32_t align, uint32_t len)
 {
@@ -83,7 +81,6 @@ int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data,
 	return 0;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
 		struct logical_op *data,
 		uint32_t align, uint32_t len,
@@ -101,7 +98,6 @@ int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
 	return 0;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_get_payload_root(struct lttng_bytecode_alloc **bytecode)
 {
 	int ret;
@@ -121,7 +117,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_get_context_root(struct lttng_bytecode_alloc **bytecode)
 {
 	int ret;
@@ -141,7 +136,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_get_app_context_root(struct lttng_bytecode_alloc **bytecode)
 {
 	int ret;
@@ -161,7 +155,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_get_index_u64(struct lttng_bytecode_alloc **bytecode,
 		uint64_t index)
 {
@@ -187,7 +180,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
 		struct lttng_bytecode_alloc **bytecode_reloc,
 		const char *symbol)
@@ -255,7 +247,6 @@ end:
  *
  * Return allocated bytecode or NULL on error.
  */
-LTTNG_HIDDEN
 struct lttng_bytecode *lttng_bytecode_copy(
 		const struct lttng_bytecode *orig_f)
 {

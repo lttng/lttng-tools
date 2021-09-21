@@ -9,31 +9,26 @@
 #include <common/fs-handle.h>
 #include <common/readwrite.h>
 
-LTTNG_HIDDEN
 int fs_handle_get_fd(struct fs_handle *handle)
 {
 	return handle->get_fd(handle);
 }
 
-LTTNG_HIDDEN
 void fs_handle_put_fd(struct fs_handle *handle)
 {
 	return handle->put_fd(handle);
 }
 
-LTTNG_HIDDEN
 int fs_handle_unlink(struct fs_handle *handle)
 {
 	return handle->unlink(handle);
 }
 
-LTTNG_HIDDEN
 int fs_handle_close(struct fs_handle *handle)
 {
 	return handle->close(handle);
 }
 
-LTTNG_HIDDEN
 ssize_t fs_handle_read(struct fs_handle *handle, void *buf, size_t count)
 {
 	ssize_t ret;
@@ -50,7 +45,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 ssize_t fs_handle_write(struct fs_handle *handle, const void *buf, size_t count)
 {
 	ssize_t ret;
@@ -67,7 +61,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 int fs_handle_truncate(struct fs_handle *handle, off_t offset)
 {
 	int ret;
@@ -84,7 +77,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 off_t fs_handle_seek(struct fs_handle *handle, off_t offset, int whence)
 {
 	off_t ret;

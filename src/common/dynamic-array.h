@@ -28,7 +28,6 @@ struct lttng_dynamic_pointer_array {
  * Initialize a resizable array of fixed-size elements. This performs no
  * allocation and can't fail.
  */
-LTTNG_HIDDEN
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 		size_t element_size,
 		lttng_dynamic_array_element_destructor destructor);
@@ -70,7 +69,6 @@ void *lttng_dynamic_array_get_element(const struct lttng_dynamic_array *array,
  * NOTE: It is striclty _invalid_ to access memory after _size_, regardless
  *       of prior calls to set_capacity().
  */
-LTTNG_HIDDEN
 int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
 		size_t new_element_count);
 
@@ -80,7 +78,6 @@ int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
  *
  * element is a pointer to the element to add (copy) to the array.
  */
-LTTNG_HIDDEN
 int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
 		const void *element);
 
@@ -89,16 +86,13 @@ int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
  * decreased by one and the following elements are shifted to take its place
  * (when applicable).
  */
-LTTNG_HIDDEN
 int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
 		size_t element_index);
 
 /* Release any memory used by the dynamic array. */
-LTTNG_HIDDEN
 void lttng_dynamic_array_reset(struct lttng_dynamic_array *array);
 
 /* Remove all elements from the dynamic array. */
-LTTNG_HIDDEN
 void lttng_dynamic_array_clear(struct lttng_dynamic_array *array);
 
 /*
@@ -112,7 +106,6 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array);
  * Initialize a resizable array of fixed-size elements. This performs no
  * allocation and can't fail.
  */
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_init(
 		struct lttng_dynamic_pointer_array *array,
 		lttng_dynamic_pointer_array_destructor destructor);
@@ -173,17 +166,14 @@ int lttng_dynamic_pointer_array_add_pointer(
  * count is decreased by one and the following pointers are shifted to
  * take the place of the removed pointer (if applicable).
  */
-LTTNG_HIDDEN
 int lttng_dynamic_pointer_array_remove_pointer(
 		struct lttng_dynamic_pointer_array *array, size_t index);
 
 /* Release any memory used by the dynamic array. */
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_reset(
 		struct lttng_dynamic_pointer_array *array);
 
 /* Remove all elements from the dynamic pointer array. */
-LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_clear(
 		struct lttng_dynamic_pointer_array *array);
 

@@ -13,12 +13,6 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/lttng.h>
 
-/*
- * NOTE: Every symbol in this helper header MUST be set to hidden so not to
- * polute the library name space. Use LTTNG_HIDDEN macro before declaring the
- * function in the C file.
- */
-
 /* Copy helper functions. */
 void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		struct lttng_domain *src);
@@ -42,7 +36,6 @@ int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
  * Return the size of the received data on success or else a negative lttng
  * error code.
  */
-LTTNG_HIDDEN
 int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 		struct lttng_payload *reply);
 

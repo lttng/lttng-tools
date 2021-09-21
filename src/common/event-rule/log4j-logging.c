@@ -597,7 +597,6 @@ end:
 	return rule;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_log4j_logging_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **_event_rule)

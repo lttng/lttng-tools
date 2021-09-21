@@ -40,12 +40,10 @@ struct lttng_event_rule_kernel_syscall_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_kernel_syscall_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **rule);
 
-LTTNG_HIDDEN
 const char *lttng_event_rule_kernel_syscall_emission_site_str(
 		enum lttng_event_rule_kernel_syscall_emission_site emission_site);
 #endif /* LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H */

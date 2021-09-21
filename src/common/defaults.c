@@ -20,37 +20,31 @@
 static int pthread_attr_init_done;
 static pthread_attr_t tattr;
 
-LTTNG_HIDDEN
 size_t default_get_channel_subbuf_size(void)
 {
 	return max(_DEFAULT_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
 }
 
-LTTNG_HIDDEN
 size_t default_get_metadata_subbuf_size(void)
 {
 	return max(DEFAULT_METADATA_SUBBUF_SIZE, PAGE_SIZE);
 }
 
-LTTNG_HIDDEN
 size_t default_get_kernel_channel_subbuf_size(void)
 {
 	return max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
 }
 
-LTTNG_HIDDEN
 size_t default_get_ust_pid_channel_subbuf_size(void)
 {
 	return max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
 }
 
-LTTNG_HIDDEN
 size_t default_get_ust_uid_channel_subbuf_size(void)
 {
 	return max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
 }
 
-LTTNG_HIDDEN
 pthread_attr_t *default_pthread_attr(void)
 {
 	if (pthread_attr_init_done) {

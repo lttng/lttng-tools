@@ -65,7 +65,6 @@ enum lttng_error_code utils_group_id_from_name(
  * - `str` is zero length
  * - `str` contains invalid
  */
-LTTNG_HIDDEN
 int utils_parse_unsigned_long_long(const char *str,
 		unsigned long long *value);
 

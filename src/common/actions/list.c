@@ -278,7 +278,6 @@ end:
 	return action_status;
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_action_list_mi_serialize(
 		const struct lttng_trigger *trigger,
 		const struct lttng_action *action,
@@ -448,7 +447,6 @@ const struct lttng_action *lttng_action_list_get_at_index(
 	return lttng_action_list_borrow_mutable_at_index(list, index);
 }
 
-LTTNG_HIDDEN
 struct lttng_action *lttng_action_list_borrow_mutable_at_index(
 		const struct lttng_action *list, unsigned int index)
 {

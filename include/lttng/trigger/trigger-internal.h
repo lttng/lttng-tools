@@ -105,53 +105,40 @@ struct lttng_triggers_comm {
 	char payload[];
 };
 
-LTTNG_HIDDEN
 ssize_t lttng_trigger_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_trigger **trigger);
 
-LTTNG_HIDDEN
 int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 bool lttng_trigger_validate(const struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 int lttng_trigger_assign_name(
 		struct lttng_trigger *dst, const struct lttng_trigger *src);
 
-LTTNG_HIDDEN
 void lttng_trigger_set_tracer_token(
 		struct lttng_trigger *trigger, uint64_t token);
 
-LTTNG_HIDDEN
 uint64_t lttng_trigger_get_tracer_token(const struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 int lttng_trigger_generate_name(struct lttng_trigger *trigger,
 		uint64_t unique_id);
 
-LTTNG_HIDDEN
 bool lttng_trigger_is_equal(
 		const struct lttng_trigger *a, const struct lttng_trigger *b);
 
-LTTNG_HIDDEN
 bool lttng_trigger_is_hidden(const struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_set_hidden(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_get(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_put(struct lttng_trigger *trigger);
 
 /*
  * Serialize a trigger to a mi_writer.
  * Return LTTNG_OK in success, other enum lttng_error_code on error.
  */
-LTTNG_HIDDEN
 enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
 		struct mi_writer *writer,
 		const struct mi_lttng_error_query_callbacks
@@ -161,7 +148,6 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
  * Allocate a new set of triggers.
  * The returned object must be freed via lttng_triggers_destroy.
  */
-LTTNG_HIDDEN
 struct lttng_triggers *lttng_triggers_create(void);
 
 /*
@@ -174,7 +160,6 @@ struct lttng_triggers *lttng_triggers_create(void);
  * The ownership of the trigger set element is NOT transfered.
  * The returned object can NOT be freed via lttng_trigger_destroy.
  */
-LTTNG_HIDDEN
 struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
 		const struct lttng_triggers *triggers, unsigned int index);
 
@@ -184,25 +169,21 @@ struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
  * A reference to the added trigger is acquired on behalf of the trigger set
  * on success.
  */
-LTTNG_HIDDEN
 int lttng_triggers_add(
 		struct lttng_triggers *triggers, struct lttng_trigger *trigger);
 
 /*
  * Remove all triggers marked as hidden from the provided trigger set.
  */
-LTTNG_HIDDEN
 int lttng_triggers_remove_hidden_triggers(struct lttng_triggers *triggers);
 
 /*
  * Serialize a trigger set to an lttng_payload object.
  * Return LTTNG_OK on success, negative lttng error code on error.
  */
-LTTNG_HIDDEN
 int lttng_triggers_serialize(const struct lttng_triggers *triggers,
 		struct lttng_payload *payload);
 
-LTTNG_HIDDEN
 ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_triggers **triggers);
 
@@ -210,17 +191,14 @@ ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *view,
  * Serialize a trigger set to a mi_writer.
  * Return LTTNG_OK in success, other enum lttng_error_code on error.
  */
-LTTNG_HIDDEN
 enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
 		struct mi_writer *writer,
 		const struct mi_lttng_error_query_callbacks
 				*error_query_callbacks);
 
-LTTNG_HIDDEN
 const struct lttng_credentials *lttng_trigger_get_credentials(
 		const struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds);
 
@@ -228,7 +206,6 @@ void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
  * Return the type of any underlying domain restriction. If no particular
  * requirement is present, returns LTTNG_DOMAIN_NONE.
  */
-LTTNG_HIDDEN
 enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 		const struct lttng_trigger *trigger);
 
@@ -236,7 +213,6 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
  * Generate any bytecode related to the trigger.
  * On success LTTNG_OK. On error, returns lttng_error code.
  */
-LTTNG_HIDDEN
 enum lttng_error_code lttng_trigger_generate_bytecode(
 		struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds);
@@ -247,7 +223,6 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
  * the moment of the copy, it is the caller's responsability to lock it for
  * the duration of the copy.
  */
-LTTNG_HIDDEN
 struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
 
 /*
@@ -256,13 +231,10 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
  *  AND
  *  it has one or more sessiond-execution action.
  */
-LTTNG_HIDDEN
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_set_as_registered(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger);
 
 /*
@@ -274,26 +246,20 @@ void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger);
  * the trigger lock for the duration of the manipulation using
  * `lttng_trigger_lock` and `lttng_trigger_unlock`.
  */
-LTTNG_HIDDEN
 bool lttng_trigger_is_registered(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_lock(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 void lttng_trigger_unlock(struct lttng_trigger *trigger);
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_add_error_results(
 		const struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results);
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_condition_add_error_results(
 		const struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results);
 
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 		struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results);
@@ -309,7 +275,6 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
  * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_set_name(
 		struct lttng_trigger *trigger, const char *name);
 

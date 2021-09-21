@@ -8,7 +8,6 @@
 #include <lttng/event-internal.h>
 #include <common/error.h>
 
-LTTNG_HIDDEN
 struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 {
 	struct lttng_event *new_event;

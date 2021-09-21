@@ -11,7 +11,6 @@
 #include <common/error.h>
 #include <common/macros.h>
 
-LTTNG_HIDDEN
 int parse_application_context(const char *str, char **out_provider_name,
 		char **out_ctx_name)
 {

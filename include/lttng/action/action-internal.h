@@ -74,7 +74,6 @@ struct lttng_action_comm {
 	int8_t action_type;
 } LTTNG_PACKED;
 
-LTTNG_HIDDEN
 void lttng_action_init(struct lttng_action *action,
 		enum lttng_action_type type,
 		action_validate_cb validate,
@@ -85,43 +84,31 @@ void lttng_action_init(struct lttng_action *action,
 		action_add_error_query_results_cb add_error_query_results,
 		action_mi_serialize_cb mi);
 
-LTTNG_HIDDEN
 bool lttng_action_validate(struct lttng_action *action);
 
-LTTNG_HIDDEN
 int lttng_action_serialize(struct lttng_action *action,
 		struct lttng_payload *buf);
 
-LTTNG_HIDDEN
 ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action);
 
-LTTNG_HIDDEN
 bool lttng_action_is_equal(const struct lttng_action *a,
 		const struct lttng_action *b);
 
-LTTNG_HIDDEN
 void lttng_action_get(struct lttng_action *action);
 
-LTTNG_HIDDEN
 void lttng_action_put(struct lttng_action *action);
 
-LTTNG_HIDDEN
 const char* lttng_action_type_string(enum lttng_action_type action_type);
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_request_count(struct lttng_action *action);
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_count(struct lttng_action *action);
 
-LTTNG_HIDDEN
 void lttng_action_increase_execution_failure_count(struct lttng_action *action);
 
-LTTNG_HIDDEN
 bool lttng_action_should_execute(const struct lttng_action *action);
 
-LTTNG_HIDDEN
 enum lttng_action_status lttng_action_add_error_query_results(
 		const struct lttng_action *action,
 		struct lttng_error_query_results *results);
@@ -131,11 +118,9 @@ enum lttng_action_status lttng_action_add_error_query_results(
  * behavior to the generic error "execution failure counter" that all actions
  * (except list, which passes-through) provide.
  */
-LTTNG_HIDDEN
 enum lttng_action_status lttng_action_generic_add_error_query_results(
 		const struct lttng_action *action,
 		struct lttng_error_query_results *results);
-LTTNG_HIDDEN
 enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trigger,
 		const struct lttng_action *action,
 		struct mi_writer *writer,

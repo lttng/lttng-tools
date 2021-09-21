@@ -30,7 +30,6 @@ enum lttng_event_rule_type lttng_event_rule_get_type(
 	return event_rule ? event_rule->type : LTTNG_EVENT_RULE_TYPE_UNKNOWN;
 }
 
-LTTNG_HIDDEN
 enum lttng_domain_type lttng_event_rule_get_domain_type(
 		const struct lttng_event_rule *event_rule)
 {
@@ -77,7 +76,6 @@ void lttng_event_rule_destroy(struct lttng_event_rule *event_rule)
 	lttng_event_rule_put(event_rule);
 }
 
-LTTNG_HIDDEN
 bool lttng_event_rule_validate(const struct lttng_event_rule *event_rule)
 {
 	bool valid;
@@ -98,7 +96,6 @@ end:
 	return valid;
 }
 
-LTTNG_HIDDEN
 int lttng_event_rule_serialize(const struct lttng_event_rule *event_rule,
 		struct lttng_payload *payload)
 {
@@ -126,7 +123,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 bool lttng_event_rule_is_equal(const struct lttng_event_rule *a,
 		const struct lttng_event_rule *b)
 {
@@ -150,7 +146,6 @@ end:
 	return is_equal;
 }
 
-LTTNG_HIDDEN
 ssize_t lttng_event_rule_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **event_rule)
@@ -239,7 +234,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
 void lttng_event_rule_init(struct lttng_event_rule *event_rule,
 		enum lttng_event_rule_type type)
 {
@@ -247,13 +241,11 @@ void lttng_event_rule_init(struct lttng_event_rule *event_rule,
 	event_rule->type = type;
 }
 
-LTTNG_HIDDEN
 bool lttng_event_rule_get(struct lttng_event_rule *event_rule)
 {
 	return urcu_ref_get_unless_zero(&event_rule->ref);
 }
 
-LTTNG_HIDDEN
 void lttng_event_rule_put(struct lttng_event_rule *event_rule)
 {
 	if (!event_rule) {
@@ -264,7 +256,6 @@ void lttng_event_rule_put(struct lttng_event_rule *event_rule)
 	urcu_ref_put(&event_rule->ref, lttng_event_rule_release);
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
 		struct lttng_event_rule *rule,
 		const struct lttng_credentials *creds)
@@ -273,14 +264,12 @@ enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
 	return rule->generate_filter_bytecode(rule, creds);
 }
 
-LTTNG_HIDDEN
 const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule)
 {
 	LTTNG_ASSERT(rule->get_filter);
 	return rule->get_filter(rule);
 }
 
-LTTNG_HIDDEN
 const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 		const struct lttng_event_rule *rule)
 {
@@ -288,7 +277,6 @@ const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 	return rule->get_filter_bytecode(rule);
 }
 
-LTTNG_HIDDEN
 enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
 		struct lttng_event_exclusion **exclusions)
@@ -297,7 +285,6 @@ lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
 	return rule->generate_exclusions(rule, exclusions);
 }
 
-LTTNG_HIDDEN
 struct lttng_event *lttng_event_rule_generate_lttng_event(
 		const struct lttng_event_rule *rule)
 {
@@ -305,7 +292,6 @@ struct lttng_event *lttng_event_rule_generate_lttng_event(
 	return rule->generate_lttng_event(rule);
 }
 
-LTTNG_HIDDEN
 bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule)
 {
 	bool targets_agent_domain = false;
@@ -355,14 +341,12 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 	}
 }
 
-LTTNG_HIDDEN
 unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule)
 {
 	LTTNG_ASSERT(rule->hash);
 	return rule->hash(rule);
 }
 
-LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_mi_serialize(
 		const struct lttng_event_rule *rule, struct mi_writer *writer)
 {

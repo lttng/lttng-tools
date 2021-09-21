@@ -22,10 +22,8 @@ struct lttng_waiter {
 	int32_t state;
 };
 
-LTTNG_HIDDEN
 void lttng_waiter_init(struct lttng_waiter *waiter);
 
-LTTNG_HIDDEN
 void lttng_waiter_wait(struct lttng_waiter *waiter);
 
 /*
@@ -33,7 +31,6 @@ void lttng_waiter_wait(struct lttng_waiter *waiter);
  * It is invalid for multiple "wake" operations to be invoked
  * on a single waiter without re-initializing it before.
  */
-LTTNG_HIDDEN
 void lttng_waiter_wake_up(struct lttng_waiter *waiter);
 
 #endif /* LTTNG_WAITER_H */

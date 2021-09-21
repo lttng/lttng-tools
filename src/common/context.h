@@ -21,7 +21,6 @@
  * Returns 0 if the string is a valid application context, else a negative
  * value on error.
  */
-LTTNG_HIDDEN
 int parse_application_context(const char *str, char **provider_name,
 		char **ctx_name);
 

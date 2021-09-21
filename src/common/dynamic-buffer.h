@@ -29,7 +29,6 @@ struct lttng_dynamic_buffer {
  * Initialize a dynamic buffer. This performs no allocation and is meant
  * to be used instead of memset or explicit initialization of the buffer.
  */
-LTTNG_HIDDEN
 void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer);
 
 /*
@@ -37,7 +36,6 @@ void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer);
  * (after its current "size"). The dynamic buffer's size is increased by
  * "len", and its capacity is adjusted automatically.
  */
-LTTNG_HIDDEN
 int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 		const void *buf, size_t len);
 
@@ -46,7 +44,6 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
  * dynamic buffer as the source buffer. The source buffer's size is used in lieu
  * of "len".
  */
-LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 		const struct lttng_dynamic_buffer *src_buffer);
 
@@ -55,7 +52,6 @@ int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
  * buffer view as the source buffer. The source buffer's size is used in lieu
  * of "len".
  */
-LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
 		const struct lttng_buffer_view *view);
 
@@ -75,7 +71,6 @@ int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
  * NOTE: It is striclty _invalid_ to access memory after _size_, regardless
  *       of prior calls to set_capacity().
  */
-LTTNG_HIDDEN
 int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 		size_t new_size);
 
@@ -87,16 +82,13 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
  *
  * If the current size > new_capacity, the operation will fail.
  */
-LTTNG_HIDDEN
 int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 		size_t new_capacity);
 
 /* Release any memory used by the dynamic buffer. */
-LTTNG_HIDDEN
 void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer);
 
 /* Get the space left in the buffer before a new resize is needed. */
-LTTNG_HIDDEN
 size_t lttng_dynamic_buffer_get_capacity_left(
 		struct lttng_dynamic_buffer *buffer);
 

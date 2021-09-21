@@ -22,7 +22,6 @@
  *
  * Return 0 on success else -1 on error.
  */
-LTTNG_HIDDEN
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds);
 

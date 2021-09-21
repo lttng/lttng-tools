@@ -33,7 +33,6 @@ struct lttng_event_extended {
 	struct lttng_userspace_probe_location *probe_location;
 };
 
-LTTNG_HIDDEN
 struct lttng_event *lttng_event_copy(const struct lttng_event *event);
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

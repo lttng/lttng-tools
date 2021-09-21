@@ -379,7 +379,6 @@
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-LTTNG_HIDDEN
 size_t default_get_channel_subbuf_size(void);
 
 /*
@@ -388,7 +387,6 @@ size_t default_get_channel_subbuf_size(void);
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-LTTNG_HIDDEN
 size_t default_get_metadata_subbuf_size(void);
 
 /*
@@ -397,7 +395,6 @@ size_t default_get_metadata_subbuf_size(void);
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-LTTNG_HIDDEN
 size_t default_get_kernel_channel_subbuf_size(void);
 
 /*
@@ -406,7 +403,6 @@ size_t default_get_kernel_channel_subbuf_size(void);
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-LTTNG_HIDDEN
 size_t default_get_ust_pid_channel_subbuf_size(void);
 
 /*
@@ -415,7 +411,6 @@ size_t default_get_ust_pid_channel_subbuf_size(void);
  * This function depends on a value that is set at constructor time, so it is
  * unsafe to call it from another constructor.
  */
-LTTNG_HIDDEN
 size_t default_get_ust_uid_channel_subbuf_size(void);
 
 /*
@@ -427,7 +422,6 @@ size_t default_get_ust_uid_channel_subbuf_size(void);
  * pthread_attr_t pointer where the thread stack size is set to the soft stack
  * size limit.
  */
-LTTNG_HIDDEN
 pthread_attr_t *default_pthread_attr(void);
 
 #endif /* _DEFAULTS_H */

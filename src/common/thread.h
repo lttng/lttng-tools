@@ -15,7 +15,6 @@
  * be of arbitrary length and will be truncated to the platform limit,
  * usually 16.
  */
-LTTNG_HIDDEN
 int lttng_thread_setname(const char *name);
 
 #endif /* LTTNG_THREAD_H */
