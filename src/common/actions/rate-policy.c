@@ -516,7 +516,6 @@ end:
 	return _policy;
 }
 
-LTTNG_HIDDEN
 enum lttng_rate_policy_status lttng_rate_policy_every_n_get_interval(
 		const struct lttng_rate_policy *policy, uint64_t *interval)
 {
@@ -733,7 +732,6 @@ end:
 	return _policy;
 }
 
-LTTNG_HIDDEN
 enum lttng_rate_policy_status lttng_rate_policy_once_after_n_get_threshold(
 		const struct lttng_rate_policy *policy, uint64_t *threshold)
 {
