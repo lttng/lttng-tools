@@ -62,7 +62,7 @@ notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-default_pipe_size_getter_SOURCES = default_pipe_size_getter.c
+default_pipe_size_getter_SOURCES = default_pipe_size_getter.cpp
 default_pipe_size_getter_LDADD = $(top_builddir)/src/common/libcommon.la
 
 noinst_SCRIPTS = \

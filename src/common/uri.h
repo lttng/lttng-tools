@@ -44,6 +44,7 @@ enum lttng_stream_type {
  * should be ignored.
  */
 enum lttng_proto_type {
+	LTTNG_PROTO_TYPE_NONE                 = 0,
 	LTTNG_TCP                             = 1,
 	/*
 	 * UDP protocol is not supported for now.

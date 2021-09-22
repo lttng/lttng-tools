@@ -38,81 +38,81 @@ noinst_LTLIBRARIES = libcommon.la
 EXTRA_DIST = mi-lttng-4.1.xsd
 
 libcommon_la_SOURCES = \
-	actions/action.c \
-	actions/list.c \
-	actions/notify.c \
-	actions/path.c \
-	actions/rotate-session.c \
-	actions/snapshot-session.c \
-	actions/start-session.c \
-	actions/stop-session.c \
-	actions/rate-policy.c \
-	buffer-view.h buffer-view.c \
+	actions/action.cpp \
+	actions/list.cpp \
+	actions/notify.cpp \
+	actions/path.cpp \
+	actions/rotate-session.cpp \
+	actions/snapshot-session.cpp \
+	actions/start-session.cpp \
+	actions/stop-session.cpp \
+	actions/rate-policy.cpp \
+	buffer-view.h buffer-view.cpp \
 	common.h \
-	conditions/buffer-usage.c \
-	conditions/condition.c \
-	conditions/event-rule-matches.c \
-	conditions/session-consumed-size.c \
-	conditions/session-rotation.c \
-	context.c context.h \
-	credentials.c credentials.h \
-	daemonize.c daemonize.h \
-	defaults.c \
-	domain.c \
-	dynamic-array.c dynamic-array.h \
-	dynamic-buffer.c dynamic-buffer.h \
-	endpoint.c \
-	error.c error.h \
-	error-query.c \
-	evaluation.c \
-	event.c \
-	event-expr/event-expr.c \
-	event-field-value.c \
-	event-rule/event-rule.c \
-	event-rule/kernel-kprobe.c \
-	event-rule/kernel-syscall.c \
-	event-rule/kernel-uprobe.c \
-	event-rule/kernel-tracepoint.c \
-	event-rule/user-tracepoint.c \
-	event-rule/log4j-logging.c \
-	event-rule/jul-logging.c \
-	event-rule/python-logging.c \
-	filter.c filter.h \
-	fd-handle.c fd-handle.h \
-	fs-handle.c fs-handle.h fs-handle-internal.h \
-	futex.c futex.h \
-	kernel-probe.c \
-	index-allocator.c index-allocator.h \
-	location.c \
-	log-level-rule.c \
-	mi-lttng.c mi-lttng.h \
-	notification.c \
+	conditions/buffer-usage.cpp \
+	conditions/condition.cpp \
+	conditions/event-rule-matches.cpp \
+	conditions/session-consumed-size.cpp \
+	conditions/session-rotation.cpp \
+	context.cpp context.h \
+	credentials.cpp credentials.h \
+	daemonize.cpp daemonize.h \
+	defaults.cpp \
+	domain.cpp \
+	dynamic-array.cpp dynamic-array.h \
+	dynamic-buffer.cpp dynamic-buffer.h \
+	endpoint.cpp \
+	error.cpp error.h \
+	error-query.cpp \
+	evaluation.cpp \
+	event.cpp \
+	event-expr/event-expr.cpp \
+	event-field-value.cpp \
+	event-rule/event-rule.cpp \
+	event-rule/kernel-kprobe.cpp \
+	event-rule/kernel-syscall.cpp \
+	event-rule/kernel-uprobe.cpp \
+	event-rule/kernel-tracepoint.cpp \
+	event-rule/user-tracepoint.cpp \
+	event-rule/log4j-logging.cpp \
+	event-rule/jul-logging.cpp \
+	event-rule/python-logging.cpp \
+	filter.cpp filter.h \
+	fd-handle.cpp fd-handle.h \
+	fs-handle.cpp fs-handle.h fs-handle-internal.h \
+	futex.cpp futex.h \
+	kernel-probe.cpp \
+	index-allocator.cpp index-allocator.h \
+	location.cpp \
+	log-level-rule.cpp \
+	mi-lttng.cpp mi-lttng.h \
+	notification.cpp \
 	optional.h \
-	payload.c payload.h \
-	payload-view.c payload-view.h \
-	pipe.c pipe.h \
-	readwrite.c readwrite.h \
-	runas.c runas.h \
-	shm.c shm.h \
-	session-descriptor.c \
-	snapshot.c snapshot.h \
-	spawn-viewer.c spawn-viewer.h \
-	time.c \
-	trace-chunk.c trace-chunk.h \
+	payload.cpp payload.h \
+	payload-view.cpp payload-view.h \
+	pipe.cpp pipe.h \
+	readwrite.cpp readwrite.h \
+	runas.cpp runas.h \
+	shm.cpp shm.h \
+	session-descriptor.cpp \
+	snapshot.cpp snapshot.h \
+	spawn-viewer.cpp spawn-viewer.h \
+	time.cpp \
+	trace-chunk.cpp trace-chunk.h \
 	trace-chunk-registry.h \
-	trigger.c \
-	unix.c unix.h \
-	uri.c uri.h \
-	userspace-probe.c \
-	utils.c utils.h \
-	uuid.c uuid.h \
-	thread.c thread.h \
-	tracker.c tracker.h \
-	waiter.c waiter.h
+	trigger.cpp \
+	unix.cpp unix.h \
+	uri.cpp uri.h \
+	userspace-probe.cpp \
+	utils.cpp utils.h \
+	uuid.cpp uuid.h \
+	thread.cpp thread.h \
+	tracker.cpp tracker.h \
+	waiter.cpp waiter.h
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += \
-	lttng-elf.c lttng-elf.h
+	lttng-elf.cpp lttng-elf.h
 endif
 
 libcommon_la_LIBADD = \
