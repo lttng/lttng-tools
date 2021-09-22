@@ -527,7 +527,7 @@ int hash_match_key_u64(const void *key1, const void *key2)
  */
 int hash_match_key_str(const void *key1, const void *key2)
 {
-	if (strcmp(key1, key2) == 0) {
+	if (strcmp((const char *) key1, (const char *) key2) == 0) {
 		return 1;
 	}
 

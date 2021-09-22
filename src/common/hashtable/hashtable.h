@@ -71,7 +71,7 @@ struct lttng_ht_node_two_u64 {
 };
 
 /* Hashtable new and destroy */
-struct lttng_ht *lttng_ht_new(unsigned long size, int type);
+struct lttng_ht *lttng_ht_new(unsigned long size, enum lttng_ht_type type);
 void lttng_ht_destroy(struct lttng_ht *ht);
 
 /* Specialized node init and free functions */

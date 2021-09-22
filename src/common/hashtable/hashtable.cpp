@@ -96,7 +96,7 @@ const char *lttng_ht_type_str(enum lttng_ht_type type)
 /*
  * Return an allocated lttng hashtable.
  */
-struct lttng_ht *lttng_ht_new(unsigned long size, int type)
+struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 {
 	struct lttng_ht *ht;
 
@@ -111,7 +111,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 	}
 	pthread_mutex_unlock(&seed_lock);
 
-	ht = zmalloc(sizeof(*ht));
+	ht = (lttng_ht *) zmalloc(sizeof(*ht));
 	if (ht == NULL) {
 		PERROR("zmalloc lttng_ht");
 		goto error;
