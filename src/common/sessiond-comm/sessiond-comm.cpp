@@ -38,28 +38,78 @@ static struct lttcomm_net_family net_families[] = {
 /*
  * Human readable error message.
  */
-static const char *lttcomm_readable_code[] = {
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_COMMAND_SOCK_READY) ] = "consumerd command socket ready",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_SUCCESS_RECV_FD) ] = "consumerd success on receiving fds",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_ERROR_RECV_FD) ] = "consumerd error on receiving fds",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_ERROR_RECV_CMD) ] = "consumerd error on receiving command",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_POLL_ERROR) ] = "consumerd error in polling thread",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_POLL_NVAL) ] = "consumerd polling on closed fd",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_POLL_HUP) ] = "consumerd all fd hung up",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_EXIT_SUCCESS) ] = "consumerd exiting normally",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_EXIT_FAILURE) ] = "consumerd exiting on error",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_OUTFD_ERROR) ] = "consumerd error opening the tracefile",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_SPLICE_EBADF) ] = "consumerd splice EBADF",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_SPLICE_EINVAL) ] = "consumerd splice EINVAL",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_SPLICE_ENOMEM) ] = "consumerd splice ENOMEM",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_SPLICE_ESPIPE) ] = "consumerd splice ESPIPE",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_ENOMEM) ] = "Consumer is out of memory",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_ERROR_METADATA) ] = "Error with metadata",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_FATAL) ] = "Fatal error",
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_CONSUMERD_RELAYD_FAIL) ] = "Error on remote relayd",
+static
+const char *lttcomm_return_code_str(lttcomm_return_code code) {
+	switch (code) {
+	case LTTCOMM_CONSUMERD_SUCCESS:
+		return "consumerd success";
+	case LTTCOMM_CONSUMERD_COMMAND_SOCK_READY:
+		return "consumerd command socket ready";
+	case LTTCOMM_CONSUMERD_SUCCESS_RECV_FD:
+		return "consumerd success on receiving fds";
+	case LTTCOMM_CONSUMERD_ERROR_RECV_FD:
+		return "consumerd error on receiving fds";
+	case LTTCOMM_CONSUMERD_ERROR_RECV_CMD:
+		return "consumerd error on receiving command";
+	case LTTCOMM_CONSUMERD_POLL_ERROR:
+		return "consumerd error in polling thread";
+	case LTTCOMM_CONSUMERD_POLL_NVAL:
+		return "consumerd polling on closed fd";
+	case LTTCOMM_CONSUMERD_POLL_HUP:
+		return "consumerd all fd hung up";
+	case LTTCOMM_CONSUMERD_EXIT_SUCCESS:
+		return "consumerd exiting normally";
+	case LTTCOMM_CONSUMERD_EXIT_FAILURE:
+		return "consumerd exiting on error";
+	case LTTCOMM_CONSUMERD_OUTFD_ERROR:
+		return "consumerd error opening the tracefile";
+	case LTTCOMM_CONSUMERD_SPLICE_EBADF:
+		return "consumerd splice EBADF";
+	case LTTCOMM_CONSUMERD_SPLICE_EINVAL:
+		return "consumerd splice EINVAL";
+	case LTTCOMM_CONSUMERD_SPLICE_ENOMEM:
+		return "consumerd splice ENOMEM";
+	case LTTCOMM_CONSUMERD_SPLICE_ESPIPE:
+		return "consumerd splice ESPIPE";
+	case LTTCOMM_CONSUMERD_ENOMEM:
+		return "consumerd is out of memory";
+	case LTTCOMM_CONSUMERD_ERROR_METADATA:
+		return "consumerd error with metadata";
+	case LTTCOMM_CONSUMERD_FATAL:
+		return "consumerd fatal error";
+	case LTTCOMM_CONSUMERD_RELAYD_FAIL:
+		return "consumerd error on remote relayd";
+	case LTTCOMM_CONSUMERD_CHANNEL_FAIL:
+		return "consumerd channel creation fail";
+	case LTTCOMM_CONSUMERD_CHAN_NOT_FOUND:
+		return "consumerd channel not found";
+	case LTTCOMM_CONSUMERD_ALREADY_SET:
+		return "consumerd resource already set";
+	case LTTCOMM_CONSUMERD_ROTATION_FAIL:
+		return "consumerd rotation failed";
+	case LTTCOMM_CONSUMERD_SNAPSHOT_FAILED:
+		return "consumerd snapshot has failed";
+	case LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED:
+		return "consumerd trace chunk creation failed";
+	case LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED:
+		return "consumerd trace chunk closing failed";
+	case LTTCOMM_CONSUMERD_INVALID_PARAMETERS:
+		return "consumerd invalid parameters";
+	case LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL:
+		return "consumerd trace chunk exists on consumer daemon";
+	case LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE:
+		return "consumedd trace chunk exists on relay daemon";
+	case LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK:
+		return "consumerd unknown trace chunk";
+	case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
+		return "consumed relayd does not accept clear command";
+	case LTTCOMM_CONSUMERD_UNKNOWN_ERROR:
+		return "consumerd unknown error";
+	case LTTCOMM_NR:
+		abort();
+	}
 
-	/* Last element */
-	[ LTTCOMM_ERR_INDEX(LTTCOMM_NR) ] = "Unknown error code"
+	abort();
 };
 
 static unsigned long network_timeout;
@@ -72,13 +122,14 @@ static unsigned long network_timeout;
  */
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
-	code = -code;
+	code = (lttcomm_return_code) -code;
 
-	if (code < LTTCOMM_CONSUMERD_COMMAND_SOCK_READY || code > LTTCOMM_NR) {
-		code = LTTCOMM_NR;
+	if (code != LTTCOMM_CONSUMERD_SUCCESS &&
+			!(code >= LTTCOMM_CONSUMERD_COMMAND_SOCK_READY && code < LTTCOMM_NR)) {
+		code = LTTCOMM_CONSUMERD_UNKNOWN_ERROR;
 	}
 
-	return lttcomm_readable_code[LTTCOMM_ERR_INDEX(code)];
+	return lttcomm_return_code_str(code);
 }
 
 /*
@@ -128,7 +179,7 @@ struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
 	struct lttcomm_sock *sock;
 
-	sock = zmalloc(sizeof(struct lttcomm_sock));
+	sock = (lttcomm_sock *) zmalloc(sizeof(lttcomm_sock));
 	if (sock == NULL) {
 		PERROR("zmalloc create sock");
 		goto end;
@@ -263,7 +314,7 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 		goto alloc_error;
 	}
 
-	sock = lttcomm_alloc_sock(_sock_proto);
+	sock = lttcomm_alloc_sock((lttcomm_sock_proto) _sock_proto);
 	if (sock == NULL) {
 		goto alloc_error;
 	}
@@ -318,7 +369,7 @@ struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
 
 	LTTNG_ASSERT(uri);
 
-	rsock = zmalloc(sizeof(*rsock));
+	rsock = (lttcomm_relayd_sock *) zmalloc(sizeof(*rsock));
 	if (!rsock) {
 		PERROR("zmalloc relayd sock");
 		goto error;

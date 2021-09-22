@@ -6,6 +6,7 @@
  */
 
 #define _LGPL_SOURCE
+#include <algorithm>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,45 +22,47 @@
 #include <common/time.h>
 #include <common/compat/errno.h>
 
-#include "inet6.h"
+#include "inet.h"
 
 #define RECONNECT_DELAY	200	/* ms */
 
 /*
  * INET protocol operations.
  */
-static const struct lttcomm_proto_ops inet6_ops = {
-	.bind = lttcomm_bind_inet6_sock,
-	.close = lttcomm_close_inet6_sock,
-	.connect = lttcomm_connect_inet6_sock,
-	.accept = lttcomm_accept_inet6_sock,
-	.listen = lttcomm_listen_inet6_sock,
-	.recvmsg = lttcomm_recvmsg_inet6_sock,
-	.sendmsg = lttcomm_sendmsg_inet6_sock,
+static const struct lttcomm_proto_ops inet_ops = {
+	.bind = lttcomm_bind_inet_sock,
+	.close = lttcomm_close_inet_sock,
+	.connect = lttcomm_connect_inet_sock,
+	.accept = lttcomm_accept_inet_sock,
+	.listen = lttcomm_listen_inet_sock,
+	.recvmsg = lttcomm_recvmsg_inet_sock,
+	.sendmsg = lttcomm_sendmsg_inet_sock,
 };
+
+unsigned long lttcomm_inet_tcp_timeout;
 
 /*
  * Creates an PF_INET socket.
  */
-int lttcomm_create_inet6_sock(struct lttcomm_sock *sock, int type, int proto)
+int lttcomm_create_inet_sock(struct lttcomm_sock *sock, int type, int proto)
 {
 	int val = 1, ret;
 	unsigned long timeout;
 
 	/* Create server socket */
-	if ((sock->fd = socket(PF_INET6, type, proto)) < 0) {
-		PERROR("socket inet6");
+	if ((sock->fd = socket(PF_INET, type, proto)) < 0) {
+		PERROR("socket inet");
 		goto error;
 	}
 
-	sock->ops = &inet6_ops;
+	sock->ops = &inet_ops;
 
 	/*
 	 * Set socket option to reuse the address.
 	 */
 	ret = setsockopt(sock->fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int));
 	if (ret < 0) {
-		PERROR("setsockopt inet6");
+		PERROR("setsockopt inet");
 		goto error;
 	}
 	timeout = lttcomm_get_network_timeout();
@@ -83,17 +86,19 @@ error:
 /*
  * Bind socket and return.
  */
-int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
+int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 {
-	struct sockaddr_in6 sockaddr = sock->sockaddr.addr.sin6;
-	return bind(sock->fd, &sockaddr, sizeof(sockaddr));
+	struct sockaddr_in sockaddr = sock->sockaddr.addr.sin;
+
+	return bind(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
 static
 int connect_no_timeout(struct lttcomm_sock *sock)
 {
-	struct sockaddr_in6 sockaddr = sock->sockaddr.addr.sin6;
-	return connect(sock->fd, &sockaddr, sizeof(sockaddr));
+	struct sockaddr_in sockaddr = sock->sockaddr.addr.sin;
+
+	return connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
 static
@@ -103,7 +108,7 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 	int ret, flags, connect_ret;
 	struct timespec orig_time, cur_time;
 	unsigned long diff_ms;
-	struct sockaddr_in6 sockaddr;
+	struct sockaddr_in sockaddr;
 
 	ret = fcntl(sock->fd, F_GETFL, 0);
 	if (ret == -1) {
@@ -125,8 +130,8 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 		return -1;
 	}
 
-	sockaddr = sock->sockaddr.addr.sin6;
-	connect_ret = connect(sock->fd, &sockaddr, sizeof(sockaddr));
+	sockaddr = sock->sockaddr.addr.sin;
+	connect_ret = connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK &&
 			errno != EINPROGRESS) {
 		goto error;
@@ -137,7 +142,6 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 
 	DBG("Asynchronous connect for sock %d, performing polling with"
 			" timeout: %lums", sock->fd, timeout);
-
 	/*
 	 * Perform poll loop following EINPROGRESS recommendation from
 	 * connect(2) man page.
@@ -208,7 +212,7 @@ error:
 /*
  * Connect PF_INET socket.
  */
-int lttcomm_connect_inet6_sock(struct lttcomm_sock *sock)
+int lttcomm_connect_inet_sock(struct lttcomm_sock *sock)
 {
 	int ret, closeret;
 
@@ -218,7 +222,7 @@ int lttcomm_connect_inet6_sock(struct lttcomm_sock *sock)
 		ret = connect_no_timeout(sock);
 	}
 	if (ret < 0) {
-		PERROR("connect inet6");
+		PERROR("connect");
 		goto error_connect;
 	}
 
@@ -227,7 +231,7 @@ int lttcomm_connect_inet6_sock(struct lttcomm_sock *sock)
 error_connect:
 	closeret = close(sock->fd);
 	if (closeret) {
-		PERROR("close inet6");
+		PERROR("close inet");
 	}
 
 	return ret;
@@ -237,12 +241,13 @@ error_connect:
  * Do an accept(2) on the sock and return the new lttcomm socket. The socket
  * MUST be bind(2) before.
  */
-struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
+struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 {
 	int new_fd;
 	socklen_t len;
 	struct lttcomm_sock *new_sock;
-	struct sockaddr_in6 new_addr = {};
+	unsigned long timeout;
+	struct sockaddr_in new_addr = {};
 
 	if (sock->proto == LTTCOMM_SOCK_UDP) {
 		/*
@@ -262,15 +267,34 @@ struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
 	/* Blocking call */
 	new_fd = accept(sock->fd, (struct sockaddr *) &new_addr, &len);
 	if (new_fd < 0) {
-		PERROR("accept inet6");
+		PERROR("accept inet");
 		goto error;
 	}
-	new_sock->sockaddr.addr.sin6 = new_addr;
+	new_sock->sockaddr.addr.sin = new_addr;
+	timeout = lttcomm_get_network_timeout();
+	if (timeout) {
+		int ret;
+
+		ret = lttcomm_setsockopt_rcv_timeout(new_fd, timeout);
+		if (ret) {
+			goto error_close;
+		}
+		ret = lttcomm_setsockopt_snd_timeout(new_fd, timeout);
+		if (ret) {
+			goto error_close;
+		}
+	}
+
 	new_sock->fd = new_fd;
-	new_sock->ops = &inet6_ops;
+	new_sock->ops = &inet_ops;
 
 end:
 	return new_sock;
+
+error_close:
+	if (close(new_fd) < 0) {
+		PERROR("accept inet close fd");
+	}
 
 error:
 	free(new_sock);
@@ -280,7 +304,7 @@ error:
 /*
  * Make the socket listen using LTTNG_SESSIOND_COMM_MAX_LISTEN.
  */
-int lttcomm_listen_inet6_sock(struct lttcomm_sock *sock, int backlog)
+int lttcomm_listen_inet_sock(struct lttcomm_sock *sock, int backlog)
 {
 	int ret;
 
@@ -297,7 +321,7 @@ int lttcomm_listen_inet6_sock(struct lttcomm_sock *sock, int backlog)
 
 	ret = listen(sock->fd, backlog);
 	if (ret < 0) {
-		PERROR("listen inet6");
+		PERROR("listen inet");
 	}
 
 end:
@@ -310,14 +334,14 @@ end:
  *
  * Return the size of received data.
  */
-ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
+ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 		size_t len, int flags)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	size_t len_last;
-	struct sockaddr_in6 addr = sock->sockaddr.addr.sin6;
+	struct sockaddr_in addr = sock->sockaddr.addr.sin;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -327,7 +351,7 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 	msg.msg_iovlen = 1;
 
 	msg.msg_name = (struct sockaddr *) &addr;
-	msg.msg_namelen = sizeof(sock->sockaddr.addr.sin6);
+	msg.msg_namelen = sizeof(sock->sockaddr.addr.sin);
 
 	do {
 		len_last = iov[0].iov_len;
@@ -336,12 +360,22 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 			if (flags & MSG_DONTWAIT) {
 				goto end;
 			}
-			iov[0].iov_base += ret;
+			iov[0].iov_base = ((char *) iov[0].iov_base) + ret;
 			iov[0].iov_len -= ret;
 			LTTNG_ASSERT(ret <= len_last);
 		}
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
+
 	if (ret < 0) {
+		if (errno == EAGAIN && flags & MSG_DONTWAIT) {
+			/*
+			 * EAGAIN is expected in non-blocking mode and should
+			 * not be reported as an error. Moreover, if no data
+			 * was read, 0 must not be returned as it would be
+			 * interpreted as an orderly shutdown of the socket.
+			 */
+			goto end;
+		}
 		PERROR("recvmsg inet");
 	} else if (ret > 0) {
 		ret = len;
@@ -356,7 +390,7 @@ end:
  *
  * Return the size of sent data.
  */
-ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
+ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, const void *buf,
 		size_t len, int flags)
 {
 	struct msghdr msg;
@@ -373,10 +407,10 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 	switch (sock->proto) {
 	case LTTCOMM_SOCK_UDP:
 	{
-		struct sockaddr_in6 addr = sock->sockaddr.addr.sin6;
+		struct sockaddr_in addr = sock->sockaddr.addr.sin;
 
 		msg.msg_name = (struct sockaddr *) &addr;
-		msg.msg_namelen = sizeof(sock->sockaddr.addr.sin6);
+		msg.msg_namelen = sizeof(sock->sockaddr.addr.sin);
 		break;
 	}
 	default:
@@ -392,7 +426,7 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 		 * We consider EPIPE as expected.
 		 */
 		if (errno != EPIPE || !lttng_opt_quiet) {
-			PERROR("sendmsg inet6");
+			PERROR("sendmsg inet");
 		}
 	}
 
@@ -402,7 +436,7 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 /*
  * Shutdown cleanly and close.
  */
-int lttcomm_close_inet6_sock(struct lttcomm_sock *sock)
+int lttcomm_close_inet_sock(struct lttcomm_sock *sock)
 {
 	int ret;
 
@@ -413,11 +447,87 @@ int lttcomm_close_inet6_sock(struct lttcomm_sock *sock)
 
 	ret = close(sock->fd);
 	if (ret) {
-		PERROR("close inet6");
+		PERROR("close inet");
 	}
 
 	/* Mark socket */
 	sock->fd = -1;
 
 	return ret;
+}
+
+/*
+ * Return value read from /proc or else 0 if value is not found.
+ */
+static unsigned long read_proc_value(const char *path)
+{
+	int ret, fd;
+	ssize_t size_ret;
+	long r_val;
+	unsigned long val = 0;
+	char buf[64];
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		goto error;
+	}
+
+	size_ret = lttng_read(fd, buf, sizeof(buf));
+	/*
+	 * Allow reading a file smaller than buf, but keep space for
+	 * final \0.
+	 */
+	if (size_ret < 0 || size_ret >= sizeof(buf)) {
+		PERROR("read proc failed");
+		goto error_close;
+	}
+	buf[size_ret] = '\0';
+
+	errno = 0;
+	r_val = strtol(buf, NULL, 10);
+	if (errno != 0 || r_val < -1L) {
+		val = 0;
+		goto error_close;
+	} else {
+		if (r_val > 0) {
+			val = r_val;
+		}
+	}
+
+error_close:
+	ret = close(fd);
+	if (ret) {
+		PERROR("close /proc value");
+	}
+error:
+	return val;
+}
+
+void lttcomm_inet_init(void)
+{
+	unsigned long syn_retries, fin_timeout, syn_timeout, env;
+
+	env = lttcomm_get_network_timeout();
+	if (env) {
+		lttcomm_inet_tcp_timeout = env;
+		goto end;
+	}
+
+	/* Assign default value and see if we can change it. */
+	lttcomm_inet_tcp_timeout = DEFAULT_INET_TCP_TIMEOUT;
+
+	syn_retries = read_proc_value(LTTCOMM_INET_PROC_SYN_RETRIES_PATH);
+	fin_timeout = read_proc_value(LTTCOMM_INET_PROC_FIN_TIMEOUT_PATH);
+
+	syn_timeout = syn_retries * LTTCOMM_INET_SYN_TIMEOUT_FACTOR;
+
+	/*
+	 * Get the maximum between the two possible timeout value and use that to
+	 * get the maximum with the default timeout.
+	 */
+	lttcomm_inet_tcp_timeout = std::max(std::max(syn_timeout, fin_timeout),
+			lttcomm_inet_tcp_timeout);
+
+end:
+	DBG("TCP inet operation timeout set to %lu sec", lttcomm_inet_tcp_timeout);
 }

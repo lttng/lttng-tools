@@ -52,11 +52,6 @@ extern "C" {
 #define LTTCOMM_MAX_SEND_FDS           16
 #endif
 
-/*
- * Get the error code index from 0 since LTTCOMM_OK start at 1000
- */
-#define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_CONSUMERD_COMMAND_SOCK_READY)
-
 enum lttcomm_sessiond_command {
 	/* Tracer command */
 	LTTNG_ADD_CONTEXT                               = 0,
@@ -279,7 +274,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_ROTATION_FAIL,            /* Rotation has failed. */
 	LTTCOMM_CONSUMERD_SNAPSHOT_FAILED,          /* snapshot has failed. */
 	LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED,/* Trace chunk creation failed. */
-	LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED, /* Trace chunk creation failed. */
+	LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED, /* Trace chunk close failed. */
 	LTTCOMM_CONSUMERD_INVALID_PARAMETERS,       /* Invalid parameters. */
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL, /* Trace chunk exists on consumer daemon. */
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE,/* Trace chunk exists on relay daemon. */
