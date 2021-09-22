@@ -52,17 +52,17 @@ struct session_config_validation_ctx {
 };
 
 const char * const config_element_all = "all";
-LTTNG_EXPORT const char * const config_str_yes = "yes";
-LTTNG_EXPORT const char * const config_str_true = "true";
-LTTNG_EXPORT const char * const config_str_on = "on";
-LTTNG_EXPORT const char * const config_str_no = "no";
-LTTNG_EXPORT const char * const config_str_false = "false";
-LTTNG_EXPORT const char * const config_str_off = "off";
-LTTNG_EXPORT const char * const config_xml_encoding = "UTF-8";
-LTTNG_EXPORT const size_t config_xml_encoding_bytes_per_char = 2;	/* Size of the encoding's largest character */
-LTTNG_EXPORT const char * const config_xml_indent_string = "\t";
-LTTNG_EXPORT const char * const config_xml_true = "true";
-LTTNG_EXPORT const char * const config_xml_false = "false";
+LTTNG_EXPORT const char *config_str_yes = "yes";
+LTTNG_EXPORT const char *config_str_true = "true";
+LTTNG_EXPORT const char *config_str_on = "on";
+LTTNG_EXPORT const char *config_str_no = "no";
+LTTNG_EXPORT const char *config_str_false = "false";
+LTTNG_EXPORT const char *config_str_off = "off";
+LTTNG_EXPORT const char *config_xml_encoding = "UTF-8";
+LTTNG_EXPORT size_t config_xml_encoding_bytes_per_char = 2;	/* Size of the encoding's largest character */
+LTTNG_EXPORT const char *config_xml_indent_string = "\t";
+LTTNG_EXPORT const char *config_xml_true = "true";
+LTTNG_EXPORT const char *config_xml_false = "false";
 
 const char * const config_element_channel = "channel";
 const char * const config_element_channels = "channels";
@@ -157,7 +157,6 @@ const char * const config_element_process_attr_tracker_type = "process_attr_trac
 const char * const config_element_trackers_legacy = "trackers";
 const char * const config_element_pid_tracker_legacy = "pid_tracker";
 const char * const config_element_tracker_targets_legacy = "targets";
-const char * const config_element_tracker_pid_target_legacy = "pid_target";
 const char * const config_element_tracker_pid_legacy = "pid";
 
 const char * const config_element_rotation_schedules = "rotation_schedules";
@@ -239,7 +238,7 @@ const char * const config_event_context_vegid = "VEGID";
 const char * const config_event_context_vsgid = "VSGID";
 
 /* Deprecated symbols */
-LTTNG_EXPORT const char * const config_element_perf;
+LTTNG_EXPORT const char *config_element_perf;
 
 enum process_event_node_phase {
 	CREATION = 0,
@@ -370,7 +369,7 @@ int config_parse_value(const char *value)
 		goto end;
 	}
 
-	lower_str = zmalloc(len + 1);
+	lower_str = (char *) zmalloc(len + 1);
 	if (!lower_str) {
 		PERROR("zmalloc");
 		ret = -errno;
@@ -421,7 +420,7 @@ static xmlChar *encode_string(const char *in_str)
 	 * used because UTF-8 characters can take up to 4 bytes.
 	 */
 	out_len = (in_len * 4) + 1;
-	out_str = xmlMalloc(out_len);
+	out_str = (xmlChar *) xmlMalloc(out_len);
 	if (!out_str) {
 		goto end;
 	}
@@ -445,7 +444,7 @@ struct config_writer *config_writer_create(int fd_output, int indent)
 	struct config_writer *writer;
 	xmlOutputBufferPtr buffer;
 
-	writer = zmalloc(sizeof(struct config_writer));
+	writer = (config_writer *) zmalloc(sizeof(struct config_writer));
 	if (!writer) {
 		PERROR("zmalloc config_writer_create");
 		goto end;
@@ -739,7 +738,7 @@ char *get_session_config_xsd_path(void)
 	base_path_len = strlen(base_path);
 	max_path_len = base_path_len +
 		sizeof(DEFAULT_SESSION_CONFIG_XSD_FILENAME) + 1;
-	xsd_path = zmalloc(max_path_len);
+	xsd_path = (char *) zmalloc(max_path_len);
 	if (!xsd_path) {
 		goto end;
 	}
@@ -1187,7 +1186,7 @@ int init_domain(xmlNodePtr domain_node, struct lttng_domain *domain)
 				goto end;
 			}
 
-			domain->type = ret;
+			domain->type = (lttng_domain_type) ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_buffer_type)) {
 			/* buffer type */
@@ -1204,7 +1203,7 @@ int init_domain(xmlNodePtr domain_node, struct lttng_domain *domain)
 				goto end;
 			}
 
-			domain->buf_type = ret;
+			domain->buf_type = (lttng_buffer_type) ret;
 		}
 	}
 	ret = 0;
@@ -1931,7 +1930,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event->type = ret;
+			event->type = (lttng_event_type) ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel_type)) {
 			xmlChar *content = xmlNodeGetContent(node);
@@ -1949,7 +1948,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event->loglevel_type = ret;
+			event->loglevel_type = (lttng_loglevel_type) ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel)) {
 			xmlChar *content;
@@ -2014,7 +2013,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				continue;
 			}
 
-			exclusions = zmalloc(exclusion_count * sizeof(char *));
+			exclusions = (char **) zmalloc(exclusion_count * sizeof(char *));
 			if (!exclusions) {
 				exclusion_count = 0;
 				ret = -LTTNG_ERR_NOMEM;
@@ -2392,7 +2391,7 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			goto end;
 		}
 
-		channel->attr.output = ret;
+		channel->attr.output = (lttng_event_output) ret;
 	} else if (!strcmp((const char *) attr_node->name,
 			config_element_tracefile_size)) {
 		xmlChar *content;
@@ -2552,7 +2551,7 @@ int process_context_node(xmlNodePtr context_node,
 			goto end;
 		}
 
-		context.ctx = ret;
+		context.ctx = (lttng_event_context_type) ret;
 	} else if (!strcmp((const char *) context_child_node->name,
 		config_element_context_perf)) {
 		/* perf */
@@ -2796,7 +2795,7 @@ static int process_legacy_pid_tracker_node(
 			targets_node = node;
 			break;
 		}
-	}	
+	}
 
 	if (!targets_node) {
 		ret = LTTNG_ERR_INVALID;
@@ -3073,7 +3072,7 @@ static
 int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
-	struct lttng_domain domain = { 0 };
+	struct lttng_domain domain {};
 	struct lttng_handle *handle = NULL;
 	struct lttng_channel *channel = NULL;
 	xmlNodePtr channels_node = NULL;
@@ -3559,7 +3558,7 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 		node = xmlNextElementSibling(node)) {
 		struct lttng_domain *domain;
 
-		domain = zmalloc(sizeof(*domain));
+		domain = (lttng_domain *) zmalloc(sizeof(*domain));
 		if (!domain) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;
