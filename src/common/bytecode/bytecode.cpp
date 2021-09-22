@@ -8,6 +8,7 @@
 #include "bytecode.h"
 
 #include <errno.h>
+#include <algorithm>
 
 #include "common/align.h"
 
@@ -29,7 +30,7 @@ int bytecode_init(struct lttng_bytecode_alloc **fb)
 	uint32_t alloc_len;
 
 	alloc_len = sizeof(struct lttng_bytecode_alloc) + INIT_ALLOC_SIZE;
-	*fb = calloc(alloc_len, 1);
+	*fb = (lttng_bytecode_alloc *) calloc(alloc_len, 1);
 	if (!*fb) {
 		return -ENOMEM;
 	} else {
@@ -54,8 +55,8 @@ int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint3
 		struct lttng_bytecode_alloc *newptr;
 
 		new_alloc_len =
-			max_t(uint32_t, 1U << get_count_order(new_alloc_len), old_alloc_len << 1);
-		newptr = realloc(*fb, new_alloc_len);
+			std::max(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
+		newptr = (lttng_bytecode_alloc *) realloc(*fb, new_alloc_len);
 		if (!newptr)
 			return -ENOMEM;
 		*fb = newptr;
@@ -93,8 +94,8 @@ int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
 		return offset;
 	memcpy(&(*fb)->b.data[offset], data, len);
 	*skip_offset =
-		(void *) &((struct logical_op *) &(*fb)->b.data[offset])->skip_offset
-			- (void *) &(*fb)->b.data[0];
+		(char *) &((struct logical_op *) &(*fb)->b.data[offset])->skip_offset
+			- (char *) &(*fb)->b.data[0];
 	return 0;
 }
 
@@ -104,7 +105,7 @@ int bytecode_push_get_payload_root(struct lttng_bytecode_alloc **bytecode)
 	struct load_op *insn;
 	const uint32_t insn_len = sizeof(struct load_op);
 
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -123,7 +124,7 @@ int bytecode_push_get_context_root(struct lttng_bytecode_alloc **bytecode)
 	struct load_op *insn;
 	const uint32_t insn_len = sizeof(struct load_op);
 
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -142,7 +143,7 @@ int bytecode_push_get_app_context_root(struct lttng_bytecode_alloc **bytecode)
 	struct load_op *insn;
 	const uint32_t insn_len = sizeof(struct load_op);
 
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -164,7 +165,7 @@ int bytecode_push_get_index_u64(struct lttng_bytecode_alloc **bytecode,
 	const uint32_t insn_len =
 			sizeof(struct load_op) + sizeof(struct get_index_u64);
 
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -193,7 +194,7 @@ int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
 	const uint32_t insn_len =
 			sizeof(struct load_op) + sizeof(struct get_symbol);
 
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -252,7 +253,7 @@ struct lttng_bytecode *lttng_bytecode_copy(
 {
 	struct lttng_bytecode *bytecode = NULL;
 
-	bytecode = zmalloc(sizeof(*bytecode) + orig_f->len);
+	bytecode = (lttng_bytecode *) zmalloc(sizeof(*bytecode) + orig_f->len);
 	if (!bytecode) {
 		goto error;
 	}

@@ -3,4 +3,5 @@
 noinst_LTLIBRARIES = libbytecode.la
 
 libbytecode_la_SOURCES = \
-	bytecode.c bytecode.h
+	bytecode.cpp \
+	bytecode.h
