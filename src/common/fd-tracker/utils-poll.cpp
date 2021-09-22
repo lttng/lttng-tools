@@ -20,7 +20,7 @@ struct create_args {
 static int open_epoll(void *data, int *out_fd)
 {
 	int ret;
-	struct create_args *args = data;
+	struct create_args *args = (create_args *) data;
 
 	ret = lttng_poll_create(args->events, args->size, args->flags);
 	if (ret < 0) {

@@ -78,7 +78,7 @@ static unsigned long lttng_inode_id_hash(const struct inode_id *id)
 
 static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 {
-	const struct inode_id *id = key;
+	const struct inode_id *id = (inode_id *) key;
 	const struct lttng_inode *inode = caa_container_of(
 			node, struct lttng_inode, registry_node);
 
@@ -248,7 +248,7 @@ static void lttng_inode_get(struct lttng_inode *inode)
 struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 		const char *path)
 {
-	struct lttng_unlinked_file_pool *pool = zmalloc(sizeof(*pool));
+	struct lttng_unlinked_file_pool *pool = (lttng_unlinked_file_pool *) zmalloc(sizeof(*pool));
 
 	if (!pool) {
 		goto error;
@@ -432,7 +432,7 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	reference_acquired = lttng_directory_handle_get(directory_handle);
 	LTTNG_ASSERT(reference_acquired);
 
-	inode = zmalloc(sizeof(*inode));
+	inode = (lttng_inode *) zmalloc(sizeof(*inode));
 	if (!inode) {
 		goto end;
 	}
@@ -453,7 +453,7 @@ end:
 
 struct lttng_inode_registry *lttng_inode_registry_create(void)
 {
-	struct lttng_inode_registry *registry = zmalloc(sizeof(*registry));
+	struct lttng_inode_registry *registry = (lttng_inode_registry *) zmalloc(sizeof(*registry));
 
 	if (!registry) {
 		goto end;

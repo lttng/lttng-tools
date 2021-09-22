@@ -186,7 +186,7 @@ static void unsuspendable_fd_destroy(struct unsuspendable_fd *entry)
 static struct unsuspendable_fd *unsuspendable_fd_create(
 		const char *name, int fd)
 {
-	struct unsuspendable_fd *entry = zmalloc(sizeof(*entry));
+	struct unsuspendable_fd *entry = (unsuspendable_fd *) zmalloc(sizeof(*entry));
 
 	if (!entry) {
 		goto error;
@@ -363,7 +363,7 @@ end:
 struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
 		unsigned int capacity)
 {
-	struct fd_tracker *tracker = zmalloc(sizeof(struct fd_tracker));
+	struct fd_tracker *tracker = (fd_tracker *) zmalloc(sizeof(struct fd_tracker));
 
 	if (!tracker) {
 		goto end;
@@ -499,8 +499,10 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	struct stat fd_stat;
 	struct open_properties properties = {
 		.flags = flags,
-		.mode.is_set = !!mode,
-		.mode.value = mode ? *mode : 0,
+		.mode = {
+			.is_set = !!mode,
+			.value = mode ? *mode : 0,
+		}
 	};
 
 	pthread_mutex_lock(&tracker->lock);
@@ -522,7 +524,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		}
 	}
 
-	handle = zmalloc(sizeof(*handle));
+	handle = (fs_handle_tracked *) zmalloc(sizeof(*handle));
 	if (!handle) {
 		goto end;
 	}
@@ -616,7 +618,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 	unsigned int active_fds;
 	struct unsuspendable_fd **entries;
 
-	entries = zmalloc(fd_count * sizeof(*entries));
+	entries = (unsuspendable_fd **) zmalloc(fd_count * sizeof(*entries));
 	if (!entries) {
 		ret = -1;
 		goto end;
@@ -715,7 +717,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 	 * Maintain a local copy of fds_in as the user's callback may modify its
 	 * contents (e.g. setting the fd(s) to -1 after close).
 	 */
-	fds = malloc(sizeof(*fds) * fd_count);
+	fds = (int *) malloc(sizeof(*fds) * fd_count);
 	if (!fds) {
 		ret = -1;
 		goto end;

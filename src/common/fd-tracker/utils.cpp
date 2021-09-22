@@ -73,7 +73,7 @@ static
 int open_directory_handle(void *_args, int *out_fds)
 {
 	int ret = 0;
-	struct open_directory_handle_args *args = _args;
+	struct open_directory_handle_args *args = (open_directory_handle_args *) _args;
 	struct lttng_directory_handle *new_handle = NULL;
 
 	new_handle = args->in_handle ?
@@ -123,7 +123,7 @@ static
 void directory_handle_destroy(
 		struct lttng_directory_handle *handle, void *data)
 {
-	struct fd_tracker *tracker = data;
+	struct fd_tracker *tracker = (fd_tracker *) data;
 	const int ret = fd_tracker_close_unsuspendable_fd(
 			tracker, &handle->dirfd, 1, fd_close, NULL);
 
@@ -150,10 +150,10 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 	char *handle_name = NULL;
 	char cwd_path[LTTNG_PATH_MAX] = "working directory";
 	struct lttng_directory_handle *new_handle = NULL;
-	struct open_directory_handle_args open_args = {
-		.in_handle = in_handle,
-		.path = path,
-	};
+	open_directory_handle_args open_args {};
+
+	open_args.in_handle = in_handle;
+	open_args.path = path;
 
 	if (!path) {
 		if (!getcwd(cwd_path, sizeof(cwd_path))) {
