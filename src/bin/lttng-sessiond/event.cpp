@@ -471,6 +471,7 @@ static int agent_enable(struct agent *agt,
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(agt);
 
+	rcu_read_lock();
 	aevent = agent_find_event(event->name, event->loglevel_type,
 			event->loglevel, filter_expression, agt);
 	if (!aevent) {
@@ -519,6 +520,7 @@ error:
 		agent_destroy_event(aevent);
 	}
 end:
+	rcu_read_unlock();
 	free(filter);
 	free(filter_expression);
 	return ret;

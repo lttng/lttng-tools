@@ -309,6 +309,7 @@ static int action_executor_start_session_handler(
 	}
 
 	session_lock_list();
+	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -353,6 +354,7 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
+	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -392,6 +394,7 @@ static int action_executor_stop_session_handler(
 	}
 
 	session_lock_list();
+	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -436,6 +439,7 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
+	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -475,6 +479,7 @@ static int action_executor_rotate_session_handler(
 	}
 
 	session_lock_list();
+	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -526,6 +531,7 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
+	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -580,6 +586,7 @@ static int action_executor_snapshot_session_handler(
 	}
 
 	session_lock_list();
+	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -620,6 +627,7 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
+	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
