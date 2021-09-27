@@ -2151,6 +2151,12 @@ int remove_tracer_event_source_from_pollset(
 
 	source_element->is_fd_in_poll_set = false;
 
+	/*
+	 * Force the notification thread to restart the poll() loop to ensure
+	 * that any events from the removed fd are removed.
+	 */
+	state->restart_poll = true;
+
 	ret = drain_event_notifier_notification_pipe(state, source_element->fd,
 			source_element->domain);
 	if (ret) {
