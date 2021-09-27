@@ -315,7 +315,7 @@ error:
 
 /*
  * Free event data structure. This does NOT delete it from any hash table. It's
- * safe to pass a NULL pointer. This shoudl be called inside a call RCU if the
+ * safe to pass a NULL pointer. This should be called inside a call RCU if the
  * event is previously deleted from a rcu hash table.
  */
 static void destroy_event(struct ust_registry_event *event)
@@ -361,6 +361,7 @@ struct ust_registry_event *ust_registry_find_event(
 	LTTNG_ASSERT(chan);
 	LTTNG_ASSERT(name);
 	LTTNG_ASSERT(sig);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Setup key for the match function. */
 	strncpy(key.name, name, sizeof(key.name));
@@ -509,6 +510,7 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 
 	LTTNG_ASSERT(chan);
 	LTTNG_ASSERT(event);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Delete the node first. */
 	iter.iter.node = &event->node.node;
@@ -549,6 +551,8 @@ static struct ust_registry_enum *ust_registry_lookup_enum(
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	cds_lfht_lookup(session->enums->ht,
 			ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
 			ht_match_enum, reg_enum_lookup, &iter.iter);
@@ -573,6 +577,8 @@ struct ust_registry_enum *
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct ust_registry_enum reg_enum_lookup;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	memset(&reg_enum_lookup, 0, sizeof(reg_enum_lookup));
 	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
@@ -681,6 +687,7 @@ static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
 
 	LTTNG_ASSERT(reg_session);
 	LTTNG_ASSERT(reg_enum);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Delete the node first. */
 	iter.iter.node = &reg_enum->node.node;
@@ -805,6 +812,7 @@ struct ust_registry_channel *ust_registry_channel_find(
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(session->channels);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG3("UST registry channel finding key %" PRIu64, key);
 

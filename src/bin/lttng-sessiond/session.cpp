@@ -1143,6 +1143,7 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct ltt_session *ls;
 
+	ASSERT_RCU_READ_LOCKED();
 	ASSERT_LOCKED(ltt_session_list.lock);
 
 	if (!ltt_sessions_ht_by_id) {

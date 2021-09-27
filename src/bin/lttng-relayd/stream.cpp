@@ -31,6 +31,8 @@
 /* Should be called with RCU read-side lock held. */
 bool stream_get(struct relay_stream *stream)
 {
+	ASSERT_RCU_READ_LOCKED();
+
 	return urcu_ref_get_unless_zero(&stream->ref);
 }
 

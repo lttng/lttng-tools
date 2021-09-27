@@ -74,6 +74,7 @@ void *zmalloc(size_t len)
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))
+#define ASSERT_RCU_READ_LOCKED(lock) LTTNG_ASSERT(rcu_read_ongoing())
 
 /* Attribute suitable to tag functions as having printf()-like arguments. */
 #define ATTR_FORMAT_PRINTF(_string_index, _first_to_check) \

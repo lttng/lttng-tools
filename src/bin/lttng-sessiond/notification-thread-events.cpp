@@ -1313,6 +1313,8 @@ struct notification_client *get_client_from_socket(int socket,
 	struct cds_lfht_node *node;
 	struct notification_client *client = NULL;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	cds_lfht_lookup(state->client_socket_ht,
 			hash_client_socket(socket),
 			match_client_socket,
@@ -1340,6 +1342,8 @@ struct notification_client *get_client_from_id(notification_client_id id,
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
 	struct notification_client *client = NULL;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	cds_lfht_lookup(state->client_id_ht,
 			hash_client_id(id),
@@ -1455,6 +1459,8 @@ struct lttng_session_trigger_list *get_session_trigger_list(
 	struct lttng_session_trigger_list *list = NULL;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	cds_lfht_lookup(state->session_triggers_ht,
 			hash_key_str(session_name, lttng_ht_seed),
@@ -2418,6 +2424,8 @@ int bind_trigger_to_matching_session(struct lttng_trigger *trigger,
 	const char *session_name;
 	struct lttng_session_trigger_list *trigger_list;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	condition = lttng_trigger_get_const_condition(trigger);
 	switch (lttng_condition_get_type(condition)) {
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
@@ -2463,6 +2471,8 @@ int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct channel_info *channel;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	cds_lfht_for_each_entry(state->channels_ht, &iter, channel,
 			channels_ht_node) {
@@ -3401,6 +3411,8 @@ int notification_thread_client_disconnect(
 {
 	int ret;
 	struct lttng_condition_list_element *condition_list_element, *tmp;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Acquire the client lock to disable its communication atomically. */
 	pthread_mutex_lock(&client->lock);

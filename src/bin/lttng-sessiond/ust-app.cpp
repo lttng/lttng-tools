@@ -287,6 +287,7 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx,
 	int ret;
 
 	LTTNG_ASSERT(ua_ctx);
+	ASSERT_RCU_READ_LOCKED();
 
 	if (ua_ctx->obj) {
 		pthread_mutex_lock(&app->sock_lock);
@@ -321,6 +322,7 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event,
 	int ret;
 
 	LTTNG_ASSERT(ua_event);
+	ASSERT_RCU_READ_LOCKED();
 
 	free(ua_event->filter);
 	if (ua_event->exclusion != NULL)
@@ -443,6 +445,7 @@ void delete_ust_app_stream(int sock, struct ust_app_stream *stream,
 		struct ust_app *app)
 {
 	LTTNG_ASSERT(stream);
+	ASSERT_RCU_READ_LOCKED();
 
 	(void) release_ust_app_stream(sock, stream, app);
 	free(stream);
@@ -543,6 +546,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	struct ust_registry_session *registry;
 
 	LTTNG_ASSERT(ua_chan);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG3("UST app deleting channel %s", ua_chan->name);
 
@@ -664,6 +668,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 
 	LTTNG_ASSERT(registry);
 	LTTNG_ASSERT(socket);
+	ASSERT_RCU_READ_LOCKED();
 
 	metadata_key = registry->metadata_key;
 
@@ -800,6 +805,7 @@ static int push_metadata(struct ust_registry_session *registry,
 
 	LTTNG_ASSERT(registry);
 	LTTNG_ASSERT(consumer);
+	ASSERT_RCU_READ_LOCKED();
 
 	pthread_mutex_lock(&registry->lock);
 	if (registry->metadata_closed) {
@@ -915,6 +921,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	struct ust_registry_session *registry;
 
 	LTTNG_ASSERT(ua_sess);
+	ASSERT_RCU_READ_LOCKED();
 
 	pthread_mutex_lock(&ua_sess->lock);
 
@@ -1442,6 +1449,8 @@ struct ust_app *ust_app_find_by_sock(int sock)
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	lttng_ht_lookup(ust_app_ht_by_sock, (void *)((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
@@ -1463,6 +1472,8 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ust_app_ht_by_notify_sock, (void *)((unsigned long) sock),
 			&iter);
@@ -1532,6 +1543,7 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(
 	struct ust_app_event_notifier_rule *event_notifier_rule = NULL;
 
 	LTTNG_ASSERT(ht);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ht, &token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
@@ -2809,6 +2821,7 @@ struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
 
 	LTTNG_ASSERT(uctx);
 	LTTNG_ASSERT(ht);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Lookup using the lttng_ust_context_type and a custom match fct. */
 	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) uctx->ctx, lttng_ht_seed),
@@ -2836,6 +2849,8 @@ int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 {
 	int ret = 0;
 	struct ust_app_ctx *ua_ctx;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG2("UST app adding context to channel %s", ua_chan->name);
 
@@ -2937,6 +2952,8 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_channel *ua_chan;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
@@ -3367,6 +3384,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
 
@@ -3587,6 +3605,7 @@ static int ust_app_channel_send(struct ust_app *app,
 	LTTNG_ASSERT(usess->active);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Handle buffer type before sending the channel to the application. */
 	switch (usess->buffer_type) {
@@ -3645,6 +3664,8 @@ static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 	struct lttng_ht_node_str *ua_chan_node;
 	struct ust_app_channel *ua_chan;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
@@ -3691,6 +3712,8 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 {
 	int ret = 0;
 	struct ust_app_event *ua_event;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
 	if (ua_event == NULL) {
@@ -3745,6 +3768,8 @@ int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger,
 {
 	int ret = 0;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	ua_event_notifier_rule = alloc_ust_app_event_notifier_rule(trigger);
 	if (ua_event_notifier_rule == NULL) {
@@ -3803,6 +3828,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(consumer);
+	ASSERT_RCU_READ_LOCKED();
 
 	registry = get_session_registry(ua_sess);
 	/* The UST app session is held registry shall not be null. */
@@ -5790,6 +5816,8 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 	struct ust_app_event_notifier_rule *event_notifier_rule;
 	unsigned int count, i;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	if (!ust_app_supports_notifiers(app)) {
 		goto end;
 	}
@@ -5941,6 +5969,7 @@ void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
+	ASSERT_RCU_READ_LOCKED();
 
 	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &uchan_iter,
 			uchan, node.node) {
@@ -6070,6 +6099,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(usess->active);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG2("UST app global update for app sock %d for session id %" PRIu64,
 			app->sock, usess->id);
@@ -6104,6 +6134,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
  */
 void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 {
+	ASSERT_RCU_READ_LOCKED();
+
 	DBG2("UST application global event notifier rules update: app = '%s', pid = %d",
 			app->name, app->pid);
 
@@ -6266,6 +6298,7 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app,
 	struct ust_app_session *ua_sess = NULL;
 
 	LTTNG_ASSERT(app);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_sessions_objd, (void *)((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
@@ -6293,6 +6326,7 @@ static struct ust_app_channel *find_channel_by_objd(struct ust_app *app,
 	struct ust_app_channel *ua_chan = NULL;
 
 	LTTNG_ASSERT(app);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_objd, (void *)((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);

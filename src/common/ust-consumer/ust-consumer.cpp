@@ -876,6 +876,8 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 	int ret;
 	struct lttng_consumer_channel *metadata;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	DBG("UST consumer setup metadata key %" PRIu64, key);
 
 	metadata = consumer_find_channel(key);
@@ -971,6 +973,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 
 	LTTNG_ASSERT(path);
 	LTTNG_ASSERT(ctx);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG("UST consumer snapshot metadata with key %" PRIu64 " at path %s",
 			key, path);
@@ -1086,6 +1089,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 
 	LTTNG_ASSERT(path);
 	LTTNG_ASSERT(ctx);
+	ASSERT_RCU_READ_LOCKED();
 
 	rcu_read_lock();
 
@@ -2649,6 +2653,7 @@ enum sync_metadata_status lttng_ustconsumer_sync_metadata(
 
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(metadata_stream);
+	ASSERT_RCU_READ_LOCKED();
 
 	metadata_channel = metadata_stream->chan;
 	pthread_mutex_unlock(&metadata_stream->lock);

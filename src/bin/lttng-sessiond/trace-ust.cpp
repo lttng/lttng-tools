@@ -167,6 +167,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
+	ASSERT_RCU_READ_LOCKED();
 	/*
 	 * If we receive an empty string for channel name, it means the
 	 * default channel name is requested.
@@ -204,6 +205,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 	LTTNG_ASSERT(name);
 	LTTNG_ASSERT(ht);
+	ASSERT_RCU_READ_LOCKED();
 
 	key.name = name;
 	key.filter = filter;

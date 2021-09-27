@@ -1003,6 +1003,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 	struct agent_app *app;
 
 	LTTNG_ASSERT(sock >= 0);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(the_agent_apps_ht_by_sock,
 			(void *) ((unsigned long) sock), &iter);
@@ -1042,6 +1043,7 @@ void agent_delete_app(struct agent_app *app)
 	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(app);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG3("Agent deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
 
@@ -1229,6 +1231,7 @@ void agent_find_events_by_name(const char *name, struct agent *agt,
 	LTTNG_ASSERT(agt);
 	LTTNG_ASSERT(agt->events);
 	LTTNG_ASSERT(iter);
+	ASSERT_RCU_READ_LOCKED();
 
 	ht = agt->events;
 	key.name = name;
@@ -1264,6 +1267,7 @@ struct agent_event *agent_find_event_by_trigger(
 
 	LTTNG_ASSERT(agt);
 	LTTNG_ASSERT(agt->events);
+	ASSERT_RCU_READ_LOCKED();
 
 	condition = lttng_trigger_get_const_condition(trigger);
 
@@ -1336,6 +1340,8 @@ void agent_event_next_duplicate(const char *name,
 {
 	struct agent_ht_key key;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	key.name = name;
 
 	cds_lfht_next_duplicate(agt->events->ht, ht_match_event_by_name,
@@ -1364,6 +1370,7 @@ struct agent_event *agent_find_event(const char *name,
 	LTTNG_ASSERT(name);
 	LTTNG_ASSERT(agt);
 	LTTNG_ASSERT(agt->events);
+	ASSERT_RCU_READ_LOCKED();
 
 	ht = agt->events;
 	key.name = name;

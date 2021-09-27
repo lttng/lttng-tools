@@ -185,6 +185,8 @@ struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 	struct buffer_reg_uid *reg = NULL, key;
 	struct lttng_ht *ht = buffer_registry_uid;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	/* Setup key we are looking for. */
 	key.session_id = session_id;
 	key.bits_per_long = bits_per_long;

@@ -246,6 +246,8 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 	struct lttng_ht_node_u64 *node;
 	struct lttng_consumer_channel *channel = NULL;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	/* -1ULL keys are lookup failures */
 	if (key == (uint64_t) -1ULL) {
 		return NULL;
@@ -521,6 +523,7 @@ void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd)
 void consumer_flag_relayd_for_destroy(struct consumer_relayd_sock_pair *relayd)
 {
 	LTTNG_ASSERT(relayd);
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Set destroy flag for this object */
 	uatomic_set(&relayd->destroy_flag, 1);
@@ -633,6 +636,7 @@ static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(relayd);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &relayd->net_seq_idx,
 			&iter);
@@ -689,6 +693,8 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 	struct consumer_relayd_sock_pair *relayd = NULL;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Negative keys are lookup failures */
 	if (key == (uint64_t) -1ULL) {
@@ -3570,6 +3576,7 @@ error:
 
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(relayd_sock);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG("Consumer adding relayd socket (idx: %" PRIu64 ")", net_seq_idx);
 
@@ -3748,6 +3755,8 @@ static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 {
 	struct lttng_ht_iter iter;
 	struct consumer_relayd_sock_pair *relayd = NULL;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Iterate over all relayd since they are indexed by net_seq_idx. */
 	cds_lfht_for_each_entry(the_consumer_data.relayd_ht->ht, &iter.iter,
@@ -4012,6 +4021,8 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	/* Array of `struct lttng_consumer_stream *` */
 	struct lttng_dynamic_pointer_array streams_packet_to_open;
 	size_t stream_idx;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG("Consumer sample rotate position for channel %" PRIu64, key);
 
@@ -4671,6 +4682,8 @@ int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	rcu_read_lock();
 

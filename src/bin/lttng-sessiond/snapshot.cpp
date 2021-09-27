@@ -241,6 +241,7 @@ struct snapshot_output *snapshot_find_output_by_name(const char *name,
 
 	LTTNG_ASSERT(snapshot);
 	LTTNG_ASSERT(name);
+	ASSERT_RCU_READ_LOCKED();
 
 	cds_lfht_for_each_entry(snapshot->output_ht->ht, &iter.iter, output,
 		node.node) {
@@ -267,6 +268,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 	struct snapshot_output *output = NULL;
 
 	LTTNG_ASSERT(snapshot);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(snapshot->output_ht, (void *)((unsigned long) id), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);

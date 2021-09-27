@@ -872,6 +872,7 @@ enum action_executor_status action_executor_enqueue_trigger(
 	bool signal = false;
 
 	LTTNG_ASSERT(trigger);
+	ASSERT_RCU_READ_LOCKED();
 
 	pthread_mutex_lock(&executor->work.lock);
 	/* Check for queue overflow. */

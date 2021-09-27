@@ -67,6 +67,8 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
 	struct cds_lfht_node *node_ptr;
 	struct relay_index *_index;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	DBG2("Adding relay index with stream id %" PRIu64 " and seqnum %" PRIu64,
 			stream->stream_handle, index->index_n.key);
 
@@ -88,6 +90,8 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
  */
 static bool relay_index_get(struct relay_index *index)
 {
+	ASSERT_RCU_READ_LOCKED();
+
 	DBG2("index get for stream id %" PRIu64 " and seqnum %" PRIu64 " refcount %d",
 			index->stream->stream_handle, index->index_n.key,
 			(int) index->ref.refcount);

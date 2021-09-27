@@ -928,8 +928,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		lttcomm_sessiond_command_str((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type),
 		cmd_ctx->lsm.cmd_type);
 
-	LTTNG_ASSERT(!rcu_read_ongoing());
-
 	*sock_error = 0;
 
 	switch (cmd_ctx->lsm.cmd_type) {

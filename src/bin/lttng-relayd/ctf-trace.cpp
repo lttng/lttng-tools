@@ -41,6 +41,8 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 	 * control side.
 	 */
 	LTTNG_ASSERT(cds_list_empty(&trace->stream_list));
+	ASSERT_RCU_READ_LOCKED();
+
 	session_put(trace->session);
 	trace->session = NULL;
 	free(trace->path);
@@ -62,11 +64,26 @@ static void ctf_trace_release(struct urcu_ref *ref)
 }
 
 /*
- * Should be called with RCU read-side lock held.
+ * The caller must either:
+ * - hold the RCU read side lock, or
+ * - guarantee the existence of the object by already holding a reference to
+ *   the object.
  */
 bool ctf_trace_get(struct ctf_trace *trace)
 {
-	return urcu_ref_get_unless_zero(&trace->ref);
+	const bool ref = urcu_ref_get_unless_zero(&trace->ref);
+
+	if (!ref) {
+		/*
+		 * The ref count is already zero. It means the object is being
+		 * torn down concurently.
+		 * This is only acceptable if we hold the RCU read-side lock,
+		 * else it's a logic error.
+		 */
+		ASSERT_RCU_READ_LOCKED();
+	}
+
+	return ref;
 }
 
 /*

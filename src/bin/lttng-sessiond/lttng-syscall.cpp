@@ -156,6 +156,8 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct syscall *ksyscall;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	DBG3("Destroying syscall hash table.");
 
 	if (!ht) {

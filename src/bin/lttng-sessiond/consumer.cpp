@@ -367,6 +367,8 @@ struct consumer_socket *consumer_find_socket_by_bitness(int bits,
 	int consumer_fd;
 	struct consumer_socket *socket = NULL;
 
+	ASSERT_RCU_READ_LOCKED();
+
 	switch (bits) {
 	case 64:
 		consumer_fd = uatomic_read(&the_ust_consumerd64_fd);
@@ -400,6 +402,8 @@ struct consumer_socket *consumer_find_socket(int key,
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
 	struct consumer_socket *socket = NULL;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Negative keys are lookup failures */
 	if (key < 0 || consumer == NULL) {
@@ -447,6 +451,7 @@ void consumer_add_socket(struct consumer_socket *sock,
 {
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(consumer);
+	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_add_unique_ulong(consumer->socks, &sock->node);
 }
@@ -463,6 +468,7 @@ void consumer_del_socket(struct consumer_socket *sock,
 
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(consumer);
+	ASSERT_RCU_READ_LOCKED();
 
 	iter.iter.node = &sock->node.node;
 	ret = lttng_ht_del(consumer->socks, &iter);
@@ -483,8 +489,10 @@ static void destroy_socket_rcu(struct rcu_head *head)
 }
 
 /*
- * Destroy and free socket pointer in a call RCU. Read side lock must be
- * acquired before calling this function.
+ * Destroy and free socket pointer in a call RCU. The call must either:
+ *  - have acquired the read side lock before calling this function, or
+ *  - guarantee the validity of the `struct consumer_socket` object for the
+ *    duration of the call.
  */
 void consumer_destroy_socket(struct consumer_socket *sock)
 {
@@ -1451,6 +1459,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 	struct lttcomm_consumer_msg msg;
 
 	LTTNG_ASSERT(socket);
+	ASSERT_RCU_READ_LOCKED();
 
 	DBG2("Consumer push metadata to consumer socket %d", *socket->fd_ptr);
 
