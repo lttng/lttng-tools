@@ -9,7 +9,6 @@
 #define LTTNG_ACTION_LIST_H
 
 struct lttng_action;
-struct lttng_action_list;
 
 #ifdef __cplusplus
 extern "C" {
