@@ -1299,9 +1299,9 @@ PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
 test ! -z "$PYTHON3_AGENT" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
 
-# LTTng UST Java agent Log4j tests enabled/disabled
+# userspace-probe SDT instrumentation tests enabled/disabled
 test "x$test_sdt_uprobe" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST SDT uprobe tests], $value)
+PPRINT_PROP_BOOL([LTTng-modules SDT uprobe tests], $value)
 
 #Python binding enabled/disabled
 test "x$enable_python_binding" = xyes && value=1 || value=0
