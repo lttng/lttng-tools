@@ -1190,7 +1190,7 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 		goto end;
 	}
 
-	binary_path = lttng_strndup(binary_path_src, LTTNG_SYMBOL_NAME_LEN);
+	binary_path = lttng_strndup(binary_path_src, LTTNG_PATH_MAX);
 	if (!binary_path) {
 		PERROR("lttng_strndup");
 		goto end;
