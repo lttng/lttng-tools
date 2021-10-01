@@ -184,7 +184,7 @@ test_upgrade_callsites_dlopen_dclose()
 test_event_field_comparison()
 {
 	local event_name="multi:tp"
-	diag "Load mutliple events with slight variations in the field descriptions."
+	diag "Load multiple events with slight variations in the field descriptions."
 
 	local library_prefix="libprobes_"
 	local nb_libs=0
