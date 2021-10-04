@@ -1382,18 +1382,21 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 
 	probe_name = lttng_strndup(probe_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!probe_name) {
-		PERROR("lttng_strndup");
+		PERROR("Failed to allocate probe name");
+		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 	provider_name = lttng_strndup(provider_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!provider_name) {
-		PERROR("lttng_strndup");
+		PERROR("Failed to allocate provider name");
+		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
 	binary_path = lttng_strndup(binary_path_src, LTTNG_PATH_MAX);
 	if (!binary_path) {
-		PERROR("lttng_strndup");
+		PERROR("Failed to allocate binary path");
+		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
