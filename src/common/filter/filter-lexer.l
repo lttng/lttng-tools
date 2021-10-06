@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include "filter-ast.h"
 #include "filter-parser.h"
+#include <lttng/lttng-export.h>
 
 static void yyunput (int c, register char * yy_bp , yyscan_t yyscanner)
 	__attribute__((unused));
@@ -127,3 +128,215 @@ L\"				BEGIN(string_lit); return STRING_LITERAL_START;
 [ \t\n]+			; /* ignore */
 .				return ERROR;
 %%
+
+/*
+ * The lexer symbols were (e.g. lttng_yy_create_buffer) were mistakenly
+ * exported in the past, so must stay exported.  Since it is difficult to tweak
+ * how the lexer functions are emitted, the strategy used here was to use a
+ * different prefix for the symbols (`lttng_filter_`) and define aliases with
+ * the old prefix (`lttng_`).
+ *
+ * The `MAKE_ALIAS` macro defines one such alias.
+ */
+LTTNG_EXPORT
+YY_BUFFER_STATE lttng_yy_create_buffer(FILE *file, int size, yyscan_t yyscanner);
+YY_BUFFER_STATE lttng_yy_create_buffer(FILE *file, int size, yyscan_t yyscanner)
+{
+	return yy_create_buffer(file, size, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yy_delete_buffer(YY_BUFFER_STATE b, yyscan_t yyscanner);
+void lttng_yy_delete_buffer(YY_BUFFER_STATE b, yyscan_t yyscanner)
+{
+	return yy_delete_buffer(b, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yy_flush_buffer (YY_BUFFER_STATE b, yyscan_t yyscanner);
+void lttng_yy_flush_buffer (YY_BUFFER_STATE b, yyscan_t yyscanner)
+{
+	return yy_flush_buffer(b, yyscanner);
+}
+
+LTTNG_EXPORT
+YY_BUFFER_STATE lttng_yy_scan_buffer(char *base, yy_size_t size, yyscan_t yyscanner);
+YY_BUFFER_STATE lttng_yy_scan_buffer(char *base, yy_size_t size, yyscan_t yyscanner)
+{
+	return yy_scan_buffer(base, size, yyscanner);
+}
+
+LTTNG_EXPORT
+YY_BUFFER_STATE lttng_yy_scan_bytes(const char *bytes, int len, yyscan_t yyscanner);
+YY_BUFFER_STATE lttng_yy_scan_bytes(const char *bytes, int len, yyscan_t yyscanner)
+{
+	return yy_scan_bytes(bytes, len, yyscanner);
+}
+
+LTTNG_EXPORT
+YY_BUFFER_STATE lttng_yy_scan_string(const char *yy_str, yyscan_t yyscanner);
+YY_BUFFER_STATE lttng_yy_scan_string(const char *yy_str, yyscan_t yyscanner)
+{
+	return yy_scan_string(yy_str, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yy_switch_to_buffer(YY_BUFFER_STATE new_buffer, yyscan_t yyscanner);
+void lttng_yy_switch_to_buffer(YY_BUFFER_STATE new_buffer, yyscan_t yyscanner)
+{
+	return yy_switch_to_buffer(new_buffer, yyscanner);
+}
+
+LTTNG_EXPORT
+void *lttng_yyalloc(yy_size_t s, yyscan_t yyscanner);
+void *lttng_yyalloc(yy_size_t s, yyscan_t yyscanner)
+{
+	return yyalloc(s, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyfree(void *p, yyscan_t yyscanner);
+void lttng_yyfree(void *p, yyscan_t yyscanner)
+{
+	return yyfree(p, yyscanner);
+}
+
+LTTNG_EXPORT
+int lttng_yyget_column(yyscan_t yyscanner);
+int lttng_yyget_column(yyscan_t yyscanner)
+{
+	return yyget_column(yyscanner);
+}
+
+LTTNG_EXPORT
+int lttng_yyget_debug(yyscan_t yyscanner);
+int lttng_yyget_debug(yyscan_t yyscanner)
+{
+	return yyget_debug(yyscanner);
+}
+
+LTTNG_EXPORT
+YY_EXTRA_TYPE lttng_yyget_extra(yyscan_t yyscanner);
+YY_EXTRA_TYPE lttng_yyget_extra(yyscan_t yyscanner)
+{
+	return yyget_extra(yyscanner);
+}
+
+LTTNG_EXPORT
+FILE *lttng_yyget_in(yyscan_t yyscanner);
+FILE *lttng_yyget_in(yyscan_t yyscanner)
+{
+	return yyget_in(yyscanner);
+}
+
+LTTNG_EXPORT
+int lttng_yyget_leng(yyscan_t yyscanner);
+int lttng_yyget_leng(yyscan_t yyscanner)
+{
+	return yyget_leng(yyscanner);
+}
+
+LTTNG_EXPORT
+int lttng_yyget_lineno(yyscan_t yyscanner);
+int lttng_yyget_lineno(yyscan_t yyscanner)
+{
+	return yyget_lineno(yyscanner);
+}
+
+LTTNG_EXPORT
+YYSTYPE *lttng_yyget_lval(yyscan_t yyscanner);
+YYSTYPE *lttng_yyget_lval(yyscan_t yyscanner)
+{
+	return yyget_lval(yyscanner);
+}
+
+LTTNG_EXPORT
+FILE *lttng_yyget_out(yyscan_t yyscanner);
+FILE *lttng_yyget_out(yyscan_t yyscanner)
+{
+	return yyget_out(yyscanner);
+}
+
+LTTNG_EXPORT
+char *lttng_yyget_text(yyscan_t yyscanner);
+char *lttng_yyget_text(yyscan_t yyscanner)
+{
+	return yyget_text(yyscanner);
+}
+
+LTTNG_EXPORT
+int lttng_yylex_init(yyscan_t *scanner);
+int lttng_yylex_init(yyscan_t *scanner)
+{
+	return yylex_init(scanner);
+}
+
+LTTNG_EXPORT
+void lttng_yypop_buffer_state(yyscan_t yyscanner);
+void lttng_yypop_buffer_state(yyscan_t yyscanner)
+{
+	return yypop_buffer_state(yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yypush_buffer_state(YY_BUFFER_STATE new_buffer, yyscan_t yyscanner);
+void lttng_yypush_buffer_state(YY_BUFFER_STATE new_buffer, yyscan_t yyscanner)
+{
+	return yypush_buffer_state(new_buffer, yyscanner);
+}
+
+LTTNG_EXPORT
+void *lttng_yyrealloc(void *p, yy_size_t s, yyscan_t yyscanner);
+void *lttng_yyrealloc(void *p, yy_size_t s, yyscan_t yyscanner)
+{
+	return yyrealloc(p, s, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_column(int _column_no, yyscan_t yyscanner);
+void lttng_yyset_column(int _column_no, yyscan_t yyscanner)
+{
+	return yyset_column(_column_no, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_debug(int debug_flag, yyscan_t yyscanner);
+void lttng_yyset_debug(int debug_flag, yyscan_t yyscanner)
+{
+	return yyset_debug(debug_flag, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_extra(YY_EXTRA_TYPE user_defined, yyscan_t yyscanner);
+void lttng_yyset_extra(YY_EXTRA_TYPE user_defined, yyscan_t yyscanner)
+{
+	return yyset_extra(user_defined, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_in(FILE *_in_str, yyscan_t yyscanner);
+void lttng_yyset_in(FILE *_in_str, yyscan_t yyscanner)
+{
+	return yyset_in(_in_str, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_lineno(int _line_number, yyscan_t yyscanner);
+void lttng_yyset_lineno(int _line_number, yyscan_t yyscanner)
+{
+	return yyset_lineno(_line_number, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_lval(YYSTYPE *yylval_param, yyscan_t yyscanner);
+void lttng_yyset_lval(YYSTYPE *yylval_param, yyscan_t yyscanner)
+{
+	return yyset_lval(yylval_param, yyscanner);
+}
+
+LTTNG_EXPORT
+void lttng_yyset_out(FILE *_out_str, yyscan_t yyscanner);
+void lttng_yyset_out(FILE *_out_str, yyscan_t yyscanner)
+{
+	return yyset_out(_out_str, yyscanner);
+}

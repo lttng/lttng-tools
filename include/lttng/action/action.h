@@ -8,6 +8,8 @@
 #ifndef LTTNG_ACTION_H
 #define LTTNG_ACTION_H
 
+#include <lttng/lttng-export.h>
+
 struct lttng_action;
 
 #ifdef __cplusplus
@@ -37,13 +39,13 @@ enum lttng_action_status {
  *
  * Returns the type of an action on success, LTTNG_ACTION_TYPE_UNKNOWN on error.
  */
-extern enum lttng_action_type lttng_action_get_type(
+LTTNG_EXPORT extern enum lttng_action_type lttng_action_get_type(
 		const struct lttng_action *action);
 
 /*
  * Destroy (frees) an action object.
  */
-extern void lttng_action_destroy(struct lttng_action *action);
+LTTNG_EXPORT extern void lttng_action_destroy(struct lttng_action *action);
 
 #ifdef __cplusplus
 }

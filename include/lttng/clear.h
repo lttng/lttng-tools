@@ -10,6 +10,7 @@
 #define LTTNG_CLEAR_H
 
 #include <lttng/lttng-error.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +55,7 @@ struct lttng_clear_handle;
  *    LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY
  *    LTTNG_ERR_CLEAR_FAIL_CONSUMER
 */
-extern enum lttng_error_code lttng_clear_session(const char *session_name,
+LTTNG_EXPORT extern enum lttng_error_code lttng_clear_session(const char *session_name,
 		struct lttng_clear_handle **handle);
 #ifdef __cplusplus
 }

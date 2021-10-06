@@ -5,4 +5,6 @@
  *
  */
 
-int dynamic_symbol(int a);
+#include <lttng/lttng-export.h>
+
+LTTNG_EXPORT int dynamic_symbol(int a);

@@ -1085,10 +1085,10 @@ AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
-AM_CFLAGS="$OPT_CFLAGS $WARN_CFLAGS $PTHREAD_CFLAGS"
+AM_CFLAGS="-fvisibility=hidden $OPT_CFLAGS $WARN_CFLAGS $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)
 
-AM_CXXFLAGS="$OPT_CXXFLAGS $WARN_CXXFLAGS $PTHREAD_CFLAGS"
+AM_CXXFLAGS="-fvisibility=hidden -fvisibility-inlines-hidden $OPT_CXXFLAGS $WARN_CXXFLAGS $PTHREAD_CFLAGS"
 AC_SUBST(AM_CXXFLAGS)
 
 # This is set even though it is empty, so Makefiles can do "AM_LDFLAGS += ...".

@@ -32,7 +32,7 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 16
 
-DEFINE_LTTNG_UST_SIGBUS_STATE();
+LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 static const char alphanum[] =
 	"0123456789"

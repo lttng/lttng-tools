@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <lttng/constant.h>
+#include <lttng/lttng-export.h>
 
 /*
  * Domain types: the different possible tracers.
@@ -58,7 +59,7 @@ struct lttng_domain {
  * Return the size (number of entries) of the "lttng_domain" array. Caller
  * must free domains. On error, a negative LTTng error code is returned.
  */
-extern int lttng_list_domains(const char *session_name,
+LTTNG_EXPORT extern int lttng_list_domains(const char *session_name,
 		struct lttng_domain **domains);
 
 #ifdef __cplusplus

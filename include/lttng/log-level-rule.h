@@ -8,6 +8,8 @@
 #ifndef LTTNG_LOG_LEVEL_RULE_H
 #define LTTNG_LOG_LEVEL_RULE_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,7 +34,7 @@ enum lttng_log_level_rule_status {
  * `LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN`:
  *     `rule` is `NULL`.
  */
-extern enum lttng_log_level_rule_type lttng_log_level_rule_get_type(
+LTTNG_EXPORT extern enum lttng_log_level_rule_type lttng_log_level_rule_get_type(
 		const struct lttng_log_level_rule *rule);
 
 /*
@@ -46,7 +48,7 @@ extern enum lttng_log_level_rule_type lttng_log_level_rule_get_type(
  * The returned log level rule must be destroyed using
  * lttng_log_level_rule_destroy().
  */
-extern struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(
+LTTNG_EXPORT extern struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(
 		int level);
 
 /*
@@ -62,7 +64,7 @@ extern struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(
  *     * `level` is NULL.
  *     * The type of `rule` is not `LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY`.
  */
-extern enum lttng_log_level_rule_status lttng_log_level_rule_exactly_get_level(
+LTTNG_EXPORT extern enum lttng_log_level_rule_status lttng_log_level_rule_exactly_get_level(
 		const struct lttng_log_level_rule *rule, int *level);
 
 /*
@@ -76,7 +78,7 @@ extern enum lttng_log_level_rule_status lttng_log_level_rule_exactly_get_level(
  * The returned log level rule must be destroyed using
  * lttng_log_level_rule_destroy().
  */
-extern struct lttng_log_level_rule *
+LTTNG_EXPORT extern struct lttng_log_level_rule *
 lttng_log_level_rule_at_least_as_severe_as_create(int level);
 
 /*
@@ -94,14 +96,14 @@ lttng_log_level_rule_at_least_as_severe_as_create(int level);
  *     * The type of `rule` is not
  *       `LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS`.
  */
-extern enum lttng_log_level_rule_status
+LTTNG_EXPORT extern enum lttng_log_level_rule_status
 lttng_log_level_rule_at_least_as_severe_as_get_level(
 		const struct lttng_log_level_rule *rule, int *level);
 
 /*
  * Destroy the log level rule `log_level_rule` if not `NULL`.
  */
-extern void lttng_log_level_rule_destroy(
+LTTNG_EXPORT extern void lttng_log_level_rule_destroy(
 		struct lttng_log_level_rule *log_level_rule);
 
 #ifdef __cplusplus

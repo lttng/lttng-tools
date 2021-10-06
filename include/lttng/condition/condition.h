@@ -8,6 +8,8 @@
 #ifndef LTTNG_CONDITION_H
 #define LTTNG_CONDITION_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,13 +41,13 @@ enum lttng_condition_status {
  * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
  * error.
  */
-extern enum lttng_condition_type lttng_condition_get_type(
+LTTNG_EXPORT extern enum lttng_condition_type lttng_condition_get_type(
 		const struct lttng_condition *condition);
 
 /*
  * Destroy (release) a condition object.
  */
-extern void lttng_condition_destroy(struct lttng_condition *condition);
+LTTNG_EXPORT extern void lttng_condition_destroy(struct lttng_condition *condition);
 
 #ifdef __cplusplus
 }

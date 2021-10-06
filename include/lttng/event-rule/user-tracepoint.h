@@ -11,6 +11,7 @@
 #include <lttng/domain.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/log-level-rule.h>
+#include <lttng/lttng-export.h>
 #include <lttng/event.h>
 
 #ifdef __cplusplus
@@ -25,7 +26,7 @@ extern "C" {
  * Returns a new event rule on success, NULL on failure. This event rule must be
  * destroyed using lttng_event_rule_destroy().
  */
-extern struct lttng_event_rule *lttng_event_rule_user_tracepoint_create(void);
+LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_user_tracepoint_create(void);
 
 /*
  * Set the name pattern of a user tracepoint event rule.
@@ -35,7 +36,7 @@ extern struct lttng_event_rule *lttng_event_rule_user_tracepoint_create(void);
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_name_pattern(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern);
 
 /*
@@ -50,7 +51,7 @@ extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_name_pa
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pattern(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern);
 
 /*
@@ -61,7 +62,7 @@ extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pa
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_filter(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_filter(
 		struct lttng_event_rule *rule, const char *expression);
 
 /*
@@ -76,7 +77,7 @@ extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_filter(
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a filter expression
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_filter(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_filter(
 		const struct lttng_event_rule *rule, const char **expression);
 
 /*
@@ -87,7 +88,7 @@ extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_filter(
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status
+LTTNG_EXPORT extern enum lttng_event_rule_status
 lttng_event_rule_user_tracepoint_set_log_level_rule(struct lttng_event_rule *rule,
 		const struct lttng_log_level_rule *log_level_rule);
 
@@ -103,7 +104,7 @@ lttng_event_rule_user_tracepoint_set_log_level_rule(struct lttng_event_rule *rul
  * is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a log level rule was not set prior
  * to this call.
  */
-extern enum lttng_event_rule_status
+LTTNG_EXPORT extern enum lttng_event_rule_status
 lttng_event_rule_user_tracepoint_get_log_level_rule(
 		const struct lttng_event_rule *rule,
 		const struct lttng_log_level_rule **log_level_rule);
@@ -116,7 +117,7 @@ lttng_event_rule_user_tracepoint_get_log_level_rule(
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success,
  * LTTNG_EVENT_RULE_STATUS_INVALID if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
 		struct lttng_event_rule *rule,
 		const char *exclusion);
 
@@ -127,7 +128,7 @@ extern enum lttng_event_rule_status lttng_event_rule_user_tracepoint_add_name_pa
  * on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is
  * passed.
  */
-extern enum lttng_event_rule_status
+LTTNG_EXPORT extern enum lttng_event_rule_status
 lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
 		const struct lttng_event_rule *rule, unsigned int *count);
 
@@ -138,7 +139,7 @@ lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
  * on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is
  * passed.
  */
-extern enum lttng_event_rule_status
+LTTNG_EXPORT extern enum lttng_event_rule_status
 lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 		const struct lttng_event_rule *rule,
 		unsigned int index,

@@ -15,6 +15,8 @@
 #ifndef LTTNG_ERROR_H
 #define LTTNG_ERROR_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -195,7 +197,7 @@ enum lttng_error_code {
  *
  * Parameter MUST be a negative value or else you'll get a generic message.
  */
-extern const char *lttng_strerror(int code);
+LTTNG_EXPORT extern const char *lttng_strerror(int code);
 
 #ifdef __cplusplus
 }

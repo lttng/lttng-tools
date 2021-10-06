@@ -47,7 +47,7 @@
 extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;
 
-DEFINE_LTTNG_UST_SIGBUS_STATE();
+LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 /*
  * Free channel object and all streams associated with it. This MUST be used

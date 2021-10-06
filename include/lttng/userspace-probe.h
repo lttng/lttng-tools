@@ -8,6 +8,8 @@
 #ifndef LTTNG_USERSPACE_PROBE_H
 #define LTTNG_USERSPACE_PROBE_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,28 +30,28 @@ enum lttng_userspace_probe_location_lookup_method_type {
 /*
  * Get the type of a lookup method.
  */
-extern enum lttng_userspace_probe_location_lookup_method_type
+LTTNG_EXPORT extern enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
 		const struct lttng_userspace_probe_location_lookup_method *lookup_method);
 
 /*
  * Destroy a lookup method.
  */
-extern void lttng_userspace_probe_location_lookup_method_destroy(
+LTTNG_EXPORT extern void lttng_userspace_probe_location_lookup_method_destroy(
 		struct lttng_userspace_probe_location_lookup_method *lookup_method);
 
 /*
  * Create a tracepoint ELF function lookup method struct.
  * Return NULL on failure.
  */
-extern struct lttng_userspace_probe_location_lookup_method *
+LTTNG_EXPORT extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_elf_create(void);
 
 /*
  * Create a tracepoint SDT tracepoint lookup method struct.
  * Return NULL on failure.
  */
-extern struct lttng_userspace_probe_location_lookup_method *
+LTTNG_EXPORT extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void);
 
 
@@ -76,14 +78,14 @@ enum lttng_userspace_probe_location_type {
 /*
  * Get the type of the userspace probe location.
  */
-extern enum lttng_userspace_probe_location_type
+LTTNG_EXPORT extern enum lttng_userspace_probe_location_type
 lttng_userspace_probe_location_get_type(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Destroy the userspace probe location.
  */
-extern void lttng_userspace_probe_location_destroy(
+LTTNG_EXPORT extern void lttng_userspace_probe_location_destroy(
 		struct lttng_userspace_probe_location *location);
 
 
@@ -101,7 +103,7 @@ enum lttng_userspace_probe_location_function_instrumentation_type {
  * The ownership of the lookup method is transferred to the created probe
  * location.
  */
-extern struct lttng_userspace_probe_location *
+LTTNG_EXPORT extern struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_function_create(const char *binary_path,
 		const char *function_name,
 		struct lttng_userspace_probe_location_lookup_method *lookup_method);
@@ -109,26 +111,26 @@ lttng_userspace_probe_location_function_create(const char *binary_path,
 /*
  * Get the target binary path of the probe location of the function type.
  */
-extern const char *lttng_userspace_probe_location_function_get_binary_path(
+LTTNG_EXPORT extern const char *lttng_userspace_probe_location_function_get_binary_path(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target function type of the probe location of the function type.
  */
-extern const char *lttng_userspace_probe_location_function_get_function_name(
+LTTNG_EXPORT extern const char *lttng_userspace_probe_location_function_get_function_name(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the FD to the target binary file to the probe location of the function
  * type. The FD is only valid for the duration of the lifetime of `location`.
  */
-extern int lttng_userspace_probe_location_function_get_binary_fd(
+LTTNG_EXPORT extern int lttng_userspace_probe_location_function_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the instrumentation type of the function probe location.
  */
-extern enum lttng_userspace_probe_location_function_instrumentation_type
+LTTNG_EXPORT extern enum lttng_userspace_probe_location_function_instrumentation_type
 lttng_userspace_probe_location_function_get_instrumentation_type(
 		const struct lttng_userspace_probe_location *location);
 
@@ -141,7 +143,7 @@ lttng_userspace_probe_location_function_get_instrumentation_type(
  * LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID if invalid parameters
  * are provided.
  */
-extern enum lttng_userspace_probe_location_status
+LTTNG_EXPORT extern enum lttng_userspace_probe_location_status
 lttng_userspace_probe_location_function_set_instrumentation_type(
 		const struct lttng_userspace_probe_location *location,
 		enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type);
@@ -152,7 +154,7 @@ lttng_userspace_probe_location_function_set_instrumentation_type(
  *
  * The ownership of the lookup method is NOT transferred to the caller.
  */
-extern const struct lttng_userspace_probe_location_lookup_method *
+LTTNG_EXPORT extern const struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
 		const struct lttng_userspace_probe_location *location);
 
@@ -165,7 +167,7 @@ lttng_userspace_probe_location_get_lookup_method(
  * The ownership of the lookup method is transferred to the created probe
  * location.
  */
-extern struct lttng_userspace_probe_location *
+LTTNG_EXPORT extern struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 		const char *probe_name, const char *provider_name,
 		struct lttng_userspace_probe_location_lookup_method *lookup_method);
@@ -173,27 +175,27 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 /*
  * Get the target binary path of the probe location of the tracepoint type.
  */
-extern const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
+LTTNG_EXPORT extern const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target probe name of the probe location of the tracepoint type.
  */
-extern const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
+LTTNG_EXPORT extern const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target probe provider name of the probe location of the tracepoint
  * type.
  */
-extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
+LTTNG_EXPORT extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
 		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the FD to the target binary file to the probe location of the tracepoint
  * type. The FD is only valid for the duration of the lifetime of `location`.
  */
-extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
+LTTNG_EXPORT extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);
 
 #ifdef __cplusplus

@@ -14,6 +14,7 @@
 #include <common/compat/time.h>
 #include <string.h>
 #include <stdio.h>
+#include <lttng/lttng-export.h>
 #include <lttng/ust-clock.h>
 
 static
@@ -49,7 +50,7 @@ const char *plugin_description(void)
 	return "Freeze time with 1KHz for regression test";
 }
 
-void lttng_ust_clock_plugin_init(void);
+LTTNG_EXPORT void lttng_ust_clock_plugin_init(void);
 void lttng_ust_clock_plugin_init(void)
 {
 	int ret;

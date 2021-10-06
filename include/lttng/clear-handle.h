@@ -10,6 +10,7 @@
 #define LTTNG_CLEAR_HANDLE_H
 
 #include <lttng/lttng-error.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,7 +37,7 @@ enum lttng_clear_handle_status {
  * Destroy an lttng_clear_handle.
  * The handle should be discarded after this call.
  */
-extern void lttng_clear_handle_destroy(struct lttng_clear_handle *handle);
+LTTNG_EXPORT extern void lttng_clear_handle_destroy(struct lttng_clear_handle *handle);
 
 /*
  * Wait for a session clear operation to complete.
@@ -52,7 +53,7 @@ extern void lttng_clear_handle_destroy(struct lttng_clear_handle *handle);
  * the clear operation itself succeeded; it indicates that the _wait_
  * operation completed successfully.
  */
-extern enum lttng_clear_handle_status
+LTTNG_EXPORT extern enum lttng_clear_handle_status
 	lttng_clear_handle_wait_for_completion(
 		struct lttng_clear_handle *handle, int timeout_ms);
 
@@ -71,7 +72,7 @@ extern enum lttng_clear_handle_status
  * was not waited-on using the handle or if the arguments of the function are
  * invalid (e.g. NULL).
  */
-extern enum lttng_clear_handle_status
+LTTNG_EXPORT extern enum lttng_clear_handle_status
 	lttng_clear_handle_get_result(
 		const struct lttng_clear_handle *handle,
 		enum lttng_error_code *result);

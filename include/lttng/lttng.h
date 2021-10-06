@@ -58,6 +58,7 @@
 #include <lttng/location.h>
 #include <lttng/log-level-rule.h>
 #include <lttng/lttng-error.h>
+#include <lttng/lttng-export.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/rotation.h>
@@ -95,14 +96,14 @@ struct lttng_calibrate {
  * Return 1 if alive or 0 if not. On error, returns a negative negative LTTng
  * error code.
  */
-extern int lttng_session_daemon_alive(void);
+LTTNG_EXPORT extern int lttng_session_daemon_alive(void);
 
 /*
  * Set the tracing group for the *current* flow of execution.
  *
  * On success, returns 0 else a negative LTTng error code.
  */
-extern int lttng_set_tracing_group(const char *name);
+LTTNG_EXPORT extern int lttng_set_tracing_group(const char *name);
 
 /*
  * This call registers an "outside consumer" for a session and an lttng domain.
@@ -114,7 +115,7 @@ extern int lttng_set_tracing_group(const char *name);
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_register_consumer(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
 		const char *socket_path);
 
 /*
@@ -122,7 +123,7 @@ extern int lttng_register_consumer(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_start_tracing(const char *session_name);
+LTTNG_EXPORT extern int lttng_start_tracing(const char *session_name);
 
 /*
  * Stop tracing for *all* domain(s) in the session.
@@ -136,13 +137,13 @@ extern int lttng_start_tracing(const char *session_name);
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_stop_tracing(const char *session_name);
+LTTNG_EXPORT extern int lttng_stop_tracing(const char *session_name);
 
 /*
  * Behave exactly like lttng_stop_tracing but does not wait for data
  * availability.
  */
-extern int lttng_stop_tracing_no_wait(const char *session_name);
+LTTNG_EXPORT extern int lttng_stop_tracing_no_wait(const char *session_name);
 
 /*
  * Deprecated: As of LTTng 2.9, this function always returns
@@ -150,7 +151,7 @@ extern int lttng_stop_tracing_no_wait(const char *session_name);
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
-extern int lttng_calibrate(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);
 #pragma GCC diagnostic pop
 
@@ -178,7 +179,7 @@ extern int lttng_calibrate(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_set_consumer_url(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_set_consumer_url(struct lttng_handle *handle,
 		const char *control_url, const char *data_url);
 
 /*
@@ -191,13 +192,13 @@ extern int lttng_set_consumer_url(struct lttng_handle *handle,
  * traced data is pending. On error, a negative value is returned and readable
  * by lttng_strerror().
  */
-extern int lttng_data_pending(const char *session_name);
+LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 
 /*
  * Deprecated, replaced by lttng_regenerate_metadata.
  */
 LTTNG_DEPRECATED("Use lttng_regenerate_metadata")
-extern int lttng_metadata_regenerate(const char *session_name);
+LTTNG_EXPORT extern int lttng_metadata_regenerate(const char *session_name);
 
 /*
  * Trigger the regeneration of the metadata for a session.
@@ -205,7 +206,7 @@ extern int lttng_metadata_regenerate(const char *session_name);
  * the lttng-relayd). Only kernel, per-uid and non-live sessions are supported.
  * Return 0 on success, a negative LTTng error code on error.
  */
-extern int lttng_regenerate_metadata(const char *session_name);
+LTTNG_EXPORT extern int lttng_regenerate_metadata(const char *session_name);
 
 /*
  * Trigger the regeneration of the statedump for a session. The new statedump
@@ -214,7 +215,7 @@ extern int lttng_regenerate_metadata(const char *session_name);
  *
  * Return 0 on success, a negative LTTng error code on error.
  */
-extern int lttng_regenerate_statedump(const char *session_name);
+LTTNG_EXPORT extern int lttng_regenerate_statedump(const char *session_name);
 
 #ifdef __cplusplus
 }

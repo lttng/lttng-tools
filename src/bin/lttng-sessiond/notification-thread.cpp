@@ -36,8 +36,13 @@
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
+/*
+ * Flag used to temporarily pause data consumption from testpoints.
+ *
+ * This variable is dlsym-ed from a test, so needs to be exported.
+ */
+LTTNG_EXPORT int notifier_consumption_paused;
 
-int notifier_consumption_paused;
 /*
  * Destroy the thread data previously created by the init function.
  */

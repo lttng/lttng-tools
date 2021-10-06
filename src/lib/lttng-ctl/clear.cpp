@@ -1,38 +1,36 @@
 /*
  * Copyright (C) 2019 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright (C) 2019 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 
-#include <lttng/destruction-handle.h>
-#include <lttng/rotation.h>
+#define _LGPL_SOURCE
+#include <algorithm>
+#include <string.h>
 
-#include <common/optional.h>
-#include <common/compat/poll.h>
-#include <common/compat/time.h>
+#include <lttng/lttng-error.h>
+#include <lttng/clear.h>
+#include <lttng/clear-handle.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/macros.h>
 #include <common/compat/poll.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <lttng/location-internal.h>
-#include "lttng-ctl-helper.h"
+#include <common/optional.h>
 
-#include <stdbool.h>
+#include "lttng-ctl-helper.h"
 
 enum communication_state {
 	COMMUNICATION_STATE_RECEIVE_LTTNG_MSG,
 	COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER,
-	COMMUNICATION_STATE_RECEIVE_PAYLOAD,
 	COMMUNICATION_STATE_END,
 	COMMUNICATION_STATE_ERROR,
 };
 
-struct lttng_destruction_handle {
-	LTTNG_OPTIONAL(enum lttng_error_code) destruction_return_code;
-	LTTNG_OPTIONAL(enum lttng_rotation_state) rotation_state;
-	struct lttng_trace_archive_location *location;
+struct lttng_clear_handle {
+	LTTNG_OPTIONAL(enum lttng_error_code) clear_return_code;
 	struct {
 		int socket;
 		struct lttng_poll_event events;
@@ -43,7 +41,7 @@ struct lttng_destruction_handle {
 	} communication;
 };
 
-void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle)
+void lttng_clear_handle_destroy(struct lttng_clear_handle *handle)
 {
 	int ret;
 
@@ -59,16 +57,14 @@ void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle)
 	}
 	lttng_poll_clean(&handle->communication.events);
 	lttng_dynamic_buffer_reset(&handle->communication.buffer);
-	lttng_trace_archive_location_put(handle->location);
 	free(handle);
 }
 
 static
-struct lttng_destruction_handle *lttng_destruction_handle_create(
-		int sessiond_socket)
+struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 {
 	int ret;
-	struct lttng_destruction_handle *handle = zmalloc(sizeof(*handle));
+	struct lttng_clear_handle *handle = (lttng_clear_handle *) zmalloc(sizeof(*handle));
 
 	if (!handle) {
 		goto end;
@@ -92,12 +88,12 @@ struct lttng_destruction_handle *lttng_destruction_handle_create(
 end:
 	return handle;
 error:
-	lttng_destruction_handle_destroy(handle);
+	lttng_clear_handle_destroy(handle);
 	return NULL;
 }
 
 static
-int handle_state_transition(struct lttng_destruction_handle *handle)
+int handle_state_transition(struct lttng_clear_handle *handle)
 {
 	int ret = 0;
 
@@ -109,74 +105,23 @@ int handle_state_transition(struct lttng_destruction_handle *handle)
 		const struct lttcomm_lttng_msg *msg =
 				(typeof(msg)) handle->communication.buffer.data;
 
-		LTTNG_OPTIONAL_SET(&handle->destruction_return_code,
+		LTTNG_OPTIONAL_SET(&handle->clear_return_code,
 				(enum lttng_error_code) msg->ret_code);
-		if (handle->destruction_return_code.value != LTTNG_OK) {
+		if (handle->clear_return_code.value != LTTNG_OK) {
 			handle->communication.state = COMMUNICATION_STATE_END;
 			break;
-		} else if (msg->cmd_header_size != sizeof(struct lttcomm_session_destroy_command_header) ||
-				msg->data_size > DEFAULT_MAX_TRACE_ARCHIVE_LOCATION_PAYLOAD_SIZE) {
+		} else if (msg->cmd_header_size != 0 || msg->data_size != 0) {
 			handle->communication.state = COMMUNICATION_STATE_ERROR;
 			ret = -1;
 			break;
 		}
 
-		handle->communication.state =
-				COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER;
-		handle->communication.bytes_left_to_receive =
-				msg->cmd_header_size;
-		LTTNG_OPTIONAL_SET(&handle->communication.data_size,
-				msg->data_size);
+		handle->communication.state = COMMUNICATION_STATE_END;
+		handle->communication.bytes_left_to_receive = 0;
+		LTTNG_OPTIONAL_SET(&handle->communication.data_size, 0);
 		ret = lttng_dynamic_buffer_set_size(
 				&handle->communication.buffer, 0);
 		LTTNG_ASSERT(!ret);
-		break;
-	}
-	case COMMUNICATION_STATE_RECEIVE_COMMAND_HEADER:
-	{
-		const struct lttcomm_session_destroy_command_header *hdr =
-				(typeof(hdr)) handle->communication.buffer.data;
-
-		LTTNG_OPTIONAL_SET(&handle->rotation_state,
-				(enum lttng_rotation_state) hdr->rotation_state);
-		switch (handle->rotation_state.value) {
-		case LTTNG_ROTATION_STATE_COMPLETED:
-			handle->communication.state =
-					COMMUNICATION_STATE_RECEIVE_PAYLOAD;
-			handle->communication.bytes_left_to_receive =
-					LTTNG_OPTIONAL_GET(handle->communication.data_size);
-			break;
-		case LTTNG_ROTATION_STATE_ERROR:
-		case LTTNG_ROTATION_STATE_NO_ROTATION:
-			handle->communication.state = COMMUNICATION_STATE_END;
-			break;
-		default:
-			handle->communication.state = COMMUNICATION_STATE_ERROR;
-			ret = -1;
-			break;
-		}
-		break;
-	}
-	case COMMUNICATION_STATE_RECEIVE_PAYLOAD:
-	{
-		ssize_t location_ret;
-		struct lttng_trace_archive_location *location;
-		const struct lttng_buffer_view view =
-				lttng_buffer_view_from_dynamic_buffer(
-					&handle->communication.buffer, 0, -1);
-
-		location_ret = lttng_trace_archive_location_create_from_buffer(
-				&view, &location);
-		if (location_ret < 0) {
-			ERR("Failed to deserialize trace archive location");
-			handle->communication.state = COMMUNICATION_STATE_ERROR;
-			ret = -1;
-			break;
-		} else {
-			/* Ownership is transferred to the destruction handle. */
-			handle->location = location;
-			handle->communication.state = COMMUNICATION_STATE_END;
-		}
 		break;
 	}
 	default:
@@ -191,7 +136,7 @@ int handle_state_transition(struct lttng_destruction_handle *handle)
 }
 
 static
-int handle_incoming_data(struct lttng_destruction_handle *handle)
+int handle_incoming_data(struct lttng_clear_handle *handle)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -224,31 +169,26 @@ end:
 	return ret;
 }
 
-enum lttng_destruction_handle_status
-lttng_destruction_handle_wait_for_completion(
-		struct lttng_destruction_handle *handle, int timeout_ms)
+extern enum lttng_clear_handle_status
+	lttng_clear_handle_wait_for_completion(
+		struct lttng_clear_handle *handle, int timeout_ms)
 {
-	enum lttng_destruction_handle_status status;
+	enum lttng_clear_handle_status status;
 	unsigned long time_left_ms = 0;
 	const bool has_timeout = timeout_ms > 0;
 	struct timespec initial_time;
 
-	if (!handle) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-
 	if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+		status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 		goto end;
 	} else if (handle->communication.state == COMMUNICATION_STATE_END) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_COMPLETED;
+		status = LTTNG_CLEAR_HANDLE_STATUS_COMPLETED;
 		goto end;
 	}
 	if (has_timeout) {
 		int ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
 		if (ret) {
-			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 		time_left_ms = (unsigned long) timeout_ms;
@@ -267,7 +207,7 @@ lttng_destruction_handle_wait_for_completion(
 			/* timeout */
 			break;
 		} else if (ret < 0) {
-			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 
@@ -278,12 +218,12 @@ lttng_destruction_handle_wait_for_completion(
 			if (ret) {
 				handle->communication.state =
 						COMMUNICATION_STATE_ERROR;
-				status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+				status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 				goto end;
 			}
 		} else {
 			handle->communication.state = COMMUNICATION_STATE_ERROR;
-			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 		if (!has_timeout) {
@@ -292,120 +232,72 @@ lttng_destruction_handle_wait_for_completion(
 
 		ret = lttng_clock_gettime(CLOCK_MONOTONIC, &current_time);
 		if (ret) {
-			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 		diff = timespec_abs_diff(initial_time, current_time);
 		ret = timespec_to_ms(diff, &diff_ms);
 		if (ret) {
 			ERR("Failed to compute elapsed time while waiting for completion");
-			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
+			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
-		DBG("%lums elapsed while waiting for session destruction completion",
+		DBG("%lums elapsed while waiting for session clear completion",
 				diff_ms);
-		diff_ms = max_t(unsigned long, diff_ms, 1);
-		diff_ms = min_t(unsigned long, diff_ms, time_left_ms);
+		diff_ms = std::max(diff_ms, 1UL);
+		diff_ms = std::min(diff_ms, time_left_ms);
 		time_left_ms -= diff_ms;
 	}
 
 	status = handle->communication.state == COMMUNICATION_STATE_END ?
-			LTTNG_DESTRUCTION_HANDLE_STATUS_COMPLETED :
-			LTTNG_DESTRUCTION_HANDLE_STATUS_TIMEOUT;
+			LTTNG_CLEAR_HANDLE_STATUS_COMPLETED :
+			LTTNG_CLEAR_HANDLE_STATUS_TIMEOUT;
 end:
 	return status;
 }
 
-enum lttng_destruction_handle_status
-lttng_destruction_handle_get_rotation_state(
-		const struct lttng_destruction_handle *handle,
-		enum lttng_rotation_state *rotation_state)
-{
-	enum lttng_destruction_handle_status status =
-			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
-
-	if (!handle || !rotation_state) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-
-	if (!handle->rotation_state.is_set) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-	*rotation_state = handle->rotation_state.value;
-end:
-	return status;
-}
-
-enum lttng_destruction_handle_status
-lttng_destruction_handle_get_archive_location(
-		const struct lttng_destruction_handle *handle,
-		const struct lttng_trace_archive_location **location)
-{
-	enum lttng_destruction_handle_status status =
-			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
-
-	if (!handle || !location) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-
-	if (!handle->location) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-	*location = handle->location;
-end:
-	return status;
-}
-
-enum lttng_destruction_handle_status
-lttng_destruction_handle_get_result(
-		const struct lttng_destruction_handle *handle,
+extern enum lttng_clear_handle_status
+	lttng_clear_handle_get_result(
+		const struct lttng_clear_handle *handle,
 		enum lttng_error_code *result)
 {
-	enum lttng_destruction_handle_status status =
-			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
+	enum lttng_clear_handle_status status =
+			LTTNG_CLEAR_HANDLE_STATUS_OK;
 
-	if (!handle || !result) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
+	if (!handle->clear_return_code.is_set) {
+		status = LTTNG_CLEAR_HANDLE_STATUS_INVALID;
 		goto end;
 	}
-
-	if (!handle->destruction_return_code.is_set) {
-		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
-		goto end;
-	}
-	*result = handle->destruction_return_code.value;
+	*result = handle->clear_return_code.value;
 end:
 	return status;
 }
 
-enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
-		struct lttng_destruction_handle **_handle)
+/*
+ * Clear the session
+ */
+enum lttng_error_code lttng_clear_session(const char *session_name,
+		struct lttng_clear_handle **_handle)
 {
-	int ret;
-	ssize_t comm_ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
+	struct lttng_clear_handle *handle = NULL;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_DESTROY_SESSION,
+		.cmd_type = LTTNG_CLEAR_SESSION,
 	};
 	int sessiond_socket = -1;
-	struct lttng_destruction_handle *handle = NULL;
+	ssize_t comm_ret;
+	int ret;
 
-	if (!session_name) {
+	if (session_name == NULL) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
-
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 	if (ret) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
-
 	ret = connect_sessiond();
 	if (ret < 0) {
 		ret_code = LTTNG_ERR_NO_SESSIOND;
@@ -413,13 +305,11 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	} else {
 		sessiond_socket = ret;
 	}
-
-	handle = lttng_destruction_handle_create(sessiond_socket);
+	handle = lttng_clear_handle_create(sessiond_socket);
 	if (!handle) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
 	}
-
 	comm_ret = lttcomm_send_creds_unix_sock(sessiond_socket, &lsm, sizeof(lsm));
 	if (comm_ret < 0) {
 		ret_code = LTTNG_ERR_FATAL;
@@ -427,12 +317,12 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	}
 	sessiond_socket = -1;
 
+error:
 	/* Transfer the handle to the caller. */
 	if (_handle) {
 		*_handle = handle;
 		handle = NULL;
 	}
-error:
 	if (sessiond_socket >= 0) {
 		ret = close(sessiond_socket);
 		if (ret < 0) {
@@ -440,7 +330,7 @@ error:
 		}
 	}
 	if (handle) {
-		lttng_destruction_handle_destroy(handle);
+		lttng_clear_handle_destroy(handle);
 	}
 	return ret_code;
 }

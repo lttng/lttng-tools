@@ -8,6 +8,8 @@
 #ifndef LTTNG_NOTIFICATION_H
 #define LTTNG_NOTIFICATION_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,7 +30,7 @@ struct lttng_notification;
  *
  * Returns an lttng_condition object on success, NULL on error.
  */
-extern const struct lttng_condition *lttng_notification_get_condition(
+LTTNG_EXPORT extern const struct lttng_condition *lttng_notification_get_condition(
 		struct lttng_notification *notification);
 
 /*
@@ -43,7 +45,7 @@ extern const struct lttng_condition *lttng_notification_get_condition(
  *
  * Returns an lttng_evaluation object on success, NULL on error.
  */
-extern const struct lttng_evaluation *lttng_notification_get_evaluation(
+LTTNG_EXPORT extern const struct lttng_evaluation *lttng_notification_get_evaluation(
 		struct lttng_notification *notification);
 
 /*
@@ -55,14 +57,14 @@ extern const struct lttng_evaluation *lttng_notification_get_evaluation(
  *
  * Returns an lttng_trigger object on success, NULL on error.
  */
-extern const struct lttng_trigger *lttng_notification_get_trigger(
+LTTNG_EXPORT extern const struct lttng_trigger *lttng_notification_get_trigger(
 		struct lttng_notification *notification);
 
 /*
  * Destroys (frees) a notification. The notification's condition and evaluation
  * are destroyed as a side-effect.
  */
-extern void lttng_notification_destroy(struct lttng_notification *notification);
+LTTNG_EXPORT extern void lttng_notification_destroy(struct lttng_notification *notification);
 
 #ifdef __cplusplus
 }

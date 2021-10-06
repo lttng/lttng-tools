@@ -62,147 +62,147 @@ struct mi_lttng_error_query_callbacks {
 };
 
 /* Strings related to command */
-extern const char * const mi_lttng_element_command;
-extern const char * const mi_lttng_element_command_action;
-extern const char * const mi_lttng_element_command_add_context;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_action;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_add_context;
 extern const char * const mi_lttng_element_command_add_trigger;
-extern const char * const mi_lttng_element_command_create;
-extern const char * const mi_lttng_element_command_destroy;
-extern const char * const mi_lttng_element_command_disable_channel;
-extern const char * const mi_lttng_element_command_disable_event;
-extern const char * const mi_lttng_element_command_enable_channels;
-extern const char * const mi_lttng_element_command_enable_event;
-extern const char * const mi_lttng_element_command_list;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_create;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_destroy;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_disable_channel;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_disable_event;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_enable_channels;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_enable_event;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_list;
 extern const char * const mi_lttng_element_command_list_trigger;
-extern const char * const mi_lttng_element_command_load;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_load;
 extern const char * const mi_lttng_element_command_metadata;
 extern const char * const mi_lttng_element_command_metadata_action;
 extern const char * const mi_lttng_element_command_regenerate;
 extern const char * const mi_lttng_element_command_regenerate_action;
-extern const char * const mi_lttng_element_command_name;
-extern const char * const mi_lttng_element_command_output;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_name;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_output;
 extern const char * const mi_lttng_element_command_remove_trigger;
-extern const char * const mi_lttng_element_command_save;
-extern const char * const mi_lttng_element_command_set_session;
-extern const char * const mi_lttng_element_command_snapshot;
-extern const char * const mi_lttng_element_command_snapshot_add;
-extern const char * const mi_lttng_element_command_snapshot_del;
-extern const char * const mi_lttng_element_command_snapshot_list;
-extern const char * const mi_lttng_element_command_snapshot_record;
-extern const char * const mi_lttng_element_command_start;
-extern const char * const mi_lttng_element_command_stop;
-extern const char * const mi_lttng_element_command_success;
-extern const char * const mi_lttng_element_command_track;
-extern const char * const mi_lttng_element_command_untrack;
-extern const char * const mi_lttng_element_command_version;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_save;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_set_session;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_snapshot;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_snapshot_add;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_snapshot_del;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_snapshot_list;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_snapshot_record;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_start;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_stop;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_success;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_track;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_untrack;
+LTTNG_EXPORT extern const char * const mi_lttng_element_command_version;
 extern const char * const mi_lttng_element_command_rotate;
 extern const char * const mi_lttng_element_command_enable_rotation;
 extern const char * const mi_lttng_element_command_disable_rotation;
 extern const char * const mi_lttng_element_command_clear;
 
 /* Strings related to version command */
-extern const char * const mi_lttng_element_version;
-extern const char * const mi_lttng_element_version_commit;
-extern const char * const mi_lttng_element_version_description;
-extern const char * const mi_lttng_element_version_license;
-extern const char * const mi_lttng_element_version_major;
-extern const char * const mi_lttng_element_version_minor;
-extern const char * const mi_lttng_element_version_patch_level;
-extern const char * const mi_lttng_element_version_str;
-extern const char * const mi_lttng_element_version_web;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_commit;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_description;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_license;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_major;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_minor;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_patch_level;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_str;
+LTTNG_EXPORT extern const char * const mi_lttng_element_version_web;
 
 /* String related to a lttng_event_field */
-extern const char * const mi_lttng_element_event_field;
-extern const char * const mi_lttng_element_event_fields;
+LTTNG_EXPORT extern const char * const mi_lttng_element_event_field;
+LTTNG_EXPORT extern const char * const mi_lttng_element_event_fields;
 
 /* String related to lttng_event_perf_counter_ctx */
-extern const char * const mi_lttng_element_perf_counter_context;
+LTTNG_EXPORT extern const char * const mi_lttng_element_perf_counter_context;
 
 /* Strings related to pid */
-extern const char * const mi_lttng_element_pid_id;
+LTTNG_EXPORT extern const char * const mi_lttng_element_pid_id;
 
 /* Strings related to save command */
-extern const char * const mi_lttng_element_save;
+LTTNG_EXPORT extern const char * const mi_lttng_element_save;
 
 /* Strings related to load command */
-extern const char * const mi_lttng_element_load;
+LTTNG_EXPORT extern const char * const mi_lttng_element_load;
 extern const char * const mi_lttng_element_load_overrides;
 extern const char * const mi_lttng_element_load_override_url;
 
 /* General element of mi_lttng */
-extern const char * const mi_lttng_element_empty;
-extern const char * const mi_lttng_element_id;
-extern const char * const mi_lttng_element_nowrite;
-extern const char * const mi_lttng_element_success;
-extern const char * const mi_lttng_element_type_enum;
-extern const char * const mi_lttng_element_type_float;
-extern const char * const mi_lttng_element_type_integer;
-extern const char * const mi_lttng_element_type_other;
-extern const char * const mi_lttng_element_type_string;
+LTTNG_EXPORT extern const char * const mi_lttng_element_empty;
+LTTNG_EXPORT extern const char * const mi_lttng_element_id;
+LTTNG_EXPORT extern const char * const mi_lttng_element_nowrite;
+LTTNG_EXPORT extern const char * const mi_lttng_element_success;
+LTTNG_EXPORT extern const char * const mi_lttng_element_type_enum;
+LTTNG_EXPORT extern const char * const mi_lttng_element_type_float;
+LTTNG_EXPORT extern const char * const mi_lttng_element_type_integer;
+LTTNG_EXPORT extern const char * const mi_lttng_element_type_other;
+LTTNG_EXPORT extern const char * const mi_lttng_element_type_string;
 
 /* String related to loglevel */
-extern const char * const mi_lttng_loglevel_str_alert;
-extern const char * const mi_lttng_loglevel_str_crit;
-extern const char * const mi_lttng_loglevel_str_debug;
-extern const char * const mi_lttng_loglevel_str_debug_function;
-extern const char * const mi_lttng_loglevel_str_debug_line;
-extern const char * const mi_lttng_loglevel_str_debug_module;
-extern const char * const mi_lttng_loglevel_str_debug_process;
-extern const char * const mi_lttng_loglevel_str_debug_program;
-extern const char * const mi_lttng_loglevel_str_debug_system;
-extern const char * const mi_lttng_loglevel_str_debug_unit;
-extern const char * const mi_lttng_loglevel_str_emerg;
-extern const char * const mi_lttng_loglevel_str_err;
-extern const char * const mi_lttng_loglevel_str_info;
-extern const char * const mi_lttng_loglevel_str_notice;
-extern const char * const mi_lttng_loglevel_str_unknown;
-extern const char * const mi_lttng_loglevel_str_warning;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_alert;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_crit;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_function;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_line;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_module;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_process;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_program;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_system;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_debug_unit;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_emerg;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_err;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_info;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_notice;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_unknown;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_warning;
 
 /* String related to loglevel JUL */
-extern const char * const mi_lttng_loglevel_str_jul_all;
-extern const char * const mi_lttng_loglevel_str_jul_config;
-extern const char * const mi_lttng_loglevel_str_jul_fine;
-extern const char * const mi_lttng_loglevel_str_jul_finer;
-extern const char * const mi_lttng_loglevel_str_jul_finest;
-extern const char * const mi_lttng_loglevel_str_jul_info;
-extern const char * const mi_lttng_loglevel_str_jul_off;
-extern const char * const mi_lttng_loglevel_str_jul_severe;
-extern const char * const mi_lttng_loglevel_str_jul_warning;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_all;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_config;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_fine;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_finer;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_finest;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_info;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_off;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_severe;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_jul_warning;
 
 /* String related to loglevel Log4j */
-extern const char * const mi_lttng_loglevel_str_log4j_off;
-extern const char * const mi_lttng_loglevel_str_log4j_fatal;
-extern const char * const mi_lttng_loglevel_str_log4j_error;
-extern const char * const mi_lttng_loglevel_str_log4j_warn;
-extern const char * const mi_lttng_loglevel_str_log4j_info;
-extern const char * const mi_lttng_loglevel_str_log4j_debug;
-extern const char * const mi_lttng_loglevel_str_log4j_trace;
-extern const char * const mi_lttng_loglevel_str_log4j_all;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_off;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_fatal;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_error;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_warn;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_info;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_debug;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_trace;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_log4j_all;
 
 /* String related to loglevel Python */
-extern const char * const mi_lttng_loglevel_str_python_critical;
-extern const char * const mi_lttng_loglevel_str_python_error;
-extern const char * const mi_lttng_loglevel_str_python_warning;
-extern const char * const mi_lttng_loglevel_str_python_info;
-extern const char * const mi_lttng_loglevel_str_python_debug;
-extern const char * const mi_lttng_loglevel_str_python_notset;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_critical;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_error;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_warning;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_info;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_debug;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_str_python_notset;
 
 /* String related to loglevel type */
-extern const char * const mi_lttng_loglevel_type_all;
-extern const char * const mi_lttng_loglevel_type_range;
-extern const char * const mi_lttng_loglevel_type_single;
-extern const char * const mi_lttng_loglevel_type_unknown;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_type_all;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_type_range;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_type_single;
+LTTNG_EXPORT extern const char * const mi_lttng_loglevel_type_unknown;
 
 /* String related to a lttng_snapshot */
-extern const char * const mi_lttng_element_snapshot_ctrl_url;
-extern const char * const mi_lttng_element_snapshot_data_url;
-extern const char * const mi_lttng_element_snapshot_max_size;
-extern const char * const mi_lttng_element_snapshot_n_ptr;
-extern const char * const mi_lttng_element_snapshot_session_name;
-extern const char * const mi_lttng_element_snapshots;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshot_ctrl_url;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshot_data_url;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshot_max_size;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshot_n_ptr;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshot_session_name;
+LTTNG_EXPORT extern const char * const mi_lttng_element_snapshots;
 
 /* String related to track/untrack command */
-extern const char * const mi_lttng_element_track_untrack_all_wildcard;
+LTTNG_EXPORT extern const char * const mi_lttng_element_track_untrack_all_wildcard;
 
 extern const char * const mi_lttng_element_session_name;
 

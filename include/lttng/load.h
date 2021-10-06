@@ -9,6 +9,8 @@
 #ifndef LTTNG_LOAD_H
 #define LTTNG_LOAD_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,12 +24,12 @@ struct lttng_load_session_attr;
 /*
  * Return a newly allocated load session attribute object or NULL on error.
  */
-extern struct lttng_load_session_attr *lttng_load_session_attr_create(void);
+LTTNG_EXPORT extern struct lttng_load_session_attr *lttng_load_session_attr_create(void);
 
 /*
  * Free a given load session attribute object.
  */
-extern void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr);
+LTTNG_EXPORT extern void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr);
 
 
 /*
@@ -35,14 +37,14 @@ extern void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr
  */
 
 /* Return session name. NULL indicates all sessions must be loaded. */
-extern const char *lttng_load_session_attr_get_session_name(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_session_name(
 	struct lttng_load_session_attr *attr);
 /*
  * Return input URL. A NULL value indicates the default session
  * configuration location. The URL format used is documented in lttng-create(1).
  * NULL indicates that the default session configuration path is used.
  */
-extern const char *lttng_load_session_attr_get_input_url(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_input_url(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -51,7 +53,7 @@ extern const char *lttng_load_session_attr_get_input_url(
  * same name already exists. If such a session exists, it is destroyed before
  * the replacement is loaded.
  */
-extern int lttng_load_session_attr_get_overwrite(
+LTTNG_EXPORT extern int lttng_load_session_attr_get_overwrite(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -61,7 +63,7 @@ extern int lttng_load_session_attr_get_overwrite(
  *
  * NULL indicates no override will be applied on configuration load.
  */
-extern const char *lttng_load_session_attr_get_override_url(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_override_url(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -71,7 +73,7 @@ extern const char *lttng_load_session_attr_get_override_url(
  *
  * NULL indicates no control URL override will be applied on configuration load.
  */
-extern const char *lttng_load_session_attr_get_override_ctrl_url(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_override_ctrl_url(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -81,7 +83,7 @@ extern const char *lttng_load_session_attr_get_override_ctrl_url(
  *
  * NULL indicates no data URL override will be applied on configuration load.
  */
-extern const char *lttng_load_session_attr_get_override_data_url(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_override_data_url(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -92,7 +94,7 @@ extern const char *lttng_load_session_attr_get_override_data_url(
  * NULL indicates no session name override will be applied on configuration
  * load.
  */
-extern const char *lttng_load_session_attr_get_override_session_name(
+LTTNG_EXPORT extern const char *lttng_load_session_attr_get_override_session_name(
 	struct lttng_load_session_attr *attr);
 
 /*
@@ -106,7 +108,7 @@ extern const char *lttng_load_session_attr_get_override_session_name(
  * Set the name of the session to load. A NULL name means all sessions
  * found at the input URL will be loaded.
  */
-extern int lttng_load_session_attr_set_session_name(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_session_name(
 	struct lttng_load_session_attr *attr, const char *session_name);
 
 /*
@@ -115,7 +117,7 @@ extern int lttng_load_session_attr_set_session_name(
  *
  * Note that file:// is the only supported URL format.
  */
-extern int lttng_load_session_attr_set_input_url(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_input_url(
 	struct lttng_load_session_attr *attr, const char *url);
 
 /*
@@ -123,7 +125,7 @@ extern int lttng_load_session_attr_set_input_url(
  * loaded sessions will be destroyed and be replaced by the session(s) being
  * loaded.
  */
-extern int lttng_load_session_attr_set_overwrite(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_overwrite(
 	struct lttng_load_session_attr *attr, int overwrite);
 
 /*
@@ -143,7 +145,7 @@ extern int lttng_load_session_attr_set_overwrite(
  *
  * See lttng-create(1) for more detail.
  */
-extern int lttng_load_session_attr_set_override_url(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_override_url(
 	struct lttng_load_session_attr *attr, const char *url);
 
 /*
@@ -156,7 +158,7 @@ extern int lttng_load_session_attr_set_override_url(
  *
  * See lttng-create(1) for more detail.
  */
-extern int lttng_load_session_attr_set_override_ctrl_url(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_override_ctrl_url(
 	struct lttng_load_session_attr *attr, const char *url);
 
 /*
@@ -169,7 +171,7 @@ extern int lttng_load_session_attr_set_override_ctrl_url(
  *
  * See lttng-create(1) for more detail.
  */
-extern int lttng_load_session_attr_set_override_data_url(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_override_data_url(
 	struct lttng_load_session_attr *attr, const char *url);
 
 /*
@@ -178,7 +180,7 @@ extern int lttng_load_session_attr_set_override_data_url(
  * Loading a configuration file defining multiple sessions will fail if a
  * session name is provided.
  */
-extern int lttng_load_session_attr_set_override_session_name(
+LTTNG_EXPORT extern int lttng_load_session_attr_set_override_session_name(
 	struct lttng_load_session_attr *attr, const char *session_name);
 
 /*
@@ -189,7 +191,7 @@ extern int lttng_load_session_attr_set_override_session_name(
  *
  * Returns 0 on success or a negative LTTNG_ERR value on error.
  */
-extern int lttng_load_session(struct lttng_load_session_attr *attr);
+LTTNG_EXPORT extern int lttng_load_session(struct lttng_load_session_attr *attr);
 
 #ifdef __cplusplus
 }

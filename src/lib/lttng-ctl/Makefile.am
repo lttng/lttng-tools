@@ -6,10 +6,20 @@ AM_CPPFLAGS += -I$(srcdir) -I$(builddir)
 
 lib_LTLIBRARIES = liblttng-ctl.la
 
-liblttng_ctl_la_SOURCES = lttng-ctl.c snapshot.c lttng-ctl-helper.h \
-		lttng-ctl-health.c save.c load.c deprecated-symbols.c \
-		channel.c rotate.c event.c destruction-handle.c clear.c \
-		tracker.c
+liblttng_ctl_la_SOURCES = \
+		channel.cpp \
+		clear.cpp \
+		deprecated-symbols.cpp \
+		destruction-handle.cpp \
+		event.cpp \
+		load.cpp \
+		lttng-ctl.cpp \
+		lttng-ctl-health.cpp \
+		lttng-ctl-helper.h \
+		rotate.cpp \
+		save.cpp \
+		snapshot.cpp \
+		tracker.cpp
 
 liblttng_ctl_la_LDFLAGS = \
 		$(LT_NO_UNDEFINED) \

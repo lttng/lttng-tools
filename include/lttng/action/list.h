@@ -8,6 +8,8 @@
 #ifndef LTTNG_ACTION_LIST_H
 #define LTTNG_ACTION_LIST_H
 
+#include <lttng/lttng-export.h>
+
 struct lttng_action;
 
 #ifdef __cplusplus
@@ -20,7 +22,7 @@ extern "C" {
  * Returns a new action list on success, NULL on failure. This action list
  * must be destroyed using lttng_action_list_destroy().
  */
-extern struct lttng_action *lttng_action_list_create(void);
+LTTNG_EXPORT extern struct lttng_action *lttng_action_list_create(void);
 
 /*
  * Add an action to an lttng_action object of type LTTNG_ACTION_LIST.
@@ -31,13 +33,13 @@ extern struct lttng_action *lttng_action_list_create(void);
  *
  * Adding an action list to an action list is not supported.
  */
-extern enum lttng_action_status lttng_action_list_add_action(
+LTTNG_EXPORT extern enum lttng_action_status lttng_action_list_add_action(
 		struct lttng_action *list, struct lttng_action *action);
 
 /*
  * Get the number of actions in an action list.
  */
-extern enum lttng_action_status lttng_action_list_get_count(
+LTTNG_EXPORT extern enum lttng_action_status lttng_action_list_get_count(
 		const struct lttng_action *list, unsigned int *count);
 
 /*
@@ -49,7 +51,7 @@ extern enum lttng_action_status lttng_action_list_get_count(
  *
  * Returns an action, or NULL on error.
  */
-extern const struct lttng_action *lttng_action_list_get_at_index(
+LTTNG_EXPORT extern const struct lttng_action *lttng_action_list_get_at_index(
 		const struct lttng_action *list,
 		unsigned int index);
 

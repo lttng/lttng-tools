@@ -8,6 +8,8 @@
 #ifndef LTTNG_ENDPOINT_H
 #define LTTNG_ENDPOINT_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -24,7 +26,7 @@ extern "C" {
  *   - Otherwise (caller is an unpriviliged user):
  *     - Attempt to connect to the session daemon running as the caller's user.
  */
-extern struct lttng_endpoint *lttng_session_daemon_notification_endpoint;
+LTTNG_EXPORT extern struct lttng_endpoint *lttng_session_daemon_notification_endpoint;
 
 /*
  * Default LTTng session daemon command endpoint singleton.
@@ -38,7 +40,7 @@ extern struct lttng_endpoint *lttng_session_daemon_notification_endpoint;
  *   - Otherwise (caller is an unpriviliged user):
  *     - Attempt to connect to the session daemon running as the caller's user.
  */
-extern struct lttng_endpoint *lttng_session_daemon_command_endpoint;
+LTTNG_EXPORT extern struct lttng_endpoint *lttng_session_daemon_command_endpoint;
 
 #ifdef __cplusplus
 }

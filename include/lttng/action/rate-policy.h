@@ -9,6 +9,7 @@
 #define LTTNG_RATE_POLICY_H
 
 #include <inttypes.h>
+#include <lttng/lttng-export.h>
 #include <sys/types.h>
 
 struct lttng_rate_policy;
@@ -36,7 +37,7 @@ enum lttng_rate_policy_type {
 /*
  * Get the type of a rate policy.
  */
-extern enum lttng_rate_policy_type lttng_rate_policy_get_type(
+LTTNG_EXPORT extern enum lttng_rate_policy_type lttng_rate_policy_get_type(
 		const struct lttng_rate_policy *policy);
 
 /*
@@ -49,7 +50,7 @@ extern enum lttng_rate_policy_type lttng_rate_policy_get_type(
  * rate_policy objects must be destroyed using the lttng_rate_policy_destroy()
  * function.
  */
-extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(
+LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(
 		uint64_t interval);
 
 /*
@@ -59,7 +60,7 @@ extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(
  * on success, LTTNG_RATE_FIRING_POLICY_STATUS_INVALID if an invalid
  * parameter is passed.
  */
-extern enum lttng_rate_policy_status lttng_rate_policy_every_n_get_interval(
+LTTNG_EXPORT extern enum lttng_rate_policy_status lttng_rate_policy_every_n_get_interval(
 		const struct lttng_rate_policy *policy, uint64_t *interval);
 
 /*
@@ -73,7 +74,7 @@ extern enum lttng_rate_policy_status lttng_rate_policy_every_n_get_interval(
  * rate_policy objects must be destroyed using the lttng_rate_policy_destroy()
  * function.
  */
-extern struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(
+LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(
 		uint64_t threshold);
 
 /*
@@ -83,14 +84,14 @@ extern struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(
  * on success, LTTNG_RATE_POLICY_STATUS_INVALID if an invalid
  * parameter is passed.
  */
-extern enum lttng_rate_policy_status
+LTTNG_EXPORT extern enum lttng_rate_policy_status
 lttng_rate_policy_once_after_n_get_threshold(
 		const struct lttng_rate_policy *policy, uint64_t *threshold);
 
 /*
  * Destroy (frees) a rate policy object.
  */
-extern void lttng_rate_policy_destroy(struct lttng_rate_policy *policy);
+LTTNG_EXPORT extern void lttng_rate_policy_destroy(struct lttng_rate_policy *policy);
 
 #ifdef __cplusplus
 }

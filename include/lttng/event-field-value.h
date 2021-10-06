@@ -8,6 +8,7 @@
 #ifndef LTTNG_EVENT_FIELD_VALUE_H
 #define LTTNG_EVENT_FIELD_VALUE_H
 
+#include <lttng/lttng-export.h>
 #include <stdint.h>
 
 struct lttng_event_field_value;
@@ -103,7 +104,7 @@ enum lttng_event_field_value_status {
  * `LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID`:
  *     `field_val` is `NULL`.
  */
-extern enum lttng_event_field_value_type lttng_event_field_value_get_type(
+LTTNG_EXPORT extern enum lttng_event_field_value_type lttng_event_field_value_get_type(
 		const struct lttng_event_field_value *field_val);
 
 /*
@@ -122,7 +123,7 @@ extern enum lttng_event_field_value_type lttng_event_field_value_get_type(
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM`.
  *     * `val` is `NULL`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_unsigned_int_get_value(
 		const struct lttng_event_field_value *field_val, uint64_t *val);
 
@@ -142,7 +143,7 @@ lttng_event_field_value_unsigned_int_get_value(
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM`.
  *     * `val` is `NULL`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_signed_int_get_value(
 		const struct lttng_event_field_value *field_val, int64_t *val);
 
@@ -161,7 +162,7 @@ lttng_event_field_value_signed_int_get_value(
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_REAL`.
  *     * `val` is `NULL`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_real_get_value(
 		const struct lttng_event_field_value *field_val, double *val);
 
@@ -177,7 +178,7 @@ lttng_event_field_value_real_get_value(
  *     * The type of `field_val` is not
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_STRING`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_string_get_value(
 		const struct lttng_event_field_value *field_val,
 		const char **value);
@@ -197,7 +198,7 @@ lttng_event_field_value_string_get_value(
  *       `LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY`.
  *     * `length` is `NULL`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_array_get_length(
 		const struct lttng_event_field_value *field_val,
 		unsigned int *length);
@@ -222,7 +223,7 @@ lttng_event_field_value_array_get_length(
  *     * No event field value exists at index `index` within
  *       `field_val`.
  */
-extern enum lttng_event_field_value_status
+LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_array_get_element_at_index(
 		const struct lttng_event_field_value *field_val,
 		unsigned int index,

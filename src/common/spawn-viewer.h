@@ -8,6 +8,7 @@
  *
  */
 
+#include <lttng/lttng-export.h>
 #include <stdbool.h>
 
 #if defined(__cplusplus)
@@ -24,7 +25,7 @@ extern "C" {
  * This symbol was mistakenly made public before the 2.12 release. It can't
  * be removed (but it can be stubbed-out if necessary).
  */
-int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
+LTTNG_EXPORT int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
 
 #if defined(__cplusplus)
 }

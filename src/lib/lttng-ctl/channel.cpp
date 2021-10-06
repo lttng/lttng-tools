@@ -143,12 +143,12 @@ struct lttng_notification_channel *lttng_notification_channel_create(
 		goto end;
 	}
 
-	sock_path = zmalloc(LTTNG_PATH_MAX);
+	sock_path = (char *) zmalloc(LTTNG_PATH_MAX);
 	if (!sock_path) {
 		goto end;
 	}
 
-	channel = zmalloc(sizeof(struct lttng_notification_channel));
+	channel = (lttng_notification_channel *) zmalloc(sizeof(struct lttng_notification_channel));
 	if (!channel) {
 		goto end;
 	}
@@ -343,7 +343,7 @@ int enqueue_dropped_notification(
 		goto end;
 	}
 
-	pending_notification = zmalloc(sizeof(*pending_notification));
+	pending_notification = (struct pending_notification *) zmalloc(sizeof(*pending_notification));
 	if (!pending_notification) {
 		ret = -1;
 		goto end;
@@ -371,7 +371,7 @@ int enqueue_notification_from_current_message(
 		goto end;
 	}
 
-	pending_notification = zmalloc(sizeof(*pending_notification));
+	pending_notification = (struct pending_notification *) zmalloc(sizeof(*pending_notification));
 	if (!pending_notification) {
 		ret = -1;
 		goto error;

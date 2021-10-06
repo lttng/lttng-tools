@@ -17,7 +17,7 @@
 
 struct lttng_save_session_attr *lttng_save_session_attr_create(void)
 {
-	return zmalloc(sizeof(struct lttng_save_session_attr));
+	return (lttng_save_session_attr *) zmalloc(sizeof(struct lttng_save_session_attr));
 }
 
 void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output)

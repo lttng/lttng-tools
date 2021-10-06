@@ -8,6 +8,8 @@
 #ifndef LTTNG_ACTION_NOTIFY_H
 #define LTTNG_ACTION_NOTIFY_H
 
+#include <lttng/lttng-export.h>
+
 struct lttng_action;
 struct lttng_rate_policy;
 
@@ -28,7 +30,7 @@ extern "C" {
  * Returns a new action on success, NULL on failure. This action must be
  * destroyed using lttng_action_destroy().
  */
-extern struct lttng_action *lttng_action_notify_create(void);
+LTTNG_EXPORT extern struct lttng_action *lttng_action_notify_create(void);
 
 /*
  * Set the rate policy of a notify action.
@@ -37,7 +39,7 @@ extern struct lttng_action *lttng_action_notify_create(void);
  * LTTNG_ACTION_STATUS_ERROR on internal error,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-extern enum lttng_action_status lttng_action_notify_set_rate_policy(
+LTTNG_EXPORT extern enum lttng_action_status lttng_action_notify_set_rate_policy(
 		struct lttng_action *action,
 		const struct lttng_rate_policy *policy);
 
@@ -47,7 +49,7 @@ extern enum lttng_action_status lttng_action_notify_set_rate_policy(
  * Returns LTTNG_ACTION_STATUS_OK on success,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-extern enum lttng_action_status lttng_action_notify_get_rate_policy(
+LTTNG_EXPORT extern enum lttng_action_status lttng_action_notify_get_rate_policy(
 		const struct lttng_action *action,
 		const struct lttng_rate_policy **policy);
 

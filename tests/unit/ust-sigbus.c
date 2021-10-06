@@ -5,6 +5,7 @@
  *
  */
 
+#include <lttng/lttng-export.h>
 #include <lttng/ust-sigbus.h>
 
-DEFINE_LTTNG_UST_SIGBUS_STATE();
+LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();

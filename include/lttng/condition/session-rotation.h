@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <lttng/domain.h>
 #include <lttng/location.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +39,7 @@ extern "C" {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *
+LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_session_rotation_ongoing_create(void);
 
 /*
@@ -53,7 +54,7 @@ lttng_condition_session_rotation_ongoing_create(void);
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *
+LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_session_rotation_completed_create(void);
 
 /*
@@ -68,7 +69,7 @@ lttng_condition_session_rotation_completed_create(void);
  * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a session name
  * was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_rotation_get_session_name(
 		const struct lttng_condition *condition,
 		const char **session_name);
@@ -81,7 +82,7 @@ lttng_condition_session_rotation_get_session_name(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_rotation_set_session_name(
 		struct lttng_condition *condition,
 		const char *session_name);
@@ -99,7 +100,7 @@ lttng_condition_session_rotation_set_session_name(
  * rotation, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is
  * passed.
  */
-extern enum lttng_evaluation_status
+LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_session_rotation_get_id(
 		const struct lttng_evaluation *evaluation, uint64_t *id);
 
@@ -118,7 +119,7 @@ lttng_evaluation_session_rotation_get_id(
  * LTTNG_EVALUATION_STATUS_INVALID is returned if an invalid parameter is
  * passed.
  */
-extern enum lttng_evaluation_status
+LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_session_rotation_completed_get_location(
 		const struct lttng_evaluation *evaluation,
 		const struct lttng_trace_archive_location **location);

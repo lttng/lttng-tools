@@ -7,9 +7,10 @@
 
 #include <lttng/ust-sigbus.h>
 #include <lttng/ust-ctl.h>
+#include <lttng/lttng-export.h>
 #include "ust-sigbus.h"
 
-DEFINE_LTTNG_UST_SIGBUS_STATE();
+LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 void lttng_ust_handle_sigbus(void *address)
 {

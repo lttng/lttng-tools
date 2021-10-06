@@ -12,13 +12,14 @@
 #include <stdint.h>
 
 #include <common/macros.h>
+#include <lttng/lttng-export.h>
 #include <urcu/rculfhash.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern unsigned long lttng_ht_seed;
+LTTNG_EXPORT extern unsigned long lttng_ht_seed;
 
 typedef unsigned long (*hash_fct_type)(const void *_key, unsigned long seed);
 typedef cds_lfht_match_fct hash_match_fct;

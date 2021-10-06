@@ -9,6 +9,7 @@
 #define LTTNG_HANDLE_H
 
 #include <lttng/domain.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +41,7 @@ struct lttng_handle {
  * Return a newly allocated handle that should be freed using
  * lttng_destroy_handle. On error, NULL is returned.
  */
-extern struct lttng_handle *lttng_create_handle(const char *session_name,
+LTTNG_EXPORT extern struct lttng_handle *lttng_create_handle(const char *session_name,
 		struct lttng_domain *domain);
 
 /*
@@ -48,7 +49,7 @@ extern struct lttng_handle *lttng_create_handle(const char *session_name,
  *
  * It free the given pointer making it unusable.
  */
-extern void lttng_destroy_handle(struct lttng_handle *handle);
+LTTNG_EXPORT extern void lttng_destroy_handle(struct lttng_handle *handle);
 
 
 #ifdef __cplusplus

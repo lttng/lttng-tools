@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <lttng/lttng-export.h>
 #include <lttng/ust-getcpu.h>
 
 static long nprocessors;
@@ -58,7 +59,7 @@ int plugin_getcpu(void)
 	return ret;
 }
 
-void lttng_ust_getcpu_plugin_init(void);
+LTTNG_EXPORT void lttng_ust_getcpu_plugin_init(void);
 void lttng_ust_getcpu_plugin_init(void)
 {
 	int ret;

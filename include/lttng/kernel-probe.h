@@ -8,6 +8,7 @@
 #ifndef LTTNG_KERNEL_PROBE_H
 #define LTTNG_KERNEL_PROBE_H
 
+#include <lttng/lttng-export.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -33,34 +34,34 @@ enum lttng_kernel_probe_location_type {
 /*
  * Get the type of the kernel probe location.
  */
-extern enum lttng_kernel_probe_location_type
+LTTNG_EXPORT extern enum lttng_kernel_probe_location_type
 lttng_kernel_probe_location_get_type(
 		const struct lttng_kernel_probe_location *location);
 
 /*
  * Destroy the kernel probe location.
  */
-extern void lttng_kernel_probe_location_destroy(
+LTTNG_EXPORT extern void lttng_kernel_probe_location_destroy(
 		struct lttng_kernel_probe_location *location);
 
 /*
  * Create a symbol derived probe location.
  * On failure, NULL is returned.
  */
-extern struct lttng_kernel_probe_location *
+LTTNG_EXPORT extern struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_symbol_create(const char *symbol_name,
 		uint64_t offset);
 
 /*
  * Get the symbol name of a symbol derived probe location.
  */
-extern const char *lttng_kernel_probe_location_symbol_get_name(
+LTTNG_EXPORT extern const char *lttng_kernel_probe_location_symbol_get_name(
 		const struct lttng_kernel_probe_location *location);
 
 /*
  * Get the offset of a symbol derived location.
  */
-extern enum lttng_kernel_probe_location_status
+LTTNG_EXPORT extern enum lttng_kernel_probe_location_status
 lttng_kernel_probe_location_symbol_get_offset(
 		const struct lttng_kernel_probe_location *location,
 		uint64_t *offset);
@@ -69,13 +70,13 @@ lttng_kernel_probe_location_symbol_get_offset(
  * Create an address derived probe location.
  * On failure, NULL is returned.
  */
-extern struct lttng_kernel_probe_location *
+LTTNG_EXPORT extern struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_address_create(uint64_t address);
 
 /*
  * Get the address of an address derived probe location.
  */
-extern enum lttng_kernel_probe_location_status
+LTTNG_EXPORT extern enum lttng_kernel_probe_location_status
 lttng_kernel_probe_location_address_get_address(
 		const struct lttng_kernel_probe_location *location,
 		uint64_t *offset);

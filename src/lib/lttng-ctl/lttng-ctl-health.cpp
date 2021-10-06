@@ -51,45 +51,99 @@ struct lttng_health {
 };
 
 static
-const char *sessiond_thread_name[NR_HEALTH_SESSIOND_TYPES] = {
-	[ HEALTH_SESSIOND_TYPE_CMD ] = "Session daemon command",
-	[ HEALTH_SESSIOND_TYPE_APP_MANAGE ] = "Session daemon application manager",
-	[ HEALTH_SESSIOND_TYPE_APP_REG ] = "Session daemon application registration",
-	[ HEALTH_SESSIOND_TYPE_KERNEL ] = "Session daemon kernel",
-	[ HEALTH_SESSIOND_TYPE_CONSUMER ] = "Session daemon consumer manager",
-	[ HEALTH_SESSIOND_TYPE_HT_CLEANUP ] = "Session daemon hash table cleanup",
-	[ HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY ] = "Session daemon application notification manager",
-	[ HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH ] = "Session daemon application registration dispatcher",
-	[ HEALTH_SESSIOND_TYPE_ROTATION ] = "Session daemon rotation manager",
-	[ HEALTH_SESSIOND_TYPE_TIMER ] = "Session daemon timer manager",
-	[ HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR ] = "Session daemon trigger action executor",
+const char *get_sessiond_thread_name(health_type_sessiond type) {
+	switch (type)
+	{
+	case HEALTH_SESSIOND_TYPE_CMD:
+		return "Session daemon command";
+	case HEALTH_SESSIOND_TYPE_APP_MANAGE:
+		return "Session daemon application manager";
+	case HEALTH_SESSIOND_TYPE_APP_REG:
+		return "Session daemon application registration";
+	case HEALTH_SESSIOND_TYPE_KERNEL:
+		return "Session daemon kernel";
+	case HEALTH_SESSIOND_TYPE_CONSUMER:
+		return "Session daemon consumer manager";
+	case HEALTH_SESSIOND_TYPE_HT_CLEANUP:
+		return "Session daemon hash table cleanup";
+	case HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY:
+		return "Session daemon application notification manager";
+	case HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH:
+		return "Session daemon application registration dispatcher";
+	case HEALTH_SESSIOND_TYPE_NOTIFICATION:
+		return "Session daemon notification";
+	case HEALTH_SESSIOND_TYPE_ROTATION:
+		return "Session daemon rotation manager";
+	case HEALTH_SESSIOND_TYPE_TIMER:
+		return "Session daemon timer manager";
+	case HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR:
+		return "Session daemon trigger action executor";
+	case NR_HEALTH_SESSIOND_TYPES:
+		abort();
+	}
+
+	abort();
 };
 
 static
-const char *consumerd_thread_name[NR_HEALTH_CONSUMERD_TYPES] = {
-	[ HEALTH_CONSUMERD_TYPE_CHANNEL ] = "Consumer daemon channel",
-	[ HEALTH_CONSUMERD_TYPE_METADATA ] = "Consumer daemon metadata",
-	[ HEALTH_CONSUMERD_TYPE_DATA ] = "Consumer daemon data",
-	[ HEALTH_CONSUMERD_TYPE_SESSIOND ] = "Consumer daemon session daemon command manager",
-	[ HEALTH_CONSUMERD_TYPE_METADATA_TIMER ] = "Consumer daemon metadata timer",
+const char *get_consumerd_thread_name(health_type_consumerd type) {
+	switch (type) {
+	case HEALTH_CONSUMERD_TYPE_CHANNEL:
+		return "Consumer daemon channel";
+	case HEALTH_CONSUMERD_TYPE_METADATA:
+		return "Consumer daemon metadata";
+	case HEALTH_CONSUMERD_TYPE_DATA:
+		return "Consumer daemon data";
+	case HEALTH_CONSUMERD_TYPE_SESSIOND:
+		return "Consumer daemon session daemon command manager";
+	case HEALTH_CONSUMERD_TYPE_METADATA_TIMER:
+		return "Consumer daemon metadata timer";
+	case NR_HEALTH_CONSUMERD_TYPES:
+		abort();
+	}
+
+	abort();
 };
 
 static
-const char *relayd_thread_name[NR_HEALTH_RELAYD_TYPES] = {
-	[ HEALTH_RELAYD_TYPE_DISPATCHER ] = "Relay daemon dispatcher",
-	[ HEALTH_RELAYD_TYPE_WORKER ] = "Relay daemon worker",
-	[ HEALTH_RELAYD_TYPE_LISTENER ] = "Relay daemon listener",
-	[ HEALTH_RELAYD_TYPE_LIVE_DISPATCHER ] = "Relay daemon live dispatcher",
-	[ HEALTH_RELAYD_TYPE_LIVE_WORKER ] = "Relay daemon live worker",
-	[ HEALTH_RELAYD_TYPE_LIVE_LISTENER ] = "Relay daemon live listener",
-};
+const char *get_relayd_thread_name(health_type_relayd type)
+{
+	switch (type) {
+	case HEALTH_RELAYD_TYPE_DISPATCHER:
+		return "Relay daemon dispatcher";
+	case HEALTH_RELAYD_TYPE_WORKER:
+		return "Relay daemon worker";
+	case HEALTH_RELAYD_TYPE_LISTENER:
+		return "Relay daemon listener";
+	case HEALTH_RELAYD_TYPE_LIVE_DISPATCHER:
+		return "Relay daemon live dispatcher";
+	case HEALTH_RELAYD_TYPE_LIVE_WORKER:
+		return "Relay daemon live worker";
+	case HEALTH_RELAYD_TYPE_LIVE_LISTENER:
+		return "Relay daemon live listener";
+	case NR_HEALTH_RELAYD_TYPES:
+		abort();
+	}
+
+	abort();
+}
 
 static
-const char **thread_name[NR_HEALTH_COMPONENT] = {
-	[ HEALTH_COMPONENT_SESSIOND ] = sessiond_thread_name,
-	[ HEALTH_COMPONENT_CONSUMERD] = consumerd_thread_name,
-	[ HEALTH_COMPONENT_RELAYD ] = relayd_thread_name,
-};
+const char *get_thread_name(int comp, int nr)
+{
+	switch (comp) {
+	case HEALTH_COMPONENT_SESSIOND:
+		return get_sessiond_thread_name((health_type_sessiond) nr);
+	case HEALTH_COMPONENT_CONSUMERD:
+		return get_consumerd_thread_name((health_type_consumerd) nr);
+	case HEALTH_COMPONENT_RELAYD:
+		return get_relayd_thread_name((health_type_relayd) nr);
+	case NR_HEALTH_COMPONENT:
+		abort();
+	}
+
+	abort();
+}
 
 /*
  * Set health socket path.
@@ -176,7 +230,7 @@ struct lttng_health *lttng_health_create(enum health_component hc,
 	struct lttng_health *lh;
 	int i;
 
-	lh = zmalloc(sizeof(*lh) + sizeof(lh->thread[0]) * nr_threads);
+	lh = (lttng_health *) zmalloc(sizeof(*lh) + sizeof(lh->thread[0]) * nr_threads);
 	if (!lh) {
 		return NULL;
 	}
@@ -362,5 +416,5 @@ const char *lttng_health_thread_name(const struct lttng_health_thread *thread)
 		return NULL;
 	}
 	nr = thread - &thread->p->thread[0];
-	return thread_name[thread->p->component][nr];
+	return get_thread_name (thread->p->component, nr);
 }

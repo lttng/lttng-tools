@@ -9,12 +9,13 @@
 #ifndef LTTNG_EVENT_H
 #define LTTNG_EVENT_H
 
+#include <lttng/handle.h>
+#include <lttng/lttng-export.h>
+#include <lttng/userspace-probe.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <lttng/handle.h>
-#include <lttng/userspace-probe.h>
 
 /*
  * Instrumentation type of tracing event.
@@ -310,7 +311,7 @@ struct lttng_event_field {
  * Return the size (number of entries) of the "lttng_event" array. Caller must
  * free events. On error a negative LTTng error code is returned.
  */
-extern int lttng_list_events(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
 /*
@@ -329,7 +330,7 @@ extern int lttng_list_events(struct lttng_handle *handle,
  *
  * Returns a zeroed lttng_event on success, NULL on error.
  */
-extern struct lttng_event *lttng_event_create(void);
+LTTNG_EXPORT extern struct lttng_event *lttng_event_create(void);
 
 /*
  * Destroy an lttng_event.
@@ -337,7 +338,7 @@ extern struct lttng_event *lttng_event_create(void);
  * This destruction function, introduced in LTTng 2.11, should only
  * be used with events created by lttng_event_create().
   */
-extern void lttng_event_destroy(struct lttng_event *event);
+LTTNG_EXPORT extern void lttng_event_destroy(struct lttng_event *event);
 
 /*
  * Get the filter expression of a specific LTTng event.
@@ -349,7 +350,7 @@ extern void lttng_event_destroy(struct lttng_event *event);
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_event_get_filter_expression(struct lttng_event *event,
+LTTNG_EXPORT extern int lttng_event_get_filter_expression(struct lttng_event *event,
 		const char **filter_string);
 
 /*
@@ -358,7 +359,7 @@ extern int lttng_event_get_filter_expression(struct lttng_event *event,
  * Returns the number of exclusion names on success, or a negative
  * LTTng error code on error.
  */
-extern int lttng_event_get_exclusion_name_count(struct lttng_event *event);
+LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event *event);
 
 /*
  * Get an LTTng event's exclusion name at a given index.
@@ -368,7 +369,7 @@ extern int lttng_event_get_exclusion_name_count(struct lttng_event *event);
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_event_get_exclusion_name(struct lttng_event *event,
+LTTNG_EXPORT extern int lttng_event_get_exclusion_name(struct lttng_event *event,
 		size_t index, const char **exclusion_name);
 
 /*
@@ -377,7 +378,7 @@ extern int lttng_event_get_exclusion_name(struct lttng_event *event,
  * If the event has no probe location a NULL pointer is returned. The caller
  * does not own the returned probe location.
  */
-extern const struct lttng_userspace_probe_location *
+LTTNG_EXPORT extern const struct lttng_userspace_probe_location *
 lttng_event_get_userspace_probe_location(const struct lttng_event *event);
 
 /*
@@ -391,7 +392,7 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event);
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_event_set_userspace_probe_location(struct lttng_event *event,
+LTTNG_EXPORT extern int lttng_event_set_userspace_probe_location(struct lttng_event *event,
 		struct lttng_userspace_probe_location *probe_location);
 
 /*
@@ -402,7 +403,7 @@ extern int lttng_event_set_userspace_probe_location(struct lttng_event *event,
  * Return the size (number of entries) of the "lttng_event" array.  Caller must
  * free events. On error a negative LTTng error code is returned.
  */
-extern int lttng_list_tracepoints(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events);
 
 /*
@@ -414,7 +415,7 @@ extern int lttng_list_tracepoints(struct lttng_handle *handle,
  * Caller must free fields. On error a negative LTTng error code is
  * returned.
  */
-extern int lttng_list_tracepoint_fields(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 		struct lttng_event_field **fields);
 
 /*
@@ -424,7 +425,7 @@ extern int lttng_list_tracepoint_fields(struct lttng_handle *handle,
  * All events in will be of type syscall. Caller must free events. On error a
  * negative LTTng error code is returned.
  */
-extern int lttng_list_syscalls(struct lttng_event **events);
+LTTNG_EXPORT extern int lttng_list_syscalls(struct lttng_event **events);
 
 /*
  * Add context to event(s) for a specific channel (or for all).
@@ -438,7 +439,7 @@ extern int lttng_list_syscalls(struct lttng_event **events);
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_add_context(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
 		const char *channel_name);
 
@@ -453,7 +454,7 @@ extern int lttng_add_context(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_enable_event(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_enable_event(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name);
 
 /*
@@ -469,7 +470,7 @@ extern int lttng_enable_event(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
 		struct lttng_event *event, const char *channel_name,
 		const char *filter_expression);
 
@@ -487,7 +488,7 @@ extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		struct lttng_event *event, const char *channel_name,
 		const char *filter_expression,
 		int exclusion_count, char **exclusion_names);
@@ -500,7 +501,7 @@ extern int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_disable_event(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_disable_event(struct lttng_handle *handle,
 		const char *name, const char *channel_name);
 
 /*
@@ -516,7 +517,7 @@ extern int lttng_disable_event(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_disable_event_ext(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_disable_event_ext(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name,
 		const char *filter_expression);
 

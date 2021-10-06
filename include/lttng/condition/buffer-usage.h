@@ -12,6 +12,7 @@
 #include <lttng/condition/condition.h>
 #include <stdint.h>
 #include <lttng/domain.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +57,7 @@ extern "C" {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *
+LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_buffer_usage_low_create(void);
 
 /*
@@ -72,7 +73,7 @@ lttng_condition_buffer_usage_low_create(void);
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *
+LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_buffer_usage_high_create(void);
 
 /*
@@ -87,7 +88,7 @@ lttng_condition_buffer_usage_high_create(void);
  * expressed as a ratio of total buffer capacity, was not set prior to this
  * call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold_ratio(
 		const struct lttng_condition *condition,
 	        double *threshold_ratio);
@@ -103,7 +104,7 @@ lttng_condition_buffer_usage_get_threshold_ratio(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_threshold_ratio(
 		struct lttng_condition *condition,
 	        double threshold_ratio);
@@ -119,7 +120,7 @@ lttng_condition_buffer_usage_set_threshold_ratio(
  * LTTNG_CONDITION_STATUS_UNSET if a threshold, expressed as an absolute size in
  * bytes, was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_threshold(
 		const struct lttng_condition *condition,
 	        uint64_t *threshold_bytes);
@@ -133,7 +134,7 @@ lttng_condition_buffer_usage_get_threshold(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_threshold(
 		struct lttng_condition *condition,
 	        uint64_t threshold_bytes);
@@ -150,7 +151,7 @@ lttng_condition_buffer_usage_set_threshold(
  * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a session name
  * was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_session_name(
 		const struct lttng_condition *condition,
 		const char **session_name);
@@ -163,7 +164,7 @@ lttng_condition_buffer_usage_get_session_name(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_session_name(
 		struct lttng_condition *condition,
 		const char *session_name);
@@ -180,7 +181,7 @@ lttng_condition_buffer_usage_set_session_name(
  * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a channel name
  * was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_channel_name(
 		const struct lttng_condition *condition,
 		const char **channel_name);
@@ -193,7 +194,7 @@ lttng_condition_buffer_usage_get_channel_name(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_channel_name(
 		struct lttng_condition *condition,
 		const char *channel_name);
@@ -206,7 +207,7 @@ lttng_condition_buffer_usage_set_channel_name(
  * or LTTNG_CONDITION_STATUS_UNSET if a domain type was not set prior to this
  * call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_get_domain_type(
 		const struct lttng_condition *condition,
 		enum lttng_domain_type *type);
@@ -217,7 +218,7 @@ lttng_condition_buffer_usage_get_domain_type(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid paramenters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_buffer_usage_set_domain_type(
 		struct lttng_condition *condition,
 		enum lttng_domain_type type);
@@ -240,7 +241,7 @@ lttng_condition_buffer_usage_set_domain_type(
  * as a ratio of the buffer's capacity, or LTTNG_EVALUATION_STATUS_INVALID if
  * an invalid parameter is passed.
  */
-extern enum lttng_evaluation_status
+LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_buffer_usage_get_usage_ratio(
 		const struct lttng_evaluation *evaluation,
 		double *usage_ratio);
@@ -251,7 +252,7 @@ lttng_evaluation_buffer_usage_get_usage_ratio(
  * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
  * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
  */
-extern enum lttng_evaluation_status
+LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_buffer_usage_get_usage(
 		const struct lttng_evaluation *evaluation,
 	        uint64_t *usage_bytes);

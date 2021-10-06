@@ -8,6 +8,8 @@
 #ifndef _LIBBAR_H
 #define _LIBBAR_H
 
-int bar(void);
+#include <lttng/lttng-export.h>
+
+LTTNG_EXPORT int bar(void);
 
 #endif  /* _LIBBAR_H */

@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <lttng/constant.h>
+#include <lttng/lttng-export.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -42,7 +43,7 @@ void __attribute__((destructor)) pause_pipe_fini(void)
 	lttng_pipe_destroy(pause_pipe);
 }
 
-int __testpoint_sessiond_thread_notification(void);
+LTTNG_EXPORT int __testpoint_sessiond_thread_notification(void);
 int __testpoint_sessiond_thread_notification(void)
 {
 	int ret = 0;
@@ -79,7 +80,7 @@ end:
 	return ret;
 }
 
-int __testpoint_sessiond_handle_notifier_event_pipe(void);
+LTTNG_EXPORT int __testpoint_sessiond_handle_notifier_event_pipe(void);
 int __testpoint_sessiond_handle_notifier_event_pipe(void)
 {
 	int ret = 0;

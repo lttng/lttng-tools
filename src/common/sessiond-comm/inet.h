@@ -34,7 +34,7 @@ extern "C" {
  * Maximum timeout value in seconds of a TCP connection for both send/recv and
  * connect operations.
  */
-extern unsigned long lttcomm_inet_tcp_timeout;
+LTTNG_EXPORT extern unsigned long lttcomm_inet_tcp_timeout;
 
 /* Stub */
 struct lttcomm_sock;

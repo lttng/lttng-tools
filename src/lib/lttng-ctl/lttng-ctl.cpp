@@ -73,9 +73,9 @@ static int connected;
  * error message. They are global to the library so application linking with it
  * are able to compile correctly and also control verbosity of the library.
  */
-int lttng_opt_quiet;
-int lttng_opt_verbose;
-int lttng_opt_mi;
+LTTNG_EXPORT int lttng_opt_quiet;
+LTTNG_EXPORT int lttng_opt_verbose;
+LTTNG_EXPORT int lttng_opt_mi;
 
 /*
  * Copy domain to lttcomm_session_msg domain.
@@ -116,7 +116,7 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 		goto end;
 	}
 
-	DBG("LSM cmd type: '%s' (%d)", lttcomm_sessiond_command_str(lsm->cmd_type),
+	DBG("LSM cmd type: '%s' (%d)", lttcomm_sessiond_command_str((lttcomm_sessiond_command) lsm->cmd_type),
 			lsm->cmd_type);
 
 	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
@@ -265,7 +265,7 @@ int lttng_check_tracing_group(void)
 	}
 
 	/* Alloc group list of the right size */
-	grp_list = zmalloc(grp_list_size * sizeof(gid_t));
+	grp_list = (gid_t *) zmalloc(grp_list_size * sizeof(gid_t));
 	if (!grp_list) {
 		PERROR("malloc");
 		goto end;
@@ -710,7 +710,7 @@ struct lttng_handle *lttng_create_handle(const char *session_name,
 	int ret;
 	struct lttng_handle *handle = NULL;
 
-	handle = zmalloc(sizeof(struct lttng_handle));
+	handle = (lttng_handle *) zmalloc(sizeof(struct lttng_handle));
 	if (handle == NULL) {
 		PERROR("malloc handle");
 		goto end;
@@ -950,7 +950,7 @@ int lttng_add_context(struct lttng_handle *handle,
 		lsm.u.context.context_name_len = ctx_len;
 
 		len = provider_len + ctx_len;
-		buf = zmalloc(len);
+		buf = (char *) zmalloc(len);
 		if (!buf) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -1434,7 +1434,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		lsm.u.enable.expression_len = strlen(filter_expression) + 1;
 	}
 
-	varlen_data = zmalloc(lsm.u.disable.bytecode_len
+	varlen_data = (char *) zmalloc(lsm.u.disable.bytecode_len
 			+ lsm.u.disable.expression_len);
 	if (!varlen_data) {
 		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
@@ -1541,12 +1541,12 @@ struct lttng_channel *lttng_channel_create(struct lttng_domain *domain)
 		goto error;
 	}
 
-	channel = zmalloc(sizeof(*channel));
+	channel = (lttng_channel *) zmalloc(sizeof(*channel));
 	if (!channel) {
 		goto error;
 	}
 
-	extended = zmalloc(sizeof(*extended));
+	extended = (lttng_channel_extended *) zmalloc(sizeof(*extended));
 	if (!extended) {
 		goto error;
 	}
@@ -1833,7 +1833,7 @@ enum lttng_error_code lttng_create_session_ext(
 	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, payload.data,
 			payload.size, &reply);
 	if (reply_ret < 0) {
-		ret_code = -reply_ret;
+		ret_code = (lttng_error_code) -reply_ret;
 		goto end;
 	} else if (reply_ret == 0) {
 		/* Socket unexpectedly closed by the session daemon. */
@@ -1841,7 +1841,7 @@ enum lttng_error_code lttng_create_session_ext(
 		goto end;
 	}
 
-	reply_view = lttng_buffer_view_init(reply, 0, reply_ret);
+	reply_view = lttng_buffer_view_init((const char *) reply, 0, reply_ret);
 	ret = lttng_session_descriptor_create_from_buffer(&reply_view,
 			&descriptor_reply);
 	if (ret < 0) {
@@ -2143,7 +2143,7 @@ enum lttng_error_code lttng_session_get_creation_time(
 		goto end;
 	}
 
-	extended = session->extended.ptr;
+	extended = (lttng_session_extended *) session->extended.ptr;
 	if (!extended->creation_time.is_set) {
 		/* Not created on the session daemon yet. */
 		ret = LTTNG_ERR_SESSION_NOT_EXIST;
@@ -2237,7 +2237,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	const size_t channel_size = sizeof(struct lttng_channel) +
 			sizeof(struct lttng_channel_extended);
 	struct lttcomm_session_msg lsm;
-	void *extended_at;
+	char *extended_at;
 
 	if (handle == NULL) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2269,7 +2269,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	channel_count = (size_t) ret / channel_size;
 
 	/* Set extended info pointers */
-	extended_at = ((void *) *channels) +
+	extended_at = ((char *) *channels) +
 			channel_count * sizeof(struct lttng_channel);
 	for (i = 0; i < channel_count; i++) {
 		struct lttng_channel *chan = &(*channels)[i];
@@ -2296,7 +2296,7 @@ int lttng_list_events(struct lttng_handle *handle,
 	struct lttcomm_session_msg lsm = {};
 	const struct lttcomm_event_command_header *cmd_header = NULL;
 	uint32_t nb_events, i;
-	const void *comm_ext_at;
+	const char *comm_ext_at;
 	struct lttng_dynamic_buffer listing;
 	size_t storage_req;
 	struct lttng_payload payload;
@@ -2735,7 +2735,7 @@ int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
 		goto end;
 	}
 
-	chan_ext = channel->attr.extended.ptr;
+	chan_ext = (lttng_channel_extended *) channel->attr.extended.ptr;
 	if (!chan_ext) {
 		/*
 		 * This can happen since the lttng_channel structure is
@@ -2761,7 +2761,7 @@ int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
 		goto end;
 	}
 
-	chan_ext = channel->attr.extended.ptr;
+	chan_ext = (lttng_channel_extended *) channel->attr.extended.ptr;
 	if (!chan_ext) {
 		/*
 		 * This can happen since the lttng_channel structure is
@@ -2953,7 +2953,8 @@ error:
 /*
  * [OBSOLETE]
  */
-int lttng_enable_consumer(struct lttng_handle *handle);
+extern "C"
+LTTNG_EXPORT int lttng_enable_consumer(struct lttng_handle *handle);
 int lttng_enable_consumer(struct lttng_handle *handle)
 {
 	return -ENOSYS;
@@ -2962,7 +2963,8 @@ int lttng_enable_consumer(struct lttng_handle *handle)
 /*
  * [OBSOLETE]
  */
-int lttng_disable_consumer(struct lttng_handle *handle);
+extern "C"
+LTTNG_EXPORT int lttng_disable_consumer(struct lttng_handle *handle);
 int lttng_disable_consumer(struct lttng_handle *handle)
 {
 	return -ENOSYS;
@@ -2971,7 +2973,8 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 /*
  * [OBSOLETE]
  */
-int _lttng_create_session_ext(const char *name, const char *url,
+extern "C"
+LTTNG_EXPORT int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime);
 int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime)
@@ -3106,8 +3109,8 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 	int ret;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_REGISTER_TRIGGER,
-		.u.trigger.is_trigger_anonymous = !name && !generate_name,
 	};
+	lsm.u.trigger.is_trigger_anonymous = !name && !generate_name;
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
@@ -3264,7 +3267,7 @@ enum lttng_error_code lttng_register_trigger_with_name(
 enum lttng_error_code lttng_register_trigger_with_automatic_name(
 		struct lttng_trigger *trigger)
 {
-	const int ret =  _lttng_register_trigger(trigger, false, true);
+	const int ret =  _lttng_register_trigger(trigger, nullptr, true);
 
 	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) -ret;
 }
@@ -3321,7 +3324,7 @@ enum lttng_error_code lttng_error_query_execute(
 				&message_view);
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
-			ret_code = -ret;
+			ret_code =(lttng_error_code) -ret;
 			goto end;
 		}
 	}

@@ -24,13 +24,13 @@ struct lttng_event *lttng_event_create(void)
 	struct lttng_event *event;
 	struct lttng_event_extended *event_extended;
 
-	event = zmalloc(sizeof(*event));
+	event = (lttng_event *) zmalloc(sizeof(*event));
 	if (!event) {
 		PERROR("Error allocating event structure");
 		goto end;
 	}
 
-	event_extended = zmalloc(sizeof(*event_extended));
+	event_extended = (lttng_event_extended *) zmalloc(sizeof(*event_extended));
 	if (!event_extended) {
 		PERROR("Error allocating event extended structure");
 		goto error;

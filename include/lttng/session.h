@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #include <lttng/constant.h>
+#include <lttng/lttng-export.h>
 
 struct lttng_handle;
 struct lttng_session_descriptor;
@@ -86,7 +87,7 @@ struct lttng_session {
  * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
  * return codes.
  */
-extern enum lttng_error_code lttng_create_session_ext(
+LTTNG_EXPORT extern enum lttng_error_code lttng_create_session_ext(
 		struct lttng_session_descriptor *session_descriptor);
 
 /*
@@ -97,7 +98,7 @@ extern enum lttng_error_code lttng_create_session_ext(
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_create_session(const char *name, const char *url);
+LTTNG_EXPORT extern int lttng_create_session(const char *name, const char *url);
 
 /*
  * Create a tracing session that will exclusively be used for snapshot meaning
@@ -111,7 +112,7 @@ extern int lttng_create_session(const char *name, const char *url);
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_create_session_snapshot(const char *name,
+LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *name,
 		const char *snapshot_url);
 
 /*
@@ -127,7 +128,7 @@ extern int lttng_create_session_snapshot(const char *name,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_create_session_live(const char *name, const char *url,
+LTTNG_EXPORT extern int lttng_create_session_live(const char *name, const char *url,
 		unsigned int timer_interval);
 
 /*
@@ -147,7 +148,7 @@ extern int lttng_create_session_live(const char *name, const char *url,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_destroy_session(const char *name);
+LTTNG_EXPORT extern int lttng_destroy_session(const char *name);
 
 /*
  * Destroy a tracing session.
@@ -161,14 +162,14 @@ extern int lttng_destroy_session(const char *name);
  * Returns LTTNG_OK on success. The returned handle is owned by the caller
  * and must be free'd using lttng_destruction_handle_destroy().
  */
-extern enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
+LTTNG_EXPORT extern enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 		struct lttng_destruction_handle **handle);
 
 /*
  * Behaves exactly like lttng_destroy_session but does not wait for data
  * availability.
  */
-extern int lttng_destroy_session_no_wait(const char *name);
+LTTNG_EXPORT extern int lttng_destroy_session_no_wait(const char *name);
 
 /*
  * List all the tracing sessions.
@@ -178,7 +179,7 @@ extern int lttng_destroy_session_no_wait(const char *name);
  *
  * On error, a negative LTTng error code is returned.
  */
-extern int lttng_list_sessions(struct lttng_session **sessions);
+LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
 
 /*
  * Get the creation time of an lttng_session object on the session daemon.
@@ -192,7 +193,7 @@ extern int lttng_list_sessions(struct lttng_session **sessions);
  * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
  * return codes.
  */
-extern enum lttng_error_code lttng_session_get_creation_time(
+LTTNG_EXPORT extern enum lttng_error_code lttng_session_get_creation_time(
 		const struct lttng_session *session, uint64_t *creation_time);
 
 /*
@@ -204,7 +205,7 @@ extern enum lttng_error_code lttng_session_get_creation_time(
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_set_session_shm_path(const char *session_name,
+LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name,
 		const char *shm_path);
 
 #ifdef __cplusplus

@@ -9,6 +9,7 @@
 #define LTTNG_EVENT_RULE_KERNEL_SYSCALL_H
 
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +31,7 @@ enum lttng_event_rule_kernel_syscall_emission_site {
  * Returns a new event rule on success, NULL on failure. This event rule must be
  * destroyed using lttng_event_rule_destroy().
  */
-extern struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(enum
+LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(enum
 		lttng_event_rule_kernel_syscall_emission_site emission_site);
 
 /*
@@ -43,7 +44,7 @@ extern struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(enum
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_name_pattern(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern);
 
 /*
@@ -58,7 +59,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_name_pat
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_name_pattern(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern);
 
 /*
@@ -69,7 +70,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_name_pat
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_filter(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_filter(
 		struct lttng_event_rule *rule, const char *expression);
 
 /*
@@ -84,7 +85,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_filter(
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a filter expression
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_filter(
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_filter(
 		const struct lttng_event_rule *rule, const char **expression);
 
 /*
@@ -92,7 +93,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_filter(
  *
  * Returns a enum lttng_event_rule_kernel_syscall_emission_site.
  */
-extern enum lttng_event_rule_kernel_syscall_emission_site
+LTTNG_EXPORT extern enum lttng_event_rule_kernel_syscall_emission_site
 lttng_event_rule_kernel_syscall_get_emission_site(
 		const struct lttng_event_rule *rule);
 

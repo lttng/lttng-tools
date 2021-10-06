@@ -9,6 +9,8 @@
  *
  */
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,7 +31,7 @@ enum lttng_health_consumerd {
  *
  * Return a newly allocated health object, or NULL on error.
  */
-extern struct lttng_health *lttng_health_create_sessiond(void);
+LTTNG_EXPORT extern struct lttng_health *lttng_health_create_sessiond(void);
 
 /**
  * lttng_health_create_consumerd - Create consumerd health object
@@ -37,7 +39,7 @@ extern struct lttng_health *lttng_health_create_sessiond(void);
  *
  * Return a newly allocated health object, or NULL on error.
  */
-extern struct lttng_health *
+LTTNG_EXPORT extern struct lttng_health *
 	lttng_health_create_consumerd(enum lttng_health_consumerd consumerd);
 
 /**
@@ -49,13 +51,13 @@ extern struct lttng_health *
  *
  * Return a newly allocated health object, or NULL on error.
  */
-extern struct lttng_health *lttng_health_create_relayd(const char *path);
+LTTNG_EXPORT extern struct lttng_health *lttng_health_create_relayd(const char *path);
 
 /**
  * lttng_health_destroy - Destroy health object
  * @health: health object to destroy
  */
-extern void lttng_health_destroy(struct lttng_health *health);
+LTTNG_EXPORT extern void lttng_health_destroy(struct lttng_health *health);
 
 /**
  * lttng_health_query - Query component health
@@ -65,7 +67,7 @@ extern void lttng_health_destroy(struct lttng_health *health);
  * reports if the query has been successfully performed, *NOT* the
  * actual state. lttng_health_state() should be used for the latter.
  */
-extern int lttng_health_query(struct lttng_health *health);
+LTTNG_EXPORT extern int lttng_health_query(struct lttng_health *health);
 
 /**
  * lttng_health_state - Inspect the state of a health structure
@@ -78,7 +80,7 @@ extern int lttng_health_query(struct lttng_health *health);
  * thread in error. It also returns a negative return value if
  * lttng_health_query() has not yet successfully completed on @health.
  */
-extern int lttng_health_state(const struct lttng_health *health);
+LTTNG_EXPORT extern int lttng_health_state(const struct lttng_health *health);
 
 /**
  * lttng_health_get_nr_threads - Get number of threads in health component
@@ -87,7 +89,7 @@ extern int lttng_health_state(const struct lttng_health *health);
  * Return the number of threads (>= 0) on success, else negative value
  * on error.
  */
-extern int lttng_health_get_nr_threads(const struct lttng_health *health);
+LTTNG_EXPORT extern int lttng_health_get_nr_threads(const struct lttng_health *health);
 
 /**
  * lttng_health_get_thread - Get thread health
@@ -98,7 +100,7 @@ extern int lttng_health_get_nr_threads(const struct lttng_health *health);
  * pointer should not be freed by the caller, and can be used until
  * lttng_health_destroy() is called on @health.
  */
-extern const struct lttng_health_thread *
+LTTNG_EXPORT extern const struct lttng_health_thread *
 	lttng_health_get_thread(const struct lttng_health *health,
 		unsigned int nth_thread);
 
@@ -108,7 +110,7 @@ extern const struct lttng_health_thread *
  *
  * Return 0 if thread is OK, else negative error value.
  */
-extern int lttng_health_thread_state(const struct lttng_health_thread *thread);
+LTTNG_EXPORT extern int lttng_health_thread_state(const struct lttng_health_thread *thread);
 
 /**
  * lttng_health_thread_name - Get thread name
@@ -116,7 +118,7 @@ extern int lttng_health_thread_state(const struct lttng_health_thread *thread);
  *
  * Return thread name, NULL on error.
  */
-extern const char *lttng_health_thread_name(const struct lttng_health_thread *thread);
+LTTNG_EXPORT extern const char *lttng_health_thread_name(const struct lttng_health_thread *thread);
 
 #ifdef __cplusplus
 }

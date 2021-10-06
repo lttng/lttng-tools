@@ -7,5 +7,9 @@
 
 #ifndef CALLSITES_H
 #define CALLSITES_H
-void call_tracepoint(void);
+
+#include <lttng/lttng-export.h>
+
+LTTNG_EXPORT void call_tracepoint(void);
+
 #endif /* CALLSITES_H */

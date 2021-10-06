@@ -10,6 +10,7 @@
 
 #include <lttng/condition/evaluation.h>
 #include <lttng/condition/condition.h>
+#include <lttng/lttng-export.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -42,7 +43,7 @@ extern "C" {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *
+LTTNG_EXPORT extern struct lttng_condition *
 lttng_condition_session_consumed_size_create(void);
 
 /*
@@ -56,7 +57,7 @@ lttng_condition_session_consumed_size_create(void);
  * LTTNG_CONDITION_STATUS_UNSET if a threshold, expressed as an absolute size in
  * bytes, was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_get_threshold(
 		const struct lttng_condition *condition,
 	        uint64_t *consumed_threshold_bytes);
@@ -69,7 +70,7 @@ lttng_condition_session_consumed_size_get_threshold(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_set_threshold(
 		struct lttng_condition *condition,
 	        uint64_t consumed_threshold_bytes);
@@ -86,7 +87,7 @@ lttng_condition_session_consumed_size_set_threshold(
  * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a session name
  * was not set prior to this call.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_get_session_name(
 		const struct lttng_condition *condition,
 		const char **session_name);
@@ -99,7 +100,7 @@ lttng_condition_session_consumed_size_get_session_name(
  * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_condition_status
+LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_set_session_name(
 		struct lttng_condition *condition,
 		const char *session_name);
@@ -116,7 +117,7 @@ lttng_condition_session_consumed_size_set_session_name(
  * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
  * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
  */
-extern enum lttng_evaluation_status
+LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_session_consumed_size_get_consumed_size(
 		const struct lttng_evaluation *evaluation,
 	        uint64_t *session_consumed);

@@ -51,7 +51,7 @@ enum lttng_error_code lttng_session_get_tracker_handle(const char *session_name,
 		goto error;
 	}
 
-	handle = zmalloc(sizeof(*handle));
+	handle = (lttng_process_attr_tracker_handle *) zmalloc(sizeof(*handle));
 	if (!handle) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
@@ -367,7 +367,7 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
 		struct lttng_process_attr_tracker_handle *tracker,
 		const struct lttng_process_attr_values **values)
 {
-	void *reply = NULL;
+	char *reply = NULL;
 	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
@@ -398,7 +398,7 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
 
 	/* Command returns a session descriptor on success. */
 	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
-			&lsm, NULL, 0, &reply);
+			&lsm, NULL, 0, (void **) &reply);
 	if (reply_ret < 0) {
 		if (reply_ret == -LTTNG_ERR_SESSION_NOT_EXIST) {
 			status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_SESSION_DOES_NOT_EXIST;
@@ -755,7 +755,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		goto end;
 	}
 
-	pid_array = zmalloc(pid_count * sizeof(int32_t));
+	pid_array = (int32_t *) zmalloc(pid_count * sizeof(int32_t));
 	if (!pid_array) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;

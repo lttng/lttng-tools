@@ -8,6 +8,8 @@
 #ifndef LTTNG_EVENT_RULE_H
 #define LTTNG_EVENT_RULE_H
 
+#include <lttng/lttng-export.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,13 +48,13 @@ enum lttng_event_rule_status {
  * Returns the type of an event rule on success, LTTNG_EVENT_RULE_UNKNOWN on
  * error.
  */
-extern enum lttng_event_rule_type lttng_event_rule_get_type(
+LTTNG_EXPORT extern enum lttng_event_rule_type lttng_event_rule_get_type(
 		const struct lttng_event_rule *event_rule);
 
 /*
  * Destroy an event rule object.
  */
-extern void lttng_event_rule_destroy(struct lttng_event_rule *rule);
+LTTNG_EXPORT extern void lttng_event_rule_destroy(struct lttng_event_rule *rule);
 
 #ifdef __cplusplus
 }

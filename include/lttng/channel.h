@@ -10,6 +10,7 @@
 
 #include <lttng/domain.h>
 #include <lttng/event.h>
+#include <lttng/lttng-export.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -60,11 +61,11 @@ struct lttng_channel {
 
 /*
  */
-extern struct lttng_channel *lttng_channel_create(struct lttng_domain *domain);
+LTTNG_EXPORT extern struct lttng_channel *lttng_channel_create(struct lttng_domain *domain);
 
 /*
  */
-extern void lttng_channel_destroy(struct lttng_channel *channel);
+LTTNG_EXPORT extern void lttng_channel_destroy(struct lttng_channel *channel);
 
 /*
  * List the channel(s) of a session.
@@ -74,7 +75,7 @@ extern void lttng_channel_destroy(struct lttng_channel *channel);
  * Return the size (number of entries) of the "lttng_channel" array. Caller
  * must free channels. On error, a negative LTTng error code is returned.
  */
-extern int lttng_list_channels(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel **channels);
 
 /*
@@ -84,7 +85,7 @@ extern int lttng_list_channels(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_enable_channel(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *chan);
 
 /*
@@ -94,7 +95,7 @@ extern int lttng_enable_channel(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-extern int lttng_disable_channel(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_disable_channel(struct lttng_handle *handle,
 		const char *name);
 
 /*
@@ -103,7 +104,7 @@ extern int lttng_disable_channel(struct lttng_handle *handle,
  *
  * If one or both arguments are NULL, nothing happens.
  */
-extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
+LTTNG_EXPORT extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
 
 /*
@@ -111,7 +112,7 @@ extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
 		uint64_t *discarded_events);
 
 /*
@@ -119,19 +120,19 @@ extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_channel_get_lost_packet_count(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel *chan,
 		uint64_t *lost_packets);
 
-extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
 		uint64_t *monitor_timer_interval);
 
-extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
 		uint64_t monitor_timer_interval);
 
-extern int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
 		int64_t *blocking_timeout);
 
-extern int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
+LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
 		int64_t blocking_timeout);
 
 #ifdef __cplusplus

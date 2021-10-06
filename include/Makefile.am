@@ -115,6 +115,7 @@ lttnginclude_HEADERS = \
 	lttng/location.h \
 	lttng/log-level-rule.h \
 	lttng/lttng-error.h \
+	lttng/lttng-export.h \
 	lttng/lttng.h \
 	lttng/rotation.h \
 	lttng/save.h \

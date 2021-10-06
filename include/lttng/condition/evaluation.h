@@ -9,6 +9,7 @@
 #define LTTNG_EVALUATION_H
 
 #include <lttng/condition/condition.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,13 +31,13 @@ enum lttng_evaluation_status {
  * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
  * error.
  */
-extern enum lttng_condition_type lttng_evaluation_get_type(
+LTTNG_EXPORT extern enum lttng_condition_type lttng_evaluation_get_type(
 		const struct lttng_evaluation *evaluation);
 
 /*
  * Destroy (frees) an evaluation object.
  */
-extern void lttng_evaluation_destroy(struct lttng_evaluation *evaluation);
+LTTNG_EXPORT extern void lttng_evaluation_destroy(struct lttng_evaluation *evaluation);
 
 #ifdef __cplusplus
 }

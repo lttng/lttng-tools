@@ -10,6 +10,7 @@
 
 #include <lttng/rotation.h>
 #include <lttng/lttng-error.h>
+#include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +44,7 @@ enum lttng_destruction_handle_status {
  * Destroy an lttng_destruction_session handle.
  * The handle should be discarded after this call.
  */
-extern void lttng_destruction_handle_destroy(
+LTTNG_EXPORT extern void lttng_destruction_handle_destroy(
 		struct lttng_destruction_handle *handle);
 
 /*
@@ -60,7 +61,7 @@ extern void lttng_destruction_handle_destroy(
  * the destruction operation itself succeeded; it indicates that the _wait_
  * operation completed successfully.
  */
-extern enum lttng_destruction_handle_status
+LTTNG_EXPORT extern enum lttng_destruction_handle_status
 lttng_destruction_handle_wait_for_completion(
 		struct lttng_destruction_handle *handle, int timeout_ms);
 
@@ -79,7 +80,7 @@ lttng_destruction_handle_wait_for_completion(
  * was not waited-on using the handle or if the arguments of the function are
  * invalid (e.g. NULL).
  */
-extern enum lttng_destruction_handle_status
+LTTNG_EXPORT extern enum lttng_destruction_handle_status
 lttng_destruction_handle_get_result(
 		const struct lttng_destruction_handle *handle,
 		enum lttng_error_code *result);
@@ -107,7 +108,7 @@ lttng_destruction_handle_get_result(
  * Note that if no rotation was performed, rotation_state will be set to
  * LTTNG_ROTATION_STATE_NO_ROTATION.
  */
-extern enum lttng_destruction_handle_status
+LTTNG_EXPORT extern enum lttng_destruction_handle_status
 lttng_destruction_handle_get_rotation_state(
 		const struct lttng_destruction_handle *handle,
 		enum lttng_rotation_state *rotation_state);
@@ -131,7 +132,7 @@ lttng_destruction_handle_get_rotation_state(
  * of the session's destruction, or if the arguments of the function are
  * invalid (e.g. NULL).
  */
-extern enum lttng_destruction_handle_status
+LTTNG_EXPORT extern enum lttng_destruction_handle_status
 lttng_destruction_handle_get_archive_location(
 		const struct lttng_destruction_handle *handle,
 		const struct lttng_trace_archive_location **location);

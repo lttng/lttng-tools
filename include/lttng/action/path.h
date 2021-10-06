@@ -8,6 +8,7 @@
 #ifndef LTTNG_ACTION_PATH_H
 #define LTTNG_ACTION_PATH_H
 
+#include <lttng/lttng-export.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -44,19 +45,19 @@ enum lttng_action_path_status {
  *
  * The `indexes` are copied internally and can be disposed-of by the caller.
  */
-extern struct lttng_action_path *lttng_action_path_create(
+LTTNG_EXPORT extern struct lttng_action_path *lttng_action_path_create(
 		const uint64_t *indexes, size_t index_count);
 
 /*
  * Get the count of indexes in an action path.
  */
-extern enum lttng_action_path_status lttng_action_path_get_index_count(
+LTTNG_EXPORT extern enum lttng_action_path_status lttng_action_path_get_index_count(
 		const struct lttng_action_path *path, size_t *index_count);
 
 /*
  * Get an index from an action path.
  */
-extern enum lttng_action_path_status lttng_action_path_get_index_at_index(
+LTTNG_EXPORT extern enum lttng_action_path_status lttng_action_path_get_index_at_index(
 		const struct lttng_action_path *path,
 		size_t path_index,
 		uint64_t *out_index);
@@ -64,7 +65,7 @@ extern enum lttng_action_path_status lttng_action_path_get_index_at_index(
 /*
  * Destroy an action path object.
  */
-extern void lttng_action_path_destroy(struct lttng_action_path *action_path);
+LTTNG_EXPORT extern void lttng_action_path_destroy(struct lttng_action_path *action_path);
 
 #ifdef __cplusplus
 }

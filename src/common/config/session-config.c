@@ -52,17 +52,17 @@ struct session_config_validation_ctx {
 };
 
 const char * const config_element_all = "all";
-const char * const config_str_yes = "yes";
-const char * const config_str_true = "true";
-const char * const config_str_on = "on";
-const char * const config_str_no = "no";
-const char * const config_str_false = "false";
-const char * const config_str_off = "off";
-const char * const config_xml_encoding = "UTF-8";
-const size_t config_xml_encoding_bytes_per_char = 2;	/* Size of the encoding's largest character */
-const char * const config_xml_indent_string = "\t";
-const char * const config_xml_true = "true";
-const char * const config_xml_false = "false";
+LTTNG_EXPORT const char * const config_str_yes = "yes";
+LTTNG_EXPORT const char * const config_str_true = "true";
+LTTNG_EXPORT const char * const config_str_on = "on";
+LTTNG_EXPORT const char * const config_str_no = "no";
+LTTNG_EXPORT const char * const config_str_false = "false";
+LTTNG_EXPORT const char * const config_str_off = "off";
+LTTNG_EXPORT const char * const config_xml_encoding = "UTF-8";
+LTTNG_EXPORT const size_t config_xml_encoding_bytes_per_char = 2;	/* Size of the encoding's largest character */
+LTTNG_EXPORT const char * const config_xml_indent_string = "\t";
+LTTNG_EXPORT const char * const config_xml_true = "true";
+LTTNG_EXPORT const char * const config_xml_false = "false";
 
 const char * const config_element_channel = "channel";
 const char * const config_element_channels = "channels";
@@ -239,7 +239,7 @@ const char * const config_event_context_vegid = "VEGID";
 const char * const config_event_context_vsgid = "VSGID";
 
 /* Deprecated symbols */
-const char * const config_element_perf;
+LTTNG_EXPORT const char * const config_element_perf;
 
 enum process_event_node_phase {
 	CREATION = 0,

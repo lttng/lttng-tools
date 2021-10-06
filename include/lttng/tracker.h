@@ -12,6 +12,7 @@
 #include <lttng/constant.h>
 #include <lttng/domain.h>
 #include <lttng/lttng-error.h>
+#include <lttng/lttng-export.h>
 #include <lttng/session.h>
 
 #include <sys/types.h>
@@ -115,7 +116,7 @@ struct lttng_process_attr_values;
  * The tracker's ownership is transfered to the caller. Use
  * lttng_process_attr_tracker_handle_destroy() to dispose of it.
  */
-extern enum lttng_error_code lttng_session_get_tracker_handle(
+LTTNG_EXPORT extern enum lttng_error_code lttng_session_get_tracker_handle(
 		const char *session_name,
 		enum lttng_domain_type domain,
 		enum lttng_process_attr process_attr,
@@ -124,7 +125,7 @@ extern enum lttng_error_code lttng_session_get_tracker_handle(
 /*
  * Destroy a process attribute tracker handle.
  */
-extern void lttng_process_attr_tracker_handle_destroy(
+LTTNG_EXPORT extern void lttng_process_attr_tracker_handle_destroy(
 		struct lttng_process_attr_tracker_handle *tracker_handle);
 
 /*
@@ -134,7 +135,7 @@ extern void lttng_process_attr_tracker_handle_destroy(
  * policy of a process attribute tracker on success,
  * LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID on error.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_get_tracking_policy(
 		const struct lttng_process_attr_tracker_handle *tracker_handle,
 		enum lttng_tracking_policy *policy);
@@ -147,7 +148,7 @@ lttng_process_attr_tracker_handle_get_tracking_policy(
  * Returns the LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK on success,
  * LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID on error.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_set_tracking_policy(
 		const struct lttng_process_attr_tracker_handle *tracker_handle,
 		enum lttng_tracking_policy policy);
@@ -162,7 +163,7 @@ lttng_process_attr_tracker_handle_set_tracking_policy(
  * LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_process_id_tracker_handle_add_pid(
 		const struct lttng_process_attr_tracker_handle
 				*process_id_tracker,
@@ -177,7 +178,7 @@ lttng_process_attr_process_id_tracker_handle_add_pid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_process_id_tracker_handle_remove_pid(
 		const struct lttng_process_attr_tracker_handle
 				*process_id_tracker,
@@ -193,7 +194,7 @@ lttng_process_attr_process_id_tracker_handle_remove_pid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
 		const struct lttng_process_attr_tracker_handle
 				*process_id_tracker,
@@ -208,7 +209,7 @@ lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_process_id_tracker_handle_remove_pid(
 		const struct lttng_process_attr_tracker_handle
 				*process_id_tracker,
@@ -223,7 +224,7 @@ lttng_process_attr_virtual_process_id_tracker_handle_remove_pid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_add_uid(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		uid_t uid);
@@ -237,7 +238,7 @@ lttng_process_attr_user_id_tracker_handle_add_uid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_remove_uid(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		uid_t uid);
@@ -254,7 +255,7 @@ lttng_process_attr_user_id_tracker_handle_remove_uid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_add_user_name(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		const char *user_name);
@@ -271,7 +272,7 @@ lttng_process_attr_user_id_tracker_handle_add_user_name(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_remove_user_name(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		const char *user_name);
@@ -286,7 +287,7 @@ lttng_process_attr_user_id_tracker_handle_remove_user_name(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_add_uid(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		uid_t vuid);
@@ -300,7 +301,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_add_uid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_remove_uid(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		uid_t vuid);
@@ -318,7 +319,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_remove_uid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_add_user_name(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		const char *virtual_user_name);
@@ -335,7 +336,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_add_user_name(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_remove_user_name(
 		const struct lttng_process_attr_tracker_handle *user_id_tracker,
 		const char *virtual_user_name);
@@ -349,7 +350,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_remove_user_name(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_add_gid(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		gid_t gid);
@@ -363,7 +364,7 @@ lttng_process_attr_group_id_tracker_handle_add_gid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_remove_gid(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		gid_t gid);
@@ -380,7 +381,7 @@ lttng_process_attr_group_id_tracker_handle_remove_gid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_add_group_name(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		const char *group_name);
@@ -397,7 +398,7 @@ lttng_process_attr_group_id_tracker_handle_add_group_name(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_remove_group_name(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		const char *group_name);
@@ -412,7 +413,7 @@ lttng_process_attr_group_id_tracker_handle_remove_group_name(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_add_gid(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		gid_t vgid);
@@ -426,7 +427,7 @@ lttng_process_attr_virtual_group_id_tracker_handle_add_gid(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_remove_gid(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		gid_t vgid);
@@ -444,7 +445,7 @@ lttng_process_attr_virtual_group_id_tracker_handle_remove_gid(
  * LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if an invalid tracker
  * argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_add_group_name(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		const char *virtual_group_name);
@@ -461,7 +462,7 @@ lttng_process_attr_virtual_group_id_tracker_handle_add_group_name(
  * in the inclusion set, and LTTNG_PROCESS_ATTR_TRACKED_HANDLE_STATUS_INVALID if
  * an invalid tracker argument was provided.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_remove_group_name(
 		const struct lttng_process_attr_tracker_handle *group_id_tracker,
 		const char *virtual_group_name);
@@ -479,7 +480,7 @@ lttng_process_attr_virtual_group_id_tracker_handle_remove_group_name(
  * LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID if the tracker's policy is
  * not LTTNG_POLICY_INCLUDE_SET.
  */
-extern enum lttng_process_attr_tracker_handle_status
+LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_get_inclusion_set(
 		struct lttng_process_attr_tracker_handle *tracker_handle,
 		const struct lttng_process_attr_values **values);
@@ -490,7 +491,7 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
  * Returns LTTNG_PROCESS_ATTR_VALUES_STATUS_OK on success,
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID if an invalid argument is provided.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_count(
 		const struct lttng_process_attr_values *values,
 		unsigned int *count);
@@ -501,7 +502,7 @@ lttng_process_attr_values_get_count(
  * Returns a process attribute value type on success,
  * LTTNG_PROCESS_ATTR_VALUE_TYPE_INVALID if an invalid argument is provided.
  */
-extern enum lttng_process_attr_value_type
+LTTNG_EXPORT extern enum lttng_process_attr_value_type
 lttng_process_attr_values_get_type_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index);
@@ -513,7 +514,7 @@ lttng_process_attr_values_get_type_at_index(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE if the process attribute value
  * is not a process ID.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_pid_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index,
@@ -526,7 +527,7 @@ lttng_process_attr_values_get_pid_at_index(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE if the process attribute value
  * is not a user ID.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_uid_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index,
@@ -539,7 +540,7 @@ lttng_process_attr_values_get_uid_at_index(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE if the process attribute value
  * is not a user name.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_user_name_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index,
@@ -552,7 +553,7 @@ lttng_process_attr_values_get_user_name_at_index(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE if the process attribute value
  * is not a group ID.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_gid_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index,
@@ -565,7 +566,7 @@ lttng_process_attr_values_get_gid_at_index(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE if the process attribute value
  * is not a group name.
  */
-extern enum lttng_process_attr_values_status
+LTTNG_EXPORT extern enum lttng_process_attr_values_status
 lttng_process_attr_values_get_group_name_at_index(
 		const struct lttng_process_attr_values *values,
 		unsigned int index,
@@ -588,7 +589,7 @@ lttng_process_attr_values_get_group_name_at_index(
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
-extern int lttng_list_tracker_pids(struct lttng_handle *handle,
+LTTNG_EXPORT extern int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *enabled,
 		int32_t **pids,
 		size_t *nr_pids);
@@ -610,7 +611,7 @@ extern int lttng_list_tracker_pids(struct lttng_handle *handle,
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
-extern int lttng_track_pid(struct lttng_handle *handle, int pid);
+LTTNG_EXPORT extern int lttng_track_pid(struct lttng_handle *handle, int pid);
 
 /*
  * Deprecated: see `lttng_process_attr_process_id_tracker_handle_remove_pid`.
@@ -629,7 +630,7 @@ extern int lttng_track_pid(struct lttng_handle *handle, int pid);
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
-extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
+LTTNG_EXPORT extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
 
 #ifdef __cplusplus
 }

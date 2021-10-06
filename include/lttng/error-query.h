@@ -11,6 +11,7 @@
 #define LTTNG_ERROR_QUERY_H
 
 #include <lttng/lttng.h>
+#include <lttng/lttng-export.h>
 #include <lttng/trigger/trigger.h>
 #include <stdint.h>
 
@@ -58,11 +59,11 @@ enum lttng_error_query_results_status {
 };
 
 /* Create an error query targetting a trigger object. */
-extern struct lttng_error_query *lttng_error_query_trigger_create(
+LTTNG_EXPORT extern struct lttng_error_query *lttng_error_query_trigger_create(
 		const struct lttng_trigger *trigger);
 
 /* Create an error query targetting a trigger's condition object. */
-extern struct lttng_error_query *lttng_error_query_condition_create(
+LTTNG_EXPORT extern struct lttng_error_query *lttng_error_query_condition_create(
 		const struct lttng_trigger *trigger);
 
 /*
@@ -71,12 +72,12 @@ extern struct lttng_error_query *lttng_error_query_condition_create(
  * `action_path` is copied internally. The root of the `action_path` is the
  * action of `trigger`.
  */
-extern struct lttng_error_query *lttng_error_query_action_create(
+LTTNG_EXPORT extern struct lttng_error_query *lttng_error_query_action_create(
 		const struct lttng_trigger *trigger,
 		const struct lttng_action_path *action_path);
 
 /* Destroy an error query. */
-extern void lttng_error_query_destroy(struct lttng_error_query *query);
+LTTNG_EXPORT extern void lttng_error_query_destroy(struct lttng_error_query *query);
 
 /*
  * Run an error query against an endpoint.
@@ -84,45 +85,45 @@ extern void lttng_error_query_destroy(struct lttng_error_query *query);
  * Currently, only the `lttng_session_daemon_command_endpoint` is supported,
  * see `lttng/endpoint.h`.
  */
-extern enum lttng_error_code lttng_error_query_execute(
+LTTNG_EXPORT extern enum lttng_error_code lttng_error_query_execute(
 		const struct lttng_error_query *query,
 		const struct lttng_endpoint *endpoint,
 		struct lttng_error_query_results **results);
 
 /* Get the number of results in a result set. */
-extern enum lttng_error_query_results_status
+LTTNG_EXPORT LTTNG_EXPORT extern enum lttng_error_query_results_status
 lttng_error_query_results_get_count(
 		const struct lttng_error_query_results *results,
 		unsigned int *count);
 
 /* Get a result from a result set by index. */
-extern enum lttng_error_query_results_status
+LTTNG_EXPORT extern enum lttng_error_query_results_status
 lttng_error_query_results_get_result(
 		const struct lttng_error_query_results *results,
 		const struct lttng_error_query_result **result,
 		unsigned int index);
 
 /* Destroy an error query result set. */
-extern void lttng_error_query_results_destroy(
+LTTNG_EXPORT extern void lttng_error_query_results_destroy(
 		struct lttng_error_query_results *results);
 
 /* Get the type of an error query result. */
-extern enum lttng_error_query_result_type lttng_error_query_result_get_type(
+LTTNG_EXPORT extern enum lttng_error_query_result_type lttng_error_query_result_get_type(
 		const struct lttng_error_query_result *result);
 
 /* Get the name of result. */
-extern enum lttng_error_query_result_status lttng_error_query_result_get_name(
+LTTNG_EXPORT extern enum lttng_error_query_result_status lttng_error_query_result_get_name(
 		const struct lttng_error_query_result *result,
 		const char **name);
 
 /* Get the description of a result. */
-extern enum lttng_error_query_result_status
+LTTNG_EXPORT extern enum lttng_error_query_result_status
 lttng_error_query_result_get_description(
 		const struct lttng_error_query_result *result,
 		const char **description);
 
 /* Get the value of an error counter. */
-extern enum lttng_error_query_result_status
+LTTNG_EXPORT extern enum lttng_error_query_result_status
 lttng_error_query_result_counter_get_value(
 		const struct lttng_error_query_result *result, uint64_t *value);
 
