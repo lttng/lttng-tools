@@ -83,7 +83,7 @@ test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE) $(DL_LIBS)
 
 RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
 
-test_session_SOURCES = test_session.c
+test_session_SOURCES = test_session.cpp
 test_session_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 if HAVE_LIBLTTNG_UST_CTL
@@ -93,11 +93,11 @@ endif
 
 # UST data structures unit test
 if HAVE_LIBLTTNG_UST_CTL
-test_ust_data_SOURCES = test_ust_data.c
+test_ust_data_SOURCES = test_ust_data.cpp
 test_ust_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 endif
 
-test_kernel_data_SOURCES = test_kernel_data.c
+test_kernel_data_SOURCES = test_kernel_data.cpp
 test_kernel_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 # utils suffix for unit test

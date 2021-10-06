@@ -10,6 +10,10 @@
 
 #include <inttypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_index_allocator;
 
 enum lttng_index_allocator_status {
@@ -48,5 +52,9 @@ enum lttng_index_allocator_status lttng_index_allocator_release(
  * Destroy an index allocator.
  */
 void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _COMMON_INDEX_ALLOCATOR_H */

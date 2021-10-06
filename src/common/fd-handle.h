@@ -10,6 +10,10 @@
 
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Wrapper around a file descriptor providing reference counting semantics.
  *
@@ -43,5 +47,9 @@ int fd_handle_get_fd(struct fd_handle *handle);
  * descriptor type.
  */
 struct fd_handle *fd_handle_copy(const struct fd_handle *handle);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FS_HANDLE_H */

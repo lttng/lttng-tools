@@ -11,6 +11,10 @@
 #include <unistd.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.
  * Upon success, they return the "count" received as parameter.
@@ -21,5 +25,9 @@
  */
 ssize_t lttng_read(int fd, void *buf, size_t count);
 ssize_t lttng_write(int fd, const void *buf, size_t count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_COMMON_READWRITE_H */

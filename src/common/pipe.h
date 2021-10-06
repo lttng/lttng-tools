@@ -12,6 +12,10 @@
 #include <common/macros.h>
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum lttng_pipe_state {
 	LTTNG_PIPE_STATE_OPENED = 1,
 	LTTNG_PIPE_STATE_CLOSED = 2,
@@ -80,5 +84,9 @@ ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 int lttng_pipe_release_readfd(struct lttng_pipe *pipe);
 /* Returns and releases the write end of the pipe. */
 int lttng_pipe_release_writefd(struct lttng_pipe *pipe);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_PIPE_H */

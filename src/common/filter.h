@@ -10,6 +10,10 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct bytecode_symbol_iterator;
 
 /*
@@ -32,5 +36,9 @@ const char *bytecode_symbol_iterator_get_name(
 		struct bytecode_symbol_iterator *it);
 
 void bytecode_symbol_iterator_destroy(struct bytecode_symbol_iterator *it);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_COMMON_FILTER_H */

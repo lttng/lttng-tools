@@ -13,6 +13,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_dynamic_buffer;
 
 struct lttng_buffer_view {
@@ -91,5 +95,9 @@ struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 bool lttng_buffer_view_contains_string(const struct lttng_buffer_view *buf,
 		const char *str,
 		size_t len_with_null_terminator);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_BUFFER_VIEW_H */

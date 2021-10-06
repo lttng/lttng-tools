@@ -13,6 +13,10 @@
 #include <pthread.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"
 
@@ -423,5 +427,9 @@ size_t default_get_ust_uid_channel_subbuf_size(void);
  * size limit.
  */
 pthread_attr_t *default_pthread_attr(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _DEFAULTS_H */

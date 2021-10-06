@@ -13,6 +13,10 @@
 #include "common/macros.h"
 #include "common/sessiond-comm/sessiond-comm.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * offsets are absolute from start of bytecode.
  */
@@ -41,10 +45,6 @@ struct literal_numeric {
 
 struct literal_double {
 	double v;
-} LTTNG_PACKED;
-
-struct literal_string {
-	char string[0];
 } LTTNG_PACKED;
 
 enum bytecode_op {
@@ -261,5 +261,9 @@ unsigned int bytecode_get_len(struct lttng_bytecode *bytecode)
 {
 	return bytecode->len;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_COMMON_BYTECODE_H */

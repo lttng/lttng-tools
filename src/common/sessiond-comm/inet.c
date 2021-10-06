@@ -87,19 +87,17 @@ error:
  */
 int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 {
-	return bind(sock->fd,
-			(const struct sockaddr *) ALIGNED_CONST_PTR(
-					sock->sockaddr.addr.sin),
-			sizeof(sock->sockaddr.addr.sin));
+	struct sockaddr_in sockaddr = sock->sockaddr.addr.sin;
+
+	return bind(sock->fd, &sockaddr, sizeof(sockaddr));
 }
 
 static
 int connect_no_timeout(struct lttcomm_sock *sock)
 {
-	return connect(sock->fd,
-			(const struct sockaddr *) ALIGNED_CONST_PTR(
-					sock->sockaddr.addr.sin),
-			sizeof(sock->sockaddr.addr.sin));
+	struct sockaddr_in sockaddr = sock->sockaddr.addr.sin;
+
+	return connect(sock->fd, &sockaddr, sizeof(sockaddr));
 }
 
 static
@@ -109,6 +107,7 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 	int ret, flags, connect_ret;
 	struct timespec orig_time, cur_time;
 	unsigned long diff_ms;
+	struct sockaddr_in sockaddr;
 
 	ret = fcntl(sock->fd, F_GETFL, 0);
 	if (ret == -1) {
@@ -130,10 +129,8 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 		return -1;
 	}
 
-	connect_ret = connect(sock->fd,
-			(const struct sockaddr *) ALIGNED_CONST_PTR(
-					sock->sockaddr.addr.sin),
-			sizeof(sock->sockaddr.addr.sin));
+	sockaddr = sock->sockaddr.addr.sin;
+	connect_ret = connect(sock->fd, &sockaddr, sizeof(sockaddr));
 	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK &&
 			errno != EINPROGRESS) {
 		goto error;

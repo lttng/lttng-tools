@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include "macros.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_waiter {
 	struct cds_wfs_node wait_queue_node;
 	int32_t state;
@@ -32,5 +36,9 @@ void lttng_waiter_wait(struct lttng_waiter *waiter);
  * on a single waiter without re-initializing it before.
  */
 void lttng_waiter_wake_up(struct lttng_waiter *waiter);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_WAITER_H */

@@ -16,6 +16,10 @@
 #include <common/trace-chunk.h>
 #include <common/dynamic-array.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct relayd_stream_rotation_position {
 	uint64_t stream_id;
 	/*
@@ -76,5 +80,9 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
 		uint64_t query_flags,
 		uint64_t *result_flags);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RELAYD_H */

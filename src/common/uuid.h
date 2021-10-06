@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Includes final \0.
  */
@@ -58,5 +62,9 @@ void lttng_uuid_copy(lttng_uuid dst, const lttng_uuid src);
  * Generate a random UUID according to RFC4122, section 4.4.
  */
 int lttng_uuid_generate(lttng_uuid uuid_out);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_UUID_H */

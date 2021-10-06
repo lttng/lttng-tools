@@ -14,6 +14,10 @@
 
 #include "optional.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_credentials {
 	LTTNG_OPTIONAL(uid_t) uid;
 	LTTNG_OPTIONAL(gid_t) gid;
@@ -31,5 +35,9 @@ bool lttng_credentials_is_equal_gid(const struct lttng_credentials *a,
 
 bool lttng_credentials_is_equal(const struct lttng_credentials *a,
 		const struct lttng_credentials *b);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_CREDENTIALS_H */

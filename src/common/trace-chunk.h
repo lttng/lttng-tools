@@ -16,6 +16,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * A trace chunk is a group of directories and files forming a (or a set of)
  * complete and independant trace(s). For instance, a trace archive chunk,
@@ -181,5 +185,9 @@ bool lttng_trace_chunk_ids_equal(const struct lttng_trace_chunk *chunk_a,
 bool lttng_trace_chunk_get(struct lttng_trace_chunk *chunk);
 
 void lttng_trace_chunk_put(struct lttng_trace_chunk *chunk);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_TRACE_CHUNK_H */

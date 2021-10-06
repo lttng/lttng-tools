@@ -572,7 +572,7 @@ static inline
 enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
 		const struct consumer_output *output, int wait, uint64_t max_stream_size)
 {
-	return 0;
+	return LTTNG_ERR_UNK;
 }
 static inline
 unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
@@ -642,14 +642,14 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 static inline
 enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 {
-	return 0;
+	return LTTNG_ERR_UNK;
 }
 
 static inline
 enum lttng_error_code ust_app_create_channel_subdirectories(
 		const struct ltt_ust_session *session)
 {
-	return 0;
+	return LTTNG_ERR_UNK;
 }
 
 static inline
@@ -661,13 +661,13 @@ int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data
 static inline
 enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 {
-	return 0;
+	return LTTNG_ERR_UNK;
 }
 
 static inline
 enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 {
-	return 0;
+	return LTTNG_ERR_UNK;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

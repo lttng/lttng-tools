@@ -15,6 +15,10 @@
 #include <common/buffer-view.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Note that these enums are used as part of the lttnctl protocol. */
 enum lttng_session_descriptor_type {
 	LTTNG_SESSION_DESCRIPTOR_TYPE_UNKNOWN = -1,
@@ -80,5 +84,9 @@ enum lttng_error_code lttng_session_descriptor_set_default_output(
 int lttng_session_descriptor_assign(
 		struct lttng_session_descriptor *dst_descriptor,
 		const struct lttng_session_descriptor *src_descriptor);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_SESSION_DESCRIPTOR_INTERNAL_H */

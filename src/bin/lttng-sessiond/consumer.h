@@ -12,12 +12,26 @@
 #include <common/hashtable/hashtable.h>
 #include <lttng/lttng.h>
 #include <urcu/ref.h>
+#include <algorithm>
 
 #include "snapshot.h"
 
 struct snapshot;
 struct snapshot_output;
 struct ltt_session;
+
+/*
+ * Needed until we use C++14, where std::max is constexpr.
+ *
+ * Use a static_assert so we remember to remove it when we upgrade to a newer
+ * C++.
+ */
+static_assert(__cplusplus == 201103L, "");
+template <typename T>
+constexpr T max_constexpr(T l, T r)
+{
+	return l > r ? l : r;
+}
 
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
@@ -61,39 +75,43 @@ struct consumer_socket {
 };
 
 struct consumer_data {
+	consumer_data (lttng_consumer_type type_)
+		: type(type_)
+	{}
+
 	enum lttng_consumer_type type;
 
 	/* Mutex to control consumerd pid assignation */
-	pthread_mutex_t pid_mutex;
-	pid_t pid;
+	pthread_mutex_t pid_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pid_t pid = 0;
 
-	int err_sock;
+	int err_sock = -1;
 	/* These two sockets uses the cmd_unix_sock_path. */
-	int cmd_sock;
+	int cmd_sock = -1;
 	/*
 	 * Write-end of the channel monitoring pipe to be passed to the
 	 * consumer.
 	 */
-	int channel_monitor_pipe;
+	int channel_monitor_pipe = -1;
 	/*
 	 * The metadata socket object is handled differently and only created
 	 * locally in this object thus it's the only reference available in the
 	 * session daemon. For that reason, a variable for the fd is required and
 	 * the metadata socket fd points to it.
 	 */
-	int metadata_fd;
-	struct consumer_socket metadata_sock;
+	int metadata_fd = 0;
+	struct consumer_socket metadata_sock {};
 
 	/* consumer error and command Unix socket path */
-	const char *err_unix_sock_path;
-	const char *cmd_unix_sock_path;
+	const char *err_unix_sock_path = nullptr;
+	const char *cmd_unix_sock_path = nullptr;
 
 	/*
 	 * This lock has two purposes. It protects any change to the consumer
 	 * socket and make sure only one thread uses this object for read/write
 	 * operations.
 	 */
-	pthread_mutex_t lock;
+	pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 /*
@@ -149,7 +167,8 @@ struct consumer_output {
 	 * Subdirectory path name used for both local and network
 	 * consumer ("kernel", "ust", or empty).
 	 */
-	char domain_subdir[max(sizeof(DEFAULT_KERNEL_TRACE_DIR),
+	char domain_subdir[
+		max_constexpr(sizeof(DEFAULT_KERNEL_TRACE_DIR),
 			sizeof(DEFAULT_UST_TRACE_DIR))];
 
 	/*

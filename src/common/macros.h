@@ -102,13 +102,6 @@ void *zmalloc(size_t len)
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))
 
 /*
- * Get an aligned pointer to a value. This is meant
- * as a helper to pass an aligned pointer to a member in a packed structure
- * to a function.
- */
-#define ALIGNED_CONST_PTR(value) (((const typeof(value) []) { value }))
-
-/*
  * lttng_strncpy returns 0 on success, or nonzero on failure.
  * It checks that the @src string fits into @dst_len before performing
  * the copy. On failure, no copy has been performed.

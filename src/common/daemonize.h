@@ -12,6 +12,10 @@
 #include <unistd.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Daemonize this process by forking and making the parent wait for the child
  * to signal it indicating readiness. Once received, the parent successfully
@@ -24,5 +28,9 @@
  */
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_DAEMONIZE_H */

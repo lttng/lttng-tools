@@ -9,62 +9,62 @@ endif
 
 noinst_LTLIBRARIES = liblttng-sessiond-common.la
 
-liblttng_sessiond_common_la_SOURCES = utils.c utils.h \
-                       trace-kernel.c trace-kernel.h \
-                       kernel.c kernel.h \
+liblttng_sessiond_common_la_SOURCES = utils.cpp utils.h \
+                       trace-kernel.cpp trace-kernel.h \
+                       kernel.cpp kernel.h \
                        ust-app.h ust-sigbus.h trace-ust.h notify-apps.h \
                        lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        ust-ctl-internal.h ust-abi-internal.h ust-error-internal.h \
                        ust-registry.h \
-                       condition-internal.c condition-internal.h \
-                       context.c context.h \
-                       channel.c channel.h \
-                       event.c event.h \
-                       consumer.c consumer.h \
-                       session.c session.h \
-                       modprobe.c modprobe.h kern-modules.h \
-                       fd-limit.c fd-limit.h \
-                       kernel-consumer.c kernel-consumer.h \
+                       condition-internal.cpp condition-internal.h \
+                       context.cpp context.h \
+                       channel.cpp channel.h \
+                       event.cpp event.h \
+                       consumer.cpp consumer.h \
+                       session.cpp session.h \
+                       modprobe.cpp modprobe.h kern-modules.h \
+                       fd-limit.cpp fd-limit.h \
+                       kernel-consumer.cpp kernel-consumer.h \
                        consumer.h \
                        health-sessiond.h \
-                       cmd.c cmd.h \
-                       buffer-registry.c buffer-registry.h \
-                       testpoint.h ht-cleanup.c ht-cleanup.h \
-                       snapshot.c snapshot.h \
-                       agent.c agent.h \
-                       save.h save.c \
-                       lttng-syscall.h lttng-syscall.c \
-                       notification-thread.h notification-thread.c \
+                       cmd.cpp cmd.h \
+                       buffer-registry.cpp buffer-registry.h \
+                       testpoint.h ht-cleanup.cpp ht-cleanup.h \
+                       snapshot.cpp snapshot.h \
+                       agent.cpp agent.h \
+                       save.h save.cpp \
+                       lttng-syscall.h lttng-syscall.cpp \
+                       notification-thread.h notification-thread.cpp \
                        notification-thread-internal.h \
-                       notification-thread-commands.h notification-thread-commands.c \
-                       notification-thread-events.h notification-thread-events.c \
-                       sessiond-config.h sessiond-config.c \
-                       rotate.h rotate.c \
-                       rotation-thread.h rotation-thread.c \
-                       timer.c timer.h \
-                       globals.c \
-                       thread-utils.c \
-                       process-utils.c \
-                       thread.c thread.h \
-                       health.c \
-                       client.c client.h \
-                       dispatch.c dispatch.h \
-                       register.c register.h \
-                       manage-apps.c manage-apps.h \
-                       manage-kernel.c manage-kernel.h \
-                       manage-consumer.c manage-consumer.h \
-                       clear.c clear.h \
-                       tracker.c tracker.h \
-                       event-notifier-error-accounting.c event-notifier-error-accounting.h \
-                       action-executor.c action-executor.h\
-                       trigger-error-query.c
+                       notification-thread-commands.h notification-thread-commands.cpp \
+                       notification-thread-events.h notification-thread-events.cpp \
+                       sessiond-config.h sessiond-config.cpp \
+                       rotate.h rotate.cpp \
+                       rotation-thread.h rotation-thread.cpp \
+                       timer.cpp timer.h \
+                       globals.cpp \
+                       thread-utils.cpp \
+                       process-utils.cpp \
+                       thread.cpp thread.h \
+                       health.cpp \
+                       client.cpp client.h \
+                       dispatch.cpp dispatch.h \
+                       register.cpp register.h \
+                       manage-apps.cpp manage-apps.h \
+                       manage-kernel.cpp manage-kernel.h \
+                       manage-consumer.cpp manage-consumer.h \
+                       clear.cpp clear.h \
+                       tracker.cpp tracker.h \
+                       event-notifier-error-accounting.cpp event-notifier-error-accounting.h \
+                       action-executor.cpp action-executor.h\
+                       trigger-error-query.cpp
 
 if HAVE_LIBLTTNG_UST_CTL
-liblttng_sessiond_common_la_SOURCES += trace-ust.c ust-registry.c ust-app.c \
-			ust-consumer.c ust-consumer.h notify-apps.c \
-			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h \
-			ust-field-utils.h ust-field-utils.c \
-			ust-sigbus.c
+liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
+			ust-consumer.cpp ust-consumer.h notify-apps.cpp \
+			ust-metadata.cpp ust-clock.h agent-thread.cpp agent-thread.h \
+			ust-field-utils.h ust-field-utils.cpp \
+			ust-sigbus.cpp
 endif
 
 # link on liblttngctl for check if sessiond is already alive.
@@ -88,7 +88,7 @@ endif
 
 bin_PROGRAMS = lttng-sessiond
 
-lttng_sessiond_SOURCES = lttng-sessiond.h main.c
+lttng_sessiond_SOURCES = lttng-sessiond.h main.cpp
 
 lttng_sessiond_LDFLAGS = -rdynamic
 

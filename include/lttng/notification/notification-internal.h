@@ -14,6 +14,10 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_payload;
 struct lttng_payload_view;
 
@@ -39,5 +43,9 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 ssize_t lttng_notification_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_notification **notification);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_NOTIFICATION_INTERNAL_H */

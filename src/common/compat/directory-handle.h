@@ -13,6 +13,10 @@
 #include <sys/stat.h>
 #include <urcu/ref.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum lttng_directory_handle_rmdir_recursive_flags {
 	LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG = (1U << 0),
 	LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG = (1U << 1),
@@ -258,5 +262,10 @@ bool lttng_directory_handle_uses_fd(
  */
 bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
 		const struct lttng_directory_handle *rhs);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _COMPAT_PATH_HANDLE_H */

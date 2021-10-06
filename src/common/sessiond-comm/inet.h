@@ -12,6 +12,10 @@
 
 #include "sessiond-comm.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* See man tcp(7) for more detail about this value. */
 #define LTTCOMM_INET_PROC_SYN_RETRIES_PATH "/proc/sys/net/ipv4/tcp_syn_retries"
 #define LTTCOMM_INET_PROC_FIN_TIMEOUT_PATH "/proc/sys/net/ipv4/tcp_fin_timeout"
@@ -52,5 +56,9 @@ extern ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock,
 
 /* Initialize inet communication layer. */
 extern void lttcomm_inet_init(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _LTTCOMM_INET_H */

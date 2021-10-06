@@ -16,6 +16,10 @@
 #include <common/macros.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * The run-as process is launched by forking without an exec*() call. This means
  * that any resource allocated before the run-as worker is launched should be
@@ -60,5 +64,9 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 int run_as_create_worker(const char *procname,
 		post_fork_cleanup_cb clean_up_func, void *clean_up_user_data);
 void run_as_destroy_worker(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RUNAS_H */

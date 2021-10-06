@@ -12,6 +12,10 @@
 #include <stdint.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_buffer_view;
 
 struct lttng_dynamic_buffer {
@@ -91,5 +95,9 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer);
 /* Get the space left in the buffer before a new resize is needed. */
 size_t lttng_dynamic_buffer_get_capacity_left(
 		struct lttng_dynamic_buffer *buffer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_DYNAMIC_BUFFER_H */

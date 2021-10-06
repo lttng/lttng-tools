@@ -15,6 +15,10 @@
 #include <lttng/location.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_condition_session_rotation {
 	struct lttng_condition parent;
 	char *session_name;
@@ -60,5 +64,9 @@ ssize_t lttng_evaluation_session_rotation_ongoing_create_from_payload(
 ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_CONDITION_SESSION_ROTATION_INTERNAL_H */

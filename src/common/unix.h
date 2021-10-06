@@ -16,6 +16,10 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int lttcomm_create_unix_sock(const char *pathname);
 int lttcomm_create_anon_unix_socketpair(int *fds);
 int lttcomm_connect_unix_sock(const char *pathname);
@@ -50,5 +54,9 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		lttng_sock_cred *creds);
 
 int lttcomm_setsockopt_creds_unix_sock(int sock);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _LTTCOMM_UNIX_H */

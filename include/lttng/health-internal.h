@@ -17,6 +17,10 @@
 #include <lttng/health.h>
 #include <common/macros.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * These are the value added to the current state depending of the position in
  * the thread where is either waiting on a poll() or running in the code.
@@ -115,5 +119,9 @@ void health_app_destroy(struct health_app *ha);
 int health_check_state(struct health_app *ha, int type);
 void health_register(struct health_app *ha, int type);
 void health_unregister(struct health_app *ha);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HEALTH_INTERNAL_H */

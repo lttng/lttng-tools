@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <lttng/constant.h>
 #include <inttypes.h>
+#include <lttng/lttng-error.h>
 
 struct lttng_action;
 struct lttng_condition;

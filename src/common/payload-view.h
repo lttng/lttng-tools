@@ -11,6 +11,10 @@
 #include <common/buffer-view.h>
 #include <common/dynamic-array.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct lttng_payload;
 struct fd_handle;
 
@@ -46,7 +50,26 @@ struct fd_handle;
 struct lttng_payload_view {
 	struct lttng_buffer_view buffer;
 	/* private */
-	const struct lttng_dynamic_pointer_array _fd_handles;
+
+	/*
+	 * Avoid a -Wreturn-type-c-linkage warning with clang.
+	 * gcc is more permissive with regards to this warning, but
+	 * clang is right that a structure containing a _const_ structure is not
+	 * a trivial type in the eyes of the C++ standard, theoritically affecting its
+	 * compatibility with C from an ABI standpoint:
+	 *   A trivial class is a class that is trivially copyable and has one or
+	 *   more default constructors, all of which are either trivial or deleted and
+	 *   at least one of which is not deleted.
+	 *
+	 * A const member implicitly deletes lttng_payload_view's constructor,
+	 * making it non-trivial. This is not a problem for the moment as we are
+	 * transitioning all code to C++11.
+	 */
+#if !defined(__cplusplus)
+	const
+#endif
+	struct lttng_dynamic_pointer_array _fd_handles;
+
 	struct {
 		size_t *p_fd_handles_position;
 		size_t fd_handles_position;
@@ -158,5 +181,9 @@ int lttng_payload_view_get_fd_handle_count(
  */
 struct fd_handle *lttng_payload_view_pop_fd_handle(
 		struct lttng_payload_view *payload_view);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_PAYLOAD_VIEW_H */

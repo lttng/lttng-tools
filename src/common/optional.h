@@ -88,13 +88,13 @@
 /*
  * Initialize an optional field as 'set' with a given value.
  */
-#define LTTNG_OPTIONAL_INIT_VALUE(val) { .value = val, .is_set = 1 }
+#define LTTNG_OPTIONAL_INIT_VALUE(val) { .is_set = 1, .value = val }
 
 /* Set the value of an optional field. */
 #define LTTNG_OPTIONAL_SET(field_ptr, val)	\
 	do {					\
-		(field_ptr)->value = (val);	\
 		(field_ptr)->is_set = 1;	\
+		(field_ptr)->value = (val);	\
 	} while (0)
 
 /* Put an optional field in the "unset" (NULL-ed) state. */

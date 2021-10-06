@@ -14,9 +14,13 @@
 #include <common/macros.h>
 #include <urcu/rculfhash.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern unsigned long lttng_ht_seed;
 
-typedef unsigned long (*hash_fct)(const void *_key, unsigned long seed);
+typedef unsigned long (*hash_fct_type)(const void *_key, unsigned long seed);
 typedef cds_lfht_match_fct hash_match_fct;
 
 enum lttng_ht_type {
@@ -29,7 +33,7 @@ enum lttng_ht_type {
 struct lttng_ht {
 	struct cds_lfht *ht;
 	cds_lfht_match_fct match_fct;
-	hash_fct hash_fct;
+	hash_fct_type hash_fct;
 };
 
 struct lttng_ht_iter {
@@ -121,5 +125,9 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 		struct lttng_ht_iter *iter);
 struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		struct lttng_ht_iter *iter);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LTT_HT_H */
