@@ -18,7 +18,7 @@
 #include <inttypes.h>
 #include "common/bytecode/bytecode.h"
 #include "filter-ast.h"
-#include "filter-parser.h"
+#include "filter-parser.hpp"
 #include "memstream.h"
 
 #include <common/compat/errno.h>
@@ -43,7 +43,6 @@ do {								\
 } while (0)
 #endif
 
-int yydebug;
 int filter_parser_debug = 0;
 
 int yyparse(struct filter_parser_ctx *parser_ctx, yyscan_t scanner);
@@ -58,18 +57,31 @@ struct gc_string {
 	char s[];
 };
 
-static const char *node_type_to_str[] = {
-	[ NODE_UNKNOWN ] = "NODE_UNKNOWN",
-	[ NODE_ROOT ] = "NODE_ROOT",
-	[ NODE_EXPRESSION ] = "NODE_EXPRESSION",
-	[ NODE_OP ] = "NODE_OP",
-	[ NODE_UNARY_OP ] = "NODE_UNARY_OP",
+static
+const char *node_type_str(enum node_type type)
+{
+	switch (type) {
+	case NODE_UNKNOWN:
+		return "NODE_UNKNOWN";
+	case NODE_ROOT:
+		return "NODE_ROOT";
+	case NODE_EXPRESSION:
+		return "NODE_EXPRESSION";
+	case NODE_OP:
+		return "NODE_OP";
+	case NODE_UNARY_OP:
+		return "NODE_UNARY_OP";
+	case NR_NODE_TYPES:
+		abort();
+	}
+
+	abort();
 };
 
 const char *node_type(struct filter_node *node)
 {
 	if (node->type < NR_NODE_TYPES)
-		return node_type_to_str[node->type];
+		return node_type_str(node->type);
 	else
 		return NULL;
 }
@@ -85,7 +97,7 @@ static struct gc_string *gc_string_alloc(struct filter_parser_ctx *parser_ctx,
 	for (alloclen = 8; alloclen < sizeof(long) + sizeof(*gstr) + len;
 	     alloclen *= 2);
 
-	gstr = zmalloc(alloclen);
+	gstr = (gc_string *) zmalloc(alloclen);
 	if (!gstr) {
 		goto end;
 	}
@@ -142,7 +154,7 @@ static struct filter_node *make_node(struct filter_parser_ctx *scanner,
 	struct filter_ast *ast = filter_parser_get_ast(scanner);
 	struct filter_node *node;
 
-	node = zmalloc(sizeof(*node));
+	node = (filter_node *) zmalloc(sizeof(*node));
 	if (!node)
 		return NULL;
 	memset(node, 0, sizeof(*node));
@@ -179,7 +191,7 @@ static struct filter_node *make_op_node(struct filter_parser_ctx *scanner,
 	struct filter_ast *ast = filter_parser_get_ast(scanner);
 	struct filter_node *node;
 
-	node = zmalloc(sizeof(*node));
+	node = (filter_node *) zmalloc(sizeof(*node));
 	if (!node)
 		return NULL;
 	memset(node, 0, sizeof(*node));
@@ -215,7 +227,7 @@ static struct filter_ast *filter_ast_alloc(void)
 {
 	struct filter_ast *ast;
 
-	ast = zmalloc(sizeof(*ast));
+	ast = (filter_ast *) zmalloc(sizeof(*ast));
 	if (!ast)
 		return NULL;
 	memset(ast, 0, sizeof(*ast));
@@ -245,7 +257,7 @@ struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input)
 
 	yydebug = filter_parser_debug;
 
-	parser_ctx = zmalloc(sizeof(*parser_ctx));
+	parser_ctx = (filter_parser_ctx *) zmalloc(sizeof(*parser_ctx));
 	if (!parser_ctx)
 		return NULL;
 	memset(parser_ctx, 0, sizeof(*parser_ctx));

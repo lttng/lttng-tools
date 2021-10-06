@@ -47,7 +47,7 @@
 
 #include "lttng-ctl-helper.h"
 #include <common/filter/filter-ast.h>
-#include <common/filter/filter-parser.h>
+#include <common/filter/filter-parser.hpp>
 #include <common/filter/memstream.h>
 
 #define COPY_DOMAIN_PACKED(dst, src)				\

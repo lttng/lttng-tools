@@ -18,7 +18,7 @@
 #include <common/compat/errno.h>
 #include <common/bytecode/bytecode.h>
 #include <common/filter/filter-ast.h>
-#include <common/filter/filter-parser.h>
+#include <common/filter/filter-parser.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

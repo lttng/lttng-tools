@@ -62,21 +62,21 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 static
 int append_str(char **s, const char *append)
 {
-	char *old = *s;
-	char *new;
-	size_t oldlen = (old == NULL) ? 0 : strlen(old);
+	char *old_str = *s;
+	char *new_str;
+	size_t oldlen = (old_str == NULL) ? 0 : strlen(old_str);
 	size_t appendlen = strlen(append);
 
-	new = calloc(oldlen + appendlen + 1, 1);
-	if (!new) {
+	new_str = (char *) calloc(oldlen + appendlen + 1, 1);
+	if (!new_str) {
 		return -ENOMEM;
 	}
 	if (oldlen) {
-		strcpy(new, old);
+		strcpy(new_str, old_str);
 	}
-	strcat(new, append);
-	*s = new;
-	free(old);
+	strcat(new_str, append);
+	*s = new_str;
+	free(old_str);
 	return 0;
 }
 
@@ -170,7 +170,7 @@ int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
 	if (ret <= 0) {
 		goto end;
 	}
-	insn = calloc(insn_len, 1);
+	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
 		ret = -ENOMEM;
 		goto end;
@@ -296,7 +296,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			struct load_op *insn;
 			uint32_t insn_len = sizeof(struct load_op);
 
-			insn = calloc(insn_len, 1);
+			insn = (load_op *) calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
 			insn->op = BYTECODE_OP_LOAD_FIELD;
@@ -330,7 +330,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		uint32_t insn_len = sizeof(struct load_op)
 			+ strlen(node->u.load.u.string.value) + 1;
 
-		insn = calloc(insn_len, 1);
+		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
 
@@ -370,7 +370,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		uint32_t insn_len = sizeof(struct load_op)
 			+ sizeof(struct literal_numeric);
 
-		insn = calloc(insn_len, 1);
+		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
 		insn->op = BYTECODE_OP_LOAD_S64;
@@ -385,7 +385,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		uint32_t insn_len = sizeof(struct load_op)
 			+ sizeof(struct literal_double);
 
-		insn = calloc(insn_len, 1);
+		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
 		insn->op = BYTECODE_OP_LOAD_DOUBLE;

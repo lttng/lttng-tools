@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include "filter-ast.h"
-#include "filter-parser.h"
+#include "filter-parser.hpp"
 #include "filter-ir.h"
 
 #include <common/compat/errno.h>
@@ -31,7 +31,7 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 {
 	struct ir_op *op;
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	switch (child->data_type) {
@@ -80,7 +80,7 @@ struct ir_op *make_op_load_string(const char *string, enum ir_side side)
 {
 	struct ir_op *op;
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOAD;
@@ -101,7 +101,7 @@ struct ir_op *make_op_load_numeric(int64_t v, enum ir_side side)
 {
 	struct ir_op *op;
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOAD;
@@ -118,7 +118,7 @@ struct ir_op *make_op_load_float(double v, enum ir_side side)
 {
 	struct ir_op *op;
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOAD;
@@ -192,12 +192,12 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 	node = load_expression_get_forward_chain(node);
 	if (!node)
 		return NULL;
-	load_exp = calloc(sizeof(struct ir_load_expression), 1);
+	load_exp = (ir_load_expression *) calloc(sizeof(struct ir_load_expression), 1);
 	if (!load_exp)
 		return NULL;
 
 	/* Root */
-	load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+	load_exp_op = (ir_load_expression_op *) calloc(sizeof(struct ir_load_expression_op), 1);
 	if (!load_exp_op)
 		goto error;
 	load_exp->child = load_exp_op;
@@ -229,7 +229,7 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 		struct filter_node *bracket_node;
 
 		prev_op = load_exp_op;
-		load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+		load_exp_op = (ir_load_expression_op *) calloc(sizeof(struct ir_load_expression_op), 1);
 		if (!load_exp_op)
 			goto error;
 		prev_op->next = load_exp_op;
@@ -248,7 +248,7 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 					fprintf(stderr, "[error] Expecting constant index in array expression\n");
 					goto error;
 				}
-			load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+			load_exp_op = (ir_load_expression_op *) calloc(sizeof(struct ir_load_expression_op), 1);
 			if (!load_exp_op)
 				goto error;
 			prev_op->next = load_exp_op;
@@ -263,7 +263,7 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 	}
 	/* Add final load field */
 	prev_op = load_exp_op;
-	load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+	load_exp_op = (ir_load_expression_op *) calloc(sizeof(struct ir_load_expression_op), 1);
 	if (!load_exp_op)
 		goto error;
 	prev_op->next = load_exp_op;
@@ -281,7 +281,7 @@ struct ir_op *make_op_load_expression(struct filter_node *node,
 {
 	struct ir_op *op;
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOAD;
@@ -312,7 +312,7 @@ struct ir_op *make_op_unary(enum unary_op_type unary_op_type,
 		goto error;
 	}
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_UNARY;
@@ -380,7 +380,7 @@ struct ir_op *make_op_binary_compare(enum op_type bin_op_type,
 		goto error;
 	}
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_BINARY;
@@ -461,7 +461,7 @@ struct ir_op *make_op_binary_logical(enum op_type bin_op_type,
 		goto error;
 	}
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOGICAL;
@@ -505,7 +505,7 @@ struct ir_op *make_op_binary_bitwise(enum op_type bin_op_type,
 		goto error;
 	}
 
-	op = calloc(sizeof(struct ir_op), 1);
+	op = (ir_op *) calloc(sizeof(struct ir_op), 1);
 	if (!op)
 		return NULL;
 	op->op = IR_OP_BINARY;

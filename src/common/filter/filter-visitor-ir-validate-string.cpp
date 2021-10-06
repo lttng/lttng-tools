@@ -19,7 +19,7 @@
 #include <common/compat/errno.h>
 
 #include "filter-ast.h"
-#include "filter-parser.h"
+#include "filter-parser.hpp"
 #include "filter-ir.h"
 
 enum parse_char_result {

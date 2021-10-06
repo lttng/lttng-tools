@@ -93,6 +93,16 @@ enum ast_link_type {
 	AST_LINK_BRACKET,
 };
 
+enum ast_expt_type {
+	AST_EXP_UNKNOWN = 0,
+	AST_EXP_STRING,
+	AST_EXP_CONSTANT,
+	AST_EXP_FLOAT_CONSTANT,
+	AST_EXP_IDENTIFIER,
+	AST_EXP_GLOBAL_IDENTIFIER,
+	AST_EXP_NESTED,
+};
+
 struct filter_node {
 	/*
 	 * Parent node is only set on demand by specific visitor.
@@ -110,15 +120,7 @@ struct filter_node {
 			struct filter_node *child;
 		} root;
 		struct {
-			enum {
-				AST_EXP_UNKNOWN = 0,
-				AST_EXP_STRING,
-				AST_EXP_CONSTANT,
-				AST_EXP_FLOAT_CONSTANT,
-				AST_EXP_IDENTIFIER,
-				AST_EXP_GLOBAL_IDENTIFIER,
-				AST_EXP_NESTED,
-			} type;
+			enum ast_expt_type type;
 			enum ast_link_type post_op;	/* reverse */
 			enum ast_link_type pre_op;	/* forward */
 			union {

@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include "filter-ast.h"
-#include "filter-parser.h"
+#include "filter-parser.hpp"
 
 #include <common/compat/errno.h>
 #include <common/macros.h>
