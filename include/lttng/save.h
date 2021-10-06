@@ -21,12 +21,12 @@ struct lttng_save_session_attr;
 /*
  * Return a newly allocated save session attribute object or NULL on error.
  */
-struct lttng_save_session_attr *lttng_save_session_attr_create(void);
+extern struct lttng_save_session_attr *lttng_save_session_attr_create(void);
 
 /*
  * Free a given save session attribute object.
  */
-void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output);
+extern void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output);
 
 
 /*
@@ -34,32 +34,32 @@ void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output);
  */
 
 /* Return session name. NULL indicated all sessions must be saved. */
-const char *lttng_save_session_attr_get_session_name(
+extern const char *lttng_save_session_attr_get_session_name(
 	struct lttng_save_session_attr *attr);
 /*
  * Return destination URL. A NULL value indicates the default session
  * configuration location. The URL format used is documented in lttng(1).
  * NULL indicates that the default session configuration path is used.
  */
-const char *lttng_save_session_attr_get_output_url(
+extern const char *lttng_save_session_attr_get_output_url(
 	struct lttng_save_session_attr *attr);
 /*
  * Return the configuration overwrite attribute. This attribute indicates
  * whether or not existing configuration files must be overwritten.
  */
-int lttng_save_session_attr_get_overwrite(
+extern int lttng_save_session_attr_get_overwrite(
 	struct lttng_save_session_attr *attr);
 /*
  * Return the omit name configuration attribute. This attribute indicates
  * whether or not the saved sessions' names should be omitted.
  */
-int lttng_save_session_attr_get_omit_name(
+extern int lttng_save_session_attr_get_omit_name(
 	struct lttng_save_session_attr *attr);
 /*
  * Return the omit output configuration attribute. This attribute indicates
  * whether or not the saved sessions' output configuration should be omitted.
  */
-int lttng_save_session_attr_get_omit_output(
+extern int lttng_save_session_attr_get_omit_output(
 	struct lttng_save_session_attr *attr);
 
 /*
@@ -73,32 +73,32 @@ int lttng_save_session_attr_get_omit_output(
  * Set the name of the session to save. A NULL name means all sessions
  * known to the session daemon will be saved.
  */
-int lttng_save_session_attr_set_session_name(
+extern int lttng_save_session_attr_set_session_name(
 	struct lttng_save_session_attr *attr, const char *session_name);
 /*
  * Set the URL of the session configuration to save. A NULL value indicates the
  * use of the default location being the session one. The URL's format is is
  * documented in lttng(1).
  */
-int lttng_save_session_attr_set_output_url(
+extern int lttng_save_session_attr_set_output_url(
 	struct lttng_save_session_attr *attr, const char *url);
 /*
  * Set the overwrite attribute. If set to true, files of the same name as the
  * current session configuration URL will be overwritten.
  */
-int lttng_save_session_attr_set_overwrite(
+extern int lttng_save_session_attr_set_overwrite(
 	struct lttng_save_session_attr *attr, int overwrite);
 /*
  * Set the omit name attribute. If set to true, the sessions' names are omitted
  * from the resulting session configuration file.
  */
-int lttng_save_session_attr_set_omit_name(
+extern int lttng_save_session_attr_set_omit_name(
 	struct lttng_save_session_attr *attr, int omit_name);
 /*
  * Set the omit output attribute. If set to true, the sessions' output
  * configurations are omitted from the resulting session configuration file.
  */
-int lttng_save_session_attr_set_omit_output(
+extern int lttng_save_session_attr_set_omit_output(
 	struct lttng_save_session_attr *attr, int omit_output);
 
 /*
@@ -109,7 +109,7 @@ int lttng_save_session_attr_set_omit_output(
  *
  * Returns 0 on success or a negative LTTNG_ERR value on error.
  */
-int lttng_save_session(struct lttng_save_session_attr *attr);
+extern int lttng_save_session(struct lttng_save_session_attr *attr);
 
 #ifdef __cplusplus
 }

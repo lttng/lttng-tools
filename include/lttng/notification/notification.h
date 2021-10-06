@@ -55,7 +55,7 @@ extern const struct lttng_evaluation *lttng_notification_get_evaluation(
  *
  * Returns an lttng_trigger object on success, NULL on error.
  */
-const struct lttng_trigger *lttng_notification_get_trigger(
+extern const struct lttng_trigger *lttng_notification_get_trigger(
 		struct lttng_notification *notification);
 
 /*

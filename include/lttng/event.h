@@ -516,7 +516,7 @@ extern int lttng_disable_event(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-int lttng_disable_event_ext(struct lttng_handle *handle,
+extern int lttng_disable_event_ext(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name,
 		const char *filter_expression);
 
