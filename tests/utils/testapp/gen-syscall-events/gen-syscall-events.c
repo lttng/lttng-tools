@@ -37,7 +37,7 @@ void prefault_string(const char *p)
 		 * for reading.
 		 */
 		asm volatile("" : : "m"(*p));
-		p += PAGE_SIZE;
+		p += sysconf(_SC_PAGE_SIZE);
 	}
 }
 

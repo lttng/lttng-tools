@@ -14,35 +14,49 @@
 
 #include "defaults.h"
 #include "macros.h"
-#include "align.h"
 #include "error.h"
 
 static int pthread_attr_init_done;
 static pthread_attr_t tattr;
 
+static size_t get_page_size(void)
+{
+	const long ret = sysconf(_SC_PAGE_SIZE);
+
+	if (ret < 0) {
+		/*
+		 * Fatal error since there is no safe way to recover from this.
+		 */
+		PERROR("Failed to get system page size using sysconf(_SC_PAGE_SIZE)");
+		abort();
+	}
+
+	return (size_t) ret;
+}
+
 size_t default_get_channel_subbuf_size(void)
 {
-	return max(_DEFAULT_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+	return max(_DEFAULT_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
 size_t default_get_metadata_subbuf_size(void)
 {
-	return max(DEFAULT_METADATA_SUBBUF_SIZE, PAGE_SIZE);
+	return max(DEFAULT_METADATA_SUBBUF_SIZE, get_page_size());
 }
 
 size_t default_get_kernel_channel_subbuf_size(void)
 {
-	return max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+	return max(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
 size_t default_get_ust_pid_channel_subbuf_size(void)
 {
-	return max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+	return max(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
 size_t default_get_ust_uid_channel_subbuf_size(void)
 {
-	return max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, PAGE_SIZE);
+	return max(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
 pthread_attr_t *default_pthread_attr(void)

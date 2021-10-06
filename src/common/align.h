@@ -9,13 +9,6 @@
 #define _LTTNG_ALIGN_H
 
 #include "bug.h"
-#include <unistd.h>
-#include <limits.h>
-
-#ifndef PAGE_SIZE	/* Cygwin limits.h defines its own PAGE_SIZE. */
-#define PAGE_SIZE		sysconf(_SC_PAGE_SIZE)
-#endif
-
 
 /*
  * Align value to the next multiple of align. Returns val if it already is a

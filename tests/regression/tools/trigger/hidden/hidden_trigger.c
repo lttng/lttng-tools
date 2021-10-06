@@ -70,7 +70,7 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 		.name = TEST_CHANNEL_NAME,
 		.enabled = 1,
 		.attr.overwrite = -1,
-		.attr.subbuf_size = sysconf(_SC_PAGESIZE) * 8,
+		.attr.subbuf_size = sysconf(_SC_PAGE_SIZE) * 8,
 		.attr.num_subbuf = 8,
 		.attr.output = LTTNG_EVENT_MMAP,
 	};
@@ -123,7 +123,7 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 	 * time.
 	 */
 	rotation_status = lttng_rotation_schedule_size_threshold_set_threshold(
-			rotation_schedule, sysconf(_SC_PAGESIZE) * 4096);
+			rotation_schedule, sysconf(_SC_PAGE_SIZE) * 4096);
 	if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 		fail("Failed to set size threshold of session rotation schedule");
 		ret = -1;

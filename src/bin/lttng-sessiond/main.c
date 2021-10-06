@@ -1472,9 +1472,9 @@ int main(int argc, char **argv)
 		goto exit_set_signal_handler;
 	}
 
-	the_page_size = sysconf(_SC_PAGESIZE);
+	the_page_size = sysconf(_SC_PAGE_SIZE);
 	if (the_page_size < 0) {
-		PERROR("sysconf _SC_PAGESIZE");
+		PERROR("sysconf _SC_PAGE_SIZE");
 		the_page_size = LONG_MAX;
 		WARN("Fallback page size to %ld", the_page_size);
 	}
