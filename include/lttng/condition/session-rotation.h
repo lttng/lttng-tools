@@ -53,8 +53,8 @@ lttng_condition_session_rotation_ongoing_create(void);
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
- extern struct lttng_condition *
- lttng_condition_session_rotation_completed_create(void);
+extern struct lttng_condition *
+lttng_condition_session_rotation_completed_create(void);
 
 /*
  * Get the session name property of a session rotation condition.
