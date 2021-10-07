@@ -12,20 +12,19 @@ import time
 
 from collections import defaultdict
 
-NSEC_PER_SEC = 1000000000
-
 try:
-    from babeltrace import TraceCollection
+    import bt2
 except ImportError:
     # quick fix for debian-based distros
     sys.path.append("/usr/local/lib/python%d.%d/site-packages" %
                     (sys.version_info.major, sys.version_info.minor))
-    from babeltrace import TraceCollection
+    import bt2
 
+NSEC_PER_SEC = 1000000000
 
 class TraceParser:
-    def __init__(self, trace, pid):
-        self.trace = trace
+    def __init__(self, trace_msg_iter, pid):
+        self.trace = trace_msg_iter
         self.pid = pid
 
         # This dictionnary holds the results of each testcases of a test.
@@ -51,16 +50,19 @@ class TraceParser:
 
     def parse(self):
         # iterate over all the events
-        for event in self.trace.events:
-            if self.pid is not None and event["pid"] != self.pid:
+        for msg in self.trace:
+            if type(msg) is not bt2._EventMessageConst:
                 continue
 
-            method_name = "handle_%s" % event.name.replace(":", "_").replace(
+            if self.pid is not None and msg.event["pid"] != self.pid:
+                continue
+
+            method_name = "handle_%s" % msg.event.name.replace(":", "_").replace(
                 "+", "_")
             # call the function to handle each event individually
             if hasattr(TraceParser, method_name):
                 func = getattr(TraceParser, method_name)
-                func(self, event)
+                func(self, msg.event)
 
         ret = 0
         # For each event of the test case, check all entries for failed
@@ -317,7 +319,7 @@ class Test1(TraceParser):
 
         # check that we have FD 0 waiting for EPOLLIN|EPOLLPRI and that
         # data.fd = 0
-        if epfd == 3 and op_enum == "EPOLL_CTL_ADD" and fd == 0 and \
+        if epfd == 3 and 'EPOLL_CTL_ADD' in op_enum.labels and fd == 0 and \
                 _event["data_union"]["fd"] == 0 and \
                 _event["events"]["EPOLLIN"] == 1 and \
                 _event["events"]["EPOLLPRI"] == 1:
@@ -435,7 +437,7 @@ class Test2(TraceParser):
         _event = event["event"]
 
         # make sure we see a EPOLLIN|EPOLLPRI
-        if op_enum == "EPOLL_CTL_ADD" and \
+        if 'EPOLL_CTL_ADD' in op_enum.labels and \
                 _event["events"]["EPOLLIN"] == 1 and \
                 _event["events"]["EPOLLPRI"] == 1:
             self.expect["epoll_ctl_entry"]["epoll_ctl_timeout_in_add"] = 1
@@ -720,10 +722,7 @@ if __name__ == "__main__":
         print("Need to pass the PID to check (-p)")
         sys.exit(1)
 
-    traces = TraceCollection()
-    handle = traces.add_traces_recursive(args.path, "ctf")
-    if handle is None:
-        sys.exit(1)
+    traces = bt2.TraceCollectionMessageIterator(args.path)
 
     t = None
 
@@ -757,8 +756,5 @@ if __name__ == "__main__":
 
     if t is not None:
         ret = t.parse()
-
-    for h in handle.values():
-        traces.remove_trace(h)
 
     sys.exit(ret)
