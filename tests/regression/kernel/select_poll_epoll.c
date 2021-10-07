@@ -280,7 +280,7 @@ void test_epoll(void)
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
 		perror("[epoll] add");
-		goto end;
+		goto error;
 	}
 
 	if (timeout > 0) {
@@ -301,6 +301,8 @@ void test_epoll(void)
 		perror("epoll_wait");
 	}
 
+error:
+	close(epollfd);
 end:
 	return;
 }
@@ -323,7 +325,7 @@ void test_pepoll(void)
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
 		perror("[eppoll] add");
-		goto end;
+		goto error;
 	}
 
 	if (timeout > 0) {
@@ -344,6 +346,8 @@ void test_pepoll(void)
 		perror("epoll_pwait");
 	}
 
+error:
+	close(epollfd);
 end:
 	return;
 }
@@ -556,7 +560,7 @@ void epoll_pwait_invalid_pointer(void)
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
 		perror("[eppoll] add");
-		goto end;
+		goto error;
 	}
 
 	ret = syscall(SYS_epoll_pwait, epollfd,
@@ -574,6 +578,8 @@ void epoll_pwait_invalid_pointer(void)
 		perror("# epoll_pwait");
 	}
 
+error:
+	close(epollfd);
 end:
 	return;
 }
@@ -600,7 +606,7 @@ void epoll_pwait_int_max(void)
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
 		perror("[eppoll] add");
-		goto end;
+		goto error;
 	}
 
 	ret = syscall(SYS_epoll_pwait, epollfd, &epoll_event, INT_MAX, -1,
@@ -618,6 +624,8 @@ void epoll_pwait_int_max(void)
 		perror("# epoll_pwait");
 	}
 
+error:
+	close(epollfd);
 end:
 	return;
 }
@@ -774,7 +782,7 @@ void epoll_pwait_concurrent_munmap(void)
 			-1, 0);
 	if (epoll_event == MAP_FAILED) {
 		perror("mmap");
-		goto end;
+		goto error;
 	}
 
 	for (i = 0; i < MAX_FDS; i++) {
@@ -787,7 +795,7 @@ void epoll_pwait_concurrent_munmap(void)
 		ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fds[i], epoll_event);
 		if (ret < 0) {
 			perror("[eppoll] add");
-			goto end_unmap;
+			goto error_unmap;
 		}
 	}
 	stop_thread = 0;
@@ -795,7 +803,7 @@ void epoll_pwait_concurrent_munmap(void)
 			(void *) epoll_event);
 	if (ret != 0) {
 		fprintf(stderr, "[error] pthread_create\n");
-		goto end_unmap;
+		goto error_unmap;
 	}
 
 	ret = epoll_pwait(epollfd, epoll_event, 1, 1, NULL);
@@ -816,9 +824,9 @@ void epoll_pwait_concurrent_munmap(void)
 	ret = pthread_join(writer, NULL);
 	if (ret) {
 		fprintf(stderr, "[error] pthread_join\n");
-		goto end_unmap;
+		goto error_unmap;
 	}
-end_unmap:
+error_unmap:
 	for (i = 0; i < MAX_FDS; i++) {
 		ret = close(fds[i]);
 		if (ret != 0) {
@@ -831,6 +839,8 @@ end_unmap:
 		perror("munmap");
 	}
 
+error:
+	close(epollfd);
 end:
 	return;
 }
