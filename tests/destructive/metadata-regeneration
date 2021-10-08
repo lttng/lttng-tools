@@ -38,15 +38,13 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
+
 function validate_trace_date
 {
 	local test_date=$1
 	local trace_path=$2
-
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
 
 	res=$($BABELTRACE_BIN --clock-date $trace_path 2>/dev/null | head -1 | grep $test_date)
 	if [ $? -eq 0 ]; then

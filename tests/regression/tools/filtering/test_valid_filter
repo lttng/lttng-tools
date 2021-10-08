@@ -112,7 +112,7 @@ function test_valid_filter
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $event_name`
+	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint $event_name`
 
 	rm -rf $trace_path
 
@@ -400,6 +400,8 @@ function validator_true_statement
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+bail_out_if_no_babeltrace
 
 issue_356_filter="intfield > 0 && intfield > 1 && "
 issue_356_filter+="intfield > 2 && intfield > 3 && "

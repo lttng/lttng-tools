@@ -27,6 +27,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 start_lttng_sessiond
 
 create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -47,7 +49,7 @@ stop_lttng_sessiond
 last_val=0
 out=0
 
-babeltrace $TRACE_PATH | while read event;
+"$BABELTRACE_BIN" $TRACE_PATH | while read event;
 do
 	val=$(echo $event | cut -f10 -d" ")
 	val=${val%?}

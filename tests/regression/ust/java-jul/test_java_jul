@@ -662,6 +662,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 if [ ! -f "$TESTAPP_PATH.class" ]; then
 	withapp=0
 else

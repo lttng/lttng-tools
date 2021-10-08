@@ -81,6 +81,7 @@ function test_kernel_streaming_timer ()
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+bail_out_if_no_babeltrace
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1

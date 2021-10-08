@@ -53,7 +53,7 @@ function dry_run
 	run_apps
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	nb_events=$(babeltrace $trace_path | wc -l)
+	nb_events=$("$BABELTRACE_BIN" $trace_path | wc -l)
 	if [ "$nb_events" -ne "0" ]; then
 		ok 0 "Events were found during the dry run without exclusion"
 	else
@@ -86,7 +86,7 @@ function test_exclusion
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null`
+	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null`
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
@@ -139,7 +139,7 @@ function test_exclusion_tracing_started
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=$(babeltrace $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null)
+	stats=$("$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null)
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
@@ -173,6 +173,8 @@ function test_exclusion_fail
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 

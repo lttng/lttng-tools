@@ -134,6 +134,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
 else
@@ -142,18 +144,13 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" ||
 {
-	which "$BABELTRACE_BIN" > /dev/null
-	test $? -ne 0
-	skip $? "Babeltrace binary not found. Skipping callstack tests" "$NUM_TESTS" ||
-	{
-		start_lttng_sessiond
+	start_lttng_sessiond
 
-		if test $RUN_USERSPACE_TEST == 1; then
-			test_user_callstack
-		fi
+	if test $RUN_USERSPACE_TEST == 1; then
+		test_user_callstack
+	fi
 
-		test_kernel_callstack
+	test_kernel_callstack
 
-		stop_lttng_sessiond
-	}
+	stop_lttng_sessiond
 }

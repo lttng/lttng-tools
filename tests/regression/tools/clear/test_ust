@@ -803,6 +803,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 streaming_tests=(test_ust_streaming
 	test_ust_streaming_rotate_clear
 	test_ust_streaming_clear_rotate

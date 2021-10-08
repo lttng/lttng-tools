@@ -164,6 +164,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 TESTS=(
 	"test_clock_override_metadata"
 	"test_clock_override_timestamp"

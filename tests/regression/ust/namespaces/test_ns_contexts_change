@@ -101,6 +101,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 isroot=0
 if [ "$(id -u)" == "0" ]; then
 	isroot=1

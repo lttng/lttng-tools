@@ -57,9 +57,9 @@ if daemon_process_return_code != 0:
 stop_session(session_info)
 
 try:
-    babeltrace_process = subprocess.Popen(["babeltrace", session_info.trace_path], stdout=subprocess.PIPE)
+    babeltrace_process = subprocess.Popen([BABELTRACE_BIN, session_info.trace_path], stdout=subprocess.PIPE)
 except FileNotFoundError:
-    bail("Could not open babeltrace. Please make sure it is installed.")
+    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
 
 before_daemon_event_found = False
 before_daemon_event_pid = -1

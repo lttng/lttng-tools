@@ -22,6 +22,7 @@ sys.path.append(lttng_bindings_path)
 sys.path.append(lttng_bindings_libs_path)
 from lttng import *
 
+BABELTRACE_BIN="babeltrace2"
 
 class SessionInfo:
     def __init__(self, handle, session_name, tmp_directory, channel_name):

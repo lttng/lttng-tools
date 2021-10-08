@@ -41,9 +41,9 @@ stop_session(session_info)
 
 # Check for malloc events in the resulting trace
 try:
-    babeltrace_process = subprocess.Popen(["babeltrace", session_info.trace_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    babeltrace_process = subprocess.Popen([BABELTRACE_BIN, session_info.trace_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 except FileNotFoundError:
-    bail("Could not open babeltrace. Please make sure it is installed.", session_info)
+    bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN), session_info)
 
 malloc_event_found = False
 free_event_found = False

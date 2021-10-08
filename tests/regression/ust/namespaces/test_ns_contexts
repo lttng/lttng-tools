@@ -76,6 +76,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 system_has_ns=0
 if [ -d "/proc/$$/ns" ]; then
 	system_has_ns=1

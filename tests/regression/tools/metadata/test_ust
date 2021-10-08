@@ -222,6 +222,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 # Use LTTNG_HOME since we want the complete "default" lttng directory hierarchy
 # with "<session_name>-<datetime>/...".
 LTTNG_HOME="$TRACE_PATH"

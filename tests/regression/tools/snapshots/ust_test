@@ -479,6 +479,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 start_lttng_sessiond
 tests=( test_ust_list_output
 	test_ust_local_snapshot

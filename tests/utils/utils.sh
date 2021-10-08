@@ -12,7 +12,7 @@ CONSUMERD_MATCH=".*lttng-consumerd.*"
 RELAYD_BIN="lttng-relayd"
 RELAYD_MATCH=".*lttng-relayd.*"
 LTTNG_BIN="lttng"
-BABELTRACE_BIN="babeltrace"
+BABELTRACE_BIN="babeltrace2"
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 MI_XSD_MAJOR_VERSION=4
@@ -1841,6 +1841,14 @@ function wait_live_viewer_connect ()
 	pass "Waiting for live viewers on url: $url"
 }
 
+function bail_out_if_no_babeltrace()
+{
+	which "$BABELTRACE_BIN" >/dev/null
+	if [ $? -ne 0 ]; then
+		LTTNG_BAIL_OUT "\"$BABELTRACE_BIN\" binary not found. Skipping tests"
+	fi
+}
+
 function validate_metadata_event ()
 {
 	local event_name=$1
@@ -1850,8 +1858,7 @@ function validate_metadata_event ()
 	local metadata_file=$(find $trace_path -name "metadata")
 	local metadata_path=$(dirname $metadata_file)
 
-	which $BABELTRACE_BIN >/dev/null
-	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+	bail_out_if_no_babeltrace
 
 	local count=$($BABELTRACE_BIN --output-format=ctf-metadata $metadata_path | grep $event_name | wc -l)
 
@@ -1870,8 +1877,7 @@ function trace_matches ()
 	local nr_iter=$2
 	local trace_path=$3
 
-	which $BABELTRACE_BIN >/dev/null
-	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+	bail_out_if_no_babeltrace
 
 	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
 
@@ -1889,8 +1895,9 @@ function trace_match_only()
 	local nr_iter=$2
 	local trace_path=$3
 
-	which $BABELTRACE_BIN >/dev/null
-	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+	bail_out_if_no_babeltrace
+	#which "$BABELTRACE_BIN" >/dev/null
+	#skip $? -ne 0 "\"$BABELTRACE_BIN\" binary not found. Skipping trace comparison"
 
 	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
 	local total=$($BABELTRACE_BIN $trace_path | wc -l)
@@ -1908,10 +1915,7 @@ function validate_trace
 	local event_name=$1
 	local trace_path=$2
 
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
+	bail_out_if_no_babeltrace
 
 	OLDIFS=$IFS
 	IFS=","
@@ -1935,10 +1939,7 @@ function validate_trace_count
 	local trace_path=$2
 	local expected_count=$3
 
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
+	bail_out_if_no_babeltrace
 
 	cnt=0
 	OLDIFS=$IFS
@@ -1965,10 +1966,7 @@ function validate_trace_count_range_incl_min_excl_max
 	local expected_min=$3
 	local expected_max=$4
 
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
+	bail_out_if_no_babeltrace
 
 	cnt=0
 	OLDIFS=$IFS
@@ -1992,11 +1990,6 @@ function trace_first_line
 {
 	local trace_path=$1
 
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
-
 	$BABELTRACE_BIN $trace_path 2>/dev/null | head -n 1
 }
 
@@ -2005,8 +1998,7 @@ function validate_trace_exp()
 	local event_exp=$1
 	local trace_path=$2
 
-	which $BABELTRACE_BIN >/dev/null
-	skip $? -ne 0 "Babeltrace binary not found. Skipping trace validation"
+	bail_out_if_no_babeltrace
 
 	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep --extended-regexp ${event_exp} | wc -l)
 	if [ "$traced" -ne 0 ]; then
@@ -2024,8 +2016,7 @@ function validate_trace_only_exp()
 	local event_exp=$1
 	local trace_path=$2
 
-	which $BABELTRACE_BIN >/dev/null
-	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+	bail_out_if_no_babeltrace
 
 	local count=$($BABELTRACE_BIN $trace_path | grep --extended-regexp ${event_exp} | wc -l)
 	local total=$($BABELTRACE_BIN $trace_path | wc -l)
@@ -2044,10 +2035,7 @@ function validate_trace_empty()
 {
 	local trace_path=$1
 
-	which $BABELTRACE_BIN >/dev/null
-	if [ $? -ne 0 ]; then
-	    skip 0 "Babeltrace binary not found. Skipping trace validation"
-	fi
+	bail_out_if_no_babeltrace
 
 	events=$($BABELTRACE_BIN $trace_path 2>/dev/null)
 	ret=$?

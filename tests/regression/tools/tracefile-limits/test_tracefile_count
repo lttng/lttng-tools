@@ -134,7 +134,7 @@ function test_tracefile_count_limit ()
 	[ "$(get_stream_file_count "$trace_path" "$stream_pattern")" -eq "$count_limit" ]
 	ok $? "Stream meets the trace file limit of $count_limit"
 
-	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $event_name`
+	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint $event_name`
 
 	validate_min_max "$stats" "intfield" "[0-9]+" "$expected_max"
 	ok $? "Trace validation - intfield"
@@ -153,6 +153,8 @@ LIMITS=("1" "2" "4" "8" "10" "16" "32" "64")
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 

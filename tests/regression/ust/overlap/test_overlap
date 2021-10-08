@@ -602,6 +602,8 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+bail_out_if_no_babeltrace
+
 if [ -x "$CURDIR/demo/demo" ]; then
 	foundbin=1
 else
