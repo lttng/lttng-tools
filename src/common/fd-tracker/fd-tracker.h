@@ -13,10 +13,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct fs_handle;
 struct fd_tracker;
 
@@ -141,9 +137,5 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
  * Log the contents of the fd_tracker.
  */
 void fd_tracker_log(struct fd_tracker *tracker);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* FD_TRACKER_H */

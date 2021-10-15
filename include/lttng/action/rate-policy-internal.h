@@ -15,10 +15,6 @@
 #include <stdbool.h>
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct mi_writer;
 
 int lttng_rate_policy_serialize(struct lttng_rate_policy *rate_policy,
@@ -42,9 +38,5 @@ bool lttng_rate_policy_should_execute(
 enum lttng_error_code lttng_rate_policy_mi_serialize(
 		const struct lttng_rate_policy *policy,
 		struct mi_writer *writer);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_RATE_POLICY */

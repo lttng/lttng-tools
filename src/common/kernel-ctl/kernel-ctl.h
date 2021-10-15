@@ -16,10 +16,6 @@
 #include <common/lttng-kernel-old.h>
 #include <common/sessiond-comm/sessiond-comm.h>	/* for struct lttng_filter_bytecode */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
 int kernctl_create_channel(int fd, struct lttng_channel_attr *chops);
@@ -128,9 +124,5 @@ int kernctl_get_stream_id(int fd, uint64_t *stream_id);
 int kernctl_get_current_timestamp(int fd, uint64_t *ts);
 int kernctl_get_sequence_number(int fd, uint64_t *seq);
 int kernctl_get_instance_id(int fd, uint64_t *seq);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _LTTNG_KERNEL_CTL_H */

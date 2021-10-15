@@ -12,10 +12,6 @@
 #include <common/dynamic-array.h>
 #include <common/fd-handle.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * An lttng_payload encompasses the 'data' (bytes) and any passed file
  * descriptors as part of a message between liblttng-ctl and the session
@@ -60,9 +56,5 @@ void lttng_payload_clear(struct lttng_payload *payload);
  */
 int lttng_payload_push_fd_handle(struct lttng_payload *payload,
 		struct fd_handle *fd_handle);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_PAYLOAD_H */

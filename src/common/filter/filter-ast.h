@@ -20,10 +20,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #define printf_debug(fmt, args...)					\
 	do {								\
 		if (filter_parser_debug)				\
@@ -193,9 +189,5 @@ int filter_visitor_ir_check_binary_comparator(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_validate_string(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_normalize_glob_patterns(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_validate_globbing(struct filter_parser_ctx *ctx);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _FILTER_AST_H */

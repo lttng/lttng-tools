@@ -10,10 +10,6 @@
 
 #include <common/macros.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Parse string as an application context of the form
  * "$app.provider_name:context_name" and return the provider name and context
@@ -27,9 +23,5 @@ extern "C" {
  */
 int parse_application_context(const char *str, char **provider_name,
 		char **ctx_name);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_COMMON_CONTEXT_H */

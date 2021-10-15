@@ -17,10 +17,6 @@
 
 #include <common/compat/directory-handle.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #define KIBI_LOG2 10
 #define MEBI_LOG2 20
 #define GIBI_LOG2 30
@@ -71,9 +67,5 @@ enum lttng_error_code utils_group_id_from_name(
  */
 int utils_parse_unsigned_long_long(const char *str,
 		unsigned long long *value);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _COMMON_UTILS_H */

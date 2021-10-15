@@ -14,10 +14,6 @@
 
 #include "consumer.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define LTTNG_CONSUMER_SIG_SWITCH	SIGRTMIN + 10
 #define LTTNG_CONSUMER_SIG_TEARDOWN	SIGRTMIN + 11
 #define LTTNG_CONSUMER_SIG_LIVE		SIGRTMIN + 12
@@ -56,9 +52,5 @@ int consumer_flush_ust_index(struct lttng_consumer_stream *stream);
 
 int consumer_timer_thread_get_channel_monitor_pipe(void);
 int consumer_timer_thread_set_channel_monitor_pipe(int fd);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* CONSUMER_TIMER_H */

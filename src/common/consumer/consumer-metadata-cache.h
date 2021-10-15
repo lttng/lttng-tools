@@ -12,10 +12,6 @@
 #include <common/consumer/consumer.h>
 #include <common/dynamic-buffer.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum consumer_metadata_cache_write_status {
 	CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR = -1,
 	/*
@@ -62,9 +58,5 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 		uint64_t offset, int timer);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* CONSUMER_METADATA_CACHE_H */

@@ -17,10 +17,6 @@
 #include <common/fs-handle.h>
 #include <common/trace-chunk.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_index_file {
 	struct fs_handle *file;
 	uint32_t major;
@@ -55,9 +51,5 @@ int lttng_index_file_read(const struct lttng_index_file *index_file,
 
 void lttng_index_file_get(struct lttng_index_file *index_file);
 void lttng_index_file_put(struct lttng_index_file *index_file);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _INDEX_H */

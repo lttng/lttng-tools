@@ -13,10 +13,6 @@
 #include <common/macros.h>
 #include <common/compat/time.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #define MSEC_PER_SEC    1000ULL
 #define NSEC_PER_SEC    1000000000ULL
 #define NSEC_PER_MSEC   1000000ULL
@@ -65,9 +61,5 @@ struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
 int time_to_iso8601_str(time_t time, char *str, size_t len);
 
 int time_to_datetime_str(time_t time, char *str, size_t len);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* LTTNG_TIME_H */

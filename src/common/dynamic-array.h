@@ -10,10 +10,6 @@
 
 #include <common/dynamic-buffer.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 typedef void (*lttng_dynamic_array_element_destructor)(void *element);
 typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
 
@@ -180,9 +176,5 @@ void lttng_dynamic_pointer_array_reset(
 /* Remove all elements from the dynamic pointer array. */
 void lttng_dynamic_pointer_array_clear(
 		struct lttng_dynamic_pointer_array *array);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* LTTNG_DYNAMIC_ARRAY_H */

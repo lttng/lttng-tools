@@ -11,10 +11,6 @@
 #include <lttng/lttng.h>
 #include <common/macros.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel);
 
 bool loglevel_parse_range_string(const char *str,
@@ -49,9 +45,5 @@ const char *loglevel_log4j_value_to_name(int loglevel);
 const char *loglevel_jul_value_to_name(int loglevel);
 
 const char *loglevel_python_value_to_name(int loglevel);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _LTTNG_LOGLEVEL_UTILS_H */

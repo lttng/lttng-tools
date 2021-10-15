@@ -10,10 +10,6 @@
 
 #include <common/consumer/consumer.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct metadata_bucket;
 
 typedef ssize_t (*metadata_bucket_flush_cb)(
@@ -33,9 +29,5 @@ enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
 		const struct stream_subbuffer *buffer);
 
 void metadata_bucket_reset(struct metadata_bucket *bucket);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* METADATA_BUCKET_H */

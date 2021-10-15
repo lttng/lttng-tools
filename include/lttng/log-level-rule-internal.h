@@ -19,10 +19,6 @@
 #include <lttng/log-level-rule.h>
 #include <lttng/lttng-error.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct mi_writer;
 
 /*
@@ -64,9 +60,5 @@ unsigned long lttng_log_level_rule_hash(
 enum lttng_error_code lttng_log_level_rule_mi_serialize(
 		const struct lttng_log_level_rule *rule,
 		struct mi_writer *writer);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_LOG_LEVEL_RULE_INTERNAL_H */

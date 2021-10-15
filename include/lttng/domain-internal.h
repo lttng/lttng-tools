@@ -11,14 +11,6 @@
 #include "lttng/domain.h"
 #include "common/macros.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_DOMAIN_INTERNAL_H */

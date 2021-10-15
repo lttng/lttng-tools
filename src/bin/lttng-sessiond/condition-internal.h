@@ -10,10 +10,6 @@
 
 #include <lttng/condition/condition.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * The lttng_condition hashing code is kept in this file (rather than
  * condition.c) since it makes use of GPLv2 code (hashtable utils), which we
@@ -23,9 +19,5 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition);
 
 struct lttng_condition *lttng_condition_copy(
 		const struct lttng_condition *condition);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_SESSIOND_CONDITION_INTERNAL_H */

@@ -14,10 +14,6 @@
 
 #include <urcu.h> /* for caa_likely/unlikely */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern int lttng_testpoint_activated;
 
 void *lttng_testpoint_lookup(const char *name);
@@ -62,9 +58,5 @@ void *lttng_testpoint_lookup(const char *name);
 /* Testpoint declaration */
 #define TESTPOINT_DECL(name)	\
 	_TESTPOINT_DECL(name)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* NTESTPOINT */

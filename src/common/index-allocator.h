@@ -11,10 +11,6 @@
 #include <inttypes.h>
 #include <lttng/lttng-export.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_index_allocator;
 
 enum lttng_index_allocator_status {
@@ -26,19 +22,22 @@ enum lttng_index_allocator_status {
 /*
  * Create an index allocator of `index_count` slots.
  */
-LTTNG_EXPORT struct lttng_index_allocator *lttng_index_allocator_create(
+extern "C" LTTNG_EXPORT
+struct lttng_index_allocator *lttng_index_allocator_create(
 		uint64_t index_count);
 
 /*
  * Get the number of indexes currently in use.
  */
-LTTNG_EXPORT uint64_t lttng_index_allocator_get_index_count(
+extern "C" LTTNG_EXPORT
+uint64_t lttng_index_allocator_get_index_count(
 	struct lttng_index_allocator *allocator);
 
 /*
  * Allocate (i.e. reserve) a slot.
  */
-LTTNG_EXPORT enum lttng_index_allocator_status lttng_index_allocator_alloc(
+extern "C" LTTNG_EXPORT
+enum lttng_index_allocator_status lttng_index_allocator_alloc(
 		struct lttng_index_allocator *allocator,
 		uint64_t *index);
 
@@ -46,16 +45,14 @@ LTTNG_EXPORT enum lttng_index_allocator_status lttng_index_allocator_alloc(
  * Release a slot by index. The slot will be re-used by the index allocator
  * in future 'alloc' calls.
  */
-LTTNG_EXPORT enum lttng_index_allocator_status lttng_index_allocator_release(
+extern "C" LTTNG_EXPORT
+enum lttng_index_allocator_status lttng_index_allocator_release(
 		struct lttng_index_allocator *allocator, uint64_t index);
 
 /*
  * Destroy an index allocator.
  */
-LTTNG_EXPORT void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator);
-
-#ifdef __cplusplus
-}
-#endif
+extern "C" LTTNG_EXPORT
+void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator);
 
 #endif /* _COMMON_INDEX_ALLOCATOR_H */

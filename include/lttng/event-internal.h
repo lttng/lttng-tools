@@ -15,10 +15,6 @@
 #include <common/macros.h>
 #include <lttng/event.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_userspace_probe_location;
 
 struct lttng_event_extended {
@@ -38,9 +34,5 @@ struct lttng_event_extended {
 };
 
 struct lttng_event *lttng_event_copy(const struct lttng_event *event);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

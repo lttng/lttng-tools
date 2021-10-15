@@ -14,10 +14,6 @@
 
 #include "lttng-ust-abi.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef LTTNG_UST_UUID_LEN
 #define LTTNG_UST_UUID_LEN	16
 #endif
@@ -658,9 +654,5 @@ int lttng_ust_ctl_counter_clear(struct lttng_ust_ctl_daemon_counter *counter,
 		const size_t *dimension_indexes);
 
 void lttng_ust_ctl_sigbus_handle(void *addr);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_UST_CTL_INTERNAL_H */

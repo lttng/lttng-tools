@@ -14,10 +14,6 @@
 #include <common/fd-handle.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_payload;
 struct lttng_payload_view;
 struct lttng_dynamic_buffer;
@@ -162,9 +158,5 @@ unsigned long lttng_userspace_probe_location_hash(
 enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
 		const struct lttng_userspace_probe_location *location,
 		struct mi_writer *writer);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */

@@ -13,10 +13,6 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kernel-syscall.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 struct lttng_event_rule_kernel_syscall {
 	struct lttng_event_rule parent;
 	enum lttng_event_rule_kernel_syscall_emission_site emission_site;
@@ -50,9 +46,5 @@ ssize_t lttng_event_rule_kernel_syscall_create_from_payload(
 
 const char *lttng_event_rule_kernel_syscall_emission_site_str(
 		enum lttng_event_rule_kernel_syscall_emission_site emission_site);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H */

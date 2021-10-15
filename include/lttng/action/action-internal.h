@@ -19,10 +19,6 @@
 #include <sys/types.h>
 #include <urcu/ref.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_rate_policy;
 struct mi_writer;
 struct mi_lttng_error_query_callbacks;
@@ -131,9 +127,5 @@ enum lttng_error_code lttng_action_mi_serialize(const struct lttng_trigger *trig
 		const struct mi_lttng_error_query_callbacks
 				*error_query_callbacks,
 		struct lttng_dynamic_array *action_path_indexes);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_ACTION_INTERNAL_H */

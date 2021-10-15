@@ -15,10 +15,6 @@
 #include <sys/types.h>
 #include <urcu/ref.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * The public API assumes that trace archive locations are always
  * provided as "constant". This means that the user of liblttng-ctl never
@@ -100,9 +96,5 @@ void lttng_trace_archive_location_get(
 
 void lttng_trace_archive_location_put(
 		struct lttng_trace_archive_location *location);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_LOCATION_INTERNAL_H */

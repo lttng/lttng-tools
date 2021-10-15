@@ -13,10 +13,6 @@
 
 #include <common/common.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * Used by lttng_poll_clean to free the events structure in a lttng_poll_event.
  */
@@ -24,10 +20,6 @@ static inline void __lttng_poll_free(void *events)
 {
 	free(events);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 /*
  * epoll(7) implementation.
@@ -37,10 +29,6 @@ static inline void __lttng_poll_free(void *events)
 #include <stdio.h>
 #include <features.h>
 #include <common/compat/fcntl.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* See man epoll(7) for this define path */
 #define COMPAT_EPOLL_PROC_PATH "/proc/sys/fs/epoll/max_user_watches"
@@ -220,10 +208,6 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
 	__lttng_poll_free((void *) events->events);
 }
 
-#ifdef __cplusplus
-}
-#endif
-
 #else	/* HAVE_EPOLL */
 /*
  * Fallback on poll(2) API
@@ -241,10 +225,6 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
 
 #include <poll.h>
 #include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 enum {
 	/* Polling variables compatibility for poll */
@@ -396,10 +376,6 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
 		__lttng_poll_free((void *) events->current.events);
 	}
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* HAVE_EPOLL */
 

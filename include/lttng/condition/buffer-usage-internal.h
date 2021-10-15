@@ -15,10 +15,6 @@
 #include "common/buffer-view.h"
 #include <common/macros.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_condition_buffer_usage {
 	struct lttng_condition parent;
 	struct {
@@ -80,9 +76,5 @@ ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(
 ssize_t lttng_evaluation_buffer_usage_high_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_CONDITION_BUFFER_USAGE_INTERNAL_H */

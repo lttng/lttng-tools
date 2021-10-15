@@ -25,10 +25,6 @@
 #include <lttng/lttng-error.h>
 #include <common/compat/tid.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 /* Avoid conflict with Solaris <sys/regset.h> */
 #if defined(ERR) && defined(__sun__)
 #undef ERR
@@ -267,9 +263,5 @@ const char *log_add_time(void);
 
 /* Name must be a statically-allocated string. */
 void logger_set_thread_name(const char *name, bool set_pthread_name);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _ERROR_H */

@@ -37,10 +37,6 @@
 #define __INI_H__
 
 /* Make this header file easier to include in C++ code */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 typedef int (*ini_entry_handler)(void *, const char *, const char *,
@@ -93,10 +89,6 @@ int ini_parse_file(FILE *file, ini_entry_handler handler, void *user);
 /* Maximum line length for any line in INI file. */
 #ifndef INI_MAX_LINE
 #define INI_MAX_LINE 200
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* __INI_H__ */

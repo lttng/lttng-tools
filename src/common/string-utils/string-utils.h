@@ -12,10 +12,6 @@
 #include <common/macros.h>
 #include <common/dynamic-array.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 void strutils_normalize_star_glob_pattern(char *pattern);
 
 bool strutils_is_star_glob_pattern(const char *pattern);
@@ -30,9 +26,5 @@ int strutils_split(const char *input, char delim, bool escape_delim,
 void strutils_free_null_terminated_array_of_strings(char **array);
 
 size_t strutils_array_of_strings_len(char * const *array);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _STRING_UTILS_H */

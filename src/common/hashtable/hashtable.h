@@ -15,10 +15,6 @@
 #include <lttng/lttng-export.h>
 #include <urcu/rculfhash.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 LTTNG_EXPORT extern unsigned long lttng_ht_seed;
 
 typedef unsigned long (*hash_fct_type)(const void *_key, unsigned long seed);
@@ -126,9 +122,5 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 		struct lttng_ht_iter *iter);
 struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 		struct lttng_ht_iter *iter);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _LTT_HT_H */

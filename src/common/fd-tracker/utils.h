@@ -12,10 +12,6 @@
 #include <common/fd-tracker/fd-tracker.h>
 #include <common/macros.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_poll_event;
 
 /*
@@ -49,9 +45,5 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 		struct fd_tracker *tracker,
 		struct lttng_directory_handle *handle,
 		const char *path);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* FD_TRACKER_UTILS_H */

@@ -12,10 +12,6 @@
 
 #include <common/macros.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_action;
 struct lttng_payload_view;
 struct mi_writer;
@@ -42,9 +38,5 @@ enum lttng_error_code lttng_action_list_mi_serialize(const struct lttng_trigger 
 		const struct mi_lttng_error_query_callbacks
 				*error_query_callbacks,
 		struct lttng_dynamic_array *action_path_indexes);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_ACTION_LIST_INTERNAL_H */

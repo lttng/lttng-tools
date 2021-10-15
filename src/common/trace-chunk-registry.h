@@ -14,10 +14,6 @@
 #include <common/macros.h>
 #include <common/trace-chunk.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_trace_chunk_registry;
 
 /*
@@ -95,9 +91,5 @@ lttng_trace_chunk_registry_find_anonymous_chunk(
 
 unsigned int lttng_trace_chunk_registry_put_each_chunk(
 		const struct lttng_trace_chunk_registry *registry);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_TRACE_CHUNK_REGISTRY_H */

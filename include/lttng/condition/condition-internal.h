@@ -19,10 +19,6 @@
 #include <urcu/list.h>
 #include <urcu/ref.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 struct mi_writer;
 struct mi_lttng_error_query_callbacks;
 struct lttng_trigger;
@@ -85,9 +81,5 @@ enum lttng_error_code lttng_condition_mi_serialize(
 				*error_query_callbacks);
 
 const char *lttng_condition_type_str(enum lttng_condition_type type);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* LTTNG_CONDITION_INTERNAL_H */

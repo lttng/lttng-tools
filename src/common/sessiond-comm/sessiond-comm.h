@@ -37,10 +37,6 @@
 #include "inet6.h"
 #include <common/unix.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
 
@@ -929,9 +925,5 @@ int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port);
 void lttcomm_init(void);
 /* Get network timeout, in milliseconds */
 unsigned long lttcomm_get_network_timeout(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

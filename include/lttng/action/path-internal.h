@@ -15,10 +15,6 @@
 #include <common/payload.h>
 #include <sys/types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_action_path {
 	struct lttng_dynamic_array indexes;
 };
@@ -33,9 +29,5 @@ ssize_t lttng_action_path_create_from_payload(
 
 int lttng_action_path_serialize(const struct lttng_action_path *action_path,
 		struct lttng_payload *payload);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_ACTION_PATH_INTERNAL_H */

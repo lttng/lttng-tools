@@ -13,10 +13,6 @@
 #include <common/consumer/consumer.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream);
@@ -243,9 +239,5 @@ void lttng_ustconsumer_sigbus_handle(void *addr)
 {
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _LTTNG_USTCONSUMER_H */

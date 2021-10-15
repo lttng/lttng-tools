@@ -16,10 +16,6 @@
 #include <common/dynamic-array.h>
 #include <lttng/event-field-value.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct lttng_capture_descriptor {
 	struct lttng_event_expr *event_expression;
 	struct lttng_bytecode *bytecode;
@@ -89,9 +85,5 @@ lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
 const struct lttng_bytecode *
 lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
 		const struct lttng_condition *condition, unsigned int index);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_CONDITION_EVENT_RULE_MATCHES_INTERNAL_H */

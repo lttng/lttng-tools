@@ -15,10 +15,6 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct mi_writer;
 
 enum lttng_error_query_target_type {
@@ -81,9 +77,5 @@ int lttng_error_query_results_add_result(
 enum lttng_error_code lttng_error_query_results_mi_serialize(
 		const struct lttng_error_query_results *results,
 		struct mi_writer *writer);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LTTNG_ERROR_QUERY_INTERNAL_H */

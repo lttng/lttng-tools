@@ -17,10 +17,6 @@
 #include <common/config/session-config.h>
 #include <lttng/lttng.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 /* Don't want to reference snapshot-internal.h here */
 struct lttng_snapshot_output;
 
@@ -1120,9 +1116,5 @@ int mi_lttng_rotate(struct mi_writer *writer,
 		const char *session_name,
 		enum lttng_rotation_state rotation_state,
 		const struct lttng_trace_archive_location *location);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* _MI_LTTNG_H */

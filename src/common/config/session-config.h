@@ -13,10 +13,6 @@
 #include <common/macros.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct config_entry {
 	/* section is NULL if the entry is not in a section */
 	const char *section;
@@ -232,9 +228,5 @@ int config_writer_write_element_double(struct config_writer *writer,
 int config_load_session(const char *path, const char *session_name,
 		int overwrite, unsigned int autoload,
 		const struct config_load_session_override_attr *overrides);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _CONFIG_H */
