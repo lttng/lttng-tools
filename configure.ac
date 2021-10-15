@@ -951,7 +951,6 @@ AS_IF([test x$enable_bin_lttng_crash != xno],
 
 AS_IF([test x$enable_bin_lttng_relayd != xno],
       [
-       build_lib_lttng_ctl=yes
        build_lib_sessiond_comm=yes
        build_lib_index=yes
        build_lib_health=yes

@@ -96,6 +96,11 @@ char *opt_output_path, *opt_working_directory;
 static int opt_daemon, opt_background, opt_print_version, opt_allow_clear = 1;
 enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
+/* Argument variables */
+int lttng_opt_quiet;    /* not static in error.h */
+int lttng_opt_verbose;  /* not static in error.h */
+int lttng_opt_mi;       /* not static in error.h */
+
 /*
  * We need to wait for listener and live listener threads, as well as
  * health check thread, before being ready to signal readiness.
