@@ -173,7 +173,7 @@ extern int lttng_data_pending(const char *session_name);
 /*
  * Deprecated, replaced by lttng_regenerate_metadata.
  */
-LTTNG_DEPRECATED()
+LTTNG_DEPRECATED("Use lttng_regenerate_metadata")
 extern int lttng_metadata_regenerate(const char *session_name);
 
 /*
