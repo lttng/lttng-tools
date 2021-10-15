@@ -1974,8 +1974,10 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 			WARN("Communication with application %d timed out on send_stream for stream \"%s\" of channel \"%s\" of session \"%" PRIu64 "\".",
 					app->pid, stream->name, ua_chan->name,
 					ua_sess->tracing_id);
-			/* Treat this the same way as an application that is
-			 * exiting. */
+			/*
+			 * Treat this the same way as an application that is
+			 * exiting.
+			 */
 			ret = -ENOTCONN;
 		} else if (ret < 0) {
 			goto error;
@@ -6584,14 +6586,14 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	ua_sess = find_session_by_objd(app, sobjd);
 	if (!ua_sess) {
 		/* Return an error since this is not an error */
-		DBG("Application session is being torn down (session not found Aborting enum registration.");
+		DBG("Application session is being torn down (session not found). Aborting enum registration.");
 		free(entries);
 		goto error_rcu_unlock;
 	}
 
 	registry = get_session_registry(ua_sess);
 	if (!registry) {
-		DBG("Application session is being torn down (registry not found Aborting enum registration.");
+		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
 		free(entries);
 		goto error_rcu_unlock;
 	}
