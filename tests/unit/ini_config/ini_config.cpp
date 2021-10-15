@@ -6,7 +6,7 @@
  */
 
 #include <tap/tap.h>
-#include <common/config/session-config.h>
+#include <common/ini-config/ini-config.h>
 #include <common/utils.h>
 #include <string.h>
 #include <lttng/constant.h>

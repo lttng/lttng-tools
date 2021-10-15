@@ -39,6 +39,7 @@
 #include <common/utils.h>
 #include <common/daemonize.h>
 #include <common/config/session-config.h>
+#include <common/ini-config/ini-config.h>
 #include <common/dynamic-buffer.h>
 #include <lttng/event-internal.h>
 

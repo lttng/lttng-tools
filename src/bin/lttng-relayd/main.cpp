@@ -50,7 +50,7 @@
 #include <common/uri.h>
 #include <common/utils.h>
 #include <common/align.h>
-#include <common/config/session-config.h>
+#include <common/ini-config/ini-config.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 #include <common/string-utils/format.h>

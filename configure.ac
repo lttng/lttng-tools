@@ -1155,6 +1155,7 @@ AC_CONFIG_FILES([
 	src/common/index/Makefile
 	src/common/health/Makefile
 	src/common/config/Makefile
+	src/common/ini-config/Makefile
 	src/common/string-utils/Makefile
 	src/common/fd-tracker/Makefile
 	src/common/filter/Makefile

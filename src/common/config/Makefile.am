@@ -5,8 +5,6 @@ noinst_LTLIBRARIES = libconfig.la
 libconfig_la_SOURCES = \
 	config-internal.h \
 	config-session-abi.h \
-	ini.cpp \
-	ini.h \
 	session-config.cpp \
 	session-config.h
 libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)

@@ -14,7 +14,7 @@
 #include <common/compat/getenv.h>
 #include <common/time.h>
 #include <common/defaults.h>
-#include <common/config/session-config.h>
+#include <common/ini-config/ini-config.h>
 
 #include "tcp_keep_alive.h"
 

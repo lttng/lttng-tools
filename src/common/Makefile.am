@@ -7,6 +7,7 @@ SUBDIRS = \
 	bytecode \
 	compat \
 	config \
+	ini-config \
 	fd-tracker \
 	string-utils \
 	filter \
@@ -26,6 +27,7 @@ DIST_SUBDIRS = \
 	testpoint \
 	index \
 	config \
+	ini-config \
 	consumer \
 	string-utils \
 	fd-tracker \
@@ -118,6 +120,7 @@ endif
 libcommon_la_LIBADD = \
 	$(top_builddir)/src/common/bytecode/libbytecode.la \
 	$(top_builddir)/src/common/config/libconfig.la \
+	$(top_builddir)/src/common/ini-config/libini-config.la \
 	$(top_builddir)/src/common/compat/libcompat.la \
 	$(top_builddir)/src/common/hashtable/libhashtable.la \
 	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la \
