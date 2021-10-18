@@ -51,9 +51,10 @@ static struct lttng_handle *handle;
 static struct mi_writer *writer;
 
 /*
- * Taken from the LTTng ABI
+ * Taken from the LTTng ABI except for "UNKNOWN".
  */
 enum context_type {
+	CONTEXT_UNKNOWN      = -1,
 	CONTEXT_PID          = 0,
 	CONTEXT_PERF_COUNTER = 1,	/* Backward compat. */
 	CONTEXT_PROCNAME     = 2,
@@ -220,7 +221,7 @@ static
 const struct ctx_opts {
 	/* Needed for end-of-list item. */
 	ctx_opts()
-		: symbol(nullptr)
+		: ctx_opts(nullptr, CONTEXT_UNKNOWN)
 	{}
 
 	ctx_opts(const char *symbol_, context_type ctx_type_, bool hide_help_ = false)
