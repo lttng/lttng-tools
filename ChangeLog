@@ -1,3 +1,33 @@
+2021-10-18 lttng-tools 2.13.1 (National Chocolate Cupcake Day)
+	* Fix: ust: app stuck on recv message during UST comm timeout scenario
+	* Fix: ust: UST communication can return -EAGAIN
+	* Fix: ust: segfault on lttng start on filter bytecode copy
+	* Fix: sessiond: previously created channel cannot be enabled
+	* Build fix: Missing message in LTTNG_DEPRECATED invocation
+	* Fix: notification-thread: handling event from a removed tracer event src
+	* include: add missing "extern"
+	* include: remove spurious spaces in condition/session-rotation.h
+	* tests: fix header of regression/ust/getcpu-override/run-getcpu-override
+	* fix: wrong define used for GCC version check
+	* Fix: userspace-probe: unreported error on string copy error
+	* Fix: userspace-probe: truncating binary path for SDT
+	* Fix: lttng: add-trigger: don't provide a default event rule type
+	* Fix: statements with side-effects in assert statements
+	* Fix: lttng_trace_archive_location_serialize is called on freed memory
+	* Fix: sessiond: ust session is inactive during ust_app_global_update
+	* Fix: common: error query for trigger action protocol error
+	* Fix: common: un-hide two rate policy functions
+	* Fix: include: remove unneeded declaration of lttng_session_descriptor_get_session_name
+	* Fix: Tests: race condition in test_ns_contexts_change
+	* Fix: Tests: race condition in test_event_tracker
+	* Fix: man: lttng-rotate: trace file count/size limitation does not apply
+	* Fix: runas: less-than-zero comparison of an unsigned value
+	* Fix: runas: supplementary groups are ignored on lttng save
+	* Docs: lttng-event-rule(7): --exclude does not exist, use --exclude-name
+	* sessiond: logging typo: {triger, triggger} -> trigger
+	* Fix: lttng: free sessions in cmd_destroy
+	* Fix: lttng: free domains and channels in get_session_stats_str
+
 2021-08-02 lttng-tools 2.13.0 (Ice Cream Sandwich Day)
 	* Tests fix: unix socket: leaked socket of connection to child
 	* Fix: sessiond: notification: missing unlock on client skip
