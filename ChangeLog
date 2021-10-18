@@ -1,3 +1,21 @@
+2021-10-18 lttng-tools 2.12.6 (National Chocolate Cupcake Day)
+	* Fix: sessiond: previously created channel cannot be enabled
+	* Fix: ust: app stuck on recv message during UST comm timeout scenario
+	* Fix: ust: UST communication can return -EAGAIN
+	* Fix: ust: segfault on lttng start on filter bytecode copy
+	* Build fix: Missing message in LTTNG_DEPRECATED invocation
+	* include: remove spurious spaces in condition/session-rotation.h
+	* tests: fix header of regression/ust/getcpu-override/run-getcpu-override
+	* fix: wrong define used for GCC version check
+	* Fix: userspace-probe: unreported error on string copy error
+	* Fix: userspace-probe: truncating binary path for SDT
+	* Fix: statements with side-effects in assert statements
+	* Fix: lttng_trace_archive_location_serialize is called on freed memory
+	* Fix: sessiond: ust session is inactive during ust_app_global_update
+	* Fix: Tests: race condition in test_ns_contexts_change
+	* Fix: Tests: race condition in test_event_tracker
+	* Fix: man: lttng-rotate: trace file count/size limitation does not apply
+
 2021-08-06 lttng-tools 2.12.5 (International Beer Day)
 	* Fix: runas: less-than-zero comparison of an unsigned value
 	* Fix: runas: supplementary groups are ignored on lttng save
