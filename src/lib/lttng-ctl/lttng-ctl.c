@@ -2614,13 +2614,18 @@ end:
  */
 int lttng_set_tracing_group(const char *name)
 {
+	char *new_group;
 	if (name == NULL) {
 		return -LTTNG_ERR_INVALID;
 	}
 
-	if (asprintf(&tracing_group, "%s", name) < 0) {
+	if (asprintf(&new_group, "%s", name) < 0) {
 		return -LTTNG_ERR_FATAL;
 	}
+
+	free(tracing_group);
+	tracing_group = new_group;
+	new_group = NULL;
 
 	return 0;
 }
