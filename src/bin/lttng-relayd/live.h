@@ -18,6 +18,4 @@ int relayd_live_create(struct lttng_uri *live_uri);
 int relayd_live_stop(void);
 int relayd_live_join(void);
 
-struct relay_viewer_stream *live_find_viewer_stream_by_id(uint64_t stream_id);
-
 #endif /* LTTNG_RELAYD_LIVE_H */
