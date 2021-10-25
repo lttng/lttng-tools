@@ -488,7 +488,7 @@ error_create_counter_data:
 	lttng_ust_ctl_destroy_counter(daemon_counter);
 error_create_daemon_counter:
 error_shm_alloc:
-	/* Error occured before per-cpu SHMs were handed-off to ustctl. */
+	/* Error occurred before per-cpu SHMs were handed-off to ustctl. */
 	if (cpu_counter_fds) {
 		for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
 			if (cpu_counter_fds[i] < 0) {

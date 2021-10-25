@@ -2036,7 +2036,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	/*
 	 * Either this is the first time the metadata file is read, or a
-	 * rotation of the corresponding relay stream has occured.
+	 * rotation of the corresponding relay stream has occurred.
 	 */
 	if (!vstream->stream_file.handle && len > 0) {
 		struct fs_handle *fs_handle;
