@@ -1342,7 +1342,7 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 	case LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE:
 		break;
 	default:
-		/* Error occured. */
+		/* Error occurred. */
 		ERR("Failed to generate exclusions from trigger while allocating an event notifier rule");
 		goto error_put_trigger;
 	}

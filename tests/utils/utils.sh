@@ -1865,7 +1865,7 @@ function validate_trace
 			pass "Validate trace for event $i, $traced events"
 		else
 			fail "Validate trace for event $i"
-			diag "Found $traced occurences of $i"
+			diag "Found $traced occurrences of $i"
 		fi
 	done
 	ret=$?
@@ -1893,7 +1893,7 @@ function validate_trace_count
 			pass "Validate trace for event $i, $traced events"
 		else
 			fail "Validate trace for event $i"
-			diag "Found $traced occurences of $i"
+			diag "Found $traced occurrences of $i"
 		fi
 		cnt=$(($cnt + $traced))
 	done
@@ -1923,7 +1923,7 @@ function validate_trace_count_range_incl_min_excl_max
 			pass "Validate trace for event $i, $traced events"
 		else
 			fail "Validate trace for event $i"
-			diag "Found $traced occurences of $i"
+			diag "Found $traced occurrences of $i"
 		fi
 		cnt=$(($cnt + $traced))
 	done
@@ -1957,7 +1957,7 @@ function validate_trace_exp()
 		pass "Validate trace for expression '${event_exp}', $traced events"
 	else
 		fail "Validate trace for expression '${event_exp}'"
-		diag "Found $traced occurences of '${event_exp}'"
+		diag "Found $traced occurrences of '${event_exp}'"
 	fi
 	ret=$?
 	return $ret
