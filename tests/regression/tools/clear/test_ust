@@ -937,3 +937,5 @@ stop_lttng_sessiond
 stop_lttng_relayd
 
 test_ust_disallow_clear
+
+rm -rf "$TRACE_PATH"
