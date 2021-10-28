@@ -11,23 +11,30 @@ TESTS = tools/base-path/test_ust \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
 	tools/filtering/test_valid_filter \
+	tools/streaming/test_kernel \
 	tools/streaming/test_ust \
 	tools/health/test_thread_ok \
+	tools/live/test_kernel \
+	tools/live/test_lttng_kernel \
 	tools/live/test_ust \
 	tools/live/test_ust_tracefile_count \
 	tools/live/test_lttng_ust \
 	tools/tracefile-limits/test_tracefile_count \
 	tools/tracefile-limits/test_tracefile_size \
 	tools/exclusion/test_exclusion \
+	tools/snapshots/test_kernel \
 	tools/snapshots/test_ust_fast \
 	tools/snapshots/test_ust_streaming \
+	tools/snapshots/test_kernel_streaming \
 	tools/save-load/test_save \
 	tools/save-load/test_load \
 	tools/save-load/test_autoload \
 	tools/mi/test_mi \
 	tools/wildcard/test_event_wildcard \
 	tools/crash/test_crash \
+	tools/regen-metadata/test_kernel \
 	tools/regen-metadata/test_ust \
+	tools/regen-statedump/test_kernel \
 	tools/regen-statedump/test_ust \
 	tools/notification/test_notification_ust_error \
 	tools/notification/test_notification_ust_buffer_usage \
