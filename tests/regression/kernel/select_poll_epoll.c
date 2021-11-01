@@ -302,7 +302,10 @@ void test_epoll(void)
 	}
 
 error:
-	close(epollfd);
+	ret = close(epollfd);
+	if (ret) {
+		perror("close");
+	}
 end:
 	return;
 }
@@ -347,7 +350,10 @@ void test_pepoll(void)
 	}
 
 error:
-	close(epollfd);
+	ret = close(epollfd);
+	if (ret) {
+		perror("close");
+	}
 end:
 	return;
 }
@@ -579,7 +585,10 @@ void epoll_pwait_invalid_pointer(void)
 	}
 
 error:
-	close(epollfd);
+	ret = close(epollfd);
+	if (ret) {
+		perror("close");
+	}
 end:
 	return;
 }
@@ -625,7 +634,10 @@ void epoll_pwait_int_max(void)
 	}
 
 error:
-	close(epollfd);
+	ret = close(epollfd);
+	if (ret) {
+		perror("close");
+	}
 end:
 	return;
 }
@@ -840,7 +852,10 @@ error_unmap:
 	}
 
 error:
-	close(epollfd);
+	ret = close(epollfd);
+	if (ret) {
+		perror("close");
+	}
 end:
 	return;
 }
