@@ -30,6 +30,29 @@ struct relay_viewer_session {
 	 */
 	struct cds_list_head session_list;	/* RCU list. */
 	pthread_mutex_t session_list_lock;	/* Protects list updates. */
+	/*
+	 * The viewer session's current trace chunk is initially set, when
+	 * a viewer attaches to the viewer session, to a copy the corresponding
+	 * relay_session's current trace chunk.
+	 *
+	 * A live session always attempts to "catch-up" to the newest available
+	 * trace chunk. This means that when a viewer reaches the end of a
+	 * trace chunk, the viewer session may not transition to the "next" one:
+	 * it jumps to the most recent trace chunk available (the one being
+	 * produced by the relay_session). Hence, if the producer performs
+	 * multiple rotations before a viewer completes the consumption of a
+	 * trace chunk, it will skip over those "intermediary" trace chunks.
+	 *
+	 * A viewer session updates its current trace chunk when:
+	 *   1) new viewer streams are created,
+	 *   2) a new index is requested,
+	 *   3) metadata is requested.
+	 *
+	 * Hence, as a general principle, the viewer session will reference the
+	 * most recent trace chunk available _even if its streams do not point to
+	 * it_. It indicates which trace chunk viewer streams should transition
+	 * to when the end of their current trace chunk is reached.
+	 */
 	struct lttng_trace_chunk *current_trace_chunk;
 };
 
