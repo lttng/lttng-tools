@@ -238,7 +238,7 @@ void relay_index_put(struct relay_index *index)
 			index->stream->stream_handle, index->index_n.key,
 			(int) index->ref.refcount);
 	/*
-	 * Ensure existance of index->lock for index unlock.
+	 * Ensure existence of index->lock for index unlock.
 	 */
 	rcu_read_lock();
 	/*

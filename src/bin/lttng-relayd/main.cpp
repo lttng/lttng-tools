@@ -3115,7 +3115,7 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	bool chunk_exists;
 
 	if (!session || !conn->version_check_done) {
-		ERR("Trying to check for the existance of a trace chunk before version check");
+		ERR("Trying to check for the presence of a trace chunk before version check");
 		ret = -1;
 		goto end_no_reply;
 	}

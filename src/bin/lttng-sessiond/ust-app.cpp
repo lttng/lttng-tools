@@ -650,7 +650,7 @@ int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data
 /*
  * Push metadata to consumer socket.
  *
- * RCU read-side lock must be held to guarantee existance of socket.
+ * RCU read-side lock must be held to guarantee existence of socket.
  * Must be called with the ust app session lock held.
  * Must be called with the registry lock held.
  *
@@ -789,7 +789,7 @@ error_push:
  * socket to send the metadata is retrieved from consumer, if sock
  * is not NULL we use it to send the metadata.
  * RCU read-side lock must be held while calling this function,
- * therefore ensuring existance of registry. It also ensures existance
+ * therefore ensuring existence of registry. It also ensures existence
  * of socket throughout this function.
  *
  * Return 0 on success else a negative error.

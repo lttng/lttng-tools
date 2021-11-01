@@ -68,7 +68,7 @@ enum lttng_error_code lttng_session_get_tracker_handle(const char *session_name,
 
 	/*
 	 * Use the `get_tracking_policy` command to validate the tracker's
-	 * existance.
+	 * existence.
 	 */
 	status = lttng_process_attr_tracker_handle_get_tracking_policy(
 			handle, &policy);
