@@ -384,8 +384,6 @@ static int make_viewer_streams(struct relay_session *relay_session,
 						goto error_unlock;
 					}
 				} else {
-					bool reference_acquired;
-
 					/*
 					 * Transition the viewer session into the newest trace chunk available.
 					 */
@@ -402,11 +400,26 @@ static int make_viewer_streams(struct relay_session *relay_session,
 						}
 					}
 
-					reference_acquired = lttng_trace_chunk_get(
-							viewer_session->current_trace_chunk);
-					LTTNG_ASSERT(reference_acquired);
-					viewer_stream_trace_chunk =
-							viewer_session->current_trace_chunk;
+					if (relay_stream->trace_chunk) {
+						/*
+						 * If the corresponding relay
+						 * stream's trace chunk is set,
+						 * the viewer stream will be
+						 * created under it.
+						 *
+						 * Note that a relay stream can
+						 * have a NULL output trace
+						 * chunk (for instance, after a
+						 * clear against a stopped
+						 * session).
+						 */
+						const bool reference_acquired = lttng_trace_chunk_get(
+								viewer_session->current_trace_chunk);
+
+						LTTNG_ASSERT(reference_acquired);
+						viewer_stream_trace_chunk =
+								viewer_session->current_trace_chunk;
+					}
 				}
 
 				viewer_stream = viewer_stream_create(
@@ -2016,8 +2029,9 @@ int viewer_get_metadata(struct relay_connection *conn)
 		}
 	}
 
-	if (conn->viewer_session->current_trace_chunk !=
-			vstream->stream_file.trace_chunk) {
+	if (conn->viewer_session->current_trace_chunk &&
+			conn->viewer_session->current_trace_chunk !=
+					vstream->stream_file.trace_chunk) {
 		bool acquired_reference;
 
 		DBG("Viewer session and viewer stream chunk differ: "
@@ -2034,11 +2048,16 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	len = vstream->stream->metadata_received - vstream->metadata_sent;
 
-	/*
-	 * Either this is the first time the metadata file is read, or a
-	 * rotation of the corresponding relay stream has occurred.
-	 */
-	if (!vstream->stream_file.handle && len > 0) {
+	if (!vstream->stream_file.trace_chunk) {
+		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
+		len = 0;
+		goto send_reply;
+	} else if (vstream->stream_file.trace_chunk &&
+			!vstream->stream_file.handle && len > 0) {
+		/*
+		 * Either this is the first time the metadata file is read, or a
+		 * rotation of the corresponding relay stream has occurred.
+		 */
 		struct fs_handle *fs_handle;
 		char file_path[LTTNG_PATH_MAX];
 		enum lttng_trace_chunk_status status;

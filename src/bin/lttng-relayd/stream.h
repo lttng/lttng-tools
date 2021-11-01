@@ -174,6 +174,11 @@ struct relay_stream {
 	/*
 	 * The trace chunk to which the file currently being produced (if any)
 	 * belongs.
+	 *
+	 * Note that a relay stream can have no output trace chunk. For
+	 * instance, after a session stop followed by a session clear,
+	 * streams will not have an output trace chunk until the session
+	 * is resumed.
 	 */
 	struct lttng_trace_chunk *trace_chunk;
 	LTTNG_OPTIONAL(struct relay_stream_rotation) ongoing_rotation;
