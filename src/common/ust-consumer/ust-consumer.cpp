@@ -2608,7 +2608,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	 * if needed), the stream is "quiescent" after this commit.
 	 */
 	if (lttng_ust_ctl_flush_buffer(stream->ustream, 1)) {
-		ERR("Failed to flush buffer while commiting one metadata packet");
+		ERR("Failed to flush buffer while committing one metadata packet");
 		ret = -EIO;
 	} else {
 		stream->quiescent = true;
