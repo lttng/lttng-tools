@@ -19,7 +19,7 @@
 #include <lttng/kernel-probe.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/unistd.h>
+#include <unistd.h>
 
 static
 int lttng_kernel_probe_location_address_serialize(

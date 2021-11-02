@@ -20,7 +20,7 @@
 #include <lttng/userspace-probe-internal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/unistd.h>
+#include <unistd.h>
 
 static
 int lttng_userspace_probe_location_function_set_binary_fd_handle(
