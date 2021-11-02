@@ -2614,20 +2614,26 @@ end:
  */
 int lttng_set_tracing_group(const char *name)
 {
+	int ret = 0;
 	char *new_group;
+
 	if (name == NULL) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	if (asprintf(&new_group, "%s", name) < 0) {
-		return -LTTNG_ERR_FATAL;
+	new_group = strdup(name);
+	if (!new_group) {
+		ret = -LTTNG_ERR_FATAL;
+		goto end;
 	}
 
 	free(tracing_group);
 	tracing_group = new_group;
 	new_group = NULL;
 
-	return 0;
+end:
+	return ret;
 }
 
 int lttng_calibrate(struct lttng_handle *handle,
