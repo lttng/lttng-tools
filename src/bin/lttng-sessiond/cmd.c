@@ -4810,6 +4810,9 @@ error_close_trace_chunk:
 				session->name);
 		ret_code = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 	}
+
+	lttng_trace_chunk_put(snapshot_trace_chunk);
+	snapshot_trace_chunk = NULL;
 error:
 	if (original_ust_consumer_output) {
 		session->ust_session->consumer = original_ust_consumer_output;
