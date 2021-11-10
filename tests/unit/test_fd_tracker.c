@@ -160,7 +160,6 @@ void untrack_std_fds(struct fd_tracker *tracker)
 		{ .fd = fileno(stdout), .name = "stdout" },
 		{ .fd = fileno(stderr), .name = "stderr" },
 	};
-	unsigned int fds_set_to_minus_1 = 0;
 
 	for (i = 0; i < sizeof(files) / sizeof(*files); i++) {
 		int fd = files[i].fd;
@@ -169,7 +168,6 @@ void untrack_std_fds(struct fd_tracker *tracker)
 
 		ok(ret == 0, "Untrack unsuspendable fd %d (%s)", fd,
 				files[i].name);
-		fds_set_to_minus_1 += (files[i].fd == -1);
 	}
 }
 
