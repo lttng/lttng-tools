@@ -39,6 +39,10 @@ int syscall_init_table(int tracer_fd)
 	uint32_t bitness;
 	char name[SYSCALL_NAME_LEN];
 
+#if (SYSCALL_NAME_LEN == 255)
+#define SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API	"254"
+#endif
+
 	DBG3("Syscall init system call table");
 
 	fd = kernctl_syscall_list(tracer_fd);
@@ -65,7 +69,7 @@ int syscall_init_table(int tracer_fd)
 
 	while (fscanf(fp,
 				"syscall { index = %zu; \
-				name = %" XSTR(SYSCALL_NAME_LEN) "[^;]; \
+				name = %" SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API "[^;]; \
 				bitness = %u; };\n",
 				&index, name, &bitness) == 3) {
 		at_least_one_syscall = true;
