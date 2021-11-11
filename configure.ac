@@ -90,8 +90,9 @@ m4_define([WARN_FLAGS_C_LIST], [ dnl
   -Wdiscarded-qualifiers dnl
   -Wmissing-prototypes dnl
   -Wmissing-parameter-type dnl
-  -Wjump-misses-init dnl
-  -Wnested-externs dnl
+  -Wsuggest-final-types dnl
+  -Wsuggest-final-methods dnl
+  -Wsuggest-override dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the
