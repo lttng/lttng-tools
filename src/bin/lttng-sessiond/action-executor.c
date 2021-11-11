@@ -331,12 +331,12 @@ static int action_executor_start_session_handler(
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		ret = 0;
-		goto error_unlock_list;
+		goto error_put_session;
 	}
 
 	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_dispose_session;
+		goto error_unlock_session;
 	}
 
 	cmd_ret = cmd_start_trace(session);
@@ -357,8 +357,9 @@ static int action_executor_start_session_handler(
 		break;
 	}
 
-error_dispose_session:
+error_unlock_session:
 	session_unlock(session);
+error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -423,12 +424,12 @@ static int action_executor_stop_session_handler(
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		ret = 0;
-		goto error_unlock_list;
+		goto error_put_session;
 	}
 
 	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_dispose_session;
+		goto error_unlock_session;
 	}
 
 	cmd_ret = cmd_stop_trace(session);
@@ -449,8 +450,9 @@ static int action_executor_stop_session_handler(
 		break;
 	}
 
-error_dispose_session:
+error_unlock_session:
 	session_unlock(session);
+error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -515,12 +517,12 @@ static int action_executor_rotate_session_handler(
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		ret = 0;
-		goto error_unlock_list;
+		goto error_put_session;
 	}
 
 	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_dispose_session;
+		goto error_unlock_session;
 	}
 
 	cmd_ret = cmd_rotate_session(session, NULL, false,
@@ -548,8 +550,9 @@ static int action_executor_rotate_session_handler(
 		break;
 	}
 
-error_dispose_session:
+error_unlock_session:
 	session_unlock(session);
+error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -629,12 +632,12 @@ static int action_executor_snapshot_session_handler(
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		ret = 0;
-		goto error_unlock_list;
+		goto error_put_session;
 	}
 
 	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_dispose_session;
+		goto error_unlock_session;
 	}
 
 	cmd_ret = cmd_snapshot_record(session, snapshot_output, 0);
@@ -651,8 +654,9 @@ static int action_executor_snapshot_session_handler(
 		break;
 	}
 
-error_dispose_session:
+error_unlock_session:
 	session_unlock(session);
+error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
