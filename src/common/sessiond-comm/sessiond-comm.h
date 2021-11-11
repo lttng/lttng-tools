@@ -235,6 +235,59 @@ enum lttcomm_relayd_command {
 	/* Feature branch specific commands start at 10000. */
 };
 
+static inline
+const char *lttcomm_relayd_command_str(lttcomm_relayd_command cmd)
+{
+	switch (cmd) {
+	case RELAYD_ADD_STREAM:
+		return "RELAYD_ADD_STREAM";
+	case RELAYD_CREATE_SESSION:
+		return "RELAYD_CREATE_SESSION";
+	case RELAYD_START_DATA:
+		return "RELAYD_START_DATA";
+	case RELAYD_UPDATE_SYNC_INFO:
+		return "RELAYD_UPDATE_SYNC_INFO";
+	case RELAYD_VERSION:
+		return "RELAYD_VERSION";
+	case RELAYD_SEND_METADATA:
+		return "RELAYD_SEND_METADATA";
+	case RELAYD_CLOSE_STREAM:
+		return "RELAYD_CLOSE_STREAM";
+	case RELAYD_DATA_PENDING:
+		return "RELAYD_DATA_PENDING";
+	case RELAYD_QUIESCENT_CONTROL:
+		return "RELAYD_QUIESCENT_CONTROL";
+	case RELAYD_BEGIN_DATA_PENDING:
+		return "RELAYD_BEGIN_DATA_PENDING";
+	case RELAYD_END_DATA_PENDING:
+		return "RELAYD_END_DATA_PENDING";
+	case RELAYD_ADD_INDEX:
+		return "RELAYD_ADD_INDEX";
+	case RELAYD_SEND_INDEX:
+		return "RELAYD_SEND_INDEX";
+	case RELAYD_CLOSE_INDEX:
+		return "RELAYD_CLOSE_INDEX";
+	case RELAYD_LIST_SESSIONS:
+		return "RELAYD_LIST_SESSIONS";
+	case RELAYD_STREAMS_SENT:
+		return "RELAYD_STREAMS_SENT";
+	case RELAYD_RESET_METADATA:
+		return "RELAYD_RESET_METADATA";
+	case RELAYD_ROTATE_STREAMS:
+		return "RELAYD_ROTATE_STREAMS";
+	case RELAYD_CREATE_TRACE_CHUNK:
+		return "RELAYD_CREATE_TRACE_CHUNK";
+	case RELAYD_CLOSE_TRACE_CHUNK:
+		return "RELAYD_CLOSE_TRACE_CHUNK";
+	case RELAYD_TRACE_CHUNK_EXISTS:
+		return "RELAYD_TRACE_CHUNK_EXISTS";
+	case RELAYD_GET_CONFIGURATION:
+		return "RELAYD_GET_CONFIGURATION";
+	default:
+		abort();
+	}
+}
+
 /*
  * lttcomm error code.
  */

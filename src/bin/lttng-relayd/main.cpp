@@ -3301,86 +3301,68 @@ end_no_reply:
 	return ret;
 }
 
-#define DBG_CMD(cmd_name, conn) \
-		DBG3("Processing \"%s\" command for socket %i", cmd_name, conn->sock->fd);
-
 static int relay_process_control_command(struct relay_connection *conn,
 		const struct lttcomm_relayd_hdr *header,
 		const struct lttng_buffer_view *payload)
 {
 	int ret = 0;
 
+	DBG3("Processing \"%s\" command for socket %i",
+			lttcomm_relayd_command_str((lttcomm_relayd_command) header->cmd),
+			conn->sock->fd);
 	switch (header->cmd) {
 	case RELAYD_CREATE_SESSION:
-		DBG_CMD("RELAYD_CREATE_SESSION", conn);
 		ret = relay_create_session(header, conn, payload);
 		break;
 	case RELAYD_ADD_STREAM:
-		DBG_CMD("RELAYD_ADD_STREAM", conn);
 		ret = relay_add_stream(header, conn, payload);
 		break;
 	case RELAYD_START_DATA:
-		DBG_CMD("RELAYD_START_DATA", conn);
 		ret = relay_start(header, conn, payload);
 		break;
 	case RELAYD_SEND_METADATA:
-		DBG_CMD("RELAYD_SEND_METADATA", conn);
 		ret = relay_recv_metadata(header, conn, payload);
 		break;
 	case RELAYD_VERSION:
-		DBG_CMD("RELAYD_VERSION", conn);
 		ret = relay_send_version(header, conn, payload);
 		break;
 	case RELAYD_CLOSE_STREAM:
-		DBG_CMD("RELAYD_CLOSE_STREAM", conn);
 		ret = relay_close_stream(header, conn, payload);
 		break;
 	case RELAYD_DATA_PENDING:
-		DBG_CMD("RELAYD_DATA_PENDING", conn);
 		ret = relay_data_pending(header, conn, payload);
 		break;
 	case RELAYD_QUIESCENT_CONTROL:
-		DBG_CMD("RELAYD_QUIESCENT_CONTROL", conn);
 		ret = relay_quiescent_control(header, conn, payload);
 		break;
 	case RELAYD_BEGIN_DATA_PENDING:
-		DBG_CMD("RELAYD_BEGIN_DATA_PENDING", conn);
 		ret = relay_begin_data_pending(header, conn, payload);
 		break;
 	case RELAYD_END_DATA_PENDING:
-		DBG_CMD("RELAYD_END_DATA_PENDING", conn);
 		ret = relay_end_data_pending(header, conn, payload);
 		break;
 	case RELAYD_SEND_INDEX:
-		DBG_CMD("RELAYD_SEND_INDEX", conn);
 		ret = relay_recv_index(header, conn, payload);
 		break;
 	case RELAYD_STREAMS_SENT:
-		DBG_CMD("RELAYD_STREAMS_SENT", conn);
 		ret = relay_streams_sent(header, conn, payload);
 		break;
 	case RELAYD_RESET_METADATA:
-		DBG_CMD("RELAYD_RESET_METADATA", conn);
 		ret = relay_reset_metadata(header, conn, payload);
 		break;
 	case RELAYD_ROTATE_STREAMS:
-		DBG_CMD("RELAYD_ROTATE_STREAMS", conn);
 		ret = relay_rotate_session_streams(header, conn, payload);
 		break;
 	case RELAYD_CREATE_TRACE_CHUNK:
-		DBG_CMD("RELAYD_CREATE_TRACE_CHUNK", conn);
 		ret = relay_create_trace_chunk(header, conn, payload);
 		break;
 	case RELAYD_CLOSE_TRACE_CHUNK:
-		DBG_CMD("RELAYD_CLOSE_TRACE_CHUNK", conn);
 		ret = relay_close_trace_chunk(header, conn, payload);
 		break;
 	case RELAYD_TRACE_CHUNK_EXISTS:
-		DBG_CMD("RELAYD_TRACE_CHUNK_EXISTS", conn);
 		ret = relay_trace_chunk_exists(header, conn, payload);
 		break;
 	case RELAYD_GET_CONFIGURATION:
-		DBG_CMD("RELAYD_GET_CONFIGURATION", conn);
 		ret = relay_get_configuration(header, conn, payload);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
@@ -3528,9 +3510,9 @@ static enum relay_connection_status relay_process_control_receive_header(
 	memcpy(&conn->protocol.ctrl.state.receive_payload.header,
 			&header, sizeof(header));
 
-	DBG("Done receiving control command header: fd = %i, cmd = %" PRIu32 ", cmd_version = %" PRIu32 ", payload size = %" PRIu64 " bytes",
-			conn->sock->fd, header.cmd, header.cmd_version,
-			header.data_size);
+	DBG("Done receiving control command header: fd = %i, cmd = %s, cmd_version = %" PRIu32 ", payload size = %" PRIu64 " bytes",
+			conn->sock->fd, lttcomm_relayd_command_str((enum lttcomm_relayd_command) header.cmd),
+			header.cmd_version, header.data_size);
 
 	if (header.data_size > DEFAULT_NETWORK_RELAYD_CTRL_MAX_PAYLOAD_SIZE) {
 		ERR("Command header indicates a payload (%" PRIu64 " bytes) that exceeds the maximal payload size allowed on a control connection.",
