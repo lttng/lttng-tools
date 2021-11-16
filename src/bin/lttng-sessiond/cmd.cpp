@@ -2782,7 +2782,7 @@ int cmd_stop_trace(struct ltt_session *session)
 	ksession = session->kernel_session;
 	usess = session->ust_session;
 
-	/* Session is not active. Skip everythong and inform the client. */
+	/* Session is not active. Skip everything and inform the client. */
 	if (!session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STOPPED;
 		goto error;
