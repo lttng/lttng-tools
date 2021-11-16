@@ -302,7 +302,15 @@ void viewer_stream_sync_tracefile_array_tail(struct relay_viewer_stream *vstream
 	if (seq_tail == -1ULL) {
 		seq_tail = 0;
 	}
-	vstream->index_sent_seqcount = seq_tail;
+
+	/*
+	 * Move the index sent seqcount forward if it was lagging behind
+	 * the new tail of the tracefile array. If the current
+	 * index_sent_seqcount is already further than the tracefile
+	 * array tail position, keep its current position.
+	 */
+	vstream->index_sent_seqcount = seq_tail > vstream->index_sent_seqcount ?
+			seq_tail : vstream->index_sent_seqcount;
 }
 
 /*
