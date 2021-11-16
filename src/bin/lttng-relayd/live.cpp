@@ -116,6 +116,28 @@ const char *lttng_viewer_command_str(lttng_viewer_command cmd)
 	}
 }
 
+static
+const char *lttng_viewer_next_index_return_code_str(
+		enum lttng_viewer_next_index_return_code code)
+{
+	switch (code) {
+	case LTTNG_VIEWER_INDEX_OK:
+		return "INDEX_OK";
+	case LTTNG_VIEWER_INDEX_RETRY:
+		return "INDEX_RETRY";
+	case LTTNG_VIEWER_INDEX_HUP:
+		return "INDEX_HUP";
+	case LTTNG_VIEWER_INDEX_ERR:
+		return "INDEX_ERR";
+	case LTTNG_VIEWER_INDEX_INACTIVE:
+		return "INDEX_INACTIVE";
+	case LTTNG_VIEWER_INDEX_EOF:
+		return "INDEX_EOF";
+	default:
+		abort();
+	}
+}
+
 /*
  * Cleanup the daemon
  */
@@ -1486,7 +1508,13 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		 * Last index sent and session connection or relay
 		 * stream are closed.
 		 */
-		index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+		index->status = LTTNG_VIEWER_INDEX_HUP;
+		DBG("Check index status: Connection or stream are closed, stream %" PRIu64
+			",connection-closed=%d, relay-stream-closed=%d, returning status=%s",
+			vstream->stream->stream_handle,
+			trace->session->connection_closed, rstream->closed,
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) index->status));
 		goto hup;
 	} else if (rstream->beacon_ts_end != -1ULL &&
 			(rstream->index_received_seqcount == 0 ||
@@ -1508,11 +1536,14 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		 * viewer_stream_sync_tracefile_array_tail) and skip over
 		 * packet sequence numbers.
 		 */
-		index->status = htobe32(LTTNG_VIEWER_INDEX_INACTIVE);
+		index->status = LTTNG_VIEWER_INDEX_INACTIVE;
 		index->timestamp_end = htobe64(rstream->beacon_ts_end);
 		index->stream_id = htobe64(rstream->ctf_stream_id);
-		DBG("Check index status: inactive with beacon, for stream %" PRIu64,
-				vstream->stream->stream_handle);
+		DBG("Check index status: inactive with beacon, for stream %" PRIu64
+			", returning status=%s",
+			vstream->stream->stream_handle,
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) index->status));
 		goto index_ready;
 	} else if (rstream->index_received_seqcount == 0 ||
 			(vstream->index_sent_seqcount != 0 &&
@@ -1529,9 +1560,13 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		 * viewer_stream_sync_tracefile_array_tail) and skip over
 		 * packet sequence numbers.
 		 */
-		index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
-		DBG("Check index status: retry for stream %" PRIu64,
-				vstream->stream->stream_handle);
+		index->status = LTTNG_VIEWER_INDEX_RETRY;
+		DBG("Check index status:"
+			"did not received beacon for stream %" PRIu64
+			", returning status=%s",
+			vstream->stream->stream_handle,
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) index->status));
 		goto index_ready;
 	} else if (!tracefile_array_seq_in_file(rstream->tfa,
 			vstream->current_tracefile_id,
@@ -1546,7 +1581,13 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		ret = viewer_stream_rotate(vstream);
 		if (ret == 1) {
 			/* EOF across entire stream. */
-			index->status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+			index->status = LTTNG_VIEWER_INDEX_HUP;
+			DBG("Check index status:"
+				"reached end of file for stream %" PRIu64
+				", returning status=%s",
+				vstream->stream->stream_handle,
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) index->status));
 			goto hup;
 		}
 		/*
@@ -1568,12 +1609,15 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 					rstream->tfa,
 					vstream->current_tracefile_id,
 					vstream->index_sent_seqcount)) {
-			index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
-			DBG("Check index status: retry: "
+			index->status = LTTNG_VIEWER_INDEX_RETRY;
+			DBG("Check index status:"
 				"tracefile array sequence number %" PRIu64
-				" not in file for stream %" PRIu64,
+				" not in file for stream %" PRIu64
+				", returning status=%s",
 				vstream->index_sent_seqcount,
-				vstream->stream->stream_handle);
+				vstream->stream->stream_handle,
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) index->status));
 			goto index_ready;
 		}
 		LTTNG_ASSERT(tracefile_array_seq_in_file(rstream->tfa,
@@ -1641,9 +1685,11 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(be64toh(request_index.stream_id));
 	if (!vstream) {
-		DBG("Client requested index of unknown stream id %" PRIu64,
-				(uint64_t) be64toh(request_index.stream_id));
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+		DBG("Client requested index of unknown stream id %" PRIu64", returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	}
 
@@ -1668,19 +1714,31 @@ int viewer_get_next_index(struct relay_connection *conn)
 	 * The viewer should not ask for index on metadata stream.
 	 */
 	if (rstream->is_metadata) {
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+		viewer_index.status = LTTNG_VIEWER_INDEX_HUP;
+		DBG("Client requested index of a metadata stream id %" PRIu64", returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	}
 
 	if (rstream->ongoing_rotation.is_set) {
 		/* Rotation is ongoing, try again later. */
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+		viewer_index.status = LTTNG_VIEWER_INDEX_RETRY;
+		DBG("Client requested index for stream id %" PRIu64" while a stream rotation is ongoing, returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	}
 
 	if (rstream->trace->session->ongoing_rotation) {
 		/* Rotation is ongoing, try again later. */
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+		viewer_index.status = LTTNG_VIEWER_INDEX_RETRY;
+		DBG("Client requested index for stream id %" PRIu64" while a session rotation is ongoing, returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	}
 
@@ -1696,7 +1754,12 @@ int viewer_get_next_index(struct relay_connection *conn)
 				conn->viewer_session,
 				rstream->trace_chunk);
 		if (ret) {
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+			viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+			ERR("Error copying trace chunk for stream id %" PRIu64
+				", returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 			goto send_reply;
 		}
 	}
@@ -1779,15 +1842,30 @@ int viewer_get_next_index(struct relay_connection *conn)
 	ret = try_open_index(vstream, rstream);
 	if (ret == -ENOENT) {
 	       if (rstream->closed) {
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+			viewer_index.status = LTTNG_VIEWER_INDEX_HUP;
+			DBG("Cannot open index for stream id %" PRIu64
+				"stream is closed, returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 			goto send_reply;
 	       } else {
-			viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+			viewer_index.status = LTTNG_VIEWER_INDEX_RETRY;
+			DBG("Cannot open index for stream id %" PRIu64
+				", returning status=%s",
+				(uint64_t) be64toh(request_index.stream_id),
+				lttng_viewer_next_index_return_code_str(
+					(enum lttng_viewer_next_index_return_code) viewer_index.status));
 			goto send_reply;
 	       }
 	}
 	if (ret < 0) {
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+		ERR("Error opening index for stream id %" PRIu64
+			", returning status=%s",
+			(uint64_t) be64toh(request_index.stream_id),
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	}
 
@@ -1821,7 +1899,12 @@ int viewer_get_next_index(struct relay_connection *conn)
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			if (status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE &&
 					rstream->closed) {
-				viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_HUP);
+				viewer_index.status = LTTNG_VIEWER_INDEX_HUP;
+				DBG("Cannot find trace chunk file and stream is closed for stream id %" PRIu64
+					", returning status=%s",
+					(uint64_t) be64toh(request_index.stream_id),
+					lttng_viewer_next_index_return_code_str(
+						(enum lttng_viewer_next_index_return_code) viewer_index.status));
 				goto send_reply;
 			}
 			PERROR("Failed to open trace file for viewer stream");
@@ -1832,7 +1915,12 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	ret = check_new_streams(conn);
 	if (ret < 0) {
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+		ERR("Error checking for new streams before sending new index to stream id %" PRIu64
+			", returning status=%s",
+			(uint64_t) be64toh(request_index.stream_id),
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	} else if (ret == 1) {
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
@@ -1840,11 +1928,20 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	ret = lttng_index_file_read(vstream->index_file, &packet_index);
 	if (ret) {
-		ERR("Relay error reading index file");
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
+		viewer_index.status = LTTNG_VIEWER_INDEX_ERR;
+		ERR("Relay error reading index file for stream id %" PRIu64
+			", returning status=%s",
+			(uint64_t) be64toh(request_index.stream_id),
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		goto send_reply;
 	} else {
-		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_OK);
+		viewer_index.status = LTTNG_VIEWER_INDEX_OK;
+		DBG("Read index file for stream id %" PRIu64
+			", returning status=%s",
+			(uint64_t) be64toh(request_index.stream_id),
+			lttng_viewer_next_index_return_code_str(
+				(enum lttng_viewer_next_index_return_code) viewer_index.status));
 		vstream->index_sent_seqcount++;
 	}
 
@@ -1883,6 +1980,7 @@ send_reply:
 	}
 
 	viewer_index.flags = htobe32(viewer_index.flags);
+	viewer_index.status = htobe32(viewer_index.status);
 	health_code_update();
 
 	ret = send_response(conn->sock, &viewer_index, sizeof(viewer_index));
