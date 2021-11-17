@@ -2232,7 +2232,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 
 	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj->handle;
 
-	DBG2("UST app event notifier %s created successfully: app = '%s': pid = %d), object = %p",
+	DBG2("UST app event notifier %s created successfully: app = '%s': pid = %d, object = %p",
 			event_notifier.event.name, app->name, app->pid,
 			ua_event_notifier_rule->obj);
 
@@ -3788,7 +3788,7 @@ int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger,
 	lttng_ht_add_unique_u64(app->token_to_event_notifier_rule_ht,
 			&ua_event_notifier_rule->node);
 
-	DBG2("UST app create token event rule completed: app = '%s', pid = %d), token = %" PRIu64,
+	DBG2("UST app create token event rule completed: app = '%s', pid = %d, token = %" PRIu64,
 			app->name, app->pid, lttng_trigger_get_tracer_token(trigger));
 
 	goto end;
@@ -5268,13 +5268,13 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d)",
+			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
 					app->pid, app->sock);
 		} else if (ret == -EAGAIN) {
-			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d)",
+			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
 					app->pid, app->sock);
 		} else {
-			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d)",
+			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
 					ret, app->pid, app->sock);
 		}
 	}
@@ -5626,13 +5626,13 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d)",
+			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d",
 					app->pid, app->sock);
 		} else if (ret == -EAGAIN) {
-			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d)",
+			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d",
 					app->pid, app->sock);
 		} else {
-			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d)",
+			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d",
 					ret, app->pid, app->sock);
 		}
 	}
@@ -6120,7 +6120,7 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
  */
 void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 {
-	DBG2("UST application global event notifier rules update: app = '%s', pid = %d)",
+	DBG2("UST application global event notifier rules update: app = '%s', pid = %d",
 			app->name, app->pid);
 
 	if (!app->compatible || !ust_app_supports_notifiers(app)) {
@@ -6128,7 +6128,7 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 	}
 
 	if (app->event_notifier_group.object == NULL) {
-		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s' pid = %d)",
+		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s', pid = %d",
 				app->name, app->pid);
 		return;
 	}
@@ -6728,7 +6728,7 @@ int ust_app_recv_notify(int sock)
 				WARN("UST app recv channel failed. Communication time out: sock = %d",
 						sock);
 			} else {
-				ERR("UST app recv channel failed with ret %d: sock = %d)",
+				ERR("UST app recv channel failed with ret %d: sock = %d",
 						ret, sock);
 			}
 			goto error;
