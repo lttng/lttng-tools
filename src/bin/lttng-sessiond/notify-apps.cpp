@@ -212,7 +212,7 @@ bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 	struct thread_notifiers *notifiers;
 	struct lttng_pipe *quit_pipe;
 
-	notifiers = (thread_notifiers *) zmalloc(sizeof(*notifiers));
+	notifiers = zmalloc<thread_notifiers>();
 	if (!notifiers) {
 		goto error_alloc;
 	}

@@ -306,7 +306,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	}
 
 	/* Allocate URI array */
-	tmp_uris = (lttng_uri *) zmalloc(sizeof(struct lttng_uri) * size);
+	tmp_uris = calloc<lttng_uri>(size);
 	if (tmp_uris == NULL) {
 		PERROR("zmalloc uri");
 		goto error;
@@ -634,7 +634,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		goto error;
 	}
 
-	tmp_uris = (lttng_uri *) zmalloc(sizeof(struct lttng_uri) * uri_count);
+	tmp_uris = calloc<lttng_uri>(uri_count);
 	if (tmp_uris == NULL) {
 		PERROR("zmalloc uris");
 		goto error;

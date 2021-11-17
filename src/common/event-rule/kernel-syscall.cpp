@@ -356,7 +356,7 @@ struct lttng_event_rule *lttng_event_rule_kernel_syscall_create(
 		goto end;
 	}
 
-	syscall_rule = (lttng_event_rule_kernel_syscall *) zmalloc(sizeof(struct lttng_event_rule_kernel_syscall));
+	syscall_rule = zmalloc<lttng_event_rule_kernel_syscall>();
 	if (!syscall_rule) {
 		goto end;
 	}

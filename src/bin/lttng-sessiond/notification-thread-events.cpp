@@ -569,7 +569,7 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
 
 	LTTNG_ASSERT(name);
 
-	session_info = (struct session_info *) zmalloc(sizeof(*session_info));
+	session_info = zmalloc<struct session_info>();
 	if (!session_info) {
 		goto end;
 	}
@@ -623,7 +623,7 @@ struct channel_info *channel_info_create(const char *channel_name,
 		struct channel_key *channel_key, uint64_t channel_capacity,
 		struct session_info *session_info)
 {
-	struct channel_info *channel_info = (struct channel_info *) zmalloc(sizeof(*channel_info));
+	struct channel_info *channel_info = zmalloc<struct channel_info>();
 
 	if (!channel_info) {
 		goto end;
@@ -723,7 +723,7 @@ struct notification_client_list *notification_client_list_create(
 	struct cds_lfht_iter iter;
 	struct notification_client_list *client_list;
 
-	client_list = (notification_client_list *) zmalloc(sizeof(*client_list));
+	client_list = zmalloc<notification_client_list>();
 	if (!client_list) {
 		PERROR("Failed to allocate notification client list");
 		goto end;
@@ -755,7 +755,7 @@ struct notification_client_list *notification_client_list_create(
 			continue;
 		}
 
-		client_list_element = (notification_client_list_element *) zmalloc(sizeof(*client_list_element));
+		client_list_element = zmalloc<notification_client_list_element>();
 		if (!client_list_element) {
 			goto error_put_client_list;
 		}
@@ -1123,12 +1123,12 @@ int notification_thread_client_subscribe(struct notification_client *client,
 		}
 	}
 
-	condition_list_element = (lttng_condition_list_element *) zmalloc(sizeof(*condition_list_element));
+	condition_list_element = zmalloc<lttng_condition_list_element>();
 	if (!condition_list_element) {
 		ret = -1;
 		goto error;
 	}
-	client_list_element = (notification_client_list_element *) zmalloc(sizeof(*client_list_element));
+	client_list_element = zmalloc<notification_client_list_element>();
 	if (!client_list_element) {
 		ret = -1;
 		goto error;
@@ -1506,7 +1506,7 @@ struct lttng_session_trigger_list *lttng_session_trigger_list_create(
 {
 	struct lttng_session_trigger_list *list;
 
-	list = (lttng_session_trigger_list *) zmalloc(sizeof(*list));
+	list = zmalloc<lttng_session_trigger_list>();
 	if (!list) {
 		goto end;
 	}
@@ -1557,7 +1557,7 @@ int lttng_session_trigger_list_add(struct lttng_session_trigger_list *list,
 {
 	int ret = 0;
 	struct lttng_trigger_list_element *new_element =
-			(lttng_trigger_list_element *) zmalloc(sizeof(*new_element));
+			zmalloc<lttng_trigger_list_element>();
 
 	if (!new_element) {
 		ret = -1;
@@ -1755,7 +1755,7 @@ int handle_notification_thread_command_add_channel(
 			continue;
 		}
 
-		new_element = (lttng_trigger_list_element *) zmalloc(sizeof(*new_element));
+		new_element = zmalloc<lttng_trigger_list_element>();
 		if (!new_element) {
 			rcu_read_unlock();
 			goto error;
@@ -1769,7 +1769,7 @@ int handle_notification_thread_command_add_channel(
 
 	DBG("Found %i triggers that apply to newly added channel",
 			trigger_count);
-	channel_trigger_list = (lttng_channel_trigger_list *) zmalloc(sizeof(*channel_trigger_list));
+	channel_trigger_list = zmalloc<lttng_channel_trigger_list>();
 	if (!channel_trigger_list) {
 		goto error;
 	}
@@ -2032,7 +2032,7 @@ int handle_notification_thread_command_add_tracer_event_source(
 	enum lttng_error_code cmd_result = LTTNG_OK;
 	struct notification_event_tracer_event_source_element *element = NULL;
 
-	element = (notification_event_tracer_event_source_element *) zmalloc(sizeof(*element));
+	element = zmalloc<notification_event_tracer_event_source_element>();
 	if (!element) {
 		cmd_result = LTTNG_ERR_NOMEM;
 		ret = -1;
@@ -2501,7 +2501,7 @@ int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 				struct lttng_channel_trigger_list,
 				channel_triggers_ht_node);
 
-		trigger_list_element = (lttng_trigger_list_element *) zmalloc(sizeof(*trigger_list_element));
+		trigger_list_element = zmalloc<lttng_trigger_list_element>();
 		if (!trigger_list_element) {
 			ret = -1;
 			goto end;
@@ -2622,7 +2622,7 @@ enum lttng_error_code setup_tracer_notifier(
 	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
 	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element = NULL;
 
-	trigger_tokens_ht_element = (notification_trigger_tokens_ht_element *) zmalloc(sizeof(*trigger_tokens_ht_element));
+	trigger_tokens_ht_element = zmalloc<notification_trigger_tokens_ht_element>();
 	if (!trigger_tokens_ht_element) {
 		ret = LTTNG_ERR_NOMEM;
 		goto end;
@@ -2745,7 +2745,7 @@ int handle_notification_thread_command_register_trigger(
 		goto error;
 	}
 
-	trigger_ht_element = (lttng_trigger_ht_element *) zmalloc(sizeof(*trigger_ht_element));
+	trigger_ht_element = zmalloc<lttng_trigger_ht_element>();
 	if (!trigger_ht_element) {
 		ret = -1;
 		goto error;
@@ -3336,7 +3336,7 @@ int handle_notification_thread_client_connect(
 
 	DBG("Handling new notification channel client connection");
 
-	client = (notification_client *) zmalloc(sizeof(*client));
+	client = zmalloc<notification_client>();
 	if (!client) {
 		/* Fatal error. */
 		ret = -1;
@@ -4586,7 +4586,7 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 		goto end;
 	}
 
-	capture_buffer = (char *) zmalloc(capture_buffer_size);
+	capture_buffer = calloc<char>(capture_buffer_size);
 	if (!capture_buffer) {
 		ERR("Failed to allocate capture buffer");
 		goto end;
@@ -4889,7 +4889,7 @@ int handle_notification_thread_channel_sample(
 		 */
 		struct channel_state_sample *stored_sample;
 
-		stored_sample = (channel_state_sample *) zmalloc(sizeof(*stored_sample));
+		stored_sample = zmalloc<channel_state_sample>();
 		if (!stored_sample) {
 			ret = -1;
 			goto end_unlock;

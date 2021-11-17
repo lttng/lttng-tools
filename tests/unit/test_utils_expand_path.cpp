@@ -132,14 +132,14 @@ static int prepare_valid_results(void)
 	}
 
 	/* allocate memory for the expected results */
-	valid_tests_expected_results = (char **) zmalloc(sizeof(char *) * num_valid_tests);
+	valid_tests_expected_results = calloc<char *>(num_valid_tests);
 	if (!valid_tests_expected_results) {
 		PRINT_ERR("out of memory");
 		ret = -1;
 		goto end;
 	}
 	for (i = 0; i < num_valid_tests; i++) {
-		valid_tests_expected_results[i] = (char *) malloc(PATH_MAX);
+		valid_tests_expected_results[i] = calloc<char>(PATH_MAX);
 		if (valid_tests_expected_results[i] == NULL) {
 			PRINT_ERR("malloc expected results");
 			ret = -1;

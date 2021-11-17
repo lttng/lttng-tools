@@ -61,7 +61,7 @@ char *lttng_strndup(const char *s, size_t n)
 		navail = n + 1;
 	}
 
-	ret = (char *) malloc(navail);
+	ret = malloc<char>(navail);
 	if (!ret) {
 		goto end;
 	}

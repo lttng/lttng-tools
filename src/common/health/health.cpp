@@ -67,11 +67,11 @@ struct health_app *health_app_create(int nr_types)
 {
 	struct health_app *ha;
 
-	ha = (health_app *) zmalloc(sizeof(*ha));
+	ha = zmalloc<health_app>();
 	if (!ha) {
 		return NULL;
 	}
-	ha->flags = (health_flags *) zmalloc(sizeof(*ha->flags) * nr_types);
+	ha->flags = calloc<health_flags>(nr_types);
 	if (!ha->flags) {
 		goto error_flags;
 	}

@@ -251,9 +251,8 @@ end:
 struct lttng_bytecode *lttng_bytecode_copy(
 		const struct lttng_bytecode *orig_f)
 {
-	struct lttng_bytecode *bytecode = NULL;
-
-	bytecode = (lttng_bytecode *) zmalloc(sizeof(*bytecode) + orig_f->len);
+	lttng_bytecode *bytecode
+		= zmalloc<lttng_bytecode>(sizeof(*bytecode) + orig_f->len);
 	if (!bytecode) {
 		goto error;
 	}

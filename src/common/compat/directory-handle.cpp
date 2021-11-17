@@ -147,7 +147,7 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		int dirfd)
 {
 	int ret;
-	struct lttng_directory_handle *handle = (lttng_directory_handle *) zmalloc(sizeof(*handle));
+	struct lttng_directory_handle *handle = zmalloc<lttng_directory_handle>();
 	struct stat stat_buf;
 
 	if (!handle) {
@@ -405,7 +405,7 @@ end:
 static
 struct lttng_directory_handle *_lttng_directory_handle_create(char *path)
 {
-	struct lttng_directory_handle *handle = zmalloc(sizeof(*handle));
+	struct lttng_directory_handle *handle = zmalloc<lttng_directory_handle>();
 
 	if (!handle) {
 		goto end;
@@ -525,7 +525,7 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_handle(
 				handle_path_len, LTTNG_PATH_MAX);
 		goto end;
 	}
-	new_path = zmalloc(handle_path_len);
+	new_path = zmalloc<char>(handle_path_len);
 	if (!new_path) {
 		PERROR("Failed to initialize directory handle");
 		goto end;

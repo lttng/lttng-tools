@@ -17,11 +17,11 @@ struct tracefile_array *tracefile_array_create(size_t count)
 	struct tracefile_array *tfa = NULL;
 	int i;
 
-	tfa = (tracefile_array *) zmalloc(sizeof(*tfa));
+	tfa = zmalloc<tracefile_array>();
 	if (!tfa) {
 		goto error;
 	}
-	tfa->tf = (tracefile *) zmalloc(sizeof(*tfa->tf) * count);
+	tfa->tf = calloc<tracefile>(count);
 	if (!tfa->tf) {
 		goto error;
 	}

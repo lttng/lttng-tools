@@ -193,7 +193,7 @@ static void *thread_consumer_management(void *data)
 	consumer_data->metadata_sock.fd_ptr = &consumer_data->metadata_fd;
 
 	/* Create metadata socket lock. */
-	consumer_data->metadata_sock.lock = (pthread_mutex_t *) zmalloc(sizeof(pthread_mutex_t));
+	consumer_data->metadata_sock.lock = zmalloc<pthread_mutex_t>();
 	if (consumer_data->metadata_sock.lock == NULL) {
 		PERROR("zmalloc pthread mutex");
 		mark_thread_intialization_as_failed(notifiers);
@@ -437,7 +437,7 @@ bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 	struct thread_notifiers *notifiers = NULL;
 	struct lttng_thread *thread;
 
-	notifiers = (thread_notifiers *) zmalloc(sizeof(*notifiers));
+	notifiers = zmalloc<thread_notifiers>();
 	if (!notifiers) {
 		goto error_alloc;
 	}

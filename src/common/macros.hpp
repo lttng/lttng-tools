@@ -9,10 +9,13 @@
 #ifndef _MACROS_H
 #define _MACROS_H
 
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
 #include <common/compat/string.hpp>
+
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <type_traits>
 
 /*
  * Takes a pointer x and transform it so we can use it to access members
@@ -36,14 +39,110 @@
  */
 #define LTTNG_REF(x) ((typeof(*x) *)(x))
 
+#ifdef NDEBUG
+/*
+* Force usage of the assertion condition to prevent unused variable warnings
+* when `assert()` are disabled by the `NDEBUG` definition.
+*/
+# define LTTNG_ASSERT(_cond) ((void) sizeof((void) (_cond), 0))
+#else
+# include <assert.h>
+# define LTTNG_ASSERT(_cond) assert(_cond)
+#endif
+
 /*
  * Memory allocation zeroed
  */
+
 static inline
-void *zmalloc(size_t len)
+void *zmalloc_internal(size_t size)
 {
-	return calloc(1, len);
+	return calloc(1, size);
 }
+
+template <typename T>
+struct can_malloc
+{
+	static constexpr bool value = std::is_trivially_constructible<T>::value;
+};
+
+/*
+ * Malloc and zero-initialize an object of type T, asserting that T can be
+ * safely malloc-ed (is trivially constructible).
+ */
+template<typename T>
+T *zmalloc()
+{
+	static_assert (can_malloc<T>::value, "type can be malloc'ed");
+	return (T *) zmalloc_internal(sizeof(T));
+}
+
+/*
+ * Malloc and zero-initialize a buffer of size `size`, asserting that type T
+ * can be safely malloc-ed (is trivially constructible).
+ */
+template<typename T>
+T *zmalloc(size_t size)
+{
+	static_assert (can_malloc<T>::value, "type can be malloc'ed");
+	LTTNG_ASSERT(size >= sizeof(T));
+	return (T *) zmalloc_internal(size);
+}
+
+/*
+ * Malloc and zero-initialize an array of `nmemb` elements of type T,
+ * asserting that T can be safely malloc-ed (is trivially constructible).
+ */
+template<typename T>
+T *calloc(size_t nmemb)
+{
+	static_assert (can_malloc<T>::value, "type can be malloc'ed");
+	return (T *) zmalloc_internal(nmemb * sizeof(T));
+}
+
+/*
+ * Malloc an object of type T, asserting that T can be safely malloc-ed (is
+ * trivially constructible).
+ */
+template<typename T>
+T *malloc()
+{
+	static_assert (can_malloc<T>::value, "type can be malloc'ed");
+	return (T *) malloc(sizeof(T));
+}
+
+/*
+ * Malloc a buffer of size `size`, asserting that type T can be safely
+ * malloc-ed (is trivially constructible).
+ */
+template<typename T>
+T *malloc(size_t size)
+{
+	static_assert (can_malloc<T>::value, "type can be malloc'ed");
+	return (T *) malloc(size);
+}
+
+/*
+ * Prevent using `free` on types that are non-POD.
+ *
+ * Declare a delete prototype of free if the parameter type is not safe to free
+ * (non-POD).
+ *
+ * If the parameter is a pointer to void, we can't check if what is pointed
+ * to is safe to free or not, as we don't know what is pointed to.  Ideally,
+ * all calls to free would be with a typed pointer, but there are too many
+ * instances of passing a pointer to void to enforce that right now.  So allow
+ * pointers to void, these will not be checked.
+ */
+
+template<typename T>
+struct is_pod_or_void
+{
+	static constexpr bool value = std::is_pod<T>::value || std::is_void<T>::value;
+};
+
+template<typename T, typename = typename std::enable_if<!is_pod_or_void<T>::value>::type>
+void free(T *p) = delete;
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
@@ -129,16 +228,5 @@ int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 	strcpy(dst, src);
 	return 0;
 }
-
-#ifdef NDEBUG
-/*
-* Force usage of the assertion condition to prevent unused variable warnings
-* when `assert()` are disabled by the `NDEBUG` definition.
-*/
-# define LTTNG_ASSERT(_cond) ((void) sizeof((void) (_cond), 0))
-#else
-# include <assert.h>
-# define LTTNG_ASSERT(_cond) assert(_cond)
-#endif
 
 #endif /* _MACROS_H */

@@ -231,7 +231,7 @@ struct lttng_health *lttng_health_create(enum health_component hc,
 	struct lttng_health *lh;
 	int i;
 
-	lh = (lttng_health *) zmalloc(sizeof(*lh) + sizeof(lh->thread[0]) * nr_threads);
+	lh = zmalloc<lttng_health>(sizeof(*lh) + sizeof(lh->thread[0]) * nr_threads);
 	if (!lh) {
 		return NULL;
 	}

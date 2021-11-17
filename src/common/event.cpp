@@ -41,7 +41,7 @@ struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 	struct lttng_event *new_event;
 	struct lttng_event_extended *new_event_extended;
 
-	new_event = (lttng_event *) zmalloc(sizeof(*event));
+	new_event = zmalloc<lttng_event>();
 	if (!new_event) {
 		PERROR("Error allocating event structure");
 		goto end;
@@ -54,7 +54,7 @@ struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 	 * We need to create a new extended since the previous pointer is now
 	 * invalid.
 	 */
-	new_event_extended = (lttng_event_extended *) zmalloc(sizeof(*new_event_extended));
+	new_event_extended = zmalloc<lttng_event_extended>();
 	if (!new_event_extended) {
 		PERROR("Error allocating event extended structure");
 		goto error;
@@ -157,8 +157,7 @@ static ssize_t lttng_event_probe_attr_create_from_payload(
 	comm = (typeof(comm)) comm_view.buffer.data;
 	offset += sizeof(*comm);
 
-	local_attr = (struct lttng_event_probe_attr *) zmalloc(
-			sizeof(*local_attr));
+	local_attr = zmalloc<lttng_event_probe_attr>();
 	if (local_attr == NULL) {
 		ret = -1;
 		goto end;
@@ -222,8 +221,7 @@ static ssize_t lttng_event_function_attr_create_from_payload(
 	comm = (typeof(comm)) view->buffer.data;
 	offset += sizeof(*comm);
 
-	local_attr = (struct lttng_event_function_attr *) zmalloc(
-			sizeof(*local_attr));
+	local_attr = zmalloc<lttng_event_function_attr>();
 	if (local_attr == NULL) {
 		ret = -1;
 		goto end;
@@ -272,12 +270,12 @@ static ssize_t lttng_event_exclusions_create_from_payload(
 		struct lttng_event_exclusion **exclusions)
 {
 	ssize_t ret, offset = 0;
-	size_t size = (count * LTTNG_SYMBOL_NAME_LEN);
+	const size_t size = (count * LTTNG_SYMBOL_NAME_LEN);
 	uint32_t i;
 	const struct lttng_event_exclusion_comm *comm;
 	struct lttng_event_exclusion *local_exclusions;
 
-	local_exclusions = (struct lttng_event_exclusion *) zmalloc(
+	local_exclusions = zmalloc<lttng_event_exclusion>(
 			sizeof(struct lttng_event_exclusion) + size);
 	if (!local_exclusions) {
 		ret = -1;
@@ -510,8 +508,7 @@ deserialize_filter_expression:
 			goto end;
 		}
 
-		local_bytecode = (struct lttng_bytecode *) zmalloc(
-				event_comm->bytecode_len);
+		local_bytecode = zmalloc<lttng_bytecode>(event_comm->bytecode_len);
 		if (!local_bytecode) {
 			ret = -1;
 			goto end;
@@ -1078,8 +1075,7 @@ ssize_t lttng_event_context_create_from_payload(
 	comm = (typeof(comm)) comm_view.data;
 	offset += sizeof(*comm);
 
-	local_context = (struct lttng_event_context *)
-			zmalloc(sizeof(*local_context));
+	local_context = zmalloc<lttng_event_context>();
 	if (!local_context) {
 		ret = -1;
 		goto end;
@@ -1331,8 +1327,7 @@ ssize_t lttng_event_field_create_from_payload(
 		offset += sizeof(*comm);
 	}
 
-	local_event_field = (struct lttng_event_field *)
-			zmalloc(sizeof(*local_event_field));
+	local_event_field = zmalloc<lttng_event_field>();
 	if (!local_event_field) {
 		ret = -1;
 		goto end;
@@ -1713,8 +1708,7 @@ static enum lttng_error_code event_list_create_from_payload(
 		ssize_t event_size;
 		struct lttng_payload_view event_view =
 				lttng_payload_view_from_view(view, offset, -1);
-		struct event_list_element *element =
-				(struct event_list_element *) zmalloc(sizeof(*element));
+		struct event_list_element *element = zmalloc<event_list_element>();
 
 		if (!element) {
 			ret_code = LTTNG_ERR_NOMEM;
@@ -1870,7 +1864,7 @@ static enum lttng_error_code event_field_list_create_from_payload(
 	assert(view);
 	assert(event_field_list);
 
-	list = (struct lttng_dynamic_pointer_array *) zmalloc(sizeof(*list));
+	list = zmalloc<lttng_dynamic_pointer_array>();
 	if (!list) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;

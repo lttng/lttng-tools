@@ -518,7 +518,7 @@ struct lttng_condition *lttng_condition_event_rule_matches_create(
 		goto end;
 	}
 
-	condition = (lttng_condition_event_rule_matches *) zmalloc(sizeof(struct lttng_condition_event_rule_matches));
+	condition = zmalloc<lttng_condition_event_rule_matches>();
 	if (!condition) {
 		return NULL;
 	}
@@ -889,7 +889,7 @@ lttng_condition_event_rule_matches_append_capture_descriptor(
 		goto end;
 	}
 
-	descriptor = (lttng_capture_descriptor *) malloc(sizeof(*descriptor));
+	descriptor = malloc<lttng_capture_descriptor>();
 	if (descriptor == NULL) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
 		goto end;
@@ -1385,7 +1385,7 @@ struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
 	struct lttng_evaluation_event_rule_matches *hit;
 	struct lttng_evaluation *evaluation = NULL;
 
-	hit = (lttng_evaluation_event_rule_matches *) zmalloc(sizeof(struct lttng_evaluation_event_rule_matches));
+	hit = zmalloc<lttng_evaluation_event_rule_matches>();
 	if (!hit) {
 		goto error;
 	}

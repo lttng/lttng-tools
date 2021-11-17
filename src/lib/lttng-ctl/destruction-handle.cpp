@@ -69,7 +69,7 @@ struct lttng_destruction_handle *lttng_destruction_handle_create(
 		int sessiond_socket)
 {
 	int ret;
-	struct lttng_destruction_handle *handle = (lttng_destruction_handle *) zmalloc(sizeof(*handle));
+	struct lttng_destruction_handle *handle = zmalloc<lttng_destruction_handle>();
 
 	if (!handle) {
 		goto end;

@@ -148,7 +148,7 @@ char *strutils_unescape_string(const char *input, char only_char)
 	const char *i;
 
 	LTTNG_ASSERT(input);
-	output = (char *) zmalloc(strlen(input) + 1);
+	output = calloc<char>(strlen(input) + 1);
 	if (!output) {
 		goto end;
 	}
@@ -299,7 +299,7 @@ int strutils_split(const char *input,
 	for (at = 0, s = input; at < number_of_substrings; at++) {
 		const char *ss;
 		char *d;
-		char *substring = (char *) zmalloc(longest_substring_len + 1);
+		char *substring = calloc<char>(longest_substring_len + 1);
 
 		if (!substring) {
 			goto error;
@@ -385,7 +385,7 @@ int strutils_append_str(char **s, const char *append)
 	size_t oldlen = (old == NULL) ? 0 : strlen(old);
 	size_t appendlen = strlen(append);
 
-	new_str = (char *) zmalloc(oldlen + appendlen + 1);
+	new_str = zmalloc<char>(oldlen + appendlen + 1);
 	if (!new_str) {
 		return -ENOMEM;
 	}
@@ -415,7 +415,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 	}
 
 	/* Allocate space for old string + new string + \0. */
-	new_str = (char *) zmalloc(oldlen + ret + 1);
+	new_str = zmalloc<char>(oldlen + ret + 1);
 	if (!new_str) {
 		ret = -ENOMEM;
 		goto end;

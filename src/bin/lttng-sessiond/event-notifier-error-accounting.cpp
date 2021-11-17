@@ -387,7 +387,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 		goto error;
 	}
 
-	entry = (ust_error_accounting_entry *) zmalloc(sizeof(struct ust_error_accounting_entry));
+	entry = zmalloc<ust_error_accounting_entry>();
 	if (!entry) {
 		PERROR("Failed to allocate event notifier error acounting entry")
 		goto error;
@@ -397,7 +397,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 	entry->uid = app->uid;
 	entry->nr_counter_cpu_fds = lttng_ust_ctl_get_nr_cpu_per_counter();
 
-	cpu_counter_fds = (int *) zmalloc(entry->nr_counter_cpu_fds * sizeof(*cpu_counter_fds));
+	cpu_counter_fds = calloc<int>(entry->nr_counter_cpu_fds);
 	if (!cpu_counter_fds) {
 		PERROR("Failed to allocate event notifier error counter file descriptors array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
@@ -410,7 +410,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 		cpu_counter_fds[i] = -1;
 	}
 
-	cpu_counters = (lttng_ust_abi_object_data **) zmalloc(entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
+	cpu_counters = calloc<lttng_ust_abi_object_data *>(entry->nr_counter_cpu_fds);
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
@@ -653,7 +653,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 		goto error_send_counter_data;
 	}
 
-	cpu_counters = (lttng_ust_abi_object_data **) zmalloc(entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
+	cpu_counters = calloc<lttng_ust_abi_object_data *>(entry->nr_counter_cpu_fds);
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
@@ -1050,7 +1050,7 @@ enum event_notifier_error_accounting_status create_error_counter_index_for_token
 		goto end;
 	}
 
-	index_entry = (index_ht_entry *) zmalloc(sizeof(*index_entry));
+	index_entry = zmalloc<index_ht_entry>();
 	if (index_entry == NULL) {
 		PERROR("Failed to allocate event notifier error counter hash table entry");
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;

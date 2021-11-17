@@ -70,7 +70,7 @@ char *utils_partial_realpath(const char *path)
 			goto error;
 		}
 
-		try_path_buf = (char *) zmalloc(LTTNG_PATH_MAX);
+		try_path_buf = zmalloc<char>(LTTNG_PATH_MAX);
 		if (!try_path_buf) {
 			PERROR("zmalloc");
 			goto error;
@@ -108,7 +108,7 @@ char *utils_partial_realpath(const char *path)
 	}
 
 	/* Allocate memory for the resolved path. */
-	resolved_path = (char *) zmalloc(LTTNG_PATH_MAX);
+	resolved_path = zmalloc<char>(LTTNG_PATH_MAX);
 	if (resolved_path == NULL) {
 		PERROR("zmalloc resolved path");
 		goto error;
@@ -288,7 +288,7 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 	}
 
 	/* Allocate memory for the absolute_path */
-	absolute_path = (char *) zmalloc(LTTNG_PATH_MAX);
+	absolute_path = zmalloc<char>(LTTNG_PATH_MAX);
 	if (absolute_path == NULL) {
 		PERROR("zmalloc expand path");
 		goto error;

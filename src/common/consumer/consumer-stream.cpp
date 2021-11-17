@@ -654,7 +654,7 @@ struct lttng_consumer_stream *consumer_stream_create(
 	int ret;
 	struct lttng_consumer_stream *stream;
 
-	stream = (lttng_consumer_stream *) zmalloc(sizeof(*stream));
+	stream = zmalloc<lttng_consumer_stream>();
 	if (stream == NULL) {
 		PERROR("malloc struct lttng_consumer_stream");
 		ret = -ENOMEM;

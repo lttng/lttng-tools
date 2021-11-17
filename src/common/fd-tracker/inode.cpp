@@ -250,7 +250,7 @@ static void lttng_inode_get(struct lttng_inode *inode)
 struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 		const char *path)
 {
-	struct lttng_unlinked_file_pool *pool = (lttng_unlinked_file_pool *) zmalloc(sizeof(*pool));
+	struct lttng_unlinked_file_pool *pool = zmalloc<lttng_unlinked_file_pool>();
 
 	if (!pool) {
 		goto error;
@@ -434,7 +434,7 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	reference_acquired = lttng_directory_handle_get(directory_handle);
 	LTTNG_ASSERT(reference_acquired);
 
-	inode = (lttng_inode *) zmalloc(sizeof(*inode));
+	inode = zmalloc<lttng_inode>();
 	if (!inode) {
 		goto end;
 	}
@@ -455,7 +455,7 @@ end:
 
 struct lttng_inode_registry *lttng_inode_registry_create(void)
 {
-	struct lttng_inode_registry *registry = (lttng_inode_registry *) zmalloc(sizeof(*registry));
+	struct lttng_inode_registry *registry = zmalloc<lttng_inode_registry>();
 
 	if (!registry) {
 		goto end;

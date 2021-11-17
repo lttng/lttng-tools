@@ -144,7 +144,7 @@ int config_parse_value(const char *value)
 		goto end;
 	}
 
-	lower_str = (char *) zmalloc(len + 1);
+	lower_str = zmalloc<char>(len + 1);
 	if (!lower_str) {
 		PERROR("zmalloc");
 		ret = -errno;

@@ -662,7 +662,7 @@ static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(
 		goto error;
 	}
 
-	obj = (consumer_relayd_sock_pair *) zmalloc(sizeof(struct consumer_relayd_sock_pair));
+	obj = zmalloc<consumer_relayd_sock_pair>();
 	if (obj == NULL) {
 		PERROR("zmalloc relayd sock");
 		goto error;
@@ -1029,7 +1029,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		}
 	}
 
-	channel = (lttng_consumer_channel *) zmalloc(sizeof(*channel));
+	channel = zmalloc<lttng_consumer_channel>();
 	if (channel == NULL) {
 		PERROR("malloc struct lttng_consumer_channel");
 		goto end;
@@ -1425,7 +1425,7 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 			the_consumer_data.type == type);
 	the_consumer_data.type = type;
 
-	ctx = (lttng_consumer_local_data *) zmalloc(sizeof(struct lttng_consumer_local_data));
+	ctx = zmalloc<lttng_consumer_local_data>();
 	if (ctx == NULL) {
 		PERROR("allocating context");
 		goto error;
@@ -2561,7 +2561,7 @@ void *consumer_thread_data_poll(void *data)
 
 	health_code_update();
 
-	local_stream = (lttng_consumer_stream **) zmalloc(sizeof(struct lttng_consumer_stream *));
+	local_stream = zmalloc<lttng_consumer_stream *>();
 	if (local_stream == NULL) {
 		PERROR("local_stream malloc");
 		goto end;
@@ -2586,18 +2586,14 @@ void *consumer_thread_data_poll(void *data)
 			local_stream = NULL;
 
 			/* Allocate for all fds */
-			pollfd = (struct pollfd *) zmalloc((the_consumer_data.stream_count +
-							 nb_pipes_fd) *
-					sizeof(struct pollfd));
+			pollfd = calloc<struct pollfd>(the_consumer_data.stream_count + nb_pipes_fd);
 			if (pollfd == NULL) {
 				PERROR("pollfd malloc");
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 
-			local_stream = (lttng_consumer_stream **) zmalloc((the_consumer_data.stream_count +
-							       nb_pipes_fd) *
-					sizeof(struct lttng_consumer_stream *));
+			local_stream = calloc<lttng_consumer_stream *>(the_consumer_data.stream_count + nb_pipes_fd);
 			if (local_stream == NULL) {
 				PERROR("local_stream malloc");
 				pthread_mutex_unlock(&the_consumer_data.lock);

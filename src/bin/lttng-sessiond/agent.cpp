@@ -348,7 +348,7 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 		goto error;
 	}
 
-	reply = (lttcomm_agent_list_reply *) zmalloc(data_size);
+	reply = zmalloc<lttcomm_agent_list_reply>(data_size);
 	if (!reply) {
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -361,7 +361,7 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	}
 
 	nb_event = be32toh(reply->nb_event);
-	tmp_events = (lttng_event *) zmalloc(sizeof(*tmp_events) * nb_event);
+	tmp_events = calloc<lttng_event>(nb_event);
 	if (!tmp_events) {
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -441,7 +441,7 @@ static int enable_event(const struct agent_app *app, struct agent_event *event)
 		goto error_io;
 	}
 
-	bytes_to_send = (char *) zmalloc(data_size);
+	bytes_to_send = calloc<char>(data_size);
 	if (!bytes_to_send) {
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -726,7 +726,7 @@ struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
 	}
 
 	LTTNG_ASSERT(ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
-	agent_ctx = (agent_app_ctx *) zmalloc(sizeof(*ctx));
+	agent_ctx = zmalloc<agent_app_ctx>();
 	if (!agent_ctx) {
 		goto end;
 	}
@@ -898,7 +898,7 @@ int agent_list_events(struct lttng_event **events,
 	DBG2("Agent listing events for domain %d", domain);
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
-	tmp_events = (lttng_event *) zmalloc(nbmem * sizeof(*tmp_events));
+	tmp_events = calloc<lttng_event>(nbmem);
 	if (!tmp_events) {
 		PERROR("zmalloc agent list events");
 		ret = -ENOMEM;
@@ -974,7 +974,7 @@ struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
 
 	LTTNG_ASSERT(sock);
 
-	app = (agent_app *) zmalloc(sizeof(*app));
+	app = zmalloc<agent_app>();
 	if (!app) {
 		PERROR("Failed to allocate agent application instance");
 		goto error;
@@ -1117,7 +1117,7 @@ struct agent *agent_create(enum lttng_domain_type domain)
 	int ret;
 	struct agent *agt;
 
-	agt = (agent *) zmalloc(sizeof(struct agent));
+	agt = zmalloc<agent>();
 	if (!agt) {
 		goto error;
 	}
@@ -1156,7 +1156,7 @@ struct agent_event *agent_create_event(const char *name,
 		goto error;
 	}
 
-	event = (agent_event *) zmalloc(sizeof(*event));
+	event = zmalloc<agent_event>();
 	if (!event) {
 		goto error;
 	}

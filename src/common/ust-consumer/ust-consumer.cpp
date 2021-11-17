@@ -407,7 +407,7 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 		nr_stream_fds = 1;
 	else
 		nr_stream_fds = lttng_ust_ctl_get_nr_stream_per_channel();
-	stream_fds = (int *) zmalloc(nr_stream_fds * sizeof(*stream_fds));
+	stream_fds = calloc<int>(nr_stream_fds);
 	if (!stream_fds) {
 		ret = -1;
 		goto error_alloc;
@@ -1286,7 +1286,7 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 
 	DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
 
-	metadata_str = (char *) zmalloc(len * sizeof(char));
+	metadata_str = calloc<char>(len);
 	if (!metadata_str) {
 		PERROR("zmalloc metadata string");
 		ret_code = LTTCOMM_CONSUMERD_ENOMEM;

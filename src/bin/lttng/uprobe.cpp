@@ -58,7 +58,7 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 	 * This char array is used to concatenate path to binary to look for
 	 * the binary.
 	 */
-	tentative_binary_path = (char *) zmalloc(LTTNG_PATH_MAX * sizeof(char));
+	tentative_binary_path = calloc<char>(LTTNG_PATH_MAX);
 	if (!tentative_binary_path) {
 		ret = -1;
 		goto alloc_error;
@@ -292,7 +292,7 @@ int parse_userspace_probe_opts(const char *opt,
 	 */
 	if (strchr(unescaped_target_path, '/') == NULL) {
 		/* Walk the $PATH variable to find the targeted binary. */
-		real_target_path = (char *) zmalloc(LTTNG_PATH_MAX * sizeof(char));
+		real_target_path = calloc<char>(LTTNG_PATH_MAX);
 		if (!real_target_path) {
 			PERROR("Error allocating path buffer");
 			ret = CMD_ERROR;

@@ -285,7 +285,7 @@ int attach_session(uint64_t id)
 	int i;
 	ssize_t ret_len;
 
-	session = (live_session *) zmalloc(sizeof(struct live_session));
+	session = zmalloc<live_session>();
 	if (!session) {
 		goto error;
 	}
@@ -327,8 +327,7 @@ int attach_session(uint64_t id)
 		diag("Got session stream count == 0");
 		goto error;
 	}
-	session->streams = (viewer_stream *) zmalloc(session->stream_count *
-			sizeof(struct viewer_stream));
+	session->streams = calloc<viewer_stream>(session->stream_count);
 	if (!session->streams) {
 		goto error;
 	}
@@ -436,7 +435,7 @@ retry:
 		goto error;
 	}
 
-	data = (char *) zmalloc(len);
+	data = calloc<char>(len);
 	if (!data) {
 		PERROR("relay data zmalloc");
 		goto error;

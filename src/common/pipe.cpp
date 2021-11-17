@@ -108,7 +108,7 @@ static struct lttng_pipe *_pipe_create(void)
 	int ret;
 	struct lttng_pipe *p;
 
-	p = (lttng_pipe *) zmalloc(sizeof(*p));
+	p = zmalloc<lttng_pipe>();
 	if (!p) {
 		PERROR("zmalloc pipe create");
 		goto end;

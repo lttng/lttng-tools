@@ -292,7 +292,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
 
 			if (ust_cmd->reg_msg.type == LTTNG_UST_CTL_SOCKET_CMD) {
-				wait_node = (ust_reg_wait_node *) zmalloc(sizeof(*wait_node));
+				wait_node = zmalloc<ust_reg_wait_node>();
 				if (!wait_node) {
 					PERROR("zmalloc wait_node dispatch");
 					ret = close(ust_cmd->sock);
@@ -510,7 +510,7 @@ bool launch_ust_dispatch_thread(struct ust_cmd_queue *cmd_queue,
 	struct lttng_thread *thread;
 	struct thread_notifiers *notifiers;
 
-	notifiers = (thread_notifiers *) zmalloc(sizeof(*notifiers));
+	notifiers = zmalloc<thread_notifiers>();
 	if (!notifiers) {
 		goto error;
 	}

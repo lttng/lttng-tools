@@ -72,7 +72,7 @@ lttng_userspace_probe_location_lookup_method_function_elf_create(void)
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 
-	elf_method = (lttng_userspace_probe_location_lookup_method_elf *) zmalloc(sizeof(*elf_method));
+	elf_method = zmalloc<lttng_userspace_probe_location_lookup_method_elf>();
 	if (!elf_method) {
 		PERROR("zmalloc");
 		goto end;
@@ -90,7 +90,7 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void)
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 
-	sdt_method = (lttng_userspace_probe_location_lookup_method_sdt *) zmalloc(sizeof(*sdt_method));
+	sdt_method = zmalloc<lttng_userspace_probe_location_lookup_method_sdt>();
 	if (!sdt_method) {
 		PERROR("zmalloc");
 		goto end;
@@ -311,7 +311,7 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 		goto error;
 	}
 
-	location = (lttng_userspace_probe_location_function *) zmalloc(sizeof(*location));
+	location = zmalloc<lttng_userspace_probe_location_function>();
 	if (!location) {
 		PERROR("Error allocating userspace probe location");
 		goto error;
@@ -448,7 +448,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 		goto error;
 	}
 
-	location = (lttng_userspace_probe_location_tracepoint *) zmalloc(sizeof(*location));
+	location = zmalloc<lttng_userspace_probe_location_tracepoint>();
 	if (!location) {
 		PERROR("zmalloc");
 		goto error;
@@ -547,7 +547,7 @@ lttng_userspace_probe_location_lookup_method_function_elf_copy(
 	LTTNG_ASSERT(lookup_method->type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
-	elf_method = (lttng_userspace_probe_location_lookup_method_elf *) zmalloc(sizeof(*elf_method));
+	elf_method = zmalloc<lttng_userspace_probe_location_lookup_method_elf>();
 	if (!elf_method) {
 		PERROR("Error allocating ELF userspace probe lookup method");
 		goto error;
@@ -574,7 +574,7 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	LTTNG_ASSERT(lookup_method->type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
-	sdt_method = (lttng_userspace_probe_location_lookup_method_sdt *) zmalloc(sizeof(*sdt_method));
+	sdt_method = zmalloc<lttng_userspace_probe_location_lookup_method_sdt>();
 	if (!sdt_method) {
 		PERROR("zmalloc");
 		goto error;

@@ -44,7 +44,7 @@ struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(
 {
 	struct lttng_log_level_rule *rule = NULL;
 
-	rule = (lttng_log_level_rule *) zmalloc(sizeof(struct lttng_log_level_rule));
+	rule = zmalloc<lttng_log_level_rule>();
 	if (!rule) {
 		goto end;
 	}
@@ -77,7 +77,7 @@ lttng_log_level_rule_at_least_as_severe_as_create(int level)
 {
 	struct lttng_log_level_rule *rule = NULL;
 
-	rule = (lttng_log_level_rule *) zmalloc(sizeof(struct lttng_log_level_rule));
+	rule = zmalloc<lttng_log_level_rule>();
 	if (!rule) {
 		goto end;
 	}
@@ -227,7 +227,7 @@ struct lttng_log_level_rule *lttng_log_level_rule_copy(
 
 	LTTNG_ASSERT(source);
 
-	copy = (lttng_log_level_rule *) zmalloc(sizeof(struct lttng_log_level_rule));
+	copy = zmalloc<lttng_log_level_rule>();
 	if (!copy) {
 		goto end;
 	}

@@ -271,7 +271,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	struct ltt_ust_session *lus;
 
 	/* Allocate a new ltt ust session */
-	lus = (ltt_ust_session *) zmalloc(sizeof(struct ltt_ust_session));
+	lus = zmalloc<ltt_ust_session>();
 	if (lus == NULL) {
 		PERROR("create ust session zmalloc");
 		goto error_alloc;
@@ -350,7 +350,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	LTTNG_ASSERT(chan);
 
-	luc = (ltt_ust_channel *) zmalloc(sizeof(struct ltt_ust_channel));
+	luc = zmalloc<ltt_ust_channel>();
 	if (luc == NULL) {
 		PERROR("ltt_ust_channel zmalloc");
 		goto error;
@@ -463,7 +463,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		goto error;
 	}
 
-	local_ust_event = (ltt_ust_event *) zmalloc(sizeof(struct ltt_ust_event));
+	local_ust_event = zmalloc<ltt_ust_event>();
 	if (local_ust_event == NULL) {
 		PERROR("ust event zmalloc");
 		ret = LTTNG_ERR_NOMEM;
@@ -687,7 +687,7 @@ struct ltt_ust_context *trace_ust_create_context(
 		goto end;
 	}
 
-	uctx = (ltt_ust_context *) zmalloc(sizeof(struct ltt_ust_context));
+	uctx = zmalloc<ltt_ust_context>();
 	if (!uctx) {
 		PERROR("zmalloc ltt_ust_context");
 		goto end;
@@ -813,7 +813,7 @@ static int id_tracker_add_id(struct ust_id_tracker *id_tracker, int id)
 		retval = LTTNG_ERR_PROCESS_ATTR_EXISTS;
 		goto end;
 	}
-	tracker_node = (ust_id_tracker_node *) zmalloc(sizeof(*tracker_node));
+	tracker_node = zmalloc<ust_id_tracker_node>();
 	if (!tracker_node) {
 		retval = LTTNG_ERR_NOMEM;
 		goto end;

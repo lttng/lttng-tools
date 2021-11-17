@@ -487,7 +487,7 @@ struct lttng_rate_policy *lttng_rate_policy_every_n_create(uint64_t interval)
 		goto end;
 	}
 
-	policy = (lttng_rate_policy_every_n *) zmalloc(sizeof(struct lttng_rate_policy_every_n));
+	policy = zmalloc<lttng_rate_policy_every_n>();
 	if (!policy) {
 		goto end;
 	}
@@ -702,7 +702,7 @@ struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(
 		goto end;
 	}
 
-	policy = (lttng_rate_policy_once_after_n *) zmalloc(sizeof(struct lttng_rate_policy_once_after_n));
+	policy = zmalloc<lttng_rate_policy_once_after_n>();
 	if (!policy) {
 		goto end;
 	}

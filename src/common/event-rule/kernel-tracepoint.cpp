@@ -333,7 +333,7 @@ struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 	struct lttng_event_rule_kernel_tracepoint *tp_rule;
 	enum lttng_event_rule_status status;
 
-	tp_rule = (lttng_event_rule_kernel_tracepoint *) zmalloc(sizeof(struct lttng_event_rule_kernel_tracepoint));
+	tp_rule = zmalloc<lttng_event_rule_kernel_tracepoint>();
 	if (!tp_rule) {
 		goto end;
 	}

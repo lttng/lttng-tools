@@ -197,7 +197,7 @@ int trace_chunk_registry_ht_element_create(
 		goto end;
 	}
 
-	new_element = (trace_chunk_registry_ht_element *) zmalloc(sizeof(*new_element));
+	new_element = zmalloc<trace_chunk_registry_ht_element>();
 	if (!new_element) {
 		ret = -1;
 		goto end;
@@ -263,7 +263,7 @@ end:
 struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create(void)
 {
 	struct sessiond_trace_chunk_registry *sessiond_registry =
-			(sessiond_trace_chunk_registry *) zmalloc(sizeof(*sessiond_registry));
+			zmalloc<sessiond_trace_chunk_registry>();
 
 	if (!sessiond_registry) {
 		goto end;

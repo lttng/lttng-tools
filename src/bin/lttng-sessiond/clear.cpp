@@ -67,7 +67,7 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 	usess = session->ust_session;
 
 	if (sock_fd) {
-		reply_context = (cmd_clear_session_reply_context *) zmalloc(sizeof(*reply_context));
+		reply_context = zmalloc<cmd_clear_session_reply_context>();
 		if (!reply_context) {
 			ret = LTTNG_ERR_NOMEM;
 			goto end;

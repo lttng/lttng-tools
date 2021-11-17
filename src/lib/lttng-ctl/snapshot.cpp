@@ -120,7 +120,7 @@ int lttng_snapshot_list_output(const char *session_name,
 		goto error;
 	}
 
-	new_list = (lttng_snapshot_output_list *) zmalloc(sizeof(*new_list));
+	new_list = zmalloc<lttng_snapshot_output_list>();
 	if (!new_list) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
@@ -240,7 +240,7 @@ struct lttng_snapshot_output *lttng_snapshot_output_create(void)
 {
 	struct lttng_snapshot_output *output;
 
-	output = (lttng_snapshot_output *) zmalloc(sizeof(struct lttng_snapshot_output));
+	output = zmalloc<lttng_snapshot_output>();
 	if (!output) {
 		goto error;
 	}

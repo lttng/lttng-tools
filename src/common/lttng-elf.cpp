@@ -394,7 +394,7 @@ end:
 	 * We found the length of the section name, now seek back to the
 	 * beginning of the name and copy it in the newly allocated buffer.
 	 */
-	name = (char *)zmalloc(sizeof(char) * (name_length + 1));	/* + 1 for \0 */
+	name = calloc<char>((name_length + 1));	/* + 1 for \0 */
 	if (!name) {
 		PERROR("Error allocating ELF section name buffer");
 		goto error;
@@ -495,7 +495,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 		goto end;
 	}
 
-	elf->ehdr = (lttng_elf_ehdr *) zmalloc(sizeof(struct lttng_elf_ehdr));
+	elf->ehdr = zmalloc<lttng_elf_ehdr>();
 	if (!elf->ehdr) {
 		PERROR("Error allocation buffer for ELF header");
 		ret = LTTNG_ERR_NOMEM;
@@ -548,7 +548,7 @@ struct lttng_elf *lttng_elf_create(int fd)
 		goto error;
 	}
 
-	elf = (lttng_elf *) zmalloc(sizeof(struct lttng_elf));
+	elf = zmalloc<lttng_elf>();
 	if (!elf) {
 		PERROR("Error allocating struct lttng_elf");
 		goto error;
@@ -664,7 +664,7 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 				max_alloc_size);
 		goto error;
 	}
-	data = (char *) zmalloc(shdr->sh_size);
+	data = calloc<char>(shdr->sh_size);
 	if (!data) {
 		PERROR("Error allocating buffer for ELF section data");
 		goto error;

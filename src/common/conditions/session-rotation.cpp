@@ -185,7 +185,7 @@ struct lttng_condition *lttng_condition_session_rotation_create(
 {
 	struct lttng_condition_session_rotation *condition;
 
-	condition = (lttng_condition_session_rotation *) zmalloc(sizeof(struct lttng_condition_session_rotation));
+	condition = zmalloc<lttng_condition_session_rotation>();
 	if (!condition) {
 		return NULL;
 	}
@@ -333,7 +333,7 @@ struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 {
 	struct lttng_evaluation_session_rotation *evaluation;
 
-	evaluation = (lttng_evaluation_session_rotation *) zmalloc(sizeof(struct lttng_evaluation_session_rotation));
+	evaluation = zmalloc<lttng_evaluation_session_rotation>();
 	if (!evaluation) {
 		return NULL;
 	}

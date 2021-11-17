@@ -279,7 +279,7 @@ struct lttng_event_rule *lttng_event_rule_kernel_uprobe_create(
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_kernel_uprobe *urule;
 
-	urule = (lttng_event_rule_kernel_uprobe *) zmalloc(sizeof(struct lttng_event_rule_kernel_uprobe));
+	urule = zmalloc<lttng_event_rule_kernel_uprobe>();
 	if (!urule) {
 		goto end;
 	}

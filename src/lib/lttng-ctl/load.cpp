@@ -22,7 +22,7 @@
 
 struct lttng_load_session_attr *lttng_load_session_attr_create(void)
 {
-	return (lttng_load_session_attr *) zmalloc(sizeof(struct lttng_load_session_attr));
+	return zmalloc<lttng_load_session_attr>();
 }
 
 static
@@ -272,8 +272,7 @@ int lttng_load_session_attr_set_override_ctrl_url(
 	}
 
 	if (!attr->override_attr) {
-		attr->override_attr = (config_load_session_override_attr *) zmalloc(
-			sizeof(struct config_load_session_override_attr));
+		attr->override_attr = zmalloc<config_load_session_override_attr>();
 		if (!attr->override_attr) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -303,7 +302,7 @@ int lttng_load_session_attr_set_override_ctrl_url(
 		uri[0].port = DEFAULT_NETWORK_CONTROL_PORT;
 	}
 
-	url_str = (char *) zmalloc(PATH_MAX);
+	url_str = calloc<char>(PATH_MAX);
 	if (!url_str) {
 		/* FIXME: return valid error */
 		ret = -LTTNG_ERR_NOMEM;
@@ -357,8 +356,7 @@ int lttng_load_session_attr_set_override_data_url(
 	}
 
 	if (!attr->override_attr) {
-		attr->override_attr = (config_load_session_override_attr *) zmalloc(
-			sizeof(struct config_load_session_override_attr));
+		attr->override_attr = zmalloc<config_load_session_override_attr>();
 		if (!attr->override_attr) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -388,7 +386,7 @@ int lttng_load_session_attr_set_override_data_url(
 		uri[0].port = DEFAULT_NETWORK_DATA_PORT;
 	}
 
-	url_str = (char *) zmalloc(PATH_MAX);
+	url_str = calloc<char>(PATH_MAX);
 	if (!url_str) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;
@@ -446,8 +444,7 @@ int lttng_load_session_attr_set_override_url(
 	}
 
 	if (!attr->override_attr) {
-		attr->override_attr = (config_load_session_override_attr *) zmalloc(
-			sizeof(struct config_load_session_override_attr));
+		attr->override_attr = zmalloc<config_load_session_override_attr>();
 		if (!attr->override_attr) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -583,8 +580,7 @@ int lttng_load_session_attr_set_override_session_name(
 	}
 
 	if (!attr->override_attr) {
-		attr->override_attr = (config_load_session_override_attr *) zmalloc(
-			sizeof(struct config_load_session_override_attr));
+		attr->override_attr = zmalloc<config_load_session_override_attr>();
 		if (!attr->override_attr) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;

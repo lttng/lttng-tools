@@ -23,7 +23,7 @@ struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
 		goto end;
 	}
 
-	it = (bytecode_symbol_iterator *) zmalloc(sizeof(*it));
+	it = zmalloc<bytecode_symbol_iterator>();
 	if (!it) {
 		goto end;
 	}

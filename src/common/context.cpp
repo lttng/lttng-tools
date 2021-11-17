@@ -52,7 +52,7 @@ int parse_application_context(const char *str, char **out_provider_name,
 	}
 
 	provider_name_len = colon_pos - sizeof(app_ctx_prefix) + 2;
-	provider_name = (char *) zmalloc(provider_name_len);
+	provider_name = calloc<char>(provider_name_len);
 	if (!provider_name) {
 		PERROR("malloc provider_name");
 		goto not_found;
@@ -61,7 +61,7 @@ int parse_application_context(const char *str, char **out_provider_name,
 			provider_name_len - 1);
 
 	ctx_name_len = len - colon_pos;
-	ctx_name = (char *) zmalloc(ctx_name_len);
+	ctx_name = calloc<char>(ctx_name_len);
 	if (!ctx_name) {
 		PERROR("malloc ctx_name");
 		goto not_found;

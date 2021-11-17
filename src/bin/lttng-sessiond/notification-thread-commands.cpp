@@ -59,7 +59,7 @@ struct notification_thread_command *notification_thread_command_copy(
 {
 	struct notification_thread_command *new_cmd;
 
-	new_cmd = (notification_thread_command *) zmalloc(sizeof(*new_cmd));
+	new_cmd = zmalloc<notification_thread_command>();
 	if (!new_cmd) {
 		goto end;
 	}
@@ -425,7 +425,7 @@ struct lttng_event_notifier_notification *lttng_event_notifier_notification_crea
 	LTTNG_ASSERT(domain != LTTNG_DOMAIN_NONE);
 	LTTNG_ASSERT((payload && payload_size) || (!payload && !payload_size));
 
-	notification = (lttng_event_notifier_notification *) zmalloc(sizeof(struct lttng_event_notifier_notification));
+	notification = zmalloc<lttng_event_notifier_notification>();
 	if (notification == NULL) {
 		ERR("Error allocating notification");
 		goto end;

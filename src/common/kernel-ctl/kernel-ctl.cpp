@@ -181,7 +181,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 
 	array_alloc_len = lttng_align_ceil(kmask_len.len, 8) >> 3;
 
-	kmask = (lttng_kernel_abi_syscall_mask *) zmalloc(sizeof(*kmask) + array_alloc_len);
+	kmask = zmalloc<lttng_kernel_abi_syscall_mask>(sizeof(*kmask) + array_alloc_len);
 	if (!kmask) {
 		ret = -1;
 		goto end;
@@ -519,7 +519,7 @@ int kernctl_capture(int fd, const struct lttng_bytecode *capture)
 	struct lttng_kernel_abi_capture_bytecode *kb;
 
 	/* Translate bytecode to kernel bytecode. */
-	kb = (lttng_kernel_abi_capture_bytecode *) zmalloc(sizeof(*kb) + capture->len);
+	kb = zmalloc<lttng_kernel_abi_capture_bytecode>(sizeof(*kb) + capture->len);
 	if (!kb) {
 		ret = -ENOMEM;
 		goto end;
@@ -542,7 +542,7 @@ int kernctl_filter(int fd, const struct lttng_bytecode *filter)
 	int ret;
 
 	/* Translate bytecode to kernel bytecode */
-	kb = (lttng_kernel_abi_filter_bytecode *) zmalloc(sizeof(*kb) + filter->len);
+	kb = zmalloc<lttng_kernel_abi_filter_bytecode>(sizeof(*kb) + filter->len);
 	if (!kb)
 		return -ENOMEM;
 	kb->len = len = filter->len;

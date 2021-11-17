@@ -53,7 +53,7 @@ enum lttng_error_code lttng_session_get_tracker_handle(const char *session_name,
 		goto error;
 	}
 
-	handle = (lttng_process_attr_tracker_handle *) zmalloc(sizeof(*handle));
+	handle = zmalloc<lttng_process_attr_tracker_handle>();
 	if (!handle) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
@@ -779,7 +779,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		goto end;
 	}
 
-	pid_array = (int32_t *) zmalloc(pid_count * sizeof(int32_t));
+	pid_array = calloc<int32_t>(pid_count);
 	if (!pid_array) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;

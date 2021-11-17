@@ -178,9 +178,8 @@ error:
  */
 struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
-	struct lttcomm_sock *sock;
+	struct lttcomm_sock *sock = zmalloc<lttcomm_sock>();
 
-	sock = (lttcomm_sock *) zmalloc(sizeof(lttcomm_sock));
 	if (sock == NULL) {
 		PERROR("zmalloc create sock");
 		goto end;
@@ -366,11 +365,10 @@ struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
 {
 	int ret;
 	struct lttcomm_sock *tmp_sock = NULL;
-	struct lttcomm_relayd_sock *rsock = NULL;
+	struct lttcomm_relayd_sock *rsock = zmalloc<lttcomm_relayd_sock>();
 
 	LTTNG_ASSERT(uri);
 
-	rsock = (lttcomm_relayd_sock *) zmalloc(sizeof(*rsock));
 	if (!rsock) {
 		PERROR("zmalloc relayd sock");
 		goto error;

@@ -8,15 +8,15 @@
 #ifndef COMMON_ARGPAR_UTILS_H
 #define COMMON_ARGPAR_UTILS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdarg.h>
 
 #include <common/macros.hpp>
 #include <common/argpar/argpar.h>
 #include <common/string-utils/format.hpp>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WHILE_PARSING_ARG_N_ARG_FMT "While parsing argument #%d (`%s`): "
 

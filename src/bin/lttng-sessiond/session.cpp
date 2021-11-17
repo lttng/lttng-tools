@@ -1187,7 +1187,7 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 			goto error;
 		}
 	}
-	new_session = (ltt_session *) zmalloc(sizeof(struct ltt_session));
+	new_session = zmalloc<ltt_session>();
 	if (!new_session) {
 		PERROR("Failed to allocate an ltt_session structure");
 		ret_code = LTTNG_ERR_NOMEM;

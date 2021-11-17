@@ -89,7 +89,7 @@ struct rotation_thread_timer_queue *rotation_thread_timer_queue_create(void)
 {
 	struct rotation_thread_timer_queue *queue = NULL;
 
-	queue = (rotation_thread_timer_queue *) zmalloc(sizeof(*queue));
+	queue = zmalloc<rotation_thread_timer_queue>();
 	if (!queue) {
 		PERROR("Failed to allocate timer rotate queue");
 		goto end;
@@ -134,7 +134,7 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 {
 	struct rotation_thread_handle *handle;
 
-	handle = (rotation_thread_handle *) zmalloc(sizeof(*handle));
+	handle = zmalloc<rotation_thread_handle>();
 	if (!handle) {
 		goto end;
 	}
@@ -193,7 +193,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 		goto end;
 	}
 
-	job = (rotation_thread_job *) zmalloc(sizeof(struct rotation_thread_job));
+	job = zmalloc<rotation_thread_job>();
 	if (!job) {
 		PERROR("Failed to allocate rotation thread job of type \"%s\" for session \"%s\"",
 				job_type_str, session->name);

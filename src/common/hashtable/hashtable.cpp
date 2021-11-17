@@ -110,7 +110,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 	}
 	pthread_mutex_unlock(&seed_lock);
 
-	ht = (lttng_ht *) zmalloc(sizeof(*ht));
+	ht = zmalloc<lttng_ht>();
 	if (ht == NULL) {
 		PERROR("zmalloc lttng_ht");
 		goto error;

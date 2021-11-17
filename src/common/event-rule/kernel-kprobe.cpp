@@ -289,7 +289,7 @@ struct lttng_event_rule *lttng_event_rule_kernel_kprobe_create(
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_kernel_kprobe *krule;
 
-	krule = (lttng_event_rule_kernel_kprobe *) zmalloc(sizeof(struct lttng_event_rule_kernel_kprobe));
+	krule = zmalloc<lttng_event_rule_kernel_kprobe>();
 	if (!krule) {
 		goto end;
 	}

@@ -165,7 +165,7 @@ error:
 
 struct snapshot_output *snapshot_output_alloc(void)
 {
-	return (snapshot_output *) zmalloc(sizeof(struct snapshot_output));
+	return zmalloc<snapshot_output>();
 }
 
 /*

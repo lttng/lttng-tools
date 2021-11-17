@@ -230,7 +230,7 @@ int lttng_rotate_session(const char *session_name,
 		goto end;
 	}
 
-	*rotation_handle = (lttng_rotation_handle *) zmalloc(sizeof(struct lttng_rotation_handle));
+	*rotation_handle = zmalloc<lttng_rotation_handle>();
 	if (!*rotation_handle) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;
@@ -350,7 +350,7 @@ end:
 static
 struct lttng_rotation_schedules *lttng_rotation_schedules_create(void)
 {
-	return (lttng_rotation_schedules *) zmalloc(sizeof(struct lttng_rotation_schedules));
+	return zmalloc<lttng_rotation_schedules>();
 }
 
 static
@@ -463,7 +463,7 @@ lttng_rotation_schedule_size_threshold_create(void)
 {
 	struct lttng_rotation_schedule_size_threshold *schedule;
 
-	schedule = (lttng_rotation_schedule_size_threshold *) zmalloc(sizeof(*schedule));
+	schedule = zmalloc<lttng_rotation_schedule_size_threshold>();
 	if (!schedule) {
 		goto end;
 	}
@@ -529,7 +529,7 @@ lttng_rotation_schedule_periodic_create(void)
 {
 	struct lttng_rotation_schedule_periodic *schedule;
 
-	schedule = (lttng_rotation_schedule_periodic *) zmalloc(sizeof(*schedule));
+	schedule = zmalloc<lttng_rotation_schedule_periodic>();
 	if (!schedule) {
 		goto end;
 	}

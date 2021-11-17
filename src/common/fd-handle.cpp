@@ -41,7 +41,7 @@ struct fd_handle *fd_handle_create(int fd)
 		goto end;
 	}
 
-	handle = (fd_handle *) zmalloc(sizeof(*handle));
+	handle = zmalloc<fd_handle>();
 	if (!handle) {
 		PERROR("Failed to allocate fd_handle");
 		goto end;

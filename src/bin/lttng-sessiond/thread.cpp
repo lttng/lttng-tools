@@ -77,7 +77,7 @@ struct lttng_thread *lttng_thread_create(const char *name,
 	int ret;
 	struct lttng_thread *thread;
 
-	thread = (lttng_thread *) zmalloc(sizeof(*thread));
+	thread = zmalloc<lttng_thread>();
 	if (!thread) {
 		goto error_alloc;
 	}

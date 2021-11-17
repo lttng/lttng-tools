@@ -94,7 +94,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	struct notification_thread_handle *handle;
 	struct lttng_pipe *event_pipe = NULL;
 
-	handle = (notification_thread_handle *) zmalloc(sizeof(*handle));
+	handle = zmalloc<notification_thread_handle>();
 	if (!handle) {
 		goto end;
 	}
@@ -162,7 +162,7 @@ char *get_notification_channel_sock_path(void)
 	bool is_root = !getuid();
 	char *sock_path;
 
-	sock_path = (char *) zmalloc(LTTNG_PATH_MAX);
+	sock_path = calloc<char>(LTTNG_PATH_MAX);
 	if (!sock_path) {
 		goto error;
 	}

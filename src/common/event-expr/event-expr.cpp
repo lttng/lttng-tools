@@ -40,7 +40,7 @@ struct lttng_event_expr *create_empty_expr(enum lttng_event_expr_type type,
 {
 	struct lttng_event_expr *expr;
 
-	expr = (lttng_event_expr *) zmalloc(size);
+	expr = zmalloc<lttng_event_expr>(size);
 	if (!expr) {
 		goto end;
 	}

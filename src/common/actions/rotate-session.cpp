@@ -288,7 +288,7 @@ end:
 
 struct lttng_action *lttng_action_rotate_session_create(void)
 {
-	struct lttng_action *action = NULL;
+	struct lttng_action_rotate_session *action_rotate = NULL;
 	struct lttng_rate_policy *policy = NULL;
 	enum lttng_action_status status;
 
@@ -298,12 +298,13 @@ struct lttng_action *lttng_action_rotate_session_create(void)
 		goto end;
 	}
 
-	action = (lttng_action *) zmalloc(sizeof(struct lttng_action_rotate_session));
-	if (!action) {
+	action_rotate = zmalloc<lttng_action_rotate_session>();
+	if (!action_rotate) {
 		goto end;
 	}
 
-	lttng_action_init(action, LTTNG_ACTION_TYPE_ROTATE_SESSION,
+	lttng_action_init(&action_rotate->parent,
+			LTTNG_ACTION_TYPE_ROTATE_SESSION,
 			lttng_action_rotate_session_validate,
 			lttng_action_rotate_session_serialize,
 			lttng_action_rotate_session_is_equal,
@@ -312,16 +313,17 @@ struct lttng_action *lttng_action_rotate_session_create(void)
 			lttng_action_generic_add_error_query_results,
 			lttng_action_rotate_session_mi_serialize);
 
-	status = lttng_action_rotate_session_set_rate_policy(action, policy);
+	status = lttng_action_rotate_session_set_rate_policy(
+			&action_rotate->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
-		free(action);
-		action = NULL;
+		lttng_action_destroy(&action_rotate->parent);
+		action_rotate = NULL;
 		goto end;
 	}
 
 end:
 	lttng_rate_policy_destroy(policy);
-	return action;
+	return action_rotate ? &action_rotate->parent : nullptr;
 }
 
 enum lttng_action_status lttng_action_rotate_session_set_session_name(

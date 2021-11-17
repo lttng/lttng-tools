@@ -1112,7 +1112,7 @@ int viewer_list_sessions(struct relay_connection *conn)
 	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
 	uint32_t count = 0;
 
-	send_session_buf = (lttng_viewer_session *) zmalloc(SESSION_BUF_DEFAULT_COUNT * sizeof(*send_session_buf));
+	send_session_buf = calloc<lttng_viewer_session>(SESSION_BUF_DEFAULT_COUNT);
 	if (!send_session_buf) {
 		return -1;
 	}
@@ -2115,7 +2115,7 @@ int viewer_get_packet(struct relay_connection *conn)
 		reply_size += packet_data_len;
 	}
 
-	reply = (char *) zmalloc(reply_size);
+	reply = zmalloc<char>(reply_size);
 	if (!reply) {
 		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
 		PERROR("Falled to allocate reply, returning status=%s",
@@ -2378,7 +2378,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 	}
 
 	reply.len = htobe64(len);
-	data = (char *) zmalloc(len);
+	data = zmalloc<char>(len);
 	if (!data) {
 		PERROR("viewer metadata zmalloc");
 		goto error;

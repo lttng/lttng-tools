@@ -23,7 +23,7 @@ struct lttng_action_path *lttng_action_path_create(
 		goto error;
 	}
 
-	path = (lttng_action_path *) zmalloc(sizeof(*path));
+	path = zmalloc<lttng_action_path>();
 	if (!path) {
 		goto error;
 	}

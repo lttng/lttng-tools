@@ -666,7 +666,7 @@ static int grow_probes(void)
 
 	/* Initialize capacity to 1 if 0. */
 	if (probes_capacity == 0) {
-		probes = (kern_modules_param *) zmalloc(sizeof(*probes));
+		probes = zmalloc<kern_modules_param>();
 		if (!probes) {
 			PERROR("malloc probe list");
 			return -ENOMEM;
@@ -679,7 +679,7 @@ static int grow_probes(void)
 	/* Double size. */
 	probes_capacity *= 2;
 
-	tmp_probes = (kern_modules_param *) zmalloc(sizeof(*tmp_probes) * probes_capacity);
+	tmp_probes = calloc<kern_modules_param>(probes_capacity);
 	if (!tmp_probes) {
 		PERROR("malloc probe list");
 		return -ENOMEM;
@@ -741,7 +741,7 @@ static int append_list_to_probes(const char *list)
 		name_len = strlen(next) + 13;
 
 		cur_mod = &probes[nr_probes];
-		cur_mod->name = (char *) zmalloc(name_len);
+		cur_mod->name = calloc<char>(name_len);
 		if (!cur_mod->name) {
 			PERROR("malloc probe list");
 			ret = -ENOMEM;
@@ -792,7 +792,7 @@ int modprobe_lttng_data(void)
 		/* Default probes. */
 		int def_len = ARRAY_SIZE(kern_modules_probes_default);
 
-		probes = (kern_modules_param *) zmalloc(sizeof(*probes) * def_len);
+		probes = calloc<kern_modules_param>(def_len);
 		if (!probes) {
 			PERROR("malloc probe list");
 			return -ENOMEM;

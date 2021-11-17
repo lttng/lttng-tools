@@ -34,13 +34,13 @@ struct lttng_channel *channel_new_default_attr(int dom,
 	const char *channel_name = DEFAULT_CHANNEL_NAME;
 	struct lttng_channel_extended *extended_attr = NULL;
 
-	chan = (lttng_channel *) zmalloc(sizeof(struct lttng_channel));
+	chan = zmalloc<lttng_channel>();
 	if (chan == NULL) {
 		PERROR("zmalloc channel init");
 		goto error_alloc;
 	}
 
-	extended_attr = (lttng_channel_extended *) zmalloc(sizeof(struct lttng_channel_extended));
+	extended_attr = zmalloc<lttng_channel_extended>();
 	if (!extended_attr) {
 		PERROR("zmalloc channel extended init");
 		goto error;

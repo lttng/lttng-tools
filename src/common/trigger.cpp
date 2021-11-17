@@ -55,7 +55,7 @@ struct lttng_trigger *lttng_trigger_create(
 		goto end;
 	}
 
-	trigger = (lttng_trigger *) zmalloc(sizeof(struct lttng_trigger));
+	trigger = zmalloc<lttng_trigger>();
 	if (!trigger) {
 		goto end;
 	}
@@ -505,7 +505,7 @@ struct lttng_triggers *lttng_triggers_create(void)
 {
 	struct lttng_triggers *triggers = NULL;
 
-	triggers = (lttng_triggers *) zmalloc(sizeof(*triggers));
+	triggers = zmalloc<lttng_triggers>();
 	if (!triggers) {
 		goto end;
 	}

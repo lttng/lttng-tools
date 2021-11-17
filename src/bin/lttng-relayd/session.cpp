@@ -310,7 +310,7 @@ struct relay_session *session_create(const char *session_name,
 		goto error;
 	}
 
-	session = (relay_session *) zmalloc(sizeof(*session));
+	session = zmalloc<relay_session>();
 	if (!session) {
 		PERROR("Failed to allocate session");
 		goto error;

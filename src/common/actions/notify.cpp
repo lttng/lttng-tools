@@ -132,7 +132,7 @@ struct lttng_action *lttng_action_notify_create(void)
 	struct lttng_action_notify *notify = NULL;
 	struct lttng_action *action = NULL;
 
-	notify = (lttng_action_notify *) zmalloc(sizeof(struct lttng_action_notify));
+	notify = zmalloc<lttng_action_notify>();
 	if (!notify) {
 		goto end;
 	}

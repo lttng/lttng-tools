@@ -362,8 +362,7 @@ lttng_event_rule_user_tracepoint_generate_exclusions(
 		goto end;
 	}
 
-	exclusions = (lttng_event_exclusion *) zmalloc(sizeof(struct lttng_event_exclusion) +
-			(LTTNG_SYMBOL_NAME_LEN * nb_exclusions));
+	exclusions = zmalloc<lttng_event_exclusion>(sizeof(struct lttng_event_exclusion) + (LTTNG_SYMBOL_NAME_LEN * nb_exclusions));
 	if (!exclusions) {
 		PERROR("Failed to allocate exclusions buffer");
 		ret_status = LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OUT_OF_MEMORY;
@@ -560,7 +559,7 @@ struct lttng_event_rule *lttng_event_rule_user_tracepoint_create(void)
 	struct lttng_event_rule_user_tracepoint *tp_rule;
 	enum lttng_event_rule_status status;
 
-	tp_rule = (lttng_event_rule_user_tracepoint *) zmalloc(sizeof(struct lttng_event_rule_user_tracepoint));
+	tp_rule = zmalloc<lttng_event_rule_user_tracepoint>();
 	if (!tp_rule) {
 		goto end;
 	}

@@ -16,7 +16,7 @@ struct lttng_trace_archive_location *lttng_trace_archive_location_create(
 {
 	struct lttng_trace_archive_location *location;
 
-	location = (lttng_trace_archive_location *) zmalloc(sizeof(*location));
+	location = zmalloc<lttng_trace_archive_location>();
 	if (!location) {
 		goto end;
 	}

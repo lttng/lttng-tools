@@ -773,7 +773,7 @@ struct mi_writer *mi_lttng_writer_create(int fd_output, int mi_output_type)
 {
 	struct mi_writer *mi_writer;
 
-	mi_writer = (struct mi_writer *) zmalloc(sizeof(struct mi_writer));
+	mi_writer = zmalloc<struct mi_writer>();
 	if (!mi_writer) {
 		PERROR("zmalloc mi_writer_create");
 		goto end;

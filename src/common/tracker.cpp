@@ -71,7 +71,7 @@ enum lttng_error_code process_attr_value_from_comm(
 {
 	char *name = NULL;
 	enum lttng_error_code ret = LTTNG_OK;
-	struct process_attr_value *value = (process_attr_value *) zmalloc(sizeof(*value));
+	struct process_attr_value *value = zmalloc<process_attr_value>();
 
 	if (!value) {
 		ret = LTTNG_ERR_NOMEM;
@@ -214,7 +214,7 @@ static void process_attr_tracker_value_destructor(void *ptr)
 
 struct lttng_process_attr_values *lttng_process_attr_values_create(void)
 {
-	struct lttng_process_attr_values *values = (lttng_process_attr_values *) zmalloc(sizeof(*values));
+	struct lttng_process_attr_values *values = zmalloc<lttng_process_attr_values>();
 
 	if (!values) {
 		goto end;
@@ -426,7 +426,7 @@ struct process_attr_value *process_attr_value_copy(
 		goto end;
 	}
 
-	new_value = (process_attr_value *) zmalloc(sizeof(*new_value));
+	new_value = zmalloc<process_attr_value>();
 	if (!new_value) {
 		goto end;
 	}

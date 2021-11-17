@@ -264,7 +264,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					tmp = "";
 				}
 				tmplen = strlen(the_config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
-				tmpnew = (char *) zmalloc(tmplen + 1 /* \0 */);
+				tmpnew = zmalloc<char>(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
@@ -306,7 +306,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					tmp = "";
 				}
 				tmplen = strlen(the_config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
-				tmpnew = (char *) zmalloc(tmplen + 1 /* \0 */);
+				tmpnew = zmalloc<char>(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
@@ -1751,7 +1751,7 @@ skip_domain:
 			goto error;
 		}
 
-		uris = (lttng_uri *) zmalloc(len);
+		uris = calloc<lttng_uri>(nb_uri);
 		if (uris == NULL) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
@@ -1892,31 +1892,35 @@ skip_domain:
 	case LTTNG_LIST_SESSIONS:
 	{
 		unsigned int nr_sessions;
-		lttng_session *sessions_payload;
-		size_t payload_len;
+		lttng_session *sessions_payload = nullptr;
+		size_t payload_len = 0;
 
 		session_lock_list();
 		nr_sessions = lttng_sessions_count(
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 
-		payload_len = (sizeof(struct lttng_session) * nr_sessions) +
-				(sizeof(struct lttng_session_extended) * nr_sessions);
-		sessions_payload = (lttng_session *) zmalloc(payload_len);
+		if (nr_sessions > 0) {
+			payload_len = (sizeof(struct lttng_session) *
+						      nr_sessions) +
+					(sizeof(struct lttng_session_extended) *
+							nr_sessions);
+			sessions_payload = zmalloc<lttng_session>(payload_len);
+			if (!sessions_payload) {
+				session_unlock_list();
+				ret = -ENOMEM;
+				goto setup_error;
+			}
 
-		if (!sessions_payload) {
-			session_unlock_list();
-			ret = -ENOMEM;
-			goto setup_error;
+			cmd_list_lttng_sessions(sessions_payload, nr_sessions,
+					LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+					LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 		}
 
-		cmd_list_lttng_sessions(sessions_payload, nr_sessions,
-			LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
-			LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 		session_unlock_list();
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, sessions_payload,
-			payload_len);
+		ret = setup_lttng_msg_no_cmd_header(
+				cmd_ctx, sessions_payload, payload_len);
 		free(sessions_payload);
 
 		if (ret < 0) {

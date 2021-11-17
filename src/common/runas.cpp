@@ -930,7 +930,7 @@ static int get_user_infos_from_uid(
 
 	get_pw_buf_size = (size_t) raw_get_pw_buf_size;
 
-	buf = (char *) zmalloc(get_pw_buf_size);
+	buf = calloc<char>(get_pw_buf_size);
 	if (buf == NULL) {
 		PERROR("Failed to allocate buffer to get password file entries");
 		goto error;
@@ -1458,7 +1458,7 @@ int run_as_create_worker_no_lock(const char *procname,
 		ret = 0;
 		goto end;
 	}
-	worker = (run_as_worker_data *) zmalloc(sizeof(*worker));
+	worker = zmalloc<run_as_worker_data>();
 	if (!worker) {
 		ret = -ENOMEM;
 		goto end;
@@ -1959,7 +1959,7 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 	}
 
 	*num_offset = run_as_ret.u.extract_sdt_probe_offsets.num_offset;
-	*offsets = (uint64_t *) zmalloc(*num_offset * sizeof(uint64_t));
+	*offsets = calloc<uint64_t>(*num_offset);
 	if (!*offsets) {
 		ret = -ENOMEM;
 		goto error;
@@ -2001,7 +2001,7 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 
 	view_bytecode = (const struct lttng_bytecode *) run_as_ret.u.generate_filter_bytecode.bytecode;
 
-	local_bytecode = (lttng_bytecode *) zmalloc(sizeof(*local_bytecode) + view_bytecode->len);
+	local_bytecode = calloc<lttng_bytecode>(view_bytecode->len);
 	if (!local_bytecode) {
 		ret = -ENOMEM;
 		goto error;

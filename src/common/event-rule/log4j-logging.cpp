@@ -421,7 +421,7 @@ static struct lttng_event *lttng_event_rule_log4j_logging_generate_lttng_event(
 	log4j_logging = container_of(
 			rule, const struct lttng_event_rule_log4j_logging, parent);
 
-	local_event = (lttng_event *) zmalloc(sizeof(*local_event));
+	local_event = zmalloc<lttng_event>();
 	if (!local_event) {
 		goto error;
 	}
@@ -560,7 +560,7 @@ struct lttng_event_rule *lttng_event_rule_log4j_logging_create(void)
 	struct lttng_event_rule_log4j_logging *tp_rule;
 	enum lttng_event_rule_status status;
 
-	tp_rule = (lttng_event_rule_log4j_logging *) zmalloc(sizeof(struct lttng_event_rule_log4j_logging));
+	tp_rule = zmalloc<lttng_event_rule_log4j_logging>();
 	if (!tp_rule) {
 		goto end;
 	}

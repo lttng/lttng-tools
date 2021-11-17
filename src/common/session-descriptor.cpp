@@ -71,7 +71,7 @@ struct lttng_uri *uri_copy(const struct lttng_uri *uri)
 		goto end;
 	}
 
-	new_uri = (lttng_uri *) zmalloc(sizeof(*new_uri));
+	new_uri = zmalloc<lttng_uri>();
 	if (!new_uri) {
 		goto end;
 	}
@@ -179,8 +179,8 @@ int network_location_set_from_uri_strings(
 	 * session descriptors expect individually allocated lttng_uris.
 	 */
 	if (uri_count == 2) {
-		control_uri = (lttng_uri *) zmalloc(sizeof(*control_uri));
-		data_uri = (lttng_uri *) zmalloc(sizeof(*data_uri));
+		control_uri = zmalloc<lttng_uri>();
+		data_uri = zmalloc<lttng_uri>();
 		if (!control_uri || !data_uri) {
 			ret = -1;
 			goto end;
@@ -208,7 +208,7 @@ lttng_session_descriptor_create(const char *name)
 {
 	struct lttng_session_descriptor *descriptor;
 
-	descriptor = (lttng_session_descriptor *) zmalloc(sizeof(*descriptor));
+	descriptor = zmalloc<lttng_session_descriptor>();
 	if (!descriptor) {
 		goto error;
 	}
@@ -334,7 +334,7 @@ _lttng_session_descriptor_snapshot_create(const char *name)
 {
 	struct lttng_session_descriptor_snapshot *descriptor;
 
-	descriptor = (lttng_session_descriptor_snapshot *) zmalloc(sizeof(*descriptor));
+	descriptor = zmalloc<lttng_session_descriptor_snapshot>();
 	if (!descriptor) {
 		goto error;
 	}
@@ -477,7 +477,7 @@ _lttng_session_descriptor_live_create(const char *name,
 	if (live_timer_interval_us == 0) {
 		goto error;
 	}
-	descriptor = (lttng_session_descriptor_live *) zmalloc(sizeof(*descriptor));
+	descriptor = zmalloc<lttng_session_descriptor_live>();
 	if (!descriptor) {
 		goto error;
 	}
@@ -709,7 +709,7 @@ skip_name:
 		}
 
 		uri = (typeof(uri)) current_view.data;
-		uris[i] = (lttng_uri *) zmalloc(sizeof(*uri));
+		uris[i] = zmalloc<lttng_uri>();
 		if (!uris[i]) {
 			ret = -1;
 			goto end;

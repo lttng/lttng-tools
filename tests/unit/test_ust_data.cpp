@@ -165,7 +165,7 @@ static void test_create_ust_event_exclusion(void)
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
 	/* set up an exclusion set */
-	exclusion = (lttng_event_exclusion *) zmalloc(sizeof(*exclusion) +
+	exclusion = zmalloc<lttng_event_exclusion>(sizeof(*exclusion) +
 		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
 	ok(exclusion != NULL, "Create UST exclusion");
 	if (!exclusion) {
@@ -185,7 +185,7 @@ static void test_create_ust_event_exclusion(void)
 
 	ok(ret != LTTNG_OK, "Create UST event with identical exclusion names fails");
 
-	exclusion = (lttng_event_exclusion *) zmalloc(sizeof(*exclusion) +
+	exclusion = zmalloc<lttng_event_exclusion>(sizeof(*exclusion) +
 		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
 	ok(exclusion != NULL, "Create UST exclusion");
 	if (!exclusion) {
@@ -193,7 +193,7 @@ static void test_create_ust_event_exclusion(void)
 		goto end;
 	}
 
-	exclusion_copy = (lttng_event_exclusion *) zmalloc(sizeof(*exclusion) +
+	exclusion_copy = zmalloc<lttng_event_exclusion>(sizeof(*exclusion) +
 		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
 	if (!exclusion_copy) {
 		skip(2, "zmalloc failed");

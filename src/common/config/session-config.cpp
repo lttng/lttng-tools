@@ -287,7 +287,7 @@ struct config_writer *config_writer_create(int fd_output, int indent)
 	struct config_writer *writer;
 	xmlOutputBufferPtr buffer;
 
-	writer = (config_writer *) zmalloc(sizeof(struct config_writer));
+	writer = zmalloc<config_writer>();
 	if (!writer) {
 		PERROR("zmalloc config_writer_create");
 		goto end;
@@ -581,7 +581,7 @@ char *get_session_config_xsd_path(void)
 	base_path_len = strlen(base_path);
 	max_path_len = base_path_len +
 		sizeof(DEFAULT_SESSION_CONFIG_XSD_FILENAME) + 1;
-	xsd_path = (char *) zmalloc(max_path_len);
+	xsd_path = zmalloc<char>(max_path_len);
 	if (!xsd_path) {
 		goto end;
 	}
@@ -1856,7 +1856,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				continue;
 			}
 
-			exclusions = (char **) zmalloc(exclusion_count * sizeof(char *));
+			exclusions = calloc<char *>(exclusion_count);
 			if (!exclusions) {
 				exclusion_count = 0;
 				ret = -LTTNG_ERR_NOMEM;
@@ -3399,9 +3399,8 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 	/* Init domains to create the session handles */
 	for (node = xmlFirstElementChild(domains_node); node;
 		node = xmlNextElementSibling(node)) {
-		struct lttng_domain *domain;
+		lttng_domain *domain = zmalloc<lttng_domain>();
 
-		domain = (lttng_domain *) zmalloc(sizeof(*domain));
 		if (!domain) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;

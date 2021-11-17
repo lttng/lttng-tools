@@ -117,7 +117,7 @@ lttng_kernel_probe_location_address_create(uint64_t address)
 	struct lttng_kernel_probe_location *ret = NULL;
 	struct lttng_kernel_probe_location_address *location;
 
-	location = (lttng_kernel_probe_location_address *) zmalloc(sizeof(*location));
+	location = zmalloc<lttng_kernel_probe_location_address>();
 	if (!location) {
 		PERROR("Error allocating userspace probe location.");
 		goto end;
@@ -154,7 +154,7 @@ lttng_kernel_probe_location_symbol_create(const char *symbol_name,
 		goto error;
 	}
 
-	location = (lttng_kernel_probe_location_symbol *) zmalloc(sizeof(*location));
+	location = zmalloc<lttng_kernel_probe_location_symbol>();
 	if (!location) {
 		PERROR("Failed to allocate kernel symbol probe location");
 		goto error;

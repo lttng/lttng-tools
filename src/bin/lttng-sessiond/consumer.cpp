@@ -49,7 +49,7 @@ char *setup_channel_trace_path(struct consumer_output *consumer,
 	 * Allocate the string ourself to make sure we never exceed
 	 * LTTNG_PATH_MAX.
 	 */
-	pathname = (char *) zmalloc(LTTNG_PATH_MAX);
+	pathname = calloc<char>(LTTNG_PATH_MAX);
 	if (!pathname) {
 		goto error;
 	}
@@ -429,7 +429,7 @@ struct consumer_socket *consumer_allocate_socket(int *fd)
 
 	LTTNG_ASSERT(fd);
 
-	socket = (consumer_socket *) zmalloc(sizeof(struct consumer_socket));
+	socket = zmalloc<consumer_socket>();
 	if (socket == NULL) {
 		PERROR("zmalloc consumer socket");
 		goto error;
@@ -520,7 +520,7 @@ struct consumer_output *consumer_create_output(enum consumer_dst_type type)
 {
 	struct consumer_output *output = NULL;
 
-	output = (consumer_output *) zmalloc(sizeof(struct consumer_output));
+	output = zmalloc<consumer_output>();
 	if (output == NULL) {
 		PERROR("zmalloc consumer_output");
 		goto error;

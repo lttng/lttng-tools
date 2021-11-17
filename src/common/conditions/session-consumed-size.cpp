@@ -203,7 +203,7 @@ struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 {
 	struct lttng_condition_session_consumed_size *condition;
 
-	condition = (lttng_condition_session_consumed_size *) zmalloc(sizeof(struct lttng_condition_session_consumed_size));
+	condition = zmalloc<lttng_condition_session_consumed_size>();
 	if (!condition) {
 		return NULL;
 	}
@@ -484,7 +484,7 @@ struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
 {
 	struct lttng_evaluation_session_consumed_size *consumed_eval;
 
-	consumed_eval = (lttng_evaluation_session_consumed_size *) zmalloc(sizeof(struct lttng_evaluation_session_consumed_size));
+	consumed_eval = zmalloc<lttng_evaluation_session_consumed_size>();
 	if (!consumed_eval) {
 		goto end;
 	}

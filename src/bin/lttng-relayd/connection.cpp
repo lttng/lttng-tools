@@ -90,7 +90,7 @@ struct relay_connection *connection_create(struct lttcomm_sock *sock,
 {
 	struct relay_connection *conn;
 
-	conn = (relay_connection *) zmalloc(sizeof(*conn));
+	conn = zmalloc<relay_connection>();
 	if (!conn) {
 		PERROR("zmalloc relay connection");
 		goto end;

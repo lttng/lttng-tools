@@ -24,7 +24,7 @@ struct lttng_notification *lttng_notification_create(
 		goto end;
 	}
 
-	notification = (lttng_notification *) zmalloc(sizeof(struct lttng_notification));
+	notification = zmalloc<lttng_notification>();
 	if (!notification) {
 		goto end;
 	}

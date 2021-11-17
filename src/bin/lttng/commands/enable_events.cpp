@@ -254,7 +254,7 @@ char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 	}
 
 	length += sizeof(preamble);
-	ret = (char *) zmalloc(length);
+	ret = calloc<char>(length);
 	if (!ret) {
 		return NULL;
 	}

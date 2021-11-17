@@ -71,11 +71,11 @@ error:
 /*
  * Create epoll set and allocate returned events structure.
  */
-int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
+int compat_epoll_create(struct lttng_poll_event *events, int count, int flags)
 {
 	int ret;
 
-	if (events == NULL || size <= 0) {
+	if (events == NULL || count <= 0) {
 		goto error;
 	}
 
@@ -86,11 +86,11 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	}
 
 	/* Don't bust the limit here */
-	if (size > poll_max_size) {
-		size = poll_max_size;
+	if (count > poll_max_size) {
+		count = poll_max_size;
 	}
 
-	ret = compat_glibc_epoll_create(size, flags);
+	ret = compat_glibc_epoll_create(count, flags);
 	if (ret < 0) {
 		/* At this point, every error is fatal */
 		PERROR("epoll_create1");
@@ -100,13 +100,13 @@ int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 	events->epfd = ret;
 
 	/* This *must* be freed by using lttng_poll_free() */
-	events->events = (epoll_event *) zmalloc(size * sizeof(struct epoll_event));
+	events->events = calloc<epoll_event>(count);
 	if (events->events == NULL) {
 		PERROR("zmalloc epoll set");
 		goto error_close;
 	}
 
-	events->alloc_size = events->init_size = size;
+	events->alloc_size = events->init_size = count;
 	events->nb_fd = 0;
 
 	return 0;

@@ -332,7 +332,7 @@ bool launch_kernel_management_thread(int kernel_poll_pipe_read_fd)
 	struct thread_notifiers *notifiers = NULL;
 	struct lttng_thread *thread;
 
-	notifiers = (thread_notifiers *) zmalloc(sizeof(*notifiers));
+	notifiers = zmalloc<thread_notifiers>();
 	if (!notifiers) {
 		goto error_alloc;
 	}

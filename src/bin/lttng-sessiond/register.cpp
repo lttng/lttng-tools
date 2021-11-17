@@ -265,7 +265,7 @@ static void *thread_application_registration(void *data)
 					(void) utils_set_fd_cloexec(sock);
 
 					/* Create UST registration command for enqueuing */
-					ust_cmd = (ust_command *) zmalloc(sizeof(struct ust_command));
+					ust_cmd = zmalloc<ust_command>();
 					if (ust_cmd == NULL) {
 						PERROR("ust command zmalloc");
 						ret = close(sock);
@@ -392,7 +392,7 @@ struct lttng_thread *launch_application_registration_thread(
 	const bool is_root = (getuid() == 0);
 	int application_socket = -1;
 
-	thread_state = (struct thread_state *) zmalloc(sizeof(*thread_state));
+	thread_state = zmalloc<struct thread_state>();
 	if (!thread_state) {
 		goto error_alloc;
 	}

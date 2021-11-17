@@ -321,7 +321,7 @@ struct lttng_condition *lttng_condition_buffer_usage_create(
 {
 	struct lttng_condition_buffer_usage *condition;
 
-	condition = (lttng_condition_buffer_usage *) zmalloc(sizeof(struct lttng_condition_buffer_usage));
+	condition = zmalloc<lttng_condition_buffer_usage>();
 	if (!condition) {
 		return NULL;
 	}
@@ -864,7 +864,7 @@ struct lttng_evaluation *lttng_evaluation_buffer_usage_create(
 {
 	struct lttng_evaluation_buffer_usage *usage;
 
-	usage = (lttng_evaluation_buffer_usage *) zmalloc(sizeof(struct lttng_evaluation_buffer_usage));
+	usage = zmalloc<lttng_evaluation_buffer_usage>();
 	if (!usage) {
 		goto end;
 	}

@@ -34,7 +34,7 @@ static struct relay_index *relay_index_create(struct relay_stream *stream,
 	DBG2("Creating relay index for stream id %" PRIu64 " and seqnum %" PRIu64,
 			stream->stream_handle, net_seq_num);
 
-	index = (relay_index *) zmalloc(sizeof(*index));
+	index = zmalloc<relay_index>();
 	if (!index) {
 		PERROR("Relay index zmalloc");
 		goto end;

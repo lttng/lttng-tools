@@ -104,14 +104,14 @@ int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid
 
 	LTTNG_ASSERT(regp);
 
-	reg = (buffer_reg_uid *) zmalloc(sizeof(*reg));
+	reg = zmalloc<buffer_reg_uid>();
 	if (!reg) {
 		PERROR("zmalloc buffer registry uid");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	reg->registry = (buffer_reg_session *) zmalloc(sizeof(struct buffer_reg_session));
+	reg->registry = zmalloc<buffer_reg_session>();
 	if (!reg->registry) {
 		PERROR("zmalloc buffer registry uid session");
 		ret = -ENOMEM;
@@ -234,14 +234,14 @@ int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
 
 	LTTNG_ASSERT(regp);
 
-	reg = (buffer_reg_pid *) zmalloc(sizeof(*reg));
+	reg = zmalloc<buffer_reg_pid>();
 	if (!reg) {
 		PERROR("zmalloc buffer registry pid");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	reg->registry = (buffer_reg_session *) zmalloc(sizeof(struct buffer_reg_session));
+	reg->registry = zmalloc<buffer_reg_session>();
 	if (!reg->registry) {
 		PERROR("zmalloc buffer registry pid session");
 		ret = -ENOMEM;
@@ -371,7 +371,7 @@ int buffer_reg_channel_create(uint64_t key, struct buffer_reg_channel **regp)
 
 	DBG3("Buffer registry channel create with key: %" PRIu64, key);
 
-	reg = (buffer_reg_channel *) zmalloc(sizeof(*reg));
+	reg = zmalloc<buffer_reg_channel>();
 	if (!reg) {
 		PERROR("zmalloc buffer registry channel");
 		return -ENOMEM;
@@ -401,7 +401,7 @@ int buffer_reg_stream_create(struct buffer_reg_stream **regp)
 
 	DBG3("Buffer registry creating stream");
 
-	reg = (buffer_reg_stream *) zmalloc(sizeof(*reg));
+	reg = zmalloc<buffer_reg_stream>();
 	if (!reg) {
 		PERROR("zmalloc buffer registry stream");
 		return -ENOMEM;

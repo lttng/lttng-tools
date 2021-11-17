@@ -288,7 +288,7 @@ static struct ust_registry_event *alloc_event(int session_objd,
 		return NULL;
 	}
 
-	event = (ust_registry_event *) zmalloc(sizeof(*event));
+	event = zmalloc<ust_registry_event>();
 	if (!event) {
 		PERROR("zmalloc ust registry event");
 		goto error;
@@ -630,7 +630,7 @@ int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 	}
 
 	/* Check if the enumeration was already dumped */
-	reg_enum = (ust_registry_enum *) zmalloc(sizeof(*reg_enum));
+	reg_enum = zmalloc<ust_registry_enum>();
 	if (!reg_enum) {
 		PERROR("zmalloc ust registry enumeration");
 		ret = -ENOMEM;
@@ -756,7 +756,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 
 	LTTNG_ASSERT(session);
 
-	chan = (ust_registry_channel *) zmalloc(sizeof(*chan));
+	chan = zmalloc<ust_registry_channel>();
 	if (!chan) {
 		PERROR("zmalloc ust registry channel");
 		ret = -ENOMEM;
@@ -887,7 +887,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 
 	LTTNG_ASSERT(sessionp);
 
-	session = (ust_registry_session *) zmalloc(sizeof(*session));
+	session = zmalloc<ust_registry_session>();
 	if (!session) {
 		PERROR("zmalloc ust registry session");
 		goto error_alloc;

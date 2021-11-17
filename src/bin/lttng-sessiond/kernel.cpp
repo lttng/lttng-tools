@@ -1436,7 +1436,7 @@ ssize_t kernel_list_events(struct lttng_event **events)
 	 * See kernel-ctl.h for explanation of this value
 	 */
 	nbmem = KERNEL_EVENT_INIT_LIST_SIZE;
-	elist = (lttng_event *) zmalloc(sizeof(struct lttng_event) * nbmem);
+	elist = calloc<lttng_event>(nbmem);
 	if (elist == NULL) {
 		PERROR("alloc list events");
 		count = -ENOMEM;

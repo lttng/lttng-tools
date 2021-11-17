@@ -151,7 +151,7 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 	struct ltt_kernel_session *lks = NULL;
 
 	/* Allocate a new ltt kernel session */
-	lks = (ltt_kernel_session *) zmalloc(sizeof(struct ltt_kernel_session));
+	lks = zmalloc<ltt_kernel_session>();
 	if (lks == NULL) {
 		PERROR("create kernel session zmalloc");
 		goto alloc_error;
@@ -222,19 +222,19 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 
 	LTTNG_ASSERT(chan);
 
-	lkc = (ltt_kernel_channel *) zmalloc(sizeof(struct ltt_kernel_channel));
+	lkc = zmalloc<ltt_kernel_channel>();
 	if (lkc == NULL) {
 		PERROR("ltt_kernel_channel zmalloc");
 		goto error;
 	}
 
-	lkc->channel = (lttng_channel *) zmalloc(sizeof(struct lttng_channel));
+	lkc->channel = zmalloc<lttng_channel>();
 	if (lkc->channel == NULL) {
 		PERROR("lttng_channel zmalloc");
 		goto error;
 	}
 
-	extended = (lttng_channel_extended *) zmalloc(sizeof(struct lttng_channel_extended));
+	extended = zmalloc<lttng_channel_extended>();
 	if (!extended) {
 		PERROR("lttng_channel_channel zmalloc");
 		goto error;
@@ -285,7 +285,7 @@ struct ltt_kernel_context *trace_kernel_create_context(
 {
 	struct ltt_kernel_context *kctx;
 
-	kctx = (ltt_kernel_context *) zmalloc(sizeof(*kctx));
+	kctx = zmalloc<ltt_kernel_context>();
 	if (!kctx) {
 		PERROR("zmalloc kernel context");
 		goto error;
@@ -310,7 +310,7 @@ struct ltt_kernel_context *trace_kernel_copy_context(
 	struct ltt_kernel_context *kctx_copy;
 
 	LTTNG_ASSERT(kctx);
-	kctx_copy = (ltt_kernel_context *) zmalloc(sizeof(*kctx_copy));
+	kctx_copy = zmalloc<ltt_kernel_context>();
 	if (!kctx_copy) {
 		PERROR("zmalloc ltt_kernel_context");
 		goto error;
@@ -341,8 +341,8 @@ enum lttng_error_code trace_kernel_create_event(
 
 	LTTNG_ASSERT(ev);
 
-	local_kernel_event = (ltt_kernel_event *) zmalloc(sizeof(struct ltt_kernel_event));
-	attr = (lttng_kernel_abi_event *) zmalloc(sizeof(struct lttng_kernel_abi_event));
+	local_kernel_event = zmalloc<ltt_kernel_event>();
+	attr = zmalloc<lttng_kernel_abi_event>();
 	if (local_kernel_event == NULL || attr == NULL) {
 		PERROR("kernel event zmalloc");
 		ret = LTTNG_ERR_NOMEM;
@@ -514,7 +514,7 @@ enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	LTTNG_ASSERT(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
 	local_kernel_token_event_rule =
-			(ltt_kernel_event_notifier_rule *) zmalloc(sizeof(struct ltt_kernel_event_notifier_rule));
+			zmalloc<ltt_kernel_event_notifier_rule>();
 	if (local_kernel_token_event_rule == NULL) {
 		PERROR("Failed to allocate ltt_kernel_token_event_rule structure");
 		ret = LTTNG_ERR_NOMEM;
@@ -735,8 +735,8 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 	struct ltt_kernel_metadata *lkm;
 	struct lttng_channel *chan;
 
-	lkm = (ltt_kernel_metadata *) zmalloc(sizeof(struct ltt_kernel_metadata));
-	chan = (lttng_channel *) zmalloc(sizeof(struct lttng_channel));
+	lkm = zmalloc<ltt_kernel_metadata>();
+	chan = zmalloc<lttng_channel>();
 	if (lkm == NULL || chan == NULL) {
 		PERROR("kernel metadata zmalloc");
 		goto error;
@@ -801,7 +801,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 
 	LTTNG_ASSERT(name);
 
-	lks = (ltt_kernel_stream *) zmalloc(sizeof(struct ltt_kernel_stream));
+	lks = zmalloc<ltt_kernel_stream>();
 	if (lks == NULL) {
 		PERROR("kernel stream zmalloc");
 		goto error;

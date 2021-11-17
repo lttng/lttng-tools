@@ -821,7 +821,7 @@ static void clean_up_action_executor_thread(void *_data)
 struct action_executor *action_executor_create(
 		struct notification_thread_handle *handle)
 {
-	struct action_executor *executor = (action_executor *) zmalloc(sizeof(*executor));
+	struct action_executor *executor = zmalloc<action_executor>();
 
 	if (!executor) {
 		goto end;
@@ -893,7 +893,7 @@ enum action_executor_status action_executor_enqueue_trigger(
 		goto error_unlock;
 	}
 
-	work_item = (action_work_item *) zmalloc(sizeof(*work_item));
+	work_item = zmalloc<action_work_item>();
 	if (!work_item) {
 		PERROR("Failed to allocate action executor work item: trigger name = `%s`",
 				get_trigger_name(trigger));

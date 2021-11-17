@@ -902,21 +902,21 @@ void destroy_ctx_type(struct ctx_type *type)
 	if (type->opt) {
 		free(type->opt->symbol);
 	}
-	free(type->opt);
+	delete type->opt;
 	free(type);
 }
 
 static
 struct ctx_type *create_ctx_type(void)
 {
-	struct ctx_type *type = (ctx_type *) zmalloc(sizeof(*type));
+	struct ctx_type *type = zmalloc<ctx_type>();
 
 	if (!type) {
 		PERROR("malloc ctx_type");
 		goto end;
 	}
 
-	type->opt = (struct ctx_opts *) zmalloc(sizeof(*type->opt));
+	type->opt = new struct ctx_opts;
 	if (!type->opt) {
 		PERROR("malloc ctx_type options");
 		destroy_ctx_type(type);
@@ -1091,7 +1091,7 @@ struct ctx_type *get_context_type(const char *ctx)
 	}
 
 	provider_name_len = colon_pos - sizeof(app_ctx_prefix) + 2;
-	provider_name = (char *) zmalloc(provider_name_len);
+	provider_name = calloc<char>(provider_name_len);
 	if (!provider_name) {
 		PERROR("malloc provider_name");
 		goto not_found;
@@ -1101,7 +1101,7 @@ struct ctx_type *get_context_type(const char *ctx)
 	type->opt->u.app_ctx.provider_name = provider_name;
 
 	ctx_name_len = len - colon_pos;
-	ctx_name = (char *) zmalloc(ctx_name_len);
+	ctx_name = calloc<char>(ctx_name_len);
 	if (!ctx_name) {
 		PERROR("malloc ctx_name");
 		goto not_found;

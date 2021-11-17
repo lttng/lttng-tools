@@ -64,7 +64,7 @@ static
 struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 {
 	int ret;
-	struct lttng_clear_handle *handle = (lttng_clear_handle *) zmalloc(sizeof(*handle));
+	struct lttng_clear_handle *handle = zmalloc<lttng_clear_handle>();
 
 	if (!handle) {
 		goto end;

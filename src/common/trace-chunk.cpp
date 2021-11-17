@@ -203,7 +203,7 @@ struct fs_handle *fs_handle_untracked_create(
 		goto end;
 	}
 
-	handle = (fs_handle_untracked *) zmalloc(sizeof(typeof(*handle)));
+	handle = zmalloc<fs_handle_untracked>();
 	if (!handle) {
 		PERROR("Failed to allocate untracked filesystem handle");
 		goto end;
@@ -346,7 +346,7 @@ char *generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp,
 			goto error;
 		}
 	}
-	new_name = (char *) zmalloc(GENERATED_CHUNK_NAME_LEN);
+	new_name = calloc<char>(GENERATED_CHUNK_NAME_LEN);
 	if (!new_name) {
 		ERR("Failed to allocate buffer for automatically-generated trace chunk name");
 		goto error;
@@ -399,7 +399,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_allocate(void)
 {
 	struct lttng_trace_chunk *chunk = NULL;
 
-	chunk = (lttng_trace_chunk *) zmalloc(sizeof(*chunk));
+	chunk = zmalloc<lttng_trace_chunk>();
 	if (!chunk) {
 		ERR("Failed to allocate trace chunk");
 		goto end;
@@ -1930,7 +1930,7 @@ struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void)
 {
 	struct lttng_trace_chunk_registry *registry;
 
-	registry = (lttng_trace_chunk_registry *) zmalloc(sizeof(*registry));
+	registry = zmalloc<lttng_trace_chunk_registry>();
 	if (!registry) {
 		goto end;
 	}
@@ -1966,7 +1966,7 @@ lttng_trace_chunk_registry_element_create_from_chunk(
 		struct lttng_trace_chunk *chunk, uint64_t session_id)
 {
 	struct lttng_trace_chunk_registry_element *element =
-		(lttng_trace_chunk_registry_element *) zmalloc(sizeof(*element));
+		zmalloc<lttng_trace_chunk_registry_element>();
 
 	if (!element) {
 		goto end;

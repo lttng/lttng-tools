@@ -2322,7 +2322,7 @@ int save_consumer_output(struct config_writer *writer,
 	{
 		char *uri;
 
-		uri = (char *) zmalloc(PATH_MAX);
+		uri = calloc<char>(PATH_MAX);
 		if (!uri) {
 			ret = LTTNG_ERR_NOMEM;
 			goto end;

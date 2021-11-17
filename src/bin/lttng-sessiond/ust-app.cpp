@@ -696,7 +696,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	}
 
 	/* Allocate only what we have to send. */
-	metadata_str = (char *) zmalloc(len);
+	metadata_str = calloc<char>(len);
 	if (!metadata_str) {
 		PERROR("zmalloc ust app metadata string");
 		ret_val = -ENOMEM;
@@ -1160,7 +1160,7 @@ struct ust_app_session *alloc_ust_app_session(void)
 	struct ust_app_session *ua_sess;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_sess = (ust_app_session *) zmalloc(sizeof(struct ust_app_session));
+	ua_sess = zmalloc<ust_app_session>();
 	if (ua_sess == NULL) {
 		PERROR("malloc");
 		goto error_free;
@@ -1188,7 +1188,7 @@ struct ust_app_channel *alloc_ust_app_channel(const char *name,
 	struct ust_app_channel *ua_chan;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_chan = (ust_app_channel *) zmalloc(sizeof(struct ust_app_channel));
+	ua_chan = zmalloc<ust_app_channel>();
 	if (ua_chan == NULL) {
 		PERROR("malloc");
 		goto error;
@@ -1240,7 +1240,7 @@ struct ust_app_stream *ust_app_alloc_stream(void)
 {
 	struct ust_app_stream *stream = NULL;
 
-	stream = (ust_app_stream *) zmalloc(sizeof(*stream));
+	stream = zmalloc<ust_app_stream>();
 	if (stream == NULL) {
 		PERROR("zmalloc ust app stream");
 		goto error;
@@ -1263,7 +1263,7 @@ struct ust_app_event *alloc_ust_app_event(char *name,
 	struct ust_app_event *ua_event;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_event = (ust_app_event *) zmalloc(sizeof(struct ust_app_event));
+	ua_event = zmalloc<ust_app_event>();
 	if (ua_event == NULL) {
 		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
@@ -1300,7 +1300,7 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 	struct lttng_condition *condition = NULL;
 	const struct lttng_event_rule *event_rule = NULL;
 
-	ua_event_notifier_rule = (ust_app_event_notifier_rule *) zmalloc(sizeof(struct ust_app_event_notifier_rule));
+	ua_event_notifier_rule = zmalloc<ust_app_event_notifier_rule>();
 	if (ua_event_notifier_rule == NULL) {
 		PERROR("Failed to allocate ust_app_event_notifier_rule structure");
 		goto error;
@@ -1360,7 +1360,7 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx)
 {
 	struct ust_app_ctx *ua_ctx;
 
-	ua_ctx = (ust_app_ctx *) zmalloc(sizeof(struct ust_app_ctx));
+	ua_ctx = zmalloc<ust_app_ctx>();
 	if (ua_ctx == NULL) {
 		goto error;
 	}
@@ -1403,7 +1403,7 @@ static struct lttng_ust_abi_filter_bytecode *create_ust_filter_bytecode_from_byt
 	struct lttng_ust_abi_filter_bytecode *filter = NULL;
 
 	/* Copy filter bytecode. */
-	filter = (lttng_ust_abi_filter_bytecode *) zmalloc(sizeof(*filter) + orig_f->len);
+	filter = zmalloc<lttng_ust_abi_filter_bytecode>(sizeof(*filter) + orig_f->len);
 	if (!filter) {
 		PERROR("Failed to allocate lttng_ust_filter_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
 		goto error;
@@ -1427,7 +1427,7 @@ create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 	struct lttng_ust_abi_capture_bytecode *capture = NULL;
 
 	/* Copy capture bytecode. */
-	capture = (lttng_ust_abi_capture_bytecode *) zmalloc(sizeof(*capture) + orig_f->len);
+	capture = zmalloc<lttng_ust_abi_capture_bytecode>(sizeof(*capture) + orig_f->len);
 	if (!capture) {
 		PERROR("Failed to allocate lttng_ust_abi_capture_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
 		goto error;
@@ -1711,7 +1711,7 @@ struct lttng_ust_abi_event_exclusion *create_ust_exclusion_from_exclusion(
 	size_t exclusion_alloc_size = sizeof(struct lttng_ust_abi_event_exclusion) +
 		LTTNG_UST_ABI_SYM_NAME_LEN * exclusion->count;
 
-	ust_exclusion = (lttng_ust_abi_event_exclusion *) zmalloc(exclusion_alloc_size);
+	ust_exclusion = zmalloc<lttng_ust_abi_event_exclusion>(exclusion_alloc_size);
 	if (!ust_exclusion) {
 		PERROR("malloc");
 		goto end;
@@ -2331,7 +2331,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	if (uevent->exclusion) {
 		exclusion_alloc_size = sizeof(struct lttng_event_exclusion) +
 				LTTNG_UST_ABI_SYM_NAME_LEN * uevent->exclusion->count;
-		ua_event->exclusion = (lttng_event_exclusion *) zmalloc(exclusion_alloc_size);
+		ua_event->exclusion = zmalloc<lttng_event_exclusion>(exclusion_alloc_size);
 		if (ua_event->exclusion == NULL) {
 			PERROR("malloc");
 		} else {
@@ -3993,7 +3993,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 		goto error;
 	}
 
-	lta = (ust_app *) zmalloc(sizeof(struct ust_app));
+	lta = zmalloc<ust_app>();
 	if (lta == NULL) {
 		PERROR("malloc");
 		goto error_free_pipe;
@@ -4369,7 +4369,7 @@ int ust_app_list_events(struct lttng_event **events)
 	struct lttng_event *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
-	tmp_event = (lttng_event *) zmalloc(nbmem * sizeof(struct lttng_event));
+	tmp_event = calloc<lttng_event>(nbmem);
 	if (tmp_event == NULL) {
 		PERROR("zmalloc ust app events");
 		ret = -ENOMEM;
@@ -4504,7 +4504,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	struct lttng_event_field *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
-	tmp_event = (lttng_event_field *) zmalloc(nbmem * sizeof(struct lttng_event_field));
+	tmp_event = calloc<lttng_event_field>(nbmem);
 	if (tmp_event == NULL) {
 		PERROR("zmalloc ust app event fields");
 		ret = -ENOMEM;
@@ -6389,11 +6389,13 @@ static int ust_app_fixup_legacy_context_fields(size_t *_nr_fields,
 	if (!found) {
 		goto end;
 	}
-	new_fields = (struct lttng_ust_ctl_field *) zmalloc(sizeof(*new_fields) * new_nr_fields);
+
+	new_fields = calloc<lttng_ust_ctl_field>(new_nr_fields);
 	if (!new_fields) {
 		ret = -ENOMEM;
 		goto end;
 	}
+
 	for (i = 0, j = 0; i < nr_fields; i++, j++) {
 		const struct lttng_ust_ctl_field *field = &fields[i];
 		struct lttng_ust_ctl_field *new_field = &new_fields[j];
@@ -6944,7 +6946,7 @@ void ust_app_notify_sock_unregister(int sock)
 
 	rcu_read_lock();
 
-	obj = (ust_app_notify_sock_obj *) zmalloc(sizeof(*obj));
+	obj = zmalloc<ust_app_notify_sock_obj>();
 	if (!obj) {
 		/*
 		 * An ENOMEM is kind of uncool. If this strikes we continue the

@@ -65,7 +65,7 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 		buf_size += size;
 	}
 
-	buf = (char *) zmalloc(buf_size);
+	buf = calloc<char>(buf_size);
 	if (buf == NULL) {
 		PERROR("zmalloc relayd send command buf");
 		ret = -1;
@@ -166,7 +166,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	base_path_len = strlen(base_path) + 1;
 
 	msg_length = sizeof(*msg) + session_name_len + hostname_len + base_path_len;
-	msg = (lttcomm_relayd_create_session_2_11 *) zmalloc(msg_length);
+	msg = zmalloc<lttcomm_relayd_create_session_2_11>(msg_length);
 	if (!msg) {
 		PERROR("zmalloc create_session_2_11 command message");
 		ret = -1;
@@ -446,7 +446,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 	pathname_len = strlen(pathname) + 1;
 
 	msg_length = sizeof(*msg) + channel_name_len + pathname_len;
-	msg = (lttcomm_relayd_add_stream_2_11 *) zmalloc(msg_length);
+	msg = zmalloc<lttcomm_relayd_add_stream_2_11>(msg_length);
 	if (!msg) {
 		PERROR("zmalloc add_stream_2_11 command message");
 		ret = -1;

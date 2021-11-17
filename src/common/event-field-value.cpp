@@ -23,7 +23,7 @@ struct lttng_event_field_value *create_empty_field_val(
 {
 	struct lttng_event_field_value *field_val;
 
-	field_val = (lttng_event_field_value *) zmalloc(size);
+	field_val = zmalloc<lttng_event_field_value>(size);
 	if (!field_val) {
 		goto end;
 	}

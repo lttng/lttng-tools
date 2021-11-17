@@ -32,7 +32,7 @@ struct lttng_index_allocator *lttng_index_allocator_create(
 {
 	struct lttng_index_allocator *allocator = NULL;
 
-	allocator = (lttng_index_allocator *) zmalloc(sizeof(*allocator));
+	allocator = zmalloc<lttng_index_allocator>();
 	if (!allocator) {
 		PERROR("Failed to allocate index allocator");
 		goto end;
@@ -92,7 +92,7 @@ enum lttng_index_allocator_status lttng_index_allocator_release(
 
 	LTTNG_ASSERT(idx < allocator->size);
 
-	index = (lttng_index *) zmalloc(sizeof(*index));
+	index = zmalloc<lttng_index>();
 	if (!index) {
 		PERROR("Failed to allocate free index queue");
 		status = LTTNG_INDEX_ALLOCATOR_STATUS_ERROR;

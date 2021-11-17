@@ -266,7 +266,7 @@ int lttng_check_tracing_group(void)
 	}
 
 	/* Alloc group list of the right size */
-	grp_list = (gid_t *) zmalloc(grp_list_size * sizeof(gid_t));
+	grp_list = calloc<gid_t>(grp_list_size);
 	if (!grp_list) {
 		PERROR("malloc");
 		goto end;
@@ -500,7 +500,7 @@ static int recv_sessiond_optional_data(size_t len, void **user_buf,
 	size_t *user_len)
 {
 	int ret = 0;
-	void *buf = NULL;
+	char *buf = NULL;
 
 	if (len) {
 		if (!user_len) {
@@ -508,7 +508,7 @@ static int recv_sessiond_optional_data(size_t len, void **user_buf,
 			goto end;
 		}
 
-		buf = zmalloc(len);
+		buf = zmalloc<char>(len);
 		if (!buf) {
 			ret = -ENOMEM;
 			goto end;
@@ -729,7 +729,7 @@ struct lttng_handle *lttng_create_handle(const char *session_name,
 	int ret;
 	struct lttng_handle *handle = NULL;
 
-	handle = (lttng_handle *) zmalloc(sizeof(struct lttng_handle));
+	handle = zmalloc<lttng_handle>();
 	if (handle == NULL) {
 		PERROR("malloc handle");
 		goto end;
@@ -1576,13 +1576,13 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	/* Populate the channel extended attribute if necessary. */
 	if (!channel->attr.extended.ptr) {
 		struct lttng_channel_extended *extended =
-				(struct lttng_channel_extended *) zmalloc(
-						sizeof(*extended));
+				zmalloc<lttng_channel_extended>();
 
 		if (!extended) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
+
 		lttng_channel_set_default_extended_attr(
 				&handle->domain, extended);
 		channel->attr.extended.ptr = extended;

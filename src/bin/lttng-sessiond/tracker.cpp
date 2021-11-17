@@ -49,7 +49,7 @@ struct process_attr_tracker *process_attr_tracker_create(void)
 {
 	struct process_attr_tracker *tracker;
 
-	tracker = (process_attr_tracker *) zmalloc(sizeof(*tracker));
+	tracker = zmalloc<process_attr_tracker>();
 	if (!tracker) {
 		return NULL;
 	}
@@ -201,7 +201,7 @@ enum process_attr_tracker_status process_attr_tracker_inclusion_set_add_value(
 		goto end;
 	}
 
-	value_node = (process_attr_tracker_value_node *) zmalloc(sizeof(*value_node));
+	value_node = zmalloc<process_attr_tracker_value_node>();
 	if (!value_node) {
 		status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
 		goto end;

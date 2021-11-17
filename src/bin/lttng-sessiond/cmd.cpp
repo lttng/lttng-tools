@@ -2140,7 +2140,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 				}
 			}
 			if (filter) {
-				filter_a = (lttng_bytecode *) zmalloc(sizeof(*filter_a) + filter->len);
+				filter_a = zmalloc<lttng_bytecode>(sizeof(*filter_a) + filter->len);
 				if (!filter_a) {
 					free(filter_expression_a);
 					ret = LTTNG_ERR_FATAL;
@@ -2368,7 +2368,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 						struct lttng_bytecode)
 						+ filter->len;
 
-				filter_copy = (lttng_bytecode *) zmalloc(filter_size);
+				filter_copy = zmalloc<lttng_bytecode>(filter_size);
 				if (!filter_copy) {
 					ret = LTTNG_ERR_NOMEM;
 					goto error;
@@ -3380,11 +3380,12 @@ int cmd_destroy_session(struct ltt_session *session,
 	struct cmd_destroy_session_reply_context *reply_context = NULL;
 
 	if (sock_fd) {
-		reply_context = (cmd_destroy_session_reply_context *) zmalloc(sizeof(*reply_context));
+		reply_context = zmalloc<cmd_destroy_session_reply_context>();
 		if (!reply_context) {
 			ret = LTTNG_ERR_NOMEM;
 			goto end;
 		}
+
 		reply_context->reply_sock_fd = *sock_fd;
 	}
 
@@ -3583,12 +3584,13 @@ int cmd_register_consumer(struct ltt_session *session,
 			goto error;
 		}
 
-		socket->lock = (pthread_mutex_t *) zmalloc(sizeof(pthread_mutex_t));
+		socket->lock = zmalloc<pthread_mutex_t>();
 		if (socket->lock == NULL) {
 			PERROR("zmalloc pthread mutex");
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
+
 		pthread_mutex_init(socket->lock, NULL);
 		socket->registered = 1;
 
@@ -3651,7 +3653,7 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		goto end;
 	}
 
-	*domains = (lttng_domain *) zmalloc(nb_dom * sizeof(struct lttng_domain));
+	*domains = calloc<lttng_domain>(nb_dom);
 	if (*domains == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
@@ -4193,7 +4195,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		goto end;
 	}
 
-	list = (lttng_snapshot_output *) zmalloc(session->snapshot.nb_output * sizeof(*list));
+	list = calloc<lttng_snapshot_output>(session->snapshot.nb_output);
 	if (!list) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;

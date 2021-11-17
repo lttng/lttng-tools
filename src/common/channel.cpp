@@ -37,7 +37,7 @@ struct lttng_channel *lttng_channel_copy(const struct lttng_channel *src)
 	struct lttng_channel_extended *extended = nullptr;
 	struct lttng_channel *channel = nullptr, *ret = nullptr;
 
-	channel = (struct lttng_channel *) zmalloc(sizeof(*channel));
+	channel = zmalloc<lttng_channel>();
 	if (!channel) {
 		goto end;
 	}
@@ -45,8 +45,7 @@ struct lttng_channel *lttng_channel_copy(const struct lttng_channel *src)
 	*channel = *src;
 
 	if (src->attr.extended.ptr) {
-		extended = (struct lttng_channel_extended *) zmalloc(
-				sizeof(*extended));
+		extended = zmalloc<lttng_channel_extended>();
 		if (!extended) {
 			goto end;
 		}
@@ -71,15 +70,13 @@ struct lttng_channel *lttng_channel_create_internal(void)
 	struct lttng_channel *local_channel = nullptr, *ret = nullptr;
 	struct lttng_channel_extended *extended = nullptr;
 
-	local_channel = (struct lttng_channel *) zmalloc(
-			sizeof(struct lttng_channel));
+	local_channel = zmalloc<lttng_channel>();
 	if (!local_channel) {
 		goto end;
 	}
 
 	/* Extended struct */
-	extended = (struct lttng_channel_extended *) zmalloc(
-			sizeof(*extended));
+	extended = zmalloc<lttng_channel_extended>();
 	if (!extended) {
 		goto end;
 	}

@@ -171,9 +171,8 @@ void utils_close_pipe(int *src)
  */
 char *utils_strdupdelim(const char *begin, const char *end)
 {
-	char *str;
+	char *str = zmalloc<char>(end - begin + 1);
 
-	str = (char *) zmalloc(end - begin + 1);
 	if (str == NULL) {
 		PERROR("zmalloc strdupdelim");
 		goto error;
@@ -784,7 +783,7 @@ char *utils_get_user_home_dir(uid_t uid)
 		goto end;
 	}
 retry:
-	buf = (char *) zmalloc(buflen);
+	buf = zmalloc<char>(buflen);
 	if (!buf) {
 		goto end;
 	}
@@ -934,7 +933,7 @@ char *utils_generate_optstring(const struct option *long_options,
 		string_len += long_options[i].has_arg ? 1 : 0;
 	}
 
-	optstring = (char *) zmalloc(string_len);
+	optstring = zmalloc<char>(string_len);
 	if (!optstring) {
 		goto end;
 	}
@@ -1159,7 +1158,7 @@ enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *uid)
 		buflen = FALLBACK_USER_BUFLEN;
 	}
 
-	buf = (char *) zmalloc(buflen);
+	buf = zmalloc<char>(buflen);
 	if (!buf) {
 		ret_val = LTTNG_ERR_NOMEM;
 		goto end;
@@ -1173,7 +1172,7 @@ enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *uid)
 		case ERANGE:
 			buflen *= 2;
 			free(buf);
-			buf = (char *) zmalloc(buflen);
+			buf = zmalloc<char>(buflen);
 			if (!buf) {
 				ret_val = LTTNG_ERR_NOMEM;
 				goto end;
@@ -1224,7 +1223,7 @@ enum lttng_error_code utils_group_id_from_name(
 		buflen = FALLBACK_GROUP_BUFLEN;
 	}
 
-	buf = (char *) zmalloc(buflen);
+	buf = zmalloc<char>(buflen);
 	if (!buf) {
 		ret_val = LTTNG_ERR_NOMEM;
 		goto end;
@@ -1238,7 +1237,7 @@ enum lttng_error_code utils_group_id_from_name(
 		case ERANGE:
 			buflen *= 2;
 			free(buf);
-			buf = (char *) zmalloc(buflen);
+			buf = zmalloc<char>(buflen);
 			if (!buf) {
 				ret_val = LTTNG_ERR_NOMEM;
 				goto end;

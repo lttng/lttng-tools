@@ -781,7 +781,7 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest,
 		return ret;
 	}
 	src_file_len = layout->mmap_length;
-	buf = (char *) zmalloc(src_file_len);
+	buf = calloc<char>(src_file_len);
 	if (!buf) {
 		return -1;
 	}
@@ -1129,7 +1129,7 @@ int delete_dir_recursive(const char *path)
 		}
 
 		if (S_ISDIR(st.st_mode)) {
-			char *subpath = (char *) zmalloc(PATH_MAX);
+			char *subpath = calloc<char>(PATH_MAX);
 
 			if (!subpath) {
 				PERROR("zmalloc path");

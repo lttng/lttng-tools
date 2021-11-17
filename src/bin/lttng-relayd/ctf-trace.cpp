@@ -97,7 +97,7 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session,
 {
 	struct ctf_trace *trace;
 
-	trace = (ctf_trace *) zmalloc(sizeof(*trace));
+	trace = zmalloc<ctf_trace>();
 	if (!trace) {
 		PERROR("Failed to allocate ctf_trace");
 		goto end;

@@ -362,7 +362,7 @@ struct lttng_action *lttng_action_list_create(void)
 	struct lttng_action_list *action_list;
 	struct lttng_action *action;
 
-	action_list = (lttng_action_list *) zmalloc(sizeof(struct lttng_action_list));
+	action_list = zmalloc<lttng_action_list>();
 	if (!action_list) {
 		action = NULL;
 		goto end;

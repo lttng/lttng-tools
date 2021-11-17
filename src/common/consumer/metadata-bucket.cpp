@@ -25,9 +25,7 @@ struct metadata_bucket {
 struct metadata_bucket *metadata_bucket_create(
 		metadata_bucket_flush_cb flush, void *data)
 {
-	struct metadata_bucket *bucket;
-
-	bucket = (metadata_bucket *) zmalloc(sizeof(typeof(*bucket)));
+	metadata_bucket *bucket = zmalloc<metadata_bucket>();
 	if (!bucket) {
 		PERROR("Failed to allocate buffer bucket");
 		goto end;

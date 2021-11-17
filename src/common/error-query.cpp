@@ -111,7 +111,7 @@ struct lttng_error_query *lttng_error_query_trigger_create(
 		goto end;
 	}
 
-	query = (lttng_error_query_trigger *) zmalloc(sizeof(*query));
+	query = zmalloc<lttng_error_query_trigger>();
 	if (!query) {
 		PERROR("Failed to allocate trigger error query");
 		goto error;
@@ -142,7 +142,7 @@ struct lttng_error_query *lttng_error_query_condition_create(
 		goto end;
 	}
 
-	query = (lttng_error_query_condition *) zmalloc(sizeof(*query));
+	query = zmalloc<lttng_error_query_condition>();
 	if (!query) {
 		PERROR("Failed to allocate condition error query");
 		goto error;
@@ -221,7 +221,7 @@ struct lttng_error_query *lttng_error_query_action_create(
 		goto end;
 	}
 
-	query = (lttng_error_query_action *) zmalloc(sizeof(*query));
+	query = zmalloc<lttng_error_query_action>();
 	if (!query) {
 		PERROR("Failed to allocate action error query");
 		goto error;
@@ -388,7 +388,7 @@ lttng_error_query_result_counter_create(
 	int init_ret;
 	struct lttng_error_query_result_counter *counter;
 
-	counter = (lttng_error_query_result_counter *) zmalloc(sizeof(*counter));
+	counter = zmalloc<lttng_error_query_result_counter>();
 	if (!counter) {
 		PERROR("Failed to allocate error query counter result");
 		goto end;
@@ -419,7 +419,7 @@ void destroy_result(void *ptr)
 
 struct lttng_error_query_results *lttng_error_query_results_create(void)
 {
-	struct lttng_error_query_results *set = (lttng_error_query_results *) zmalloc(sizeof(*set));
+	struct lttng_error_query_results *set = zmalloc<lttng_error_query_results>();
 
 	if (!set) {
 		PERROR("Failed to allocate an error query result set");

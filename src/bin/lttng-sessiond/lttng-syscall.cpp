@@ -60,7 +60,7 @@ int syscall_init_table(int tracer_fd)
 	}
 
 	nbmem = SYSCALL_TABLE_INIT_SIZE;
-	syscall_table = (struct syscall *) zmalloc(sizeof(struct syscall) * nbmem);
+	syscall_table = calloc<struct syscall>(nbmem);
 	if (!syscall_table) {
 		ret = -errno;
 		PERROR("syscall list zmalloc");
@@ -245,7 +245,7 @@ static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index,
 
 	LTTNG_ASSERT(ht);
 
-	ksyscall = (struct syscall *) zmalloc(sizeof(*ksyscall));
+	ksyscall = zmalloc<struct syscall>();
 	if (!ksyscall) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
@@ -288,7 +288,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 	 * them might not be valid. The count below will make sure to return the
 	 * right size of the events array.
 	 */
-	events = (lttng_event *) zmalloc(syscall_table_nb_entry * sizeof(*events));
+	events = calloc<lttng_event>(syscall_table_nb_entry);
 	if (!events) {
 		PERROR("syscall table list zmalloc");
 		ret = -LTTNG_ERR_NOMEM;

@@ -570,7 +570,7 @@ bool launch_agent_management_thread(void)
 	struct thread_notifiers *notifiers;
 	struct lttng_thread *thread;
 
-	notifiers = (thread_notifiers *) zmalloc(sizeof(*notifiers));
+	notifiers = zmalloc<thread_notifiers>();
 	if (!notifiers) {
 		goto error_alloc;
 	}
