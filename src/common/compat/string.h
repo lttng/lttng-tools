@@ -25,7 +25,7 @@ size_t lttng_strnlen(const char *str, size_t max)
 	size_t ret;
 	const char *end;
 
-	end = memchr(str, 0, max);
+	end = (const char *) memchr(str, 0, max);
 
 	if (end) {
 		ret = (size_t) (end - str);
@@ -61,7 +61,7 @@ char *lttng_strndup(const char *s, size_t n)
 		navail = n + 1;
 	}
 
-	ret = malloc(navail);
+	ret = (char *) malloc(navail);
 	if (!ret) {
 		goto end;
 	}
@@ -120,7 +120,7 @@ static inline
 void *lttng_memrchr(const void *s, int c, size_t n)
 {
 	int i;
-	const char *str = s;
+	const char *str = (const char *) s;
 	for (i = n-1; i >= 0; i--) {
 		if (str[i] == (char)c) {
 			return (void *)(str+i);
