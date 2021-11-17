@@ -62,9 +62,9 @@ compile_commands.json
 /src/bin/lttng-relayd/lttng-relayd
 /src/lib/lttng-ctl/lttng-ctl.pc
 /src/common/filter-grammar-test
-/src/common/filter/filter-lexer.c
-/src/common/filter/filter-parser.c
-/src/common/filter/filter-parser.h
+/src/common/filter/filter-lexer.cpp
+/src/common/filter/filter-parser.cpp
+/src/common/filter/filter-parser.hpp
 /src/common/filter/filter-parser.output
 
 /extras/bindings/swig/python/lttng.i
