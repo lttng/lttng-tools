@@ -1005,7 +1005,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	metadata_stream = metadata_channel->metadata_stream;
 	assert(metadata_stream);
 
-	pthread_mutex_lock(&metadata_stream->lock);
+	metadata_stream->read_subbuffer_ops.lock(metadata_stream);
 	if (relayd_id != (uint64_t) -1ULL) {
 		metadata_stream->net_seq_idx = relayd_id;
 		ret = consumer_send_relayd_stream(metadata_stream, path);
@@ -1013,14 +1013,12 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 		ret = consumer_stream_create_output_files(metadata_stream,
 				false);
 	}
-	pthread_mutex_unlock(&metadata_stream->lock);
 	if (ret < 0) {
 		goto error_stream;
 	}
 
 	do {
 		health_code_update();
-
 		ret = lttng_consumer_read_subbuffer(metadata_stream, ctx, true);
 		if (ret < 0) {
 			goto error_stream;
@@ -1028,9 +1026,10 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	} while (ret > 0);
 
 error_stream:
+	metadata_stream->read_subbuffer_ops.unlock(metadata_stream);
 	/*
-	 * Clean up the stream completly because the next snapshot will use a new
-	 * metadata stream.
+	 * Clean up the stream completely because the next snapshot will use a
+	 * new metadata stream.
 	 */
 	consumer_stream_destroy(metadata_stream, NULL);
 	cds_list_del(&metadata_stream->send_node);
@@ -1324,10 +1323,21 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		 * metadata position to ensure the metadata poll thread consumes
 		 * the whole cache.
 		 */
-		pthread_mutex_lock(&channel->metadata_stream->lock);
-		metadata_stream_reset_cache_consumed_position(
-				channel->metadata_stream);
-		pthread_mutex_unlock(&channel->metadata_stream->lock);
+
+		/*
+		 * channel::metadata_stream can be null when the metadata
+		 * channel is under a snapshot session type. No need to update
+		 * the stream position in that scenario.
+		 */
+		if (channel->metadata_stream != NULL) {
+			pthread_mutex_lock(&channel->metadata_stream->lock);
+			metadata_stream_reset_cache_consumed_position(
+					channel->metadata_stream);
+			pthread_mutex_unlock(&channel->metadata_stream->lock);
+		} else {
+			/* Validate we are in snapshot mode. */
+			assert(!channel->monitor);
+		}
 		/* Fall-through. */
 	case CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT:
 		/*

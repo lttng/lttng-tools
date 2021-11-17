@@ -397,6 +397,13 @@ typedef void (*lock_cb)(struct lttng_consumer_stream *);
 typedef void (*unlock_cb)(struct lttng_consumer_stream *);
 
 /*
+ * Assert that the stream and channel lock and any other stream type specific
+ * lock that need to be acquired during the processing of a read_subbuffer
+ * operation is acquired.
+ */
+typedef void (*assert_locked_cb)(struct lttng_consumer_stream *);
+
+/*
  * Invoked when a subbuffer's metadata version does not match the last
  * known metadata version.
  *
@@ -647,6 +654,7 @@ struct lttng_consumer_stream {
 		send_live_beacon_cb send_live_beacon;
 		on_sleep_cb on_sleep;
 		unlock_cb unlock;
+		assert_locked_cb assert_locked;
 	} read_subbuffer_ops;
 	struct metadata_bucket *metadata_bucket;
 };

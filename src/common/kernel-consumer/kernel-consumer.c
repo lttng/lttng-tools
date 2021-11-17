@@ -139,7 +139,7 @@ error:
 /*
  * Take a snapshot of all the stream of a channel
  * RCU read-side lock must be held across this function to ensure existence of
- * channel. The channel lock must be held by the caller.
+ * channel.
  *
  * Returns 0 on success, < 0 on error
  */
@@ -153,6 +153,9 @@ static int lttng_kconsumer_snapshot_channel(
 	struct lttng_consumer_stream *stream;
 
 	DBG("Kernel consumer snapshot channel %" PRIu64, key);
+
+	/* Prevent channel modifications while we perform the snapshot.*/
+	pthread_mutex_lock(&channel->lock);
 
 	rcu_read_lock();
 
@@ -347,13 +350,14 @@ end_unlock:
 	pthread_mutex_unlock(&stream->lock);
 end:
 	rcu_read_unlock();
+	pthread_mutex_unlock(&channel->lock);
 	return ret;
 }
 
 /*
  * Read the whole metadata available for a snapshot.
  * RCU read-side lock must be held across this function to ensure existence of
- * metadata_channel. The channel lock must be held by the caller.
+ * metadata_channel.
  *
  * Returns 0 on success, < 0 on error
  */
@@ -376,7 +380,7 @@ static int lttng_kconsumer_snapshot_metadata(
 	metadata_stream = metadata_channel->metadata_stream;
 	assert(metadata_stream);
 
-	pthread_mutex_lock(&metadata_stream->lock);
+	metadata_stream->read_subbuffer_ops.lock(metadata_stream);
 	assert(metadata_channel->trace_chunk);
 	assert(metadata_stream->trace_chunk);
 
@@ -431,7 +435,7 @@ static int lttng_kconsumer_snapshot_metadata(
 
 	ret = 0;
 error_snapshot:
-	pthread_mutex_unlock(&metadata_stream->lock);
+	metadata_stream->read_subbuffer_ops.unlock(metadata_stream);
 	cds_list_del(&metadata_stream->send_node);
 	consumer_stream_destroy(metadata_stream, NULL);
 	metadata_channel->metadata_stream = NULL;
@@ -961,7 +965,6 @@ error_streams_sent_nosignal:
 			ERR("Channel %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			pthread_mutex_lock(&channel->lock);
 			if (msg.u.snapshot_channel.metadata == 1) {
 				int ret_snapshot;
 
@@ -989,7 +992,6 @@ error_streams_sent_nosignal:
 					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
 				}
 			}
-			pthread_mutex_unlock(&channel->lock);
 		}
 		health_code_update();
 
