@@ -3497,6 +3497,8 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	if (!locked_by_caller) {
 		stream->read_subbuffer_ops.lock(stream);
+	} else {
+		stream->read_subbuffer_ops.assert_locked(stream);
 	}
 
 	if (stream->read_subbuffer_ops.on_wake_up) {
