@@ -2006,11 +2006,11 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * an error.
 		 */
 		if (vstream->metadata_sent > 0) {
-			vstream->stream->no_new_metadata_notified = true;
-			if (vstream->stream->closed) {
+			if (vstream->stream->closed && vstream->stream->no_new_metadata_notified) {
 				/* Release ownership for the viewer metadata stream. */
 				viewer_stream_put(vstream);
 			}
+			vstream->stream->no_new_metadata_notified = true;
 		}
 		goto send_reply;
 	}

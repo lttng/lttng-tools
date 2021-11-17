@@ -1758,24 +1758,6 @@ static int relay_close_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 	 *        request.
 	 */
 	try_stream_close(stream);
-	if (stream->is_metadata) {
-		struct relay_viewer_stream *vstream;
-
-		vstream = viewer_stream_get_by_id(stream->stream_handle);
-		if (vstream) {
-			if (stream->no_new_metadata_notified) {
-				/*
-				 * Since all the metadata has been sent to the
-				 * viewer and that we have a request to close
-				 * its stream, we can safely teardown the
-				 * corresponding metadata viewer stream.
-				 */
-				viewer_stream_put(vstream);
-			}
-			/* Put local reference. */
-			viewer_stream_put(vstream);
-		}
-	}
 	stream_put(stream);
 	ret = 0;
 
