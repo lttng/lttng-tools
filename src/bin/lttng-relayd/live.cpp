@@ -89,6 +89,33 @@ static uint64_t last_relay_viewer_session_id;
 static pthread_mutex_t last_relay_viewer_session_id_lock =
 		PTHREAD_MUTEX_INITIALIZER;
 
+static
+const char *lttng_viewer_command_str(lttng_viewer_command cmd)
+{
+	switch (cmd) {
+	case LTTNG_VIEWER_CONNECT:
+		return "CONNECT";
+	case LTTNG_VIEWER_LIST_SESSIONS:
+		return "LIST_SESSIONS";
+	case LTTNG_VIEWER_ATTACH_SESSION:
+		return "ATTACH_SESSION";
+	case LTTNG_VIEWER_GET_NEXT_INDEX:
+		return "GET_NEXT_INDEX";
+	case LTTNG_VIEWER_GET_PACKET:
+		return "GET_PACKET";
+	case LTTNG_VIEWER_GET_METADATA:
+		return "GET_METADATA";
+	case LTTNG_VIEWER_GET_NEW_STREAMS:
+		return "GET_NEW_STREAMS";
+	case LTTNG_VIEWER_CREATE_SESSION:
+		return "CREATE_SESSION";
+	case LTTNG_VIEWER_DETACH_SESSION:
+		return "DETACH_SESSION";
+	default:
+		abort();
+	}
+}
+
 /*
  * Cleanup the daemon
  */
@@ -937,8 +964,6 @@ int viewer_connect(struct relay_connection *conn)
 
 	health_code_update();
 
-	DBG("Viewer is establishing a connection to the relayd.");
-
 	ret = recv_request(conn->sock, &msg, sizeof(msg));
 	if (ret < 0) {
 		goto end;
@@ -1024,8 +1049,6 @@ int viewer_list_sessions(struct relay_connection *conn)
 	struct lttng_viewer_session *send_session_buf = NULL;
 	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
 	uint32_t count = 0;
-
-	DBG("List sessions received");
 
 	send_session_buf = (lttng_viewer_session *) zmalloc(SESSION_BUF_DEFAULT_COUNT * sizeof(*send_session_buf));
 	if (!send_session_buf) {
@@ -1130,8 +1153,6 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	bool closed = false;
 
 	LTTNG_ASSERT(conn);
-
-	DBG("Get new streams received");
 
 	health_code_update();
 
@@ -1609,8 +1630,6 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	LTTNG_ASSERT(conn);
 
-	DBG("Viewer get next index");
-
 	memset(&viewer_index, 0, sizeof(viewer_index));
 	health_code_update();
 
@@ -1915,8 +1934,6 @@ int viewer_get_packet(struct relay_connection *conn)
 	ssize_t read_len;
 	uint64_t stream_id;
 
-	DBG2("Relay get data packet");
-
 	health_code_update();
 
 	ret = recv_request(conn->sock, &get_packet_info,
@@ -2028,8 +2045,6 @@ int viewer_get_metadata(struct relay_connection *conn)
 	struct relay_viewer_stream *vstream = NULL;
 
 	LTTNG_ASSERT(conn);
-
-	DBG("Relay get metadata");
 
 	health_code_update();
 
@@ -2290,8 +2305,6 @@ int viewer_create_session(struct relay_connection *conn)
 	int ret;
 	struct lttng_viewer_create_session_response resp;
 
-	DBG("Viewer create session received");
-
 	memset(&resp, 0, sizeof(resp));
 	resp.status = htobe32(LTTNG_VIEWER_CREATE_SESSION_OK);
 	conn->viewer_session = viewer_session_create();
@@ -2327,8 +2340,6 @@ int viewer_detach_session(struct relay_connection *conn)
 	struct lttng_viewer_detach_session_request request;
 	struct relay_session *session = NULL;
 	uint64_t viewer_session_to_close;
-
-	DBG("Viewer detach session received");
 
 	LTTNG_ASSERT(conn);
 
@@ -2408,21 +2419,24 @@ int process_control(struct lttng_viewer_cmd *recv_hdr,
 		struct relay_connection *conn)
 {
 	int ret = 0;
-	uint32_t msg_value;
-
-	msg_value = be32toh(recv_hdr->cmd);
+	lttng_viewer_command cmd =
+			(lttng_viewer_command) be32toh(recv_hdr->cmd);
 
 	/*
-	 * Make sure we've done the version check before any command other then a
-	 * new client connection.
+	 * Make sure we've done the version check before any command other then
+	 * a new client connection.
 	 */
-	if (msg_value != LTTNG_VIEWER_CONNECT && !conn->version_check_done) {
-		ERR("Viewer conn value %" PRIu32 " before version check", msg_value);
+	if (cmd != LTTNG_VIEWER_CONNECT && !conn->version_check_done) {
+		ERR("Viewer on connection %d requested %s command before version check",
+			conn->sock->fd, lttng_viewer_command_str(cmd));
 		ret = -1;
 		goto end;
 	}
 
-	switch (msg_value) {
+	DBG("Processing %s viewer command from connection %d",
+			lttng_viewer_command_str(cmd), conn->sock->fd);
+
+	switch (cmd) {
 	case LTTNG_VIEWER_CONNECT:
 		ret = viewer_connect(conn);
 		break;
