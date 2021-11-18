@@ -160,6 +160,24 @@ const char *lttng_viewer_attach_return_code_str(
 	}
 };
 
+static
+const char *lttng_viewer_get_packet_return_code_str(
+		enum lttng_viewer_get_packet_return_code code)
+{
+	switch (code) {
+	case LTTNG_VIEWER_GET_PACKET_OK:
+		return "GET_PACKET_OK";
+	case LTTNG_VIEWER_GET_PACKET_RETRY:
+		return "GET_PACKET_RETRY";
+	case LTTNG_VIEWER_GET_PACKET_ERR:
+		return "GET_PACKET_ERR";
+	case LTTNG_VIEWER_GET_PACKET_EOF:
+		return "GET_PACKET_EOF";
+	default:
+		abort();
+	}
+};
+
 /*
  * Cleanup the daemon
  */
@@ -2069,6 +2087,7 @@ int viewer_get_packet(struct relay_connection *conn)
 	uint32_t packet_data_len = 0;
 	ssize_t read_len;
 	uint64_t stream_id;
+	enum lttng_viewer_get_packet_return_code get_packet_status;
 
 	health_code_update();
 
@@ -2085,9 +2104,10 @@ int viewer_get_packet(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(stream_id);
 	if (!vstream) {
-		DBG("Client requested packet of unknown stream id %" PRIu64,
-				stream_id);
-		reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
+		DBG("Client requested packet of unknown stream id %" PRIu64
+			", returning status=%s", stream_id,
+			lttng_viewer_get_packet_return_code_str(get_packet_status));
 		goto send_reply_nolock;
 	} else {
 		packet_data_len = be32toh(get_packet_info.len);
@@ -2096,8 +2116,9 @@ int viewer_get_packet(struct relay_connection *conn)
 
 	reply = (char *) zmalloc(reply_size);
 	if (!reply) {
-		PERROR("packet reply zmalloc");
-		reply_size = sizeof(reply_header);
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
+		PERROR("Falled to allocate reply, returning status=%s",
+			lttng_viewer_get_packet_return_code_str(get_packet_status));
 		goto error;
 	}
 
@@ -2105,29 +2126,31 @@ int viewer_get_packet(struct relay_connection *conn)
 	lseek_ret = fs_handle_seek(vstream->stream_file.handle,
 			be64toh(get_packet_info.offset), SEEK_SET);
 	if (lseek_ret < 0) {
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
 		PERROR("Failed to seek file system handle of viewer stream %" PRIu64
-		       " to offset %" PRIu64,
-				stream_id,
-				(uint64_t) be64toh(get_packet_info.offset));
+		       " to offset %" PRIu64", returning status=%s", stream_id,
+			(uint64_t) be64toh(get_packet_info.offset),
+			lttng_viewer_get_packet_return_code_str(get_packet_status));
 		goto error;
 	}
 	read_len = fs_handle_read(vstream->stream_file.handle,
 			reply + sizeof(reply_header), packet_data_len);
 	if (read_len < packet_data_len) {
+		get_packet_status = LTTNG_VIEWER_GET_PACKET_ERR;
 		PERROR("Failed to read from file system handle of viewer stream id %" PRIu64
-		       ", offset: %" PRIu64,
-				stream_id,
-				(uint64_t) be64toh(get_packet_info.offset));
+		       ", offset: %" PRIu64 ", returning status=%s", stream_id,
+		       (uint64_t) be64toh(get_packet_info.offset),
+			lttng_viewer_get_packet_return_code_str(get_packet_status));
 		goto error;
 	}
-	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
+
+	get_packet_status = LTTNG_VIEWER_GET_PACKET_OK;
 	reply_header.len = htobe32(packet_data_len);
 	goto send_reply;
 
 error:
 	/* No payload to send on error. */
 	reply_size = sizeof(reply_header);
-	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
 send_reply:
 	if (vstream) {
@@ -2137,6 +2160,7 @@ send_reply_nolock:
 
 	health_code_update();
 
+	reply_header.status = htobe32(get_packet_status);
 	if (reply) {
 		memcpy(reply, &reply_header, sizeof(reply_header));
 		ret = send_response(conn->sock, reply, reply_size);
