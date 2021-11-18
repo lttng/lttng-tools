@@ -71,7 +71,7 @@ static void stream_complete_rotation(struct relay_stream *stream)
 	}
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = stream->ongoing_rotation.value.next_trace_chunk;
-	stream->ongoing_rotation = (typeof(stream->ongoing_rotation)) {};
+	stream->ongoing_rotation = LTTNG_OPTIONAL_INIT_UNSET;
 	stream->completed_rotation_count++;
 }
 

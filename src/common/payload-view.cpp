@@ -24,7 +24,10 @@ struct lttng_payload_view lttng_payload_view_from_payload(
 		.buffer = lttng_buffer_view_from_dynamic_buffer(
 			&payload->buffer, offset, len),
 		._fd_handles = payload->_fd_handles,
-		} : (struct lttng_payload_view) {};
+	} : (struct lttng_payload_view) {
+		.buffer = {},
+		._fd_handles = {}
+	};
 }
 
 struct lttng_payload_view lttng_payload_view_from_view(
@@ -39,7 +42,10 @@ struct lttng_payload_view lttng_payload_view_from_view(
 			.p_fd_handles_position = view->_iterator.p_fd_handles_position ?:
 				&view->_iterator.fd_handles_position,
 		}
-	} : (struct lttng_payload_view) {};
+	} : (struct lttng_payload_view) {
+		.buffer = {},
+		._fd_handles = {}
+	};
 }
 
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
@@ -48,8 +54,12 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 {
 	return buffer ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_dynamic_buffer(
-			buffer, offset, len)
-		} : (struct lttng_payload_view) {};
+			buffer, offset, len),
+		._fd_handles = {}
+	} : (struct lttng_payload_view) {
+		.buffer = {},
+		._fd_handles = {}
+	};
 }
 
 struct lttng_payload_view lttng_payload_view_from_buffer_view(
@@ -58,8 +68,12 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
 {
 	return view ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_view(
-			view, offset, len)
-		} : (struct lttng_payload_view) {};
+			view, offset, len),
+		._fd_handles = {}
+	} : (struct lttng_payload_view) {
+		.buffer = {},
+		._fd_handles = {}
+	};
 }
 
 struct lttng_payload_view lttng_payload_view_init_from_buffer(
@@ -67,7 +81,8 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
 {
 	return (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_init(
-			src, offset, len)
+			src, offset, len),
+		._fd_handles = {}
 	};
 }
 
