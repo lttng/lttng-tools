@@ -138,6 +138,28 @@ const char *lttng_viewer_next_index_return_code_str(
 	}
 }
 
+static
+const char *lttng_viewer_attach_return_code_str(
+		enum lttng_viewer_attach_return_code code)
+{
+	switch (code) {
+	case LTTNG_VIEWER_ATTACH_OK:
+		return "ATTACH_OK";
+	case LTTNG_VIEWER_ATTACH_ALREADY:
+		return "ATTACH_ALREADY";
+	case LTTNG_VIEWER_ATTACH_UNK:
+		return "ATTACH_UNK";
+	case LTTNG_VIEWER_ATTACH_NOT_LIVE:
+		return "ATTACH_NOT_LIVE";
+	case LTTNG_VIEWER_ATTACH_SEEK_ERR:
+		return "ATTACH_SEEK_ERR";
+	case LTTNG_VIEWER_ATTACH_NO_SESSION:
+		return "ATTACH_NO_SESSION";
+	default:
+		abort();
+	}
+};
+
 /*
  * Cleanup the daemon
  */
@@ -1315,28 +1337,34 @@ int viewer_attach_session(struct relay_connection *conn)
 	}
 
 	session_id = be64toh(request.session_id);
+
 	health_code_update();
 
 	memset(&response, 0, sizeof(response));
 
 	if (!conn->viewer_session) {
-		DBG("Client trying to attach before creating a live viewer session");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_NO_SESSION);
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_NO_SESSION;
+		DBG("Client trying to attach before creating a live viewer session, returning status=%s",
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
 
 	session = session_get_by_id(session_id);
 	if (!session) {
-		DBG("Relay session %" PRIu64 " not found", session_id);
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
+		DBG("Relay session %" PRIu64 " not found, returning status=%s",
+				session_id,
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
-	DBG("Attach session ID %" PRIu64 " received", session_id);
+	DBG("Attach relay session ID %" PRIu64 " received", session_id);
 
 	pthread_mutex_lock(&session->lock);
 	if (session->live_timer == 0) {
-		DBG("Not live session");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_NOT_LIVE);
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_NOT_LIVE;
+		DBG("Relay session ID %" PRIu64 " is not a live session, returning status=%s",
+				session_id,
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
 
@@ -1344,19 +1372,23 @@ int viewer_attach_session(struct relay_connection *conn)
 	viewer_attach_status = viewer_session_attach(conn->viewer_session,
 			session);
 	if (viewer_attach_status != LTTNG_VIEWER_ATTACH_OK) {
-		response.status = htobe32(viewer_attach_status);
+		DBG("Error attaching to relay session %" PRIu64 ", returning status=%s",
+				session_id,
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
 
 	switch (be32toh(request.seek)) {
 	case LTTNG_VIEWER_SEEK_BEGINNING:
 	case LTTNG_VIEWER_SEEK_LAST:
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_OK);
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_OK;
 		seek_type = (lttng_viewer_seek) be32toh(request.seek);
 		break;
 	default:
-		ERR("Wrong seek parameter");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_SEEK_ERR);
+		ERR("Wrong seek parameter for relay session %" PRIu64
+				", returning status=%s", session_id,
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_SEEK_ERR;
 		send_streams = 0;
 		goto send_reply;
 	}
@@ -1392,12 +1424,18 @@ int viewer_attach_session(struct relay_connection *conn)
 	if (closed) {
 		send_streams = 0;
 		response.streams_count = 0;
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
+		ERR("Session %" PRIu64 " is closed, returning status=%s",
+				session_id,
+				lttng_viewer_attach_return_code_str(viewer_attach_status));
 		goto send_reply;
 	}
 
 send_reply:
 	health_code_update();
+
+	response.status = htobe32((uint32_t) viewer_attach_status);
+
 	ret = send_response(conn->sock, &response, sizeof(response));
 	if (ret < 0) {
 		goto end_put_session;
