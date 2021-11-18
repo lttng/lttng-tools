@@ -1659,9 +1659,9 @@ int viewer_get_next_index(struct relay_connection *conn)
 	 * This allows clients to consume all the packets of a trace chunk
 	 * after a session's destruction.
 	 */
-	if (conn->viewer_session->current_trace_chunk != vstream->stream_file.trace_chunk &&
+	if (!lttng_trace_chunk_ids_equal(conn->viewer_session->current_trace_chunk, vstream->stream_file.trace_chunk) &&
 			!(rstream->completed_rotation_count == vstream->last_seen_rotation_count + 1 && !rstream->trace_chunk)) {
-		DBG("Viewer session and viewer stream chunk differ: "
+		DBG("Viewer session and viewer stream chunk IDs differ: "
 				"vsession chunk %p vstream chunk %p",
 				conn->viewer_session->current_trace_chunk,
 				vstream->stream_file.trace_chunk);
@@ -2028,8 +2028,8 @@ int viewer_get_metadata(struct relay_connection *conn)
 	}
 
 	if (conn->viewer_session->current_trace_chunk &&
-			conn->viewer_session->current_trace_chunk !=
-					vstream->stream_file.trace_chunk) {
+			!lttng_trace_chunk_ids_equal(conn->viewer_session->current_trace_chunk,
+					vstream->stream_file.trace_chunk)) {
 		bool acquired_reference;
 
 		DBG("Viewer session and viewer stream chunk differ: "
