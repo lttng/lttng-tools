@@ -261,7 +261,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	while (copy_bytes_left) {
 		ssize_t io_ret;
 		char copy_buffer[FILE_IO_STACK_BUFFER_SIZE];
-		const off_t copy_size_this_pass = std::min(copy_bytes_left, sizeof(copy_buffer));
+		const off_t copy_size_this_pass = std::min<uint64_t>(copy_bytes_left, sizeof(copy_buffer));
 
 		io_ret = fs_handle_read(previous_stream_file, copy_buffer,
 				copy_size_this_pass);

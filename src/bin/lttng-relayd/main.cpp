@@ -3629,7 +3629,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	 *   - the on-stack data buffer
 	 */
 	while (left_to_receive > 0 && !partial_recv) {
-		size_t recv_size = std::min(left_to_receive, chunk_size);
+		size_t recv_size = std::min<uint64_t>(left_to_receive, chunk_size);
 		struct lttng_buffer_view packet_chunk;
 
 		ret = conn->sock->ops->recvmsg(conn->sock, data_buffer,
