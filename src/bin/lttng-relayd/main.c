@@ -2786,6 +2786,8 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	msg->creation_timestamp = be64toh(msg->creation_timestamp);
 	msg->override_name_length = be32toh(msg->override_name_length);
 
+	pthread_mutex_lock(&conn->session->lock);
+	session->ongoing_rotation = true;
 	if (session->current_trace_chunk &&
 			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
 		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
@@ -2797,7 +2799,6 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 			goto end;
 		}
 	}
-	session->ongoing_rotation = true;
 	if (!session->current_trace_chunk) {
 		if (!session->has_rotated) {
 			new_path = "";
@@ -2891,7 +2892,6 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	pthread_mutex_lock(&conn->session->lock);
 	if (conn->session->pending_closure_trace_chunk) {
 		/*
 		 * Invalid; this means a second create_trace_chunk command was
@@ -2900,7 +2900,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		ERR("Invalid trace chunk close command received; a trace chunk is already waiting for a trace chunk close command");
 		reply_code = LTTNG_ERR_INVALID_PROTOCOL;
 		ret = -1;
-		goto end_unlock_session;
+		goto end;
 	}
 	conn->session->pending_closure_trace_chunk =
 			conn->session->current_trace_chunk;
@@ -2909,9 +2909,8 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	if (!conn->session->pending_closure_trace_chunk) {
 		session->ongoing_rotation = false;
 	}
-end_unlock_session:
-	pthread_mutex_unlock(&conn->session->lock);
 end:
+	pthread_mutex_unlock(&conn->session->lock);
 	reply.ret_code = htobe32((uint32_t) reply_code);
 	send_ret = conn->sock->ops->sendmsg(conn->sock,
 			&reply,
