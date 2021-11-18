@@ -18,7 +18,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regen_metadata_ust_trace_path.XXXXXX)
 
-NUM_TESTS=39
+NUM_TESTS=47
 
 source $TESTDIR/utils/utils.sh
 
@@ -192,6 +192,30 @@ function test_ust_live ()
 	rm -f ${file_sync_before_last}
 }
 
+function test_ust_local_snapshot_after_regenerate_metadata ()
+{
+	local file_sync_before_last
+	local metadata_path
+
+	file_sync_before_last=$(mktemp -u)
+
+	diag "Test UST local snapshot after regenerate metadata"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH" --snapshot
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
+
+	regenerate_metadata_ok $SESSION_NAME
+	lttng_snapshot_record $SESSION_NAME "$TRACE_PATH"
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $EVENT_NAME "$TRACE_PATH"
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -200,7 +224,8 @@ bail_out_if_no_babeltrace
 start_lttng_relayd "-o $TRACE_PATH"
 start_lttng_sessiond
 
-tests=( test_ust_streaming test_ust_local test_ust_pid test_ust_live )
+tests=( test_ust_streaming test_ust_local test_ust_pid test_ust_live
+	test_ust_local_snapshot_after_regenerate_metadata)
 
 for fct_test in ${tests[@]};
 do
