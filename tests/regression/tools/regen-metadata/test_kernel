@@ -13,7 +13,7 @@ SESSION_NAME=""
 
 TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regen_metadata_kernel_trace_path.XXXXXX)
 
-NUM_TESTS=24
+NUM_TESTS=32
 
 source $TESTDIR/utils/utils.sh
 
@@ -76,6 +76,25 @@ function test_kernel_local ()
 	rm -rf "$TRACE_PATH"
 }
 
+function test_kernel_local_snapshot_after_regenerate_metadata ()
+{
+	diag "Test kernel local snapshot after regenerate metadata"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH" --snapshot
+	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	echo -n "100" > /proc/lttng-test-filter-event
+
+	regenerate_metadata_ok $SESSION_NAME
+	lttng_snapshot_record $SESSION_NAME "$TRACE_PATH"
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $EVENT_NAME "$TRACE_PATH"
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -94,7 +113,8 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 	start_lttng_sessiond
 	modprobe lttng-test
 
-	tests=( test_kernel_streaming test_kernel_local )
+	tests=( test_kernel_streaming test_kernel_local
+		test_kernel_local_snapshot_after_regenerate_metadata )
 
 	for fct_test in ${tests[@]};
 	do
