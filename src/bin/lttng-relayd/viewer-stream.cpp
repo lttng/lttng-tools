@@ -20,9 +20,26 @@
 #include "lttng-relayd.h"
 #include "viewer-stream.h"
 
+static void viewer_stream_release_composite_objects(struct relay_viewer_stream *vstream)
+{
+	if (vstream->stream_file.handle) {
+		fs_handle_close(vstream->stream_file.handle);
+		vstream->stream_file.handle = NULL;
+	}
+	if (vstream->index_file) {
+		lttng_index_file_put(vstream->index_file);
+		vstream->index_file = NULL;
+	}
+	if (vstream->stream) {
+		stream_put(vstream->stream);
+		vstream->stream = NULL;
+	}
+	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
+	vstream->stream_file.trace_chunk = NULL;
+}
+
 static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 {
-	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
 	free(vstream->path_name);
 	free(vstream->channel_name);
 	free(vstream);
@@ -198,6 +215,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 
 error:
 	if (vstream) {
+		/* Not using `put` since vstream is assumed to be published. */
+		viewer_stream_release_composite_objects(vstream);
 		viewer_stream_destroy(vstream);
 	}
 	return NULL;
@@ -221,23 +240,8 @@ static void viewer_stream_release(struct urcu_ref *ref)
 	if (vstream->stream->is_metadata) {
 		rcu_assign_pointer(vstream->stream->trace->viewer_metadata_stream, NULL);
 	}
-
 	viewer_stream_unpublish(vstream);
-
-	if (vstream->stream_file.handle) {
-		fs_handle_close(vstream->stream_file.handle);
-		vstream->stream_file.handle = NULL;
-	}
-	if (vstream->index_file) {
-		lttng_index_file_put(vstream->index_file);
-		vstream->index_file = NULL;
-	}
-	if (vstream->stream) {
-		stream_put(vstream->stream);
-		vstream->stream = NULL;
-	}
-	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
-	vstream->stream_file.trace_chunk = NULL;
+	viewer_stream_release_composite_objects(vstream);
 	call_rcu(&vstream->rcu_node, viewer_stream_destroy_rcu);
 }
 
