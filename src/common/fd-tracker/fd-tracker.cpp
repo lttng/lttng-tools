@@ -501,7 +501,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		.flags = flags,
 		.mode = {
 			.is_set = !!mode,
-			.value = mode ? *mode : 0,
+			.value = static_cast<mode_t>(mode ? *mode : 0),
 		}
 	};
 

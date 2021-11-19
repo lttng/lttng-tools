@@ -186,9 +186,10 @@ typedef struct lttng_sock_cred lttng_sock_cred;
 static inline
 int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 {
+	socklen_t pid_len = (socklen_t) sizeof(*pid);
+
 	/* The getsockopt LOCAL_PEERPID option is available since macOS 10.8. */
-	return getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERPID, pid,
-			&((socklen_t) {sizeof(*pid)}));
+	return getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERPID, pid, &pid_len);
 }
 
 #elif defined(__sun__)

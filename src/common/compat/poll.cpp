@@ -374,7 +374,7 @@ static int resize_poll_event(struct compat_poll_event_array *array,
 		goto error;
 	}
 
-	ptr = realloc(array->events, new_size * sizeof(*ptr));
+	ptr = (struct pollfd *) realloc(array->events, new_size * sizeof(*ptr));
 	if (ptr == NULL) {
 		PERROR("realloc epoll add");
 		goto error;
@@ -455,7 +455,7 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	wait = &events->wait;
 
 	/* This *must* be freed by using lttng_poll_free() */
-	wait->events = zmalloc(size * sizeof(struct pollfd));
+	wait->events = (struct pollfd *) zmalloc(size * sizeof(struct pollfd));
 	if (wait->events == NULL) {
 		PERROR("zmalloc struct pollfd");
 		goto error;
@@ -463,7 +463,7 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 
 	wait->alloc_size = wait->init_size = size;
 
-	current->events = zmalloc(size * sizeof(struct pollfd));
+	current->events = (struct pollfd *) zmalloc(size * sizeof(struct pollfd));
 	if (current->events == NULL) {
 		PERROR("zmalloc struct current pollfd");
 		goto error;
