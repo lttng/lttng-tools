@@ -37,10 +37,10 @@ TESTS = \
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
-LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
-LIBFDTRACKER=$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
-LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
-LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
+LIBSTRINGUTILS=$(top_builddir)/src/common/libstring-utils.la
+LIBFDTRACKER=$(top_builddir)/src/common/libfd-tracker.la
+LIBSESSIOND_COMM=$(top_builddir)/src/common/libsessiond-comm.la
+LIBRELAYD=$(top_builddir)/src/common/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
 
@@ -112,12 +112,12 @@ test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 # compat_poll unit test
 test_utils_compat_poll_SOURCES = test_utils_compat_poll.cpp
 test_utils_compat_poll_LDADD  = $(LIBTAP) $(DL_LIBS) \
-		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON_GPL)
+		      $(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL)
 
 # compat_pthread unit test
 test_utils_compat_pthread_SOURCES = test_utils_compat_pthread.cpp
 test_utils_compat_pthread_LDADD  = $(LIBTAP) \
-		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON_GPL)
+		      $(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.cpp

@@ -9,7 +9,7 @@ TEST_DESC="Load session(s)"
 CURDIR=$(dirname $0)/
 CONFIG_DIR="${CURDIR}/configuration"
 TESTDIR=$CURDIR/../../../
-export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/config/)
+export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/)
 
 SESSION_NAME="load-42"
 EVENT_NAME="tp:tptest"

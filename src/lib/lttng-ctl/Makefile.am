@@ -30,7 +30,7 @@ EXTRA_liblttng_ctl_la_DEPENDENCIES = liblttng-ctl.sym
 EXTRA_DIST = liblttng-ctl.sym
 
 liblttng_ctl_la_LIBADD = \
-		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
+		$(top_builddir)/src/common/libsessiond-comm.la \
 		$(top_builddir)/src/common/libcommon-lgpl.la
 
 pkgconfigdir = $(libdir)/pkgconfig

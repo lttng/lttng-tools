@@ -9,11 +9,11 @@ lttng_consumerd_SOURCES = \
 	health-consumerd.h
 
 lttng_consumerd_LDADD = \
-	   $(top_builddir)/src/common/consumer/libconsumer.la \
+	   $(top_builddir)/src/common/libconsumer.la \
 	   $(top_builddir)/src/common/libcommon-gpl.la \
-	   $(top_builddir)/src/common/index/libindex.la \
-	   $(top_builddir)/src/common/health/libhealth.la \
-	   $(top_builddir)/src/common/testpoint/libtestpoint.la
+	   $(top_builddir)/src/common/libindex.la \
+	   $(top_builddir)/src/common/libhealth.la \
+	   $(top_builddir)/src/common/libtestpoint.la
 
 lttng_consumerd_LDFLAGS = -rdynamic
 

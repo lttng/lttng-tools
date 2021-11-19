@@ -682,8 +682,8 @@ function start_lttng_sessiond_opt()
 	    LTTNG_BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
-	diag "export LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/"
-	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/config/"}"
+	diag "export LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/"
+	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/"}"
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
 	if [ -z "$(lttng_pgrep "${SESSIOND_MATCH}")" ]; then

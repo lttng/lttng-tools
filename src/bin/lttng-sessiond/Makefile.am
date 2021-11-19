@@ -70,15 +70,15 @@ endif
 # link on liblttngctl for check if sessiond is already alive.
 liblttng_sessiond_common_la_LIBADD = $(URCU_LIBS) $(KMOD_LIBS) \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
-		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
-		$(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \
+		$(top_builddir)/src/common/libsessiond-comm.la \
+		$(top_builddir)/src/common/libkernel-ctl.la \
 		$(top_builddir)/src/common/libcommon-gpl.la \
-		$(top_builddir)/src/common/compat/libcompat.la \
-		$(top_builddir)/src/common/relayd/librelayd.la \
-		$(top_builddir)/src/common/testpoint/libtestpoint.la \
-		$(top_builddir)/src/common/health/libhealth.la \
-		$(top_builddir)/src/common/config/libconfig.la \
-		$(top_builddir)/src/common/string-utils/libstring-utils.la
+		$(top_builddir)/src/common/libcompat.la \
+		$(top_builddir)/src/common/librelayd.la \
+		$(top_builddir)/src/common/libtestpoint.la \
+		$(top_builddir)/src/common/libhealth.la \
+		$(top_builddir)/src/common/libconfig.la \
+		$(top_builddir)/src/common/libstring-utils.la
 
 
 if HAVE_LIBLTTNG_UST_CTL

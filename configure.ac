@@ -1142,25 +1142,6 @@ AC_CONFIG_FILES([
 	extras/core-handler/Makefile
 	src/Makefile
 	src/common/Makefile
-	src/common/argpar/Makefile
-	src/common/argpar-utils/Makefile
-	src/common/bytecode/Makefile
-	src/common/kernel-ctl/Makefile
-	src/common/kernel-consumer/Makefile
-	src/common/consumer/Makefile
-	src/common/ust-consumer/Makefile
-	src/common/hashtable/Makefile
-	src/common/sessiond-comm/Makefile
-	src/common/compat/Makefile
-	src/common/relayd/Makefile
-	src/common/testpoint/Makefile
-	src/common/index/Makefile
-	src/common/health/Makefile
-	src/common/config/Makefile
-	src/common/ini-config/Makefile
-	src/common/string-utils/Makefile
-	src/common/fd-tracker/Makefile
-	src/common/filter/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/lttng-ctl.pc

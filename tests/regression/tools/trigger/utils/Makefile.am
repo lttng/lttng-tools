@@ -13,5 +13,5 @@ notification_client_LDADD = $(LIBLTTNG_CTL) \
 
 register_some_triggers_SOURCES = register-some-triggers.cpp
 register_some_triggers_LDADD = $(LIBLTTNG_CTL) \
-	$(top_builddir)/src/common/filter/libfilter.la \
-	$(top_builddir)/src/common/bytecode/libbytecode.la
+	$(top_builddir)/src/common/libfilter.la \
+	$(top_builddir)/src/common/libbytecode.la

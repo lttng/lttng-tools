@@ -9,7 +9,7 @@ TEST_DESC="Auto load session(s)"
 CURDIR=$(dirname $0)/
 CONFIG_DIR="${CURDIR}/configuration"
 TESTDIR=$CURDIR/../../../
-export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/config/)
+export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/)
 
 DIR=$(readlink -f $TESTDIR)
 
