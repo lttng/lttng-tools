@@ -1630,6 +1630,13 @@ int viewer_get_next_index(struct relay_connection *conn)
 	metadata_viewer_stream =
 			ctf_trace_get_viewer_metadata_stream(ctf_trace);
 
+	/*
+	 * Hold the session lock to protect against concurrent changes
+	 * to the chunk files (e.g. rename done by clear), which are
+	 * protected by the session ongoing rotation state. Those are
+	 * synchronized with the session lock.
+	 */
+	pthread_mutex_lock(&rstream->trace->session->lock);
 	pthread_mutex_lock(&rstream->lock);
 
 	/*
@@ -1796,6 +1803,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 send_reply:
 	if (rstream) {
 		pthread_mutex_unlock(&rstream->lock);
+		pthread_mutex_unlock(&rstream->trace->session->lock);
 	}
 
 	if (metadata_viewer_stream) {
@@ -1837,6 +1845,7 @@ end:
 
 error_put:
 	pthread_mutex_unlock(&rstream->lock);
+	pthread_mutex_unlock(&rstream->trace->session->lock);
 	if (metadata_viewer_stream) {
 		viewer_stream_put(metadata_viewer_stream);
 	}
