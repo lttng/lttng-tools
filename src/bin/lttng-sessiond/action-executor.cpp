@@ -305,36 +305,28 @@ static int action_executor_start_session_handler(
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		ret = 0;
 		goto end;
 	}
 
 	session_lock_list();
-	session = session_find_by_name(session_name);
+	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
-	/*
-	 * Check if the session id is the same as when the work item was
-	 * enqueued.
-	 */
-	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
-		DBG("Session id for session `%s` (id: %" PRIu64
-				" is not the same that was sampled (id: %" PRIu64
-				" at the moment the work item was enqueued for %s` action of trigger `%s`",
-				session_name, session->id,
-				LTTNG_OPTIONAL_GET(item->context.session_id),
+	session_lock(session);
+	if (session->destroyed) {
+		DBG("Session '%s' with id = %" PRIu64 " is flagged as destroyed. Skipping: action = '%s', trigger = '%s'",
+				session->name, session->id,
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
-		ret = 0;
-		goto error_put_session;
+		goto error_unlock_session;
 	}
 
-	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
 		goto error_unlock_session;
 	}
@@ -359,7 +351,6 @@ static int action_executor_start_session_handler(
 
 error_unlock_session:
 	session_unlock(session);
-error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -397,12 +388,11 @@ static int action_executor_stop_session_handler(
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		ret = 0;
 		goto end;
 	}
 
 	session_lock_list();
-	session = session_find_by_name(session_name);
+	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
@@ -411,23 +401,15 @@ static int action_executor_stop_session_handler(
 		goto error_unlock_list;
 	}
 
-	/*
-	 * Check if the session id is the same as when the work item was
-	 * enqueued
-	 */
-	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
-		DBG("Session id for session `%s` (id: %" PRIu64
-				" is not the same that was sampled (id: %" PRIu64
-				" at the moment the work item was enqueued for %s` action of trigger `%s`",
-				session_name, session->id,
-				LTTNG_OPTIONAL_GET(item->context.session_id),
+	session_lock(session);
+	if (session->destroyed) {
+		DBG("Session '%s' with id = %" PRIu64 " is flagged as destroyed. Skipping: action = '%s', trigger = '%s'",
+				session->name, session->id,
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
-		ret = 0;
-		goto error_put_session;
+		goto error_unlock_session;
 	}
 
-	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
 		goto error_unlock_session;
 	}
@@ -452,7 +434,6 @@ static int action_executor_stop_session_handler(
 
 error_unlock_session:
 	session_unlock(session);
-error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -490,12 +471,11 @@ static int action_executor_rotate_session_handler(
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		ret = 0;
 		goto end;
 	}
 
 	session_lock_list();
-	session = session_find_by_name(session_name);
+	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
@@ -504,23 +484,15 @@ static int action_executor_rotate_session_handler(
 		goto error_unlock_list;
 	}
 
-	/*
-	 * Check if the session id is the same as when the work item was
-	 * enqueued.
-	 */
-	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
-		DBG("Session id for session `%s` (id: %" PRIu64
-		    " is not the same that was sampled (id: %" PRIu64
-		    " at the moment the work item was enqueued for %s` action of trigger `%s`",
-				session_name, session->id,
-				LTTNG_OPTIONAL_GET(item->context.session_id),
+	session_lock(session);
+	if (session->destroyed) {
+		DBG("Session '%s' with id = %" PRIu64 " is flagged as destroyed. Skipping: action = '%s', trigger = '%s'",
+				session->name, session->id,
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
-		ret = 0;
-		goto error_put_session;
+		goto error_unlock_session;
 	}
 
-	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
 		goto error_unlock_session;
 	}
@@ -552,7 +524,6 @@ static int action_executor_rotate_session_handler(
 
 error_unlock_session:
 	session_unlock(session);
-error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
@@ -586,7 +557,6 @@ static int action_executor_snapshot_session_handler(
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		ret = 0;
 		goto end;
 	}
 
@@ -610,7 +580,7 @@ static int action_executor_snapshot_session_handler(
 	}
 
 	session_lock_list();
-	session = session_find_by_name(session_name);
+	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
@@ -619,23 +589,15 @@ static int action_executor_snapshot_session_handler(
 		goto error_unlock_list;
 	}
 
-	/*
-	 * Check if the session id is the same as when the work item was
-	 * enqueued.
-	 */
-	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
-		DBG("Session id for session `%s` (id: %" PRIu64
-		    " is not the same that was sampled (id: %" PRIu64
-		    " at the moment the work item was enqueued for %s` action of trigger `%s`",
-				session_name, session->id,
-				LTTNG_OPTIONAL_GET(item->context.session_id),
+	session_lock(session);
+	if (session->destroyed) {
+		DBG("Session '%s' with id = %" PRIu64 " is flagged as destroyed. Skipping: action = '%s', trigger = '%s'",
+				session->name, session->id,
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
-		ret = 0;
-		goto error_put_session;
+		goto error_unlock_session;
 	}
 
-	session_lock(session);
 	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
 		goto error_unlock_session;
 	}
@@ -656,7 +618,6 @@ static int action_executor_snapshot_session_handler(
 
 error_unlock_session:
 	session_unlock(session);
-error_put_session:
 	session_put(session);
 error_unlock_list:
 	session_unlock_list();
