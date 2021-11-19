@@ -24,7 +24,7 @@
  * Declaration example:
  * struct my_struct {
  * 	int a;
- * 	LTTNG_OPTIONAL(int, b);
+ * 	LTTNG_OPTIONAL(int) b;
  * };
  *
  * Usage example:
