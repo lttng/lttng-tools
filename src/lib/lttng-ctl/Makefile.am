@@ -1,9 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS =
-
-AM_CPPFLAGS += -I$(srcdir) -I$(builddir)
-
 lib_LTLIBRARIES = liblttng-ctl.la
 
 liblttng_ctl_la_SOURCES = \
