@@ -1,13 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-ACLOCAL_AMFLAGS = -I config
-
 SUBDIRS =
-
-# Make sure to always distribute all folders
-# since SUBDIRS is decided at configure time.
-DIST_SUBDIRS = lttng-consumerd lttng lttng-sessiond lttng-relayd \
-	       lttng-crash
 
 if BUILD_BIN_LTTNG
 SUBDIRS += lttng
