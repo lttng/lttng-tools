@@ -419,6 +419,7 @@ static int consumer_stream_sync_metadata_index(
 		const struct stream_subbuffer *subbuffer,
 		struct lttng_consumer_local_data *ctx)
 {
+	bool missed_metadata_flush;
 	int ret;
 
 	/* Block until all the metadata is sent. */
@@ -431,18 +432,34 @@ static int consumer_stream_sync_metadata_index(
 
 	pthread_mutex_lock(&stream->metadata_timer_lock);
 	stream->waiting_on_metadata = false;
-	if (stream->missed_metadata_flush) {
+	missed_metadata_flush = stream->missed_metadata_flush;
+	if (missed_metadata_flush) {
 		stream->missed_metadata_flush = false;
-		pthread_mutex_unlock(&stream->metadata_timer_lock);
-		(void) stream->read_subbuffer_ops.send_live_beacon(stream);
-	} else {
-		pthread_mutex_unlock(&stream->metadata_timer_lock);
 	}
+	pthread_mutex_unlock(&stream->metadata_timer_lock);
 	if (ret < 0) {
 		goto end;
 	}
 
 	ret = consumer_stream_send_index(stream, subbuffer, ctx);
+	/*
+	 * Send the live inactivity beacon to handle the situation where
+	 * the live timer is prevented from sampling this stream
+	 * because the stream lock was being held while this stream is
+	 * waiting on metadata. This ensures live viewer progress in the
+	 * unlikely scenario where a live timer would be prevented from
+	 * locking a stream lock repeatedly due to a steady flow of
+	 * incoming metadata, for a stream which is mostly inactive.
+	 *
+	 * It is important to send the inactivity beacon packet to
+	 * relayd _after_ sending the index associated with the data
+	 * that was just sent, otherwise this can cause live viewers to
+	 * observe timestamps going backwards between an inactivity
+	 * beacon and a following trace packet.
+	 */
+	if (missed_metadata_flush) {
+		(void) stream->read_subbuffer_ops.send_live_beacon(stream);
+	}
 end:
 	return ret;
 }
