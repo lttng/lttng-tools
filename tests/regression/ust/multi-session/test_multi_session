@@ -6,13 +6,14 @@
 
 TEST_DESC="UST tracer - Multi-session"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
 NR_ITER=100
 SESSION_NAME="multi-session"
 EVENT_NAME="ust_gen_nevents:tptest"
 NUM_TESTS=28
 
+# shellcheck source=../../../utils/utils.sh
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$CURDIR/gen-nevents" ]; then
@@ -25,23 +26,23 @@ test_multi_session() {
 	local out
 
 	# BEFORE application is spawned
-	for i in `seq 0 3`; do
+	for i in $(seq 0 3); do
 		create_lttng_session_ok "$SESSION_NAME-$i" "$TRACE_PATH/$i"
 		enable_ust_lttng_event_ok "$SESSION_NAME-$i" "$EVENT_NAME$i"
 		start_lttng_tracing_ok "$SESSION_NAME-$i"
 	done
 
-	./$CURDIR/gen-nevents $NR_ITER &
+	"./$CURDIR/gen-nevents" $NR_ITER &
 	ok $? "Start application to generate $NR_ITER events"
 
 	wait
 	pass "Wait for events to record"
 
-	for i in `seq 0 3`; do
+	for i in $(seq 0 3); do
 		stop_lttng_tracing_ok "$SESSION_NAME-$i"
 		destroy_lttng_session_ok "$SESSION_NAME-$i"
-		out=$(babeltrace "$TRACE_PATH/$i" | grep "$EVENT_NAMEi$i" | wc -l)
-		if [ $out -ne $NR_ITER ]; then
+		out=$($BABELTRACE_BIN "$TRACE_PATH/$i" | grep -c "$EVENT_NAME$i")
+		if [ "$out" -ne $NR_ITER ]; then
 			fail "Trace validation of $SESSION_NAME-$i"
 			diag "No events found."
 			out=1
