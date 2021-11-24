@@ -49,7 +49,7 @@
 #include "rotate.h"
 #include "event.h"
 #include "event-notifier-error-accounting.h"
-
+#include "ust-field-utils.h"
 
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
@@ -6386,6 +6386,9 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
 	LTTNG_ASSERT(ust_reg_chan);
 
+	/* Channel id is set during the object creation. */
+	chan_id = ust_reg_chan->chan_id;
+
 	if (!ust_reg_chan->register_done) {
 		/*
 		 * TODO: eventually use the registry event count for
@@ -6400,9 +6403,19 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	} else {
 		/* Get current already assigned values. */
 		type = ust_reg_chan->header_type;
+		/*
+		 * Validate that the context fields match between
+		 * registry and newcoming application.
+		 */
+		if (!match_lttng_ust_ctl_field_array(ust_reg_chan->ctx_fields,
+				ust_reg_chan->nr_ctx_fields,
+				fields, nr_fields)) {
+			ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
+				app->pid, app->sock);
+			ret_code = -EINVAL;
+			goto reply;
+		}
 	}
-	/* Channel id is set during the object creation. */
-	chan_id = ust_reg_chan->chan_id;
 
 	/* Append to metadata */
 	if (!ust_reg_chan->metadata_dumped) {
