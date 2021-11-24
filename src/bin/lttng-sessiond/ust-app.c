@@ -34,6 +34,8 @@
 #include "lttng-sessiond.h"
 #include "notification-thread-commands.h"
 #include "rotate.h"
+#include "event.h"
+#include "ust-field-utils.h"
 
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
@@ -5493,6 +5495,9 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	chan_reg = ust_registry_channel_find(registry, chan_reg_key);
 	assert(chan_reg);
 
+	/* Channel id is set during the object creation. */
+	chan_id = chan_reg->chan_id;
+
 	if (!chan_reg->register_done) {
 		/*
 		 * TODO: eventually use the registry event count for
@@ -5507,9 +5512,20 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	} else {
 		/* Get current already assigned values. */
 		type = chan_reg->header_type;
+
+		/*
+		 * Validate that the context fields match between
+		 * registry and newcoming application.
+		 */
+		if (!match_lttng_ust_ctl_field_array(chan_reg->ctx_fields,
+				chan_reg->nr_ctx_fields,
+				fields, nr_fields)) {
+			ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
+				app->pid, app->sock);
+			ret_code = -EINVAL;
+			goto reply;
+		}
 	}
-	/* Channel id is set during the object creation. */
-	chan_id = chan_reg->chan_id;
 
 	/* Append to metadata */
 	if (!chan_reg->metadata_dumped) {

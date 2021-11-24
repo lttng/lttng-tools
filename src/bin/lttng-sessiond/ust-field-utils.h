@@ -17,4 +17,13 @@
 int match_ustctl_field(const struct ustctl_field *first,
 		const struct ustctl_field *second);
 
+/*
+ * Compare two arrays of UST fields.
+ * Return true if both arrays have identical field definitions, false otherwise.
+ */
+bool match_lttng_ust_ctl_field_array(const struct ustctl_field *first,
+		size_t nr_first,
+		const struct ustctl_field *second,
+		size_t nr_second);
+
 #endif /* LTTNG_UST_FIELD_UTILS_H */

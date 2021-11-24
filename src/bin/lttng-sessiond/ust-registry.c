@@ -20,7 +20,6 @@
 #include "lttng-sessiond.h"
 #include "notification-thread-commands.h"
 
-
 /*
  * Hash table match function for event in the registry.
  */
@@ -28,7 +27,6 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
 	const struct ust_registry_event *key;
 	struct ust_registry_event *event;
-	int i;
 
 	assert(node);
 	assert(_key);
@@ -47,16 +45,10 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 		goto no_match;
 	}
 
-	/* Compare the number of fields. */
-	if (event->nr_fields != key->nr_fields) {
+	/* Compare the arrays of fields. */
+	if (!match_lttng_ust_ctl_field_array(event->fields, event->nr_fields,
+			key->fields, key->nr_fields)) {
 		goto no_match;
-	}
-
-	/* Compare each field individually. */
-	for (i = 0; i < event->nr_fields; i++) {
-		if (!match_ustctl_field(&event->fields[i], &key->fields[i])) {
-			goto no_match;
-		}
 	}
 
 	/* Compare model URI. */
