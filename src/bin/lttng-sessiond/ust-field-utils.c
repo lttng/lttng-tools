@@ -338,3 +338,33 @@ int match_lttng_ust_ctl_field(const struct lttng_ust_ctl_field *first,
 no_match:
 	return false;
 }
+
+/*
+ * Compare two arrays of UST fields.
+ * Return true if both arrays have identical field definitions, false otherwise.
+ */
+bool match_lttng_ust_ctl_field_array(const struct lttng_ust_ctl_field *first,
+		size_t nr_first,
+		const struct lttng_ust_ctl_field *second,
+		size_t nr_second)
+{
+	size_t i;
+	const size_t nr_fields = nr_first;
+
+	/* Compare the array lengths. */
+	if (nr_first != nr_second) {
+		goto no_match;
+	}
+
+	/* Compare each field individually. */
+	for (i = 0; i < nr_fields; i++) {
+		if (!match_lttng_ust_ctl_field(&first[i], &second[i])) {
+			goto no_match;
+		}
+	}
+
+	return true;
+
+no_match:
+	return false;
+}
