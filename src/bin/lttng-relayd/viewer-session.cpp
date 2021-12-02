@@ -77,7 +77,6 @@ enum lttng_viewer_attach_return_code viewer_session_attach(
 	} else {
 		int ret;
 
-		LTTNG_ASSERT(!vsession->current_trace_chunk);
 		session->viewer_attached = true;
 
 		ret = viewer_session_set_trace_chunk_copy(vsession,
