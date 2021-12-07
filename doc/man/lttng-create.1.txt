@@ -1,6 +1,6 @@
 lttng-create(1)
 ===============
-:revdate: 14 June 2021
+:revdate: 7 December 2021
 
 
 NAME
@@ -53,7 +53,9 @@ Specify the path of the directory containing the shared memory files
 holding the channel ring buffers with the option:--shm-path option.
 Specifying a location on an NVRAM file system makes it possible to
 recover the latest recorded trace data when the system reboots after a
-crash with the man:lttng-crash(1) utility.
+crash with the man:lttng-crash(1) utility. Note that, as of
+LTTng{nbsp}{lttng_version}, this feature is only available for user
+space channels.
 
 By default, the `create` command automatically spawns:
 
@@ -335,6 +337,10 @@ option:-o 'DIR', option:--output='DIR'::
 option:--shm-path='DIR'::
     Set the path of the directory containing the shared memory files
     holding the channel ring buffers to 'DIR' on the local file sytem.
++
+NOTE: As of LTTng{nbsp}{lttng_version}, LTTng only considers this option
+for user space (including Java and Python) channels, but this may change
+in the future.
 
 
 URL
