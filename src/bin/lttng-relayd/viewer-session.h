@@ -53,6 +53,10 @@ struct relay_viewer_session {
 	 * most recent trace chunk available _even if its streams do not point to
 	 * it_. It indicates which trace chunk viewer streams should transition
 	 * to when the end of their current trace chunk is reached.
+	 *
+	 * Note that a viewer session's trace chunk points to the session's
+	 * output directory. The sub-directories in which the various stream files
+	 * are created are considered as being a part of their name.
 	 */
 	struct lttng_trace_chunk *current_trace_chunk;
 };
