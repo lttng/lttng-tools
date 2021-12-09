@@ -398,7 +398,7 @@ end:
 }
 
 /*
- * Remove a ltt_session from the ltt_sessions_ht_by_id/name.
+ * Remove a ltt_session from the ltt_sessions_ht_by_id.
  * If empty, the ltt_sessions_ht_by_id/name HTs are freed.
  * The session list lock must be held.
  */
@@ -413,10 +413,6 @@ static void del_session_ht(struct ltt_session *ls)
 
 	iter.iter.node = &ls->node.node;
 	ret = lttng_ht_del(ltt_sessions_ht_by_id, &iter);
-	assert(!ret);
-
-	iter.iter.node = &ls->node_by_name.node;
-	ret = lttng_ht_del(ltt_sessions_ht_by_name, &iter);
 	assert(!ret);
 
 	if (ltt_sessions_ht_empty()) {
@@ -1065,8 +1061,23 @@ void session_put(struct ltt_session *session)
  */
 void session_destroy(struct ltt_session *session)
 {
+	int ret;
+	struct lttng_ht_iter iter;
+
 	assert(!session->destroyed);
 	session->destroyed = true;
+
+	/*
+	 * Remove immediately from the "session by name" hash table. Only one
+	 * session is expected to exist with a given name for at any given time.
+	 *
+	 * Even if a session still technically exists for a little while longer,
+	 * there is no point in performing action on a "destroyed" session.
+	 */
+	iter.iter.node = &session->node_by_name.node;
+	ret = lttng_ht_del(ltt_sessions_ht_by_name, &iter);
+	assert(!ret);
+
 	session_put(session);
 }
 
