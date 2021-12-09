@@ -26,6 +26,7 @@
 #include <lttng/notification/channel-internal.h>
 #include <lttng/rotate-internal.h>
 #include <lttng/location-internal.h>
+#include <lttng/condition/condition-internal.h>
 
 #include "rotation-thread.h"
 #include "lttng-sessiond.h"
@@ -662,10 +663,14 @@ int handle_condition(const struct lttng_condition *condition,
 	session_lock_list();
 	session = session_find_by_name(condition_session_name);
 	if (!session) {
-		ret = -1;
-		session_unlock_list();
-		ERR("[rotation-thread] Session \"%s\" not found",
+		DBG("[rotation-thread] Failed to find session while handling notification: session name = `%s`",
 				condition_session_name);
+		/*
+		 * Not a fatal error: a session can be destroyed before we get
+		 * the chance to handle the notification.
+		 */
+		ret = 0;
+		session_unlock_list();
 		goto end;
 	}
 	session_lock(session);
