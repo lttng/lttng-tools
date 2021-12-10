@@ -301,7 +301,7 @@ static int action_executor_start_session_handler(
 	 * existed. If not skip the action altogether.
 	 */
 	if (!item->context.session_id.is_set) {
-		DBG("Session `%s` was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
+		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
@@ -325,7 +325,7 @@ static int action_executor_start_session_handler(
 	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
 		DBG("Session id for session `%s` (id: %" PRIu64
 				" is not the same that was sampled (id: %" PRIu64
-				" at the moment the work item was enqueued for %s` action of trigger `%s`",
+				" at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, session->id,
 				LTTNG_OPTIONAL_GET(item->context.session_id),
 				get_action_name(action),
@@ -393,7 +393,7 @@ static int action_executor_stop_session_handler(
 	 * existed. If not, skip the action altogether.
 	 */
 	if (!item->context.session_id.is_set) {
-		DBG("Session `%s` was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
+		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
@@ -418,7 +418,7 @@ static int action_executor_stop_session_handler(
 	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
 		DBG("Session id for session `%s` (id: %" PRIu64
 				" is not the same that was sampled (id: %" PRIu64
-				" at the moment the work item was enqueued for %s` action of trigger `%s`",
+				" at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, session->id,
 				LTTNG_OPTIONAL_GET(item->context.session_id),
 				get_action_name(action),
@@ -486,7 +486,7 @@ static int action_executor_rotate_session_handler(
 	 * existed. If not, skip the action altogether.
 	 */
 	if (!item->context.session_id.is_set) {
-		DBG("Session `%s` was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
+		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
@@ -511,7 +511,7 @@ static int action_executor_rotate_session_handler(
 	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
 		DBG("Session id for session `%s` (id: %" PRIu64
 		    " is not the same that was sampled (id: %" PRIu64
-		    " at the moment the work item was enqueued for %s` action of trigger `%s`",
+		    " at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, session->id,
 				LTTNG_OPTIONAL_GET(item->context.session_id),
 				get_action_name(action),
@@ -582,7 +582,7 @@ static int action_executor_snapshot_session_handler(
 	 * existed. If not, skip the action altogether.
 	 */
 	if (!item->context.session_id.is_set) {
-		DBG("Session was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
+		DBG("Session was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
@@ -626,7 +626,7 @@ static int action_executor_snapshot_session_handler(
 	if (session->id != LTTNG_OPTIONAL_GET(item->context.session_id)) {
 		DBG("Session id for session `%s` (id: %" PRIu64
 		    " is not the same that was sampled (id: %" PRIu64
-		    " at the moment the work item was enqueued for %s` action of trigger `%s`",
+		    " at the moment the work item was enqueued for `%s` action of trigger `%s`",
 				session_name, session->id,
 				LTTNG_OPTIONAL_GET(item->context.session_id),
 				get_action_name(action),
@@ -791,7 +791,7 @@ static void *action_executor_thread(void *_data)
 					work_item->trigger, &trigger_owner_uid);
 			assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
-			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64 ", trigger name = '%s', trigger owner uid = %d",
+			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64 ", trigger name = `%s`, trigger owner uid = %d",
 					work_item->id, trigger_name,
 					(int) trigger_owner_uid);
 			ret = 0;
@@ -924,7 +924,7 @@ enum action_executor_status action_executor_enqueue_trigger(
 
 	work_item = zmalloc(sizeof(*work_item));
 	if (!work_item) {
-		PERROR("Failed to allocate action executor work item: trigger name = '%s'",
+		PERROR("Failed to allocate action executor work item: trigger name = `%s`",
 				get_trigger_name(trigger));
 		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
 		goto error_unlock;
