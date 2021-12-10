@@ -43,7 +43,7 @@ function clean_live_tracing()
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
 else
-	echo "Root access is needed. Skipping all tests."
+	plan_skip_all "Root access is needed. Skipping all tests."
 	exit 0
 fi
 
