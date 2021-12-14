@@ -239,14 +239,67 @@ struct lttcomm_relayd_stream_rotation_position {
 	uint64_t rotate_at_seq_num;
 } LTTNG_PACKED;
 
+/*
+ * For certain releases, the LTTNG_PACKED annotation was missing on the
+ * `new_chunk_id` field which causes padding to be added between the
+ * "optional" structure's `is_set` and `value` fields.
+ *
+ * Three alignment cases are handled:
+ *   - `value` is aligned to the next byte boundary after `is_set`
+ *     no padding is produced, see
+ *     `struct lttcomm_relayd_rotate_streams_packed`,
+ *   - `value` is aligned to the next 4-byte boundary after `is_set`
+ *     (e.g. x86), 3 bytes of padding are produced, see
+ *     `struct lttcomm_relayd_rotate_streams_3_bytes_padding`,
+ *   - `value` is aligned to the next 8-byte boundary after `is_set`
+ *     (e.g. x86-64), 7 bytes of padding are produced, see
+ *     `struct lttcomm_relayd_rotate_streams_7_bytes_padding`.
+ *
+ * Note that since this structure's advertised size is used to determine
+ * the size of the padding it includes, it can't be extended with new
+ * optional fields. A new command would be needed.
+ */
 struct lttcomm_relayd_rotate_streams {
 	uint32_t stream_count;
 	/*
 	 * Streams can be rotated outside of a chunk but not be parented to
 	 * a new chunk.
+	 *
+	 * Improperly packed, but left as-is for backwards compatibility
+	 * with unpatched relay daemons.
 	 */
 	LTTNG_OPTIONAL_COMM(uint64_t) new_chunk_id;
 	/* `stream_count` positions follow. */
+	struct lttcomm_relayd_stream_rotation_position rotation_positions[];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_streams_packed {
+	uint32_t stream_count;
+	LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED new_chunk_id;
+	struct lttcomm_relayd_stream_rotation_position rotation_positions[];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_streams_3_bytes_padding {
+	uint32_t stream_count;
+	struct {
+		union {
+			uint8_t is_set;
+			uint32_t padding;
+		};
+		uint64_t value;
+	} LTTNG_PACKED new_chunk_id;
+	struct lttcomm_relayd_stream_rotation_position rotation_positions[];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_streams_7_bytes_padding {
+	uint32_t stream_count;
+	struct {
+		union {
+			uint8_t is_set;
+			uint64_t padding;
+		};
+		uint64_t value;
+	} LTTNG_PACKED new_chunk_id;
 	struct lttcomm_relayd_stream_rotation_position rotation_positions[];
 } LTTNG_PACKED;
 
