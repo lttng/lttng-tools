@@ -23,10 +23,6 @@
 #include "filter-ast.hpp"
 #include "filter-ir.hpp"
 
-#ifndef max_t
-#define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
-#endif
-
 static
 int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 		struct ir_op *node);

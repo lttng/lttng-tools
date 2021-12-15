@@ -20,10 +20,6 @@
 #include "ust-clock.hpp"
 #include "ust-app.hpp"
 
-#ifndef max_t
-#define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
-#endif
-
 #define NR_CLOCK_OFFSET_SAMPLES		10
 
 struct offset_sample {
@@ -69,7 +65,7 @@ ssize_t metadata_reserve(struct ust_registry_session *session, size_t len)
 		char *newptr;
 
 		new_alloc_len =
-			max_t(size_t, 1U << get_count_order(new_alloc_len), old_alloc_len << 1);
+			std::max<size_t>(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
 		newptr = (char *) realloc(session->metadata, new_alloc_len);
 		if (!newptr)
 			return -ENOMEM;
