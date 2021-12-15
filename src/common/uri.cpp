@@ -7,16 +7,16 @@
 
 #define _LGPL_SOURCE
 #include <arpa/inet.h>
-#include <common/compat/netdb.h>
+#include <common/compat/netdb.hpp>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
 
-#include "uri.h"
+#include "uri.hpp"
 
 #define LOOPBACK_ADDR_IPV4 "127.0.0.1"
 #define LOOPBACK_ADDR_IPV6 "::1"

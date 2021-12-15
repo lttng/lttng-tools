@@ -15,9 +15,9 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <common/compat/errno.h>
-#include <common/bytecode/bytecode.h>
-#include <common/filter/filter-ast.h>
+#include <common/compat/errno.hpp>
+#include <common/bytecode/bytecode.hpp>
+#include <common/filter/filter-ast.hpp>
 #include <common/filter/filter-parser.hpp>
 
 /* For error.h */

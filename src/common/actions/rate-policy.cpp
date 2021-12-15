@@ -5,15 +5,15 @@
  *
  */
 
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
+#include <common/buffer-view.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
 #include <limits.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
 #include <stdbool.h>
 #include <sys/types.h>

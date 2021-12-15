@@ -8,7 +8,7 @@
 #include <lttng/ust-sigbus.h>
 #include <lttng/ust-ctl.h>
 #include <lttng/lttng-export.h>
-#include "ust-sigbus.h"
+#include "ust-sigbus.hpp"
 
 LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 

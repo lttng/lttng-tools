@@ -31,34 +31,34 @@
 #include <urcu/uatomic.h>
 #include <string>
 
-#include <common/common.h>
-#include <common/compat/endian.h>
-#include <common/compat/poll.h>
-#include <common/compat/socket.h>
-#include <common/defaults.h>
-#include <common/fd-tracker/utils.h>
-#include <common/fs-handle.h>
-#include <common/futex.h>
-#include <common/index/index.h>
-#include <common/sessiond-comm/inet.h>
-#include <common/sessiond-comm/relayd.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/uri.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/compat/poll.hpp>
+#include <common/compat/socket.hpp>
+#include <common/defaults.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/fs-handle.hpp>
+#include <common/futex.hpp>
+#include <common/index/index.hpp>
+#include <common/sessiond-comm/inet.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/uri.hpp>
+#include <common/utils.hpp>
 #include <lttng/lttng.h>
 
-#include "cmd.h"
-#include "connection.h"
-#include "ctf-trace.h"
-#include "health-relayd.h"
-#include "live.h"
-#include "lttng-relayd.h"
-#include "session.h"
-#include "stream.h"
-#include "testpoint.h"
-#include "utils.h"
-#include "viewer-session.h"
-#include "viewer-stream.h"
+#include "cmd.hpp"
+#include "connection.hpp"
+#include "ctf-trace.hpp"
+#include "health-relayd.hpp"
+#include "live.hpp"
+#include "lttng-relayd.hpp"
+#include "session.hpp"
+#include "stream.hpp"
+#include "testpoint.hpp"
+#include "utils.hpp"
+#include "viewer-session.hpp"
+#include "viewer-stream.hpp"
 
 #define SESSION_BUF_DEFAULT_COUNT	16
 

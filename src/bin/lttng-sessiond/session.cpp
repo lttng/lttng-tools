@@ -17,19 +17,19 @@
 #include <sys/types.h>
 #include <pthread.h>
 
-#include <common/common.h>
-#include <common/utils.h>
-#include <common/trace-chunk.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <lttng/location-internal.h>
-#include "lttng-sessiond.h"
-#include "kernel.h"
+#include <common/common.hpp>
+#include <common/utils.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <lttng/location-internal.hpp>
+#include "lttng-sessiond.hpp"
+#include "kernel.hpp"
 
-#include "session.h"
-#include "utils.h"
-#include "trace-ust.h"
-#include "timer.h"
-#include "cmd.h"
+#include "session.hpp"
+#include "utils.hpp"
+#include "trace-ust.hpp"
+#include "timer.hpp"
+#include "cmd.hpp"
 
 struct ltt_session_destroy_notifier_element {
 	ltt_session_destroy_notifier notifier;

@@ -6,8 +6,8 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/compat/fcntl.h>
-#include <common/macros.h>
+#include <common/compat/fcntl.hpp>
+#include <common/macros.hpp>
 #include <unistd.h>
 
 #ifdef __linux__

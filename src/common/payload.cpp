@@ -5,10 +5,10 @@
  *
  */
 
-#include "payload.h"
-#include <common/dynamic-array.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
+#include "payload.hpp"
+#include <common/dynamic-array.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
 
 static
 void release_fd_handle_ref(void *ptr)

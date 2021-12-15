@@ -5,9 +5,9 @@
  *
  */
 
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
+#include <common/buffer-view.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
 
 struct lttng_buffer_view lttng_buffer_view_init(
 		const char *src, size_t offset, ptrdiff_t len)

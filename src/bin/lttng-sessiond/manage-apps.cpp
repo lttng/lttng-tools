@@ -7,11 +7,11 @@
  *
  */
 
-#include "manage-apps.h"
-#include "testpoint.h"
-#include "health-sessiond.h"
-#include "utils.h"
-#include "thread.h"
+#include "manage-apps.hpp"
+#include "testpoint.hpp"
+#include "health-sessiond.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

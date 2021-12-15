@@ -16,9 +16,9 @@
 #include <unistd.h>
 #include <urcu.h>
 
-#include <common/error.h>
+#include <common/error.hpp>
 
-#include "shm.h"
+#include "shm.hpp"
 
 /*
  * Using fork to set umask in the child process (not multi-thread safe). We

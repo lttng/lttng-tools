@@ -14,40 +14,40 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
-#include <common/common.h>
-#include <common/hashtable/utils.h>
-#include <common/trace-chunk.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/kernel-ctl/kernel-ioctl.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/tracker.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/kernel-ctl/kernel-ioctl.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/tracker.hpp>
+#include <common/utils.hpp>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 #include <lttng/tracker.h>
 
 #include <lttng/userspace-probe.h>
-#include <lttng/userspace-probe-internal.h>
+#include <lttng/userspace-probe-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kernel-uprobe-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
 
-#include "event-notifier-error-accounting.h"
-#include "lttng-sessiond.h"
-#include "lttng-syscall.h"
-#include "condition-internal.h"
-#include "consumer.h"
-#include "kernel.h"
-#include "kernel-consumer.h"
-#include "kern-modules.h"
-#include "sessiond-config.h"
-#include "utils.h"
-#include "rotate.h"
-#include "modprobe.h"
-#include "tracker.h"
-#include "notification-thread-commands.h"
+#include "event-notifier-error-accounting.hpp"
+#include "lttng-sessiond.hpp"
+#include "lttng-syscall.hpp"
+#include "condition-internal.hpp"
+#include "consumer.hpp"
+#include "kernel.hpp"
+#include "kernel-consumer.hpp"
+#include "kern-modules.hpp"
+#include "sessiond-config.hpp"
+#include "utils.hpp"
+#include "rotate.hpp"
+#include "modprobe.hpp"
+#include "tracker.hpp"
+#include "notification-thread-commands.hpp"
 
 /*
  * Key used to reference a channel between the sessiond and the consumer. This

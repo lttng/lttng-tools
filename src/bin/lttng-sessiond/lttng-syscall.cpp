@@ -8,13 +8,13 @@
 #define _LGPL_SOURCE
 #include <stdbool.h>
 
-#include <common/common.h>
-#include <common/kernel-ctl/kernel-ctl.h>
+#include <common/common.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
 
-#include "lttng-sessiond.h"
-#include "kernel.h"
-#include "lttng-syscall.h"
-#include "utils.h"
+#include "lttng-sessiond.hpp"
+#include "kernel.hpp"
+#include "lttng-syscall.hpp"
+#include "utils.hpp"
 
 /* Global syscall table. */
 struct syscall *syscall_table;

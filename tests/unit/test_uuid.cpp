@@ -11,7 +11,7 @@
 
 #include <tap/tap.h>
 
-#include "common/uuid.h"
+#include "common/uuid.hpp"
 
 #define NR_TESTS 21
 

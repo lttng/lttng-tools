@@ -22,24 +22,24 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <common/bytecode/bytecode.h>
-#include <common/lttng-kernel.h>
-#include <common/common.h>
-#include <common/utils.h>
-#include <common/compat/errno.h>
-#include <common/compat/getenv.h>
-#include <common/compat/string.h>
-#include <common/unix.h>
-#include <common/defaults.h>
-#include <common/lttng-elf.h>
-#include <common/thread.h>
+#include <common/bytecode/bytecode.hpp>
+#include <common/lttng-kernel.hpp>
+#include <common/common.hpp>
+#include <common/utils.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/string.hpp>
+#include <common/unix.hpp>
+#include <common/defaults.hpp>
+#include <common/lttng-elf.hpp>
+#include <common/thread.hpp>
 
 #include <lttng/constant.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/filter/filter-ast.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/filter/filter-ast.hpp>
 
-#include "runas.h"
+#include "runas.hpp"
 
 #define GETPW_BUFFER_FALLBACK_SIZE 4096
 

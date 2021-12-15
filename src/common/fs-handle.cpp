@@ -5,9 +5,9 @@
  *
  */
 
-#include <common/fs-handle-internal.h>
-#include <common/fs-handle.h>
-#include <common/readwrite.h>
+#include <common/fs-handle-internal.hpp>
+#include <common/fs-handle.hpp>
+#include <common/readwrite.hpp>
 
 int fs_handle_get_fd(struct fs_handle *handle)
 {

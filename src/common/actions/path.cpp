@@ -5,7 +5,7 @@
  *
  */
 
-#include <lttng/action/path-internal.h>
+#include <lttng/action/path-internal.hpp>
 
 struct lttng_action_path_comm {
 	uint32_t index_count;

@@ -6,9 +6,9 @@
  */
 
 #include <tap/tap.h>
-#include <common/ini-config/ini-config.h>
-#include <common/utils.h>
-#include <common/path.h>
+#include <common/ini-config/ini-config.hpp>
+#include <common/utils.hpp>
+#include <common/path.hpp>
 #include <string.h>
 #include <lttng/constant.h>
 

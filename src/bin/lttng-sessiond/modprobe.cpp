@@ -18,12 +18,12 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
-#include <common/common.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
 
-#include "modprobe.h"
-#include "kern-modules.h"
-#include "lttng-sessiond.h"
+#include "modprobe.hpp"
+#include "kern-modules.hpp"
+#include "lttng-sessiond.hpp"
 
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {

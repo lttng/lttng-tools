@@ -15,17 +15,17 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/uri.h>
-#include <common/relayd/relayd.h>
-#include <common/string-utils/format.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/uri.hpp>
+#include <common/relayd/relayd.hpp>
+#include <common/string-utils/format.hpp>
 
-#include "consumer.h"
-#include "health-sessiond.h"
-#include "ust-app.h"
-#include "utils.h"
-#include "lttng-sessiond.h"
+#include "consumer.hpp"
+#include "health-sessiond.hpp"
+#include "ust-app.hpp"
+#include "utils.hpp"
+#include "lttng-sessiond.hpp"
 
 /*
  * Return allocated full pathname of the session using the consumer trace path

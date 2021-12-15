@@ -21,35 +21,35 @@
 #include <urcu/compiler.h>
 #include <signal.h>
 
-#include <common/bytecode/bytecode.h>
-#include <common/compat/errno.h>
-#include <common/common.h>
-#include <common/hashtable/utils.h>
+#include <common/bytecode/bytecode.hpp>
+#include <common/compat/errno.hpp>
+#include <common/common.hpp>
+#include <common/hashtable/utils.hpp>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/condition/condition.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <lttng/trigger/trigger-internal.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "buffer-registry.h"
-#include "condition-internal.h"
-#include "fd-limit.h"
-#include "health-sessiond.h"
-#include "ust-app.h"
-#include "ust-consumer.h"
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-error.h"
-#include "utils.h"
-#include "session.h"
-#include "lttng-sessiond.h"
-#include "notification-thread-commands.h"
-#include "rotate.h"
-#include "event.h"
-#include "event-notifier-error-accounting.h"
-#include "ust-field-utils.h"
+#include "buffer-registry.hpp"
+#include "condition-internal.hpp"
+#include "fd-limit.hpp"
+#include "health-sessiond.hpp"
+#include "ust-app.hpp"
+#include "ust-consumer.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "utils.hpp"
+#include "session.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
+#include "rotate.hpp"
+#include "event.hpp"
+#include "event-notifier-error-accounting.hpp"
+#include "ust-field-utils.hpp"
 
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;

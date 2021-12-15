@@ -14,9 +14,9 @@
 
 #include <tap/tap.h>
 
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/kernel-probe-internal.h>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/kernel-probe-internal.hpp>
 #include <lttng/kernel-probe.h>
 
 /* For error.h */

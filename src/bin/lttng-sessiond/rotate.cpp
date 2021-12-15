@@ -8,32 +8,32 @@
 
 #define _LGPL_SOURCE
 #include <lttng/trigger/trigger.h>
-#include <common/error.h>
-#include <common/config/session-config.h>
-#include <common/defaults.h>
-#include <common/utils.h>
-#include <common/futex.h>
-#include <common/align.h>
-#include <common/time.h>
-#include <common/hashtable/utils.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/credentials.h>
+#include <common/error.hpp>
+#include <common/config/session-config.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
+#include <common/futex.hpp>
+#include <common/align.hpp>
+#include <common/time.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/credentials.hpp>
 #include <sys/stat.h>
 #include <time.h>
 #include <signal.h>
 #include <inttypes.h>
 
-#include <lttng/notification/channel-internal.h>
-#include <lttng/rotate-internal.h>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/rotate-internal.hpp>
 
-#include "session.h"
-#include "rotate.h"
-#include "rotation-thread.h"
-#include "lttng-sessiond.h"
-#include "health-sessiond.h"
-#include "cmd.h"
-#include "utils.h"
-#include "notification-thread-commands.h"
+#include "session.hpp"
+#include "rotate.hpp"
+#include "rotation-thread.hpp"
+#include "lttng-sessiond.hpp"
+#include "health-sessiond.hpp"
+#include "cmd.hpp"
+#include "utils.hpp"
+#include "notification-thread-commands.hpp"
 
 #include <urcu.h>
 #include <urcu/list.h>

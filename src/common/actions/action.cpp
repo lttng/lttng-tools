@@ -5,17 +5,17 @@
  *
  */
 
-#include <common/error.h>
-#include <common/mi-lttng.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/list-internal.h>
-#include <lttng/action/notify-internal.h>
-#include <lttng/action/rate-policy-internal.h>
-#include <lttng/action/rotate-session-internal.h>
-#include <lttng/action/snapshot-session-internal.h>
-#include <lttng/action/start-session-internal.h>
-#include <lttng/action/stop-session-internal.h>
-#include <lttng/error-query-internal.h>
+#include <common/error.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
+#include <lttng/action/notify-internal.hpp>
+#include <lttng/action/rate-policy-internal.hpp>
+#include <lttng/action/rotate-session-internal.hpp>
+#include <lttng/action/snapshot-session-internal.hpp>
+#include <lttng/action/start-session-internal.hpp>
+#include <lttng/action/stop-session-internal.hpp>
+#include <lttng/error-query-internal.hpp>
 
 const char *lttng_action_type_string(enum lttng_action_type action_type)
 {

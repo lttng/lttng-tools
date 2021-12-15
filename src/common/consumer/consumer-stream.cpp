@@ -12,22 +12,22 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <common/common.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/consumer/consumer.h>
-#include <common/consumer/consumer.h>
-#include <common/consumer/metadata-bucket.h>
-#include <common/consumer/metadata-bucket.h>
-#include <common/index/index.h>
-#include <common/kernel-consumer/kernel-consumer.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/macros.h>
-#include <common/relayd/relayd.h>
-#include <common/ust-consumer/ust-consumer.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/consumer/metadata-bucket.hpp>
+#include <common/consumer/metadata-bucket.hpp>
+#include <common/index/index.hpp>
+#include <common/kernel-consumer/kernel-consumer.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/macros.hpp>
+#include <common/relayd/relayd.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
+#include <common/utils.hpp>
 
-#include "consumer-stream.h"
+#include "consumer-stream.hpp"
 
 /*
  * RCU call to free stream. MUST only be used with call_rcu().

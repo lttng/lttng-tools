@@ -15,8 +15,8 @@
 #include <errno.h>
 #include <stdarg.h>
 
-#include "string-utils.h"
-#include "../macros.h"
+#include "string-utils.hpp"
+#include "../macros.hpp"
 
 enum star_glob_pattern_type_flags {
 	STAR_GLOB_PATTERN_TYPE_FLAG_NONE = 0,

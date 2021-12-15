@@ -17,7 +17,7 @@
 
 #include <tap/tap.h>
 
-#include <common/macros.h>
+#include <common/macros.hpp>
 #include <lttng/lttng.h>
 
 #define TEST_COUNT 1

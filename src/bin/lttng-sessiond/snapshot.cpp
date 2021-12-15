@@ -10,10 +10,10 @@
 #include <string.h>
 #include <urcu/uatomic.h>
 
-#include <common/defaults.h>
+#include <common/defaults.hpp>
 
-#include "snapshot.h"
-#include "utils.h"
+#include "snapshot.hpp"
+#include "utils.hpp"
 
 /*
  * Return the atomically incremented value of next_output_id.

@@ -5,22 +5,20 @@
  *
  */
 
-#include "common/compat/string.h"
-#include "common/macros.h"
-#include "lttng/lttng-error.h"
-#include <assert.h>
-#include <common/buffer-view.h>
-#include <common/dynamic-array.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/align.h>
+#include <common/align.hpp>
+#include <common/buffer-view.hpp>
+#include <common/compat/string.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <lttng/constant.h>
-#include <lttng/event-internal.h>
+#include <lttng/event-internal.hpp>
 #include <lttng/event.h>
-#include <lttng/userspace-probe-internal.h>
-#include <stdint.h>
-#include <string.h>
+#include <lttng/lttng-error.h>
+#include <lttng/userspace-probe-internal.hpp>
 
 struct event_list_element {
 	struct lttng_event *event;

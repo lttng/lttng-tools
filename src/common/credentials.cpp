@@ -6,7 +6,7 @@
  */
 
 #include <stdbool.h>
-#include "credentials.h"
+#include "credentials.hpp"
 
 uid_t lttng_credentials_get_uid(const struct lttng_credentials *creds)
 {

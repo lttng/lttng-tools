@@ -7,8 +7,8 @@
  */
 
 #include "lttng/tracker.h"
-#include "common/dynamic-array.h"
-#include "common/macros.h"
+#include "common/dynamic-array.hpp"
+#include "common/macros.hpp"
 #define _LGPL_SOURCE
 #include <grp.h>
 #include <pwd.h>
@@ -18,12 +18,12 @@
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
-#include "tracker.h"
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/tracker.h>
+#include "tracker.hpp"
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/tracker.hpp>
 #include <lttng/lttng-error.h>
 
 struct process_attr_tracker_value_node {

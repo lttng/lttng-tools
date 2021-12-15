@@ -16,13 +16,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include "common/bytecode/bytecode.h"
-#include "filter-ast.h"
+#include "common/bytecode/bytecode.hpp"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "memstream.h"
+#include "memstream.hpp"
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 
 #define WIDTH_u64_SCANF_IS_A_BROKEN_API	"20"
 #define WIDTH_o64_SCANF_IS_A_BROKEN_API	"22"
@@ -428,7 +428,7 @@ error:
 
 %code provides
 {
-#include "common/macros.h"
+#include "common/macros.hpp"
 
 void setstring(struct filter_parser_ctx *parser_ctx, YYSTYPE *lvalp, const char *src);
 }

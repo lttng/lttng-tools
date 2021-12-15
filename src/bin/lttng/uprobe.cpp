@@ -5,19 +5,19 @@
  *
  */
 
-#include "uprobe.h"
+#include "uprobe.hpp"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common/compat/getenv.h"
-#include "common/string-utils/string-utils.h"
-#include "common/utils.h"
-#include "common/path.h"
+#include "common/compat/getenv.hpp"
+#include "common/string-utils/string-utils.hpp"
+#include "common/utils.hpp"
+#include "common/path.hpp"
 #include "lttng/constant.h"
 
-#include "command.h"
+#include "command.hpp"
 
 /*
  * Walk the directories in the PATH environment variable to find the target

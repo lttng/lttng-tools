@@ -13,9 +13,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.h>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static char *opt_session_name;
 static char *session_name = NULL;

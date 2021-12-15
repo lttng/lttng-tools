@@ -5,24 +5,24 @@
  *
  */
 
-#include <common/credentials.h>
-#include <common/dynamic-array.h>
-#include <common/error.h>
-#include <common/mi-lttng.h>
-#include <common/optional.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
+#include <common/credentials.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/error.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/optional.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
 #include <inttypes.h>
-#include <lttng/action/action-internal.h>
+#include <lttng/action/action-internal.hpp>
 #include <lttng/condition/buffer-usage.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/domain.h>
-#include <lttng/error-query-internal.h>
-#include <lttng/event-expr-internal.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/trigger/trigger-internal.h>
+#include <lttng/error-query-internal.hpp>
+#include <lttng/event-expr-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
 #include <pthread.h>
 
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)

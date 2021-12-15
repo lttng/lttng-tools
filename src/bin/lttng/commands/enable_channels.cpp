@@ -16,14 +16,14 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/utils.h>
-#include <common/mi-lttng.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
+#include <common/mi-lttng.hpp>
 
-#include <lttng/domain-internal.h>
+#include <lttng/domain-internal.hpp>
 
-#include "../command.h"
-#include "../utils.h"
+#include "../command.hpp"
+#include "../utils.hpp"
 
 
 static struct lttng_channel chan_opts;

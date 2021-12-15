@@ -14,29 +14,29 @@
 
 #include <tap/tap.h>
 
-#include <common/payload-view.h>
-#include <common/payload.h>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
 #include <lttng/domain.h>
-#include <lttng/event-rule/jul-logging-internal.h>
+#include <lttng/event-rule/jul-logging-internal.hpp>
 #include <lttng/event-rule/jul-logging.h>
-#include <lttng/event-rule/kernel-kprobe-internal.h>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
 #include <lttng/event-rule/kernel-kprobe.h>
-#include <lttng/event-rule/kernel-syscall-internal.h>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
 #include <lttng/event-rule/kernel-syscall.h>
-#include <lttng/event-rule/python-logging-internal.h>
+#include <lttng/event-rule/python-logging-internal.hpp>
 #include <lttng/event-rule/python-logging.h>
-#include <lttng/event-rule/kernel-tracepoint-internal.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.hpp>
 #include <lttng/event-rule/kernel-tracepoint.h>
-#include <lttng/event-rule/kernel-uprobe-internal.h>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
 #include <lttng/event-rule/kernel-uprobe.h>
-#include <lttng/event-rule/user-tracepoint-internal.h>
+#include <lttng/event-rule/user-tracepoint-internal.hpp>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/event.h>
-#include <lttng/kernel-probe-internal.h>
+#include <lttng/kernel-probe-internal.hpp>
 #include <lttng/kernel-probe.h>
-#include <lttng/userspace-probe-internal.h>
+#include <lttng/userspace-probe-internal.hpp>
 #include <lttng/userspace-probe.h>
-#include "bin/lttng/loglevel.h"
+#include "bin/lttng/loglevel.hpp"
 
 /* For error.h. */
 int lttng_opt_quiet = 1;

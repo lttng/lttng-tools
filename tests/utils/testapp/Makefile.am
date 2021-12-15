@@ -24,4 +24,4 @@ SUBDIRS += \
 	  gen-ust-events-ns
 endif # IS_LINUX
 
-noinst_HEADERS = signal-helper.h
+noinst_HEADERS = signal-helper.hpp

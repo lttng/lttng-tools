@@ -7,30 +7,30 @@
 
 #define _LGPL_SOURCE
 #include <lttng/trigger/trigger.h>
-#include <lttng/notification/channel-internal.h>
-#include <lttng/notification/notification-internal.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <common/error.h>
-#include <common/config/session-config.h>
-#include <common/defaults.h>
-#include <common/utils.h>
-#include <common/align.h>
-#include <common/time.h>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <common/error.hpp>
+#include <common/config/session-config.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
+#include <common/align.hpp>
+#include <common/time.hpp>
 #include <sys/stat.h>
 #include <time.h>
 #include <signal.h>
 
-#include "notification-thread.h"
-#include "notification-thread-events.h"
-#include "notification-thread-commands.h"
-#include "lttng-sessiond.h"
-#include "health-sessiond.h"
-#include "thread.h"
-#include "testpoint.h"
+#include "notification-thread.hpp"
+#include "notification-thread-events.hpp"
+#include "notification-thread-commands.hpp"
+#include "lttng-sessiond.hpp"
+#include "health-sessiond.hpp"
+#include "thread.hpp"
+#include "testpoint.hpp"
 
-#include "kernel.h"
-#include <common/kernel-ctl/kernel-ctl.h>
+#include "kernel.hpp"
+#include <common/kernel-ctl/kernel-ctl.hpp>
 
 #include <urcu.h>
 #include <urcu/list.h>

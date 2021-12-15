@@ -10,18 +10,18 @@
 
 #define _LGPL_SOURCE
 #include <algorithm>
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/fs-handle.h>
-#include <common/sessiond-comm/relayd.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/fs-handle.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/utils.hpp>
 #include <sys/stat.h>
 #include <urcu/rculist.h>
 
-#include "lttng-relayd.h"
-#include "index.h"
-#include "stream.h"
-#include "viewer-stream.h"
+#include "lttng-relayd.hpp"
+#include "index.hpp"
+#include "stream.hpp"
+#include "viewer-stream.hpp"
 
 #include <sys/types.h>
 #include <fcntl.h>

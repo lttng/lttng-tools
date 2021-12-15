@@ -20,10 +20,10 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/compat/tid.h>
-#include <common/macros.h>
+#include <common/compat/tid.hpp>
+#include <common/macros.hpp>
 
-#include "signal-helper.h"
+#include "signal-helper.hpp"
 #include "utils.h"
 
 #define LTTNG_PROC_NS_PATH_MAX 40

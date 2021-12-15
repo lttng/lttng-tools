@@ -34,7 +34,7 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
-#include <common/defaults.h>
+#include <common/defaults.hpp>
 
 #if defined(LIBXML_XPATH_ENABLED)
 

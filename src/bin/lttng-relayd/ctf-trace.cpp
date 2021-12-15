@@ -9,13 +9,13 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
 #include <urcu/rculist.h>
 
-#include "ctf-trace.h"
-#include "lttng-relayd.h"
-#include "stream.h"
+#include "ctf-trace.hpp"
+#include "lttng-relayd.hpp"
+#include "stream.hpp"
 
 static uint64_t last_relay_ctf_trace_id;
 static pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;

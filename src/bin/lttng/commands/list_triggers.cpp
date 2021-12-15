@@ -7,21 +7,21 @@
 
 #include <stdio.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
 #include "common/argpar/argpar.h"
-#include "common/argpar-utils/argpar-utils.h"
-#include "common/dynamic-array.h"
-#include "common/mi-lttng.h"
+#include "common/argpar-utils/argpar-utils.hpp"
+#include "common/dynamic-array.hpp"
+#include "common/mi-lttng.hpp"
 /* For lttng_condition_type_str(). */
-#include "lttng/condition/condition-internal.h"
+#include "lttng/condition/condition-internal.hpp"
 #include "lttng/condition/event-rule-matches.h"
-#include "lttng/condition/event-rule-matches-internal.h"
+#include "lttng/condition/event-rule-matches-internal.hpp"
 /* For lttng_domain_type_str(). */
-#include "lttng/domain-internal.h"
+#include "lttng/domain-internal.hpp"
 /* For lttng_event_rule_kernel_syscall_emission_site_str() */
-#include "lttng/event-rule/kernel-syscall-internal.h"
-#include "../loglevel.h"
+#include "lttng/event-rule/kernel-syscall-internal.hpp"
+#include "../loglevel.hpp"
 #include <lttng/lttng.h>
 
 #ifdef LTTNG_EMBED_HELP

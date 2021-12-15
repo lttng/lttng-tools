@@ -8,20 +8,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 #include <urcu.h>
 
 #include <tap/tap.h>
 
-#include <common/compat/errno.h>
-#include <bin/lttng-sessiond/session.h>
-#include <bin/lttng-sessiond/ust-app.h>
-#include <bin/lttng-sessiond/health-sessiond.h>
-#include <bin/lttng-sessiond/thread.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/common.h>
+#include <bin/lttng-sessiond/health-sessiond.hpp>
+#include <bin/lttng-sessiond/session.hpp>
+#include <bin/lttng-sessiond/thread.hpp>
+#include <bin/lttng-sessiond/ust-app.hpp>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
 #define SESSION1 "test1"
 

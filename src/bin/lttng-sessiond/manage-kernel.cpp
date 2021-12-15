@@ -7,16 +7,16 @@
  *
  */
 
-#include <common/pipe.h>
-#include <common/utils.h>
+#include <common/pipe.hpp>
+#include <common/utils.hpp>
 
-#include "manage-kernel.h"
-#include "testpoint.h"
-#include "health-sessiond.h"
-#include "utils.h"
-#include "thread.h"
-#include "kernel.h"
-#include "kernel-consumer.h"
+#include "manage-kernel.hpp"
+#include "testpoint.hpp"
+#include "health-sessiond.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
+#include "kernel.hpp"
+#include "kernel-consumer.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

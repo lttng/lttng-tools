@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <common/compat/time.h>
+#include <common/compat/time.hpp>
 #include <sys/types.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -24,13 +24,13 @@
 #include <lttng/lttng.h>
 
 #include <urcu/list.h>
-#include <common/common.h>
+#include <common/common.hpp>
 
-#include <bin/lttng-relayd/lttng-viewer-abi.h>
-#include <common/index/ctf-index.h>
+#include <bin/lttng-relayd/lttng-viewer-abi.hpp>
+#include <common/index/ctf-index.hpp>
 
-#include <common/compat/errno.h>
-#include <common/compat/endian.h>
+#include <common/compat/errno.hpp>
+#include <common/compat/endian.hpp>
 
 #define SESSION1 "test1"
 #define RELAYD_URL "net://localhost"

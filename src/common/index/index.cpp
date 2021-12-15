@@ -13,12 +13,12 @@
 #include <fcntl.h>
 
 #include <lttng/constant.h>
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/compat/endian.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/compat/endian.hpp>
+#include <common/utils.hpp>
 
-#include "index.h"
+#include "index.hpp"
 
 #define WRITE_FILE_FLAGS	(O_WRONLY | O_CREAT | O_TRUNC)
 #define READ_ONLY_FILE_FLAGS	O_RDONLY

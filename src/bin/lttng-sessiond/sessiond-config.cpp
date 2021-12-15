@@ -5,17 +5,17 @@
  *
  */
 
-#include "version.h"
-#include "sessiond-config.h"
-#include "lttng-ust-ctl.h"
-#include <common/defaults.h>
+#include "version.hpp"
+#include "sessiond-config.hpp"
+#include "lttng-ust-ctl.hpp"
+#include <common/defaults.hpp>
 #include <limits.h>
 #include <ctype.h>
-#include <common/error.h>
-#include <common/utils.h>
-#include <common/path.h>
-#include <common/compat/errno.h>
-#include <common/compat/getenv.h>
+#include <common/error.hpp>
+#include <common/utils.hpp>
+#include <common/path.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
 
 static
 struct sessiond_config sessiond_config_build_defaults = {

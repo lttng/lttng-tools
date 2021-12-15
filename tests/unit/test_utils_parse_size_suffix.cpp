@@ -10,7 +10,7 @@
 
 #include <tap/tap.h>
 
-#include <common/utils.h>
+#include <common/utils.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

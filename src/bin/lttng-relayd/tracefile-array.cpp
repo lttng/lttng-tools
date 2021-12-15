@@ -6,11 +6,11 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.h>
-#include <common/utils.h>
-#include <common/defaults.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
+#include <common/defaults.hpp>
 
-#include "tracefile-array.h"
+#include "tracefile-array.hpp"
 
 struct tracefile_array *tracefile_array_create(size_t count)
 {

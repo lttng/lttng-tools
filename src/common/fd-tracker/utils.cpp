@@ -5,9 +5,9 @@
  *
  */
 
-#include <common/error.h>
-#include <common/fd-tracker/utils.h>
-#include <common/utils.h>
+#include <common/error.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/utils.hpp>
 #include <lttng/constant.h>
 #include <stdio.h>
 #include <stdlib.h>

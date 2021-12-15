@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "common/compat/pthread.h"
+#include "common/compat/pthread.hpp"
 
 #include <tap/tap.h>
 

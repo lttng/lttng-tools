@@ -20,15 +20,15 @@
 
 #include <urcu/list.h>
 
-#include <common/dynamic-array.h>
-#include <common/mi-lttng.h>
-#include <common/optional.h>
-#include <common/dynamic-buffer.h>
-#include <common/tracker.h>
+#include <common/dynamic-array.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/optional.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/tracker.hpp>
 
 #include <lttng/lttng.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
 struct process_attr_command_args {
 	enum lttng_process_attr process_attr;

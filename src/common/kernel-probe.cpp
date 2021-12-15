@@ -6,16 +6,16 @@
  */
 
 #include "lttng/lttng-error.h"
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
 #include <fcntl.h>
 #include <lttng/constant.h>
-#include <lttng/kernel-probe-internal.h>
+#include <lttng/kernel-probe-internal.hpp>
 #include <lttng/kernel-probe.h>
 #include <sys/stat.h>
 #include <sys/types.h>

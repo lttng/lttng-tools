@@ -8,15 +8,15 @@
 #define _LGPL_SOURCE
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/hashtable/utils.h>
+#include <common/common.hpp>
+#include <common/hashtable/utils.hpp>
 
-#include "buffer-registry.h"
-#include "fd-limit.h"
-#include "ust-consumer.h"
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-error.h"
-#include "utils.h"
+#include "buffer-registry.hpp"
+#include "fd-limit.hpp"
+#include "ust-consumer.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "utils.hpp"
 
 /*
  * Set in main.c during initialization process of the daemon. This contains

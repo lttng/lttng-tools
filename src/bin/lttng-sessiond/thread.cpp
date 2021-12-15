@@ -5,13 +5,13 @@
  *
  */
 
-#include "thread.h"
+#include "thread.hpp"
 #include <urcu/list.h>
 #include <urcu/ref.h>
 #include <pthread.h>
-#include <common/macros.h>
-#include <common/error.h>
-#include <common/defaults.h>
+#include <common/macros.hpp>
+#include <common/error.hpp>
+#include <common/defaults.hpp>
 
 static struct thread_list {
 	struct cds_list_head head;

@@ -6,7 +6,7 @@
  *
  */
 
-#include <common/compat/string.h>
+#include <common/compat/string.hpp>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,7 +14,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "uuid.h"
+#include "uuid.hpp"
 
 static const lttng_uuid nil_uuid = { 0 };
 static bool lttng_uuid_is_init;

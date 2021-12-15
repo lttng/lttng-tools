@@ -11,9 +11,9 @@
 #include <string.h>
 #include <tap/tap.h>
 
-#include <common/time.h>
+#include <common/time.hpp>
 
-#include "backward-compatibility-group-by.h"
+#include "backward-compatibility-group-by.hpp"
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS_PER_TEST 1

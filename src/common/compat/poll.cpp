@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/utils.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/utils.hpp>
 
-#include "poll.h"
+#include "poll.hpp"
 
 #ifdef HAVE_EPOLL
 

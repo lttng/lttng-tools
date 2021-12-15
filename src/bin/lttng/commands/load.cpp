@@ -12,11 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/mi-lttng.h>
-#include <common/config/session-config.h>
+#include <common/mi-lttng.hpp>
+#include <common/config/session-config.hpp>
 #include <lttng/lttng.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static char *the_opt_input_path;
 static char *the_opt_override_url;

@@ -5,23 +5,23 @@
  *
  */
 
-#include <common/compat/directory-handle.h>
-#include <common/credentials.h>
-#include <common/defaults.h>
-#include <common/dynamic-array.h>
-#include <common/error.h>
-#include <common/fd-tracker/fd-tracker.h>
-#include <common/fd-tracker/utils.h>
-#include <common/fs-handle.h>
-#include <common/fs-handle-internal.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/optional.h>
-#include <common/string-utils/format.h>
-#include <common/time.h>
-#include <common/trace-chunk-registry.h>
-#include <common/trace-chunk.h>
-#include <common/utils.h>
+#include <common/compat/directory-handle.hpp>
+#include <common/credentials.hpp>
+#include <common/defaults.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/error.hpp>
+#include <common/fd-tracker/fd-tracker.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/fs-handle.hpp>
+#include <common/fs-handle-internal.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/optional.hpp>
+#include <common/string-utils/format.hpp>
+#include <common/time.hpp>
+#include <common/trace-chunk-registry.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/utils.hpp>
 #include <lttng/constant.h>
 
 #include <inttypes.h>

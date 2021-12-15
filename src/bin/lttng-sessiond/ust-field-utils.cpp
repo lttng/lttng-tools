@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "ust-field-utils.h"
+#include "ust-field-utils.hpp"
 
 /*
  * The lttng_ust_ctl_field is made of a combination of C basic types

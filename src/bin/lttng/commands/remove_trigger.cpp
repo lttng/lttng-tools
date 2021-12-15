@@ -5,10 +5,10 @@
  *
  */
 
-#include "../command.h"
+#include "../command.hpp"
 #include "common/argpar/argpar.h"
-#include "common/argpar-utils/argpar-utils.h"
-#include "common/mi-lttng.h"
+#include "common/argpar-utils/argpar-utils.hpp"
+#include "common/mi-lttng.hpp"
 #include <lttng/lttng.h>
 #include <stdio.h>
 

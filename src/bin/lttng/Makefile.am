@@ -10,7 +10,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS = lttng
 
-lttng_SOURCES = command.h conf.cpp conf.h commands/start.cpp \
+lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/list.cpp commands/create.cpp commands/destroy.cpp \
 				commands/stop.cpp commands/enable_events.cpp \
 				commands/disable_events.cpp commands/enable_channels.cpp \
@@ -29,12 +29,12 @@ lttng_SOURCES = command.h conf.cpp conf.h commands/start.cpp \
 				commands/enable_rotation.cpp \
 				commands/disable_rotation.cpp \
 				commands/clear.cpp \
-				loglevel.cpp loglevel.h \
+				loglevel.cpp loglevel.hpp \
 				commands/add_trigger.cpp \
 				commands/list_triggers.cpp \
 				commands/remove_trigger.cpp \
-				utils.cpp utils.h lttng.cpp \
-				uprobe.cpp uprobe.h
+				utils.cpp utils.hpp lttng.cpp \
+				uprobe.cpp uprobe.hpp
 
 lttng_CXXFLAGS = $(AM_CXXFLAGS) $(POPT_CFLAGS)
 

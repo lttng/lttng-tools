@@ -15,12 +15,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/common.h>
-#include <common/compat/errno.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/fd-handle.h>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/fd-handle.hpp>
 
-#include "unix.h"
+#include "unix.hpp"
 
 /*
  * Connect to unix socket using the path name.

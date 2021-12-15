@@ -20,25 +20,25 @@
 #include <sys/stat.h>
 #include <stdint.h>
 
-#include <bin/lttng-consumerd/health-consumerd.h>
-#include <common/common.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/sessiond-comm/relayd.h>
-#include <common/compat/fcntl.h>
-#include <common/compat/endian.h>
-#include <common/pipe.h>
-#include <common/relayd/relayd.h>
-#include <common/utils.h>
-#include <common/consumer/consumer-stream.h>
-#include <common/index/index.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/optional.h>
-#include <common/buffer-view.h>
-#include <common/consumer/consumer.h>
-#include <common/consumer/metadata-bucket.h>
+#include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <common/common.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/compat/fcntl.hpp>
+#include <common/compat/endian.hpp>
+#include <common/pipe.hpp>
+#include <common/relayd/relayd.hpp>
+#include <common/utils.hpp>
+#include <common/consumer/consumer-stream.hpp>
+#include <common/index/index.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/optional.hpp>
+#include <common/buffer-view.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/consumer/metadata-bucket.hpp>
 
-#include "kernel-consumer.h"
+#include "kernel-consumer.hpp"
 
 extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;

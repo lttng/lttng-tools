@@ -21,11 +21,11 @@
 
 #include <urcu.h>
 
-#include <common/compat/directory-handle.h>
-#include <common/compat/errno.h>
-#include <common/error.h>
-#include <common/fs-handle.h>
-#include <common/fd-tracker/fd-tracker.h>
+#include <common/compat/directory-handle.hpp>
+#include <common/compat/errno.hpp>
+#include <common/error.hpp>
+#include <common/fs-handle.hpp>
+#include <common/fd-tracker/fd-tracker.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

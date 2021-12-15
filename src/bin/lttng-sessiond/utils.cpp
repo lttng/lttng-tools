@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <common/error.h>
+#include <common/error.hpp>
 
-#include "utils.h"
-#include "snapshot.h"
-#include "lttng-sessiond.h"
+#include "utils.hpp"
+#include "snapshot.hpp"
+#include "lttng-sessiond.hpp"
 
 /*
  * Write to writable pipe used to notify a thread.

@@ -18,10 +18,10 @@
 
 #include <urcu/list.h>
 
-#include <lttng/domain-internal.h>
-#include <common/mi-lttng.h>
+#include <lttng/domain-internal.hpp>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static char *opt_channel_name;
 static char *opt_session_name;

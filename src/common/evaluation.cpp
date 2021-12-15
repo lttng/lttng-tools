@@ -5,14 +5,14 @@
  *
  */
 
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/evaluation-internal.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <lttng/condition/session-consumed-size-internal.h>
-#include <lttng/condition/session-rotation-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
-#include <common/macros.h>
-#include <common/error.h>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/evaluation-internal.hpp>
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/session-consumed-size-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include <common/macros.hpp>
+#include <common/error.hpp>
 #include <stdbool.h>
 
 void lttng_evaluation_init(struct lttng_evaluation *evaluation,

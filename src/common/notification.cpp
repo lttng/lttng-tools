@@ -5,14 +5,14 @@
  *
  */
 
-#include <lttng/notification/notification-internal.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/evaluation-internal.h>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/evaluation-internal.hpp>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
+#include <lttng/trigger/trigger-internal.hpp>
+#include <common/payload.hpp>
+#include <common/payload-view.hpp>
 
 struct lttng_notification *lttng_notification_create(
 		struct lttng_trigger *trigger,

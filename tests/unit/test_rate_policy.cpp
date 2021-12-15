@@ -14,9 +14,9 @@
 
 #include <tap/tap.h>
 
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
 
 /* For error.h. */

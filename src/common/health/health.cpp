@@ -13,12 +13,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/sessiond-comm/inet.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/sessiond-comm/inet.hpp>
 
-#include <lttng/health-internal.h>
+#include <lttng/health-internal.hpp>
 
 /*
  * An application-specific error state for unregistered thread keeps

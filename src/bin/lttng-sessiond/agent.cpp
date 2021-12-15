@@ -11,24 +11,24 @@
 #include <urcu/rculist.h>
 
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/log4j-logging.h>
 #include <lttng/event-rule/python-logging.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/domain-internal.h>
-#include <lttng/log-level-rule-internal.h>
+#include <lttng/domain-internal.hpp>
+#include <lttng/log-level-rule-internal.hpp>
 
-#include <common/common.h>
-#include <common/sessiond-comm/agent.h>
+#include <common/common.hpp>
+#include <common/sessiond-comm/agent.hpp>
 
-#include <common/compat/endian.h>
+#include <common/compat/endian.hpp>
 
-#include "agent.h"
-#include "ust-app.h"
-#include "utils.h"
-#include "common/error.h"
+#include "agent.hpp"
+#include "ust-app.hpp"
+#include "utils.hpp"
+#include "common/error.hpp"
 
 typedef enum lttng_event_rule_status (*event_rule_logging_get_name_pattern)(
 		const struct lttng_event_rule *rule, const char **pattern);

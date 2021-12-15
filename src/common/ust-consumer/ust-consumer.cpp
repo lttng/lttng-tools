@@ -25,22 +25,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <bin/lttng-consumerd/health-consumerd.h>
-#include <common/common.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/relayd/relayd.h>
-#include <common/compat/fcntl.h>
-#include <common/compat/endian.h>
-#include <common/consumer/consumer-metadata-cache.h>
-#include <common/consumer/consumer-stream.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/utils.h>
-#include <common/index/index.h>
-#include <common/consumer/consumer.h>
-#include <common/shm.h>
-#include <common/optional.h>
+#include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <common/common.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/relayd/relayd.hpp>
+#include <common/compat/fcntl.hpp>
+#include <common/compat/endian.hpp>
+#include <common/consumer/consumer-metadata-cache.hpp>
+#include <common/consumer/consumer-stream.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/utils.hpp>
+#include <common/index/index.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/shm.hpp>
+#include <common/optional.hpp>
 
-#include "ust-consumer.h"
+#include "ust-consumer.hpp"
 
 #define INT_MAX_STR_LEN 12	/* includes \0 */
 

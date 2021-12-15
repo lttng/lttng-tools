@@ -14,11 +14,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 
 #define fprintf_dbg(fd, fmt, args...)	fprintf(fd, "%s: " fmt, __func__, ## args)
 

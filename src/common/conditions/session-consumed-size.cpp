@@ -5,12 +5,12 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
 #include <float.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/session-consumed-size-internal.h>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/session-consumed-size-internal.hpp>
 #include <lttng/constant.h>
 #include <math.h>
 #include <time.h>

@@ -14,10 +14,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.h>
-#include <lttng/domain-internal.h>
+#include <common/mi-lttng.hpp>
+#include <lttng/domain-internal.hpp>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static char *opt_channels;
 static int opt_kernel;

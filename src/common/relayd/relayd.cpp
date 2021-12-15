@@ -12,16 +12,16 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/compat/endian.h>
-#include <common/compat/string.h>
-#include <common/sessiond-comm/relayd.h>
-#include <common/index/ctf-index.h>
-#include <common/trace-chunk.h>
-#include <common/string-utils/format.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/compat/endian.hpp>
+#include <common/compat/string.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/index/ctf-index.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/string-utils/format.hpp>
 
-#include "relayd.h"
+#include "relayd.hpp"
 
 static
 bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)

@@ -8,17 +8,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.h>
-#include <common/index/index.h>
-#include <common/compat/string.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/index/index.hpp>
+#include <common/compat/string.hpp>
+#include <common/utils.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <algorithm>
 
-#include "lttng-relayd.h"
-#include "viewer-stream.h"
+#include "lttng-relayd.hpp"
+#include "viewer-stream.hpp"
 
 static void viewer_stream_release_composite_objects(struct relay_viewer_stream *vstream)
 {

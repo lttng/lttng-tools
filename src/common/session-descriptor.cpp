@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: LGPL-2.1-only
  */
 
-#include <lttng/session-descriptor-internal.h>
-#include <common/macros.h>
-#include <common/uri.h>
-#include <common/defaults.h>
-#include <common/error.h>
+#include <lttng/session-descriptor-internal.hpp>
+#include <common/macros.hpp>
+#include <common/uri.hpp>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
 #include <time.h>
 #include <stdio.h>
 

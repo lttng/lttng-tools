@@ -5,18 +5,18 @@
  *
  */
 
-#include <common/credentials.h>
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <common/runas.h>
-#include <common/string-utils/string-utils.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kernel-syscall-internal.h>
+#include <common/credentials.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/runas.hpp>
+#include <common/string-utils/string-utils.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
 
 #define IS_SYSCALL_EVENT_RULE(rule) \
 	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL)

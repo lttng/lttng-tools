@@ -5,13 +5,13 @@
  *
  */
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/optional.h>
-#include <common/string-utils/format.h>
-#include <common/utils.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/optional.hpp>
+#include <common/string-utils/format.hpp>
+#include <common/utils.hpp>
 #include <inttypes.h>
 #include <lttng/constant.h>
 #include <sys/stat.h>
@@ -21,7 +21,7 @@
 #include <urcu/rculfhash.h>
 #include <urcu/ref.h>
 
-#include "inode.h"
+#include "inode.hpp"
 
 struct inode_id {
 	dev_t device;

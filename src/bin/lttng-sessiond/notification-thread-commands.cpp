@@ -7,9 +7,9 @@
 
 #include <lttng/trigger/trigger.h>
 #include <lttng/lttng-error.h>
-#include "notification-thread.h"
-#include "notification-thread-commands.h"
-#include <common/error.h>
+#include "notification-thread.hpp"
+#include "notification-thread-commands.hpp"
+#include <common/error.hpp>
 #include <unistd.h>
 #include <stdint.h>
 #include <inttypes.h>

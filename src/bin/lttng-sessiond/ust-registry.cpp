@@ -8,16 +8,16 @@
 #define _LGPL_SOURCE
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/hashtable/utils.h>
+#include <common/common.hpp>
+#include <common/hashtable/utils.hpp>
 #include <lttng/lttng.h>
 
-#include "ust-registry.h"
-#include "ust-app.h"
-#include "ust-field-utils.h"
-#include "utils.h"
-#include "lttng-sessiond.h"
-#include "notification-thread-commands.h"
+#include "ust-registry.hpp"
+#include "ust-app.hpp"
+#include "ust-field-utils.hpp"
+#include "utils.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
 
 /*
  * Hash table match function for event in the registry.

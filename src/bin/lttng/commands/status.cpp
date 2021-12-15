@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../command.h"
-#include "../utils.h"
+#include "../command.hpp"
+#include "../utils.hpp"
 #include <config.h>
 
 #ifdef LTTNG_EMBED_HELP

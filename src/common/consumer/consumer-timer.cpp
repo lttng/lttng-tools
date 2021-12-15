@@ -10,15 +10,15 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#include <bin/lttng-consumerd/health-consumerd.h>
-#include <common/common.h>
-#include <common/compat/endian.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/kernel-consumer/kernel-consumer.h>
-#include <common/consumer/consumer-stream.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/consumer/consumer-testpoint.h>
-#include <common/ust-consumer/ust-consumer.h>
+#include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/kernel-consumer/kernel-consumer.hpp>
+#include <common/consumer/consumer-stream.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer-testpoint.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
 
 typedef int (*sample_positions_cb)(struct lttng_consumer_stream *stream);
 typedef int (*get_consumed_cb)(struct lttng_consumer_stream *stream,

@@ -14,13 +14,13 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/utils.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/ust-consumer/ust-consumer.h>
-#include <common/consumer/consumer.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
+#include <common/consumer/consumer.hpp>
 
-#include "consumer-metadata-cache.h"
+#include "consumer-metadata-cache.hpp"
 
 enum metadata_cache_update_version_status {
 	METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED,

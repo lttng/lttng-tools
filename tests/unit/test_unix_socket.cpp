@@ -6,16 +6,16 @@
  */
 
 #include <algorithm>
-#include <common/compat/fcntl.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
-#include <common/unix.h>
-#include <common/utils.h>
-#include <common/defaults.h>
+#include <common/compat/fcntl.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/payload.hpp>
+#include <common/payload-view.hpp>
+#include <common/unix.hpp>
+#include <common/utils.hpp>
+#include <common/defaults.hpp>
 #include <tap/tap.h>
 #include <stdbool.h>
-#include <common/error.h>
+#include <common/error.hpp>
 #include <lttng/constant.h>
 #include <stdio.h>
 #include <pthread.h>

@@ -18,38 +18,38 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/bytecode/bytecode.h>
-#include <common/align.h>
-#include <common/common.h>
-#include <common/compat/errno.h>
-#include <common/compat/string.h>
-#include <common/defaults.h>
-#include <common/dynamic-array.h>
-#include <common/dynamic-buffer.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/tracker.h>
-#include <common/unix.h>
-#include <common/uri.h>
-#include <common/utils.h>
-#include <lttng/channel-internal.h>
+#include <common/bytecode/bytecode.hpp>
+#include <common/align.hpp>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/string.hpp>
+#include <common/defaults.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/tracker.hpp>
+#include <common/unix.hpp>
+#include <common/uri.hpp>
+#include <common/utils.hpp>
+#include <lttng/channel-internal.hpp>
 #include <lttng/destruction-handle.h>
 #include <lttng/endpoint.h>
-#include <lttng/error-query-internal.h>
-#include <lttng/event-internal.h>
-#include <lttng/health-internal.h>
+#include <lttng/error-query-internal.hpp>
+#include <lttng/event-internal.hpp>
+#include <lttng/health-internal.hpp>
 #include <lttng/lttng-error.h>
 #include <lttng/lttng.h>
-#include <lttng/session-descriptor-internal.h>
-#include <lttng/session-internal.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <lttng/userspace-probe-internal.h>
+#include <lttng/session-descriptor-internal.hpp>
+#include <lttng/session-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
+#include <lttng/userspace-probe-internal.hpp>
 
-#include "lttng-ctl-helper.h"
-#include <common/filter/filter-ast.h>
+#include "lttng-ctl-helper.hpp"
+#include <common/filter/filter-ast.hpp>
 #include <common/filter/filter-parser.hpp>
-#include <common/filter/memstream.h>
+#include <common/filter/memstream.hpp>
 
 #define COPY_DOMAIN_PACKED(dst, src)				\
 do {								\

@@ -5,11 +5,11 @@
  *
  */
 
-#include "context.h"
+#include "context.hpp"
 #include <stddef.h>
 #include <string.h>
-#include <common/error.h>
-#include <common/macros.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
 
 int parse_application_context(const char *str, char **out_provider_name,
 		char **out_ctx_name)

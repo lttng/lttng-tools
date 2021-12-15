@@ -13,16 +13,16 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/trace-chunk.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/utils.hpp>
 
-#include "buffer-registry.h"
-#include "trace-ust.h"
-#include "utils.h"
-#include "ust-app.h"
-#include "agent.h"
+#include "buffer-registry.hpp"
+#include "trace-ust.hpp"
+#include "utils.hpp"
+#include "ust-app.hpp"
+#include "agent.hpp"
 
 /*
  * Match function for the events hash table lookup.

@@ -16,11 +16,11 @@
 #include <stdbool.h>
 #include <lttng/lttng.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
-#include <common/mi-lttng.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/utils.h>
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
 
 static int opt_clear_all;
 

@@ -6,10 +6,10 @@
  *
  */
 
-#include "waiter.h"
+#include "waiter.hpp"
 #include <urcu/uatomic.h>
 #include <urcu/futex.h>
-#include "error.h"
+#include "error.hpp"
 #include <poll.h>
 
 /*

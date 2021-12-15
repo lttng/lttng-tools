@@ -15,12 +15,12 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <common/macros.h>
-#include <common/compat/errno.h>
+#include <common/macros.hpp>
+#include <common/compat/errno.hpp>
 
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "filter-ir.h"
+#include "filter-ir.hpp"
 
 enum parse_char_result {
 	PARSE_CHAR_UNKNOWN = -2,

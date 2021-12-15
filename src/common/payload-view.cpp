@@ -5,10 +5,10 @@
  *
  */
 
-#include <common/dynamic-array.h>
-#include <common/buffer-view.h>
-#include "payload-view.h"
-#include "payload.h"
+#include <common/dynamic-array.hpp>
+#include <common/buffer-view.hpp>
+#include "payload-view.hpp"
+#include "payload.hpp"
 #include <stddef.h>
 
 bool lttng_payload_view_is_valid(const struct lttng_payload_view *view)

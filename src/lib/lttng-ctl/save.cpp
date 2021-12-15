@@ -10,10 +10,10 @@
 
 #include <lttng/lttng-error.h>
 #include <lttng/save.h>
-#include <lttng/save-internal.h>
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <lttng/save-internal.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 struct lttng_save_session_attr *lttng_save_session_attr_create(void)
 {

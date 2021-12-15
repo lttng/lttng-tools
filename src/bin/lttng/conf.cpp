@@ -14,11 +14,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/compat/errno.h>
-#include <common/common.h>
-#include <common/utils.h>
+#include <common/compat/errno.hpp>
+#include <common/common.hpp>
+#include <common/utils.hpp>
 
-#include "conf.h"
+#include "conf.hpp"
 
 /*
  * Returns the path with '/CONFIG_FILENAME' added to it;

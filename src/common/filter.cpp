@@ -5,7 +5,7 @@
  *
  */
 
-#include "filter.h"
+#include "filter.hpp"
 #include <stddef.h>
 
 struct bytecode_symbol_iterator {

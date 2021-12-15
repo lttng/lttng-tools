@@ -11,12 +11,12 @@
 #include <sys/socket.h>
 #include <limits.h>
 
-#include <common/compat/getenv.h>
-#include <common/time.h>
-#include <common/defaults.h>
-#include <common/ini-config/ini-config.h>
+#include <common/compat/getenv.hpp>
+#include <common/time.hpp>
+#include <common/defaults.hpp>
+#include <common/ini-config/ini-config.hpp>
 
-#include "tcp_keep_alive.h"
+#include "tcp_keep_alive.hpp"
 
 #define SOLARIS_IDLE_TIME_MIN_S 10
 #define SOLARIS_IDLE_TIME_MAX_S 864000 /* 10 days */

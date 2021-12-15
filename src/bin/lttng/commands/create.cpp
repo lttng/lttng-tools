@@ -14,21 +14,21 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <common/compat/time.h>
+#include <common/compat/time.hpp>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
 
-#include <common/mi-lttng.h>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
-#include "../utils.h"
+#include "../command.hpp"
+#include "../utils.hpp"
 
-#include <common/defaults.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/uri.h>
-#include <common/utils.h>
-#include <common/path.h>
+#include <common/defaults.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/uri.hpp>
+#include <common/utils.hpp>
+#include <common/path.hpp>
 #include <lttng/lttng.h>
 
 static char *opt_output_path;

@@ -7,16 +7,16 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
 
-#include "fd-limit.h"
-#include "lttng-sessiond.h"
-#include "notify-apps.h"
-#include "health-sessiond.h"
-#include "testpoint.h"
-#include "utils.h"
-#include "thread.h"
+#include "fd-limit.hpp"
+#include "lttng-sessiond.hpp"
+#include "notify-apps.hpp"
+#include "health-sessiond.hpp"
+#include "testpoint.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

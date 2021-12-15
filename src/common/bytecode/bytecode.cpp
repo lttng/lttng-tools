@@ -5,12 +5,12 @@
  *
  */
 
-#include "bytecode.h"
+#include "bytecode.hpp"
 
 #include <errno.h>
 #include <algorithm>
 
-#include "common/align.h"
+#include "common/align.hpp"
 
 #define INIT_ALLOC_SIZE 4
 

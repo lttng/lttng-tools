@@ -14,10 +14,10 @@
 
 #include <lttng/constant.h>
 
-#include <common/compat/errno.h>
-#include "error.h"
-#include "macros.h"
-#include "spawn-viewer.h"
+#include <common/compat/errno.hpp>
+#include "error.hpp"
+#include "macros.hpp"
+#include "spawn-viewer.hpp"
 
 
 static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;

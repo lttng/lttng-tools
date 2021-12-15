@@ -11,7 +11,7 @@
  */
 
 #include <stdlib.h>
-#include <common/compat/time.h>
+#include <common/compat/time.hpp>
 #include <string.h>
 #include <stdio.h>
 #include <lttng/lttng-export.h>

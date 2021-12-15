@@ -14,13 +14,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/mi-lttng.h>
-#include <common/time.h>
-#include <common/tracker.h>
-#include <lttng/domain-internal.h>
+#include <common/mi-lttng.hpp>
+#include <common/time.hpp>
+#include <common/tracker.hpp>
+#include <lttng/domain-internal.hpp>
 #include <lttng/lttng.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static int opt_userspace;
 static int opt_kernel;

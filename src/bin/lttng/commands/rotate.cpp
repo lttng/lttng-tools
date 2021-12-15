@@ -16,10 +16,10 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/mi-lttng.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
+#include "../command.hpp"
 #include <lttng/lttng.h>
 
 static char *opt_session_name;

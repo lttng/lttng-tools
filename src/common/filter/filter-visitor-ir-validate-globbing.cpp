@@ -15,12 +15,12 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "filter-ir.h"
+#include "filter-ir.hpp"
 
 static
 int validate_globbing(struct ir_op *node)

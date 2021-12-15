@@ -7,8 +7,8 @@
  *
  */
 
-#include "lttng-sessiond.h"
-#include <common/uuid.h>
+#include "lttng-sessiond.hpp"
+#include <common/uuid.hpp>
 
 lttng_uuid the_sessiond_uuid;
 

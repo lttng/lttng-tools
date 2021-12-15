@@ -8,15 +8,15 @@
 
 #define _LGPL_SOURCE
 #include <unistd.h>
-#include <common/compat/paths.h>
+#include <common/compat/paths.hpp>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 
 #include <urcu/system.h>
 
-#include <common/daemonize.h>
-#include <common/error.h>
+#include <common/daemonize.hpp>
+#include <common/error.hpp>
 
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds)

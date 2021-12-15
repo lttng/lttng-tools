@@ -17,17 +17,17 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/compat/errno.h>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
 
-#include "sessiond-comm.h"
+#include "sessiond-comm.hpp"
 
 /* For Unix socket */
-#include <common/unix.h>
+#include <common/unix.hpp>
 /* For Inet socket */
-#include "inet.h"
+#include "inet.hpp"
 /* For Inet6 socket */
-#include "inet6.h"
+#include "inet6.hpp"
 
 #define NETWORK_TIMEOUT_ENV	"LTTNG_NETWORK_SOCKET_TIMEOUT"
 

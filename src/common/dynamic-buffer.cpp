@@ -5,9 +5,9 @@
  *
  */
 
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
-#include <common/utils.h>
+#include <common/dynamic-buffer.hpp>
+#include <common/buffer-view.hpp>
+#include <common/utils.hpp>
 
 /*
  * Round to (upper) power of two, val is returned if it already is a power of

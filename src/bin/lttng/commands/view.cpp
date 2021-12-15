@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/spawn-viewer.h>
-#include "../command.h"
+#include <common/spawn-viewer.hpp>
+#include "../command.hpp"
 
 static char *opt_session_name;
 static char *opt_viewer;

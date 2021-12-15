@@ -8,16 +8,16 @@
 #include <lttng/destruction-handle.h>
 #include <lttng/rotation.h>
 
-#include <common/optional.h>
-#include <common/compat/poll.h>
-#include <common/compat/time.h>
-#include <common/macros.h>
-#include <common/compat/poll.h>
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <lttng/location-internal.h>
-#include "lttng-ctl-helper.h"
+#include <common/optional.hpp>
+#include <common/compat/poll.hpp>
+#include <common/compat/time.hpp>
+#include <common/macros.hpp>
+#include <common/compat/poll.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/buffer-view.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <lttng/location-internal.hpp>
+#include "lttng-ctl-helper.hpp"
 
 #include <algorithm>
 #include <stdbool.h>

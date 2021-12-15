@@ -6,10 +6,10 @@
  *
  */
 
-#include <common/compat/getenv.h>
-#include <common/consumer/consumer.h>
-#include <common/pipe.h>
-#include <common/error.h>
+#include <common/compat/getenv.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/pipe.hpp>
+#include <common/error.hpp>
 #include <unistd.h>
 #include <stdbool.h>
 #include <lttng/constant.h>

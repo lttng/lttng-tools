@@ -16,16 +16,16 @@
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
-#include <lttng/health-internal.h>
+#include <lttng/health-internal.hpp>
 
-#include <bin/lttng-sessiond/health-sessiond.h>
-#include <bin/lttng-consumerd/health-consumerd.h>
-#include <bin/lttng-relayd/health-relayd.h>
-#include <common/defaults.h>
-#include <common/utils.h>
-#include <common/compat/errno.h>
+#include <bin/lttng-sessiond/health-sessiond.hpp>
+#include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <bin/lttng-relayd/health-relayd.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
+#include <common/compat/errno.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 enum health_component {
 	HEALTH_COMPONENT_SESSIOND,

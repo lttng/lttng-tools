@@ -5,10 +5,10 @@
  *
  */
 
-#include "event-notifier-error-accounting.h"
-#include <lttng/error-query-internal.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <lttng/action/action-internal.h>
+#include "event-notifier-error-accounting.hpp"
+#include <lttng/error-query-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
+#include <lttng/action/action-internal.hpp>
 
 enum lttng_trigger_status lttng_trigger_add_error_results(
 		const struct lttng_trigger *trigger __attribute__((unused)),

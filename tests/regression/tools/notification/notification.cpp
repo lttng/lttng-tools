@@ -22,8 +22,8 @@
 #include <signal.h>
 #include <poll.h>
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 #include <lttng/lttng.h>
 
 #include <tap/tap.h>

@@ -5,7 +5,7 @@
  *
  */
 
-#include "loglevel.h"
+#include "loglevel.hpp"
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>

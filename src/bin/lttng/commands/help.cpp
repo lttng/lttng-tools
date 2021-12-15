@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../command.h"
-#include <common/utils.h>
+#include "../command.hpp"
+#include <common/utils.hpp>
 
 #ifdef LTTNG_EMBED_HELP
 static const char *help_msg =

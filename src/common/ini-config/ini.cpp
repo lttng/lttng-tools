@@ -36,9 +36,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <common/common.h>
+#include <common/common.hpp>
 
-#include "ini.h"
+#include "ini.hpp"
 
 #if !INI_USE_STACK
 #include <stdlib.h>

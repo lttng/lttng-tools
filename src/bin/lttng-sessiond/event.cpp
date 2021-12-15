@@ -10,29 +10,29 @@
 #include <urcu/list.h>
 #include <string.h>
 
-#include <common/compat/errno.h>
+#include <common/compat/errno.hpp>
 #include <lttng/lttng.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <common/bytecode/bytecode.h>
-#include <common/error.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/filter.h>
-#include <common/context.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <common/bytecode/bytecode.hpp>
+#include <common/error.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/filter.hpp>
+#include <common/context.hpp>
 
-#include "channel.h"
-#include "event.h"
-#include "kernel.h"
-#include "lttng-sessiond.h"
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-error.h"
-#include "ust-app.h"
-#include "trace-kernel.h"
-#include "trace-ust.h"
-#include "agent.h"
-#include "utils.h"
+#include "channel.hpp"
+#include "event.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "ust-app.hpp"
+#include "trace-kernel.hpp"
+#include "trace-ust.hpp"
+#include "agent.hpp"
+#include "utils.hpp"
 
 /*
  * Add unique UST event based on the event name, filter bytecode and loglevel.

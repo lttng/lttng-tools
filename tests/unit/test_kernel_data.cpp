@@ -11,9 +11,9 @@
 #include <unistd.h>
 #include <time.h>
 
-#include <common/compat/errno.h>
-#include <bin/lttng-sessiond/trace-kernel.h>
-#include <common/defaults.h>
+#include <common/compat/errno.hpp>
+#include <bin/lttng-sessiond/trace-kernel.hpp>
+#include <common/defaults.hpp>
 
 #include <tap/tap.h>
 

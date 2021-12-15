@@ -14,13 +14,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "filter-ir.h"
+#include "filter-ir.hpp"
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
-#include <common/string-utils/string-utils.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
+#include <common/string-utils/string-utils.hpp>
 
 static
 struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,

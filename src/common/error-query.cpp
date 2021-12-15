@@ -7,17 +7,17 @@
  *
  */
 
-#include <common/dynamic-array.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/list-internal.h>
-#include <lttng/action/path-internal.h>
-#include <lttng/error-query-internal.h>
+#include <common/dynamic-array.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
+#include <lttng/action/path-internal.hpp>
+#include <lttng/error-query-internal.hpp>
 #include <lttng/error-query.h>
-#include <lttng/trigger/trigger-internal.h>
+#include <lttng/trigger/trigger-internal.hpp>
 #include <stddef.h>
 
 struct lttng_error_query {

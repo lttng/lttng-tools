@@ -11,19 +11,19 @@
 #include <urcu/uatomic.h>
 #include <unistd.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/config/session-config.h>
-#include <common/utils.h>
-#include <common/runas.h>
-#include <lttng/save-internal.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/config/session-config.hpp>
+#include <common/utils.hpp>
+#include <common/runas.hpp>
+#include <lttng/save-internal.hpp>
 
-#include "kernel.h"
-#include "save.h"
-#include "session.h"
-#include "lttng-syscall.h"
-#include "trace-ust.h"
-#include "agent.h"
+#include "kernel.hpp"
+#include "save.hpp"
+#include "session.hpp"
+#include "lttng-syscall.hpp"
+#include "trace-ust.hpp"
+#include "agent.hpp"
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static

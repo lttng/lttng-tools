@@ -6,36 +6,33 @@
  *
  */
 
-#include "common/macros.h"
-#include <stdint.h>
 #define _LGPL_SOURCE
 #include <ctype.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <pwd.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <grp.h>
-#include <pwd.h>
-#include <sys/file.h>
-#include <unistd.h>
 
-#include <common/common.h>
-#include <common/readwrite.h>
-#include <common/runas.h>
-#include <common/compat/getenv.h>
-#include <common/compat/string.h>
-#include <common/compat/dirent.h>
-#include <common/compat/directory-handle.h>
-#include <common/dynamic-buffer.h>
-#include <common/string-utils/format.h>
+#include <common/common.hpp>
+#include <common/compat/directory-handle.hpp>
+#include <common/compat/dirent.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/string.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/readwrite.hpp>
+#include <common/runas.hpp>
+#include <common/string-utils/format.hpp>
 #include <lttng/constant.h>
 
-#include "utils.h"
-#include "defaults.h"
-#include "time.h"
+#include "defaults.hpp"
+#include "time.hpp"
+#include "utils.hpp"
 
 #define PROC_MEMINFO_PATH               "/proc/meminfo"
 #define PROC_MEMINFO_MEMAVAILABLE_LINE  "MemAvailable:"

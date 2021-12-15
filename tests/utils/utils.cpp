@@ -5,8 +5,8 @@
  *
  */
 
-#include <common/compat/time.h>
-#include <common/time.h>
+#include <common/compat/time.hpp>
+#include <common/time.hpp>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -17,8 +17,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 
 #include "utils.h"
 

@@ -9,15 +9,15 @@
 
 #include <signal.h>
 
-#include <common/pipe.h>
-#include <common/utils.h>
+#include <common/pipe.hpp>
+#include <common/utils.hpp>
 
-#include "manage-consumer.h"
-#include "testpoint.h"
-#include "health-sessiond.h"
-#include "utils.h"
-#include "thread.h"
-#include "ust-consumer.h"
+#include "manage-consumer.hpp"
+#include "testpoint.hpp"
+#include "health-sessiond.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
+#include "ust-consumer.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

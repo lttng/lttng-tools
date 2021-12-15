@@ -10,9 +10,9 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <stdio.h>
-#include "fd-limit.h"
-#include <common/error.h>
-#include <common/compat/errno.h>
+#include "fd-limit.hpp"
+#include <common/error.hpp>
+#include <common/compat/errno.hpp>
 
 /* total count of fd. */
 static long fd_count;

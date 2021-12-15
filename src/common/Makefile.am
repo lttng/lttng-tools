@@ -6,17 +6,17 @@ noinst_LTLIBRARIES =
 BUILT_SOURCES =
 
 noinst_HEADERS = \
-	align.h \
-	bug.h \
-	defaults.h \
-	error.h \
-	futex.h \
-	lttng-kernel.h \
-	lttng-kernel-old.h \
-	macros.h \
-	time.h \
-	uri.h \
-	utils.h
+	align.hpp \
+	bug.hpp \
+	defaults.hpp \
+	error.hpp \
+	futex.hpp \
+	lttng-kernel.hpp \
+	lttng-kernel-old.hpp \
+	macros.hpp \
+	time.hpp \
+	uri.hpp \
+	utils.hpp
 
 
 # libargpar
@@ -30,14 +30,14 @@ libargpar_la_SOURCES = \
 noinst_LTLIBRARIES += libargpar-utils.la
 libargpar_utils_la_SOURCES = \
 	argpar-utils/argpar-utils.cpp \
-	argpar-utils/argpar-utils.h
+	argpar-utils/argpar-utils.hpp
 
 
 # libbytecode
 noinst_LTLIBRARIES += libbytecode.la
 libbytecode_la_SOURCES = \
 	bytecode/bytecode.cpp \
-	bytecode/bytecode.h
+	bytecode/bytecode.hpp
 
 
 # The libcommon-lgpl static archive contains only LGPLv2.1 code. It is
@@ -55,20 +55,20 @@ libcommon_lgpl_la_SOURCES = \
 	actions/start-session.cpp \
 	actions/stop-session.cpp \
 	actions/rate-policy.cpp \
-	buffer-view.h buffer-view.cpp \
+	buffer-view.hpp buffer-view.cpp \
 	channel.cpp \
 	conditions/buffer-usage.cpp \
 	conditions/condition.cpp \
 	conditions/event-rule-matches.cpp \
 	conditions/session-consumed-size.cpp \
 	conditions/session-rotation.cpp \
-	credentials.cpp credentials.h \
+	credentials.cpp credentials.hpp \
 	defaults.cpp \
 	domain.cpp \
-	dynamic-array.cpp dynamic-array.h \
-	dynamic-buffer.cpp dynamic-buffer.h \
+	dynamic-array.cpp dynamic-array.hpp \
+	dynamic-buffer.cpp dynamic-buffer.hpp \
 	endpoint.cpp \
-	error.cpp error.h \
+	error.cpp error.hpp \
 	error-query.cpp \
 	evaluation.cpp \
 	event.cpp \
@@ -83,31 +83,31 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/log4j-logging.cpp \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
-	fd-handle.cpp fd-handle.h \
+	fd-handle.cpp fd-handle.hpp\
 	kernel-probe.cpp \
 	location.cpp \
 	log-level-rule.cpp \
-	mi-lttng.cpp mi-lttng.h \
+	mi-lttng.cpp mi-lttng.hpp \
 	notification.cpp \
-	payload.cpp payload.h \
-	payload-view.cpp payload-view.h \
-	readwrite.cpp readwrite.h \
-	runas.cpp runas.h \
+	payload.cpp payload.hpp \
+	payload-view.cpp payload-view.hpp \
+	readwrite.cpp readwrite.hpp \
+	runas.cpp runas.hpp \
 	session-descriptor.cpp \
-	snapshot.cpp snapshot.h \
-	spawn-viewer.cpp spawn-viewer.h \
-	thread.cpp thread.h \
+	snapshot.cpp snapshot.hpp \
+	spawn-viewer.cpp spawn-viewer.hpp \
+	thread.cpp thread.hpp \
 	time.cpp \
-	tracker.cpp tracker.h \
+	tracker.cpp tracker.hpp \
 	trigger.cpp \
-	unix.cpp unix.h \
-	uri.cpp uri.h \
+	unix.cpp unix.hpp \
+	uri.cpp uri.hpp \
 	userspace-probe.cpp \
-	utils.cpp utils.h
+	utils.cpp utils.hpp
 
 if HAVE_ELF_H
 libcommon_lgpl_la_SOURCES += \
-	lttng-elf.cpp lttng-elf.h
+	lttng-elf.cpp lttng-elf.hpp
 endif
 
 libcommon_lgpl_la_LIBADD = \
@@ -123,27 +123,27 @@ libcommon_lgpl_la_LIBADD = \
 # meant to be used by GPL executables.
 noinst_LTLIBRARIES += libpath.la
 libpath_la_SOURCES = \
-	path.cpp path.h
+	path.cpp path.hpp
 
 
 # The libcommon-gpl static archive contains GPLv2 compatible code. It is
 # meant to be used by GPL executables.
 noinst_LTLIBRARIES += libcommon-gpl.la
 libcommon_gpl_la_SOURCES = \
-	common.h \
-	context.cpp context.h \
-	daemonize.cpp daemonize.h \
-	filter.cpp filter.h \
-	fs-handle.cpp fs-handle.h fs-handle-internal.h \
-	futex.cpp futex.h \
-	index-allocator.cpp index-allocator.h \
-	optional.h \
-	pipe.cpp pipe.h \
-	shm.cpp shm.h \
-	trace-chunk.cpp trace-chunk.h \
-	trace-chunk-registry.h \
-	uuid.cpp uuid.h \
-	waiter.cpp waiter.h
+	common.hpp \
+	context.cpp context.hpp \
+	daemonize.cpp daemonize.hpp \
+	filter.cpp filter.hpp \
+	fs-handle.cpp fs-handle.hpp fs-handle-internal.hpp \
+	futex.cpp futex.hpp \
+	index-allocator.cpp index-allocator.hpp \
+	optional.hpp \
+	pipe.cpp pipe.hpp \
+	shm.cpp shm.hpp \
+	trace-chunk.cpp trace-chunk.hpp \
+	trace-chunk-registry.hpp \
+	uuid.cpp uuid.hpp \
+	waiter.cpp waiter.hpp
 
 libcommon_gpl_la_LIBADD = \
 	libcommon-lgpl.la \
@@ -158,32 +158,32 @@ noinst_LTLIBRARIES += libcompat.la
 libcompat_la_SOURCES = \
         compat/compat-fcntl.cpp \
         compat/directory-handle.cpp \
-        compat/directory-handle.h \
-        compat/dirent.h \
-        compat/endian.h \
-        compat/errno.h \
-        compat/fcntl.h \
-        compat/getenv.h \
-        compat/mman.h \
-        compat/netdb.h \
-        compat/path.h \
-        compat/paths.h \
+        compat/directory-handle.hpp \
+        compat/dirent.hpp \
+        compat/endian.hpp \
+        compat/errno.hpp \
+        compat/fcntl.hpp \
+        compat/getenv.hpp \
+        compat/mman.hpp \
+        compat/netdb.hpp \
+        compat/path.hpp \
+        compat/paths.hpp \
         compat/poll.cpp \
-        compat/poll.h \
-        compat/pthread.h \
-        compat/socket.h \
-        compat/string.h \
-        compat/tid.h \
-        compat/time.h
+        compat/poll.hpp \
+        compat/pthread.hpp \
+        compat/socket.hpp \
+        compat/string.hpp \
+        compat/tid.hpp \
+        compat/time.hpp
 
 
 # libconfig
 noinst_LTLIBRARIES += libconfig.la
 libconfig_la_SOURCES = \
-	config/config-internal.h \
-	config/config-session-abi.h \
+	config/config-internal.hpp \
+	config/config-session-abi.hpp \
 	config/session-config.cpp \
-	config/session-config.h
+	config/session-config.hpp
 
 libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 libconfig_la_LIBADD = ${libxml2_LIBS}
@@ -194,16 +194,16 @@ noinst_LTLIBRARIES += libconsumer.la
 
 libconsumer_la_SOURCES = \
 	consumer/consumer.cpp \
-	consumer/consumer.h \
+	consumer/consumer.hpp \
 	consumer/consumer-metadata-cache.cpp \
-	consumer/consumer-metadata-cache.h \
+	consumer/consumer-metadata-cache.hpp \
 	consumer/consumer-stream.cpp \
-	consumer/consumer-stream.h \
-	consumer/consumer-testpoint.h \
+	consumer/consumer-stream.hpp \
+	consumer/consumer-testpoint.hpp \
 	consumer/consumer-timer.cpp \
-	consumer/consumer-timer.h \
+	consumer/consumer-timer.hpp \
 	consumer/metadata-bucket.cpp \
-	consumer/metadata-bucket.h
+	consumer/metadata-bucket.hpp
 
 libconsumer_la_LIBADD = \
 	libkernel-consumer.la \
@@ -221,11 +221,11 @@ endif # BUILD_LIB_CONSUMER
 noinst_LTLIBRARIES += libfd-tracker.la
 libfd_tracker_la_SOURCES = \
 	fd-tracker/fd-tracker.cpp \
-	fd-tracker/fd-tracker.h \
+	fd-tracker/fd-tracker.hpp \
 	fd-tracker/inode.cpp \
-	fd-tracker/inode.h \
+	fd-tracker/inode.hpp \
 	fd-tracker/utils.cpp \
-	fd-tracker/utils.h \
+	fd-tracker/utils.hpp \
 	fd-tracker/utils-poll.cpp
 
 
@@ -233,11 +233,11 @@ libfd_tracker_la_SOURCES = \
 noinst_LTLIBRARIES += libfilter.la
 
 libfilter_la_SOURCES = \
-	filter/filter-ast.h \
-	filter/filter-ir.h \
+	filter/filter-ast.hpp \
+	filter/filter-ir.hpp \
 	filter/filter-lexer.lpp \
 	filter/filter-parser.ypp \
-	filter/filter-symbols.h \
+	filter/filter-symbols.hpp \
 	filter/filter-visitor-generate-bytecode.cpp \
 	filter/filter-visitor-generate-ir.cpp \
 	filter/filter-visitor-ir-check-binary-op-nesting.cpp \
@@ -245,7 +245,7 @@ libfilter_la_SOURCES = \
 	filter/filter-visitor-ir-validate-globbing.cpp \
 	filter/filter-visitor-ir-validate-string.cpp \
 	filter/filter-visitor-xml.cpp \
-	filter/memstream.h
+	filter/memstream.hpp
 
 BUILT_SOURCES += filter/filter-parser.hpp
 
@@ -256,7 +256,7 @@ FILTER_WARN_FLAGS = \
 	-Wno-unused-parameter
 
 libfilter_la_CFLAGS = $(AM_CFLAGS) $(FILTER_WARN_FLAGS)
-libfilter_la_CXXFLAGS = -include filter-symbols.h $(AM_CXXFLAGS) $(FILTER_WARN_FLAGS)
+libfilter_la_CXXFLAGS = -include filter-symbols.hpp $(AM_CXXFLAGS) $(FILTER_WARN_FLAGS)
 libfilter_la_CPPFLAGS = -I$(srcdir)/filter -I$(builddir)/filter $(AM_CPPFLAGS)
 libfilter_la_LIBADD = libstring-utils.la
 
@@ -301,14 +301,14 @@ noinst_LTLIBRARIES += libhashtable-lgpl.la
 libhashtable_lgpl_la_SOURCES = \
 	hashtable/seed.cpp \
 	hashtable/utils.cpp \
-	hashtable/utils.h
+	hashtable/utils.hpp
 
 
 noinst_LTLIBRARIES += libhashtable-gpl.la
 libhashtable_gpl_la_SOURCES = \
 	hashtable/hashtable.cpp \
-	hashtable/hashtable.h \
-	hashtable/hashtable-symbols.h
+	hashtable/hashtable.hpp \
+	hashtable/hashtable-symbols.hpp
 
 libhashtable_gpl_la_LIBADD = \
 	$(URCU_LIBS) \
@@ -327,18 +327,18 @@ endif
 noinst_LTLIBRARIES += libini-config.la
 libini_config_la_SOURCES = \
 	ini-config/ini.cpp \
-	ini-config/ini.h \
+	ini-config/ini.hpp \
 	ini-config/ini-config.cpp \
-	ini-config/ini-config.h
+	ini-config/ini-config.hpp
 
 
 if BUILD_LIB_INDEX
 noinst_LTLIBRARIES += libindex.la
 
 libindex_la_SOURCES = \
-	index/ctf-index.h \
+	index/ctf-index.hpp \
 	index/index.cpp \
-	index/index.h
+	index/index.hpp
 endif
 
 
@@ -347,22 +347,22 @@ noinst_LTLIBRARIES += libkernel-ctl.la
 
 libkernel_ctl_la_SOURCES = \
 	kernel-ctl/kernel-ctl.cpp \
-	kernel-ctl/kernel-ctl.h \
-	kernel-ctl/kernel-ioctl.h
+	kernel-ctl/kernel-ctl.hpp \
+	kernel-ctl/kernel-ioctl.hpp
 endif
 
 if BUILD_LIB_SESSIOND_COMM
 noinst_LTLIBRARIES += libsessiond-comm.la
 
 libsessiond_comm_la_SOURCES = \
-	sessiond-comm/agent.h \
+	sessiond-comm/agent.hpp \
 	sessiond-comm/inet.cpp \
-	sessiond-comm/inet.h \
+	sessiond-comm/inet.hpp \
 	sessiond-comm/inet6.cpp \
-	sessiond-comm/inet6.h \
-	sessiond-comm/relayd.h \
+	sessiond-comm/inet6.hpp \
+	sessiond-comm/relayd.hpp \
 	sessiond-comm/sessiond-comm.cpp \
-	sessiond-comm/sessiond-comm.h
+	sessiond-comm/sessiond-comm.hpp
 endif
 
 if BUILD_LIB_RELAYD
@@ -370,7 +370,7 @@ noinst_LTLIBRARIES += librelayd.la
 
 librelayd_la_SOURCES = \
 	relayd/relayd.cpp \
-	relayd/relayd.h
+	relayd/relayd.hpp
 
 librelayd_la_LIBADD = libsessiond-comm.la
 endif
@@ -381,7 +381,7 @@ noinst_LTLIBRARIES += libkernel-consumer.la
 
 libkernel_consumer_la_SOURCES = \
 	kernel-consumer/kernel-consumer.cpp \
-	kernel-consumer/kernel-consumer.h
+	kernel-consumer/kernel-consumer.hpp
 
 libkernel_consumer_la_LIBADD = \
 	libkernel-ctl.la
@@ -393,7 +393,7 @@ noinst_LTLIBRARIES += libust-consumer.la
 
 libust_consumer_la_SOURCES = \
 	ust-consumer/ust-consumer.cpp \
-	ust-consumer/ust-consumer.h
+	ust-consumer/ust-consumer.hpp
 
 libust_consumer_la_LIBADD = \
 	$(UST_CTL_LIBS)
@@ -405,7 +405,7 @@ noinst_LTLIBRARIES += libtestpoint.la
 
 libtestpoint_la_SOURCES = \
 	testpoint/testpoint.cpp \
-	testpoint/testpoint.h
+	testpoint/testpoint.hpp
 
 libtestpoint_la_LIBADD = $(DL_LIBS)
 endif
@@ -414,9 +414,9 @@ endif
 # libstring-utils
 noinst_LTLIBRARIES += libstring-utils.la
 libstring_utils_la_SOURCES = \
-	string-utils/format.h \
+	string-utils/format.hpp \
 	string-utils/string-utils.cpp \
-	string-utils/string-utils.h
+	string-utils/string-utils.hpp
 
 
 noinst_PROGRAMS = filter-grammar-test

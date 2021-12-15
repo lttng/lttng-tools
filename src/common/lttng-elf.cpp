@@ -8,11 +8,11 @@
  */
 
 #include <algorithm>
-#include <common/compat/endian.h>
-#include <common/error.h>
-#include <common/lttng-elf.h>
-#include <common/macros.h>
-#include <common/readwrite.h>
+#include <common/compat/endian.hpp>
+#include <common/error.hpp>
+#include <common/lttng-elf.hpp>
+#include <common/macros.hpp>
+#include <common/readwrite.hpp>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>

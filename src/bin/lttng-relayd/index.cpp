@@ -9,14 +9,14 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/utils.h>
-#include <common/compat/endian.h>
+#include <common/common.hpp>
+#include <common/utils.hpp>
+#include <common/compat/endian.hpp>
 
-#include "lttng-relayd.h"
-#include "stream.h"
-#include "index.h"
-#include "connection.h"
+#include "lttng-relayd.hpp"
+#include "stream.hpp"
+#include "index.hpp"
+#include "connection.hpp"
 
 /*
  * Allocate a new relay index object. Pass the stream in which it is

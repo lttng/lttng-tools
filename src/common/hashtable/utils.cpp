@@ -47,10 +47,10 @@
 #include <time.h>       /* defines time_t for timings in the test */
 #include <urcu/compiler.h>
 
-#include "utils.h"
-#include <common/compat/endian.h>    /* attempt to define endianness */
-#include <common/common.h>
-#include <common/hashtable/hashtable.h>
+#include "utils.hpp"
+#include <common/compat/endian.hpp>    /* attempt to define endianness */
+#include <common/common.hpp>
+#include <common/hashtable/hashtable.hpp>
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may

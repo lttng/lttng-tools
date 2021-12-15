@@ -7,20 +7,20 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/uri.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/uri.hpp>
+#include <common/utils.hpp>
 
-#include <common/compat/endian.h>
+#include <common/compat/endian.hpp>
 
-#include "fd-limit.h"
-#include "agent-thread.h"
-#include "agent.h"
-#include "lttng-sessiond.h"
-#include "session.h"
-#include "utils.h"
-#include "thread.h"
+#include "fd-limit.hpp"
+#include "agent-thread.hpp"
+#include "agent.hpp"
+#include "lttng-sessiond.hpp"
+#include "session.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

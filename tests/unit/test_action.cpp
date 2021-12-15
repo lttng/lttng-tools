@@ -16,12 +16,12 @@
 
 #include <tap/tap.h>
 
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/action/action-internal.h>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/action/action-internal.hpp>
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>

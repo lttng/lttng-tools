@@ -25,9 +25,7 @@
 #include <libxml/parser.h>
 
 #include <lttng/lttng-error.h>
-#include <common/macros.h>
-
-#include <common/macros.h>
+#include <common/macros.hpp>
 
 struct validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;

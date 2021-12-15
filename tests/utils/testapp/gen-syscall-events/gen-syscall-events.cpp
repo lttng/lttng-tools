@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <common/error.h>
-#include <common/align.h>
+#include <common/error.hpp>
+#include <common/align.hpp>
 
 #include "utils.h"
 

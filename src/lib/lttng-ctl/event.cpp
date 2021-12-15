@@ -12,12 +12,12 @@
 #define _LGPL_SOURCE
 #include <stddef.h>
 
-#include <common/error.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <lttng/event-internal.h>
+#include <common/error.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <lttng/event-internal.hpp>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
-#include <lttng/userspace-probe-internal.h>
+#include <lttng/userspace-probe-internal.hpp>
 
 struct lttng_event *lttng_event_create(void)
 {

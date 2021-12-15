@@ -13,9 +13,9 @@
 #include <pthread.h>
 #include <algorithm>
 
-#include "defaults.h"
-#include "macros.h"
-#include "error.h"
+#include "defaults.hpp"
+#include "macros.hpp"
+#include "error.hpp"
 
 static int pthread_attr_init_done;
 static pthread_attr_t tattr;

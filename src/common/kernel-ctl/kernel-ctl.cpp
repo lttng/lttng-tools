@@ -12,14 +12,14 @@
 #define __USE_LINUX_IOCTL_DEFS
 #include <sys/ioctl.h>
 #include <string.h>
-#include <common/align.h>
-#include <common/macros.h>
-#include <common/compat/errno.h>
+#include <common/align.hpp>
+#include <common/macros.hpp>
+#include <common/compat/errno.hpp>
 #include <stdarg.h>
-#include <common/time.h>
+#include <common/time.hpp>
 
-#include "kernel-ctl.h"
-#include "kernel-ioctl.h"
+#include "kernel-ctl.hpp"
+#include "kernel-ioctl.hpp"
 
 #define LTTNG_IOCTL_CHECK(fildes, request, ...)                         \
 	({                                                              \

@@ -10,23 +10,23 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "../command.h"
-#include "../loglevel.h"
-#include "../uprobe.h"
+#include "../command.hpp"
+#include "../loglevel.hpp"
+#include "../uprobe.hpp"
 
 #include "common/argpar/argpar.h"
-#include "common/argpar-utils/argpar-utils.h"
-#include "common/dynamic-array.h"
-#include "common/mi-lttng.h"
-#include "common/string-utils/string-utils.h"
-#include "common/utils.h"
-#include <lttng/domain-internal.h>
+#include "common/argpar-utils/argpar-utils.hpp"
+#include "common/dynamic-array.hpp"
+#include "common/mi-lttng.hpp"
+#include "common/string-utils/string-utils.hpp"
+#include "common/utils.hpp"
+#include <lttng/domain-internal.hpp>
 /* For lttng_event_rule_type_str(). */
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng.h>
-#include "common/filter/filter-ast.h"
-#include "common/filter/filter-ir.h"
-#include "common/dynamic-array.h"
+#include "common/filter/filter-ast.hpp"
+#include "common/filter/filter-ir.hpp"
+#include "common/dynamic-array.hpp"
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"

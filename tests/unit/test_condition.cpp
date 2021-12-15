@@ -18,13 +18,13 @@
 
 #include <lttng/event.h>
 #include <lttng/event-rule/user-tracepoint.h>
-#include <lttng/condition/condition-internal.h>
+#include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/domain.h>
 #include <lttng/log-level-rule.h>
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
+#include <common/dynamic-buffer.hpp>
+#include <common/buffer-view.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

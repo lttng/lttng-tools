@@ -10,15 +10,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/utils.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/utils.hpp>
 
-#include "clear.h"
-#include "session.h"
-#include "ust-app.h"
-#include "kernel.h"
-#include "cmd.h"
+#include "clear.hpp"
+#include "session.hpp"
+#include "ust-app.hpp"
+#include "kernel.hpp"
+#include "cmd.hpp"
 
 struct cmd_clear_session_reply_context {
 	int reply_sock_fd;

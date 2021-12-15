@@ -14,10 +14,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.h>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
-#include "version.h"
+#include "../command.hpp"
+#include "version.hpp"
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =

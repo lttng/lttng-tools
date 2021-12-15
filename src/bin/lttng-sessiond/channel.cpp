@@ -11,18 +11,18 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "channel.h"
-#include "lttng-sessiond.h"
-#include "kernel.h"
-#include "lttng-ust-ctl.h"
-#include "lttng-ust-error.h"
-#include "utils.h"
-#include "ust-app.h"
-#include "agent.h"
+#include "channel.hpp"
+#include "lttng-sessiond.hpp"
+#include "kernel.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "utils.hpp"
+#include "ust-app.hpp"
+#include "agent.hpp"
 
 /*
  * Return allocated channel attributes.

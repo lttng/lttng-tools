@@ -10,12 +10,12 @@
 
 #include <lttng/lttng-error.h>
 #include <lttng/rotation.h>
-#include <lttng/location-internal.h>
-#include <lttng/rotate-internal.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/macros.h>
+#include <lttng/location-internal.hpp>
+#include <lttng/rotate-internal.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/macros.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 static
 enum lttng_rotation_status ask_rotation_info(

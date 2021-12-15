@@ -22,7 +22,7 @@
 #include <poll.h>
 #include <errno.h>
 #include "utils.h"
-#include "signal-helper.h"
+#include "signal-helper.hpp"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"

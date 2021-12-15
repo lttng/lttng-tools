@@ -10,16 +10,16 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <urcu.h>
-#include <common/futex.h>
-#include <common/macros.h>
+#include <common/futex.hpp>
+#include <common/macros.hpp>
 
-#include "dispatch.h"
-#include "ust-app.h"
-#include "testpoint.h"
-#include "fd-limit.h"
-#include "health-sessiond.h"
-#include "lttng-sessiond.h"
-#include "thread.h"
+#include "dispatch.hpp"
+#include "ust-app.hpp"
+#include "testpoint.hpp"
+#include "fd-limit.hpp"
+#include "health-sessiond.hpp"
+#include "lttng-sessiond.hpp"
+#include "thread.hpp"
 
 struct thread_notifiers {
 	struct ust_cmd_queue *ust_cmd_queue;

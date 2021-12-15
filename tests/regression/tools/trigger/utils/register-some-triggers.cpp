@@ -7,8 +7,8 @@
 
 /* Utility to register some triggers, for test purposes. */
 
-#include <common/filter/filter-ast.h>
-#include <common/macros.h>
+#include <common/filter/filter-ast.hpp>
+#include <common/macros.hpp>
 #include <lttng/lttng.h>
 
 #include <stdlib.h>

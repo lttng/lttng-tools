@@ -5,17 +5,17 @@
  *
  */
 
-#include "sessiond-trace-chunks.h"
+#include "sessiond-trace-chunks.hpp"
 #include <urcu.h>
 #include <urcu/rculfhash.h>
 #include <urcu/ref.h>
-#include <common/macros.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/trace-chunk-registry.h>
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/string-utils/format.h>
+#include <common/macros.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/trace-chunk-registry.hpp>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/string-utils/format.hpp>
 #include <stdio.h>
 #include <inttypes.h>
 

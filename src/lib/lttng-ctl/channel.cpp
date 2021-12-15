@@ -5,20 +5,20 @@
  *
  */
 
-#include <lttng/notification/notification-internal.h>
-#include <lttng/notification/channel-internal.h>
-#include <lttng/condition/condition-internal.h>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
 #include <lttng/endpoint.h>
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/dynamic-buffer.h>
-#include <common/utils.h>
-#include <common/defaults.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
-#include <common/unix.h>
-#include "lttng-ctl-helper.h"
-#include <common/compat/poll.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/utils.hpp>
+#include <common/defaults.hpp>
+#include <common/payload.hpp>
+#include <common/payload-view.hpp>
+#include <common/unix.hpp>
+#include "lttng-ctl-helper.hpp"
+#include <common/compat/poll.hpp>
 
 static
 int handshake(struct lttng_notification_channel *channel);

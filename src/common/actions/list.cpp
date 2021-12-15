@@ -5,14 +5,14 @@
  *
  */
 
-#include <common/dynamic-array.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/list-internal.h>
+#include <common/dynamic-array.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
 #include <lttng/action/list.h>
 
 #define IS_LIST_ACTION(action) \

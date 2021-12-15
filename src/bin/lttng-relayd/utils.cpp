@@ -11,13 +11,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/utils.h>
-#include <common/path.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
+#include <common/path.hpp>
 
-#include "lttng-relayd.h"
-#include "utils.h"
+#include "lttng-relayd.hpp"
+#include "utils.hpp"
 
 static char *create_output_path_auto(const char *path_name)
 {

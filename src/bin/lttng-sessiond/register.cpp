@@ -10,19 +10,19 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <urcu.h>
-#include <common/futex.h>
-#include <common/macros.h>
-#include <common/shm.h>
-#include <common/utils.h>
+#include <common/futex.hpp>
+#include <common/macros.hpp>
+#include <common/shm.hpp>
+#include <common/utils.hpp>
 #include <sys/stat.h>
 
-#include "register.h"
-#include "lttng-sessiond.h"
-#include "testpoint.h"
-#include "health-sessiond.h"
-#include "fd-limit.h"
-#include "utils.h"
-#include "thread.h"
+#include "register.hpp"
+#include "lttng-sessiond.hpp"
+#include "testpoint.hpp"
+#include "health-sessiond.hpp"
+#include "fd-limit.hpp"
+#include "utils.hpp"
+#include "thread.hpp"
 
 struct thread_state {
 	struct lttng_pipe *quit_pipe;

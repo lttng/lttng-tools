@@ -5,7 +5,7 @@
  *
  */
 
-#include "test_class.h"
+#include "test_class.hpp"
 test_class::test_class() {
 	test_member = 1;
 }

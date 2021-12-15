@@ -12,16 +12,16 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/compat/string.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/compat/string.hpp>
 
-#include "consumer.h"
-#include "health-sessiond.h"
-#include "kernel-consumer.h"
-#include "notification-thread-commands.h"
-#include "session.h"
-#include "lttng-sessiond.h"
+#include "consumer.hpp"
+#include "health-sessiond.hpp"
+#include "kernel-consumer.hpp"
+#include "notification-thread-commands.hpp"
+#include "session.hpp"
+#include "lttng-sessiond.hpp"
 
 static char *create_channel_path(struct consumer_output *consumer,
 		size_t *consumer_path_offset)

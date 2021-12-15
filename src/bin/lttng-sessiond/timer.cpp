@@ -10,10 +10,10 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#include "timer.h"
-#include "health-sessiond.h"
-#include "rotation-thread.h"
-#include "thread.h"
+#include "timer.hpp"
+#include "health-sessiond.hpp"
+#include "rotation-thread.hpp"
+#include "thread.hpp"
 
 #define LTTNG_SESSIOND_SIG_QS				SIGRTMIN + 10
 #define LTTNG_SESSIOND_SIG_EXIT				SIGRTMIN + 11

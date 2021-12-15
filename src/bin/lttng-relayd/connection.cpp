@@ -8,12 +8,12 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.h>
+#include <common/common.hpp>
 #include <urcu/rculist.h>
 
-#include "connection.h"
-#include "stream.h"
-#include "viewer-session.h"
+#include "connection.hpp"
+#include "stream.hpp"
+#include "viewer-session.hpp"
 
 bool connection_get(struct relay_connection *conn)
 {

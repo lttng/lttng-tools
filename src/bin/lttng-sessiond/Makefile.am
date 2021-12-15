@@ -9,61 +9,61 @@ endif
 
 noinst_LTLIBRARIES = liblttng-sessiond-common.la
 
-liblttng_sessiond_common_la_SOURCES = utils.cpp utils.h \
-                       trace-kernel.cpp trace-kernel.h \
-                       kernel.cpp kernel.h \
-                       ust-app.h ust-sigbus.h trace-ust.h notify-apps.h \
-                       lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
-                       ust-ctl-internal.h ust-abi-internal.h ust-error-internal.h \
-                       ust-registry.h \
-                       condition-internal.cpp condition-internal.h \
-                       context.cpp context.h \
-                       channel.cpp channel.h \
-                       event.cpp event.h \
-                       consumer.cpp consumer.h \
-                       session.cpp session.h \
-                       modprobe.cpp modprobe.h kern-modules.h \
-                       fd-limit.cpp fd-limit.h \
-                       kernel-consumer.cpp kernel-consumer.h \
-                       consumer.h \
-                       health-sessiond.h \
-                       cmd.cpp cmd.h \
-                       buffer-registry.cpp buffer-registry.h \
-                       testpoint.h \
-                       snapshot.cpp snapshot.h \
-                       agent.cpp agent.h \
-                       save.h save.cpp \
-                       lttng-syscall.h lttng-syscall.cpp \
-                       notification-thread.h notification-thread.cpp \
-                       notification-thread-internal.h \
-                       notification-thread-commands.h notification-thread-commands.cpp \
-                       notification-thread-events.h notification-thread-events.cpp \
-                       sessiond-config.h sessiond-config.cpp \
-                       rotate.h rotate.cpp \
-                       rotation-thread.h rotation-thread.cpp \
-                       timer.cpp timer.h \
+liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
+                       trace-kernel.cpp trace-kernel.hpp \
+                       kernel.cpp kernel.hpp \
+                       ust-app.hpp ust-sigbus.hpp trace-ust.hpp notify-apps.hpp \
+                       lttng-ust-ctl.hpp lttng-ust-abi.hpp lttng-ust-error.hpp \
+                       ust-ctl-internal.hpp ust-abi-internal.hpp ust-error-internal.hpp \
+                       ust-registry.hpp \
+                       condition-internal.cpp condition-internal.hpp \
+                       context.cpp context.hpp \
+                       channel.cpp channel.hpp \
+                       event.cpp event.hpp \
+                       consumer.cpp consumer.hpp \
+                       session.cpp session.hpp \
+                       modprobe.cpp modprobe.hpp kern-modules.hpp \
+                       fd-limit.cpp fd-limit.hpp \
+                       kernel-consumer.cpp kernel-consumer.hpp \
+                       consumer.hpp \
+                       health-sessiond.hpp \
+                       cmd.cpp cmd.hpp \
+                       buffer-registry.cpp buffer-registry.hpp \
+                       testpoint.hpp \
+                       snapshot.cpp snapshot.hpp \
+                       agent.cpp agent.hpp \
+                       save.hpp save.cpp \
+                       lttng-syscall.hpp lttng-syscall.cpp \
+                       notification-thread.hpp notification-thread.cpp \
+                       notification-thread-internal.hpp \
+                       notification-thread-commands.hpp notification-thread-commands.cpp \
+                       notification-thread-events.hpp notification-thread-events.cpp \
+                       sessiond-config.hpp sessiond-config.cpp \
+                       rotate.hpp rotate.cpp \
+                       rotation-thread.hpp rotation-thread.cpp \
+                       timer.cpp timer.hpp \
                        globals.cpp \
                        thread-utils.cpp \
                        process-utils.cpp \
-                       thread.cpp thread.h \
+                       thread.cpp thread.hpp \
                        health.cpp \
-                       client.cpp client.h \
-                       dispatch.cpp dispatch.h \
-                       register.cpp register.h \
-                       manage-apps.cpp manage-apps.h \
-                       manage-kernel.cpp manage-kernel.h \
-                       manage-consumer.cpp manage-consumer.h \
-                       clear.cpp clear.h \
-                       tracker.cpp tracker.h \
-                       event-notifier-error-accounting.cpp event-notifier-error-accounting.h \
-                       action-executor.cpp action-executor.h\
+                       client.cpp client.hpp \
+                       dispatch.cpp dispatch.hpp \
+                       register.cpp register.hpp \
+                       manage-apps.cpp manage-apps.hpp \
+                       manage-kernel.cpp manage-kernel.hpp \
+                       manage-consumer.cpp manage-consumer.hpp \
+                       clear.cpp clear.hpp \
+                       tracker.cpp tracker.hpp \
+                       event-notifier-error-accounting.cpp event-notifier-error-accounting.hpp \
+                       action-executor.cpp action-executor.hpp\
                        trigger-error-query.cpp
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
-			ust-consumer.cpp ust-consumer.h notify-apps.cpp \
-			ust-metadata.cpp ust-clock.h agent-thread.cpp agent-thread.h \
-			ust-field-utils.h ust-field-utils.cpp \
+			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
+			ust-metadata.cpp ust-clock.hpp agent-thread.cpp agent-thread.hpp \
+			ust-field-utils.hpp ust-field-utils.cpp \
 			ust-sigbus.cpp
 endif
 
@@ -87,7 +87,7 @@ endif
 
 bin_PROGRAMS = lttng-sessiond
 
-lttng_sessiond_SOURCES = lttng-sessiond.h main.cpp
+lttng_sessiond_SOURCES = lttng-sessiond.hpp main.cpp
 
 lttng_sessiond_LDFLAGS = -rdynamic
 

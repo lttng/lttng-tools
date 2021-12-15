@@ -11,7 +11,7 @@
  */
 
 #include <stdio.h>
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
 #include <lttng/lttng-export.h>
 %}

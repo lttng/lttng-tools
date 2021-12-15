@@ -10,11 +10,11 @@
 #include <lttng/lttng-error.h>
 #include <lttng/tracker.h>
 
-#include <common/dynamic-array.h>
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/tracker.h>
+#include <common/dynamic-array.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/tracker.hpp>
 
 #include <stdbool.h>
 

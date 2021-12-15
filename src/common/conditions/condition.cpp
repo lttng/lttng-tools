@@ -5,17 +5,17 @@
  *
  */
 
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
-#include <lttng/condition/session-consumed-size-internal.h>
-#include <lttng/condition/session-rotation-internal.h>
-#include <lttng/error-query-internal.h>
+#include <common/buffer-view.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include <lttng/condition/session-consumed-size-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/error-query-internal.hpp>
 #include <stdbool.h>
 
 enum lttng_condition_type lttng_condition_get_type(

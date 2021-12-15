@@ -16,7 +16,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <common/macros.h>
+#include <common/macros.hpp>
 
 static int print_capture(const struct lttng_condition *condition,
 		const struct lttng_event_field_value *capture,

@@ -5,13 +5,13 @@
  *
  */
 
-#include <common/compat/directory-handle.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/runas.h>
-#include <common/credentials.h>
+#include <common/compat/directory-handle.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/runas.hpp>
+#include <common/credentials.hpp>
 #include <lttng/constant.h>
-#include <common/dynamic-array.h>
+#include <common/dynamic-array.hpp>
 
 #include <sys/types.h>
 #include <sys/stat.h>

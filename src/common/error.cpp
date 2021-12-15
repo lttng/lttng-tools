@@ -11,13 +11,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/common.h>
-#include <common/thread.h>
-#include <common/compat/errno.h>
-#include <common/compat/getenv.h>
+#include <common/common.hpp>
+#include <common/thread.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
 #include <lttng/lttng-error.h>
 
-#include "error.h"
+#include "error.hpp"
 
 /*
  * lttng_opt_abort_on_error: unset: -1, disabled: 0, enabled: 1.

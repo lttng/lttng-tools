@@ -5,21 +5,21 @@
  *
  */
 
-#include <common/credentials.h>
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <common/runas.h>
+#include <common/credentials.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/runas.hpp>
 #include <ctype.h>
 #include <lttng/constant.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/kernel-kprobe-internal.h>
-#include <lttng/kernel-probe-internal.h>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
+#include <lttng/kernel-probe-internal.hpp>
 #include <lttng/kernel-probe.h>
 #include <stdio.h>
 

@@ -5,18 +5,18 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
 #include <inttypes.h>
 #include <limits.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/event-expr-internal.h>
+#include <lttng/event-expr-internal.hpp>
 #include <lttng/event-expr.h>
-#include <lttng/event-field-value-internal.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-field-value-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng-error.h>
 #include <stdbool.h>
 #include <stdint.h>

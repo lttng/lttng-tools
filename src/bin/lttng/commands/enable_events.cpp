@@ -15,21 +15,21 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/compat/string.h>
-#include <common/compat/getenv.h>
-#include <common/string-utils/string-utils.h>
-#include <common/utils.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/compat/string.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/string-utils/string-utils.hpp>
+#include <common/utils.hpp>
 
 /* Mi dependancy */
-#include <common/mi-lttng.h>
+#include <common/mi-lttng.hpp>
 
-#include <lttng/domain-internal.h>
-#include <lttng/event-internal.h>
+#include <lttng/domain-internal.hpp>
+#include <lttng/event-internal.hpp>
 
-#include "../command.h"
-#include "../loglevel.h"
-#include "../uprobe.h"
+#include "../command.hpp"
+#include "../loglevel.hpp"
+#include "../uprobe.hpp"
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API	"255"

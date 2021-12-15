@@ -15,26 +15,26 @@
 #include <lttng/lttng-error.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/userspace-probe.h>
-#include <lttng/userspace-probe-internal.h>
+#include <lttng/userspace-probe-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/kernel-kprobe.h>
-#include <lttng/event-rule/kernel-kprobe-internal.h>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
 #include <lttng/event-rule/kernel-syscall.h>
-#include <lttng/event-rule/kernel-syscall-internal.h>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
 #include <lttng/event-rule/kernel-tracepoint.h>
-#include <lttng/event-rule/kernel-tracepoint-internal.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.hpp>
 #include <lttng/event-rule/kernel-uprobe.h>
-#include <lttng/event-rule/kernel-uprobe-internal.h>
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/trace-chunk.h>
-#include <common/macros.h>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/macros.hpp>
 
-#include "consumer.h"
-#include "trace-kernel.h"
-#include "lttng-sessiond.h"
-#include "notification-thread-commands.h"
+#include "consumer.hpp"
+#include "trace-kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
 
 /*
  * Find the channel name for the given kernel session.

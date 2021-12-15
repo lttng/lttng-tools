@@ -12,18 +12,18 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include <common/compat/errno.h>
-#include <common/common.h>
-#include <common/consumer/consumer.h>
-#include <common/defaults.h>
+#include <common/compat/errno.hpp>
+#include <common/common.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/defaults.hpp>
 
-#include "consumer.h"
-#include "health-sessiond.h"
-#include "ust-consumer.h"
-#include "lttng-ust-error.h"
-#include "buffer-registry.h"
-#include "session.h"
-#include "lttng-sessiond.h"
+#include "consumer.hpp"
+#include "health-sessiond.hpp"
+#include "ust-consumer.hpp"
+#include "lttng-ust-error.hpp"
+#include "buffer-registry.hpp"
+#include "session.hpp"
+#include "lttng-sessiond.hpp"
 
 /*
  * Send a single channel to the consumer using command ASK_CHANNEL_CREATION.

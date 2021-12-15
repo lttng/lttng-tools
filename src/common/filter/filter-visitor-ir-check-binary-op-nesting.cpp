@@ -14,12 +14,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "filter-ir.h"
+#include "filter-ir.hpp"
 
-#include <common/compat/errno.h>
-#include <common/macros.h>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
 
 static
 int check_bin_op_nesting_recursive(struct ir_op *node, int nesting)

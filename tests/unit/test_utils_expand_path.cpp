@@ -15,9 +15,9 @@
 
 #include <tap/tap.h>
 
-#include <common/utils.h>
-#include <common/path.h>
-#include <common/common.h>
+#include <common/utils.hpp>
+#include <common/path.hpp>
+#include <common/common.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

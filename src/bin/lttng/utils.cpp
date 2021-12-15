@@ -17,13 +17,13 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#include <common/error.h>
-#include <common/utils.h>
-#include <common/defaults.h>
+#include <common/error.hpp>
+#include <common/utils.hpp>
+#include <common/defaults.hpp>
 
-#include "conf.h"
-#include "utils.h"
-#include "command.h"
+#include "conf.hpp"
+#include "utils.hpp"
+#include "command.hpp"
 
 static const char *str_all = "ALL";
 static const char *str_tracepoint = "Tracepoint";

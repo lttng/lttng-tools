@@ -5,10 +5,10 @@
  *
  */
 
-#include <lttng/location-internal.h>
-#include <common/macros.h>
+#include <lttng/location-internal.hpp>
+#include <common/macros.hpp>
 #include <stdlib.h>
-#include <common/error.h>
+#include <common/error.hpp>
 
 static
 struct lttng_trace_archive_location *lttng_trace_archive_location_create(

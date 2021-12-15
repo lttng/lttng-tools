@@ -13,9 +13,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <lttng/event-field-value-internal.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <lttng/event-field-value-internal.hpp>
 
 static
 struct lttng_event_field_value *create_empty_field_val(

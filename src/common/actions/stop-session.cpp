@@ -5,13 +5,13 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
-#include <lttng/action/stop-session-internal.h>
+#include <lttng/action/stop-session-internal.hpp>
 #include <lttng/action/stop-session.h>
 
 #define IS_STOP_SESSION_ACTION(action) \

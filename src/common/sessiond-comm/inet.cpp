@@ -15,14 +15,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <common/compat/time.h>
+#include <common/compat/time.hpp>
 #include <poll.h>
 
-#include <common/common.h>
-#include <common/time.h>
-#include <common/compat/errno.h>
+#include <common/common.hpp>
+#include <common/time.hpp>
+#include <common/compat/errno.hpp>
 
-#include "inet.h"
+#include "inet.hpp"
 
 #define RECONNECT_DELAY	200	/* ms */
 

@@ -16,16 +16,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/fs-handle-internal.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/optional.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/fs-handle-internal.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/optional.hpp>
 
-#include "fd-tracker.h"
-#include "inode.h"
+#include "fd-tracker.hpp"
+#include "inode.hpp"
 
 /* Tracker lock must be taken by the user. */
 #define TRACKED_COUNT(tracker)                                 \

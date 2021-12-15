@@ -10,10 +10,10 @@
 #include <urcu.h>
 #include <urcu/list.h>
 
-#include "macros.h"
-#include "error.h"
+#include "macros.hpp"
+#include "error.hpp"
 
-#include "index-allocator.h"
+#include "index-allocator.hpp"
 
 struct lttng_index_allocator {
 	struct cds_list_head unused_list;

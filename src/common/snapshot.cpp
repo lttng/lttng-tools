@@ -5,12 +5,12 @@
  *
  */
 
-#include <common/error.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <common/snapshot.h>
-#include <lttng/snapshot-internal.h>
+#include <common/error.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/snapshot.hpp>
+#include <lttng/snapshot-internal.hpp>
 #include <lttng/snapshot.h>
 
 #include <stdlib.h>

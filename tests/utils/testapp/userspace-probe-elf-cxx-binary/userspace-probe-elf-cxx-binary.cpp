@@ -5,7 +5,7 @@
  *
  */
 
-#include "test_class.h"
+#include "test_class.hpp"
 
 volatile int not_a_function = 0;
 

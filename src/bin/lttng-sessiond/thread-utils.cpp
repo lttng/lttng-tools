@@ -7,9 +7,9 @@
  *
  */
 
-#include "lttng-sessiond.h"
-#include "utils.h"
-#include <common/utils.h>
+#include "lttng-sessiond.hpp"
+#include "utils.hpp"
+#include <common/utils.hpp>
 #include <pthread.h>
 
 /*

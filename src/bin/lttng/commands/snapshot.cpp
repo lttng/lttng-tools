@@ -15,11 +15,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/utils.h>
-#include <common/mi-lttng.h>
+#include <common/utils.hpp>
+#include <common/mi-lttng.hpp>
 #include <lttng/lttng.h>
 
-#include "../command.h"
+#include "../command.hpp"
 
 static const char *opt_session_name;
 static const char *opt_output_name;

@@ -5,12 +5,12 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/session-rotation-internal.h>
-#include <lttng/location-internal.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/location-internal.hpp>
 #include <stdbool.h>
 
 static

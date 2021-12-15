@@ -11,17 +11,17 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <common/align.h>
-#include <common/compat/errno.h>
-#include <common/compat/string.h>
+#include <common/align.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/string.hpp>
 
-#include "common/align.h"
-#include "common/bytecode/bytecode.h"
-#include "common/compat/string.h"
-#include "common/macros.h"
-#include "common/string-utils/string-utils.h"
-#include "filter-ast.h"
-#include "filter-ir.h"
+#include "common/align.hpp"
+#include "common/bytecode/bytecode.hpp"
+#include "common/compat/string.hpp"
+#include "common/macros.hpp"
+#include "common/string-utils/string-utils.hpp"
+#include "filter-ast.hpp"
+#include "filter-ir.hpp"
 
 #ifndef max_t
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))

@@ -10,11 +10,11 @@
 #include <urcu.h>
 #include <urcu/compiler.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
 
-#include "hashtable.h"
-#include "utils.h"
+#include "hashtable.hpp"
+#include "utils.hpp"
 
 /* seed_lock protects both seed_init and lttng_ht_seed. */
 static pthread_mutex_t seed_lock = PTHREAD_MUTEX_INITIALIZER;

@@ -5,12 +5,12 @@
  *
  */
 
-#include "argpar-utils.h"
+#include "argpar-utils.hpp"
 
 #include <stdio.h>
 
-#include <common/error.h>
-#include <common/string-utils/string-utils.h>
+#include <common/error.hpp>
+#include <common/string-utils/string-utils.hpp>
 
 /*
  * Given argpar error status `status` and error `error`, return a formatted

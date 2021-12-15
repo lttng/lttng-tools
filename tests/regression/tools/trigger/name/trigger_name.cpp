@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <lttng/lttng.h>
-#include <common/macros.h>
+#include <common/macros.hpp>
 
 #define TEST_COUNT 70
 

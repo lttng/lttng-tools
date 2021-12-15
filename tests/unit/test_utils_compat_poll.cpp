@@ -18,10 +18,10 @@
 
 #include <tap/tap.h>
 
-#include <common/compat/poll.h>
-#include <common/readwrite.h>
-#include <common/pipe.h>
-#include <common/dynamic-array.h>
+#include <common/compat/poll.hpp>
+#include <common/readwrite.hpp>
+#include <common/pipe.hpp>
+#include <common/dynamic-array.hpp>
 
 /* Verification without trashing test order in the child process */
 #define childok(e, test, ...) do { \

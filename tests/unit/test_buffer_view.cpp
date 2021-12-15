@@ -6,7 +6,7 @@
  */
 
 
-#include <common/buffer-view.h>
+#include <common/buffer-view.hpp>
 #include <tap/tap.h>
 
 static const int TEST_COUNT = 5;

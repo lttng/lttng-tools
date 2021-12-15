@@ -18,12 +18,12 @@
 #include <sys/stat.h>
 #include <stdbool.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/utils.h>
-#include <common/dynamic-buffer.h>
-#include <common/compat/getenv.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/utils.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/compat/getenv.hpp>
 #include <lttng/lttng-error.h>
 #include <libxml/parser.h>
 #include <libxml/valid.h>
@@ -34,8 +34,8 @@
 #include <lttng/rotation.h>
 #include <lttng/userspace-probe.h>
 
-#include "session-config.h"
-#include "config-internal.h"
+#include "session-config.hpp"
+#include "config-internal.hpp"
 
 #define CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN 7
 

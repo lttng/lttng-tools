@@ -13,12 +13,12 @@
 #include <limits.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <common/common.h>
-#include <common/time.h>
+#include <common/common.hpp>
+#include <common/time.hpp>
 
-#include "ust-registry.h"
-#include "ust-clock.h"
-#include "ust-app.h"
+#include "ust-registry.hpp"
+#include "ust-clock.hpp"
+#include "ust-app.hpp"
 
 #ifndef max_t
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))

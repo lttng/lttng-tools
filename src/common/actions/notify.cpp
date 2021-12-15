@@ -5,12 +5,12 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/notify-internal.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/notify-internal.hpp>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/lttng-error.h>
 
 #define IS_NOTIFY_ACTION(action) \

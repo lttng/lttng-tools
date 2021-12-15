@@ -29,17 +29,17 @@
 #include <urcu/compiler.h>
 #include <ulimit.h>
 
-#include <common/defaults.h>
-#include <common/common.h>
-#include <common/consumer/consumer.h>
-#include <common/consumer/consumer-timer.h>
-#include <common/compat/poll.h>
-#include <common/compat/getenv.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/utils.h>
+#include <common/defaults.hpp>
+#include <common/common.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/compat/poll.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
 
-#include "lttng-consumerd.h"
-#include "health-consumerd.h"
+#include "lttng-consumerd.hpp"
+#include "health-consumerd.hpp"
 
 /* threads (channel handling, poll, metadata, sessiond) */
 

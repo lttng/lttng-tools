@@ -17,12 +17,12 @@
 #include <ctype.h>
 
 #include <lttng/lttng.h>
-#include <common/error.h>
-#include <common/compat/getenv.h>
-#include <common/utils.h>
+#include <common/error.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/utils.hpp>
 
-#include "command.h"
-#include "version.h"
+#include "command.hpp"
+#include "version.hpp"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP

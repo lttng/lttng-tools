@@ -12,7 +12,7 @@
 #include <stdlib.h> /* for getenv  */
 #include <string.h> /* for strncmp */
 
-#include "testpoint.h"
+#include "testpoint.hpp"
 
 /* Environment variable used to enable the testpoints facilities. */
 static const char *lttng_testpoint_env_var = "LTTNG_TESTPOINT_ENABLE";

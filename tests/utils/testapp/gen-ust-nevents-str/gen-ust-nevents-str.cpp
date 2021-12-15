@@ -7,7 +7,7 @@
 
 #define _LGPL_SOURCE
 #include <stdio.h>
-#include "signal-helper.h"
+#include "signal-helper.hpp"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"

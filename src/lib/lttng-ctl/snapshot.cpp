@@ -8,12 +8,12 @@
 #define _LGPL_SOURCE
 #include <string.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 #include <lttng/lttng-error.h>
 #include <lttng/snapshot.h>
-#include <lttng/snapshot-internal.h>
+#include <lttng/snapshot-internal.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 /*
  * Add an output object to a session identified by name.

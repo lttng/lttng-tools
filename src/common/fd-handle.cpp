@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <urcu/ref.h>
 
-#include "fd-handle.h"
-#include <common/error.h>
+#include "fd-handle.hpp"
+#include <common/error.hpp>
 
 struct fd_handle {
 	struct urcu_ref ref;

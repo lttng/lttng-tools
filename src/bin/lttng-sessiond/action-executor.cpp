@@ -5,29 +5,29 @@
  *
  */
 
-#include "action-executor.h"
-#include "cmd.h"
-#include "health-sessiond.h"
-#include "lttng-sessiond.h"
-#include "notification-thread-internal.h"
-#include "session.h"
-#include "thread.h"
-#include <common/dynamic-array.h>
-#include <common/macros.h>
-#include <common/optional.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/list-internal.h>
+#include "action-executor.hpp"
+#include "cmd.hpp"
+#include "health-sessiond.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-internal.hpp"
+#include "session.hpp"
+#include "thread.hpp"
+#include <common/dynamic-array.hpp>
+#include <common/macros.hpp>
+#include <common/optional.hpp>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
 #include <lttng/action/list.h>
-#include <lttng/action/notify-internal.h>
+#include <lttng/action/notify-internal.hpp>
 #include <lttng/action/notify.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>
 #include <lttng/action/start-session.h>
 #include <lttng/action/stop-session.h>
 #include <lttng/condition/evaluation.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/lttng-error.h>
-#include <lttng/trigger/trigger-internal.h>
+#include <lttng/trigger/trigger-internal.hpp>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -9,7 +9,7 @@
 
 #include <tap/tap.h>
 
-#include <common/uri.h>
+#include <common/uri.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

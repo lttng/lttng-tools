@@ -5,13 +5,13 @@
  *
  */
 
-#include "metadata-bucket.h"
+#include "metadata-bucket.hpp"
 
-#include <common/buffer-view.h>
-#include <common/consumer/consumer.h>
-#include <common/dynamic-buffer.h>
-#include <common/macros.h>
-#include <common/error.h>
+#include <common/buffer-view.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/macros.hpp>
+#include <common/error.hpp>
 
 struct metadata_bucket {
 	struct lttng_dynamic_buffer content;

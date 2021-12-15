@@ -5,17 +5,17 @@
  *
  */
 
-#include "common/time.h"
+#include "common/time.hpp"
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/common.h>
-#include <common/defaults.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
 
-#include "backward-compatibility-group-by.h"
+#include "backward-compatibility-group-by.hpp"
 
 #define DATETIME_REGEX \
 	".*-[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]-[0-2][0-9][0-5][0-9][0-5][0-9]$"

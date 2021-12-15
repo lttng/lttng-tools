@@ -24,7 +24,7 @@
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
 
-#include <common/macros.h>
+#include <common/macros.hpp>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

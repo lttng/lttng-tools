@@ -5,9 +5,9 @@
  *
  */
 
-#include <common/compat/poll.h>
+#include <common/compat/poll.hpp>
 
-#include "utils.h"
+#include "utils.hpp"
 
 #ifdef HAVE_EPOLL
 

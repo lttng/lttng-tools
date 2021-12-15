@@ -13,14 +13,14 @@
 #include <lttng/lttng-error.h>
 #include <lttng/clear.h>
 #include <lttng/clear-handle.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/macros.h>
-#include <common/compat/poll.h>
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
-#include <common/optional.h>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/macros.hpp>
+#include <common/compat/poll.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/buffer-view.hpp>
+#include <common/optional.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 enum communication_state {
 	COMMUNICATION_STATE_RECEIVE_LTTNG_MSG,

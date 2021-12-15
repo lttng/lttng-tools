@@ -5,7 +5,7 @@
  *
  */
 
-#include <lttng/endpoint-internal.h>
+#include <lttng/endpoint-internal.hpp>
 
 static
 struct lttng_endpoint lttng_session_daemon_notification_endpoint_instance = {

@@ -14,9 +14,9 @@
 
 #include <tap/tap.h>
 
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/log-level-rule-internal.h>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/log-level-rule-internal.hpp>
 #include <lttng/log-level-rule.h>
 
 /* For error.h. */

@@ -9,15 +9,15 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/sessiond-comm/relayd.h>
+#include <common/common.hpp>
+#include <common/sessiond-comm/relayd.hpp>
 
-#include <common/compat/endian.h>
-#include <common/compat/string.h>
+#include <common/compat/endian.hpp>
+#include <common/compat/string.hpp>
 #include <lttng/constant.h>
 
-#include "cmd-2-4.h"
-#include "lttng-relayd.h"
+#include "cmd-2-4.hpp"
+#include "lttng-relayd.hpp"
 
 int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,

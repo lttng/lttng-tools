@@ -8,12 +8,12 @@
 
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
-#include "mi-lttng.h"
-#include <common/config/session-config.h>
-#include <common/defaults.h>
-#include <common/tracker.h>
+#include "mi-lttng.hpp"
+#include <common/config/session-config.hpp>
+#include <common/defaults.hpp>
+#include <common/tracker.hpp>
 #include <lttng/channel.h>
-#include <lttng/snapshot-internal.h>
+#include <lttng/snapshot-internal.hpp>
 
 
 #define MI_SCHEMA_MAJOR_VERSION 4

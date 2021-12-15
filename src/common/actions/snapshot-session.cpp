@@ -5,19 +5,19 @@
  *
  */
 
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <common/snapshot.h>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/snapshot.hpp>
 #include <inttypes.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/rate-policy-internal.h>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
-#include <lttng/action/snapshot-session-internal.h>
+#include <lttng/action/snapshot-session-internal.hpp>
 #include <lttng/action/snapshot-session.h>
-#include <lttng/snapshot-internal.h>
+#include <lttng/snapshot-internal.hpp>
 #include <lttng/snapshot.h>
 
 #define IS_SNAPSHOT_SESSION_ACTION(action) \

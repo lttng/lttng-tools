@@ -14,9 +14,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/compat/directory-handle.h>
-#include <common/compat/errno.h>
-#include <common/error.h>
+#include <common/compat/directory-handle.hpp>
+#include <common/compat/errno.hpp>
+#include <common/error.hpp>
 #include <tap/tap.h>
 
 #define TEST_COUNT 9

@@ -5,19 +5,19 @@
  *
  */
 
-#include <common/hashtable/utils.h>
-#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.hpp>
+#include <common/hashtable/hashtable.hpp>
 
 #include <lttng/condition/condition.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <lttng/condition/session-consumed-size-internal.h>
-#include <lttng/condition/session-rotation-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/session-consumed-size-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
-#include "condition-internal.h"
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include "condition-internal.hpp"
 
 static
 unsigned long lttng_condition_buffer_usage_hash(

@@ -15,11 +15,11 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include <common/compat/errno.h>
+#include <common/compat/errno.hpp>
 
-#include "filter-ast.h"
+#include "filter-ast.hpp"
 #include "filter-parser.hpp"
-#include "filter-ir.h"
+#include "filter-ir.hpp"
 
 static
 int check_bin_comparator(struct ir_op *node)

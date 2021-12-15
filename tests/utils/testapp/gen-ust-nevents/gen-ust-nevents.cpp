@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "utils.h"
-#include "signal-helper.h"
+#include "signal-helper.hpp"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"

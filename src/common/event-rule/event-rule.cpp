@@ -6,22 +6,22 @@
  *
  */
 
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <common/payload-view.h>
-#include <common/payload.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/jul-logging-internal.h>
-#include <lttng/event-rule/kernel-kprobe-internal.h>
-#include <lttng/event-rule/kernel-syscall-internal.h>
-#include <lttng/event-rule/kernel-tracepoint-internal.h>
-#include <lttng/event-rule/kernel-uprobe-internal.h>
-#include <lttng/event-rule/log4j-logging-internal.h>
-#include <lttng/event-rule/python-logging-internal.h>
-#include <lttng/event-rule/user-tracepoint-internal.h>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/event-rule/jul-logging-internal.hpp>
+#include <lttng/event-rule/kernel-kprobe-internal.hpp>
+#include <lttng/event-rule/kernel-syscall-internal.hpp>
+#include <lttng/event-rule/kernel-tracepoint-internal.hpp>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
+#include <lttng/event-rule/log4j-logging-internal.hpp>
+#include <lttng/event-rule/python-logging-internal.hpp>
+#include <lttng/event-rule/user-tracepoint-internal.hpp>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(

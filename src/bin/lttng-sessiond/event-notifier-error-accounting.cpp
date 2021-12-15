@@ -12,16 +12,16 @@
 #include <urcu/compiler.h>
 #include <pthread.h>
 
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/index-allocator.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/shm.h>
-#include <lttng/trigger/trigger-internal.h>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/index-allocator.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/shm.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
 
-#include "event-notifier-error-accounting.h"
-#include "lttng-ust-error.h"
-#include "ust-app.h"
+#include "event-notifier-error-accounting.hpp"
+#include "lttng-ust-error.hpp"
+#include "ust-app.hpp"
 
 #define ERROR_COUNTER_INDEX_HT_INITIAL_SIZE 16
 

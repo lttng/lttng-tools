@@ -20,15 +20,15 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <common/compat/endian.h>
+#include <common/compat/endian.hpp>
 #include <inttypes.h>
 #include <stdbool.h>
 
-#include <version.h>
+#include <version.hpp>
 #include <lttng/lttng.h>
-#include <common/common.h>
-#include <common/spawn-viewer.h>
-#include <common/utils.h>
+#include <common/common.hpp>
+#include <common/spawn-viewer.hpp>
+#include <common/utils.hpp>
 
 #define COPY_BUFLEN		4096
 #define RB_CRASH_DUMP_ABI_LEN	32

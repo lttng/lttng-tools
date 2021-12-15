@@ -12,9 +12,9 @@
 #include <urcu.h>
 #include <urcu/futex.h>
 
-#include <common/common.h>
+#include <common/common.hpp>
 
-#include "futex.h"
+#include "futex.hpp"
 
 /*
  * This futex wait/wake scheme only works for N wakers / 1 waiters. Hence the

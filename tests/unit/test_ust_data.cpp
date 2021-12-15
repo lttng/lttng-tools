@@ -13,12 +13,12 @@
 #include <urcu.h>
 
 #include <lttng/lttng.h>
-#include <bin/lttng-sessiond/lttng-ust-abi.h>
-#include <common/defaults.h>
-#include <common/compat/errno.h>
-#include <bin/lttng-sessiond/trace-ust.h>
-#include <bin/lttng-sessiond/ust-app.h>
-#include <bin/lttng-sessiond/notification-thread.h>
+#include <bin/lttng-sessiond/lttng-ust-abi.hpp>
+#include <common/defaults.hpp>
+#include <common/compat/errno.hpp>
+#include <bin/lttng-sessiond/trace-ust.hpp>
+#include <bin/lttng-sessiond/ust-app.hpp>
+#include <bin/lttng-sessiond/notification-thread.hpp>
 
 #include <lttng/ust-sigbus.h>
 

@@ -9,7 +9,7 @@
 #define MSGPACK_LTTNG_CONFIG_H
 
 #include <limits.h>
-#include <common/compat/endian.h>
+#include <common/compat/endian.hpp>
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define MSGPACK_ENDIAN_LITTLE_BYTE 1

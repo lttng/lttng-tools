@@ -8,23 +8,23 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.h>
-#include <common/compat/path.h>
-#include <common/fd-tracker/utils.h>
-#include <common/time.h>
-#include <common/utils.h>
-#include <common/uuid.h>
+#include <common/common.hpp>
+#include <common/compat/path.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/time.hpp>
+#include <common/utils.hpp>
+#include <common/uuid.hpp>
 #include <urcu/rculist.h>
 
 #include <sys/stat.h>
 
-#include "ctf-trace.h"
-#include "lttng-relayd.h"
-#include "session.h"
-#include "sessiond-trace-chunks.h"
-#include "stream.h"
-#include <common/defaults.h>
-#include "utils.h"
+#include "ctf-trace.hpp"
+#include "lttng-relayd.hpp"
+#include "session.hpp"
+#include "sessiond-trace-chunks.hpp"
+#include "stream.hpp"
+#include <common/defaults.hpp>
+#include "utils.hpp"
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;

@@ -5,14 +5,14 @@
  *
  */
 
-#include <type_traits>
+#include <lttng/domain.h>
+#include <lttng/lttng-error.h>
 
-#include "lttng-ctl-helper.h"
-#include "lttng/domain.h"
-#include "lttng/lttng-error.h"
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/tracker.h>
+#include "lttng-ctl-helper.hpp"
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/tracker.hpp>
 #include <lttng/tracker.h>
+#include <type_traits>
 
 struct lttng_process_attr_tracker_handle {
 	char *session_name;

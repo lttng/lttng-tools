@@ -11,14 +11,14 @@
 
 #include <lttng/lttng-error.h>
 #include <lttng/load.h>
-#include <lttng/load-internal.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/config/session-config.h>
-#include <common/uri.h>
-#include <common/macros.h>
-#include <common/compat/string.h>
+#include <lttng/load-internal.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/config/session-config.hpp>
+#include <common/uri.hpp>
+#include <common/macros.hpp>
+#include <common/compat/string.hpp>
 
-#include "lttng-ctl-helper.h"
+#include "lttng-ctl-helper.hpp"
 
 struct lttng_load_session_attr *lttng_load_session_attr_create(void)
 {

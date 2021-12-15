@@ -5,7 +5,7 @@
  */
 
 #define _LGPL_SOURCE
-#include "hashtable.h"
-#include "utils.h"
+#include "hashtable.hpp"
+#include "utils.hpp"
 
 unsigned long lttng_ht_seed;

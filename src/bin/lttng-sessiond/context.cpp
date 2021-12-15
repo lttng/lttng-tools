@@ -13,14 +13,14 @@
 #include <unistd.h>
 #include <urcu/list.h>
 
-#include <common/error.h>
-#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/error.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "context.h"
-#include "kernel.h"
-#include "ust-app.h"
-#include "trace-ust.h"
-#include "agent.h"
+#include "context.hpp"
+#include "kernel.hpp"
+#include "ust-app.hpp"
+#include "trace-ust.hpp"
+#include "agent.hpp"
 
 /*
  * Add kernel context to all channel.

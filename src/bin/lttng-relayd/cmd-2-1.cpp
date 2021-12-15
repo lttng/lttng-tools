@@ -9,13 +9,13 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.h>
-#include <common/sessiond-comm/relayd.h>
-#include <common/compat/string.h>
+#include <common/common.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/compat/string.hpp>
 #include <lttng/constant.h>
 
-#include "cmd-2-1.h"
-#include "utils.h"
+#include "cmd-2-1.hpp"
+#include "utils.hpp"
 
 /*
  * cmd_recv_stream_2_1 allocates path_name and channel_name.

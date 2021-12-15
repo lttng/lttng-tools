@@ -8,15 +8,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.h>
+#include <common/common.hpp>
 #include <urcu/rculist.h>
 
-#include "lttng-relayd.h"
-#include "ctf-trace.h"
-#include "session.h"
-#include "viewer-session.h"
-#include "viewer-stream.h"
-#include "stream.h"
+#include "lttng-relayd.hpp"
+#include "ctf-trace.hpp"
+#include "session.hpp"
+#include "viewer-session.hpp"
+#include "viewer-stream.hpp"
+#include "stream.hpp"
 
 struct relay_viewer_session *viewer_session_create(void)
 {

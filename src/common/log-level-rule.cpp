@@ -5,13 +5,13 @@
  *
  */
 
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
-#include <common/hashtable/hashtable.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/log-level-rule-internal.h>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/log-level-rule-internal.hpp>
 #include <lttng/log-level-rule.h>
 #include <stdbool.h>
 #include <stdlib.h>

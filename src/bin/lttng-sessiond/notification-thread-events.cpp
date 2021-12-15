@@ -6,46 +6,46 @@
  */
 
 #include "lttng/action/action.h"
-#include "lttng/trigger/trigger-internal.h"
+#include "lttng/trigger/trigger-internal.hpp"
 #define _LGPL_SOURCE
 #include <urcu.h>
 #include <urcu/rculfhash.h>
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/futex.h>
-#include <common/unix.h>
-#include <common/dynamic-buffer.h>
-#include <common/hashtable/utils.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/macros.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/futex.hpp>
+#include <common/unix.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/macros.hpp>
 #include <lttng/condition/condition.h>
-#include <lttng/action/action-internal.h>
-#include <lttng/action/list-internal.h>
-#include <lttng/domain-internal.h>
-#include <lttng/notification/notification-internal.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <lttng/condition/session-consumed-size-internal.h>
-#include <lttng/condition/session-rotation-internal.h>
-#include <lttng/condition/event-rule-matches-internal.h>
-#include <lttng/domain-internal.h>
-#include <lttng/notification/channel-internal.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/action/action-internal.hpp>
+#include <lttng/action/list-internal.hpp>
+#include <lttng/domain-internal.hpp>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/session-consumed-size-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include <lttng/domain-internal.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
 
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
 #include <fcntl.h>
 
-#include "condition-internal.h"
-#include "event-notifier-error-accounting.h"
-#include "notification-thread.h"
-#include "notification-thread-events.h"
-#include "notification-thread-commands.h"
-#include "lttng-sessiond.h"
-#include "kernel.h"
+#include "condition-internal.hpp"
+#include "event-notifier-error-accounting.hpp"
+#include "notification-thread.hpp"
+#include "notification-thread-events.hpp"
+#include "notification-thread-commands.hpp"
+#include "lttng-sessiond.hpp"
+#include "kernel.hpp"
 
 #define CLIENT_POLL_MASK_IN (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)

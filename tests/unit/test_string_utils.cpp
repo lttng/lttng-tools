@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
-#include <common/string-utils/string-utils.h>
+#include <common/string-utils/string-utils.hpp>
 #include <tap/tap.h>
 
 /* Number of TAP tests in this file */

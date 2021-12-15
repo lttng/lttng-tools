@@ -11,9 +11,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <common/common.h>
+#include <common/common.hpp>
 
-#include "pipe.h"
+#include "pipe.hpp"
 
 /*
  * Lock read side of a pipe.

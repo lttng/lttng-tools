@@ -5,8 +5,8 @@
  *
  */
 
-#include <common/bytecode/bytecode.h>
-#include <lttng/event-expr-internal.h>
+#include <common/bytecode/bytecode.hpp>
+#include <lttng/event-expr-internal.hpp>
 #include <lttng/event-expr.h>
 #include <tap/tap.h>
 

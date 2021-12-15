@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <common/pipe.h>
-#include <common/error.h>
+#include <common/pipe.hpp>
+#include <common/error.hpp>
 
 int lttng_opt_verbose;
 int lttng_opt_mi;

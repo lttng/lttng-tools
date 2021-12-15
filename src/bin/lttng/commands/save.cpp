@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <common/mi-lttng.h>
+#include <common/mi-lttng.hpp>
 
-#include "../command.h"
+#include "../command.hpp"
 #include <lttng/lttng.h>
 
 static char *opt_output_path;

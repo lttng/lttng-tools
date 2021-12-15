@@ -8,9 +8,9 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/macros.h>
-#include <common/common.h>
-#include <common/path.h>
+#include <common/macros.hpp>
+#include <common/common.hpp>
+#include <common/path.hpp>
 
 /*
  * Return a partial realpath(3) of the path even if the full path does not

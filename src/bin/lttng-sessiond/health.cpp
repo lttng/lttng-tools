@@ -6,16 +6,16 @@
  *
  */
 
-#include "lttng-sessiond.h"
-#include "health-sessiond.h"
-#include <common/macros.h>
-#include <common/error.h>
-#include <common/utils.h>
-#include <common/pipe.h>
+#include "lttng-sessiond.hpp"
+#include "health-sessiond.hpp"
+#include <common/macros.hpp>
+#include <common/error.hpp>
+#include <common/utils.hpp>
+#include <common/pipe.hpp>
 #include <inttypes.h>
 #include <sys/stat.h>
-#include "utils.h"
-#include "thread.h"
+#include "utils.hpp"
+#include "thread.hpp"
 
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

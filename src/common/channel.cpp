@@ -5,18 +5,16 @@
  *
  */
 
-#include <common/macros.h>
+#include <common/buffer-view.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <lttng/channel-internal.hpp>
 #include <lttng/channel.h>
 #include <lttng/constant.h>
-#include <lttng/channel-internal.h>
-#include <lttng/userspace-probe-internal.h>
-#include <common/dynamic-buffer.h>
-#include <common/error.h>
-#include <assert.h>
-#include <string.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/dynamic-array.h>
-#include <common/buffer-view.h>
+#include <lttng/userspace-probe-internal.hpp>
 
 static enum lttng_error_code flatten_lttng_channels(
 		struct lttng_dynamic_pointer_array *channels,

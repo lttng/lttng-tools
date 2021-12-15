@@ -10,11 +10,11 @@
 #define _LGPL_SOURCE
 #include <stddef.h>
 
-#include <common/bytecode/bytecode.h>
-#include <common/error.h>
-#include <common/macros.h>
-#include <common/mi-lttng.h>
-#include <lttng/event-expr-internal.h>
+#include <common/bytecode/bytecode.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+#include <common/mi-lttng.hpp>
+#include <lttng/event-expr-internal.hpp>
 #include <lttng/event-expr.h>
 #include <stdio.h>
 

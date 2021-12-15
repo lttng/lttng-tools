@@ -7,9 +7,9 @@
 
 #include <unistd.h>
 
-#include <common/compat/fcntl.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
+#include <common/compat/fcntl.hpp>
+#include <common/payload.hpp>
+#include <common/payload-view.hpp>
 #include <tap/tap.h>
 
 static const int TEST_COUNT = 5;

@@ -5,7 +5,7 @@
  *
  */
 
-#include <common/dynamic-array.h>
+#include <common/dynamic-array.hpp>
 
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 		size_t element_size,

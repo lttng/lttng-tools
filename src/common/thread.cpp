@@ -7,8 +7,8 @@
 
 #include <string.h>
 
-#include <common/compat/pthread.h>
-#include "thread.h"
+#include <common/compat/pthread.hpp>
+#include "thread.hpp"
 
 
 int lttng_thread_setname(const char *name)

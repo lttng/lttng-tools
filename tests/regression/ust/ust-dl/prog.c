@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include <common/compat/errno.h>
+#include <common/compat/errno.hpp>
 
 /*
  * libfoo has a direct dependency on libbar.

@@ -5,13 +5,13 @@
  *
  */
 
-#include "ini-config.h"
+#include "ini-config.hpp"
 
-#include <common/defaults.h>
-#include <common/error.h>
-#include <common/ini-config/ini.h>
-#include <common/macros.h>
-#include <common/utils.h>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/ini-config/ini.hpp>
+#include <common/macros.hpp>
+#include <common/utils.hpp>
 #include <ctype.h>
 
 LTTNG_EXPORT const char *config_str_yes = "yes";

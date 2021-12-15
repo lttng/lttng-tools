@@ -9,9 +9,9 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include <common/compat/errno.h>
+#include <common/compat/errno.hpp>
 
-#include "readwrite.h"
+#include "readwrite.hpp"
 
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.

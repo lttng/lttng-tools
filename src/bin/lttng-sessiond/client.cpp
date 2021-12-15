@@ -7,25 +7,25 @@
  *
  */
 
-#include "common/buffer-view.h"
-#include "common/compat/socket.h"
-#include "common/dynamic-array.h"
-#include "common/dynamic-buffer.h"
-#include "common/fd-handle.h"
-#include "common/payload-view.h"
-#include "common/payload.h"
-#include "common/sessiond-comm/sessiond-comm.h"
+#include "common/buffer-view.hpp"
+#include "common/compat/socket.hpp"
+#include "common/dynamic-array.hpp"
+#include "common/dynamic-buffer.hpp"
+#include "common/fd-handle.hpp"
+#include "common/payload-view.hpp"
+#include "common/payload.hpp"
+#include "common/sessiond-comm/sessiond-comm.hpp"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
-#include <common/compat/getenv.h>
-#include <common/tracker.h>
-#include <common/unix.h>
-#include <common/utils.h>
-#include <lttng/error-query-internal.h>
-#include <lttng/event-internal.h>
-#include <lttng/session-descriptor-internal.h>
-#include <lttng/session-internal.h>
-#include <lttng/userspace-probe-internal.h>
+#include <common/compat/getenv.hpp>
+#include <common/tracker.hpp>
+#include <common/unix.hpp>
+#include <common/utils.hpp>
+#include <lttng/error-query-internal.hpp>
+#include <lttng/event-internal.hpp>
+#include <lttng/session-descriptor-internal.hpp>
+#include <lttng/session-internal.hpp>
+#include <lttng/userspace-probe-internal.hpp>
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
@@ -33,17 +33,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "agent-thread.h"
-#include "clear.h"
-#include "client.h"
-#include "cmd.h"
-#include "health-sessiond.h"
-#include "kernel.h"
-#include "lttng-sessiond.h"
-#include "manage-consumer.h"
-#include "save.h"
-#include "testpoint.h"
-#include "utils.h"
+#include "agent-thread.hpp"
+#include "clear.hpp"
+#include "client.hpp"
+#include "cmd.hpp"
+#include "health-sessiond.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "manage-consumer.hpp"
+#include "save.hpp"
+#include "testpoint.hpp"
+#include "utils.hpp"
 
 static bool is_root;
 
