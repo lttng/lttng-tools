@@ -1,3 +1,35 @@
+2021-12-17 lttng-tools 2.13.2 (National Ugly Christmas Sweater Day)
+	* Validate channel context mismatch across UST applications
+	* Fix: relayd: compare viewer chunks by ID rather than address
+	* Fix: relayd: live: erroneous message timestamp observed from live viewer
+	* Fix: relayd comm: improperly packed rotate streams command header
+	* Test: snapshot after regenerate metadata
+	* Fix: ust-consumer: segfault on snapshot after regenerate metadata
+	* lttng: list valid condition / action names if missing or unknown
+	* lttng: mention argument number on unknown action / condition name
+	* lttng: fix argument numbers in add-trigger error messages
+	* argpar-utils: tweak unknown option error message
+	* argpar: sync with upstream - adjust to iterator API
+	* common: move append_str to string-utils
+	* lttng-create(1): specify that `--shm-path` only applies to UST channels
+	* Fix: sessiond: action-executor: misquoted strings in logging
+	* Tests: live kernel: no plan printed when non-root
+	* Fix: sessiond: assert on lttng_ht_add_unique_str on ltt_sessions_ht_by_name
+	* Fix: sessiond: snapshot: leak of trace chunk
+	* Fix: test: use BABELTRACE_BIN instead of babeltrace
+	* Fix: action executor: ref count imbalance for session object
+	* Fix: relayd: `!vsession->current_trace_chunk` assertion failed
+	* Fix: tests: fix unused-but-set warning in test_fd_tracker.c
+	* Fix: sessiond: fix possible buffer overflow warning
+	* Fix: tests: app unregistering is not guaranteed by app lifetime
+	* Fix: lttng-ctl: tracing_group memory leaks
+	* Fix: use <unistd.h> instead of <sys/unistd.h>
+	* Fix: Tests: unchecked `close()` return value
+	* Fix: relayd: live: mishandled initial null trace chunk
+	* Fix: configure.ac: reporting SDT uprobe as a UST feature
+	* Fix: Tests: leaking epoll fd
+	* Typo: occurences -> occurrences
+
 2021-10-18 lttng-tools 2.13.1 (National Chocolate Cupcake Day)
 	* Fix: ust: app stuck on recv message during UST comm timeout scenario
 	* Fix: ust: UST communication can return -EAGAIN
