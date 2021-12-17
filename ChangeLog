@@ -1,3 +1,22 @@
+2021-12-17 lttng-tools 2.12.7 (National Ugly Christmas Sweater Day)
+	* Validate channel context mismatch across UST applications
+	* Fix: relayd: compare viewer chunks by ID rather than address
+	* Fix: relayd: live: erroneous message timestamp observed from live viewer
+	* Fix: relayd comm: improperly packed rotate streams command header
+	* test: snapshot after regenerate metadata
+	* Fix: ust-consumer: segfault on snapshot after regenerate metadata
+	* Tests: live kernel: no plan printed when non-root
+	* Fix: sessiond: snapshot: leak of trace chunk
+	* Fix: test: use BABELTRACE_BIN instead of babeltrace
+	* Fix: relayd: `!vsession->current_trace_chunk` assertion failed
+	* Fix: tests: fix unused-but-set warning in test_fd_tracker.c
+	* Fix: sessiond: fix possible buffer overflow warning
+	* Fix: lttng-ctl: tracing_group memory leaks
+	* Fix: Tests: unchecked `close()` return value
+	* Fix: relayd: live: mishandled initial null trace chunk
+	* Fix: configure.ac: reporting SDT uprobe as a UST feature
+	* Fix: Tests: leaking epoll fd
+
 2021-10-18 lttng-tools 2.12.6 (National Chocolate Cupcake Day)
 	* Fix: sessiond: previously created channel cannot be enabled
 	* Fix: ust: app stuck on recv message during UST comm timeout scenario
