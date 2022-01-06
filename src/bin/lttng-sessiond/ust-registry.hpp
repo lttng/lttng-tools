@@ -146,7 +146,7 @@ struct ust_registry_channel {
 	 * Hash table containing events sent by the UST tracer. MUST be accessed
 	 * with a RCU read side lock acquired.
 	 */
-	struct lttng_ht *ht;
+	struct lttng_ht *events;
 	/* Next event ID available for a newly registered event. */
 	uint32_t next_event_id;
 	/* Once this value reaches UINT32_MAX, no more id can be allocated. */

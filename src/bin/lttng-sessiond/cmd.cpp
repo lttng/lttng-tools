@@ -4366,7 +4366,7 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 						"(err = %d)", ret);
 				goto end;
 			}
-			cds_lfht_for_each_entry(chan->ht->ht, &iter_event.iter,
+			cds_lfht_for_each_entry(chan->events->ht, &iter_event.iter,
 					event, node.node) {
 				ret = ust_metadata_event_statedump(registry,
 						chan, event);

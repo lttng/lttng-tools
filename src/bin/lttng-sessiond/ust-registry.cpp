@@ -368,8 +368,8 @@ struct ust_registry_event *ust_registry_find_event(
 	key.name[sizeof(key.name) - 1] = '\0';
 	key.signature = sig;
 
-	cds_lfht_lookup(chan->ht->ht, chan->ht->hash_fct(&key, lttng_ht_seed),
-			chan->ht->match_fct, &key, &iter.iter);
+	cds_lfht_lookup(chan->events->ht, chan->events->hash_fct(&key, lttng_ht_seed),
+			chan->events->match_fct, &key, &iter.iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;
@@ -446,8 +446,8 @@ int ust_registry_create_event(struct ust_registry_session *session,
 	 * This is an add unique with a custom match function for event. The node
 	 * are matched using the event name and signature.
 	 */
-	nptr = cds_lfht_add_unique(chan->ht->ht, chan->ht->hash_fct(event,
-				lttng_ht_seed), chan->ht->match_fct, event, &event->node.node);
+	nptr = cds_lfht_add_unique(chan->events->ht, chan->events->hash_fct(event,
+				lttng_ht_seed), chan->events->match_fct, event, &event->node.node);
 	if (nptr != &event->node.node) {
 		if (buffer_type == LTTNG_BUFFER_PER_UID) {
 			/*
@@ -514,7 +514,7 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 
 	/* Delete the node first. */
 	iter.iter.node = &event->node.node;
-	ret = lttng_ht_del(chan->ht, &iter);
+	ret = lttng_ht_del(chan->events, &iter);
 	LTTNG_ASSERT(!ret);
 
 	call_rcu(&event->node.head, destroy_event_rcu);
@@ -702,9 +702,10 @@ void destroy_channel_rcu(struct rcu_head *head)
 	struct ust_registry_channel *chan =
 		caa_container_of(head, struct ust_registry_channel, rcu_head);
 
-	if (chan->ht) {
-		lttng_ht_destroy(chan->ht);
+	if (chan->events) {
+		lttng_ht_destroy(chan->events);
 	}
+
 	free(chan->ctx_fields);
 	free(chan);
 }
@@ -731,11 +732,11 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 		}
 	}
 
-	if (chan->ht) {
+	if (chan->events) {
 		rcu_read_lock();
 		/* Destroy all event associated with this registry. */
 		cds_lfht_for_each_entry(
-				chan->ht->ht, &iter.iter, event, node.node) {
+				chan->events->ht, &iter.iter, event, node.node) {
 			/* Delete the node from the ht and free it. */
 			ust_registry_destroy_event(chan, event);
 		}
@@ -762,15 +763,15 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 		goto error_alloc;
 	}
 
-	chan->ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	if (!chan->ht) {
+	chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!chan->events) {
 		ret = -ENOMEM;
 		goto error;
 	}
 
 	/* Set custom match function. */
-	chan->ht->match_fct = ht_match_event;
-	chan->ht->hash_fct = ht_hash_event;
+	chan->events->match_fct = ht_match_event;
+	chan->events->hash_fct = ht_hash_event;
 
 	/*
 	 * Assign a channel ID right now since the event notification comes
