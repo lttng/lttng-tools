@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include <common/common.hpp>
 #include <common/time.hpp>
+#include <vector>
 
 #include "ust-registry.hpp"
 #include "ust-clock.hpp"
@@ -841,6 +842,16 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 	if (chan->chan_id == -1U)
 		return 0;
 
+	/*
+	 * We don't want to output an event's metadata before its parent
+	 * stream's metadata.  If the stream's metadata hasn't been output yet,
+	 * skip this event.  Its metadata will be output when we output the
+	 * stream's metadata.
+	 */
+	if (!chan->metadata_dumped || event->metadata_dumped) {
+		return 0;
+	}
+
 	ret = lttng_metadata_printf(session,
 		"event {\n"
 		"	name = \"%s\";\n"
@@ -950,6 +961,31 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 
 	/* Flag success of metadata dump. */
 	chan->metadata_dumped = 1;
+
+	/*
+	 * Output the metadata of any existing event.
+	 *
+	 * Sort the events by id.  This is not necessary, but it's nice to have
+	 * a more predictable order in the metadata file.
+	 */
+	std::vector<ust_registry_event *> events;
+	{
+		cds_lfht_iter event_iter;
+		ust_registry_event *event;
+		cds_lfht_for_each_entry(chan->events->ht, &event_iter, event,
+				node.node) {
+			events.push_back(event);
+		}
+	}
+
+	std::sort(events.begin(), events.end(),
+		[] (ust_registry_event *a, ust_registry_event *b) {
+			return a->id < b->id;
+		});
+
+	for (ust_registry_event *event : events) {
+		ust_metadata_event_statedump(session, chan, event);
+	}
 
 	return 0;
 }

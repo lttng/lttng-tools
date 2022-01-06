@@ -4359,6 +4359,8 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 			struct ust_registry_event *event;
 			struct lttng_ht_iter iter_event;
 
+			chan->metadata_dumped = 0;
+
 			ret = ust_metadata_channel_statedump(registry, chan);
 			if (ret) {
 				pthread_mutex_unlock(&registry->lock);
@@ -4367,7 +4369,8 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 				goto end;
 			}
 			cds_lfht_for_each_entry(chan->events->ht, &iter_event.iter,
-					event, node.node) {
+						event, node.node) {
+				event->metadata_dumped = 0;
 				ret = ust_metadata_event_statedump(registry,
 						chan, event);
 				if (ret) {
