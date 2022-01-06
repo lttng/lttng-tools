@@ -899,7 +899,7 @@ end:
 int ust_metadata_channel_statedump(struct ust_registry_session *session,
 		struct ust_registry_channel *chan)
 {
-	int ret = 0;
+	int ret;
 
 	/* Don't dump metadata events */
 	if (chan->chan_id == -1U)
@@ -918,37 +918,40 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 			"struct event_header_compact" :
 			"struct event_header_large");
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
 	if (chan->ctx_fields) {
 		ret = lttng_metadata_printf(session,
 			"	event.context := struct {\n");
 		if (ret) {
-			goto end;
+			return ret;
 		}
 	}
 	ret = _lttng_context_metadata_statedump(session,
 		chan->nr_ctx_fields,
 		chan->ctx_fields);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 	if (chan->ctx_fields) {
 		ret = lttng_metadata_printf(session,
 			"	};\n");
 		if (ret) {
-			goto end;
+			return ret;
 		}
 	}
 
 	ret = lttng_metadata_printf(session,
 		"};\n\n");
+	if (ret) {
+		return ret;
+	}
+
 	/* Flag success of metadata dump. */
 	chan->metadata_dumped = 1;
 
-end:
-	return ret;
+	return 0;
 }
 
 static
