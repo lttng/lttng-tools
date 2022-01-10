@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <lttng/constant.h>
+#include <common/macros.h>
 
 /*
  * Object used for the snapshot API. This is opaque to the public library.
@@ -33,7 +34,7 @@ struct lttng_snapshot_output {
 	char ctrl_url[PATH_MAX];
 	/* Destination of the output. See lttng(1) for URL format. */
 	char data_url[PATH_MAX];
-};
+} LTTNG_PACKED;
 
 /*
  * Snapshot output list object opaque to the user.

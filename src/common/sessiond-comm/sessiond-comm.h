@@ -337,18 +337,18 @@ struct lttcomm_session_msg {
 			uint32_t size;
 		} LTTNG_PACKED uri;
 		struct {
-			struct lttng_snapshot_output output LTTNG_PACKED;
+			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_output;
 		struct {
 			uint32_t wait;
-			struct lttng_snapshot_output output LTTNG_PACKED;
+			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_record;
 		struct {
 			uint32_t nb_uri;
 			unsigned int timer_interval;	/* usec */
 		} LTTNG_PACKED session_live;
 		struct {
-			struct lttng_save_session_attr attr; /* struct already packed */
+			struct lttng_save_session_attr attr;
 		} LTTNG_PACKED save_session;
 		struct {
 			char shm_path[PATH_MAX];

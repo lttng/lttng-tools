@@ -15,7 +15,7 @@ struct lttng_session_extended {
 	struct {
 		uint64_t value;
 		uint8_t is_set;
-	} creation_time LTTNG_PACKED;
+	} LTTNG_PACKED creation_time;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_SESSION_INTERNAL_H */
