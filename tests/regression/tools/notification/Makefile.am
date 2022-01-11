@@ -21,7 +21,8 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 
 libpause_consumer_la_SOURCES = consumer_testpoints.c
 libpause_consumer_la_LIBADD = \
-	$(top_builddir)/src/common/libcommon.la \
+	$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
+	$(top_builddir)/src/common/libcommon-gpl.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 	$(DL_LIBS)
 libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
@@ -38,7 +39,6 @@ rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 noinst_SCRIPTS = test_notification_ust test_notification_kernel test_notification_multi_app test_rotation
 EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app test_rotation
-
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

@@ -23,10 +23,10 @@ DIST_SUBDIRS = \
 	fd-tracker
 
 # Common library
-noinst_LTLIBRARIES = libcommon.la
+noinst_LTLIBRARIES = libcommon-gpl.la
 EXTRA_DIST = mi-lttng-4.0.xsd
 
-libcommon_la_SOURCES = \
+libcommon_gpl_la_SOURCES = \
 	action.c \
 	buffer-usage.c \
 	buffer-view.h buffer-view.c \
@@ -70,11 +70,11 @@ libcommon_la_SOURCES = \
 	fs-handle.h fs-handle-internal.h fs-handle.c
 
 if HAVE_ELF_H
-libcommon_la_SOURCES += \
+libcommon_gpl_la_SOURCES += \
 	lttng-elf.c lttng-elf.h
 endif
 
-libcommon_la_LIBADD = \
+libcommon_gpl_la_LIBADD = \
 	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/compat/libcompat.la \
 	$(top_builddir)/src/common/hashtable/libhashtable.la \

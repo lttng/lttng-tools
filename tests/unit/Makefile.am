@@ -25,7 +25,7 @@ TESTS = test_kernel_data \
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
-LIBCOMMON=$(top_builddir)/src/common/libcommon.la
+LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
 LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
 LIBFDTRACKER=$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
@@ -48,7 +48,7 @@ endif
 
 # URI unit tests
 test_uri_SOURCES = test_uri.c
-test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE) $(DL_LIBS)
+test_uri_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBHASHTABLE) $(DL_LIBS)
 
 # Sessiond objects
 SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT) \
@@ -148,7 +148,7 @@ KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
 		$(LIBLTTNG_CTL)
 
 test_kernel_data_SOURCES = test_kernel_data.c
-test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
+test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 			 $(LIBHASHTABLE) $(DL_LIBS) -lrt
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
@@ -156,28 +156,28 @@ test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
-test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
+test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # parse_time_suffix unit test
 test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.c
-test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL)
 
 # compat_poll unit test
 test_utils_compat_poll_SOURCES = test_utils_compat_poll.c
 test_utils_compat_poll_LDADD  = $(LIBTAP) $(LIBHASHTABLE) $(DL_LIBS) \
-		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON)
+		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON_GPL)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
-test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
+test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # directory handle unit test
 test_directory_handle_SOURCES = test_directory_handle.c
-test_directory_handle_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
+test_directory_handle_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
-test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
+test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBSTRINGUTILS) $(DL_LIBS)
 
 # Notification api
 test_notification_SOURCES = test_notification.c
@@ -185,13 +185,13 @@ test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # relayd backward compat for groou-by-session utilities
 test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
-test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(RELAYD_OBJS)
+test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(RELAYD_OBJS)
 test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/bin/lttng-relayd
 
 # fd tracker unit test
 test_fd_tracker_SOURCES = test_fd_tracker.c
-test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON) $(LIBHASHTABLE)
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON_GPL) $(LIBHASHTABLE)
 
 # uuid unit test
 test_uuid_SOURCES = test_uuid.c
-test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON)
+test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)

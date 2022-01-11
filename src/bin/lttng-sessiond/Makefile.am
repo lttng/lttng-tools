@@ -72,7 +72,7 @@ lttng_sessiond_LDADD = -lurcu-common -lurcu $(KMOD_LIBS) \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
-		$(top_builddir)/src/common/libcommon.la \
+		$(top_builddir)/src/common/libcommon-gpl.la \
 		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/common/relayd/librelayd.la \
 		$(top_builddir)/src/common/testpoint/libtestpoint.la \

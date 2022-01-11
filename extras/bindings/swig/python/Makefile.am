@@ -15,7 +15,7 @@ nodist__lttng_la_SOURCES = lttng_wrap.c
 _lttng_la_LDFLAGS = -module
 _lttng_la_LIBADD = 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la 		\
 			$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la		\
-			$(top_builddir)/src/common/libcommon.la
+			$(top_builddir)/src/common/libcommon-gpl.la
 
 lttng_wrap.c: lttng.i
 	$(SWIG) -python -I. -I$(top_srcdir)/src/common/sessiond-comm lttng.i

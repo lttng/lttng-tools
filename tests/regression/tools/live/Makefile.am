@@ -4,7 +4,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
-LIBCOMMON=$(top_builddir)/src/common/libcommon.la
+LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
@@ -24,7 +24,7 @@ EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust
 endif
 
 live_test_SOURCES = live_test.c
-live_test_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
+live_test_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 		$(LIBHASHTABLE) $(LIBHEALTH) $(DL_LIBS) $(LIBCOMPAT) -lrt
 live_test_LDADD += $(LIVE) \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
