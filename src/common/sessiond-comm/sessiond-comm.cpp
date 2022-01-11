@@ -6,6 +6,7 @@
  *
  */
 
+#include <sys/socket.h>
 #define _LGPL_SOURCE
 #include <limits.h>
 #include <stdio.h>
@@ -510,4 +511,73 @@ void lttcomm_init(void)
 unsigned long lttcomm_get_network_timeout(void)
 {
 	return network_timeout;
+}
+
+/*
+ * Only valid for an ipv4 and ipv6 bound socket that is already connected to its
+ * peer.
+ */
+int lttcomm_populate_sock_from_open_socket(
+		struct lttcomm_sock *sock,
+		int fd,
+		enum lttcomm_sock_proto protocol)
+{
+	int ret = 0;
+	socklen_t storage_len;
+	struct sockaddr_storage storage = { 0 };
+
+	assert(sock);
+	assert(fd >= 0);
+
+	sock->proto = protocol;
+
+	storage_len = sizeof(storage);
+	ret = getpeername(fd, (struct sockaddr *) &storage,
+			&storage_len);
+	if (ret) {
+		ERR("Failed to get peer info for socket %d (errno: %d)", fd,
+				errno);
+		ret = -1;
+		goto end;
+	}
+
+	if (storage_len > sizeof(storage)) {
+		ERR("Failed to get peer info for socket %d: storage size is too small", fd);
+		ret = -1;
+		goto end;
+	}
+
+	switch (storage.ss_family) {
+	case AF_INET:
+		sock->sockaddr.type = LTTCOMM_INET;
+		memcpy(&sock->sockaddr.addr, &storage,
+				sizeof(struct sockaddr_in));
+		break;
+	case AF_INET6:
+		sock->sockaddr.type = LTTCOMM_INET6;
+		memcpy(&sock->sockaddr.addr, &storage,
+				sizeof(struct sockaddr_in6));
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	/* Create a valid socket object with a temporary fd. */
+	ret = lttcomm_create_sock(sock);
+	if (ret < 0) {
+		ERR("Failed to create temporary socket object");
+		ret = -1;
+		goto end;
+	}
+
+	/* Substitute the fd. */
+	if (sock->ops->close(sock)) {
+		ret = -1;
+		goto end;
+	}
+	sock->fd = fd;
+
+end:
+	return ret;
 }
