@@ -12,8 +12,6 @@ libconsumer_la_SOURCES = consumer.c consumer.h consumer-metadata-cache.c \
 libconsumer_la_LIBADD = \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/kernel-consumer/libkernel-consumer.la \
-		$(top_builddir)/src/common/hashtable/libhashtable.la \
-		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/common/relayd/librelayd.la
 
 if HAVE_LIBLTTNG_UST_CTL

@@ -40,7 +40,6 @@ LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
 LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
 LIBFDTRACKER=$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
-LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
@@ -79,7 +78,7 @@ endif
 
 # URI unit tests
 test_uri_SOURCES = test_uri.c
-test_uri_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBHASHTABLE) $(DL_LIBS)
+test_uri_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
 
@@ -104,15 +103,15 @@ test_kernel_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
-test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # parse_time_suffix unit test
 test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.c
-test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL)
+test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # compat_poll unit test
 test_utils_compat_poll_SOURCES = test_utils_compat_poll.c
-test_utils_compat_poll_LDADD  = $(LIBTAP) $(LIBHASHTABLE) $(DL_LIBS) \
+test_utils_compat_poll_LDADD  = $(LIBTAP) $(DL_LIBS) \
 		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON_GPL)
 
 # compat_pthread unit test
@@ -122,11 +121,11 @@ test_utils_compat_pthread_LDADD  = $(LIBTAP) \
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
-test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_utils_expand_path_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # directory handle unit test
 test_directory_handle_SOURCES = test_directory_handle.c
-test_directory_handle_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_directory_handle_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
@@ -157,7 +156,7 @@ test_rate_policy_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 
 # fd tracker unit test
 test_fd_tracker_SOURCES = test_fd_tracker.c
-test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBCOMMON_GPL) $(LIBHASHTABLE)
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBCOMMON_GPL)
 
 # uuid unit test
 test_uuid_SOURCES = test_uuid.c
