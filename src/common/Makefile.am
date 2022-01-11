@@ -23,33 +23,28 @@ DIST_SUBDIRS = \
 	fd-tracker
 
 # Common library
-noinst_LTLIBRARIES = libcommon-gpl.la
+noinst_LTLIBRARIES = libcommon-lgpl.la libcommon-gpl.la
 EXTRA_DIST = mi-lttng-4.0.xsd
 
-libcommon_gpl_la_SOURCES = \
+# The libcommon-lgpl static archive contains only LGPLv2.1 code. It is
+# meant to be used by LGPLv2.1 libraries such as liblttng-ctl. It also
+# contains libcommon-lgpl.la.
+libcommon_lgpl_la_SOURCES = \
 	action.c \
-	buffer-usage.c \
 	buffer-view.h buffer-view.c \
-	common.h \
-	condition.c \
-	context.c context.h \
+	buffer-usage.c \
 	credentials.h \
-	daemonize.c daemonize.h \
+	condition.c \
 	defaults.c \
 	dynamic-array.c dynamic-array.h \
 	dynamic-buffer.c dynamic-buffer.h \
 	endpoint.c \
 	error.c error.h \
 	evaluation.c \
-	event.c \
-	filter.c filter.h \
-	futex.c futex.h \
 	location.c \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
 	notify.c \
-	optional.h \
-	pipe.c pipe.h \
 	readwrite.c readwrite.h \
 	runas.c runas.h \
 	session-consumed-size.c \
@@ -57,31 +52,49 @@ libcommon_gpl_la_SOURCES = \
 	session-rotation.c \
 	spawn-viewer.c spawn-viewer.h \
 	time.c \
-	trace-chunk.c trace-chunk.h \
-	trace-chunk-registry.h \
+	tracker.c tracker.h \
 	trigger.c \
 	unix.c unix.h \
 	uri.c uri.h \
 	userspace-probe.c \
-	utils.c utils.h \
-	uuid.c uuid.h \
-	tracker.c tracker.h \
-	waiter.c waiter.h \
-	fs-handle.h fs-handle-internal.h fs-handle.c
+	utils.c utils.h
 
 if HAVE_ELF_H
-libcommon_gpl_la_SOURCES += \
+libcommon_lgpl_la_SOURCES += \
 	lttng-elf.c lttng-elf.h
 endif
 
-libcommon_gpl_la_LIBADD = \
+libcommon_lgpl_la_LIBADD = \
 	$(top_builddir)/src/common/config/libconfig.la \
-	$(top_builddir)/src/common/compat/libcompat.la \
-	$(top_builddir)/src/common/hashtable/libhashtable.la \
+	$(top_builddir)/src/common/hashtable/libhashtable-lgpl.la
+
+# The libcommon-gpl static archive contains GPLv2 compatible code. It is
+# meant to be used by GPL executables.
+libcommon_gpl_la_SOURCES = \
+	common.h \
+	context.c context.h \
+	daemonize.c daemonize.h \
+	event.c \
+	filter.c filter.h \
+	fs-handle.c fs-handle.h fs-handle-internal.h \
+	futex.c futex.h \
+	optional.h \
+	pipe.c pipe.h \
+	trace-chunk.c trace-chunk.h \
+	trace-chunk-registry.h \
+	uuid.c uuid.h \
+	waiter.c waiter.h
+
+libcommon_gpl_la_LIBADD = \
+	-lurcu -lurcu-common \
+	libcommon-lgpl.la \
+	$(top_builddir)/src/common/hashtable/libhashtable-gpl.la \
 	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 
 if BUILD_LIB_COMPAT
 SUBDIRS += compat
+libcommon_lgpl_la_LIBADD += \
+	$(top_builddir)/src/common/compat/libcompat.la
 endif
 
 if BUILD_LIB_HEALTH

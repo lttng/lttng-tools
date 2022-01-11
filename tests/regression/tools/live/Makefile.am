@@ -6,7 +6,7 @@ LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
-LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
+LIBHASHTABLE_GPL=$(top_builddir)/src/common/hashtable/libhashtable-gpl.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
 LIBCOMPAT=$(top_builddir)/src/common/compat/libcompat.la
@@ -25,7 +25,7 @@ endif
 
 live_test_SOURCES = live_test.c
 live_test_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		$(LIBHASHTABLE) $(LIBHEALTH) $(DL_LIBS) $(LIBCOMPAT) -lrt
+		$(LIBHASHTABLE_GPL) $(LIBHEALTH) $(DL_LIBS) $(LIBCOMPAT) -lrt
 live_test_LDADD += $(LIVE) \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 

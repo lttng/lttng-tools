@@ -9,7 +9,6 @@ lttng_consumerd_SOURCES = lttng-consumerd.c \
 
 lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/consumer/libconsumer.la \
-	   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 	   $(top_builddir)/src/common/libcommon-gpl.la \
 	   $(top_builddir)/src/common/index/libindex.la \
 	   $(top_builddir)/src/common/health/libhealth.la \
