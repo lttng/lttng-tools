@@ -39,7 +39,7 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
 
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
-			$(top_builddir)/src/common/libcommon.la \
+			$(top_builddir)/src/common/libcommon-gpl.la \
 			$(top_builddir)/src/common/config/libconfig.la \
 			$(top_builddir)/src/common/string-utils/libstring-utils.la \
 			$(top_builddir)/src/common/filter/libfilter.la \

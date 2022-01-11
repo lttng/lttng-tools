@@ -4,7 +4,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
-LIBCOMMON=$(top_builddir)/src/common/libcommon.la
+LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
