@@ -29,7 +29,7 @@ lttng_relayd_SOURCES = main.cpp lttng-relayd.h utils.h utils.cpp cmd.h \
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = $(URCU_LIBS) \
-		$(top_builddir)/src/common/libcommon.la \
+		$(top_builddir)/src/common/libcommon-gpl.la \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
 		$(top_builddir)/src/common/compat/libcompat.la \

@@ -38,10 +38,10 @@ DIST_SUBDIRS = \
 	argpar-utils
 
 # Common library
-noinst_LTLIBRARIES = libcommon.la
+noinst_LTLIBRARIES = libcommon-gpl.la
 EXTRA_DIST = mi-lttng-4.1.xsd
 
-libcommon_la_SOURCES = \
+libcommon_gpl_la_SOURCES = \
 	actions/action.cpp \
 	actions/list.cpp \
 	actions/notify.cpp \
@@ -115,11 +115,11 @@ libcommon_la_SOURCES = \
 	waiter.cpp waiter.h
 
 if HAVE_ELF_H
-libcommon_la_SOURCES += \
+libcommon_gpl_la_SOURCES += \
 	lttng-elf.cpp lttng-elf.h
 endif
 
-libcommon_la_LIBADD = \
+libcommon_gpl_la_LIBADD = \
 	$(top_builddir)/src/common/bytecode/libbytecode.la \
 	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/ini-config/libini-config.la \
@@ -182,7 +182,7 @@ noinst_HEADERS = \
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp
 filter_grammar_test_LDADD = \
-	libcommon.la
+	libcommon-gpl.la
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

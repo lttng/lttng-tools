@@ -38,14 +38,14 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 libpause_consumer_la_SOURCES = consumer_testpoints.cpp
 libpause_consumer_la_LIBADD = \
 	$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
-	$(top_builddir)/src/common/libcommon.la \
+	$(top_builddir)/src/common/libcommon-gpl.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 	$(DL_LIBS)
 libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
 libpause_sessiond_la_SOURCES = sessiond_testpoints.cpp
 libpause_sessiond_la_LIBADD = \
-	$(top_builddir)/src/common/libcommon.la \
+	$(top_builddir)/src/common/libcommon-gpl.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 	$(DL_LIBS)
 libpause_sessiond_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
@@ -63,7 +63,7 @@ rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 default_pipe_size_getter_SOURCES = default_pipe_size_getter.cpp
-default_pipe_size_getter_LDADD = $(top_builddir)/src/common/libcommon.la
+default_pipe_size_getter_LDADD = $(top_builddir)/src/common/libcommon-gpl.la
 
 noinst_SCRIPTS = \
 	test_notification_kernel_buffer_usage \
