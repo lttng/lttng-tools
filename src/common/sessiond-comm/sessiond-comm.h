@@ -30,6 +30,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <sys/un.h>
 
 #include "inet.h"
@@ -325,14 +326,14 @@ struct lttcomm_sockaddr {
 		struct sockaddr_in sin;
 		struct sockaddr_in6 sin6;
 	} addr;
-} LTTNG_PACKED;
+};
 
 struct lttcomm_sock {
 	int32_t fd;
 	enum lttcomm_sock_proto proto;
 	struct lttcomm_sockaddr sockaddr;
 	const struct lttcomm_proto_ops *ops;
-} LTTNG_PACKED;
+};
 
 /*
  * Relayd sock. Adds the protocol version to use for the communications with
@@ -342,7 +343,7 @@ struct lttcomm_relayd_sock {
 	struct lttcomm_sock sock;
 	uint32_t major;
 	uint32_t minor;
-} LTTNG_PACKED;
+};
 
 struct lttcomm_net_family {
 	int family;
@@ -657,8 +658,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t net_index;
 			enum lttng_stream_type type;
-			/* Open socket to the relayd */
-			struct lttcomm_relayd_sock sock;
+			uint32_t major;
+			uint32_t minor;
+			uint8_t relayd_socket_protocol;
 			/* Tracing session id associated to the relayd. */
 			uint64_t session_id;
 			/* Relayd session id, only used with control socket. */
@@ -904,6 +906,9 @@ LTTNG_HIDDEN int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port);
 
 LTTNG_HIDDEN struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto);
+LTTNG_HIDDEN int lttcomm_populate_sock_from_open_socket(struct lttcomm_sock *sock,
+		int fd,
+		enum lttcomm_sock_proto protocol);
 LTTNG_HIDDEN int lttcomm_create_sock(struct lttcomm_sock *sock);
 LTTNG_HIDDEN struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri);
 LTTNG_HIDDEN void lttcomm_destroy_sock(struct lttcomm_sock *sock);

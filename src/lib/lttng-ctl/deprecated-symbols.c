@@ -24,28 +24,28 @@ const char * const config_element_targets;
 const char * const config_element_trackers;
 
 enum lttng_index_allocator_status lttng_index_allocator_alloc(
-		struct lttng_index_allocator*, uint64_t*)
+		struct lttng_index_allocator *a, uint64_t *b)
 {
 	return LTTNG_INDEX_ALLOCATOR_STATUS_ERROR;
 }
 
-struct lttng_index_allocator* lttng_index_allocator_create(uint64_t)
+struct lttng_index_allocator* lttng_index_allocator_create(uint64_t a)
 {
 	return NULL;
 }
 
-void lttng_index_allocator_destroy(struct lttng_index_allocator*)
+void lttng_index_allocator_destroy(struct lttng_index_allocator *a)
 {
 }
 
 uint64_t lttng_index_allocator_get_index_count(
-		struct lttng_index_allocator*)
+		struct lttng_index_allocator *a)
 {
 	return -1ULL;
 }
 
 enum lttng_index_allocator_status lttng_index_allocator_release(
-		struct lttng_index_allocator*, uint64_t)
+		struct lttng_index_allocator *a, uint64_t b)
 {
 	return LTTNG_INDEX_ALLOCATOR_STATUS_ERROR;
 }
