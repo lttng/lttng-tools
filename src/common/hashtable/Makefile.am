@@ -1,12 +1,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_LTLIBRARIES = libhashtable.la
+noinst_LTLIBRARIES = libhashtable-gpl.la libhashtable-lgpl.la
 
-libhashtable_la_SOURCES = \
-	hashtable.cpp \
-	hashtable.h \
-	hashtable-symbols.h \
-        utils.cpp \
+libhashtable_lgpl_la_SOURCES = \
+	seed.cpp \
+	utils.cpp \
 	utils.h
 
-libhashtable_la_LIBADD = $(URCU_LIBS) $(URCU_CDS_LIBS)
+libhashtable_gpl_la_SOURCES = \
+	hashtable.cpp \
+	hashtable.h \
+	hashtable-symbols.h
+
+libhashtable_gpl_la_LIBADD = \
+	$(URCU_LIBS) \
+	$(URCU_CDS_LIBS)

@@ -3,13 +3,6 @@
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
-
-LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
-LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
-LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
-LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
-LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
-LIBCOMPAT=$(top_builddir)/src/common/compat/libcompat.la
 LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
 
 noinst_PROGRAMS = live_test

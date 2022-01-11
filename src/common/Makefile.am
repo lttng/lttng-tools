@@ -38,10 +38,14 @@ DIST_SUBDIRS = \
 	argpar-utils
 
 # Common library
-noinst_LTLIBRARIES = libcommon-gpl.la
+noinst_LTLIBRARIES = libcommon-lgpl.la libcommon-gpl.la
 EXTRA_DIST = mi-lttng-4.1.xsd
 
-libcommon_gpl_la_SOURCES = \
+# The libcommon-lgpl static archive contains only LGPLv2.1 code. It is
+# meant to be used by LGPLv2.1 libraries such as liblttng-ctl. It also
+# contains libcommon-lgpl.la.
+
+libcommon_lgpl_la_SOURCES = \
 	actions/action.cpp \
 	actions/list.cpp \
 	actions/notify.cpp \
@@ -52,15 +56,12 @@ libcommon_gpl_la_SOURCES = \
 	actions/stop-session.cpp \
 	actions/rate-policy.cpp \
 	buffer-view.h buffer-view.cpp \
-	common.h \
 	conditions/buffer-usage.cpp \
 	conditions/condition.cpp \
 	conditions/event-rule-matches.cpp \
 	conditions/session-consumed-size.cpp \
 	conditions/session-rotation.cpp \
-	context.cpp context.h \
 	credentials.cpp credentials.h \
-	daemonize.cpp daemonize.h \
 	defaults.cpp \
 	domain.cpp \
 	dynamic-array.cpp dynamic-array.h \
@@ -69,7 +70,6 @@ libcommon_gpl_la_SOURCES = \
 	error.cpp error.h \
 	error-query.cpp \
 	evaluation.cpp \
-	event.cpp \
 	event-expr/event-expr.cpp \
 	event-field-value.cpp \
 	event-rule/event-rule.cpp \
@@ -81,53 +81,66 @@ libcommon_gpl_la_SOURCES = \
 	event-rule/log4j-logging.cpp \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
-	filter.cpp filter.h \
 	fd-handle.cpp fd-handle.h \
-	fs-handle.cpp fs-handle.h fs-handle-internal.h \
-	futex.cpp futex.h \
 	kernel-probe.cpp \
-	index-allocator.cpp index-allocator.h \
 	location.cpp \
 	log-level-rule.cpp \
 	mi-lttng.cpp mi-lttng.h \
 	notification.cpp \
-	optional.h \
 	payload.cpp payload.h \
 	payload-view.cpp payload-view.h \
-	pipe.cpp pipe.h \
 	readwrite.cpp readwrite.h \
 	runas.cpp runas.h \
-	shm.cpp shm.h \
 	session-descriptor.cpp \
 	snapshot.cpp snapshot.h \
 	spawn-viewer.cpp spawn-viewer.h \
+	thread.cpp thread.h \
 	time.cpp \
-	trace-chunk.cpp trace-chunk.h \
-	trace-chunk-registry.h \
+	tracker.cpp tracker.h \
 	trigger.cpp \
 	unix.cpp unix.h \
 	uri.cpp uri.h \
 	userspace-probe.cpp \
-	utils.cpp utils.h \
-	uuid.cpp uuid.h \
-	thread.cpp thread.h \
-	tracker.cpp tracker.h \
-	waiter.cpp waiter.h
+	utils.cpp utils.h
 
 if HAVE_ELF_H
-libcommon_gpl_la_SOURCES += \
+libcommon_lgpl_la_SOURCES += \
 	lttng-elf.cpp lttng-elf.h
 endif
 
-libcommon_gpl_la_LIBADD = \
+libcommon_lgpl_la_LIBADD = \
 	$(top_builddir)/src/common/bytecode/libbytecode.la \
-	$(top_builddir)/src/common/config/libconfig.la \
-	$(top_builddir)/src/common/ini-config/libini-config.la \
 	$(top_builddir)/src/common/compat/libcompat.la \
-	$(top_builddir)/src/common/hashtable/libhashtable.la \
-	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la \
+	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/filter/libfilter.la \
+	$(top_builddir)/src/common/hashtable/libhashtable-lgpl.la \
 	$(top_builddir)/src/vendor/msgpack/libmsgpack.la
+
+# The libcommon-gpl static archive contains GPLv2 compatible code. It is
+# meant to be used by GPL executables.
+
+libcommon_gpl_la_SOURCES = \
+	common.h \
+	context.cpp context.h \
+	daemonize.cpp daemonize.h \
+	event.cpp \
+	filter.cpp filter.h \
+	fs-handle.cpp fs-handle.h fs-handle-internal.h \
+	futex.cpp futex.h \
+	index-allocator.cpp index-allocator.h \
+	optional.h \
+	pipe.cpp pipe.h \
+	shm.cpp shm.h \
+	trace-chunk.cpp trace-chunk.h \
+	trace-chunk-registry.h \
+	uuid.cpp uuid.h \
+	waiter.cpp waiter.h
+
+libcommon_gpl_la_LIBADD = \
+	libcommon-lgpl.la \
+	$(top_builddir)/src/common/ini-config/libini-config.la \
+	$(top_builddir)/src/common/hashtable/libhashtable-gpl.la \
+	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 
 if BUILD_LIB_HEALTH
 SUBDIRS += health
@@ -181,8 +194,7 @@ noinst_HEADERS = \
 
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp
-filter_grammar_test_LDADD = \
-	libcommon-gpl.la
+filter_grammar_test_LDADD = libcommon-gpl.la
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
