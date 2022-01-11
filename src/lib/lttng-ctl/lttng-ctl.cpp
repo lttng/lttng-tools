@@ -2102,6 +2102,12 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_SESSIONS;
+	/*
+	 * Initialize out_sessions to NULL so it is initialized when
+	 * lttng_list_sessions returns 0, thus allowing *out_sessions to
+	 * be subsequently freed.
+	 */
+	*out_sessions = NULL;
 	ret = lttng_ctl_ask_sessiond(&lsm, (void**) &sessions);
 	if (ret <= 0) {
 		goto end;
@@ -2114,7 +2120,6 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 	if (ret % session_size) {
 		ret = -LTTNG_ERR_UNK;
 		free(sessions);
-		*out_sessions = NULL;
 		goto end;
 	}
 	session_count = (size_t) ret / session_size;
