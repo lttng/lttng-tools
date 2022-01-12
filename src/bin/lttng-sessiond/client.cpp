@@ -606,103 +606,6 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 	return i;
 }
 
-static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
-		int *sock_error, struct lttng_event *event)
-{
-	int fd = -1, ret;
-	struct lttng_userspace_probe_location *probe_location;
-	struct lttng_payload probe_location_payload;
-	struct fd_handle *handle = NULL;
-
-	/*
-	 * Create a payload to store the serialized version of the probe
-	 * location.
-	 */
-	lttng_payload_init(&probe_location_payload);
-
-	ret = lttng_dynamic_buffer_set_size(&probe_location_payload.buffer,
-			cmd_ctx->lsm.u.enable.userspace_probe_location_len);
-	if (ret) {
-		ret = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	/*
-	 * Receive the probe location.
-	 */
-	ret = lttcomm_recv_unix_sock(sock, probe_location_payload.buffer.data,
-			probe_location_payload.buffer.size);
-	if (ret <= 0) {
-		DBG("Nothing recv() from client var len data... continuing");
-		*sock_error = 1;
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-	/*
-	 * Receive the file descriptor to the target binary from the client.
-	 */
-	DBG("Receiving userspace probe target FD from client ...");
-	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
-	if (ret <= 0) {
-		DBG("Nothing recv() from client userspace probe fd... continuing");
-		*sock_error = 1;
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-	handle = fd_handle_create(fd);
-	if (!handle) {
-		ret = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	/* Transferred to the handle. */
-	fd = -1;
-
-	ret = lttng_payload_push_fd_handle(&probe_location_payload, handle);
-	if (ret) {
-		ERR("Failed to add userspace probe file descriptor to payload");
-		ret = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	fd_handle_put(handle);
-	handle = NULL;
-
-	{
-		struct lttng_payload_view view = lttng_payload_view_from_payload(
-			&probe_location_payload, 0, -1);
-
-		/* Extract the probe location from the serialized version. */
-		ret = lttng_userspace_probe_location_create_from_payload(
-				&view, &probe_location);
-	}
-	if (ret < 0) {
-		WARN("Failed to create a userspace probe location from the received buffer");
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-	/* Attach the probe location to the event. */
-	ret = lttng_event_set_userspace_probe_location(event, probe_location);
-	if (ret) {
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-error:
-	if (fd >= 0) {
-		if (close(fd)) {
-			PERROR("Failed to close userspace probe location binary fd");
-		}
-	}
-
-	fd_handle_put(handle);
-	lttng_payload_reset(&probe_location_payload);
-	return ret;
-}
-
 static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 		int sock,
 		int *sock_error,
@@ -844,6 +747,86 @@ static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_c
 
 end:
 	lttng_payload_reset(&query_payload);
+	return ret_code;
+}
+
+static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
+		int sock,
+		int *sock_error,
+		struct lttng_event **out_event,
+		char **out_filter_expression,
+		struct lttng_bytecode **out_bytecode,
+		struct lttng_event_exclusion **out_exclusion)
+{
+	int ret;
+	size_t event_len;
+	ssize_t sock_recv_len;
+	enum lttng_error_code ret_code;
+	struct lttng_payload event_payload;
+
+	lttng_payload_init(&event_payload);
+	if (cmd_ctx->lsm.cmd_type == LTTNG_ENABLE_EVENT) {
+		event_len = (size_t) cmd_ctx->lsm.u.enable.length;
+	} else if (cmd_ctx->lsm.cmd_type == LTTNG_DISABLE_EVENT) {
+		event_len = (size_t) cmd_ctx->lsm.u.disable.length;
+	} else {
+		abort();
+	}
+
+	ret = lttng_dynamic_buffer_set_size(&event_payload.buffer, event_len);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, event_payload.buffer.data, event_len);
+	if (sock_recv_len < 0 || sock_recv_len != event_len) {
+		ERR("Failed to receive event in command payload");
+		*sock_error = 1;
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto end;
+	}
+
+	/* Receive fds, if any. */
+	if (cmd_ctx->lsm.fd_count > 0) {
+		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
+				sock, cmd_ctx->lsm.fd_count, &event_payload);
+		if (sock_recv_len > 0 &&
+				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			ERR("Failed to receive all file descriptors for event in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			*sock_error = 1;
+			goto end;
+		} else if (sock_recv_len <= 0) {
+			ERR("Failed to receive file descriptors for event in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_FATAL;
+			*sock_error = 1;
+			goto end;
+		}
+	}
+
+	/* Deserialize event. */
+	{
+		struct lttng_payload_view event_view =
+				lttng_payload_view_from_payload(
+						&event_payload, 0, -1);
+
+		if (lttng_event_create_from_payload(&event_view, out_event,
+				    out_exclusion, out_filter_expression,
+				    out_bytecode) != event_len) {
+			ERR("Invalid event received as part of command payload");
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+	}
+
+	ret_code = LTTNG_OK;
+
+end:
+	lttng_payload_reset(&event_payload);
 	return ret_code;
 }
 
@@ -1395,42 +1378,6 @@ error_add_context:
 				cmd_ctx->lsm.u.disable.channel_name);
 		break;
 	}
-	case LTTNG_DISABLE_EVENT:
-	{
-		lttng_event event;
-
-		/*
-		 * FIXME: handle filter; for now we just receive the filter's
-		 * bytecode along with the filter expression which are sent by
-		 * liblttng-ctl and discard them.
-		 *
-		 * This fixes an issue where the client may block while sending
-		 * the filter payload and encounter an error because the session
-		 * daemon closes the socket without ever handling this data.
-		 */
-		size_t count = cmd_ctx->lsm.u.disable.expression_len +
-			cmd_ctx->lsm.u.disable.bytecode_len;
-
-		if (count) {
-			char data[LTTNG_FILTER_MAX_LEN];
-
-			DBG("Discarding disable event command payload of size %zu", count);
-			while (count) {
-				ret = lttcomm_recv_unix_sock(*sock, data,
-				        count > sizeof(data) ? sizeof(data) : count);
-				if (ret < 0) {
-					goto error;
-				}
-
-				count -= (size_t) ret;
-			}
-		}
-		event = cmd_ctx->lsm.u.disable.event;
-		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm.domain.type,
-				cmd_ctx->lsm.u.disable.channel_name,
-				&event);
-		break;
-	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
 		ret = cmd_enable_channel(
@@ -1637,171 +1584,63 @@ error_add_context:
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
+	case LTTNG_DISABLE_EVENT:
 	{
-		struct lttng_event *ev = NULL;
-		struct lttng_event_exclusion *exclusion = NULL;
-		struct lttng_bytecode *bytecode = NULL;
-		char *filter_expression = NULL;
-		lttng_event event;
-		lttng_domain domain;
+		struct lttng_event *event;
+		char *filter_expression;
+		struct lttng_event_exclusion *exclusions;
+		struct lttng_bytecode *bytecode;
+		const enum lttng_error_code ret_code = receive_lttng_event(
+				cmd_ctx, *sock, sock_error, &event,
+				&filter_expression, &bytecode, &exclusions);
 
-		/* Handle exclusion events and receive it from the client. */
-		if (cmd_ctx->lsm.u.enable.exclusion_count > 0) {
-			size_t count = cmd_ctx->lsm.u.enable.exclusion_count;
-
-			exclusion = (lttng_event_exclusion *) zmalloc(sizeof(struct lttng_event_exclusion) +
-					(count * LTTNG_SYMBOL_NAME_LEN));
-			if (!exclusion) {
-				ret = LTTNG_ERR_EXCLUSION_NOMEM;
-				goto error;
-			}
-
-			DBG("Receiving var len exclusion event list from client ...");
-			exclusion->count = count;
-			ret = lttcomm_recv_unix_sock(*sock, exclusion->names,
-					count * LTTNG_SYMBOL_NAME_LEN);
-			if (ret <= 0) {
-				DBG("Nothing recv() from client var len data... continuing");
-				*sock_error = 1;
-				free(exclusion);
-				ret = LTTNG_ERR_EXCLUSION_INVAL;
-				goto error;
-			}
-		}
-
-		/* Get filter expression from client. */
-		if (cmd_ctx->lsm.u.enable.expression_len > 0) {
-			size_t expression_len =
-				cmd_ctx->lsm.u.enable.expression_len;
-
-			if (expression_len > LTTNG_FILTER_MAX_LEN) {
-				ret = LTTNG_ERR_FILTER_INVAL;
-				free(exclusion);
-				goto error;
-			}
-
-			filter_expression = (char *) zmalloc(expression_len);
-			if (!filter_expression) {
-				free(exclusion);
-				ret = LTTNG_ERR_FILTER_NOMEM;
-				goto error;
-			}
-
-			/* Receive var. len. data */
-			DBG("Receiving var len filter's expression from client ...");
-			ret = lttcomm_recv_unix_sock(*sock, filter_expression,
-				expression_len);
-			if (ret <= 0) {
-				DBG("Nothing recv() from client var len data... continuing");
-				*sock_error = 1;
-				free(filter_expression);
-				free(exclusion);
-				ret = LTTNG_ERR_FILTER_INVAL;
-				goto error;
-			}
-		}
-
-		/* Handle filter and get bytecode from client. */
-		if (cmd_ctx->lsm.u.enable.bytecode_len > 0) {
-			size_t bytecode_len = cmd_ctx->lsm.u.enable.bytecode_len;
-
-			if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
-				ret = LTTNG_ERR_FILTER_INVAL;
-				free(filter_expression);
-				free(exclusion);
-				goto error;
-			}
-
-			bytecode = (lttng_bytecode *) zmalloc(bytecode_len);
-			if (!bytecode) {
-				free(filter_expression);
-				free(exclusion);
-				ret = LTTNG_ERR_FILTER_NOMEM;
-				goto error;
-			}
-
-			/* Receive var. len. data */
-			DBG("Receiving var len filter's bytecode from client ...");
-			ret = lttcomm_recv_unix_sock(*sock, bytecode, bytecode_len);
-			if (ret <= 0) {
-				DBG("Nothing recv() from client var len data... continuing");
-				*sock_error = 1;
-				free(filter_expression);
-				free(bytecode);
-				free(exclusion);
-				ret = LTTNG_ERR_FILTER_INVAL;
-				goto error;
-			}
-
-			if ((bytecode->len + sizeof(*bytecode)) != bytecode_len) {
-				free(filter_expression);
-				free(bytecode);
-				free(exclusion);
-				ret = LTTNG_ERR_FILTER_INVAL;
-				goto error;
-			}
-		}
-
-		event = cmd_ctx->lsm.u.enable.event;
-		ev = lttng_event_copy(&event);
-		if (!ev) {
-			DBG("Failed to copy event: %s",
-					cmd_ctx->lsm.u.enable.event.name);
-			free(filter_expression);
-			free(bytecode);
-			free(exclusion);
-			ret = LTTNG_ERR_NOMEM;
-			goto error;
-		}
-
-
-		if (cmd_ctx->lsm.u.enable.userspace_probe_location_len > 0) {
-			/* Expect a userspace probe description. */
-			ret = receive_userspace_probe(cmd_ctx, *sock, sock_error, ev);
-			if (ret) {
-				free(filter_expression);
-				free(bytecode);
-				free(exclusion);
-				lttng_event_destroy(ev);
-				goto error;
-			}
-		}
-
-		domain = cmd_ctx->lsm.domain;
-		ret = cmd_enable_event(cmd_ctx->session,
-				&domain,
-				cmd_ctx->lsm.u.enable.channel_name,
-				ev,
-				filter_expression, bytecode, exclusion,
-				the_kernel_poll_pipe[1]);
-		lttng_event_destroy(ev);
-		break;
-	}
-	case LTTNG_LIST_TRACEPOINTS:
-	{
-		struct lttng_event *events;
-		ssize_t nb_events;
-
-		session_lock_list();
-		nb_events = cmd_list_tracepoints(cmd_ctx->lsm.domain.type, &events);
-		session_unlock_list();
-		if (nb_events < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -nb_events;
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
 		/*
-		 * Setup lttng message with payload size set to the event list size in
-		 * bytes and then copy list into the llm payload.
+		 * Ownership of filter_expression, exclusions, and bytecode is
+		 * always transferred.
 		 */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, events,
-			sizeof(struct lttng_event) * nb_events);
-		free(events);
+		ret = cmd_ctx->lsm.cmd_type == LTTNG_ENABLE_EVENT ?
+				cmd_enable_event(cmd_ctx, event,
+						filter_expression, exclusions,
+						bytecode,
+						the_kernel_poll_pipe[1]) :
+				cmd_disable_event(cmd_ctx, event,
+						filter_expression, bytecode,
+						exclusions);
+		lttng_event_destroy(event);
+		break;
+	}
+	case LTTNG_LIST_TRACEPOINTS:
+	{
+		enum lttng_error_code ret_code;
+		size_t original_payload_size;
+		size_t payload_size;
+		const size_t command_header_size = sizeof(struct lttcomm_list_command_header);
 
-		if (ret < 0) {
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
 			goto setup_error;
 		}
+
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		session_lock_list();
+		ret_code = cmd_list_tracepoints(cmd_ctx->lsm.domain.type,
+				&cmd_ctx->reply_payload);
+		session_unlock_list();
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
+			goto error;
+		}
+
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+				command_header_size - original_payload_size;
+		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
 		break;
@@ -1838,27 +1677,28 @@ error_add_context:
 	}
 	case LTTNG_LIST_SYSCALLS:
 	{
-		struct lttng_event *events;
-		ssize_t nb_events;
+		enum lttng_error_code ret_code;
+		size_t original_payload_size;
+		size_t payload_size;
+		const size_t command_header_size = sizeof(struct lttcomm_list_command_header);
 
-		nb_events = cmd_list_syscalls(&events);
-		if (nb_events < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -nb_events;
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
+			goto setup_error;
+		}
+
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		ret_code = cmd_list_syscalls(&cmd_ctx->reply_payload);
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
-		/*
-		 * Setup lttng message with payload size set to the event list size in
-		 * bytes and then copy list into the llm payload.
-		 */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, events,
-			sizeof(struct lttng_event) * nb_events);
-		free(events);
-
-		if (ret < 0) {
-			goto setup_error;
-		}
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+				command_header_size - original_payload_size;
+		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
 		break;
@@ -1986,10 +1826,10 @@ error_add_context:
 	}
 	case LTTNG_LIST_EVENTS:
 	{
-		ssize_t list_ret;
-		struct lttcomm_event_command_header cmd_header = {};
+		enum lttng_error_code ret_code;
 		size_t original_payload_size;
 		size_t payload_size;
+		const size_t command_header_size = sizeof(struct lttcomm_list_command_header);
 
 		ret = setup_empty_lttng_msg(cmd_ctx);
 		if (ret) {
@@ -1999,20 +1839,17 @@ error_add_context:
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		/* Extended infos are included at the end of the payload. */
-		list_ret = cmd_list_events(cmd_ctx->lsm.domain.type,
+		ret_code = cmd_list_events(cmd_ctx->lsm.domain.type,
 				cmd_ctx->session,
-				cmd_ctx->lsm.u.list.channel_name,
-				&cmd_ctx->reply_payload);
-		if (list_ret < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -list_ret;
+				cmd_ctx->lsm.u.list.channel_name, &cmd_ctx->reply_payload);
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
 		payload_size = cmd_ctx->reply_payload.buffer.size -
-				sizeof(cmd_header) - original_payload_size;
-		update_lttng_msg(cmd_ctx, sizeof(cmd_header), payload_size);
+				command_header_size - original_payload_size;
+		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
 		break;
