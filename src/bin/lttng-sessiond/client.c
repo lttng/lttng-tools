@@ -1649,30 +1649,33 @@ skip_domain:
 	}
 	case LTTNG_LIST_TRACEPOINT_FIELDS:
 	{
-		struct lttng_event_field *fields;
-		ssize_t nb_fields;
+		enum lttng_error_code ret_code;
+		size_t original_payload_size;
+		size_t payload_size;
+		const size_t command_header_size = sizeof(struct lttcomm_list_command_header);
+
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
+			goto setup_error;
+		}
+
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+		ERR("original payload size = %i", (int) original_payload_size);
 
 		session_lock_list();
-		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm.domain.type,
-				&fields);
+		ret_code = cmd_list_tracepoint_fields(
+				cmd_ctx->lsm.domain.type, &cmd_ctx->reply_payload);
 		session_unlock_list();
-		if (nb_fields < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -nb_fields;
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
-		/*
-		 * Setup lttng message with payload size set to the event list size in
-		 * bytes and then copy list into the llm payload.
-		 */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, fields,
-				sizeof(struct lttng_event_field) * nb_fields);
-		free(fields);
-
-		if (ret < 0) {
-			goto setup_error;
-		}
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+				command_header_size - original_payload_size;
+		ERR("payload size = %i", (int) payload_size);
+		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
 		break;

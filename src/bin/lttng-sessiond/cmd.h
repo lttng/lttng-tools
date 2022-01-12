@@ -121,8 +121,8 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
 void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		size_t session_count, uid_t uid, gid_t gid);
-ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
-		struct lttng_event_field **fields);
+enum lttng_error_code cmd_list_tracepoint_fields(enum lttng_domain_type domain,
+		struct lttng_payload *reply);
 enum lttng_error_code cmd_list_tracepoints(enum lttng_domain_type domain,
 		struct lttng_payload *reply_payload);
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
