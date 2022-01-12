@@ -2000,7 +2000,20 @@ LTTNG_HIDDEN
 struct lttng_trace_chunk *
 lttng_trace_chunk_registry_publish_chunk(
 		struct lttng_trace_chunk_registry *registry,
-		uint64_t session_id, struct lttng_trace_chunk *chunk)
+		uint64_t session_id,
+		struct lttng_trace_chunk *chunk)
+{
+	bool unused;
+
+	return lttng_trace_chunk_registry_publish_chunk_published(
+			registry, session_id, chunk, &unused);
+}
+
+struct lttng_trace_chunk *
+lttng_trace_chunk_registry_publish_chunk_published(
+		struct lttng_trace_chunk_registry *registry,
+		uint64_t session_id, struct lttng_trace_chunk *chunk,
+		bool *previously_published)
 {
 	struct lttng_trace_chunk_registry_element *element;
 	unsigned long element_hash;
@@ -2035,6 +2048,7 @@ lttng_trace_chunk_registry_publish_chunk(
 			element->registry = registry;
 			/* Acquire a reference for the caller. */
 			if (lttng_trace_chunk_get(&element->chunk)) {
+				*previously_published = false;
 				break;
 			} else {
 				/*
@@ -2061,6 +2075,7 @@ lttng_trace_chunk_registry_publish_chunk(
 		if (lttng_trace_chunk_get(published_chunk)) {
 			lttng_trace_chunk_put(&element->chunk);
 			element = published_element;
+			*previously_published = true;
 			break;
 		}
 		/*
