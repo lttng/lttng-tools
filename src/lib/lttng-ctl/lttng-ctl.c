@@ -919,9 +919,10 @@ int lttng_add_context(struct lttng_handle *handle,
 		const char *channel_name)
 {
 	int ret;
-	size_t len = 0;
-	char *buf = NULL;
-	struct lttcomm_session_msg lsm;
+	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_ADD_CONTEXT };
+	struct lttng_payload payload;
+
+	lttng_payload_init(&payload);
 
 	/* Safety check. Both are mandatory. */
 	if (handle == NULL || ctx == NULL) {
@@ -929,8 +930,11 @@ int lttng_add_context(struct lttng_handle *handle,
 		goto end;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ADD_CONTEXT;
+	ret = lttng_dynamic_buffer_set_size(&payload.buffer, sizeof(lsm));
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
 	/* If no channel name, send empty string. */
 	ret = lttng_strncpy(lsm.u.context.channel_name, channel_name ?: "",
@@ -948,55 +952,33 @@ int lttng_add_context(struct lttng_handle *handle,
 		goto end;
 	}
 
-	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
-		size_t provider_len, ctx_len;
-		const char *provider_name = ctx->u.app_ctx.provider_name;
-		const char *ctx_name = ctx->u.app_ctx.ctx_name;
-
-		if (!provider_name || !ctx_name) {
-			ret = -LTTNG_ERR_INVALID;
-			goto end;
-		}
-
-		provider_len = strlen(provider_name);
-		if (provider_len == 0) {
-			ret = -LTTNG_ERR_INVALID;
-			goto end;
-		}
-		lsm.u.context.provider_name_len = provider_len;
-
-		ctx_len = strlen(ctx_name);
-		if (ctx_len == 0) {
-			ret = -LTTNG_ERR_INVALID;
-			goto end;
-		}
-		lsm.u.context.context_name_len = ctx_len;
-
-		len = provider_len + ctx_len;
-		buf = zmalloc(len);
-		if (!buf) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
-		}
-
-		memcpy(buf, provider_name, provider_len);
-		memcpy(buf + provider_len, ctx_name, ctx_len);
-	}
-	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
-
-	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
-		/*
-		 * Don't leak application addresses to the sessiond.
-		 * This is only necessary when ctx is for an app ctx otherwise
-		 * the values inside the union (type & config) are overwritten.
-		 */
-		lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
-		lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
+	ret = lttng_event_context_serialize(ctx, &payload);
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buf, len, NULL);
+	lsm.u.context.length = payload.buffer.size - sizeof(lsm);
+
+	/* Update message header. */
+	memcpy(payload.buffer.data, &lsm, sizeof(lsm));
+
+	{
+		struct lttng_payload reply;
+		struct lttng_payload_view payload_view =
+				lttng_payload_view_from_payload(&payload, 0,
+				-1);
+
+		lttng_payload_init(&reply);
+		ret = lttng_ctl_ask_sessiond_payload(&payload_view, &reply);
+		lttng_payload_reset(&reply);
+		if (ret) {
+			goto end;
+		}
+	}
+
 end:
-	free(buf);
+	lttng_payload_reset(&payload);
 	return ret;
 }
 
