@@ -1278,6 +1278,192 @@ void lttng_event_context_destroy(struct lttng_event_context *context)
 	free(context);
 }
 
+/*
+ * This is a specialized populate for lttng_event_field since it ignores
+ * the extension field of the lttng_event struct and simply copies what it can
+ * to the internal struct lttng_event of a lttng_event_field.
+ */
+static void lttng_event_field_populate_lttng_event_from_event(
+		const struct lttng_event *src, struct lttng_event *destination)
+{
+	memcpy(destination, src, sizeof(*destination));
+
+	/* Remove all possible dynamic data from the destination event rule. */
+	destination->extended.ptr = NULL;
+}
+
+ssize_t lttng_event_field_create_from_payload(
+		struct lttng_payload_view *view,
+		struct lttng_event_field **field)
+{
+	ssize_t ret, offset = 0;
+	struct lttng_event_field *local_event_field = NULL;
+	struct lttng_event *event = NULL;
+	const struct lttng_event_field_comm *comm;
+	const char* name = NULL;
+
+	assert(field);
+	assert(view);
+
+	{
+		const struct lttng_buffer_view comm_view =
+				lttng_buffer_view_from_view(
+						&view->buffer, offset,
+						sizeof(*comm));
+
+		if (!lttng_buffer_view_is_valid(&comm_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		/* lttng_event_field_comm header */
+		comm = (const lttng_event_field_comm *) comm_view.data;
+		offset += sizeof(*comm);
+	}
+
+	local_event_field = (struct lttng_event_field *)
+			zmalloc(sizeof(*local_event_field));
+	if (!local_event_field) {
+		ret = -1;
+		goto end;
+	}
+
+	local_event_field->type = (lttng_event_field_type) comm->type;
+	local_event_field->nowrite = comm->nowrite;
+
+	/* Field name */
+	{
+		const struct lttng_buffer_view name_view =
+				lttng_buffer_view_from_view(
+						&view->buffer, offset,
+						comm->name_len);
+
+		if (!lttng_buffer_view_is_valid(&name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = name_view.data;
+
+		if (!lttng_buffer_view_contains_string(&name_view,
+				name_view.data, comm->name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		if (comm->name_len > LTTNG_SYMBOL_NAME_LEN - 1) {
+			/* Name is too long.*/
+			ret = -1;
+			goto end;
+		}
+
+		offset += comm->name_len;
+	}
+
+	/* Event */
+	{
+		struct lttng_payload_view event_view =
+				lttng_payload_view_from_view(
+						view, offset,
+						comm->event_len);
+
+		if (!lttng_payload_view_is_valid(&event_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_event_create_from_payload(&event_view, &event, NULL,
+				NULL, NULL);
+		if (ret != comm->event_len) {
+			ret = -1;
+			goto end;
+		}
+
+		offset += ret;
+	}
+
+	assert(name);
+	assert(event);
+
+	if (lttng_strncpy(local_event_field->field_name, name , LTTNG_SYMBOL_NAME_LEN)) {
+		ret = -1;
+		goto end;
+	}
+
+	lttng_event_field_populate_lttng_event_from_event(
+			event, &local_event_field->event);
+
+	*field = local_event_field;
+	local_event_field = NULL;
+	ret = offset;
+end:
+	lttng_event_destroy(event);
+	free(local_event_field);
+	return ret;
+}
+
+int lttng_event_field_serialize(const struct lttng_event_field *field,
+		struct lttng_payload *payload)
+{
+	int ret;
+	size_t header_offset, size_before_event;
+	size_t name_len;
+	struct lttng_event_field_comm event_field_comm = { 0 };
+	struct lttng_event_field_comm *header;
+
+	assert(field);
+	assert(payload);
+
+	/* Save the header location for later in-place header update. */
+	header_offset = payload->buffer.size;
+
+	name_len = strnlen(field->field_name, LTTNG_SYMBOL_NAME_LEN);
+	if (name_len == LTTNG_SYMBOL_NAME_LEN) {
+		/* Event name is not NULL-terminated. */
+		ret = -1;
+		goto end;
+	}
+
+	/* Add null termination. */
+	name_len += 1;
+
+	event_field_comm.type = field->type;
+	event_field_comm.nowrite = (uint8_t)field->nowrite;
+	event_field_comm.name_len = name_len;
+
+	/* Header */
+	ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &event_field_comm,
+			sizeof(event_field_comm));
+	if (ret) {
+		goto end;
+	}
+
+	/* Field name */
+	ret = lttng_dynamic_buffer_append(&payload->buffer, field->field_name,
+			name_len);
+	if (ret) {
+		goto end;
+	}
+
+	size_before_event = payload->buffer.size;
+	ret = lttng_event_serialize(
+			&field->event, 0, NULL, NULL, 0, 0, payload);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Update the event len. */
+	header = (struct lttng_event_field_comm *)
+			((char *) payload->buffer.data +
+				header_offset);
+	header->event_len = payload->buffer.size - size_before_event;
+
+end:
+	return ret;
+}
+
 static enum lttng_error_code compute_flattened_size(
 		struct lttng_dynamic_pointer_array *events, size_t *size)
 {
@@ -1594,4 +1780,159 @@ enum lttng_error_code lttng_events_create_and_flatten_from_payload(
 end:
 	lttng_dynamic_pointer_array_reset(&local_events);
 	return ret;
+}
+
+static enum lttng_error_code flatten_lttng_event_fields(
+		struct lttng_dynamic_pointer_array *event_fields,
+		struct lttng_event_field **flattened_event_fields)
+{
+	int ret, i;
+	enum lttng_error_code ret_code;
+	size_t storage_req = 0;
+	struct lttng_dynamic_buffer local_flattened_event_fields;
+	int nb_event_field;
+
+	assert(event_fields);
+	assert(flattened_event_fields);
+
+	lttng_dynamic_buffer_init(&local_flattened_event_fields);
+	nb_event_field = lttng_dynamic_pointer_array_get_count(event_fields);
+
+	/*
+	 * Here even if the event field contains a `struct lttng_event` that
+	 * could contain dynamic data, in reality it is not the case.
+	 * Dynamic data is not present. Here the flattening is mostly a direct
+	 * memcpy. This is less than ideal but this code is still better than
+	 * direct usage of an unpacked lttng_event_field array.
+	 */
+	storage_req += sizeof(struct lttng_event_field) * nb_event_field;
+
+	lttng_dynamic_buffer_init(&local_flattened_event_fields);
+
+	/*
+	 * We must ensure that "local_flattened_event_fields" is never resized
+	 * so as to preserve the validity of the flattened objects.
+	 */
+	ret = lttng_dynamic_buffer_set_capacity(
+			&local_flattened_event_fields, storage_req);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	for (i = 0; i < nb_event_field; i++) {
+		const struct lttng_event_field *element =
+				(const struct lttng_event_field *)
+					lttng_dynamic_pointer_array_get_pointer(
+						event_fields, i);
+
+		if (!element) {
+			ret_code = LTTNG_ERR_FATAL;
+			goto end;
+		}
+		ret = lttng_dynamic_buffer_append(&local_flattened_event_fields,
+				element, sizeof(struct lttng_event_field));
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	/* Don't reset local_flattened_channels buffer as we return its content. */
+	*flattened_event_fields = (struct lttng_event_field *) local_flattened_event_fields.data;
+	lttng_dynamic_buffer_init(&local_flattened_event_fields);
+	ret_code = LTTNG_OK;
+end:
+	lttng_dynamic_buffer_reset(&local_flattened_event_fields);
+	return ret_code;
+}
+
+static enum lttng_error_code event_field_list_create_from_payload(
+		struct lttng_payload_view *view,
+		unsigned int count,
+		struct lttng_dynamic_pointer_array **event_field_list)
+{
+	enum lttng_error_code ret_code;
+	int ret, offset = 0;
+	unsigned int i;
+	struct lttng_dynamic_pointer_array *list = NULL;
+
+	assert(view);
+	assert(event_field_list);
+
+	list = (struct lttng_dynamic_pointer_array *) zmalloc(sizeof(*list));
+	if (!list) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	lttng_dynamic_pointer_array_init(list, free);
+
+	for (i = 0; i < count; i++) {
+		ssize_t event_field_size;
+		struct lttng_event_field *field = NULL;
+		struct lttng_payload_view event_field_view =
+				lttng_payload_view_from_view(view, offset, -1);
+
+		event_field_size = lttng_event_field_create_from_payload(
+				&event_field_view, &field);
+		if (event_field_size < 0) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		/* Lifetime and management of the object is now bound to the array. */
+		ret = lttng_dynamic_pointer_array_add_pointer(list, field);
+		if (ret) {
+			free(field);
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		offset += event_field_size;
+	}
+
+	if (view->buffer.size != offset) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	*event_field_list = list;
+	list = NULL;
+	ret_code = LTTNG_OK;
+
+end:
+	if (list) {
+		lttng_dynamic_pointer_array_reset(list);
+		free(list);
+	}
+
+	return ret_code;
+}
+
+enum lttng_error_code lttng_event_fields_create_and_flatten_from_payload(
+		struct lttng_payload_view *view,
+		unsigned int count,
+		struct lttng_event_field **fields)
+{
+	enum lttng_error_code ret_code;
+	struct lttng_dynamic_pointer_array *local_event_fields = NULL;
+
+	ret_code = event_field_list_create_from_payload(
+			view, count, &local_event_fields);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	ret_code = flatten_lttng_event_fields(local_event_fields, fields);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+end:
+	if (local_event_fields) {
+		lttng_dynamic_pointer_array_reset(local_event_fields);
+		free(local_event_fields);
+	}
+
+	return ret_code;
 }

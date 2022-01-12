@@ -1715,23 +1715,74 @@ end:
 int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 		struct lttng_event_field **fields)
 {
+	enum lttng_error_code ret_code;
 	int ret;
 	struct lttcomm_session_msg lsm;
+	const struct lttcomm_list_command_header *cmd_header = NULL;
+	unsigned int nb_event_fields = 0;
+	struct lttng_payload reply;
 
 	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
+
+	lttng_payload_init(&reply);
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) fields);
-	if (ret < 0) {
-		return ret;
+	{
+		lttng_payload_view message_view =
+				lttng_payload_view_init_from_buffer(
+					(const char *) &lsm, 0,
+					sizeof(lsm));
+
+		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
+		if (ret < 0) {
+			goto end;
+		}
 	}
 
-	return ret / sizeof(struct lttng_event_field);
+	{
+		const lttng_buffer_view cmd_header_view =
+				lttng_buffer_view_from_dynamic_buffer(
+					&reply.buffer, 0, sizeof(*cmd_header));
+
+		if (!lttng_buffer_view_is_valid(&cmd_header_view)) {
+			ret = -LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+
+		cmd_header = (struct lttcomm_list_command_header *)
+				cmd_header_view.data;
+	}
+
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	nb_event_fields = cmd_header->count;
+
+	{
+		lttng_payload_view reply_view =
+				lttng_payload_view_from_payload(&reply,
+				sizeof(*cmd_header), -1);
+
+		ret_code = lttng_event_fields_create_and_flatten_from_payload(
+				&reply_view, nb_event_fields, fields);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
+
+	ret = nb_event_fields;
+
+end:
+	return ret;
 }
 
 /*
