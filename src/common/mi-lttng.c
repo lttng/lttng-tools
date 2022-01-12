@@ -2,7 +2,7 @@
  * Copyright (C) 2014 EfficiOS Inc.
  * Copyright (C) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 
