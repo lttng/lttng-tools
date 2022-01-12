@@ -1652,8 +1652,13 @@ end:
 int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 		struct lttng_event_field **fields)
 {
-	int ret;
+	enum lttng_error_code ret_code;
+	int ret, total_payload_received;
 	struct lttcomm_session_msg lsm;
+	char *reception_buffer = NULL;
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	size_t cmd_header_len;
+	unsigned int nb_event_fields = 0;
 
 	if (handle == NULL) {
 		return -LTTNG_ERR_INVALID;
@@ -1663,12 +1668,45 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) fields);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+			(void **) &reception_buffer, (void **) &cmd_header,
+			&cmd_header_len);
 	if (ret < 0) {
-		return ret;
+		goto end;
 	}
 
-	return ret / sizeof(struct lttng_event_field);
+	total_payload_received = ret;
+
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	nb_event_fields = cmd_header->count;
+
+	{
+		const struct lttng_buffer_view view =
+			lttng_buffer_view_init(reception_buffer, 0, total_payload_received);
+
+		ret_code = lttng_event_fields_create_and_flatten_from_buffer(
+				&view, nb_event_fields, fields);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
+
+	ret = nb_event_fields;
+
+end:
+	free(cmd_header);
+	free(reception_buffer);
+	return ret;
 }
 
 /*

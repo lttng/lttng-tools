@@ -2650,31 +2650,43 @@ error:
 /*
  * Command LTTNG_LIST_TRACEPOINT_FIELDS processed by the client thread.
  */
-ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
-		struct lttng_event_field **fields)
+enum lttng_error_code cmd_list_tracepoint_fields(enum lttng_domain_type domain,
+		struct lttng_dynamic_buffer *buffer, unsigned int *nb_fields)
 {
+	enum lttng_error_code ret_code;
 	int ret;
-	ssize_t nb_fields = 0;
+	unsigned int i;
+	struct lttng_event_field *fields = NULL;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
-		nb_fields = ust_app_list_event_fields(fields);
-		if (nb_fields < 0) {
-			ret = LTTNG_ERR_UST_LIST_FAIL;
+		ret = ust_app_list_event_fields(&fields);
+		if (ret < 0) {
+			ret_code = LTTNG_ERR_UST_LIST_FAIL;
 			goto error;
 		}
 		break;
 	case LTTNG_DOMAIN_KERNEL:
 	default:	/* fall-through */
-		ret = LTTNG_ERR_UND;
+		ret_code = LTTNG_ERR_UND;
 		goto error;
 	}
 
-	return nb_fields;
+	*nb_fields = ret;
+
+	for (i = 0; i < *nb_fields; i++) {
+		ret = lttng_event_field_serialize(&fields[i], buffer);
+		if (ret) {
+			ret_code = -LTTNG_ERR_NOMEM;
+			goto error;
+		}
+	}
+
+	ret_code = LTTNG_OK;
 
 error:
-	/* Return negative value to differentiate return code */
-	return -ret;
+	free(fields);
+	return ret_code;
 }
 
 enum lttng_error_code cmd_list_syscalls(

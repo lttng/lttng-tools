@@ -121,6 +121,20 @@ struct lttng_event_context_app_comm {
 	char payload[];
 } LTTNG_PACKED;
 
+struct lttng_event_field_comm {
+	uint8_t type;
+	uint8_t nowrite;
+	/* Includes terminator `\0`. */
+	uint32_t name_len;
+	uint32_t event_len;
+
+	/*
+	 * - name [name_len]
+	 * - lttng_event object
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
 struct lttng_event_extended {
 	/*
 	 * exclusions and filter_expression are only set when the lttng_event
@@ -171,9 +185,24 @@ LTTNG_HIDDEN
 void lttng_event_context_destroy(struct lttng_event_context *context);
 
 LTTNG_HIDDEN
+ssize_t lttng_event_field_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_field **field);
+
+LTTNG_HIDDEN
+int lttng_event_field_serialize(const struct lttng_event_field *field,
+		struct lttng_dynamic_buffer *buffer);
+
+LTTNG_HIDDEN
 enum lttng_error_code lttng_events_create_and_flatten_from_buffer(
 		const struct lttng_buffer_view *view,
 		unsigned int count,
 		struct lttng_event **events);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_event_fields_create_and_flatten_from_buffer(
+		const struct lttng_buffer_view *view,
+		unsigned int count,
+		struct lttng_event_field **fields);
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

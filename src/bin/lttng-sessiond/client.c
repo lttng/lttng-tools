@@ -1223,26 +1223,28 @@ skip_domain:
 	}
 	case LTTNG_LIST_TRACEPOINT_FIELDS:
 	{
-		struct lttng_event_field *fields;
-		ssize_t nb_fields;
+		enum lttng_error_code ret_code;
+		unsigned int nb_fields;
+		struct lttcomm_list_command_header cmd_header;
 
 		session_lock_list();
-		nb_fields = cmd_list_tracepoint_fields(cmd_ctx->lsm->domain.type,
-				&fields);
+		ret_code = cmd_list_tracepoint_fields(
+				cmd_ctx->lsm->domain.type, &payload, &nb_fields);
 		session_unlock_list();
-		if (nb_fields < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -nb_fields;
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
-		/*
-		 * Setup lttng message with payload size set to the event list size in
-		 * bytes and then copy list into the llm payload.
-		 */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, fields,
-				sizeof(struct lttng_event_field) * nb_fields);
-		free(fields);
+		if (nb_fields > UINT32_MAX) {
+			ret = LTTNG_ERR_OVERFLOW;
+			goto error;
+		}
+
+		cmd_header.count = nb_fields;
+
+		ret = setup_lttng_msg(cmd_ctx, payload.data, payload.size,
+				&cmd_header, sizeof(cmd_header));
 
 		if (ret < 0) {
 			goto setup_error;
