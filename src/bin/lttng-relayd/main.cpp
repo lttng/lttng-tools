@@ -2663,7 +2663,10 @@ static int relay_rotate_session_streams(
 		 */
 		next_trace_chunk = sessiond_trace_chunk_registry_get_chunk(
 				sessiond_trace_chunk_registry,
-				session->sessiond_uuid, session->id,
+				session->sessiond_uuid,
+				conn->session->id_sessiond.is_set ?
+					conn->session->id_sessiond.value :
+					conn->session->id,
 				rotate_streams.new_chunk_id.value);
 		if (!next_trace_chunk) {
 			char uuid_str[LTTNG_UUID_STR_LEN];
@@ -2885,7 +2888,9 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	published_chunk = sessiond_trace_chunk_registry_publish_chunk(
 			sessiond_trace_chunk_registry,
 			conn->session->sessiond_uuid,
-			conn->session->id,
+			conn->session->id_sessiond.is_set ?
+				conn->session->id_sessiond.value :
+				conn->session->id,
 			chunk);
 	if (!published_chunk) {
 		char uuid_str[LTTNG_UUID_STR_LEN];
@@ -2991,7 +2996,9 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	chunk = sessiond_trace_chunk_registry_get_chunk(
 			sessiond_trace_chunk_registry,
 			conn->session->sessiond_uuid,
-			conn->session->id,
+			conn->session->id_sessiond.is_set ?
+				conn->session->id_sessiond.value :
+				conn->session->id,
 			chunk_id);
 	if (!chunk) {
 		char uuid_str[LTTNG_UUID_STR_LEN];

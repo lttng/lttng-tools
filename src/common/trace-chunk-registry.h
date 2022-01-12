@@ -57,6 +57,29 @@ void lttng_trace_chunk_registry_destroy(
 struct lttng_trace_chunk *lttng_trace_chunk_registry_publish_chunk(
 		struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id, struct lttng_trace_chunk *chunk);
+/*
+ * Adds the `previously_published` parameter which allows the caller
+ * to know if a trace chunk equivalent to `chunk` was previously published.
+ * 
+ * The registry holds a reference to the published trace chunks it contains.
+ * Trace chunks automatically unpublish themselves from their registry on
+ * destruction.
+ *
+ * This information is necessary to drop the reference of newly published
+ * chunks when a user doesn't wish to explicitly maintain all references
+ * to a given trace chunk.
+ * 
+ * For instance, the relay daemon doesn't need the registry to hold a
+ * reference since it controls the lifetime of its trace chunks.
+ * Conversely, the consumer daemons rely on the session daemon to inform
+ * them of the end of life of a trace chunk and the trace chunks don't
+ * belong to a specific top-level object: they are always retrieved from
+ * the registry by `id`.
+ */
+struct lttng_trace_chunk *lttng_trace_chunk_registry_publish_chunk(
+		struct lttng_trace_chunk_registry *registry,
+		uint64_t session_id, struct lttng_trace_chunk *chunk,
+		bool *previously_published);
 
 /*
  * Look-up a trace chunk by session_id and chunk_id.

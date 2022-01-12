@@ -360,6 +360,7 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 	char uuid_str[LTTNG_UUID_STR_LEN];
 	char chunk_id_str[MAX_INT_DEC_LEN(typeof(chunk_id))] = "-1";
 	struct lttng_trace_chunk *published_chunk = NULL;
+	bool trace_chunk_already_published;
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
 	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
@@ -394,20 +395,29 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 	}
 
 	published_chunk = lttng_trace_chunk_registry_publish_chunk(
-			element->trace_chunk_registry, session_id, new_chunk);
+			element->trace_chunk_registry, session_id, new_chunk,
+			&trace_chunk_already_published);
 	/*
-	 * At this point, two references to the published chunks exist. One
-	 * is taken by the registry while the other is being returned to the
-	 * caller. In the use case of the relay daemon, the reference held
-	 * by the registry itself is undesirable.
+	 * When the trace chunk is first published, two references to the
+	 * published chunks exist. One is taken by the registry while the other
+	 * is being returned to the caller. In the use case of the relay daemon,
+	 * the reference held by the registry itself is undesirable.
 	 *
 	 * We want the trace chunk to be removed from the registry as soon
 	 * as it is not being used by the relay daemon (through a session
 	 * or a stream). This differs from the behaviour of the consumer
 	 * daemon which relies on an explicit command from the session
 	 * daemon to release the registry's reference.
+	 *
+	 * In cases where the trace chunk had already been published,
+	 * the reference belonging to the sessiond trace chunk
+	 * registry instance has already been 'put'. We simply return
+	 * the published trace chunk with a reference taken on behalf of the
+	 * caller.
 	 */
-	lttng_trace_chunk_put(published_chunk);
+	if (!trace_chunk_already_published) {
+		lttng_trace_chunk_put(published_chunk);
+	}
 end:
 	trace_chunk_registry_ht_element_put(element);
 	return published_chunk;
