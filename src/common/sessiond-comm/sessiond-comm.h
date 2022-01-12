@@ -278,36 +278,11 @@ struct lttcomm_session_msg {
 		/* Event data */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event event LTTNG_PACKED;
-			/* Length of following filter expression. */
-			uint32_t expression_len;
-			/* Length of following bytecode for filter. */
-			uint32_t bytecode_len;
-			/* Exclusion count (fixed-size strings). */
-			uint32_t exclusion_count;
-			/* Userspace probe location size. */
-			uint32_t userspace_probe_location_len;
-			/*
-			 * After this structure, the following variable-length
-			 * items are transmitted:
-			 * - char exclusion_names[LTTNG_SYMBOL_NAME_LEN][exclusion_count]
-			 * - char filter_expression[expression_len]
-			 * - unsigned char filter_bytecode[bytecode_len]
-			 */
+			uint32_t length;
 		} LTTNG_PACKED enable;
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event event LTTNG_PACKED;
-			/* Length of following filter expression. */
-			uint32_t expression_len;
-			/* Length of following bytecode for filter. */
-			uint32_t bytecode_len;
-			/*
-			 * After this structure, the following variable-length
-			 * items are transmitted:
-			 * - unsigned char filter_expression[expression_len]
-			 * - unsigned char filter_bytecode[bytecode_len]
-			 */
+			uint32_t length;
 		} LTTNG_PACKED disable;
 		/* Create channel */
 		struct {
@@ -442,14 +417,6 @@ struct lttng_event_exclusion {
 
 #define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) \
 	(&(_exclusion)->names[_i][0])
-
-/*
- * Event command header.
- */
-struct lttcomm_event_command_header {
-	/* Number of events */
-	uint32_t nb_events;
-} LTTNG_PACKED;
 
 /*
  * Listing command header.

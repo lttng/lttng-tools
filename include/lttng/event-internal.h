@@ -15,7 +15,67 @@
 #include <common/macros.h>
 #include <lttng/event.h>
 
+struct lttng_event_exclusion;
+struct lttng_filter_bytecode;
 struct lttng_userspace_probe_location;
+struct lttng_dynamic_buffer;
+struct lttng_buffer_view;
+
+struct lttng_event_comm {
+	int8_t event_type;
+	int8_t loglevel_type;
+	int32_t loglevel;
+	int8_t enabled;
+	int32_t pid;
+	uint32_t flags;
+
+	/* Payload. */
+	/* Includes terminator `\0`. */
+	uint32_t name_len;
+	uint32_t exclusion_count;
+	/* Includes terminator `\0`. */
+	uint32_t filter_expression_len;
+	uint32_t bytecode_len;
+
+	/* Type specific payload. */
+	uint32_t userspace_probe_location_len;
+	uint32_t lttng_event_probe_attr_len;
+	uint32_t lttng_event_function_attr_len;
+
+	/*
+	 * Contain:
+	 * - name [name_len],
+	 * - exclusions if any
+	 * - char filter_expression[filter_expression_len],
+	 * - unsigned char filter_bytecode[bytecode_len],
+	 * - userspace probe location [userspace_probe_location_len],
+	 * - probe or ftrace based on event type.
+	 */
+
+	char payload[];
+} LTTNG_PACKED;
+
+struct lttng_event_exclusion_comm {
+	/* Includes terminator `\0`. */
+	uint32_t len;
+	char payload [];
+} LTTNG_PACKED;
+
+struct lttng_event_probe_attr_comm {
+	uint64_t addr;
+	uint64_t offset;
+	/* Includes terminator `\0`. */
+	uint32_t symbol_name_len;
+
+	char payload[];
+} LTTNG_PACKED;
+
+struct lttng_event_function_attr_comm {
+	/* Includes terminator `\0`. */
+	uint32_t symbol_name_len;
+
+	char payload[];
+} LTTNG_PACKED;
 
 struct lttng_event_extended {
 	/*
@@ -35,5 +95,29 @@ struct lttng_event_extended {
 
 LTTNG_HIDDEN
 struct lttng_event *lttng_event_copy(const struct lttng_event *event);
+
+LTTNG_HIDDEN
+ssize_t lttng_event_create_from_buffer(const struct lttng_buffer_view *view,
+		struct lttng_event **event,
+		struct lttng_event_exclusion **exclusion,
+		char **filter_expression,
+		struct lttng_filter_bytecode **bytecode,
+		int sock);
+
+LTTNG_HIDDEN
+int lttng_event_serialize(const struct lttng_event *event,
+		unsigned int exclusion_count,
+		char **exclusion_list,
+		char *filter_expression,
+		size_t bytecode_len,
+		void *bytecode,
+		struct lttng_dynamic_buffer *buf,
+		int *fd_to_send);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_events_create_and_flatten_from_buffer(
+		const struct lttng_buffer_view *view,
+		unsigned int count,
+		struct lttng_event **events);
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

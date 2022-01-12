@@ -5,8 +5,37 @@
  *
  */
 
-#include <lttng/event-internal.h>
+#include "common/compat/string.h"
+#include "common/macros.h"
+#include "lttng/lttng-error.h"
+#include <assert.h>
+#include <common/buffer-view.h>
+#include <common/dynamic-array.h>
+#include <common/dynamic-buffer.h>
 #include <common/error.h>
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <lttng/constant.h>
+#include <lttng/event-internal.h>
+#include <lttng/event.h>
+#include <lttng/userspace-probe-internal.h>
+#include <stdint.h>
+#include <string.h>
+
+struct event_list_element {
+	struct lttng_event *event;
+	struct lttng_event_exclusion *exclusions;
+	char *filter_expression;
+};
+
+static void event_list_destructor(void *ptr)
+{
+	struct event_list_element *element = (struct event_list_element *) ptr;
+
+	free(element->filter_expression);
+	free(element->exclusions);
+	lttng_event_destroy(element->event);
+	free(element);
+}
 
 LTTNG_HIDDEN
 struct lttng_event *lttng_event_copy(const struct lttng_event *event)
@@ -40,4 +69,1195 @@ error:
 	free(new_event);
 	new_event = NULL;
 	goto end;
+}
+
+static int lttng_event_probe_attr_serialize(
+		const struct lttng_event_probe_attr *probe,
+		struct lttng_dynamic_buffer *buf)
+{
+	int ret;
+	size_t symbol_name_len;
+	struct lttng_event_probe_attr_comm comm = { 0 };
+
+	symbol_name_len = lttng_strnlen(probe->symbol_name, LTTNG_SYMBOL_NAME_LEN);
+	if (symbol_name_len == LTTNG_SYMBOL_NAME_LEN) {
+		/* Not null-termintated. */
+		ret = -1;
+		goto end;
+	}
+
+	/* Include the null terminator. */
+	symbol_name_len += 1;
+
+	comm.symbol_name_len = (uint32_t) symbol_name_len;
+	comm.addr = probe->addr;
+	comm.offset = probe->addr;
+
+	ret = lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	if (ret < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(buf, probe->symbol_name, symbol_name_len);
+
+end:
+	return ret;
+}
+
+static int lttng_event_function_attr_serialize(
+		const struct lttng_event_function_attr *function,
+		struct lttng_dynamic_buffer *buf)
+{
+	int ret;
+	size_t symbol_name_len;
+	struct lttng_event_function_attr_comm comm = { 0 };
+
+	symbol_name_len = lttng_strnlen(function->symbol_name, LTTNG_SYMBOL_NAME_LEN);
+	if (symbol_name_len == LTTNG_SYMBOL_NAME_LEN) {
+		/* Not null-termintated. */
+		ret = -1;
+		goto end;
+	}
+
+	/* Include the null terminator. */
+	symbol_name_len += 1;
+
+	comm.symbol_name_len = (uint32_t) symbol_name_len;
+
+	ret = lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	if (ret < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(buf, function->symbol_name, symbol_name_len);
+end:
+	return ret;
+}
+
+static ssize_t lttng_event_probe_attr_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_probe_attr **probe_attr)
+{
+	ssize_t ret, offset = 0;
+	const struct lttng_event_probe_attr_comm *comm;
+	struct lttng_event_probe_attr *local_attr = NULL;
+	const struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
+			view, offset, sizeof(*comm));
+
+	if (!lttng_buffer_view_is_valid(&comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	comm = (typeof(comm)) view->data;
+	offset += sizeof(*comm);
+
+	local_attr = zmalloc(sizeof(*local_attr));
+	if (local_attr == NULL) {
+		ret = -1;
+		goto end;
+	}
+
+	local_attr->addr = comm->addr;
+	local_attr->offset = comm->offset;
+
+	{
+		const char *name;
+		const struct lttng_buffer_view name_view =
+				lttng_buffer_view_from_view(view, offset,
+						comm->symbol_name_len);
+		if (!lttng_buffer_view_is_valid(&name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = name_view.data;
+
+		if (!lttng_buffer_view_contains_string(
+				&name_view, name, comm->symbol_name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_strncpy(local_attr->symbol_name, name,
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+		offset += comm->symbol_name_len;
+	}
+
+	*probe_attr = local_attr;
+	local_attr = NULL;
+	ret = offset;
+end:
+	return ret;
+}
+
+static ssize_t lttng_event_function_attr_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_function_attr **function_attr)
+{
+	ssize_t ret, offset = 0;
+	const struct lttng_event_function_attr_comm *comm;
+	struct lttng_event_function_attr *local_attr = NULL;
+	const struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
+			view, offset, sizeof(*comm));
+
+	if (!lttng_buffer_view_is_valid(&comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	comm = (typeof(comm)) view->data;
+	offset += sizeof(*comm);
+
+	local_attr = zmalloc(sizeof(*local_attr));
+	if (local_attr == NULL) {
+		ret = -1;
+		goto end;
+	}
+
+	{
+		const char *name;
+		const struct lttng_buffer_view name_view =
+				lttng_buffer_view_from_view(view, offset,
+						comm->symbol_name_len);
+		if (!lttng_buffer_view_is_valid(&name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = name_view.data;
+
+		if (!lttng_buffer_view_contains_string(
+				&name_view, name, comm->symbol_name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_strncpy(local_attr->symbol_name, name,
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+		offset += comm->symbol_name_len;
+	}
+
+	*function_attr = local_attr;
+	local_attr = NULL;
+	ret = offset;
+end:
+	return ret;
+}
+
+static ssize_t lttng_event_exclusions_create_from_buffer(const struct lttng_buffer_view *view,
+		uint32_t count,  struct lttng_event_exclusion **exclusions)
+{
+	ssize_t ret, offset = 0;
+	size_t size = (count * LTTNG_SYMBOL_NAME_LEN);
+	uint32_t i;
+	const struct lttng_event_exclusion_comm *comm;
+	struct lttng_event_exclusion *local_exclusions;
+
+
+	local_exclusions = zmalloc(sizeof(struct lttng_event_exclusion) + size);
+	if (!local_exclusions) {
+		ret = -1;
+		goto end;
+	}
+	local_exclusions->count = count;
+
+	for (i = 0; i < count; i++) {
+		const char *string;
+		struct lttng_buffer_view string_view;
+		const struct lttng_buffer_view comm_view =
+				lttng_buffer_view_from_view(
+						view, offset, sizeof(*comm));
+
+		if (!lttng_buffer_view_is_valid(&comm_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		comm = (typeof(comm)) comm_view.data;
+		offset += sizeof(*comm);
+
+		string_view = lttng_buffer_view_from_view(
+				view, offset, comm->len);
+
+		if (!lttng_buffer_view_is_valid(&string_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		string = string_view.data;
+
+		if (!lttng_buffer_view_contains_string(
+				    &string_view, string, comm->len)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_strncpy(
+				local_exclusions->names[i],
+				string, comm->len);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+		offset += comm->len;
+	}
+
+	*exclusions = local_exclusions;
+	local_exclusions = NULL;
+	ret = offset;
+end:
+	free(local_exclusions);
+	return ret;
+}
+
+
+LTTNG_HIDDEN
+ssize_t lttng_event_create_from_buffer(const struct lttng_buffer_view *view,
+		struct lttng_event **event,
+		struct lttng_event_exclusion **exclusion,
+		char **filter_expression,
+		struct lttng_filter_bytecode **bytecode,
+		int sock)
+{
+	ssize_t ret, offset = 0;
+	struct lttng_event *local_event = NULL;
+	struct lttng_event_exclusion *local_exclusions = NULL;
+	struct lttng_filter_bytecode *local_bytecode = NULL;
+	char *local_filter_expression = NULL;
+	const struct lttng_event_comm *event_comm;
+	struct lttng_event_function_attr *local_function_attr = NULL;
+	struct lttng_event_probe_attr *local_probe_attr = NULL;
+	struct lttng_userspace_probe_location *local_userspace_probe_location =
+			NULL;
+	int received_fd = -1;
+
+	/*
+	 * Only event is obligatory, the other output argument are optional and
+	 * depends on what the caller is interested in.
+	 */
+	assert(event);
+	assert(view);
+
+	{
+		const struct lttng_buffer_view comm_view =
+				lttng_buffer_view_from_view(view, offset,
+						sizeof(*event_comm));
+
+		if (!lttng_buffer_view_is_valid(&comm_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		/* lttng_event_comm header */
+		event_comm = (typeof(event_comm)) comm_view.data;
+		offset += sizeof(*event_comm);
+	}
+
+	local_event = lttng_event_create();
+	if (local_event == NULL) {
+		ret = -1;
+		goto end;
+	}
+
+	local_event->type = event_comm->event_type;
+	local_event->loglevel_type = event_comm->loglevel_type;
+	local_event->loglevel = event_comm->loglevel;
+	local_event->enabled = event_comm->enabled;
+	local_event->pid = event_comm->pid;
+	local_event->flags = event_comm->flags;
+
+	{
+		const char *name;
+		const struct lttng_buffer_view name_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->name_len);
+		if (!lttng_buffer_view_is_valid(&name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = name_view.data;
+
+		if (!lttng_buffer_view_contains_string(
+				    &name_view, name, event_comm->name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_strncpy(
+				local_event->name, name, LTTNG_SYMBOL_NAME_LEN);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+		offset += event_comm->name_len;
+	}
+
+	/* Exclusions */
+	if (event_comm->exclusion_count == 0) {
+		goto deserialize_filter_expression;
+	}
+
+	{
+
+		const struct lttng_buffer_view exclusions_view =
+				lttng_buffer_view_from_view(
+						view, offset, -1);
+
+		if (!lttng_buffer_view_is_valid(&exclusions_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_event_exclusions_create_from_buffer(&exclusions_view,
+				event_comm->exclusion_count, &local_exclusions);
+		if (ret < 0) {
+			ret = -1;
+			goto end;
+		}
+		offset += ret;
+
+		local_event->exclusion = 1;
+	}
+
+deserialize_filter_expression:
+
+	if (event_comm->filter_expression_len == 0) {
+		if (event_comm->bytecode_len != 0) {
+			/*
+			 * This is an invalid event payload.
+			 *
+			 * Filter expression without bytecode is possible but
+			 * not the other way around.
+			 * */
+			ret = -1;
+			goto end;
+		}
+		goto deserialize_event_type_payload;
+	}
+
+	{
+		const char *filter_expression_buffer;
+		const struct lttng_buffer_view filter_expression_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->filter_expression_len);
+
+		if (!lttng_buffer_view_is_valid(&filter_expression_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		filter_expression_buffer = filter_expression_view.data;
+
+		if (!lttng_buffer_view_contains_string(&filter_expression_view,
+				    filter_expression_buffer,
+				    event_comm->filter_expression_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		local_filter_expression = lttng_strndup(
+				filter_expression_buffer,
+				event_comm->filter_expression_len);
+		if (!local_filter_expression) {
+			ret = -1;
+			goto end;
+		}
+
+		local_event->filter = 1;
+
+		offset += event_comm->filter_expression_len;
+	}
+
+	if (event_comm->bytecode_len == 0) {
+		/*
+		 * Filter expression can be present but without bytecode
+		 * when dealing with event listing.
+		 */
+		goto deserialize_event_type_payload;
+	}
+
+	/* Bytecode */
+	{
+		const struct lttng_buffer_view bytecode_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->bytecode_len);
+
+		if (!lttng_buffer_view_is_valid(&bytecode_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		local_bytecode = zmalloc(event_comm->bytecode_len);
+		if (!local_bytecode) {
+			ret = -1;
+			goto end;
+		}
+
+		memcpy(local_bytecode, bytecode_view.data,
+				event_comm->bytecode_len);
+		if ((local_bytecode->len + sizeof(*local_bytecode)) !=
+				event_comm->bytecode_len) {
+			ret = -1;
+			goto end;
+		}
+
+		offset += event_comm->bytecode_len;
+	}
+
+deserialize_event_type_payload:
+	/* Event type specific payload */
+	switch (local_event->type) {
+	case LTTNG_EVENT_FUNCTION:
+		/* Fallthrough */
+	case LTTNG_EVENT_PROBE:
+	{
+		const struct lttng_buffer_view probe_attr_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->lttng_event_probe_attr_len);
+
+		if (event_comm->lttng_event_probe_attr_len == 0) {
+			ret = -1;
+			goto end;
+		}
+
+		if (!lttng_buffer_view_is_valid(&probe_attr_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_event_probe_attr_create_from_buffer(
+				&probe_attr_view, &local_probe_attr);
+		if (ret < 0 || ret != event_comm->lttng_event_probe_attr_len) {
+			ret = -1;
+			goto end;
+		}
+
+		/* Copy to the local event. */
+		memcpy(&local_event->attr.probe, local_probe_attr,
+				sizeof(local_event->attr.probe));
+
+		offset += ret;
+		break;
+	}
+	case LTTNG_EVENT_FUNCTION_ENTRY:
+	{
+		const struct lttng_buffer_view function_attr_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->lttng_event_function_attr_len);
+
+		if (event_comm->lttng_event_function_attr_len == 0) {
+			ret = -1;
+			goto end;
+		}
+
+		if (!lttng_buffer_view_is_valid(&function_attr_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_event_function_attr_create_from_buffer(
+				&function_attr_view, &local_function_attr);
+		if (ret < 0 || ret != event_comm->lttng_event_function_attr_len) {
+			ret = -1;
+			goto end;
+		}
+
+		/* Copy to the local event. */
+		memcpy(&local_event->attr.ftrace, local_function_attr,
+				sizeof(local_event->attr.ftrace));
+
+		offset += ret;
+
+		break;
+	}
+	case LTTNG_EVENT_USERSPACE_PROBE:
+	{
+		const struct lttng_buffer_view userspace_probe_location_view =
+				lttng_buffer_view_from_view(view, offset,
+						event_comm->userspace_probe_location_len);
+		const struct lttng_userspace_probe_location_lookup_method
+				*lookup = NULL;
+
+		if (event_comm->userspace_probe_location_len == 0) {
+			ret = -1;
+			goto end;
+		}
+
+		if (!lttng_buffer_view_is_valid(
+				    &userspace_probe_location_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_userspace_probe_location_create_from_buffer(
+				&userspace_probe_location_view,
+				&local_userspace_probe_location);
+		if (ret < 0) {
+			WARN("Failed to create a userspace probe location from the received buffer");
+			ret = -1;
+			goto end;
+		}
+
+		if (ret != event_comm->userspace_probe_location_len) {
+			WARN("Userspace probe location from the received buffer is not the advertised length: header length = %" PRIu32 ", payload length = %lu", event_comm->userspace_probe_location_len, ret);
+			ret = -1;
+			goto end;
+		}
+
+		if (sock < 0) {
+			/*
+			 * The userspace FD is simply not sent and we do not
+			 * care about it. This happens on listing.
+			 */
+			goto attach_userspace_probe_to_event;
+		}
+
+		/*
+		 * Receive the file descriptor to the target binary from the
+		 * client.
+		 */
+		DBG("Receiving userspace probe target FD from client ...");
+		ret = lttcomm_recv_fds_unix_sock(sock, &received_fd, 1);
+		if (ret <= 0) {
+			DBG("Nothing recv() from client userspace probe fd... continuing");
+			ret = -1;
+			goto end;
+		}
+		/*
+		 * Set the file descriptor received from the client through the
+		 * unix socket in the probe location.
+		 */
+		lookup = lttng_userspace_probe_location_get_lookup_method(
+				local_userspace_probe_location);
+		if (!lookup) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto end;
+		}
+
+		/*
+		 * From the kernel tracer's perspective, all userspace probe
+		 * event types are all the same: a file and an offset.
+		 */
+		switch (lttng_userspace_probe_location_lookup_method_get_type(
+				lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			ret = lttng_userspace_probe_location_function_set_binary_fd(
+					local_userspace_probe_location,
+					received_fd);
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
+					local_userspace_probe_location,
+					received_fd);
+			break;
+		default:
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto end;
+		}
+
+		if (ret) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto end;
+		}
+
+		/* Fd transfered to the object. */
+		received_fd = -1;
+
+attach_userspace_probe_to_event:
+
+		/* Attach the probe location to the event. */
+		ret = lttng_event_set_userspace_probe_location(
+				local_event, local_userspace_probe_location);
+		if (ret) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto end;
+		}
+
+		/*
+		 * Userspace probe location object ownership transfered to the
+		 * event object
+		 */
+		local_userspace_probe_location = NULL;
+		offset += event_comm->userspace_probe_location_len;
+		break;
+	}
+	case LTTNG_EVENT_TRACEPOINT:
+		/* Fallthrough */
+	case LTTNG_EVENT_ALL:
+		/* Fallthrough */
+	case LTTNG_EVENT_SYSCALL:
+		/* Fallthrough */
+	case LTTNG_EVENT_NOOP:
+		/* Nothing to do here */
+		break;
+	default:
+		ret = LTTNG_ERR_UND;
+		goto end;
+		break;
+	}
+
+	/* Transfer ownership to the caller. */
+	*event = local_event;
+	local_event = NULL;
+
+	if (bytecode) {
+		*bytecode = local_bytecode;
+		local_bytecode = NULL;
+	}
+
+	if (exclusion) {
+		*exclusion = local_exclusions;
+		local_exclusions = NULL;
+	}
+
+	if (filter_expression) {
+		*filter_expression = local_filter_expression;
+		local_filter_expression = NULL;
+	}
+
+	ret = offset;
+end:
+	lttng_event_destroy(local_event);
+	lttng_userspace_probe_location_destroy(local_userspace_probe_location);
+	free(local_filter_expression);
+	free(local_exclusions);
+	free(local_bytecode);
+	free(local_function_attr);
+	free(local_probe_attr);
+	if (received_fd > -1) {
+		if (close(received_fd)) {
+			PERROR("Failed to close received fd");
+		};
+	}
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_event_serialize(const struct lttng_event *event,
+		unsigned int exclusion_count,
+		char **exclusion_list,
+		char *filter_expression,
+		size_t bytecode_len,
+		void *bytecode,
+		struct lttng_dynamic_buffer *buf,
+		int *fd_to_send)
+{
+	int ret;
+	unsigned int i;
+	size_t header_offset, size_before_payload;
+	size_t name_len;
+	struct lttng_event_comm event_comm = { 0 };
+	struct lttng_event_comm *header;
+
+	assert(event);
+	assert(buf);
+
+	/* Save the header location for later in-place header update. */
+	header_offset = buf->size;
+
+	name_len = lttng_strnlen(event->name, LTTNG_SYMBOL_NAME_LEN);
+	if (name_len == LTTNG_SYMBOL_NAME_LEN) {
+		/* Event name is not NULL-terminated. */
+		ret = -1;
+		goto end;
+	}
+
+	/* Add null termination. */
+	name_len += 1;
+
+	if (exclusion_count > UINT32_MAX) {
+		/* Possible overflow. */
+		ret = -1;
+		goto end;
+	}
+
+	if (bytecode_len > UINT32_MAX) {
+		/* Possible overflow. */
+		ret = -1;
+		goto end;
+	}
+
+	event_comm.name_len = (uint32_t) name_len;
+	event_comm.event_type = (int8_t) event->type;
+	event_comm.loglevel_type = (int8_t) event->loglevel_type;
+	event_comm.loglevel = (int32_t) event->loglevel;
+	event_comm.enabled = (int8_t) event->enabled;
+	event_comm.pid = (int32_t) event->pid;
+	event_comm.exclusion_count = (uint32_t) exclusion_count;
+	event_comm.bytecode_len = (uint32_t) bytecode_len;
+	event_comm.flags = (int32_t) event->flags;
+
+	if (filter_expression) {
+		event_comm.filter_expression_len =
+				strlen(filter_expression) + 1;
+	}
+
+	/* Header */
+	ret = lttng_dynamic_buffer_append(buf, &event_comm, sizeof(event_comm));
+	if (ret) {
+		goto end;
+	}
+
+	/* Event name */
+	ret = lttng_dynamic_buffer_append(buf, event->name, name_len);
+	if (ret) {
+		goto end;
+	}
+
+	/* Exclusions */
+	for (i = 0; i < exclusion_count; i++) {
+		size_t exclusion_len;
+		struct lttng_event_exclusion_comm exclusion_comm = { 0 };
+
+		assert(exclusion_list);
+
+		exclusion_len = lttng_strnlen(
+				*(exclusion_list + i), LTTNG_SYMBOL_NAME_LEN);
+		if (exclusion_len == LTTNG_SYMBOL_NAME_LEN) {
+			/* Exclusion is not NULL-terminated. */
+			ret = -1;
+			goto end;
+		}
+
+		/* Include null terminator '\0'. */
+		exclusion_len += 1;
+
+		exclusion_comm.len = exclusion_len;
+
+		ret = lttng_dynamic_buffer_append(buf, &exclusion_comm, sizeof(exclusion_comm));
+		if (ret) {
+			goto end;
+		}
+
+		ret = lttng_dynamic_buffer_append(buf, *(exclusion_list + i),
+				exclusion_len);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Filter expression and its bytecode */
+	if (filter_expression) {
+		ret = lttng_dynamic_buffer_append(buf, filter_expression,
+				event_comm.filter_expression_len);
+		if (ret) {
+			goto end;
+		}
+
+		/*
+		 * Bytecode can be absent when we serialize to the client
+		 * for listing.
+		 */
+		if (bytecode) {
+			ret = lttng_dynamic_buffer_append(
+					buf, bytecode, bytecode_len);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+
+	size_before_payload = buf->size;
+
+	/* Event type specific payload */
+	switch (event->type) {
+	case LTTNG_EVENT_FUNCTION:
+		/* Fallthrough */
+	case LTTNG_EVENT_PROBE:
+		ret = lttng_event_probe_attr_serialize(&event->attr.probe, buf);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+
+		header = (struct lttng_event_comm *) ((char *) buf->data +
+						      header_offset);
+		header->lttng_event_probe_attr_len =
+				buf->size - size_before_payload;
+
+		break;
+	case LTTNG_EVENT_FUNCTION_ENTRY:
+		ret = lttng_event_function_attr_serialize(
+				&event->attr.ftrace, buf);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+
+		/* Update the lttng_event_function_attr len. */
+		header = (struct lttng_event_comm *) ((char *) buf->data +
+						      header_offset);
+		header->lttng_event_function_attr_len =
+				buf->size - size_before_payload;
+
+		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+	{
+		struct lttng_event_extended *ev_ext =
+				(struct lttng_event_extended *)
+						event->extended.ptr;
+		assert(event->extended.ptr);
+		assert(ev_ext->probe_location);
+
+		size_before_payload = buf->size;
+		if (ev_ext->probe_location) {
+			/*
+			 * lttng_userspace_probe_location_serialize returns the
+			 * number of bytes that were appended to the buffer.
+			 */
+			ret = lttng_userspace_probe_location_serialize(
+					ev_ext->probe_location, buf,
+					fd_to_send);
+			if (ret < 0) {
+				goto end;
+			}
+			ret = 0;
+
+			/* Update the userspace probe location len. */
+			header = (struct lttng_event_comm *) ((char *) buf->data +
+							      header_offset);
+			header->userspace_probe_location_len =
+					buf->size - size_before_payload;
+		}
+		break;
+	}
+	case LTTNG_EVENT_TRACEPOINT:
+		/* Fallthrough */
+	case LTTNG_EVENT_ALL:
+		/* Fallthrough */
+	default:
+		/* Nothing to do here */
+		break;
+	}
+
+end:
+	return ret;
+}
+
+static enum lttng_error_code compute_flattened_size(
+		struct lttng_dynamic_pointer_array *events, size_t *size)
+{
+	enum lttng_error_code ret_code;
+	int ret = 0;
+	size_t storage_req, event_count, i;
+
+	assert(size);
+	assert(events);
+
+	event_count = lttng_dynamic_pointer_array_get_count(events);
+
+	/* The basic struct lttng_event */
+	storage_req = event_count * sizeof(struct lttng_event);
+
+	for (i = 0; i < event_count; i++) {
+		int probe_storage_req = 0;
+		const struct event_list_element *element =
+				lttng_dynamic_pointer_array_get_pointer(
+						events, i);
+		const struct lttng_userspace_probe_location *location = NULL;
+
+		location = lttng_event_get_userspace_probe_location(
+				element->event);
+		if (location) {
+			ret = lttng_userspace_probe_location_flatten(
+					location, NULL);
+			if (ret < 0) {
+				ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto end;
+			}
+
+			probe_storage_req = ret;
+		}
+
+		/* The struct·lttng_event_extended */
+		storage_req += event_count *
+			sizeof(struct lttng_event_extended);
+
+		if (element->filter_expression) {
+			storage_req += strlen(element->filter_expression) + 1;
+		}
+
+		if (element->exclusions) {
+			storage_req += element->exclusions->count *
+				LTTNG_SYMBOL_NAME_LEN;
+		}
+
+		/* Padding to ensure the flat probe is aligned. */
+		storage_req = ALIGN_TO(storage_req, sizeof(uint64_t));
+		storage_req += probe_storage_req;
+	}
+
+	*size = storage_req;
+	ret_code = LTTNG_OK;
+
+end:
+	return ret_code;
+}
+
+/*
+ * Flatten a list of struct lttng_event.
+ *
+ * The buffer that is returned to the API client  must contain a "flat" version
+ * of the events that are returned. In other words, all pointers within an
+ * lttng_event must point to a location within the returned buffer so that the
+ * user may free everything by simply calling free() on the returned buffer.
+ * This is needed in order to maintain API compatibility.
+ *
+ * A first pass is performed to compute the size of the buffer that must be
+ * allocated. A second pass is then performed to setup the returned events so
+ * that their members always point within the buffer.
+ *
+ * The layout of the returned buffer is as follows:
+ *   - struct lttng_event[nb_events],
+ *   - nb_events times the following:
+ *     - struct lttng_event_extended,
+ *     - filter_expression
+ *     - exclusions
+ *     - padding to align to 64-bits
+ *     - flattened version of userspace_probe_location
+ */
+static enum lttng_error_code flatten_lttng_events(
+		struct lttng_dynamic_pointer_array *events,
+		struct lttng_event **flattened_events)
+{
+	enum lttng_error_code ret_code;
+	int ret, i;
+	size_t storage_req;
+	struct lttng_dynamic_buffer local_flattened_events;
+	int nb_events;
+
+	assert(events);
+	assert(flattened_events);
+
+	lttng_dynamic_buffer_init(&local_flattened_events);
+	nb_events = lttng_dynamic_pointer_array_get_count(events);
+
+	ret_code = compute_flattened_size(events, &storage_req);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/*
+	 * We must ensure that "local_flattened_events" is never resized so as
+	 * to preserve the validity of the flattened objects.
+	 */
+	ret = lttng_dynamic_buffer_set_capacity(
+			&local_flattened_events, storage_req);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Start by laying the struct lttng_event */
+	for (i = 0; i < nb_events; i++) {
+		struct event_list_element *element =
+				lttng_dynamic_pointer_array_get_pointer(
+						events, i);
+
+		if (!element) {
+			ret_code = LTTNG_ERR_FATAL;
+			goto end;
+		}
+		ret = lttng_dynamic_buffer_append(&local_flattened_events,
+				element->event, sizeof(struct lttng_event));
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	for (i = 0; i < nb_events; i++) {
+		struct event_list_element *element = lttng_dynamic_pointer_array_get_pointer(events, i);
+		struct lttng_event *event = (struct lttng_event *)
+			(local_flattened_events.data + (sizeof(struct lttng_event) * i));
+		struct lttng_event_extended *event_extended =
+			(struct lttng_event_extended *)
+				(local_flattened_events.data + local_flattened_events.size);
+		const struct lttng_userspace_probe_location *location = NULL;
+
+		assert(element);
+
+		/* Insert struct lttng_event_extended. */
+		ret = lttng_dynamic_buffer_set_size(&local_flattened_events,
+				local_flattened_events.size +
+						sizeof(*event_extended));
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		event->extended.ptr = event_extended;
+
+		/* Insert filter expression. */
+		if (element->filter_expression) {
+			size_t len = strlen(element->filter_expression) + 1;
+
+			event_extended->filter_expression =
+					local_flattened_events.data +
+					local_flattened_events.size;
+			ret = lttng_dynamic_buffer_append(
+					&local_flattened_events,
+					element->filter_expression, len);
+			if (ret) {
+				ret_code = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+		}
+
+		/* Insert exclusions. */
+		if (element->exclusions) {
+			event_extended->exclusions.count =
+					element->exclusions->count;
+			event_extended->exclusions.strings =
+					local_flattened_events.data +
+					local_flattened_events.size;
+
+			ret = lttng_dynamic_buffer_append(
+					&local_flattened_events,
+					element->exclusions->names,
+					element->exclusions->count *
+							LTTNG_SYMBOL_NAME_LEN);
+			if (ret) {
+				ret_code = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+		}
+
+		/* Insert padding to align to 64-bits. */
+		ret = lttng_dynamic_buffer_set_size(&local_flattened_events,
+				ALIGN_TO(local_flattened_events.size,
+						sizeof(uint64_t)));
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		location = lttng_event_get_userspace_probe_location(
+				element->event);
+		if (location) {
+			event_extended->probe_location = (struct lttng_userspace_probe_location *)
+					(local_flattened_events.data + local_flattened_events.size);
+			ret = lttng_userspace_probe_location_flatten(
+					location, &local_flattened_events);
+			if (ret < 0) {
+				ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto end;
+			}
+		}
+	}
+
+	/* Don't reset local_flattened_events buffer as we return its content. */
+	*flattened_events = (struct lttng_event *) local_flattened_events.data;
+	lttng_dynamic_buffer_init(&local_flattened_events);
+	ret_code = LTTNG_OK;
+end:
+	lttng_dynamic_buffer_reset(&local_flattened_events);
+	return ret_code;
+}
+
+static enum lttng_error_code event_list_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		unsigned int count,
+		struct lttng_dynamic_pointer_array *event_list)
+{
+	enum lttng_error_code ret_code;
+	int ret;
+	unsigned int i;
+	int offset = 0;
+
+	assert(view);
+	assert(event_list);
+
+	for (i = 0; i < count; i++) {
+		ssize_t event_size;
+		const struct lttng_buffer_view event_view =
+				lttng_buffer_view_from_view(view, offset, -1);
+		struct event_list_element *element = zmalloc(sizeof(*element));
+
+		if (!element) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/*
+		 * Lifetime and management of the object is now bound to the
+		 * array.
+		 */
+		ret = lttng_dynamic_pointer_array_add_pointer(
+				event_list, element);
+		if (ret) {
+			event_list_destructor(element);
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/*
+		 * Bytecode is not transmitted on listing in any case we do not
+		 * care about it.
+		 */
+		event_size = lttng_event_create_from_buffer(&event_view,
+				&element->event,
+				&element->exclusions,
+				&element->filter_expression, NULL, -1);
+		if (event_size < 0) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		offset += event_size;
+	}
+
+	if (view->size != offset) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret_code = LTTNG_OK;
+
+end:
+	return ret_code;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_events_create_and_flatten_from_buffer(
+		const struct lttng_buffer_view *view,
+		unsigned int count,
+		struct lttng_event **events)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct lttng_dynamic_pointer_array local_events;
+
+	lttng_dynamic_pointer_array_init(&local_events, event_list_destructor);
+
+	/* Deserialize the events */
+	{
+		const struct lttng_buffer_view events_view =
+				lttng_buffer_view_from_view(view, 0, -1);
+
+		ret = event_list_create_from_buffer(
+				&events_view, count, &local_events);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	ret = flatten_lttng_events(&local_events, events);
+	if (ret != LTTNG_OK) {
+		goto end;
+	}
+
+end:
+	lttng_dynamic_pointer_array_reset(&local_events);
+	return ret;
 }

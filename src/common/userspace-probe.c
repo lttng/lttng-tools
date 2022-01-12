@@ -413,17 +413,20 @@ lttng_userspace_probe_location_function_copy(
 		goto error;
 	}
 
-	/* Duplicate the binary fd */
+	/*
+	 * Duplicate the binary fd if possible. The binary fd can be -1 on
+	 * listing
+	 */
 	fd = lttng_userspace_probe_location_function_get_binary_fd(location);
-	if (fd == -1) {
-		ERR("Error getting file descriptor to binary");
-		goto error;
-	}
-
-	new_fd = dup(fd);
-	if (new_fd == -1) {
-		PERROR("Error duplicating file descriptor to binary");
-		goto error;
+	if (fd > -1) {
+		new_fd = dup(fd);
+		if (new_fd == -1) {
+			PERROR("Error duplicating file descriptor to binary");
+			goto error;
+		}
+	} else {
+		/* The original fd is not set. */
+		new_fd = -1;
 	}
 
 	/*
@@ -509,15 +512,15 @@ lttng_userspace_probe_location_tracepoint_copy(
 
 	/* Duplicate the binary fd */
 	fd = lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
-	if (fd == -1) {
-		ERR("Error getting file descriptor to binary");
-		goto error;
-	}
-
-	new_fd = dup(fd);
-	if (new_fd == -1) {
-		PERROR("Error duplicating file descriptor to binary");
-		goto error;
+	if (fd > -1) {
+		new_fd = dup(fd);
+		if (new_fd == -1) {
+			PERROR("Error duplicating file descriptor to binary");
+			goto error;
+		}
+	} else {
+		/* The original fd is not set. */
+		new_fd = -1;
 	}
 
 	/*

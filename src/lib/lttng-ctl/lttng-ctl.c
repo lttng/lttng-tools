@@ -20,10 +20,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <common/buffer-view.h>
 #include <common/common.h>
 #include <common/compat/string.h>
 #include <common/defaults.h>
+#include <common/dynamic-array.h>
 #include <common/dynamic-buffer.h>
+#include <common/macros.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/tracker.h>
 #include <common/uri.h>
@@ -982,14 +985,14 @@ error:
  * Return 0 on success else a LTTNG_ERR_* code and ctxp is untouched.
  */
 static int generate_filter(char *filter_expression,
-		struct lttcomm_session_msg *lsm, struct filter_parser_ctx **ctxp)
+		size_t *bytecode_len,
+		struct filter_parser_ctx **ctxp)
 {
 	int ret;
 	struct filter_parser_ctx *ctx = NULL;
 	FILE *fmem = NULL;
 
 	assert(filter_expression);
-	assert(lsm);
 	assert(ctxp);
 
 	/*
@@ -1078,9 +1081,8 @@ static int generate_filter(char *filter_expression,
 	dbg_printf("Size of bytecode generated: %u bytes.\n",
 			bytecode_get_len(&ctx->bytecode->b));
 
-	lsm->u.enable.bytecode_len = sizeof(ctx->bytecode->b)
-		+ bytecode_get_len(&ctx->bytecode->b);
-	lsm->u.enable.expression_len = strlen(filter_expression) + 1;
+	*bytecode_len = sizeof(ctx->bytecode->b) +
+			bytecode_get_len(&ctx->bytecode->b);
 
 	/* No need to keep the memory stream. */
 	if (fclose(fmem) != 0) {
@@ -1116,10 +1118,11 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 {
 	struct lttcomm_session_msg lsm;
 	struct lttng_dynamic_buffer send_buffer;
-	int ret = 0, i, fd_to_send = -1;
+	int ret = 0, fd_to_send = -1;
 	bool send_fd = false;
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
+	size_t bytecode_len = 0;
 
 	/*
 	 * We have either a filter or some exclusions, so we need to set up
@@ -1149,35 +1152,11 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		goto error;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-
-	/* If no channel name, send empty string. */
-	ret = lttng_strncpy(lsm.u.enable.channel_name, channel_name ?: "",
-			sizeof(lsm.u.enable.channel_name));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	lsm.cmd_type = LTTNG_ENABLE_EVENT;
 	if (ev->name[0] == '\0') {
 		/* Enable all events. */
 		ret = lttng_strncpy(ev->name, "*", sizeof(ev->name));
 		assert(ret == 0);
 	}
-
-	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
-
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	lsm.u.enable.exclusion_count = exclusion_count;
-	lsm.u.enable.bytecode_len = 0;
 
 	/* Parse filter expression. */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
@@ -1188,7 +1167,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
-			/* Setup JUL filter if needed. */
+			/* Setup agent filter if needed. */
 			agent_filter = set_agent_filter(filter_expression, ev);
 			if (!agent_filter) {
 				if (!filter_expression) {
@@ -1196,7 +1175,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 					 * No JUL and no filter, just skip
 					 * everything below.
 					 */
-					goto ask_sessiond;
+					goto serialize;
 				}
 			} else {
 				/*
@@ -1209,96 +1188,74 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			}
 		}
 
-		ret = generate_filter(filter_expression, &lsm, &ctx);
+		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) ==
+				LTTNG_FILTER_MAX_LEN) {
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto error;
+		}
+
+		ret = generate_filter(filter_expression, &bytecode_len, &ctx);
 		if (ret) {
-			goto filter_error;
+			goto error;
+		}
+
+		if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto error;
 		}
 	}
 
-	ret = lttng_dynamic_buffer_set_capacity(&send_buffer,
-			lsm.u.enable.bytecode_len
-			+ lsm.u.enable.expression_len
-			+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
+serialize:
+	ret = lttng_event_serialize(ev, exclusion_count, exclusion_list,
+			filter_expression, bytecode_len,
+			ctx && (bytecode_len != 0) ? &ctx->bytecode->b : NULL,
+			&send_buffer, &fd_to_send);
 	if (ret) {
-		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
-		goto mem_error;
+		goto error;
 	}
 
-	/* Put exclusion names first in the data. */
-	for (i = 0; i < exclusion_count; i++) {
-		size_t exclusion_len;
-
-		exclusion_len = lttng_strnlen(*(exclusion_list + i),
-				LTTNG_SYMBOL_NAME_LEN);
-		if (exclusion_len == LTTNG_SYMBOL_NAME_LEN) {
-			/* Exclusion is not NULL-terminated. */
-			ret = -LTTNG_ERR_INVALID;
-			goto mem_error;
-		}
-
-		ret = lttng_dynamic_buffer_append(&send_buffer,
-				*(exclusion_list + i),
-				LTTNG_SYMBOL_NAME_LEN);
-		if (ret) {
-			goto mem_error;
-		}
+	if (fd_to_send >= 0) {
+		send_fd = true;
 	}
 
-	/* Add filter expression next. */
-	if (filter_expression) {
-		ret = lttng_dynamic_buffer_append(&send_buffer,
-				filter_expression, lsm.u.enable.expression_len);
-		if (ret) {
-			goto mem_error;
-		}
-	}
-	/* Add filter bytecode next. */
-	if (ctx && lsm.u.enable.bytecode_len != 0) {
-		ret = lttng_dynamic_buffer_append(&send_buffer,
-				&ctx->bytecode->b, lsm.u.enable.bytecode_len);
-		if (ret) {
-			goto mem_error;
-		}
-	}
-	if (ev->extended.ptr) {
-		struct lttng_event_extended *ev_ext =
-			(struct lttng_event_extended *) ev->extended.ptr;
+	/* Prepare the command header */
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_ENABLE_EVENT;
 
-		if (ev_ext->probe_location) {
-			/*
-			 * lttng_userspace_probe_location_serialize returns the
-			 * number of bytes that was appended to the buffer.
-			 */
-			ret = lttng_userspace_probe_location_serialize(
-				ev_ext->probe_location, &send_buffer,
-				&fd_to_send);
-			if (ret < 0) {
-				goto mem_error;
-			}
-
-			send_fd = fd_to_send >= 0;
-			/*
-			 * Set the size of the userspace probe location element
-			 * of the buffer so that the receiving side knows where
-			 * to split it.
-			 */
-			lsm.u.enable.userspace_probe_location_len = ret;
-		}
+	/* If no channel name, send empty string. */
+	ret = lttng_strncpy(lsm.u.enable.channel_name, channel_name ?: "",
+			sizeof(lsm.u.enable.channel_name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
 	}
+
+	/* Domain */
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
+
+	/* Session name */
+	ret = lttng_strncpy(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	/* Length of the serialized event */
+	lsm.u.enable.length = (uint32_t) send_buffer.size;
 
 	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
 			send_fd ? &fd_to_send : NULL,
 			send_fd ? 1 : 0,
 			send_buffer.size ? send_buffer.data : NULL,
 			send_buffer.size, NULL, NULL, 0);
-
-mem_error:
+error:
 	if (filter_expression && ctx) {
 		filter_bytecode_free(ctx);
 		filter_ir_free(ctx);
 		filter_parser_ctx_free(ctx);
 	}
-filter_error:
+
 	if (free_filter_expression) {
 		/*
 		 * The filter expression has been replaced and must be freed as
@@ -1307,16 +1264,8 @@ filter_error:
 		 */
 		free(filter_expression);
 	}
-error:
-	/*
-	 * Return directly to the caller and don't ask the sessiond since
-	 * something went wrong in the parsing of data above.
-	 */
-	lttng_dynamic_buffer_reset(&send_buffer);
-	return ret;
 
-ask_sessiond:
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	lttng_dynamic_buffer_reset(&send_buffer);
 	return ret;
 }
 
@@ -1325,16 +1274,21 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		const char *original_filter_expression)
 {
 	struct lttcomm_session_msg lsm;
-	char *varlen_data;
+	struct lttng_dynamic_buffer buf;
 	int ret = 0;
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
+	size_t bytecode_len = 0;
+	int fd_to_send = -1;
+	bool send_fd = false;
 	/*
 	 * Cast as non-const since we may replace the filter expression
 	 * by a dynamically allocated string. Otherwise, the original
 	 * string is not modified.
 	 */
 	char *filter_expression = (char *) original_filter_expression;
+
+	lttng_dynamic_buffer_init(&buf);
 
 	if (handle == NULL || ev == NULL) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1351,47 +1305,6 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		goto error;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-
-	/* If no channel name, send empty string. */
-	ret = lttng_strncpy(lsm.u.disable.channel_name, channel_name ?: "",
-			sizeof(lsm.u.disable.channel_name));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	lsm.cmd_type = LTTNG_DISABLE_EVENT;
-
-	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-	memcpy(&lsm.u.disable.event, ev, sizeof(lsm.u.disable.event));
-
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	lsm.u.disable.bytecode_len = 0;
-
-	/*
-	 * For the JUL domain, a filter is enforced except for the
-	 * disable all event. This is done to avoid having the event in
-	 * all sessions thus filtering by logger name.
-	 */
-	if (filter_expression == NULL &&
-			(handle->domain.type != LTTNG_DOMAIN_JUL &&
-				handle->domain.type != LTTNG_DOMAIN_LOG4J &&
-				handle->domain.type != LTTNG_DOMAIN_PYTHON)) {
-		goto ask_sessiond;
-	}
-
-	/*
-	 * We have a filter, so we need to set up a variable-length
-	 * memory block from where to send the data.
-	 */
-
 	/* Parse filter expression */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
 			|| handle->domain.type == LTTNG_DOMAIN_LOG4J
@@ -1401,7 +1314,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
-			/* Setup JUL filter if needed. */
+			/* Setup agent filter if needed. */
 			agent_filter = set_agent_filter(filter_expression, ev);
 			if (!agent_filter) {
 				if (!filter_expression) {
@@ -1409,7 +1322,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 					 * No JUL and no filter, just skip
 					 * everything below.
 					 */
-					goto ask_sessiond;
+					goto serialize;
 				}
 			} else {
 				/*
@@ -1422,44 +1335,63 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			}
 		}
 
-		ret = generate_filter(filter_expression, &lsm, &ctx);
+		ret = generate_filter(filter_expression, &bytecode_len, &ctx);
 		if (ret) {
-			goto filter_error;
+			ret = -1;
+			goto error;
 		}
 	}
 
-	varlen_data = zmalloc(lsm.u.disable.bytecode_len
-			+ lsm.u.disable.expression_len);
-	if (!varlen_data) {
-		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
-		goto mem_error;
+serialize:
+	ret = lttng_event_serialize(ev, 0, NULL, filter_expression,
+			bytecode_len,
+			ctx && (bytecode_len != 0) ? &ctx->bytecode->b : NULL,
+			&buf, &fd_to_send);
+	if (ret) {
+		ret = -1;
+		goto error;
 	}
 
-	/* Add filter expression. */
-	if (lsm.u.disable.expression_len != 0) {
-		memcpy(varlen_data,
-			filter_expression,
-			lsm.u.disable.expression_len);
-	}
-	/* Add filter bytecode next. */
-	if (ctx && lsm.u.disable.bytecode_len != 0) {
-		memcpy(varlen_data
-			+ lsm.u.disable.expression_len,
-			&ctx->bytecode->b,
-			lsm.u.disable.bytecode_len);
+	if (fd_to_send >= 0) {
+		send_fd = true;
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, varlen_data,
-			lsm.u.disable.bytecode_len + lsm.u.disable.expression_len, NULL);
-	free(varlen_data);
+	/* Prepare command header */
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_DISABLE_EVENT;
 
-mem_error:
+	/* If no channel name, send empty string. */
+	ret = lttng_strncpy(lsm.u.disable.channel_name, channel_name ?: "",
+			sizeof(lsm.u.disable.channel_name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+	/* Domain */
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
+
+	/* Session name */
+	ret = lttng_strncpy(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	/* Length of the serialized event */
+	lsm.u.disable.length = (uint32_t) buf.size;
+
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+			send_fd ? &fd_to_send : NULL, send_fd ? 1 : 0,
+			buf.size ? buf.data : NULL, buf.size, NULL, NULL, 0);
+
+error:
 	if (filter_expression && ctx) {
 		filter_bytecode_free(ctx);
 		filter_ir_free(ctx);
 		filter_parser_ctx_free(ctx);
 	}
-filter_error:
+
 	if (free_filter_expression) {
 		/*
 		 * The filter expression has been replaced and must be freed as
@@ -1468,15 +1400,8 @@ filter_error:
 		 */
 		free(filter_expression);
 	}
-error:
-	/*
-	 * Return directly to the caller and don't ask the sessiond since
-	 * something went wrong in the parsing of data above.
-	 */
-	return ret;
 
-ask_sessiond:
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	lttng_dynamic_buffer_reset(&buf);
 	return ret;
 }
 
@@ -1696,23 +1621,62 @@ end:
 int lttng_list_tracepoints(struct lttng_handle *handle,
 		struct lttng_event **events)
 {
-	int ret;
+	enum lttng_error_code ret_code;
+	int ret, total_payload_received;
+	char *reception_buffer = NULL;
 	struct lttcomm_session_msg lsm;
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	size_t cmd_header_len;
+	unsigned int nb_events = 0;
 
 	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINTS;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) events);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+			(void **) &reception_buffer, (void **) &cmd_header,
+			&cmd_header_len);
 	if (ret < 0) {
-		return ret;
+		goto end;
+	}
+	total_payload_received = ret;
+
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
 	}
 
-	return ret / sizeof(struct lttng_event);
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	nb_events = (unsigned int) cmd_header->count;
+
+	{
+		const struct lttng_buffer_view events_view =
+				lttng_buffer_view_init(reception_buffer, 0,
+						total_payload_received);
+
+		ret_code = lttng_events_create_and_flatten_from_buffer(
+				&events_view, nb_events, events);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
+
+	ret = (int) nb_events;
+
+end:
+	free(cmd_header);
+	free(reception_buffer);
+	return ret;
 }
 
 /*
@@ -1752,11 +1716,17 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
  */
 int lttng_list_syscalls(struct lttng_event **events)
 {
-	int ret;
+	enum lttng_error_code ret_code;
+	int ret, total_payload_received;
+	char *reception_buffer = NULL;
 	struct lttcomm_session_msg lsm;
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	size_t cmd_header_len;
+	uint32_t nb_events = 0;
 
 	if (!events) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1764,12 +1734,45 @@ int lttng_list_syscalls(struct lttng_event **events)
 	/* Force kernel domain for system calls. */
 	lsm.domain.type = LTTNG_DOMAIN_KERNEL;
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) events);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+			(void **) &reception_buffer, (void **) &cmd_header,
+			&cmd_header_len);
 	if (ret < 0) {
-		return ret;
+		goto end;
+	}
+	total_payload_received = ret;
+
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
 	}
 
-	return ret / sizeof(struct lttng_event);
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	nb_events = (unsigned int) cmd_header->count;
+
+	{
+		const struct lttng_buffer_view events_view =
+				lttng_buffer_view_init(reception_buffer, 0,
+						total_payload_received);
+
+		ret_code = lttng_events_create_and_flatten_from_buffer(
+				&events_view, nb_events, events);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
+
+	ret = (int) nb_events;
+
+end:
+	free(reception_buffer);
+	free(cmd_header);
+	return ret;
 }
 
 /*
@@ -2321,15 +2324,17 @@ end:
 int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events)
 {
+	enum lttng_error_code ret_code;
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttcomm_event_command_header *cmd_header = NULL;
+	struct lttcomm_list_command_header *cmd_header = NULL;
 	size_t cmd_header_len;
-	uint32_t nb_events, i;
-	void *comm_ext_at;
+	unsigned int nb_events;
 	char *reception_buffer = NULL;
-	struct lttng_dynamic_buffer listing;
-	size_t storage_req;
+	struct lttng_dynamic_buffer tmp_buffer;
+	ssize_t total_payload_received;
+
+	lttng_dynamic_buffer_init(&tmp_buffer);
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
@@ -2361,210 +2366,33 @@ int lttng_list_events(struct lttng_handle *handle,
 		goto end;
 	}
 
+	total_payload_received = ret;
+
 	if (!cmd_header) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
 	}
 
-	/* Set number of events and free command header */
-	nb_events = cmd_header->nb_events;
-	if (nb_events > INT_MAX) {
+	if (cmd_header->count > INT_MAX) {
 		ret = -LTTNG_ERR_OVERFLOW;
 		goto end;
 	}
-	free(cmd_header);
-	cmd_header = NULL;
 
-	/*
-	 * The buffer that is returned must contain a "flat" version of
-	 * the events that are returned. In other words, all pointers
-	 * within an lttng_event must point to a location within the returned
-	 * buffer so that the user may free everything by simply calling free()
-	 * on the returned buffer. This is needed in order to maintain API
-	 * compatibility.
-	 *
-	 * A first pass is performed to compute the size of the buffer that
-	 * must be allocated. A second pass is then performed to setup
-	 * the returned events so that their members always point within the
-	 * buffer.
-	 *
-	 * The layout of the returned buffer is as follows:
-	 *   - struct lttng_event[nb_events],
-	 *   - nb_events times the following:
-	 *     - struct lttng_event_extended,
-	 *     - flattened version of userspace_probe_location
-	 *     - filter_expression
-	 *     - exclusions
-	 *     - padding to align to 64-bits
-	 */
-	comm_ext_at = reception_buffer +
-		(nb_events * sizeof(struct lttng_event));
-	storage_req = nb_events * sizeof(struct lttng_event);
+	nb_events = (unsigned int) cmd_header->count;
 
-	for (i = 0; i < nb_events; i++) {
-		struct lttcomm_event_extended_header *ext_comm =
-			(struct lttcomm_event_extended_header *) comm_ext_at;
-		int probe_storage_req = 0;
-
-		comm_ext_at += sizeof(*ext_comm);
-		comm_ext_at += ext_comm->filter_len;
-		comm_ext_at +=
-			ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
-
-		if (ext_comm->userspace_probe_location_len) {
-			struct lttng_userspace_probe_location *probe_location = NULL;
-			struct lttng_buffer_view probe_location_view;
-
-			probe_location_view = lttng_buffer_view_init(
-					comm_ext_at, 0,
-					ext_comm->userspace_probe_location_len);
-
-			/*
-			 * Create a temporary userspace probe location to
-			 * determine the size needed by a "flattened" version
-			 * of that same probe location.
-			 */
-			ret = lttng_userspace_probe_location_create_from_buffer(
-					&probe_location_view, &probe_location);
-			if (ret < 0) {
-				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto end;
-			}
-
-			ret = lttng_userspace_probe_location_flatten(
-					probe_location, NULL);
-			lttng_userspace_probe_location_destroy(probe_location);
-			if (ret < 0) {
-				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto end;
-			}
-
-			probe_storage_req = ret;
-			comm_ext_at += ext_comm->userspace_probe_location_len;
-		}
-
-		storage_req += sizeof(struct lttng_event_extended);
-		storage_req += ext_comm->filter_len;
-		storage_req += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
-		/* Padding to ensure the flat probe is aligned. */
-		storage_req = ALIGN_TO(storage_req, sizeof(uint64_t));
-		storage_req += probe_storage_req;
-	}
-
-	lttng_dynamic_buffer_init(&listing);
-	/*
-	 * We must ensure that "listing" is never resized so as to preserve
-	 * the validity of the flattened objects.
-	 */
-	ret = lttng_dynamic_buffer_set_capacity(&listing, storage_req);
-	if (ret) {
-		ret = -LTTNG_ERR_NOMEM;
-		goto end;
-	}
-
-	ret = lttng_dynamic_buffer_append(&listing, reception_buffer,
-			nb_events * sizeof(struct lttng_event));
-	if (ret) {
-		ret = -LTTNG_ERR_NOMEM;
-		goto free_dynamic_buffer;
-	}
-
-	comm_ext_at = reception_buffer +
-			(nb_events * sizeof(struct lttng_event));
-	for (i = 0; i < nb_events; i++) {
-		struct lttng_event *event = (struct lttng_event *)
-			(listing.data + (sizeof(struct lttng_event) * i));
-		struct lttcomm_event_extended_header *ext_comm =
-			(struct lttcomm_event_extended_header *) comm_ext_at;
-		struct lttng_event_extended *event_extended =
-			(struct lttng_event_extended *)
-				(listing.data + listing.size);
-
-		/* Insert struct lttng_event_extended. */
-		ret = lttng_dynamic_buffer_set_size(&listing,
-				listing.size + sizeof(*event_extended));
-		if (ret) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto free_dynamic_buffer;
-		}
-		event->extended.ptr = event_extended;
-
-		comm_ext_at += sizeof(*ext_comm);
-
-		/* Insert filter expression. */
-		if (ext_comm->filter_len) {
-			event_extended->filter_expression = listing.data +
-					listing.size;
-			ret = lttng_dynamic_buffer_append(&listing, comm_ext_at,
-					ext_comm->filter_len);
-			if (ret) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto free_dynamic_buffer;
-			}
-			comm_ext_at += ext_comm->filter_len;
-		}
-
-		/* Insert exclusions. */
-		if (ext_comm->nb_exclusions) {
-			event_extended->exclusions.count =
-					ext_comm->nb_exclusions;
-			event_extended->exclusions.strings =
-					listing.data + listing.size;
-
-			ret = lttng_dynamic_buffer_append(&listing,
-					comm_ext_at,
-					ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN);
-			if (ret) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto free_dynamic_buffer;
-			}
-			comm_ext_at += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
-		}
-
-		/* Insert padding to align to 64-bits. */
-		ret = lttng_dynamic_buffer_set_size(&listing,
-				ALIGN_TO(listing.size, sizeof(uint64_t)));
-		if (ret) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto free_dynamic_buffer;
-		}
-
-		/* Insert flattened userspace probe location. */
-		if (ext_comm->userspace_probe_location_len) {
-			struct lttng_userspace_probe_location *probe_location = NULL;
-			struct lttng_buffer_view probe_location_view;
-
-			probe_location_view = lttng_buffer_view_init(
-					comm_ext_at, 0,
-					ext_comm->userspace_probe_location_len);
-
-			ret = lttng_userspace_probe_location_create_from_buffer(
-					&probe_location_view, &probe_location);
-			if (ret < 0) {
-				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto free_dynamic_buffer;
-			}
-
-			event_extended->probe_location = (struct lttng_userspace_probe_location *)
-					(listing.data + listing.size);
-			ret = lttng_userspace_probe_location_flatten(
-					probe_location, &listing);
-			lttng_userspace_probe_location_destroy(probe_location);
-			if (ret < 0) {
-				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto free_dynamic_buffer;
-			}
-
-			comm_ext_at += ext_comm->userspace_probe_location_len;
+	{
+		const struct lttng_buffer_view events_view =
+				lttng_buffer_view_init(reception_buffer, 0,
+						total_payload_received);
+		ret_code = lttng_events_create_and_flatten_from_buffer(
+				&events_view, nb_events, events);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
 		}
 	}
 
-	/* Don't reset listing buffer as we return its content. */
-	*events = (struct lttng_event *) listing.data;
-	lttng_dynamic_buffer_init(&listing);
 	ret = (int) nb_events;
-free_dynamic_buffer:
-	lttng_dynamic_buffer_reset(&listing);
 end:
 	free(cmd_header);
 	free(reception_buffer);
