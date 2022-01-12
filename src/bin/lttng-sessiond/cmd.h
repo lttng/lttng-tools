@@ -77,20 +77,21 @@ enum lttng_error_code cmd_process_attr_tracker_get_inclusion_set(
 		struct lttng_process_attr_values **values);
 
 /* Event commands */
-int cmd_disable_event(struct ltt_session *session,
-		enum lttng_domain_type domain,
-		const char *channel_name,
-		const struct lttng_event *event);
+int cmd_disable_event(struct command_ctx *cmd_ctx,
+		struct lttng_event *event,
+		char *filter_expression,
+		struct lttng_bytecode *filter,
+		struct lttng_event_exclusion *exclusion);
 int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, const struct lttng_event_context *ctx, int kwpipe);
 int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_bytecode *bytecode);
-int cmd_enable_event(struct ltt_session *session, const struct lttng_domain *domain,
-		char *channel_name, struct lttng_event *event,
+int cmd_enable_event(struct command_ctx *cmd_ctx,
+		struct lttng_event *event,
 		char *filter_expression,
-		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
+		struct lttng_bytecode *bytecode,
 		int wpipe);
 
 /* Trace session action commands */
@@ -108,8 +109,9 @@ int cmd_setup_relayd(struct ltt_session *session);
 /* Listing commands */
 ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
-ssize_t cmd_list_events(enum lttng_domain_type domain,
-		struct ltt_session *session, char *channel_name,
+enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
+		struct ltt_session *session,
+		char *channel_name,
 		struct lttng_payload *payload);
 enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_session *session,
@@ -120,11 +122,12 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		size_t session_count, uid_t uid, gid_t gid);
 ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 		struct lttng_event_field **fields);
-ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
-		struct lttng_event **events);
+enum lttng_error_code cmd_list_tracepoints(enum lttng_domain_type domain,
+		struct lttng_payload *reply_payload);
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs);
-ssize_t cmd_list_syscalls(struct lttng_event **events);
+enum lttng_error_code cmd_list_syscalls(
+		struct lttng_payload *reply_payload);
 
 int cmd_data_pending(struct ltt_session *session);
 
