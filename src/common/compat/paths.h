@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2015 Michael Jeanson <mjeanson@efficios.com>
  *
- * SPDX-License-Identifier: GPL-2.0-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 
