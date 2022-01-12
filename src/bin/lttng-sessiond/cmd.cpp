@@ -1864,25 +1864,22 @@ error:
 /*
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
-int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
-		char *channel_name, const struct lttng_event_context *ctx, int kwpipe)
+int cmd_add_context(struct command_ctx *cmd_ctx,
+	const struct lttng_event_context *event_context, int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
-	char *app_ctx_provider_name = NULL, *app_ctx_name = NULL;
+	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
+	const struct ltt_session *session = cmd_ctx->session;
+	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
 
 	/*
 	 * Don't try to add a context if the session has been started at
 	 * some point in time before. The tracer does not allow it and would
 	 * result in a corrupted trace.
 	 */
-	if (session->has_been_started) {
+	if (cmd_ctx->session->has_been_started) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
 		goto end;
-	}
-
-	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
-		app_ctx_provider_name = ctx->u.app_ctx.provider_name;
-		app_ctx_name = ctx->u.app_ctx.ctx_name;
 	}
 
 	switch (domain) {
@@ -1898,7 +1895,8 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 			chan_kern_created = 1;
 		}
 		/* Add kernel context to kernel tracer */
-		ret = context_kernel_add(session->kernel_session, ctx, channel_name);
+		ret = context_kernel_add(session->kernel_session,
+				event_context, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1952,11 +1950,8 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 			chan_ust_created = 1;
 		}
 
-		ret = context_ust_add(usess, domain, ctx, channel_name);
-		free(app_ctx_provider_name);
-		free(app_ctx_name);
-		app_ctx_name = NULL;
-		app_ctx_provider_name = NULL;
+		ret = context_ust_add(usess, domain, event_context,
+				channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1993,8 +1988,6 @@ error:
 		trace_ust_destroy_channel(uchan);
 	}
 end:
-	free(app_ctx_provider_name);
-	free(app_ctx_name);
 	return ret;
 }
 

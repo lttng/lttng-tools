@@ -82,8 +82,9 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		char *filter_expression,
 		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion);
-int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
-		char *channel_name, const struct lttng_event_context *ctx, int kwpipe);
+int cmd_add_context(struct command_ctx *cmd_ctx,
+		const struct lttng_event_context *event_context,
+		int kwpipe);
 int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_bytecode *bytecode);

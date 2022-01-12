@@ -830,6 +830,60 @@ end:
 	return ret_code;
 }
 
+static enum lttng_error_code receive_lttng_event_context(
+		const struct command_ctx *cmd_ctx,
+		int sock,
+		int *sock_error,
+		struct lttng_event_context **out_event_context)
+{
+	int ret;
+	const size_t event_context_len =
+			(size_t) cmd_ctx->lsm.u.context.length;
+	ssize_t sock_recv_len;
+	enum lttng_error_code ret_code;
+	struct lttng_payload event_context_payload;
+
+	lttng_payload_init(&event_context_payload);
+
+	ret = lttng_dynamic_buffer_set_size(&event_context_payload.buffer,
+			event_context_len);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, event_context_payload.buffer.data,
+			event_context_len);
+	if (sock_recv_len < 0 || sock_recv_len != event_context_len) {
+		ERR("Failed to receive event context in command payload");
+		*sock_error = 1;
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto end;
+	}
+
+	/* Deserialize event. */
+	{
+		struct lttng_payload_view event_context_view =
+				lttng_payload_view_from_payload(
+						&event_context_payload, 0, -1);
+
+		if (lttng_event_context_create_from_payload(
+				&event_context_view, out_event_context) !=
+				event_context_len) {
+			ERR("Invalid event context received as part of command payload");
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+	}
+
+	ret_code = LTTNG_OK;
+
+end:
+	lttng_payload_reset(&event_context_payload);
+	return ret_code;
+}
+
 /*
  * Version of setup_lttng_msg() without command header.
  */
@@ -1299,77 +1353,18 @@ skip_domain:
 	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTNG_ADD_CONTEXT:
 	{
-		lttng_event_context ctx;
+		struct lttng_event_context *event_context;
+		const enum lttng_error_code ret_code =
+			receive_lttng_event_context(
+				cmd_ctx, *sock, sock_error, &event_context);
 
-		/*
-		 * An LTTNG_ADD_CONTEXT command might have a supplementary
-		 * payload if the context being added is an application context.
-		 */
-		if (cmd_ctx->lsm.u.context.ctx.ctx ==
-				LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
-			char *provider_name = NULL, *context_name = NULL;
-			size_t provider_name_len =
-					cmd_ctx->lsm.u.context.provider_name_len;
-			size_t context_name_len =
-					cmd_ctx->lsm.u.context.context_name_len;
-
-			if (provider_name_len == 0 || context_name_len == 0) {
-				/*
-				 * Application provider and context names MUST
-				 * be provided.
-				 */
-				ret = -LTTNG_ERR_INVALID;
-				goto error;
-			}
-
-			provider_name = (char *) zmalloc(provider_name_len + 1);
-			if (!provider_name) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error;
-			}
-			cmd_ctx->lsm.u.context.ctx.u.app_ctx.provider_name =
-					provider_name;
-
-			context_name = (char *) zmalloc(context_name_len + 1);
-			if (!context_name) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error_add_context;
-			}
-			cmd_ctx->lsm.u.context.ctx.u.app_ctx.ctx_name =
-					context_name;
-
-			ret = lttcomm_recv_unix_sock(*sock, provider_name,
-					provider_name_len);
-			if (ret < 0) {
-				goto error_add_context;
-			}
-
-			ret = lttcomm_recv_unix_sock(*sock, context_name,
-					context_name_len);
-			if (ret < 0) {
-				goto error_add_context;
-			}
-		}
-
-		/*
-		 * cmd_add_context assumes ownership of the provider and context
-		 * names.
-		 */
-		ctx = cmd_ctx->lsm.u.context.ctx;
-		ret = cmd_add_context(cmd_ctx->session,
-				cmd_ctx->lsm.domain.type,
-				cmd_ctx->lsm.u.context.channel_name,
-				&ctx,
-				the_kernel_poll_pipe[1]);
-
-		cmd_ctx->lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
-		cmd_ctx->lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
-error_add_context:
-		free(cmd_ctx->lsm.u.context.ctx.u.app_ctx.provider_name);
-		free(cmd_ctx->lsm.u.context.ctx.u.app_ctx.ctx_name);
-		if (ret < 0) {
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
+
+		ret = cmd_add_context(cmd_ctx, event_context, the_kernel_poll_pipe[1]);
+		lttng_event_context_destroy(event_context);
 		break;
 	}
 	case LTTNG_DISABLE_CHANNEL:
