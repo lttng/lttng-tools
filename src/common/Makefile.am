@@ -33,6 +33,7 @@ libcommon_lgpl_la_SOURCES = \
 	action.c \
 	buffer-view.h buffer-view.c \
 	buffer-usage.c \
+	channel.c \
 	credentials.h \
 	condition.c \
 	defaults.c \

@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/stat.h>
 
 #include "client.h"
@@ -716,6 +717,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	int ret = LTTNG_OK;
 	int need_tracing_session = 1;
 	int need_domain;
+	struct lttng_dynamic_buffer payload;
+
+	lttng_dynamic_buffer_init(&payload);
 
 	DBG("Processing client command %d", cmd_ctx->lsm->cmd_type);
 
@@ -1195,12 +1199,7 @@ error_add_context:
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		cmd_ctx->lsm->u.channel.chan.attr.extended.ptr =
-				(struct lttng_channel_extended *) &cmd_ctx->lsm->u.channel.extended;
-		ret = cmd_enable_channel(cmd_ctx->session,
-				ALIGNED_CONST_PTR(cmd_ctx->lsm->domain),
-				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.channel.chan),
-				kernel_poll_pipe[1]);
+		ret = cmd_enable_channel(cmd_ctx, *sock, kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1706,20 +1705,20 @@ error_add_context:
 	}
 	case LTTNG_LIST_CHANNELS:
 	{
-		ssize_t payload_size;
-		struct lttng_channel *channels = NULL;
+		uint32_t nb_channel;
+		enum lttng_error_code ret_code;
+		struct lttcomm_list_command_header cmd_header = { 0 };
 
-		payload_size = cmd_list_channels(cmd_ctx->lsm->domain.type,
-				cmd_ctx->session, &channels);
-		if (payload_size < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -payload_size;
+		ret_code = cmd_list_channels(cmd_ctx->lsm->domain.type,
+				cmd_ctx->session, &payload, &nb_channel);
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, channels,
-			payload_size);
-		free(channels);
+		cmd_header.count = nb_channel;
+		ret = setup_lttng_msg(cmd_ctx, payload.data, payload.size,
+				&cmd_header, sizeof(cmd_header));
 
 		if (ret < 0) {
 			goto setup_error;
@@ -2108,6 +2107,7 @@ setup_error:
 	}
 init_setup_error:
 	assert(!rcu_read_ongoing());
+	lttng_dynamic_buffer_reset(&payload);
 	return ret;
 }
 

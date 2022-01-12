@@ -15,6 +15,7 @@
 #include <common/tracker.h>
 
 struct notification_thread_handle;
+struct lttng_dynamic_buffer;
 
 /*
  * A callback (and associated user data) that should be run after a command
@@ -46,9 +47,7 @@ int cmd_destroy_session(struct ltt_session *session,
 /* Channel commands */
 int cmd_disable_channel(struct ltt_session *session,
 		enum lttng_domain_type domain, char *channel_name);
-int cmd_enable_channel(struct ltt_session *session,
-		const struct lttng_domain *domain, const struct lttng_channel *attr,
-		int wpipe);
+int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe);
 
 /* Process attribute tracker commands */
 enum lttng_error_code cmd_process_attr_tracker_get_tracking_policy(
@@ -112,8 +111,10 @@ ssize_t cmd_list_domains(struct ltt_session *session,
 ssize_t cmd_list_events(enum lttng_domain_type domain,
 		struct ltt_session *session, char *channel_name,
 		struct lttng_event **events, size_t *total_size);
-ssize_t cmd_list_channels(enum lttng_domain_type domain,
-		struct ltt_session *session, struct lttng_channel **channels);
+enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
+		struct ltt_session *session,
+		struct lttng_dynamic_buffer *buffer,
+		uint32_t *nb_channel);
 ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
 void cmd_list_lttng_sessions(struct lttng_session *sessions,
