@@ -549,3 +549,57 @@ end:
 error:
 	return ret;
 }
+
+struct lttng_channel *trace_ust_channel_to_lttng_channel(
+		const struct ltt_ust_channel *uchan)
+{
+	struct lttng_channel *channel = NULL, *ret = NULL;
+
+	channel = lttng_channel_create_internal();
+	if (!channel) {
+		ERR("Failed to create lttng_channel during conversion from ltt_ust_channel to lttng_channel");
+		goto end;
+	}
+
+	if (lttng_strncpy(channel->name, uchan->name, LTTNG_SYMBOL_NAME_LEN)) {
+		ERR("Failed to set channel name during conversion from ltt_ust_channel to lttng_channel");
+		goto end;
+	}
+
+	channel->attr.overwrite = uchan->attr.overwrite;
+	channel->attr.subbuf_size = uchan->attr.subbuf_size;
+	channel->attr.num_subbuf = uchan->attr.num_subbuf;
+	channel->attr.switch_timer_interval = uchan->attr.switch_timer_interval;
+	channel->attr.read_timer_interval = uchan->attr.read_timer_interval;
+	channel->enabled = uchan->enabled;
+	channel->attr.tracefile_size = uchan->tracefile_size;
+	channel->attr.tracefile_count = uchan->tracefile_count;
+
+	/*
+	 * Map enum lttng_ust_output to enum lttng_event_output.
+	 */
+	switch (uchan->attr.output) {
+	case LTTNG_UST_ABI_MMAP:
+		channel->attr.output = LTTNG_EVENT_MMAP;
+		break;
+	default:
+		/*
+		 * LTTNG_UST_MMAP is the only supported UST
+		 * output mode.
+		 */
+		abort();
+		break;
+	}
+
+	lttng_channel_set_blocking_timeout(
+			channel, uchan->attr.u.s.blocking_timeout);
+	lttng_channel_set_monitor_timer_interval(
+			channel, uchan->monitor_timer_interval);
+
+	ret = channel;
+	channel = NULL;
+
+end:
+	lttng_channel_destroy(channel);
+	return ret;
+}

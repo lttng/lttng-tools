@@ -121,6 +121,10 @@ static int cmd_enable_event_internal(struct ltt_session *session,
 		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe);
+static int cmd_enable_channel_internal(struct ltt_session *session,
+		const struct lttng_domain *domain,
+		const struct lttng_channel *_attr,
+		int wpipe);
 
 /*
  * Create a session path used by list_lttng_sessions for the case that the
@@ -289,118 +293,6 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 
 end:
 	return ret;
-}
-
-/*
- * Fill lttng_channel array of all channels.
- */
-static ssize_t list_lttng_channels(enum lttng_domain_type domain,
-		struct ltt_session *session, struct lttng_channel *channels,
-		struct lttng_channel_extended *chan_exts)
-{
-	int i = 0, ret = 0;
-	struct ltt_kernel_channel *kchan;
-
-	DBG("Listing channels for session %s", session->name);
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		/* Kernel channels */
-		if (session->kernel_session != NULL) {
-			cds_list_for_each_entry(kchan,
-					&session->kernel_session->channel_list.head, list) {
-				uint64_t discarded_events, lost_packets;
-				struct lttng_channel_extended *extended;
-
-				extended = (struct lttng_channel_extended *)
-						kchan->channel->attr.extended.ptr;
-
-				ret = get_kernel_runtime_stats(session, kchan,
-						&discarded_events, &lost_packets);
-				if (ret < 0) {
-					goto end;
-				}
-				/* Copy lttng_channel struct to array */
-				memcpy(&channels[i], kchan->channel, sizeof(struct lttng_channel));
-				channels[i].enabled = kchan->enabled;
-				chan_exts[i].discarded_events =
-						discarded_events;
-				chan_exts[i].lost_packets = lost_packets;
-				chan_exts[i].monitor_timer_interval =
-						extended->monitor_timer_interval;
-				chan_exts[i].blocking_timeout = 0;
-				i++;
-			}
-		}
-		break;
-	case LTTNG_DOMAIN_UST:
-	{
-		struct lttng_ht_iter iter;
-		struct ltt_ust_channel *uchan;
-
-		rcu_read_lock();
-		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
-				&iter.iter, uchan, node.node) {
-			uint64_t discarded_events = 0, lost_packets = 0;
-
-			if (lttng_strncpy(channels[i].name, uchan->name,
-					LTTNG_SYMBOL_NAME_LEN)) {
-				break;
-			}
-			channels[i].attr.overwrite = uchan->attr.overwrite;
-			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
-			channels[i].attr.num_subbuf = uchan->attr.num_subbuf;
-			channels[i].attr.switch_timer_interval =
-				uchan->attr.switch_timer_interval;
-			channels[i].attr.read_timer_interval =
-				uchan->attr.read_timer_interval;
-			channels[i].enabled = uchan->enabled;
-			channels[i].attr.tracefile_size = uchan->tracefile_size;
-			channels[i].attr.tracefile_count = uchan->tracefile_count;
-
-			/*
-			 * Map enum lttng_ust_output to enum lttng_event_output.
-			 */
-			switch (uchan->attr.output) {
-			case LTTNG_UST_ABI_MMAP:
-				channels[i].attr.output = LTTNG_EVENT_MMAP;
-				break;
-			default:
-				/*
-				 * LTTNG_UST_MMAP is the only supported UST
-				 * output mode.
-				 */
-				assert(0);
-				break;
-			}
-
-			chan_exts[i].monitor_timer_interval =
-					uchan->monitor_timer_interval;
-			chan_exts[i].blocking_timeout =
-				uchan->attr.u.s.blocking_timeout;
-
-			ret = get_ust_runtime_stats(session, uchan,
-					&discarded_events, &lost_packets);
-			if (ret < 0) {
-				break;
-			}
-			chan_exts[i].discarded_events = discarded_events;
-			chan_exts[i].lost_packets = lost_packets;
-			i++;
-		}
-		rcu_read_unlock();
-		break;
-	}
-	default:
-		break;
-	}
-
-end:
-	if (ret < 0) {
-		return -LTTNG_ERR_FATAL;
-	} else {
-		return LTTNG_OK;
-	}
 }
 
 static int append_extended_info(const char *filter_expression,
@@ -1360,30 +1252,84 @@ error:
  *
  * The wpipe arguments is used as a notifier for the kernel thread.
  */
-int cmd_enable_channel(struct ltt_session *session,
-		const struct lttng_domain *domain, const struct lttng_channel *_attr, int wpipe)
+int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe)
+{
+	int ret;
+	size_t channel_len;
+	ssize_t sock_recv_len;
+	struct lttng_channel *channel = NULL;
+	struct lttng_buffer_view view;
+	struct lttng_dynamic_buffer channel_buffer;
+	const struct lttng_domain command_domain = cmd_ctx->lsm.domain;
+
+	lttng_dynamic_buffer_init(&channel_buffer);
+	channel_len = (size_t) cmd_ctx->lsm.u.channel.length;
+	ret = lttng_dynamic_buffer_set_size(&channel_buffer, channel_len);
+	if (ret) {
+		ret = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	sock_recv_len = lttcomm_recv_unix_sock(sock, channel_buffer.data,
+			channel_len);
+	if (sock_recv_len < 0 || sock_recv_len != channel_len) {
+		ERR("Failed to receive \"enable channel\" command payload");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	view = lttng_buffer_view_from_dynamic_buffer(&channel_buffer, 0, channel_len);
+	if (!lttng_buffer_view_is_valid(&view)) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (lttng_channel_create_from_buffer(&view, &channel) != channel_len) {
+		ERR("Invalid channel payload received in \"enable channel\" command");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = cmd_enable_channel_internal(
+			cmd_ctx->session, &command_domain, channel, wpipe);
+
+end:
+	lttng_dynamic_buffer_reset(&channel_buffer);
+	lttng_channel_destroy(channel);
+	return ret;
+}
+
+static int cmd_enable_channel_internal(struct ltt_session *session,
+		const struct lttng_domain *domain,
+		const struct lttng_channel *_attr,
+		int wpipe)
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
-	struct lttng_channel attr;
+	struct lttng_channel *attr = NULL;
 
 	assert(session);
 	assert(_attr);
 	assert(domain);
 
-	attr = *_attr;
-	len = lttng_strnlen(attr.name, sizeof(attr.name));
+	attr = lttng_channel_copy(_attr);
+	if (!attr) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	len = lttng_strnlen(attr->name, sizeof(attr->name));
 
 	/* Validate channel name */
-	if (attr.name[0] == '.' ||
-		memchr(attr.name, '/', len) != NULL) {
+	if (attr->name[0] == '.' ||
+		memchr(attr->name, '/', len) != NULL) {
 		ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 		goto end;
 	}
 
-	DBG("Enabling channel %s for session %s", attr.name, session->name);
+	DBG("Enabling channel %s for session %s", attr->name, session->name);
 
 	rcu_read_lock();
 
@@ -1393,8 +1339,8 @@ int cmd_enable_channel(struct ltt_session *session,
 	 * beacons for inactive streams.
 	 */
 	if (session->live_timer > 0) {
-		attr.attr.live_timer_interval = session->live_timer;
-		attr.attr.switch_timer_interval = 0;
+		attr->attr.live_timer_interval = session->live_timer;
+		attr->attr.switch_timer_interval = 0;
 	}
 
 	/* Check for feature support */
@@ -1406,8 +1352,8 @@ int cmd_enable_channel(struct ltt_session *session,
 			WARN("Kernel tracer does not support buffer monitoring. "
 					"Setting the monitor interval timer to 0 "
 					"(disabled) for channel '%s' of session '%s'",
-					attr.name, session->name);
-			lttng_channel_set_monitor_timer_interval(&attr, 0);
+					attr->name, session->name);
+			lttng_channel_set_monitor_timer_interval(attr, 0);
 		}
 		break;
 	}
@@ -1432,8 +1378,8 @@ int cmd_enable_channel(struct ltt_session *session,
 	{
 		struct ltt_kernel_channel *kchan;
 
-		kchan = trace_kernel_get_channel_by_name(attr.name,
-				session->kernel_session);
+		kchan = trace_kernel_get_channel_by_name(
+				attr->name, session->kernel_session);
 		if (kchan == NULL) {
 			/*
 			 * Don't try to create a channel if the session has been started at
@@ -1447,10 +1393,11 @@ int cmd_enable_channel(struct ltt_session *session,
 			if (session->snapshot.nb_output > 0 ||
 					session->snapshot_mode) {
 				/* Enforce mmap output for snapshot sessions. */
-				attr.attr.output = LTTNG_EVENT_MMAP;
+				attr->attr.output = LTTNG_EVENT_MMAP;
 			}
-			ret = channel_kernel_create(session->kernel_session, &attr, wpipe);
-			if (attr.name[0] != '\0') {
+			ret = channel_kernel_create(
+					session->kernel_session, attr, wpipe);
+			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
 			}
 		} else {
@@ -1480,19 +1427,19 @@ int cmd_enable_channel(struct ltt_session *session,
 		 * adhered to.
 		 */
 		if (domain->type == LTTNG_DOMAIN_JUL) {
-			if (strncmp(attr.name, DEFAULT_JUL_CHANNEL_NAME,
+			if (strncmp(attr->name, DEFAULT_JUL_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
-			if (strncmp(attr.name, DEFAULT_LOG4J_CHANNEL_NAME,
+			if (strncmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
-			if (strncmp(attr.name, DEFAULT_PYTHON_CHANNEL_NAME,
+			if (strncmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
@@ -1501,7 +1448,7 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		chan_ht = usess->domain_global.channels;
 
-		uchan = trace_ust_find_channel_by_name(chan_ht, attr.name);
+		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
 		if (uchan == NULL) {
 			/*
 			 * Don't try to create a channel if the session has been started at
@@ -1512,8 +1459,8 @@ int cmd_enable_channel(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = channel_ust_create(usess, &attr, domain->buf_type);
-			if (attr.name[0] != '\0') {
+			ret = channel_ust_create(usess, attr, domain->buf_type);
+			if (attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
 		} else {
@@ -1526,12 +1473,13 @@ int cmd_enable_channel(struct ltt_session *session,
 		goto error;
 	}
 
-	if (ret == LTTNG_OK && attr.attr.output != LTTNG_EVENT_MMAP) {
+	if (ret == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
 		session->has_non_mmap_channel = true;
 	}
 error:
 	rcu_read_unlock();
 end:
+	lttng_channel_destroy(attr);
 	return ret;
 }
 
@@ -2158,7 +2106,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = cmd_enable_channel(session, domain, attr, wpipe);
+			ret = cmd_enable_channel_internal(
+					session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2297,7 +2246,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = cmd_enable_channel(session, domain, attr, wpipe);
+			ret = cmd_enable_channel_internal(
+					session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -3603,67 +3553,138 @@ error:
 /*
  * Command LTTNG_LIST_CHANNELS processed by the client thread.
  */
-ssize_t cmd_list_channels(enum lttng_domain_type domain,
-		struct ltt_session *session, struct lttng_channel **channels)
+enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
+		struct ltt_session *session,
+		struct lttng_payload *payload)
 {
-	ssize_t nb_chan = 0, payload_size = 0, ret;
+	int ret = 0;
+	unsigned int i = 0;
+	struct lttcomm_list_command_header cmd_header = {};
+	size_t cmd_header_offset;
+	enum lttng_error_code ret_code;
 
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		if (session->kernel_session != NULL) {
-			nb_chan = session->kernel_session->channel_count;
-		}
-		DBG3("Number of kernel channels %zd", nb_chan);
-		if (nb_chan <= 0) {
-			ret = -LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-			goto end;
-		}
-		break;
-	case LTTNG_DOMAIN_UST:
-		if (session->ust_session != NULL) {
-			rcu_read_lock();
-			nb_chan = lttng_ht_get_count(
-				session->ust_session->domain_global.channels);
-			rcu_read_unlock();
-		}
-		DBG3("Number of UST global channels %zd", nb_chan);
-		if (nb_chan < 0) {
-			ret = -LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto end;
-		}
-		break;
-	default:
-		ret = -LTTNG_ERR_UND;
+	assert(session);
+	assert(payload);
+
+	DBG("Listing channels for session %s", session->name);
+
+	cmd_header_offset = payload->buffer.size;
+
+	/* Reserve space for command reply header. */
+	ret = lttng_dynamic_buffer_set_size(&payload->buffer,
+			cmd_header_offset + sizeof(cmd_header));
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	if (nb_chan > 0) {
-		const size_t channel_size = sizeof(struct lttng_channel) +
-			sizeof(struct lttng_channel_extended);
-		struct lttng_channel_extended *channel_exts;
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		/* Kernel channels */
+		struct ltt_kernel_channel *kchan;
+		if (session->kernel_session != NULL) {
+			cds_list_for_each_entry(kchan,
+					&session->kernel_session->channel_list.head, list) {
+				uint64_t discarded_events, lost_packets;
+				struct lttng_channel_extended *extended;
 
-		payload_size = nb_chan * channel_size;
-		*channels = zmalloc(payload_size);
-		if (*channels == NULL) {
-			ret = -LTTNG_ERR_FATAL;
-			goto end;
-		}
+				extended = (struct lttng_channel_extended *)
+						kchan->channel->attr.extended.ptr;
 
-		channel_exts = ((void *) *channels) +
-				(nb_chan * sizeof(struct lttng_channel));
-		ret = list_lttng_channels(domain, session, *channels, channel_exts);
-		if (ret != LTTNG_OK) {
-			free(*channels);
-			*channels = NULL;
-			goto end;
+				ret = get_kernel_runtime_stats(session, kchan,
+						&discarded_events, &lost_packets);
+				if (ret < 0) {
+					ret_code = LTTNG_ERR_UNK;
+					goto end;
+				}
+
+				/*
+				 * Update the discarded_events and lost_packets
+				 * count for the channel
+				 */
+				extended->discarded_events = discarded_events;
+				extended->lost_packets = lost_packets;
+
+				ret = lttng_channel_serialize(
+						kchan->channel, &payload->buffer);
+				if (ret) {
+					ERR("Failed to serialize lttng_channel: channel name = '%s'",
+							kchan->channel->name);
+					ret_code = LTTNG_ERR_UNK;
+					goto end;
+				}
+
+				i++;
+			}
 		}
-	} else {
-		*channels = NULL;
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	{
+		struct lttng_ht_iter iter;
+		struct ltt_ust_channel *uchan;
+
+		rcu_read_lock();
+		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
+				&iter.iter, uchan, node.node) {
+			uint64_t discarded_events = 0, lost_packets = 0;
+			struct lttng_channel *channel = NULL;
+			struct lttng_channel_extended *extended;
+
+			channel = trace_ust_channel_to_lttng_channel(uchan);
+			if (!channel) {
+				ret = LTTNG_ERR_NOMEM;
+				break;
+			}
+
+			extended = (struct lttng_channel_extended *)
+						   channel->attr.extended.ptr;
+
+			ret = get_ust_runtime_stats(session, uchan,
+					&discarded_events, &lost_packets);
+			if (ret < 0) {
+				lttng_channel_destroy(channel);
+				ret_code = LTTNG_ERR_UNK;
+				break;
+			}
+
+			extended->discarded_events = discarded_events;
+			extended->lost_packets = lost_packets;
+
+			ret = lttng_channel_serialize(
+					channel, &payload->buffer);
+			if (ret) {
+				ERR("Failed to serialize lttng_channel: channel name = '%s'",
+						channel->name);
+				ret_code = LTTNG_ERR_UNK;
+				ret = -1;
+				break;
+			}
+
+			i++;
+		}
+		rcu_read_unlock();
+		break;
+	}
+	default:
+		break;
 	}
 
-	ret = payload_size;
+	if (i > UINT32_MAX) {
+		ERR("Channel count would overflow the channel listing command's reply");
+		ret_code = LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	/* Update command reply header. */
+	cmd_header.count = (uint32_t) i;
+	memcpy(payload->buffer.data + cmd_header_offset, &cmd_header,
+			sizeof(cmd_header));
+	ret_code = LTTNG_OK;
+
 end:
-	return ret;
+	return ret_code;
 }
 
 /*

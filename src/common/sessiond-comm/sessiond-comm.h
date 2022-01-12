@@ -413,8 +413,7 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED disable;
 		/* Create channel */
 		struct {
-			struct lttng_channel chan;
-			struct lttng_channel_extended extended;
+			uint32_t length;
 		} LTTNG_PACKED channel;
 		/* Context */
 		struct {
@@ -558,6 +557,14 @@ struct lttng_event_exclusion {
 struct lttcomm_event_command_header {
 	/* Number of events */
 	uint32_t nb_events;
+} LTTNG_PACKED;
+
+/*
+ * Listing command header.
+ */
+struct lttcomm_list_command_header {
+	/* Number of elements */
+	uint32_t count;
 } LTTNG_PACKED;
 
 /*

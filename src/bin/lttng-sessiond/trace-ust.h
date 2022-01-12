@@ -196,6 +196,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		enum lttng_domain_type domain);
+
 enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_bytecode *filter,

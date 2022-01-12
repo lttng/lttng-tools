@@ -31,4 +31,7 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 int channel_ust_disable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan);
 
+struct lttng_channel *trace_ust_channel_to_lttng_channel(
+		const struct ltt_ust_channel *uchan);
+
 #endif /* _LTT_CHANNEL_H */
