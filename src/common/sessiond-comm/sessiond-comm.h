@@ -291,9 +291,7 @@ struct lttcomm_session_msg {
 		/* Context */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event_context ctx LTTNG_PACKED;
-			uint32_t provider_name_len;
-			uint32_t context_name_len;
+			uint32_t length;
 		} LTTNG_PACKED context;
 		/* Use by register_consumer */
 		struct {

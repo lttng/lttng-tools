@@ -946,6 +946,385 @@ end:
 	return ret;
 }
 
+static ssize_t lttng_event_context_app_populate_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_context *event_ctx)
+{
+	ssize_t ret, offset = 0;
+	const struct lttng_event_context_app_comm *comm;
+	char *provider_name = NULL, *context_name = NULL;
+	size_t provider_name_len, context_name_len;
+	const struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
+			view, offset, sizeof(*comm));
+
+	assert(event_ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
+
+	if (!lttng_buffer_view_is_valid(&comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	comm = (typeof(comm)) comm_view.data;
+	offset += sizeof(*comm);
+
+	provider_name_len = comm->provider_name_len;
+	context_name_len = comm->ctx_name_len;
+
+	if (provider_name_len == 0 || context_name_len == 0) {
+		/*
+		 * Application provider and context names MUST
+		 * be provided.
+		 */
+		ret = -1;
+		goto end;
+	}
+
+	{
+		const char *name;
+		const struct lttng_buffer_view provider_name_view =
+				lttng_buffer_view_from_view(view, offset,
+						provider_name_len);
+
+		if (!lttng_buffer_view_is_valid(&provider_name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = provider_name_view.data;
+
+		if (!lttng_buffer_view_contains_string(&provider_name_view,
+				    name, provider_name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		provider_name = lttng_strndup(name, provider_name_len);
+		if (!provider_name) {
+			ret = -1;
+			goto end;
+		}
+		offset += provider_name_len;
+	}
+
+	{
+		const char *name;
+		const struct lttng_buffer_view context_name_view =
+				lttng_buffer_view_from_view(
+						view, offset, context_name_len);
+
+		if (!lttng_buffer_view_is_valid(&context_name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = context_name_view.data;
+
+		if (!lttng_buffer_view_contains_string(&context_name_view, name,
+				    context_name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		context_name = lttng_strndup(name, context_name_len);
+		if (!context_name) {
+			ret = -1;
+			goto end;
+		}
+
+		offset += context_name_len;
+	}
+
+	/* Transfer ownership of the strings */
+	event_ctx->u.app_ctx.provider_name = provider_name;
+	event_ctx->u.app_ctx.ctx_name = context_name;
+	provider_name = NULL;
+	context_name = NULL;
+
+	ret = offset;
+end:
+	free(provider_name);
+	free(context_name);
+
+	return ret;
+}
+
+static ssize_t lttng_event_context_perf_counter_populate_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_context *event_ctx)
+{
+	ssize_t ret, offset = 0;
+	const struct lttng_event_context_perf_counter_comm *comm;
+	size_t name_len;
+	const struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
+			view, offset, sizeof(*comm));
+
+	assert(event_ctx->ctx == LTTNG_EVENT_CONTEXT_PERF_COUNTER ||
+			event_ctx->ctx ==
+					LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER ||
+			event_ctx->ctx == LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER);
+
+	if (!lttng_buffer_view_is_valid(&comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	comm = (typeof(comm)) comm_view.data;
+	offset += sizeof(*comm);
+
+	name_len = comm->name_len;
+	{
+		const char *name;
+		const struct lttng_buffer_view provider_name_view =
+				lttng_buffer_view_from_view(
+						view, offset, name_len);
+		if (!lttng_buffer_view_is_valid(&provider_name_view)) {
+			ret = -1;
+			goto end;
+		}
+
+		name = provider_name_view.data;
+
+		if (!lttng_buffer_view_contains_string(
+				    &provider_name_view, name, name_len)) {
+			ret = -1;
+			goto end;
+		}
+
+		lttng_strncpy(event_ctx->u.perf_counter.name, name, name_len);
+		offset += name_len;
+	}
+
+	event_ctx->u.perf_counter.config = comm->config;
+	event_ctx->u.perf_counter.type = comm->type;
+
+	ret = offset;
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+ssize_t lttng_event_context_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_context **event_ctx)
+{
+	ssize_t ret, offset = 0;
+	const struct lttng_event_context_comm *comm;
+	struct lttng_event_context *local_context = NULL;
+	struct lttng_buffer_view subtype_view;
+	struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
+			view, offset, sizeof(*comm));
+
+	assert(event_ctx);
+	assert(view);
+
+	if (!lttng_buffer_view_is_valid(&comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	comm = (typeof(comm)) comm_view.data;
+	offset += sizeof(*comm);
+
+	local_context = zmalloc(sizeof(*local_context));
+	if (!local_context) {
+		ret = -1;
+		goto end;
+	}
+
+	local_context->ctx = comm->type;
+
+	subtype_view = lttng_buffer_view_from_view(view, offset, -1);
+
+	switch (local_context->ctx) {
+	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
+		ret = lttng_event_context_app_populate_from_buffer(
+				&subtype_view, local_context);
+		break;
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+		ret = lttng_event_context_perf_counter_populate_from_buffer(
+				&subtype_view, local_context);
+		break;
+	default:
+		/* Nothing else to deserialize. */
+		ret = 0;
+		break;
+	}
+
+	if (ret < 0) {
+		goto end;
+	}
+
+	offset += ret;
+
+	*event_ctx = local_context;
+	local_context = NULL;
+	ret = offset;
+
+end:
+	free(local_context);
+	return ret;
+}
+
+static int lttng_event_context_app_serialize(
+		struct lttng_event_context *context,
+		struct lttng_dynamic_buffer *buffer)
+{
+	int ret;
+	struct lttng_event_context_app_comm comm = { 0 };
+	size_t provider_len, ctx_len;
+	const char *provider_name;
+	const char *ctx_name;
+
+	assert(buffer);
+	assert(context);
+	assert(context->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT);
+
+	provider_name = context->u.app_ctx.provider_name;
+	ctx_name = context->u.app_ctx.ctx_name;
+
+	if (!provider_name || !ctx_name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	provider_len = strlen(provider_name);
+	if (provider_len == 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Include the null terminator. */
+	comm.provider_name_len = provider_len + 1;
+
+	ctx_len = strlen(ctx_name);
+	if (ctx_len == 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Include the null terminator. */
+	comm.ctx_name_len = ctx_len + 1;
+
+	/* Header */
+	ret = lttng_dynamic_buffer_append(buffer, &comm, sizeof(comm));
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(buffer, provider_name, provider_len);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+	ret = lttng_dynamic_buffer_append(buffer, ctx_name, ctx_len);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static int lttng_event_context_perf_counter_serialize(
+		struct lttng_event_perf_counter_ctx *context,
+		struct lttng_dynamic_buffer *buffer)
+{
+	int ret;
+	struct lttng_event_context_perf_counter_comm comm = { 0 };
+
+	assert(buffer);
+	assert(context);
+
+	comm.config = context->config;
+	comm.type = context->type;
+	comm.name_len = lttng_strnlen(context->name, LTTNG_SYMBOL_NAME_LEN);
+
+	if (comm.name_len == LTTNG_SYMBOL_NAME_LEN) {
+		ret = -1;
+		goto end;
+	}
+
+	/* Include the null terminator. */
+	comm.name_len += 1;
+
+	/* Header */
+	ret = lttng_dynamic_buffer_append(buffer, &comm, sizeof(comm));
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(buffer, context->name, comm.name_len);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_event_context_serialize(struct lttng_event_context *context,
+		struct lttng_dynamic_buffer *buf)
+{
+	int ret;
+	struct lttng_event_context_comm context_comm = { 0 };
+
+	assert(context);
+	assert(buf);
+
+	context_comm.type = (uint32_t) context->ctx;
+
+	/* Header */
+	ret = lttng_dynamic_buffer_append(
+			buf, &context_comm, sizeof(context_comm));
+	if (ret) {
+		goto end;
+	}
+
+	switch (context->ctx) {
+	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
+		ret = lttng_event_context_app_serialize(context, buf);
+		break;
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+		ret = lttng_event_context_perf_counter_serialize(
+				&context->u.perf_counter, buf);
+		break;
+	default:
+		/* Nothing else to serialize. */
+		break;
+	}
+
+	if (ret) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+void lttng_event_context_destroy(struct lttng_event_context *context)
+{
+	if (!context) {
+		return;
+	}
+
+	if (context->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+		free(context->u.app_ctx.provider_name);
+		free(context->u.app_ctx.ctx_name);
+	}
+
+	free(context);
+}
 static enum lttng_error_code compute_flattened_size(
 		struct lttng_dynamic_pointer_array *events, size_t *size)
 {

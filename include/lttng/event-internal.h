@@ -77,6 +77,50 @@ struct lttng_event_function_attr_comm {
 	char payload[];
 } LTTNG_PACKED;
 
+struct lttng_event_context_comm {
+	uint32_t type;
+	/*
+	 * Depending on the type.
+	 * For:
+	 *  - LTTNG_EVENT_CONTEXT_APP_CONTEXT.
+	 *
+	 *  -> struct lttng_event_context_app_comm
+	 *
+	 * For
+	 *  - LTTNG_EVENT_CONTEXT_PERF_COUNTER,
+	 *  - LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER,
+	 *  - LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER.
+	 *
+	 *  -> struct lttng_event_context_perf_counter_comm
+	 *
+	 *  Other type -> no payload.
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
+struct lttng_event_context_perf_counter_comm {
+	uint32_t type;
+	uint64_t config;
+	/* Includes terminator `\0`. */
+	uint32_t name_len;
+	/*
+	 * char name [name_len]
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
+struct lttng_event_context_app_comm {
+	/* Includes terminator `\0`. */
+	uint32_t provider_name_len;
+	/* Includes terminator `\0`. */
+	uint32_t ctx_name_len;
+	/*
+	 * provider name [provider_name_len]
+	 * ctx name [ctx_name_len]
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
 struct lttng_event_extended {
 	/*
 	 * exclusions and filter_expression are only set when the lttng_event
@@ -113,6 +157,18 @@ int lttng_event_serialize(const struct lttng_event *event,
 		void *bytecode,
 		struct lttng_dynamic_buffer *buf,
 		int *fd_to_send);
+
+LTTNG_HIDDEN
+ssize_t lttng_event_context_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_event_context **event_ctx);
+
+LTTNG_HIDDEN
+int lttng_event_context_serialize(struct lttng_event_context *context,
+		struct lttng_dynamic_buffer *buf);
+
+LTTNG_HIDDEN
+void lttng_event_context_destroy(struct lttng_event_context *context);
 
 LTTNG_HIDDEN
 enum lttng_error_code lttng_events_create_and_flatten_from_buffer(

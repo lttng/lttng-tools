@@ -187,7 +187,8 @@ duplicate:
  * Add kernel context to tracer.
  */
 int context_kernel_add(struct ltt_kernel_session *ksession,
-		const struct lttng_event_context *ctx, char *channel_name)
+		const struct lttng_event_context *ctx,
+		const char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -363,7 +364,7 @@ error:
 int context_ust_add(struct ltt_ust_session *usess,
 		enum lttng_domain_type domain,
 		const struct lttng_event_context *ctx,
-		char *channel_name)
+		const char *channel_name)
 {
 	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;

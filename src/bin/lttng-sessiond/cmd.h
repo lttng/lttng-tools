@@ -78,8 +78,7 @@ enum lttng_error_code cmd_process_attr_tracker_get_inclusion_set(
 
 /* Event commands */
 int cmd_disable_event(struct command_ctx *cmd_ctx, int sock);
-int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
-		char *channel_name, const struct lttng_event_context *ctx, int kwpipe);
+int cmd_add_context(struct command_ctx *cmd_ctx, int sock, int kwpipe);
 int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
