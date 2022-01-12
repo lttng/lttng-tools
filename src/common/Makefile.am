@@ -56,6 +56,7 @@ libcommon_lgpl_la_SOURCES = \
 	actions/stop-session.cpp \
 	actions/rate-policy.cpp \
 	buffer-view.h buffer-view.cpp \
+	channel.cpp \
 	conditions/buffer-usage.cpp \
 	conditions/condition.cpp \
 	conditions/event-rule-matches.cpp \

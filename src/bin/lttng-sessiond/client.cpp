@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -1432,14 +1433,8 @@ error_add_context:
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
-		cmd_ctx->lsm.u.channel.chan.attr.extended.ptr =
-				(struct lttng_channel_extended *) &cmd_ctx->lsm.u.channel.extended;
-		lttng_domain domain = cmd_ctx->lsm.domain;
-		lttng_channel chan = cmd_ctx->lsm.u.channel.chan;
-		ret = cmd_enable_channel(cmd_ctx->session,
-				&domain,
-				&chan,
-				the_kernel_poll_pipe[1]);
+		ret = cmd_enable_channel(
+				cmd_ctx, *sock, the_kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1962,24 +1957,29 @@ error_add_context:
 	}
 	case LTTNG_LIST_CHANNELS:
 	{
-		ssize_t payload_size;
-		struct lttng_channel *channels = NULL;
+		enum lttng_error_code ret_code;
+		size_t original_payload_size;
+		size_t payload_size;
+		const size_t command_header_size = sizeof(struct lttcomm_list_command_header);
 
-		payload_size = cmd_list_channels(cmd_ctx->lsm.domain.type,
-				cmd_ctx->session, &channels);
-		if (payload_size < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -payload_size;
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
+			goto setup_error;
+		}
+
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		ret_code = cmd_list_channels(cmd_ctx->lsm.domain.type,
+				cmd_ctx->session, &cmd_ctx->reply_payload);
+		if (ret_code != LTTNG_OK) {
+			ret = (int) ret_code;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, channels,
-			payload_size);
-		free(channels);
-
-		if (ret < 0) {
-			goto setup_error;
-		}
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+				command_header_size - original_payload_size;
+		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
 		break;

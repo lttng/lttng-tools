@@ -1534,10 +1534,9 @@ end:
 struct lttng_channel *lttng_channel_create(struct lttng_domain *domain)
 {
 	struct lttng_channel *channel = NULL;
-	struct lttng_channel_extended *extended = NULL;
 
 	if (!domain) {
-		goto error;
+		goto end;
 	}
 
 	/* Validate domain. */
@@ -1548,36 +1547,26 @@ struct lttng_channel *lttng_channel_create(struct lttng_domain *domain)
 		case LTTNG_BUFFER_PER_PID:
 			break;
 		default:
-			goto error;
+			goto end;
 		}
 		break;
 	case LTTNG_DOMAIN_KERNEL:
 		if (domain->buf_type != LTTNG_BUFFER_GLOBAL) {
-			goto error;
+			goto end;
 		}
 		break;
 	default:
-		goto error;
+		goto end;
 	}
 
-	channel = (lttng_channel *) zmalloc(sizeof(*channel));
+	channel = lttng_channel_create_internal();
 	if (!channel) {
-		goto error;
+		goto end;
 	}
-
-	extended = (lttng_channel_extended *) zmalloc(sizeof(*extended));
-	if (!extended) {
-		goto error;
-	}
-
-	channel->attr.extended.ptr = extended;
 
 	lttng_channel_set_default_attr(domain, &channel->attr);
+end:
 	return channel;
-error:
-	free(channel);
-	free(extended);
-	return NULL;
 }
 
 void lttng_channel_destroy(struct lttng_channel *channel)
@@ -1601,62 +1590,63 @@ int lttng_enable_channel(struct lttng_handle *handle,
 {
 	enum lttng_error_code ret_code;
 	int ret;
+	struct lttng_dynamic_buffer buffer;
 	struct lttcomm_session_msg lsm;
 	uint64_t total_buffer_size_needed_per_cpu = 0;
+	struct lttng_channel *channel = NULL;
+
+	lttng_dynamic_buffer_init(&buffer);
 
 	/* NULL arguments are forbidden. No default values. */
 	if (handle == NULL || in_chan == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-	memcpy(&lsm.u.channel.chan, in_chan, sizeof(lsm.u.channel.chan));
-	lsm.u.channel.chan.attr.extended.ptr = NULL;
-
-	if (!in_chan->attr.extended.ptr) {
-		struct lttng_channel *channel;
-		struct lttng_channel_extended *extended;
-
-		channel = lttng_channel_create(&handle->domain);
-		if (!channel) {
-			return -LTTNG_ERR_NOMEM;
-		}
-
-		/*
-		 * Create a new channel in order to use default extended
-		 * attribute values.
-		 */
-		extended = (struct lttng_channel_extended *)
-				channel->attr.extended.ptr;
-		memcpy(&lsm.u.channel.extended, extended, sizeof(*extended));
-		lttng_channel_destroy(channel);
-	} else {
-		struct lttng_channel_extended *extended;
-
-		extended = (struct lttng_channel_extended *)
-				in_chan->attr.extended.ptr;
-		memcpy(&lsm.u.channel.extended, extended, sizeof(*extended));
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	/*
 	 * Verify that the amount of memory required to create the requested
 	 * buffer is available on the system at the moment.
 	 */
-	if (lsm.u.channel.chan.attr.num_subbuf >
-			UINT64_MAX / lsm.u.channel.chan.attr.subbuf_size) {
+	if (in_chan->attr.num_subbuf >
+			UINT64_MAX / in_chan->attr.subbuf_size) {
 		/* Overflow */
 		ret = -LTTNG_ERR_OVERFLOW;
 		goto end;
 	}
 
-	total_buffer_size_needed_per_cpu = lsm.u.channel.chan.attr.num_subbuf *
-		lsm.u.channel.chan.attr.subbuf_size;
+	total_buffer_size_needed_per_cpu =
+			in_chan->attr.num_subbuf * in_chan->attr.subbuf_size;
 	ret_code = check_enough_available_memory(
 			total_buffer_size_needed_per_cpu);
 	if (ret_code != LTTNG_OK) {
 		ret = -ret_code;
 		goto end;
 	}
+
+	/* Copy the channel for easier manipulation. */
+	channel = lttng_channel_copy(in_chan);
+	if (!channel) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Populate the channel extended attribute if necessary. */
+	if (!channel->attr.extended.ptr) {
+		struct lttng_channel_extended *extended =
+				(struct lttng_channel_extended *) zmalloc(
+						sizeof(*extended));
+
+		if (!extended) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		lttng_channel_set_default_extended_attr(
+				&handle->domain, extended);
+		channel->attr.extended.ptr = extended;
+	}
+
+	/* Prepare the payload */
+	memset(&lsm, 0, sizeof(lsm));
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
@@ -1668,8 +1658,19 @@ int lttng_enable_channel(struct lttng_handle *handle,
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_channel_serialize(channel, &buffer);
+	if (ret) {
+		ret = -LTTNG_ERR_FATAL;
+		goto end;
+	}
+
+	lsm.u.channel.length = buffer.size;
+
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+			&lsm, buffer.data, buffer.size, NULL);
 end:
+	lttng_channel_destroy(channel);
+	lttng_dynamic_buffer_reset(&buffer);
 	return ret;
 }
 
@@ -2271,12 +2272,14 @@ error:
 int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel **channels)
 {
-	int ret;
-	size_t channel_count, i;
-	const size_t channel_size = sizeof(struct lttng_channel) +
-			sizeof(struct lttng_channel_extended);
+	int ret, total_payload_received;
 	struct lttcomm_session_msg lsm;
-	char *extended_at;
+	char *reception_buffer = NULL;
+	size_t cmd_header_len = 0;
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	struct lttng_dynamic_buffer tmp_buffer;
+
+	lttng_dynamic_buffer_init(&tmp_buffer);
 
 	if (handle == NULL) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2294,31 +2297,48 @@ int lttng_list_channels(struct lttng_handle *handle,
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) channels);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+			(void **) &reception_buffer, (void **) &cmd_header,
+			&cmd_header_len);
 	if (ret < 0) {
 		goto end;
 	}
 
-	if (ret % channel_size) {
-		ret = -LTTNG_ERR_UNK;
-		free(*channels);
-		*channels = NULL;
+	total_payload_received = ret;
+
+	if (cmd_header_len != sizeof(*cmd_header)) {
+		ret = -LTTNG_ERR_FATAL;
 		goto end;
 	}
-	channel_count = (size_t) ret / channel_size;
 
-	/* Set extended info pointers */
-	extended_at = ((char *) *channels) +
-			channel_count * sizeof(struct lttng_channel);
-	for (i = 0; i < channel_count; i++) {
-		struct lttng_channel *chan = &(*channels)[i];
-
-		chan->attr.extended.ptr = extended_at;
-		extended_at += sizeof(struct lttng_channel_extended);
+	if (!cmd_header) {
+		ret = LTTNG_ERR_UNK;
+		goto end;
 	}
 
-	ret = (int) channel_count;
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	{
+		enum lttng_error_code ret_code;
+		const struct lttng_buffer_view events_view =
+				lttng_buffer_view_init(reception_buffer, 0,
+						total_payload_received);
+
+		ret_code = lttng_channels_create_and_flatten_from_buffer(
+				&events_view, cmd_header->count, channels);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
+
+	ret = (int) cmd_header->count;
 end:
+	free(cmd_header);
+	free(reception_buffer);
 	return ret;
 }
 
@@ -2698,6 +2718,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		return;
 	}
 
+	/* Save the pointer for later use */
 	extended = (struct lttng_channel_extended *) attr->extended.ptr;
 	memset(attr, 0, sizeof(struct lttng_channel_attr));
 
@@ -2714,12 +2735,6 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
-		if (extended) {
-			extended->monitor_timer_interval =
-					DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
-			extended->blocking_timeout =
-					DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
-		}
 		break;
 	case LTTNG_DOMAIN_UST:
 		switch (domain->buf_type) {
@@ -2731,12 +2746,6 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 					DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
 			attr->read_timer_interval =
 					DEFAULT_UST_UID_CHANNEL_READ_TIMER;
-			if (extended) {
-				extended->monitor_timer_interval =
-						DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
-				extended->blocking_timeout =
-						DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
-			}
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -2747,12 +2756,6 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 					DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
 			attr->read_timer_interval =
 					DEFAULT_UST_PID_CHANNEL_READ_TIMER;
-			if (extended) {
-				extended->monitor_timer_interval =
-						DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
-				extended->blocking_timeout =
-						DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
-			}
 			break;
 		}
 	default:
@@ -2760,6 +2763,11 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		break;
 	}
 
+	if (extended) {
+		lttng_channel_set_default_extended_attr(domain, extended);
+	}
+
+	/* Reassign the extended pointer. */
 	attr->extended.ptr = extended;
 }
 
