@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# Copyright (C) 2022 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+TEST_DESC="Rotation - Kernel tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_USEC_WAIT=0
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+SESSION_NAME="stream"
+UST_EVENT_NAME="tp:tptest"
+KERNEL_EVENT_NAME="lttng_test_filter_event"
+
+TRACE_PATH=$(mktemp --tmpdir -d -t tmp.rotation_ust_kernel_tracing.XXXXXX)
+
+NUM_TESTS=64
+
+source $TESTDIR/utils/utils.sh
+source $CURDIR/rotate_utils.sh
+
+function rotate_ust_kernel_test ()
+{
+	local local_path=$1
+	local today
+	local expected_domains
+
+	expected_domains=("ust" "kernel")
+
+	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME
+	lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	today=$(date +%Y%m%d)
+
+	# First chunk contains 10 events of each domain.
+	echo -n "10" > /proc/lttng-test-filter-event
+	$TESTAPP_BIN -i 10 -w $NR_USEC_WAIT > /dev/null 2>&1
+	rotate_session_ok $SESSION_NAME
+
+	# Second chunk contains 20 events of each domain.
+	echo -n "20" > /proc/lttng-test-filter-event
+	$TESTAPP_BIN -i 20 -w $NR_USEC_WAIT > /dev/null 2>&1
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Third chunk contains no event (rotate after stop).
+	rotate_session_ok $SESSION_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	diag "Validate kernel domain chunks"
+	EVENT_NAME=$KERNEL_EVENT_NAME
+	validate_test_chunks $local_path $today kernel "${expected_domains[@]}"
+
+	diag "Validate user space domain chunks"
+	EVENT_NAME=$UST_EVENT_NAME
+	validate_test_chunks $local_path $today "ust/uid/*/*/" "${expected_domains[@]}"
+}
+
+function test_ust_kernel_streaming ()
+{
+	diag "Test combined UST + kernel streaming with session rotation"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	rotate_ust_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" "ust/uid/*/*/"
+}
+
+function test_ust_kernel_local ()
+{
+	diag "Test combined UST + kernel local with session rotation"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+	rotate_ust_kernel_test "${TRACE_PATH}/archives" "ust/uid/*/*/"
+}
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+bail_out_if_no_babeltrace
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	validate_lttng_modules_present
+
+	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_sessiond
+	modprobe lttng-test
+
+	tests=( test_ust_kernel_streaming test_ust_kernel_local )
+
+	for fct_test in "${tests[@]}";
+	do
+		SESSION_NAME=$(randstring 16 0)
+		${fct_test}
+		clean_path "$TRACE_PATH"
+	done
+
+	modprobe --remove lttng-test
+	stop_lttng_sessiond
+	stop_lttng_relayd
+}
+
+rm -rf "$TRACE_PATH"

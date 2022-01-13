@@ -41,8 +41,8 @@ function validate_test_chunks ()
 	local_path=$1
 	today=$2
 	app_path=$3
-	domain=$4
-	per_pid=$5
+	shift 3
+	domains=("$@")
 
 	local path=
 	local chunk_pattern=$(get_chunk_pattern ${today})
@@ -64,8 +64,14 @@ function validate_test_chunks ()
 	# Make sure we don't have anything else in the first 2 chunk directories
 	# besides the kernel folder.
 	for chunk in $(seq 0 1); do
-		nr_stale=$(ls -A $local_path/${chunk_pattern}-${chunk} | grep -v $domain | wc -l)
-		ok $nr_stale "No stale folders in chunk ${chunk} directory"
+		local stale_files
+
+		stale_files=$(ls -A $local_path/${chunk_pattern}-${chunk})
+		for domain in "${domains[@]}"; do
+			stale_files=$(echo "$stale_files" | grep -v $domain)
+		done
+		nr_stale=$(echo -n "$stale_files" | wc -l)
+		ok "$nr_stale" "No stale folders in chunk ${chunk} directory"
 	done
 
 	# We expect a complete session of 30 events

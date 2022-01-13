@@ -38,7 +38,7 @@ function rotate_kernel_test ()
 
 	destroy_lttng_session_ok $SESSION_NAME
 
-	validate_test_chunks $local_path $today kernel kernel 0
+	validate_test_chunks $local_path $today kernel kernel
 }
 
 function test_kernel_streaming ()

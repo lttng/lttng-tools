@@ -50,6 +50,7 @@ TESTS = tools/base-path/test_ust \
 	tools/notification/test_notification_multi_app \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \
+	tools/rotation/test_ust_kernel \
 	tools/rotation/test_save_load_mi \
 	tools/rotation/test_schedule_api \
 	tools/metadata/test_kernel \

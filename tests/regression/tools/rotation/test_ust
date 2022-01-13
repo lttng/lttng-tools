@@ -59,7 +59,7 @@ function rotate_ust_test ()
 
 	destroy_lttng_session_ok $SESSION_NAME
 
-	validate_test_chunks "${local_path}" $today $app_path ust $per_pid
+	validate_test_chunks "${local_path}" $today $app_path ust
 }
 
 function test_ust_streaming_uid ()
