@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
  * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  * Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
  *

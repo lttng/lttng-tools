@@ -3,7 +3,7 @@
  *
  * Linux Trace Toolkit Control Library
  *
- * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
  * Copyright (C) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
