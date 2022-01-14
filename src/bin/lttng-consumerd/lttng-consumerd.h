@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011 Julien Desfossez <julien.desfossez@polymtl.ca>
- * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
+ * Copyright (C) 2011 EfficiOS Inc.
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

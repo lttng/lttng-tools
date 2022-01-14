@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Julien Desfossez <julien.desfossez@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
  * Copyright (C) 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
  * Copyright (C) 2018 Jérémie Galarneau <jeremie.galarneau@efficios.com>

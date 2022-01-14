@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
  * Copyright (C) 2019 Yannick Lamarre <ylamarre@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
