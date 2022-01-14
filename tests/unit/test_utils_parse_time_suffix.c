@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Simon Marchi <simon.marchi@polymtl.ca>
+ * Copyright (C) 2015 EfficiOS Inc.
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Bob Jenkins
- * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 EfficiOS Inc.
  * Copyright (C) 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
