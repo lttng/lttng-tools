@@ -64,8 +64,6 @@ const char *get_sessiond_thread_name(health_type_sessiond type) {
 		return "Session daemon kernel";
 	case HEALTH_SESSIOND_TYPE_CONSUMER:
 		return "Session daemon consumer manager";
-	case HEALTH_SESSIOND_TYPE_HT_CLEANUP:
-		return "Session daemon hash table cleanup";
 	case HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY:
 		return "Session daemon application notification manager";
 	case HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH:

@@ -104,18 +104,6 @@ int __testpoint_sessiond_thread_manage_consumer(void)
 	return 0;
 }
 
-LTTNG_EXPORT int __testpoint_sessiond_thread_ht_cleanup(void);
-int __testpoint_sessiond_thread_ht_cleanup(void)
-{
-	const char *var = "LTTNG_SESSIOND_THREAD_HT_CLEANUP_STALL";
-
-	if (check_env_var(var)) {
-		do_stall();
-	}
-
-	return 0;
-}
-
 LTTNG_EXPORT int __testpoint_sessiond_thread_app_manage_notify(void);
 int __testpoint_sessiond_thread_app_manage_notify(void)
 {

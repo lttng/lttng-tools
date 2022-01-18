@@ -169,7 +169,7 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 		LTTNG_ASSERT(!ret);
 		free(ksyscall);
 	}
-	ht_cleanup_push(ht);
+	lttng_ht_destroy(ht);
 }
 
 /*

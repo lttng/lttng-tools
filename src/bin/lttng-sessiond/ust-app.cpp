@@ -448,20 +448,14 @@ void delete_ust_app_stream(int sock, struct ust_app_stream *stream,
 	free(stream);
 }
 
-/*
- * We need to execute ht_destroy outside of RCU read-side critical
- * section and outside of call_rcu thread, so we postpone its execution
- * using ht_cleanup_push. It is simpler than to change the semantic of
- * the many callers of delete_ust_app_session().
- */
 static
 void delete_ust_app_channel_rcu(struct rcu_head *head)
 {
 	struct ust_app_channel *ua_chan =
 		caa_container_of(head, struct ust_app_channel, rcu_head);
 
-	ht_cleanup_push(ua_chan->ctx);
-	ht_cleanup_push(ua_chan->events);
+	lttng_ht_destroy(ua_chan->ctx);
+	lttng_ht_destroy(ua_chan->events);
 	free(ua_chan);
 }
 
@@ -895,19 +889,13 @@ end:
 	return ret;
 }
 
-/*
- * We need to execute ht_destroy outside of RCU read-side critical
- * section and outside of call_rcu thread, so we postpone its execution
- * using ht_cleanup_push. It is simpler than to change the semantic of
- * the many callers of delete_ust_app_session().
- */
 static
 void delete_ust_app_session_rcu(struct rcu_head *head)
 {
 	struct ust_app_session *ua_sess =
 		caa_container_of(head, struct ust_app_session, rcu_head);
 
-	ht_cleanup_push(ua_sess->channels);
+	lttng_ht_destroy(ua_sess->channels);
 	free(ua_sess);
 }
 
@@ -1045,10 +1033,10 @@ void delete_ust_app(struct ust_app *app)
 
 	rcu_read_unlock();
 
-	ht_cleanup_push(app->sessions);
-	ht_cleanup_push(app->ust_sessions_objd);
-	ht_cleanup_push(app->ust_objd);
-	ht_cleanup_push(app->token_to_event_notifier_rule_ht);
+	lttng_ht_destroy(app->sessions);
+	lttng_ht_destroy(app->ust_sessions_objd);
+	lttng_ht_destroy(app->ust_objd);
+	lttng_ht_destroy(app->token_to_event_notifier_rule_ht);
 
 	/*
 	 * This could be NULL if the event notifier setup failed (e.g the app
@@ -4662,13 +4650,13 @@ void ust_app_clean_list(void)
 
 	/* Destroy is done only when the ht is empty */
 	if (ust_app_ht) {
-		ht_cleanup_push(ust_app_ht);
+		lttng_ht_destroy(ust_app_ht);
 	}
 	if (ust_app_ht_by_sock) {
-		ht_cleanup_push(ust_app_ht_by_sock);
+		lttng_ht_destroy(ust_app_ht_by_sock);
 	}
 	if (ust_app_ht_by_notify_sock) {
-		ht_cleanup_push(ust_app_ht_by_notify_sock);
+		lttng_ht_destroy(ust_app_ht_by_notify_sock);
 	}
 }
 

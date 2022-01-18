@@ -67,7 +67,6 @@
 #include "notification-thread-commands.h"
 #include "rotation-thread.h"
 #include "agent.h"
-#include "ht-cleanup.h"
 #include "sessiond-config.h"
 #include "timer.h"
 #include "thread.h"
@@ -1448,7 +1447,6 @@ int main(int argc, char **argv)
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
-	struct lttng_thread *ht_cleanup_thread = NULL;
 	struct timer_thread_parameters timer_thread_parameters;
 	/* Rotation thread handle. */
 	struct rotation_thread_handle *rotation_thread_handle = NULL;
@@ -1497,9 +1495,7 @@ int main(int argc, char **argv)
 	 * Parse arguments and load the daemon configuration file.
 	 *
 	 * We have an exit_options exit path to free memory reserved by
-	 * set_options. This is needed because the rest of sessiond_cleanup()
-	 * depends on ht_cleanup_thread, which depends on lttng_daemonize, which
-	 * depends on set_options.
+	 * set_options.
 	 */
 	progname = argv[0];
 	if (set_options(argc, argv)) {
@@ -1596,13 +1592,6 @@ int main(int argc, char **argv)
 	the_health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
 	if (!the_health_sessiond) {
 		PERROR("health_app_create error");
-		retval = -1;
-		goto stop_threads;
-	}
-
-	/* Create thread to clean up RCU hash tables */
-	ht_cleanup_thread = launch_ht_cleanup_thread();
-	if (!ht_cleanup_thread) {
 		retval = -1;
 		goto stop_threads;
 	}
@@ -1961,10 +1950,7 @@ stop_threads:
 	 * perform lookups in those structures.
 	 */
 	rcu_barrier();
-	/*
-	 * sessiond_cleanup() is called when no other thread is running, except
-	 * the ht_cleanup thread, which is needed to destroy the hash tables.
-	 */
+
 	rcu_thread_online();
 	sessiond_cleanup();
 
@@ -1999,18 +1985,6 @@ stop_threads:
 	if (is_root && !the_config.no_kernel) {
 		DBG("Unloading kernel modules");
      		modprobe_remove_lttng_all();
-	}
-
-	/*
-	 * Ensure all prior call_rcu are done. call_rcu callbacks may push
-	 * hash tables to the ht_cleanup thread. Therefore, we ensure that
-	 * the queue is empty before shutting down the clean-up thread.
-	 */
-	rcu_barrier();
-
-	if (ht_cleanup_thread) {
-		lttng_thread_shutdown(ht_cleanup_thread);
-		lttng_thread_put(ht_cleanup_thread);
 	}
 
 	rcu_thread_offline();

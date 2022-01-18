@@ -564,7 +564,7 @@ static void consumer_release_output(struct urcu_ref *ref)
 
 	if (obj->socks) {
 		/* Finally destroy HT */
-		ht_cleanup_push(obj->socks);
+		lttng_ht_destroy(obj->socks);
 	}
 
 	free(obj);

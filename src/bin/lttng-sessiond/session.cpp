@@ -331,12 +331,12 @@ end:
 static void ltt_sessions_ht_destroy(void)
 {
 	if (ltt_sessions_ht_by_id) {
-		ht_cleanup_push(ltt_sessions_ht_by_id);
+		lttng_ht_destroy(ltt_sessions_ht_by_id);
 		ltt_sessions_ht_by_id = NULL;
 	}
 
 	if (ltt_sessions_ht_by_name) {
-		ht_cleanup_push(ltt_sessions_ht_by_name);
+		lttng_ht_destroy(ltt_sessions_ht_by_name);
 		ltt_sessions_ht_by_name = NULL;
 	}
 

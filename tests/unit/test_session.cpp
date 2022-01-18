@@ -18,7 +18,6 @@
 #include <common/compat/errno.h>
 #include <bin/lttng-sessiond/session.h>
 #include <bin/lttng-sessiond/ust-app.h>
-#include <bin/lttng-sessiond/ht-cleanup.h>
 #include <bin/lttng-sessiond/health-sessiond.h>
 #include <bin/lttng-sessiond/thread.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -325,14 +324,10 @@ static void test_large_session_number(void)
 
 int main(int argc, char **argv)
 {
-	struct lttng_thread *ht_cleanup_thread;
 
 	plan_tests(NUM_TESTS);
 
 	the_health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
-	ht_cleanup_thread = launch_ht_cleanup_thread();
-	LTTNG_ASSERT(ht_cleanup_thread);
-	lttng_thread_put(ht_cleanup_thread);
 
 	diag("Sessions unit tests");
 

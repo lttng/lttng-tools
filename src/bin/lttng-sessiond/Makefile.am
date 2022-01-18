@@ -29,7 +29,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.h \
                        health-sessiond.h \
                        cmd.cpp cmd.h \
                        buffer-registry.cpp buffer-registry.h \
-                       testpoint.h ht-cleanup.cpp ht-cleanup.h \
+                       testpoint.h \
                        snapshot.cpp snapshot.h \
                        agent.cpp agent.h \
                        save.h save.cpp \

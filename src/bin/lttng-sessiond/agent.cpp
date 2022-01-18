@@ -1448,7 +1448,7 @@ void agent_destroy(struct agent *agt)
 		call_rcu(&ctx->rcu_node, destroy_app_ctx_rcu);
 	}
 	rcu_read_unlock();
-	ht_cleanup_push(agt->events);
+	lttng_ht_destroy(agt->events);
 	free(agt);
 }
 

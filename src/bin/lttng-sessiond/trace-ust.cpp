@@ -329,8 +329,8 @@ error:
 	process_attr_tracker_destroy(lus->tracker_vpid);
 	process_attr_tracker_destroy(lus->tracker_vuid);
 	process_attr_tracker_destroy(lus->tracker_vgid);
-	ht_cleanup_push(lus->domain_global.channels);
-	ht_cleanup_push(lus->agents);
+	lttng_ht_destroy(lus->domain_global.channels);
+	lttng_ht_destroy(lus->agents);
 	free(lus);
 error_alloc:
 	return NULL;
@@ -774,7 +774,7 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 		destroy_id_tracker_node(tracker_node);
 	}
 	rcu_read_unlock();
-	ht_cleanup_push(id_tracker->ht);
+	lttng_ht_destroy(id_tracker->ht);
 	id_tracker->ht = NULL;
 }
 
@@ -1231,7 +1231,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	}
 	rcu_read_unlock();
 
-	ht_cleanup_push(ht);
+	lttng_ht_destroy(ht);
 }
 
 /*
@@ -1294,7 +1294,7 @@ static void destroy_events(struct lttng_ht *events)
 	}
 	rcu_read_unlock();
 
-	ht_cleanup_push(events);
+	lttng_ht_destroy(events);
 }
 
 /*
@@ -1371,7 +1371,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	}
 	rcu_read_unlock();
 
-	ht_cleanup_push(channels);
+	lttng_ht_destroy(channels);
 }
 
 /*
@@ -1410,7 +1410,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	}
 	rcu_read_unlock();
 
-	ht_cleanup_push(session->agents);
+	lttng_ht_destroy(session->agents);
 
 	/* Cleanup UID buffer registry object(s). */
 	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,

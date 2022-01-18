@@ -325,5 +325,5 @@ void snapshot_destroy(struct snapshot *obj)
 		snapshot_output_destroy(output);
 	}
 	rcu_read_unlock();
-	ht_cleanup_push(obj->output_ht);
+	lttng_ht_destroy(obj->output_ht);
 }

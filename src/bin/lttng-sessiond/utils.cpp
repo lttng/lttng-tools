@@ -16,8 +16,6 @@
 #include "snapshot.h"
 #include "lttng-sessiond.h"
 
-int the_ht_cleanup_pipe[2] = {-1, -1};
-
 /*
  * Write to writable pipe used to notify a thread.
  */
@@ -36,31 +34,6 @@ int notify_thread_pipe(int wpipe)
 	}
 
 	return (int) ret;
-}
-
-void ht_cleanup_push(struct lttng_ht *ht)
-{
-	ssize_t ret;
-	int fd = the_ht_cleanup_pipe[1];
-
-	if (!ht) {
-		return;
-	}
-	if (fd < 0)
-		return;
-	ret = lttng_write(fd, &ht, sizeof(ht));
-	if (ret < sizeof(ht)) {
-		PERROR("write ht cleanup pipe %d", fd);
-		if (ret < 0) {
-			ret = -errno;
-		}
-		goto error;
-	}
-
-	/* All good. Don't send back the write positive ret value. */
-	ret = 0;
-error:
-	LTTNG_ASSERT(!ret);
 }
 
 int loglevels_match(int a_loglevel_type, int a_loglevel_value,

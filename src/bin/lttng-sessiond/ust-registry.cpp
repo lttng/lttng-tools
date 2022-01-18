@@ -689,12 +689,6 @@ static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
-/*
- * We need to execute ht_destroy outside of RCU read-side critical
- * section and outside of call_rcu thread, so we postpone its execution
- * using ht_cleanup_push. It is simpler than to change the semantic of
- * the many callers of delete_ust_app_session().
- */
 static
 void destroy_channel_rcu(struct rcu_head *head)
 {
@@ -702,7 +696,7 @@ void destroy_channel_rcu(struct rcu_head *head)
 		caa_container_of(head, struct ust_registry_channel, rcu_head);
 
 	if (chan->ht) {
-		ht_cleanup_push(chan->ht);
+		lttng_ht_destroy(chan->ht);
 	}
 	free(chan->ctx_fields);
 	free(chan);
@@ -1011,7 +1005,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 			destroy_channel(chan, true);
 		}
 		rcu_read_unlock();
-		ht_cleanup_push(reg->channels);
+		lttng_ht_destroy(reg->channels);
 	}
 
 	free(reg->metadata);
@@ -1043,6 +1037,6 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 			ust_registry_destroy_enum(reg, reg_enum);
 		}
 		rcu_read_unlock();
-		ht_cleanup_push(reg->enums);
+		lttng_ht_destroy(reg->enums);
 	}
 }

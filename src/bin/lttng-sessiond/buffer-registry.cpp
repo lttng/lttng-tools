@@ -594,7 +594,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	}
 	rcu_read_unlock();
 
-	ht_cleanup_push(regp->channels);
+	lttng_ht_destroy(regp->channels);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -737,6 +737,6 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 void buffer_reg_destroy_registries(void)
 {
 	DBG3("Buffer registry destroy all registry");
-	ht_cleanup_push(buffer_registry_uid);
-	ht_cleanup_push(buffer_registry_pid);
+	lttng_ht_destroy(buffer_registry_uid);
+	lttng_ht_destroy(buffer_registry_pid);
 }

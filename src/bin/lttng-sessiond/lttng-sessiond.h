@@ -115,15 +115,6 @@ struct ust_reg_wait_node {
 	struct cds_list_head head;
 };
 
-/*
- * Used to notify that a hash table needs to be destroyed by dedicated
- * thread. Required by design because we don't want to move destroy
- * paths outside of large RCU read-side lock paths, and destroy cannot
- * be called by call_rcu thread, because it may hang (waiting for
- * call_rcu completion).
- */
-extern int the_ht_cleanup_pipe[2];
-
 extern int the_kernel_poll_pipe[2];
 
 /*
