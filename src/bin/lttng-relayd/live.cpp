@@ -2093,9 +2093,16 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 */
 		if (vstream->metadata_sent > 0) {
 			if (vstream->stream->closed && vstream->stream->no_new_metadata_notified) {
-				/* Release ownership for the viewer metadata stream. */
+				/*
+				 * Release ownership for the viewer metadata
+				 * stream. Note that this reference is the
+				 * viewer's reference. The vstream still exists
+				 * until the end of the function as
+				 * viewer_stream_get_by_id() took a reference.
+				 */
 				viewer_stream_put(vstream);
 			}
+
 			vstream->stream->no_new_metadata_notified = true;
 		}
 		goto send_reply;
