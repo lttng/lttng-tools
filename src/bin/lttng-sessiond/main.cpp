@@ -37,6 +37,7 @@
 #include <common/futex.h>
 #include <common/relayd/relayd.h>
 #include <common/utils.h>
+#include <common/path.h>
 #include <common/daemonize.h>
 #include <common/config/session-config.h>
 #include <common/ini-config/ini-config.h>

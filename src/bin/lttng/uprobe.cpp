@@ -14,6 +14,7 @@
 #include "common/compat/getenv.h"
 #include "common/string-utils/string-utils.h"
 #include "common/utils.h"
+#include "common/path.h"
 #include "lttng/constant.h"
 
 #include "command.h"

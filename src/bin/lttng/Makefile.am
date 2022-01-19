@@ -40,6 +40,7 @@ lttng_CXXFLAGS = $(AM_CXXFLAGS) $(POPT_CFLAGS)
 
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/libcommon-lgpl.la \
+			$(top_builddir)/src/common/libpath.la \
 			$(top_builddir)/src/common/config/libconfig.la \
 			$(top_builddir)/src/common/string-utils/libstring-utils.la \
 			$(top_builddir)/src/common/filter/libfilter.la \

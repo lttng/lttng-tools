@@ -49,6 +49,7 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <common/path.h>
 #include <common/align.h>
 #include <common/ini-config/ini-config.h>
 #include <common/dynamic-buffer.h>

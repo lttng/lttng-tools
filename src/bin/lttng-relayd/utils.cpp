@@ -14,6 +14,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/utils.h>
+#include <common/path.h>
 
 #include "lttng-relayd.h"
 #include "utils.h"
