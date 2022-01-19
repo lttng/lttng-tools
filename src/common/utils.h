@@ -21,8 +21,6 @@
 #define MEBI_LOG2 20
 #define GIBI_LOG2 30
 
-char *utils_expand_path(const char *path);
-char *utils_expand_path_keep_symlink(const char *path);
 int utils_create_pipe(int *dst);
 int utils_create_pipe_cloexec(int *dst);
 int utils_create_pipe_cloexec_nonblock(int *dst);

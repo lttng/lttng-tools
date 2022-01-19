@@ -23,7 +23,7 @@ DIST_SUBDIRS = \
 	fd-tracker
 
 # Common library
-noinst_LTLIBRARIES = libcommon-lgpl.la libcommon-gpl.la
+noinst_LTLIBRARIES = libpath.la libcommon-lgpl.la libcommon-gpl.la
 EXTRA_DIST = mi-lttng-4.0.xsd
 
 # The libcommon-lgpl static archive contains only LGPLv2.1 code. It is
@@ -68,6 +68,12 @@ libcommon_lgpl_la_LIBADD = \
 	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/hashtable/libhashtable-lgpl.la
 
+# The libpath static archive contains GPLv2 compatible code. It is
+# meant to be used by GPL executables.
+
+libpath_la_SOURCES = \
+	path.c path.h
+
 # The libcommon-gpl static archive contains GPLv2 compatible code. It is
 # meant to be used by GPL executables.
 libcommon_gpl_la_SOURCES = \
@@ -88,6 +94,7 @@ libcommon_gpl_la_SOURCES = \
 libcommon_gpl_la_LIBADD = \
 	-lurcu -lurcu-common \
 	libcommon-lgpl.la \
+	libpath.la \
 	$(top_builddir)/src/common/hashtable/libhashtable-gpl.la \
 	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 
