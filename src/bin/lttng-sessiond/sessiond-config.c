@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <common/error.h>
 #include <common/utils.h>
+#include <common/path.h>
 #include <common/compat/errno.h>
 #include <common/compat/getenv.h>
 

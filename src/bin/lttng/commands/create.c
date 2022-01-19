@@ -29,6 +29,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <common/path.h>
 #include <lttng/lttng.h>
 
 static char *opt_output_path;
