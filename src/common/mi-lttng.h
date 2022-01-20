@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2014 Jonathan Rajotte <jonathan.r.julien@gmail.com>
- * Copyright (C) 2014 Olivier Cotte <olivier.cotte@polymtl.ca>
+ * Copyright (C) 2014 EfficiOS Inc.
  * Copyright (C) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
