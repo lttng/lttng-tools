@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Jonathan Rajotte <jonathan.r.julien@gmail.com>
+ * Copyright (C) 2014 EfficiOS Inc.
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
