@@ -6324,6 +6324,104 @@ error:
 }
 
 /*
+ * Fixup legacy context fields for comparison:
+ * - legacy array becomes array_nestable,
+ * - legacy struct becomes struct_nestable,
+ * - legacy variant becomes variant_nestable,
+ * legacy sequences are not emitted in LTTng-UST contexts.
+ */
+static int ust_app_fixup_legacy_context_fields(size_t *_nr_fields,
+		struct lttng_ust_ctl_field **_fields)
+{
+	struct lttng_ust_ctl_field *fields = *_fields, *new_fields = NULL;
+	size_t nr_fields = *_nr_fields, new_nr_fields = 0, i, j;
+	bool found = false;
+	int ret = 0;
+
+	for (i = 0; i < nr_fields; i++) {
+		const struct lttng_ust_ctl_field *field = &fields[i];
+
+		switch (field->type.atype) {
+		case lttng_ust_ctl_atype_sequence:
+			ERR("Unexpected legacy sequence context.");
+			ret = -EINVAL;
+			goto end;
+		case lttng_ust_ctl_atype_array:
+			switch (field->type.u.legacy.array.elem_type.atype) {
+			case lttng_ust_ctl_atype_integer:
+				break;
+			default:
+				ERR("Unexpected legacy array element type in context.");
+				ret = -EINVAL;
+				goto end;
+			}
+			found = true;
+			/* One field for array_nested, one field for elem type. */
+			new_nr_fields += 2;
+			break;
+
+		case lttng_ust_ctl_atype_struct:	/* Fallthrough */
+		case lttng_ust_ctl_atype_variant:
+			found = true;
+			new_nr_fields++;
+			break;
+		default:
+			new_nr_fields++;
+			break;
+		}
+	}
+	if (!found) {
+		goto end;
+	}
+	new_fields = (struct lttng_ust_ctl_field *) zmalloc(sizeof(*new_fields) * new_nr_fields);
+	if (!new_fields) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	for (i = 0, j = 0; i < nr_fields; i++, j++) {
+		const struct lttng_ust_ctl_field *field = &fields[i];
+		struct lttng_ust_ctl_field *new_field = &new_fields[j];
+
+		switch (field->type.atype) {
+		case lttng_ust_ctl_atype_array:
+			/* One field for array_nested, one field for elem type. */
+			strncpy(new_field->name, field->name, LTTNG_UST_ABI_SYM_NAME_LEN - 1);
+			new_field->type.atype = lttng_ust_ctl_atype_array_nestable;
+			new_field->type.u.array_nestable.length = field->type.u.legacy.array.length;
+			new_field->type.u.array_nestable.alignment = 0;
+			new_field = &new_fields[++j];	/* elem type */
+			new_field->type.atype = field->type.u.legacy.array.elem_type.atype;
+			assert(new_field->type.atype == lttng_ust_ctl_atype_integer);
+			new_field->type.u.integer = field->type.u.legacy.array.elem_type.u.basic.integer;
+			break;
+		case lttng_ust_ctl_atype_struct:
+			strncpy(new_field->name, field->name, LTTNG_UST_ABI_SYM_NAME_LEN - 1);
+			new_field->type.atype = lttng_ust_ctl_atype_struct_nestable;
+			new_field->type.u.struct_nestable.nr_fields = field->type.u.legacy._struct.nr_fields;
+			new_field->type.u.struct_nestable.alignment = 0;
+			break;
+		case lttng_ust_ctl_atype_variant:
+			strncpy(new_field->name, field->name, LTTNG_UST_ABI_SYM_NAME_LEN - 1);
+			new_field->type.atype = lttng_ust_ctl_atype_variant_nestable;
+			new_field->type.u.variant_nestable.nr_choices = field->type.u.legacy.variant.nr_choices;
+			strncpy(new_field->type.u.variant_nestable.tag_name,
+				field->type.u.legacy.variant.tag_name,
+				LTTNG_UST_ABI_SYM_NAME_LEN - 1);
+			new_field->type.u.variant_nestable.alignment = 0;
+			break;
+		default:
+			*new_field = *field;
+			break;
+		}
+	}
+	free(fields);
+	*_fields = new_fields;
+	*_nr_fields = new_nr_fields;
+end:
+	return ret;
+}
+
+/*
  * Reply to a register channel notification from an application on the notify
  * socket. The channel metadata is also created.
  *
@@ -6337,7 +6435,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	int ret, ret_code = 0;
 	uint32_t chan_id;
 	uint64_t chan_reg_key;
-	enum lttng_ust_ctl_channel_header type;
+	enum lttng_ust_ctl_channel_header type = LTTNG_UST_CTL_CHANNEL_HEADER_UNKNOWN;
 	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
@@ -6389,6 +6487,13 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	/* Channel id is set during the object creation. */
 	chan_id = ust_reg_chan->chan_id;
 
+	ret = ust_app_fixup_legacy_context_fields(&nr_fields, &fields);
+	if (ret < 0) {
+		ERR("Registering application channel due to legacy context fields fixup error: pid = %d, sock = %d",
+			app->pid, app->sock);
+		ret_code = -EINVAL;
+		goto reply;
+	}
 	if (!ust_reg_chan->register_done) {
 		/*
 		 * TODO: eventually use the registry event count for
