@@ -369,10 +369,6 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 	int ret;
 	char identifier[LTTNG_UST_ABI_SYM_NAME_LEN];
 
-	if (variant->type.atype != lttng_ust_ctl_atype_variant) {
-		ret = -EINVAL;
-		goto end;
-	}
 	(*iter_field)++;
 	sanitize_ctf_identifier(identifier, tag_name);
 	if (alignment) {
