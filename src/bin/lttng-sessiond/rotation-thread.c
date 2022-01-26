@@ -587,8 +587,7 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		session_lock_list();
 		session = job->session;
 		if (!session) {
-			DBG("[rotation-thread] Session \"%s\" not found",
-					session->name);
+			DBG("[rotation-thread] Session not found");
 			/*
 			 * This is a non-fatal error, and we cannot report it to
 			 * the user (timer), so just print the error and
@@ -600,7 +599,6 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 			 * already been queued before it was destroyed.
 			 */
 			free(job);
-			session_put(session);
 			session_unlock_list();
 			continue;
 		}
