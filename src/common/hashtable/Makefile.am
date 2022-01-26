@@ -8,7 +8,7 @@ libhashtable_lgpl_la_SOURCES = \
 	utils.h
 
 libhashtable_gpl_la_SOURCES = \
-	hashtable.cpp \
+	hashtable.c \
 	hashtable.h \
 	hashtable-symbols.h
 
