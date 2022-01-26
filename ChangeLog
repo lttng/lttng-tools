@@ -1,3 +1,23 @@
+2022-01-26 lttng-tools 2.12.8 (National Peanut Brittle Day)
+	* Relicence all source and header files included in LGPL code
+	* Fix: sessiond: use of null session when session is not found
+	* Move utils_expand_path and utils_expand_path_keep_symlink to libpath.la
+	* Link lttng executable on libcommon-lgpl.a
+	* Introduce libcommon-lgpl for liblttng-ctl
+	* Rename libcommon.so to libcommon-gpl.so
+	* Copyright ownership transfer
+	* Copyright ownership transfer
+	* Fix: relayd: erroneous rundir permission logging message
+	* Fix: sessiond: rotation thread: fatal error when not finding a session
+	* Fix: relayd: rotation failure for multi-domain session
+	* Fix: lttng-ctl: lttng_list_sessions: initialize out_sessions to NULL when returning 0
+	* Fix: lttng: initialize variable in run_command_string
+	* Fix: consumer-stream: live viewers observe timestamps going backwards
+	* Fix: relayd: ressource leaks on viewer_stream_create error
+	* Fix: relayd: live: erroneous message timestamp observed from live viewer
+	* Fix: relayd: failure to open chunk files concurrently with session clear
+	* Fix: relayd: live: metadata stream reference count < 0 assert
+
 2021-12-17 lttng-tools 2.12.7 (National Ugly Christmas Sweater Day)
 	* Validate channel context mismatch across UST applications
 	* Fix: relayd: compare viewer chunks by ID rather than address
