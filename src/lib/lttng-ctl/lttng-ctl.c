@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -271,12 +272,13 @@ end:
 	return ret;
 }
 
-static int check_enough_available_memory(size_t num_bytes_requested_per_cpu)
+static enum lttng_error_code check_enough_available_memory(
+		uint64_t num_bytes_requested_per_cpu)
 {
 	int ret;
 	long num_cpu;
-	size_t best_mem_info;
-	size_t num_bytes_requested_total;
+	uint64_t best_mem_info;
+	uint64_t num_bytes_requested_total;
 
 	/*
 	 * Get the number of CPU currently online to compute the amount of
@@ -284,10 +286,18 @@ static int check_enough_available_memory(size_t num_bytes_requested_per_cpu)
 	 */
 	num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
 	if (num_cpu == -1) {
-		goto error;
+		ret = LTTNG_ERR_FATAL;
+		goto end;
 	}
 
-	num_bytes_requested_total = num_bytes_requested_per_cpu * num_cpu;
+	if (num_bytes_requested_per_cpu > UINT64_MAX / (uint64_t) num_cpu) {
+		/* Overflow */
+		ret = LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	num_bytes_requested_total =
+			num_bytes_requested_per_cpu * (uint64_t) num_cpu;
 
 	/*
 	 * Try to get the `MemAvail` field of `/proc/meminfo`. This is the most
@@ -309,10 +319,18 @@ static int check_enough_available_memory(size_t num_bytes_requested_per_cpu)
 		goto success;
 	}
 
-error:
-	return -1;
+	/* No valid source of information. */
+	ret = LTTNG_ERR_NOMEM;
+	goto end;
+
 success:
-	return best_mem_info >= num_bytes_requested_total;
+	if (best_mem_info >= num_bytes_requested_total) {
+		ret = LTTNG_OK;
+	} else {
+		ret = LTTNG_ERR_NOMEM;
+	}
+end:
+	return ret;
 }
 
 /*
@@ -1556,9 +1574,10 @@ void lttng_channel_destroy(struct lttng_channel *channel)
 int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *in_chan)
 {
+	enum lttng_error_code ret_code;
 	int ret;
 	struct lttcomm_session_msg lsm;
-	size_t total_buffer_size_needed_per_cpu = 0;
+	uint64_t total_buffer_size_needed_per_cpu = 0;
 
 	/* NULL arguments are forbidden. No default values. */
 	if (handle == NULL || in_chan == NULL) {
@@ -1598,10 +1617,20 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	 * Verify that the amount of memory required to create the requested
 	 * buffer is available on the system at the moment.
 	 */
+	if (lsm.u.channel.chan.attr.num_subbuf >
+			UINT64_MAX / lsm.u.channel.chan.attr.subbuf_size) {
+		/* Overflow */
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
 	total_buffer_size_needed_per_cpu = lsm.u.channel.chan.attr.num_subbuf *
 		lsm.u.channel.chan.attr.subbuf_size;
-	if (!check_enough_available_memory(total_buffer_size_needed_per_cpu)) {
-		return -LTTNG_ERR_NOMEM;
+	ret_code = check_enough_available_memory(
+			total_buffer_size_needed_per_cpu);
+	if (ret_code != LTTNG_OK) {
+		ret = -ret_code;
+		goto end;
 	}
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
