@@ -1,3 +1,6 @@
+2022-01-26 lttng-tools 2.13.4 (National Peanut Brittle Day)
+	* Build fix: hashtable: hashtable.cpp does not exist
+
 2022-01-26 lttng-tools 2.13.3 (National Peanut Brittle Day)
 	* Fix: _lttng_variant_statedump should expect lttng_ust_ctl_atype_variant_nestable
 	* Fix context mismatch across UST version due to legacy array context field
