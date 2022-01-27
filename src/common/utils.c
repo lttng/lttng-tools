@@ -7,6 +7,7 @@
  */
 
 #include "common/macros.h"
+#include <stdint.h>
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -1062,7 +1063,7 @@ end:
 }
 
 static
-int read_proc_meminfo_field(const char *field, size_t *value)
+int read_proc_meminfo_field(const char *field, uint64_t *value)
 {
 	int ret;
 	FILE *proc_meminfo;
@@ -1080,10 +1081,10 @@ int read_proc_meminfo_field(const char *field, size_t *value)
 	 * field.
 	 */
 	while (!feof(proc_meminfo)) {
-		unsigned long value_kb;
+		uint64_t value_kb;
 
 		ret = fscanf(proc_meminfo,
-				"%" MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "s %lu kB\n",
+				"%" MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "s %" SCNu64 " kB\n",
 				name, &value_kb);
 		if (ret == EOF) {
 			/*
@@ -1100,7 +1101,12 @@ int read_proc_meminfo_field(const char *field, size_t *value)
 			 * This number is displayed in kilo-bytes. Return the
 			 * number of bytes.
 			 */
-			*value = ((size_t) value_kb) * 1024;
+			if (value_kb > UINT64_MAX / 1024) {
+				ERR("Overflow on kb to bytes conversion");
+				break;
+			}
+
+			*value = value_kb * 1024;
 			ret = 0;
 			goto found;
 		}
@@ -1120,7 +1126,7 @@ fopen_error:
  * a best guess.
  */
 LTTNG_HIDDEN
-int utils_get_memory_available(size_t *value)
+int utils_get_memory_available(uint64_t *value)
 {
 	return read_proc_meminfo_field(PROC_MEMINFO_MEMAVAILABLE_LINE, value);
 }
@@ -1130,7 +1136,7 @@ int utils_get_memory_available(size_t *value)
  * the information in `/proc/meminfo`.
  */
 LTTNG_HIDDEN
-int utils_get_memory_total(size_t *value)
+int utils_get_memory_total(uint64_t *value)
 {
 	return read_proc_meminfo_field(PROC_MEMINFO_MEMTOTAL_LINE, value);
 }
