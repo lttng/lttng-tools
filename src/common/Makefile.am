@@ -69,6 +69,7 @@ libcommon_lgpl_la_SOURCES = \
 	error.c error.h \
 	error-query.c \
 	evaluation.c \
+	event.c \
 	event-expr/event-expr.c \
 	event-field-value.c \
 	event-rule/event-rule.c \
@@ -128,7 +129,6 @@ libcommon_gpl_la_SOURCES = \
 	common.h \
 	context.c context.h \
 	daemonize.c daemonize.h \
-	event.c \
 	filter.c filter.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
