@@ -71,6 +71,7 @@ libcommon_lgpl_la_SOURCES = \
 	error.cpp error.h \
 	error-query.cpp \
 	evaluation.cpp \
+	event.cpp \
 	event-expr/event-expr.cpp \
 	event-field-value.cpp \
 	event-rule/event-rule.cpp \
@@ -132,7 +133,6 @@ libcommon_gpl_la_SOURCES = \
 	common.h \
 	context.cpp context.h \
 	daemonize.cpp daemonize.h \
-	event.cpp \
 	filter.cpp filter.h \
 	fs-handle.cpp fs-handle.h fs-handle-internal.h \
 	futex.cpp futex.h \
