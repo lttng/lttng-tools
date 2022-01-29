@@ -42,6 +42,7 @@ libcommon_lgpl_la_SOURCES = \
 	endpoint.c \
 	error.c error.h \
 	evaluation.c \
+	event.c \
 	location.c \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
@@ -81,7 +82,6 @@ libcommon_gpl_la_SOURCES = \
 	common.h \
 	context.c context.h \
 	daemonize.c daemonize.h \
-	event.c \
 	filter.c filter.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
