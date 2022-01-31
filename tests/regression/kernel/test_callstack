@@ -142,18 +142,13 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" ||
 {
-	which "$BABELTRACE_BIN" > /dev/null
-	test $? -ne 0
-	skip $? "Babeltrace binary not found. Skipping callstack tests" "$NUM_TESTS" ||
-	{
-		start_lttng_sessiond
+	validate_lttng_modules_present
+	start_lttng_sessiond
 
-		if test $RUN_USERSPACE_TEST == 1; then
-			test_user_callstack
-		fi
+	if test $RUN_USERSPACE_TEST == 1; then
+		test_user_callstack
+	fi
 
-		test_kernel_callstack
-
-		stop_lttng_sessiond
-	}
+	test_kernel_callstack
+	stop_lttng_sessiond
 }

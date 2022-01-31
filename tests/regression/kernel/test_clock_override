@@ -180,6 +180,7 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
+	validate_lttng_modules_present
 	trap signal_cleanup SIGTERM SIGINT
 
 	while [ "$i" -lt "$TEST_COUNT" ]; do
