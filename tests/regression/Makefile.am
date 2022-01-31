@@ -98,6 +98,19 @@ endif # TEST_JAVA_LOG4J2_AGENT
 
 if IS_LINUX
 TESTS += \
+	kernel/test_all_events \
+	kernel/test_callstack \
+	kernel/test_channel \
+	kernel/test_clock_override \
+	kernel/test_event_basic \
+	kernel/test_kernel_function \
+	kernel/test_lttng_logger \
+	kernel/test_ns_contexts \
+	kernel/test_ns_contexts_change \
+	kernel/test_rotation_destroy_flush \
+	kernel/test_select_poll_epoll \
+	kernel/test_syscall \
+	kernel/test_userspace_probe \
 	ust/namespaces/test_ns_contexts \
 	ust/namespaces/test_ns_contexts_change
 endif # IS_LINUX
