@@ -131,7 +131,21 @@ function test_ns()
 		# Check that the events contain the right namespace inode number
 		validate_trace_count "${ns}_ns = $app_ns_inode" "$trace_path" 1
 		validate_trace_count "${ns}_ns = $app_unshare_ns_inode" "$trace_path" 1
+	else
+		touch "$file_sync_wait_before_unshare"
+
+		while [ ! -f "$file_sync_signal_after_unshare" ]; do
+			# Break if the app failed / died
+			if ! kill -0 "$app_pid" ; then
+				break
+				echo "# App failed"
+			fi
+			echo "# Waiting for app..."
+			sleep 0.5
+		done
+		touch "$file_sync_wait_after_unshare"
 	fi
+
 
 	# stop and destroy
 	destroy_lttng_session_ok "$session_name"
@@ -174,3 +188,4 @@ test_ns net
 #test_ns pid # pid_ns is special, can't be changed that way
 test_ns user
 test_ns uts
+set +x

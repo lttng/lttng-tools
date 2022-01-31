@@ -822,6 +822,7 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
+	validate_lttng_modules_present
 	start_lttng_sessiond
 
 	# Unsuccessful event enabling

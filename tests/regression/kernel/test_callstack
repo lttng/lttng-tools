@@ -144,6 +144,7 @@ skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" ||
 	test $? -ne 0
 	skip $? "Babeltrace binary not found. Skipping callstack tests" "$NUM_TESTS" ||
 	{
+		validate_lttng_modules_present
 		start_lttng_sessiond
 
 		if test $RUN_USERSPACE_TEST == 1; then
