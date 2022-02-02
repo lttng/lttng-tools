@@ -93,6 +93,7 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *
 		case LTTNG_DOMAIN_UST:
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 			memcpy(dst, src, sizeof(struct lttng_domain));
 			break;
@@ -1011,12 +1012,14 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
  *
  * An event with NO loglevel and the name is * will return NULL.
  */
-static char *set_agent_filter(const char *filter, struct lttng_event *ev)
+static char *
+set_agent_filter(const char *filter, struct lttng_event *ev, struct lttng_domain *domain)
 {
 	int err;
 	char *agent_filter = nullptr;
 
 	LTTNG_ASSERT(ev);
+	LTTNG_ASSERT(domain);
 
 	/* Don't add filter for the '*' event. */
 	if (strcmp(ev->name, "*") != 0) {
@@ -1032,12 +1035,20 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 		}
 	}
 
-	/* Add loglevel filtering if any for the JUL domain. */
+	/* Add loglevel filtering if any for the agent domains. */
 	if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
 		const char *op;
 
 		if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
-			op = ">=";
+			/*
+			 * Log4j2 is the only agent domain for which more severe
+			 * logging levels have a lower numerical value.
+			 */
+			if (domain->type == LTTNG_DOMAIN_LOG4J2) {
+				op = "<=";
+			} else {
+				op = ">=";
+			}
 		} else {
 			op = "==";
 		}
@@ -1134,18 +1145,20 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	/* Parse filter expression. */
 	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
 		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+		    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
 			/* Setup agent filter if needed. */
-			agent_filter = set_agent_filter(filter_expression, ev);
+			agent_filter = set_agent_filter(filter_expression, ev, &handle->domain);
 			if (!agent_filter) {
 				if (!filter_expression) {
 					/*
-					 * No JUL and no filter, just skip
+					 * No agent and no filter, just skip
 					 * everything below.
 					 */
 					goto serialize;
@@ -1317,14 +1330,16 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	/* Parse filter expression. */
 	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
 		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+		    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
 			/* Setup agent filter if needed. */
-			agent_filter = set_agent_filter(filter_expression, ev);
+			agent_filter = set_agent_filter(filter_expression, ev, &handle->domain);
 			if (!agent_filter) {
 				if (!filter_expression) {
 					/*

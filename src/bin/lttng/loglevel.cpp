@@ -77,6 +77,25 @@ static const struct loglevel_name_value loglevel_log4j_values[] = {
 	{ .name = "LOG4J_ALL", .value = LTTNG_LOGLEVEL_LOG4J_ALL },
 };
 
+static const struct loglevel_name_value loglevel_log4j2_values[] = {
+	{ .name = "OFF", .value = LTTNG_LOGLEVEL_LOG4J2_OFF },
+	{ .name = "LOG4J2_OFF", .value = LTTNG_LOGLEVEL_LOG4J2_OFF },
+	{ .name = "FATAL", .value = LTTNG_LOGLEVEL_LOG4J2_FATAL },
+	{ .name = "LOG4J2_FATAL", .value = LTTNG_LOGLEVEL_LOG4J2_FATAL },
+	{ .name = "ERROR", .value = LTTNG_LOGLEVEL_LOG4J2_ERROR },
+	{ .name = "LOG4J2_ERROR", .value = LTTNG_LOGLEVEL_LOG4J2_ERROR },
+	{ .name = "WARN", .value = LTTNG_LOGLEVEL_LOG4J2_WARN },
+	{ .name = "LOG4J2_WARN", .value = LTTNG_LOGLEVEL_LOG4J2_WARN },
+	{ .name = "INFO", .value = LTTNG_LOGLEVEL_LOG4J2_INFO },
+	{ .name = "LOG4J2_INFO", .value = LTTNG_LOGLEVEL_LOG4J2_INFO },
+	{ .name = "DEBUG", .value = LTTNG_LOGLEVEL_LOG4J2_DEBUG },
+	{ .name = "LOG4J2_DEBUG", .value = LTTNG_LOGLEVEL_LOG4J2_DEBUG },
+	{ .name = "TRACE", .value = LTTNG_LOGLEVEL_LOG4J2_TRACE },
+	{ .name = "LOG4J2_TRACE", .value = LTTNG_LOGLEVEL_LOG4J2_TRACE },
+	{ .name = "ALL", .value = LTTNG_LOGLEVEL_LOG4J2_ALL },
+	{ .name = "LOG4J2_ALL", .value = LTTNG_LOGLEVEL_LOG4J2_ALL },
+};
+
 static const struct loglevel_name_value loglevel_jul_values[] = {
 	{ .name = "OFF", .value = LTTNG_LOGLEVEL_JUL_OFF },
 	{ .name = "JUL_OFF", .value = LTTNG_LOGLEVEL_JUL_OFF },
@@ -261,6 +280,36 @@ bool loglevel_log4j_parse_range_string(const char *str,
 	return ret;
 }
 
+int loglevel_log4j2_name_to_value(const char *name, enum lttng_loglevel_log4j2 *loglevel)
+{
+	int ret = lookup_value_from_name(
+		loglevel_log4j2_values, ARRAY_SIZE(loglevel_log4j2_values), name);
+
+	if (ret >= 0) {
+		*loglevel = (typeof(*loglevel)) ret;
+		ret = 0;
+	}
+
+	return ret;
+}
+
+bool loglevel_log4j2_parse_range_string(const char *str,
+					enum lttng_loglevel_log4j2 *min,
+					enum lttng_loglevel_log4j2 *max)
+{
+	int min_int, max_int;
+	bool ret = loglevel_parse_range_string_common(str,
+						      loglevel_log4j2_values,
+						      ARRAY_SIZE(loglevel_log4j2_values),
+						      &min_int,
+						      &max_int);
+
+	*min = (lttng_loglevel_log4j2) min_int;
+	*max = (lttng_loglevel_log4j2) max_int;
+
+	return ret;
+}
+
 int loglevel_jul_name_to_value(const char *name, enum lttng_loglevel_jul *loglevel)
 {
 	int ret =
@@ -345,6 +394,12 @@ const char *loglevel_log4j_value_to_name(int loglevel)
 {
 	return lookup_name_from_value(
 		loglevel_log4j_values, ARRAY_SIZE(loglevel_log4j_values), loglevel);
+}
+
+const char *loglevel_log4j2_value_to_name(int loglevel)
+{
+	return lookup_name_from_value(
+		loglevel_log4j2_values, ARRAY_SIZE(loglevel_log4j2_values), loglevel);
 }
 
 const char *loglevel_jul_value_to_name(int loglevel)

@@ -1384,6 +1384,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable a channel in an agent domain but the agent thread is not running");
@@ -1434,6 +1435,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	case LTTNG_DOMAIN_UST:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	{
 		struct ltt_ust_channel *uchan;
@@ -1456,6 +1458,13 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
 			if (strncmp(attr->name,
 				    DEFAULT_LOG4J_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
+				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				goto error;
+			}
+		} else if (domain->type == LTTNG_DOMAIN_LOG4J2) {
+			if (strncmp(attr->name,
+				    DEFAULT_LOG4J2_CHANNEL_NAME,
 				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
 				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
@@ -1848,6 +1857,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		break;
 	}
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 	{
@@ -1942,6 +1952,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	{
 		/*
 		 * Validate channel name.
@@ -1956,6 +1967,10 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			goto error;
 		} else if (domain == LTTNG_DOMAIN_LOG4J && *channel_name &&
 			   strcmp(channel_name, DEFAULT_LOG4J_CHANNEL_NAME) != 0) {
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto error;
+		} else if (domain == LTTNG_DOMAIN_LOG4J2 && *channel_name &&
+			   strcmp(channel_name, DEFAULT_LOG4J2_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
@@ -2046,6 +2061,7 @@ static int validate_ust_event_name(const char *name)
 	 */
 	if (name_starts_with(name, DEFAULT_JUL_EVENT_COMPONENT) ||
 	    name_starts_with(name, DEFAULT_LOG4J_EVENT_COMPONENT) ||
+	    name_starts_with(name, DEFAULT_LOG4J2_EVENT_COMPONENT) ||
 	    name_starts_with(name, DEFAULT_PYTHON_EVENT_COMPONENT)) {
 		ret = -1;
 	}
@@ -2304,6 +2320,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		break;
 	}
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 	{
@@ -2355,6 +2372,9 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		switch (domain->type) {
 		case LTTNG_DOMAIN_LOG4J:
 			default_chan_name = DEFAULT_LOG4J_CHANNEL_NAME;
+			break;
+		case LTTNG_DOMAIN_LOG4J2:
+			default_chan_name = DEFAULT_LOG4J2_CHANNEL_NAME;
 			break;
 		case LTTNG_DOMAIN_JUL:
 			default_chan_name = DEFAULT_JUL_CHANNEL_NAME;
@@ -2547,6 +2567,7 @@ enum lttng_error_code cmd_list_tracepoints(enum lttng_domain_type domain,
 		}
 		break;
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 		nb_events = agent_list_events(&events, domain);
@@ -3907,6 +3928,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 		break;
 	}
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 		if (session->ust_session) {
@@ -4475,6 +4497,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	{
 		/* Agent domains. */
@@ -4630,6 +4653,7 @@ synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	{
 		/* Agent domains. */

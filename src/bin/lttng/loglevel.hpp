@@ -24,6 +24,12 @@ bool loglevel_log4j_parse_range_string(const char *str,
 				       enum lttng_loglevel_log4j *min,
 				       enum lttng_loglevel_log4j *max);
 
+int loglevel_log4j2_name_to_value(const char *name, enum lttng_loglevel_log4j2 *loglevel);
+
+bool loglevel_log4j2_parse_range_string(const char *str,
+					enum lttng_loglevel_log4j2 *min,
+					enum lttng_loglevel_log4j2 *max);
+
 int loglevel_jul_name_to_value(const char *name, enum lttng_loglevel_jul *loglevel);
 
 bool loglevel_jul_parse_range_string(const char *str,
@@ -39,6 +45,8 @@ bool loglevel_python_parse_range_string(const char *str,
 const char *loglevel_value_to_name(int loglevel);
 
 const char *loglevel_log4j_value_to_name(int loglevel);
+
+const char *loglevel_log4j2_value_to_name(int loglevel);
 
 const char *loglevel_jul_value_to_name(int loglevel);
 

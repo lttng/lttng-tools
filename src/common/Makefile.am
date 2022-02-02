@@ -84,6 +84,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/kernel-tracepoint.cpp \
 	event-rule/user-tracepoint.cpp \
 	event-rule/log4j-logging.cpp \
+	event-rule/log4j2-logging.cpp \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
 	exception.cpp exception.hpp \

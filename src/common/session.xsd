@@ -235,6 +235,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:enumeration value="UST"/>
 		<xs:enumeration value="JUL"/>
 		<xs:enumeration value="LOG4J"/>
+		<xs:enumeration value="LOG4J2"/>
 		<xs:enumeration value="PYTHON"/>
 	</xs:restriction>
 </xs:simpleType>

@@ -27,6 +27,7 @@ static int opt_userspace;
 static int opt_kernel;
 static int opt_jul;
 static int opt_log4j;
+static int opt_log4j2;
 static int opt_python;
 static char *opt_channel;
 static int opt_domain;
@@ -61,6 +62,7 @@ static struct poptOption long_options[] = {
 	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
 	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
 	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "log4j2", 0, POPT_ARG_VAL, &opt_log4j2, 1, nullptr, nullptr },
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
 	{ "channel", 'c', POPT_ARG_STRING, &opt_channel, 0, nullptr, nullptr },
@@ -583,6 +585,8 @@ static int list_agent_events()
 		domain.type = LTTNG_DOMAIN_JUL;
 	} else if (opt_log4j) {
 		domain.type = LTTNG_DOMAIN_LOG4J;
+	} else if (opt_log4j2) {
+		domain.type = LTTNG_DOMAIN_LOG4J2;
 	} else if (opt_python) {
 		domain.type = LTTNG_DOMAIN_PYTHON;
 	} else {
@@ -2224,10 +2228,13 @@ static int list_domains(const char *session_name)
 				MSG("  - UST global");
 				break;
 			case LTTNG_DOMAIN_JUL:
-				MSG("  - JUL (Java Util Logging)");
+				MSG("  - JUL (java.util.logging)");
 				break;
 			case LTTNG_DOMAIN_LOG4J:
-				MSG("  - LOG4j (Logging for Java)");
+				MSG("  - Log4j");
+				break;
+			case LTTNG_DOMAIN_LOG4J2:
+				MSG("  - Log4j2");
 				break;
 			case LTTNG_DOMAIN_PYTHON:
 				MSG("  - Python (logging)");
@@ -2327,6 +2334,8 @@ int cmd_list(int argc, const char **argv)
 		domain.type = LTTNG_DOMAIN_JUL;
 	} else if (opt_log4j) {
 		domain.type = LTTNG_DOMAIN_LOG4J;
+	} else if (opt_log4j2) {
+		domain.type = LTTNG_DOMAIN_LOG4J2;
 	} else if (opt_python) {
 		domain.type = LTTNG_DOMAIN_PYTHON;
 	}
@@ -2337,7 +2346,7 @@ int cmd_list(int argc, const char **argv)
 		goto end;
 	}
 
-	if (opt_kernel || opt_userspace || opt_jul || opt_log4j || opt_python) {
+	if (opt_kernel || opt_userspace || opt_jul || opt_log4j || opt_log4j2 || opt_python) {
 		the_handle = lttng_create_handle(arg_session_name, &domain);
 		if (the_handle == nullptr) {
 			ret = CMD_FATAL;
@@ -2346,7 +2355,8 @@ int cmd_list(int argc, const char **argv)
 	}
 
 	if (arg_session_name == nullptr) {
-		if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j && !opt_python) {
+		if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j && !opt_log4j2 &&
+		    !opt_python) {
 			ret = list_sessions(nullptr);
 			if (ret) {
 				goto end;
@@ -2375,7 +2385,7 @@ int cmd_list(int argc, const char **argv)
 				goto end;
 			}
 		}
-		if (opt_jul || opt_log4j || opt_python) {
+		if (opt_jul || opt_log4j || opt_log4j2 || opt_python) {
 			ret = list_agent_events();
 			if (ret) {
 				goto end;
@@ -2479,10 +2489,13 @@ int cmd_list(int argc, const char **argv)
 						    "per-user");
 					break;
 				case LTTNG_DOMAIN_JUL:
-					MSG("=== Domain: java.util.logging (JUL) ===\n");
+					MSG("=== Domain: JUL (java.util.logging) ===\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
-					MSG("=== Domain: log4j ===\n");
+					MSG("=== Domain: Log4j ===\n");
+					break;
+				case LTTNG_DOMAIN_LOG4J2:
+					MSG("=== Domain: Log4j2 ===\n");
 					break;
 				case LTTNG_DOMAIN_PYTHON:
 					MSG("=== Domain: Python logging ===\n");
@@ -2513,6 +2526,7 @@ int cmd_list(int argc, const char **argv)
 
 				if (domains[i].type == LTTNG_DOMAIN_JUL ||
 				    domains[i].type == LTTNG_DOMAIN_LOG4J ||
+				    domains[i].type == LTTNG_DOMAIN_LOG4J2 ||
 				    domains[i].type == LTTNG_DOMAIN_PYTHON) {
 					ret = list_session_agent_events();
 					if (ret) {

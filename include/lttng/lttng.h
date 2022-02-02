@@ -50,6 +50,7 @@
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/log4j2-logging.h>
 #include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/event.h>

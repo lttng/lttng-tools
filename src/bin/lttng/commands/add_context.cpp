@@ -29,6 +29,7 @@ static int opt_kernel;
 static int opt_userspace;
 static int opt_jul;
 static int opt_log4j;
+static int opt_log4j2;
 static char *opt_type;
 
 #ifdef LTTNG_EMBED_HELP
@@ -43,6 +44,7 @@ enum {
 	OPT_USERSPACE,
 	OPT_JUL,
 	OPT_LOG4J,
+	OPT_LOG4J2,
 	OPT_LIST_OPTIONS,
 	OPT_LIST,
 };
@@ -175,6 +177,7 @@ static struct poptOption long_options[] = {
 	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
 	{ "jul", 'j', POPT_ARG_NONE, nullptr, OPT_JUL, nullptr, nullptr },
 	{ "log4j", 'l', POPT_ARG_NONE, nullptr, OPT_LOG4J, nullptr, nullptr },
+	{ "log4j2", 0, POPT_ARG_NONE, nullptr, OPT_LOG4J2, nullptr, nullptr },
 	{ "type", 't', POPT_ARG_STRING, &opt_type, OPT_TYPE, nullptr, nullptr },
 	{ "list", 0, POPT_ARG_NONE, nullptr, OPT_LIST, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -514,6 +517,8 @@ static enum lttng_domain_type get_domain()
 		return LTTNG_DOMAIN_JUL;
 	} else if (opt_log4j) {
 		return LTTNG_DOMAIN_LOG4J;
+	} else if (opt_log4j2) {
+		return LTTNG_DOMAIN_LOG4J2;
 	} else {
 		abort();
 	}
@@ -1081,6 +1086,9 @@ int cmd_add_context(int argc, const char **argv)
 		case OPT_LOG4J:
 			opt_log4j = 1;
 			break;
+		case OPT_LOG4J2:
+			opt_log4j2 = 1;
+			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
@@ -1097,8 +1105,8 @@ int cmd_add_context(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace + opt_jul + opt_log4j,
-						true);
+	ret = print_missing_or_multiple_domains(
+		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_log4j2, true);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;

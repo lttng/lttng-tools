@@ -17,6 +17,8 @@
 #include <lttng/event.h>
 #include <lttng/log-level-rule-internal.hpp>
 
+#define LTTNG_JUL_EVENT_RULE_AT_LEAST_AS_SEVERE_AS_OP ">="
+
 struct lttng_event_rule_jul_logging {
 	struct lttng_event_rule parent;
 

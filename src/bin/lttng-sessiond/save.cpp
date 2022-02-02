@@ -1725,6 +1725,9 @@ static const char *get_config_domain_str(enum lttng_domain_type domain)
 	case LTTNG_DOMAIN_LOG4J:
 		str_dom = config_domain_type_log4j;
 		break;
+	case LTTNG_DOMAIN_LOG4J2:
+		str_dom = config_domain_type_log4j2;
+		break;
 	case LTTNG_DOMAIN_PYTHON:
 		str_dom = config_domain_type_python;
 		break;
@@ -1798,6 +1801,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	}
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	default:
 		ret = LTTNG_ERR_UNSUPPORTED_DOMAIN;
@@ -2144,6 +2148,11 @@ static int save_domains(struct config_writer *writer, const ltt_session::locked_
 		}
 
 		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_LOG4J);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+		ret = save_ust_domain(writer, session, LTTNG_DOMAIN_LOG4J2);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}

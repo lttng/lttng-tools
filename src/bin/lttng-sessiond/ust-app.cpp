@@ -2240,6 +2240,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 	LTTNG_ASSERT(event_rule_type == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT ||
 		     event_rule_type == LTTNG_EVENT_RULE_TYPE_JUL_LOGGING ||
 		     event_rule_type == LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING ||
+		     event_rule_type == LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING ||
 		     event_rule_type == LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING);
 
 	init_ust_event_notifier_from_event_rule(event_rule, &event_notifier);

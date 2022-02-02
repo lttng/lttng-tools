@@ -448,6 +448,7 @@ static int copy_session_consumer(int domain, const ltt_session::locked_ref& sess
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_UST:
 		DBG3("Copying tracing session consumer output in UST session");
@@ -492,6 +493,7 @@ static int create_ust_session(const ltt_session::locked_ref& session,
 	switch (domain->type) {
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_UST:
 		break;
@@ -1180,6 +1182,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 			break;
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
 			if (!(*target_session)->ust_session) {
@@ -1263,6 +1266,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 		if (!agent_tracing_is_enabled()) {
 			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
@@ -1368,6 +1372,7 @@ skip_domain:
 			break;
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
 			if (uatomic_read(&the_ust_consumerd_state) != CONSUMER_STARTED) {

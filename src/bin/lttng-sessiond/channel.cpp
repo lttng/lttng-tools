@@ -70,6 +70,9 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 	case LTTNG_DOMAIN_LOG4J:
 		channel_name = DEFAULT_LOG4J_CHANNEL_NAME;
 		goto common_ust;
+	case LTTNG_DOMAIN_LOG4J2:
+		channel_name = DEFAULT_LOG4J2_CHANNEL_NAME;
+		goto common_ust;
 	case LTTNG_DOMAIN_PYTHON:
 		channel_name = DEFAULT_PYTHON_CHANNEL_NAME;
 		goto common_ust;
@@ -346,6 +349,8 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 			domain = LTTNG_DOMAIN_JUL;
 		} else if (!strcmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME)) {
 			domain = LTTNG_DOMAIN_LOG4J;
+		} else if (!strcmp(attr->name, DEFAULT_LOG4J2_CHANNEL_NAME)) {
+			domain = LTTNG_DOMAIN_LOG4J2;
 		} else if (!strcmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME)) {
 			domain = LTTNG_DOMAIN_PYTHON;
 		}

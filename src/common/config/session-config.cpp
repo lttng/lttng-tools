@@ -164,6 +164,7 @@ const char *const config_domain_type_kernel = "KERNEL";
 const char *const config_domain_type_ust = "UST";
 const char *const config_domain_type_jul = "JUL";
 const char *const config_domain_type_log4j = "LOG4J";
+const char *const config_domain_type_log4j2 = "LOG4J2";
 const char *const config_domain_type_python = "PYTHON";
 
 const char *const config_buffer_type_per_pid = "PER_PID";
@@ -723,6 +724,8 @@ static int get_domain_type(xmlChar *domain)
 		ret = LTTNG_DOMAIN_JUL;
 	} else if (!strcmp((char *) domain, config_domain_type_log4j)) {
 		ret = LTTNG_DOMAIN_LOG4J;
+	} else if (!strcmp((char *) domain, config_domain_type_log4j2)) {
+		ret = LTTNG_DOMAIN_LOG4J2;
 	} else if (!strcmp((char *) domain, config_domain_type_python)) {
 		ret = LTTNG_DOMAIN_PYTHON;
 	} else {
@@ -1608,6 +1611,9 @@ static int process_event_node(xmlNodePtr event_node,
 		break;
 	case LTTNG_DOMAIN_LOG4J:
 		event->loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+		break;
+	case LTTNG_DOMAIN_LOG4J2:
+		event->loglevel = LTTNG_LOGLEVEL_LOG4J2_ALL;
 		break;
 	case LTTNG_DOMAIN_PYTHON:
 		event->loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
@@ -2821,6 +2827,7 @@ static int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 		switch (domain.type) {
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 			domain.type = LTTNG_DOMAIN_UST;
 		default:
@@ -3102,6 +3109,7 @@ static int process_session_node(xmlNodePtr session_node,
 	struct lttng_domain *ust_domain = nullptr;
 	struct lttng_domain *jul_domain = nullptr;
 	struct lttng_domain *log4j_domain = nullptr;
+	struct lttng_domain *log4j2_domain = nullptr;
 	struct lttng_domain *python_domain = nullptr;
 
 	for (node = xmlFirstElementChild(session_node); node; node = xmlNextElementSibling(node)) {
@@ -3257,6 +3265,13 @@ static int process_session_node(xmlNodePtr session_node,
 			}
 			log4j_domain = domain;
 			break;
+		case LTTNG_DOMAIN_LOG4J2:
+			if (log4j2_domain) {
+				/* Same domain seen twice, invalid! */
+				goto domain_init_error;
+			}
+			log4j2_domain = domain;
+			break;
 		case LTTNG_DOMAIN_PYTHON:
 			if (python_domain) {
 				/* Same domain seen twice, invalid! */
@@ -3358,6 +3373,7 @@ error:
 	free(ust_domain);
 	free(jul_domain);
 	free(log4j_domain);
+	free(log4j2_domain);
 	free(python_domain);
 	xmlFree(name);
 	xmlFree(shm_path);

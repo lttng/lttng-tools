@@ -1,25 +1,25 @@
 /*
- * Copyright (C) 2021 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * Copyright (C) 2024 Michael Jeanson <mjeanson@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 
-#ifndef LTTNG_EVENT_RULE_LOG4J_LOGGING_INTERNAL_H
-#define LTTNG_EVENT_RULE_LOG4J_LOGGING_INTERNAL_H
+#ifndef LTTNG_EVENT_RULE_LOG4J2_LOGGING_INTERNAL_H
+#define LTTNG_EVENT_RULE_LOG4J2_LOGGING_INTERNAL_H
 
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 #include <common/payload-view.hpp>
 
 #include <lttng/event-rule/event-rule-internal.hpp>
-#include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/log4j2-logging.h>
 #include <lttng/event.h>
 #include <lttng/log-level-rule-internal.hpp>
 
-#define LTTNG_LOG4J_EVENT_RULE_AT_LEAST_AS_SEVERE_AS_OP ">="
+#define LTTNG_LOG4J2_EVENT_RULE_AT_LEAST_AS_SEVERE_AS_OP "<="
 
-struct lttng_event_rule_log4j_logging {
+struct lttng_event_rule_log4j2_logging {
 	struct lttng_event_rule parent;
 
 	/* Name pattern. */
@@ -38,7 +38,7 @@ struct lttng_event_rule_log4j_logging {
 	} internal_filter;
 };
 
-struct lttng_event_rule_log4j_logging_comm {
+struct lttng_event_rule_log4j2_logging_comm {
 	/* Includes terminator `\0`. */
 	uint32_t pattern_len;
 	/* Includes terminator `\0`. */
@@ -54,7 +54,7 @@ struct lttng_event_rule_log4j_logging_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-ssize_t lttng_event_rule_log4j_logging_create_from_payload(struct lttng_payload_view *view,
-							   struct lttng_event_rule **rule);
+ssize_t lttng_event_rule_log4j2_logging_create_from_payload(struct lttng_payload_view *view,
+							    struct lttng_event_rule **rule);
 
-#endif /* LTTNG_EVENT_RULE_LOG4J_LOGGING_INTERNAL_H */
+#endif /* LTTNG_EVENT_RULE_LOG4J2_LOGGING_INTERNAL_H */

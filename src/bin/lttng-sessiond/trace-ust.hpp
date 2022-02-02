@@ -61,7 +61,7 @@ struct ltt_ust_channel {
 	bool enabled;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,
-	 * Log4j, Python.
+	 * Log4j, Log4j2, Python.
 	 */
 	enum lttng_domain_type domain;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN];

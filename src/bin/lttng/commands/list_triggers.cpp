@@ -135,6 +135,9 @@ static const char *get_pretty_loglevel_name(enum lttng_event_rule_type event_rul
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 		name = loglevel_log4j_value_to_name(loglevel);
 		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		name = loglevel_log4j2_value_to_name(loglevel);
+		break;
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		name = loglevel_jul_value_to_name(loglevel);
 		break;
@@ -273,6 +276,12 @@ static void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 		logging_get_filter = lttng_event_rule_log4j_logging_get_filter;
 		logging_get_log_level_rule = lttng_event_rule_log4j_logging_get_log_level_rule;
 		type_str = "log4j";
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		logging_get_name_pattern = lttng_event_rule_log4j2_logging_get_name_pattern;
+		logging_get_filter = lttng_event_rule_log4j2_logging_get_filter;
+		logging_get_log_level_rule = lttng_event_rule_log4j2_logging_get_log_level_rule;
+		type_str = "log4j2";
 		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		logging_get_name_pattern = lttng_event_rule_python_logging_get_name_pattern;
@@ -513,6 +522,7 @@ static void print_event_rule(const struct lttng_event_rule *event_rule)
 		break;
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		print_event_rule_logging(event_rule);
 		break;

@@ -122,6 +122,8 @@ static bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char 
 		*dest = LTTNG_EVENT_RULE_TYPE_JUL_LOGGING;
 	} else if (strcmp(arg, "log4j") == 0 || strcmp(arg, "log4j:logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING;
+	} else if (strcmp(arg, "log4j2") == 0 || strcmp(arg, "log4j2:logging") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING;
 	} else if (strcmp(arg, "python") == 0 || strcmp(arg, "python:logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING;
 	} else if (strcmp(arg, "kprobe") == 0 || strcmp(arg, "kernel:kprobe") == 0) {
@@ -259,6 +261,23 @@ static bool parse_log_level_string(const char *str,
 
 		/* Only support VAL and VAL.. for now. */
 		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_LOG4J_FATAL) {
+			goto error;
+		}
+
+		*log_level = (int) log_level_min;
+		*log_level_only = log_level_min == log_level_max;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+	{
+		enum lttng_loglevel_log4j2 log_level_min, log_level_max;
+		if (!loglevel_log4j2_parse_range_string(str, &log_level_min, &log_level_max)) {
+			goto error;
+		}
+
+		/* Only support VAL and VAL.. for now. */
+		if (log_level_min != log_level_max &&
+		    log_level_max != LTTNG_LOGLEVEL_LOG4J2_FATAL) {
 			goto error;
 		}
 
@@ -788,14 +807,15 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 
 	/*
 	 * Option --name is applicable to event rules of type kernel, user, jul,
-	 * log4j,python and syscall.  If --name is omitted, it is implicitly
-	 * "*".
+	 * log4j, log4j2, python and syscall.  If --name is omitted, it is
+	 * implicitly "*".
 	 */
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		if (!name) {
@@ -872,6 +892,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 		case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 			break;
@@ -908,6 +929,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 		case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		{
 			int log_level;
@@ -1108,6 +1130,45 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 
 		if (log_level_rule) {
 			event_rule_status = lttng_event_rule_log4j_logging_set_log_level_rule(
+				res.er, log_level_rule);
+
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set log level on event fule.");
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+	{
+		enum lttng_event_rule_status event_rule_status;
+
+		res.er = lttng_event_rule_log4j2_logging_create();
+		if (!res.er) {
+			ERR("Failed to create log4j2_logging event rule.");
+			goto error;
+		}
+
+		/* Set pattern. */
+		event_rule_status = lttng_event_rule_log4j2_logging_set_name_pattern(res.er, name);
+		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set log4j2_logging event rule's pattern to '%s'.", name);
+			goto error;
+		}
+
+		/* Set filter. */
+		if (filter) {
+			event_rule_status =
+				lttng_event_rule_log4j2_logging_set_filter(res.er, filter);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set log4j2_logging event rule's filter to '%s'.",
+				    filter);
+				goto error;
+			}
+		}
+
+		if (log_level_rule) {
+			event_rule_status = lttng_event_rule_log4j2_logging_set_log_level_rule(
 				res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {

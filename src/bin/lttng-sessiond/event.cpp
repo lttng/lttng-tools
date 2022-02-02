@@ -598,6 +598,7 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	switch (lttng_event_rule_get_type(rule)) {
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		break;
 	default:
@@ -662,6 +663,9 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 	switch (domain) {
 	case LTTNG_DOMAIN_LOG4J:
 		default_event_name = DEFAULT_LOG4J_EVENT_NAME;
+		break;
+	case LTTNG_DOMAIN_LOG4J2:
+		default_event_name = DEFAULT_LOG4J2_EVENT_NAME;
 		break;
 	case LTTNG_DOMAIN_JUL:
 		default_event_name = DEFAULT_JUL_EVENT_NAME;
@@ -749,6 +753,8 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 		ust_channel_name = DEFAULT_JUL_CHANNEL_NAME;
 	} else if (agt->domain == LTTNG_DOMAIN_LOG4J) {
 		ust_channel_name = DEFAULT_LOG4J_CHANNEL_NAME;
+	} else if (agt->domain == LTTNG_DOMAIN_LOG4J2) {
+		ust_channel_name = DEFAULT_LOG4J2_CHANNEL_NAME;
 	} else if (agt->domain == LTTNG_DOMAIN_PYTHON) {
 		ust_channel_name = DEFAULT_PYTHON_CHANNEL_NAME;
 	} else {

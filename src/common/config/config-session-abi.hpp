@@ -105,6 +105,7 @@ LTTNG_EXPORT extern const char *const config_domain_type_kernel;
 LTTNG_EXPORT extern const char *const config_domain_type_ust;
 LTTNG_EXPORT extern const char *const config_domain_type_jul;
 LTTNG_EXPORT extern const char *const config_domain_type_log4j;
+LTTNG_EXPORT extern const char *const config_domain_type_log4j2;
 LTTNG_EXPORT extern const char *const config_domain_type_python;
 
 LTTNG_EXPORT extern const char *const config_buffer_type_per_pid;

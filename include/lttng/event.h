@@ -202,7 +202,7 @@ enum lttng_loglevel_jul {
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
     of an
-    \link #LTTNG_DOMAIN_LOG4J Apache log4j\endlink
+    \link #LTTNG_DOMAIN_LOG4J Apache Log4j 1.x\endlink
     recording event rule.
 
 @ingroup api_rer
@@ -249,6 +249,60 @@ enum lttng_loglevel_log4j {
 
 	/// All levels, including custom levels.
 	LTTNG_LOGLEVEL_LOG4J_ALL = INT32_MIN,
+};
+
+/*!
+@brief
+    Value of the
+    \ref api-rer-conds-ll "instrumentation point log level condition"
+    of a
+    \link #LTTNG_DOMAIN_LOG4J2 Apache Log4j 2\endlink
+    recording event rule.
+
+@ingroup api_rer
+
+@sa #lttng_loglevel_type --
+    Operand of the log level condition of a recording event rule.
+*/
+enum lttng_loglevel_log4j2 {
+	/// Logging turned off.
+	LTTNG_LOGLEVEL_LOG4J2_OFF = 0,
+
+	/*!
+	Very severe error events that will presumably lead the
+	application to abort.
+	*/
+	LTTNG_LOGLEVEL_LOG4J2_FATAL = 100,
+
+	/*!
+	Error events that might still allow the application to continue
+	running.
+	*/
+	LTTNG_LOGLEVEL_LOG4J2_ERROR = 200,
+
+	/// Potentially harmful situations.
+	LTTNG_LOGLEVEL_LOG4J2_WARN = 300,
+
+	/*!
+	Informational messages that highlight the progress of the
+	application at coarse-grained level.
+	*/
+	LTTNG_LOGLEVEL_LOG4J2_INFO = 400,
+
+	/*!
+	Fine-grained informational events that are most useful to debug
+	an application.
+	*/
+	LTTNG_LOGLEVEL_LOG4J2_DEBUG = 500,
+
+	/*!
+	Finer-grained informational events than the
+	#LTTNG_LOGLEVEL_LOG4J2_DEBUG level.
+	*/
+	LTTNG_LOGLEVEL_LOG4J2_TRACE = 600,
+
+	/// All levels, including custom levels.
+	LTTNG_LOGLEVEL_LOG4J2_ALL = INT32_MAX,
 };
 
 /*!

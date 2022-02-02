@@ -1073,6 +1073,7 @@ event_notifier_error_accounting_register_event_notifier(const struct lttng_trigg
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 		state = &ust_state;
 		break;
 	default:
@@ -1123,6 +1124,7 @@ event_notifier_error_accounting_register_event_notifier(const struct lttng_trigg
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 		pthread_mutex_lock(&the_event_notifier_counter.lock);
 		the_event_notifier_counter.count++;
 		if (the_event_notifier_counter.count == 1) {
@@ -1211,6 +1213,7 @@ event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, u
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 #ifdef HAVE_LIBLTTNG_UST_CTL
 		return event_notifier_error_accounting_ust_get_count(trigger, count);
 #else
@@ -1232,6 +1235,7 @@ event_notifier_error_accounting_clear(const struct lttng_trigger *trigger)
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 #ifdef HAVE_LIBLTTNG_UST_CTL
 		return event_notifier_error_accounting_ust_clear(trigger);
 #else
@@ -1276,6 +1280,7 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 	case LTTNG_DOMAIN_PYTHON:
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 		state = &ust_state;
 
 		pthread_mutex_lock(&the_event_notifier_counter.lock);

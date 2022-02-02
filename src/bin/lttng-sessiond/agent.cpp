@@ -24,6 +24,7 @@
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/log4j2-logging.h>
 #include <lttng/event-rule/python-logging.h>
 #include <lttng/log-level-rule-internal.hpp>
 
@@ -1257,6 +1258,10 @@ struct agent_event *agent_find_event_by_trigger(const struct lttng_trigger *trig
 		logging_get_name_pattern = lttng_event_rule_log4j_logging_get_name_pattern;
 		logging_get_log_level_rule = lttng_event_rule_log4j_logging_get_log_level_rule;
 		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		logging_get_name_pattern = lttng_event_rule_log4j2_logging_get_name_pattern;
+		logging_get_log_level_rule = lttng_event_rule_log4j2_logging_get_log_level_rule;
+		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		logging_get_name_pattern = lttng_event_rule_python_logging_get_name_pattern;
 		logging_get_log_level_rule = lttng_event_rule_python_logging_get_log_level_rule;
@@ -1268,7 +1273,7 @@ struct agent_event *agent_find_event_by_trigger(const struct lttng_trigger *trig
 
 	domain = lttng_event_rule_get_domain_type(rule);
 	LTTNG_ASSERT(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
-		     domain == LTTNG_DOMAIN_PYTHON);
+		     domain == LTTNG_DOMAIN_LOG4J2 || domain == LTTNG_DOMAIN_PYTHON);
 
 	/* Get the event's pattern name ('name' in the legacy terminology). */
 	er_status = logging_get_name_pattern(rule, &name);

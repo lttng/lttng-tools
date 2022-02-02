@@ -27,6 +27,7 @@ static int opt_userspace;
 static int opt_disable_all;
 static int opt_jul;
 static int opt_log4j;
+static int opt_log4j2;
 static int opt_python;
 static int opt_event_type;
 
@@ -57,6 +58,7 @@ static struct poptOption long_options[] = {
 	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, nullptr, nullptr },
 	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
 	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "log4j2", 0, POPT_ARG_VAL, &opt_log4j2, 1, nullptr, nullptr },
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
 	{ "userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, nullptr, nullptr },
@@ -164,6 +166,8 @@ static int disable_events(char *session_name, char *event_list)
 		dom.type = LTTNG_DOMAIN_JUL;
 	} else if (opt_log4j) {
 		dom.type = LTTNG_DOMAIN_LOG4J;
+	} else if (opt_log4j2) {
+		dom.type = LTTNG_DOMAIN_LOG4J2;
 	} else if (opt_python) {
 		dom.type = LTTNG_DOMAIN_PYTHON;
 	} else {
@@ -371,16 +375,16 @@ int cmd_disable_events(int argc, const char **argv)
 	}
 
 	ret = print_missing_or_multiple_domains(
-		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python, true);
+		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_log4j2 + opt_python, true);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	/* Ust and agent only support ALL event type */
-	if ((opt_userspace || opt_jul || opt_log4j || opt_python) &&
+	if ((opt_userspace || opt_jul || opt_log4j || opt_log4j2 || opt_python) &&
 	    opt_event_type != LTTNG_EVENT_ALL) {
-		ERR("Disabling userspace and agent (-j | -l | -p) event(s) based on instrumentation type is not supported.\n");
+		ERR("Disabling userspace and agent event(s) based on instrumentation type is not supported.\n");
 		ret = CMD_ERROR;
 		goto end;
 	}

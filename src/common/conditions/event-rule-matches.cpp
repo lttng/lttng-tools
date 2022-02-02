@@ -822,6 +822,7 @@ lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condit
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		/* Supported. */

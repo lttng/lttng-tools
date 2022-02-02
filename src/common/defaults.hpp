@@ -193,6 +193,12 @@
 #define DEFAULT_LOG4J_EVENT_COMPONENT "lttng_log4j"
 #define DEFAULT_LOG4J_EVENT_NAME      DEFAULT_LOG4J_EVENT_COMPONENT ":*"
 
+/* Default log4j2 domain channel name. */
+#define DEFAULT_LOG4J2_CHANNEL_NAME "lttng_log4j2_channel"
+/* Default log4j tracepoint name. This is a wildcard for the log4j2 domain. */
+#define DEFAULT_LOG4J2_EVENT_COMPONENT "lttng_log4j2"
+#define DEFAULT_LOG4J2_EVENT_NAME      DEFAULT_LOG4J2_EVENT_COMPONENT ":*"
+
 /* Default Python domain channel name. */
 #define DEFAULT_PYTHON_CHANNEL_NAME "lttng_python_channel"
 /* Default Python tracepoint name. This is a wildcard for the python domain. */

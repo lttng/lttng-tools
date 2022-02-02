@@ -151,6 +151,16 @@ const char *const mi_lttng_loglevel_str_log4j_debug = "LOG4J_DEBUG";
 const char *const mi_lttng_loglevel_str_log4j_trace = "LOG4J_TRACE";
 const char *const mi_lttng_loglevel_str_log4j_all = "LOG4J_ALL";
 
+/* String related to loglevel LOG4J2 */
+const char *const mi_lttng_loglevel_str_log4j2_off = "LOG4J2_OFF";
+const char *const mi_lttng_loglevel_str_log4j2_fatal = "LOG4J2_FATAL";
+const char *const mi_lttng_loglevel_str_log4j2_error = "LOG4J2_ERROR";
+const char *const mi_lttng_loglevel_str_log4j2_warn = "LOG4J2_WARN";
+const char *const mi_lttng_loglevel_str_log4j2_info = "LOG4J2_INFO";
+const char *const mi_lttng_loglevel_str_log4j2_debug = "LOG4J2_DEBUG";
+const char *const mi_lttng_loglevel_str_log4j2_trace = "LOG4J2_TRACE";
+const char *const mi_lttng_loglevel_str_log4j2_all = "LOG4J2_ALL";
+
 /* String related to loglevel Python */
 const char *const mi_lttng_loglevel_str_python_critical = "PYTHON_CRITICAL";
 const char *const mi_lttng_loglevel_str_python_error = "PYTHON_ERROR";
@@ -275,6 +285,7 @@ const char *const mi_lttng_element_event_rule_kernel_syscall = "event_rule_kerne
 const char *const mi_lttng_element_event_rule_kernel_tracepoint = "event_rule_kernel_tracepoint";
 const char *const mi_lttng_element_event_rule_kernel_uprobe = "event_rule_kernel_uprobe";
 const char *const mi_lttng_element_event_rule_log4j_logging = "event_rule_log4j_logging";
+const char *const mi_lttng_element_event_rule_log4j2_logging = "event_rule_log4j2_logging";
 const char *const mi_lttng_element_event_rule_python_logging = "event_rule_python_logging";
 const char *const mi_lttng_element_event_rule_user_tracepoint = "event_rule_user_tracepoint";
 
@@ -428,6 +439,30 @@ const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 			return mi_lttng_loglevel_str_log4j_trace;
 		case LTTNG_LOGLEVEL_LOG4J_ALL:
 			return mi_lttng_loglevel_str_log4j_all;
+		default:
+			return mi_lttng_loglevel_str_unknown;
+		}
+		break;
+	case LTTNG_DOMAIN_LOG4J2:
+		switch (value) {
+		case -1:
+			return mi_lttng_element_empty;
+		case LTTNG_LOGLEVEL_LOG4J2_OFF:
+			return mi_lttng_loglevel_str_log4j2_off;
+		case LTTNG_LOGLEVEL_LOG4J2_FATAL:
+			return mi_lttng_loglevel_str_log4j2_fatal;
+		case LTTNG_LOGLEVEL_LOG4J2_ERROR:
+			return mi_lttng_loglevel_str_log4j2_error;
+		case LTTNG_LOGLEVEL_LOG4J2_WARN:
+			return mi_lttng_loglevel_str_log4j2_warn;
+		case LTTNG_LOGLEVEL_LOG4J2_INFO:
+			return mi_lttng_loglevel_str_log4j2_info;
+		case LTTNG_LOGLEVEL_LOG4J2_DEBUG:
+			return mi_lttng_loglevel_str_log4j2_debug;
+		case LTTNG_LOGLEVEL_LOG4J2_TRACE:
+			return mi_lttng_loglevel_str_log4j2_trace;
+		case LTTNG_LOGLEVEL_LOG4J2_ALL:
+			return mi_lttng_loglevel_str_log4j2_all;
 		default:
 			return mi_lttng_loglevel_str_unknown;
 		}
@@ -630,6 +665,8 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 		return config_domain_type_jul;
 	case LTTNG_DOMAIN_LOG4J:
 		return config_domain_type_log4j;
+	case LTTNG_DOMAIN_LOG4J2:
+		return config_domain_type_log4j2;
 	case LTTNG_DOMAIN_PYTHON:
 		return config_domain_type_python;
 	default:

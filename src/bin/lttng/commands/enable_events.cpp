@@ -61,6 +61,7 @@ char *opt_session_name;
 int opt_userspace;
 int opt_jul;
 int opt_log4j;
+int opt_log4j2;
 int opt_python;
 int opt_enable_all;
 char *opt_probe;
@@ -104,6 +105,7 @@ struct poptOption long_options[] = {
 	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
 	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
 	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "log4j2", 0, POPT_ARG_VAL, &opt_log4j2, 1, nullptr, nullptr },
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "tracepoint", 0, POPT_ARG_NONE, nullptr, OPT_TRACEPOINT, nullptr, nullptr },
 	{ "probe", 0, POPT_ARG_STRING, &opt_probe, OPT_PROBE, nullptr, nullptr },
@@ -444,6 +446,10 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		dom.type = LTTNG_DOMAIN_LOG4J;
 		/* Default. */
 		dom.buf_type = LTTNG_BUFFER_PER_UID;
+	} else if (opt_log4j2) {
+		dom.type = LTTNG_DOMAIN_LOG4J2;
+		/* Default. */
+		dom.buf_type = LTTNG_BUFFER_PER_UID;
 	} else if (opt_python) {
 		dom.type = LTTNG_DOMAIN_PYTHON;
 		/* Default. */
@@ -458,6 +464,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		case LTTNG_DOMAIN_KERNEL:
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_LOG4J2:
 		case LTTNG_DOMAIN_PYTHON:
 			ERR("Event name exclusions are not supported for %s event rules",
 			    lttng_domain_type_str(dom.type));
@@ -653,7 +660,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 			} else {
 				ev->loglevel = -1;
 			}
-		} else if (opt_jul || opt_log4j || opt_python) {
+		} else if (opt_jul || opt_log4j || opt_log4j2 || opt_python) {
 			if (opt_event_type != LTTNG_EVENT_ALL &&
 			    opt_event_type != LTTNG_EVENT_TRACEPOINT) {
 				ERR("Instrumentation point type not supported for the %s domain",
@@ -678,6 +685,12 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					name_search_ret = loglevel_log4j_name_to_value(opt_loglevel,
 										       &loglevel);
 					ev->loglevel = (int) loglevel;
+				} else if (opt_log4j2) {
+					enum lttng_loglevel_log4j2 loglevel;
+
+					name_search_ret = loglevel_log4j2_name_to_value(
+						opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else {
 					/* python domain. */
 					enum lttng_loglevel_python loglevel;
@@ -697,6 +710,8 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					ev->loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 				} else if (opt_log4j) {
 					ev->loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+				} else if (opt_log4j2) {
+					ev->loglevel = LTTNG_LOGLEVEL_LOG4J2_ALL;
 				} else if (opt_python) {
 					ev->loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 				}
@@ -792,6 +807,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				}
 				case LTTNG_DOMAIN_JUL:
 				case LTTNG_DOMAIN_LOG4J:
+				case LTTNG_DOMAIN_LOG4J2:
 				case LTTNG_DOMAIN_PYTHON:
 					/*
 					 * Don't print the default channel
@@ -1082,7 +1098,7 @@ int cmd_enable_events(int argc, const char **argv)
 	}
 
 	ret = print_missing_or_multiple_domains(
-		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python, true);
+		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_log4j2 + opt_python, true);
 	if (ret) {
 		return CMD_ERROR;
 	}

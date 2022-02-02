@@ -231,7 +231,7 @@ static int generate_agent_filter(const struct lttng_event_rule *rule, char **_ag
 		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
 			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
 				log_level_rule, &level);
-			op = ">=";
+			op = LTTNG_LOG4J_EVENT_RULE_AT_LEAST_AS_SEVERE_AS_OP;
 			break;
 		default:
 			abort();
@@ -809,8 +809,8 @@ end:
 static bool log_level_rule_valid(const struct lttng_log_level_rule *rule __attribute__((unused)))
 {
 	/*
-	 * For both LOG4J custom log level are possible and can
-	 * span the entire int32 range.
+	 * LOG4J custom log levels are possible and can span the entire int32
+	 * range.
 	 */
 	return true;
 }

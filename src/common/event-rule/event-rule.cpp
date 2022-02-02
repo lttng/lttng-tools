@@ -21,6 +21,7 @@
 #include <lttng/event-rule/kernel-tracepoint-internal.hpp>
 #include <lttng/event-rule/kernel-uprobe-internal.hpp>
 #include <lttng/event-rule/log4j-logging-internal.hpp>
+#include <lttng/event-rule/log4j2-logging-internal.hpp>
 #include <lttng/event-rule/python-logging-internal.hpp>
 #include <lttng/event-rule/user-tracepoint-internal.hpp>
 
@@ -44,6 +45,9 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(const struct lttng_event
 		break;
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 		domain_type = LTTNG_DOMAIN_LOG4J;
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		domain_type = LTTNG_DOMAIN_LOG4J2;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		domain_type = LTTNG_DOMAIN_PYTHON;
@@ -190,6 +194,9 @@ ssize_t lttng_event_rule_create_from_payload(struct lttng_payload_view *view,
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 		create_from_payload = lttng_event_rule_log4j_logging_create_from_payload;
 		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		create_from_payload = lttng_event_rule_log4j2_logging_create_from_payload;
+		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		create_from_payload = lttng_event_rule_python_logging_create_from_payload;
 		break;
@@ -288,6 +295,7 @@ bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule)
 	switch (type) {
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	case LTTNG_DOMAIN_PYTHON:
 		targets_agent_domain = true;
 		break;
@@ -321,6 +329,8 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "jul logging";
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 		return "log4j logging";
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		return "log4j2 logging";
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		return "python logging";
 

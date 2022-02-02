@@ -423,7 +423,7 @@ int print_missing_or_multiple_domains(unsigned int domain_count, bool include_ag
 
 	if (domain_count == 0) {
 		ERR("Please specify a domain (--kernel/--userspace%s).",
-		    include_agent_domains ? "/--jul/--log4j/--python" : "");
+		    include_agent_domains ? "/--jul/--log4j/--log4j2/--python" : "");
 		ret = -1;
 	} else if (domain_count > 1) {
 		ERR("Only one domain must be specified.");

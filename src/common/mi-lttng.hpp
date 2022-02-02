@@ -173,6 +173,16 @@ LTTNG_EXPORT extern const char *const mi_lttng_loglevel_str_log4j_debug;
 LTTNG_EXPORT extern const char *const mi_lttng_loglevel_str_log4j_trace;
 LTTNG_EXPORT extern const char *const mi_lttng_loglevel_str_log4j_all;
 
+/* String related to loglevel Log4j2 */
+extern const char *const mi_lttng_loglevel_str_log4j2_off;
+extern const char *const mi_lttng_loglevel_str_log4j2_fatal;
+extern const char *const mi_lttng_loglevel_str_log4j2_error;
+extern const char *const mi_lttng_loglevel_str_log4j2_warn;
+extern const char *const mi_lttng_loglevel_str_log4j2_info;
+extern const char *const mi_lttng_loglevel_str_log4j2_debug;
+extern const char *const mi_lttng_loglevel_str_log4j2_trace;
+extern const char *const mi_lttng_loglevel_str_log4j2_all;
+
 /* String related to loglevel Python */
 LTTNG_EXPORT extern const char *const mi_lttng_loglevel_str_python_critical;
 LTTNG_EXPORT extern const char *const mi_lttng_loglevel_str_python_error;
@@ -290,6 +300,7 @@ extern const char *const mi_lttng_element_event_rule_kernel_syscall;
 extern const char *const mi_lttng_element_event_rule_kernel_tracepoint;
 extern const char *const mi_lttng_element_event_rule_kernel_uprobe;
 extern const char *const mi_lttng_element_event_rule_log4j_logging;
+extern const char *const mi_lttng_element_event_rule_log4j2_logging;
 extern const char *const mi_lttng_element_event_rule_python_logging;
 extern const char *const mi_lttng_element_event_rule_user_tracepoint;
 

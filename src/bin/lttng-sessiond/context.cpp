@@ -119,6 +119,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	switch (domain) {
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_LOG4J2:
 	{
 		struct agent *agt;
 

@@ -216,6 +216,8 @@ static const char *domain_type_str(enum lttng_domain_type domain_type)
 		return "jul";
 	case LTTNG_DOMAIN_LOG4J:
 		return "log4j";
+	case LTTNG_DOMAIN_LOG4J2:
+		return "log4j2";
 	case LTTNG_DOMAIN_PYTHON:
 		return "python";
 	default:
