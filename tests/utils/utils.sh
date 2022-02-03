@@ -1907,215 +1907,219 @@ function bail_out_if_no_babeltrace()
 	fi
 }
 
-function validate_metadata_event ()
+# Check that the trace metadata contains '$expected' event ids matching '$event_name'.
+function validate_metadata_event()
 {
 	local event_name=$1
-	local nr_event_id=$2
+	local expected=$2
 	local trace_path=$3
 
-	local metadata_file=$(find $trace_path -name "metadata")
-	local metadata_path=$(dirname $metadata_file)
+	local metadata_file
+	local metadata_path
+	local count
+
+	metadata_file=$(find "$trace_path" -name "metadata")
+	metadata_path=$(dirname "$metadata_file")
 
 	bail_out_if_no_babeltrace
 
-	local count=$($BABELTRACE_BIN --output-format=ctf-metadata $metadata_path | grep $event_name | wc -l)
+	count=$($BABELTRACE_BIN --output-format=ctf-metadata "$metadata_path" | grep -c "$event_name")
 
-	if [ "$count" -ne "$nr_event_id" ]; then
-		fail "Metadata match with the metadata of $nr_event_id event(s) named $event_name"
-		diag "$count matching event names found in metadata"
-	else
-		pass "Metadata match with the metadata of $nr_event_id event(s) named $event_name"
-	fi
-
+	test "$count" -eq "$expected"
+	ok $? "Found $count / $expected metadata event id matching '$event_name'"
 }
 
-function trace_matches ()
+# Check that the trace contains '$expected' events matching '$event_name', other
+# events not matching '$event_name' can be present.
+function trace_matches()
 {
 	local event_name=$1
-	local nr_iter=$2
+	local expected=$2
 	local trace_path=$3
+
+	local count
+	local total
 
 	bail_out_if_no_babeltrace
 
-	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
+	count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
 
-	if [ "$count" -ne "$nr_iter" ]; then
-		fail "Trace match"
-		diag "$count matching events found in trace"
-	else
-		pass "Trace match"
-	fi
+	test "$count" -eq "$expected"
+
+	ok $? "Found $count / $expected events matching '$event_name' out of $total events"
 }
 
+# Check that the trace contains '$expected' events matching '$event_name' and no
+# other events.
 function trace_match_only()
 {
 	local event_name=$1
-	local nr_iter=$2
+	local expected=$2
 	local trace_path=$3
 
+	local count
+	local total
+
 	bail_out_if_no_babeltrace
-	#which "$BABELTRACE_BIN" >/dev/null
-	#skip $? -ne 0 "\"$BABELTRACE_BIN\" binary not found. Skipping trace comparison"
 
-	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
-	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+	count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
 
-	if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
-		pass "Trace match with $total event $event_name"
-	else
-		fail "Trace match"
-		diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
-	fi
+	test "$expected" -eq "$count" && test "$total" -eq "$expected"
+
+	ok $? "Found $count / $expected events matching '$event_name' amongst $total events"
 }
 
-function validate_trace
+# Check that the trace contains at least 1 event matching each name in the
+# comma separated list '$event_names'.
+function validate_trace()
 {
-	local event_name=$1
+	local event_names=$1
 	local trace_path=$2
+
+	local count
 
 	bail_out_if_no_babeltrace
 
 	OLDIFS=$IFS
 	IFS=","
-	for i in $event_name; do
-		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
-		if [ "$traced" -ne 0 ]; then
-			pass "Validate trace for event $i, $traced events"
-		else
-			fail "Validate trace for event $i"
-			diag "Found $traced occurrences of $i"
-		fi
+	for event_name in $event_names; do
+		# trace_path is unquoted since callers make use of globbing
+		count=$($BABELTRACE_BIN $trace_path | grep -c "$event_name")
+		test "$count" -gt 0
+		ok $? "Found $count events matching '$event_name'"
 	done
-	ret=$?
 	IFS=$OLDIFS
-	return $ret
 }
 
-function validate_trace_count
+# Check that the trace contains at least 1 event matching each name in the
+# comma separated list '$event_names' and a total of '$expected' events.
+function validate_trace_count()
 {
-	local event_name=$1
+	local event_names=$1
 	local trace_path=$2
-	local expected_count=$3
+	local expected=$3
+
+	local count
+	local total=0
 
 	bail_out_if_no_babeltrace
 
-	cnt=0
 	OLDIFS=$IFS
 	IFS=","
-	for i in $event_name; do
-		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
-		if [ "$traced" -ne 0 ]; then
-			pass "Validate trace for event $i, $traced events"
-		else
-			fail "Validate trace for event $i"
-			diag "Found $traced occurrences of $i"
-		fi
-		cnt=$(($cnt + $traced))
+	for event_name in $event_names; do
+		count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+		test "$count" -gt 0
+		ok $? "Found '$count' events matching '$event_name'"
+		total=$(( total + count ))
 	done
 	IFS=$OLDIFS
-	test $cnt -eq $expected_count
-	ok $? "Read a total of $cnt events, expected $expected_count"
+	test $total -eq "$expected"
+	ok $? "Found $total events, expected $expected events"
 }
 
-function validate_trace_count_range_incl_min_excl_max
+# Check that the trace contains at least '$expected_min' event matching each
+# name in the comma separated list '$event_names' and a total at least
+# '$expected_min' and less than '$expected_max' events.
+function validate_trace_count_range_incl_min_excl_max()
 {
-	local event_name=$1
+	local event_names=$1
 	local trace_path=$2
 	local expected_min=$3
 	local expected_max=$4
 
+	local count
+	local total=0
+
 	bail_out_if_no_babeltrace
 
-	cnt=0
 	OLDIFS=$IFS
 	IFS=","
-	for i in $event_name; do
-		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
-		if [ "$traced" -ge $expected_min ]; then
-			pass "Validate trace for event $i, $traced events"
-		else
-			fail "Validate trace for event $i"
-			diag "Found $traced occurrences of $i"
-		fi
-		cnt=$(($cnt + $traced))
+	for event_name in $event_names; do
+		count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+		test "$count" -ge "$expected_min"
+		ok $? "Found $count events matching '$event_name', expected at least $expected_min"
+		total=$(( total + count ))
 	done
 	IFS=$OLDIFS
-	test $cnt -lt $expected_max
-	ok $? "Read a total of $cnt events, expected between [$expected_min, $expected_max["
+	test $total -ge "$expected_min" && test $total -lt "$expected_max"
+	ok $? "Found a total of $total events, expected at least $expected_min and less than $expected_max"
 }
 
-function trace_first_line
+function trace_first_line()
 {
 	local trace_path=$1
 
-	$BABELTRACE_BIN $trace_path 2>/dev/null | head -n 1
+	$BABELTRACE_BIN "$trace_path" | head -n 1
 }
 
+# Check that the trace contains at least 1 event matching the grep extended
+# regexp '$event_exp'.
 function validate_trace_exp()
 {
 	local event_exp=$1
 	local trace_path=$2
 
+	local count
+
 	bail_out_if_no_babeltrace
 
-	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep --extended-regexp ${event_exp} | wc -l)
-	if [ "$traced" -ne 0 ]; then
-		pass "Validate trace for expression '${event_exp}', $traced events"
-	else
-		fail "Validate trace for expression '${event_exp}'"
-		diag "Found $traced occurrences of '${event_exp}'"
-	fi
-	ret=$?
-	return $ret
+	# event_exp is unquoted since it contains multiple grep arguments
+	count=$($BABELTRACE_BIN "$trace_path" | grep -c --extended-regexp $event_exp)
+	test "$count" -gt 0
+	ok $? "Found $count events matching expression '$event_exp'"
 }
 
+# Check that the trace contains at least 1 event matching the grep extended
+# regexp '$event_exp' and zero event not matching it.
 function validate_trace_only_exp()
 {
 	local event_exp=$1
 	local trace_path=$2
 
+	local count
+	local total
+
 	bail_out_if_no_babeltrace
 
-	local count=$($BABELTRACE_BIN $trace_path | grep --extended-regexp ${event_exp} | wc -l)
-	local total=$($BABELTRACE_BIN $trace_path | wc -l)
+	# event_exp is unquoted since it contains multiple grep arguments
+	count=$($BABELTRACE_BIN "$trace_path" | grep -c --extended-regexp $event_exp)
+	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
 
-	if [ "$count" -ne 0 ] && [ "$total" -eq "$count" ]; then
-		pass "Trace match with $total for expression '${event_exp}'"
-	else
-		fail "Trace match"
-		diag "$total syscall event(s) found, only syscalls matching expression '${event_exp}' ($count occurrences) are expected"
-	fi
-	ret=$?
-	return $ret
+	test  "$count" -gt 0 && test "$total" -eq "$count"
+	ok $? "Found $count events matching expression '$event_exp' amongst $total events"
 }
 
+# Check that the trace is valid and contains 0 event.
 function validate_trace_empty()
 {
 	local trace_path=$1
 
+	local ret
+	local count
+
 	bail_out_if_no_babeltrace
 
-	events=$($BABELTRACE_BIN $trace_path 2>/dev/null)
+	events=$($BABELTRACE_BIN "$trace_path")
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		fail "Failed to parse trace"
 		return $ret
 	fi
 
-	traced=$(echo -n "$events" | wc -l)
-	if [ "$traced" -eq 0 ]; then
-		pass "Validate empty trace"
-	else
-		fail "Validate empty trace"
-		diag "Found $traced events in trace"
-	fi
-	ret=$?
-	return $ret
+	count=$(echo -n "$events" | wc -l)
+	test "$count" -eq 0
+	ok $? "Validate trace is empty, found $count events"
 }
 
 function validate_directory_empty ()
 {
 	local trace_path="$1"
+
+	local files
+	local ret
+	local nb_files
 
 	# Do not double quote `$trace_path` below as we want wildcards to be
 	# expanded.
@@ -2127,7 +2131,8 @@ function validate_directory_empty ()
 	fi
 
 	nb_files="$(echo -n "$files" | wc -l)"
-	ok $nb_files "Directory \"$trace_path\" is empty"
+	test "$nb_files" -eq 0
+	ok $? "Directory \"$trace_path\" is empty"
 }
 
 function validate_trace_session_ust_empty()
