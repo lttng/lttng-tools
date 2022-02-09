@@ -1857,7 +1857,6 @@ void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
 	struct lttng_trace_chunk_registry_element *element =
 			container_of(node, typeof(*element), rcu_node);
 
-	lttng_trace_chunk_fini(&element->chunk);
 	free(element);
 }
 
@@ -1878,6 +1877,24 @@ void lttng_trace_chunk_release(struct urcu_ref *ref)
 
 	if (chunk->in_registry_element) {
 		struct lttng_trace_chunk_registry_element *element;
+
+		/*
+		 * Release internal chunk attributes immediately and
+		 * only use the deferred `call_rcu` work to reclaim the
+		 * storage.
+		 *
+		 * This ensures that file handles are released as soon as
+		 * possible which works around a problem we encounter with PRAM fs
+		 * mounts (and possibly other non-POSIX compliant file systems):
+		 * directories that contain files which are open can't be
+		 * rmdir().
+		 *
+		 * This means that the recording of a snapshot could be
+		 * completed, but that it would be impossible for the user to
+		 * delete it until the deferred clean-up released the file
+		 * handles to its contents.
+		 */
+		lttng_trace_chunk_fini(chunk);
 
 		element = container_of(chunk, typeof(*element), chunk);
 		if (element->registry) {
