@@ -9,7 +9,7 @@ EXTRA_DIST = test_all_events \
 						 test_kernel_function \
 						 test_lttng_logger \
 						 test_ns_contexts \
-						 test_ns_contexts_change
+						 test_ns_contexts_change \
 						 test_rotation_destroy_flush \
 						 test_select_poll_epoll \
 						 test_syscall \
