@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - function event"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=6
+NUM_TESTS=7
 
 source $TESTDIR/utils/utils.sh
 
