@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <sys/mman.h>
 #include <common/compat/time.h>
+#include <common/error.h>
 
 #define BUF_SIZE 256
 #define NB_FD 1
@@ -40,6 +41,41 @@
 static int timeout; /* seconds, -1 to disable */
 static volatile int stop_thread;
 static int wait_fd;
+
+/* Used by logging utils. */
+int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
+
+static void run_working_cases(FILE *validation_output_file);
+static void pselect_invalid_fd(FILE *validation_output_file);
+static void test_ppoll_big(FILE *validation_output_file);
+static void ppoll_fds_buffer_overflow(FILE *validation_output_file);
+static void pselect_invalid_pointer(FILE *validation_output_file);
+static void ppoll_fds_ulong_max(FILE *validation_output_file);
+static void epoll_pwait_invalid_pointer(FILE *validation_output_file);
+static void epoll_pwait_int_max(FILE *validation_output_file);
+static void ppoll_concurrent_write(FILE *validation_output_file);
+static void epoll_pwait_concurrent_munmap(FILE *validation_output_file);
+
+typedef void (*test_case_cb)(FILE *output_file);
+
+static const struct test_case {
+	test_case_cb run;
+	bool produces_validation_info;
+	int timeout;
+} test_cases [] =
+{
+	{ .run = run_working_cases, .produces_validation_info = true, .timeout = -1 },
+	{ .run = run_working_cases, .produces_validation_info = true, .timeout = 1 },
+	{ .run = pselect_invalid_fd, .produces_validation_info = false },
+	{ .run = test_ppoll_big, .produces_validation_info = false },
+	{ .run = ppoll_fds_buffer_overflow, .produces_validation_info = false },
+	{ .run = pselect_invalid_pointer, .produces_validation_info = false },
+	{ .run = ppoll_fds_ulong_max, .produces_validation_info = false },
+	{ .run = epoll_pwait_invalid_pointer, .produces_validation_info = true },
+	{ .run = epoll_pwait_int_max, .produces_validation_info = true },
+	{ .run = ppoll_concurrent_write, .produces_validation_info = false },
+	{ .run = epoll_pwait_concurrent_munmap, .produces_validation_info = true },
+};
 
 struct ppoll_thread_data {
 	struct pollfd *ufds;
@@ -61,7 +97,7 @@ void test_select_big(void)
 
 	fd2 = dup2(wait_fd, BIG_SELECT_FD);
 	if (fd2 < 0) {
-		perror("dup2");
+		PERROR("dup2");
 		goto end;
 	}
 	FD_SET(fd2, &rfds);
@@ -76,20 +112,17 @@ void test_select_big(void)
 	}
 
 	if (ret == -1) {
-		perror("select()");
+		PERROR("select()");
 	} else if (ret) {
-		printf("# [select] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[select] read");
+			PERROR("[select] read");
 		}
-	} else {
-		printf("# [select] timeout\n");
 	}
 
 	ret = close(BIG_SELECT_FD);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 
 end:
@@ -117,17 +150,13 @@ void test_pselect(void)
 	}
 
 	if (ret == -1) {
-		perror("pselect()");
+		PERROR("pselect()");
 	} else if (ret) {
-		printf("# [pselect] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[pselect] read");
+			PERROR("[pselect] read");
 		}
-	} else {
-		printf("# [pselect] timeout\n");
 	}
-
 }
 
 static
@@ -151,17 +180,13 @@ void test_select(void)
 	}
 
 	if (ret == -1) {
-		perror("select()");
+		PERROR("select()");
 	} else if (ret) {
-		printf("# [select] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[select] read");
+			PERROR("[select] read");
 		}
-	} else {
-		printf("# [select] timeout\n");
 	}
-
 }
 
 static
@@ -177,15 +202,12 @@ void test_poll(void)
 	ret = poll(ufds, 1, timeout);
 
 	if (ret < 0) {
-		perror("poll");
+		PERROR("poll");
 	} else if (ret > 0) {
-		printf("# [poll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[poll] read");
+			PERROR("[poll] read");
 		}
-	} else {
-		printf("# [poll] timeout\n");
 	}
 }
 
@@ -210,20 +232,17 @@ void test_ppoll(void)
 
 
 	if (ret < 0) {
-		perror("ppoll");
+		PERROR("ppoll");
 	} else if (ret > 0) {
-		printf("# [ppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[ppoll] read");
+			PERROR("[ppoll] read");
 		}
-	} else {
-		printf("# [ppoll] timeout\n");
 	}
 }
 
 static
-void test_ppoll_big(void)
+void test_ppoll_big(FILE *validation_output_file)
 {
 	struct pollfd ufds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -232,7 +251,7 @@ void test_ppoll_big(void)
 	for (i = 0; i < MAX_FDS; i++) {
 		fds[i] = dup(wait_fd);
 		if (fds[i] < 0) {
-			perror("dup");
+			PERROR("dup");
 		}
 		ufds[i].fd = fds[i];
 		ufds[i].events = POLLIN|POLLPRI;
@@ -241,21 +260,18 @@ void test_ppoll_big(void)
 	ret = ppoll(ufds, MAX_FDS, NULL, NULL);
 
 	if (ret < 0) {
-		perror("ppoll");
+		PERROR("ppoll");
 	} else if (ret > 0) {
-		printf("# [ppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[ppoll] read");
+			PERROR("[ppoll] read");
 		}
-	} else {
-		printf("# [ppoll] timeout\n");
 	}
 
 	for (i = 0; i < MAX_FDS; i++) {
 		ret = close(fds[i]);
 		if (ret != 0) {
-			perror("close");
+			PERROR("close");
 		}
 	}
 
@@ -263,7 +279,7 @@ void test_ppoll_big(void)
 }
 
 static
-void test_epoll(void)
+void test_epoll(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -271,15 +287,22 @@ void test_epoll(void)
 
 	epollfd = epoll_create(NB_FD);
 	if (epollfd < 0) {
-		perror("[epoll] create");
+		PERROR("[epoll] create");
 		goto end;
+	}
+
+	ret = fprintf(validation_output_file,
+			", \"epoll_wait_fd\": %i", epollfd);
+	if (ret < 0) {
+		PERROR("[epoll] Failed to write test validation output");
+		goto error;
 	}
 
 	epoll_event.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_event.data.fd = wait_fd;
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
-		perror("[epoll] add");
+		PERROR("[epoll] add");
 		goto error;
 	}
 
@@ -290,28 +313,25 @@ void test_epoll(void)
 	}
 
 	if (ret == 1) {
-		printf("# [epoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[epoll] read");
+			PERROR("[epoll] read");
 		}
-	} else if (ret == 0) {
-		printf("# [epoll] timeout\n");
-	} else {
-		perror("epoll_wait");
+	} else if (ret != 0) {
+		PERROR("epoll_wait");
 	}
 
 error:
 	ret = close(epollfd);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 end:
 	return;
 }
 
 static
-void test_pepoll(void)
+void test_epoll_pwait(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -319,15 +339,22 @@ void test_pepoll(void)
 
 	epollfd = epoll_create(NB_FD);
 	if (epollfd < 0) {
-		perror("[eppoll] create");
+		PERROR("[epoll_pwait] create");
 		goto end;
+	}
+
+	ret = fprintf(validation_output_file,
+			", \"epoll_pwait_fd\": %i", epollfd);
+	if (ret < 0) {
+		PERROR("[epoll_pwait] Failed to write test validation output");
+		goto error;
 	}
 
 	epoll_event.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_event.data.fd = wait_fd;
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
-		perror("[eppoll] add");
+		PERROR("[epoll_pwait] add");
 		goto error;
 	}
 
@@ -338,28 +365,25 @@ void test_pepoll(void)
 	}
 
 	if (ret == 1) {
-		printf("# [eppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[eppoll] read");
+			PERROR("[epoll_pwait] read");
 		}
-	} else if (ret == 0) {
-		printf("# [eppoll] timeout\n");
-	} else {
-		perror("epoll_pwait");
+	} else if (ret != 0) {
+		PERROR("epoll_pwait");
 	}
 
 error:
 	ret = close(epollfd);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 end:
 	return;
 }
 
 static
-void run_working_cases(void)
+void run_working_cases(FILE *validation_output_file)
 {
 	int ret;
 	int pipe_fds[2];
@@ -372,7 +396,7 @@ void run_working_cases(void)
 		 */
 		ret = pipe(pipe_fds);
 		if (ret != 0) {
-			perror("pipe");
+			PERROR("pipe");
 			goto end;
 		}
 		wait_fd = pipe_fds[0];
@@ -382,18 +406,31 @@ void run_working_cases(void)
 	test_select_big();
 	test_poll();
 	test_ppoll();
-	test_epoll();
-	test_pepoll();
+
+	ret = fprintf(validation_output_file, "{ \"pid\": %i", getpid());
+	if (ret < 0) {
+		PERROR("Failed to write pid to test validation file");
+		goto end;
+	}
+
+	test_epoll(validation_output_file);
+	test_epoll_pwait(validation_output_file);
 
 	if (timeout > 0) {
 		ret = close(pipe_fds[0]);
 		if (ret) {
-			perror("close");
+			PERROR("close");
 		}
 		ret = close(pipe_fds[1]);
 		if (ret) {
-			perror("close");
+			PERROR("close");
 		}
+	}
+
+	ret = fputs(" }", validation_output_file);
+	if (ret < 0) {
+		PERROR("Failed to close JSON dictionary in test validation file");
+		goto end;
 	}
 
 end:
@@ -406,7 +443,7 @@ end:
  * The event should contain an array of 100 FDs filled with garbage.
  */
 static
-void ppoll_fds_buffer_overflow(void)
+void ppoll_fds_buffer_overflow(FILE *validation_output_file)
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -418,18 +455,13 @@ void ppoll_fds_buffer_overflow(void)
 	ret = syscall(SYS_ppoll, ufds, 100, NULL, NULL);
 
 	if (ret < 0) {
-		perror("ppoll");
+		PERROR("ppoll");
 	} else if (ret > 0) {
-		printf("# [ppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[ppoll] read");
+			PERROR("[ppoll] read");
 		}
-	} else {
-		printf("# [ppoll] timeout\n");
 	}
-
-	return;
 }
 
 /*
@@ -438,7 +470,7 @@ void ppoll_fds_buffer_overflow(void)
  * The event should contain an empty array of FDs and overflow = 1.
  */
 static
-void ppoll_fds_ulong_max(void)
+void ppoll_fds_ulong_max(FILE *validation_output_file)
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -448,20 +480,14 @@ void ppoll_fds_ulong_max(void)
 	ufds[0].events = POLLIN|POLLPRI;
 
 	ret = syscall(SYS_ppoll, ufds, ULONG_MAX, NULL, NULL);
-
 	if (ret < 0) {
-		perror("# ppoll");
+		/* Expected error. */
 	} else if (ret > 0) {
-		printf("# [ppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[ppoll] read");
+			PERROR("[ppoll] read");
 		}
-	} else {
-		printf("# [ppoll] timeout\n");
 	}
-
-	return;
 }
 
 /*
@@ -469,7 +495,7 @@ void ppoll_fds_ulong_max(void)
  * -EBADF. The recorded event should contain a "ret = -EBADF (-9)".
  */
 static
-void pselect_invalid_fd(void)
+void pselect_invalid_fd(FILE *validation_output_file)
 {
 	fd_set rfds;
 	int ret;
@@ -479,16 +505,15 @@ void pselect_invalid_fd(void)
 	/*
 	 * Open a file, close it and use the closed FD in the pselect6 call.
 	 */
-
 	fd = open("/dev/null", O_RDONLY);
 	if (fd == -1) {
-		perror("open");
+		PERROR("open");
 		goto error;
 	}
 
 	ret = close(fd);
 	if (ret == -1) {
-		perror("close");
+		PERROR("close");
 		goto error;
 	}
 
@@ -497,15 +522,12 @@ void pselect_invalid_fd(void)
 
 	ret = syscall(SYS_pselect6, fd + 1, &rfds, NULL, NULL, NULL, NULL);
 	if (ret == -1) {
-		perror("# pselect()");
+		/* Expected error. */
 	} else if (ret) {
-		printf("# [pselect] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[pselect] read");
+			PERROR("[pselect] read");
 		}
-	} else {
-		printf("# [pselect] timeout\n");
 	}
 error:
 	return;
@@ -516,7 +538,7 @@ error:
  * with 0 FDs.
  */
 static
-void pselect_invalid_pointer(void)
+void pselect_invalid_pointer(FILE *validation_output_file)
 {
 	fd_set rfds;
 	int ret;
@@ -528,19 +550,14 @@ void pselect_invalid_pointer(void)
 
 	ret = syscall(SYS_pselect6, 1, &rfds, (fd_set *) invalid, NULL, NULL,
 			NULL);
-
 	if (ret == -1) {
-		perror("# pselect()");
+		/* Expected error. */
 	} else if (ret) {
-		printf("# [pselect] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[pselect] read");
+			PERROR("[pselect] read");
 		}
-	} else {
-		printf("# [pselect] timeout\n");
 	}
-
 }
 
 /*
@@ -548,7 +565,7 @@ void pselect_invalid_pointer(void)
  * "Bad address", the event returns 0 FDs.
  */
 static
-void epoll_pwait_invalid_pointer(void)
+void epoll_pwait_invalid_pointer(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -557,15 +574,23 @@ void epoll_pwait_invalid_pointer(void)
 
 	epollfd = epoll_create(NB_FD);
 	if (epollfd < 0) {
-		perror("[eppoll] create");
+		PERROR("[epoll_pwait] create");
 		goto end;
+	}
+
+	ret = fprintf(validation_output_file,
+			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
+			getpid());
+	if (ret < 0) {
+		PERROR("[epoll_pwait] Failed to write test validation output");
+		goto error;
 	}
 
 	epoll_event.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_event.data.fd = wait_fd;
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
-		perror("[eppoll] add");
+		PERROR("[epoll_pwait] add");
 		goto error;
 	}
 
@@ -573,21 +598,18 @@ void epoll_pwait_invalid_pointer(void)
 			(struct epoll_event *) invalid, 1, -1, NULL);
 
 	if (ret == 1) {
-		printf("# [eppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[eppoll] read");
+			PERROR("[epoll_pwait] read");
 		}
-	} else if (ret == 0) {
-		printf("# [eppoll] timeout\n");
-	} else {
-		perror("# epoll_pwait");
+	} else if (ret != 0) {
+		/* Expected error. */
 	}
 
 error:
 	ret = close(epollfd);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 end:
 	return;
@@ -598,7 +620,7 @@ end:
  * The event should return an empty array.
  */
 static
-void epoll_pwait_int_max(void)
+void epoll_pwait_int_max(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -606,15 +628,23 @@ void epoll_pwait_int_max(void)
 
 	epollfd = epoll_create(NB_FD);
 	if (epollfd < 0) {
-		perror("[eppoll] create");
+		PERROR("[epoll_pwait] create");
 		goto end;
+	}
+
+	ret = fprintf(validation_output_file,
+			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
+			getpid());
+	if (ret < 0) {
+		PERROR("[epoll_pwait] Failed to write test validation output");
+		goto error;
 	}
 
 	epoll_event.events = EPOLLIN | EPOLLPRI | EPOLLET;
 	epoll_event.data.fd = wait_fd;
 	ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, wait_fd, &epoll_event);
 	if (ret < 0) {
-		perror("[eppoll] add");
+		PERROR("[epoll_pwait] add");
 		goto error;
 	}
 
@@ -622,21 +652,18 @@ void epoll_pwait_int_max(void)
 			NULL);
 
 	if (ret == 1) {
-		printf("# [eppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[eppoll] read");
+			PERROR("[epoll_pwait] read");
 		}
-	} else if (ret == 0) {
-		printf("# [eppoll] timeout\n");
-	} else {
-		perror("# epoll_pwait");
+	} else if (ret != 0) {
+		/* Expected error. */
 	}
 
 error:
 	ret = close(epollfd);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 end:
 	return;
@@ -674,15 +701,12 @@ void do_ppoll(int *fds, struct pollfd *ufds)
 	ret = ppoll(ufds, MAX_FDS, &ts, NULL);
 
 	if (ret < 0) {
-		perror("ppoll");
+		PERROR("ppoll");
 	} else if (ret > 0) {
-		printf("# [ppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[ppoll] read");
+			PERROR("[ppoll] read");
 		}
-	} else {
-		printf("# [ppoll] timeout\n");
 	}
 }
 
@@ -729,14 +753,14 @@ end:
  * ppoll should work as expected and the trace should be readable at the end.
  */
 static
-void ppoll_concurrent_write(void)
+void ppoll_concurrent_write(FILE *validation_output_file)
 {
 	int i, ret, fds[MAX_FDS];
 
 	for (i = 0; i < MAX_FDS; i++) {
 		fds[i] = dup(wait_fd);
 		if (fds[i] < 0) {
-			perror("dup");
+			PERROR("dup");
 		}
 	}
 
@@ -747,7 +771,7 @@ void ppoll_concurrent_write(void)
 	for (i = 0; i < MAX_FDS; i++) {
 		ret = close(fds[i]);
 		if (ret != 0) {
-			perror("close");
+			PERROR("close");
 		}
 	}
 
@@ -773,7 +797,7 @@ void *epoll_pwait_writer(void *addr)
  * The trace should be readable and no kernel OOPS should occur.
  */
 static
-void epoll_pwait_concurrent_munmap(void)
+void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 {
 	int ret, epollfd, i, fds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -785,28 +809,37 @@ void epoll_pwait_concurrent_munmap(void)
 	}
 	epollfd = epoll_create(MAX_FDS);
 	if (epollfd < 0) {
-		perror("[eppoll] create");
+		PERROR("[epoll_pwait] create");
 		goto end;
 	}
 
-	epoll_event = mmap(NULL, MAX_FDS * sizeof(struct epoll_event),
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
-			-1, 0);
+	ret = fprintf(validation_output_file,
+			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
+			getpid());
+	if (ret < 0) {
+		PERROR("[epoll_pwait] Failed to write test validation output");
+		goto error;
+	}
+
+	epoll_event = (struct epoll_event *) mmap(NULL,
+			MAX_FDS * sizeof(struct epoll_event),
+			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1,
+			0);
 	if (epoll_event == MAP_FAILED) {
-		perror("mmap");
+		PERROR("mmap");
 		goto error;
 	}
 
 	for (i = 0; i < MAX_FDS; i++) {
 		fds[i] = dup(wait_fd);
 		if (fds[i] < 0) {
-			perror("dup");
+			PERROR("dup");
 		}
 		epoll_event[i].events = EPOLLIN | EPOLLPRI | EPOLLET;
 		epoll_event[i].data.fd = fds[i];
 		ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fds[i], epoll_event);
 		if (ret < 0) {
-			perror("[eppoll] add");
+			PERROR("[epoll_pwait] add");
 			goto error_unmap;
 		}
 	}
@@ -821,15 +854,12 @@ void epoll_pwait_concurrent_munmap(void)
 	ret = epoll_pwait(epollfd, epoll_event, 1, 1, NULL);
 
 	if (ret == 1) {
-		printf("# [eppoll] data available\n");
 		ret = read(wait_fd, buf, BUF_SIZE);
 		if (ret < 0) {
-			perror("[eppoll] read");
+			PERROR("[epoll_pwait] read");
 		}
-	} else if (ret == 0) {
-		printf("# [eppoll] timeout\n");
-	} else {
-		perror("# epoll_pwait");
+	} else if (ret != 0) {
+		/* Expected error. */
 	}
 
 	stop_thread = 1;
@@ -842,19 +872,19 @@ error_unmap:
 	for (i = 0; i < MAX_FDS; i++) {
 		ret = close(fds[i]);
 		if (ret != 0) {
-			perror("close");
+			PERROR("close");
 		}
 	}
 
 	ret = munmap(epoll_event, MAX_FDS * sizeof(struct epoll_event));
 	if (ret != 0) {
-		perror("munmap");
+		PERROR("munmap");
 	}
 
 error:
 	ret = close(epollfd);
 	if (ret) {
-		perror("close");
+		PERROR("close");
 	}
 end:
 	return;
@@ -892,15 +922,19 @@ int main(int argc, const char **argv)
 	int c, ret, test = -1;
 	poptContext optCon;
 	struct rlimit open_lim;
-
+	FILE *test_validation_output_file = NULL;
+	const char *test_validation_output_file_path = NULL;
 	struct poptOption optionsTable[] = {
 		{ "test", 't', POPT_ARG_INT, &test, 0,
 			"Test to run", NULL },
 		{ "list", 'l', 0, 0, 'l',
 			"List of tests (-t X)", NULL },
+		{ "validation-file", 'o', POPT_ARG_STRING, &test_validation_output_file_path, 0,
+			"Test case output", NULL },
 		POPT_AUTOHELP
 		{ NULL, 0, 0, NULL, 0 }
 	};
+	const struct test_case *test_case;
 
 	optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
 
@@ -913,11 +947,25 @@ int main(int argc, const char **argv)
 	ret = 0;
 
 	while ((c = poptGetNextOpt(optCon)) >= 0) {
-		switch(c) {
+		switch (c) {
 		case 'l':
 			print_list();
 			goto end;
 		}
+	}
+
+	if (!test_validation_output_file_path) {
+		fprintf(stderr, "A test validation file path is required (--validation-file/-o)\n");
+		ret = -1;
+		goto end;
+	}
+
+	test_validation_output_file = fopen(test_validation_output_file_path, "w+");
+	if (!test_validation_output_file) {
+		PERROR("Failed to create test validation output file at '%s'",
+				test_validation_output_file_path);
+		ret = -1;
+		goto end;
 	}
 
 	open_lim.rlim_cur = MAX_FDS + MIN_NR_FDS;
@@ -925,62 +973,49 @@ int main(int argc, const char **argv)
 
 	ret = setrlimit(RLIMIT_NOFILE, &open_lim);
 	if (ret < 0) {
-		perror("setrlimit");
+		PERROR("setrlimit");
 		goto end;
 	}
 
 	/*
 	 * Some tests might segfault, but we need the getpid() to be output
-	 * for the validation, disabling the buffering on stdout works.
+	 * for the validation, disabling the buffering on the validation file
+	 * works.
 	 */
-	setbuf(stdout, NULL);
-	printf("%d\n", getpid());
-
+	setbuf(test_validation_output_file, NULL);
 	wait_fd = STDIN_FILENO;
 
-	switch(test) {
-	case 1:
-		timeout = -1;
-		run_working_cases();
-		break;
-	case 2:
-		timeout = 1;
-		run_working_cases();
-		break;
-	case 3:
-		pselect_invalid_fd();
-		break;
-	case 4:
-		test_ppoll_big();
-		break;
-	case 5:
-		ppoll_fds_buffer_overflow();
-		break;
-	case 6:
-		pselect_invalid_pointer();
-		break;
-	case 7:
-		ppoll_fds_ulong_max();
-		break;
-	case 8:
-		epoll_pwait_invalid_pointer();
-		break;
-	case 9:
-		epoll_pwait_int_max();
-		break;
-	case 10:
-		ppoll_concurrent_write();
-		break;
-	case 11:
-		epoll_pwait_concurrent_munmap();
-		break;
-	default:
+	/* Test case id is 1-based. */
+	if (test < 1 || test > ARRAY_SIZE(test_cases)) {
 		poptPrintUsage(optCon, stderr, 0);
 		ret = -1;
-		break;
 	}
 
+	test_case = &test_cases[test - 1];
+
+	timeout = test_case->timeout;
+	if (!test_case->produces_validation_info) {
+		/*
+		 * All test cases need to provide, at minimum, the pid of the
+		 * test application.
+		 */
+		ret = fprintf(test_validation_output_file, "{ \"pid\": %i }", getpid());
+		if (ret < 0) {
+			PERROR("Failed to write application pid to test validation file");
+			goto end;
+		}
+	}
+
+	test_case->run(test_validation_output_file);
+
 end:
+	if (test_validation_output_file) {
+		const int close_ret = fclose(test_validation_output_file);
+
+		if (close_ret) {
+			PERROR("Failed to close test output file");
+		}
+	}
 	poptFreeContext(optCon);
 	return ret;
 }
