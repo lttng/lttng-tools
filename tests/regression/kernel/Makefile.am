@@ -17,8 +17,8 @@ EXTRA_DIST = test_all_events \
 						 validate_select_poll_epoll.py
 
 noinst_PROGRAMS = select_poll_epoll
-select_poll_epoll_SOURCES = select_poll_epoll.c
-select_poll_epoll_LDADD = $(POPT_LIBS)
+select_poll_epoll_SOURCES = select_poll_epoll.cpp
+select_poll_epoll_LDADD = $(POPT_LIBS) $(top_builddir)/src/common/libcommon-lgpl.la
 select_poll_epoll_CFLAGS = $(POPT_CFLAGS) -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(AM_CFLAGS)
 
 all-local:
