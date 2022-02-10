@@ -9,6 +9,7 @@ import argparse
 import pprint
 import sys
 import time
+import json
 
 from collections import defaultdict
 
@@ -108,22 +109,28 @@ class TraceParser:
         self.epoll_wait_exit(event)
 
     def handle_compat_syscall_entry_epoll_pwait(self, event):
-        self.epoll_wait_entry(event)
+        self.epoll_pwait_entry(event)
 
     def handle_compat_syscall_exit_epoll_pwait(self, event):
-        self.epoll_wait_exit(event)
+        self.epoll_pwait_exit(event)
 
     def handle_syscall_entry_epoll_pwait(self, event):
-        self.epoll_wait_entry(event)
+        self.epoll_pwait_entry(event)
 
     def handle_syscall_exit_epoll_pwait(self, event):
-        self.epoll_wait_exit(event)
+        self.epoll_pwait_exit(event)
 
     def epoll_wait_entry(self, event):
         pass
 
     def epoll_wait_exit(self, event):
         pass
+
+    def epoll_pwait_entry(self, event):
+        self.epoll_wait_entry(event)
+
+    def epoll_pwait_exit(self, event):
+        self.epoll_wait_exit(event)
 
     ## poll + ppoll
     def handle_compat_syscall_entry_poll(self, event):
@@ -220,8 +227,13 @@ class TraceParser:
 
 
 class Test1(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
+
+        # Values expected in the trace
+        self.epoll_wait_fd = validation_args['epoll_wait_fd']
+        self.epoll_pwait_fd = validation_args['epoll_pwait_fd']
+
         self.expect["select_entry"]["select_in_fd0"] = 0
         self.expect["select_entry"]["select_in_fd1023"] = 0
         self.expect["select_exit"]["select_out_fd0"] = 0
@@ -232,6 +244,8 @@ class Test1(TraceParser):
         self.expect["epoll_ctl_exit"]["epoll_ctl_out_ok"] = 0
         self.expect["epoll_wait_entry"]["epoll_wait_in_ok"] = 0
         self.expect["epoll_wait_exit"]["epoll_wait_out_fd0"] = 0
+        self.expect["epoll_pwait_entry"]["epoll_pwait_in_ok"] = 0
+        self.expect["epoll_pwait_exit"]["epoll_pwait_out_fd0"] = 0
 
     def select_entry(self, event):
         n = event["n"]
@@ -317,7 +331,7 @@ class Test1(TraceParser):
 
         # check that we have FD 0 waiting for EPOLLIN|EPOLLPRI and that
         # data.fd = 0
-        if epfd == 3 and op_enum == "EPOLL_CTL_ADD" and fd == 0 and \
+        if (epfd == self.epoll_wait_fd or epfd == self.epoll_pwait_fd) and 'EPOLL_CTL_ADD' == op_enum and fd == 0 and \
                 _event["data_union"]["fd"] == 0 and \
                 _event["events"]["EPOLLIN"] == 1 and \
                 _event["events"]["EPOLLPRI"] == 1:
@@ -340,7 +354,7 @@ class Test1(TraceParser):
         maxevents = event["maxevents"]
         timeout = event["timeout"]
 
-        if epfd == 3 and maxevents == 1 and timeout == -1:
+        if epfd == self.epoll_wait_fd and maxevents == 1 and timeout == -1:
             self.expect["epoll_wait_entry"]["epoll_wait_in_ok"] = 1
 
         # Save values of local variables to print in case of test failure
@@ -361,10 +375,35 @@ class Test1(TraceParser):
         # Save values of local variables to print in case of test failure
         self.recorded_values["epoll_wait_exit"] = locals()
 
+    def epoll_pwait_entry(self, event):
+        epfd = event["epfd"]
+        maxevents = event["maxevents"]
+        timeout = event["timeout"]
+
+        if epfd == self.epoll_pwait_fd and maxevents == 1 and timeout == -1:
+            self.expect["epoll_pwait_entry"]["epoll_pwait_in_ok"] = 1
+
+        # Save values of local variables to print in case of test failure
+        self.recorded_values["epoll_pwait_entry"] = locals()
+
+    def epoll_pwait_exit(self, event):
+        ret = event["ret"]
+        fds_length = event["fds_length"]
+        overflow = event["overflow"]
+
+        # check that FD 0 returned with EPOLLIN and the right data.fd
+        if ret == 1 and fds_length == 1:
+            fd_0 = event["fds"][0]
+            if overflow == 0 and  fd_0["data_union"]["fd"] == 0 and \
+                fd_0["events"]["EPOLLIN"] == 1:
+                self.expect["epoll_pwait_exit"]["epoll_pwait_out_fd0"] = 1
+
+        # Save values of local variables to print in case of test failure
+        self.recorded_values["epoll_pwait_exit"] = locals()
 
 class Test2(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["select_timeout_in_fd0"] = 0
         self.expect["select_entry"]["select_timeout_in_fd1023"] = 0
         self.expect["select_exit"]["select_timeout_out"] = 0
@@ -475,8 +514,8 @@ class Test2(TraceParser):
 
 
 class Test3(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["select_invalid_fd_in"] = 0
         self.expect["select_exit"]["select_invalid_fd_out"] = 0
 
@@ -504,8 +543,8 @@ class Test3(TraceParser):
 
 
 class Test4(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["big_poll_in"] = 0
         self.expect["poll_exit"]["big_poll_out"] = 0
 
@@ -544,8 +583,8 @@ class Test4(TraceParser):
         self.recorded_values["poll_exit"] = locals()
 
 class Test5(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["poll_overflow_in"] = 0
         self.expect["poll_exit"]["poll_overflow_out"] = 0
 
@@ -578,8 +617,8 @@ class Test5(TraceParser):
 
 
 class Test6(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["pselect_invalid_in"] = 0
         self.expect["select_exit"]["pselect_invalid_out"] = 0
 
@@ -611,8 +650,8 @@ class Test6(TraceParser):
 
 
 class Test7(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["poll_max_in"] = 0
         self.expect["poll_exit"]["poll_max_out"] = 0
 
@@ -642,8 +681,12 @@ class Test7(TraceParser):
 
 
 class Test8(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
+
+        # Values expected in the trace
+        self.epoll_fd = validation_args['epollfd']
+
         self.expect["epoll_wait_entry"]["epoll_wait_invalid_in"] = 0
         self.expect["epoll_wait_exit"]["epoll_wait_invalid_out"] = 0
 
@@ -654,7 +697,7 @@ class Test8(TraceParser):
 
         # test that event in valid even though the target buffer pointer is
         # invalid and the program segfaults
-        if epfd == 3 and maxevents == 1 and timeout == -1:
+        if epfd == self.epoll_fd and maxevents == 1 and timeout == -1:
             self.expect["epoll_wait_entry"]["epoll_wait_invalid_in"] = 1
 
         # Save values of local variables to print in case of test failure
@@ -675,8 +718,12 @@ class Test8(TraceParser):
 
 
 class Test9(TraceParser):
-    def __init__(self, trace, pid):
-        super().__init__(trace, pid)
+    def __init__(self, trace, validation_args):
+        super().__init__(trace, validation_args['pid'])
+
+        # Values expected in the trace
+        self.epoll_fd = validation_args['epollfd']
+
         self.expect["epoll_wait_entry"]["epoll_wait_max_in"] = 0
         self.expect["epoll_wait_exit"]["epoll_wait_max_out"] = 0
 
@@ -686,7 +733,7 @@ class Test9(TraceParser):
         timeout = event["timeout"]
 
         # check the proper working of INT_MAX maxevent value
-        if epfd == 3 and maxevents == 2147483647 and timeout == -1:
+        if epfd == self.epoll_fd and maxevents == 2147483647 and timeout == -1:
             self.expect["epoll_wait_entry"]["epoll_wait_max_in"] = 1
 
         # Save values of local variables to print in case of test failure
@@ -709,15 +756,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Trace parser')
     parser.add_argument('path', metavar="<path/to/trace>", help='Trace path')
     parser.add_argument('-t', '--test', type=int, help='Test to validate')
-    parser.add_argument('-p', '--pid', type=int, help='PID of the app')
+    parser.add_argument('-o', '--validation-file', type=str, help='Validation file path')
     args = parser.parse_args()
 
     if not args.test:
-        print("Need to pass a test to validate (-t)")
+        print("Need to pass a test to validate (--test/-t)")
         sys.exit(1)
 
-    if not args.pid:
-        print("Need to pass the PID to check (-p)")
+    if not args.validation_file:
+        print("Need to pass the test validation file (--validation-file/-o)")
         sys.exit(1)
 
     traces = TraceCollection()
@@ -725,26 +772,33 @@ if __name__ == "__main__":
     if handle is None:
         sys.exit(1)
 
+    with open(args.validation_file) as f:
+        try:
+            test_validation_args = json.load(f)
+        except Exception as e:
+            print('Failed to parse validation file: ' + str(e))
+            sys.exit(1)
+
     t = None
 
     if args.test == 1:
-        t = Test1(traces, args.pid)
+        t = Test1(traces, test_validation_args)
     elif args.test == 2:
-        t = Test2(traces, args.pid)
+        t = Test2(traces, test_validation_args)
     elif args.test == 3:
-        t = Test3(traces, args.pid)
+        t = Test3(traces, test_validation_args)
     elif args.test == 4:
-        t = Test4(traces, args.pid)
+        t = Test4(traces, test_validation_args)
     elif args.test == 5:
-        t = Test5(traces, args.pid)
+        t = Test5(traces, test_validation_args)
     elif args.test == 6:
-        t = Test6(traces, args.pid)
+        t = Test6(traces, test_validation_args)
     elif args.test == 7:
-        t = Test7(traces, args.pid)
+        t = Test7(traces, test_validation_args)
     elif args.test == 8:
-        t = Test8(traces, args.pid)
+        t = Test8(traces, test_validation_args)
     elif args.test == 9:
-        t = Test9(traces, args.pid)
+        t = Test9(traces, test_validation_args)
     elif args.test == 10:
         # stress test, nothing reliable to check
         ret = 0
