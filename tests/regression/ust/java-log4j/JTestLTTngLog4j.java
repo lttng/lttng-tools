@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 import org.lttng.ust.agent.log4j.LttngLogAppender;
 
-public class JTestLTTng {
+public class JTestLTTngLog4j {
 
 	/**
 	 * Application start

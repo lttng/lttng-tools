@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+    </Console>
+    <Lttng name="Lttng" domain="LOG4J"/>
+  </Appenders>
+  <Loggers>
+    <Logger name="console-event-1">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Logger name="log4j2-event-1">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="Lttng"/>
+    </Logger>
+    <Logger name="log4j2-event-2">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="Lttng"/>
+    </Logger>
+    <Root level="debug"/>
+  </Loggers>
+</Configuration>
