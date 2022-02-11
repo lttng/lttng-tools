@@ -50,7 +50,7 @@ int lttng_opt_mi;
 #define UPROBE_NUM_TESTS 0
 #endif /* __linux__ */
 
-#define NUM_TESTS (203 + UPROBE_NUM_TESTS)
+#define NUM_TESTS (244 + UPROBE_NUM_TESTS)
 
 namespace {
 struct tracepoint_test {
@@ -375,6 +375,68 @@ static void test_event_rule_log4j_logging()
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
+static void test_event_rule_log4j2_logging()
+{
+	struct lttng_event_rule *log4j2_logging = nullptr;
+	struct lttng_event_rule *log4j2_logging_from_buffer = nullptr;
+	enum lttng_event_rule_status status;
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
+	const char *tmp;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
+	const struct lttng_log_level_rule *log_level_rule_return = nullptr;
+	struct lttng_payload payload;
+
+	diag("Testing lttng_event_rule_user_log4j2_logging.");
+
+	lttng_payload_init(&payload);
+
+	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
+	LTTNG_ASSERT(log_level_rule);
+
+	log4j2_logging = lttng_event_rule_log4j2_logging_create();
+	ok(log4j2_logging, "log4j2_logging object.");
+
+	status = lttng_event_rule_log4j2_logging_set_name_pattern(log4j2_logging, pattern);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
+	status = lttng_event_rule_log4j2_logging_get_name_pattern(log4j2_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
+	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
+
+	status = lttng_event_rule_log4j2_logging_set_filter(log4j2_logging, filter);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
+	status = lttng_event_rule_log4j2_logging_get_filter(log4j2_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
+	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
+
+	status = lttng_event_rule_log4j2_logging_get_log_level_rule(log4j2_logging,
+								    &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
+
+	status = lttng_event_rule_log4j2_logging_set_log_level_rule(log4j2_logging, log_level_rule);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
+	status = lttng_event_rule_log4j2_logging_get_log_level_rule(log4j2_logging,
+								    &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
+
+	ok(lttng_event_rule_serialize(log4j2_logging, &payload) == 0, "Serializing.");
+
+	{
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
+
+		ok(lttng_event_rule_create_from_payload(&view, &log4j2_logging_from_buffer) > 0,
+		   "Deserializing.");
+	}
+
+	ok(lttng_event_rule_is_equal(log4j2_logging, log4j2_logging_from_buffer),
+	   "serialized and from buffer are equal.");
+
+	lttng_payload_reset(&payload);
+	lttng_event_rule_destroy(log4j2_logging);
+	lttng_event_rule_destroy(log4j2_logging_from_buffer);
+	lttng_log_level_rule_destroy(log_level_rule);
+}
+
 static void test_event_rule_python_logging()
 {
 	struct lttng_event_rule *python_logging = nullptr;
@@ -637,6 +699,7 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 		   get_log_level_name(tagged_log_level_value));
 	}
 
+	/* Test valid custom loglevels */
 	for (i = 0; i < valid_log_level_values_count; i++) {
 		const int valid_log_level_value = valid_log_level_values[i];
 
@@ -655,6 +718,7 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 		   valid_log_level_value);
 	}
 
+	/* Test invalid custom loglevels */
 	for (i = 0; i < invalid_log_level_values_count; i++) {
 		const int invalid_log_level_value = invalid_log_level_values[i];
 
@@ -715,6 +779,7 @@ static void test_event_rule_log_level_jul()
 		LTTNG_LOGLEVEL_JUL_FINER, LTTNG_LOGLEVEL_JUL_FINEST, LTTNG_LOGLEVEL_JUL_ALL,
 	};
 	const int valid_log_level_values[] = { 0, -1980, 1995 };
+	/* JUL loglevels between int32_min and int32_max are all valid. */
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_JUL_LOGGING,
 					  loglevel_jul_value_to_name,
@@ -736,6 +801,7 @@ static void test_event_rule_log_level_log4j()
 		LTTNG_LOGLEVEL_LOG4J_TRACE, LTTNG_LOGLEVEL_LOG4J_ALL,
 	};
 	const int valid_log_level_values[] = { 0 - 1980, 1995 };
+	/* Log4j loglevels between int32_min and int32_max are all valid. */
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING,
 					  loglevel_log4j_value_to_name,
@@ -747,6 +813,29 @@ static void test_event_rule_log_level_log4j()
 					  ARRAY_SIZE(valid_log_level_values),
 					  nullptr,
 					  0);
+}
+
+static void test_event_rule_log_level_log4j2()
+{
+	const int tagged_log_level_values[] = {
+		LTTNG_LOGLEVEL_LOG4J2_OFF,   LTTNG_LOGLEVEL_LOG4J2_FATAL,
+		LTTNG_LOGLEVEL_LOG4J2_ERROR, LTTNG_LOGLEVEL_LOG4J2_WARN,
+		LTTNG_LOGLEVEL_LOG4J2_INFO,  LTTNG_LOGLEVEL_LOG4J2_DEBUG,
+		LTTNG_LOGLEVEL_LOG4J2_TRACE, LTTNG_LOGLEVEL_LOG4J2_ALL,
+	};
+	const int valid_log_level_values[] = { 0, 101, 1995 };
+	const int invalid_log_level_values[] = { -1, -100, -65537 };
+
+	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING,
+					  loglevel_log4j2_value_to_name,
+					  lttng_event_rule_log4j2_logging_create,
+					  lttng_event_rule_log4j2_logging_set_log_level_rule,
+					  tagged_log_level_values,
+					  ARRAY_SIZE(tagged_log_level_values),
+					  valid_log_level_values,
+					  ARRAY_SIZE(valid_log_level_values),
+					  invalid_log_level_values,
+					  ARRAY_SIZE(invalid_log_level_values));
 }
 
 static void test_event_rule_log_level_python()
@@ -784,11 +873,13 @@ int main()
 	test_event_rule_userspace_probe();
 	test_event_rule_kernel_probe();
 	test_event_rule_log4j_logging();
+	test_event_rule_log4j2_logging();
 	test_event_rule_jul_logging();
 	test_event_rule_python_logging();
 	test_event_rule_log_level_ust();
 	test_event_rule_log_level_jul();
 	test_event_rule_log_level_log4j();
+	test_event_rule_log_level_log4j2();
 	test_event_rule_log_level_python();
 	return exit_status();
 }
