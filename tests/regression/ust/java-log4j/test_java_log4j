@@ -6,85 +6,62 @@
 
 TEST_DESC="Java LOG4J support"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+
 NR_ITER=6
-NR_MSEC_WAIT=1000
-TESTAPP_NAME="JTestLTTng"
-TESTAPP_BIN="$TESTAPP_NAME.java"
+NR_MSEC_WAIT=100
+
+TESTAPP_NAME="JTestLTTngLog4j"
 TESTAPP_PATH="$CURDIR/$TESTAPP_NAME"
+
 SESSION_NAME="log4j"
 EVENT_NAME="log4j-event"
 EVENT_NAME2="log4j-event-2"
+
 JAVA_CP="$CURDIR:$CLASSPATH"
-OUTPUT_DEST="/dev/null"
 
-NUM_TESTS=195
+NUM_TESTS=196
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
 
 function run_app
 {
 	local debug_tp=$1
 	local fire_second_tp=$2
 
+	if [ "$debug_tp" = "" ]; then
+		debug_tp=0
+	fi
+
+	if [ "$fire_second_tp" = "" ]; then
+		fire_second_tp=0
+	fi
+
 	# FIXME: test app should have synchro.
-	java -cp $JAVA_CP -Djava.library.path="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp >/dev/null 2>&1
+	diag "java -cp $JAVA_CP -Djava.library.path=\"$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib\" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp"
+	java -cp "$JAVA_CP" -Djava.library.path="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT "$debug_tp" "$fire_second_tp" >"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
 }
 
 function run_app_background
 {
-	run_app $@ &
+	run_app "${@}" &
 }
 
-function enable_log4j_loglevel_only()
-{
-	sess_name=$1
-	event_name="$2"
-	loglevel=$3
-	channel_name=$4
-
-	if [ -z $channel_name ]; then
-		# default channel if none specified
-		chan=""
-	else
-		chan="-c $channel_name"
-	fi
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" $chan -s $sess_name -l >/dev/null 2>&1
-	ok $? "Enable LOG4J event $event_name for session $sess_name with loglevel-only $loglevel"
-}
-
-function enable_log4j_filter()
-{
-	local sess_name="$1"
-	local event_name="$2"
-	local filter="$3"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -l --filter "$filter" >/dev/null 2>&1
-	ok $? "Enable event $event_name with filter $filter for session $sess_name"
-}
-
-function enable_log4j_filter_loglevel_only()
-{
-	local sess_name="$1"
-	local event_name="$2"
-	local filter="$3"
-	local loglevel="$4"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event --loglevel-only $loglevel "$event_name" -s $sess_name -l --filter "$filter" >/dev/null 2>&1
-	ok $? "Enable event $event_name with filter \"$filter\" and loglevel-only $loglevel for session $sess_name"
-}
 
 # MUST set TESTDIR before calling those functions
 
 function test_log4j_before_start ()
 {
-	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local file_sync_after_first
+	local file_sync_before_last
+
+	file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test LOG4J application BEFORE tracing starts"
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
@@ -92,7 +69,7 @@ function test_log4j_before_start ()
 
 	start_lttng_tracing_ok $SESSION_NAME
 
-	touch ${file_sync_before_last}
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
 	wait
@@ -100,21 +77,18 @@ function test_log4j_before_start ()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	rm -f "${file_sync_after_first}"
+	rm -f "${file_sync_before_last}"
 
 	# Validate test. Expecting all events.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"
 }
 
 function test_log4j_after_start ()
 {
 	diag "Test LOG4J application AFTER tracing starts"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -125,17 +99,14 @@ function test_log4j_after_start ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"
 }
 
 function test_log4j_loglevel ()
 {
 	diag "Test LOG4J application with loglevel"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -146,14 +117,11 @@ function test_log4j_loglevel ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"
 
 	diag "Test LOG4J applications with lower loglevel"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_FATAL"
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -164,14 +132,11 @@ function test_log4j_loglevel ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting 0 events.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"
 
 	diag "Test LOG4J applications with higher loglevel"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_TRACE"
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -182,15 +147,14 @@ function test_log4j_loglevel ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH
-	return $?
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"
 }
 
 function test_log4j_loglevel_multiple ()
 {
 	diag "Test LOG4J application with multiple loglevel"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME $EVENT_NAME "LOG4J_DEBUG"
 	start_lttng_tracing_ok $SESSION_NAME
@@ -202,12 +166,9 @@ function test_log4j_loglevel_multiple ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
-	trace_match_only $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $((NR_ITER * 2)) "$TRACE_PATH"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_INFO"
 	enable_log4j_lttng_event_loglevel $SESSION_NAME '*' "LOG4J_DEBUG"
 	start_lttng_tracing_ok $SESSION_NAME
@@ -219,22 +180,19 @@ function test_log4j_loglevel_multiple ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting all events times two.
-	trace_match_only $EVENT_NAME $(($NR_ITER * 2)) $TRACE_PATH
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $((NR_ITER * 2)) "$TRACE_PATH"
 }
 
 function test_log4j_multi_session_loglevel()
 {
 	diag "Test LOG4J with multiple session"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
-	enable_log4j_loglevel_only $SESSION_NAME-1 '*' "LOG4J_INFO"
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
+	enable_log4j_lttng_event_loglevel_only $SESSION_NAME-1 '*' "LOG4J_INFO"
 	start_lttng_tracing_ok $SESSION_NAME-1
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
-	enable_log4j_loglevel_only $SESSION_NAME-2 '*' "LOG4J_DEBUG"
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
+	enable_log4j_lttng_event_loglevel_only $SESSION_NAME-2 '*' "LOG4J_DEBUG"
 	start_lttng_tracing_ok $SESSION_NAME-2
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -246,29 +204,23 @@ function test_log4j_multi_session_loglevel()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Expecting 6 events being the main event plus the second tp.
-	trace_match_only $EVENT_NAME $(($NR_ITER + 1)) $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $((NR_ITER + 1)) "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Expectin 5 events being the debug TP.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_multi_session_disable()
 {
 	diag "Test LOG4J with multiple session with disabled event"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME2
 	disable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME-1
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing_ok $SESSION_NAME-2
 
@@ -281,26 +233,20 @@ function test_log4j_multi_session_disable()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting one event of the second TP.
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting one event of the second TP.
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_multi_session_disable_wildcard()
 {
 	diag "Test LOG4J with multiple session with disabled wildcard event"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 '*'
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 '*'
 
 	disable_log4j_lttng_event $SESSION_NAME-1 '*'
@@ -316,16 +262,10 @@ function test_log4j_multi_session_disable_wildcard()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting NO event of the first TP.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting all events of the first TP.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_multi_session_disable_wildcard_begin()
@@ -333,10 +273,10 @@ function test_log4j_multi_session_disable_wildcard_begin()
 	ev_name='*-event'
 	diag "Test LOG4J with multiple session with disabled wildcard (at the beginning) event"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 "$ev_name"
 
 	disable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
@@ -352,16 +292,10 @@ function test_log4j_multi_session_disable_wildcard_begin()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting NO event of the first TP.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting all events of the first TP.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_multi_session_disable_wildcard_middle()
@@ -369,10 +303,10 @@ function test_log4j_multi_session_disable_wildcard_middle()
 	ev_name='log*nt'
 	diag "Test LOG4J with multiple session with disabled wildcard (at the middle) event"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 "$ev_name"
 
 	disable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
@@ -388,16 +322,10 @@ function test_log4j_multi_session_disable_wildcard_middle()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting NO event of the first TP.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting all events of the first TP.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_multi_session_disable_wildcard_end()
@@ -405,10 +333,10 @@ function test_log4j_multi_session_disable_wildcard_end()
 	ev_name='log4j-ev*'
 	diag "Test LOG4J with multiple session with disabled wildcard (at the end) event"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 "$ev_name"
 
 	disable_log4j_lttng_event $SESSION_NAME-1 "$ev_name"
@@ -424,28 +352,19 @@ function test_log4j_multi_session_disable_wildcard_end()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting NO event of the first TP.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting all events of the first TP.
-	trace_matches $EVENT_NAME $(( $NR_ITER + 1 )) $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_matches $EVENT_NAME $(( NR_ITER + 1 )) "$TRACE_PATH"/$SESSION_NAME-2
 
-	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_matches $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_disable_all()
 {
 	diag "Test LOG4J with multiple session with disabled all event"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	enable_log4j_lttng_event $SESSION_NAME '*'
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
@@ -460,22 +379,19 @@ function test_log4j_disable_all()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NO event of the first TP and second TP.
-	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME
-	trace_match_only $EVENT_NAME2 0 $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME 0 "$TRACE_PATH"/$SESSION_NAME
+	trace_match_only $EVENT_NAME2 0 "$TRACE_PATH"/$SESSION_NAME
 }
 
 function test_log4j_multi_session()
 {
 	diag "Test LOG4J with multiple session"
 
-	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	create_lttng_session_ok $SESSION_NAME-1 "$TRACE_PATH"/$SESSION_NAME-1
 	enable_log4j_lttng_event $SESSION_NAME-1 $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME-1
 
-	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	create_lttng_session_ok $SESSION_NAME-2 "$TRACE_PATH"/$SESSION_NAME-2
 	enable_log4j_lttng_event $SESSION_NAME-2 $EVENT_NAME2
 	start_lttng_tracing_ok $SESSION_NAME-2
 
@@ -488,23 +404,17 @@ function test_log4j_multi_session()
 	destroy_lttng_session_ok $SESSION_NAME-2
 
 	# Validate test. Expecting all events of first TP
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-1
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME-1
 
 	# Validate test. Expecting one event of the second TP.
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME-2
 }
 
 function test_log4j_destroy_session()
 {
 	diag "Test LOG4J two session with destroy"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/first-sess
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/first-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -517,12 +427,9 @@ function test_log4j_destroy_session()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting at least one event num 1
-	validate_trace $EVENT_NAME $TRACE_PATH/first-sess
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	validate_trace $EVENT_NAME "$TRACE_PATH"/first-sess
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/second-sess
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/second-sess
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -535,19 +442,16 @@ function test_log4j_destroy_session()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting only one event num 2
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/second-sess
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/second-sess
 }
 
 function test_log4j_filtering()
 {
 	diag "Test LOG4J filtering"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	# Enable all event with a filter.
-	enable_log4j_filter $SESSION_NAME '*' 'msg == "LOG4J second logger fired"'
+	enable_log4j_lttng_event_filter $SESSION_NAME '*' 'msg == "LOG4J second logger fired"'
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -557,15 +461,12 @@ function test_log4j_filtering()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	# Enable first Logger but filter msg payload for the INFO one while
 	# triggering the debug and second TP.
-	enable_log4j_filter $SESSION_NAME $EVENT_NAME 'msg == "LOG4J tp fired!"'
+	enable_log4j_lttng_event_filter $SESSION_NAME $EVENT_NAME 'msg == "LOG4J tp fired!"'
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay, fire debug and second TP.
@@ -575,17 +476,14 @@ function test_log4j_filtering()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME
 }
 
 function test_log4j_disable()
 {
 	diag "Test LOG4J disable event"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME2
@@ -599,17 +497,14 @@ function test_log4j_disable()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting one event of the second TP only.
-	trace_match_only $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH"/$SESSION_NAME
 }
 
 function test_log4j_disable_enable()
 {
 	diag "Test LOG4J disable event followed by an enable"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	# Enable all event with a filter.
 	enable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
 	disable_log4j_lttng_event $SESSION_NAME $EVENT_NAME
@@ -623,10 +518,7 @@ function test_log4j_disable_enable()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting NR_ITER event of the main INFO tp.
-	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $EVENT_NAME $NR_ITER "$TRACE_PATH"/$SESSION_NAME
 }
 
 function test_log4j_filter_loglevel()
@@ -637,11 +529,11 @@ function test_log4j_filter_loglevel()
 
 	diag "Test LOG4J a filter with a loglevel"
 
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH/$SESSION_NAME
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"/$SESSION_NAME
 	# Enable an event with a filter and the loglevel-only option.
-	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
+	enable_log4j_lttng_event_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
 	disable_log4j_lttng_event $SESSION_NAME $BOGUS_EVENT_NAME
-	enable_log4j_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
+	enable_log4j_lttng_event_filter_loglevel_only $SESSION_NAME $BOGUS_EVENT_NAME "$FILTER" LOG4J_INFO
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay and fire second TP.
@@ -651,56 +543,47 @@ function test_log4j_filter_loglevel()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test. Expecting no events.
-	trace_match_only $ALL_EVENTS 0 $TRACE_PATH/$SESSION_NAME
-	if [ $? -ne 0 ]; then
-		return $?
-	fi
+	trace_match_only $ALL_EVENTS 0 "$TRACE_PATH"/$SESSION_NAME
 }
 
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-if [ ! -f "$TESTAPP_PATH.class" ]; then
-	withapp=0
-else
-	withapp=1
-fi
+bail_out_if_no_babeltrace
 
-skip $withapp "LOG4J support is needed. Skipping all tests." $NUM_TESTS ||
-{
-	start_lttng_sessiond
+test -f "$TESTAPP_PATH.class"
+ok $? "Testapp '$TESTAPP_NAME' present"
 
-	tests=(
-		test_log4j_multi_session_disable_wildcard
-		test_log4j_multi_session_disable_wildcard_begin
-		test_log4j_multi_session_disable_wildcard_middle
-		test_log4j_multi_session_disable_wildcard_end
-		test_log4j_multi_session_disable
-		test_log4j_disable
-		test_log4j_disable_enable
-		test_log4j_disable_all
-		test_log4j_filtering
-		test_log4j_multi_session_loglevel
-		test_log4j_destroy_session
-		test_log4j_loglevel
-		test_log4j_loglevel_multiple
-		test_log4j_before_start
-		test_log4j_after_start
-		test_log4j_multi_session
-		test_log4j_filter_loglevel
-	)
+start_lttng_sessiond
 
-	for fct_test in ${tests[@]};
-	do
-		TRACE_PATH=$(mktemp --tmpdir -d tmp.test_java_log4j_trace_path.XXXXXX)
+tests=(
+	test_log4j_multi_session_disable_wildcard
+	test_log4j_multi_session_disable_wildcard_begin
+	test_log4j_multi_session_disable_wildcard_middle
+	test_log4j_multi_session_disable_wildcard_end
+	test_log4j_multi_session_disable
+	test_log4j_disable
+	test_log4j_disable_enable
+	test_log4j_disable_all
+	test_log4j_filtering
+	test_log4j_multi_session_loglevel
+	test_log4j_destroy_session
+	test_log4j_loglevel
+	test_log4j_loglevel_multiple
+	test_log4j_before_start
+	test_log4j_after_start
+	test_log4j_multi_session
+	test_log4j_filter_loglevel
+)
 
-		${fct_test}
-		if [ $? -ne 0 ]; then
-			break;
-		fi
-		rm -rf $TRACE_PATH
-	done
+for fct_test in "${tests[@]}";
+do
+	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_java_log4j_trace_path.XXXXXX)
 
-	stop_lttng_sessiond
-}
+	${fct_test}
+
+	rm -rf "$TRACE_PATH"
+done
+
+stop_lttng_sessiond

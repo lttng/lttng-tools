@@ -13,6 +13,7 @@ SUBDIRS = \
 	high-throughput \
 	java-jul \
 	java-log4j \
+	java-log4j2 \
 	libc-wrapper \
 	linking \
 	low-throughput \

@@ -338,9 +338,15 @@ AC_ARG_ENABLE([test-java-agent-jul],
 )
 
 AC_ARG_ENABLE([test-java-agent-log4j],
-        [AS_HELP_STRING([--enable-test-java-agent-log4j],[enable the LTTng UST Java agent Log4j tests [default=no]])],
+        [AS_HELP_STRING([--enable-test-java-agent-log4j],[enable the LTTng UST Java agent Log4j 1.x tests [default=no]])],
         [test_java_agent_log4j=$enableval],
         [test_java_agent_log4j=no]
+)
+
+AC_ARG_ENABLE([test-java-agent-log4j2],
+        [AS_HELP_STRING([--enable-test-java-agent-log4j2],[enable the LTTng UST Java agent Log4j 2.x tests [default=no]])],
+        [test_java_agent_log4j2=$enableval],
+        [test_java_agent_log4j2=no]
 )
 
 AC_ARG_ENABLE([test-java-agent-all],
@@ -615,8 +621,9 @@ AX_CONFIG_FEATURE(
 
 AM_CONDITIONAL([TEST_JAVA_JUL_AGENT], [test "x$test_java_agent_jul" = "xyes"])
 AM_CONDITIONAL([TEST_JAVA_LOG4J_AGENT], [test "x$test_java_agent_log4j" = "xyes"])
+AM_CONDITIONAL([TEST_JAVA_LOG4J2_AGENT], [test "x$test_java_agent_log4j2" = "xyes"])
 
-if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xyes"; then
+if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xyes" || test "x$test_java_agent_log4j2" = "xyes"; then
 	AX_JAVA_OPTIONS
 	AX_PROG_JAVAC
 	AX_PROG_JAVA
@@ -649,6 +656,21 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 		AX_CHECK_CLASS(org.apache.log4j.Logger)
 		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
 			AC_MSG_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
+		fi
+	fi
+
+	if test "x$test_java_agent_log4j2" = "xyes"; then
+		# Check for Log4j2 agent class
+		AX_CHECK_CLASS(org.lttng.ust.agent.log4j2.LttngLogAppender)
+		if test "x$ac_cv_class_org_lttng_ust_agent_log4j2_LttngLogAppender" = "xno"; then
+			AC_MSG_ERROR([The UST Java agent Log4j 2.x class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j2.jar"])
+		fi
+
+		# Check for Log4j 2.x classes
+		AX_CHECK_CLASS([org.apache.logging.log4j.Logger])
+		AX_CHECK_CLASS([org.apache.logging.log4j.core.Core])
+		if test "x$ac_cv_class_org_apache_logging_log4j_Logger" = "xno" || test "x$ac_cv_class_org_apache_logging_log4j_core_Core" = "xno"; then
+			AC_MSG_ERROR([The Log4j 2.x API or core class was not found. Please specify the location of the jars via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j-core.jar:/path/to/log4j-api.jar"])
 		fi
 	fi
 fi
@@ -1173,6 +1195,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/ust-dl/Makefile
 	tests/regression/ust/java-jul/Makefile
 	tests/regression/ust/java-log4j/Makefile
+	tests/regression/ust/java-log4j2/Makefile
 	tests/regression/ust/getcpu-override/Makefile
 	tests/regression/ust/clock-override/Makefile
 	tests/regression/ust/type-declarations/Makefile
@@ -1290,9 +1313,13 @@ AS_IF([test "x$build_tests" = "xno"],[
 test "x$test_java_agent_jul" = "xyes" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST Java agent JUL tests], $value)
 
-# LTTng UST Java agent Log4j tests enabled/disabled
+# LTTng UST Java agent Log4j 1.x tests enabled/disabled
 test "x$test_java_agent_log4j" = "xyes" && value=1 || value=0
-PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j tests], $value)
+PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 1.x tests], $value)
+
+# LTTng UST Java agent Log4j 2.x tests enabled/disabled
+test "x$test_java_agent_log4j2" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j 2.x tests], $value)
 
 test ! -z "$PYTHON2_AGENT" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
