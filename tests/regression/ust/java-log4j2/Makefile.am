@@ -2,12 +2,17 @@
 
 JAVAROOT = .
 
-noinst_SCRIPTS = test_java_log4j JTestLTTngLog4j.java
-EXTRA_DIST = test_java_log4j JTestLTTngLog4j.java
+noinst_SCRIPTS = \
+	test_agent_log4j2_domain_log4j
 
-if TEST_JAVA_LOG4J_AGENT
-dist_noinst_JAVA = JTestLTTngLog4j.java
-endif # TEST_JAVA_LOG4J_AGENT
+EXTRA_DIST = \
+	JTestLTTngLog4j2.java \
+	domain-log4j.xml \
+	test_agent_log4j2_domain_log4j
+
+if TEST_JAVA_LOG4J2_AGENT
+dist_noinst_JAVA = JTestLTTngLog4j2.java
+endif # TEST_JAVA_LOG4J2_AGENT
 
 all-local: static_file
 
@@ -25,4 +30,3 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
-

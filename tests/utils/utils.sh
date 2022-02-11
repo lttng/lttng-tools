@@ -1294,39 +1294,80 @@ function enable_jul_lttng_event_loglevel()
 
 function enable_log4j_lttng_event()
 {
-	sess_name=$1
-	event_name="$2"
-	channel_name=$3
+	local sess_name=$1
+	local event_name=$2
+	local channel_name=$3
 
-	if [ -z $channel_name ]; then
-		# default channel if none specified
-		chan=""
-	else
-		chan="-c $channel_name"
+	local chan_opt=()
+
+	# default channel if none specified
+	if [ -n "$channel_name" ]; then
+		chan_opt=("-c" "$channel_name")
 	fi
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
-		enable-event "$event_name" $chan -s $sess_name -l
-	ok $? "Enable LOG4J event $event_name for session $sess_name"
+		enable-event "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
+	ok $? "Enable LOG4J event '$event_name' for session '$sess_name'"
+}
+
+function enable_log4j_lttng_event_filter()
+{
+	local sess_name=$1
+	local event_name=$2
+	local filter=$3
+
+	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+		enable-event "$event_name" -s "$sess_name" --log4j --filter "$filter"
+	ok $? "Enable LOG4J event '$event_name' with filter '$filter' for session '$sess_name'"
+}
+
+function enable_log4j_lttng_event_filter_loglevel_only()
+{
+	local sess_name=$1
+	local event_name=$2
+	local filter=$3
+	local loglevel=$4
+
+	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+		enable-event --loglevel-only "$loglevel" "$event_name" -s "$sess_name" -l --filter "$filter"
+	ok $? "Enable LOG4J event '$event_name' with filter '$filter' and loglevel-only '$loglevel' for session '$sess_name'"
 }
 
 function enable_log4j_lttng_event_loglevel()
 {
 	local sess_name=$1
-	local event_name="$2"
+	local event_name=$2
 	local loglevel=$3
 	local channel_name=$4
 
-	if [ -z $channel_name ]; then
-		# default channel if none specified
-		chan=""
-	else
-		chan="-c $channel_name"
+
+	# default channel if none specified
+	if [ -n "$channel_name" ]; then
+		chan_opt=("-c" "$channel_name")
 	fi
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
-		enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -l
-	ok $? "Enable LOG4J event $event_name for session $sess_name with loglevel $loglevel"
+		enable-event --loglevel "$loglevel" "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
+	ok $? "Enable LOG4J event '$event_name' for session '$sess_name' with loglevel '$loglevel'"
+}
+
+function enable_log4j_lttng_event_loglevel_only()
+{
+	local sess_name=$1
+	local event_name=$2
+	local loglevel=$3
+	local channel_name=$4
+
+	local chan_opt=()
+
+	# default channel if none specified
+	if [ -n "$channel_name" ]; then
+		chan_opt=("-c" "$channel_name")
+	fi
+
+	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+		enable-event --loglevel-only "$loglevel" "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
+	ok $? "Enable LOG4J event '$event_name' for session '$sess_name' with loglevel-only '$loglevel'"
 }
 
 function enable_python_lttng_event()
@@ -1439,8 +1480,9 @@ function disable_log4j_lttng_event ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -l >/dev/null 2>&1
-	ok $? "Disable LOG4J event $event_name for session $sess_name"
+	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+		disable-event "$event_name" -s "$sess_name" --log4j
+	ok $? "Disable LOG4J event '$event_name' for session '$sess_name'"
 }
 
 function disable_python_lttng_event ()
