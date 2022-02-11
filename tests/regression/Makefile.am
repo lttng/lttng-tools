@@ -109,7 +109,8 @@ TESTS += ust/java-log4j/test_java_log4j
 endif # TEST_JAVA_LOG4J_AGENT
 
 if TEST_JAVA_LOG4J2_AGENT
-TESTS += ust/java-log4j2/test_agent_log4j2_domain_log4j
+TESTS += ust/java-log4j2/test_agent_log4j2_domain_log4j \
+	ust/java-log4j2/test_agent_log4j2_domain_log4j2
 endif # TEST_JAVA_LOG4J2_AGENT
 
 if IS_LINUX

@@ -3,12 +3,15 @@
 JAVAROOT = .
 
 noinst_SCRIPTS = \
-	test_agent_log4j2_domain_log4j
+	test_agent_log4j2_domain_log4j \
+	test_agent_log4j2_domain_log4j2
 
 EXTRA_DIST = \
-	JTestLTTngLog4j2.java \
+	domain-log4j2.xml \
 	domain-log4j.xml \
-	test_agent_log4j2_domain_log4j
+	JTestLTTngLog4j2.java \
+	test_agent_log4j2_domain_log4j \
+	test_agent_log4j2_domain_log4j2
 
 if TEST_JAVA_LOG4J2_AGENT
 dist_noinst_JAVA = JTestLTTngLog4j2.java

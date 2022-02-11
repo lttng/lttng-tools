@@ -1,0 +1,593 @@
+#!/bin/bash
+#
+# Copyright (C) 2014 David Goulet <dgoulet@efficios.com>
+# Copyright (C) 2022 EfficiOS Inc.
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+TEST_DESC="Java LOG4J 2.x agent tests with 'log4j2' domain"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../..
+
+NR_ITER=6
+NR_MSEC_WAIT=100
+
+TESTAPP_NAME="JTestLTTngLog4j2"
+TESTAPP_PATH="$CURDIR/$TESTAPP_NAME"
+
+EVENT_NAME_BASE="log4j2-event"
+EVENT_NAME1="$EVENT_NAME_BASE-1"
+EVENT_NAME2="$EVENT_NAME_BASE-2"
+
+JAVA_CP="$CURDIR:$CLASSPATH"
+
+NUM_TESTS=196
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+OUTPUT_DEST=/dev/stdout
+ERROR_OUTPUT_DEST=/dev/stderr
+
+function run_app
+{
+	local debug_tp=$1
+	local fire_second_tp=$2
+
+	if [ "$debug_tp" = "" ]; then
+		debug_tp=0
+	fi
+
+	if [ "$fire_second_tp" = "" ]; then
+		fire_second_tp=0
+	fi
+
+	# FIXME: test app should have synchro.
+	diag "java -cp \"$JAVA_CP\" -Dlog4j2.configurationFile=\"domain-log4j2.xml\" -Djava.library.path=\"$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib\" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT $debug_tp $fire_second_tp"
+	java -cp "$JAVA_CP" -Dlog4j2.configurationFile="domain-log4j2.xml" -Djava.library.path="$LD_LIBRARY_PATH:/usr/local/lib:/usr/lib" $TESTAPP_NAME $NR_ITER $NR_MSEC_WAIT "$debug_tp" "$fire_second_tp" >"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+}
+
+function run_app_background
+{
+	run_app "${@}" &
+}
+
+
+# MUST set TESTDIR before calling those functions
+
+function test_log4j2_before_start ()
+{
+	local file_sync_after_first
+	local file_sync_before_last
+
+	file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+
+	diag "Test LOG4J2 application BEFORE tracing starts"
+	create_lttng_session_ok "log4j2_before_start" "$TRACE_PATH"
+	enable_log4j2_lttng_event "log4j2_before_start" $EVENT_NAME1
+
+	# Run 6 times with a 100ms delay
+	run_app_background
+
+	start_lttng_tracing_ok "log4j2_before_start"
+
+	touch "${file_sync_before_last}"
+
+	# Wait for the applications started in background
+	wait
+
+	stop_lttng_tracing_ok "log4j2_before_start"
+	destroy_lttng_session_ok "log4j2_before_start"
+
+	rm -f "${file_sync_after_first}"
+	rm -f "${file_sync_before_last}"
+
+	# Validate test. Expecting all events.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH"
+}
+
+function test_log4j2_after_start ()
+{
+	diag "Test LOG4J2 application AFTER tracing starts"
+
+	create_lttng_session_ok "log4j2_after_start" "$TRACE_PATH"
+	enable_log4j2_lttng_event "log4j2_after_start" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_after_start"
+
+	# Run 6 times with a 100ms delay
+	run_app
+
+	stop_lttng_tracing_ok "log4j2_after_start"
+	destroy_lttng_session_ok "log4j2_after_start"
+
+	# Validate test. Expecting all events.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH"
+}
+
+function test_log4j2_loglevel ()
+{
+	diag "Test LOG4J2 application with loglevel"
+
+	create_lttng_session_ok "log4j2_loglevel_info" "$TRACE_PATH"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_info" $EVENT_NAME1 "LOG4J2_INFO"
+	start_lttng_tracing_ok "log4j2_loglevel_info"
+
+	# Run 6 times with a 1ms delay
+	run_app
+
+	stop_lttng_tracing_ok "log4j2_loglevel_info"
+	destroy_lttng_session_ok "log4j2_loglevel_info"
+
+	# Validate test. Expecting all events.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH"
+
+	diag "Test LOG4J2 applications with lower loglevel"
+
+	create_lttng_session_ok "log4j2_loglevel_fatal" "$TRACE_PATH"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_fatal" $EVENT_NAME1 "LOG4J2_FATAL"
+	start_lttng_tracing_ok "log4j2_loglevel_fatal"
+
+	# Run 6 times with a 1ms delay
+	run_app
+
+	stop_lttng_tracing_ok "log4j2_loglevel_fatal"
+	destroy_lttng_session_ok "log4j2_loglevel_fatal"
+
+	# Validate test. Expecting 0 events.
+	trace_match_only $EVENT_NAME1 0 "$TRACE_PATH"
+
+	diag "Test LOG4J2 applications with higher loglevel"
+
+	create_lttng_session_ok "log4j2_loglevel_trace" "$TRACE_PATH"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_trace" $EVENT_NAME1 "LOG4J2_TRACE"
+	start_lttng_tracing_ok "log4j2_loglevel_trace"
+
+	# Run 6 times with a 1ms delay
+	run_app
+
+	stop_lttng_tracing_ok "log4j2_loglevel_trace"
+	destroy_lttng_session_ok "log4j2_loglevel_trace"
+
+	# Validate test. Expecting all events.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH"
+}
+
+function test_log4j2_loglevel_multiple ()
+{
+	diag "Test LOG4J2 application with multiple loglevel"
+
+	create_lttng_session_ok "log4j2_loglevel_multiple" "$TRACE_PATH"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_multiple" $EVENT_NAME1 "LOG4J2_INFO"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_multiple" $EVENT_NAME1 "LOG4J2_DEBUG"
+	start_lttng_tracing_ok "log4j2_loglevel_multiple"
+
+	# Run 6 times with a 1ms delay and fire two TP.
+	run_app 1
+
+	stop_lttng_tracing_ok "log4j2_loglevel_multiple"
+	destroy_lttng_session_ok "log4j2_loglevel_multiple"
+
+	# Validate test. Expecting all events times two.
+	trace_match_only $EVENT_NAME1 $((NR_ITER * 2)) "$TRACE_PATH"
+
+	create_lttng_session_ok "log4j2_loglevel_multiple" "$TRACE_PATH"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_multiple" '*' "LOG4J2_INFO"
+	enable_log4j2_lttng_event_loglevel "log4j2_loglevel_multiple" '*' "LOG4J2_DEBUG"
+	start_lttng_tracing_ok "log4j2_loglevel_multiple"
+
+	# Run 6 times with a 1ms delay and fire two TP.
+	run_app 1
+
+	stop_lttng_tracing_ok "log4j2_loglevel_multiple"
+	destroy_lttng_session_ok "log4j2_loglevel_multiple"
+
+	# Validate test. Expecting all events times two.
+	trace_match_only $EVENT_NAME1 $((NR_ITER * 2)) "$TRACE_PATH"
+}
+
+function test_log4j2_multi_session_loglevel()
+{
+	diag "Test LOG4J2 with multiple session"
+
+	create_lttng_session_ok "log4j2_all_info" "$TRACE_PATH/log4j2_all_info"
+	enable_log4j2_lttng_event_loglevel_only "log4j2_all_info" '*' "LOG4J2_INFO"
+	start_lttng_tracing_ok "log4j2_all_info"
+
+	create_lttng_session_ok "log4j2_all_debug" "$TRACE_PATH/log4j2_all_debug"
+	enable_log4j2_lttng_event_loglevel_only "log4j2_all_debug" '*' "LOG4J2_DEBUG"
+	start_lttng_tracing_ok "log4j2_all_debug"
+
+	# Run 6 times with a 1ms delay and fire second TP.
+	run_app 1 1
+
+	stop_lttng_tracing_ok "log4j2_all_info"
+	stop_lttng_tracing_ok "log4j2_all_debug"
+	destroy_lttng_session_ok "log4j2_all_info"
+	destroy_lttng_session_ok "log4j2_all_debug"
+
+	# Expecting 7 events being the main event plus the second tp.
+	trace_match_only $EVENT_NAME_BASE $((NR_ITER + 1)) "$TRACE_PATH/log4j2_all_info"
+
+	# Expectin 6 events being the debug TP.
+	trace_match_only $EVENT_NAME_BASE $NR_ITER "$TRACE_PATH/log4j2_all_debug"
+}
+
+function test_log4j2_multi_session_disable()
+{
+	diag "Test LOG4J2 with multiple session with disabled event"
+
+	create_lttng_session_ok "log4j2_disabled_event" "$TRACE_PATH/log4j2_disabled_event"
+	enable_log4j2_lttng_event "log4j2_disabled_event" $EVENT_NAME1
+	enable_log4j2_lttng_event "log4j2_disabled_event" $EVENT_NAME2
+	disable_log4j2_lttng_event "log4j2_disabled_event" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_disabled_event"
+
+	create_lttng_session_ok "log4j2_enabled_event" "$TRACE_PATH/log4j2_enabled_event"
+	enable_log4j2_lttng_event "log4j2_enabled_event" $EVENT_NAME2
+	start_lttng_tracing_ok "log4j2_enabled_event"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disabled_event"
+	stop_lttng_tracing_ok "log4j2_enabled_event"
+	destroy_lttng_session_ok "log4j2_disabled_event"
+	destroy_lttng_session_ok "log4j2_enabled_event"
+
+	# Validate test. Expecting one event of the second TP.
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/log4j2_disabled_event"
+
+	# Validate test. Expecting one event of the second TP.
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/log4j2_enabled_event"
+}
+
+function test_log4j2_multi_session_disable_wildcard()
+{
+	diag "Test LOG4J2 with multiple session with disabled wildcard event"
+
+	create_lttng_session_ok "log4j2_disabled_wildcard" "$TRACE_PATH/log4j2_disabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_disabled_wildcard" '*'
+
+	create_lttng_session_ok "log4j2_enabled_wildcard" "$TRACE_PATH/log4j2_enabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_enabled_wildcard" '*'
+
+	disable_log4j2_lttng_event "log4j2_disabled_wildcard" '*'
+
+	start_lttng_tracing_ok "log4j2_disabled_wildcard"
+	start_lttng_tracing_ok "log4j2_enabled_wildcard"
+
+	run_app
+
+	stop_lttng_tracing_ok "log4j2_disabled_wildcard"
+	stop_lttng_tracing_ok "log4j2_enabled_wildcard"
+	destroy_lttng_session_ok "log4j2_disabled_wildcard"
+	destroy_lttng_session_ok "log4j2_enabled_wildcard"
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME_BASE 0 "$TRACE_PATH/log4j2_disabled_wildcard"
+
+	# Validate test. Expecting all events of the first TP.
+	trace_match_only $EVENT_NAME_BASE $NR_ITER "$TRACE_PATH/log4j2_enabled_wildcard"
+}
+
+function test_log4j2_multi_session_disable_wildcard_begin()
+{
+	ev_name='*-event-1'
+	diag "Test LOG4J2 with multiple session with disabled wildcard (at the beginning) event"
+
+	create_lttng_session_ok "log4j2_disabled_wildcard" "$TRACE_PATH/log4j2_disabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	create_lttng_session_ok "log4j2_enabled_wildcard" "$TRACE_PATH/log4j2_enabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_enabled_wildcard" "$ev_name"
+
+	disable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	start_lttng_tracing_ok "log4j2_disabled_wildcard"
+	start_lttng_tracing_ok "log4j2_enabled_wildcard"
+
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disabled_wildcard"
+	stop_lttng_tracing_ok "log4j2_enabled_wildcard"
+	destroy_lttng_session_ok "log4j2_disabled_wildcard"
+	destroy_lttng_session_ok "log4j2_enabled_wildcard"
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME1 0 "$TRACE_PATH/log4j2_disabled_wildcard"
+
+	# Validate test. Expecting all events of the first TP.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH/log4j2_enabled_wildcard"
+}
+
+function test_log4j2_multi_session_disable_wildcard_middle()
+{
+	ev_name='log*nt-1'
+	diag "Test LOG4J2 with multiple session with disabled wildcard (at the middle) event"
+
+	create_lttng_session_ok "log4j2_disabled_wildcard" "$TRACE_PATH/log4j2_disabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	create_lttng_session_ok "log4j2_enabled_wildcard" "$TRACE_PATH/log4j2_enabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_enabled_wildcard" "$ev_name"
+
+	disable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	start_lttng_tracing_ok "log4j2_disabled_wildcard"
+	start_lttng_tracing_ok "log4j2_enabled_wildcard"
+
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disabled_wildcard"
+	stop_lttng_tracing_ok "log4j2_enabled_wildcard"
+	destroy_lttng_session_ok "log4j2_disabled_wildcard"
+	destroy_lttng_session_ok "log4j2_enabled_wildcard"
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME1 0 "$TRACE_PATH/log4j2_disabled_wildcard"
+
+	# Validate test. Expecting all events of the first TP.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH/log4j2_enabled_wildcard"
+}
+
+function test_log4j2_multi_session_disable_wildcard_end()
+{
+	ev_name='log4j2-ev*'
+	diag "Test LOG4J2 with multiple session with disabled wildcard (at the end) event"
+
+	create_lttng_session_ok "log4j2_disabled_wildcard" "$TRACE_PATH/log4j2_disabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	create_lttng_session_ok "log4j2_enabled_wildcard" "$TRACE_PATH/log4j2_enabled_wildcard"
+	enable_log4j2_lttng_event "log4j2_enabled_wildcard" "$ev_name"
+
+	disable_log4j2_lttng_event "log4j2_disabled_wildcard" "$ev_name"
+
+	start_lttng_tracing_ok "log4j2_disabled_wildcard"
+	start_lttng_tracing_ok "log4j2_enabled_wildcard"
+
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disabled_wildcard"
+	stop_lttng_tracing_ok "log4j2_enabled_wildcard"
+	destroy_lttng_session_ok "log4j2_disabled_wildcard"
+	destroy_lttng_session_ok "log4j2_enabled_wildcard"
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME_BASE 0 "$TRACE_PATH/log4j2_disabled_wildcard"
+
+	# Validate test. Expecting all events of the first TP.
+	trace_matches $EVENT_NAME_BASE $(( NR_ITER + 1 )) "$TRACE_PATH/log4j2_enabled_wildcard"
+
+	trace_matches $EVENT_NAME2 1 "$TRACE_PATH/log4j2_enabled_wildcard"
+}
+
+function test_log4j2_disable_all()
+{
+	diag "Test LOG4J2 with multiple session with disabled all event"
+
+	create_lttng_session_ok "log4j2_disable_all" "$TRACE_PATH/log4j2_disable_all"
+	enable_log4j2_lttng_event "log4j2_disable_all" '*'
+	enable_log4j2_lttng_event "log4j2_disable_all" $EVENT_NAME1
+	enable_log4j2_lttng_event "log4j2_disable_all" $EVENT_NAME2
+
+	disable_log4j2_lttng_event "log4j2_disable_all" -a
+
+	start_lttng_tracing_ok "log4j2_disable_all"
+
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disable_all"
+	destroy_lttng_session_ok "log4j2_disable_all"
+
+	# Validate test. Expecting NO event of the first TP and second TP.
+	trace_match_only $EVENT_NAME1 0 "$TRACE_PATH/log4j2_disable_all"
+	trace_match_only $EVENT_NAME2 0 "$TRACE_PATH/log4j2_disable_all"
+}
+
+function test_log4j2_multi_session()
+{
+	diag "Test LOG4J2 with multiple session"
+
+	create_lttng_session_ok "log4j2_multi_session_1" "$TRACE_PATH/log4j2_multi_session_1"
+	enable_log4j2_lttng_event "log4j2_multi_session_1" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_multi_session_1"
+
+	create_lttng_session_ok "log4j2_multi_session_2" "$TRACE_PATH/log4j2_multi_session_2"
+	enable_log4j2_lttng_event "log4j2_multi_session_2" $EVENT_NAME2
+	start_lttng_tracing_ok "log4j2_multi_session_2"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_multi_session_1"
+	stop_lttng_tracing_ok "log4j2_multi_session_2"
+	destroy_lttng_session_ok "log4j2_multi_session_1"
+	destroy_lttng_session_ok "log4j2_multi_session_2"
+
+	# Validate test. Expecting all events of first TP
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH/log4j2_multi_session_1"
+
+	# Validate test. Expecting one event of the second TP.
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/log4j2_multi_session_2"
+}
+
+function test_log4j2_destroy_session()
+{
+	diag "Test LOG4J2 two session with destroy"
+
+	create_lttng_session_ok "log4j2_destroy_session" "$TRACE_PATH/first-sess"
+	enable_log4j2_lttng_event "log4j2_destroy_session" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_destroy_session"
+
+	# Run 5 times with a 1ms delay
+	run_app_background 0 1
+	# Wait for the applications started in background
+	wait
+
+	stop_lttng_tracing_ok "log4j2_destroy_session"
+	destroy_lttng_session_ok "log4j2_destroy_session"
+
+	# Validate test. Expecting at least one event num 1
+	validate_trace $EVENT_NAME1 "$TRACE_PATH/first-sess"
+
+	create_lttng_session_ok "log4j2_destroy_session" "$TRACE_PATH/second-sess"
+	enable_log4j2_lttng_event "log4j2_destroy_session" $EVENT_NAME2
+	start_lttng_tracing_ok "log4j2_destroy_session"
+
+	# Run 5 times with a 1ms delay
+	run_app_background 0 1
+	# Wait for the applications started in background
+	wait
+
+	stop_lttng_tracing_ok "log4j2_destroy_session"
+	destroy_lttng_session_ok "log4j2_destroy_session"
+
+	# Validate test. Expecting only one event num 2
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/second-sess"
+}
+
+function test_log4j2_filtering()
+{
+	diag "Test LOG4J2 filtering"
+
+	create_lttng_session_ok "log4j2_filtering" "$TRACE_PATH/log4j2_filtering"
+	# Enable all event with a filter.
+	enable_log4j2_lttng_event_filter "log4j2_filtering" '*' 'msg == "LOG4J2 INFO second logger fired"'
+	start_lttng_tracing_ok "log4j2_filtering"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_filtering"
+	destroy_lttng_session_ok "log4j2_filtering"
+
+	# Validate test. Expecting one event of the second TP only.
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/log4j2_filtering"
+
+	create_lttng_session_ok "log4j2_filtering" "$TRACE_PATH/log4j2_filtering"
+	# Enable first Logger but filter msg payload for the INFO one while
+	# triggering the debug and second TP.
+	enable_log4j2_lttng_event_filter "log4j2_filtering" $EVENT_NAME1 'msg == "LOG4J2 INFO tp fired!"'
+	start_lttng_tracing_ok "log4j2_filtering"
+
+	# Run 5 times with a 1ms delay, fire debug and second TP.
+	run_app 1 1
+
+	stop_lttng_tracing_ok "log4j2_filtering"
+	destroy_lttng_session_ok "log4j2_filtering"
+
+	# Validate test. Expecting NR_ITER event of the main INFO tp.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH/log4j2_filtering"
+}
+
+function test_log4j2_disable()
+{
+	diag "Test LOG4J2 disable event"
+
+	create_lttng_session_ok "log4j2_disable" "$TRACE_PATH/log4j2_disable"
+	# Enable all event with a filter.
+	enable_log4j2_lttng_event "log4j2_disable" $EVENT_NAME1
+	enable_log4j2_lttng_event "log4j2_disable" $EVENT_NAME2
+	disable_log4j2_lttng_event "log4j2_disable" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_disable"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disable"
+	destroy_lttng_session_ok "log4j2_disable"
+
+	# Validate test. Expecting one event of the second TP only.
+	trace_match_only $EVENT_NAME2 1 "$TRACE_PATH/log4j2_disable"
+}
+
+function test_log4j2_disable_enable()
+{
+	diag "Test LOG4J2 disable event followed by an enable"
+
+	create_lttng_session_ok "log4j2_disable_enable" "$TRACE_PATH/log4j2_disable_enable"
+	# Enable all event with a filter.
+	enable_log4j2_lttng_event "log4j2_disable_enable" $EVENT_NAME1
+	disable_log4j2_lttng_event "log4j2_disable_enable" $EVENT_NAME1
+	enable_log4j2_lttng_event "log4j2_disable_enable" $EVENT_NAME1
+	start_lttng_tracing_ok "log4j2_disable_enable"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_disable_enable"
+	destroy_lttng_session_ok "log4j2_disable_enable"
+
+	# Validate test. Expecting NR_ITER event of the main INFO tp.
+	trace_match_only $EVENT_NAME1 $NR_ITER "$TRACE_PATH/log4j2_disable_enable"
+}
+
+function test_log4j2_filter_loglevel()
+{
+	local bogus_event_name="not_a_real_event"
+	local filter="int_loglevel > 700 || int_loglevel < 700"
+	local all_events="."
+
+	diag "Test LOG4J2 a filter with a loglevel"
+
+	create_lttng_session_ok "log4j2_filter_info" "$TRACE_PATH/log4j2_filter_info"
+	# Enable an event with a filter and the loglevel-only option.
+	enable_log4j2_lttng_event_filter_loglevel_only "log4j2_filter_info" $bogus_event_name "$filter" LOG4J2_INFO
+	disable_log4j2_lttng_event "log4j2_filter_info" $bogus_event_name
+	enable_log4j2_lttng_event_filter_loglevel_only "log4j2_filter_info" $bogus_event_name "$filter" LOG4J2_INFO
+	start_lttng_tracing_ok "log4j2_filter_info"
+
+	# Run 5 times with a 1ms delay and fire second TP.
+	run_app 0 1
+
+	stop_lttng_tracing_ok "log4j2_filter_info"
+	destroy_lttng_session_ok "log4j2_filter_info"
+
+	# Validate test. Expecting no events.
+	trace_match_only $all_events 0 "$TRACE_PATH/log4j2_filter_info"
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+bail_out_if_no_babeltrace
+
+test -f "$TESTAPP_PATH.class"
+ok $? "Testapp '$TESTAPP_NAME' present"
+
+start_lttng_sessiond
+
+tests=(
+	test_log4j2_multi_session_disable_wildcard
+	test_log4j2_multi_session_disable_wildcard_begin
+	test_log4j2_multi_session_disable_wildcard_middle
+	test_log4j2_multi_session_disable_wildcard_end
+	test_log4j2_multi_session_disable
+	test_log4j2_disable
+	test_log4j2_disable_enable
+	test_log4j2_disable_all
+	test_log4j2_filtering
+	test_log4j2_multi_session_loglevel
+	test_log4j2_destroy_session
+	test_log4j2_loglevel
+	test_log4j2_loglevel_multiple
+	test_log4j2_before_start
+	test_log4j2_after_start
+	test_log4j2_multi_session
+	test_log4j2_filter_loglevel
+)
+
+for fct_test in "${tests[@]}";
+do
+	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_java_log4j2_trace_path.XXXXXX)
+
+	${fct_test}
+
+	rm -rf "$TRACE_PATH"
+done
+
+stop_lttng_sessiond
