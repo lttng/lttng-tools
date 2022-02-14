@@ -2819,7 +2819,7 @@ int cmd_start_trace(struct ltt_session *session)
 	 */
 	session->rotated_after_last_stop = false;
 
-	if (session->rotate_timer_period) {
+	if (session->rotate_timer_period && !session->rotation_schedule_timer_enabled) {
 		int int_ret = timer_session_rotation_schedule_timer_start(
 				session, session->rotate_timer_period);
 
