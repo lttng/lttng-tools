@@ -355,7 +355,7 @@ static int parse_kernel_probe_opts(const char *source,
 			PERROR("Failed to copy kernel probe location symbol name.");
 			goto error;
 		}
-		offset = strtoul(s_hex, NULL, 0);
+		offset = strtoull(s_hex, NULL, 0);
 
 		*location = lttng_kernel_probe_location_symbol_create(
 				symbol_name, offset);
@@ -401,7 +401,7 @@ static int parse_kernel_probe_opts(const char *source,
 			goto error;
 		}
 
-		address = strtoul(s_hex, NULL, 0);
+		address = strtoull(s_hex, NULL, 0);
 		*location = lttng_kernel_probe_location_address_create(address);
 		if (!*location) {
 			ERR("Failed to create symbol kernel probe location.");

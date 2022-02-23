@@ -130,7 +130,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end;
 		}
-		ev->attr.probe.offset = strtoul(s_hex, NULL, 0);
+		ev->attr.probe.offset = strtoull(s_hex, NULL, 0);
 		DBG("probe offset %" PRIu64, ev->attr.probe.offset);
 		ev->attr.probe.addr = 0;
 		goto end;
@@ -164,7 +164,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end;
 		}
-		ev->attr.probe.addr = strtoul(s_hex, NULL, 0);
+		ev->attr.probe.addr = strtoull(s_hex, NULL, 0);
 		DBG("probe addr %" PRIu64, ev->attr.probe.addr);
 		ev->attr.probe.offset = 0;
 		memset(ev->attr.probe.symbol_name, 0, LTTNG_SYMBOL_NAME_LEN);
