@@ -129,6 +129,7 @@ function test_kernel_local_snapshot_discard ()
 
 	rm -rf $TRACE_PATH
 
+	# Fill CPU 0's buffer and overwrite previous contents
 	generate_filter_events_cpu0 10000
 
 	# Take 2nd snapshot, compare first line. In discard mode, they
@@ -172,6 +173,7 @@ function test_kernel_local_snapshot_overwrite_small_buffers ()
 
 	rm -rf $TRACE_PATH
 
+	# Fill CPU 0's buffer and overwrite previous contents
 	generate_filter_events_cpu0 10000
 
 	# Take 2nd snapshot, compare first line. In overwrite mode, they
