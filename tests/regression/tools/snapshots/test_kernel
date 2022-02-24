@@ -56,8 +56,6 @@ function test_kernel_local_snapshot_after_stop ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 }
 
@@ -79,8 +77,6 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 
 	diag "Adding event $EVENT2"
@@ -92,8 +88,6 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
