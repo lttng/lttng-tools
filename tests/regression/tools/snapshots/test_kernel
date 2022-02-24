@@ -100,25 +100,27 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
-function true_loop_cpu0()
+function generate_filter_events_cpu0()
 {
-	# Generate many system call events (fill buffers) on CPU 0
-	for a in $(seq 1 $1); do
-		taskset 0x00000001 /bin/true;
-	done
+	# Generate many events (fill buffers) on CPU 0
+	taskset 0x00000001 /bin/echo -n "$1" > /proc/lttng-test-filter-event 2> /dev/null
 }
 
 function test_kernel_local_snapshot_discard ()
 {
 	diag "Test local kernel snapshots with small discard buffers"
+
+	local event_name="lttng_test_filter_event"
+
+	modprobe lttng-test
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_discard_small_kernel_channel $SESSION_NAME \
 			$CHANNEL_NAME
-	lttng_enable_kernel_syscall_ok $SESSION_NAME -a $CHANNEL_NAME
+	enable_kernel_lttng_event_ok $SESSION_NAME $event_name $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
-	true_loop_cpu0 10000
+	generate_filter_events_cpu0 10000
 
 	# Take first snapshot, remember first line.
 	lttng_snapshot_record $SESSION_NAME
@@ -127,7 +129,7 @@ function test_kernel_local_snapshot_discard ()
 
 	rm -rf $TRACE_PATH
 
-	true_loop_cpu0 10000
+	generate_filter_events_cpu0 10000
 
 	# Take 2nd snapshot, compare first line. In discard mode, they
 	# should still be the same.
@@ -144,19 +146,24 @@ function test_kernel_local_snapshot_discard ()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
+	modprobe --remove lttng-test
 }
 
 function test_kernel_local_snapshot_overwrite_small_buffers ()
 {
 	diag "Test local kernel snapshot with small overwrite buffers"
+
+	local event_name="lttng_test_filter_event"
+
+	modprobe lttng-test
 	create_lttng_session_no_output $SESSION_NAME
 	enable_lttng_mmap_overwrite_small_kernel_channel $SESSION_NAME \
 			$CHANNEL_NAME
-	lttng_enable_kernel_syscall_ok $SESSION_NAME -a $CHANNEL_NAME
+	enable_kernel_lttng_event_ok $SESSION_NAME $event_name $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
-	true_loop_cpu0 10000
+	generate_filter_events_cpu0 10000
 
 	# Take first snapshot, remember first line.
 	lttng_snapshot_record $SESSION_NAME
@@ -165,7 +172,7 @@ function test_kernel_local_snapshot_overwrite_small_buffers ()
 
 	rm -rf $TRACE_PATH
 
-	true_loop_cpu0 10000
+	generate_filter_events_cpu0 10000
 
 	# Take 2nd snapshot, compare first line. In overwrite mode, they
 	# WILL be different.
@@ -182,6 +189,7 @@ function test_kernel_local_snapshot_overwrite_small_buffers ()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
+	modprobe --remove lttng-test
 }
 
 function test_kernel_1000_local_snapshots ()
