@@ -3805,6 +3805,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 			extended->lost_packets = lost_packets;
 
 			ret = lttng_channel_serialize(channel, buffer);
+			lttng_channel_destroy(channel);
 			if (ret) {
 				ret = -1;
 				break;
