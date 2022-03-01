@@ -767,6 +767,10 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload event_payload;
+	struct lttng_event *local_event = NULL;
+	char *local_filter_expression = NULL;
+	struct lttng_bytecode *local_bytecode = NULL;
+	struct lttng_event_exclusion *local_exclusion = NULL;
 
 	lttng_payload_init(&event_payload);
 	if (cmd_ctx->lsm.cmd_type == LTTNG_ENABLE_EVENT) {
@@ -814,23 +818,45 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 
 	/* Deserialize event. */
 	{
+		ssize_t len;
 		struct lttng_payload_view event_view =
 				lttng_payload_view_from_payload(
 						&event_payload, 0, -1);
 
-		if (lttng_event_create_from_payload(&event_view, out_event,
-				    out_exclusion, out_filter_expression,
-				    out_bytecode) != event_len) {
-			ERR("Invalid event received as part of command payload");
+		len = lttng_event_create_from_payload(&event_view, &local_event,
+				    &local_exclusion, &local_filter_expression,
+				    &local_bytecode);
+
+		if (len < 0) {
+			ERR("Failed to create an event from the received buffer");
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+
+		if (len != event_len) {
+			ERR("Userspace probe location from the received buffer is not the advertised length: header length = %zu" PRIu32 ", payload length = %zd", event_len, len);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
 		}
 	}
 
+	*out_event = local_event;
+	*out_exclusion = local_exclusion;
+	*out_filter_expression = local_filter_expression;
+	*out_bytecode = local_bytecode;
+	local_event = NULL;
+	local_exclusion = NULL;
+	local_filter_expression = NULL;
+	local_bytecode = NULL;
+
 	ret_code = LTTNG_OK;
 
 end:
 	lttng_payload_reset(&event_payload);
+	lttng_event_destroy(local_event);
+	free(local_filter_expression);
+	free(local_bytecode);
+	free(local_exclusion);
 	return ret_code;
 }
 
