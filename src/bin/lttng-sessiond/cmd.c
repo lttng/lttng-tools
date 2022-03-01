@@ -388,7 +388,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-		goto end;
+		goto error;
 	}
 
 	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
@@ -421,14 +421,14 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 		tmp_event = lttng_event_create();
 		if (!tmp_event) {
 			ret_code = LTTNG_ERR_NOMEM;
-			goto end;
+			goto error;
 		}
 
 		if (lttng_strncpy(tmp_event->name, uevent->attr.name,
 				LTTNG_SYMBOL_NAME_LEN)) {
 			ret_code = LTTNG_ERR_FATAL;
 			lttng_event_destroy(tmp_event);
-			goto end;
+			goto error;
 		}
 
 		tmp_event->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
