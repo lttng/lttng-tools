@@ -846,6 +846,7 @@ static enum lttng_error_code receive_lttng_event_context(
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload event_context_payload;
+	struct lttng_event_context *context = NULL;
 
 	lttng_payload_init(&event_context_payload);
 
@@ -868,22 +869,33 @@ static enum lttng_error_code receive_lttng_event_context(
 
 	/* Deserialize event. */
 	{
+		ssize_t len;
 		struct lttng_payload_view event_context_view =
 				lttng_payload_view_from_payload(
 						&event_context_payload, 0, -1);
 
-		if (lttng_event_context_create_from_payload(
-				&event_context_view, out_event_context) !=
-				event_context_len) {
-			ERR("Invalid event context received as part of command payload");
+		len = lttng_event_context_create_from_payload(
+				&event_context_view, &context);
+
+		if (len < 0) {
+			ERR("Failed to create a event context from the received buffer");
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+
+		if (len != event_context_len) {
+			ERR("Event context from the received buffer is not the advertised length: expected length = %zu, payload length = %zd", event_context_len, len);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
 		}
 	}
 
+	*out_event_context = context;
+	context = NULL;
 	ret_code = LTTNG_OK;
 
 end:
+	lttng_event_context_destroy(context);
 	lttng_payload_reset(&event_context_payload);
 	return ret_code;
 }
@@ -1361,7 +1373,7 @@ skip_domain:
 	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTNG_ADD_CONTEXT:
 	{
-		struct lttng_event_context *event_context;
+		struct lttng_event_context *event_context = NULL;
 		const enum lttng_error_code ret_code =
 			receive_lttng_event_context(
 				cmd_ctx, *sock, sock_error, &event_context);
