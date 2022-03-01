@@ -194,6 +194,7 @@ static ssize_t lttng_event_probe_attr_create_from_buffer(
 	local_attr = NULL;
 	ret = offset;
 end:
+	free(local_attr);
 	return ret;
 }
 
@@ -252,6 +253,7 @@ static ssize_t lttng_event_function_attr_create_from_buffer(
 	local_attr = NULL;
 	ret = offset;
 end:
+	free(local_attr);
 	return ret;
 }
 
