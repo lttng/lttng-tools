@@ -2416,13 +2416,13 @@ int lttng_list_events(struct lttng_handle *handle,
 				(const char *) &lsm, 0, sizeof(lsm));
 	unsigned int nb_events = 0;
 
+	lttng_payload_init(&reply);
+
 	/* Safety check. An handle and channel name are mandatory. */
 	if (handle == NULL || channel_name == NULL) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-
-	lttng_payload_init(&reply);
 
 	/* Initialize command parameters. */
 	lsm.cmd_type = LTTNG_LIST_EVENTS;
