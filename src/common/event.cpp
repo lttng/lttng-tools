@@ -1145,7 +1145,8 @@ static int lttng_event_context_app_serialize(
 	}
 
 	/* Include the null terminator. */
-	comm.provider_name_len = provider_len + 1;
+	provider_len += 1;
+	comm.provider_name_len = provider_len;
 
 	ctx_len = strlen(ctx_name);
 	if (ctx_len == 0) {
@@ -1154,7 +1155,8 @@ static int lttng_event_context_app_serialize(
 	}
 
 	/* Include the null terminator. */
-	comm.ctx_name_len = ctx_len + 1;
+	ctx_len += 1;
+	comm.ctx_name_len = ctx_len;
 
 	/* Header */
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm,
