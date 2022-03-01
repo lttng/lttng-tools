@@ -3766,8 +3766,8 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 
 			channel = trace_ust_channel_to_lttng_channel(uchan);
 			if (!channel) {
-				ret = LTTNG_ERR_NOMEM;
-				break;
+				ret_code = LTTNG_ERR_NOMEM;
+				goto end;
 			}
 
 			extended = (struct lttng_channel_extended *)
@@ -3778,7 +3778,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 			if (ret < 0) {
 				lttng_channel_destroy(channel);
 				ret_code = LTTNG_ERR_UNK;
-				break;
+				goto end;
 			}
 
 			extended->discarded_events = discarded_events;
@@ -3791,8 +3791,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 				ERR("Failed to serialize lttng_channel: channel name = '%s'",
 						channel->name);
 				ret_code = LTTNG_ERR_UNK;
-				ret = -1;
-				break;
+				goto end;
 			}
 
 			i++;
