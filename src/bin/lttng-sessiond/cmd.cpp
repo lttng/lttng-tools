@@ -3785,6 +3785,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 
 			ret = lttng_channel_serialize(
 					channel, &payload->buffer);
+			lttng_channel_destroy(channel);
 			if (ret) {
 				ERR("Failed to serialize lttng_channel: channel name = '%s'",
 						channel->name);
