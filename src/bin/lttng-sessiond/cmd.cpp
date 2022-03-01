@@ -3830,7 +3830,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttcomm_list_command_header reply_command_header = {};
 	size_t reply_command_header_offset;
-	unsigned int nb_events;
+	unsigned int nb_events = 0;
 
 	assert(reply_payload);
 
