@@ -431,14 +431,14 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 		tmp = lttng_event_create();
 		if (!tmp) {
 			ret_code = LTTNG_ERR_NOMEM;
-			goto end;
+			goto error;
 		}
 
 		if (lttng_strncpy(tmp->name, uevent->attr.name,
 				LTTNG_SYMBOL_NAME_LEN)) {
 			ret_code = LTTNG_ERR_FATAL;
 			lttng_event_destroy(tmp);
-			goto end;
+			goto error;
 		}
 
 		tmp->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
