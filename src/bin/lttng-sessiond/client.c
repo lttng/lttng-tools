@@ -1661,7 +1661,6 @@ skip_domain:
 		}
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
-		ERR("original payload size = %i", (int) original_payload_size);
 
 		session_lock_list();
 		ret_code = cmd_list_tracepoint_fields(
@@ -1674,7 +1673,6 @@ skip_domain:
 
 		payload_size = cmd_ctx->reply_payload.buffer.size -
 				command_header_size - original_payload_size;
-		ERR("payload size = %i", (int) payload_size);
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
