@@ -12,14 +12,6 @@ TESTDIR=$CURDIR/../..
 VALIDATE_SCRIPT="$CURDIR/validate_select_poll_epoll.py"
 NUM_TESTS=102
 
-# Only run this test on x86 and arm
-uname -m | grep -E "x86|i686|arm|aarch64" >/dev/null 2>&1
-if test $? != 0; then
-	plan_tests $NUM_TESTS
-	skip 0 "Run only on x86 and arm. Skipping all tests." $NUM_TESTS
-	exit 0
-fi
-
 DISABLE_VALIDATE=0
 # Babeltrace python bindings are required for the validation, but
 # it is not a mandatory dependancy of the project, so fail run the
@@ -363,6 +355,13 @@ function test_epoll_pwait_concurrent()
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+# Only run this test on x86 and arm
+uname -m | grep -E "x86|i686|arm|aarch64" >/dev/null 2>&1
+if test $? != 0; then
+	skip 0 "Run only on x86 and arm. Skipping all tests." $NUM_TESTS
+	exit 0
+fi
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
