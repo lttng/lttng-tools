@@ -621,7 +621,7 @@ deserialize_event_type_payload:
 		}
 
 		if (ret != event_comm->userspace_probe_location_len) {
-			WARN("Userspace probe location from the received buffer is not the advertised length: header length = %" PRIu32 ", payload length = %lu", event_comm->userspace_probe_location_len, ret);
+			WARN("Userspace probe location from the received buffer is not the advertised length: header length = %" PRIu32 ", payload length = %zd", event_comm->userspace_probe_location_len, ret);
 			ret = -1;
 			goto end;
 		}
