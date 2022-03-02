@@ -474,6 +474,91 @@ end:
 	return session;
 }
 
+/*
+ * Check if any of the relay sessions originating from the same
+ * session daemon session have the 'ongoing_rotation' state set.
+ *
+ * The caller must hold the lock of session.
+ */
+bool session_has_ongoing_rotation(const struct relay_session *session)
+{
+	bool ongoing_rotation = false;
+	struct lttng_ht_iter iter;
+	struct relay_session *iterated_session;
+
+	ASSERT_LOCKED(session->lock);
+
+	if (!session->id_sessiond.is_set) {
+		/*
+		 * The peer that created this session is too old to
+		 * support rotations; we can assume no rotations are ongoing.
+		 */
+		goto end;
+	}
+
+	if (session->ongoing_rotation) {
+		ongoing_rotation = true;
+		goto end;
+	}
+
+	rcu_read_lock();
+	/*
+	 * Sample the 'ongoing_rotation' status of all relay sessions that
+	 * originate from the same session daemon session.
+	 */
+	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, iterated_session,
+			session_n.node) {
+		if (!session_get(iterated_session)) {
+			continue;
+		}
+
+		if (session == iterated_session) {
+			/* Skip this session. */
+			goto next_session_no_unlock;
+		}
+
+		pthread_mutex_lock(&iterated_session->lock);
+
+		if (!iterated_session->id_sessiond.is_set) {
+			/*
+			 * Session belongs to a peer that doesn't support
+			 * rotations.
+			 */
+			goto next_session;
+		}
+
+		if (!lttng_uuid_is_equal(session->sessiond_uuid,
+				iterated_session->sessiond_uuid)) {
+			/* Sessions do not originate from the same sessiond. */
+			goto next_session;
+		}
+
+		if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
+				LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
+			/*
+			 * Sessions do not originate from the same sessiond
+			 * session.
+			 */
+			goto next_session;
+		}
+
+		ongoing_rotation = iterated_session->ongoing_rotation;
+
+next_session:
+		pthread_mutex_unlock(&iterated_session->lock);
+next_session_no_unlock:
+		session_put(iterated_session);
+
+		if (ongoing_rotation) {
+			break;
+		}
+	}
+	rcu_read_unlock();
+
+end:
+	return ongoing_rotation;
+}
+
 static void rcu_destroy_session(struct rcu_head *rcu_head)
 {
 	struct relay_session *session =

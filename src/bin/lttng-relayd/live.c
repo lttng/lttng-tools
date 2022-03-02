@@ -374,7 +374,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 				 * chunk can be used safely.
 				 */
 				if ((relay_stream->ongoing_rotation.is_set ||
-						    relay_session->ongoing_rotation) &&
+						session_has_ongoing_rotation(relay_session)) &&
 						relay_stream->trace_chunk) {
 					viewer_stream_trace_chunk = lttng_trace_chunk_copy(
 							relay_stream->trace_chunk);
@@ -1170,7 +1170,7 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	 * stream, because the chunk can be in an intermediate state
 	 * due to directory renaming.
 	 */
-	if (session->ongoing_rotation) {
+	if (session_has_ongoing_rotation(session)) {
 		DBG("Relay session %" PRIu64 " rotation ongoing", session_id);
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_NO_NEW);
 		goto send_reply_unlock;
@@ -1320,7 +1320,7 @@ int viewer_attach_session(struct relay_connection *conn)
 	 * stream, because the chunk can be in an intermediate state
 	 * due to directory renaming.
 	 */
-	if (session->ongoing_rotation) {
+	if (session_has_ongoing_rotation(session)) {
 		DBG("Relay session %" PRIu64 " rotation ongoing", session_id);
 		send_streams = 0;
 		goto send_reply;
@@ -1653,7 +1653,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	if (rstream->trace->session->ongoing_rotation) {
+	if (session_has_ongoing_rotation(rstream->trace->session)) {
 		/* Rotation is ongoing, try again later. */
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
 		goto send_reply;
