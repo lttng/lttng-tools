@@ -998,7 +998,8 @@ static ssize_t lttng_event_context_perf_counter_populate_from_payload(
 		const struct lttng_payload_view *view,
 		struct lttng_event_context *event_ctx)
 {
-	ssize_t ret, offset = 0;
+	int ret;
+	ssize_t consumed, offset = 0;
 	const struct lttng_event_context_perf_counter_comm *comm;
 	size_t name_len;
 	const struct lttng_buffer_view comm_view = lttng_buffer_view_from_view(
@@ -1010,7 +1011,7 @@ static ssize_t lttng_event_context_perf_counter_populate_from_payload(
 			event_ctx->ctx == LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER);
 
 	if (!lttng_buffer_view_is_valid(&comm_view)) {
-		ret = -1;
+		consumed = -1;
 		goto end;
 	}
 
@@ -1027,7 +1028,7 @@ static ssize_t lttng_event_context_perf_counter_populate_from_payload(
 						name_len);
 
 		if (!lttng_buffer_view_is_valid(&provider_name_view)) {
-			ret = -1;
+			consumed = -1;
 			goto end;
 		}
 
@@ -1035,21 +1036,25 @@ static ssize_t lttng_event_context_perf_counter_populate_from_payload(
 
 		if (!lttng_buffer_view_contains_string(
 				    &provider_name_view, name, name_len)) {
-			ret = -1;
+			consumed = -1;
 			goto end;
 		}
 
-		lttng_strncpy(event_ctx->u.perf_counter.name, name, name_len);
+		ret = lttng_strncpy(event_ctx->u.perf_counter.name, name, name_len);
+		if (ret) {
+			consumed = -1;
+			goto end;
+		}
 		offset += name_len;
 	}
 
 	event_ctx->u.perf_counter.config = comm->config;
 	event_ctx->u.perf_counter.type = comm->type;
 
-	ret = offset;
+	consumed = offset;
 
 end:
-	return ret;
+	return consumed;
 }
 
 ssize_t lttng_event_context_create_from_payload(
