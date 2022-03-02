@@ -1266,7 +1266,12 @@ int viewer_get_new_streams(struct relay_connection *conn)
 			LTTNG_VIEWER_SEEK_BEGINNING, &nb_total, &nb_unsent,
 			&nb_created, &closed);
 	if (ret < 0) {
-		goto error_unlock_session;
+		/*
+		 * This is caused by an internal error; propagate the negative
+		 * 'ret' to close the connection.
+		 */
+		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
+		goto send_reply;
 	}
 	send_streams = 1;
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
@@ -1320,10 +1325,6 @@ end_put_session:
 		session_put(session);
 	}
 error:
-	return ret;
-error_unlock_session:
-	pthread_mutex_unlock(&session->lock);
-	session_put(session);
 	return ret;
 }
 
