@@ -921,6 +921,7 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 			 * If the stream is not visible globally, this needs to be done
 			 * outside of the consumer data lock section.
 			 */
+			destroy_close_stream(stream);
 			free_chan = unref_channel(stream);
 		}
 
