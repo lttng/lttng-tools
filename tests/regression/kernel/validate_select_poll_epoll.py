@@ -331,7 +331,7 @@ class Test1(TraceParser):
 
         # check that we have FD 0 waiting for EPOLLIN|EPOLLPRI and that
         # data.fd = 0
-        if (epfd == self.epoll_wait_fd or epfd == self.epoll_pwait_fd) and 'EPOLL_CTL_ADD' in op_enum.labels and fd == 0 and \
+        if (epfd == self.epoll_wait_fd or epfd == self.epoll_pwait_fd) and 'EPOLL_CTL_ADD' == op_enum and fd == 0 and \
                 _event["data_union"]["fd"] == 0 and \
                 _event["events"]["EPOLLIN"] == 1 and \
                 _event["events"]["EPOLLPRI"] == 1:
