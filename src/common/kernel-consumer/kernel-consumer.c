@@ -436,7 +436,6 @@ static int lttng_kconsumer_snapshot_metadata(
 	ret = 0;
 error_snapshot:
 	metadata_stream->read_subbuffer_ops.unlock(metadata_stream);
-	cds_list_del(&metadata_stream->send_node);
 	consumer_stream_destroy(metadata_stream, NULL);
 	metadata_channel->metadata_stream = NULL;
 	rcu_read_unlock();

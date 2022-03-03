@@ -179,7 +179,6 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 	/* Delete streams that might have been left in the stream list. */
 	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
 			send_node) {
-		cds_list_del(&stream->send_node);
 		/*
 		 * Once a stream is added to this list, the buffers were created so we
 		 * have a guarantee that this call will succeed. Setting the monitor
