@@ -517,6 +517,8 @@ struct lttng_consumer_stream *consumer_stream_create(
 		goto error;
 	}
 
+	stream->send_node = (typeof(stream->send_node))
+			CDS_LIST_HEAD_INIT(stream->send_node);
 	stream->chan = channel;
 	stream->key = stream_key;
 	stream->trace_chunk = trace_chunk;
@@ -888,6 +890,8 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
 	assert(stream);
+
+	cds_list_del_init(&stream->send_node);
 
 	/* Stream is in monitor mode. */
 	if (stream->monitor) {

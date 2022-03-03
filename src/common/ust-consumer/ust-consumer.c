@@ -64,7 +64,7 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 
 		health_code_update();
 
-		cds_list_del(&stream->send_node);
+		cds_list_del_init(&stream->send_node);
 		ustctl_destroy_stream(stream->ustream);
 		lttng_trace_chunk_put(stream->trace_chunk);
 		free(stream);
@@ -200,7 +200,7 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 	 * global.
 	 */
 	stream->globally_visible = 1;
-	cds_list_del(&stream->send_node);
+	cds_list_del_init(&stream->send_node);
 
 	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream));
 	if (ret < 0) {
@@ -975,7 +975,6 @@ error:
 	 * will make sure to clean that list.
 	 */
 	consumer_stream_destroy(metadata->metadata_stream, NULL);
-	cds_list_del(&metadata->metadata_stream->send_node);
 	metadata->metadata_stream = NULL;
 send_streams_error:
 error_no_stream:
@@ -1058,7 +1057,6 @@ error_stream:
 	 * new metadata stream.
 	 */
 	consumer_stream_destroy(metadata_stream, NULL);
-	cds_list_del(&metadata_stream->send_node);
 	metadata_channel->metadata_stream = NULL;
 
 error:

@@ -416,6 +416,11 @@ struct lttng_consumer_stream {
 	struct lttng_ht_node_u64 node_channel_id;
 	/* HT node used in consumer_data.stream_list_ht */
 	struct lttng_ht_node_u64 node_session_id;
+	/*
+	 * List used by channels to reference streams that are not yet globally
+	 * visible.
+	 */
+	struct cds_list_head send_node;
 	/* Pointer to associated channel. */
 	struct lttng_consumer_channel *chan;
 	/*
@@ -548,7 +553,6 @@ struct lttng_consumer_stream {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	/* Internal state of libustctl. */
 	struct ustctl_consumer_stream *ustream;
-	struct cds_list_head send_node;
 	/* On-disk circular buffer */
 	uint64_t tracefile_size_current;
 	uint64_t tracefile_count_current;
