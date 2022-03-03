@@ -154,12 +154,14 @@ struct lttng_event_extended {
 LTTNG_HIDDEN
 struct lttng_event *lttng_event_copy(const struct lttng_event *event);
 
+LTTNG_HIDDEN
 ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_event **out_event,
 		struct lttng_event_exclusion **out_exclusion,
 		char **out_filter_expression,
 		struct lttng_bytecode **out_bytecode);
 
+LTTNG_HIDDEN
 int lttng_event_serialize(const struct lttng_event *event,
 		unsigned int exclusion_count,
 		char **exclusion_list,
@@ -168,27 +170,34 @@ int lttng_event_serialize(const struct lttng_event *event,
 		struct lttng_bytecode *bytecode,
 		struct lttng_payload *payload);
 
+LTTNG_HIDDEN
 ssize_t lttng_event_context_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_context **event_ctx);
 
+LTTNG_HIDDEN
 int lttng_event_context_serialize(struct lttng_event_context *context,
 		struct lttng_payload *payload);
 
+LTTNG_HIDDEN
 void lttng_event_context_destroy(struct lttng_event_context *context);
 
+LTTNG_HIDDEN
 enum lttng_error_code lttng_events_create_and_flatten_from_payload(
 		struct lttng_payload_view *view,
 		unsigned int count,
 		struct lttng_event **events);
 
+LTTNG_HIDDEN
 ssize_t lttng_event_field_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_field **field);
 
+LTTNG_HIDDEN
 int lttng_event_field_serialize(const struct lttng_event_field *field,
 		struct lttng_payload *payload);
 
+LTTNG_HIDDEN
 enum lttng_error_code lttng_event_fields_create_and_flatten_from_payload(
 		struct lttng_payload_view *view,
 		unsigned int count,
