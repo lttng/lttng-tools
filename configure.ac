@@ -57,7 +57,7 @@ AC_TYPE_UINT8_T
 
 # Detect warning flags supported by the C and C++ compilers and append them to
 # WARN_CFLAGS and WARN_CXXFLAGS.
-m4_define([WARN_FLAGS_LIST], [ dnl
+m4_define([WARN_FLAGS_COMMON_LIST], [ dnl
   -Wall dnl
   dnl We currently get this warning when building with Clang:
   dnl
@@ -65,23 +65,25 @@ m4_define([WARN_FLAGS_LIST], [ dnl
   dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
   dnl            ^
   -Wno-incomplete-setjmp-declaration dnl
-  -Wdiscarded-qualifiers dnl
   -Wmissing-declarations dnl
-  -Wmissing-prototypes dnl
-  -Wmissing-parameter-type dnl
   -Wshadow dnl
   -Wno-gnu-folding-constant dnl
   -Wsuggest-attribute=format dnl
   -Wformat=2 dnl
-  dnl GCC enables this with -Wall in C++, and that generates a
-  dnl lot of warnings that have on average a low value to fix.
-  -Wno-sign-compare dnl
+])
+
+# Detect warning flags specific to the C compiler and append them to
+# WARN_CFLAGS.
+m4_define([WARN_FLAGS_C_LIST], [ dnl
+  -Wdiscarded-qualifiers dnl
+  -Wmissing-prototypes dnl
+  -Wmissing-parameter-type dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the
 # -Wunknown-warning-option diagnostic fatal with clang.
 AC_LANG_PUSH([C])
-AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_LIST], [WARN_CFLAGS], [-Werror])
+AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_COMMON_LIST WARN_FLAGS_C_LIST], [WARN_CFLAGS], [-Werror])
 AC_LANG_POP([C])
 
 # The test used in AX_APPEND_COMPILE_FLAGS, generated using AC_LANG_PROGRAM, is
@@ -106,10 +108,18 @@ AC_LANG_POP([C])
 # Find a C++11 compiler with GNU extensions (-std=gnu++11)
 AX_CXX_COMPILE_STDCXX([11], [ext], [mandatory])
 
+# Detect warning flags specific to the C++ compiler and append them to
+# WARN_CXXFLAGS.
+m4_define([WARN_FLAGS_CXX_LIST], [ dnl
+  dnl GCC enables this with -Wall in C++, and that generates a
+  dnl lot of warnings that have on average a low value to fix.
+  -Wno-sign-compare dnl
+])
+
 # Pass -Werror as an extra flag during the test: this is needed to make the
 # -Wunknown-warning-option diagnostic fatal with clang.
 AC_LANG_PUSH([C++])
-AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_LIST], [WARN_CXXFLAGS], [-Werror])
+AX_APPEND_COMPILE_FLAGS([WARN_FLAGS_COMMON_LIST WARN_FLAGS_CXX_LIST], [WARN_CXXFLAGS], [-Werror])
 AC_LANG_POP([C++])
 
 # Disable 'strict aliasing' if the C++ compiler supports it.
