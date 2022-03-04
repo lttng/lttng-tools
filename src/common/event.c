@@ -1489,6 +1489,9 @@ static enum lttng_error_code compute_flattened_size(
 	/* The basic struct lttng_event */
 	storage_req = event_count * sizeof(struct lttng_event);
 
+	/* The struct·lttng_event_extended */
+	storage_req += event_count * sizeof(struct lttng_event_extended);
+
 	for (i = 0; i < event_count; i++) {
 		int probe_storage_req = 0;
 		const struct event_list_element *element = (const struct event_list_element *)
@@ -1508,10 +1511,6 @@ static enum lttng_error_code compute_flattened_size(
 
 			probe_storage_req = ret;
 		}
-
-		/* The struct·lttng_event_extended */
-		storage_req += event_count *
-			sizeof(struct lttng_event_extended);
 
 		if (element->filter_expression) {
 			storage_req += strlen(element->filter_expression) + 1;
