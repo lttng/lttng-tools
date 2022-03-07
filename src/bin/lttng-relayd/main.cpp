@@ -3405,7 +3405,10 @@ static enum relay_connection_status relay_process_control_receive_payload(
 			reception_buffer->data + state->received,
 			state->left_to_receive, MSG_DONTWAIT);
 	if (ret < 0) {
+		DIAGNOSTIC_PUSH
+		DIAGNOSTIC_IGNORE_LOGICAL_OP
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		DIAGNOSTIC_POP
 			PERROR("Unable to receive command payload on sock %d",
 					conn->sock->fd);
 			status = RELAY_CONNECTION_STATUS_ERROR;
@@ -3478,7 +3481,10 @@ static enum relay_connection_status relay_process_control_receive_header(
 			reception_buffer->data + state->received,
 			state->left_to_receive, MSG_DONTWAIT);
 	if (ret < 0) {
+		DIAGNOSTIC_PUSH
+		DIAGNOSTIC_IGNORE_LOGICAL_OP
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		DIAGNOSTIC_POP
 			PERROR("Unable to receive control command header on sock %d",
 					conn->sock->fd);
 			status = RELAY_CONNECTION_STATUS_ERROR;
@@ -3589,7 +3595,10 @@ static enum relay_connection_status relay_process_data_receive_header(
 			state->header_reception_buffer + state->received,
 			state->left_to_receive, MSG_DONTWAIT);
 	if (ret < 0) {
+		DIAGNOSTIC_PUSH
+		DIAGNOSTIC_IGNORE_LOGICAL_OP
 		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		DIAGNOSTIC_POP
 			PERROR("Unable to receive data header on sock %d", conn->sock->fd);
 			status = RELAY_CONNECTION_STATUS_ERROR;
 		}
@@ -3716,7 +3725,10 @@ static enum relay_connection_status relay_process_data_receive_payload(
 		ret = conn->sock->ops->recvmsg(conn->sock, data_buffer,
 				recv_size, MSG_DONTWAIT);
 		if (ret < 0) {
+			DIAGNOSTIC_PUSH
+			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno != EAGAIN && errno != EWOULDBLOCK) {
+			DIAGNOSTIC_POP
 				PERROR("Socket %d error", conn->sock->fd);
 				status = RELAY_CONNECTION_STATUS_ERROR;
 			}

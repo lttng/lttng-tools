@@ -215,7 +215,10 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 		 * the job will be processed when the rotation_thread catches
 		 * up.
 		 */
+		DIAGNOSTIC_PUSH
+		DIAGNOSTIC_IGNORE_LOGICAL_OP
 		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+		DIAGNOSTIC_POP
 			/*
 			 * Not an error, but would be surprising and indicate
 			 * that the rotation thread can't keep up with the

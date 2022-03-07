@@ -94,12 +94,15 @@ void *zmalloc(size_t len)
 # define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
 # define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
+# define DIAGNOSTIC_IGNORE_LOGICAL_OP
 #else
   /* GCC */
 # define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
 	_Pragma("GCC diagnostic ignored \"-Wsuggest-attribute=format\"")
 # define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
+# define DIAGNOSTIC_IGNORE_LOGICAL_OP \
+	_Pragma("GCC diagnostic ignored \"-Wlogical-op\"")
 #endif
 
 /* Used to make specific C++ functions to C code. */

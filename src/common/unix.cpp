@@ -239,8 +239,11 @@ retry:
 			/*
 			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
 			 */
+			DIAGNOSTIC_PUSH
+			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK ||
 					errno == EPIPE) {
+			DIAGNOSTIC_POP
 				/*
 				 * Nothing was recv.
 				 */
@@ -343,8 +346,11 @@ retry:
 			/*
 			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
 			 */
+			DIAGNOSTIC_PUSH
+			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK ||
 					errno == EPIPE) {
+			DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was sent.
@@ -569,7 +575,10 @@ retry:
 			/*
 			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
 			 */
+			DIAGNOSTIC_PUSH
+			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was sent.
@@ -883,7 +892,10 @@ retry:
 			/*
 			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
 			 */
+			DIAGNOSTIC_PUSH
+			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was recv.
