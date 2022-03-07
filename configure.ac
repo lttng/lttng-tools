@@ -59,22 +59,29 @@ AC_TYPE_UINT8_T
 # WARN_CFLAGS and WARN_CXXFLAGS.
 m4_define([WARN_FLAGS_COMMON_LIST], [ dnl
   -Wall dnl
+  -Wextra dnl
+  -Wmissing-declarations dnl
   -Wnull-dereference dnl
   -Wundef dnl
   -Wredundant-decls dnl
+  -Wshadow dnl
+  -Wsuggest-attribute=format dnl
+  -Wtautological-constant-out-of-range-compare dnl Clang specific
+  -Wwrite-strings dnl
+  -Wformat=2 dnl
+  -Wstrict-aliasing dnl
   -Wmissing-noreturn dnl
+  -Wduplicated-cond dnl
+  -Wduplicated-branches dnl
   -Wlogical-op dnl
+  -Winit-self dnl
   dnl We currently get this warning when building with Clang:
   dnl
   dnl /usr/include/setjmp.h:54:12: error: declaration of built-in function '__sigsetjmp' requires the declaration of the 'jmp_buf' type, commonly provided in the header <setjmp.h>. [-Werror,-Wincomplete-setjmp-declaration]
   dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
   dnl            ^
   -Wno-incomplete-setjmp-declaration dnl
-  -Wmissing-declarations dnl
-  -Wshadow dnl
-  -Wno-gnu-folding-constant dnl
-  -Wsuggest-attribute=format dnl
-  -Wformat=2 dnl
+  -Wno-gnu-folding-constant dnl Clang specific
 ])
 
 # Detect warning flags specific to the C compiler and append them to
@@ -83,6 +90,8 @@ m4_define([WARN_FLAGS_C_LIST], [ dnl
   -Wdiscarded-qualifiers dnl
   -Wmissing-prototypes dnl
   -Wmissing-parameter-type dnl
+  -Wjump-misses-init dnl
+  -Wnested-externs dnl
 ])
 
 # Pass -Werror as an extra flag during the test: this is needed to make the
