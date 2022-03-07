@@ -109,7 +109,7 @@ static inline int lttng_fls(int val)
 }
 #endif /* HAVE_FLS */
 
-#if HAVE_MEMRCHR
+#ifdef HAVE_MEMRCHR
 static inline
 void *lttng_memrchr(const void *s, int c, size_t n)
 {

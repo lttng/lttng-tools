@@ -60,6 +60,7 @@ AC_TYPE_UINT8_T
 m4_define([WARN_FLAGS_COMMON_LIST], [ dnl
   -Wall dnl
   -Wnull-dereference dnl
+  -Wundef dnl
   dnl We currently get this warning when building with Clang:
   dnl
   dnl /usr/include/setjmp.h:54:12: error: declaration of built-in function '__sigsetjmp' requires the declaration of the 'jmp_buf' type, commonly provided in the header <setjmp.h>. [-Werror,-Wincomplete-setjmp-declaration]

@@ -17,7 +17,7 @@
 
 #include "poll.h"
 
-#if HAVE_EPOLL
+#ifdef HAVE_EPOLL
 
 #include <fcntl.h>
 #include <limits.h>

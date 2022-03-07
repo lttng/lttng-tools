@@ -242,7 +242,7 @@ static struct kern_modules_param *probes;
 static int nr_probes;
 static int probes_capacity;
 
-#if HAVE_KMOD
+#ifdef HAVE_KMOD
 #include <libkmod.h>
 
 /**

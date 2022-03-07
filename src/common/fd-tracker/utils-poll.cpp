@@ -9,7 +9,7 @@
 
 #include "utils.h"
 
-#if HAVE_EPOLL
+#ifdef HAVE_EPOLL
 
 struct create_args {
 	struct lttng_poll_event *events;

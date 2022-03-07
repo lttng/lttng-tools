@@ -288,7 +288,7 @@ const struct ctx_opts {
 	{ (char *) "need_reschedule", CONTEXT_NEED_RESCHEDULE },
 	{ (char *) "migratable", CONTEXT_MIGRATABLE },
 	{ (char *) "callstack-kernel", CONTEXT_CALLSTACK_KERNEL },
-#if HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
+#ifdef HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
 	{ (char *) "callstack-user", CONTEXT_CALLSTACK_USER },
 #endif
 	{ (char *) "cgroup_ns", CONTEXT_CGROUP_NS },
