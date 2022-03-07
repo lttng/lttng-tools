@@ -480,7 +480,7 @@ end:
  *
  * The caller must hold the lock of session.
  */
-bool session_has_ongoing_rotation(const struct relay_session *session)
+bool session_has_ongoing_rotation(struct relay_session *session)
 {
 	bool ongoing_rotation = false;
 	struct lttng_ht_iter iter;
