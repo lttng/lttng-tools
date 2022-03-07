@@ -175,9 +175,9 @@ static void test_create_ust_event_exclusion(void)
 	exclusion->count = exclusion_count;
 	random_name = get_random_string();
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0), random_name,
-		LTTNG_SYMBOL_NAME_LEN);
+		LTTNG_SYMBOL_NAME_LEN - 1);
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), random_name,
-		LTTNG_SYMBOL_NAME_LEN);
+		LTTNG_SYMBOL_NAME_LEN - 1);
 
 	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
 	exclusion = NULL;
@@ -207,9 +207,9 @@ static void test_create_ust_event_exclusion(void)
 
 	exclusion->count = exclusion_count;
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
-		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+		get_random_string(), LTTNG_SYMBOL_NAME_LEN - 1);
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
-		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+		get_random_string(), LTTNG_SYMBOL_NAME_LEN - 1);
 
 	exclusion_copy->count = exclusion_count;
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 0),
