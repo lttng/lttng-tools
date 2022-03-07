@@ -73,7 +73,7 @@ struct relay_session {
 
 	struct urcu_ref ref;
 
-	mutable pthread_mutex_t lock;
+	pthread_mutex_t lock;
 
 	/* major/minor version used for this session. */
 	uint32_t major;
@@ -156,7 +156,7 @@ void session_put(struct relay_session *session);
 int session_close(struct relay_session *session);
 int session_abort(struct relay_session *session);
 
-bool session_has_ongoing_rotation(const struct relay_session *session);
+bool session_has_ongoing_rotation(struct relay_session *session);
 
 void print_sessions(void);
 

@@ -486,8 +486,6 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 	struct lttng_ht_iter iter;
 	struct relay_session *iterated_session;
 
-	ASSERT_LOCKED(session->lock);
-
 	if (!session->id_sessiond.is_set) {
 		/*
 		 * The peer that created this session is too old to
