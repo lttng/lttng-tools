@@ -249,7 +249,12 @@ libfilter_la_SOURCES = \
 
 BUILT_SOURCES += filter/filter-parser.hpp
 
-libfilter_la_CXXFLAGS = -include filter-symbols.h $(AM_CXXFLAGS)
+# Disable some warning flags for generated sources.
+FILTER_WARN_FLAGS = \
+	-Wno-null-dereference
+
+libfilter_la_CFLAGS = $(AM_CFLAGS) $(FILTER_WARN_FLAGS)
+libfilter_la_CXXFLAGS = -include filter-symbols.h $(AM_CXXFLAGS) $(FILTER_WARN_FLAGS)
 libfilter_la_CPPFLAGS = -I$(srcdir)/filter -I$(builddir)/filter $(AM_CPPFLAGS)
 libfilter_la_LIBADD = libstring-utils.la
 

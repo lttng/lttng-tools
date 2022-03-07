@@ -374,6 +374,7 @@ bool lttng_trigger_is_equal(
 
 bool lttng_trigger_is_hidden(const struct lttng_trigger *trigger)
 {
+	LTTNG_ASSERT(trigger);
 	return trigger->is_hidden;
 }
 
