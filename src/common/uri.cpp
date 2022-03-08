@@ -43,7 +43,7 @@ static const struct uri_proto proto_uri[] = {
 	{ .name = "tcp4", .leading_string = "tcp4://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
 	{ .name = "tcp6", .leading_string = "tcp6://", .code = P_TCP6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
 	/* Invalid proto marking the end of the array. */
-	{ 0 }
+	{}
 };
 
 /*

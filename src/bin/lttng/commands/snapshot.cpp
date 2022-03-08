@@ -60,7 +60,7 @@ static struct poptOption snapshot_opts[] = {
 	{"name",         'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0},
 	{"max-size",     'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"list-commands",  0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS},
+	{"list-commands",  0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 

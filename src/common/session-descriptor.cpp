@@ -816,7 +816,10 @@ int lttng_session_descriptor_serialize(
 			.output_type = (uint8_t) descriptor->output_type,
 			.name_len = (uint32_t) (descriptor->name ?
 				strlen(descriptor->name) + 1 : 0),
-		}
+			.uri_count = 0,
+		},
+		.live_timer_us = 0,
+
 	};
 	const void *header_ptr = NULL;
 	size_t header_size;

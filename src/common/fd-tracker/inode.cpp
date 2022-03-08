@@ -66,6 +66,8 @@ static struct {
 	unsigned long value;
 } seed = {
 		.lock = PTHREAD_MUTEX_INITIALIZER,
+		.initialized = false,
+		.value = 0,
 };
 
 static unsigned long lttng_inode_id_hash(const struct inode_id *id)

@@ -4,6 +4,9 @@ AM_CPPFLAGS += -I$(srcdir) \
 	-I$(top_srcdir)/tests/utils/testapp
 
 if HAVE_LIBLTTNG_UST_CTL
+AM_CXXFLAGS += \
+	-Wno-missing-field-initializers
+
 noinst_PROGRAMS = gen-ust-tracef
 gen_ust_tracef_SOURCES = gen-ust-tracef.cpp
 gen_ust_tracef_LDADD = $(UST_LIBS) $(DL_LIBS)

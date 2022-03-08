@@ -1031,8 +1031,15 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 	struct lttng_evaluation *evaluation = NULL;
 	struct notification_client_list client_list = {
 		.lock = PTHREAD_MUTEX_INITIALIZER,
+		.ref = {},
+		.condition = NULL,
+		.triggers_list = {},
+		.clients_list = {},
+		.notification_trigger_clients_ht = NULL,
+		.notification_trigger_clients_ht_node = {},
+		.rcu_node = {},
 	};
-	struct notification_client_list_element client_list_element = { 0 };
+	struct notification_client_list_element client_list_element = {};
 	uid_t object_uid = 0;
 	gid_t object_gid = 0;
 
@@ -2064,7 +2071,7 @@ int drain_event_notifier_notification_pipe(
 		struct notification_thread_state *state,
 		int pipe, enum lttng_domain_type domain)
 {
-	struct lttng_poll_event events = {0};
+	struct lttng_poll_event events = {};
 	int ret;
 
 	ret = lttng_poll_create(&events, 1, LTTNG_CLOEXEC);
@@ -3700,6 +3707,7 @@ int client_send_command_reply(struct notification_client *client,
 	struct lttng_notification_channel_message msg = {
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_COMMAND_REPLY,
 		.size = sizeof(reply),
+		.fds = 0,
 	};
 	char buffer[sizeof(msg) + sizeof(reply)];
 	enum client_transmission_status transmission_status;
@@ -3804,6 +3812,7 @@ int client_handle_message_handshake(struct notification_client *client,
 	const struct lttng_notification_channel_message msg_header = {
 			.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE,
 			.size = sizeof(handshake_reply),
+			.fds = 0,
 	};
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
@@ -4274,6 +4283,8 @@ int client_notification_overflow(struct notification_client *client)
 	int ret = 0;
 	const struct lttng_notification_channel_message msg = {
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED,
+		.size = 0,
+		.fds = 0,
 	};
 
 	ASSERT_LOCKED(client->lock);
@@ -4378,6 +4389,8 @@ int notification_client_list_send_evaluation(
 	};
 	struct lttng_notification_channel_message msg_header = {
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
+		.size = 0,
+		.fds = 0,
 	};
 	const struct lttng_credentials *trigger_creds =
 			lttng_trigger_get_credentials(trigger);

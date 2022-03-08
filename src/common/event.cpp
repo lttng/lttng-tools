@@ -77,7 +77,7 @@ static int lttng_event_probe_attr_serialize(
 {
 	int ret;
 	size_t symbol_name_len;
-	struct lttng_event_probe_attr_comm comm = { 0 };
+	struct lttng_event_probe_attr_comm comm = {};
 
 	symbol_name_len = lttng_strnlen(probe->symbol_name, LTTNG_SYMBOL_NAME_LEN);
 	if (symbol_name_len == LTTNG_SYMBOL_NAME_LEN) {
@@ -700,7 +700,7 @@ int lttng_event_serialize(const struct lttng_event *event,
 	unsigned int i;
 	size_t header_offset, size_before_payload;
 	size_t name_len;
-	struct lttng_event_comm event_comm = { 0 };
+	struct lttng_event_comm event_comm = {};
 	struct lttng_event_comm *header;
 
 	assert(event);
@@ -1128,7 +1128,7 @@ static int lttng_event_context_app_serialize(
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_event_context_app_comm comm = { 0 };
+	struct lttng_event_context_app_comm comm = {};
 	size_t provider_len, ctx_len;
 	const char *provider_name;
 	const char *ctx_name;
@@ -1196,7 +1196,7 @@ static int lttng_event_context_perf_counter_serialize(
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_event_context_perf_counter_comm comm = { 0 };
+	struct lttng_event_context_perf_counter_comm comm = {};
 
 	assert(payload);
 	assert(context);
@@ -1417,7 +1417,7 @@ int lttng_event_field_serialize(const struct lttng_event_field *field,
 	int ret;
 	size_t header_offset, size_before_event;
 	size_t name_len;
-	struct lttng_event_field_comm event_field_comm = { 0 };
+	struct lttng_event_field_comm event_field_comm = {};
 	struct lttng_event_field_comm *header;
 
 	assert(field);

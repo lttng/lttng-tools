@@ -648,6 +648,9 @@ void monitor_timer(struct lttng_consumer_channel *channel)
 			consumer_timer_thread_get_channel_monitor_pipe();
 	struct lttcomm_consumer_channel_monitor_msg msg = {
 		.key = channel->key,
+		.lowest = 0,
+		.highest = 0,
+		.total_consumed = 0,
 	};
 	sample_positions_cb sample;
 	get_consumed_cb get_consumed;

@@ -3287,6 +3287,7 @@ void cmd_destroy_session_reply(const struct ltt_session *session,
 		.cmd_header_size =
 			sizeof(struct lttcomm_session_destroy_command_header),
 		.data_size = 0,
+		.fd_count = 0,
 	};
 	size_t payload_size_before_location;
 

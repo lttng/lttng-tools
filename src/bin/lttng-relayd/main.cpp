@@ -2543,6 +2543,7 @@ static ssize_t relay_unpack_rotate_streams_header(
 			sizeof(rotate_streams.stream_count));
 	rotate_streams = (typeof(rotate_streams)) {
 		.stream_count = be32toh(rotate_streams.stream_count),
+		.new_chunk_id = LTTNG_OPTIONAL_INIT_UNSET,
 	};
 
 	/*

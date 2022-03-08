@@ -130,6 +130,8 @@ static struct {
 	unsigned long value;
 } seed = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
+	.initialized = false,
+	.value = 0,
 };
 
 static int match_fd(struct cds_lfht_node *node, const void *key);

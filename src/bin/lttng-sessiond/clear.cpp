@@ -38,6 +38,7 @@ void cmd_clear_session_reply(const struct ltt_session *session,
 		.pid = UINT32_MAX,
 		.cmd_header_size = 0,
 		.data_size = 0,
+		.fd_count = 0,
 	};
 
 	DBG("End of clear command: replying to client");

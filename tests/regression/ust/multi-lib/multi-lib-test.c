@@ -178,7 +178,7 @@ int main(int argc, const char **argv)
 			{ "test", 't', POPT_ARG_INT, &test, 0, "Test to run", NULL },
 			{ "list", 'l', 0, 0, 'l', "List of tests (-t X)", NULL },
 			POPT_AUTOHELP
-			{ NULL, 0, 0, NULL, 0 }
+			{ NULL, 0, 0, NULL, 0, NULL, NULL }
 	};
 
 	optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);

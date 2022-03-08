@@ -524,7 +524,7 @@ int lttcomm_populate_sock_from_open_socket(
 {
 	int ret = 0;
 	socklen_t storage_len;
-	struct sockaddr_storage storage = { 0 };
+	struct sockaddr_storage storage = {};
 
 	assert(sock);
 	assert(fd >= 0);

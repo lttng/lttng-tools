@@ -1203,7 +1203,7 @@ int create_snapshot_session(const char *session_name, xmlNodePtr output_node,
 			xmlNextElementSibling(snapshot_output_node)) {
 		char *name = NULL;
 		uint64_t max_size = UINT64_MAX;
-		struct consumer_output output = { 0 };
+		struct consumer_output output = {};
 		struct lttng_snapshot_output *snapshot_output = NULL;
 		const char *control_uri = NULL;
 		const char *data_uri = NULL;
@@ -1329,7 +1329,7 @@ int create_session(const char *name,
 	const struct config_load_session_override_attr *overrides)
 {
 	int ret;
-	struct consumer_output output = { 0 };
+	struct consumer_output output = {};
 	xmlNodePtr consumer_output_node;
 	const char *control_uri = NULL;
 	const char *data_uri = NULL;
@@ -3859,7 +3859,7 @@ int config_load_session(const char *path, const char *session_name,
 	int ret;
 	bool session_loaded = false;
 	const char *path_ptr = NULL;
-	struct session_config_validation_ctx validation_ctx = { 0 };
+	struct session_config_validation_ctx validation_ctx = {};
 
 	ret = init_session_config_validation_ctx(&validation_ctx);
 	if (ret) {

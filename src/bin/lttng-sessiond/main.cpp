@@ -1361,6 +1361,7 @@ static void unregister_all_triggers(void)
 	unsigned int trigger_count, i;
 	const struct lttng_credentials creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(0),
+		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
 
 	DBG("Unregistering all triggers");

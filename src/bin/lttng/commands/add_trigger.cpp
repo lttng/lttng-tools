@@ -659,7 +659,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	int consumed_args = -1;
 	struct lttng_kernel_probe_location *kernel_probe_location = NULL;
 	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
-	struct parse_event_rule_res res = { 0 };
+	struct parse_event_rule_res res = {};
 	struct lttng_event_expr *event_expr = NULL;
 	struct filter_parser_ctx *parser_ctx = NULL;
 	struct lttng_log_level_rule *log_level_rule = NULL;

@@ -231,6 +231,7 @@ static void *thread_dispatch_ust_registration(void *data)
 	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
 	struct ust_reg_wait_queue wait_queue = {
 		.count = 0,
+		.head = {},
 	};
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 

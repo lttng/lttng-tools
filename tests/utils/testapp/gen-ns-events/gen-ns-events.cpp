@@ -72,7 +72,7 @@ static struct poptOption opts[] = {
 	{ "after", 'a', POPT_ARG_STRING, &after_unshare_wait_file_path, 0, "Wait for file after unshare", NULL },
 	{ "signal", 's', POPT_ARG_STRING, &after_unshare_signal_file_path, 0, "Create signal file after unshare", NULL },
 	POPT_AUTOHELP
-	{ NULL, 0, 0, NULL, 0 }
+	{ NULL, 0, 0, NULL, 0, NULL, NULL }
 };
 
 static ATTR_FORMAT_PRINTF(1, 2)

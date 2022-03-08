@@ -6,7 +6,8 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests/utils -I$(srcdir) \
 if HAVE_LIBLTTNG_UST_CTL
 # Disable some warnings flags to accomodate the tracepoint headers
 WARN_FLAGS = \
-	-Wno-redundant-decls
+	-Wno-redundant-decls \
+	-Wno-missing-field-initializers
 
 AM_CFLAGS += $(WARN_FLAGS)
 AM_CXXFLAGS += $(WARN_FLAGS)

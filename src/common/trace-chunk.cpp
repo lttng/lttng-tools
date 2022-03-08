@@ -1007,6 +1007,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_credentials_current_user(
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 	const struct chunk_credentials credentials = {
 		.use_current_user = true,
+		.user = {},
 	};
 
 	pthread_mutex_lock(&chunk->lock);

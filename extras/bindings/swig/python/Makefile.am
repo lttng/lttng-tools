@@ -10,6 +10,8 @@ lttng.i: lttng.i.in
 # Disable -Wshadow for that file.
 AM_CFLAGS += -Wno-shadow
 
+AM_CFLAGS += -Wno-missing-field-initializers
+
 AM_CPPFLAGS += $(PYTHON_INCLUDE)
 
 EXTRA_DIST = lttng.i.in

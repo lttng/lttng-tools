@@ -83,7 +83,7 @@
  * The wrapped field is set to the value it would gave if it had static storage
  * duration.
  */
-#define LTTNG_OPTIONAL_INIT_UNSET { .is_set = 0 }
+#define LTTNG_OPTIONAL_INIT_UNSET {}
 
 /*
  * Initialize an optional field as 'set' with a given value.

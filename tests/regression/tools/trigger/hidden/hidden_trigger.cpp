@@ -66,7 +66,10 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 		{
 			.type = LTTNG_DOMAIN_UST,
 			.buf_type = LTTNG_BUFFER_PER_UID,
-		}
+			.padding = {},
+			.attr = {},
+		},
+		{}
 	};
 
 	lttng_channel channel_cfg {};

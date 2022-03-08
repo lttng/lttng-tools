@@ -283,6 +283,10 @@ enum lttng_error_code lttng_clear_session(const char *session_name,
 	struct lttng_clear_handle *handle = NULL;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_CLEAR_SESSION,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
 	};
 	int sessiond_socket = -1;
 	ssize_t comm_ret;

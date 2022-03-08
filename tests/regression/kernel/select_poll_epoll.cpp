@@ -66,15 +66,15 @@ static const struct test_case {
 {
 	{ .run = run_working_cases, .produces_validation_info = true, .timeout = -1 },
 	{ .run = run_working_cases, .produces_validation_info = true, .timeout = 1 },
-	{ .run = pselect_invalid_fd, .produces_validation_info = false },
-	{ .run = test_ppoll_big, .produces_validation_info = false },
-	{ .run = ppoll_fds_buffer_overflow, .produces_validation_info = false },
-	{ .run = pselect_invalid_pointer, .produces_validation_info = false },
-	{ .run = ppoll_fds_ulong_max, .produces_validation_info = false },
-	{ .run = epoll_pwait_invalid_pointer, .produces_validation_info = true },
-	{ .run = epoll_pwait_int_max, .produces_validation_info = true },
-	{ .run = ppoll_concurrent_write, .produces_validation_info = false },
-	{ .run = epoll_pwait_concurrent_munmap, .produces_validation_info = true },
+	{ .run = pselect_invalid_fd, .produces_validation_info = false, .timeout = 0 },
+	{ .run = test_ppoll_big, .produces_validation_info = false, .timeout = 0 },
+	{ .run = ppoll_fds_buffer_overflow, .produces_validation_info = false, .timeout = 0 },
+	{ .run = pselect_invalid_pointer, .produces_validation_info = false, .timeout = 0 },
+	{ .run = ppoll_fds_ulong_max, .produces_validation_info = false, .timeout = 0 },
+	{ .run = epoll_pwait_invalid_pointer, .produces_validation_info = true, .timeout = 0 },
+	{ .run = epoll_pwait_int_max, .produces_validation_info = true, .timeout = 0 },
+	{ .run = ppoll_concurrent_write, .produces_validation_info = false, .timeout = 0 },
+	{ .run = epoll_pwait_concurrent_munmap, .produces_validation_info = true, .timeout = 0 },
 };
 
 struct ppoll_thread_data {
@@ -935,7 +935,7 @@ int main(int argc, const char **argv)
 		{ "validation-file", 'o', POPT_ARG_STRING, &test_validation_output_file_path, 0,
 			"Test case output", NULL },
 		POPT_AUTOHELP
-		{ NULL, 0, 0, NULL, 0 }
+		{ NULL, 0, 0, NULL, 0, NULL, NULL }
 	};
 	const struct test_case *test_case;
 

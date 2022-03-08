@@ -154,7 +154,7 @@ end:
 int main(int argc, char **argv)
 {
 	int ret;
-	struct validation_ctx ctx = { 0 };
+	struct validation_ctx ctx = {};
 
 	/* Check if we have all argument */
 	if (argc < 3) {

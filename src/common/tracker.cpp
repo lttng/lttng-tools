@@ -247,6 +247,7 @@ int process_attr_tracker_value_serialize(const struct process_attr_value *value,
 	int ret;
 	struct process_attr_tracker_value_comm value_comm = {
 			.type = (int32_t) value->type,
+			.value = {},
 	};
 	const char *name = NULL;
 

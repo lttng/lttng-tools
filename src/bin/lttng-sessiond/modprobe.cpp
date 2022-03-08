@@ -30,38 +30,47 @@ struct kern_modules_param kern_modules_control_core[] = {
 	{
 		.name = (char *) "lttng-ring-buffer-client-discard",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-client-overwrite",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-metadata-client",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-client-mmap-discard",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-client-mmap-overwrite",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-metadata-mmap-client",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-ring-buffer-event_notifier-client",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-counter-client-percpu-64-modular",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-counter-client-percpu-32-modular",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 };
 
@@ -70,170 +79,212 @@ struct kern_modules_param kern_modules_probes_default[] = {
 	{
 		.name = (char *) "lttng-probe-asoc",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-block",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-btrfs",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-compaction",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-ext3",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-ext4",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-gpio",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-i2c",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-irq",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-jbd",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-jbd2",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-kmem",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-kvm",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-kvm-x86",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-kvm-x86-mmu",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-lock",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-module",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-napi",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-net",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-power",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-preemptirq",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-printk",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-random",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-rcu",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-regmap",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-regulator",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-rpm",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-sched",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-scsi",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-signal",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-skb",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-sock",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-statedump",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-sunrpc",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-timer",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-udp",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-vmscan",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-v4l2",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-workqueue",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-writeback",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-x86-irq-vectors",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 	{
 		.name = (char *) "lttng-probe-x86-exceptions",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
 	},
 };
 

@@ -198,7 +198,7 @@ int lttng_channel_serialize(
 {
 	int ret;
 	size_t name_len;
-	struct lttng_channel_comm channel_comm = { 0 };
+	struct lttng_channel_comm channel_comm = {};
 	struct lttng_channel_extended *extended;
 
 	assert(channel);

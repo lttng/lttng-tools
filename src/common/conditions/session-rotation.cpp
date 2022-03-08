@@ -520,7 +520,7 @@ int lttng_evaluation_session_rotation_serialize(
 {
 	int ret;
 	struct lttng_evaluation_session_rotation *rotation;
-	struct lttng_evaluation_session_rotation_comm comm = { 0 };
+	struct lttng_evaluation_session_rotation_comm comm = {};
 
 	rotation = container_of(evaluation,
 			struct lttng_evaluation_session_rotation, parent);

@@ -5,7 +5,8 @@ AM_CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/tests/utils \
 
 if HAVE_LIBLTTNG_UST_CTL
 WARN_FLAGS = \
-	-Wno-redundant-decls
+	-Wno-redundant-decls \
+	-Wno-missing-field-initializers
 
 AM_CFLAGS += $(WARN_FLAGS)
 AM_CXXFLAGS += $(WARN_FLAGS)

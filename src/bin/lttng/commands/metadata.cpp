@@ -41,7 +41,7 @@ static struct poptOption long_options[] = {
 	{ "help",		'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0, },
 	{ "session",		's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{ "list-options",	0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, 0, 0, },
-	{ "list-commands",  	0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS},
+	{ "list-commands",  	0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL},
 	{ 0, 0, 0, 0, 0, 0, 0, },
 };
 

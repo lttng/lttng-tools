@@ -981,6 +981,9 @@ event_notifier_error_accounting_register_kernel(
 				LTTNG_KERNEL_ABI_COUNTER_BITNESS_64,
 		.number_dimensions = 1,
 		.global_sum_step = 0,
+		.dimensions = {},
+		.coalesce_hits = 0,
+		.padding = {},
 	};
 	error_counter_conf.dimensions[0].size = kernel_state.number_indices;
 	error_counter_conf.dimensions[0].has_underflow = false;

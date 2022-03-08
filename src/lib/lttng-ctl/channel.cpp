@@ -575,6 +575,7 @@ int handshake(struct lttng_notification_channel *channel)
 	struct lttng_notification_channel_message msg_header = {
 		.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE,
 		.size = sizeof(handshake),
+		.fds = 0,
 	};
 	char send_buffer[sizeof(msg_header) + sizeof(handshake)];
 
@@ -623,6 +624,8 @@ enum lttng_notification_channel_status send_condition_command(
 	struct lttng_payload payload;
 	struct lttng_notification_channel_message cmd_header = {
 		.type = (int8_t) type,
+		.size =0,
+		.fds = 0,
 	};
 
 	lttng_payload_init(&payload);

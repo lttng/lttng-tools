@@ -916,7 +916,13 @@ int lttng_add_context(struct lttng_handle *handle,
 		const char *channel_name)
 {
 	int ret;
-	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_ADD_CONTEXT };
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_ADD_CONTEXT,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
+	};
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
@@ -1084,7 +1090,13 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		const char *original_filter_expression,
 		int exclusion_count, char **exclusion_list)
 {
-	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_ENABLE_EVENT };
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_ENABLE_EVENT,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
+	};
 	struct lttng_payload payload;
 	int ret = 0;
 	unsigned int free_filter_expression = 0;
@@ -1263,7 +1275,13 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		struct lttng_event *ev, const char *channel_name,
 		const char *original_filter_expression)
 {
-	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_DISABLE_EVENT };
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_DISABLE_EVENT,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
+	};
 	struct lttng_payload payload;
 	int ret = 0;
 	unsigned int free_filter_expression = 0;
@@ -1650,7 +1668,13 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
         enum lttng_error_code ret_code;
         int ret, total_payload_received;
         char *reception_buffer = NULL;
-        struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_LIST_TRACEPOINTS };
+        struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_LIST_TRACEPOINTS,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
+	};
         struct lttcomm_list_command_header *cmd_header = NULL;
         size_t cmd_header_len;
         unsigned int nb_events = 0;
@@ -1875,6 +1899,10 @@ enum lttng_error_code lttng_create_session_ext(
 	enum lttng_error_code ret_code;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_CREATE_SESSION_EXT,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
 	};
 	void *reply = NULL;
 	struct lttng_buffer_view reply_view;
@@ -2983,6 +3011,10 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 	int ret;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_REGISTER_TRIGGER,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
 	};
 	lsm.u.trigger.is_trigger_anonymous = !name && !generate_name;
 	struct lttcomm_session_msg *message_lsm;
@@ -3155,6 +3187,10 @@ enum lttng_error_code lttng_error_query_execute(
 	enum lttng_error_code ret_code;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_EXECUTE_ERROR_QUERY,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
 	};
 	struct lttng_payload message;
 	struct lttng_payload reply;
@@ -3339,7 +3375,13 @@ enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
 {
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_LIST_TRIGGERS };
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_LIST_TRIGGERS,
+		.session = {},
+		.domain = {},
+		.u = {},
+		.fd_count = 0,
+	};
 	struct lttng_triggers *local_triggers = NULL;
 	struct lttng_payload reply;
 	struct lttng_payload_view lsm_view =

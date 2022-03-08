@@ -1731,6 +1731,7 @@ int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key)
 	int ret;
 	lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
+		.u = {},
 	};
 	msg.u.open_channel_packets.key = key;
 
@@ -1786,6 +1787,7 @@ int consumer_init(struct consumer_socket *socket,
 	int ret;
 	struct lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_INIT,
+		.u = {},
 	};
 
 	LTTNG_ASSERT(socket);
@@ -1830,6 +1832,7 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	enum lttng_trace_chunk_status tc_status;
 	struct lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
+		.u = {},
 	};
 	msg.u.create_trace_chunk.session_id = session_id;
 
@@ -1984,6 +1987,7 @@ int consumer_close_trace_chunk(struct consumer_socket *socket,
 	enum lttng_trace_chunk_status chunk_status;
 	lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
+		.u = {},
 	};
 	msg.u.close_trace_chunk.session_id = session_id;
 
@@ -2110,6 +2114,7 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 	enum lttng_trace_chunk_status chunk_status;
 	lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
+		.u = {},
 	};
 	msg.u.trace_chunk_exists.session_id = session_id;
 
