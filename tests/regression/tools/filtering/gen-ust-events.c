@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 	double dbl = 2.0;
 	float flt = 2222.0;
 	/* Generate 30 events. */
-	unsigned int nr_iter = 100;
+	int nr_iter = 100;
 	useconds_t nr_usec = 0;
 
 	if (argc >= 2) {

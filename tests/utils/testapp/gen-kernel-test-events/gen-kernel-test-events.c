@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	}
 
 	len = write(fd, nr_events_str, strlen(nr_events_str) + 1);
-	if (len != strlen(nr_events_str) + 1) {
+	if (len != (ssize_t) strlen(nr_events_str) + 1) {
 		perror("write");
 		ret = -1;
 	} else {
