@@ -18,6 +18,8 @@
 
 #include <stdbool.h>
 
+#include <type_traits>
+
 struct process_attr_tracker_values_comm_header {
 	uint32_t count;
 };
@@ -33,16 +35,16 @@ struct process_attr_tracker_value_comm {
 };
 
 #define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)              \
-	((as_type)(is_signed(as_type) ? (value_ptr)->u._signed : \
+	((as_type)(std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
 					(value_ptr)->u._unsigned))
 
-#define SET_INTEGRAL_COMM_VALUE(comm_value, value)                         \
-	if (is_signed(typeof(value))) {                                    \
+#define SET_INTEGRAL_COMM_VALUE(comm_value, val)                         \
+	if (std::is_signed<typeof(val)>::value) {                                    \
 		(comm_value)->u._signed =                                  \
-				(typeof((comm_value)->u._signed)) value;   \
+				(typeof((comm_value)->u._signed)) val;   \
 	} else {                                                           \
 		(comm_value)->u._unsigned =                                \
-				(typeof((comm_value)->u._unsigned)) value; \
+				(typeof((comm_value)->u._unsigned)) val; \
 	}
 
 static inline bool is_virtual_process_attr(enum lttng_process_attr process_attr)

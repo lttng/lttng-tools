@@ -171,7 +171,7 @@ const char *lttng_trace_chunk_command_type_str(
 };
 
 static
-const chunk_command close_command_get_post_release_func(
+chunk_command close_command_get_post_release_func(
 		lttng_trace_chunk_command_type type) {
 	switch (type) {
 	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED:

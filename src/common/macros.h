@@ -69,8 +69,6 @@ void *zmalloc(size_t len)
 #endif
 #endif
 
-#define is_signed(type) (((type) -1) < (type) 1)
-
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))

@@ -536,7 +536,7 @@ int lttng_error_query_results_serialize(
 	const size_t result_count = lttng_dynamic_pointer_array_get_count(
 			&results->results);
 	const struct lttng_error_query_results_comm header = {
-		.count = (typeof(header.count)) result_count,
+		.count = (decltype(header.count)) result_count,
 	};
 
 	/* Header. */
@@ -744,7 +744,7 @@ int lttng_error_query_serialize(const struct lttng_error_query *query,
 {
 	int ret;
 	const struct lttng_error_query_comm header = {
-		.target_type = (typeof(header.target_type)) query->target_type,
+		.target_type = (decltype(header.target_type)) query->target_type,
 	};
 
 	ret = lttng_dynamic_buffer_append(

@@ -5,6 +5,8 @@
  *
  */
 
+#include <type_traits>
+
 #include "lttng-ctl-helper.h"
 #include "lttng/domain.h"
 #include "lttng/lttng-error.h"
@@ -217,7 +219,7 @@ end:
 				.value_type = (uint32_t)                                                             \
 				LTTNG_PROCESS_ATTR_VALUE_TYPE_##value_type_enum;                                     \
                                                                                                                      \
-		if (is_signed(value_type_c)) {                                                                       \
+		if (std::is_signed<value_type_c>::value) {                                                                       \
 			lsm.u.process_attr_tracker_add_remove_include_value                                          \
 					.integral_value.u._signed = value;                                           \
 		} else {                                                                                             \
