@@ -405,7 +405,8 @@ end:
  * See config_entry_handler_cb comment in common/config/session-config.h for the
  * return value conventions.
  */
-static int config_entry_handler(const struct config_entry *entry, void *unused)
+static int config_entry_handler(const struct config_entry *entry,
+		void *unused __attribute__((unused)))
 {
 	int ret = 0, i;
 
@@ -676,7 +677,8 @@ static void print_global_objects(void)
 	print_sessions();
 }
 
-static int noop_close(void *data, int *fds)
+static int noop_close(void *data __attribute__((unused)),
+		int *fds __attribute__((unused)))
 {
 	return 0;
 }
@@ -973,7 +975,7 @@ end:
 	return ret;
 }
 
-static int close_sock(void *data, int *in_fd)
+static int close_sock(void *data, int *in_fd __attribute__((unused)))
 {
 	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
@@ -1085,7 +1087,7 @@ end:
 /*
  * This thread manages the listening for new connections on the network
  */
-static void *relay_thread_listener(void *data)
+static void *relay_thread_listener(void *data __attribute__((unused)))
 {
 	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
@@ -1289,7 +1291,7 @@ error_sock_control:
 /*
  * This thread manages the dispatching of the requests to worker threads
  */
-static void *relay_thread_dispatcher(void *data)
+static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 {
 	int err = -1;
 	ssize_t ret;
@@ -1376,7 +1378,8 @@ static bool session_streams_have_index(const struct relay_session *session)
  *
  * On success, send back the session id or else return a negative value.
  */
-static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_create_session(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -1568,7 +1571,8 @@ end:
 /*
  * relay_add_stream: allocate a new stream for a session
  */
-static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_add_stream(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -1707,7 +1711,8 @@ end_no_session:
 /*
  * relay_close_stream: close a specific stream
  */
-static int relay_close_stream(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_close_stream(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -1785,7 +1790,8 @@ end_no_session:
  * relay_reset_metadata: reset a metadata stream
  */
 static
-int relay_reset_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
+int relay_reset_metadata(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -1884,9 +1890,10 @@ static void relay_unknown_command(struct relay_connection *conn)
  * relay_start: send an acknowledgment to the client to tell if we are
  * ready to receive data. We are ready if a session is established.
  */
-static int relay_start(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_start(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
-		const struct lttng_buffer_view *payload)
+		const struct lttng_buffer_view *payload __attribute__((unused)))
 {
 	int ret = 0;
 	ssize_t send_ret;
@@ -1977,7 +1984,8 @@ end:
 /*
  * relay_send_version: send relayd version number
  */
-static int relay_send_version(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_send_version(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2047,7 +2055,8 @@ end:
 /*
  * Check for data pending for a given stream id from the session daemon.
  */
-static int relay_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_data_pending(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2136,7 +2145,8 @@ end_no_session:
  * the control socket has been handled. So, this is why we simply return
  * OK here.
  */
-static int relay_quiescent_control(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_quiescent_control(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2276,7 +2286,8 @@ end_no_session:
  *
  * Return to the client if there is data in flight or not with a ret_code.
  */
-static int relay_end_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_end_data_pending(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2368,7 +2379,8 @@ end_no_session:
  *
  * Return 0 on success else a negative value.
  */
-static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_recv_index(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2456,9 +2468,10 @@ end_no_session:
  *
  * Return 0 on success else a negative value.
  */
-static int relay_streams_sent(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_streams_sent(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
-		const struct lttng_buffer_view *payload)
+		const struct lttng_buffer_view *payload __attribute__((unused)))
 {
 	int ret;
 	ssize_t send_ret;
@@ -2620,7 +2633,7 @@ error:
  * session rotation feature (not the tracefile rotation feature).
  */
 static int relay_rotate_session_streams(
-		const struct lttcomm_relayd_hdr *recv_hdr,
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2758,7 +2771,8 @@ end_no_reply:
 /*
  * relay_create_trace_chunk: create a new trace chunk
  */
-static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_create_trace_chunk(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -2944,7 +2958,8 @@ end_no_reply:
 /*
  * relay_close_trace_chunk: close a trace chunk
  */
-static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_close_trace_chunk(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -3200,7 +3215,8 @@ end_no_reply:
 /*
  * relay_trace_chunk_exists: check if a trace chunk exists
  */
-static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_trace_chunk_exists(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -3263,7 +3279,8 @@ end_no_reply:
 /*
  * relay_get_configuration: query whether feature is available
  */
-static int relay_get_configuration(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_get_configuration(
+		const struct lttcomm_relayd_hdr *recv_hdr __attribute__((unused)),
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
@@ -3897,7 +3914,7 @@ static void relay_thread_close_connection(struct lttng_poll_event *events,
 /*
  * This thread does the actual work
  */
-static void *relay_thread_worker(void *data)
+static void *relay_thread_worker(void *data __attribute__((unused)))
 {
 	int ret, err = -1, last_seen_data_fd = -1;
 	uint32_t nb_fd;
@@ -4225,7 +4242,7 @@ static int create_relay_conn_pipe(void)
 			"Relayd connection pipe", relay_conn_pipe);
 }
 
-static int stdio_open(void *data, int *fds)
+static int stdio_open(void *data __attribute__((unused)), int *fds)
 {
 	fds[0] = fileno(stdout);
 	fds[1] = fileno(stderr);

@@ -117,7 +117,7 @@ static void test_utils_parse_size_suffix(void)
 	}
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	plan_tests(num_valid_tests + num_invalid_tests);
 

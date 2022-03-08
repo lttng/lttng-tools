@@ -32,7 +32,7 @@ end:
 	return ret;
 }
 
-static int close_epoll(void *data, int *in_fd)
+static int close_epoll(void *data, int *in_fd __attribute__((unused)))
 {
 	/* Will close the epfd. */
 	lttng_poll_clean((struct lttng_poll_event *) data);

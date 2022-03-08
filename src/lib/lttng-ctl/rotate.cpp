@@ -196,7 +196,7 @@ end:
  * Return 0 on success else a negative LTTng error code.
  */
 int lttng_rotate_session(const char *session_name,
-		struct lttng_rotation_immediate_descriptor *descriptor,
+		struct lttng_rotation_immediate_descriptor *descriptor __attribute__((unused)),
 		struct lttng_rotation_handle **rotation_handle)
 {
 	struct lttcomm_session_msg lsm;

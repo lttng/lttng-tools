@@ -43,6 +43,7 @@ TRACEPOINT_ENUM(multi, enum_a,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 		ctf_enum(multi, enum_a, int16_t, enum_short_C,  0)
 		ctf_enum(multi, enum_a, int32_t, enum_int_C,  1)
 		ctf_enum(multi, enum_a, uint64_t, enum_long_C,  2)
@@ -59,7 +60,8 @@ TRACEPOINT_ENUM(multi, enum_a,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
-	ctf_enum(multi, enum_a, int32_t, enum_int_D,  1)
+		ctf_unused(arg)
+		ctf_enum(multi, enum_a, int32_t, enum_int_D,  1)
 		ctf_enum(multi, enum_a, int16_t, enum_short_D,  0)
 		ctf_enum(multi, enum_a, uint64_t, enum_long_D,  2)
 	)
@@ -128,6 +130,7 @@ TRACEPOINT_ENUM(multi, enum_a,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 		ctf_enum(multi, enum_a, int32_t, enum_int,  1)
 	)
 )
@@ -142,7 +145,8 @@ TRACEPOINT_ENUM(multi, enum_a,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
-	ctf_enum(multi, enum_a, int64_t, enum_int,  1)
+		ctf_unused(arg)
+		ctf_enum(multi, enum_a, int64_t, enum_int,  1)
 	)
 )
 #elif defined(ACTIVATE_PROBES_N)
@@ -156,6 +160,7 @@ TRACEPOINT_ENUM(multi, enum_a,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 		ctf_enum(multi, enum_a, int16_t, enum_int,  1)
 	)
 )
@@ -163,6 +168,7 @@ TRACEPOINT_EVENT(multi, tp,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 		ctf_string(arg_string, "string")
 	)
 )
@@ -170,6 +176,7 @@ TRACEPOINT_EVENT(multi, tp,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 		ctf_string(my_arg_string, "string")
 	)
 )
@@ -177,6 +184,7 @@ TRACEPOINT_EVENT(multi, tp,
 TRACEPOINT_EVENT(multi, tp,
 	TP_ARGS(uint64_t, arg),
 	TP_FIELDS(
+		ctf_unused(arg)
 	)
 )
 #endif

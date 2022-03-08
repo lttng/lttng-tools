@@ -566,7 +566,7 @@ end:
 static int cmd_track_untrack(enum cmd_type cmd_type,
 		int argc,
 		const char **argv,
-		const char *help_msg)
+		const char *help_msg __attribute__((unused)))
 {
 	int opt, ret = 0;
 	bool sub_command_failed = false;

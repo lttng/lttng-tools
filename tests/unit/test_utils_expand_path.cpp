@@ -327,7 +327,7 @@ static void test_utils_expand_path(void)
 	}
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	if (prepare_symlink_tree() != 0) {
 		goto error_mkdir;

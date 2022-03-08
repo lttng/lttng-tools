@@ -172,7 +172,7 @@ static void test_normalize_star_glob_pattern(void)
 	test_one_normalize_star_glob_pattern("**\\***", "*\\**");
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	diag("String utils unit tests");

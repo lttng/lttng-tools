@@ -68,7 +68,8 @@ static int count_arguments(const char **argv)
 	return i;
 }
 
-static int regenerate_metadata(int argc, const char **argv)
+static int regenerate_metadata(int argc,
+		const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -87,7 +88,8 @@ end:
 	return ret;
 }
 
-static int regenerate_statedump(int argc, const char **argv)
+static int regenerate_statedump(int argc,
+		const char **argv __attribute__((unused)))
 {
 	int ret;
 

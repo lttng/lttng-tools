@@ -13,7 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 
-int main(int argc, char **argv)
+int main(void)
 {
 	uint64_t i;
 

@@ -43,7 +43,8 @@ int lttng_fd_get(enum lttng_fd_type type, unsigned int nr)
 	return 0;
 }
 
-void lttng_fd_put(enum lttng_fd_type type, unsigned int nr)
+void lttng_fd_put(enum lttng_fd_type type __attribute__((unused)),
+		unsigned int nr)
 {
 	uatomic_sub(&fd_count, (long) nr);
 }

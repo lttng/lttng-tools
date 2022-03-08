@@ -243,7 +243,7 @@ static void test_rate_policy_once_after_n(void)
 	lttng_payload_reset(&payload);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_rate_policy_every_n();

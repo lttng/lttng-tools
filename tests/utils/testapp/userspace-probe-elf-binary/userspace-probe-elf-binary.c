@@ -14,7 +14,7 @@ void __attribute__ ((noinline)) test_function(void)
 	not_a_function += 1;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	test_function();
 	dynamic_symbol(42);

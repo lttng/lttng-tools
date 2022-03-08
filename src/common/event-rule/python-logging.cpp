@@ -376,7 +376,7 @@ lttng_event_rule_python_logging_get_internal_filter_bytecode(
 
 static enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_python_logging_generate_exclusions(
-		const struct lttng_event_rule *rule,
+		const struct lttng_event_rule *rule __attribute__((unused)),
 		struct lttng_event_exclusion **_exclusions)
 {
 	/* Unsupported. */
@@ -849,7 +849,8 @@ end:
 	return status;
 }
 
-static bool log_level_rule_valid(const struct lttng_log_level_rule *rule)
+static bool log_level_rule_valid(
+		const struct lttng_log_level_rule *rule __attribute__((unused)))
 {
 	/*
 	 * For python, custom log level are possible, it is not clear if

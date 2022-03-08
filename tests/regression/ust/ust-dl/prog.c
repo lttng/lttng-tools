@@ -19,7 +19,7 @@
  * This test is therefore a mix of dlopen/dlclose and dlmopen/dlclose of
  * libfoo, and of its direct dependencies.
  */
-int main(int argc, char **argv)
+int main(void)
 {
 	void *h0, *h2, *h3, *h4;
 

@@ -748,7 +748,6 @@ static void print_condition_event_rule_matches(
 }
 
 static void print_action_errors(const struct lttng_trigger *trigger,
-		const struct lttng_action *action,
 		const uint64_t *action_path_indexes,
 		size_t action_path_length)
 {
@@ -963,7 +962,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	}
 
 	MSG("");
-	print_action_errors(trigger, action, action_path_indexes,
+	print_action_errors(trigger, action_path_indexes,
 			action_path_length);
 
 end:

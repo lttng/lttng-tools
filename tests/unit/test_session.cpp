@@ -322,7 +322,7 @@ static void test_large_session_number(void)
 	   MAX_SESSIONS);
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 
 	plan_tests(NUM_TESTS);

@@ -15,7 +15,7 @@
 #define TRACEPOINT_CREATE_PROBES
 #include "ust_tests_td.h"
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	int i;
 

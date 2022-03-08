@@ -917,7 +917,6 @@ relayd_comm_error:
  * Returns LTTNG_OK, or an LTTng error code on failure.
  */
 static enum lttng_error_code send_consumer_relayd_sockets(
-		enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
 		struct consumer_socket *sock, const char *session_name,
 		const char *hostname, const char *base_path, int session_live_timer,
@@ -998,7 +997,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 		cds_lfht_for_each_entry(usess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
+			ret = send_consumer_relayd_sockets(session->id,
 					usess->consumer, socket,
 					session->name, session->hostname,
 					session->base_path,
@@ -1026,7 +1025,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
 				socket, node.node) {
 			pthread_mutex_lock(socket->lock);
-			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
+			ret = send_consumer_relayd_sockets(session->id,
 					ksess->consumer, socket,
 					session->name, session->hostname,
 					session->base_path,
@@ -5038,7 +5037,7 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	cds_lfht_for_each_entry(output->socks->ht, &iter.iter,
 			socket, node.node) {
 		pthread_mutex_lock(socket->lock);
-		status = send_consumer_relayd_sockets(LTTNG_DOMAIN_NONE, session->id,
+		status = send_consumer_relayd_sockets(session->id,
 				output, socket,
 				session->name, session->hostname,
 				base_path,
@@ -5067,7 +5066,7 @@ static enum lttng_error_code record_kernel_snapshot(
 		struct ltt_kernel_session *ksess,
 		const struct consumer_output *output,
 		const struct ltt_session *session,
-		int wait, uint64_t nb_packets_per_stream)
+		uint64_t nb_packets_per_stream)
 {
 	enum lttng_error_code status;
 
@@ -5076,7 +5075,7 @@ static enum lttng_error_code record_kernel_snapshot(
 	LTTNG_ASSERT(session);
 
 	status = kernel_snapshot_record(
-			ksess, output, wait, nb_packets_per_stream);
+			ksess, output, nb_packets_per_stream);
 	return status;
 }
 
@@ -5088,7 +5087,7 @@ static enum lttng_error_code record_kernel_snapshot(
 static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 		const struct consumer_output *output,
 		const struct ltt_session *session,
-		int wait, uint64_t nb_packets_per_stream)
+		uint64_t nb_packets_per_stream)
 {
 	enum lttng_error_code status;
 
@@ -5097,7 +5096,7 @@ static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(session);
 
 	status = ust_app_snapshot_record(
-			usess, output, wait, nb_packets_per_stream);
+			usess, output, nb_packets_per_stream);
 	return status;
 }
 
@@ -5191,7 +5190,7 @@ int64_t get_session_nb_packets_per_stream(const struct ltt_session *session,
 
 static
 enum lttng_error_code snapshot_record(struct ltt_session *session,
-		const struct snapshot_output *snapshot_output, int wait)
+		const struct snapshot_output *snapshot_output)
 {
 	int64_t nb_packets_per_stream;
 	char snapshot_chunk_name[LTTNG_NAME_MAX];
@@ -5311,7 +5310,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 	if (session->kernel_session) {
 		ret_code = record_kernel_snapshot(session->kernel_session,
 				snapshot_kernel_consumer_output, session,
-				wait, nb_packets_per_stream);
+				nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
 			goto error_close_trace_chunk;
 		}
@@ -5320,7 +5319,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 	if (session->ust_session) {
 		ret_code = record_ust_snapshot(session->ust_session,
 				snapshot_ust_consumer_output, session,
-				wait, nb_packets_per_stream);
+				nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
 			goto error_close_trace_chunk;
 		}
@@ -5368,7 +5367,8 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_snapshot_record(struct ltt_session *session,
-		const struct lttng_snapshot_output *output, int wait)
+		const struct lttng_snapshot_output *output,
+		int wait __attribute__((unused)))
 {
 	enum lttng_error_code cmd_ret = LTTNG_OK;
 	int ret;
@@ -5430,7 +5430,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 		/* Use the global datetime */
 		memcpy(tmp_output->datetime, datetime, sizeof(datetime));
-		cmd_ret = snapshot_record(session, tmp_output, wait);
+		cmd_ret = snapshot_record(session, tmp_output);
 		if (cmd_ret != LTTNG_OK) {
 			goto error;
 		}
@@ -5470,7 +5470,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 				}
 			}
 
-			cmd_ret = snapshot_record(session, &output_copy, wait);
+			cmd_ret = snapshot_record(session, &output_copy);
 			if (cmd_ret != LTTNG_OK) {
 				rcu_read_unlock();
 				goto error;

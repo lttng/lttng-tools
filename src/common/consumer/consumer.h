@@ -1051,13 +1051,11 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
-		uint64_t key, uint64_t relayd_id, uint32_t metadata,
-		struct lttng_consumer_local_data *ctx);
+		uint64_t key, uint64_t relayd_id);
 int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream);
-int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream);
+int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
-		uint64_t key, struct lttng_consumer_local_data *ctx);
+		uint64_t key);
 void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);
 enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		const uint64_t *relayd_id, uint64_t session_id,

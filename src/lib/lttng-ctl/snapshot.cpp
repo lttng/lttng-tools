@@ -196,7 +196,8 @@ void lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list)
  * Return 0 on success or else a negative LTTNG_ERR value.
  */
 int lttng_snapshot_record(const char *session_name,
-		struct lttng_snapshot_output *output, int wait)
+		struct lttng_snapshot_output *output,
+		int wait __attribute__((unused)))
 {
 	int ret;
 	struct lttcomm_session_msg lsm;

@@ -384,7 +384,8 @@ end:
 	return ret;
 }
 
-static int cmd_list_output(int argc, const char **argv)
+static int cmd_list_output(int argc __attribute__((unused)),
+		const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -425,8 +426,8 @@ static int record(const char *url)
 	}
 
 	if (lttng_opt_mi) {
-		ret = mi_lttng_snapshot_record(writer, current_session_name, url,
-				opt_ctrl_url, opt_data_url);
+		ret = mi_lttng_snapshot_record(writer, url, opt_ctrl_url,
+				opt_data_url);
 		if (ret) {
 			ret = CMD_ERROR;
 		}

@@ -675,7 +675,7 @@ error:
 	return ret;
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	int ret;
 	uint64_t session_id;

@@ -57,7 +57,7 @@ static inline int lttng_ctl_ask_sessiond_varlen_no_cmd_header(
  */
 static inline
 int lttng_ctl_ask_sessiond_fds_no_cmd_header(struct lttcomm_session_msg *lsm,
-		const int *fds, size_t nb_fd, void **buf)
+		const int *fds, size_t nb_fd, void **buf __attribute__((unused)))
 {
 	return lttng_ctl_ask_sessiond_fds_varlen(lsm, fds, nb_fd, NULL,
 		0, NULL, NULL, NULL);

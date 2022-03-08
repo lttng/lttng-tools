@@ -2367,8 +2367,7 @@ end:
 	return ret;
 }
 
-int mi_lttng_snapshot_record(struct mi_writer *writer,
-		const char *current_session_name, const char *url,
+int mi_lttng_snapshot_record(struct mi_writer *writer, const char *url,
 		const char *cmdline_ctrl_url, const char *cmdline_data_url)
 {
 	int ret;

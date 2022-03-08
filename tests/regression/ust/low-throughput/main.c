@@ -16,7 +16,7 @@
 /*
  * Thread recording a tracepoint every minute for 20 minutes.
  */
-static void *th_event_minute(void *data)
+static void *th_event_minute(void *data __attribute__((unused)))
 {
 	int i;
 
@@ -45,7 +45,7 @@ static void *th_event_minute(void *data)
 /*
  * main
  */
-int main(int argc, char **argv)
+int main(void)
 {
 	int ret;
 	void *status;

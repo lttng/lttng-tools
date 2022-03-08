@@ -159,7 +159,7 @@ static void test_kernel_probe_location_symbol(void)
 	lttng_kernel_probe_location_destroy(location_from_buffer);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_kernel_probe_location_address();

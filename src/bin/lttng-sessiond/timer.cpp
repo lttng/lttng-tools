@@ -406,7 +406,7 @@ end:
 }
 
 static
-bool shutdown_timer_thread(void *data)
+bool shutdown_timer_thread(void *data __attribute__((unused)))
 {
 	return kill(getpid(), LTTNG_SESSIOND_SIG_EXIT) == 0;
 }

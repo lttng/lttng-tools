@@ -145,8 +145,6 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			channel->key,
 			ksession->id,
 			&pathname[consumer_path_offset],
-			ksession->uid,
-			ksession->gid,
 			consumer->net_seq_index,
 			channel->channel->name,
 			channel->stream_count,
@@ -226,8 +224,6 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			ksession->metadata->key,
 			ksession->id,
 			"",
-			ksession->uid,
-			ksession->gid,
 			consumer->net_seq_index,
 			ksession->metadata->conf->name,
 			1,
@@ -279,7 +275,7 @@ static
 int kernel_consumer_add_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel,
 		struct ltt_kernel_stream *stream,
-		struct ltt_kernel_session *session, unsigned int monitor)
+		struct ltt_kernel_session *session)
 {
 	int ret;
 	struct lttcomm_consumer_msg lkm;
@@ -396,7 +392,7 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 
 		/* Add stream on the kernel consumer side. */
 		ret = kernel_consumer_add_stream(sock, channel, stream,
-				ksession, monitor);
+				ksession);
 		if (ret < 0) {
 			goto error;
 		}

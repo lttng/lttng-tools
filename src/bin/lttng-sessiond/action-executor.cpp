@@ -264,7 +264,7 @@ end:
 
 static int action_executor_notify_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+		struct action_work_subitem *item __attribute__((unused)))
 {
 	return notification_client_list_send_evaluation(work_item->client_list,
 			work_item->trigger,
@@ -276,7 +276,7 @@ static int action_executor_notify_handler(struct action_executor *executor,
 }
 
 static int action_executor_start_session_handler(
-		struct action_executor *executor,
+		struct action_executor *executor __attribute__((unused)),
 		const struct action_work_item *work_item,
 		struct action_work_subitem *item)
 {
@@ -361,7 +361,7 @@ end:
 }
 
 static int action_executor_stop_session_handler(
-		struct action_executor *executor,
+		struct action_executor *executor __attribute__((unused)),
 		const struct action_work_item *work_item,
 		struct action_work_subitem *item)
 {
@@ -446,7 +446,7 @@ end:
 }
 
 static int action_executor_rotate_session_handler(
-		struct action_executor *executor,
+		struct action_executor *executor __attribute__((unused)),
 		const struct action_work_item *work_item,
 		struct action_work_subitem *item)
 {
@@ -538,7 +538,7 @@ end:
 }
 
 static int action_executor_snapshot_session_handler(
-		struct action_executor *executor,
+		struct action_executor *executor __attribute__((unused)),
 		const struct action_work_item *work_item,
 		struct action_work_subitem *item)
 {
@@ -633,9 +633,10 @@ end:
 	return ret;
 }
 
-static int action_executor_list_handler(struct action_executor *executor,
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+static int action_executor_list_handler(
+		struct action_executor *executor __attribute__((unused)),
+		const struct action_work_item *work_item __attribute__((unused)),
+		struct action_work_subitem *item __attribute__((unused)))
 {
 	ERR("Execution of a list action by the action executor should never occur");
 	abort();

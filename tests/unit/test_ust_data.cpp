@@ -263,7 +263,7 @@ static void test_create_ust_context(void)
 	free(uctx);
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 

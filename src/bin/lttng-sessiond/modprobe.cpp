@@ -249,8 +249,12 @@ static int probes_capacity;
  * @brief Logging function for libkmod integration.
  */
 static ATTR_FORMAT_PRINTF(6, 0)
-void log_kmod(void *data, int priority, const char *file, int line,
-		const char *fn, const char *format, va_list args)
+void log_kmod(void *data __attribute__((unused)),
+		int priority __attribute__((unused)),
+		const char *file __attribute__((unused)),
+		int line __attribute__((unused)),
+		const char *fn __attribute__((unused)),
+		const char *format, va_list args)
 {
 	char *str;
 

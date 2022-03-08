@@ -319,101 +319,140 @@ struct ust_registry_enum *
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-void ust_registry_channel_destroy(struct ust_registry_session *session,
-		struct ust_registry_channel *chan)
+void ust_registry_channel_destroy(
+		struct ust_registry_session *session __attribute__((unused)),
+		struct ust_registry_channel *chan __attribute__((unused)))
 {}
+
 static inline
 struct ust_registry_channel *ust_registry_channel_find(
-		struct ust_registry_session *session, uint64_t key)
+		struct ust_registry_session *session __attribute__((unused)),
+		uint64_t key __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-int ust_registry_channel_add(struct ust_registry_session *session,
-		uint64_t key)
+int ust_registry_channel_add(
+		struct ust_registry_session *session __attribute__((unused)),
+		uint64_t key __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-void ust_registry_channel_del_free(struct ust_registry_session *session,
-		uint64_t key, bool notif)
+void ust_registry_channel_del_free(
+		struct ust_registry_session *session __attribute__((unused)),
+		uint64_t key __attribute__((unused)),
+		bool notif __attribute__((unused)))
 {}
+
 static inline
-int ust_registry_session_init(struct ust_registry_session **sessionp,
-		struct ust_app *app,
-		uint32_t bits_per_long,
-		uint32_t uint8_t_alignment,
-		uint32_t uint16_t_alignment,
-		uint32_t uint32_t_alignment,
-		uint32_t uint64_t_alignment,
-		uint32_t long_alignment,
-		int byte_order,
-		uint32_t major,
-		uint32_t minor,
-		const char *root_shm_path,
-		const char *shm_path,
-		uid_t euid,
-		gid_t egid,
-		uint64_t tracing_id,
-		uid_t tracing_uid)
+int ust_registry_session_init(
+		struct ust_registry_session **sessionp __attribute__((unused)),
+		struct ust_app *app __attribute__((unused)),
+		uint32_t bits_per_long __attribute__((unused)),
+		uint32_t uint8_t_alignment __attribute__((unused)),
+		uint32_t uint16_t_alignment __attribute__((unused)),
+		uint32_t uint32_t_alignment __attribute__((unused)),
+		uint32_t uint64_t_alignment __attribute__((unused)),
+		uint32_t long_alignment __attribute__((unused)),
+		int byte_order __attribute__((unused)),
+		uint32_t major __attribute__((unused)),
+		uint32_t minor __attribute__((unused)),
+		const char *root_shm_path __attribute__((unused)),
+		const char *shm_path __attribute__((unused)),
+		uid_t euid __attribute__((unused)),
+		gid_t egid __attribute__((unused)),
+		uint64_t tracing_id __attribute__((unused)),
+		uid_t tracing_uid __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-void ust_registry_session_destroy(struct ust_registry_session *session)
+void ust_registry_session_destroy(
+		struct ust_registry_session *session __attribute__((unused)))
 {}
+
 static inline
-int ust_registry_create_event(struct ust_registry_session *session,
-		uint64_t chan_key, int session_objd, int channel_objd, char *name,
-		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
-		int loglevel_value, char *model_emf_uri, int buffer_type,
-		uint32_t *event_id_p)
+int ust_registry_create_event(
+		struct ust_registry_session *session __attribute__((unused)),
+		uint64_t chan_key __attribute__((unused)),
+		int session_objd __attribute__((unused)),
+		int channel_objd __attribute__((unused)),
+		char *name __attribute__((unused)),
+		char *sig __attribute__((unused)),
+		size_t nr_fields __attribute__((unused)),
+		struct lttng_ust_ctl_field *fields __attribute__((unused)),
+		int loglevel_value __attribute__((unused)),
+		char *model_emf_uri __attribute__((unused)),
+		int buffer_type __attribute__((unused)),
+		uint32_t *event_id_p __attribute__((unused)))
 {
 	return 0;
 }
 static inline
 struct ust_registry_event *ust_registry_find_event(
-		struct ust_registry_channel *chan, char *name, char *sig)
+		struct ust_registry_channel *chan __attribute__((unused)),
+		char *name __attribute__((unused)),
+		char *sig __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-void ust_registry_destroy_event(struct ust_registry_channel *chan,
-		struct ust_registry_event *event)
+void ust_registry_destroy_event(
+		struct ust_registry_channel *chan __attribute__((unused)),
+		struct ust_registry_event *event __attribute__((unused)))
 {}
 
 /* The app object can be NULL for registry shared across applications. */
 static inline
-int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app, uint32_t major, uint32_t minor)
+int ust_metadata_session_statedump(
+		struct ust_registry_session *session __attribute__((unused)),
+		struct ust_app *app __attribute__((unused)),
+		uint32_t major __attribute__((unused)),
+		uint32_t minor __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-int ust_metadata_channel_statedump(struct ust_registry_session *session,
-		struct ust_registry_channel *chan)
+int ust_metadata_channel_statedump(
+		struct ust_registry_session *session __attribute__((unused)),
+		struct ust_registry_channel *chan __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-int ust_metadata_event_statedump(struct ust_registry_session *session,
-		struct ust_registry_channel *chan,
-		struct ust_registry_event *event)
+int ust_metadata_event_statedump(
+		struct ust_registry_session *session __attribute__((unused)),
+		struct ust_registry_channel *chan __attribute__((unused)),
+		struct ust_registry_event *event __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-int ust_registry_create_or_find_enum(struct ust_registry_session *session,
-		int session_objd, char *name,
-		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
-		uint64_t *enum_id)
+int ust_registry_create_or_find_enum(
+		struct ust_registry_session *session __attribute__((unused)),
+		int session_objd __attribute__((unused)),
+		char *name __attribute__((unused)),
+		struct lttng_ust_ctl_enum_entry *entries __attribute__((unused)),
+		size_t nr_entries __attribute__((unused)),
+		uint64_t *enum_id __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
 struct ust_registry_enum *
-	ust_registry_lookup_enum_by_id(struct ust_registry_session *session,
-		const char *name, uint64_t id)
+	ust_registry_lookup_enum_by_id(
+		struct ust_registry_session *session __attribute__((unused)),
+		const char *name __attribute__((unused)),
+		uint64_t id __attribute__((unused)))
 {
 	return NULL;
 }

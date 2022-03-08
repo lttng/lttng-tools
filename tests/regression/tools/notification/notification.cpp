@@ -794,7 +794,6 @@ error:
 static
 void test_triggers_buffer_usage_condition(const char *session_name,
 		const char *channel_name,
-		enum lttng_domain_type domain_type,
 		enum lttng_condition_type condition_type)
 {
 	unsigned int test_vector_size = 5, i;
@@ -1860,8 +1859,7 @@ end:
 	return;
 }
 
-static void test_kprobe_event_rule_notification(
-		enum lttng_domain_type domain_type)
+static void test_kprobe_event_rule_notification(void)
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
@@ -1956,7 +1954,6 @@ end:
 }
 
 static void test_uprobe_event_rule_notification(
-		enum lttng_domain_type domain_type,
 		const char *testapp_path,
 		const char *test_symbol_name)
 {
@@ -2060,8 +2057,7 @@ end:
 	return;
 }
 
-static void test_syscall_event_rule_notification(
-		enum lttng_domain_type domain_type)
+static void test_syscall_event_rule_notification(void)
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
@@ -2145,8 +2141,7 @@ end:
 	return;
 }
 
-static void test_syscall_event_rule_notification_filter(
-		enum lttng_domain_type domain_type)
+static void test_syscall_event_rule_notification_filter(void)
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
@@ -2570,13 +2565,11 @@ int main(int argc, const char *argv[])
 		diag("Test trigger for domain %s with buffer_usage_low condition",
 				domain_type_string);
 		test_triggers_buffer_usage_condition(session_name, channel_name,
-				domain_type,
 				LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 
 		diag("Test trigger for domain %s with buffer_usage_high condition",
 				domain_type_string);
 		test_triggers_buffer_usage_condition(session_name, channel_name,
-				domain_type,
 				LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
 
 		diag("Test buffer usage notification channel api for domain %s",
@@ -2613,7 +2606,7 @@ int main(int argc, const char *argv[])
 		diag("Test kprobe event rule notifications for domain %s",
 				domain_type_string);
 
-		test_kprobe_event_rule_notification(domain_type);
+		test_kprobe_event_rule_notification();
 
 		break;
 	}
@@ -2626,12 +2619,12 @@ int main(int argc, const char *argv[])
 		diag("Test syscall event rule notifications for domain %s",
 				domain_type_string);
 
-		test_syscall_event_rule_notification(domain_type);
+		test_syscall_event_rule_notification();
 
 		diag("Test syscall filtering event rule notifications for domain %s",
 				domain_type_string);
 
-		test_syscall_event_rule_notification_filter(domain_type);
+		test_syscall_event_rule_notification_filter();
 
 		break;
 	}
@@ -2655,7 +2648,7 @@ int main(int argc, const char *argv[])
 				domain_type_string);
 
 		test_uprobe_event_rule_notification(
-				domain_type, testapp_path, test_symbol_name);
+				testapp_path, test_symbol_name);
 
 		break;
 	}

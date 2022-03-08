@@ -655,7 +655,7 @@ end:
 }
 
 static
-int close_sock(void *data, int *in_fd)
+int close_sock(void *data, int *in_fd __attribute__((unused)))
 {
 	struct lttcomm_sock *sock = (lttcomm_sock *) data;
 
@@ -766,7 +766,7 @@ error:
  * This thread manages the listening for new connections on the network
  */
 static
-void *thread_listener(void *data)
+void *thread_listener(void *data __attribute__((unused)))
 {
 	int i, ret, pollfd, err = -1;
 	uint32_t revents, nb_fd;
@@ -931,7 +931,7 @@ error_sock_control:
  * This thread manages the dispatching of the requests to worker threads
  */
 static
-void *thread_dispatcher(void *data)
+void *thread_dispatcher(void *data __attribute__((unused)))
 {
 	int err = -1;
 	ssize_t ret;
@@ -2662,7 +2662,7 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
  * This thread does the actual work
  */
 static
-void *thread_worker(void *data)
+void *thread_worker(void *data __attribute__((unused)))
 {
 	int ret, err = -1;
 	uint32_t nb_fd;

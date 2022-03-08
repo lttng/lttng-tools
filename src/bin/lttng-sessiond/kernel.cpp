@@ -1663,7 +1663,7 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  */
 enum lttng_error_code kernel_snapshot_record(
 		struct ltt_kernel_session *ksess,
-		const struct consumer_output *output, int wait,
+		const struct consumer_output *output,
 		uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
@@ -1721,8 +1721,7 @@ enum lttng_error_code kernel_snapshot_record(
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
 			status = consumer_snapshot_channel(socket, chan->key, output, 0,
-					ksess->uid, ksess->gid,
-					&trace_path[consumer_path_offset], wait,
+					&trace_path[consumer_path_offset],
 					nb_packets_per_stream);
 			if (status != LTTNG_OK) {
 				(void) kernel_consumer_destroy_metadata(socket,
@@ -1733,8 +1732,7 @@ enum lttng_error_code kernel_snapshot_record(
 
 		/* Snapshot metadata, */
 		status = consumer_snapshot_channel(socket, ksess->metadata->key, output,
-				1, ksess->uid, ksess->gid, &trace_path[consumer_path_offset],
-				wait, 0);
+				1, &trace_path[consumer_path_offset], 0);
 		if (status != LTTNG_OK) {
 			goto error_consumer;
 		}
@@ -1873,7 +1871,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 			DBG("Rotate kernel channel %" PRIu64 ", session %s",
 					chan->key, session->name);
 			ret = consumer_rotate_channel(socket, chan->key,
-					ksess->uid, ksess->gid, ksess->consumer,
+					ksess->consumer,
 					/* is_metadata_channel */ false);
 			if (ret < 0) {
 				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
@@ -1885,7 +1883,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 		 * Rotate the metadata channel.
 		 */
 		ret = consumer_rotate_channel(socket, ksess->metadata->key,
-				ksess->uid, ksess->gid, ksess->consumer,
+				ksess->consumer,
 				/* is_metadata_channel */ true);
 		if (ret < 0) {
 			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;

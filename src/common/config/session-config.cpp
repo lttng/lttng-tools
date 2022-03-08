@@ -529,7 +529,7 @@ end:
 }
 
 static ATTR_FORMAT_PRINTF(2, 3)
-void xml_error_handler(void *ctx, const char *format, ...)
+void xml_error_handler(void *ctx __attribute__((unused)), const char *format, ...)
 {
 	char *errMsg;
 	va_list args;

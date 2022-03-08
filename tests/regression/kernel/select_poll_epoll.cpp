@@ -242,7 +242,7 @@ void test_ppoll(void)
 }
 
 static
-void test_ppoll_big(FILE *validation_output_file)
+void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -443,7 +443,8 @@ end:
  * The event should contain an array of 100 FDs filled with garbage.
  */
 static
-void ppoll_fds_buffer_overflow(FILE *validation_output_file)
+void ppoll_fds_buffer_overflow(
+		FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -470,7 +471,7 @@ void ppoll_fds_buffer_overflow(FILE *validation_output_file)
  * The event should contain an empty array of FDs and overflow = 1.
  */
 static
-void ppoll_fds_ulong_max(FILE *validation_output_file)
+void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -495,7 +496,7 @@ void ppoll_fds_ulong_max(FILE *validation_output_file)
  * -EBADF. The recorded event should contain a "ret = -EBADF (-9)".
  */
 static
-void pselect_invalid_fd(FILE *validation_output_file)
+void pselect_invalid_fd(FILE *validation_output_file __attribute__((unused)))
 {
 	fd_set rfds;
 	int ret;
@@ -538,7 +539,8 @@ error:
  * with 0 FDs.
  */
 static
-void pselect_invalid_pointer(FILE *validation_output_file)
+void pselect_invalid_pointer(
+		FILE *validation_output_file __attribute__((unused)))
 {
 	fd_set rfds;
 	int ret;
@@ -753,7 +755,8 @@ end:
  * ppoll should work as expected and the trace should be readable at the end.
  */
 static
-void ppoll_concurrent_write(FILE *validation_output_file)
+void ppoll_concurrent_write(
+		FILE *validation_output_file __attribute__((unused)))
 {
 	int i, ret, fds[MAX_FDS];
 

@@ -8,7 +8,7 @@
 
 #include <signal.h>
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	raise(SIGSEGV);
 	return 0;

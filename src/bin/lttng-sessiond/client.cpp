@@ -583,7 +583,8 @@ error_create:
 /*
  * Count number of session permitted by uid/gid.
  */
-static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
+static unsigned int lttng_sessions_count(uid_t uid,
+		gid_t gid __attribute__((unused)))
 {
 	unsigned int i = 0;
 	struct ltt_session *session;
@@ -2041,8 +2042,7 @@ skip_domain:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
 		ret = cmd_snapshot_record(cmd_ctx->session,
-				&output,
-				cmd_ctx->lsm.u.snapshot_record.wait);
+				&output, 0); // RFC: set to zero since it's ignored by cmd_snapshot_record
 		break;
 	}
 	case LTTNG_CREATE_SESSION_EXT:
@@ -2435,7 +2435,7 @@ static void cleanup_client_thread(void *data)
 	lttng_pipe_destroy(quit_pipe);
 }
 
-static void thread_init_cleanup(void *data)
+static void thread_init_cleanup(void *data __attribute__((unused)))
 {
 	set_thread_status(false);
 }

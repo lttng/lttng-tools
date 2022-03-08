@@ -15,14 +15,9 @@
 #define TRACEPOINT_CREATE_PROBES
 #include "ust_tests_daemon.h"
 
-int main(int argc, char **argv, char *env[])
+int main(void)
 {
 	int result;
-
-	if (argc < 1) {
-		fprintf(stderr, "usage: daemon\n");
-		exit(1);
-	}
 
 	pid_t parent_pid = getpid();
 	printf("parent_pid %d\n", parent_pid);

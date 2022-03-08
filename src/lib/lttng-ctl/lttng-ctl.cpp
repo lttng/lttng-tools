@@ -911,7 +911,8 @@ int lttng_stop_tracing_no_wait(const char *session_name)
  * Returns the size of the returned payload data or a negative error code.
  */
 int lttng_add_context(struct lttng_handle *handle,
-		struct lttng_event_context *ctx, const char *event_name,
+		struct lttng_event_context *ctx,
+		const char *event_name __attribute__((unused)),
 		const char *channel_name)
 {
 	int ret;
@@ -2520,8 +2521,8 @@ end:
 	return ret;
 }
 
-int lttng_calibrate(struct lttng_handle *handle,
-		struct lttng_calibrate *calibrate)
+int lttng_calibrate(struct lttng_handle *handle __attribute__((unused)),
+		struct lttng_calibrate *calibrate __attribute__((unused)))
 {
 	/*
 	 * This command was removed in LTTng 2.9.
@@ -2827,7 +2828,7 @@ error:
  */
 extern "C"
 LTTNG_EXPORT int lttng_enable_consumer(struct lttng_handle *handle);
-int lttng_enable_consumer(struct lttng_handle *handle)
+int lttng_enable_consumer(struct lttng_handle *handle __attribute__((unused)))
 {
 	return -ENOSYS;
 }
@@ -2837,7 +2838,7 @@ int lttng_enable_consumer(struct lttng_handle *handle)
  */
 extern "C"
 LTTNG_EXPORT int lttng_disable_consumer(struct lttng_handle *handle);
-int lttng_disable_consumer(struct lttng_handle *handle)
+int lttng_disable_consumer(struct lttng_handle *handle __attribute__((unused)))
 {
 	return -ENOSYS;
 }
@@ -2848,8 +2849,9 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 extern "C"
 LTTNG_EXPORT int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime);
-int _lttng_create_session_ext(const char *name, const char *url,
-		const char *datetime)
+int _lttng_create_session_ext(const char *name __attribute__((unused)),
+		const char *url __attribute__((unused)),
+		const char *datetime __attribute__((unused)))
 {
 	return -ENOSYS;
 }

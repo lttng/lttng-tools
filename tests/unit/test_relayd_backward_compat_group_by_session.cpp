@@ -127,7 +127,7 @@ end:
 	return result;
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	int i;
 	int num_test = sizeof(tests) / sizeof(struct test);

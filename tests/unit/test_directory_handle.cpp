@@ -270,7 +270,7 @@ end:
 	return ret == 0 ? tests_ran : ret;
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	int ret;
 	char test_dir[] = "/tmp/lttng-XXXXXX";

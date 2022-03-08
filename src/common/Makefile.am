@@ -252,7 +252,8 @@ BUILT_SOURCES += filter/filter-parser.hpp
 # Disable some warning flags for generated sources.
 FILTER_WARN_FLAGS = \
 	-Wno-null-dereference \
-	-Wno-redundant-decls
+	-Wno-redundant-decls \
+	-Wno-unused-parameter
 
 libfilter_la_CFLAGS = $(AM_CFLAGS) $(FILTER_WARN_FLAGS)
 libfilter_la_CXXFLAGS = -include filter-symbols.h $(AM_CXXFLAGS) $(FILTER_WARN_FLAGS)

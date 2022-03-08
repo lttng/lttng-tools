@@ -1998,7 +1998,7 @@ error:
  * Should be called with session mutex held.
  */
 static
-int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
+int create_ust_event(struct ust_app *app,
 		struct ust_app_channel *ua_chan, struct ust_app_event *ua_event)
 {
 	int ret = 0;
@@ -2886,8 +2886,8 @@ error:
  * Called with UST app session lock held.
  */
 static
-int enable_ust_app_event(struct ust_app_session *ua_sess,
-		struct ust_app_event *ua_event, struct ust_app *app)
+int enable_ust_app_event(struct ust_app_event *ua_event,
+		struct ust_app *app)
 {
 	int ret;
 
@@ -2905,8 +2905,8 @@ error:
 /*
  * Disable on the tracer side a ust app event for the session and channel.
  */
-static int disable_ust_app_event(struct ust_app_session *ua_sess,
-		struct ust_app_event *ua_event, struct ust_app *app)
+static int disable_ust_app_event(struct ust_app_event *ua_event,
+		struct ust_app *app)
 {
 	int ret;
 
@@ -2983,8 +2983,7 @@ error:
  */
 static int do_consumer_create_channel(struct ltt_ust_session *usess,
 		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		int bitness, struct ust_registry_session *registry,
-		uint64_t trace_archive_id)
+		int bitness, struct ust_registry_session *registry)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3420,8 +3419,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 * ust app channel object with all streams and data object.
 	 */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
-			app->bits_per_long, reg_uid->registry->reg.ust,
-			session->most_recent_chunk_id.value);
+			app->bits_per_long, reg_uid->registry->reg.ust);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 				ua_chan->name);
@@ -3535,8 +3533,7 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
-			app->bits_per_long, registry,
-			session->most_recent_chunk_id.value);
+			app->bits_per_long, registry);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			ua_chan->name);
@@ -3656,7 +3653,8 @@ error:
  */
 static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan,
-		enum lttng_ust_abi_chan_type type, struct ltt_ust_session *usess,
+		enum lttng_ust_abi_chan_type type,
+		struct ltt_ust_session *usess __attribute__((unused)),
 		struct ust_app_channel **ua_chanp)
 {
 	int ret = 0;
@@ -3706,8 +3704,8 @@ error:
  * Called with ust app session mutex held.
  */
 static
-int create_ust_app_event(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct ltt_ust_event *uevent,
+int create_ust_app_event(struct ust_app_channel *ua_chan,
+		struct ltt_ust_event *uevent,
 		struct ust_app *app)
 {
 	int ret = 0;
@@ -3724,7 +3722,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	shadow_copy_event(ua_event, uevent);
 
 	/* Create it on the tracer side */
-	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
+	ret = create_ust_event(app, ua_chan, ua_event);
 	if (ret < 0) {
 		/*
 		 * Not found previously means that it does not exist on the
@@ -4860,7 +4858,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ret = disable_ust_app_event(ua_sess, ua_event, app);
+		ret = disable_ust_app_event(ua_event, app);
 		if (ret < 0) {
 			/* XXX: Report error someday... */
 			continue;
@@ -5019,7 +5017,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			goto next_app;
 		}
 
-		ret = enable_ust_app_event(ua_sess, ua_event, app);
+		ret = enable_ust_app_event(ua_event, app);
 		if (ret < 0) {
 			pthread_mutex_unlock(&ua_sess->lock);
 			goto error;
@@ -5083,7 +5081,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
-		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
+		ret = create_ust_app_event(ua_chan, uevent, app);
 		pthread_mutex_unlock(&ua_sess->lock);
 		if (ret < 0) {
 			if (ret != -LTTNG_UST_ERR_EXIST) {
@@ -5779,7 +5777,7 @@ end:
 
 static
 int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
-		struct ltt_ust_event *uevent, struct ust_app_session *ua_sess,
+		struct ltt_ust_event *uevent,
 		struct ust_app *app)
 {
 	int ret = 0;
@@ -5788,15 +5786,15 @@ int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
 	ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
 		uevent->filter, uevent->attr.loglevel, uevent->exclusion);
 	if (!ua_event) {
-		ret = create_ust_app_event(ua_sess, ua_chan, uevent, app);
+		ret = create_ust_app_event(ua_chan, uevent, app);
 		if (ret < 0) {
 			goto end;
 		}
 	} else {
 		if (ua_event->enabled != uevent->enabled) {
 			ret = uevent->enabled ?
-				enable_ust_app_event(ua_sess, ua_event, app) :
-				disable_ust_app_event(ua_sess, ua_event, app);
+				enable_ust_app_event(ua_event, app) :
+				disable_ust_app_event(ua_event, app);
 		}
 	}
 
@@ -5999,7 +5997,7 @@ void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		cds_lfht_for_each_entry(uchan->events->ht, &uevent_iter, uevent,
 				node.node) {
 			ret = ust_app_channel_synchronize_event(ua_chan,
-				uevent, ua_sess, app);
+				uevent, app);
 			if (ret) {
 				goto end;
 			}
@@ -7023,7 +7021,7 @@ void ust_app_destroy(struct ust_app *app)
  */
 enum lttng_error_code ust_app_snapshot_record(
 		const struct ltt_ust_session *usess,
-		const struct consumer_output *output, int wait,
+		const struct consumer_output *output,
 		uint64_t nb_packets_per_stream)
 {
 	int ret = 0;
@@ -7083,8 +7081,7 @@ enum lttng_error_code ust_app_snapshot_record(
 					buf_reg_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
 						buf_reg_chan->consumer_key,
-						output, 0, usess->uid,
-						usess->gid, &trace_path[consumer_path_offset], wait,
+						output, 0, &trace_path[consumer_path_offset],
 						nb_packets_per_stream);
 				if (status != LTTNG_OK) {
 					goto error;
@@ -7092,8 +7089,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			}
 			status = consumer_snapshot_channel(socket,
 					reg->registry->reg.ust->metadata_key, output, 1,
-					usess->uid, usess->gid, &trace_path[consumer_path_offset],
-					wait, 0);
+					&trace_path[consumer_path_offset], 0);
 			if (status != LTTNG_OK) {
 				goto error;
 			}
@@ -7146,9 +7142,7 @@ enum lttng_error_code ust_app_snapshot_record(
 					ua_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
 						ua_chan->key, output, 0,
-						lttng_credentials_get_uid(&ua_sess->effective_credentials),
-						lttng_credentials_get_gid(&ua_sess->effective_credentials),
-						&trace_path[consumer_path_offset], wait,
+						&trace_path[consumer_path_offset],
 						nb_packets_per_stream);
 				switch (status) {
 				case LTTNG_OK:
@@ -7167,9 +7161,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			}
 			status = consumer_snapshot_channel(socket,
 					registry->metadata_key, output, 1,
-					lttng_credentials_get_uid(&ua_sess->effective_credentials),
-					lttng_credentials_get_gid(&ua_sess->effective_credentials),
-					&trace_path[consumer_path_offset], wait, 0);
+					&trace_path[consumer_path_offset], 0);
 			switch (status) {
 			case LTTNG_OK:
 				break;
@@ -7462,7 +7454,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 					buf_reg_chan, node.node) {
 				ret = consumer_rotate_channel(socket,
 						buf_reg_chan->consumer_key,
-						usess->uid, usess->gid,
 						usess->consumer,
 						/* is_metadata_channel */ false);
 				if (ret < 0) {
@@ -7488,7 +7479,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 
 			ret = consumer_rotate_channel(socket,
 					reg->registry->reg.ust->metadata_key,
-					usess->uid, usess->gid,
 					usess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {
@@ -7532,8 +7522,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 					ua_chan, node.node) {
 				ret = consumer_rotate_channel(socket,
 						ua_chan->key,
-						lttng_credentials_get_uid(&ua_sess->effective_credentials),
-						lttng_credentials_get_gid(&ua_sess->effective_credentials),
 						ua_sess->consumer,
 						/* is_metadata_channel */ false);
 				if (ret < 0) {
@@ -7549,8 +7537,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			(void) push_metadata(registry, usess->consumer);
 			ret = consumer_rotate_channel(socket,
 					registry->metadata_key,
-					lttng_credentials_get_uid(&ua_sess->effective_credentials),
-					lttng_credentials_get_gid(&ua_sess->effective_credentials),
 					ua_sess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {

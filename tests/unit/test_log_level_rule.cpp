@@ -178,7 +178,7 @@ static void test_log_level_rule_at_least_as_severe_as(void)
 	lttng_log_level_rule_destroy(at_least_as_severe_as);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_log_level_rule_exactly();

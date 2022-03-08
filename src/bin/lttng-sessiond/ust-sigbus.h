@@ -15,7 +15,7 @@ void lttng_ust_handle_sigbus(void *address);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-void lttng_ust_handle_sigbus(void *address)
+void lttng_ust_handle_sigbus(void *address __attribute__((unused)))
 {
 }
 

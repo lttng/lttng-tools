@@ -82,7 +82,8 @@ enum lttng_consumer_type lttng_consumer_get_type(void)
 /*
  * Signal handler for the daemon
  */
-static void sighandler(int sig, siginfo_t *siginfo, void *arg)
+static void sighandler(int sig, siginfo_t *siginfo,
+		void *arg __attribute__((unused)))
 {
 	if (sig == SIGINT && sigintcount++ == 0) {
 		DBG("ignoring first SIGINT");

@@ -22,7 +22,7 @@
 #include "tp.h"
 
 static
-void inthandler(int sig)
+void inthandler(int sig __attribute__((unused)))
 {
 }
 

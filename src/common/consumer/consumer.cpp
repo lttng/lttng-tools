@@ -3404,7 +3404,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	 */
 	if (stream->rotate_ready) {
 		DBG("Rotate stream before consuming data");
-		ret = lttng_consumer_rotate_stream(ctx, stream);
+		ret = lttng_consumer_rotate_stream(stream);
 		if (ret < 0) {
 			ERR("Stream rotation error before consuming data");
 			goto end;
@@ -3460,7 +3460,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	 */
 	rotation_ret = lttng_consumer_stream_is_rotate_ready(stream);
 	if (rotation_ret == 1) {
-		rotation_ret = lttng_consumer_rotate_stream(ctx, stream);
+		rotation_ret = lttng_consumer_rotate_stream(stream);
 		if (rotation_ret < 0) {
 			ret = rotation_ret;
 			ERR("Stream rotation error after consuming data");
@@ -3986,8 +3986,7 @@ end:
  * Returns 0 on success, < 0 on error
  */
 int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
-		uint64_t key, uint64_t relayd_id, uint32_t metadata,
-		struct lttng_consumer_local_data *ctx)
+		uint64_t key, uint64_t relayd_id)
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
@@ -4537,8 +4536,7 @@ void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stre
  * Perform the rotation a local stream file.
  */
 static
-int rotate_local_stream(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream)
+int rotate_local_stream(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
 
@@ -4577,8 +4575,7 @@ end:
  *
  * Return 0 on success, a negative number of error.
  */
-int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream)
+int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
@@ -4613,7 +4610,7 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
 	}
 
 	if (stream->net_seq_idx == (uint64_t) -1ULL) {
-		ret = rotate_local_stream(ctx, stream);
+		ret = rotate_local_stream(stream);
 		if (ret < 0) {
 			ERR("Failed to rotate stream, ret = %i", ret);
 			goto error;
@@ -4657,7 +4654,7 @@ error:
  * Returns 0 on success, < 0 on error
  */
 int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
-		uint64_t key, struct lttng_consumer_local_data *ctx)
+		uint64_t key)
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
@@ -4686,7 +4683,7 @@ int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
 		}
 		DBG("Consumer rotate ready stream %" PRIu64, stream->key);
 
-		ret = lttng_consumer_rotate_stream(ctx, stream);
+		ret = lttng_consumer_rotate_stream(stream);
 		pthread_mutex_unlock(&stream->lock);
 		pthread_mutex_unlock(&stream->chan->lock);
 		if (ret) {

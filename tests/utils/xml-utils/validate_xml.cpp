@@ -41,7 +41,8 @@ enum command_err_code {
 };
 
 static ATTR_FORMAT_PRINTF(2, 3)
-void xml_error_handler(void *ctx, const char *format, ...)
+void xml_error_handler(void *ctx __attribute__((unused)),
+		const char *format, ...)
 {
 	char *err_msg;
 	va_list args;
@@ -150,7 +151,7 @@ end:
 
 
 }
-int main(int argc, char **argv, char *env[])
+int main(int argc, char **argv)
 {
 	int ret;
 	struct validation_ctx ctx = { 0 };

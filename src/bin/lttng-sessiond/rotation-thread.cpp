@@ -564,7 +564,7 @@ int run_job(struct rotation_thread_job *job, struct ltt_session *session,
 
 static
 int handle_job_queue(struct rotation_thread_handle *handle,
-		struct rotation_thread *state,
+		struct rotation_thread *state __attribute__((unused)),
 		struct rotation_thread_timer_queue *queue)
 {
 	int ret = 0;
@@ -710,9 +710,9 @@ end:
 }
 
 static
-int handle_notification_channel(int fd,
+int handle_notification_channel(int fd __attribute__((unused)),
 		struct rotation_thread_handle *handle,
-		struct rotation_thread *state)
+		struct rotation_thread *state __attribute__((unused)))
 {
 	int ret;
 	bool notification_pending;

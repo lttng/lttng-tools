@@ -56,17 +56,21 @@ event_notifier_error_accounting_register_app(struct ust_app *app);
  */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_unregister_app(struct ust_app *app);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
+
 static inline
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(struct ust_app *app)
+event_notifier_error_accounting_register_app(
+		struct ust_app *app __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
 static inline
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(struct ust_app *app)
+event_notifier_error_accounting_unregister_app(
+		struct ust_app *app __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }

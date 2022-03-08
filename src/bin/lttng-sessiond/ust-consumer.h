@@ -36,7 +36,8 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 int ust_consumer_metadata_request(struct consumer_socket *sock);
 #else
 static inline
-int ust_consumer_metadata_request(struct consumer_socket *sock)
+int ust_consumer_metadata_request(
+		struct consumer_socket *sock __attribute__((unused)))
 {
 	return -ENOSYS;
 }

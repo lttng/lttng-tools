@@ -1042,15 +1042,12 @@ int mi_lttng_snapshot_add_output(struct mi_writer *writer,
  *
  * writer An instance of a machine interface writer.
  *
- * current_session_name: Snapshot record for session "current_session_name".
- *
  * ctrl_url, data_url: Destination of the output receive from the command-line.
  *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_snapshot_record(struct mi_writer *writer,
-		const char *current_session_name, const char *url,
+int mi_lttng_snapshot_record(struct mi_writer *writer, const char *url,
 		const char *cmdline_ctrl_url, const char *cmdline_data_url);
 
 /*

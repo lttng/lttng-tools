@@ -528,7 +528,7 @@ static void test_action_snapshot_session(void)
 	lttng_payload_reset(&payload);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_action_notify();

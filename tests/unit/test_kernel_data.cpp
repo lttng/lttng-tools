@@ -179,7 +179,7 @@ static void test_create_kernel_stream(void)
 	trace_kernel_destroy_stream(stream);
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 

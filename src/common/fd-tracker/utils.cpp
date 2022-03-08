@@ -14,20 +14,20 @@
 #include <unistd.h>
 
 static
-int open_pipe_cloexec(void *data, int *fds)
+int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
 {
 	return utils_create_pipe_cloexec(fds);
 }
 
 static
-int close_pipe(void *data, int *pipe)
+int close_pipe(void *data __attribute__((unused)), int *pipe)
 {
 	utils_close_pipe(pipe);
 	pipe[0] = pipe[1] = -1;
 	return 0;
 }
 
-int fd_tracker_util_close_fd(void *unused, int *fd)
+int fd_tracker_util_close_fd(void *unused __attribute__((unused)), int *fd)
 {
 	return close(*fd);
 }
@@ -111,7 +111,7 @@ end:
 
 #ifdef HAVE_DIRFD
 static
-int fd_close(void *unused, int *in_fds)
+int fd_close(void *unused __attribute__((unused)), int *in_fds)
 {
 	const int ret = close(in_fds[0]);
 

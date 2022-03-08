@@ -1279,8 +1279,7 @@ void free_notification_client_rcu(struct rcu_head *node)
 }
 
 static
-void notification_client_destroy(struct notification_client *client,
-		struct notification_thread_state *state)
+void notification_client_destroy(struct notification_client *client)
 {
 	if (!client) {
 		return;
@@ -2233,7 +2232,7 @@ end:
 }
 
 static int handle_notification_thread_command_list_triggers(
-		struct notification_thread_handle *handle,
+		struct notification_thread_handle *handle __attribute__((unused)),
 		struct notification_thread_state *state,
 		uid_t client_uid,
 		struct lttng_triggers **triggers,
@@ -3396,7 +3395,7 @@ int handle_notification_thread_client_connect(
 	return ret;
 
 error:
-	notification_client_destroy(client, state);
+	notification_client_destroy(client);
 	return ret;
 }
 
@@ -3438,7 +3437,7 @@ int notification_thread_client_disconnect(
 	 * Client no longer accessible to other threads (through the
 	 * client lists).
 	 */
-	notification_client_destroy(client, state);
+	notification_client_destroy(client);
 	return ret;
 }
 
@@ -3746,7 +3745,7 @@ error:
 
 static
 int client_handle_message_unknown(struct notification_client *client,
-		struct notification_thread_state *state)
+		struct notification_thread_state *state __attribute__((unused)))
 {
 	int ret;
 	/*
@@ -4186,7 +4185,7 @@ bool evaluate_session_consumed_size_condition(
 static
 int evaluate_buffer_condition(const struct lttng_condition *condition,
 		struct lttng_evaluation **evaluation,
-		const struct notification_thread_state *state,
+		const struct notification_thread_state *state __attribute__((unused)),
 		const struct channel_state_sample *previous_sample,
 		const struct channel_state_sample *latest_sample,
 		uint64_t previous_session_consumed_total,

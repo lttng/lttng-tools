@@ -1344,7 +1344,7 @@ end:
 static
 int run_as_noworker(enum run_as_cmd cmd,
 		struct run_as_data *data, struct run_as_ret *ret_value,
-		uid_t uid, gid_t gid)
+		uid_t uid __attribute__((unused)), gid_t gid __attribute__((unused)))
 {
 	int ret, saved_errno;
 	mode_t old_mask;

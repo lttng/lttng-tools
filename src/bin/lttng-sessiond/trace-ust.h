@@ -240,129 +240,161 @@ const struct process_attr_tracker *trace_ust_get_process_attr_tracker(
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline int trace_ust_ht_match_event(struct cds_lfht_node *node,
-		const void *_key)
+static inline int trace_ust_ht_match_event(
+		struct cds_lfht_node *node __attribute__((unused)),
+		const void *_key __attribute__((unused)))
 {
 	return 0;
 }
-static inline int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
-		const void *_key)
+
+static inline int trace_ust_ht_match_event_by_name(
+		struct cds_lfht_node *node __attribute__((unused)),
+		const void *_key __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
-		const char *name)
+struct ltt_ust_channel *trace_ust_find_channel_by_name(
+		struct lttng_ht *ht __attribute__((unused)),
+		const char *name __attribute__((unused)))
 {
 	return NULL;
 }
 
 static inline
-struct ltt_ust_session *trace_ust_create_session(unsigned int session_id)
+struct ltt_ust_session *trace_ust_create_session(
+		unsigned int session_id __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
-		enum lttng_domain_type domain)
+struct ltt_ust_channel *trace_ust_create_channel(
+		struct lttng_channel *attr __attribute__((unused)),
+		enum lttng_domain_type domain __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
-		const char *filter_expression,
-		struct lttng_bytecode *filter,
-		struct lttng_event_exclusion *exclusion,
-		bool internal_event, struct ltt_ust_event **ust_event)
+enum lttng_error_code trace_ust_create_event(
+		struct lttng_event *ev __attribute__((unused)),
+		const char *filter_expression __attribute__((unused)),
+		struct lttng_bytecode *filter __attribute__((unused)),
+		struct lttng_event_exclusion *exclusion __attribute__((unused)),
+		bool internal_event __attribute__((unused)),
+		struct ltt_ust_event **ust_event __attribute__((unused)))
 {
 	return LTTNG_ERR_NO_UST;
 }
+
 static inline
-void trace_ust_destroy_session(struct ltt_ust_session *session)
+void trace_ust_destroy_session(
+		struct ltt_ust_session *session __attribute__((unused)))
 {
 }
 
 static inline
-void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
+void trace_ust_destroy_channel(
+		struct ltt_ust_channel *channel __attribute__((unused)))
 {
 }
 
 static inline
-void trace_ust_destroy_event(struct ltt_ust_event *event)
+void trace_ust_destroy_event(
+		struct ltt_ust_event *event __attribute__((unused)))
 {
 }
 
 static inline
-void trace_ust_free_session(struct ltt_ust_session *session)
+void trace_ust_free_session(
+		struct ltt_ust_session *session __attribute__((unused)))
 {
 }
 
 static inline
 struct ltt_ust_context *trace_ust_create_context(
-		const struct lttng_event_context *ctx)
+		const struct lttng_event_context *ctx __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-int trace_ust_match_context(const struct ltt_ust_context *uctx,
-		const struct lttng_event_context *ctx)
+int trace_ust_match_context(
+		const struct ltt_ust_context *uctx __attribute__((unused)),
+		const struct lttng_event_context *ctx __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline
-struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_bytecode *filter,
-		enum lttng_ust_abi_loglevel_type loglevel_type, int loglevel_value,
-		struct lttng_event_exclusion *exclusion)
+struct ltt_ust_event *trace_ust_find_event(
+		struct lttng_ht *ht __attribute__((unused)),
+		char *name __attribute__((unused)),
+		struct lttng_bytecode *filter __attribute__((unused)),
+		enum lttng_ust_abi_loglevel_type loglevel_type __attribute__((unused)),
+		int loglevel_value __attribute__((unused)),
+		struct lttng_event_exclusion *exclusion __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline
-void trace_ust_delete_channel(struct lttng_ht *ht,
-		struct ltt_ust_channel *channel)
+void trace_ust_delete_channel(
+		struct lttng_ht *ht __attribute__((unused)),
+		struct ltt_ust_channel *channel __attribute__((unused)))
 {
 	return;
 }
+
 static inline
-struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
-		enum lttng_domain_type domain_type)
+struct agent *trace_ust_find_agent(
+		struct ltt_ust_session *session __attribute__((unused)),
+		enum lttng_domain_type domain_type __attribute__((unused)))
 {
 	return NULL;
 }
+
 static inline int trace_ust_id_tracker_lookup(
-		enum lttng_process_attr process_attr,
-		struct ltt_ust_session *session,
-		int id)
+		enum lttng_process_attr process_attr __attribute__((unused)),
+		struct ltt_ust_session *session __attribute__((unused)),
+		int id __attribute__((unused)))
 {
 	return 0;
 }
+
 static inline enum lttng_error_code
 trace_ust_process_attr_tracker_set_tracking_policy(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		enum lttng_tracking_policy policy)
+		struct ltt_ust_session *session __attribute__((unused)),
+		enum lttng_process_attr process_attr __attribute__((unused)),
+		enum lttng_tracking_policy policy __attribute__((unused)))
 {
 	return LTTNG_OK;
 }
+
 static inline enum lttng_error_code
 trace_ust_process_attr_tracker_inclusion_set_add_value(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+		struct ltt_ust_session *session __attribute__((unused)),
+		enum lttng_process_attr process_attr __attribute__((unused)),
+		const struct process_attr_value *value __attribute__((unused)))
 {
 	return LTTNG_OK;
 }
+
 static inline enum lttng_error_code
 trace_ust_process_attr_tracker_inclusion_set_remove_value(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+		struct ltt_ust_session *session __attribute__((unused)),
+		enum lttng_process_attr process_attr __attribute__((unused)),
+		const struct process_attr_value *value __attribute__((unused)))
 {
 	return LTTNG_OK;
 }
+
 static inline const struct process_attr_tracker *
-trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr)
+trace_ust_get_process_attr_tracker(
+		struct ltt_ust_session *session __attribute__((unused)),
+		enum lttng_process_attr process_attr __attribute__((unused)))
 {
 	return NULL;
 }

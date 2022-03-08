@@ -11,8 +11,8 @@
 #include <lttng/action/action-internal.h>
 
 enum lttng_trigger_status lttng_trigger_add_error_results(
-		const struct lttng_trigger *trigger,
-		struct lttng_error_query_results *results)
+		const struct lttng_trigger *trigger __attribute__((unused)),
+		struct lttng_error_query_results *results __attribute__((unused)))
 {
 	return LTTNG_TRIGGER_STATUS_OK;
 }

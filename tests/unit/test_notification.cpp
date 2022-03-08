@@ -303,7 +303,7 @@ static void test_trigger(void)
 }
 
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_condition_buffer_usage_low();

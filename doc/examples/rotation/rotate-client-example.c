@@ -42,7 +42,7 @@
 
 static volatile int quit = 0;
 
-static void sighandler(int signal)
+static void sighandler(int signal __attribute__((unused)))
 {
 	printf("Signal caught, exiting\n");
 	quit = 1;

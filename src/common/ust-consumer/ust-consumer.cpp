@@ -2065,8 +2065,7 @@ error_push_metadata_fatal:
 			 */
 			rotate_channel = lttng_consumer_rotate_channel(
 					found_channel, key,
-					msg.u.rotate_channel.relayd_id,
-					msg.u.rotate_channel.metadata, ctx);
+					msg.u.rotate_channel.relayd_id);
 			if (rotate_channel < 0) {
 				ERR("Rotate channel failed");
 				ret_code = LTTCOMM_CONSUMERD_ROTATION_FAIL;
@@ -2093,8 +2092,7 @@ error_push_metadata_fatal:
 
 			ret_rotate_read_streams =
 					lttng_consumer_rotate_ready_streams(
-							found_channel, key,
-							ctx);
+							found_channel, key);
 			if (ret_rotate_read_streams < 0) {
 				ERR("Rotate channel failed");
 			}
@@ -3069,7 +3067,7 @@ end:
 }
 
 static int put_next_subbuffer(struct lttng_consumer_stream *stream,
-		struct stream_subbuffer *subbuffer)
+		struct stream_subbuffer *subbuffer __attribute__((unused)))
 {
 	const int ret = lttng_ust_ctl_put_next_subbuf(stream->ustream);
 
@@ -3078,7 +3076,7 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 }
 
 static int signal_metadata(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;

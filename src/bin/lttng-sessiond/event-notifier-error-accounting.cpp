@@ -369,7 +369,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_find(
  */
 static
 struct ust_error_accounting_entry *ust_error_accounting_entry_create(
-		struct lttng_ht *uid_ht, const struct ust_app *app)
+		const struct ust_app *app)
 {
 	int i, ret, *cpu_counter_fds = NULL;
 	struct lttng_ust_ctl_daemon_counter *daemon_counter;
@@ -611,8 +611,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 		 */
 		pthread_mutex_lock(&the_event_notifier_counter.lock);
 
-		entry = ust_error_accounting_entry_create(error_counter_uid_ht,
-				app);
+		entry = ust_error_accounting_entry_create(app);
 		if (!entry) {
 			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 			pthread_mutex_unlock(&the_event_notifier_counter.lock);

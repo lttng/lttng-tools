@@ -811,7 +811,7 @@ static void test_event_rule_log_level_python(void)
 			NULL, 0);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_event_rule_kernel_tracepoint();

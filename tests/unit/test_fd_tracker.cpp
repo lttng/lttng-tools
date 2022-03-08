@@ -131,7 +131,8 @@ int noop_open(void *data, int *fds)
 }
 
 static
-int noop_close(void *data, int *fds)
+int noop_close(void *data __attribute__((unused)),
+		int *fds __attribute__((unused)))
 {
 	return 0;
 }
@@ -209,13 +210,13 @@ end:
 }
 
 static
-int error_open(void *data, int *fds)
+int error_open(void *data, int *fds __attribute__((unused)))
 {
 	return *((int *) data);
 }
 
 static
-int error_close(void *data, int *fds)
+int error_close(void *data, int *fds __attribute__((unused)))
 {
 	return *((int *) data);
 }
@@ -301,7 +302,7 @@ void test_unsuspendable_duplicate(void)
 }
 
 static
-int open_pipes(void *data, int *out_fds)
+int open_pipes(void *data __attribute__((unused)), int *out_fds)
 {
 	unsigned int i;
 	const unsigned int pipe_count = TRACKER_FD_LIMIT / 2;
@@ -317,7 +318,7 @@ int open_pipes(void *data, int *out_fds)
 }
 
 static
-int close_pipes(void *data, int *fds)
+int close_pipes(void *data __attribute__((unused)), int *fds)
 {
 	int i;
 	int *pipes = fds;
@@ -472,7 +473,8 @@ static int open_same_file(struct fd_tracker *tracker,
 }
 
 static
-int cleanup_files(struct fd_tracker *tracker, const char *dir,
+int cleanup_files(struct fd_tracker *tracker __attribute__((unused)),
+		const char *dir __attribute__((unused)),
 		unsigned int count, struct fs_handle **handles,
 		char **file_paths)
 {
@@ -882,7 +884,7 @@ end:
 	lttng_directory_handle_put(dir_handle);
 }
 
-int main(int argc, char **argv)
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	diag("File descriptor tracker unit tests");

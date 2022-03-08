@@ -795,7 +795,8 @@ end:
  * See config_entry_handler_cb comment in common/config/session-config.h for the
  * return value conventions.
  */
-static int config_entry_handler(const struct config_entry *entry, void *unused)
+static int config_entry_handler(const struct config_entry *entry,
+		void *unused __attribute__((unused)))
 {
 	int ret = 0, i;
 
@@ -1172,7 +1173,8 @@ error:
  * Simply stop all worker threads, leaving main() return gracefully after
  * joining all threads and calling cleanup().
  */
-static void sighandler(int sig, siginfo_t *siginfo, void *arg)
+static void sighandler(int sig, siginfo_t *siginfo,
+		void *arg __attribute__((unused)))
 {
 	switch (sig) {
 	case SIGINT:

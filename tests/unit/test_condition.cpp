@@ -109,7 +109,7 @@ void test_condition_event_rule(void)
 	lttng_log_level_rule_destroy(log_level_rule_at_least_as_severe);
 }
 
-int main(int argc, const char *argv[])
+int main(void)
 {
 	plan_tests(NUM_TESTS);
 	test_condition_event_rule();

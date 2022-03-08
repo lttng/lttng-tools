@@ -160,7 +160,7 @@ void ctf_packet_index_populate(struct ctf_packet_index *index,
 }
 
 static ssize_t consumer_stream_consume_mmap(
-		struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_local_data *ctx __attribute__((unused)),
 		struct lttng_consumer_stream *stream,
 		const struct stream_subbuffer *subbuffer)
 {
@@ -231,7 +231,7 @@ static ssize_t consumer_stream_consume_splice(
 static int consumer_stream_send_index(
 		struct lttng_consumer_stream *stream,
 		const struct stream_subbuffer *subbuffer,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	off_t packet_offset = 0;
 	struct ctf_packet_index index = {};
@@ -591,8 +591,8 @@ end:
  */
 static
 int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
-		const struct stream_subbuffer *subbuffer,
-		struct lttng_consumer_local_data *ctx)
+		const struct stream_subbuffer *subbuffer __attribute__((unused)),
+		struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	int ret = 0;
 
@@ -1274,7 +1274,7 @@ end:
 }
 
 static ssize_t metadata_bucket_consume(
-		struct lttng_consumer_local_data *unused,
+		struct lttng_consumer_local_data *unused __attribute__((unused)),
 		struct lttng_consumer_stream *stream,
 		const struct stream_subbuffer *subbuffer)
 {

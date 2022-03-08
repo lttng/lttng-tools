@@ -613,7 +613,7 @@ const test_function test_functions[] = {
 	double_register_automatic_name_trigger,
 };
 
-int main(int argc, const char **argv)
+int main(void)
 {
 	size_t i;
 

@@ -145,8 +145,7 @@ error:
 static int lttng_kconsumer_snapshot_channel(
 		struct lttng_consumer_channel *channel,
 		uint64_t key, char *path, uint64_t relayd_id,
-		uint64_t nb_packets_per_stream,
-		struct lttng_consumer_local_data *ctx)
+		uint64_t nb_packets_per_stream)
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
@@ -989,8 +988,7 @@ error_streams_sent_nosignal:
 						msg.u.snapshot_channel.pathname,
 						msg.u.snapshot_channel.relayd_id,
 						msg.u.snapshot_channel
-								.nb_packets_per_stream,
-						ctx);
+								.nb_packets_per_stream);
 				if (ret_snapshot < 0) {
 					ERR("Snapshot channel failed");
 					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
@@ -1184,8 +1182,7 @@ end_destroy_channel:
 
 			ret_rotate_channel = lttng_consumer_rotate_channel(
 					channel, key,
-					msg.u.rotate_channel.relayd_id,
-					msg.u.rotate_channel.metadata, ctx);
+					msg.u.rotate_channel.relayd_id);
 			if (ret_rotate_channel < 0) {
 				ERR("Rotate channel failed");
 				ret_code = LTTCOMM_CONSUMERD_ROTATION_FAIL;
@@ -1204,7 +1201,7 @@ end_destroy_channel:
 			int ret_rotate;
 
 			ret_rotate = lttng_consumer_rotate_ready_streams(
-					channel, key, ctx);
+					channel, key);
 			if (ret_rotate < 0) {
 				ERR("Rotate ready streams failed");
 			}
@@ -1734,7 +1731,7 @@ end:
 
 static
 int put_next_subbuffer(struct lttng_consumer_stream *stream,
-		struct stream_subbuffer *subbuffer)
+		struct stream_subbuffer *subbuffer __attribute__((unused)))
 {
 	const int ret = kernctl_put_next_subbuf(stream->wait_fd);
 
@@ -1766,7 +1763,7 @@ bool is_get_next_check_metadata_available(int tracer_fd)
 
 static
 int signal_metadata(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
 	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
