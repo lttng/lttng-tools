@@ -1921,8 +1921,8 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
-		/* break is _not_ missing here. */
 	}
+	/* fall through */
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_session *usess = session->ust_session;

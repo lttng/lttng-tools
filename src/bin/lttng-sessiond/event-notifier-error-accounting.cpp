@@ -1121,8 +1121,8 @@ event_notifier_error_accounting_register_event_notifier(
 					trigger_name, trigger_owner_uid);
 			goto end;
 		}
-		/* fall-through. */
 	}
+	/* fall-through. */
 	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK:
 		*error_counter_index = local_error_counter_index;
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;

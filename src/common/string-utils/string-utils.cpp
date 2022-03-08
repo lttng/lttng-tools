@@ -66,7 +66,7 @@ void strutils_normalize_star_glob_pattern(char *pattern)
 				goto end;
 			}
 
-			/* Fall through default case. */
+			/* fall through */
 		default:
 			got_star = false;
 			break;

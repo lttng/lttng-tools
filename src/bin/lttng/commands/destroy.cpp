@@ -191,8 +191,8 @@ static int destroy_session(struct lttng_session *session)
 			}
 			break;
 		}
-		/* fall-through. */
 	}
+	/* fall-through. */
 	default:
 		ERR("%sFailed to get the location of the rotation performed during the session's destruction",
 				newline_needed ? "\n" : "");
