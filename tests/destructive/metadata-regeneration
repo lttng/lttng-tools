@@ -13,7 +13,7 @@
 
 TEST_DESC="Metadata regeneration after date change"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/..
 NUM_TESTS=44
 SESSION_NAME="regen"
@@ -31,7 +31,7 @@ DATE1="1970-02-02"
 DATE2="1980-02-02"
 HOUR="05:30"
 
-source $TESTDIR/utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -46,7 +46,7 @@ function validate_trace_date
 	local test_date=$1
 	local trace_path=$2
 
-	res=$($BABELTRACE_BIN --clock-date $trace_path 2>/dev/null | head -1 | grep $test_date)
+	res=$($BABELTRACE_BIN --clock-date "$trace_path" 2>/dev/null | head -1 | grep $test_date)
 	if [ $? -eq 0 ]; then
 		pass "Validate trace at date $test_date"
 		ret=0
@@ -62,17 +62,17 @@ function test_kernel_local ()
 {
 	diag "Test kernel local with metadata regeneration"
 	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 	lttng_enable_kernel_event $SESSION_NAME $KERNEL_EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	echo -n "100" > /proc/lttng-test-filter-event
 	stop_lttng_tracing_ok $SESSION_NAME
-	validate_trace_date $DATE1 $TRACE_PATH
+	validate_trace_date $DATE1 "$TRACE_PATH"
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
 	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
-	validate_trace_date $DATE2 $TRACE_PATH
+	validate_trace_date $DATE2 "$TRACE_PATH"
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
@@ -100,15 +100,18 @@ function test_kernel_streaming ()
 		# Only delete if successful
 		rm -rf $TRACE_PATH
 	else
-		break
+		return
 	fi
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
 function test_ust_local ()
 {
-	local file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local file_sync_after_first
+	local file_sync_before_last
+
+	file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST local with metadata regeneration"
 	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
@@ -116,17 +119,17 @@ function test_ust_local ()
 	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" > /dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
-	touch ${file_sync_before_last}
+	touch "${file_sync_before_last}"
 	# Wait for the applications started in background
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
-	validate_trace_date $DATE1 $TRACE_PATH
+	validate_trace_date $DATE1 "$TRACE_PATH"
 
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
@@ -134,19 +137,22 @@ function test_ust_local ()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
-	validate_trace_date $DATE2 $TRACE_PATH
+	validate_trace_date $DATE2 "$TRACE_PATH"
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "$TRACE_PATH"
 	fi
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	rm -f "${file_sync_after_first}"
+	rm -f "${file_sync_before_last}"
 }
 
 function test_ust_streaming ()
 {
-	local file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	local file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local file_sync_after_first
+	local file_sync_before_last
+
+	file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST streaming with metadata regeneration"
 	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
@@ -154,12 +160,12 @@ function test_ust_streaming ()
 	enable_ust_lttng_event_ok $SESSION_NAME $UST_EVENT_NAME
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" > /dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
-	touch ${file_sync_before_last}
+	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
 	wait
@@ -177,10 +183,10 @@ function test_ust_streaming ()
 	validate_trace_date $DATE2 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "$TRACE_PATH"
 	fi
-	rm -f ${file_sync_after_first}
-	rm -f ${file_sync_before_last}
+	rm -f "${file_sync_after_first}"
+	rm -f "${file_sync_before_last}"
 }
 
 if [ "$(id -u)" == "0" ]; then
@@ -190,8 +196,9 @@ else
 fi
 
 if ! destructive_tests_enabled ; then
-	echo 'You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS to "will-break-my-system" as argument to run this test'
-	echo 'Moreover, please make sure that ntp is not running while executing this test'
+	echo 'Please make sure that ntp is not running while executing this test'
+	skip 0 "You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS environment variable to \"will-break-my-system\" to run this test" $NUM_TESTS
+
 	exit 0
 fi
 
