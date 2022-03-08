@@ -15,8 +15,8 @@ else
 endif
 
 
-dist_noinst_SCRIPTS = run.sh fast_regression long_regression root_regression root_destructive_tests perf_regression
-EXTRA_DIST = run.sh fast_regression long_regression root_regression README root_destructive_tests perf_regression
+dist_noinst_SCRIPTS = run.sh long_regression root_regression root_destructive_tests
+EXTRA_DIST = run.sh long_regression root_regression README root_destructive_tests
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
