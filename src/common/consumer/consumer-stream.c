@@ -670,7 +670,8 @@ struct lttng_consumer_stream *consumer_stream_create(
 		goto error;
 	}
 
-	stream->send_node = CDS_LIST_HEAD_INIT(stream->send_node);
+	stream->send_node = (typeof(stream->send_node))
+			CDS_LIST_HEAD_INIT(stream->send_node);
 	stream->chan = channel;
 	stream->key = stream_key;
 	stream->trace_chunk = trace_chunk;
