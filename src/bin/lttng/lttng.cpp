@@ -150,6 +150,7 @@ static void list_options(FILE *ofp)
 /*
  * clean_exit
  */
+__attribute__((noreturn))
 static void clean_exit(int code)
 {
 	DBG("Clean exit");
