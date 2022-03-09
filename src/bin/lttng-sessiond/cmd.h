@@ -117,8 +117,6 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_session *session,
 		struct lttng_payload *payload);
-ssize_t cmd_list_domains(struct ltt_session *session,
-		struct lttng_domain **domains);
 void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		size_t session_count, uid_t uid, gid_t gid);
 enum lttng_error_code cmd_list_tracepoint_fields(enum lttng_domain_type domain,

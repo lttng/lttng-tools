@@ -2,6 +2,10 @@
 
 AM_CPPFLAGS += -I$(srcdir)
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_PROGRAMS = gen-events
 gen_events_SOURCES = main.c tp.c tp.h
 gen_events_LDADD = $(UST_LIBS) $(DL_LIBS)

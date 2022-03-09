@@ -14,6 +14,10 @@ else
 
 AM_CPPFLAGS += -I$(srcdir)
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \

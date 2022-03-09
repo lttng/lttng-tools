@@ -2,6 +2,10 @@
 
 AM_CPPFLAGS += -I$(srcdir)
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_PROGRAMS = type-declarations
 type_declarations_SOURCES = type-declarations.c ust_tests_td.h
 type_declarations_LDADD = $(UST_LIBS) $(DL_LIBS)

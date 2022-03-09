@@ -61,6 +61,7 @@ m4_define([WARN_FLAGS_COMMON_LIST], [ dnl
   -Wall dnl
   -Wnull-dereference dnl
   -Wundef dnl
+  -Wredundant-decls dnl
   -Wmissing-noreturn dnl
   -Wlogical-op dnl
   dnl We currently get this warning when building with Clang:

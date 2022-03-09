@@ -259,7 +259,7 @@ end:
 /*
  * Thread managing health check socket.
  */
-void *thread_manage_health(void *data)
+void *thread_manage_health_relayd(void *data)
 {
 	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;

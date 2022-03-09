@@ -2,6 +2,10 @@
 
 AM_CPPFLAGS += -I$(srcdir)
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_PROGRAMS = exit-fast
 exit_fast_SOURCES = exit-fast.c ust_tests_exitfast.h
 exit_fast_LDADD = $(UST_LIBS) $(DL_LIBS)

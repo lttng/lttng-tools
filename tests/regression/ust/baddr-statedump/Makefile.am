@@ -6,6 +6,10 @@ objcopy_verbose_0 = @echo OBJCOPY $@;
 
 AM_CPPFLAGS += -I$(srcdir) -g
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_PROGRAMS = prog
 prog_SOURCES = prog.c tp.c tp.h
 prog_LDADD = $(UST_LIBS) $(DL_LIBS)

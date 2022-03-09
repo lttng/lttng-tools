@@ -137,16 +137,6 @@ void consumer_stream_metadata_set_version(
 		struct lttng_consumer_stream *stream, uint64_t new_version);
 
 /*
- * Set the version of a metadata stream (i.e. following a metadata
- * regeneration).
- *
- * Changing the version of a metadata stream will cause any bucketized metadata
- * to be discarded and will mark the metadata stream for future `reset`.
- */
-void consumer_stream_metadata_set_version(
-		struct lttng_consumer_stream *stream, uint64_t new_version);
-
-/*
  * Attempt to open a packet in a stream.
  *
  * This function must be called with the stream and channel locks held.

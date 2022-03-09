@@ -7,6 +7,10 @@
 # so disable that.
 AM_CPPFLAGS += -I$(srcdir) -Wsystem-headers -Wno-format-nonliteral
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 # Set LIBS to nothing so the application does not link on useless
 # libraries.
 LIBS =

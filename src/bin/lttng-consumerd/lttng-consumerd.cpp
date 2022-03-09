@@ -502,7 +502,7 @@ int main(int argc, char **argv)
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&health_thread, default_pthread_attr(),
-			thread_manage_health, (void *) NULL);
+			thread_manage_health_consumerd, (void *) NULL);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create health");

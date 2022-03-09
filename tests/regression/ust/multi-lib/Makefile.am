@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_SCRIPTS = test_multi_lib
 EXTRA_DIST = test_multi_lib
 noinst_PROGRAMS = exec-with-callsites exec-without-callsites

@@ -2,6 +2,8 @@
 
 AM_CPPFLAGS += -I$(srcdir)
 
+AM_CFLAGS += -Wno-redundant-decls
+
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 dist_noinst_SCRIPTS = demo.sh
 EXTRA_DIST = README.md

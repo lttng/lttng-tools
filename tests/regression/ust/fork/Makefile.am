@@ -2,6 +2,10 @@
 
 AM_CPPFLAGS += -I$(srcdir)
 
+# Disable some warnings flags to accomodate the tracepoint headers
+AM_CFLAGS += \
+	-Wno-redundant-decls
+
 noinst_PROGRAMS = fork fork2
 fork_SOURCES = fork.c ust_tests_fork.h
 fork_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
