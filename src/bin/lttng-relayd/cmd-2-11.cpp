@@ -50,6 +50,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	header.current_chunk_id.value = be64toh(header.current_chunk_id.value);
 	header.current_chunk_id.is_set = !!header.current_chunk_id.is_set;
 	header.creation_time = be64toh(header.creation_time);
+	header.session_id = be64toh(header.session_id);
 
 	lttng_uuid_copy(sessiond_uuid, header.sessiond_uuid);
 
@@ -145,6 +146,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	*creation_time = (time_t) header.creation_time;
 	*session_name_contains_creation_time =
 		header.session_name_contains_creation_time;
+	*id_sessiond = header.session_id;
 
 	ret = 0;
 
