@@ -8,7 +8,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=99
+NUM_TESTS=96
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -212,7 +212,6 @@ NEEDS_ROOT=(
 	0
 	0
 	0
-	0
 	1
 
 	0
@@ -234,7 +233,6 @@ TEST_CONSUMERD=(
 	0
 	0
 	0
-	0
 
 	1
 	1
@@ -249,7 +247,6 @@ TEST_CONSUMERD=(
 )
 
 TEST_RELAYD=(
-	0
 	0
 	0
 	0
