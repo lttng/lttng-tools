@@ -566,11 +566,11 @@ struct lttng_bytecode {
 struct lttng_event_exclusion {
 	uint32_t count;
 	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
-	char names[0][LTTNG_SYMBOL_NAME_LEN];
+	char names[][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 
 #define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) \
-	(&(_exclusion)->names[_i][0])
+	((_exclusion)->names[_i])
 
 /*
  * Listing command header.

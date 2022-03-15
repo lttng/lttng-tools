@@ -319,8 +319,8 @@ static ssize_t lttng_event_exclusions_create_from_payload(
 			goto end;
 		}
 
-		ret = lttng_strncpy(local_exclusions->names[i], string,
-				sizeof(local_exclusions->names[i]));
+		ret = lttng_strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(local_exclusions, i), string,
+				sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(local_exclusions, i)));
 		if (ret) {
 			ret = -1;
 			goto end;
