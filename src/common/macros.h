@@ -115,12 +115,14 @@ void *zmalloc(size_t len)
  * It checks that the @src string fits into @dst_len before performing
  * the copy. On failure, no copy has been performed.
  *
+ * Assumes that 'src' is null-terminated.
+ *
  * dst_len includes the string's trailing NULL.
  */
 static inline
 int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 {
-	if (lttng_strnlen(src, dst_len) >= dst_len) {
+	if (strlen(src) >= dst_len) {
 		/* Fail since copying would result in truncation. */
 		return -1;
 	}
