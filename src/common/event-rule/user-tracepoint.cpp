@@ -380,8 +380,10 @@ lttng_event_rule_user_tracepoint_generate_exclusions(
 						rule, i, &exclusion_str);
 		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
-		copy_ret = lttng_strncpy(exclusions->names[i], exclusion_str,
-				sizeof(exclusions->names[i]));
+		copy_ret = lttng_strncpy(
+				LTTNG_EVENT_EXCLUSION_NAME_AT(exclusions, i),
+				exclusion_str,
+				sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusions, i)));
 		if (copy_ret) {
 			free(exclusions);
 			exclusions = NULL;
