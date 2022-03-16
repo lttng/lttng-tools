@@ -1185,7 +1185,7 @@ int viewer_get_new_streams(struct relay_connection *conn)
 		 * 'ret' to close the connection.
 		 */
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
-		goto send_reply;
+		goto send_reply_unlock;
 	}
 	send_streams = 1;
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
