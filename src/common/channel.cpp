@@ -146,11 +146,6 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 				lttng_buffer_view_from_view(view, offset,
 						channel_comm->name_len);
 
-		if (channel_comm->name_len > LTTNG_SYMBOL_NAME_LEN - 1) {
-			ret = -1;
-			goto end;
-		}
-
 		name = name_view.data;
 		if (!lttng_buffer_view_contains_string(
 				    &name_view, name, channel_comm->name_len)) {
@@ -158,7 +153,12 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 			goto end;
 		}
 
-		strcpy(local_channel->name, name);
+		ret = lttng_strncpy(local_channel->name, name,
+				sizeof(local_channel->name));
+		if (ret) {
+			goto end;
+		}
+
 		offset += channel_comm->name_len;
 	}
 

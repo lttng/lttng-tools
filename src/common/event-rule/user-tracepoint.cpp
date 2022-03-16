@@ -381,7 +381,7 @@ lttng_event_rule_user_tracepoint_generate_exclusions(
 		LTTNG_ASSERT(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 		copy_ret = lttng_strncpy(exclusions->names[i], exclusion_str,
-				LTTNG_SYMBOL_NAME_LEN);
+				sizeof(exclusions->names[i]));
 		if (copy_ret) {
 			free(exclusions);
 			exclusions = NULL;

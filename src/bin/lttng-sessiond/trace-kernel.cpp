@@ -594,7 +594,8 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		if (symbol_name) {
 			strncpy_ret = lttng_strncpy(
 					kernel_event_notifier->event.u.kprobe.symbol_name,
-					symbol_name, LTTNG_KERNEL_ABI_SYM_NAME_LEN);
+					symbol_name,
+					sizeof(kernel_event_notifier->event.u.kprobe.symbol_name));
 
 			if (strncpy_ret) {
 				ret_code = LTTNG_ERR_INVALID;

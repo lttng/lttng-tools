@@ -79,8 +79,9 @@ static int lttng_event_probe_attr_serialize(
 	size_t symbol_name_len;
 	struct lttng_event_probe_attr_comm comm = {};
 
-	symbol_name_len = lttng_strnlen(probe->symbol_name, LTTNG_SYMBOL_NAME_LEN);
-	if (symbol_name_len == LTTNG_SYMBOL_NAME_LEN) {
+	symbol_name_len = lttng_strnlen(
+			probe->symbol_name, sizeof(probe->symbol_name));
+	if (symbol_name_len == sizeof(probe->symbol_name)) {
 		/* Not null-termintated. */
 		ret = -1;
 		goto end;
@@ -114,8 +115,9 @@ static int lttng_event_function_attr_serialize(
 	size_t symbol_name_len;
 	struct lttng_event_function_attr_comm comm = { 0 };
 
-	symbol_name_len = lttng_strnlen(function->symbol_name, LTTNG_SYMBOL_NAME_LEN);
-	if (symbol_name_len == LTTNG_SYMBOL_NAME_LEN) {
+	symbol_name_len = lttng_strnlen(
+			function->symbol_name, sizeof(function->symbol_name));
+	if (symbol_name_len == sizeof(function->symbol_name)) {
 		/* Not null-termintated. */
 		ret = -1;
 		goto end;
@@ -187,7 +189,7 @@ static ssize_t lttng_event_probe_attr_create_from_payload(
 		}
 
 		ret = lttng_strncpy(local_attr->symbol_name, name,
-				LTTNG_SYMBOL_NAME_LEN);
+				sizeof(local_attr->symbol_name));
 		if (ret) {
 			ret = -1;
 			goto end;
@@ -249,7 +251,7 @@ static ssize_t lttng_event_function_attr_create_from_payload(
 		}
 
 		ret = lttng_strncpy(local_attr->symbol_name, name,
-				LTTNG_SYMBOL_NAME_LEN);
+				sizeof(local_attr->symbol_name));
 		if (ret) {
 			ret = -1;
 			goto end;
@@ -317,8 +319,8 @@ static ssize_t lttng_event_exclusions_create_from_payload(
 			goto end;
 		}
 
-		ret = lttng_strncpy(local_exclusions->names[i],
-				string, LTTNG_SYMBOL_NAME_LEN);
+		ret = lttng_strncpy(local_exclusions->names[i], string,
+				sizeof(local_exclusions->names[i]));
 		if (ret) {
 			ret = -1;
 			goto end;
@@ -406,8 +408,8 @@ ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 			goto end;
 		}
 
-		ret = lttng_strncpy(
-				local_event->name, name, LTTNG_SYMBOL_NAME_LEN);
+		ret = lttng_strncpy(local_event->name, name,
+				sizeof(local_event->name));
 		if (ret) {
 			ret = -1;
 			goto end;
@@ -710,8 +712,8 @@ int lttng_event_serialize(const struct lttng_event *event,
 	/* Save the header location for later in-place header update. */
 	header_offset = payload->buffer.size;
 
-	name_len = lttng_strnlen(event->name, LTTNG_SYMBOL_NAME_LEN);
-	if (name_len == LTTNG_SYMBOL_NAME_LEN) {
+	name_len = lttng_strnlen(event->name, sizeof(event->name));
+	if (name_len == sizeof(event->name)) {
 		/* Event name is not NULL-terminated. */
 		ret = -1;
 		goto end;
@@ -1203,9 +1205,9 @@ static int lttng_event_context_perf_counter_serialize(
 
 	comm.config = context->config;
 	comm.type = context->type;
-	comm.name_len = lttng_strnlen(context->name, LTTNG_SYMBOL_NAME_LEN);
+	comm.name_len = lttng_strnlen(context->name, sizeof(context->name));
 
-	if (comm.name_len == LTTNG_SYMBOL_NAME_LEN) {
+	if (comm.name_len == sizeof(context->name)) {
 		ret = -1;
 		goto end;
 	}
@@ -1394,7 +1396,8 @@ ssize_t lttng_event_field_create_from_payload(
 	assert(name);
 	assert(event);
 
-	if (lttng_strncpy(local_event_field->field_name, name , LTTNG_SYMBOL_NAME_LEN)) {
+	if (lttng_strncpy(local_event_field->field_name, name,
+			sizeof(local_event_field->field_name))) {
 		ret = -1;
 		goto end;
 	}
@@ -1426,8 +1429,8 @@ int lttng_event_field_serialize(const struct lttng_event_field *field,
 	/* Save the header location for later in-place header update. */
 	header_offset = payload->buffer.size;
 
-	name_len = strnlen(field->field_name, LTTNG_SYMBOL_NAME_LEN);
-	if (name_len == LTTNG_SYMBOL_NAME_LEN) {
+	name_len = strnlen(field->field_name, sizeof(field->field_name));
+	if (name_len == sizeof(field->field_name)) {
 		/* Event name is not NULL-terminated. */
 		ret = -1;
 		goto end;
