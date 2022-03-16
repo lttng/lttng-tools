@@ -1093,7 +1093,8 @@ static ssize_t lttng_event_context_perf_counter_populate_from_buffer(
 			goto end;
 		}
 
-		ret = lttng_strncpy(event_ctx->u.perf_counter.name, name, name_len);
+		ret = lttng_strncpy(event_ctx->u.perf_counter.name, name,
+				sizeof(event_ctx->u.perf_counter.name));
 		if (ret) {
 			consumed = -1;
 			goto end;
