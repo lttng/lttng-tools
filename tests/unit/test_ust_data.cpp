@@ -143,6 +143,7 @@ static void test_create_ust_event(void)
 
 static void test_create_ust_event_exclusion(void)
 {
+	int copy_ret;
 	enum lttng_error_code ret;
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
@@ -206,16 +207,24 @@ static void test_create_ust_event_exclusion(void)
 	 */
 
 	exclusion->count = exclusion_count;
-	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
-		get_random_string(), LTTNG_SYMBOL_NAME_LEN - 1);
-	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
-		get_random_string(), LTTNG_SYMBOL_NAME_LEN - 1);
+	copy_ret = lttng_strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
+			get_random_string(),
+			sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0)));
+	LTTNG_ASSERT(copy_ret == 0);
+	copy_ret = lttng_strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
+			get_random_string(),
+			sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1)));
+	LTTNG_ASSERT(copy_ret == 0);
 
 	exclusion_copy->count = exclusion_count;
-	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 0),
-		LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0), LTTNG_SYMBOL_NAME_LEN);
-	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 1),
-		LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), LTTNG_SYMBOL_NAME_LEN);
+	copy_ret = lttng_strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 0),
+			LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
+			sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 0)));
+	LTTNG_ASSERT(copy_ret == 0);
+	copy_ret = lttng_strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 1),
+			LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
+			sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 1)));
+	LTTNG_ASSERT(copy_ret == 0);
 
 	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
 	exclusion = NULL;
