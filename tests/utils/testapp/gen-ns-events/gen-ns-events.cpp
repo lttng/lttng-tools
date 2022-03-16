@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/compat/tid.h>
 #include <common/macros.h>
@@ -132,7 +133,7 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Initial %s ns inode number:      %lu\n", ns_str, ns1);
+	debug_printf("Initial %s ns inode number:      %" PRIuMAX "\n", ns_str, (uintmax_t) ns1);
 
 	/* Wait on synchronization before unshare. */
 	if (before_unshare_wait_file_path) {
@@ -155,7 +156,7 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Post unshare %s ns inode number: %lu\n", ns_str, ns2);
+	debug_printf("Post unshare %s ns inode number: %" PRIuMAX "\n", ns_str, (uintmax_t) ns2);
 
 	/* Signal that the unshare call is completed. */
 	if (after_unshare_signal_file_path) {

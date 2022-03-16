@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/compat/tid.h>
 #include <common/macros.h>
@@ -133,7 +134,7 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Initial %s ns inode number:      %lu\n", ns_str, ns1);
+	debug_printf("Initial %s ns inode number:      %" PRIuMAX "\n", ns_str, (uintmax_t) ns1);
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		tracepoint(tp, tptest, ns1);
@@ -155,7 +156,7 @@ static int do_the_needful(int ns_flag, const char *ns_str)
 		ret = -1;
 		goto end;
 	}
-	debug_printf("Post unshare %s ns inode number: %lu\n", ns_str, ns2);
+	debug_printf("Post unshare %s ns inode number: %" PRIuMAX "\n", ns_str, (uintmax_t) ns2);
 
 	/*
 	 * Signal that we emited the first event group and that the
