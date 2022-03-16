@@ -460,6 +460,7 @@ static void test_event_rule_userspace_probe(void)
 	struct lttng_payload payload;
 
 	diag("Event rule uprobe.");
+	lttng_payload_init(&payload);
 
 	lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
 	if (!lookup_method) {
