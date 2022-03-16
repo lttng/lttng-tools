@@ -5,6 +5,35 @@
  *
  */
 
+/*
+ * This compat header provides the following defines:
+ *
+ *  LITTLE_ENDIAN
+ *  BIG_ENDIAN
+ *  BYTE_ORDER
+ *
+ * And functions / macros :
+ *
+ *  bswap_16()
+ *  bswap_32()
+ *  bswap_64()
+ *
+ *  htobe16()
+ *  htole16()
+ *  be16toh()
+ *  le16toh()
+ *
+ *  htobe32()
+ *  htole32()
+ *  be32toh()
+ *  le32toh()
+ *
+ *  htobe64()
+ *  htole64()
+ *  be64toh()
+ *  le64toh()
+ */
+
 #ifndef _COMPAT_ENDIAN_H
 #define _COMPAT_ENDIAN_H
 
@@ -123,7 +152,6 @@
 
 #define LITTLE_ENDIAN  __LITTLE_ENDIAN
 #define BIG_ENDIAN     __BIG_ENDIAN
-#define PDP_ENDIAN     __PDP_ENDIAN
 #define BYTE_ORDER     __BYTE_ORDER
 
 #define betoh16(x) BE_16(x)

@@ -57,14 +57,14 @@
  * My best guess at if you are big-endian or little-endian.  This may
  * need adjustment.
  */
-#if (defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
-     __BYTE_ORDER == __LITTLE_ENDIAN) || \
+#if (defined(BYTE_ORDER) && defined(LITTLE_ENDIAN) && \
+     BYTE_ORDER == LITTLE_ENDIAN) || \
     (defined(i386) || defined(__i386__) || defined(__i486__) || \
      defined(__i586__) || defined(__i686__) || defined(vax) || defined(MIPSEL))
 # define HASH_LITTLE_ENDIAN 1
 # define HASH_BIG_ENDIAN 0
-#elif (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && \
-       __BYTE_ORDER == __BIG_ENDIAN) || \
+#elif (defined(BYTE_ORDER) && defined(BIG_ENDIAN) && \
+       BYTE_ORDER == BIG_ENDIAN) || \
       (defined(sparc) || defined(POWERPC) || defined(mc68000) || defined(sel))
 # define HASH_LITTLE_ENDIAN 0
 # define HASH_BIG_ENDIAN 1
