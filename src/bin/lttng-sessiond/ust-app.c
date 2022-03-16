@@ -2151,7 +2151,7 @@ static int init_ust_event_notifier_from_event_rule(
 
 	event_notifier->event.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
 	ret = lttng_strncpy(event_notifier->event.name, pattern,
-			LTTNG_UST_ABI_SYM_NAME_LEN - 1);
+			sizeof(event_notifier->event.name));
 	if (ret) {
 		ERR("Failed to copy event rule pattern to notifier: pattern = '%s' ",
 				pattern);
