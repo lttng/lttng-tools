@@ -3317,7 +3317,7 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 	/* Send all streams to application. */
 	pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
 	cds_list_for_each_entry(reg_stream, &buf_reg_chan->streams, lnode) {
-		struct ust_app_stream stream;
+		struct ust_app_stream stream = {};
 
 		ret = duplicate_stream_object(reg_stream, &stream);
 		if (ret < 0) {
@@ -3334,8 +3334,8 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 				 * Treat this the same way as an application
 				 * that is exiting.
 				 */
-				WARN("Communication with application %d timed out on send_stream for stream \"%s\" of channel \"%s\" of session \"%" PRIu64 "\".",
-						app->pid, stream.name,
+				WARN("Communication with application %d timed out on send_stream for stream of channel \"%s\" of session \"%" PRIu64 "\".",
+						app->pid,
 						ua_chan->name,
 						ua_sess->tracing_id);
 				ret = -ENOTCONN;
