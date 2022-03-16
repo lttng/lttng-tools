@@ -235,7 +235,7 @@ enum {
 	LPOLLRDBAND = POLLRDBAND,
 	LPOLLWRNORM = POLLWRNORM,
 	LPOLLWRBAND = POLLWRBAND,
-#if __linux__
+#ifdef __linux__
 	LPOLLMSG = POLLMSG,
 	LPOLLRDHUP = POLLRDHUP,
 #elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))

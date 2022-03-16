@@ -45,7 +45,7 @@ my_gettid(void)
         : "0"(__NR_gettid)
         : "cc", "rcx", "r11", "memory"
     );
-#elif __i386
+#elif defined(__i386)
     asm volatile
     (
         "int $0x80"
