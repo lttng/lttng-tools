@@ -11,9 +11,9 @@
 #include <limits.h>
 #include <common/compat/endian.h>
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 #define MSGPACK_ENDIAN_LITTLE_BYTE 1
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif BYTE_ORDER == BIG_ENDIAN
 #define MSGPACK_ENDIAN_BIG_BYTE 1
 #endif
 
