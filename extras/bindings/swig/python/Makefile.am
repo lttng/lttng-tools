@@ -12,6 +12,8 @@ AM_CFLAGS += -Wno-shadow
 
 AM_CFLAGS += -Wno-missing-field-initializers
 
+AM_CFLAGS += -Wno-cast-function-type
+
 AM_CPPFLAGS += $(PYTHON_INCLUDE)
 
 EXTRA_DIST = lttng.i.in
