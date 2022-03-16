@@ -37,8 +37,11 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #define SYNC_FILE_RANGE_WAIT_BEFORE   0
 #define SYNC_FILE_RANGE_WRITE         0
 
-static inline int lttng_sync_file_range(int fd, off64_t offset,
-		off64_t nbytes, unsigned int flags)
+static inline int lttng_sync_file_range(
+		int fd __attribute__((unused)),
+		off64_t offset __attribute__((unused)),
+		off64_t nbytes __attribute__((unused)),
+		unsigned int flags __attribute__((unused)))
 {
 	return -ENOSYS;
 }
@@ -53,8 +56,13 @@ static inline int lttng_sync_file_range(int fd, off64_t offset,
 #define SPLICE_F_MORE       0
 #define SPLICE_F_GIFT       0
 
-static inline ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
-		size_t len, unsigned int flags)
+static inline ssize_t splice(
+		int fd_in __attribute__((unused)),
+		loff_t *off_in __attribute__((unused)),
+		int fd_out __attribute__((unused)),
+		loff_t *off_out __attribute__((unused)),
+		size_t len __attribute__((unused)),
+		unsigned int flags __attribute__((unused)))
 {
 	return -ENOSYS;
 }

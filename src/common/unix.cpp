@@ -1150,7 +1150,7 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	return ret;
 }
 #elif (defined(__FreeBSD__) || defined(__sun__) || defined(__APPLE__))
-int lttcomm_setsockopt_creds_unix_sock(int sock)
+int lttcomm_setsockopt_creds_unix_sock(int sock __attribute__((unused)))
 {
 	return 0;
 }

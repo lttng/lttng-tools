@@ -629,16 +629,18 @@ end:
 }
 #else
 static
-int _extract_elf_symbol_offset(struct run_as_data *data,
-		struct run_as_ret *ret_value)
+int _extract_elf_symbol_offset(
+		struct run_as_data *data __attribute__((unused)),
+		struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET");
 	return -1;
 }
 
 static
-int _extract_sdt_probe_offsets(struct run_as_data *data,
-		struct run_as_ret *ret_value)
+int _extract_sdt_probe_offsets(
+		struct run_as_data *data __attribute__((unused)),
+		struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_SDT_PROBE_OFFSETS");
 	return -1;

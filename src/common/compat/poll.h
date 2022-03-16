@@ -354,7 +354,8 @@ extern int compat_poll_set_max_size(void);
 /*
  * No need to reset a pollfd structure for poll(2)
  */
-static inline void lttng_poll_reset(struct lttng_poll_event *events)
+static inline void lttng_poll_reset(
+		struct lttng_poll_event *events __attribute__((unused)))
 {}
 
 /*

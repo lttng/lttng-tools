@@ -73,17 +73,19 @@ int fd_tracker_util_poll_clean(
  * The epoll variant of the poll compat layer creates an unsuspendable fd which
  * must be tracked.
  */
-int fd_tracker_util_poll_create(struct fd_tracker *tracker,
-		const char *name,
+int fd_tracker_util_poll_create(
+		struct fd_tracker *tracker __attribute__((unused)),
+		const char *name __attribute__((unused)),
 		struct lttng_poll_event *events,
 		int size,
-		int flags)
+		int flags __attribute__((unused)))
 {
 	return lttng_poll_create(events, size, flags);
 }
 
 int fd_tracker_util_poll_clean(
-		struct fd_tracker *tracker, struct lttng_poll_event *events)
+		struct fd_tracker *tracker __attribute__((unused)),
+		struct lttng_poll_event *events)
 {
 	lttng_poll_clean(events);
 	return 0;
