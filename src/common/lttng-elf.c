@@ -826,7 +826,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	if (symtab_hdr.sh_entsize == 0) {
 		DBG("Invalid ELF string table entry size.");
 		ret = LTTNG_ERR_ELF_PARSING;
-		goto free_symbol_table_data;
+		goto free_string_table_data;
 	}
 
 	sym_count = symtab_hdr.sh_size / symtab_hdr.sh_entsize;
