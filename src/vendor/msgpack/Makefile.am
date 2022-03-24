@@ -16,7 +16,6 @@ libmsgpack_la_SOURCES = \
 	pack_define.h \
 	pack.h \
 	pack_template.h \
-	predef.h \
 	sbuffer.h \
 	sysdep.h \
 	timestamp.h \

@@ -8,6 +8,8 @@
  *    http://www.boost.org/LICENSE_1_0.txt)
  */
 
+#include "vendor/msgpack/lttng-config.h"
+
 #if MSGPACK_ENDIAN_LITTLE_BYTE
 #define TAKE8_8(d)  ((uint8_t*)&d)[0]
 #define TAKE8_16(d) ((uint8_t*)&d)[0]
