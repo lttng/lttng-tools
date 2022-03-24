@@ -19,7 +19,7 @@ extern "C" {
  * Create a newly allocated action list object.
  *
  * Returns a new action list on success, NULL on failure. This action list
- * must be destroyed using lttng_action_list_destroy().
+ * must be destroyed using lttng_action_destroy().
  */
 extern struct lttng_action *lttng_action_list_create(void);
 
