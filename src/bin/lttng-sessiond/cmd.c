@@ -1305,7 +1305,7 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 
 	attr = lttng_channel_copy(_attr);
 	if (!attr) {
-		ret = -LTTNG_ERR_NOMEM;
+		ret = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
