@@ -502,7 +502,7 @@ AC_CHECK_DECL([rcu_thread_online], [],
 	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]])
 AC_CHECK_DECL([caa_likely], [],
 	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]])
-AC_CHECK_LIB([urcu-cds], [_cds_lfht_new], [],
+AC_CHECK_LIB([urcu-cds], [_cds_lfht_new], [:],
 	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])])
 
 #Function added in urcu 0.7.0
