@@ -149,7 +149,7 @@ function test_clock_override_timestamp()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	stop_lttng_sessiond
-	modprobe --remove lttng-clock-plugin-test lttng-clock lttng-test
+	modprobe --remove lttng-test lttng-clock-plugin-test lttng-clock
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
