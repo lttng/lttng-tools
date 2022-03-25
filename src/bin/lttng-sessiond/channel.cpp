@@ -173,29 +173,28 @@ error:
 /*
  * Enable kernel channel of the kernel session.
  */
-int channel_kernel_enable(struct ltt_kernel_session *ksession,
+enum lttng_error_code channel_kernel_enable(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_channel *kchan)
 {
-	int ret;
+	enum lttng_error_code ret_code;
 
 	LTTNG_ASSERT(ksession);
 	LTTNG_ASSERT(kchan);
 
 	if (kchan->enabled == 0) {
-		ret = kernel_enable_channel(kchan);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CHAN_ENABLE_FAIL;
+		if (kernel_enable_channel(kchan) < 0) {
+			ret_code = LTTNG_ERR_KERN_CHAN_ENABLE_FAIL;
 			goto error;
 		}
 	} else {
-		ret = LTTNG_ERR_KERN_CHAN_EXIST;
+		ret_code = LTTNG_ERR_KERN_CHAN_EXIST;
 		goto error;
 	}
 
-	ret = LTTNG_OK;
+	ret_code = LTTNG_OK;
 
 error:
-	return ret;
+	return ret_code;
 }
 
 static int channel_validate(struct lttng_channel *attr)
@@ -223,10 +222,10 @@ static int channel_validate_kernel(struct lttng_channel *attr)
 /*
  * Create kernel channel of the kernel session and notify kernel thread.
  */
-int channel_kernel_create(struct ltt_kernel_session *ksession,
+enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 		struct lttng_channel *attr, int kernel_pipe)
 {
-	int ret;
+	enum lttng_error_code ret_code;
 	struct lttng_channel *defattr = NULL;
 
 	LTTNG_ASSERT(ksession);
@@ -236,7 +235,7 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
 				LTTNG_BUFFER_GLOBAL);
 		if (defattr == NULL) {
-			ret = LTTNG_ERR_FATAL;
+			ret_code = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		attr = defattr;
@@ -252,42 +251,40 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Validate common channel properties. */
 	if (channel_validate(attr) < 0) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	if (channel_validate_kernel(attr) < 0) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
-	/* Channel not found, creating it */
-	ret = kernel_create_channel(ksession, attr);
-	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_CHAN_FAIL;
+	/* Channel not found, creating it. */
+	if (kernel_create_channel(ksession, attr) < 0) {
+		ret_code = LTTNG_ERR_KERN_CHAN_FAIL;
 		goto error;
 	}
 
 	/* Notify kernel thread that there is a new channel */
-	ret = notify_thread_pipe(kernel_pipe);
-	if (ret < 0) {
-		ret = LTTNG_ERR_FATAL;
+	if (notify_thread_pipe(kernel_pipe) < 0) {
+		ret_code = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
-	ret = LTTNG_OK;
+	ret_code = LTTNG_OK;
 error:
 	channel_attr_destroy(defattr);
-	return ret;
+	return ret_code;
 }
 
 /*
  * Enable UST channel for session and domain.
  */
-int channel_ust_enable(struct ltt_ust_session *usess,
+enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
-	int ret = LTTNG_OK;
+	enum lttng_error_code ret_code = LTTNG_OK;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
@@ -295,7 +292,7 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 	/* If already enabled, everything is OK */
 	if (uchan->enabled) {
 		DBG3("Channel %s already enabled. Skipping", uchan->name);
-		ret = LTTNG_ERR_UST_CHAN_EXIST;
+		ret_code = LTTNG_ERR_UST_CHAN_EXIST;
 		goto end;
 	} else {
 		uchan->enabled = 1;
@@ -325,16 +322,16 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 
 
 end:
-	return ret;
+	return ret_code;
 }
 
 /*
  * Create UST channel for session and domain.
  */
-int channel_ust_create(struct ltt_ust_session *usess,
+enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		struct lttng_channel *attr, enum lttng_buffer_type type)
 {
-	int ret = LTTNG_OK;
+	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
@@ -346,7 +343,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	if (attr == NULL) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST, type);
 		if (defattr == NULL) {
-			ret = LTTNG_ERR_FATAL;
+			ret_code = LTTNG_ERR_FATAL;
 			goto error;
 		}
 		attr = defattr;
@@ -379,7 +376,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Validate common channel properties. */
 	if (channel_validate(attr) < 0) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -390,7 +387,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	 */
 	if (!attr->attr.subbuf_size ||
 			(attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -398,18 +395,18 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	 * Invalid subbuffer size if it's lower then the page size.
 	 */
 	if (attr->attr.subbuf_size < the_page_size) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	if (!attr->attr.num_subbuf ||
 			(attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	if (attr->attr.output != LTTNG_EVENT_MMAP) {
-		ret = LTTNG_ERR_NOT_SUPPORTED;
+		ret_code = LTTNG_ERR_NOT_SUPPORTED;
 		goto error;
 	}
 
@@ -419,7 +416,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	 */
 	if ((attr->attr.tracefile_size > 0) &&
 			(attr->attr.tracefile_size < attr->attr.subbuf_size)) {
-		ret = LTTNG_ERR_INVALID;
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -430,20 +427,20 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	case LTTNG_BUFFER_PER_UID:
 		break;
 	default:
-		ret = LTTNG_ERR_BUFFER_NOT_SUPPORTED;
+		ret_code = LTTNG_ERR_BUFFER_NOT_SUPPORTED;
 		goto error;
 	}
 
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, domain);
 	if (uchan == NULL) {
-		ret = LTTNG_ERR_FATAL;
+		ret_code = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
 	uchan->enabled = 1;
 	if (trace_ust_is_max_id(usess->used_channel_id)) {
-		ret = LTTNG_ERR_UST_CHAN_FAIL;
+		ret_code = LTTNG_ERR_UST_CHAN_FAIL;
 		goto error;
 	}
 	uchan->id = trace_ust_get_next_chan_id(usess);
@@ -457,7 +454,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		usess->buffer_type_changed = 1;
 	} else if (usess->buffer_type != type) {
 		/* Buffer type was already set. Refuse to create channel. */
-		ret = LTTNG_ERR_BUFFER_TYPE_MISMATCH;
+		ret_code = LTTNG_ERR_BUFFER_TYPE_MISMATCH;
 		goto error_free_chan;
 	}
 
@@ -485,7 +482,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		if (!agt) {
 			agt = agent_create(domain);
 			if (!agt) {
-				ret = LTTNG_ERR_NOMEM;
+				ret_code = LTTNG_ERR_NOMEM;
 				goto error_remove_chan;
 			}
 			agent_add(agt, usess->agents);
@@ -503,7 +500,7 @@ error_free_chan:
 	trace_ust_destroy_channel(uchan);
 error:
 	channel_attr_destroy(defattr);
-	return ret;
+	return ret_code;
 }
 
 /*

@@ -114,7 +114,8 @@ static int cmd_enable_event_internal(struct ltt_session *session,
 		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe);
-static int cmd_enable_channel_internal(struct ltt_session *session,
+static enum lttng_error_code cmd_enable_channel_internal(
+		struct ltt_session *session,
 		const struct lttng_domain *domain,
 		const struct lttng_channel *_attr,
 		int wpipe);
@@ -1273,12 +1274,13 @@ end:
 	return ret;
 }
 
-static int cmd_enable_channel_internal(struct ltt_session *session,
+static enum lttng_error_code cmd_enable_channel_internal(
+		struct ltt_session *session,
 		const struct lttng_domain *domain,
 		const struct lttng_channel *_attr,
 		int wpipe)
 {
-	int ret;
+	enum lttng_error_code ret_code;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
@@ -1290,7 +1292,7 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 
 	attr = lttng_channel_copy(_attr);
 	if (!attr) {
-		ret = LTTNG_ERR_NOMEM;
+		ret_code = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
@@ -1299,7 +1301,7 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 	/* Validate channel name */
 	if (attr->name[0] == '.' ||
 		memchr(attr->name, '/', len) != NULL) {
-		ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+		ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 		goto end;
 	}
 
@@ -1338,12 +1340,12 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 	case LTTNG_DOMAIN_PYTHON:
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable a channel in an agent domain but the agent thread is not running");
-			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			ret_code = LTTNG_ERR_AGENT_TRACING_DISABLED;
 			goto error;
 		}
 		break;
 	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		ret_code = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
 	}
 
@@ -1360,7 +1362,7 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
-				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				ret_code = LTTNG_ERR_TRACE_ALREADY_STARTED;
 				goto error;
 			}
 
@@ -1369,16 +1371,16 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 				/* Enforce mmap output for snapshot sessions. */
 				attr->attr.output = LTTNG_EVENT_MMAP;
 			}
-			ret = channel_kernel_create(
+			ret_code = channel_kernel_create(
 					session->kernel_session, attr, wpipe);
 			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
 			}
 		} else {
-			ret = channel_kernel_enable(session->kernel_session, kchan);
+			ret_code = channel_kernel_enable(session->kernel_session, kchan);
 		}
 
-		if (ret != LTTNG_OK) {
+		if (ret_code != LTTNG_OK) {
 			goto error;
 		}
 
@@ -1403,19 +1405,19 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 		if (domain->type == LTTNG_DOMAIN_JUL) {
 			if (strncmp(attr->name, DEFAULT_JUL_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
-				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
 			if (strncmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
-				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
 			if (strncmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
-				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
+				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		}
@@ -1429,32 +1431,32 @@ static int cmd_enable_channel_internal(struct ltt_session *session,
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
-				ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+				ret_code = LTTNG_ERR_TRACE_ALREADY_STARTED;
 				goto error;
 			}
 
-			ret = channel_ust_create(usess, attr, domain->buf_type);
+			ret_code = channel_ust_create(usess, attr, domain->buf_type);
 			if (attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
 		} else {
-			ret = channel_ust_enable(usess, uchan);
+			ret_code = channel_ust_enable(usess, uchan);
 		}
 		break;
 	}
 	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		ret_code = LTTNG_ERR_UNKNOWN_DOMAIN;
 		goto error;
 	}
 
-	if (ret == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
+	if (ret_code == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
 		session->has_non_mmap_channel = true;
 	}
 error:
 	rcu_read_unlock();
 end:
 	lttng_channel_destroy(attr);
-	return ret;
+	return ret_code;
 }
 
 enum lttng_error_code cmd_process_attr_tracker_get_tracking_policy(
