@@ -1,3 +1,41 @@
+2022-03-28 lttng-tools 2.12.9 (National Hot Tub Day)
+	* Fix: lttng-elf: wrong error label used by error path
+	* Fix: use the correct endian compat macros
+	* Fix: lttng-elf: untrusted entry size divisor
+	* Fix: event: erroneous bound check on perf counter name size
+	* Fix: relayd: missing session unlock on error path
+	* fix: warning '-Wstringop-truncation' with GCC 11.2
+	* Add Log4j 2.x agent tests for the 'log4j' domain
+	* Fix: relayd: session id is ignored by 2.11+ create session command
+	* Fix: consumerd: use-after-free of metadata bucket
+	* Fix: ust-consumerd: leak of stream control structure
+	* Fix: liblttng-ctl: erroneous flat size computation
+	* Build fix: relayd: mismatching function signatures
+	* Build fix: use of mutable keyword in C file
+	* Fix: relayd: connection abruptly closed on viewer stream creation failure
+	* Fix: relayd: live client fails on clear of multi-domain session
+	* Tests: fix: select_poll_epoll: test assumes epoll fd value
+	* Fix: rotation: hang on destroy when using scheduled rotation based on timer
+	* Fix: consumerd: fd still open after `lttng snapshot record` returns
+	* Fix: event: unchecked return value for lttng_strncpy
+	* Fix: event: format specifier for ssize_t
+	* Fix: sessiond: lttng_channel object is not reclaimed
+	* Fix: common: local_attr might leak
+	* Fix: session: end goto label used for error path
+	* Fix: ser/des: missing null terminator on payload append
+	* Fix: test: test plan/skip must come after TAP initialization
+	* Fix: test: missing test plan for non-x86/arm platforms (i.e powerpc)
+	* Fix: liblttng-ctl comm: lttng_event_field is not packed
+	* Fix: liblttng-ctl comm: lttng_event_context is not packed
+	* Fix: liblttng-ctl comm: lttng_event is not packed
+	* libcommon: move event.c to libcommon-lgpl
+	* Fix: liblttng-ctl comm: lttng_channel is not packed
+	* Fix: lttng-ctl: erroneous uses of LTTNG_PACKED
+	* Backport: lttng_buffer_view_is_valid, lttng_buffer_view_contains_string
+	* Fix: conversion from KB to bytes overflow on arm32
+	* Fix: Unexpected payload size in cmd_recv_stream_2_11
+	* Tests: add kernel test into the `make check` test suite.
+
 2022-01-26 lttng-tools 2.12.8 (National Peanut Brittle Day)
 	* Relicence all source and header files included in LGPL code
 	* Fix: sessiond: use of null session when session is not found
