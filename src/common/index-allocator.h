@@ -8,6 +8,7 @@
 #ifndef _COMMON_INDEX_ALLOCATOR_H
 #define _COMMON_INDEX_ALLOCATOR_H
 
+#include <common/macros.h>
 #include <inttypes.h>
 
 struct lttng_index_allocator;
@@ -21,18 +22,21 @@ enum lttng_index_allocator_status {
 /*
  * Create an index allocator of `index_count` slots.
  */
+LTTNG_HIDDEN
 struct lttng_index_allocator *lttng_index_allocator_create(
 		uint64_t index_count);
 
 /*
  * Get the number of indexes currently in use.
  */
+LTTNG_HIDDEN
 uint64_t lttng_index_allocator_get_index_count(
 	struct lttng_index_allocator *allocator);
 
 /*
  * Allocate (i.e. reserve) a slot.
  */
+LTTNG_HIDDEN
 enum lttng_index_allocator_status lttng_index_allocator_alloc(
 		struct lttng_index_allocator *allocator,
 		uint64_t *index);
@@ -41,12 +45,14 @@ enum lttng_index_allocator_status lttng_index_allocator_alloc(
  * Release a slot by index. The slot will be re-used by the index allocator
  * in future 'alloc' calls.
  */
+LTTNG_HIDDEN
 enum lttng_index_allocator_status lttng_index_allocator_release(
 		struct lttng_index_allocator *allocator, uint64_t index);
 
 /*
  * Destroy an index allocator.
  */
+LTTNG_HIDDEN
 void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator);
 
 #endif /* _COMMON_INDEX_ALLOCATOR_H */
