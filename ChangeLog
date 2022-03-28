@@ -1,3 +1,63 @@
+2022-03-28 lttng-tools 2.13.5 (National Hot Tub Day)
+	* Fix: doc: action: wrong function documented for action_list destroy
+	* Fix: lttng-elf: wrong error label used by error path
+	* Fix: use the correct endian compat macros
+	* Fix: tests: uninitialized lttng_payload
+	* Fix: sessiond: ust-app: uninitialized name logged on stream copy failure
+	* Fix: lttng-elf: untrusted entry size divisor
+	* Fix: event: erroneous bound check on perf counter name size
+	* Fix: sessiond: event name length check is too strict
+	* Fix: relayd: missing session unlock on error path
+	* fix: warning '-Wstringop-truncation' with GCC 11.2
+	* Add Log4j 2.x agent tests for the 'log4j' domain
+	* Fix: relayd: session id is ignored by 2.11+ create session command
+	* Build fix: consumer: aggregate initialization isn't supported
+	* Fix: consumerd: use-after-free of metadata bucket
+	* Fix: ust-consumerd: leak of stream control structure
+	* Fix: liblttng-ctl: erroneous flat size computation
+	* Fix: test: babeltrace1 python bindings exposes `op_enum` as a string
+	* Build fix: relayd: mismatching function signatures
+	* Build fix: use of mutable keyword in C file
+	* Fix: relayd: connection abruptly closed on viewer stream creation failure
+	* Fix: relayd: live client fails on clear of multi-domain session
+	* fix: msgpack requires limits.h for UINT_MAX
+	* Fix: liblttng-ctl: hide symbols introduced by packing fixes
+	* Fix: rotation: hang on destroy when using scheduled rotation based on timer
+	* Fix: consumerd: fd still open after `lttng snapshot record` returns
+	* Fix: event: unchecked return value for lttng_strncpy
+	* Fix: event: format specifier for ssize_t
+	* Fix: sessiond: use after free
+	* Fix: sessiond: `break` used instead of `goto`
+	* Fix: sessiond: lttng_channel object is not reclaimed
+	* Fix: common: local_attr might leak
+	* Fix: session: end goto label used for error path
+	* Fix: sessiond: event, filter expression, bytecode, exclusions might leak
+	* Fix: lttng-sessiond: event_context might leak
+	* Fix: lttng-ctl: uninitialized pointer read
+	* Fix: ser/des: missing null terminator on payload append
+	* Fix: test: test plan/skip must come after TAP initialization
+	* Fix: test: missing test plan for non-x86/arm platforms (i.e powerpc)
+	* Fix: remove debugging output
+	* Fix: tests: test_kernel: break should only be used in loops
+	* Fix: tools/snapshots/test_kernel flaky test
+	* Tests: Fix: test_list_triggers_cli: support in-kernel builtin lttng-modules
+	* Fix: lttng: truncated addresses and offsets on 32-bit builds
+	* Fix: liblttng-ctl comm: lttng_event_field is not packed
+	* Fix: liblttng-ctl comm: lttng_event_context is not packed
+	* Fix: liblttng-ctl comm: lttng_event is not packed
+	* libcommon: move event.c to libcommon-lgpl
+	* Fix: liblttng-ctl comm: lttng_channel is not packed
+	* Fix: conversion from KB to bytes overflow on arm32
+	* Fix: Unexpected payload size in cmd_recv_stream_2_11
+	* Fix: liblttng-ctl: missing index allocator symbols
+	* Fix: lttng-sessiond: null pointer used to log session name
+	* Tests: add kernel test into the `make check` test suite.
+	* Build dist fix: some kernel tests are not distributed
+	* Tests: fix: test_kernel_function: erroneous test count
+	* Tests: fix: test_kernel_function: event name mismatch
+	* Tests: fix: select_poll_epoll: test assumes epoll fd value
+	* Fix: missing RCU read side critical sections
+
 2022-01-26 lttng-tools 2.13.4 (National Peanut Brittle Day)
 	* Build fix: hashtable: hashtable.cpp does not exist
 
