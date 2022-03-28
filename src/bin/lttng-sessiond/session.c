@@ -377,24 +377,45 @@ end:
 
 /*
  * Test if ltt_sessions_ht_by_id/name are empty.
- * Return 1 if empty, 0 if not empty.
+ * Return `false` if hash table objects are null.
  * The session list lock must be held.
  */
-static int ltt_sessions_ht_empty(void)
+static bool ltt_sessions_ht_empty(void)
 {
-	unsigned long count;
+	bool empty = false;
 
 	if (!ltt_sessions_ht_by_id) {
-		count = 0;
+		/* The hash tables do not exist yet. */
 		goto end;
 	}
 
 	assert(ltt_sessions_ht_by_name);
 
-	count = lttng_ht_get_count(ltt_sessions_ht_by_id);
-	assert(count == lttng_ht_get_count(ltt_sessions_ht_by_name));
+	if (lttng_ht_get_count(ltt_sessions_ht_by_id) == 0) {
+		/* Not empty.*/
+		goto end;
+	}
+
+	/*
+	 * At this point it is expected that the `ltt_sessions_ht_by_name` ht is
+	 * empty.
+	 *
+	 * The removal from both hash tables is done in two different
+	 * places:
+	 *   - removal from `ltt_sessions_ht_by_name` is done during
+	 *     `session_destroy()`
+	 *   - removal from `ltt_sessions_ht_by_id` is done later
+	 *     in `session_release()` on the last reference put.
+	 *
+	 * This means that it is possible for `ltt_sessions_ht_by_name` to be
+	 * empty but for `ltt_sessions_ht_by_id` to still contain objects when
+	 * multiple sessions exists. The reverse is false, hence this sanity
+	 * check.
+	 */
+	assert(lttng_ht_get_count(ltt_sessions_ht_by_name) == 0);
+	empty = true;
 end:
-	return count ? 0 : 1;
+	return empty;
 }
 
 /*
