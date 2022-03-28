@@ -1,3 +1,6 @@
+2022-03-28 lttng-tools 2.12.10 (National Hot Tub Day)
+	* Fix: Remove liblttng-ctl.so dependency on liburcu-cds.so and liburcu-common.so
+
 2022-03-28 lttng-tools 2.12.9 (National Hot Tub Day)
 	* Fix: lttng-elf: wrong error label used by error path
 	* Fix: use the correct endian compat macros
