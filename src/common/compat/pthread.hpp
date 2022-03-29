@@ -60,7 +60,7 @@ static inline
 int lttng_pthread_setname_np(const char *name)
 {
 	/* Replicate pthread_setname_np's behavior. */
-	if (strnlen(name, LTTNG_UST_ABI_PROCNAME_LEN) >= LTTNG_UST_ABI_PROCNAME_LEN) {
+	if (strnlen(name, LTTNG_PTHREAD_NAMELEN) >= LTTNG_PTHREAD_NAMELEN) {
 		return ERANGE;
 	}
 	return prctl(PR_SET_NAME, name, 0, 0, 0);
