@@ -1,3 +1,6 @@
+2022-03-28 lttng-tools 2.13.6 (National Hot Tub Day)
+	* Fix: hide symbols erroneously exported in 2.13.5
+
 2022-03-28 lttng-tools 2.13.5 (National Hot Tub Day)
 	* Fix: doc: action: wrong function documented for action_list destroy
 	* Fix: lttng-elf: wrong error label used by error path
