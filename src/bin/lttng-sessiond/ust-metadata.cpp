@@ -906,11 +906,15 @@ end:
 
 /*
  * Should be called with session registry mutex held.
+ *
+ * RCU read lock must be held by the caller.
  */
 int ust_metadata_channel_statedump(struct ust_registry_session *session,
 		struct ust_registry_channel *chan)
 {
 	int ret;
+
+	ASSERT_RCU_READ_LOCKED();
 
 	/* Don't dump metadata events */
 	if (chan->chan_id == -1U)
