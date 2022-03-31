@@ -145,10 +145,12 @@ static int validate_xml(const char *xml_file_path, struct validation_ctx *ctx)
 
 	ret = CMD_SUCCESS;
 end:
+	if (doc) {
+		xmlFreeDoc(doc);
+	}
 	return ret;
-
-
 }
+
 int main(int argc, char **argv)
 {
 	int ret;
