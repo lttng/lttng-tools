@@ -2049,7 +2049,7 @@ int handle_notification_thread_command_add_tracer_event_source(
 			lttng_domain_type_str(domain_type));
 
 	/* Adding the read side pipe to the event poll. */
-	ret = lttng_poll_add(&state->events, tracer_event_source_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&state->events, tracer_event_source_fd, LPOLLPRI | LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		ERR("Failed to add tracer event source to poll set: tracer_event_source_fd = %d, domain = '%s'",
 				tracer_event_source_fd,
