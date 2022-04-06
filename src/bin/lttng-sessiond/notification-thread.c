@@ -18,6 +18,7 @@
 #include <common/align.h>
 #include <common/time.h>
 #include <sys/stat.h>
+#include <sys/eventfd.h>
 #include <time.h>
 #include <signal.h>
 
@@ -54,8 +55,11 @@ void notification_thread_handle_destroy(
 	pthread_mutex_destroy(&handle->cmd_queue.lock);
 	sem_destroy(&handle->ready);
 
-	if (handle->cmd_queue.event_pipe) {
-		lttng_pipe_destroy(handle->cmd_queue.event_pipe);
+	if (handle->cmd_queue.event_fd >= 0) {
+		ret = close(handle->cmd_queue.event_fd);
+		if (ret < 0) {
+			PERROR("Failed to close notification command queue event fd");
+		}
 	}
 	if (handle->channel_monitoring_pipes.ust32_consumer >= 0) {
 		ret = close(handle->channel_monitoring_pipes.ust32_consumer);
@@ -87,7 +91,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 {
 	int ret;
 	struct notification_thread_handle *handle;
-	struct lttng_pipe *event_pipe = NULL;
+	int event_fd = -1;
 
 	handle = zmalloc(sizeof(*handle));
 	if (!handle) {
@@ -96,14 +100,13 @@ struct notification_thread_handle *notification_thread_handle_create(
 
 	sem_init(&handle->ready, 0, 0);
 
-	event_pipe = lttng_pipe_open(FD_CLOEXEC);
-	if (!event_pipe) {
-		ERR("event_pipe creation");
+	event_fd =  eventfd(0, EFD_CLOEXEC);
+	if (event_fd < 0) {
+		PERROR("event_fd creation");
 		goto error;
 	}
 
-	handle->cmd_queue.event_pipe = event_pipe;
-	event_pipe = NULL;
+	handle->cmd_queue.event_fd = event_fd;
 
 	CDS_INIT_LIST_HEAD(&handle->cmd_queue.list);
 	ret = pthread_mutex_init(&handle->cmd_queue.lock, NULL);
@@ -145,7 +148,6 @@ struct notification_thread_handle *notification_thread_handle_create(
 end:
 	return handle;
 error:
-	lttng_pipe_destroy(event_pipe);
 	notification_thread_handle_destroy(handle);
 	return NULL;
 }
@@ -291,7 +293,7 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 		ERR("Failed to add notification channel socket to pollset");
 		goto error;
 	}
-	ret = lttng_poll_add(poll_set, lttng_pipe_get_readfd(handle->cmd_queue.event_pipe),
+	ret = lttng_poll_add(poll_set, handle->cmd_queue.event_fd,
 			LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		ERR("Failed to add notification command queue event fd to pollset");
@@ -706,7 +708,7 @@ void *thread_notification(void *data)
 					ERR("Unexpected poll events %u for notification socket %i", revents, fd);
 					goto error;
 				}
-			} else if (fd == lttng_pipe_get_readfd(handle->cmd_queue.event_pipe)) {
+			} else if (fd == handle->cmd_queue.event_fd) {
 				ret = handle_notification_thread_command(handle,
 						&state);
 				if (ret < 0) {

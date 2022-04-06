@@ -63,7 +63,7 @@ struct notification_thread_handle {
 	 * has been enqueued.
 	 */
 	struct {
-		struct lttng_pipe *event_pipe;
+		int event_fd;
 		struct cds_list_head list;
 		pthread_mutex_t lock;
 	} cmd_queue;
