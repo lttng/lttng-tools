@@ -3123,27 +3123,54 @@ end:
 	return 0;
 }
 
+static
+int pop_cmd_queue(struct notification_thread_handle *handle,
+		struct notification_thread_command **cmd)
+{
+	int ret;
+	uint64_t counter;
+
+	pthread_mutex_lock(&handle->cmd_queue.lock);
+	ret = lttng_read(handle->cmd_queue.event_fd, &counter, sizeof(counter));
+	if (ret != sizeof(counter)) {
+		ret = -1;
+		goto error_unlock;
+	}
+
+	/* Simulate behaviour of EFD_SEMAPHORE for older kernels. */
+	counter -= 1;
+	if (counter != 0) {
+		ret = lttng_write(handle->cmd_queue.event_fd, &counter,
+				sizeof(counter));
+		if (ret != sizeof(counter)) {
+			PERROR("Failed to write back to event_fd for EFD_SEMAPHORE emulation");
+			ret = -1;
+			goto error_unlock;
+		}
+	}
+
+	*cmd = cds_list_first_entry(&handle->cmd_queue.list,
+			struct notification_thread_command, cmd_list_node);
+	cds_list_del(&((*cmd)->cmd_list_node));
+	ret = 0;
+
+error_unlock:
+	pthread_mutex_unlock(&handle->cmd_queue.lock);
+	return ret;
+}
+
 /* Returns 0 on success, 1 on exit requested, negative value on error. */
 int handle_notification_thread_command(
 		struct notification_thread_handle *handle,
 		struct notification_thread_state *state)
 {
 	int ret;
-	uint64_t counter;
 	struct notification_thread_command *cmd;
 
-	/* Read the event pipe to put it back into a quiescent state. */
-	ret = lttng_read(lttng_pipe_get_readfd(handle->cmd_queue.event_pipe), &counter,
-			sizeof(counter));
-	if (ret != sizeof(counter)) {
+	ret = pop_cmd_queue(handle, &cmd);
+	if (ret) {
 		goto error;
 	}
-
-	pthread_mutex_lock(&handle->cmd_queue.lock);
-	cmd = cds_list_first_entry(&handle->cmd_queue.list,
-			struct notification_thread_command, cmd_list_node);
-	cds_list_del(&cmd->cmd_list_node);
-	pthread_mutex_unlock(&handle->cmd_queue.lock);
 
 	DBG("Received `%s` command",
 			notification_command_type_str(cmd->type));
