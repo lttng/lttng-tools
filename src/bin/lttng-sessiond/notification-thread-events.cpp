@@ -3137,18 +3137,6 @@ int pop_cmd_queue(struct notification_thread_handle *handle,
 		goto error_unlock;
 	}
 
-	/* Simulate behaviour of EFD_SEMAPHORE for older kernels. */
-	counter -= 1;
-	if (counter != 0) {
-		ret = lttng_write(handle->cmd_queue.event_fd, &counter,
-				sizeof(counter));
-		if (ret != sizeof(counter)) {
-			PERROR("Failed to write back to event_fd for EFD_SEMAPHORE emulation");
-			ret = -1;
-			goto error_unlock;
-		}
-	}
-
 	*cmd = cds_list_first_entry(&handle->cmd_queue.list,
 			struct notification_thread_command, cmd_list_node);
 	cds_list_del(&((*cmd)->cmd_list_node));

@@ -105,7 +105,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 
 	sem_init(&handle->ready, 0, 0);
 
-	event_fd =  eventfd(0, EFD_CLOEXEC);
+	event_fd =  eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
 	if (event_fd < 0) {
 		PERROR("event_fd creation");
 		goto error;

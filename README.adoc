@@ -52,11 +52,7 @@ endif::env-github[]
 You need the following dependencies to build and run the {lt}
 components:
 
-* **Linux kernel{nbsp}≥{nbsp}2.6.27**
-+
-Use `{nbh}{nbh}disable{nbh}epoll` at <<configure,build configuration>>
-time to build {lt} for an older kernel. However, note that we can't
-provide any guarantee below 2.6.27.
+* **Linux kernel{nbsp}≥{nbsp}2.6.30**
 
 * **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.11.0**.
 +
@@ -192,9 +188,6 @@ If you want to embed the manual pages into the `lttng`,
 `lttng{nbh}sessiond`, `lttng{nbh}relayd`, and `lttng{nbh}crash` programs
 so that you don't need `man` to view them, use the
 `{nbh}{nbh}enable{nbh}embedded{nbh}help` option.
-
-If your Linux kernel is older than 2.6.27, use the
-`{nbh}{nbh}disable{nbh}epoll` option.
 
 This build configuration script finds LTTng{nbh}UST with
 https://www.freedesktop.org/wiki/Software/pkg-config/[pkg{nbh}config]:
