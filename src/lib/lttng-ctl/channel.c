@@ -54,6 +54,10 @@ int receive_message(struct lttng_notification_channel *channel)
 		goto error;
 	}
 
+	if (msg.size == 0) {
+		goto skip_payload;
+	}
+
 	/* Reserve space for the payload. */
 	ret = lttng_dynamic_buffer_set_size(&channel->reception_buffer,
 			channel->reception_buffer.size + msg.size);
@@ -68,6 +72,8 @@ int receive_message(struct lttng_notification_channel *channel)
 		ret = -1;
 		goto error;
 	}
+
+skip_payload:
 	ret = 0;
 end:
 	return ret;
