@@ -455,17 +455,17 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	wait = &events->wait;
 
 	/* This *must* be freed by using lttng_poll_free() */
-	wait->events = (struct pollfd *) zmalloc(size * sizeof(struct pollfd));
+	wait->events = calloc<struct pollfd>(size);
 	if (wait->events == NULL) {
-		PERROR("zmalloc struct pollfd");
+		PERROR("Failed to allocate wait events array during poll initialization");
 		goto error;
 	}
 
 	wait->alloc_size = wait->init_size = size;
 
-	current->events = (struct pollfd *) zmalloc(size * sizeof(struct pollfd));
+	current->events = calloc<struct pollfd>(size);
 	if (current->events == NULL) {
-		PERROR("zmalloc struct current pollfd");
+		PERROR("Failed to allocate current events array during poll initialization");
 		goto error;
 	}
 
