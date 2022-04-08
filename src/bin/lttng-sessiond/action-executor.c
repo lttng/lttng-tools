@@ -233,6 +233,15 @@ static int client_handle_transmission_status(
 	case CLIENT_TRANSMISSION_STATUS_COMPLETE:
 		DBG("Successfully sent full notification to client, client_id = %" PRIu64,
 				client->id);
+		/*
+		 * There is no need to wake the (e)poll thread. If it was waiting for
+		 * "out" events on the client's socket, it will see that no payload
+		 * in queued and will unsubscribe from that event.
+		 *
+		 * In the other cases, we have to wake the the (e)poll thread to either
+		 * handle the error on the client or to get it to monitor the client "out"
+		 * events.
+		 */
 		update_communication = false;
 		break;
 	case CLIENT_TRANSMISSION_STATUS_QUEUED:
