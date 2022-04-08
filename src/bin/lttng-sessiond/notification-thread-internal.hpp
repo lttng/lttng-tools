@@ -165,6 +165,7 @@ struct notification_client {
 		 * clean-up.
 		 */
 		bool active;
+		int current_poll_events;
 		struct {
 			/*
 			 * During the reception of a message, the reception
