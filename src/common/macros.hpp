@@ -63,7 +63,19 @@ void *zmalloc_internal(size_t size)
 template <typename T>
 struct can_malloc
 {
+	/*
+	 * gcc versions before 5.0 lack some type traits defined in C++11.
+	 * Since in this instance we use the trait to prevent misuses
+	 * of malloc (and statically assert) and not to generate different
+	 * code based on this property, simply set value to true and allow
+	 * the code to compile. Anyone using a contemporary compiler will
+	 * catch the error.
+	 */
+#if __GNUG__ && __GNUC__ < 5
+	static constexpr bool value = true;
+#else
 	static constexpr bool value = std::is_trivially_constructible<T>::value;
+#endif
 };
 
 /*
@@ -138,7 +150,19 @@ T *malloc(size_t size)
 template<typename T>
 struct can_free
 {
+	/*
+	 * gcc versions before 5.0 lack some type traits defined in C++11.
+	 * Since in this instance we use the trait to prevent misuses
+	 * of free (and statically assert) and not to generate different
+	 * code based on this property, simply set value to true and allow
+	 * the code to compile. Anyone using a contemporary compiler will
+	 * catch the error.
+	 */
+#if __GNUG__ && __GNUC__ < 5
+	static constexpr bool value = true;
+#else
 	static constexpr bool value = std::is_trivially_destructible<T>::value || std::is_void<T>::value;
+#endif
 };
 
 template<typename T, typename = typename std::enable_if<!can_free<T>::value>::type>
@@ -156,7 +180,19 @@ void *memset(T *s, int c, size_t n) = delete;
 template<typename T>
 struct can_memcpy
 {
+	/*
+	 * gcc versions before 5.0 lack some type traits defined in C++11.
+	 * Since in this instance we use the trait to prevent misuses
+	 * of memcpy (and statically assert) and not to generate different
+	 * code based on this property, simply set value to true and allow
+	 * the code to compile. Anyone using a contemporary compiler will
+	 * catch the error.
+	 */
+#if __GNUG__ && __GNUC__ < 5
+	static constexpr bool value = true;
+#else
 	static constexpr bool value = std::is_trivially_copyable<T>::value;
+#endif
 };
 
 template <typename T, typename U,
@@ -167,7 +203,19 @@ void *memcpy(T *d, const U *s, size_t n) = delete;
 template<typename T>
 struct can_memmove
 {
+	/*
+	 * gcc versions before 5.0 lack some type traits defined in C++11.
+	 * Since in this instance we use the trait to prevent misuses
+	 * of memmove (and statically assert) and not to generate different
+	 * code based on this property, simply set value to true and allow
+	 * the code to compile. Anyone using a contemporary compiler will
+	 * catch the error.
+	 */
+#if __GNUG__ && __GNUC__ < 5
+	static constexpr bool value = true;
+#else
 	static constexpr bool value = std::is_trivially_copyable<T>::value;
+#endif
 };
 
 template <typename T, typename U,
