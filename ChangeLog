@@ -1,3 +1,15 @@
+2022-04-13 lttng-tools 2.13.7 (International Day of Pink)
+	* Fix: sessiond: assert on empty payload when handling client out event
+	* Fix: Revert of 814b4934e2604a419bcb8eec57c0450dbb47e2c3
+	* Fix: sessiond: inverted condition checking for empty hash table
+	* Fix: notification: kernel: consumption of event notification stalls
+	* Fix: notification: assert on len > 0 for dropped notification message
+	* Fix: example: print_notification is called on status all returned status
+	* Fix: sessiond: assertion hit in ltt_sessions_ht_empty
+	* Fix: tests: missing _GNU_SOURCE for F_GETPIPE_SZ
+	* Fix: compat: 'LTTNG_UST_ABI_PROCNAME_LEN' is undeclared
+	* Fix: sessiond: cmd_enable_channel: negative error code used
+
 2022-03-28 lttng-tools 2.13.6 (National Hot Tub Day)
 	* Fix: hide symbols erroneously exported in 2.13.5
 
