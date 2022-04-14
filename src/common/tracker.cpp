@@ -22,7 +22,7 @@
 
 struct process_attr_tracker_values_comm_header {
 	uint32_t count;
-};
+} LTTNG_PACKED;
 
 struct process_attr_tracker_value_comm {
 	/* enum lttng_process_attr_value_type */
@@ -32,7 +32,7 @@ struct process_attr_tracker_value_comm {
 		/* Includes the '\0' terminator. */
 		uint32_t name_len;
 	} value;
-};
+} LTTNG_PACKED;
 
 #define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)              \
 	((as_type)(std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
