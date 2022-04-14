@@ -24,6 +24,17 @@ struct lttng_error_query {
 	enum lttng_error_query_target_type target_type;
 };
 
+struct lttng_error_query_result {
+	enum lttng_error_query_result_type type;
+	char *name;
+	char *description;
+};
+
+struct lttng_error_query_results {
+	struct lttng_dynamic_pointer_array results;
+};
+
+namespace {
 struct lttng_error_query_comm {
 	/* enum lttng_error_query_target_type */
 	int8_t target_type;
@@ -48,12 +59,6 @@ struct lttng_error_query_action {
 	/* Mutable only because of the reference count. */
 	struct lttng_trigger *trigger;
 	struct lttng_action_path action_path;
-};
-
-struct lttng_error_query_result {
-	enum lttng_error_query_result_type type;
-	char *name;
-	char *description;
 };
 
 struct lttng_error_query_result_comm {
@@ -81,10 +86,7 @@ struct lttng_error_query_results_comm {
 	/* `count` instances of `struct lttng_error_query_result` follow. */
 	char payload[];
 } LTTNG_PACKED;
-
-struct lttng_error_query_results {
-	struct lttng_dynamic_pointer_array results;
-};
+} /* namespace */
 
 static
 enum lttng_error_code lttng_error_query_result_mi_serialize(

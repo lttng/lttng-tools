@@ -48,6 +48,7 @@ enum field_type {
 	FIELD_TYPE_ARRAY_FIELD,
 };
 
+namespace {
 struct capture_base_field_tuple {
 	const char *field_name;
 	enum field_type field_type;
@@ -58,6 +59,7 @@ struct capture_base_field_tuple {
 	validate_cb validate_ust;
 	validate_cb validate_kernel;
 };
+} /* namespace */
 
 static
 const char *field_value_type_to_str(enum lttng_event_field_value_type type)

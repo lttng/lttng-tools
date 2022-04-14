@@ -18,6 +18,7 @@
 #define IS_LIST_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_LIST)
 
+namespace {
 struct lttng_action_list {
 	struct lttng_action parent;
 
@@ -33,6 +34,7 @@ struct lttng_action_list_comm {
 	 */
 	char data[];
 } LTTNG_PACKED;
+} /* namespace */
 
 static void destroy_lttng_action_list_element(void *ptr)
 {

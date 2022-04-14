@@ -146,6 +146,7 @@
 #define EV_NUM 2
 #endif
 
+namespace {
 struct lttng_elf_ehdr {
 	uint16_t e_type;
 	uint16_t e_machine;
@@ -188,6 +189,7 @@ struct lttng_elf_sym {
 	uint64_t st_value;
 	uint64_t st_size;
 };
+} /* namespace */
 
 struct lttng_elf {
 	int fd;

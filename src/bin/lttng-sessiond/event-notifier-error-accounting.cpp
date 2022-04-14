@@ -25,6 +25,7 @@
 
 #define ERROR_COUNTER_INDEX_HT_INITIAL_SIZE 16
 
+namespace {
 struct index_ht_entry {
 	struct lttng_ht_node_u64 node;
 	uint64_t error_counter_index;
@@ -53,10 +54,10 @@ struct kernel_error_accounting_entry {
 	int error_counter_fd;
 };
 
-static struct kernel_error_accounting_entry kernel_error_accounting_entry;
+struct kernel_error_accounting_entry kernel_error_accounting_entry;
 
 /* Hashtable mapping uid to error_account_entry. */
-static struct lttng_ht *error_counter_uid_ht;
+struct lttng_ht *error_counter_uid_ht;
 
 struct error_accounting_state {
 	struct lttng_index_allocator *index_allocator;
@@ -65,8 +66,9 @@ struct error_accounting_state {
 	uint64_t number_indices;
 };
 
-static struct error_accounting_state ust_state;
-static struct error_accounting_state kernel_state;
+struct error_accounting_state ust_state;
+struct error_accounting_state kernel_state;
+} /* namespace */
 
 static inline void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 		const char **trigger_name,
@@ -113,12 +115,14 @@ const char *error_accounting_status_str(
 }
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
+namespace {
 struct event_notifier_counter {
 	pthread_mutex_t lock;
 	long count;
 };
 
-static struct event_notifier_counter the_event_notifier_counter;
+struct event_notifier_counter the_event_notifier_counter;
+} /* namespace */
 
 static void free_ust_error_accounting_entry(struct rcu_head *head)
 {

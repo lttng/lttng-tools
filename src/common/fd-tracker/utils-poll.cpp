@@ -11,11 +11,13 @@
 
 #ifdef HAVE_EPOLL
 
+namespace {
 struct create_args {
 	struct lttng_poll_event *events;
 	int size;
 	int flags;
 };
+} /* namespace */
 
 static int open_epoll(void *data, int *out_fd)
 {

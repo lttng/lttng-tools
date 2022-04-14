@@ -59,7 +59,8 @@ static void epoll_pwait_concurrent_munmap(FILE *validation_output_file);
 
 typedef void (*test_case_cb)(FILE *output_file);
 
-static const struct test_case {
+namespace {
+const struct test_case {
 	test_case_cb run;
 	bool produces_validation_info;
 	int timeout;
@@ -82,6 +83,7 @@ struct ppoll_thread_data {
 	struct pollfd *ufds;
 	int value;
 };
+} /* namespace */
 
 static
 void test_select_big(void)

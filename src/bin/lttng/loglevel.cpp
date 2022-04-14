@@ -10,10 +10,12 @@
 #include <strings.h>
 #include <ctype.h>
 
+namespace {
 struct loglevel_name_value {
 	const char *name;
 	int value;
 };
+} /* namespace */
 
 static
 const struct loglevel_name_value loglevel_values[] = {

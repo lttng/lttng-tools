@@ -74,6 +74,9 @@
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
 
+static enum lttng_error_code wait_on_path(void *path);
+
+namespace {
 struct cmd_destroy_session_reply_context {
 	int reply_sock_fd;
 	bool implicit_rotation_on_destroy;
@@ -84,15 +87,13 @@ struct cmd_destroy_session_reply_context {
 	enum lttng_error_code destruction_status;
 };
 
-static enum lttng_error_code wait_on_path(void *path);
-
 /*
  * Command completion handler that is used by the destroy command
  * when a session that has a non-default shm_path is being destroyed.
  *
  * See comment in cmd_destroy_session() for the rationale.
  */
-static struct destroy_completion_handler {
+struct destroy_completion_handler {
 	struct cmd_completion_handler handler;
 	char shm_path[member_sizeof(struct ltt_session, shm_path)];
 } destroy_completion_handler = {
@@ -103,17 +104,17 @@ static struct destroy_completion_handler {
 	.shm_path = { 0 },
 };
 
-static struct cmd_completion_handler *current_completion_handler;
-
 /*
  * Used to keep a unique index for each relayd socket created where this value
  * is associated with streams on the consumer so it can match the right relayd
  * to send to. It must be accessed with the relayd_net_seq_idx_lock
  * held.
  */
-static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
-static uint64_t relayd_net_seq_idx;
+pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
+uint64_t relayd_net_seq_idx;
+} /* namespace */
 
+static struct cmd_completion_handler *current_completion_handler;
 static int validate_ust_event_name(const char *);
 static int cmd_enable_event_internal(struct ltt_session *session,
 		const struct lttng_domain *domain,

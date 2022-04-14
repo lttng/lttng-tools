@@ -24,6 +24,7 @@
 #include "utils.hpp"
 #include "thread.hpp"
 
+namespace {
 struct thread_state {
 	struct lttng_pipe *quit_pipe;
 	struct ust_cmd_queue *ust_cmd_queue;
@@ -31,6 +32,7 @@ struct thread_state {
 	bool running;
 	int application_socket;
 };
+} /* namespace */
 
 /*
  * Creates the application socket.

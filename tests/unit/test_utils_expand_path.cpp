@@ -24,6 +24,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 3;
 int lttng_opt_mi;
 
+namespace {
 struct valid_test_input {
 	const char *input;
 	const char *relative_part;
@@ -41,7 +42,7 @@ struct symlink_test_input {
 };
 
 /* Valid test cases */
-static struct valid_test_input valid_tests_inputs[] = {
+struct valid_test_input valid_tests_inputs[] = {
 	{ "/a/b/c/d/e",			"",		"/a/b/c/d/e"	},
 	{ "/a//b//c/d/e",		"",		"/a/b/c/d/e"	},
 	{ "./a/b/c/d/e",		".",		"/a/b/c/d/e"	},
@@ -67,22 +68,22 @@ static struct valid_test_input valid_tests_inputs[] = {
 	{ "/a/..",			"",		"/"		},
 };
 char **valid_tests_expected_results;
-static const int num_valid_tests =
+const int num_valid_tests =
 		sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
 /* Symlinks test cases */
 char tree_origin[] = "/tmp/test_utils_expand_path.XXXXXX";
 
-static const char * const tree_dirs[] = {
+const char * const tree_dirs[] = {
 	"a",
 	"a/b",
 	"a/b/c",
 	"a/e",
 };
-static const int num_tree_dirs =
+const int num_tree_dirs =
 		sizeof(tree_dirs) / sizeof(tree_dirs[0]);
 
-static struct tree_symlink tree_symlinks[] = {
+struct tree_symlink tree_symlinks[] = {
 	{ "a/d",			"b/c/"		},
 	{ "a/g",			"d/"		},
 	{ "a/b/f",			"../e/"		},
@@ -90,7 +91,7 @@ static struct tree_symlink tree_symlinks[] = {
 	{ "a/b/k",			"c/g/"		},
 	{ "a/b/c/g",			"../../../"	},
 };
-static const int num_tree_symlinks =
+const int num_tree_symlinks =
 		sizeof(tree_symlinks) / sizeof(tree_symlinks[0]);
 
 static struct symlink_test_input symlink_tests_inputs[] = {
@@ -100,15 +101,16 @@ static struct symlink_test_input symlink_tests_inputs[] = {
 	{ "a/g/../l/../",		"a/b/"		},
 	{ "a/b/h/g/",			""		},
 };
-static const int num_symlink_tests =
+const int num_symlink_tests =
 		sizeof(symlink_tests_inputs) / sizeof(symlink_tests_inputs[0]);
 
 /* Invalid test cases */
-static char *invalid_tests_inputs[] = {
+char *invalid_tests_inputs[] = {
 	NULL,
 };
-static const int num_invalid_tests =
+const int num_invalid_tests =
 		sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
+} /* namespace */
 
 #define PRINT_ERR(fmt, args...)						\
 	fprintf(stderr, "test_utils_expand_path: error: " fmt "\n", ## args)

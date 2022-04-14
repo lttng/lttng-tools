@@ -80,6 +80,7 @@ struct fd_tracker {
 	struct lttng_unlinked_file_pool *unlinked_file_pool;
 };
 
+namespace {
 struct open_properties {
 	int flags;
 	LTTNG_OPTIONAL(mode_t) mode;
@@ -124,7 +125,7 @@ struct unsuspendable_fd {
 	struct rcu_head rcu_head;
 };
 
-static struct {
+struct {
 	pthread_mutex_t lock;
 	bool initialized;
 	unsigned long value;
@@ -133,6 +134,7 @@ static struct {
 	.initialized = false,
 	.value = 0,
 };
+} /* namespace */
 
 static int match_fd(struct cds_lfht_node *node, const void *key);
 static void unsuspendable_fd_destroy(struct unsuspendable_fd *entry);

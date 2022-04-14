@@ -45,13 +45,15 @@
 #include "testpoint.hpp"
 #include "utils.hpp"
 
-static bool is_root;
+namespace {
+bool is_root;
 
-static struct thread_state {
+struct thread_state {
 	sem_t ready;
 	bool running;
 	int client_sock;
 } thread_state;
+} /* namespace */
 
 static void set_thread_status(bool running)
 {

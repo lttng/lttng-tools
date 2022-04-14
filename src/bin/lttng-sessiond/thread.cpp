@@ -13,13 +13,15 @@
 #include <common/error.hpp>
 #include <common/defaults.hpp>
 
-static struct thread_list {
+namespace {
+struct thread_list {
 	struct cds_list_head head;
 	pthread_mutex_t lock;
 } thread_list = {
 	.head = CDS_LIST_HEAD_INIT(thread_list.head),
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
+} /* namespace */
 
 struct lttng_thread {
 	struct urcu_ref ref;

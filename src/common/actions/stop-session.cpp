@@ -17,6 +17,7 @@
 #define IS_STOP_SESSION_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_STOP_SESSION)
 
+namespace {
 struct lttng_action_stop_session {
 	struct lttng_action parent;
 
@@ -37,6 +38,7 @@ struct lttng_action_stop_session_comm {
 	 */
 	char data[];
 } LTTNG_PACKED;
+} /* namespace */
 
 static const struct lttng_rate_policy *
 lttng_action_stop_session_internal_get_rate_policy(

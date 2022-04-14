@@ -47,13 +47,6 @@ struct rotation_thread {
 	struct lttng_poll_event events;
 };
 
-struct rotation_thread_job {
-	enum rotation_thread_job_type type;
-	struct ltt_session *session;
-	/* List member in struct rotation_thread_timer_queue. */
-	struct cds_list_head head;
-};
-
 /*
  * The timer thread enqueues jobs and wakes up the rotation thread.
  * When the rotation thread wakes up, it empties the queue.
@@ -71,6 +64,15 @@ struct rotation_thread_handle {
 	/* Thread-specific quit pipe. */
 	struct lttng_pipe *quit_pipe;
 };
+
+namespace {
+struct rotation_thread_job {
+	enum rotation_thread_job_type type;
+	struct ltt_session *session;
+	/* List member in struct rotation_thread_timer_queue. */
+	struct cds_list_head head;
+};
+} /* namespace */
 
 static
 const char *get_job_type_str(enum rotation_thread_job_type job_type)

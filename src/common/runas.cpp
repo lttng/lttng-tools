@@ -43,10 +43,6 @@
 
 #define GETPW_BUFFER_FALLBACK_SIZE 4096
 
-struct run_as_data;
-struct run_as_ret;
-typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
-
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_MKDIRAT,
@@ -66,6 +62,11 @@ enum run_as_cmd {
 	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
 	RUN_AS_GENERATE_FILTER_BYTECODE,
 };
+
+namespace {
+struct run_as_data;
+struct run_as_ret;
+typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
 
 struct run_as_mkdir_data {
 	int dirfd;
@@ -210,7 +211,7 @@ struct run_as_command_properties {
 	bool use_cwd_fd;
 };
 
-static const struct run_as_command_properties command_properties[] = {
+const struct run_as_command_properties command_properties[] = {
 	{
 		.in_fds_offset = offsetof(struct run_as_data, u.mkdir.dirfd),
 		.out_fds_offset = -1,
@@ -341,9 +342,10 @@ struct run_as_worker_data {
 };
 
 /* Single global worker per process (for now). */
-static run_as_worker_data *global_worker;
+run_as_worker_data *global_worker;
 /* Lock protecting the worker. */
-static pthread_mutex_t worker_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t worker_lock = PTHREAD_MUTEX_INITIALIZER;
+} /* namespace */
 
 #ifdef VALGRIND
 static

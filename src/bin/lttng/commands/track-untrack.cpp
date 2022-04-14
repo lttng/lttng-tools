@@ -30,6 +30,7 @@
 
 #include "../command.hpp"
 
+namespace {
 struct process_attr_command_args {
 	enum lttng_process_attr process_attr;
 	/* Present in the user's command. */
@@ -37,6 +38,7 @@ struct process_attr_command_args {
 	bool all;
 	struct lttng_dynamic_pointer_array string_args;
 };
+} /* namespace */
 
 enum cmd_type {
 	CMD_TRACK,

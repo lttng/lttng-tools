@@ -31,6 +31,7 @@
 #include "timer.hpp"
 #include "cmd.hpp"
 
+namespace {
 struct ltt_session_destroy_notifier_element {
 	ltt_session_destroy_notifier notifier;
 	void *user_data;
@@ -50,25 +51,26 @@ struct ltt_session_clear_notifier_element {
  * using session_lock() and session_unlock().
  */
 
+/* These characters are forbidden in a session name. Used by validate_name. */
+const char *forbidden_name_chars = "/";
+
+/* Global hash table to keep the sessions, indexed by id. */
+struct lttng_ht *ltt_sessions_ht_by_id = NULL;
+/* Global hash table to keep the sessions, indexed by name. */
+struct lttng_ht *ltt_sessions_ht_by_name = NULL;
+
 /*
  * Init tracing session list.
  *
  * Please see session.h for more explanation and correct usage of the list.
  */
-static struct ltt_session_list ltt_session_list = {
+struct ltt_session_list the_session_list = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.removal_cond = PTHREAD_COND_INITIALIZER,
 	.next_uuid = 0,
-	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
+	.head = CDS_LIST_HEAD_INIT(the_session_list.head),
 };
-
-/* These characters are forbidden in a session name. Used by validate_name. */
-static const char *forbidden_name_chars = "/";
-
-/* Global hash table to keep the sessions, indexed by id. */
-static struct lttng_ht *ltt_sessions_ht_by_id = NULL;
-/* Global hash table to keep the sessions, indexed by name. */
-static struct lttng_ht *ltt_sessions_ht_by_name = NULL;
+} /* namespace */
 
 /*
  * Validate the session name for forbidden characters.
@@ -113,8 +115,8 @@ static uint64_t add_session_list(struct ltt_session *ls)
 {
 	LTTNG_ASSERT(ls);
 
-	cds_list_add(&ls->list, &ltt_session_list.head);
-	return ltt_session_list.next_uuid++;
+	cds_list_add(&ls->list, &the_session_list.head);
+	return the_session_list.next_uuid++;
 }
 
 /*
@@ -134,7 +136,7 @@ static void del_session_list(struct ltt_session *ls)
  */
 struct ltt_session_list *session_get_list(void)
 {
-	return &ltt_session_list;
+	return &the_session_list;
 }
 
 /*
@@ -142,12 +144,12 @@ struct ltt_session_list *session_get_list(void)
  */
 void session_list_wait_empty(void)
 {
-	pthread_mutex_lock(&ltt_session_list.lock);
-	while (!cds_list_empty(&ltt_session_list.head)) {
-		pthread_cond_wait(&ltt_session_list.removal_cond,
-				&ltt_session_list.lock);
+	pthread_mutex_lock(&the_session_list.lock);
+	while (!cds_list_empty(&the_session_list.head)) {
+		pthread_cond_wait(&the_session_list.removal_cond,
+				&the_session_list.lock);
 	}
-	pthread_mutex_unlock(&ltt_session_list.lock);
+	pthread_mutex_unlock(&the_session_list.lock);
 }
 
 /*
@@ -155,7 +157,7 @@ void session_list_wait_empty(void)
  */
 void session_lock_list(void)
 {
-	pthread_mutex_lock(&ltt_session_list.lock);
+	pthread_mutex_lock(&the_session_list.lock);
 }
 
 /*
@@ -163,7 +165,7 @@ void session_lock_list(void)
  */
 int session_trylock_list(void)
 {
-	return pthread_mutex_trylock(&ltt_session_list.lock);
+	return pthread_mutex_trylock(&the_session_list.lock);
 }
 
 /*
@@ -171,7 +173,7 @@ int session_trylock_list(void)
  */
 void session_unlock_list(void)
 {
-	pthread_mutex_unlock(&ltt_session_list.lock);
+	pthread_mutex_unlock(&the_session_list.lock);
 }
 
 /*
@@ -1015,7 +1017,7 @@ void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->lock);
 
 	if (session_published) {
-		ASSERT_LOCKED(ltt_session_list.lock);
+		ASSERT_LOCKED(the_session_list.lock);
 		del_session_list(session);
 		del_session_ht(session);
 	}
@@ -1038,8 +1040,8 @@ void session_release(struct urcu_ref *ref)
 		 * Broadcast after free-ing to ensure the memory is
 		 * reclaimed before the main thread exits.
 		 */
-		ASSERT_LOCKED(ltt_session_list.lock);
-		pthread_cond_broadcast(&ltt_session_list.removal_cond);
+		ASSERT_LOCKED(the_session_list.lock);
+		pthread_cond_broadcast(&the_session_list.removal_cond);
 	}
 }
 
@@ -1064,7 +1066,7 @@ void session_put(struct ltt_session *session)
 	 * The session list lock must be held as any session_put()
 	 * may cause the removal of the session from the session_list.
 	 */
-	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(the_session_list.lock);
 	LTTNG_ASSERT(session->ref.refcount);
 	urcu_ref_put(&session->ref, session_release);
 }
@@ -1137,11 +1139,11 @@ struct ltt_session *session_find_by_name(const char *name)
 	struct ltt_session *iter;
 
 	LTTNG_ASSERT(name);
-	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(the_session_list.lock);
 
 	DBG2("Trying to find session by name %s", name);
 
-	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
+	cds_list_for_each_entry(iter, &the_session_list.head, list) {
 		if (!strncmp(iter->name, name, NAME_MAX) &&
 				!iter->destroyed) {
 			goto found;
@@ -1165,7 +1167,7 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	struct ltt_session *ls;
 
 	ASSERT_RCU_READ_LOCKED();
-	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(the_session_list.lock);
 
 	if (!ltt_sessions_ht_by_id) {
 		goto end;
@@ -1197,7 +1199,7 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 	enum lttng_error_code ret_code;
 	struct ltt_session *new_session = NULL;
 
-	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(the_session_list.lock);
 	if (name) {
 		struct ltt_session *clashing_session;
 
@@ -1391,7 +1393,7 @@ int session_reset_rotation_state(struct ltt_session *session,
 {
 	int ret = 0;
 
-	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(the_session_list.lock);
 	ASSERT_LOCKED(session->lock);
 
 	session->rotation_state = result;

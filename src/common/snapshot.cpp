@@ -77,6 +77,7 @@ end:
 	return equal;
 }
 
+namespace {
 /*
  * This is essentially the same as `struct lttng_snapshot_output`, but packed.
  */
@@ -87,6 +88,7 @@ struct lttng_snapshot_output_comm {
 	char ctrl_url[PATH_MAX];
 	char data_url[PATH_MAX];
 } LTTNG_PACKED;
+} /* namespace */
 
 int lttng_snapshot_output_serialize(
 		const struct lttng_snapshot_output *output,

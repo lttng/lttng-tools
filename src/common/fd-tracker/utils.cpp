@@ -63,11 +63,13 @@ int fd_tracker_util_pipe_close(struct fd_tracker *tracker, int *pipe)
 			tracker, pipe, 2, close_pipe, NULL);
 }
 
+namespace {
 struct open_directory_handle_args {
 	const struct lttng_directory_handle *in_handle;
 	struct lttng_directory_handle *ret_handle;
 	const char *path;
 };
+} /* namespace */
 
 static
 int open_directory_handle(void *_args, int *out_fds)

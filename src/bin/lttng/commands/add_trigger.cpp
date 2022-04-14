@@ -640,6 +640,7 @@ void destroy_event_expr(void *ptr)
 	lttng_event_expr_destroy((lttng_event_expr *) ptr);
 }
 
+namespace {
 struct parse_event_rule_res {
 	/* Owned by this. */
 	struct lttng_event_rule *er;
@@ -647,6 +648,7 @@ struct parse_event_rule_res {
 	/* Array of `struct lttng_event_expr *` */
 	struct lttng_dynamic_pointer_array capture_descriptors;
 };
+} /* namespace */
 
 static
 struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
@@ -1404,11 +1406,13 @@ end:
 	return c;
 }
 
+namespace {
 struct condition_descr {
 	const char *name;
 	struct lttng_condition *(*handler) (int *argc, const char ***argv,
 		int argc_offset);
 };
+} /* namespace */
 
 static const
 struct condition_descr condition_descrs[] = {
@@ -2099,11 +2103,13 @@ end:
 	return action;
 }
 
+namespace {
 struct action_descr {
 	const char *name;
 	struct lttng_action *(*handler) (int *argc, const char ***argv,
 		int argc_offset);
 };
+} /* namespace */
 
 static const
 struct action_descr action_descrs[] = {

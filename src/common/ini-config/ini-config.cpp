@@ -21,11 +21,13 @@ LTTNG_EXPORT const char *config_str_no = "no";
 LTTNG_EXPORT const char *config_str_false = "false";
 LTTNG_EXPORT const char *config_str_off = "off";
 
+namespace {
 struct handler_filter_args {
 	const char* section;
 	config_entry_handler_cb handler;
 	void *user_data;
 };
+} /* namespace */
 
 static int config_entry_handler_filter(struct handler_filter_args *args,
 		const char *section, const char *name, const char *value)

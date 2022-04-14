@@ -60,12 +60,6 @@ enum lttng_object_type {
 	LTTNG_OBJECT_TYPE_SESSION,
 };
 
-struct lttng_trigger_list_element {
-	/* No ownership of the trigger object is assumed. */
-	struct lttng_trigger *trigger;
-	struct cds_list_head node;
-};
-
 struct lttng_channel_trigger_list {
 	struct channel_key channel_key;
 	/* List of struct lttng_trigger_list_element. */
@@ -117,6 +111,13 @@ struct lttng_session_trigger_list {
 	struct rcu_head rcu_node;
 };
 
+namespace {
+struct lttng_trigger_list_element {
+	/* No ownership of the trigger object is assumed. */
+	struct lttng_trigger *trigger;
+	struct cds_list_head node;
+};
+
 struct lttng_trigger_ht_element {
 	struct lttng_trigger *trigger;
 	struct cds_lfht_node node;
@@ -140,6 +141,7 @@ struct channel_state_sample {
 	/* call_rcu delayed reclaim. */
 	struct rcu_head rcu_node;
 };
+} /* namespace */
 
 static unsigned long hash_channel_key(struct channel_key *key);
 static int evaluate_buffer_condition(const struct lttng_condition *condition,

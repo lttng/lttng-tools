@@ -23,10 +23,12 @@
 
 #include "inode.hpp"
 
+namespace {
 struct inode_id {
 	dev_t device;
 	ino_t inode;
 };
+} /* namespace */
 
 struct lttng_inode_registry {
 	/* Hashtable of inode_id to lttng_inode. */
@@ -60,7 +62,8 @@ struct lttng_unlinked_file_pool {
 	unsigned int next_id;
 };
 
-static struct {
+namespace {
+struct {
 	pthread_mutex_t lock;
 	bool initialized;
 	unsigned long value;
@@ -69,6 +72,7 @@ static struct {
 		.initialized = false,
 		.value = 0,
 };
+} /* namespace */
 
 static unsigned long lttng_inode_id_hash(const struct inode_id *id)
 {

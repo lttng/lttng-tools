@@ -39,11 +39,13 @@
 
 #define CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN 7
 
+namespace {
 struct session_config_validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;
 	xmlSchemaPtr schema;
 	xmlSchemaValidCtxtPtr schema_validation_ctx;
 };
+} /* namespace */
 
 const char * const config_element_all = "all";
 LTTNG_EXPORT const char *config_xml_encoding = "UTF-8";
@@ -233,12 +235,14 @@ enum process_event_node_phase {
 	ENABLE = 1,
 };
 
+namespace {
 struct consumer_output {
 	int enabled;
 	char *path;
 	char *control_uri;
 	char *data_uri;
 };
+} /* namespace */
 
 /*
  * Returns a xmlChar string which must be released using xmlFree().

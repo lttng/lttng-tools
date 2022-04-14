@@ -22,6 +22,7 @@
 #include "utils.hpp"
 #include "thread.hpp"
 
+namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	sem_t ready;
@@ -36,15 +37,15 @@ struct agent_protocol_version {
 	unsigned int major, minor;
 };
 
-static int agent_tracing_enabled = -1;
+int agent_tracing_enabled = -1;
 
 /*
  * Note that there is not port here. It's set after this URI is parsed so we
  * can let the user define a custom one. However, localhost is ALWAYS the
  * default listening address.
  */
-static const char *default_reg_uri =
-	"tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
+const char *default_reg_uri = "tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
+} /* namespace */
 
 /*
  * Update agent application using the given socket. This is done just after

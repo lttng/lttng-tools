@@ -17,13 +17,14 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 3;
 int lttng_opt_mi;
 
+namespace {
 struct valid_test_input {
 	const char *input;
 	uint64_t expected_result;
 };
 
 /* Valid test cases */
-static struct valid_test_input valid_tests_inputs[] = {
+struct valid_test_input valid_tests_inputs[] = {
 		{ "0", 0 },
 		{ "1234", 1234 },
 		{ "0x400", 1024 },
@@ -65,10 +66,10 @@ static struct valid_test_input valid_tests_inputs[] = {
 		{ "0XA0M", 167772160 },
 		{ "0xA0G", 171798691840ULL },
 };
-static const int num_valid_tests = sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
+const int num_valid_tests = sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
 /* Invalid test cases */
-static const char *invalid_tests_inputs[] = {
+const char *invalid_tests_inputs[] = {
 		"",
 		" ",
 		"-1",
@@ -90,7 +91,8 @@ static const char *invalid_tests_inputs[] = {
 		"0B",
 };
 
-static const int num_invalid_tests = sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
+const int num_invalid_tests = sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
+} /* namespace */
 
 static void test_utils_parse_size_suffix(void)
 {

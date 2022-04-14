@@ -12,10 +12,12 @@
 #include <time.h>
 #include <stdio.h>
 
+namespace {
 struct lttng_session_descriptor_network_location {
 	struct lttng_uri *control;
 	struct lttng_uri *data;
 };
+} /* namespace */
 
 struct lttng_session_descriptor {
 	enum lttng_session_descriptor_type type;
@@ -32,6 +34,7 @@ struct lttng_session_descriptor {
 	} output;
 };
 
+namespace {
 struct lttng_session_descriptor_snapshot {
 	struct lttng_session_descriptor base;
 	/*
@@ -61,6 +64,7 @@ struct lttng_session_descriptor_live_comm {
 	/* Live-specific parameters. */
 	uint64_t live_timer_us;
 } LTTNG_PACKED;
+} /* namespace */
 
 static
 struct lttng_uri *uri_copy(const struct lttng_uri *uri)

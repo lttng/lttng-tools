@@ -46,12 +46,13 @@
 LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 #endif
 
-static int control_sock;
+namespace {
 struct live_session *session;
+int control_sock;
 
-static int first_packet_offset;
-static int first_packet_len;
-static int first_packet_stream_id = -1;
+int first_packet_offset;
+int first_packet_len;
+int first_packet_stream_id = -1;
 
 struct viewer_stream {
 	uint64_t id;
@@ -68,6 +69,7 @@ struct live_session {
 	uint64_t live_timer_interval;
 	uint64_t stream_count;
 };
+} /* namespace */
 
 static
 ssize_t lttng_live_recv(int fd, void *buf, size_t len)

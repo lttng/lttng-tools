@@ -21,12 +21,14 @@
 #include "lttng-sessiond.hpp"
 #include "thread.hpp"
 
+namespace {
 struct thread_notifiers {
 	struct ust_cmd_queue *ust_cmd_queue;
 	int apps_cmd_pipe_write_fd;
 	int apps_cmd_notify_pipe_write_fd;
 	int dispatch_thread_exit;
 };
+} /* namespace */
 
 /*
  * For each tracing session, update newly registered apps. The session list

@@ -36,6 +36,20 @@
 #define THREAD_NAME "Action Executor"
 #define MAX_QUEUED_WORK_COUNT 8192
 
+struct action_executor {
+	struct lttng_thread *thread;
+	struct notification_thread_handle *notification_thread_handle;
+	struct {
+		uint64_t pending_count;
+		struct cds_list_head list;
+		pthread_cond_t cond;
+		pthread_mutex_t lock;
+	} work;
+	bool should_quit;
+	uint64_t next_work_item_id;
+};
+
+namespace {
 /*
  * A work item is composed of a dynamic array of sub-items which
  * represent a flattened, and augmented, version of a trigger's actions.
@@ -69,7 +83,6 @@
  * trigger object at the moment of execution, if the trigger is found to be
  * unregistered, the execution is skipped.
  */
-
 struct action_work_item {
 	uint64_t id;
 
@@ -94,19 +107,8 @@ struct action_work_subitem {
 		LTTNG_OPTIONAL(uint64_t) session_id;
 	} context;
 };
+} /* namespace */
 
-struct action_executor {
-	struct lttng_thread *thread;
-	struct notification_thread_handle *notification_thread_handle;
-	struct {
-		uint64_t pending_count;
-		struct cds_list_head list;
-		pthread_cond_t cond;
-		pthread_mutex_t lock;
-	} work;
-	bool should_quit;
-	uint64_t next_work_item_id;
-};
 
 /*
  * Only return non-zero on a fatal error that should shut down the action

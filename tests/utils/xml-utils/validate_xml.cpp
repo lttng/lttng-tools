@@ -27,11 +27,13 @@
 #include <lttng/lttng-error.h>
 #include <common/macros.hpp>
 
+namespace {
 struct validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;
 	xmlSchemaPtr schema;
 	xmlSchemaValidCtxtPtr schema_validation_ctx;
 };
+} /* namespace */
 
 enum command_err_code {
 	CMD_SUCCESS = 0,

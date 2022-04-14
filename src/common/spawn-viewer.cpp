@@ -19,16 +19,6 @@
 #include "macros.hpp"
 #include "spawn-viewer.hpp"
 
-
-static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
-static const char *babeltrace2_bin = CONFIG_BABELTRACE2_BIN;
-
-/*
- * This is needed for each viewer since we are using execvp().
- */
-static const char *babeltrace_opts[] = { "babeltrace" };
-static const char *babeltrace2_opts[] = { "babeltrace2" };
-
 /*
  * Type is also use as the index in the viewers array. So please, make sure
  * your enum value is in the right order in the array below.
@@ -39,7 +29,17 @@ enum viewer_type {
 	VIEWER_USER_DEFINED  = 2,
 };
 
-static const struct viewer {
+namespace {
+const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
+const char *babeltrace2_bin = CONFIG_BABELTRACE2_BIN;
+
+/*
+ * This is needed for each viewer since we are using execvp().
+ */
+const char *babeltrace_opts[] = { "babeltrace" };
+const char *babeltrace2_opts[] = { "babeltrace2" };
+
+const struct viewer {
 	const char *exec_name;
 	enum viewer_type type;
 } viewers[] = {
@@ -47,6 +47,7 @@ static const struct viewer {
 	{ "babeltrace2", VIEWER_BABELTRACE2 },
 	{ NULL, VIEWER_USER_DEFINED },
 };
+} /* namespace */
 
 static const struct viewer *parse_viewer_option(const char *opt_viewer)
 {

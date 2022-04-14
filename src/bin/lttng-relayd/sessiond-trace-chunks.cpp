@@ -56,6 +56,7 @@ struct sessiond_trace_chunk_registry {
 	struct cds_lfht *ht;
 };
 
+namespace {
 struct trace_chunk_registry_ht_key {
 	lttng_uuid sessiond_uuid;
 };
@@ -70,6 +71,7 @@ struct trace_chunk_registry_ht_element {
 	struct lttng_trace_chunk_registry *trace_chunk_registry;
 	struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
 };
+} /* namespace */
 
 static
 unsigned long trace_chunk_registry_ht_key_hash(

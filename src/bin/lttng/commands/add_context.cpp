@@ -217,7 +217,7 @@ static struct poptOption long_options[] = {
 	_PERF_HW_CACHE(optstr "-prefetch-misses", name, type,		\
 		PREFETCH, MISS, hide)
 
-static
+namespace {
 const struct ctx_opts {
 	/* Needed for end-of-list item. */
 	ctx_opts()
@@ -552,8 +552,7 @@ struct ctx_type_list {
 } ctx_type_list = {
 	.head = CDS_LIST_HEAD_INIT(ctx_type_list.head),
 };
-
-
+} /* namespace */
 
 /*
  * Find context numerical value from string.

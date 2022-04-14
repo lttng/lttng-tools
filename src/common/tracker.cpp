@@ -20,6 +20,7 @@
 
 #include <type_traits>
 
+namespace {
 struct process_attr_tracker_values_comm_header {
 	uint32_t count;
 } LTTNG_PACKED;
@@ -33,6 +34,7 @@ struct process_attr_tracker_value_comm {
 		uint32_t name_len;
 	} value;
 } LTTNG_PACKED;
+} /* namespace */
 
 #define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)              \
 	((as_type)(std::is_signed<as_type>::value ? (value_ptr)->u._signed : \

@@ -52,11 +52,21 @@ enum consumer_channel_action {
 	CONSUMER_CHANNEL_QUIT,
 };
 
+namespace {
 struct consumer_channel_msg {
 	enum consumer_channel_action action;
 	struct lttng_consumer_channel *chan;	/* add */
 	uint64_t key;				/* del */
 };
+
+/*
+ * Global hash table containing respectively metadata and data streams. The
+ * stream element in this ht should only be updated by the metadata poll thread
+ * for the metadata and the data poll thread for the data.
+ */
+struct lttng_ht *metadata_ht;
+struct lttng_ht *data_ht;
+} /* namespace */
 
 /* Flag used to temporarily pause data consumption from testpoints. */
 int data_consumption_paused;
@@ -68,14 +78,6 @@ int data_consumption_paused;
  * polling threads.
  */
 int consumer_quit;
-
-/*
- * Global hash table containing respectively metadata and data streams. The
- * stream element in this ht should only be updated by the metadata poll thread
- * for the metadata and the data poll thread for the data.
- */
-static struct lttng_ht *metadata_ht;
-static struct lttng_ht *data_ht;
 
 static const char *get_consumer_domain(void)
 {

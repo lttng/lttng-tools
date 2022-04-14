@@ -12,6 +12,7 @@
 #include <string.h>
 #include <lttng/constant.h>
 
+namespace {
 struct state {
 	int section_1;
 	int section_2;
@@ -20,6 +21,7 @@ struct state {
 	int text_entry;
 	int int_entry;
 };
+} /* namespace */
 
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 0;

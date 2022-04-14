@@ -22,10 +22,12 @@ struct lttng_index_allocator {
 	uint64_t nb_allocated_indexes;
 };
 
+namespace {
 struct lttng_index {
 	uint64_t index;
 	struct cds_list_head head;
 };
+} /* namespace */
 
 struct lttng_index_allocator *lttng_index_allocator_create(
 		uint64_t index_count)

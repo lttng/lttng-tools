@@ -7,10 +7,12 @@
 
 #include <lttng/action/path-internal.hpp>
 
+namespace {
 struct lttng_action_path_comm {
 	uint32_t index_count;
 	uint64_t indexes[];
 } LTTNG_PACKED;
+} /* namespace */
 
 struct lttng_action_path *lttng_action_path_create(
 		const uint64_t *indexes, size_t index_count)

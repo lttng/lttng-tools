@@ -61,6 +61,7 @@
 
 #endif /* ! defined (__linux__) && ! defined (__sun__) */
 
+namespace {
 struct tcp_keep_alive_support {
 	/* TCP keep-alive is supported by this platform. */
 	bool supported;
@@ -105,17 +106,18 @@ struct tcp_keep_alive_config {
 	int abort_threshold;
 };
 
-static struct tcp_keep_alive_config the_config = {.enabled = false,
+struct tcp_keep_alive_config the_config = {.enabled = false,
 		.idle_time = -1,
 		.probe_interval = -1,
 		.max_probe_count = -1,
 		.abort_threshold = -1};
 
-static struct tcp_keep_alive_support the_support = {.supported = false,
+struct tcp_keep_alive_support the_support = {.supported = false,
 		.idle_time_supported = false,
 		.probe_interval_supported = false,
 		.max_probe_count_supported = false,
 		.abort_threshold_supported = false};
+} /* namespace */
 
 /*
  * Common parser for string to positive int conversion where the value must be

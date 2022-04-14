@@ -13,10 +13,12 @@
 #include "utils.hpp"
 #include "thread.hpp"
 
+namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	int apps_cmd_pipe_read_fd;
 };
+} /* namespace */
 
 static void cleanup_application_management_thread(void *data)
 {

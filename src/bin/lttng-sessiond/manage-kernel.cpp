@@ -18,10 +18,12 @@
 #include "kernel.hpp"
 #include "kernel-consumer.hpp"
 
+namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	int kernel_poll_pipe_read_fd;
 };
+} /* namespace */
 
 /*
  * Update the kernel poll set of all channel fd available over all tracing

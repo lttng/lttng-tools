@@ -17,10 +17,12 @@
 #include "utils.hpp"
 #include "thread.hpp"
 
+namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	sem_t ready;
 };
+} /* namespace */
 
 static
 void mark_thread_as_ready(struct thread_notifiers *notifiers)

@@ -20,9 +20,11 @@
 #include "kernel.hpp"
 #include "cmd.hpp"
 
+namespace {
 struct cmd_clear_session_reply_context {
 	int reply_sock_fd;
 };
+} /* namespace */
 
 static
 void cmd_clear_session_reply(const struct ltt_session *session,

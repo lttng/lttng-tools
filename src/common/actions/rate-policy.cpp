@@ -48,6 +48,7 @@ struct lttng_rate_policy {
 	rate_policy_mi_serialize_cb mi_serialize;
 };
 
+namespace {
 struct lttng_rate_policy_every_n {
 	struct lttng_rate_policy parent;
 	uint64_t interval;
@@ -70,6 +71,7 @@ struct lttng_rate_policy_once_after_n_comm {
 struct lttng_rate_policy_every_n_comm {
 	uint64_t interval;
 } LTTNG_PACKED;
+} /* namespace */
 
 /* Forward declaration. */
 static void lttng_rate_policy_init(struct lttng_rate_policy *rate_policy,

@@ -20,11 +20,13 @@
 #include <lttng/lttng-error.h>
 #include <lttng/userspace-probe-internal.hpp>
 
+namespace {
 struct event_list_element {
 	struct lttng_event *event;
 	struct lttng_event_exclusion *exclusions;
 	char *filter_expression;
 };
+} /* namespace */
 
 static void event_list_destructor(void *ptr)
 {

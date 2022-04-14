@@ -39,6 +39,7 @@ typedef enum lttng_event_rule_status (*event_rule_logging_get_log_level_rule)(
 /*
  * Agent application context representation.
  */
+namespace {
 struct agent_app_ctx {
 	char *provider_name;
 	char *ctx_name;
@@ -49,6 +50,7 @@ struct agent_app_ctx {
 	/* For call_rcu teardown. */
 	struct rcu_head rcu_node;
 };
+} /* namespace */
 
 /*
  * Human readable agent return code.

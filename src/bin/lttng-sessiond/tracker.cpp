@@ -26,16 +26,18 @@
 #include <common/tracker.hpp>
 #include <lttng/lttng-error.h>
 
+struct process_attr_tracker {
+	enum lttng_tracking_policy policy;
+	struct cds_lfht *inclusion_set_ht;
+};
+
+namespace {
 struct process_attr_tracker_value_node {
 	struct process_attr_value *value;
 	struct cds_lfht_node inclusion_set_ht_node;
 	struct rcu_head rcu_head;
 };
-
-struct process_attr_tracker {
-	enum lttng_tracking_policy policy;
-	struct cds_lfht *inclusion_set_ht;
-};
+} /* namespace */
 
 static void process_attr_tracker_value_node_rcu_free(struct rcu_head *rcu_head)
 {

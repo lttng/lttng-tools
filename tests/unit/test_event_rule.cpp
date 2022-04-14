@@ -45,10 +45,12 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 212
 
+namespace {
 struct tracepoint_test {
 	enum lttng_domain_type type;
 	bool support_name_pattern_exclusion;
 };
+} /* namespace */
 
 typedef const char *(*log_level_name_getter)(int log_level);
 

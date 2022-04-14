@@ -1151,6 +1151,7 @@ int lttng_directory_handle_remove_subdirectory_as_user(
 	return ret;
 }
 
+namespace {
 struct rmdir_frame {
 	ssize_t parent_frame_idx;
 	DIR *dir;
@@ -1158,6 +1159,7 @@ struct rmdir_frame {
 	/* Size including '\0'. */
 	size_t path_size;
 };
+} /* namespace */
 
 static
 void rmdir_frame_fini(void *data)

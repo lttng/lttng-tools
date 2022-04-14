@@ -25,6 +25,7 @@ enum uri_proto_code {
 	P_NET, P_NET6, P_FILE, P_TCP, P_TCP6,
 };
 
+namespace {
 struct uri_proto {
 	const char *name;
 	const char *leading_string;
@@ -34,7 +35,7 @@ struct uri_proto {
 };
 
 /* Supported protocols */
-static const struct uri_proto proto_uri[] = {
+const struct uri_proto proto_uri[] = {
 	{ .name = "file", .leading_string = "file://", .code = P_FILE, .type = LTTNG_PROTO_TYPE_NONE, .dtype = LTTNG_DST_PATH },
 	{ .name = "net", .leading_string = "net://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
 	{ .name = "net4", .leading_string = "net4://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
@@ -45,6 +46,7 @@ static const struct uri_proto proto_uri[] = {
 	/* Invalid proto marking the end of the array. */
 	{}
 };
+} /* namespace */
 
 /*
  * Return pointer to the character in s matching one of the characters in

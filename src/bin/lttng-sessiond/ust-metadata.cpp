@@ -23,10 +23,14 @@
 
 #define NR_CLOCK_OFFSET_SAMPLES		10
 
+namespace {
 struct offset_sample {
-	int64_t offset;			/* correlation offset */
-	uint64_t measure_delta;		/* lower is better */
+	/* correlation offset */
+	int64_t offset;
+	/* lower is better */
+	uint64_t measure_delta;
 };
+} /* namespace */
 
 static
 int _lttng_field_statedump(struct ust_registry_session *session,

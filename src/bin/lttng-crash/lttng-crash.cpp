@@ -98,6 +98,7 @@ enum rb_modes {
 	RING_BUFFER_DISCARD = 1,        /* Discard when buffer full */
 };
 
+namespace {
 struct crash_abi_unknown {
 	uint8_t magic[RB_CRASH_DUMP_ABI_MAGIC_LEN];
 	uint64_t mmap_length;	/* Overall length of crash record */
@@ -177,6 +178,7 @@ struct lttng_crash_layout {
 	uint64_t num_subbuf;	/* Number of sub-buffers for writer */
 	uint32_t mode;		/* Buffer mode: 0: overwrite, 1: discard */
 };
+} /* namespace */
 
 /* Variables */
 static const char *progname;

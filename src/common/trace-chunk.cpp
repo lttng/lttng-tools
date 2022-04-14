@@ -64,10 +64,12 @@ static
 enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		struct lttng_trace_chunk *chunk, const char *path);
 
+namespace {
 struct chunk_credentials {
 	bool use_current_user;
 	struct lttng_credentials user;
 };
+} /* namespace */
 
 /*
  * NOTE: Make sure to update:
@@ -120,6 +122,7 @@ struct lttng_trace_chunk {
 	struct fd_tracker *fd_tracker;
 };
 
+namespace {
 /* A trace chunk is uniquely identified by its (session id, chunk id) tuple. */
 struct lttng_trace_chunk_registry_element {
 	struct lttng_trace_chunk chunk;
@@ -130,11 +133,13 @@ struct lttng_trace_chunk_registry_element {
 	/* call_rcu delayed reclaim. */
 	struct rcu_head rcu_node;
 };
+} /* namespace */
 
 struct lttng_trace_chunk_registry {
 	struct cds_lfht *ht;
 };
 
+namespace {
 struct fs_handle_untracked {
 	struct fs_handle parent;
 	int fd;
@@ -143,6 +148,7 @@ struct fs_handle_untracked {
 		char *path;
 	} location;
 };
+} /* namespace */
 
 static
 int fs_handle_untracked_get_fd(struct fs_handle *handle);

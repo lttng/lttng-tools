@@ -27,13 +27,13 @@
 	})
 #define PTR_TO_UINT(ptr) ((uintptr_t) ptr)
 
+namespace {
 /*
  * Handle timer teardown race wrt memory free of private data by sessiond
  * signals are handled by a single thread, which permits a synchronization
  * point between handling of each signal. Internal lock ensures mutual
  * exclusion.
  */
-static
 struct timer_signal_data {
 	/* Thread managing signals. */
 	pthread_t tid;
@@ -44,6 +44,7 @@ struct timer_signal_data {
 	.qs_done = 0,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
+} /* namespace */
 
 /*
  * Set custom signal mask to current thread.

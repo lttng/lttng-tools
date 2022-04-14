@@ -18,6 +18,7 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS_PER_TEST 1
 
+namespace {
 struct test {
 	const char *stream_path;
 	const char *session_name;
@@ -27,6 +28,7 @@ struct test {
 	const char *leftover;
 	bool is_valid;
 };
+} /* namespace */
 
 int lttng_opt_quiet;
 int lttng_opt_mi;
