@@ -1726,12 +1726,12 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	unsigned int nb_event_fields = 0;
 	struct lttng_payload reply;
 
+	lttng_payload_init(&reply);
+
 	if (handle == NULL) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-
-	lttng_payload_init(&reply);
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
@@ -1786,6 +1786,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	ret = nb_event_fields;
 
 end:
+	lttng_payload_reset(&reply);
 	return ret;
 }
 
