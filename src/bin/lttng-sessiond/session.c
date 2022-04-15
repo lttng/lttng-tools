@@ -983,6 +983,7 @@ void session_release(struct urcu_ref *ref)
 	lttng_dynamic_array_reset(&session->clear_notifiers);
 	free(session->last_archived_chunk_name);
 	free(session->base_path);
+	lttng_trigger_put(session->rotate_trigger);
 	free(session);
 	if (session_published) {
 		/*
