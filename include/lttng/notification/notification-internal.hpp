@@ -40,4 +40,12 @@ ssize_t lttng_notification_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_notification **notification);
 
+const struct lttng_condition *lttng_notification_get_const_condition(
+		const struct lttng_notification *notification);
+const struct lttng_evaluation *lttng_notification_get_const_evaluation(
+		const struct lttng_notification *notification);
+
+const struct lttng_trigger *lttng_notification_get_const_trigger(
+		const struct lttng_notification *notification);
+
 #endif /* LTTNG_NOTIFICATION_INTERNAL_H */
