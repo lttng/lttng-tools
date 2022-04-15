@@ -89,7 +89,7 @@ static void process_attr_command_init(struct process_attr_command_args *cmd,
 {
 	cmd->process_attr = process_attr;
 	cmd->all = false;
-	lttng_dynamic_pointer_array_init(&cmd->string_args, NULL);
+	lttng_dynamic_pointer_array_init(&cmd->string_args, free);
 }
 
 static void process_attr_command_fini(struct process_attr_command_args *cmd)
