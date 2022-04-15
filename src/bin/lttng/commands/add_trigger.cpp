@@ -789,6 +789,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 
 				event_expr = ir_op_root_to_event_expr(
 						parser_ctx->ir_root, arg);
+				filter_parser_ctx_free(parser_ctx);
+				parser_ctx = nullptr;
 				if (!event_expr) {
 					/*
 					 * ir_op_root_to_event_expr has printed
