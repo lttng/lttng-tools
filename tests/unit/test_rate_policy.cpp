@@ -131,6 +131,7 @@ static void test_rate_policy_every_n(void)
 	lttng_rate_policy_destroy(policy_a);
 	lttng_rate_policy_destroy(policy_b);
 	lttng_rate_policy_destroy(policy_c);
+	lttng_rate_policy_destroy(policy_from_buffer);
 	lttng_payload_reset(&payload);
 }
 
@@ -240,6 +241,7 @@ static void test_rate_policy_once_after_n(void)
 	lttng_rate_policy_destroy(policy_a);
 	lttng_rate_policy_destroy(policy_b);
 	lttng_rate_policy_destroy(policy_c);
+	lttng_rate_policy_destroy(policy_from_buffer);
 	lttng_payload_reset(&payload);
 }
 
