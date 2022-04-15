@@ -642,6 +642,11 @@ int cmd_enable_channels(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+
+		if (opt_arg) {
+			free(opt_arg);
+			opt_arg = NULL;
+		}
 	}
 
 	ret = print_missing_or_multiple_domains(
@@ -753,5 +758,6 @@ end:
 	/* Overwrite ret if an error occurred when enable_channel */
 	ret = command_ret ? command_ret : ret;
 	poptFreeContext(pc);
+	free(opt_arg);
 	return ret;
 }
