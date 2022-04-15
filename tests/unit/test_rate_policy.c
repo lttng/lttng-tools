@@ -200,10 +200,6 @@ static void test_rate_policy_once_after_n(void)
 			" Getting threshold C");
 
 	/* is_equal tests */
-	/* TODO: this is the behaviour introduced by the
-	 * lttng_condition_is_equal back in 2017 do we want to fix this and
-	 * return true if both are NULL?
-	 */
 	ok(false == lttng_rate_policy_is_equal(NULL, NULL),
 			"is equal (NULL,NULL)");
 	ok(false == lttng_rate_policy_is_equal(policy_a, NULL),
