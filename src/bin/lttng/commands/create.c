@@ -674,6 +674,11 @@ int cmd_create(int argc, const char **argv)
 			uint64_t v;
 
 			errno = 0;
+			if (opt_arg) {
+				free(opt_arg);
+				opt_arg = NULL;
+			}
+
 			opt_arg = poptGetOptArg(pc);
 			if (!opt_arg) {
 				/* Set up default values. */
@@ -804,6 +809,7 @@ end:
 	/* Overwrite ret if an error occurred in create_session() */
 	ret = command_ret ? command_ret : ret;
 
+	free(opt_arg);
 	poptFreeContext(pc);
 	return ret;
 }
