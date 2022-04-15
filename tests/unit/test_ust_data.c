@@ -78,6 +78,7 @@ static void test_create_one_ust_session(void)
 	   "Validate UST session");
 
 	trace_ust_destroy_session(usess);
+	trace_ust_free_session(usess);
 }
 
 static void test_create_ust_channel(void)
