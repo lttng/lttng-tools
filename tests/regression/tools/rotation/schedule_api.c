@@ -255,7 +255,7 @@ void test_add_list_remove_schedule(
 			&schedules_count);
 	ok(status == LTTNG_ROTATION_STATUS_OK && schedules_count == 0,
 			"Listing returned 0 rotation schedules after removal");
-
+	lttng_rotation_schedules_destroy(list_schedules);
 }
 
 static
