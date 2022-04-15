@@ -179,6 +179,10 @@ int cmd_enable_rotation(int argc, const char **argv)
 	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
+		if (opt_arg) {
+			free(opt_arg);
+			opt_arg = nullptr;
+		}
 		switch (opt) {
 		case OPT_HELP:
 			SHOW_HELP();
@@ -333,6 +337,7 @@ end:
 	if (free_session_name) {
 		free(session_name);
 	}
+	free(opt_arg);
 	return cmd_ret;
 
 error:
