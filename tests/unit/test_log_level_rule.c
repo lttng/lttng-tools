@@ -73,6 +73,7 @@ void test_log_level_rule_serialize_deserialize(const struct lttng_log_level_rule
 	ok(lttng_log_level_rule_is_equal(rule, log_level_rule_from_buffer), "Serialized and from buffer are equal");
 
 	lttng_log_level_rule_destroy(log_level_rule_from_buffer);
+	lttng_payload_reset(&payload);
 }
 
 static
