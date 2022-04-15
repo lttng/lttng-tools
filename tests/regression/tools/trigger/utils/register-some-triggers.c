@@ -25,6 +25,9 @@ static void register_trigger(const char *trigger_name,
 	trigger = lttng_trigger_create(condition, action);
 	ret = lttng_register_trigger_with_name(trigger, trigger_name);
 	assert(ret == LTTNG_OK);
+	lttng_trigger_destroy(trigger);
+	lttng_condition_destroy(condition);
+	lttng_action_destroy(action);
 }
 
 /*
@@ -43,6 +46,7 @@ static void register_trigger_action_list_notify(
 	action_status = lttng_action_list_add_action(
 			action_list, action_notify);
 	assert(action_status == LTTNG_ACTION_STATUS_OK);
+	lttng_action_destroy(action_notify);
 
 	register_trigger(trigger_name, condition, action_list);
 }
