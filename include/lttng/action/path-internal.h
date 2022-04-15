@@ -23,10 +23,9 @@ struct lttng_action_path {
 	struct lttng_dynamic_array indexes;
 };
 
-/* Assumes that 'dst' is uninitialized. */
 LTTNG_HIDDEN
 int lttng_action_path_copy(const struct lttng_action_path *src,
-		struct lttng_action_path *dst);
+		struct lttng_action_path **dst);
 
 LTTNG_HIDDEN
 ssize_t lttng_action_path_create_from_payload(

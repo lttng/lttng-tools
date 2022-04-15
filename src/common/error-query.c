@@ -47,7 +47,7 @@ struct lttng_error_query_action {
 	struct lttng_error_query parent;
 	/* Mutable only because of the reference count. */
 	struct lttng_trigger *trigger;
-	struct lttng_action_path action_path;
+	struct lttng_action_path *action_path;
 };
 
 struct lttng_error_query_result {
@@ -246,15 +246,45 @@ end:
 
 void lttng_error_query_destroy(struct lttng_error_query *query)
 {
-	struct lttng_error_query_trigger *trigger_query;
-
 	if (!query) {
 		return;
 	}
 
-	trigger_query = container_of(query, typeof(*trigger_query), parent);
-	lttng_trigger_put(trigger_query->trigger);
-	free(trigger_query);
+	switch (query->target_type) {
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
+	{
+		struct lttng_error_query_trigger *trigger_query =
+				container_of(query, typeof(*trigger_query),
+					parent);
+
+		lttng_trigger_put(trigger_query->trigger);
+		free(trigger_query);
+		break;
+	}
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
+	{
+		struct lttng_error_query_condition *condition_query =
+				container_of(query, typeof(*condition_query),
+					parent);
+
+		lttng_trigger_put(condition_query->trigger);
+		free(condition_query);
+		break;
+	}
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
+	{
+		struct lttng_error_query_action *action_query =
+				container_of(query, typeof(*action_query),
+					parent);
+
+		lttng_trigger_put(action_query->trigger);
+		lttng_action_path_destroy(action_query->action_path);
+		free(action_query);
+		break;
+	}
+	default:
+		abort();
+	}
 }
 
 static
@@ -692,7 +722,7 @@ int lttng_error_query_action_serialize(const struct lttng_error_query *query,
 		goto end;
 	}
 
-	ret = lttng_action_path_serialize(&query_action->action_path, payload);
+	ret = lttng_action_path_serialize(query_action->action_path, payload);
 	if (ret) {
 		goto end;
 	}
@@ -747,7 +777,7 @@ struct lttng_action *lttng_error_query_action_borrow_action_target(
 			container_of(query, typeof(*query_action), parent);
 
 	return get_trigger_action_from_path(
-			trigger, &query_action->action_path);
+			trigger, query_action->action_path);
 }
 
 LTTNG_HIDDEN

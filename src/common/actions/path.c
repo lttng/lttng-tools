@@ -97,32 +97,25 @@ end:
 
 LTTNG_HIDDEN
 int lttng_action_path_copy(const struct lttng_action_path *src,
-		struct lttng_action_path *dst)
+		struct lttng_action_path **dst)
 {
 	int ret;
-	size_t i, src_count;
+	struct lttng_action_path *new_path;
 
 	assert(src);
 	assert(dst);
 
-	lttng_dynamic_array_init(&dst->indexes, sizeof(uint64_t), NULL);
-	src_count = lttng_dynamic_array_get_count(&src->indexes);
-
-	for (i = 0; i < src_count; i++) {
-		const void *index = lttng_dynamic_array_get_element(
-				&src->indexes, i);
-
-		ret = lttng_dynamic_array_add_element(&dst->indexes, index);
-		if (ret) {
-			goto error;
-		}
+	new_path = lttng_action_path_create(
+			(uint64_t *) lttng_dynamic_array_get_element(
+				&src->indexes, 0), 
+			lttng_dynamic_array_get_count(&src->indexes));
+	if (!new_path) {
+		ret = -1;
+	} else {
+		ret = 0;
+		*dst = new_path;
 	}
 
-	ret = 0;
-	goto end;
-error:
-	lttng_dynamic_array_reset(&dst->indexes);
-end:
 	return ret;
 }
 
