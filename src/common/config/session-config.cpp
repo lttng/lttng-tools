@@ -1150,57 +1150,38 @@ end:
 }
 
 static
-int create_session_net_output(const char *name, const char *control_uri,
-		const char *data_uri)
-{
-	int ret;
-	struct lttng_handle *handle;
-	const char *uri = NULL;
-
-	LTTNG_ASSERT(name);
-
-	handle = lttng_create_handle(name, NULL);
-	if (!handle) {
-		ret = -LTTNG_ERR_NOMEM;
-		goto end;
-	}
-
-	if (!control_uri || !data_uri) {
-		uri = control_uri ? control_uri : data_uri;
-		control_uri = uri;
-		data_uri = uri;
-	}
-
-	ret = lttng_set_consumer_url(handle, control_uri, data_uri);
-	lttng_destroy_handle(handle);
-end:
-	return ret;
-}
-
-static
 int create_snapshot_session(const char *session_name, xmlNodePtr output_node,
 		const struct config_load_session_override_attr *overrides)
 {
 	int ret;
+	enum lttng_error_code ret_code;
 	xmlNodePtr node = NULL;
 	xmlNodePtr snapshot_output_list_node;
 	xmlNodePtr snapshot_output_node;
+	struct lttng_session_descriptor *session_descriptor = nullptr;
 
 	LTTNG_ASSERT(session_name);
+	LTTNG_ASSERT(output_node);
 
-	ret = lttng_create_session_snapshot(session_name, NULL);
-	if (ret) {
+	/*
+	 * Use a descriptor without output since consumer output size is not
+	 * exposed by the session descriptor api.
+	 */
+	session_descriptor = lttng_session_descriptor_snapshot_create(session_name);
+	if (session_descriptor == nullptr) {
+		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	if (!output_node) {
+	ret_code = lttng_create_session_ext(session_descriptor);
+	if (ret_code != LTTNG_OK) {
+		ret = -ret_code;
 		goto end;
 	}
 
 	snapshot_output_list_node = xmlFirstElementChild(output_node);
 
 	/* Parse and create snapshot outputs */
-
 	for (snapshot_output_node =
 			xmlFirstElementChild(snapshot_output_list_node);
 			snapshot_output_node; snapshot_output_node =
@@ -1323,6 +1304,7 @@ error_snapshot_output:
 		}
 	}
 end:
+	lttng_session_descriptor_destroy(session_descriptor);
 	return ret;
 }
 
@@ -1332,12 +1314,14 @@ int create_session(const char *name,
 	uint64_t live_timer_interval,
 	const struct config_load_session_override_attr *overrides)
 {
-	int ret;
+	int ret = 0;
+	enum lttng_error_code ret_code;
 	struct consumer_output output = {};
 	xmlNodePtr consumer_output_node;
 	const char *control_uri = NULL;
 	const char *data_uri = NULL;
 	const char *path = NULL;
+	struct lttng_session_descriptor *session_descriptor = nullptr;
 
 	LTTNG_ASSERT(name);
 
@@ -1387,7 +1371,6 @@ int create_session(const char *name,
 		}
 	}
 
-
 	if (live_timer_interval != UINT64_MAX && !control_uri && !data_uri) {
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		goto end;
@@ -1401,30 +1384,36 @@ int create_session(const char *name,
 			 * with a live timer the data and control URIs are provided. So,
 			 * NULL is passed here and will be set right after.
 			 */
-			ret = lttng_create_session_live(name, NULL, live_timer_interval);
+			session_descriptor = lttng_session_descriptor_live_network_create(
+					name, control_uri, data_uri, live_timer_interval);
 		} else {
-			ret = lttng_create_session(name, NULL);
-		}
-		if (ret) {
-			goto end;
+			session_descriptor = lttng_session_descriptor_network_create(
+					name, control_uri, data_uri);
 		}
 
-		ret = create_session_net_output(name, control_uri, data_uri);
-		if (ret) {
-			goto end;
-		}
-
+	} else if (path != nullptr) {
+		session_descriptor = lttng_session_descriptor_local_create(name, path);
 	} else {
-		/* either local output or no output */
-		ret = lttng_create_session(name, path);
-		if (ret) {
-			goto end;
-		}
+		/* No output */
+		session_descriptor = lttng_session_descriptor_create(name);
 	}
+
+	if (session_descriptor == nullptr) {
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		goto end;
+	}
+
+	ret_code = lttng_create_session_ext(session_descriptor);
+	if (ret_code != LTTNG_OK) {
+		ret = -ret_code;
+		goto end;
+	}
+
 end:
 	free(output.path);
 	free(output.control_uri);
 	free(output.data_uri);
+	lttng_session_descriptor_destroy(session_descriptor);
 	return ret;
 }
 
