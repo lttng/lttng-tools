@@ -168,7 +168,7 @@ function test_override_url_normal()
 {
 	local local_url_override="file:///tmp/override/to/here"
 	local local_path_override="/tmp/override/to/here"
-	local local_path_compare_value="/tmp/override/to/here/"
+	local local_path_compare_value="/tmp/override/to/here"
 	local stream_url_override="net://127.0.0.1:8172:9817"
 	local stream_url_compare="tcp4://127.0.0.1:8172/ [data: 9817]"
 
@@ -216,7 +216,7 @@ function test_override_url_snapshot()
 {
 	local url_override="file:///tmp/override/to/here"
 	local path_override="/tmp/override/to/here"
-	local path_compare_value="/tmp/override/to/here/"
+	local path_compare_value="/tmp/override/to/here"
 	local stream_url_override="net://127.0.0.1:8172:9817"
 	local stream_url_compare_ctrl="tcp4://127.0.0.1:8172/"
 	local stream_url_compare_data="tcp4://127.0.0.1:9817/"
@@ -271,7 +271,7 @@ function test_override_url_live()
 {
 	local url_override="file:///tmp/override/to/here"
 	local path_override="/tmp/override/to/here"
-	local path_compare_value="/tmp/override/to/here/"
+	local path_compare_value="/tmp/override/to/here"
 	local stream_url_override="net://127.0.0.1:8172:9817"
 	local stream_url_compare="tcp4://127.0.0.1:8172/ [data: 9817]"
 	local local_session_name="${SESSION_NAME}-live"

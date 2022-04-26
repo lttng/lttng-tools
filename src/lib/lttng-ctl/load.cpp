@@ -485,7 +485,7 @@ int lttng_load_session_attr_set_override_url(
 			goto end;
 		}
 
-		path_str = lttng_strndup(raw_path_str, PATH_MAX);
+		path_str = lttng_strndup(uri[0].dst.path, PATH_MAX);
 		if (!path_str) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
