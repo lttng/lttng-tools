@@ -50,46 +50,6 @@ extern int consumer_poll_timeout;
 LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 /*
- * Free channel object and all streams associated with it. This MUST be used
- * only and only if the channel has _NEVER_ been added to the global channel
- * hash table.
- */
-static void destroy_channel(struct lttng_consumer_channel *channel)
-{
-	struct lttng_consumer_stream *stream, *stmp;
-
-	LTTNG_ASSERT(channel);
-
-	DBG("UST consumer cleaning stream list");
-
-	cds_list_for_each_entry_safe(stream, stmp, &channel->streams.head,
-			send_node) {
-
-		health_code_update();
-
-		cds_list_del_init(&stream->send_node);
-		lttng_ust_ctl_destroy_stream(stream->ustream);
-		lttng_trace_chunk_put(stream->trace_chunk);
-		free(stream);
-	}
-
-	/*
-	 * If a channel is available meaning that was created before the streams
-	 * were, delete it.
-	 */
-	if (channel->uchan) {
-		lttng_ustconsumer_del_channel(channel);
-		lttng_ustconsumer_free_channel(channel);
-	}
-
-	if (channel->trace_chunk) {
-		lttng_trace_chunk_put(channel->trace_chunk);
-	}
-
-	free(channel);
-}
-
-/*
  * Add channel to internal consumer state.
  *
  * Returns 0 on success or else a negative value.
@@ -2315,11 +2275,7 @@ end_msg_sessiond:
 
 end_channel_error:
 	if (channel) {
-		/*
-		 * Free channel here since no one has a reference to it. We don't
-		 * free after that because a stream can store this pointer.
-		 */
-		destroy_channel(channel);
+		consumer_del_channel(channel);
 	}
 	/* We have to send a status channel message indicating an error. */
 	{
