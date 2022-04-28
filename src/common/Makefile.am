@@ -87,6 +87,7 @@ libcommon_lgpl_la_SOURCES = \
 	kernel-probe.cpp \
 	location.cpp \
 	log-level-rule.cpp \
+	make-unique-wrapper.hpp \
 	mi-lttng.cpp mi-lttng.hpp \
 	notification.cpp \
 	payload.cpp payload.hpp \
