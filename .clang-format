@@ -1,9 +1,11 @@
+AccessModifierOffset: -8
 AlignAfterOpenBracket: DontAlign
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
 AlignOperands: false
 AlignTrailingComments: false
+AllowAllConstructorInitializersOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
@@ -11,14 +13,16 @@ AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: true
 BinPackParameters: false
 BreakBeforeBraces: Custom
+BreakConstructorInitializers: AfterColon
 BraceWrapping:
   AfterControlStatement: false
   AfterEnum: false
   AfterFunction: true
-  AfterNamespace: true
+  AfterNamespace: false
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
@@ -29,11 +33,15 @@ BraceWrapping:
   SplitEmptyFunction: true
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: false
+BreakConstructorInitializers: AfterColon
 BreakStringLiterals: false
-ColumnLimit: 80
+ColumnLimit: 100
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 8
 ContinuationIndentWidth: 16
 DerivePointerAlignment: false
 DisableFormat: false
+EmptyLineBeforeAccessModifier: LogicalBlock
 ForEachMacros:
   - 'cds_lfht_for_each_entry'
   - 'cds_lfht_for_each_entry_safe'
@@ -54,6 +62,7 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 MacroBlockBegin: ''
 MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
 
 # Taken from git's rules
 PenaltyBreakAssignment: 10
@@ -64,6 +73,7 @@ PenaltyExcessCharacter: 100
 PenaltyReturnTypeOnItsOwnLine: 60
 
 PointerAlignment: Right
+ReferenceAlignment: Left
 ReflowComments: true
 SortIncludes: true
 SpaceAfterCStyleCast: true
