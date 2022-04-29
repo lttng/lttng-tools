@@ -240,10 +240,10 @@ static void close_notify_sock_rcu(struct rcu_head *head)
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-static struct ust_registry_session *get_session_registry(
+static ust_registry_session *get_session_registry(
 		struct ust_app_session *ua_sess)
 {
-	struct ust_registry_session *registry = NULL;
+	ust_registry_session *registry = NULL;
 
 	LTTNG_ASSERT(ua_sess);
 
@@ -543,7 +543,7 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 	struct ust_app_event *ua_event;
 	struct ust_app_ctx *ua_ctx;
 	struct ust_app_stream *stream, *stmp;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
@@ -657,7 +657,7 @@ int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
+ssize_t ust_app_push_metadata(ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data)
 {
 	int ret;
@@ -670,7 +670,7 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	LTTNG_ASSERT(socket);
 	ASSERT_RCU_READ_LOCKED();
 
-	metadata_key = registry->metadata_key;
+	metadata_key = registry->_metadata_key;
 
 	/*
 	 * Means that no metadata was assigned to the session. This can
@@ -680,13 +680,13 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		return 0;
 	}
 
-	offset = registry->metadata_len_sent;
-	len = registry->metadata_len - registry->metadata_len_sent;
-	new_metadata_len_sent = registry->metadata_len;
-	metadata_version = registry->metadata_version;
+	offset = registry->_metadata_len_sent;
+	len = registry->_metadata_len - registry->_metadata_len_sent;
+	new_metadata_len_sent = registry->_metadata_len;
+	metadata_version = registry->_metadata_version;
 	if (len == 0) {
 		DBG3("No metadata to push for metadata key %" PRIu64,
-				registry->metadata_key);
+				registry->_metadata_key);
 		ret_val = len;
 		if (send_zero_data) {
 			DBG("No metadata to push");
@@ -703,10 +703,10 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		goto error;
 	}
 	/* Copy what we haven't sent out. */
-	memcpy(metadata_str, registry->metadata + offset, len);
+	memcpy(metadata_str, registry->_metadata + offset, len);
 
 push_data:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 	/*
 	 * We need to unlock the registry while we push metadata to
 	 * break a circular dependency between the consumerd metadata
@@ -721,7 +721,7 @@ push_data:
 	 */
 	ret = consumer_push_metadata(socket, metadata_key,
 			metadata_str, len, offset, metadata_version);
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 	if (ret < 0) {
 		/*
 		 * There is an acceptable race here between the registry
@@ -758,8 +758,8 @@ push_data:
 		 * largest metadata_len_sent value of the concurrent
 		 * send.
 		 */
-		registry->metadata_len_sent =
-			std::max(registry->metadata_len_sent,
+		registry->_metadata_len_sent =
+			std::max(registry->_metadata_len_sent,
 				new_metadata_len_sent);
 	}
 	free(metadata_str);
@@ -775,7 +775,7 @@ error:
 		 * the metadata cache has been destroyed on the
 		 * consumer.
 		 */
-		registry->metadata_closed = 1;
+		registry->_metadata_closed = true;
 	}
 error_push:
 	free(metadata_str);
@@ -796,7 +796,7 @@ error_push:
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-static int push_metadata(struct ust_registry_session *registry,
+static int push_metadata(ust_registry_session *registry,
 		struct consumer_output *consumer)
 {
 	int ret_val;
@@ -807,14 +807,14 @@ static int push_metadata(struct ust_registry_session *registry,
 	LTTNG_ASSERT(consumer);
 	ASSERT_RCU_READ_LOCKED();
 
-	pthread_mutex_lock(&registry->lock);
-	if (registry->metadata_closed) {
+	pthread_mutex_lock(&registry->_lock);
+	if (registry->_metadata_closed) {
 		ret_val = -EPIPE;
 		goto error;
 	}
 
 	/* Get consumer socket to use to push the metadata.*/
-	socket = consumer_find_socket_by_bitness(registry->bits_per_long,
+	socket = consumer_find_socket_by_bitness(registry->_bits_per_long,
 			consumer);
 	if (!socket) {
 		ret_val = -1;
@@ -826,11 +826,11 @@ static int push_metadata(struct ust_registry_session *registry,
 		ret_val = ret;
 		goto error;
 	}
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 	return 0;
 
 error:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 	return ret_val;
 }
 
@@ -846,7 +846,7 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-static int close_metadata(struct ust_registry_session *registry,
+static int close_metadata(ust_registry_session *registry,
 		struct consumer_output *consumer)
 {
 	int ret;
@@ -859,18 +859,18 @@ static int close_metadata(struct ust_registry_session *registry,
 
 	rcu_read_lock();
 
-	pthread_mutex_lock(&registry->lock);
-	metadata_key = registry->metadata_key;
-	registry_was_already_closed = registry->metadata_closed;
+	pthread_mutex_lock(&registry->_lock);
+	metadata_key = registry->_metadata_key;
+	registry_was_already_closed = registry->_metadata_closed;
 	if (metadata_key != 0) {
 		/*
 		 * Metadata closed. Even on error this means that the consumer
 		 * is not responding or not found so either way a second close
 		 * should NOT be emit for this registry.
 		 */
-		registry->metadata_closed = 1;
+		registry->_metadata_closed = true;
 	}
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 
 	if (metadata_key == 0 || registry_was_already_closed) {
 		ret = 0;
@@ -878,7 +878,7 @@ static int close_metadata(struct ust_registry_session *registry,
 	}
 
 	/* Get consumer socket to use to push the metadata.*/
-	socket = consumer_find_socket_by_bitness(registry->bits_per_long,
+	socket = consumer_find_socket_by_bitness(registry->_bits_per_long,
 			consumer);
 	if (!socket) {
 		ret = -1;
@@ -918,7 +918,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	int ret;
 	struct lttng_ht_iter iter;
 	struct ust_app_channel *ua_chan;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
@@ -2536,7 +2536,7 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 	}
 
 	/* Initialize registry. */
-	ret = ust_registry_session_init(&reg_pid->registry->reg.ust, app,
+	reg_pid->registry->reg.ust = ust_registry_session_per_pid_create(app,
 			app->bits_per_long, app->uint8_t_alignment,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
@@ -2544,9 +2544,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			reg_pid->root_shm_path, reg_pid->shm_path,
 			lttng_credentials_get_uid(&ua_sess->effective_credentials),
 			lttng_credentials_get_gid(&ua_sess->effective_credentials),
-			ua_sess->tracing_id,
-			app->uid);
-	if (ret < 0) {
+			ua_sess->tracing_id);
+	if (!reg_pid->registry->reg.ust) {
 		/*
 		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
 		 * destroy the buffer registry, because it is always expected
@@ -2606,7 +2605,7 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 	}
 
 	/* Initialize registry. */
-	ret = ust_registry_session_init(&reg_uid->registry->reg.ust, NULL,
+	reg_uid->registry->reg.ust = ust_registry_session_per_uid_create(
 			app->bits_per_long, app->uint8_t_alignment,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
@@ -2614,7 +2613,7 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 			app->version.minor, reg_uid->root_shm_path,
 			reg_uid->shm_path, usess->uid, usess->gid,
 			ua_sess->tracing_id, app->uid);
-	if (ret < 0) {
+	if (!reg_uid->registry->reg.ust) {
 		/*
 		 * reg_uid->registry->reg.ust is NULL upon error, so we need to
 		 * destroy the buffer registry, because it is always expected
@@ -2624,6 +2623,7 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		buffer_reg_uid_destroy(reg_uid, NULL);
 		goto error;
 	}
+
 	/* Add node to teardown list of the session. */
 	cds_list_add(&reg_uid->lnode, &usess->buffer_reg_uid_list);
 
@@ -2983,7 +2983,7 @@ error:
  */
 static int do_consumer_create_channel(struct ltt_ust_session *usess,
 		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		int bitness, struct ust_registry_session *registry)
+		int bitness, ust_registry_session *registry)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3446,13 +3446,13 @@ static int create_channel_per_uid(struct ust_app *app,
 	}
 
 	/* Notify the notification subsystem of the channel's creation. */
-	pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
+	pthread_mutex_lock(&reg_uid->registry->reg.ust->_lock);
 	ust_reg_chan = ust_registry_channel_find(reg_uid->registry->reg.ust,
 			ua_chan->tracing_channel_id);
 	LTTNG_ASSERT(ust_reg_chan);
 	ust_reg_chan->consumer_key = ua_chan->key;
 	ust_reg_chan = NULL;
-	pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
+	pthread_mutex_unlock(&reg_uid->registry->reg.ust->_lock);
 
 	notification_ret = notification_thread_command_add_channel(
 			the_notification_thread_handle, session->name,
@@ -3498,7 +3498,7 @@ static int create_channel_per_pid(struct ust_app *app,
 		struct ust_app_channel *ua_chan)
 {
 	int ret;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 	enum lttng_error_code cmd_ret;
 	struct ltt_session *session = NULL;
 	uint64_t chan_reg_key;
@@ -3548,11 +3548,11 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	chan_reg_key = ua_chan->key;
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
 	LTTNG_ASSERT(ust_reg_chan);
 	ust_reg_chan->consumer_key = ua_chan->key;
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 
 	cmd_ret = notification_thread_command_add_channel(
 			the_notification_thread_handle, session->name,
@@ -3819,7 +3819,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	int ret = 0;
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 	struct ltt_session *session = NULL;
 
 	LTTNG_ASSERT(ua_sess);
@@ -3831,10 +3831,10 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	/* The UST app session is held registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 
 	/* Metadata already exists for this registry or it was closed previously */
-	if (registry->metadata_key || registry->metadata_closed) {
+	if (registry->_metadata_key || registry->_metadata_closed) {
 		ret = 0;
 		goto error;
 	}
@@ -3869,7 +3869,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 * consumer requesting the metadata and the ask_channel call on our side
 	 * did not returned yet.
 	 */
-	registry->metadata_key = metadata->key;
+	registry->_metadata_key = metadata->key;
 
 	session = session_find_by_id(ua_sess->tracing_id);
 	LTTNG_ASSERT(session);
@@ -3886,7 +3886,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 			registry, session->current_trace_chunk);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
-		registry->metadata_key = 0;
+		registry->_metadata_key = 0;
 		goto error_consumer;
 	}
 
@@ -3899,7 +3899,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	ret = consumer_setup_metadata(socket, metadata->key);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
-		registry->metadata_key = 0;
+		registry->_metadata_key = 0;
 		goto error_consumer;
 	}
 
@@ -3910,7 +3910,7 @@ error_consumer:
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 	delete_ust_app_channel(-1, metadata, app);
 error:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 	if (session) {
 		session_put(session);
 	}
@@ -4268,7 +4268,7 @@ void ust_app_unregister(int sock)
 	 */
 	cds_lfht_for_each_entry(lta->sessions->ht, &iter.iter, ua_sess,
 			node.node) {
-		struct ust_registry_session *registry;
+		ust_registry_session *registry;
 
 		ret = lttng_ht_del(lta->sessions, &iter);
 		if (ret) {
@@ -5210,7 +5210,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_session *ua_sess;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 
 	DBG("Stopping tracing for ust app pid %d", app->pid);
 
@@ -5392,7 +5392,7 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			struct ust_registry_session *ust_session_reg;
+			ust_registry_session *ust_session_reg;
 			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
@@ -6455,7 +6455,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 	struct ust_registry_channel *ust_reg_chan;
 
 	rcu_read_lock();
@@ -6495,7 +6495,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 		chan_reg_key = ua_chan->key;
 	}
 
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 
 	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
 	LTTNG_ASSERT(ust_reg_chan);
@@ -6571,7 +6571,7 @@ reply:
 	ust_reg_chan->register_done = 1;
 
 error:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 error_rcu_unlock:
 	rcu_read_unlock();
 	free(fields);
@@ -6597,7 +6597,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 
 	rcu_read_lock();
 
@@ -6634,7 +6634,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 		chan_reg_key = ua_chan->key;
 	}
 
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 
 	/*
 	 * From this point on, this call acquires the ownership of the sig, fields
@@ -6677,7 +6677,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 			name, event_id);
 
 error:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 error_rcu_unlock:
 	rcu_read_unlock();
 	free(sig);
@@ -6700,7 +6700,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	int ret = 0, ret_code;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
-	struct ust_registry_session *registry;
+	ust_registry_session *registry;
 	uint64_t enum_id = -1ULL;
 
 	rcu_read_lock();
@@ -6732,7 +6732,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 		goto error_rcu_unlock;
 	}
 
-	pthread_mutex_lock(&registry->lock);
+	pthread_mutex_lock(&registry->_lock);
 
 	/*
 	 * From this point on, the callee acquires the ownership of
@@ -6770,7 +6770,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	DBG3("UST registry enum %s added successfully or already found", name);
 
 error:
-	pthread_mutex_unlock(&registry->lock);
+	pthread_mutex_unlock(&registry->_lock);
 error_rcu_unlock:
 	rcu_read_unlock();
 	return ret;
@@ -7046,7 +7046,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
-			if (!reg->registry->reg.ust->metadata_key) {
+			if (!reg->registry->reg.ust->_metadata_key) {
 				/* Skip since no metadata is present */
 				continue;
 			}
@@ -7088,7 +7088,7 @@ enum lttng_error_code ust_app_snapshot_record(
 				}
 			}
 			status = consumer_snapshot_channel(socket,
-					reg->registry->reg.ust->metadata_key, output, 1,
+					reg->registry->reg.ust->_metadata_key, output, 1,
 					&trace_path[consumer_path_offset], 0);
 			if (status != LTTNG_OK) {
 				goto error;
@@ -7103,7 +7103,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			struct ust_registry_session *registry;
+			ust_registry_session *registry;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
@@ -7160,7 +7160,7 @@ enum lttng_error_code ust_app_snapshot_record(
 				continue;
 			}
 			status = consumer_snapshot_channel(socket,
-					registry->metadata_key, output, 1,
+					registry->_metadata_key, output, 1,
 					&trace_path[consumer_path_offset], 0);
 			switch (status) {
 			case LTTNG_OK:
@@ -7470,7 +7470,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			 * operations (i.e add context) and lead to data
 			 * channels created with no metadata channel.
 			 */
-			if (!reg->registry->reg.ust->metadata_key) {
+			if (!reg->registry->reg.ust->_metadata_key) {
 				/* Skip since no metadata is present. */
 				continue;
 			}
@@ -7478,7 +7478,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			(void) push_metadata(reg->registry->reg.ust, usess->consumer);
 
 			ret = consumer_rotate_channel(socket,
-					reg->registry->reg.ust->metadata_key,
+					reg->registry->reg.ust->_metadata_key,
 					usess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {
@@ -7495,7 +7495,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			struct ust_registry_session *registry;
+			ust_registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7536,7 +7536,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			/* Rotate the metadata channel. */
 			(void) push_metadata(registry, usess->consumer);
 			ret = consumer_rotate_channel(socket,
-					registry->metadata_key,
+					registry->_metadata_key,
 					ua_sess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {
@@ -7621,7 +7621,7 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app,
 				pid_n.node) {
 			struct ust_app_session *ua_sess;
-			struct ust_registry_session *registry;
+			ust_registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7726,7 +7726,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 			 * perform a rotation operation on it behind the scene.
 			 */
 			ret = consumer_clear_channel(socket,
-					reg->registry->reg.ust->metadata_key);
+					reg->registry->reg.ust->_metadata_key);
 			if (ret < 0) {
 				goto error;
 			}
@@ -7740,7 +7740,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			struct ust_registry_session *registry;
+			ust_registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7782,7 +7782,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 			 * Metadata channel is not cleared per se but we still need to
 			 * perform rotation operation on it behind the scene.
 			 */
-			ret = consumer_clear_channel(socket, registry->metadata_key);
+			ret = consumer_clear_channel(socket, registry->_metadata_key);
 			if (ret < 0) {
 				/* Per-PID buffer and application going away. */
 				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
@@ -7884,7 +7884,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			struct ust_registry_session *registry;
+			ust_registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {

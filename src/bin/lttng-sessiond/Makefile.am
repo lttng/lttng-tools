@@ -64,7 +64,11 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
 			ust-metadata.cpp ust-clock.hpp agent-thread.cpp agent-thread.hpp \
 			ust-field-utils.hpp ust-field-utils.cpp \
-			ust-sigbus.cpp
+			ust-sigbus.cpp \
+			ust-registry-session.cpp \
+			ust-registry-session-uid.cpp \
+			ust-registry-session-pid.cpp
+
 endif
 
 # link on liblttngctl for check if sessiond is already alive.

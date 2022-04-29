@@ -52,7 +52,7 @@ struct buffer_reg_channel {
 struct buffer_reg_session {
 	/* Registry per domain. */
 	union {
-		struct ust_registry_session *ust;
+		ust_registry_session *ust;
 	} reg;
 
 	/* Contains buffer registry channel indexed by tracing channel key. */

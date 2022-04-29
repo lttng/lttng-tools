@@ -34,7 +34,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan,
 		struct consumer_output *consumer,
 		struct consumer_socket *socket,
-		struct ust_registry_session *registry,
+		ust_registry_session *registry,
 		struct lttng_trace_chunk *trace_chunk)
 {
 	int ret, output;
@@ -145,7 +145,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->name,
 			consumer->net_seq_index,
 			ua_chan->key,
-			registry->uuid,
+			registry->_uuid,
 			chan_id,
 			ua_chan->tracefile_size,
 			ua_chan->tracefile_count,
@@ -196,7 +196,7 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan,
 		struct consumer_output *consumer,
 		struct consumer_socket *socket,
-		struct ust_registry_session *registry,
+		ust_registry_session *registry,
 		struct lttng_trace_chunk * trace_chunk)
 {
 	int ret;
@@ -445,7 +445,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	ssize_t ret_push;
 	struct lttcomm_metadata_request_msg request;
 	struct buffer_reg_uid *reg_uid;
-	struct ust_registry_session *ust_reg;
+	ust_registry_session *ust_reg;
 	struct lttcomm_consumer_msg msg;
 
 	LTTNG_ASSERT(socket);
@@ -493,9 +493,9 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	}
 	LTTNG_ASSERT(ust_reg);
 
-	pthread_mutex_lock(&ust_reg->lock);
+	pthread_mutex_lock(&ust_reg->_lock);
 	ret_push = ust_app_push_metadata(ust_reg, socket, 1);
-	pthread_mutex_unlock(&ust_reg->lock);
+	pthread_mutex_unlock(&ust_reg->_lock);
 	if (ret_push == -EPIPE) {
 		DBG("Application or relay closed while pushing metadata");
 	} else if (ret_push < 0) {

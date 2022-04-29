@@ -10,6 +10,7 @@
 
 #include <common/common.hpp>
 #include <common/hashtable/utils.hpp>
+#include <common/exception.hpp>
 #include <lttng/lttng.h>
 
 #include "ust-registry.hpp"
@@ -390,7 +391,7 @@ end:
  *
  * Should be called with session registry mutex held.
  */
-int ust_registry_create_event(struct ust_registry_session *session,
+int ust_registry_create_event(ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
 		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
 		int loglevel_value, char *model_emf_uri, int buffer_type,
@@ -544,7 +545,7 @@ static void destroy_enum_rcu(struct rcu_head *head)
  * Needs to be called from RCU read-side critical section.
  */
 static struct ust_registry_enum *ust_registry_lookup_enum(
-		struct ust_registry_session *session,
+		ust_registry_session *session,
 		const struct ust_registry_enum *reg_enum_lookup)
 {
 	struct ust_registry_enum *reg_enum = NULL;
@@ -553,7 +554,7 @@ static struct ust_registry_enum *ust_registry_lookup_enum(
 
 	ASSERT_RCU_READ_LOCKED();
 
-	cds_lfht_lookup(session->enums->ht,
+	cds_lfht_lookup(session->_enums->ht,
 			ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
 			ht_match_enum, reg_enum_lookup, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
@@ -570,7 +571,7 @@ end:
  * Needs to be called from RCU read-side critical section.
  */
 struct ust_registry_enum *
-	ust_registry_lookup_enum_by_id(struct ust_registry_session *session,
+	ust_registry_lookup_enum_by_id(ust_registry_session *session,
 		const char *enum_name, uint64_t enum_id)
 {
 	struct ust_registry_enum *reg_enum = NULL;
@@ -584,7 +585,7 @@ struct ust_registry_enum *
 	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
 	reg_enum_lookup.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 	reg_enum_lookup.id = enum_id;
-	cds_lfht_lookup(session->enums->ht,
+	cds_lfht_lookup(session->_enums->ht,
 			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
 			ht_match_enum_id, &reg_enum_lookup, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
@@ -606,7 +607,7 @@ end:
  *
  * We receive ownership of entries.
  */
-int ust_registry_create_or_find_enum(struct ust_registry_session *session,
+int ust_registry_create_or_find_enum(ust_registry_session *session,
 		int session_objd, char *enum_name,
 		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
 		uint64_t *enum_id)
@@ -652,14 +653,14 @@ int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 	} else {
 		DBG("UST registry creating enum: %s, sess_objd: %u",
 				enum_name, session_objd);
-		if (session->next_enum_id == -1ULL) {
+		if (session->_next_enum_id == -1ULL) {
 			ret = -EOVERFLOW;
 			destroy_enum(reg_enum);
 			goto end;
 		}
-		reg_enum->id = session->next_enum_id++;
+		reg_enum->id = session->_next_enum_id++;
 		cds_lfht_node_init(&reg_enum->node.node);
-		nodep = cds_lfht_add_unique(session->enums->ht,
+		nodep = cds_lfht_add_unique(session->_enums->ht,
 				ht_hash_enum(reg_enum, lttng_ht_seed),
 				ht_match_enum_id, reg_enum,
 				&reg_enum->node.node);
@@ -679,7 +680,7 @@ end:
  * the enumeration.
  * This MUST be called within a RCU read side lock section.
  */
-static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
+void ust_registry_destroy_enum(ust_registry_session *reg_session,
 		struct ust_registry_enum *reg_enum)
 {
 	int ret;
@@ -691,7 +692,7 @@ static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
 
 	/* Delete the node first. */
 	iter.iter.node = &reg_enum->node.node;
-	ret = lttng_ht_del(reg_session->enums, &iter);
+	ret = lttng_ht_del(reg_session->_enums.get(), &iter);
 	LTTNG_ASSERT(!ret);
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
@@ -715,7 +716,7 @@ void destroy_channel_rcu(struct rcu_head *head)
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
  */
-static void destroy_channel(struct ust_registry_channel *chan, bool notif)
+void ust_registry_channel_destroy(struct ust_registry_channel *chan, bool notify)
 {
 	struct lttng_ht_iter iter;
 	struct ust_registry_event *event;
@@ -723,7 +724,7 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 
 	LTTNG_ASSERT(chan);
 
-	if (notif) {
+	if (notify) {
 		cmd_ret = notification_thread_command_remove_channel(
 				the_notification_thread_handle,
 				chan->consumer_key, LTTNG_DOMAIN_UST);
@@ -748,7 +749,7 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 /*
  * Initialize registry with default values.
  */
-int ust_registry_channel_add(struct ust_registry_session *session,
+int ust_registry_channel_add(ust_registry_session *session,
 		uint64_t key)
 {
 	int ret = 0;
@@ -778,7 +779,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 	 * *before* the channel notify so the ID needs to be set at this point so
 	 * the metadata can be dumped for that event.
 	 */
-	if (ust_registry_is_max_id(session->used_channel_id)) {
+	if (ust_registry_is_max_id(session->_used_channel_id)) {
 		ret = -1;
 		goto error;
 	}
@@ -786,13 +787,13 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 
 	rcu_read_lock();
 	lttng_ht_node_init_u64(&chan->node, key);
-	lttng_ht_add_unique_u64(session->channels, &chan->node);
+	lttng_ht_add_unique_u64(session->_channels.get(), &chan->node);
 	rcu_read_unlock();
 
 	return 0;
 
 error:
-	destroy_channel(chan, false);
+	ust_registry_channel_destroy(chan, false);
 error_alloc:
 	return ret;
 }
@@ -805,19 +806,19 @@ error_alloc:
  * On success, the pointer is returned else NULL.
  */
 struct ust_registry_channel *ust_registry_channel_find(
-		struct ust_registry_session *session, uint64_t key)
+		ust_registry_session *session, uint64_t key)
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan = NULL;
 
 	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(session->channels);
+	LTTNG_ASSERT(session->_channels);
 	ASSERT_RCU_READ_LOCKED();
 
 	DBG3("UST registry channel finding key %" PRIu64, key);
 
-	lttng_ht_lookup(session->channels, &key, &iter);
+	lttng_ht_lookup(session->_channels.get(), &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;
@@ -831,7 +832,7 @@ end:
 /*
  * Remove channel using key from registry and free memory.
  */
-void ust_registry_channel_del_free(struct ust_registry_session *session,
+void ust_registry_channel_del_free(ust_registry_session *session,
 		uint64_t key, bool notif)
 {
 	struct lttng_ht_iter iter;
@@ -848,25 +849,16 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 	}
 
 	iter.iter.node = &chan->node.node;
-	ret = lttng_ht_del(session->channels, &iter);
+	ret = lttng_ht_del(session->_channels.get(), &iter);
 	LTTNG_ASSERT(!ret);
 	rcu_read_unlock();
-	destroy_channel(chan, notif);
+	ust_registry_channel_destroy(chan, notif);
 
 end:
 	return;
 }
 
-/*
- * Initialize registry with default values and set the newly allocated session
- * pointer to sessionp.
- *
- * Return 0 on success and sessionp is set or else return -1 and sessionp is
- * kept untouched.
- */
-int ust_registry_session_init(struct ust_registry_session **sessionp,
-		struct ust_app *app,
-		uint32_t bits_per_long,
+ust_registry_session *ust_registry_session_per_uid_create(uint32_t bits_per_long,
 		uint32_t uint8_t_alignment,
 		uint32_t uint16_t_alignment,
 		uint32_t uint32_t_alignment,
@@ -882,170 +874,49 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint64_t tracing_id,
 		uid_t tracing_uid)
 {
-	int ret;
-	struct ust_registry_session *session;
-
-	LTTNG_ASSERT(sessionp);
-
-	session = zmalloc<ust_registry_session>();
-	if (!session) {
-		PERROR("zmalloc ust registry session");
-		goto error_alloc;
+	try {
+		return new ust_registry_session_per_uid(bits_per_long, uint8_t_alignment,
+				uint16_t_alignment, uint32_t_alignment, uint64_t_alignment,
+				long_alignment, byte_order, major, minor, root_shm_path, shm_path,
+				euid, egid, tracing_id, tracing_uid);
+	} catch (const std::exception &ex) {
+		ERR("Failed to create per-uid registry session: %s", ex.what());
+		return nullptr;
 	}
+}
 
-	pthread_mutex_init(&session->lock, NULL);
-	session->bits_per_long = bits_per_long;
-	session->uint8_t_alignment = uint8_t_alignment;
-	session->uint16_t_alignment = uint16_t_alignment;
-	session->uint32_t_alignment = uint32_t_alignment;
-	session->uint64_t_alignment = uint64_t_alignment;
-	session->long_alignment = long_alignment;
-	session->byte_order = byte_order;
-	session->metadata_fd = -1;
-	session->uid = euid;
-	session->gid = egid;
-	session->next_enum_id = 0;
-	session->major = major;
-	session->minor = minor;
-	strncpy(session->root_shm_path, root_shm_path,
-		sizeof(session->root_shm_path));
-	session->root_shm_path[sizeof(session->root_shm_path) - 1] = '\0';
-	if (shm_path[0]) {
-		strncpy(session->shm_path, shm_path,
-			sizeof(session->shm_path));
-		session->shm_path[sizeof(session->shm_path) - 1] = '\0';
-		strncpy(session->metadata_path, shm_path,
-			sizeof(session->metadata_path));
-		session->metadata_path[sizeof(session->metadata_path) - 1] = '\0';
-		strncat(session->metadata_path, "/metadata",
-			sizeof(session->metadata_path)
-				- strlen(session->metadata_path) - 1);
+ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
+		uint32_t bits_per_long,
+		uint32_t uint8_t_alignment,
+		uint32_t uint16_t_alignment,
+		uint32_t uint32_t_alignment,
+		uint32_t uint64_t_alignment,
+		uint32_t long_alignment,
+		int byte_order,
+		uint32_t major,
+		uint32_t minor,
+		const char *root_shm_path,
+		const char *shm_path,
+		uid_t euid,
+		gid_t egid,
+		uint64_t tracing_id)
+{
+	try {
+		return new ust_registry_session_per_pid(*app, bits_per_long, uint8_t_alignment,
+				uint16_t_alignment, uint32_t_alignment, uint64_t_alignment,
+				long_alignment, byte_order, major, minor, root_shm_path, shm_path,
+				euid, egid, tracing_id);
+	} catch (const std::exception &ex) {
+		ERR("Failed to create per-pid registry session: %s", ex.what());
+		return nullptr;
 	}
-	if (session->shm_path[0]) {
-		ret = run_as_mkdir_recursive(session->shm_path,
-			S_IRWXU | S_IRWXG,
-			euid, egid);
-		if (ret) {
-			PERROR("run_as_mkdir_recursive");
-			goto error;
-		}
-	}
-	if (session->metadata_path[0]) {
-		/* Create metadata file */
-		ret = run_as_open(session->metadata_path,
-			O_WRONLY | O_CREAT | O_EXCL,
-			S_IRUSR | S_IWUSR, euid, egid);
-		if (ret < 0) {
-			PERROR("Opening metadata file");
-			goto error;
-		}
-		session->metadata_fd = ret;
-	}
-
-	session->enums = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	if (!session->enums) {
-		ERR("Failed to create enums hash table");
-		goto error;
-	}
-	/* hash/match functions are specified at call site. */
-	session->enums->match_fct = NULL;
-	session->enums->hash_fct = NULL;
-
-	session->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!session->channels) {
-		goto error;
-	}
-
-	ret = lttng_uuid_generate(session->uuid);
-	if (ret) {
-		ERR("Failed to generate UST uuid (errno = %d)", ret);
-		goto error;
-	}
-
-	session->tracing_id = tracing_id;
-	session->tracing_uid = tracing_uid;
-
-	pthread_mutex_lock(&session->lock);
-	ret = ust_metadata_session_statedump(session, app, major, minor);
-	pthread_mutex_unlock(&session->lock);
-	if (ret) {
-		ERR("Failed to generate session metadata (errno = %d)", ret);
-		goto error;
-	}
-
-	*sessionp = session;
-
-	return 0;
-
-error:
-	ust_registry_session_destroy(session);
-	free(session);
-error_alloc:
-	return -1;
 }
 
 /*
  * Destroy session registry. This does NOT free the given pointer since it
  * might get passed as a reference. The registry lock should NOT be acquired.
  */
-void ust_registry_session_destroy(struct ust_registry_session *reg)
+void ust_registry_session_destroy(ust_registry_session *reg)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-	struct ust_registry_channel *chan;
-	struct ust_registry_enum *reg_enum;
-
-	if (!reg) {
-		return;
-	}
-
-	/* On error, EBUSY can be returned if lock. Code flow error. */
-	ret = pthread_mutex_destroy(&reg->lock);
-	LTTNG_ASSERT(!ret);
-
-	if (reg->channels) {
-		rcu_read_lock();
-		/* Destroy all event associated with this registry. */
-		cds_lfht_for_each_entry(reg->channels->ht, &iter.iter, chan,
-				node.node) {
-			/* Delete the node from the ht and free it. */
-			ret = lttng_ht_del(reg->channels, &iter);
-			LTTNG_ASSERT(!ret);
-			destroy_channel(chan, true);
-		}
-		rcu_read_unlock();
-		lttng_ht_destroy(reg->channels);
-	}
-
-	free(reg->metadata);
-	if (reg->metadata_fd >= 0) {
-		ret = close(reg->metadata_fd);
-		if (ret) {
-			PERROR("close");
-		}
-		ret = run_as_unlink(reg->metadata_path,
-				reg->uid, reg->gid);
-		if (ret) {
-			PERROR("unlink");
-		}
-	}
-	if (reg->root_shm_path[0]) {
-		/*
-		 * Try deleting the directory hierarchy.
-		 */
-		(void) run_as_rmdir_recursive(reg->root_shm_path,
-				reg->uid, reg->gid,
-				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
-	}
-	/* Destroy the enum hash table */
-	if (reg->enums) {
-		rcu_read_lock();
-		/* Destroy all enum entries associated with this registry. */
-		cds_lfht_for_each_entry(reg->enums->ht, &iter.iter, reg_enum,
-				node.node) {
-			ust_registry_destroy_enum(reg, reg_enum);
-		}
-		rcu_read_unlock();
-		lttng_ht_destroy(reg->enums);
-	}
+	delete reg;
 }

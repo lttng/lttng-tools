@@ -4328,36 +4328,35 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 
 	rcu_read_lock();
 	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
-		struct ust_registry_session *registry;
+		ust_registry_session *registry;
 		struct ust_registry_channel *chan;
 		struct lttng_ht_iter iter_chan;
 
 		session_reg = uid_reg->registry;
 		registry = session_reg->reg.ust;
 
-		pthread_mutex_lock(&registry->lock);
-		registry->metadata_len_sent = 0;
-		memset(registry->metadata, 0, registry->metadata_alloc_len);
-		registry->metadata_len = 0;
-		registry->metadata_version++;
-		if (registry->metadata_fd > 0) {
+		pthread_mutex_lock(&registry->_lock);
+		registry->_metadata_len_sent = 0;
+		memset(registry->_metadata, 0, registry->_metadata_alloc_len);
+		registry->_metadata_len = 0;
+		registry->_metadata_version++;
+		if (registry->_metadata_fd > 0) {
 			/* Clear the metadata file's content. */
-			ret = clear_metadata_file(registry->metadata_fd);
+			ret = clear_metadata_file(registry->_metadata_fd);
 			if (ret) {
-				pthread_mutex_unlock(&registry->lock);
+				pthread_mutex_unlock(&registry->_lock);
 				goto end;
 			}
 		}
 
-		ret = ust_metadata_session_statedump(registry, NULL,
-				registry->major, registry->minor);
+		ret = ust_metadata_session_statedump(registry);
 		if (ret) {
-			pthread_mutex_unlock(&registry->lock);
+			pthread_mutex_unlock(&registry->_lock);
 			ERR("Failed to generate session metadata (err = %d)",
 					ret);
 			goto end;
 		}
-		cds_lfht_for_each_entry(registry->channels->ht, &iter_chan.iter,
+		cds_lfht_for_each_entry(registry->_channels->ht, &iter_chan.iter,
 				chan, node.node) {
 			struct ust_registry_event *event;
 			struct lttng_ht_iter iter_event;
@@ -4366,7 +4365,7 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 
 			ret = ust_metadata_channel_statedump(registry, chan);
 			if (ret) {
-				pthread_mutex_unlock(&registry->lock);
+				pthread_mutex_unlock(&registry->_lock);
 				ERR("Failed to generate channel metadata "
 						"(err = %d)", ret);
 				goto end;
@@ -4377,14 +4376,14 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 				ret = ust_metadata_event_statedump(registry,
 						chan, event);
 				if (ret) {
-					pthread_mutex_unlock(&registry->lock);
+					pthread_mutex_unlock(&registry->_lock);
 					ERR("Failed to generate event metadata "
 							"(err = %d)", ret);
 					goto end;
 				}
 			}
 		}
-		pthread_mutex_unlock(&registry->lock);
+		pthread_mutex_unlock(&registry->_lock);
 	}
 
 end:

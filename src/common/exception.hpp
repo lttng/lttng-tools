@@ -18,6 +18,8 @@
 	throw lttng::ctl::error(msg, error_code, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_POSIX(msg, errno_code) \
 	throw lttng::posix_error(msg, errno_code, __FILE__, __func__, __LINE__)
+#define LTTNG_THROW_ERROR(msg) \
+	throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
 
 namespace lttng {
 
@@ -40,6 +42,14 @@ class posix_error : public std::system_error {
 public:
 	explicit posix_error(const std::string &msg,
 		int errno_code,
+		const char *file_name,
+		const char *function_name,
+		unsigned int line_number);
+};
+
+class runtime_error : public std::runtime_error {
+public:
+	explicit runtime_error(const std::string &msg,
 		const char *file_name,
 		const char *function_name,
 		unsigned int line_number);

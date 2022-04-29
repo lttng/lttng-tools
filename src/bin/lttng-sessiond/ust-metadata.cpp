@@ -33,7 +33,7 @@ struct offset_sample {
 } /* namespace */
 
 static
-int _lttng_field_statedump(struct ust_registry_session *session,
+int _lttng_field_statedump(ust_registry_session *session,
 		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
 		size_t *iter_field, size_t nesting);
 
@@ -54,11 +54,11 @@ int get_count_order(unsigned int count)
  * Returns offset where to write in metadata array, or negative error value on error.
  */
 static
-ssize_t metadata_reserve(struct ust_registry_session *session, size_t len)
+ssize_t metadata_reserve(ust_registry_session *session, size_t len)
 {
-	size_t new_len = session->metadata_len + len;
+	size_t new_len = session->_metadata_len + len;
 	size_t new_alloc_len = new_len;
-	size_t old_alloc_len = session->metadata_alloc_len;
+	size_t old_alloc_len = session->_metadata_alloc_len;
 	ssize_t ret;
 
 	if (new_alloc_len > (UINT32_MAX >> 1))
@@ -71,30 +71,30 @@ ssize_t metadata_reserve(struct ust_registry_session *session, size_t len)
 
 		new_alloc_len =
 			std::max<size_t>(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
-		newptr = (char *) realloc(session->metadata, new_alloc_len);
+		newptr = (char *) realloc(session->_metadata, new_alloc_len);
 		if (!newptr)
 			return -ENOMEM;
-		session->metadata = newptr;
+		session->_metadata = newptr;
 		/* We zero directly the memory from start of allocation. */
-		memset(&session->metadata[old_alloc_len], 0, new_alloc_len - old_alloc_len);
-		session->metadata_alloc_len = new_alloc_len;
+		memset(&session->_metadata[old_alloc_len], 0, new_alloc_len - old_alloc_len);
+		session->_metadata_alloc_len = new_alloc_len;
 	}
-	ret = session->metadata_len;
-	session->metadata_len += len;
+	ret = session->_metadata_len;
+	session->_metadata_len += len;
 	return ret;
 }
 
 static
-int metadata_file_append(struct ust_registry_session *session,
+int metadata_file_append(ust_registry_session *session,
 		const char *str, size_t len)
 {
 	ssize_t written;
 
-	if (session->metadata_fd < 0) {
+	if (session->_metadata_fd < 0) {
 		return 0;
 	}
 	/* Write to metadata file */
-	written = lttng_write(session->metadata_fd, str, len);
+	written = lttng_write(session->_metadata_fd, str, len);
 	if (written != len) {
 		return -1;
 	}
@@ -108,7 +108,7 @@ int metadata_file_append(struct ust_registry_session *session,
  * protects us from concurrent writes.
  */
 static ATTR_FORMAT_PRINTF(2, 3)
-int lttng_metadata_printf(struct ust_registry_session *session,
+int lttng_metadata_printf(ust_registry_session *session,
 		const char *fmt, ...)
 {
 	char *str = NULL;
@@ -129,7 +129,7 @@ int lttng_metadata_printf(struct ust_registry_session *session,
 		ret = offset;
 		goto end;
 	}
-	memcpy(&session->metadata[offset], str, len);
+	memcpy(&session->_metadata[offset], str, len);
 	ret = metadata_file_append(session, str, len);
 	if (ret) {
 		PERROR("Error appending to metadata file");
@@ -144,7 +144,7 @@ end:
 }
 
 static
-int print_tabs(struct ust_registry_session *session, size_t nesting)
+int print_tabs(ust_registry_session *session, size_t nesting)
 {
 	size_t i;
 
@@ -178,7 +178,7 @@ void sanitize_ctf_identifier(char *out, const char *in)
 }
 
 static
-int print_escaped_ctf_string(struct ust_registry_session *session, const char *string)
+int print_escaped_ctf_string(ust_registry_session *session, const char *string)
 {
 	int ret = 0;
 	size_t i;
@@ -216,7 +216,7 @@ error:
 
 /* Called with session registry mutex held. */
 static
-int ust_metadata_enum_statedump(struct ust_registry_session *session,
+int ust_metadata_enum_statedump(ust_registry_session *session,
 		const char *enum_name,
 		uint64_t enum_id,
 		const struct lttng_ust_ctl_integer_type *container_type,
@@ -359,7 +359,7 @@ end:
 }
 
 static
-int _lttng_variant_statedump(struct ust_registry_session *session,
+int _lttng_variant_statedump(ust_registry_session *session,
 		uint32_t nr_choices, const char *tag_name,
 		uint32_t alignment,
 		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
@@ -424,7 +424,7 @@ end:
 }
 
 static
-int _lttng_field_statedump(struct ust_registry_session *session,
+int _lttng_field_statedump(ust_registry_session *session,
 		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
 		size_t *iter_field, size_t nesting)
 {
@@ -441,7 +441,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 	}
 	field = &fields[*iter_field];
 
-	if (session->byte_order == BIG_ENDIAN) {
+	if (session->_byte_order == BIG_ENDIAN) {
 		bo_reverse = bo_le;
 	} else {
 		bo_reverse = bo_be;
@@ -791,7 +791,7 @@ end:
 }
 
 static
-int _lttng_context_metadata_statedump(struct ust_registry_session *session,
+int _lttng_context_metadata_statedump(ust_registry_session *session,
 		size_t nr_ctx_fields,
 		struct lttng_ust_ctl_field *ctx)
 {
@@ -814,7 +814,7 @@ int _lttng_context_metadata_statedump(struct ust_registry_session *session,
 }
 
 static
-int _lttng_fields_metadata_statedump(struct ust_registry_session *session,
+int _lttng_fields_metadata_statedump(ust_registry_session *session,
 		struct ust_registry_event *event)
 {
 	int ret = 0;
@@ -836,7 +836,7 @@ int _lttng_fields_metadata_statedump(struct ust_registry_session *session,
 /*
  * Should be called with session registry mutex held.
  */
-int ust_metadata_event_statedump(struct ust_registry_session *session,
+int ust_metadata_event_statedump(ust_registry_session *session,
 		struct ust_registry_channel *chan,
 		struct ust_registry_event *event)
 {
@@ -913,7 +913,7 @@ end:
  *
  * RCU read lock must be held by the caller.
  */
-int ust_metadata_channel_statedump(struct ust_registry_session *session,
+int ust_metadata_channel_statedump(ust_registry_session *session,
 		struct ust_registry_channel *chan)
 {
 	int ret;
@@ -999,7 +999,7 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 }
 
 static
-int _lttng_stream_packet_context_declare(struct ust_registry_session *session)
+int _lttng_stream_packet_context_declare(ust_registry_session *session)
 {
 	return lttng_metadata_printf(session,
 		"struct packet_context {\n"
@@ -1024,7 +1024,7 @@ int _lttng_stream_packet_context_declare(struct ust_registry_session *session)
  * id 65535 is reserved to indicate an extended header.
  */
 static
-int _lttng_event_header_declare(struct ust_registry_session *session)
+int _lttng_event_header_declare(ust_registry_session *session)
 {
 	return lttng_metadata_printf(session,
 	"struct event_header_compact {\n"
@@ -1052,8 +1052,8 @@ int _lttng_event_header_declare(struct ust_registry_session *session)
 	"		} extended;\n"
 	"	} v;\n"
 	"} align(%u);\n\n",
-	session->uint32_t_alignment,
-	session->uint16_t_alignment
+	session->_uint32_t_alignment,
+	session->_uint16_t_alignment
 	);
 }
 
@@ -1119,14 +1119,14 @@ int64_t measure_clock_offset(void)
 }
 
 static
-int print_metadata_session_information(struct ust_registry_session *registry)
+int print_metadata_session_information(ust_registry_session *registry)
 {
 	int ret;
 	struct ltt_session *session = NULL;
 	char creation_datetime[ISO8601_STR_LEN];
 
 	rcu_read_lock();
-	session = session_find_by_id(registry->tracing_id);
+	session = session_find_by_id(registry->_tracing_id);
 	if (!session) {
 		ret = -1;
 		goto error;
@@ -1181,50 +1181,42 @@ error:
 }
 
 static
-int print_metadata_app_information(struct ust_registry_session *registry,
-		struct ust_app *app)
+int print_metadata_app_information(ust_registry_session *registry)
 {
-	int ret;
-	char datetime[ISO8601_STR_LEN];
-
-	if (!app) {
-		ret = 0;
-		goto end;
+	if (registry->get_buffering_scheme() != LTTNG_BUFFER_PER_PID) {
+		return 0;
 	}
 
-	ret = time_to_iso8601_str(
-			app->registration_time, datetime, sizeof(datetime));
+	const auto *per_pid_session = static_cast<const ust_registry_session_per_pid *>(registry);
+
+	char datetime[ISO8601_STR_LEN];
+	int ret = time_to_iso8601_str(
+		per_pid_session->_app_creation_time, datetime, sizeof(datetime));
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
 	ret = lttng_metadata_printf(registry,
-			"	tracer_patchlevel = %u;\n"
-			"	vpid = %d;\n"
-			"	procname = \"%s\";\n"
-			"	vpid_datetime = \"%s\";\n",
-			app->version.patchlevel, (int) app->pid, app->name,
-			datetime);
-
-end:
+		"	tracer_patchlevel = %u;\n"
+		"	vpid = %d;\n"
+		"	procname = \"%s\";\n"
+		"	vpid_datetime = \"%s\";\n",
+		per_pid_session->_tracer_patch_level_version, (int) per_pid_session->_vpid,
+		per_pid_session->_procname.c_str(), datetime);
 	return ret;
 }
 
 /*
  * Should be called with session registry mutex held.
  */
-int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app,
-		uint32_t major,
-		uint32_t minor)
+int ust_metadata_session_statedump(ust_registry_session *session)
 {
-	char uuid_s[LTTNG_UUID_STR_LEN],
-		clock_uuid_s[LTTNG_UUID_STR_LEN];
+	char uuid_s[LTTNG_UUID_STR_LEN], clock_uuid_s[LTTNG_UUID_STR_LEN];
 	int ret = 0;
 
 	LTTNG_ASSERT(session);
 
-	lttng_uuid_to_str(session->uuid, uuid_s);
+	lttng_uuid_to_str(session->_uuid, uuid_s);
 
 	/* For crash ABI */
 	ret = lttng_metadata_printf(session,
@@ -1256,16 +1248,16 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"		uint64_t stream_instance_id;\n"
 		"	};\n"
 		"};\n\n",
-		session->uint8_t_alignment,
-		session->uint16_t_alignment,
-		session->uint32_t_alignment,
-		session->uint64_t_alignment,
-		session->bits_per_long,
-		session->long_alignment,
+		session->_uint8_t_alignment,
+		session->_uint16_t_alignment,
+		session->_uint32_t_alignment,
+		session->_uint64_t_alignment,
+		session->_bits_per_long,
+		session->_long_alignment,
 		CTF_SPEC_MAJOR,
 		CTF_SPEC_MINOR,
 		uuid_s,
-		session->byte_order == BIG_ENDIAN ? "be" : "le"
+		session->_byte_order == BIG_ENDIAN ? "be" : "le"
 		);
 	if (ret) {
 		goto end;
@@ -1280,11 +1272,12 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"	tracer_buffering_scheme = \"%s\";\n"
 		"	tracer_buffering_id = %u;\n"
 		"	architecture_bit_width = %u;\n",
-		major,
-		minor,
-		app ? "pid" : "uid",
-		app ? (int) app->pid : (int) session->tracing_uid,
-		session->bits_per_long);
+		session->_app_tracer_version_major, session->_app_tracer_version_minor,
+		session->get_buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid",
+		session->get_buffering_scheme() == LTTNG_BUFFER_PER_PID ?
+			(int) static_cast<ust_registry_session_per_pid *>(session)->_vpid :
+			(int) static_cast<ust_registry_session_per_uid *>(session)->_tracing_uid,
+		session->_bits_per_long);
 	if (ret) {
 		goto end;
 	}
@@ -1298,7 +1291,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	 * If per-application registry, we can output extra information
 	 * about the application.
 	 */
-	ret = print_metadata_app_information(session, app);
+	ret = print_metadata_app_information(session);
 	if (ret) {
 		goto end;
 	}
@@ -1359,9 +1352,9 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"	map = clock.%s.value;\n"
 		"} := uint64_clock_monotonic_t;\n\n",
 		trace_clock_name(),
-		session->uint32_t_alignment,
+		session->_uint32_t_alignment,
 		trace_clock_name(),
-		session->uint64_t_alignment,
+		session->_uint64_t_alignment,
 		trace_clock_name()
 		);
 	if (ret) {

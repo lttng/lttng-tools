@@ -369,7 +369,7 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
+ssize_t ust_app_push_metadata(ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
 enum lttng_error_code ust_app_snapshot_record(
@@ -618,7 +618,7 @@ void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 
 static inline
 ssize_t ust_app_push_metadata(
-		struct ust_registry_session *registry __attribute__((unused)),
+		ust_registry_session *registry __attribute__((unused)),
 		struct consumer_socket *socket __attribute__((unused)),
 		int send_zero_data __attribute__((unused)))
 {

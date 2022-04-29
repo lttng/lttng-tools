@@ -601,7 +601,6 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
 		ust_registry_session_destroy(regp->reg.ust);
-		free(regp->reg.ust);
 		break;
 	default:
 		abort();
@@ -681,10 +680,10 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 
 	switch (regp->domain) {
 	case LTTNG_DOMAIN_UST:
-		if (regp->registry->reg.ust->metadata_key) {
+		if (regp->registry->reg.ust->_metadata_key) {
 			/* Return value does not matter. This call will print errors. */
 			(void) consumer_close_metadata(socket,
-					regp->registry->reg.ust->metadata_key);
+					regp->registry->reg.ust->_metadata_key);
 		}
 		break;
 	default:

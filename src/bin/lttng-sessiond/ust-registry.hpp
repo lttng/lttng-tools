@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2022 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -10,9 +11,14 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <ctime>
+#include <string>
+#include <memory>
 
 #include <common/hashtable/hashtable.hpp>
 #include <common/uuid.hpp>
+
+#include <lttng/domain.h>
 
 #include "lttng-ust-ctl.hpp"
 
@@ -21,7 +27,31 @@
 
 struct ust_app;
 
-struct ust_registry_session {
+class ust_registry_session {
+public:
+	virtual lttng_buffer_type get_buffering_scheme() const = 0;
+	virtual ~ust_registry_session();
+
+protected:
+	/* Prevent instanciation of this base class. */
+	ust_registry_session(unsigned int bits_per_long,
+			unsigned int uint8_t_alignment,
+			unsigned int uint16_t_alignment,
+			unsigned int uint32_t_alignment,
+			unsigned int uint64_t_alignment,
+			unsigned int long_alignment,
+			int byte_order,
+			unsigned int app_tracer_version_major,
+			unsigned int app_tracer_version_minor,
+			const char *root_shm_path,
+			const char *shm_path,
+			uid_t euid,
+			gid_t egid,
+			uint64_t tracing_id);
+
+	void statedump();
+
+public:
 	/*
 	 * With multiple writers and readers, use this lock to access
 	 * the registry. Can nest within the ust app session lock.
@@ -30,36 +60,33 @@ struct ust_registry_session {
 	 * sessiond to the consumerd.
 	 * The consumer socket lock nests within this lock.
 	 */
-	pthread_mutex_t lock;
+	pthread_mutex_t _lock;
 	/* Next channel ID available for a newly registered channel. */
-	uint32_t next_channel_id;
+	uint32_t _next_channel_id = 0;
 	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
-	uint32_t used_channel_id;
+	uint32_t _used_channel_id = 0;
 	/* Next enumeration ID available. */
-	uint64_t next_enum_id;
+	uint64_t _next_enum_id = 0;
 	/* Universal unique identifier used by the tracer. */
-	unsigned char uuid[LTTNG_UUID_LEN];
+	unsigned char _uuid[LTTNG_UUID_LEN] = {};
 
 	/* session ABI description */
 
 	/* Size of long, in bits */
-	unsigned int bits_per_long;
+	unsigned int _bits_per_long;
 	/* Alignment, in bits */
-	unsigned int uint8_t_alignment,
-		uint16_t_alignment,
-		uint32_t_alignment,
-		uint64_t_alignment,
-		long_alignment;
-	/* endianness */
-	int byte_order;	/* BIG_ENDIAN or LITTLE_ENDIAN */
+	unsigned int _uint8_t_alignment, _uint16_t_alignment, _uint32_t_alignment,
+			_uint64_t_alignment, _long_alignment;
+	/* endianness: BIG_ENDIAN or LITTLE_ENDIAN */
+	int _byte_order;
 
 	/* Generated metadata. */
-	char *metadata;		/* NOT null-terminated ! Use memcpy. */
-	size_t metadata_len, metadata_alloc_len;
+	char *_metadata = nullptr; /* NOT null-terminated ! Use memcpy. */
+	size_t _metadata_len = 0, _metadata_alloc_len = 0;
 	/* Length of bytes sent to the consumer. */
-	size_t metadata_len_sent;
+	size_t _metadata_len_sent = 0;
 	/* Current version of the metadata. */
-	uint64_t metadata_version;
+	uint64_t _metadata_version = 0;
 
 	/*
 	 * Those fields are only used when a session is created with
@@ -78,7 +105,8 @@ struct ust_registry_session {
 	 *
 	 * metadata_path contains the full path to the metadata file that
 	 * is kept for the "crash buffer" extraction:
-	 *  e.g. /tmp/my_shm/my_session-20180612-135822/ust/uid/1000/64-bit/metadata
+	 *  e.g.
+	 * /tmp/my_shm/my_session-20180612-135822/ust/uid/1000/64-bit/metadata
 	 *
 	 * Note that this is not the trace's final metadata file. It is
 	 * only meant to be used to read the contents of the ring buffers
@@ -87,44 +115,99 @@ struct ust_registry_session {
 	 * metadata_fd is a file descriptor that points to the file at
 	 * 'metadata_path'.
 	 */
-	char root_shm_path[PATH_MAX];
-	char shm_path[PATH_MAX];
-	char metadata_path[PATH_MAX];
-	int metadata_fd;	/* file-backed metadata FD */
+	char _root_shm_path[PATH_MAX] = {};
+	char _shm_path[PATH_MAX] = {};
+	char _metadata_path[PATH_MAX] = {};
+	/* File-backed metadata FD */
+	int _metadata_fd = -1;
 
 	/*
 	 * Hash table containing channels sent by the UST tracer. MUST
 	 * be accessed with a RCU read side lock acquired.
 	 */
-	struct lttng_ht *channels;
+	lttng_ht::uptr _channels;
+
 	/*
 	 * Unique key to identify the metadata on the consumer side.
 	 */
-	uint64_t metadata_key;
+	uint64_t _metadata_key = 0;
 	/*
 	 * Indicates if the metadata is closed on the consumer side. This is to
 	 * avoid double close of metadata when an application unregisters AND
 	 * deletes its sessions.
 	 */
-	unsigned int metadata_closed;
+	bool _metadata_closed = false;
 
 	/* User and group owning the session. */
-	uid_t uid;
-	gid_t gid;
+	uid_t _uid = -1;
+	gid_t _gid = -1;
 
 	/* Enumerations table. */
-	struct lttng_ht *enums;
+	lttng_ht::uptr _enums;
 
 	/*
 	 * Copy of the tracer version when the first app is registered.
 	 * It is used if we need to regenerate the metadata.
 	 */
-	uint32_t major;
-	uint32_t minor;
+	uint32_t _app_tracer_version_major = 0;
+	uint32_t _app_tracer_version_minor = 0;
 
 	/* The id of the parent session */
-	uint64_t tracing_id;
-	uid_t tracing_uid;
+	uint64_t _tracing_id = -1ULL;
+};
+
+class ust_registry_session_per_uid : public ust_registry_session {
+public:
+	ust_registry_session_per_uid(uint32_t bits_per_long,
+			uint32_t uint8_t_alignment,
+			uint32_t uint16_t_alignment,
+			uint32_t uint32_t_alignment,
+			uint32_t uint64_t_alignment,
+			uint32_t long_alignment,
+			int byte_order,
+			uint32_t major,
+			uint32_t minor,
+			const char *root_shm_path,
+			const char *shm_path,
+			uid_t euid,
+			gid_t egid,
+			uint64_t tracing_id,
+			uid_t tracing_uid);
+
+	virtual lttng_buffer_type get_buffering_scheme() const noexcept override final;
+
+	const uid_t _tracing_uid;
+};
+
+class ust_registry_session_per_pid : public ust_registry_session {
+public:
+	ust_registry_session_per_pid(const struct ust_app &app,
+			uint32_t bits_per_long,
+			uint32_t uint8_t_alignment,
+			uint32_t uint16_t_alignment,
+			uint32_t uint32_t_alignment,
+			uint32_t uint64_t_alignment,
+			uint32_t long_alignment,
+			int byte_order,
+			uint32_t major,
+			uint32_t minor,
+			const char *root_shm_path,
+			const char *shm_path,
+			uid_t euid,
+			gid_t egid,
+			uint64_t tracing_id);
+
+	virtual lttng_buffer_type get_buffering_scheme() const noexcept override final;
+
+	pid_t get_vpid() const
+	{
+		return _vpid;
+	}
+
+	const unsigned int _tracer_patch_level_version;
+	const pid_t _vpid;
+	const std::string _procname;
+	const std::time_t _app_creation_time;
 };
 
 struct ust_registry_channel {
@@ -241,14 +324,14 @@ static inline uint32_t ust_registry_get_next_event_id(
  * is returned.
  */
 static inline uint32_t ust_registry_get_next_chan_id(
-		struct ust_registry_session *r)
+		ust_registry_session *r)
 {
-	if (ust_registry_is_max_id(r->used_channel_id)) {
-		return r->used_channel_id;
+	if (ust_registry_is_max_id(r->_used_channel_id)) {
+		return r->_used_channel_id;
 	}
 
-	r->used_channel_id++;
-	return r->next_channel_id++;
+	r->_used_channel_id++;
+	return r->_next_channel_id++;
 }
 
 /*
@@ -262,17 +345,22 @@ static inline uint32_t ust_registry_get_event_count(
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void ust_registry_channel_destroy(struct ust_registry_session *session,
+void ust_registry_channel_destroy(ust_registry_session *session,
 		struct ust_registry_channel *chan);
 struct ust_registry_channel *ust_registry_channel_find(
-		struct ust_registry_session *session, uint64_t key);
-int ust_registry_channel_add(struct ust_registry_session *session,
+		ust_registry_session *session, uint64_t key);
+int ust_registry_channel_add(ust_registry_session *session,
 		uint64_t key);
-void ust_registry_channel_del_free(struct ust_registry_session *session,
+void ust_registry_channel_del_free(ust_registry_session *session,
 		uint64_t key, bool notif);
+void ust_registry_channel_destroy(struct ust_registry_channel *chan, bool notify);
 
-int ust_registry_session_init(struct ust_registry_session **sessionp,
-		struct ust_app *app,
+/*
+ * Create per-uid registry with default values.
+ *
+ * Return new instance on success, nullptr on error.
+ */
+ust_registry_session *ust_registry_session_per_uid_create(
 		uint32_t bits_per_long,
 		uint32_t uint8_t_alignment,
 		uint32_t uint16_t_alignment,
@@ -288,9 +376,30 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		gid_t egid,
 		uint64_t tracing_id,
 		uid_t tracing_uid);
-void ust_registry_session_destroy(struct ust_registry_session *session);
 
-int ust_registry_create_event(struct ust_registry_session *session,
+/*
+ * Create per-pid registry with default values.
+ *
+ * Return new instance on success, nullptr on error.
+ */
+ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
+		uint32_t bits_per_long,
+		uint32_t uint8_t_alignment,
+		uint32_t uint16_t_alignment,
+		uint32_t uint32_t_alignment,
+		uint32_t uint64_t_alignment,
+		uint32_t long_alignment,
+		int byte_order,
+		uint32_t major,
+		uint32_t minor,
+		const char *root_shm_path,
+		const char *shm_path,
+		uid_t euid,
+		gid_t egid,
+		uint64_t tracing_id);
+void ust_registry_session_destroy(ust_registry_session *session);
+
+int ust_registry_create_event(ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
 		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
 		int loglevel_value, char *model_emf_uri, int buffer_type,
@@ -301,32 +410,33 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 		struct ust_registry_event *event);
 
 /* app can be NULL for registry shared across applications. */
-int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app, uint32_t major, uint32_t minor);
-int ust_metadata_channel_statedump(struct ust_registry_session *session,
+int ust_metadata_session_statedump(ust_registry_session *session);
+int ust_metadata_channel_statedump(ust_registry_session *session,
 		struct ust_registry_channel *chan);
-int ust_metadata_event_statedump(struct ust_registry_session *session,
+int ust_metadata_event_statedump(ust_registry_session *session,
 		struct ust_registry_channel *chan,
 		struct ust_registry_event *event);
-int ust_registry_create_or_find_enum(struct ust_registry_session *session,
+int ust_registry_create_or_find_enum(ust_registry_session *session,
 		int session_objd, char *name,
 		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
 		uint64_t *enum_id);
 struct ust_registry_enum *
-	ust_registry_lookup_enum_by_id(struct ust_registry_session *session,
+	ust_registry_lookup_enum_by_id(ust_registry_session *session,
 		const char *name, uint64_t id);
+void ust_registry_destroy_enum(ust_registry_session *reg_session,
+		struct ust_registry_enum *reg_enum);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline
-void ust_registry_channel_destroy(
-		struct ust_registry_session *session __attribute__((unused)),
-		struct ust_registry_channel *chan __attribute__((unused)))
-{}
+static inline void ust_registry_channel_destroy(
+		struct ust_registry_channel *chan __attribute__((unused)),
+		bool notify __attribute__((unused)))
+{
+}
 
 static inline
 struct ust_registry_channel *ust_registry_channel_find(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		uint64_t key __attribute__((unused)))
 {
 	return NULL;
@@ -334,7 +444,7 @@ struct ust_registry_channel *ust_registry_channel_find(
 
 static inline
 int ust_registry_channel_add(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		uint64_t key __attribute__((unused)))
 {
 	return 0;
@@ -342,15 +452,13 @@ int ust_registry_channel_add(
 
 static inline
 void ust_registry_channel_del_free(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		uint64_t key __attribute__((unused)),
 		bool notif __attribute__((unused)))
 {}
 
 static inline
-int ust_registry_session_init(
-		struct ust_registry_session **sessionp __attribute__((unused)),
-		struct ust_app *app __attribute__((unused)),
+ust_registry_session *ust_registry_session_per_uid_create(
 		uint32_t bits_per_long __attribute__((unused)),
 		uint32_t uint8_t_alignment __attribute__((unused)),
 		uint32_t uint16_t_alignment __attribute__((unused)),
@@ -367,17 +475,38 @@ int ust_registry_session_init(
 		uint64_t tracing_id __attribute__((unused)),
 		uid_t tracing_uid __attribute__((unused)))
 {
-	return 0;
+	return nullptr;
+}
+
+static inline
+ust_registry_session *ust_registry_session_per_pid_create(
+		struct ust_app *app __attribute__((unused)),
+		uint32_t bits_per_long __attribute__((unused)),
+		uint32_t uint8_t_alignment __attribute__((unused)),
+		uint32_t uint16_t_alignment __attribute__((unused)),
+		uint32_t uint32_t_alignment __attribute__((unused)),
+		uint32_t uint64_t_alignment __attribute__((unused)),
+		uint32_t long_alignment __attribute__((unused)),
+		int byte_order __attribute__((unused)),
+		uint32_t major __attribute__((unused)),
+		uint32_t minor __attribute__((unused)),
+		const char *root_shm_path __attribute__((unused)),
+		const char *shm_path __attribute__((unused)),
+		uid_t euid __attribute__((unused)),
+		gid_t egid __attribute__((unused)),
+		uint64_t tracing_id __attribute__((unused)))
+{
+	return nullptr;
 }
 
 static inline
 void ust_registry_session_destroy(
-		struct ust_registry_session *session __attribute__((unused)))
+		ust_registry_session *session __attribute__((unused)))
 {}
 
 static inline
 int ust_registry_create_event(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		uint64_t chan_key __attribute__((unused)),
 		int session_objd __attribute__((unused)),
 		int channel_objd __attribute__((unused)),
@@ -410,17 +539,14 @@ void ust_registry_destroy_event(
 /* The app object can be NULL for registry shared across applications. */
 static inline
 int ust_metadata_session_statedump(
-		struct ust_registry_session *session __attribute__((unused)),
-		struct ust_app *app __attribute__((unused)),
-		uint32_t major __attribute__((unused)),
-		uint32_t minor __attribute__((unused)))
+		ust_registry_session *session __attribute__((unused)))
 {
 	return 0;
 }
 
 static inline
 int ust_metadata_channel_statedump(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		struct ust_registry_channel *chan __attribute__((unused)))
 {
 	return 0;
@@ -428,7 +554,7 @@ int ust_metadata_channel_statedump(
 
 static inline
 int ust_metadata_event_statedump(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		struct ust_registry_channel *chan __attribute__((unused)),
 		struct ust_registry_event *event __attribute__((unused)))
 {
@@ -437,7 +563,7 @@ int ust_metadata_event_statedump(
 
 static inline
 int ust_registry_create_or_find_enum(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		int session_objd __attribute__((unused)),
 		char *name __attribute__((unused)),
 		struct lttng_ust_ctl_enum_entry *entries __attribute__((unused)),
@@ -450,12 +576,17 @@ int ust_registry_create_or_find_enum(
 static inline
 struct ust_registry_enum *
 	ust_registry_lookup_enum_by_id(
-		struct ust_registry_session *session __attribute__((unused)),
+		ust_registry_session *session __attribute__((unused)),
 		const char *name __attribute__((unused)),
 		uint64_t id __attribute__((unused)))
 {
 	return NULL;
 }
+
+static inline
+void ust_registry_destroy_enum(ust_registry_session *reg_session __attribute__((unused)),
+		struct ust_registry_enum *reg_enum __attribute__((unused)))
+{}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

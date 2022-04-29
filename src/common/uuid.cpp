@@ -72,10 +72,7 @@ int lttng_uuid_generate(lttng_uuid uuid_out)
 {
 	int i, ret = 0;
 
-	if (uuid_out == NULL) {
-		ret = -1;
-		goto end;
-	}
+	LTTNG_ASSERT(uuid_out);
 
 	if (!lttng_uuid_is_init) {
 		/*
@@ -88,8 +85,8 @@ int lttng_uuid_generate(lttng_uuid uuid_out)
 			ret = -1;
 			goto end;
 		}
-		srand(epoch);
 
+		srand(epoch);
 		lttng_uuid_is_init = true;
 	}
 

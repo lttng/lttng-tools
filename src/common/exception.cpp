@@ -41,3 +41,11 @@ lttng::posix_error::posix_error(const std::string &msg,
 		msg + " " + format_throw_location(file_name, function_name, line_number))
 {
 }
+
+lttng::runtime_error::runtime_error(const std::string &msg,
+	const char *file_name,
+	const char *function_name,
+	unsigned int line_number) :
+	std::runtime_error(msg + " " + format_throw_location(file_name, function_name, line_number))
+{
+}

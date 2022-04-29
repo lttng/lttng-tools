@@ -10,6 +10,7 @@
 
 #include <urcu.h>
 #include <stdint.h>
+#include <memory>
 
 #include <common/macros.hpp>
 #include <lttng/lttng-export.h>
@@ -27,7 +28,10 @@ enum lttng_ht_type {
 	LTTNG_HT_TYPE_TWO_U64,
 };
 
+struct lttng_ht_deleter;
+
 struct lttng_ht {
+	using uptr = std::unique_ptr<lttng_ht, lttng_ht_deleter>;
 	struct cds_lfht *ht;
 	cds_lfht_match_fct match_fct;
 	hash_fct_type hash_fct;
@@ -69,6 +73,9 @@ struct lttng_ht_node_two_u64 {
 /* Hashtable new and destroy */
 struct lttng_ht *lttng_ht_new(unsigned long size, enum lttng_ht_type type);
 void lttng_ht_destroy(struct lttng_ht *ht);
+struct lttng_ht_deleter {
+	void operator()(lttng_ht *ht) { lttng_ht_destroy(ht); };
+};
 
 /* Specialized node init and free functions */
 void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key);
