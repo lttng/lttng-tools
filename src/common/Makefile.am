@@ -83,6 +83,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/log4j-logging.cpp \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
+	exception.cpp exception.hpp \
 	fd-handle.cpp fd-handle.hpp\
 	kernel-probe.cpp \
 	location.cpp \
