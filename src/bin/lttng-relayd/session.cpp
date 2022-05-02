@@ -281,7 +281,7 @@ struct relay_session *session_create(const char *session_name,
 		const char *hostname, const char *base_path,
 		uint32_t live_timer,
 		bool snapshot,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		const uint64_t *id_sessiond,
 		const uint64_t *current_chunk_id,
 		const time_t *creation_time,
@@ -363,7 +363,7 @@ struct relay_session *session_create(const char *session_name,
 
 	session->live_timer = live_timer;
 	session->snapshot = snapshot;
-	lttng_uuid_copy(session->sessiond_uuid, sessiond_uuid);
+	session->sessiond_uuid = sessiond_uuid;
 
 	if (id_sessiond) {
 		LTTNG_OPTIONAL_SET(&session->id_sessiond, *id_sessiond);
@@ -527,8 +527,7 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 			goto next_session;
 		}
 
-		if (!lttng_uuid_is_equal(session->sessiond_uuid,
-				iterated_session->sessiond_uuid)) {
+		if (session->sessiond_uuid != iterated_session->sessiond_uuid) {
 			/* Sessions do not originate from the same sessiond. */
 			goto next_session;
 		}

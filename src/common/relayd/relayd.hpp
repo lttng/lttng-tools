@@ -34,7 +34,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		const uint64_t *current_chunk_id,
 		time_t creation_time, bool session_name_contains_creation_time,
 		char *output_path);

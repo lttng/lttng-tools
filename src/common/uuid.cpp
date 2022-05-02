@@ -16,20 +16,22 @@
 
 #include "uuid.hpp"
 
-static const lttng_uuid nil_uuid = { 0 };
-static bool lttng_uuid_is_init;
+namespace {
+const lttng_uuid nil_uuid = {};
+bool lttng_uuid_is_init;
+} /* namespace */
 
-void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
+void lttng_uuid_to_str(const lttng_uuid& uuid, char *uuid_str)
 {
 	sprintf(uuid_str, LTTNG_UUID_FMT, LTTNG_UUID_FMT_VALUES(uuid));
 }
 
-int lttng_uuid_from_str(const char *str_in, lttng_uuid uuid_out)
+int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out)
 {
 	int ret = 0;
 	lttng_uuid uuid_scan;
 
-	if ((str_in == NULL) || (uuid_out == NULL)) {
+	if (str_in == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -45,34 +47,22 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid uuid_out)
 		ret = -1;
 	}
 
-	lttng_uuid_copy(uuid_out, uuid_scan);
+	uuid_out = uuid_scan;
 end:
 	return ret;
 }
 
-bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b)
+bool lttng_uuid_is_nil(const lttng_uuid& uuid)
 {
-	return memcmp(a, b, LTTNG_UUID_LEN) == 0;
-}
-
-bool lttng_uuid_is_nil(const lttng_uuid uuid)
-{
-	return memcmp(nil_uuid, uuid, sizeof(lttng_uuid)) == 0;
-}
-
-void lttng_uuid_copy(lttng_uuid dst, const lttng_uuid src)
-{
-	memcpy(dst, src, LTTNG_UUID_LEN);
+	return uuid == nil_uuid;
 }
 
 /*
  * Generate a random UUID according to RFC4122, section 4.4.
  */
-int lttng_uuid_generate(lttng_uuid uuid_out)
+int lttng_uuid_generate(lttng_uuid& uuid_out)
 {
 	int i, ret = 0;
-
-	LTTNG_ASSERT(uuid_out);
 
 	if (!lttng_uuid_is_init) {
 		/*

@@ -2093,9 +2093,11 @@ end_rotate_channel_nosignal:
 	case LTTNG_CONSUMER_INIT:
 	{
 		int ret_send_status;
+		lttng_uuid sessiond_uuid;
 
-		ret_code = lttng_consumer_init_command(ctx,
-				msg.u.init.sessiond_uuid);
+		std::copy(std::begin(msg.u.init.sessiond_uuid), std::end(msg.u.init.sessiond_uuid),
+				sessiond_uuid.begin());
+		ret_code = lttng_consumer_init_command(ctx, sessiond_uuid);
 		health_code_update();
 		ret_send_status = consumer_send_status_msg(sock, ret_code);
 		if (ret_send_status < 0) {

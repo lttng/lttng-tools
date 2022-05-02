@@ -924,7 +924,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		uint64_t relayd_id,
 		uint64_t key,
-		unsigned char *uuid,
+		const lttng_uuid& uuid,
 		uint32_t chan_id,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
@@ -979,7 +979,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.ust_app_uid = ust_app_uid;
 	msg->u.ask_channel.blocking_timeout = blocking_timeout;
 
-	memcpy(msg->u.ask_channel.uuid, uuid, sizeof(msg->u.ask_channel.uuid));
+	std::copy(uuid.begin(), uuid.end(), msg->u.ask_channel.uuid);
 
 	if (pathname) {
 		strncpy(msg->u.ask_channel.pathname, pathname,
@@ -1782,7 +1782,7 @@ error_socket:
 }
 
 int consumer_init(struct consumer_socket *socket,
-		const lttng_uuid sessiond_uuid)
+		const lttng_uuid& sessiond_uuid)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg = {
@@ -1793,7 +1793,7 @@ int consumer_init(struct consumer_socket *socket,
 	LTTNG_ASSERT(socket);
 
 	DBG("Sending consumer initialization command");
-	lttng_uuid_copy(msg.u.init.sessiond_uuid, sessiond_uuid);
+	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), msg.u.init.sessiond_uuid);
 
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);

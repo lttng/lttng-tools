@@ -144,7 +144,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid sessiond_uuid, const uint64_t *current_chunk_id,
+		const lttng_uuid& sessiond_uuid, const uint64_t *current_chunk_id,
 		time_t creation_time, bool session_name_contains_creation_time,
 		struct lttcomm_relayd_create_session_reply_2_11 *reply,
 		char *output_path)
@@ -201,7 +201,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	msg->live_timer = htobe32(session_live_timer);
 	msg->snapshot = !!snapshot;
 
-	lttng_uuid_copy(msg->sessiond_uuid, sessiond_uuid);
+	std::copy(sessiond_uuid.begin(), sessiond_uuid.end(), msg->sessiond_uuid);
 	msg->session_id = htobe64(sessiond_session_id);
 	msg->session_name_contains_creation_time = session_name_contains_creation_time;
 	if (current_chunk_id) {
@@ -316,7 +316,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		const uint64_t *current_chunk_id,
 		time_t creation_time, bool session_name_contains_creation_time,
 		char *output_path)

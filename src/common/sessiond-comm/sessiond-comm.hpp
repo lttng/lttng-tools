@@ -830,7 +830,7 @@ struct lttcomm_consumer_msg {
 			uint64_t chunk_id;
 		} LTTNG_PACKED trace_chunk_exists;
 		struct {
-			lttng_uuid sessiond_uuid;
+			uint8_t sessiond_uuid[LTTNG_UUID_LEN];
 		} LTTNG_PACKED init;
 		struct {
 			uint64_t key;

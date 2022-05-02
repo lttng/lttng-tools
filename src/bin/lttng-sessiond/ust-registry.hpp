@@ -68,7 +68,7 @@ public:
 	/* Next enumeration ID available. */
 	uint64_t _next_enum_id = 0;
 	/* Universal unique identifier used by the tracer. */
-	unsigned char _uuid[LTTNG_UUID_LEN] = {};
+	lttng_uuid _uuid = {};
 
 	/* session ABI description */
 

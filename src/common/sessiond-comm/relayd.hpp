@@ -202,7 +202,7 @@ struct lttcomm_relayd_create_session_2_11 {
 	uint8_t snapshot;
 	uint8_t session_name_contains_creation_time;
 	/* Sessiond instance UUID */
-	lttng_uuid sessiond_uuid;
+	uint8_t sessiond_uuid[LTTNG_UUID_LEN];
 	/* Sessiond session id */
 	uint64_t session_id;
 	/* Session creation time, in seconds since UNIX Epoch. */

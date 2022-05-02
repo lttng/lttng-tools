@@ -261,7 +261,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		const char *name,
 		uint64_t relayd_id,
 		uint64_t key,
-		unsigned char *uuid,
+		const lttng_uuid& uuid,
 		uint32_t chan_id,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
@@ -321,7 +321,7 @@ enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
 int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 		struct consumer_output *output, bool is_metadata_channel);
 int consumer_init(struct consumer_socket *socket,
-		const lttng_uuid sessiond_uuid);
+		const lttng_uuid& sessiond_uuid);
 
 int consumer_create_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,

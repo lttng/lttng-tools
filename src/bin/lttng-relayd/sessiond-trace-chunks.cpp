@@ -77,8 +77,8 @@ static
 unsigned long trace_chunk_registry_ht_key_hash(
 		const struct trace_chunk_registry_ht_key *key)
 {
-	uint64_t uuid_h1 = ((uint64_t *) key->sessiond_uuid)[0];
-	uint64_t uuid_h2 = ((uint64_t *) key->sessiond_uuid)[1];
+	const uint64_t uuid_h1 = *reinterpret_cast<const uint64_t *>(&key->sessiond_uuid[0]);
+	const uint64_t uuid_h2 = *reinterpret_cast<const uint64_t *>(&key->sessiond_uuid[1]);
 
 	return hash_key_u64(&uuid_h1, lttng_ht_seed) ^
 			hash_key_u64(&uuid_h2, lttng_ht_seed);
@@ -94,8 +94,7 @@ int trace_chunk_registry_ht_key_match(struct cds_lfht_node *node,
 	struct trace_chunk_registry_ht_element *registry;
 
 	registry = container_of(node, typeof(*registry), ht_node);
-	return lttng_uuid_is_equal(key->sessiond_uuid,
-			registry->key.sessiond_uuid);
+	return key->sessiond_uuid == registry->key.sessiond_uuid;
 }
 
 static
@@ -295,13 +294,13 @@ void sessiond_trace_chunk_registry_destroy(
 
 int sessiond_trace_chunk_registry_session_created(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid)
+		const lttng_uuid& sessiond_uuid)
 {
 	int ret = 0;
 	struct trace_chunk_registry_ht_key key;
 	struct trace_chunk_registry_ht_element *element;
 
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 
 	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (element) {
@@ -321,7 +320,7 @@ end:
 
 int sessiond_trace_chunk_registry_session_destroyed(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid)
+		const lttng_uuid& sessiond_uuid)
 {
 	int ret = 0;
 	struct trace_chunk_registry_ht_key key;
@@ -329,7 +328,7 @@ int sessiond_trace_chunk_registry_session_destroyed(
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 
 	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (element) {
@@ -351,7 +350,7 @@ int sessiond_trace_chunk_registry_session_destroyed(
 
 struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid, uint64_t session_id,
+		const lttng_uuid& sessiond_uuid, uint64_t session_id,
 		struct lttng_trace_chunk *new_chunk)
 {
 	enum lttng_trace_chunk_status status;
@@ -365,7 +364,7 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 	bool trace_chunk_already_published;
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 
 	status = lttng_trace_chunk_get_id(new_chunk, &chunk_id);
 	if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -428,7 +427,7 @@ end:
 struct lttng_trace_chunk *
 sessiond_trace_chunk_registry_get_anonymous_chunk(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		uint64_t session_id)
 {
 	struct lttng_trace_chunk *chunk = NULL;
@@ -438,7 +437,7 @@ sessiond_trace_chunk_registry_get_anonymous_chunk(
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
 
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (!element) {
 		ERR("Failed to find trace chunk registry of sessiond {%s}",
@@ -457,7 +456,7 @@ end:
 struct lttng_trace_chunk *
 sessiond_trace_chunk_registry_get_chunk(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		uint64_t session_id, uint64_t chunk_id)
 {
 	struct lttng_trace_chunk *chunk = NULL;
@@ -467,7 +466,7 @@ sessiond_trace_chunk_registry_get_chunk(
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
 
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (!element) {
 		ERR("Failed to find trace chunk registry of sessiond {%s}",
@@ -485,14 +484,14 @@ end:
 
 int sessiond_trace_chunk_registry_chunk_exists(
 		struct sessiond_trace_chunk_registry *sessiond_registry,
-		const lttng_uuid sessiond_uuid,
+		const lttng_uuid& sessiond_uuid,
 		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists)
 {
 	int ret;
 	struct trace_chunk_registry_ht_element *element;
 	struct trace_chunk_registry_ht_key key;
 
-	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	key.sessiond_uuid = sessiond_uuid;
 	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (!element) {
 		char uuid_str[LTTNG_UUID_STR_LEN];

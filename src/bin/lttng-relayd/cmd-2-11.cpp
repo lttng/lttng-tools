@@ -22,7 +22,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname, char *base_path,
 		uint32_t *live_timer, bool *snapshot,
 		uint64_t *id_sessiond,
-		lttng_uuid sessiond_uuid,
+		lttng_uuid& sessiond_uuid,
 		bool *has_current_chunk, uint64_t *current_chunk_id,
 		time_t *creation_time,
 		bool *session_name_contains_creation_time)
@@ -53,7 +53,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	header.creation_time = be64toh(header.creation_time);
 	header.session_id = be64toh(header.session_id);
 
-	lttng_uuid_copy(sessiond_uuid, header.sessiond_uuid);
+	std::copy(std::begin(header.sessiond_uuid), std::end(header.sessiond_uuid), sessiond_uuid.begin());
 
 	received_names_size = header.session_name_len + header.hostname_len +
 				header.base_path_len;
