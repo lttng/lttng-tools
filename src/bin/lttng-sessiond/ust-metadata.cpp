@@ -6,31 +6,23 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdint.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <limits.h>
-#include <unistd.h>
 #include <inttypes.h>
-#include <common/common.hpp>
-#include <common/time.hpp>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <vector>
 
-#include "ust-registry.hpp"
-#include "ust-clock.hpp"
+#include <common/common.hpp>
+#include <common/exception.hpp>
+#include <common/time.hpp>
+#include <common/uuid.hpp>
+
 #include "ust-app.hpp"
-
-#define NR_CLOCK_OFFSET_SAMPLES		10
-
-namespace {
-struct offset_sample {
-	/* correlation offset */
-	int64_t offset;
-	/* lower is better */
-	uint64_t measure_delta;
-};
-} /* namespace */
+#include "ust-clock.hpp"
+#include "ust-registry.hpp"
 
 static
 int _lttng_field_statedump(ust_registry_session *session,
@@ -1057,67 +1049,6 @@ int _lttng_event_header_declare(ust_registry_session *session)
 	);
 }
 
-/*
- * The offset between monotonic and realtime clock can be negative if
- * the system sets the REALTIME clock to 0 after boot.
- */
-static
-int measure_single_clock_offset(struct offset_sample *sample)
-{
-	uint64_t monotonic_avg, monotonic[2], measure_delta, realtime;
-	uint64_t tcf = trace_clock_freq();
-	struct timespec rts = { 0, 0 };
-	int ret;
-
-	monotonic[0] = trace_clock_read64();
-	ret = lttng_clock_gettime(CLOCK_REALTIME, &rts);
-	if (ret < 0) {
-		return ret;
-	}
-	monotonic[1] = trace_clock_read64();
-	measure_delta = monotonic[1] - monotonic[0];
-	if (measure_delta > sample->measure_delta) {
-		/*
-		 * Discard value if it took longer to read than the best
-		 * sample so far.
-		 */
-		return 0;
-	}
-	monotonic_avg = (monotonic[0] + monotonic[1]) >> 1;
-	realtime = (uint64_t) rts.tv_sec * tcf;
-	if (tcf == NSEC_PER_SEC) {
-		realtime += rts.tv_nsec;
-	} else {
-		realtime += (uint64_t) rts.tv_nsec * tcf / NSEC_PER_SEC;
-	}
-	sample->offset = (int64_t) realtime - monotonic_avg;
-	sample->measure_delta = measure_delta;
-	return 0;
-}
-
-/*
- * Approximation of NTP time of day to clock monotonic correlation,
- * taken at start of trace. Keep the measurement that took the less time
- * to complete, thus removing imprecision caused by preemption.
- * May return a negative offset.
- */
-static
-int64_t measure_clock_offset(void)
-{
-	int i;
-	struct offset_sample offset_best_sample = {
-		.offset = 0,
-		.measure_delta = UINT64_MAX,
-	};
-
-	for (i = 0; i < NR_CLOCK_OFFSET_SAMPLES; i++) {
-		if (measure_single_clock_offset(&offset_best_sample)) {
-			return 0;
-		}
-	}
-	return offset_best_sample.offset;
-}
-
 static
 int print_metadata_session_information(ust_registry_session *registry)
 {
@@ -1211,12 +1142,12 @@ int print_metadata_app_information(ust_registry_session *registry)
  */
 int ust_metadata_session_statedump(ust_registry_session *session)
 {
-	char uuid_s[LTTNG_UUID_STR_LEN], clock_uuid_s[LTTNG_UUID_STR_LEN];
 	int ret = 0;
+	char trace_uuid_str[LTTNG_UUID_STR_LEN];
 
 	LTTNG_ASSERT(session);
 
-	lttng_uuid_to_str(session->_uuid, uuid_s);
+	lttng_uuid_to_str(session->_uuid, trace_uuid_str);
 
 	/* For crash ABI */
 	ret = lttng_metadata_printf(session,
@@ -1256,7 +1187,7 @@ int ust_metadata_session_statedump(ust_registry_session *session)
 		session->_long_alignment,
 		CTF_SPEC_MAJOR,
 		CTF_SPEC_MINOR,
-		uuid_s,
+		trace_uuid_str,
 		session->_byte_order == BIG_ENDIAN ? "be" : "le"
 		);
 	if (ret) {
@@ -1303,61 +1234,63 @@ int ust_metadata_session_statedump(ust_registry_session *session)
 		goto end;
 	}
 
-	ret = lttng_metadata_printf(session,
-		"clock {\n"
-		"	name = \"%s\";\n",
-		trace_clock_name()
-		);
-	if (ret) {
-		goto end;
-	}
+	try {
+		const lttng::ust::clock_attributes_sample clock;
 
-	if (!trace_clock_uuid(clock_uuid_s)) {
 		ret = lttng_metadata_printf(session,
-			"	uuid = \"%s\";\n",
-			clock_uuid_s
-			);
+				"clock {\n"
+				"	name = \"%s\";\n",
+				clock._name.c_str());
 		if (ret) {
 			goto end;
 		}
-	}
 
-	ret = lttng_metadata_printf(session,
-		"	description = \"%s\";\n"
-		"	freq = %" PRIu64 "; /* Frequency, in Hz */\n"
-		"	/* clock value offset from Epoch is: offset * (1/freq) */\n"
-		"	offset = %" PRId64 ";\n"
-		"};\n\n",
-		trace_clock_description(),
-		trace_clock_freq(),
-		measure_clock_offset()
-		);
-	if (ret) {
-		goto end;
-	}
+		if (clock._uuid) {
+			char clock_uuid_str[LTTNG_UUID_STR_LEN];
 
-	ret = lttng_metadata_printf(session,
-		"typealias integer {\n"
-		"	size = 27; align = 1; signed = false;\n"
-		"	map = clock.%s.value;\n"
-		"} := uint27_clock_monotonic_t;\n"
-		"\n"
-		"typealias integer {\n"
-		"	size = 32; align = %u; signed = false;\n"
-		"	map = clock.%s.value;\n"
-		"} := uint32_clock_monotonic_t;\n"
-		"\n"
-		"typealias integer {\n"
-		"	size = 64; align = %u; signed = false;\n"
-		"	map = clock.%s.value;\n"
-		"} := uint64_clock_monotonic_t;\n\n",
-		trace_clock_name(),
-		session->_uint32_t_alignment,
-		trace_clock_name(),
-		session->_uint64_t_alignment,
-		trace_clock_name()
-		);
-	if (ret) {
+			lttng_uuid_to_str(*clock._uuid, clock_uuid_str);
+			ret = lttng_metadata_printf(
+				session, "	uuid = \"%s\";\n", clock_uuid_str);
+			if (ret) {
+				goto end;
+			}
+		}
+
+		ret = lttng_metadata_printf(session,
+				"	description = \"%s\";\n"
+				"	freq = %" PRIu64 "; /* Frequency, in Hz */\n"
+				"	/* clock value offset from Epoch is: offset * (1/freq) */\n"
+				"	offset = %" PRId64 ";\n"
+				"};\n\n",
+				clock._description.c_str(), clock._frequency, clock._offset);
+		if (ret) {
+			goto end;
+		}
+
+		ret = lttng_metadata_printf(session,
+				"typealias integer {\n"
+				"	size = 27; align = 1; signed = false;\n"
+				"	map = clock.%s.value;\n"
+				"} := uint27_clock_monotonic_t;\n"
+				"\n"
+				"typealias integer {\n"
+				"	size = 32; align = %u; signed = false;\n"
+				"	map = clock.%s.value;\n"
+				"} := uint32_clock_monotonic_t;\n"
+				"\n"
+				"typealias integer {\n"
+				"	size = 64; align = %u; signed = false;\n"
+				"	map = clock.%s.value;\n"
+				"} := uint64_clock_monotonic_t;\n\n",
+				clock._name.c_str(), session->_uint32_t_alignment,
+				clock._name.c_str(), session->_uint64_t_alignment,
+				clock._name.c_str());
+		if (ret) {
+			goto end;
+		}
+	} catch (const std::exception &ex) {
+		ERR("Failed to serialize clock description: %s", ex.what());
+		ret = -1;
 		goto end;
 	}
 
