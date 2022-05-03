@@ -2,4 +2,4 @@
 
 SUBDIRS = msgpack
 
-EXTRA_DIST = optional.hpp
+EXTRA_DIST = optional.hpp fmt

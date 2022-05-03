@@ -85,6 +85,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/python-logging.cpp \
 	exception.cpp exception.hpp \
 	fd-handle.cpp fd-handle.hpp\
+	format.hpp \
 	kernel-probe.cpp \
 	location.cpp \
 	log-level-rule.cpp \
