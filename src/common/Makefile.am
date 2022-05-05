@@ -94,6 +94,7 @@ libcommon_lgpl_la_SOURCES = \
 	notification.cpp \
 	payload.cpp payload.hpp \
 	payload-view.cpp payload-view.hpp \
+	pthread-lock.hpp \
 	readwrite.cpp readwrite.hpp \
 	runas.cpp runas.hpp \
 	session-descriptor.cpp \
@@ -106,6 +107,7 @@ libcommon_lgpl_la_SOURCES = \
 	unix.cpp unix.hpp \
 	uri.cpp uri.hpp \
 	userspace-probe.cpp \
+	urcu.hpp \
 	utils.cpp utils.hpp
 
 if HAVE_ELF_H
