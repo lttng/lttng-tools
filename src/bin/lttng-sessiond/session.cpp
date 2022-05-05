@@ -6,30 +6,32 @@
  */
 
 #define _LGPL_SOURCE
-#include <limits.h>
+#include <dirent.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <urcu.h>
-#include <dirent.h>
 #include <sys/types.h>
-#include <pthread.h>
+#include <urcu.h>
 
 #include <common/common.hpp>
-#include <common/utils.hpp>
-#include <common/trace-chunk.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
-#include <lttng/location-internal.hpp>
-#include "lttng-sessiond.hpp"
-#include "kernel.hpp"
+#include <common/trace-chunk.hpp>
+#include <common/urcu.hpp>
+#include <common/utils.hpp>
 
-#include "session.hpp"
-#include "utils.hpp"
-#include "trace-ust.hpp"
-#include "timer.hpp"
+#include "lttng-sessiond.hpp"
+#include <lttng/location-internal.hpp>
+
 #include "cmd.hpp"
+#include "kernel.hpp"
+#include "session.hpp"
+#include "timer.hpp"
+#include "trace-ust.hpp"
+#include "utils.hpp"
 
 namespace {
 struct ltt_session_destroy_notifier_element {
@@ -41,6 +43,8 @@ struct ltt_session_clear_notifier_element {
 	ltt_session_clear_notifier notifier;
 	void *user_data;
 };
+
+namespace ls = lttng::sessiond;
 
 /*
  * NOTES:
@@ -1460,4 +1464,39 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 end:
 	rcu_read_unlock();
 	return found;
+}
+
+void ls::details::locked_session_release(ltt_session *session)
+{
+	session_unlock(session);
+	session_put(session);
+}
+
+ltt_session::locked_ptr ls::find_locked_session_by_id(ltt_session::id_t id)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_id(id);
+
+	if (!session) {
+		return nullptr;
+	}
+
+	/*
+	 * The pointer falling out of scope will unlock and release the reference to the
+	 * session.
+	 */
+	session_lock(session);
+	return ltt_session::locked_ptr(session);
+}
+
+ltt_session::sptr ls::find_session_by_id(ltt_session::id_t id)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_id(id);
+
+	if (!session) {
+		return nullptr;
+	}
+
+	return {session, session_put};
 }

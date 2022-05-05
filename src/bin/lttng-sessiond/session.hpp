@@ -14,6 +14,7 @@
 
 #include <common/hashtable/hashtable.hpp>
 #include <common/dynamic-array.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <lttng/rotation.h>
 #include <lttng/location.h>
 #include <lttng/lttng-error.h>
@@ -30,6 +31,14 @@ typedef void (*ltt_session_destroy_notifier)(const struct ltt_session *session,
 		void *user_data);
 typedef void (*ltt_session_clear_notifier)(const struct ltt_session *session,
 		void *user_data);
+
+namespace lttng {
+namespace sessiond {
+namespace details {
+void locked_session_release(ltt_session *session);
+} /* namespace details */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 /*
  * Tracing session list
@@ -67,6 +76,12 @@ struct ltt_session_list {
  * session for both LTTng and UST.
  */
 struct ltt_session {
+	using id_t = uint64_t;
+	using locked_ptr = std::unique_ptr<ltt_session,
+			lttng::details::create_unique_class<ltt_session,
+					lttng::sessiond::details::locked_session_release>::deleter>;
+	using sptr = std::shared_ptr<ltt_session>;
+
 	char name[NAME_MAX];
 	bool has_auto_generated_name;
 	bool name_contains_creation_time;
@@ -84,7 +99,8 @@ struct ltt_session {
 	 */
 	pthread_mutex_t lock;
 	struct cds_list_head list;
-	uint64_t id;		/* session unique identifier */
+	/* session unique identifier */
+	id_t id;
 	/* Indicates if the session has been added to the session list and ht.*/
 	bool published;
 	/* Indicates if a destroy command has been applied to this session. */
@@ -240,7 +256,7 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 		const struct ltt_session *session);
 
 struct ltt_session *session_find_by_name(const char *name);
-struct ltt_session *session_find_by_id(uint64_t id);
+struct ltt_session *session_find_by_id(ltt_session::id_t id);
 
 struct ltt_session_list *session_get_list(void);
 void session_list_wait_empty(void);
@@ -293,5 +309,27 @@ bool session_output_supports_trace_chunks(const struct ltt_session *session);
  * Return 1 when the session is found and set `id`.
  */
 bool sample_session_id_by_name(const char *name, uint64_t *id);
+
+namespace lttng {
+namespace sessiond {
+
+/*
+ * Session list lock must be acquired by the caller.
+ * The caller must not keep the ownership of the returned locked session
+ * for longer than strictly necessary. If your intention is to acquire
+ * a reference to an ltt_session, see `find_session_by_id()`.
+ */
+ltt_session::locked_ptr find_locked_session_by_id(ltt_session::id_t id);
+
+/*
+ * Session list lock must be acquired by the caller.
+ * The caller must not keep the ownership of the returned locked session
+ * for longer than strictly necessary. If your intention is to acquire
+ * a reference to an ltt_session, see `find_session_by_id()`.
+ */
+ltt_session::sptr find_session_by_id(ltt_session::id_t id);
+
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #endif /* _LTT_SESSION_H */
