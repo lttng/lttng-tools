@@ -22,6 +22,8 @@
 #include "trace-kernel.hpp"
 #include "consumer.hpp"
 
+#define ASSERT_SESSION_LIST_LOCKED() LTTNG_ASSERT(session_trylock_list())
+
 struct ltt_ust_session;
 
 typedef void (*ltt_session_destroy_notifier)(const struct ltt_session *session,

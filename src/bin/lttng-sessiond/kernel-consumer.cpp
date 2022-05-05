@@ -169,8 +169,8 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	rcu_read_lock();
 	session = session_find_by_id(ksession->id);
 	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
-	LTTNG_ASSERT(session_trylock_list());
+	ASSERT_LOCKED(session->lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	status = notification_thread_command_add_channel(
 			the_notification_thread_handle, session->name,

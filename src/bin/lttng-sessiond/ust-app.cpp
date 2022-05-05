@@ -3411,8 +3411,8 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	session = session_find_by_id(ua_sess->tracing_id);
 	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
-	LTTNG_ASSERT(session_trylock_list());
+	ASSERT_LOCKED(session->lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
 	 * Create the buffers on the consumer side. This call populates the
@@ -3527,9 +3527,8 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	session = session_find_by_id(ua_sess->tracing_id);
 	LTTNG_ASSERT(session);
-
-	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
-	LTTNG_ASSERT(session_trylock_list());
+	ASSERT_LOCKED(session->lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
@@ -3874,9 +3873,8 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 
 	session = session_find_by_id(ua_sess->tracing_id);
 	LTTNG_ASSERT(session);
-
-	LTTNG_ASSERT(pthread_mutex_trylock(&session->lock));
-	LTTNG_ASSERT(session_trylock_list());
+	ASSERT_LOCKED(session->lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
