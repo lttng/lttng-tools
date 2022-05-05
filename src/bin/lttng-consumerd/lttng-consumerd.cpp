@@ -62,7 +62,7 @@ static char error_sock_path[PATH_MAX]; /* Global error path */
 static enum lttng_consumer_type opt_type = LTTNG_CONSUMER_KERNEL;
 
 /* the liblttngconsumerd context */
-static struct lttng_consumer_local_data *ctx;
+static struct lttng_consumer_local_data *the_consumer_context;
 
 /* Consumerd health monitoring */
 struct health_app *health_consumerd;
@@ -73,10 +73,10 @@ int lttng_consumer_ready = NR_LTTNG_CONSUMER_READY;
 
 enum lttng_consumer_type lttng_consumer_get_type(void)
 {
-	if (!ctx) {
+	if (!the_consumer_context) {
 		return LTTNG_CONSUMER_UNKNOWN;
 	}
-	return ctx->type;
+	return the_consumer_context->type;
 }
 
 /*
@@ -107,8 +107,8 @@ static void sighandler(int sig, siginfo_t *siginfo,
 		abort();
 	}
 
-	if (ctx) {
-		lttng_consumer_should_exit(ctx);
+	if (the_consumer_context) {
+		lttng_consumer_should_exit(the_consumer_context);
 	}
 }
 
@@ -429,14 +429,14 @@ int main(int argc, char **argv)
 	}
 
 	/* create the consumer instance with and assign the callbacks */
-	ctx = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
+	the_consumer_context = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
 		NULL, lttng_consumer_on_recv_stream, NULL);
-	if (!ctx) {
+	if (!the_consumer_context) {
 		retval = -1;
 		goto exit_init_data;
 	}
 
-	lttng_consumer_set_command_sock_path(ctx, command_sock_path);
+	lttng_consumer_set_command_sock_path(the_consumer_context, command_sock_path);
 	if (*error_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
@@ -483,7 +483,7 @@ int main(int argc, char **argv)
 	if (ret < 0) {
 		WARN("Cannot connect to error socket (is lttng-sessiond started?)");
 	}
-	lttng_consumer_set_error_sock(ctx, ret);
+	lttng_consumer_set_error_sock(the_consumer_context, ret);
 
 	/*
 	 * Block RT signals used for UST periodical metadata flush and the live
@@ -494,7 +494,7 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	ctx->type = opt_type;
+	the_consumer_context->type = opt_type;
 
 	if (utils_create_pipe(health_quit_pipe)) {
 		retval = -1;
@@ -525,7 +525,7 @@ int main(int argc, char **argv)
 	 * live timer.
 	 */
 	ret = pthread_create(&metadata_timer_thread, NULL,
-			consumer_timer_thread, (void *) ctx);
+			consumer_timer_thread, (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -537,7 +537,7 @@ int main(int argc, char **argv)
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, default_pthread_attr(),
 			consumer_thread_channel_poll,
-			(void *) ctx);
+			(void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -548,7 +548,7 @@ int main(int argc, char **argv)
 	/* Create thread to manage the polling/writing of trace metadata */
 	ret = pthread_create(&metadata_thread, default_pthread_attr(),
 			consumer_thread_metadata_poll,
-			(void *) ctx);
+			(void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -558,7 +558,7 @@ int main(int argc, char **argv)
 
 	/* Create thread to manage the polling/writing of trace data */
 	ret = pthread_create(&data_thread, default_pthread_attr(),
-			consumer_thread_data_poll, (void *) ctx);
+			consumer_thread_data_poll, (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -569,7 +569,7 @@ int main(int argc, char **argv)
 	/* Create the thread to manage the reception of fds */
 	ret = pthread_create(&sessiond_thread, default_pthread_attr(),
 			consumer_thread_sessiond_poll,
-			(void *) ctx);
+			(void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -664,8 +664,8 @@ exit_init_data:
 		}
 		metadata_timer_thread_online = false;
 	}
-	tmp_ctx = ctx;
-	ctx = NULL;
+	tmp_ctx = the_consumer_context;
+	the_consumer_context = NULL;
 	cmm_barrier();	/* Clear ctx for signal handler. */
 	lttng_consumer_destroy(tmp_ctx);
 
