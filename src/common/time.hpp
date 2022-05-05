@@ -9,7 +9,10 @@
 #define LTTNG_TIME_H
 
 #include <time.h>
+#include <ctime>
 #include <stdbool.h>
+#include <string>
+
 #include <common/macros.hpp>
 #include <common/compat/time.hpp>
 
@@ -59,6 +62,13 @@ struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
  * Returns 0 on success, else -1 on error.
  */
 int time_to_iso8601_str(time_t time, char *str, size_t len);
+namespace lttng {
+namespace utils {
+
+std::string time_to_iso8601_str(time_t time);
+
+} /* namespace utils */
+} /* namespace lttng */
 
 int time_to_datetime_str(time_t time, char *str, size_t len);
 

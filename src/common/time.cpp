@@ -5,18 +5,19 @@
  *
  */
 
-#include <common/time.hpp>
-#include <common/error.hpp>
-#include <common/macros.hpp>
-#include <common/error.hpp>
 #include <common/compat/errno.hpp>
+#include <common/error.hpp>
+#include <common/exception.hpp>
+#include <common/macros.hpp>
+#include <common/time.hpp>
+
+#include <algorithm>
+#include <limits.h>
+#include <locale.h>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <limits.h>
-#include <pthread.h>
-#include <locale.h>
 #include <string.h>
-#include <algorithm>
 
 static bool utf8_output_supported;
 
@@ -131,4 +132,19 @@ int time_to_datetime_str(time_t time, char *str, size_t len)
 	}
 end:
 	return ret;
+}
+
+std::string lttng::utils::time_to_iso8601_str(std::time_t time)
+{
+	std::string iso8601_str(ISO8601_STR_LEN, '\0');
+	const auto ret = ::time_to_iso8601_str(time, &iso8601_str[0], iso8601_str.capacity());
+
+	if (ret) {
+		LTTNG_THROW_ERROR("Failed to format time to iso8601 format");
+	}
+
+	/* Don't include '\0' in the C++ string. */
+	iso8601_str.resize(iso8601_str.size() - 1);
+
+	return iso8601_str;
 }
