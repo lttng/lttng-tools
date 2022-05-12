@@ -10,6 +10,8 @@
 #include <common/compat/directory-handle.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
+#include <common/macros.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/runas.hpp>
 
 #include <fcntl.h>
@@ -152,9 +154,9 @@ ust_registry_session::~ust_registry_session()
 
 void ust_registry_session::statedump()
 {
-	pthread_mutex_lock(&_lock);
+	lttng::pthread::lock_guard registry_lock(_lock);
+
 	const int ret = ust_metadata_session_statedump(this);
-	pthread_mutex_unlock(&_lock);
 	if (ret) {
 		LTTNG_THROW_ERROR(
 				"Failed to generate session metadata during registry session creation");
