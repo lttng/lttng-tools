@@ -272,6 +272,8 @@ void *memmove(T *d, const U *s, size_t n) = delete;
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 # define DIAGNOSTIC_IGNORE_LOGICAL_OP
 # define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
+# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #else
   /* GCC */
 # define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
@@ -282,6 +284,8 @@ void *memmove(T *d, const U *s, size_t n) = delete;
 	_Pragma("GCC diagnostic ignored \"-Wlogical-op\"")
 # define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES \
 	_Pragma("GCC diagnostic ignored \"-Wduplicated-branches\"")
+# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF \
+	_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #endif
 
 /* Used to make specific C++ functions to C code. */
