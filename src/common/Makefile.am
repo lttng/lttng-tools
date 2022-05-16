@@ -88,6 +88,7 @@ libcommon_lgpl_la_SOURCES = \
 	format.hpp \
 	kernel-probe.cpp \
 	location.cpp \
+	locked-reference.hpp \
 	log-level-rule.cpp \
 	make-unique.hpp \
 	make-unique-wrapper.hpp \
