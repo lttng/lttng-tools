@@ -1921,10 +1921,10 @@ function validate_metadata_event ()
 	local count=$($BABELTRACE_BIN --output-format=ctf-metadata $metadata_path | grep $event_name | wc -l)
 
 	if [ "$count" -ne "$nr_event_id" ]; then
-		fail "Metadata match with the metadata of $count event(s) named $event_name"
-		diag "$count matching event id found in metadata"
+		fail "Metadata match with the metadata of $nr_event_id event(s) named $event_name"
+		diag "$count matching event names found in metadata"
 	else
-		pass "Metadata match with the metadata of $count event(s) named $event_name"
+		pass "Metadata match with the metadata of $nr_event_id event(s) named $event_name"
 	fi
 
 }
