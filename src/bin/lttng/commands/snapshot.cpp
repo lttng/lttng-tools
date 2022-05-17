@@ -627,16 +627,16 @@ int cmd_snapshot(int argc, const char **argv)
 			const int parse_ret = utils_parse_size_suffix(
 					(char *) max_size_arg, &val);
 
-			free(max_size_arg);
 			if (parse_ret < 0) {
 				ERR("Unable to handle max-size value %s",
 						max_size_arg);
 				cmd_ret = CMD_ERROR;
+				free(max_size_arg);
 				goto end;
 			}
 
 			opt_max_size = val;
-
+			free(max_size_arg);
 			break;
 		}
 		default:
