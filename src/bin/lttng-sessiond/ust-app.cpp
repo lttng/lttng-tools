@@ -1984,8 +1984,6 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 		cds_list_del(&stream->list);
 		delete_ust_app_stream(-1, stream, app);
 	}
-	/* Flag the channel that it is sent to the application. */
-	ua_chan->is_sent = 1;
 
 error:
 	health_code_update();
@@ -3352,7 +3350,6 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 		 */
 		(void) release_ust_app_stream(-1, &stream, app);
 	}
-	ua_chan->is_sent = 1;
 
 error_stream_unlock:
 	pthread_mutex_unlock(&buf_reg_chan->stream_list_lock);

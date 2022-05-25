@@ -144,8 +144,6 @@ struct ust_app_stream {
 struct ust_app_channel {
 	int enabled;
 	int handle;
-	/* Channel and streams were sent to the UST tracer. */
-	int is_sent;
 	/*
 	 * Unique key used to identify the channel on the consumer side.
 	 * 0 is a reserved 'invalid' value used to indicate that the consumer
