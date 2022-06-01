@@ -1144,13 +1144,13 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		if (use_relayd) {
 			ret = consumer_send_relayd_stream(stream, path);
 			if (ret < 0) {
-				goto error_unlock;
+				goto error_close_stream;
 			}
 		} else {
 			ret = consumer_stream_create_output_files(stream,
 					false);
 			if (ret < 0) {
-				goto error_unlock;
+				goto error_close_stream;
 			}
 			DBG("UST consumer snapshot stream (%" PRIu64 ")",
 					stream->key);
@@ -1167,19 +1167,19 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		ret = lttng_ustconsumer_take_snapshot(stream);
 		if (ret < 0) {
 			ERR("Taking UST snapshot");
-			goto error_unlock;
+			goto error_close_stream;
 		}
 
 		ret = lttng_ustconsumer_get_produced_snapshot(stream, &produced_pos);
 		if (ret < 0) {
 			ERR("Produced UST snapshot position");
-			goto error_unlock;
+			goto error_close_stream;
 		}
 
 		ret = lttng_ustconsumer_get_consumed_snapshot(stream, &consumed_pos);
 		if (ret < 0) {
 			ERR("Consumerd UST snapshot position");
-			goto error_unlock;
+			goto error_close_stream;
 		}
 
 		/*
