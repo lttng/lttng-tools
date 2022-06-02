@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <memory>
+#include <pthread.h>
 #include <type_traits>
 
 /*
