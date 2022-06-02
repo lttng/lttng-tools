@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <array>
+#include <string>
 
 /*
  * Includes final \0.
@@ -48,6 +49,12 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out);
  * Assumes uuid_str is at least LTTNG_UUID_STR_LEN byte long.
  */
 void lttng_uuid_to_str(const lttng_uuid& uuid, char *uuid_str);
+
+namespace lttng {
+namespace utils {
+std::string uuid_to_str(const lttng_uuid& uuid);
+} /* namespace utils */
+} /* namespace lttng */
 
 bool lttng_uuid_is_equal(const lttng_uuid& a, const lttng_uuid& b);
 

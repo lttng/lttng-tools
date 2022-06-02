@@ -26,6 +26,18 @@ void lttng_uuid_to_str(const lttng_uuid& uuid, char *uuid_str)
 	sprintf(uuid_str, LTTNG_UUID_FMT, LTTNG_UUID_FMT_VALUES(uuid));
 }
 
+std::string lttng::utils::uuid_to_str(const lttng_uuid& uuid)
+{
+	std::string uuid_str(LTTNG_UUID_STR_LEN, '\0');
+
+	::lttng_uuid_to_str(uuid, &uuid_str[0]);
+
+	/* Don't include '\0' in the C++ string. */
+	uuid_str.resize(uuid_str.size() - 1);
+
+	return uuid_str;
+}
+
 int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out)
 {
 	int ret = 0;
