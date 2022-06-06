@@ -13,8 +13,6 @@
 #include <unistd.h>
 #include <urcu.h>
 
-#include <tap/tap.h>
-
 #include <bin/lttng-sessiond/health-sessiond.hpp>
 #include <bin/lttng-sessiond/session.hpp>
 #include <bin/lttng-sessiond/thread.hpp>
@@ -22,6 +20,8 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+
+#include <tap/tap.h>
 
 #define SESSION1 "test1"
 
