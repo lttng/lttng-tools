@@ -378,7 +378,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 	struct lttng_ust_ctl_daemon_counter *daemon_counter;
 	struct lttng_ust_abi_object_data *counter, **cpu_counters;
 	struct ust_error_accounting_entry *entry = NULL;
-	lttng_ust_ctl_counter_dimension dimension;
+	lttng_ust_ctl_counter_dimension dimension = {};
 
 	dimension.size = ust_state.number_indices;
 	dimension.has_underflow = false;
