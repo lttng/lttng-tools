@@ -5,11 +5,12 @@
  *
  */
 
-#include "ust-registry.hpp"
+#include "ust-registry-session-uid.hpp"
 
 namespace lst = lttng::sessiond::trace;
+namespace lsu = lttng::sessiond::ust;
 
-ust_registry_session_per_uid::ust_registry_session_per_uid(
+lsu::registry_session_per_uid::registry_session_per_uid(
 		const struct lst::abi& in_abi,
 		uint32_t major,
 		uint32_t minor,
@@ -19,20 +20,20 @@ ust_registry_session_per_uid::ust_registry_session_per_uid(
 		gid_t egid,
 		uint64_t tracing_id,
 		uid_t tracing_uid) :
-	ust_registry_session{in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id},
+	registry_session{in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id},
 	_tracing_uid{tracing_uid}
 {
 	lttng::pthread::lock_guard registry_lock(_lock);
 	_generate_metadata();
 }
 
-lttng_buffer_type ust_registry_session_per_uid::get_buffering_scheme() const noexcept
+lttng_buffer_type lsu::registry_session_per_uid::get_buffering_scheme() const noexcept
 {
 	return LTTNG_BUFFER_PER_UID;
 }
 
-void ust_registry_session_per_uid::_visit_environment(lst::trace_class_visitor& visitor) const
+void lsu::registry_session_per_uid::_visit_environment(lst::trace_class_visitor& visitor) const
 {
-	ust_registry_session::_visit_environment(visitor);
+	registry_session::_visit_environment(visitor);
 	visitor.visit(lst::environment_field<int64_t>("tracer_buffering_id", _tracing_uid));
 }

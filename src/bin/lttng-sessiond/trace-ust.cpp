@@ -24,6 +24,8 @@
 #include "ust-app.hpp"
 #include "agent.hpp"
 
+namespace lsu = lttng::sessiond::ust;
+
 /*
  * Match function for the events hash table lookup.
  *
@@ -1361,7 +1363,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 
 	rcu_read_lock();
 	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
-		ust_registry_session *registry;
+		lsu::registry_session *registry;
 
 		session_reg = uid_reg->registry;
 		registry = session_reg->reg.ust;

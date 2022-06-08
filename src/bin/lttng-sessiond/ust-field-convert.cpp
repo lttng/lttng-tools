@@ -642,7 +642,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
  * Always returns a new field, throws on error.
  */
 std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
-		const ust_registry_session& session,
+		const lsu::registry_session& session,
 		const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end)
 {
@@ -679,7 +679,7 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 } /* namespace */
 
 std::vector<lst::field::cuptr> lsu::create_trace_fields_from_ust_ctl_fields(
-		const ust_registry_session& session,
+		const lsu::registry_session& session,
 		const lttng_ust_ctl_field *fields,
 		std::size_t field_count)
 {

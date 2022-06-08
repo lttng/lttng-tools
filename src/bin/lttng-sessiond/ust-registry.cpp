@@ -11,6 +11,8 @@
 #include "lttng-sessiond.hpp"
 #include "notification-thread-commands.hpp"
 #include "ust-app.hpp"
+#include "ust-registry-session-pid.hpp"
+#include "ust-registry-session-uid.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
@@ -157,7 +159,7 @@ static void destroy_enum_rcu(struct rcu_head *head)
  * Needs to be called from RCU read-side critical section.
  */
 static lsu::registry_enum *ust_registry_lookup_enum(
-		ust_registry_session *session,
+		lsu::registry_session *session,
 		const lsu::registry_enum *reg_enum_lookup)
 {
 	lsu::registry_enum *reg_enum = NULL;
@@ -187,7 +189,7 @@ end:
  * Lookup enumeration by enum ID.
  */
 lsu::registry_enum::const_rcu_protected_reference
-ust_registry_lookup_enum_by_id(const ust_registry_session *session,
+ust_registry_lookup_enum_by_id(const lsu::registry_session *session,
 		const char *enum_name, uint64_t enum_id)
 {
 	lsu::registry_enum *reg_enum = NULL;
@@ -231,7 +233,7 @@ ust_registry_lookup_enum_by_id(const ust_registry_session *session,
  *
  * We receive ownership of entries.
  */
-int ust_registry_create_or_find_enum(ust_registry_session *session,
+int ust_registry_create_or_find_enum(lsu::registry_session *session,
 		int session_objd, char *enum_name,
 		struct lttng_ust_ctl_enum_entry *raw_entries, size_t nr_entries,
 		uint64_t *enum_id)
@@ -305,7 +307,7 @@ end:
  * the enumeration.
  * This MUST be called within a RCU read side lock section.
  */
-void ust_registry_destroy_enum(ust_registry_session *reg_session,
+void ust_registry_destroy_enum(lsu::registry_session *reg_session,
 		lsu::registry_enum *reg_enum)
 {
 	int ret;
@@ -322,7 +324,7 @@ void ust_registry_destroy_enum(ust_registry_session *reg_session,
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
-ust_registry_session *ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
+lsu::registry_session *ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
 		uint32_t major,
 		uint32_t minor,
 		const char *root_shm_path,
@@ -333,7 +335,7 @@ ust_registry_session *ust_registry_session_per_uid_create(const lttng::sessiond:
 		uid_t tracing_uid)
 {
 	try {
-		return new ust_registry_session_per_uid(abi, major, minor, root_shm_path, shm_path,
+		return new lsu::registry_session_per_uid(abi, major, minor, root_shm_path, shm_path,
 				euid, egid, tracing_id, tracing_uid);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-uid registry session: %s", ex.what());
@@ -341,7 +343,7 @@ ust_registry_session *ust_registry_session_per_uid_create(const lttng::sessiond:
 	}
 }
 
-ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
+lsu::registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
 		const lttng::sessiond::trace::abi& abi,
 		uint32_t major,
 		uint32_t minor,
@@ -352,7 +354,7 @@ ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
 		uint64_t tracing_id)
 {
 	try {
-		return new ust_registry_session_per_pid(*app, abi, major, minor, root_shm_path,
+		return new lsu::registry_session_per_pid(*app, abi, major, minor, root_shm_path,
 				shm_path, euid, egid, tracing_id);
 	} catch (const std::exception& ex) {
 		ERR("Failed to create per-pid registry session: %s", ex.what());
@@ -364,7 +366,7 @@ ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
  * Destroy session registry. This does NOT free the given pointer since it
  * might get passed as a reference. The registry lock should NOT be acquired.
  */
-void ust_registry_session_destroy(ust_registry_session *reg)
+void ust_registry_session_destroy(lsu::registry_session *reg)
 {
 	delete reg;
 }

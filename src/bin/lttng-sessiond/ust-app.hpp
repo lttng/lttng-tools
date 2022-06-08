@@ -17,6 +17,7 @@
 
 #include "trace-ust.hpp"
 #include "ust-registry.hpp"
+#include "ust-registry-session.hpp"
 #include "session.hpp"
 
 #define UST_APP_EVENT_LIST_SIZE 32
@@ -376,7 +377,7 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-ssize_t ust_app_push_metadata(const ust_registry_session::locked_ptr& registry,
+ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ptr& registry,
 		struct consumer_socket *socket,
 		int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
@@ -626,7 +627,7 @@ void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 
 static inline
 ssize_t ust_app_push_metadata(
-		ust_registry_session *registry __attribute__((unused)),
+		lttng::sessiond::ust::registry_session *registry __attribute__((unused)),
 		struct consumer_socket *socket __attribute__((unused)),
 		int send_zero_data __attribute__((unused)))
 {

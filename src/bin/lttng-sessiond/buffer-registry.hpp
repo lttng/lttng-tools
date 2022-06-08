@@ -17,6 +17,7 @@
 #include "consumer.hpp"
 #include "lttng-ust-ctl.hpp"
 #include "ust-registry.hpp"
+#include "ust-registry-session.hpp"
 
 struct buffer_reg_stream {
 	struct cds_list_head lnode;
@@ -52,7 +53,7 @@ struct buffer_reg_channel {
 struct buffer_reg_session {
 	/* Registry per domain. */
 	union {
-		ust_registry_session *ust;
+		lttng::sessiond::ust::registry_session *ust;
 	} reg;
 
 	/* Contains buffer registry channel indexed by tracing channel key. */

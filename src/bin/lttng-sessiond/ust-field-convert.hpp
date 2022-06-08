@@ -10,6 +10,7 @@
 
 #include "field.hpp"
 #include "ust-registry.hpp"
+#include "ust-registry-session.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -19,7 +20,7 @@ namespace sessiond {
 namespace ust {
 
 std::vector<trace::field::cuptr> create_trace_fields_from_ust_ctl_fields(
-		const ust_registry_session& session,
+		const lttng::sessiond::ust::registry_session& session,
 		const lttng_ust_ctl_field *fields,
 		std::size_t field_count);
 

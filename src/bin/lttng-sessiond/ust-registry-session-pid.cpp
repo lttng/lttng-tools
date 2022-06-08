@@ -6,13 +6,14 @@
  */
 
 #include "ust-app.hpp"
-#include "ust-registry.hpp"
+#include "ust-registry-session-pid.hpp"
 
 #include <common/exception.hpp>
 
 namespace lst = lttng::sessiond::trace;
+namespace lsu = lttng::sessiond::ust;
 
-ust_registry_session_per_pid::ust_registry_session_per_pid(const struct ust_app& app,
+lsu::registry_session_per_pid::registry_session_per_pid(const struct ust_app& app,
 		const struct lst::abi& in_abi,
 		uint32_t major,
 		uint32_t minor,
@@ -21,7 +22,7 @@ ust_registry_session_per_pid::ust_registry_session_per_pid(const struct ust_app&
 		uid_t euid,
 		gid_t egid,
 		uint64_t tracing_id) :
-	ust_registry_session{in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id},
+	registry_session{in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id},
 	_tracer_patch_level_version{app.version.patchlevel},
 	_vpid{app.pid},
 	_procname{app.name},
@@ -31,14 +32,14 @@ ust_registry_session_per_pid::ust_registry_session_per_pid(const struct ust_app&
 	_generate_metadata();
 }
 
-lttng_buffer_type ust_registry_session_per_pid::get_buffering_scheme() const noexcept
+lttng_buffer_type lsu::registry_session_per_pid::get_buffering_scheme() const noexcept
 {
 	return LTTNG_BUFFER_PER_PID;
 }
 
-void ust_registry_session_per_pid::_visit_environment(lst::trace_class_visitor& visitor) const
+void lsu::registry_session_per_pid::_visit_environment(lst::trace_class_visitor& visitor) const
 {
-	ust_registry_session::_visit_environment(visitor);
+	registry_session::_visit_environment(visitor);
 	visitor.visit(lst::environment_field<int64_t>("tracer_buffering_id", _vpid));
 	visitor.visit(lst::environment_field<int64_t>(
 			"tracer_patchlevel", _tracer_patch_level_version));

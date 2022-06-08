@@ -86,10 +86,10 @@ namespace {
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-static ust_registry_session *get_session_registry(
+static lsu::registry_session *get_session_registry(
 		const struct ust_app_session *ua_sess)
 {
-	ust_registry_session *registry = NULL;
+	lsu::registry_session *registry = NULL;
 
 	LTTNG_ASSERT(ua_sess);
 
@@ -122,7 +122,7 @@ error:
 	return registry;
 }
 
-ust_registry_session::locked_ptr
+lsu::registry_session::locked_ptr
 get_locked_session_registry(const struct ust_app_session *ua_sess)
 {
 	auto session = get_session_registry(ua_sess);
@@ -130,7 +130,7 @@ get_locked_session_registry(const struct ust_app_session *ua_sess)
 		pthread_mutex_lock(&session->_lock);
 	}
 
-	return ust_registry_session::locked_ptr{session};
+	return lsu::registry_session::locked_ptr{session};
 }
 } /* namespace */
 
@@ -562,7 +562,7 @@ end:
 static void delete_ust_app_channel(int sock,
 		struct ust_app_channel *ua_chan,
 		struct ust_app *app,
-		const ust_registry_session::locked_ptr& locked_registry)
+		const lsu::registry_session::locked_ptr& locked_registry)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -685,7 +685,7 @@ int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-ssize_t ust_app_push_metadata(const ust_registry_session::locked_ptr& locked_registry,
+ssize_t ust_app_push_metadata(const lsu::registry_session::locked_ptr& locked_registry,
 		struct consumer_socket *socket,
 		int send_zero_data)
 {
@@ -825,7 +825,7 @@ error_push:
  * but it can be caused by recoverable errors (e.g. the application has
  * terminated concurrently).
  */
-static int push_metadata(const ust_registry_session::locked_ptr& locked_registry,
+static int push_metadata(const lsu::registry_session::locked_ptr& locked_registry,
 		struct consumer_output *consumer)
 {
 	int ret_val;
@@ -2985,7 +2985,7 @@ error:
  */
 static int do_consumer_create_channel(struct ltt_ust_session *usess,
 		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		int bitness, ust_registry_session *registry)
+		int bitness, lsu::registry_session *registry)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -3504,7 +3504,7 @@ static int create_channel_per_pid(struct ust_app *app,
 		struct ust_app_channel *ua_chan)
 {
 	int ret;
-	ust_registry_session *registry;
+	lsu::registry_session *registry;
 	enum lttng_error_code cmd_ret;
 	struct ltt_session *session = NULL;
 	uint64_t chan_reg_key;
@@ -5414,7 +5414,7 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			ust_registry_session *ust_session_reg;
+			lsu::registry_session *ust_session_reg;
 			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
@@ -6619,7 +6619,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	int ret = 0, ret_code;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
-	ust_registry_session *registry;
+	lsu::registry_session *registry;
 	uint64_t enum_id = -1ULL;
 
 	rcu_read_lock();
@@ -7038,7 +7038,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			ust_registry_session *registry;
+			lsu::registry_session *registry;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
@@ -7433,7 +7433,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			ust_registry_session *registry;
+			lsu::registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7563,7 +7563,7 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app,
 				pid_n.node) {
 			struct ust_app_session *ua_sess;
-			ust_registry_session *registry;
+			lsu::registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7685,7 +7685,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			ust_registry_session *registry;
+			lsu::registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
@@ -7832,7 +7832,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
-			ust_registry_session *registry;
+			lsu::registry_session *registry;
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {

@@ -133,12 +133,12 @@ void destroy_channel(lsu::registry_channel *chan, bool notify)
 }
 } /* namespace */
 
-void ls::details::locked_ust_registry_session_release(ust_registry_session *session)
+void lsu::details::locked_registry_session_release(lsu::registry_session *session)
 {
 	pthread_mutex_unlock(&session->_lock);
 }
 
-ust_registry_session::ust_registry_session(const struct lst::abi& in_abi,
+lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 		uint32_t major,
 		uint32_t minor,
 		const char *root_shm_path,
@@ -205,7 +205,7 @@ ust_registry_session::ust_registry_session(const struct lst::abi& in_abi,
 	}
 }
 
-ust_registry_session::~ust_registry_session()
+lsu::registry_session::~registry_session()
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -265,7 +265,7 @@ ust_registry_session::~ust_registry_session()
 	}
 }
 
-ust_registry_session::locked_ptr ust_registry_session::lock()
+lsu::registry_session::locked_ptr lsu::registry_session::lock()
 {
 	pthread_mutex_lock(&_lock);
 	return locked_ptr(this);
@@ -274,7 +274,7 @@ ust_registry_session::locked_ptr ust_registry_session::lock()
 /*
  * Initialize registry with default values.
  */
-void ust_registry_session::add_channel(uint64_t key)
+void lsu::registry_session::add_channel(uint64_t key)
 {
 	lttng::pthread::lock_guard session_lock_guard(_lock);
 
@@ -315,7 +315,7 @@ void ust_registry_session::add_channel(uint64_t key)
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
-lttng::sessiond::ust::registry_channel& ust_registry_session::get_channel(
+lttng::sessiond::ust::registry_channel& lsu::registry_session::get_channel(
 		uint64_t channel_key) const
 {
 	lttng::urcu::read_lock_guard read_lock_guard;
@@ -338,7 +338,7 @@ lttng::sessiond::ust::registry_channel& ust_registry_session::get_channel(
 	return *chan;
 }
 
-void ust_registry_session::remove_channel(uint64_t channel_key, bool notify)
+void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 {
 	struct lttng_ht_iter iter;
 	int ret;
@@ -353,7 +353,7 @@ void ust_registry_session::remove_channel(uint64_t channel_key, bool notify)
 	destroy_channel(&channel, notify);
 }
 
-void ust_registry_session::_visit_environment(
+void lsu::registry_session::_visit_environment(
 		lttng::sessiond::trace::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
@@ -383,13 +383,13 @@ void ust_registry_session::_visit_environment(
 	}
 }
 
-void ust_registry_session::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const
+void lsu::registry_session::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 	_clock.accept(visitor);
 }
 
-void ust_registry_session::_accept_on_stream_classes(lst::trace_class_visitor& visitor) const
+void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 
@@ -428,7 +428,7 @@ void ust_registry_session::_accept_on_stream_classes(lst::trace_class_visitor& v
  * Return a unique channel ID. If max is reached, the used_channel_id counter
  * is returned.
  */
-uint32_t ust_registry_session::_get_next_channel_id()
+uint32_t lsu::registry_session::_get_next_channel_id()
 {
 	if (is_max_channel_id(_used_channel_id)) {
 		return _used_channel_id;
@@ -438,7 +438,7 @@ uint32_t ust_registry_session::_get_next_channel_id()
 	return _next_channel_id++;
 }
 
-void ust_registry_session::_increase_metadata_size(size_t reservation_length)
+void lsu::registry_session::_increase_metadata_size(size_t reservation_length)
 {
 	const auto new_len = _metadata_len + reservation_length;
 	auto new_alloc_len = new_len;
@@ -473,7 +473,7 @@ void ust_registry_session::_increase_metadata_size(size_t reservation_length)
 	_metadata_len += reservation_length;
 }
 
-void ust_registry_session::_append_metadata_fragment(const std::string& fragment)
+void lsu::registry_session::_append_metadata_fragment(const std::string& fragment)
 {
 	const auto offset = _metadata_len;
 
@@ -491,7 +491,7 @@ void ust_registry_session::_append_metadata_fragment(const std::string& fragment
 	}
 }
 
-void ust_registry_session::_reset_metadata()
+void lsu::registry_session::_reset_metadata()
 {
 	_metadata_len_sent = 0;
 	memset(_metadata, 0, _metadata_alloc_len);
@@ -503,12 +503,12 @@ void ust_registry_session::_reset_metadata()
 	}
 }
 
-void ust_registry_session::_generate_metadata()
+void lsu::registry_session::_generate_metadata()
 {
 	accept(*_metadata_generating_visitor);
 }
 
-void ust_registry_session::regenerate_metadata()
+void lsu::registry_session::regenerate_metadata()
 {
 	lttng::pthread::lock_guard registry_lock(_lock);
 
