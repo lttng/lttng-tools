@@ -6613,16 +6613,16 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, const char *na
  *
  * On success 0 is returned else a negative value.
  */
-static int add_enum_ust_registry(int sock, int sobjd, char *name,
-		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries)
+static int add_enum_ust_registry(int sock, int sobjd, const char *name,
+		struct lttng_ust_ctl_enum_entry *raw_entries, size_t nr_entries)
 {
-	int ret = 0, ret_code;
+	int ret = 0;
 	struct ust_app *app;
 	struct ust_app_session *ua_sess;
-	lsu::registry_session *registry;
 	uint64_t enum_id = -1ULL;
-
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock_guard;
+	auto entries = lttng::make_unique_wrapper<struct lttng_ust_ctl_enum_entry, lttng::free>(
+			raw_entries);
 
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
@@ -6630,9 +6630,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 		/* Return an error since this is not an error */
 		DBG("Application socket %d is being torn down. Aborting enum registration",
 				sock);
-		free(entries);
-		ret = -1;
-		goto error_rcu_unlock;
+		return -1;
 	}
 
 	/* Lookup session by UST object descriptor. */
@@ -6640,34 +6638,37 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	if (!ua_sess) {
 		/* Return an error since this is not an error */
 		DBG("Application session is being torn down (session not found). Aborting enum registration.");
-		free(entries);
-		goto error_rcu_unlock;
+		return 0;
 	}
 
-	registry = get_session_registry(ua_sess);
-	if (!registry) {
+	auto locked_registry = get_locked_session_registry(ua_sess);
+	if (!locked_registry) {
 		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
-		free(entries);
-		goto error_rcu_unlock;
+		return 0;
 	}
-
-	pthread_mutex_lock(&registry->_lock);
 
 	/*
 	 * From this point on, the callee acquires the ownership of
 	 * entries. The variable entries MUST NOT be read/written after
 	 * call.
 	 */
-	ret_code = ust_registry_create_or_find_enum(registry, sobjd, name,
-			entries, nr_entries, &enum_id);
-	entries = NULL;
+	int application_reply_code;
+	try {
+		locked_registry->create_or_find_enum(
+				sobjd, name, entries.release(), nr_entries, &enum_id);
+		application_reply_code = 0;
+	} catch (const std::exception& ex) {
+		ERR("%s: %s", fmt::format("Failed to create or find enumeration provided by application: app = {}, enumeration name = {}",
+				*app, name).c_str(), ex.what());
+		application_reply_code = -1;
+	}
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
 	 * application can be notified. In case of an error, it's important not to
 	 * return a negative error or else the application will get closed.
 	 */
-	ret = lttng_ust_ctl_reply_register_enum(sock, enum_id, ret_code);
+	ret = lttng_ust_ctl_reply_register_enum(sock, enum_id, application_reply_code);
 	if (ret < 0) {
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			DBG3("UST app reply enum failed. Application died: pid = %d, sock = %d",
@@ -6683,16 +6684,11 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 		 * No need to wipe the create enum since the application socket will
 		 * get close on error hence cleaning up everything by itself.
 		 */
-		goto error;
+		return ret;
 	}
 
 	DBG3("UST registry enum %s added successfully or already found", name);
-
-error:
-	pthread_mutex_unlock(&registry->_lock);
-error_rcu_unlock:
-	rcu_read_unlock();
-	return ret;
+	return 0;
 }
 
 /*

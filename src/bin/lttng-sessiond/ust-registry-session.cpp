@@ -19,6 +19,7 @@
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
+#include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
 #include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
@@ -131,6 +132,94 @@ void destroy_channel(lsu::registry_channel *chan, bool notify)
 
 	call_rcu(&chan->_rcu_head, destroy_channel_rcu);
 }
+
+void destroy_enum(lsu::registry_enum *reg_enum)
+{
+	if (!reg_enum) {
+		return;
+	}
+
+	delete reg_enum;
+}
+
+void destroy_enum_rcu(struct rcu_head *head)
+{
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	lsu::registry_enum *reg_enum =
+		caa_container_of(head, lsu::registry_enum, rcu_head);
+	DIAGNOSTIC_POP
+
+	destroy_enum(reg_enum);
+}
+
+/*
+ * Hash table match function for enumerations in the session. Match is
+ * performed on enumeration name, and confirmed by comparing the enum
+ * entries.
+ */
+int ht_match_enum(struct cds_lfht_node *node, const void *_key)
+{
+	lsu::registry_enum *_enum;
+	const lsu::registry_enum *key;
+
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	_enum = caa_container_of(node, lsu::registry_enum,
+			node.node);
+	DIAGNOSTIC_POP
+
+	LTTNG_ASSERT(_enum);
+	key = (lsu::registry_enum *) _key;
+
+	return *_enum == *key;
+}
+
+/*
+ * Hash table match function for enumerations in the session. Match is
+ * performed by enumeration ID.
+ */
+int ht_match_enum_id(struct cds_lfht_node *node, const void *_key)
+{
+	lsu::registry_enum *_enum;
+	const lsu::registry_enum *key = (lsu::registry_enum *) _key;
+
+	LTTNG_ASSERT(node);
+	LTTNG_ASSERT(_key);
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	_enum = caa_container_of(node, lsu::registry_enum, node.node);
+	DIAGNOSTIC_POP
+
+	LTTNG_ASSERT(_enum);
+
+	if (_enum->id != key->id) {
+		goto no_match;
+	}
+
+	/* Match. */
+	return 1;
+
+no_match:
+	return 0;
+}
+
+/*
+ * Hash table hash function for enumerations in the session. The
+ * enumeration name is used for hashing.
+ */
+unsigned long ht_hash_enum(void *_key, unsigned long seed)
+{
+	lsu::registry_enum *key = (lsu::registry_enum *) _key;
+
+	LTTNG_ASSERT(key);
+	return hash_key_str(key->name.c_str(), seed);
+}
+
 } /* namespace */
 
 void lsu::details::locked_registry_session_release(lsu::registry_session *session)
@@ -147,44 +236,33 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 		gid_t egid,
 		uint64_t tracing_id) :
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
+	_root_shm_path{root_shm_path ? root_shm_path : ""},
+	_shm_path{shm_path ? shm_path : ""},
+	_metadata_path{_shm_path.size() > 0 ?
+			fmt::format("{}/metadata", _shm_path) : std::string("")},
 	_uid{euid},
 	_gid{egid},
-	_app_tracer_version_major{major},
-	_app_tracer_version_minor{minor},
+	_app_tracer_version{.major = major, .minor = minor},
 	_tracing_id{tracing_id},
-	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(
-			abi, [this](const std::string& fragment) {
+	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(abi,
+			[this](const std::string& fragment) {
 				_append_metadata_fragment(fragment);
 			})}
 {
 	pthread_mutex_init(&_lock, NULL);
-	strncpy(_root_shm_path, root_shm_path, sizeof(_root_shm_path));
-	_root_shm_path[sizeof(_root_shm_path) - 1] = '\0';
-	if (shm_path[0]) {
-		strncpy(_shm_path, shm_path, sizeof(_shm_path));
-		_shm_path[sizeof(_shm_path) - 1] = '\0';
-		strncpy(_metadata_path, shm_path, sizeof(_metadata_path));
-		_metadata_path[sizeof(_metadata_path) - 1] = '\0';
-		strncat(_metadata_path, "/metadata",
-				sizeof(_metadata_path) - strlen(_metadata_path) - 1);
-	}
-
-	if (_shm_path[0]) {
-		if (run_as_mkdir_recursive(_shm_path, S_IRWXU | S_IRWXG, euid, egid)) {
+	if (_shm_path.size() > 0) {
+		if (run_as_mkdir_recursive(_shm_path.c_str(), S_IRWXU | S_IRWXG, euid, egid)) {
 			LTTNG_THROW_POSIX("run_as_mkdir_recursive", errno);
 		}
 	}
 
-	if (_metadata_path[0]) {
+	if (_metadata_path.size() > 0) {
 		/* Create metadata file. */
-		const int ret = run_as_open(_metadata_path, O_WRONLY | O_CREAT | O_EXCL,
+		const int ret = run_as_open(_metadata_path.c_str(), O_WRONLY | O_CREAT | O_EXCL,
 				S_IRUSR | S_IWUSR, euid, egid);
-
 		if (ret < 0) {
-			std::stringstream ss;
-
-			ss << "Opening metadata file '" << _metadata_path << "'";
-			LTTNG_THROW_POSIX(ss.str(), errno);
+			LTTNG_THROW_POSIX(fmt::format("Failed to open metadata file during registry session creation: path = {}",
+					_metadata_path), errno);
 		}
 
 		_metadata_fd = ret;
@@ -203,6 +281,26 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	if (!_channels) {
 		LTTNG_THROW_POSIX("Failed to create channels hash table", ENOMEM);
 	}
+}
+
+/*
+ * For a given enumeration in a registry, delete the entry and destroy
+ * the enumeration.
+ */
+void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum)
+{
+	int ret;
+	lttng::urcu::read_lock_guard read_lock_guard;
+
+	LTTNG_ASSERT(reg_enum);
+	ASSERT_RCU_READ_LOCKED();
+
+	/* Delete the node first. */
+	struct lttng_ht_iter iter;
+	iter.iter.node = &reg_enum->node.node;
+	ret = lttng_ht_del(_enums.get(), &iter);
+	LTTNG_ASSERT(!ret);
+	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
 lsu::registry_session::~registry_session()
@@ -238,7 +336,7 @@ lsu::registry_session::~registry_session()
 			PERROR("close");
 		}
 
-		ret = run_as_unlink(_metadata_path, _uid, _gid);
+		ret = run_as_unlink(_metadata_path.c_str(), _uid, _gid);
 		if (ret) {
 			PERROR("unlink");
 		}
@@ -246,26 +344,25 @@ lsu::registry_session::~registry_session()
 
 	if (_root_shm_path[0]) {
 		/* Try to delete the directory hierarchy. */
-		(void) run_as_rmdir_recursive(_root_shm_path, _uid, _gid,
+		(void) run_as_rmdir_recursive(_root_shm_path.c_str(), _uid, _gid,
 				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 
 	/* Destroy the enum hash table */
 	if (_enums) {
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock_guard;
+
 		/* Destroy all enum entries associated with this registry. */
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 		cds_lfht_for_each_entry (_enums->ht, &iter.iter, reg_enum, node.node) {
-			ust_registry_destroy_enum(this, reg_enum);
+			_destroy_enum(reg_enum);
 		}
 		DIAGNOSTIC_POP
-
-		rcu_read_unlock();
 	}
 }
 
-lsu::registry_session::locked_ptr lsu::registry_session::lock()
+lsu::registry_session::locked_ptr lsu::registry_session::lock() noexcept
 {
 	pthread_mutex_lock(&_lock);
 	return locked_ptr(this);
@@ -360,8 +457,8 @@ void lsu::registry_session::_visit_environment(
 
 	visitor.visit(lst::environment_field<const char *>("domain", "ust"));
 	visitor.visit(lst::environment_field<const char *>("tracer_name", "lttng-ust"));
-	visitor.visit(lst::environment_field<int64_t>("tracer_major", _app_tracer_version_major));
-	visitor.visit(lst::environment_field<int64_t>("tracer_minor", _app_tracer_version_minor));
+	visitor.visit(lst::environment_field<int64_t>("tracer_major", _app_tracer_version.major));
+	visitor.visit(lst::environment_field<int64_t>("tracer_minor", _app_tracer_version.minor));
 	visitor.visit(lst::environment_field<const char *>("tracer_buffering_scheme",
 			get_buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
 	visitor.visit(lst::environment_field<int64_t>("architecture_bit_width", abi.bits_per_long));
@@ -515,4 +612,150 @@ void lsu::registry_session::regenerate_metadata()
 	_metadata_version++;
 	_reset_metadata();
 	_generate_metadata();
+}
+
+/*
+ * Lookup enumeration by enum ID.
+ *
+ * Note that there is no need to lock the registry session as this only
+ * performs an RCU-protected look-up. The function also return an rcu-protected
+ * reference, which ensures that the caller keeps the RCU read lock until it
+ * disposes of the object.
+ */
+lsu::registry_enum::const_rcu_protected_reference
+lsu::registry_session::get_enumeration(const char *enum_name, uint64_t enum_id) const
+{
+	lsu::registry_enum *reg_enum = NULL;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+	lttng::urcu::unique_read_lock rcu_lock;
+	/*
+	 * Hack: only the name is used for hashing; the rest of the attributes
+	 * can be fudged.
+	 */
+	lsu::registry_signed_enum reg_enum_lookup(enum_name, nullptr, 0);
+
+	ASSERT_RCU_READ_LOCKED();
+
+	reg_enum_lookup.id = enum_id;
+	cds_lfht_lookup(_enums->ht,
+			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum_id, &reg_enum_lookup, &iter.iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (!node) {
+		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+				"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
+				enum_name, enum_id));
+	}
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	DIAGNOSTIC_POP
+
+	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
+}
+
+/*
+ * Lookup enumeration by name and comparing enumeration entries.
+ * Needs to be called from RCU read-side critical section.
+ */
+lsu::registry_enum *lsu::registry_session::_lookup_enum(
+		const lsu::registry_enum *reg_enum_lookup) const
+{
+	lsu::registry_enum *reg_enum = NULL;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+
+	ASSERT_RCU_READ_LOCKED();
+
+	cds_lfht_lookup(_enums->ht, ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum, reg_enum_lookup, &iter.iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (!node) {
+		goto end;
+	}
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	DIAGNOSTIC_POP
+
+end:
+	return reg_enum;
+}
+
+/*
+ * Create a lsu::registry_enum from the given parameters and add it to the
+ * registry hash table, or find it if already there.
+ *
+ * Should be called with session registry mutex held.
+ *
+ * We receive ownership of entries.
+ */
+void lsu::registry_session::create_or_find_enum(
+		int session_objd, const char *enum_name,
+		struct lttng_ust_ctl_enum_entry *raw_entries, size_t nr_entries,
+		uint64_t *enum_id)
+{
+	struct cds_lfht_node *nodep;
+	lsu::registry_enum *reg_enum = NULL, *old_reg_enum;
+	lttng::urcu::read_lock_guard read_lock_guard;
+	auto entries = lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);
+
+	LTTNG_ASSERT(enum_name);
+
+	/*
+	 * This should not happen but since it comes from the UST tracer, an
+	 * external party, don't assert and simply validate values.
+	 */
+	if (session_objd < 0) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Invalid parameters used to create or look-up enumeration from registry session: session_objd = {}",
+				session_objd));
+	}
+	if (nr_entries == 0) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Invalid parameters used to create or look-up enumeration from registry session: nr_entries = {}",
+				nr_entries));
+	}
+	if (lttng_strnlen(enum_name, LTTNG_UST_ABI_SYM_NAME_LEN) ==
+					LTTNG_UST_ABI_SYM_NAME_LEN) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Invalid parameters used to create or look-up enumeration from registry session: enumeration name is not null terminated");
+	}
+
+	if (entries->start.signedness) {
+		reg_enum = new lsu::registry_signed_enum(
+				enum_name, entries.get(), nr_entries);
+	} else {
+		reg_enum = new lsu::registry_unsigned_enum(
+				enum_name, entries.get(), nr_entries);
+	}
+
+	old_reg_enum = _lookup_enum(reg_enum);
+	if (old_reg_enum) {
+		DBG("enum %s already in sess_objd: %u", enum_name, session_objd);
+		/* Fall through. Use prior enum. */
+		destroy_enum(reg_enum);
+		reg_enum = old_reg_enum;
+	} else {
+		DBG("UST registry creating enum: %s, sess_objd: %u",
+				enum_name, session_objd);
+		if (_next_enum_id == -1ULL) {
+			destroy_enum(reg_enum);
+			LTTNG_THROW_ERROR("Failed to allocate unique enumeration ID as it would overflow");
+		}
+
+		reg_enum->id = _next_enum_id++;
+		nodep = cds_lfht_add_unique(_enums->ht,
+				ht_hash_enum(reg_enum, lttng_ht_seed),
+				ht_match_enum_id, reg_enum,
+				&reg_enum->node.node);
+		LTTNG_ASSERT(nodep == &reg_enum->node.node);
+	}
+
+	DBG("UST registry reply with enum %s with id %" PRIu64 " in sess_objd: %u",
+			enum_name, reg_enum->id, session_objd);
+	*enum_id = reg_enum->id;
 }

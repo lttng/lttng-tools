@@ -18,7 +18,6 @@
 #include "ust-clock-class.hpp"
 #include "ust-registry-channel.hpp"
 #include "ust-registry-event.hpp"
-#include "ust-registry-session.hpp"
 
 #include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -43,6 +42,9 @@ struct ust_app;
 namespace lttng {
 namespace sessiond {
 namespace ust {
+
+class registry_session;
+
 namespace details {
 
 template <class MappingIntegerType>
@@ -173,15 +175,6 @@ void ust_registry_session_destroy(lttng::sessiond::ust::registry_session *sessio
 void ust_registry_channel_destroy_event(lttng::sessiond::ust::registry_channel *chan,
 		lttng::sessiond::ust::registry_event *event);
 
-int ust_registry_create_or_find_enum(lttng::sessiond::ust::registry_session *session,
-		int session_objd, char *name,
-		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
-		uint64_t *enum_id);
-lttng::sessiond::ust::registry_enum::const_rcu_protected_reference
-ust_registry_lookup_enum_by_id(const lttng::sessiond::ust::registry_session *session,
-		const char *name, uint64_t id);
-void ust_registry_destroy_enum(lttng::sessiond::ust::registry_session *reg_session,
-		lttng::sessiond::ust::registry_enum *reg_enum);
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -261,33 +254,6 @@ int ust_metadata_event_statedump(
 {
 	return 0;
 }
-
-static inline
-int ust_registry_create_or_find_enum(
-		lttng::sessiond::ust::registry_session *session __attribute__((unused)),
-		int session_objd __attribute__((unused)),
-		char *name __attribute__((unused)),
-		struct lttng_ust_ctl_enum_entry *entries __attribute__((unused)),
-		size_t nr_entries __attribute__((unused)),
-		uint64_t *enum_id __attribute__((unused)))
-{
-	return 0;
-}
-
-static inline
-struct ust_registry_enum *
-	ust_registry_lookup_enum_by_id(
-		const lttng::sessiond::ust::registry_session *session __attribute__((unused)),
-		const char *name __attribute__((unused)),
-		uint64_t id __attribute__((unused)))
-{
-	return NULL;
-}
-
-static inline
-void ust_registry_destroy_enum(lttng::sessiond::ust::registry_session *reg_session __attribute__((unused)),
-		struct ust_registry_enum *reg_enum __attribute__((unused)))
-{}
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

@@ -13,6 +13,7 @@
 #include "trace-class.hpp"
 #include "ust-clock-class.hpp"
 #include "ust-registry-channel.hpp"
+#include "ust-registry.hpp"
 
 #include <common/make-unique-wrapper.hpp>
 
@@ -26,6 +27,7 @@ namespace lttng {
 namespace sessiond {
 namespace ust {
 
+class registry_enum;
 class registry_session;
 
 namespace details {
@@ -40,11 +42,22 @@ public:
 					deleter>;
 
 	virtual lttng_buffer_type get_buffering_scheme() const noexcept = 0;
-	locked_ptr lock();
+	locked_ptr lock() noexcept;
 
 	void add_channel(uint64_t channel_key);
+
+	/* A channel is protected by its parent registry session's lock. */
 	lttng::sessiond::ust::registry_channel& get_channel(uint64_t channel_key) const;
+
 	void remove_channel(uint64_t channel_key, bool notify);
+
+	void create_or_find_enum(int session_objd,
+			const char *enum_name,
+			struct lttng_ust_ctl_enum_entry *raw_entries,
+			size_t nr_entries,
+			uint64_t *enum_id);
+	registry_enum::const_rcu_protected_reference get_enumeration(
+			const char *enum_name, uint64_t enum_id) const;
 
 	void regenerate_metadata();
 	virtual ~registry_session();
@@ -55,23 +68,70 @@ public:
 	 * Also acts as a registry serialization lock. Used by registry
 	 * readers to serialize the registry information sent from the
 	 * sessiond to the consumerd.
+	 *
 	 * The consumer socket lock nests within this lock.
 	 */
 	mutable pthread_mutex_t _lock;
-	/* Next channel ID available for a newly registered channel. */
-	uint32_t _next_channel_id = 0;
-	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
-	uint32_t _used_channel_id = 0;
-	/* Next enumeration ID available. */
-	uint64_t _next_enum_id = 0;
 
-	/* Generated metadata. */
-	char *_metadata = nullptr; /* NOT null-terminated ! Use memcpy. */
-	size_t _metadata_len = 0, _metadata_alloc_len = 0;
+	/* Generated metadata, not null-terminated. */
+	char *_metadata = nullptr; /*  */
+	size_t _metadata_len = 0;
 	/* Length of bytes sent to the consumer. */
 	size_t _metadata_len_sent = 0;
 	/* Current version of the metadata. */
 	uint64_t _metadata_version = 0;
+
+	/*
+	 * Unique key to identify the metadata on the consumer side.
+	 */
+	uint64_t _metadata_key = 0;
+	/*
+	 * Indicates if the metadata is closed on the consumer side. This is to
+	 * avoid double close of metadata when an application unregisters AND
+	 * deletes its sessions.
+	 */
+	bool _metadata_closed = false;
+
+protected:
+	/* Prevent instanciation of this base class. */
+	registry_session(const struct lttng::sessiond::trace::abi& abi,
+			unsigned int app_tracer_version_major,
+			unsigned int app_tracer_version_minor,
+			const char *root_shm_path,
+			const char *shm_path,
+			uid_t euid,
+			gid_t egid,
+			uint64_t tracing_id);
+	virtual void _visit_environment(
+			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
+			const override;
+	void _generate_metadata();
+
+private:
+	uint32_t _get_next_channel_id();
+	void _increase_metadata_size(size_t reservation_length);
+	void _append_metadata_fragment(const std::string& fragment);
+	void _reset_metadata();
+	void _destroy_enum(registry_enum *reg_enum);
+	registry_enum *_lookup_enum(const registry_enum *target_enum) const;
+
+	virtual void _accept_on_clock_classes(
+			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
+			const override final;
+	virtual void _accept_on_stream_classes(
+			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
+			const override final;
+
+	/* Next channel ID available for a newly registered channel. */
+	uint32_t _next_channel_id = 0;
+
+	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
+	uint32_t _used_channel_id = 0;
+
+	/* Next enumeration ID available. */
+	uint64_t _next_enum_id = 0;
+
+	size_t _metadata_alloc_len = 0;
 
 	/*
 	 * Those fields are only used when a session is created with
@@ -100,9 +160,10 @@ public:
 	 * metadata_fd is a file descriptor that points to the file at
 	 * 'metadata_path'.
 	 */
-	char _root_shm_path[PATH_MAX] = {};
-	char _shm_path[PATH_MAX] = {};
-	char _metadata_path[PATH_MAX] = {};
+	const std::string _root_shm_path;
+	const std::string _shm_path;
+	const std::string _metadata_path;
+
 	/* File-backed metadata FD */
 	int _metadata_fd = -1;
 
@@ -112,61 +173,23 @@ public:
 	 */
 	lttng_ht::uptr _channels;
 
-	/*
-	 * Unique key to identify the metadata on the consumer side.
-	 */
-	uint64_t _metadata_key = 0;
-	/*
-	 * Indicates if the metadata is closed on the consumer side. This is to
-	 * avoid double close of metadata when an application unregisters AND
-	 * deletes its sessions.
-	 */
-	bool _metadata_closed = false;
-
-	/* User and group owning the session. */
-	uid_t _uid = -1;
-	gid_t _gid = -1;
-
 	/* Enumerations table. */
 	lttng_ht::uptr _enums;
+
+	/* User and group owning the session. */
+	const uid_t _uid;
+	const gid_t _gid;
 
 	/*
 	 * Copy of the tracer version when the first app is registered.
 	 * It is used if we need to regenerate the metadata.
 	 */
-	uint32_t _app_tracer_version_major = 0;
-	uint32_t _app_tracer_version_minor = 0;
+	const struct {
+		uint32_t major, minor;
+	} _app_tracer_version;
 
-	/* The id of the parent session */
-	ltt_session::id_t _tracing_id = -1ULL;
-
-protected:
-	/* Prevent instanciation of this base class. */
-	registry_session(const struct lttng::sessiond::trace::abi& abi,
-			unsigned int app_tracer_version_major,
-			unsigned int app_tracer_version_minor,
-			const char *root_shm_path,
-			const char *shm_path,
-			uid_t euid,
-			gid_t egid,
-			uint64_t tracing_id);
-	virtual void _visit_environment(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override;
-	void _generate_metadata();
-
-private:
-	uint32_t _get_next_channel_id();
-	void _increase_metadata_size(size_t reservation_length);
-	void _append_metadata_fragment(const std::string& fragment);
-	void _reset_metadata();
-
-	virtual void _accept_on_clock_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override final;
-	virtual void _accept_on_stream_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override final;
+	/* The id of the parent session. */
+	const ltt_session::id_t _tracing_id;
 
 	lttng::sessiond::ust::clock_class _clock;
 	const lttng::sessiond::trace::trace_class_visitor::cuptr _metadata_generating_visitor;
