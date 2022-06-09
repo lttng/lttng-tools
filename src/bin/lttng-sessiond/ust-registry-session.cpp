@@ -98,8 +98,10 @@ void destroy_channel_rcu(struct rcu_head *head)
  * Destroy every element of the registry and free the memory. This does NOT
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
+ *
+ * Called from ~registry_session(), must not throw.
  */
-void destroy_channel(lsu::registry_channel *chan, bool notify)
+void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 {
 	struct lttng_ht_iter iter;
 	lttng::sessiond::ust::registry_event *event;
@@ -286,8 +288,10 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 /*
  * For a given enumeration in a registry, delete the entry and destroy
  * the enumeration.
+ *
+ * Note that this is used by ~registry_session() and must not throw.
  */
-void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum)
+void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
 {
 	int ret;
 	lttng::urcu::read_lock_guard read_lock_guard;

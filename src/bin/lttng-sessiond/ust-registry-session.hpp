@@ -112,7 +112,7 @@ private:
 	void _increase_metadata_size(size_t reservation_length);
 	void _append_metadata_fragment(const std::string& fragment);
 	void _reset_metadata();
-	void _destroy_enum(registry_enum *reg_enum);
+	void _destroy_enum(registry_enum *reg_enum) noexcept;
 	registry_enum *_lookup_enum(const registry_enum *target_enum) const;
 
 	virtual void _accept_on_clock_classes(
