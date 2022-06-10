@@ -237,8 +237,8 @@ end:
 static
 int fs_handle_untracked_get_fd(struct fs_handle *_handle)
 {
-	struct fs_handle_untracked *handle = container_of(
-			_handle, struct fs_handle_untracked, parent);
+	struct fs_handle_untracked *handle = lttng::utils::container_of(
+			_handle, &fs_handle_untracked::parent);
 
 	return handle->fd;
 }
@@ -252,8 +252,8 @@ void fs_handle_untracked_put_fd(struct fs_handle *_handle __attribute__((unused)
 static
 int fs_handle_untracked_unlink(struct fs_handle *_handle)
 {
-	struct fs_handle_untracked *handle = container_of(
-			_handle, struct fs_handle_untracked, parent);
+	struct fs_handle_untracked *handle = lttng::utils::container_of(
+			_handle, &fs_handle_untracked::parent);
 
 	return lttng_directory_handle_unlink_file(
 			handle->location.directory_handle,
@@ -271,8 +271,8 @@ void fs_handle_untracked_destroy(struct fs_handle_untracked *handle)
 static
 int fs_handle_untracked_close(struct fs_handle *_handle)
 {
-	struct fs_handle_untracked *handle = container_of(
-			_handle, struct fs_handle_untracked, parent);
+	struct fs_handle_untracked *handle = lttng::utils::container_of(
+			_handle, &fs_handle_untracked::parent);
 	int ret = close(handle->fd);
 
 	fs_handle_untracked_destroy(handle);
@@ -1462,8 +1462,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		/*
 		 * Does not close the fd; we just "unbox" it from the fs_handle.
 		 */
-		fs_handle_untracked_destroy(container_of(
-				fs_handle, struct fs_handle_untracked, parent));
+		fs_handle_untracked_destroy(lttng::utils::container_of(
+				fs_handle, &fs_handle_untracked::parent));
 	}
 
 	return status;
@@ -1861,8 +1861,8 @@ bool lttng_trace_chunk_get(struct lttng_trace_chunk *chunk)
 static
 void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
 {
-	struct lttng_trace_chunk_registry_element *element =
-			container_of(node, typeof(*element), rcu_node);
+	struct lttng_trace_chunk_registry_element *element = lttng::utils::container_of(
+			node, &lttng_trace_chunk_registry_element::rcu_node);
 
 	free(element);
 }
@@ -1870,8 +1870,7 @@ void free_lttng_trace_chunk_registry_element(struct rcu_head *node)
 static
 void lttng_trace_chunk_release(struct urcu_ref *ref)
 {
-	struct lttng_trace_chunk *chunk = container_of(ref, typeof(*chunk),
-			ref);
+	struct lttng_trace_chunk *chunk = lttng::utils::container_of(ref, &lttng_trace_chunk::ref);
 
 	if (chunk->close_command.is_set) {
 		chunk_command func = close_command_get_post_release_func(chunk->close_command.value);
@@ -1903,7 +1902,8 @@ void lttng_trace_chunk_release(struct urcu_ref *ref)
 		 */
 		lttng_trace_chunk_fini(chunk);
 
-		element = container_of(chunk, typeof(*element), chunk);
+		element = lttng::utils::container_of(
+				chunk, &lttng_trace_chunk_registry_element::chunk);
 		if (element->registry) {
 			rcu_read_lock();
 			cds_lfht_del(element->registry->ht,
@@ -2076,9 +2076,8 @@ lttng_trace_chunk_registry_publish_chunk(
 		 * already published and release the reference to the copy we
 		 * created if successful.
 		 */
-		published_element = container_of(published_node,
-				typeof(*published_element),
-				trace_chunk_registry_ht_node);
+		published_element = lttng::utils::container_of(published_node,
+				&lttng_trace_chunk_registry_element::trace_chunk_registry_ht_node);
 		published_chunk = &published_element->chunk;
 		if (lttng_trace_chunk_get(published_chunk)) {
 			lttng_trace_chunk_put(&element->chunk);
@@ -2136,9 +2135,8 @@ struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 		goto end;
 	}
 
-	published_element = container_of(published_node,
-			typeof(*published_element),
-			trace_chunk_registry_ht_node);
+	published_element = lttng::utils::container_of(published_node,
+			&lttng_trace_chunk_registry_element::trace_chunk_registry_ht_node);
 	if (lttng_trace_chunk_get(&published_element->chunk)) {
 		published_chunk = &published_element->chunk;
 	}

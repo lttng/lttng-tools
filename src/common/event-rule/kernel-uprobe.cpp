@@ -25,7 +25,7 @@ static void lttng_event_rule_kernel_uprobe_destroy(struct lttng_event_rule *rule
 {
 	struct lttng_event_rule_kernel_uprobe *uprobe;
 
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 
 	lttng_userspace_probe_location_destroy(uprobe->location);
 	free(uprobe->name);
@@ -42,7 +42,7 @@ static bool lttng_event_rule_kernel_uprobe_validate(
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 
 	/* Required field. */
 	if (!uprobe->name) {
@@ -78,7 +78,7 @@ static int lttng_event_rule_kernel_uprobe_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing uprobe event rule.");
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 
 	name_len = strlen(uprobe->name) + 1;
 
@@ -122,8 +122,8 @@ static bool lttng_event_rule_kernel_uprobe_is_equal(const struct lttng_event_rul
 	bool is_equal = false;
 	struct lttng_event_rule_kernel_uprobe *a, *b;
 
-	a = container_of(_a, struct lttng_event_rule_kernel_uprobe, parent);
-	b = container_of(_b, struct lttng_event_rule_kernel_uprobe, parent);
+	a = lttng::utils::container_of(_a, &lttng_event_rule_kernel_uprobe::parent);
+	b = lttng::utils::container_of(_b, &lttng_event_rule_kernel_uprobe::parent);
 
 	/* uprobe is invalid if this is not true. */
 	LTTNG_ASSERT(a->name);
@@ -179,7 +179,7 @@ lttng_event_rule_kernel_uprobe_hash(
 {
 	unsigned long hash;
 	struct lttng_event_rule_kernel_uprobe *urule =
-			container_of(rule, typeof(*urule), parent);
+			lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 
 	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE,
 			lttng_ht_seed);
@@ -438,7 +438,7 @@ lttng_event_rule_kernel_uprobe_get_location_mutable(
 	struct lttng_event_rule_kernel_uprobe *uprobe;
 
 	LTTNG_ASSERT(rule);
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 
 	return uprobe->location;
 }
@@ -456,7 +456,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_set_event_name(
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 	name_copy = strdup(name);
 	if (!name_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -484,7 +484,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_get_event_name(
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
+	uprobe = lttng::utils::container_of(rule, &lttng_event_rule_kernel_uprobe::parent);
 	if (!uprobe->name) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;

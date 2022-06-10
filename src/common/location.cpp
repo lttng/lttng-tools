@@ -31,7 +31,7 @@ static
 void trace_archive_location_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_trace_archive_location *location =
-			container_of(ref, struct lttng_trace_archive_location, ref);
+			lttng::utils::container_of(ref, &lttng_trace_archive_location::ref);
 
 	switch (location->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:

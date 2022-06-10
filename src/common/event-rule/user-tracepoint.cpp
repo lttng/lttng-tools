@@ -32,8 +32,8 @@ static void lttng_event_rule_user_tracepoint_destroy(struct lttng_event_rule *ru
 		return;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	lttng_log_level_rule_destroy(tracepoint->log_level_rule);
 	lttng_dynamic_pointer_array_reset(&tracepoint->exclusions);
@@ -54,8 +54,8 @@ static bool lttng_event_rule_user_tracepoint_validate(
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	/* Required field. */
 	if (!tracepoint->pattern) {
@@ -90,8 +90,8 @@ static int lttng_event_rule_user_tracepoint_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing user tracepoint event rule.");
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(rule, &exclusion_count);
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
@@ -197,8 +197,8 @@ static bool lttng_event_rule_user_tracepoint_is_equal(
 	unsigned int count_a, count_b;
 	enum lttng_event_rule_status status;
 
-	a = container_of(_a, struct lttng_event_rule_user_tracepoint, parent);
-	b = container_of(_b, struct lttng_event_rule_user_tracepoint, parent);
+	a = lttng::utils::container_of(_a, &lttng_event_rule_user_tracepoint::parent);
+	b = lttng::utils::container_of(_b, &lttng_event_rule_user_tracepoint::parent);
 
 	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(_a, &count_a);
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
@@ -268,8 +268,8 @@ lttng_event_rule_user_tracepoint_generate_filter_bytecode(
 
 	LTTNG_ASSERT(rule);
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	status = lttng_event_rule_user_tracepoint_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
@@ -323,8 +323,8 @@ static const char *lttng_event_rule_user_tracepoint_get_internal_filter(
 	struct lttng_event_rule_user_tracepoint *tracepoint;
 
 	LTTNG_ASSERT(rule);
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	return tracepoint->internal_filter.filter;
 }
 
@@ -335,8 +335,8 @@ lttng_event_rule_user_tracepoint_get_internal_filter_bytecode(
 	struct lttng_event_rule_user_tracepoint *tracepoint;
 
 	LTTNG_ASSERT(rule);
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	return tracepoint->internal_filter.bytecode;
 }
 
@@ -410,7 +410,7 @@ static unsigned long lttng_event_rule_user_tracepoint_hash(
 	unsigned int i, exclusion_count;
 	enum lttng_event_rule_status status;
 	struct lttng_event_rule_user_tracepoint *tp_rule =
-			container_of(rule, typeof(*tp_rule), parent);
+			lttng::utils::container_of(rule, &lttng_event_rule_user_tracepoint::parent);
 
 	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT,
 			lttng_ht_seed);
@@ -796,8 +796,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_name_pattern(
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	pattern_copy = strdup(pattern);
 	if (!pattern_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -826,8 +826,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pattern(
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	if (!tracepoint->pattern) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -851,8 +851,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_filter(
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	expression_copy = strdup(expression);
 	if (!expression_copy) {
 		PERROR("Failed to copy filter expression");
@@ -881,8 +881,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_filter(
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	if (!tracepoint->filter_expression) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -941,8 +941,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_set_log_level_rule
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	if (!log_level_rule_valid(log_level_rule)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -978,8 +978,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_log_level_rule
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	if (tracepoint->log_level_rule == NULL) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -1005,8 +1005,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_add_name_pattern_e
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 
 	if (strlen(exclusion) >= LTTNG_SYMBOL_NAME_LEN) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -1043,8 +1043,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pattern_e
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	*count = lttng_dynamic_pointer_array_get_count(&tracepoint->exclusions);
 end:
 	return status;
@@ -1064,8 +1064,8 @@ enum lttng_event_rule_status lttng_event_rule_user_tracepoint_get_name_pattern_e
 		goto end;
 	}
 
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_user_tracepoint, parent);
+	tracepoint = lttng::utils::container_of(
+			rule, &lttng_event_rule_user_tracepoint::parent);
 	if (lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(rule, &count) !=
 			LTTNG_EVENT_RULE_STATUS_OK) {
 		goto end;

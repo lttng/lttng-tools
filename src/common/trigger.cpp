@@ -112,7 +112,7 @@ const struct lttng_action *lttng_trigger_get_const_action(
 static void trigger_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_trigger *trigger =
-			container_of(ref, struct lttng_trigger, ref);
+			lttng::utils::container_of(ref, &lttng_trigger::ref);
 	struct lttng_action *action = lttng_trigger_get_action(trigger);
 	struct lttng_condition *condition =
 			lttng_trigger_get_condition(trigger);

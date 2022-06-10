@@ -88,7 +88,7 @@ void destroy_channel_rcu(struct rcu_head *head)
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 	lsu::registry_channel *chan =
-		caa_container_of(head, lsu::registry_channel, _rcu_head);
+		lttng::utils::container_of(head, &lsu::registry_channel::_rcu_head);
 	DIAGNOSTIC_POP
 
 	delete chan;
@@ -149,7 +149,7 @@ void destroy_enum_rcu(struct rcu_head *head)
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 	lsu::registry_enum *reg_enum =
-		caa_container_of(head, lsu::registry_enum, rcu_head);
+		lttng::utils::container_of(head, &lsu::registry_enum::rcu_head);
 	DIAGNOSTIC_POP
 
 	destroy_enum(reg_enum);
@@ -434,7 +434,7 @@ lttng::sessiond::ust::registry_channel& lsu::registry_session::get_channel(
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	auto chan = caa_container_of(node, lsu::registry_channel, _node);
+	auto chan = lttng::utils::container_of(node, &lsu::registry_channel::_node);
 	DIAGNOSTIC_POP
 	return *chan;
 }
@@ -654,7 +654,7 @@ lsu::registry_session::get_enumeration(const char *enum_name, uint64_t enum_id) 
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	reg_enum = lttng::utils::container_of(node, &lsu::registry_enum::node);
 	DIAGNOSTIC_POP
 
 	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
@@ -682,7 +682,7 @@ lsu::registry_enum *lsu::registry_session::_lookup_enum(
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	reg_enum = lttng::utils::container_of(node, &lsu::registry_enum::node);
 	DIAGNOSTIC_POP
 
 end:

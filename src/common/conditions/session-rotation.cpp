@@ -87,8 +87,8 @@ bool lttng_condition_session_rotation_validate(
 		goto end;
 	}
 
-	rotation = container_of(condition,
-			struct lttng_condition_session_rotation, parent);
+	rotation = lttng::utils::container_of(condition,
+			&lttng_condition_session_rotation::parent);
 	if (!rotation->session_name) {
 		ERR("Invalid session rotation condition: a target session name must be set.");
 		goto end;
@@ -115,8 +115,8 @@ int lttng_condition_session_rotation_serialize(
 	}
 
 	DBG("Serializing session rotation condition");
-	rotation = container_of(condition, struct lttng_condition_session_rotation,
-			parent);
+	rotation = lttng::utils::container_of(condition,
+			&lttng_condition_session_rotation::parent);
 
 	session_name_len = strlen(rotation->session_name) + 1;
 	if (session_name_len > LTTNG_NAME_MAX) {
@@ -146,8 +146,8 @@ bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
 	bool is_equal = false;
 	struct lttng_condition_session_rotation *a, *b;
 
-	a = container_of(_a, struct lttng_condition_session_rotation, parent);
-	b = container_of(_b, struct lttng_condition_session_rotation, parent);
+	a = lttng::utils::container_of(_a, &lttng_condition_session_rotation::parent);
+	b = lttng::utils::container_of(_b, &lttng_condition_session_rotation::parent);
 
 	/* Both session names must be set or both must be unset. */
 	if ((a->session_name && !b->session_name) ||
@@ -172,8 +172,8 @@ void lttng_condition_session_rotation_destroy(
 {
 	struct lttng_condition_session_rotation *rotation;
 
-	rotation = container_of(condition,
-			struct lttng_condition_session_rotation, parent);
+	rotation = lttng::utils::container_of(condition,
+			&lttng_condition_session_rotation::parent);
 
 	free(rotation->session_name);
 	free(rotation);
@@ -474,8 +474,8 @@ lttng_condition_session_rotation_get_session_name(
 		goto end;
 	}
 
-	rotation = container_of(condition, struct lttng_condition_session_rotation,
-			parent);
+	rotation = lttng::utils::container_of(condition,
+			&lttng_condition_session_rotation::parent);
 	if (!rotation->session_name) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -499,8 +499,8 @@ lttng_condition_session_rotation_set_session_name(
 		goto end;
 	}
 
-	rotation = container_of(condition,
-			struct lttng_condition_session_rotation, parent);
+	rotation = lttng::utils::container_of(condition,
+			&lttng_condition_session_rotation::parent);
 	session_name_copy = strdup(session_name);
 	if (!session_name_copy) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
@@ -522,8 +522,8 @@ int lttng_evaluation_session_rotation_serialize(
 	struct lttng_evaluation_session_rotation *rotation;
 	struct lttng_evaluation_session_rotation_comm comm = {};
 
-	rotation = container_of(evaluation,
-			struct lttng_evaluation_session_rotation, parent);
+	rotation = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_rotation::parent);
 	comm.id = rotation->id;
 	comm.has_location = !!rotation->location;
 	ret = lttng_dynamic_buffer_append(
@@ -546,8 +546,8 @@ void lttng_evaluation_session_rotation_destroy(
 {
 	struct lttng_evaluation_session_rotation *rotation;
 
-	rotation = container_of(evaluation,
-			struct lttng_evaluation_session_rotation, parent);
+	rotation = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_rotation::parent);
 	lttng_trace_archive_location_put(rotation->location);
 	free(rotation);
 }
@@ -564,8 +564,8 @@ lttng_evaluation_session_rotation_get_id(
 		goto end;
 	}
 
-	rotation = container_of(evaluation,
-			struct lttng_evaluation_session_rotation, parent);
+	rotation = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_rotation::parent);
 	*id = rotation->id;
 end:
 	return status;
@@ -591,8 +591,8 @@ lttng_evaluation_session_rotation_completed_get_location(
 		goto end;
 	}
 
-	rotation = container_of(evaluation,
-			struct lttng_evaluation_session_rotation, parent);
+	rotation = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_rotation::parent);
 	*location = rotation->location;
 end:
 	return status;

@@ -210,7 +210,7 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 	lttng_ht_lookup(ht, (void *) name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node) {
-		ksyscall = caa_container_of(node, struct syscall, node);
+		ksyscall = lttng::utils::container_of(node, &syscall::node);
 	}
 
 	return ksyscall;

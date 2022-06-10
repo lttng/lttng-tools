@@ -185,7 +185,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 
 	DBG2("Trace UST channel %s found by name", name);
 
-	return caa_container_of(node, struct ltt_ust_channel, node);
+	return lttng::utils::container_of(node, &ltt_ust_channel::node);
 
 error:
 	DBG2("Trace UST channel %s not found by name", name);
@@ -224,7 +224,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 	DBG2("Trace UST event %s found", key.name);
 
-	return caa_container_of(node, struct ltt_ust_event, node);
+	return lttng::utils::container_of(node, &ltt_ust_event::node);
 
 error:
 	DBG2("Trace UST event %s NOT found", key.name);
@@ -257,7 +257,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 	if (!node) {
 		goto end;
 	}
-	agt = caa_container_of(node, struct agent, node);
+	agt = lttng::utils::container_of(node, &agent::node);
 
 end:
 	return agt;
@@ -793,7 +793,7 @@ static struct ust_id_tracker_node *id_tracker_lookup(
 	lttng_ht_lookup(id_tracker->ht, (void *) _id, iter);
 	node = lttng_ht_iter_get_node_ulong(iter);
 	if (node) {
-		return caa_container_of(node, struct ust_id_tracker_node, node);
+		return lttng::utils::container_of(node, &ust_id_tracker_node::node);
 	} else {
 		return NULL;
 	}
@@ -1203,9 +1203,9 @@ end:
 static void destroy_context_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
+		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
 	struct ltt_ust_context *ctx =
-		caa_container_of(node, struct ltt_ust_context, node);
+		lttng::utils::container_of(node, &ltt_ust_context::node);
 
 	trace_ust_destroy_context(ctx);
 }
@@ -1225,7 +1225,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
 		/* Remove from ordered list. */
-		ctx = caa_container_of(node, struct ltt_ust_context, node);
+		ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
 		cds_list_del(&ctx->list);
 		/* Remove from channel's hash table. */
 		ret = lttng_ht_del(ht, &iter);
@@ -1272,9 +1272,9 @@ void trace_ust_destroy_context(struct ltt_ust_context *ctx)
 static void destroy_event_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_str *node =
-		caa_container_of(head, struct lttng_ht_node_str, head);
+		lttng::utils::container_of(head, &lttng_ht_node_str::head);
 	struct ltt_ust_event *event =
-		caa_container_of(node, struct ltt_ust_event, node);
+		lttng::utils::container_of(node, &ltt_ust_event::node);
 
 	trace_ust_destroy_event(event);
 }
@@ -1321,9 +1321,9 @@ static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 static void destroy_channel_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_str *node =
-		caa_container_of(head, struct lttng_ht_node_str, head);
+		lttng::utils::container_of(head, &lttng_ht_node_str::head);
 	struct ltt_ust_channel *channel =
-		caa_container_of(node, struct ltt_ust_channel, node);
+		lttng::utils::container_of(node, &ltt_ust_channel::node);
 
 	_trace_ust_destroy_channel(channel);
 }
@@ -1395,7 +1395,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
 		struct ltt_ust_channel *chan =
-			caa_container_of(node, struct ltt_ust_channel, node);
+			lttng::utils::container_of(node, &ltt_ust_channel::node);
 
 		trace_ust_delete_channel(channels, chan);
 		trace_ust_destroy_channel(chan);

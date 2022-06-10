@@ -93,15 +93,15 @@ int trace_chunk_registry_ht_key_match(struct cds_lfht_node *node,
 			(struct trace_chunk_registry_ht_key *) _key;
 	struct trace_chunk_registry_ht_element *registry;
 
-	registry = container_of(node, typeof(*registry), ht_node);
+	registry = lttng::utils::container_of(node, &trace_chunk_registry_ht_element::ht_node);
 	return key->sessiond_uuid == registry->key.sessiond_uuid;
 }
 
 static
 void trace_chunk_registry_ht_element_free(struct rcu_head *node)
 {
-	struct trace_chunk_registry_ht_element *element =
-			container_of(node, typeof(*element), rcu_node);
+	struct trace_chunk_registry_ht_element *element = lttng::utils::container_of(
+			node, &trace_chunk_registry_ht_element::rcu_node);
 
 	free(element);
 }
@@ -110,7 +110,7 @@ static
 void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 {
 	struct trace_chunk_registry_ht_element *element =
-			container_of(ref, typeof(*element), ref);
+			lttng::utils::container_of(ref, &trace_chunk_registry_ht_element::ref);
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
 	lttng_uuid_to_str(element->key.sessiond_uuid, uuid_str);
@@ -167,7 +167,8 @@ struct trace_chunk_registry_ht_element *trace_chunk_registry_ht_element_find(
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
-		element = container_of(node, typeof(*element), ht_node);
+		element = lttng::utils::container_of(
+				node, &trace_chunk_registry_ht_element::ht_node);
 		/*
 		 * Only consider the look-up as successful if a reference
 		 * could be acquired.
@@ -236,8 +237,8 @@ int trace_chunk_registry_ht_element_create(
 		 * was already published and release the reference to the copy
 		 * we created if successful.
 		 */
-		published_element = container_of(published_node,
-				typeof(*published_element), ht_node);
+		published_element = lttng::utils::container_of(published_node,
+				&trace_chunk_registry_ht_element::ht_node);
 		if (trace_chunk_registry_ht_element_get(published_element)) {
 			DBG("Acquired reference to trace chunk registry of sessiond {%s}",
 					uuid_str);

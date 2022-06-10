@@ -876,7 +876,7 @@ enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
 
 	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
 	node = cds_lfht_iter_get_node(&iter.iter);
-	socket = container_of(node, typeof(*socket), node.node);
+	socket = caa_container_of(node, typeof(*socket), node.node);
 
 	cds_list_for_each_entry(chan,
 			&session->kernel_session->channel_list.head, list) {
@@ -979,7 +979,7 @@ void session_release(struct urcu_ref *ref)
 	int ret;
 	struct ltt_ust_session *usess;
 	struct ltt_kernel_session *ksess;
-	struct ltt_session *session = container_of(ref, typeof(*session), ref);
+	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref);
 	const bool session_published = session->published;
 
 	LTTNG_ASSERT(!session->chunk_being_archived);
@@ -1183,7 +1183,7 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	if (node == NULL) {
 		goto end;
 	}
-	ls = caa_container_of(node, struct ltt_session, node);
+	ls = lttng::utils::container_of(node, &ltt_session::node);
 
 	DBG3("Session %" PRIu64 " found by id.", id);
 	return session_get(ls) ? ls : NULL;
@@ -1456,7 +1456,7 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 		goto end;
 	}
 
-	ls = caa_container_of(node, struct ltt_session, node_by_name);
+	ls = lttng::utils::container_of(node, &ltt_session::node_by_name);
 	*id = ls->id;
 	found = true;
 

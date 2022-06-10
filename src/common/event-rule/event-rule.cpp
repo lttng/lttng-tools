@@ -65,7 +65,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 static void lttng_event_rule_release(struct urcu_ref *ref)
 {
 	struct lttng_event_rule *event_rule =
-			container_of(ref, typeof(*event_rule), ref);
+			lttng::utils::container_of(ref, &lttng_event_rule::ref);
 
 	LTTNG_ASSERT(event_rule->destroy);
 	event_rule->destroy(event_rule);

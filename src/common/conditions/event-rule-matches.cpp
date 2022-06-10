@@ -55,8 +55,8 @@ static bool lttng_condition_event_rule_matches_validate(
 		goto end;
 	}
 
-	event_rule = container_of(condition,
-			struct lttng_condition_event_rule_matches, parent);
+	event_rule = lttng::utils::container_of(condition,
+			&lttng_condition_event_rule_matches::parent);
 	if (!event_rule->rule) {
 		ERR("Invalid on event condition: a rule must be set");
 		goto end;
@@ -167,9 +167,8 @@ int serialize_event_expr(const struct lttng_event_expr *expr,
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_field *field_expr =
-				container_of(expr,
-					const struct lttng_event_expr_field,
-					parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_field::parent);
 
 		/* Serialize the field name. */
 		DBG("Serializing field event expression's field name: '%s'",
@@ -184,9 +183,8 @@ int serialize_event_expr(const struct lttng_event_expr *expr,
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_app_specific_context_field *field_expr =
-				container_of(expr,
-					const struct lttng_event_expr_app_specific_context_field,
-					parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_app_specific_context_field::parent);
 
 		/* Serialize the provider name. */
 		DBG("Serializing app-specific context field event expression's "
@@ -211,9 +209,8 @@ int serialize_event_expr(const struct lttng_event_expr *expr,
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
 	{
 		const struct lttng_event_expr_array_field_element *elem_expr =
-				container_of(expr,
-					const struct lttng_event_expr_array_field_element,
-					parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_array_field_element::parent);
 		const uint32_t index = elem_expr->index;
 
 		/* Serialize the index. */
@@ -247,9 +244,8 @@ lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
 	const struct lttng_condition_event_rule_matches
-			*event_rule_matches_cond = container_of(condition,
-					const struct lttng_condition_event_rule_matches,
-					parent);
+			*event_rule_matches_cond = lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 	struct lttng_capture_descriptor *desc = NULL;
 	unsigned int count;
 	enum lttng_condition_status status;
@@ -290,8 +286,8 @@ static int lttng_condition_event_rule_matches_serialize(
 	}
 
 	DBG("Serializing on event condition");
-	event_rule_matches_condition = container_of(condition,
-			struct lttng_condition_event_rule_matches, parent);
+	event_rule_matches_condition = lttng::utils::container_of(condition,
+			&lttng_condition_event_rule_matches::parent);
 
 	DBG("Serializing on event condition's event rule");
 	ret = lttng_event_rule_serialize(
@@ -388,8 +384,8 @@ static bool lttng_condition_event_rule_matches_is_equal(
 	bool is_equal = false;
 	struct lttng_condition_event_rule_matches *a, *b;
 
-	a = container_of(_a, struct lttng_condition_event_rule_matches, parent);
-	b = container_of(_b, struct lttng_condition_event_rule_matches, parent);
+	a = lttng::utils::container_of(_a, &lttng_condition_event_rule_matches::parent);
+	b = lttng::utils::container_of(_b, &lttng_condition_event_rule_matches::parent);
 
 	/* Both event rules must be set or both must be unset. */
 	if ((a->rule && !b->rule) || (!a->rule && b->rule)) {
@@ -413,8 +409,8 @@ static void lttng_condition_event_rule_matches_destroy(
 {
 	struct lttng_condition_event_rule_matches *event_rule_matches_condition;
 
-	event_rule_matches_condition = container_of(condition,
-			struct lttng_condition_event_rule_matches, parent);
+	event_rule_matches_condition = lttng::utils::container_of(condition,
+			&lttng_condition_event_rule_matches::parent);
 
 	lttng_event_rule_put(event_rule_matches_condition->rule);
 	lttng_dynamic_pointer_array_reset(
@@ -793,8 +789,8 @@ lttng_condition_event_rule_matches_borrow_rule_mutable(
 		goto end;
 	}
 
-	event_rule = container_of(condition,
-			struct lttng_condition_event_rule_matches, parent);
+	event_rule = lttng::utils::container_of(condition,
+			&lttng_condition_event_rule_matches::parent);
 	if (!event_rule->rule) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -822,9 +818,8 @@ void lttng_condition_event_rule_matches_set_error_counter_index(
 		struct lttng_condition *condition, uint64_t error_counter_index)
 {
 	struct lttng_condition_event_rule_matches *event_rule_matches_cond =
-			container_of(condition,
-					struct lttng_condition_event_rule_matches,
-					parent);
+			lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 
 	LTTNG_OPTIONAL_SET(&event_rule_matches_cond->error_counter_index,
 			error_counter_index);
@@ -834,9 +829,8 @@ uint64_t lttng_condition_event_rule_matches_get_error_counter_index(
 		const struct lttng_condition *condition)
 {
 	const struct lttng_condition_event_rule_matches
-			*event_rule_matches_cond = container_of(condition,
-					const struct lttng_condition_event_rule_matches,
-					parent);
+			*event_rule_matches_cond = lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 
 	return LTTNG_OPTIONAL_GET(event_rule_matches_cond->error_counter_index);
 }
@@ -849,9 +843,8 @@ lttng_condition_event_rule_matches_append_capture_descriptor(
 	int ret;
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 	struct lttng_condition_event_rule_matches *event_rule_matches_cond =
-			container_of(condition,
-					struct lttng_condition_event_rule_matches,
-					parent);
+			lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 	struct lttng_capture_descriptor *descriptor = NULL;
 	const struct lttng_event_rule *rule = NULL;
 
@@ -919,9 +912,8 @@ lttng_condition_event_rule_matches_get_capture_descriptor_count(
 {
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 	const struct lttng_condition_event_rule_matches
-			*event_rule_matches_condition = container_of(condition,
-					const struct lttng_condition_event_rule_matches,
-					parent);
+			*event_rule_matches_condition = lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 
 	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition) ||
 			!count) {
@@ -1020,8 +1012,8 @@ static int lttng_evaluation_event_rule_matches_serialize(
 	struct lttng_evaluation_event_rule_matches *hit;
 	uint32_t capture_payload_size;
 
-	hit = container_of(evaluation,
-			struct lttng_evaluation_event_rule_matches, parent);
+	hit = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_event_rule_matches::parent);
 
 	capture_payload_size = (uint32_t) hit->capture_payload.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &capture_payload_size,
@@ -1090,8 +1082,8 @@ static void lttng_evaluation_event_rule_matches_destroy(
 {
 	struct lttng_evaluation_event_rule_matches *hit;
 
-	hit = container_of(evaluation,
-			struct lttng_evaluation_event_rule_matches, parent);
+	hit = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_event_rule_matches::parent);
 	lttng_dynamic_buffer_reset(&hit->capture_payload);
 	lttng_event_field_value_destroy(hit->captured_values);
 	free(hit);
@@ -1445,8 +1437,8 @@ lttng_evaluation_event_rule_matches_get_captured_values(
 		goto end;
 	}
 
-	hit = container_of(evaluation,
-			struct lttng_evaluation_event_rule_matches, parent);
+	hit = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_event_rule_matches::parent);
 	if (!hit->captured_values) {
 		status = LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE;
 		goto end;
@@ -1511,9 +1503,8 @@ lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
 	const struct lttng_condition_event_rule_matches
-			*event_rule_matches_cond = container_of(condition,
-					const struct lttng_condition_event_rule_matches,
-					parent);
+			*event_rule_matches_cond = lttng::utils::container_of(condition,
+					&lttng_condition_event_rule_matches::parent);
 	struct lttng_capture_descriptor *desc = NULL;
 	struct lttng_bytecode *bytecode = NULL;
 	unsigned int count;

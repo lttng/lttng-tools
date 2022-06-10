@@ -19,7 +19,7 @@ struct fd_handle {
 static void fd_handle_release(struct urcu_ref *ref)
 {
 	int ret;
-	struct fd_handle *handle = container_of(ref, struct fd_handle, ref);
+	struct fd_handle *handle = lttng::utils::container_of(ref, &fd_handle::ref);
 
 	LTTNG_ASSERT(handle->fd >= 0);
 	ret = close(handle->fd);

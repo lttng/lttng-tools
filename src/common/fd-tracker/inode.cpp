@@ -85,8 +85,8 @@ static unsigned long lttng_inode_id_hash(const struct inode_id *id)
 static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 {
 	const struct inode_id *id = (inode_id *) key;
-	const struct lttng_inode *inode = caa_container_of(
-			node, struct lttng_inode, registry_node);
+	const struct lttng_inode *inode = lttng::utils::container_of(
+			node, &lttng_inode::registry_node);
 
 	return inode->id.device == id->device && inode->id.inode == id->inode;
 }
@@ -94,7 +94,7 @@ static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 static void lttng_inode_free(struct rcu_head *head)
 {
 	struct lttng_inode *inode =
-			caa_container_of(head, struct lttng_inode, rcu_head);
+			lttng::utils::container_of(head, &lttng_inode::rcu_head);
 
 	free(inode);
 }
@@ -243,7 +243,7 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 
 static void lttng_inode_release(struct urcu_ref *ref)
 {
-	lttng_inode_destroy(caa_container_of(ref, struct lttng_inode, ref));
+	lttng_inode_destroy(lttng::utils::container_of(ref, &lttng_inode::ref));
 }
 
 static void lttng_inode_get(struct lttng_inode *inode)
@@ -526,8 +526,8 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 			lttng_inode_match, &id, &iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
-		inode = caa_container_of(
-				node, struct lttng_inode, registry_node);
+		inode = lttng::utils::container_of(
+				node, &lttng_inode::registry_node);
 		lttng_inode_get(inode);
 		goto end_unlock;
 	}

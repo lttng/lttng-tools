@@ -28,8 +28,8 @@ void lttng_condition_session_consumed_size_destroy(struct lttng_condition *condi
 {
 	struct lttng_condition_session_consumed_size *consumed_size;
 
-	consumed_size = container_of(condition,
-			struct lttng_condition_session_consumed_size, parent);
+	consumed_size = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 
 	free(consumed_size->session_name);
 	free(consumed_size);
@@ -46,8 +46,8 @@ bool lttng_condition_session_consumed_size_validate(
 		goto end;
 	}
 
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 	if (!consumed->session_name) {
 		ERR("Invalid session consumed size condition: a target session name must be set.");
 		goto end;
@@ -78,9 +78,8 @@ int lttng_condition_session_consumed_size_serialize(
 	}
 
 	DBG("Serializing session consumed size condition");
-	consumed = container_of(condition,
-			struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 
 	session_name_len = strlen(consumed->session_name) + 1;
 	if (session_name_len > LTTNG_NAME_MAX) {
@@ -114,8 +113,8 @@ bool lttng_condition_session_consumed_size_is_equal(const struct lttng_condition
 	bool is_equal = false;
 	struct lttng_condition_session_consumed_size *a, *b;
 
-	a = container_of(_a, struct lttng_condition_session_consumed_size, parent);
-	b = container_of(_b, struct lttng_condition_session_consumed_size, parent);
+	a = lttng::utils::container_of(_a, &lttng_condition_session_consumed_size::parent);
+	b = lttng::utils::container_of(_b, &lttng_condition_session_consumed_size::parent);
 
 	if (a->consumed_threshold_bytes.set && b->consumed_threshold_bytes.set) {
 		uint64_t a_value, b_value;
@@ -368,8 +367,8 @@ lttng_condition_session_consumed_size_get_threshold(
 		goto end;
 	}
 
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 	if (!consumed->consumed_threshold_bytes.set) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -391,8 +390,8 @@ lttng_condition_session_consumed_size_set_threshold(
 		goto end;
 	}
 
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 	consumed->consumed_threshold_bytes.set = true;
 	consumed->consumed_threshold_bytes.value = consumed_threshold_bytes;
 end:
@@ -412,8 +411,8 @@ lttng_condition_session_consumed_size_get_session_name(
 		goto end;
 	}
 
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 	if (!consumed->session_name) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -437,8 +436,8 @@ lttng_condition_session_consumed_size_set_session_name(
 		goto end;
 	}
 
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(condition,
+			&lttng_condition_session_consumed_size::parent);
 	session_name_copy = strdup(session_name);
 	if (!session_name_copy) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
@@ -461,8 +460,8 @@ int lttng_evaluation_session_consumed_size_serialize(
 	struct lttng_evaluation_session_consumed_size *consumed;
 	struct lttng_evaluation_session_consumed_size_comm comm;
 
-	consumed = container_of(evaluation,
-			struct lttng_evaluation_session_consumed_size, parent);
+	consumed = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_consumed_size::parent);
 	comm.session_consumed = consumed->session_consumed;
 	return lttng_dynamic_buffer_append(
 			&payload->buffer, &comm, sizeof(comm));
@@ -474,8 +473,8 @@ void lttng_evaluation_session_consumed_size_destroy(
 {
 	struct lttng_evaluation_session_consumed_size *consumed;
 
-	consumed = container_of(evaluation, struct lttng_evaluation_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_consumed_size::parent);
 	free(consumed);
 }
 
@@ -511,8 +510,8 @@ lttng_evaluation_session_consumed_size_get_consumed_size(
 		goto end;
 	}
 
-	consumed = container_of(evaluation, struct lttng_evaluation_session_consumed_size,
-			parent);
+	consumed = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_session_consumed_size::parent);
 	*session_consumed = consumed->session_consumed;
 end:
 	return status;

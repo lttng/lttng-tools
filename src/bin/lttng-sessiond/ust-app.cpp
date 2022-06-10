@@ -287,7 +287,7 @@ static void close_notify_sock_rcu(struct rcu_head *head)
 {
 	int ret;
 	struct ust_app_notify_sock_obj *obj =
-		caa_container_of(head, struct ust_app_notify_sock_obj, head);
+		lttng::utils::container_of(head, &ust_app_notify_sock_obj::head);
 
 	/* Must have a valid fd here. */
 	LTTNG_ASSERT(obj->fd >= 0);
@@ -380,8 +380,8 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event,
 static
 void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
 {
-	struct ust_app_event_notifier_rule *obj = caa_container_of(
-			head, struct ust_app_event_notifier_rule, rcu_head);
+	struct ust_app_event_notifier_rule *obj = lttng::utils::container_of(
+			head, &ust_app_event_notifier_rule::rcu_head);
 
 	free(obj);
 }
@@ -480,7 +480,7 @@ static
 void delete_ust_app_channel_rcu(struct rcu_head *head)
 {
 	struct ust_app_channel *ua_chan =
-		caa_container_of(head, struct ust_app_channel, rcu_head);
+		lttng::utils::container_of(head, &ust_app_channel::rcu_head);
 
 	lttng_ht_destroy(ua_chan->ctx);
 	lttng_ht_destroy(ua_chan->events);
@@ -902,7 +902,7 @@ static
 void delete_ust_app_session_rcu(struct rcu_head *head)
 {
 	struct ust_app_session *ua_sess =
-		caa_container_of(head, struct ust_app_session, rcu_head);
+		lttng::utils::container_of(head, &ust_app_session::rcu_head);
 
 	lttng_ht_destroy(ua_sess->channels);
 	free(ua_sess);
@@ -1126,9 +1126,9 @@ static
 void delete_ust_app_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
+		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
 	struct ust_app *app =
-		caa_container_of(node, struct ust_app, pid_n);
+		lttng::utils::container_of(node, &ust_app::pid_n);
 
 	DBG3("Call RCU deleting app PID %d", app->pid);
 	delete_ust_app(app);
@@ -1470,7 +1470,7 @@ struct ust_app *ust_app_find_by_sock(int sock)
 		goto error;
 	}
 
-	return caa_container_of(node, struct ust_app, sock_n);
+	return lttng::utils::container_of(node, &ust_app::sock_n);
 
 error:
 	return NULL;
@@ -1495,7 +1495,7 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 		goto error;
 	}
 
-	return caa_container_of(node, struct ust_app, notify_sock_n);
+	return lttng::utils::container_of(node, &ust_app::notify_sock_n);
 
 error:
 	return NULL;
@@ -1535,7 +1535,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 		goto end;
 	}
 
-	event = caa_container_of(node, struct ust_app_event, node);
+	event = lttng::utils::container_of(node, &ust_app_event::node);
 
 end:
 	return event;
@@ -1565,8 +1565,8 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(
 		goto end;
 	}
 
-	event_notifier_rule = caa_container_of(
-			node, struct ust_app_event_notifier_rule, node);
+	event_notifier_rule = lttng::utils::container_of(
+			node, &ust_app_event_notifier_rule::node);
 end:
 	return event_notifier_rule;
 }
@@ -2506,7 +2506,7 @@ static struct ust_app_session *lookup_session_by_app(
 		goto error;
 	}
 
-	return caa_container_of(node, struct ust_app_session, node);
+	return lttng::utils::container_of(node, &ust_app_session::node);
 
 error:
 	return NULL;
@@ -2833,7 +2833,7 @@ struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
 		goto end;
 	}
 
-	app_ctx = caa_container_of(node, struct ust_app_ctx, node);
+	app_ctx = lttng::utils::container_of(node, &ust_app_ctx::node);
 
 end:
 	return app_ctx;
@@ -2965,7 +2965,7 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+	ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 	ret = enable_ust_channel(app, ua_sess, ua_chan);
 	if (ret < 0) {
@@ -3680,7 +3680,7 @@ static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 	lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
 	if (ua_chan_node != NULL) {
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
 	}
 
@@ -3945,7 +3945,7 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 
 	DBG2("Found UST app by pid %d", pid);
 
-	app = caa_container_of(node, struct ust_app, pid_n);
+	app = lttng::utils::container_of(node, &ust_app::pid_n);
 
 error:
 	return app;
@@ -4270,7 +4270,7 @@ void ust_app_unregister(int sock)
 	node = lttng_ht_iter_get_node_ulong(&ust_app_sock_iter);
 	LTTNG_ASSERT(node);
 
-	lta = caa_container_of(node, struct ust_app, sock_n);
+	lta = lttng::utils::container_of(node, &ust_app::sock_n);
 	DBG("PID %d unregistering with sock %d", lta->pid, sock);
 
 	/*
@@ -4763,7 +4763,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		/* If the session if found for the app, the channel must be there */
 		LTTNG_ASSERT(ua_chan_node);
 
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		/* The channel must not be already disabled */
 		LTTNG_ASSERT(ua_chan->enabled == 1);
 
@@ -4866,7 +4866,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 					"Skipping", uchan->name, usess->id, app->pid);
 			continue;
 		}
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
 				uevent->filter, uevent->attr.loglevel,
@@ -5025,7 +5025,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 		/* Get event node */
 		ua_event = find_ust_app_event(ua_chan->events, uevent->attr.name,
@@ -5098,7 +5098,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		/* If the channel is not found, there is a code flow error */
 		LTTNG_ASSERT(ua_chan_node);
 
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 		ret = create_ust_app_event(ua_chan, uevent, app);
 		pthread_mutex_unlock(&ua_sess->lock);
@@ -5642,7 +5642,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		/* Session is being or is deleted. */
 		goto end;
 	}
-	ua_sess = caa_container_of(node, struct ust_app_session, node);
+	ua_sess = lttng::utils::container_of(node, &ust_app_session::node);
 
 	health_code_update();
 	destroy_app_session(app, ua_sess);
@@ -6326,7 +6326,7 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app,
 		goto error;
 	}
 
-	ua_sess = caa_container_of(node, struct ust_app_session, ust_objd_node);
+	ua_sess = lttng::utils::container_of(node, &ust_app_session::ust_objd_node);
 
 error:
 	return ua_sess;
@@ -6354,7 +6354,7 @@ static struct ust_app_channel *find_channel_by_objd(struct ust_app *app,
 		goto error;
 	}
 
-	ua_chan = caa_container_of(node, struct ust_app_channel, ust_objd_node);
+	ua_chan = lttng::utils::container_of(node, &ust_app_channel::ust_objd_node);
 
 error:
 	return ua_chan;
@@ -7253,7 +7253,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		/* If the session is found for the app, the channel must be there */
 		LTTNG_ASSERT(ua_chan_node);
 
-		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 		if (overwrite) {
 			uint64_t _lost;

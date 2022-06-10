@@ -35,9 +35,9 @@
 static void free_stream_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
+		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct lttng_consumer_stream *stream =
-		caa_container_of(node, struct lttng_consumer_stream, node);
+		lttng::utils::container_of(node, &lttng_consumer_stream::node);
 
 	pthread_mutex_destroy(&stream->lock);
 	free(stream);

@@ -32,7 +32,7 @@ void lttng_condition_destroy(struct lttng_condition *condition)
 static void condition_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_condition *condition =
-		container_of(ref, struct lttng_condition, ref);
+		lttng::utils::container_of(ref, &lttng_condition::ref);
 
 	condition->destroy(condition);
 }

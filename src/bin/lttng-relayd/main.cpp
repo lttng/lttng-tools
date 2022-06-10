@@ -1329,7 +1329,7 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 				/* Continue thread execution */
 				break;
 			}
-			new_conn = caa_container_of(node, struct relay_connection, qnode);
+			new_conn = lttng::utils::container_of(node, &relay_connection::qnode);
 
 			DBG("Dispatching request waiting on sock %d", new_conn->sock->fd);
 

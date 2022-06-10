@@ -414,7 +414,7 @@ struct consumer_socket *consumer_find_socket(int key,
 			&iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node != NULL) {
-		socket = caa_container_of(node, struct consumer_socket, node);
+		socket = lttng::utils::container_of(node, &consumer_socket::node);
 	}
 
 	return socket;
@@ -481,9 +481,9 @@ void consumer_del_socket(struct consumer_socket *sock,
 static void destroy_socket_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
+		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
 	struct consumer_socket *socket =
-		caa_container_of(node, struct consumer_socket, node);
+		lttng::utils::container_of(node, &consumer_socket::node);
 
 	free(socket);
 }
@@ -566,7 +566,7 @@ void consumer_destroy_output_sockets(struct consumer_output *obj)
 static void consumer_release_output(struct urcu_ref *ref)
 {
 	struct consumer_output *obj =
-		caa_container_of(ref, struct consumer_output, ref);
+		lttng::utils::container_of(ref, &consumer_output::ref);
 
 	consumer_destroy_output_sockets(obj);
 

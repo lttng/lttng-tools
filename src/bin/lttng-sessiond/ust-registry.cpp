@@ -33,11 +33,11 @@ namespace lsu = lttng::sessiond::ust;
  */
 static void ust_registry_event_destroy_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_u64 *node = caa_container_of(head, struct lttng_ht_node_u64, head);
+	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 	lttng::sessiond::ust::registry_event *event =
-			caa_container_of(node, lttng::sessiond::ust::registry_event, _node);
+			lttng::utils::container_of(node, &lttng::sessiond::ust::registry_event::_node);
 	DIAGNOSTIC_POP
 
 	lttng::sessiond::ust::registry_event_destroy(event);

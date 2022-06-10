@@ -56,10 +56,8 @@ struct lttng_event_expr_field *create_field_event_expr(
 		enum lttng_event_expr_type type,
 		const char *name)
 {
-	struct lttng_event_expr_field *expr =
-			container_of(
-				create_empty_expr(type, sizeof(*expr)),
-				struct lttng_event_expr_field, parent);
+	struct lttng_event_expr_field *expr = lttng::utils::container_of(
+			create_empty_expr(type, sizeof(*expr)), &lttng_event_expr_field::parent);
 
 	if (!expr) {
 		goto error;
@@ -127,11 +125,10 @@ struct lttng_event_expr *lttng_event_expr_app_specific_context_field_create(
 		goto error;
 	}
 
-	expr = container_of(create_empty_expr(
+	expr = lttng::utils::container_of(create_empty_expr(
 			LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD,
 			sizeof(*expr)),
-			struct lttng_event_expr_app_specific_context_field,
-			parent);
+			&lttng_event_expr_app_specific_context_field::parent);
 	if (!expr) {
 		goto error;
 	}
@@ -172,11 +169,10 @@ struct lttng_event_expr *lttng_event_expr_array_field_element_create(
 		goto error;
 	}
 
-	expr = container_of(create_empty_expr(
+	expr = lttng::utils::container_of(create_empty_expr(
 			LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT,
 			sizeof(*expr)),
-			struct lttng_event_expr_array_field_element,
-			parent);
+			&lttng_event_expr_array_field_element::parent);
 	if (!expr) {
 		goto error;
 	}
@@ -202,8 +198,8 @@ const char *lttng_event_expr_event_payload_field_get_name(
 		goto end;
 	}
 
-	ret = container_of(expr,
-			const struct lttng_event_expr_field, parent)->name;
+	ret = lttng::utils::container_of(expr,
+			&lttng_event_expr_field::parent)->name;
 
 end:
 	return ret;
@@ -218,8 +214,8 @@ const char *lttng_event_expr_channel_context_field_get_name(
 		goto end;
 	}
 
-	ret = container_of(expr,
-			const struct lttng_event_expr_field, parent)->name;
+	ret = lttng::utils::container_of(expr,
+			&lttng_event_expr_field::parent)->name;
 
 end:
 	return ret;
@@ -234,9 +230,8 @@ const char *lttng_event_expr_app_specific_context_field_get_provider_name(
 		goto end;
 	}
 
-	ret = container_of(expr,
-			const struct lttng_event_expr_app_specific_context_field,
-			parent)->provider_name;
+	ret = lttng::utils::container_of(expr,
+			&lttng_event_expr_app_specific_context_field::parent)->provider_name;
 
 end:
 	return ret;
@@ -251,9 +246,8 @@ const char *lttng_event_expr_app_specific_context_field_get_type_name(
 		goto end;
 	}
 
-	ret = container_of(expr,
-			const struct lttng_event_expr_app_specific_context_field,
-			parent)->type_name;
+	ret = lttng::utils::container_of(expr,
+			&lttng_event_expr_app_specific_context_field::parent)->type_name;
 
 end:
 	return ret;
@@ -269,9 +263,8 @@ lttng_event_expr_array_field_element_get_parent_expr(
 		goto end;
 	}
 
-	ret = container_of(expr,
-			const struct lttng_event_expr_array_field_element,
-			parent)->array_field_expr;
+	ret = lttng::utils::container_of(expr,
+			&lttng_event_expr_array_field_element::parent)->array_field_expr;
 
 end:
 	return ret;
@@ -288,9 +281,8 @@ enum lttng_event_expr_status lttng_event_expr_array_field_element_get_index(
 		goto end;
 	}
 
-	*index = container_of(expr,
-			const struct lttng_event_expr_array_field_element,
-			parent)->index;
+	*index = lttng::utils::container_of(expr,
+			&lttng_event_expr_array_field_element::parent)->index;
 
 end:
 	return ret;
@@ -321,13 +313,11 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_field *field_expr_a =
-				container_of(expr_a,
-					const struct lttng_event_expr_field,
-					parent);
+				lttng::utils::container_of(expr_a,
+					&lttng_event_expr_field::parent);
 		const struct lttng_event_expr_field *field_expr_b =
-				container_of(expr_b,
-					const struct lttng_event_expr_field,
-					parent);
+				lttng::utils::container_of(expr_b,
+					&lttng_event_expr_field::parent);
 
 		if (strcmp(field_expr_a->name, field_expr_b->name) != 0) {
 			goto not_equal;
@@ -338,13 +328,11 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_app_specific_context_field *field_expr_a =
-				container_of(expr_a,
-					const struct lttng_event_expr_app_specific_context_field,
-					parent);
+				lttng::utils::container_of(expr_a,
+					&lttng_event_expr_app_specific_context_field::parent);
 		const struct lttng_event_expr_app_specific_context_field *field_expr_b =
-				container_of(expr_b,
-					const struct lttng_event_expr_app_specific_context_field,
-					parent);
+				lttng::utils::container_of(expr_b,
+					&lttng_event_expr_app_specific_context_field::parent);
 
 		if (strcmp(field_expr_a->provider_name,
 				field_expr_b->provider_name) != 0) {
@@ -361,13 +349,11 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
 	{
 		const struct lttng_event_expr_array_field_element *elem_expr_a =
-				container_of(expr_a,
-					const struct lttng_event_expr_array_field_element,
-					parent);
+				lttng::utils::container_of(expr_a,
+					&lttng_event_expr_array_field_element::parent);
 		const struct lttng_event_expr_array_field_element *elem_expr_b =
-				container_of(expr_b,
-					const struct lttng_event_expr_array_field_element,
-					parent);
+				lttng::utils::container_of(expr_b,
+					&lttng_event_expr_array_field_element::parent);
 
 		if (!lttng_event_expr_is_equal(elem_expr_a->array_field_expr,
 				elem_expr_b->array_field_expr)) {
@@ -404,8 +390,8 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
 	{
 		struct lttng_event_expr_field *field_expr =
-				container_of(expr,
-					struct lttng_event_expr_field, parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_field::parent);
 
 		free(field_expr->name);
 		break;
@@ -413,9 +399,8 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		struct lttng_event_expr_app_specific_context_field *field_expr =
-				container_of(expr,
-					struct lttng_event_expr_app_specific_context_field,
-					parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_app_specific_context_field::parent);
 
 		free(field_expr->provider_name);
 		free(field_expr->type_name);
@@ -424,9 +409,8 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
 	{
 		struct lttng_event_expr_array_field_element *elem_expr =
-				container_of(expr,
-					struct lttng_event_expr_array_field_element,
-					parent);
+				lttng::utils::container_of(expr,
+					&lttng_event_expr_array_field_element::parent);
 
 		lttng_event_expr_destroy(elem_expr->array_field_expr);
 		break;

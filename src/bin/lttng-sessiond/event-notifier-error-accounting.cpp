@@ -128,7 +128,7 @@ static void free_ust_error_accounting_entry(struct rcu_head *head)
 {
 	int i;
 	struct ust_error_accounting_entry *entry =
-			caa_container_of(head, typeof(*entry), rcu_head);
+			lttng::utils::container_of(head, &ust_error_accounting_entry::rcu_head);
 
 	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
 		lttng_ust_ctl_release_object(-1, entry->cpu_counters[i]);
@@ -155,7 +155,7 @@ static
 void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
 {
 	struct ust_error_accounting_entry *entry =
-			container_of(entry_ref, typeof(*entry), ref);
+			lttng::utils::container_of(entry_ref, &ust_error_accounting_entry::ref);
 
 	rcu_read_lock();
 	cds_lfht_del(error_counter_uid_ht->ht, &entry->node.node);
@@ -322,8 +322,7 @@ enum event_notifier_error_accounting_status get_error_counter_index_for_token(
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
-		index_entry = caa_container_of(
-				node, const struct index_ht_entry, node);
+		index_entry = lttng::utils::container_of(node, &index_ht_entry::node);
 		*error_counter_index = index_entry->error_counter_index;
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 	} else {
@@ -1328,8 +1327,8 @@ void event_notifier_error_accounting_unregister_event_notifier(
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
 		int del_ret;
-		struct index_ht_entry *index_entry = caa_container_of(
-				node, typeof(*index_entry), node);
+		struct index_ht_entry *index_entry =
+				lttng::utils::container_of(node, &index_ht_entry::node);
 		enum lttng_index_allocator_status index_alloc_status;
 
 		index_alloc_status = lttng_index_allocator_release(

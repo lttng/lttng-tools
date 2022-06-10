@@ -48,7 +48,7 @@ static struct lttng_action_list *action_list_from_action(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_list, parent);
+	return lttng::utils::container_of(action, &lttng_action_list::parent);
 }
 
 static const struct lttng_action_list *action_list_from_action_const(
@@ -56,7 +56,7 @@ static const struct lttng_action_list *action_list_from_action_const(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_list, parent);
+	return lttng::utils::container_of(action, &lttng_action_list::parent);
 }
 
 static bool lttng_action_list_validate(struct lttng_action *action)
@@ -258,8 +258,6 @@ static enum lttng_action_status lttng_action_list_add_error_query_results(
 {
 	unsigned int i, count;
 	enum lttng_action_status action_status;
-	const struct lttng_action_list *list =
-			container_of(action, typeof(*list), parent);
 
 	action_status = lttng_action_list_get_count(action, &count);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {

@@ -32,8 +32,8 @@ static void lttng_event_rule_python_logging_destroy(struct lttng_event_rule *rul
 		return;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	lttng_log_level_rule_destroy(python_logging->log_level_rule);
 	free(python_logging->pattern);
@@ -53,8 +53,8 @@ static bool lttng_event_rule_python_logging_validate(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	/* Required field. */
 	if (!python_logging->pattern) {
@@ -86,8 +86,8 @@ static int lttng_event_rule_python_logging_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing python_logging event rule.");
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	pattern_len = strlen(python_logging->pattern) + 1;
 
@@ -141,8 +141,8 @@ static bool lttng_event_rule_python_logging_is_equal(
 	bool is_equal = false;
 	struct lttng_event_rule_python_logging *a, *b;
 
-	a = container_of(_a, struct lttng_event_rule_python_logging, parent);
-	b = container_of(_b, struct lttng_event_rule_python_logging, parent);
+	a = lttng::utils::container_of(_a, &lttng_event_rule_python_logging::parent);
+	b = lttng::utils::container_of(_b, &lttng_event_rule_python_logging::parent);
 
 	/* Quick checks. */
 
@@ -304,8 +304,8 @@ lttng_event_rule_python_logging_generate_filter_bytecode(
 
 	LTTNG_ASSERT(rule);
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	status = lttng_event_rule_python_logging_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
@@ -357,8 +357,8 @@ static const char *lttng_event_rule_python_logging_get_internal_filter(
 	struct lttng_event_rule_python_logging *python_logging;
 
 	LTTNG_ASSERT(rule);
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	return python_logging->internal_filter.filter;
 }
 
@@ -369,8 +369,8 @@ lttng_event_rule_python_logging_get_internal_filter_bytecode(
 	struct lttng_event_rule_python_logging *python_logging;
 
 	LTTNG_ASSERT(rule);
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	return python_logging->internal_filter.bytecode;
 }
 
@@ -389,7 +389,7 @@ static unsigned long lttng_event_rule_python_logging_hash(
 {
 	unsigned long hash;
 	struct lttng_event_rule_python_logging *tp_rule =
-			container_of(rule, typeof(*tp_rule), parent);
+			lttng::utils::container_of(rule, &lttng_event_rule_python_logging::parent);
 
 	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING,
 			lttng_ht_seed);
@@ -418,8 +418,8 @@ static struct lttng_event *lttng_event_rule_python_logging_generate_lttng_event(
 	enum lttng_event_rule_status status;
 	const struct lttng_log_level_rule *log_level_rule;
 
-	python_logging = container_of(
-			rule, const struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	local_event = zmalloc<lttng_event>();
 	if (!local_event) {
@@ -752,8 +752,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_set_name_pattern(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	pattern_copy = strdup(pattern);
 	if (!pattern_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -782,8 +782,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_get_name_pattern(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	if (!python_logging->pattern) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -807,8 +807,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_set_filter(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	expression_copy = strdup(expression);
 	if (!expression_copy) {
 		PERROR("Failed to copy filter expression");
@@ -829,7 +829,7 @@ end:
 enum lttng_event_rule_status lttng_event_rule_python_logging_get_filter(
 		const struct lttng_event_rule *rule, const char **expression)
 {
-	struct lttng_event_rule_python_logging *python_logging;
+	const struct lttng_event_rule_python_logging *python_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_PYTHON_LOGGING_EVENT_RULE(rule) || !expression) {
@@ -837,8 +837,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_get_filter(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	if (!python_logging->filter_expression) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -874,8 +874,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_set_log_level_rule(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 
 	if (!log_level_rule_valid(log_level_rule)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -911,8 +911,8 @@ enum lttng_event_rule_status lttng_event_rule_python_logging_get_log_level_rule(
 		goto end;
 	}
 
-	python_logging = container_of(
-			rule, struct lttng_event_rule_python_logging, parent);
+	python_logging = lttng::utils::container_of(
+			rule, &lttng_event_rule_python_logging::parent);
 	if (python_logging->log_level_rule == NULL) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;

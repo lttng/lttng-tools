@@ -66,8 +66,8 @@ action_snapshot_session_from_action(struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(
-			action, struct lttng_action_snapshot_session, parent);
+	return lttng::utils::container_of(
+			action, &lttng_action_snapshot_session::parent);
 }
 
 static const struct lttng_action_snapshot_session *
@@ -75,8 +75,8 @@ action_snapshot_session_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(
-			action, struct lttng_action_snapshot_session, parent);
+	return lttng::utils::container_of(
+			action, &lttng_action_snapshot_session::parent);
 }
 
 static bool lttng_action_snapshot_session_validate(struct lttng_action *action)

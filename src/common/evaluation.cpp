@@ -118,9 +118,8 @@ ssize_t lttng_evaluation_create_from_payload(
 		LTTNG_ASSERT(condition->type ==
 				LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 		ret = lttng_evaluation_event_rule_matches_create_from_payload(
-				container_of(condition,
-						const struct lttng_condition_event_rule_matches,
-						parent),
+				lttng::utils::container_of(condition,
+						&lttng_condition_event_rule_matches::parent),
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;

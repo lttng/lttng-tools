@@ -847,9 +847,8 @@ int lttng_session_descriptor_serialize(
 
 	header.base.uri_count = uri_count;
 	if (descriptor->type == LTTNG_SESSION_DESCRIPTOR_TYPE_LIVE) {
-		const struct lttng_session_descriptor_live *live =
-				container_of(descriptor, typeof(*live),
-				base);
+		const struct lttng_session_descriptor_live *live = lttng::utils::container_of(
+				descriptor, &lttng_session_descriptor_live::base);
 
 		header.live_timer_us = live->live_timer_us;
 		header_ptr = &header;
@@ -918,7 +917,7 @@ lttng_session_descriptor_live_get_timer_interval(
 {
 	struct lttng_session_descriptor_live *live;
 
-	live = container_of(descriptor, typeof(*live), base);
+	live = lttng::utils::container_of(descriptor, &lttng_session_descriptor_live::base);
 	return live->live_timer_us;
 }
 

@@ -202,9 +202,9 @@ static void add_unique_agent_event(struct lttng_ht *ht,
 static void destroy_event_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_str *node =
-		caa_container_of(head, struct lttng_ht_node_str, head);
+		lttng::utils::container_of(head, &lttng_ht_node_str::head);
 	struct agent_event *event =
-		caa_container_of(node, struct agent_event, node);
+		lttng::utils::container_of(node, &agent_event::node);
 
 	agent_destroy_event(event);
 }
@@ -215,9 +215,9 @@ static void destroy_event_agent_rcu(struct rcu_head *head)
 static void destroy_app_agent_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
-		caa_container_of(head, struct lttng_ht_node_ulong, head);
+		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
 	struct agent_app *app =
-		caa_container_of(node, struct agent_app, node);
+		lttng::utils::container_of(node, &agent_app::node);
 
 	free(app);
 }
@@ -1013,7 +1013,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 	if (node == NULL) {
 		goto error;
 	}
-	app = caa_container_of(node, struct agent_app, node);
+	app = lttng::utils::container_of(node, &agent_app::node);
 
 	DBG3("Agent app pid %d found by sock %d.", app->pid, sock);
 	return app;
@@ -1388,7 +1388,7 @@ struct agent_event *agent_find_event(const char *name,
 	}
 
 	DBG3("Agent event found %s.", name);
-	return caa_container_of(node, struct agent_event, node);
+	return lttng::utils::container_of(node, &agent_event::node);
 
 error:
 	DBG3("Agent event NOT found %s.", name);
@@ -1414,7 +1414,7 @@ static
 void destroy_app_ctx_rcu(struct rcu_head *head)
 {
 	struct agent_app_ctx *ctx =
-			caa_container_of(head, struct agent_app_ctx, rcu_node);
+			lttng::utils::container_of(head, &agent_app_ctx::rcu_node);
 
 	destroy_app_ctx(ctx);
 }
@@ -1443,7 +1443,7 @@ void agent_destroy(struct agent *agt)
 		 * value is not important since we have to continue anyway
 		 * destroying the object.
 		 */
-		event = caa_container_of(node, struct agent_event, node);
+		event = lttng::utils::container_of(node, &agent_event::node);
 		(void) agent_disable_event(event, agt->domain);
 
 		ret = lttng_ht_del(agt->events, &iter);
@@ -1512,7 +1512,7 @@ void agent_app_ht_clean(void)
 			the_agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
 		struct agent_app *app;
 
-		app = caa_container_of(node, struct agent_app, node);
+		app = lttng::utils::container_of(node, &agent_app::node);
 		agent_destroy_app_by_sock(app->sock->fd);
 	}
 	rcu_read_unlock();
@@ -1598,7 +1598,7 @@ void agent_by_event_notifier_domain_ht_destroy(void)
 	cds_lfht_for_each_entry(the_trigger_agents_ht_by_domain->ht,
 			&iter.iter, node, node) {
 		struct agent *agent =
-				caa_container_of(node, struct agent, node);
+				lttng::utils::container_of(node, &agent::node);
 		const int ret = lttng_ht_del(
 				the_trigger_agents_ht_by_domain, &iter);
 
@@ -1629,7 +1629,7 @@ struct agent *agent_find_by_event_notifier_domain(
 		goto end;
 	}
 
-	agt = caa_container_of(node, struct agent, node);
+	agt = lttng::utils::container_of(node, &agent::node);
 
 end:
 	return agt;

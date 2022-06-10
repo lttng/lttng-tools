@@ -163,8 +163,8 @@ static int fd_tracker_restore_handle(
 /* Match function of the tracker's unsuspendable_fds hash table. */
 static int match_fd(struct cds_lfht_node *node, const void *key)
 {
-	struct unsuspendable_fd *entry = caa_container_of(
-			node, struct unsuspendable_fd, tracker_node);
+	struct unsuspendable_fd *entry = lttng::utils::container_of(
+			node, &unsuspendable_fd::tracker_node);
 
 	return hash_match_key_ulong(
 			(void *) (unsigned long) entry->fd, (void *) key);
@@ -757,8 +757,8 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 			ret = -EINVAL;
 			goto end_unlock;
 		}
-		entry = caa_container_of(
-				node, struct unsuspendable_fd, tracker_node);
+		entry = lttng::utils::container_of(
+				node, &unsuspendable_fd::tracker_node);
 
 		cds_lfht_del(tracker->unsuspendable_fds, node);
 		unsuspendable_fd_destroy(entry);
@@ -825,7 +825,7 @@ static int fs_handle_tracked_get_fd(struct fs_handle *_handle)
 {
 	int ret;
 	struct fs_handle_tracked *handle =
-			container_of(_handle, struct fs_handle_tracked, parent);
+			lttng::utils::container_of(_handle, &fs_handle_tracked::parent);
 
 	/*
 	 * TODO This should be optimized as it is a fairly hot path.
@@ -866,7 +866,7 @@ end:
 static void fs_handle_tracked_put_fd(struct fs_handle *_handle)
 {
 	struct fs_handle_tracked *handle =
-			container_of(_handle, struct fs_handle_tracked, parent);
+			lttng::utils::container_of(_handle, &fs_handle_tracked::parent);
 
 	pthread_mutex_lock(&handle->lock);
 	handle->in_use = false;
@@ -877,7 +877,7 @@ static int fs_handle_tracked_unlink(struct fs_handle *_handle)
 {
 	int ret;
 	struct fs_handle_tracked *handle =
-			container_of(_handle, struct fs_handle_tracked, parent);
+			lttng::utils::container_of(_handle, &fs_handle_tracked::parent);
 
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
@@ -892,7 +892,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	int ret = 0;
 	const char *path = NULL;
 	struct fs_handle_tracked *handle =
-			container_of(_handle, struct fs_handle_tracked, parent);
+			lttng::utils::container_of(_handle, &fs_handle_tracked::parent);
 	struct lttng_directory_handle *inode_directory_handle = NULL;
 
 	if (!handle) {

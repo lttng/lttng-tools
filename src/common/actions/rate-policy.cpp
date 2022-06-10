@@ -348,7 +348,7 @@ static struct lttng_rate_policy_every_n *rate_policy_every_n_from_rate_policy(
 {
 	LTTNG_ASSERT(policy);
 
-	return container_of(policy, struct lttng_rate_policy_every_n, parent);
+	return lttng::utils::container_of(policy, &lttng_rate_policy_every_n::parent);
 }
 
 static const struct lttng_rate_policy_every_n *
@@ -357,7 +357,7 @@ rate_policy_every_n_from_rate_policy_const(
 {
 	LTTNG_ASSERT(policy);
 
-	return container_of(policy, struct lttng_rate_policy_every_n, parent);
+	return lttng::utils::container_of(policy, &lttng_rate_policy_every_n::parent);
 }
 
 static int lttng_rate_policy_every_n_serialize(
@@ -560,8 +560,8 @@ rate_policy_once_after_n_from_rate_policy(struct lttng_rate_policy *policy)
 {
 	LTTNG_ASSERT(policy);
 
-	return container_of(
-			policy, struct lttng_rate_policy_once_after_n, parent);
+	return lttng::utils::container_of(
+			policy, &lttng_rate_policy_once_after_n::parent);
 }
 
 static const struct lttng_rate_policy_once_after_n *
@@ -570,8 +570,8 @@ rate_policy_once_after_n_from_rate_policy_const(
 {
 	LTTNG_ASSERT(policy);
 
-	return container_of(
-			policy, struct lttng_rate_policy_once_after_n, parent);
+	return lttng::utils::container_of(
+			policy, &lttng_rate_policy_once_after_n::parent);
 }
 static int lttng_rate_policy_once_after_n_serialize(
 		struct lttng_rate_policy *policy, struct lttng_payload *payload)

@@ -36,7 +36,7 @@ static unsigned long max_hash_buckets_size = 0;
 static int match_str(struct cds_lfht_node *node, const void *key)
 {
 	struct lttng_ht_node_str *match_node =
-		caa_container_of(node, struct lttng_ht_node_str, node);
+		lttng::utils::container_of(node, &lttng_ht_node_str::node);
 
 	return hash_match_key_str(match_node->key, (void *) key);
 }
@@ -47,7 +47,7 @@ static int match_str(struct cds_lfht_node *node, const void *key)
 static int match_ulong(struct cds_lfht_node *node, const void *key)
 {
 	struct lttng_ht_node_ulong *match_node =
-		caa_container_of(node, struct lttng_ht_node_ulong, node);
+		lttng::utils::container_of(node, &lttng_ht_node_ulong::node);
 
 	return hash_match_key_ulong((void *) match_node->key, (void *) key);
 }
@@ -58,7 +58,7 @@ static int match_ulong(struct cds_lfht_node *node, const void *key)
 static int match_u64(struct cds_lfht_node *node, const void *key)
 {
 	struct lttng_ht_node_u64 *match_node =
-		caa_container_of(node, struct lttng_ht_node_u64, node);
+		lttng::utils::container_of(node, &lttng_ht_node_u64::node);
 
 	return hash_match_key_u64(&match_node->key, (void *) key);
 }
@@ -69,7 +69,7 @@ static int match_u64(struct cds_lfht_node *node, const void *key)
 static int match_two_u64(struct cds_lfht_node *node, const void *key)
 {
 	struct lttng_ht_node_two_u64 *match_node =
-		caa_container_of(node, struct lttng_ht_node_two_u64, node);
+		lttng::utils::container_of(node, &lttng_ht_node_two_u64::node);
 
 	return hash_match_key_two_u64((void *) &match_node->key, (void *) key);
 }
@@ -413,7 +413,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	if (!node_ptr) {
 		return NULL;
 	} else {
-		return caa_container_of(node_ptr, struct lttng_ht_node_ulong, node);
+		return lttng::utils::container_of(node_ptr, &lttng_ht_node_ulong::node);
 	}
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -438,7 +438,7 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 	if (!node_ptr) {
 		return NULL;
 	} else {
-		return caa_container_of(node_ptr, struct lttng_ht_node_u64, node);
+		return lttng::utils::container_of(node_ptr, &lttng_ht_node_u64::node);
 	}
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -517,7 +517,7 @@ struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 	if (!node) {
 		return NULL;
 	}
-	return caa_container_of(node, struct lttng_ht_node_str, node);
+	return lttng::utils::container_of(node, &lttng_ht_node_str::node);
 }
 
 /*
@@ -533,7 +533,7 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 	if (!node) {
 		return NULL;
 	}
-	return caa_container_of(node, struct lttng_ht_node_ulong, node);
+	return lttng::utils::container_of(node, &lttng_ht_node_ulong::node);
 }
 
 /*
@@ -549,7 +549,7 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 	if (!node) {
 		return NULL;
 	}
-	return caa_container_of(node, struct lttng_ht_node_u64, node);
+	return lttng::utils::container_of(node, &lttng_ht_node_u64::node);
 }
 
 /*
@@ -565,5 +565,5 @@ struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
 	if (!node) {
 		return NULL;
 	}
-	return caa_container_of(node, struct lttng_ht_node_two_u64, node);
+	return lttng::utils::container_of(node, &lttng_ht_node_two_u64::node);
 }

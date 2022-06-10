@@ -39,10 +39,10 @@ struct lttng_event_field_value *lttng_event_field_value_uint_create(
 {
 	struct lttng_event_field_value_uint *field_val;
 
-	field_val = container_of(create_empty_field_val(
+	field_val = lttng::utils::container_of(create_empty_field_val(
 			LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT,
 			sizeof(*field_val)),
-			struct lttng_event_field_value_uint, parent);
+			&lttng_event_field_value_uint::parent);
 	if (!field_val) {
 		goto error;
 	}
@@ -62,10 +62,10 @@ struct lttng_event_field_value *lttng_event_field_value_int_create(
 {
 	struct lttng_event_field_value_int *field_val;
 
-	field_val = container_of(create_empty_field_val(
+	field_val = lttng::utils::container_of(create_empty_field_val(
 			LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT,
 			sizeof(*field_val)),
-			struct lttng_event_field_value_int, parent);
+			&lttng_event_field_value_int::parent);
 	if (!field_val) {
 		goto error;
 	}
@@ -86,8 +86,8 @@ struct lttng_event_field_value_enum *create_enum_field_val(
 {
 	struct lttng_event_field_value_enum *field_val;
 
-	field_val = container_of(create_empty_field_val(type, size),
-			struct lttng_event_field_value_enum, parent);
+	field_val = lttng::utils::container_of(create_empty_field_val(type, size),
+			&lttng_event_field_value_enum::parent);
 	if (!field_val) {
 		goto error;
 	}
@@ -107,10 +107,10 @@ struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(
 {
 	struct lttng_event_field_value_enum_uint *field_val;
 
-	field_val = container_of(create_enum_field_val(
+	field_val = lttng::utils::container_of(create_enum_field_val(
 			LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM,
 			sizeof(*field_val)),
-			struct lttng_event_field_value_enum_uint, parent);
+			&lttng_event_field_value_enum_uint::parent);
 	if (!field_val) {
 		goto error;
 	}
@@ -130,10 +130,10 @@ struct lttng_event_field_value *lttng_event_field_value_enum_int_create(
 {
 	struct lttng_event_field_value_enum_int *field_val;
 
-	field_val = container_of(create_enum_field_val(
+	field_val = lttng::utils::container_of(create_enum_field_val(
 			LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM,
 			sizeof(*field_val)),
-			struct lttng_event_field_value_enum_int, parent);
+			&lttng_event_field_value_enum_int::parent);
 	if (!field_val) {
 		goto error;
 	}
@@ -150,11 +150,11 @@ end:
 
 struct lttng_event_field_value *lttng_event_field_value_real_create(double val)
 {
-	struct lttng_event_field_value_real *field_val = container_of(
+	struct lttng_event_field_value_real *field_val = lttng::utils::container_of(
 			create_empty_field_val(
 				LTTNG_EVENT_FIELD_VALUE_TYPE_REAL,
 				sizeof(*field_val)),
-			struct lttng_event_field_value_real, parent);
+			&lttng_event_field_value_real::parent);
 
 	if (!field_val) {
 		goto error;
@@ -173,11 +173,11 @@ end:
 struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		const char *val, size_t size)
 {
-	struct lttng_event_field_value_string *field_val = container_of(
+	struct lttng_event_field_value_string *field_val = lttng::utils::container_of(
 			create_empty_field_val(
 				LTTNG_EVENT_FIELD_VALUE_TYPE_STRING,
 				sizeof(*field_val)),
-			struct lttng_event_field_value_string, parent);
+			&lttng_event_field_value_string::parent);
 
 	if (!field_val) {
 		goto error;
@@ -214,11 +214,11 @@ void destroy_field_val(void *field_val)
 
 struct lttng_event_field_value *lttng_event_field_value_array_create(void)
 {
-	struct lttng_event_field_value_array *field_val = container_of(
+	struct lttng_event_field_value_array *field_val = lttng::utils::container_of(
 			create_empty_field_val(
 				LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY,
 				sizeof(*field_val)),
-			struct lttng_event_field_value_array, parent);
+			&lttng_event_field_value_array::parent);
 
 	if (!field_val) {
 		goto error;
@@ -245,8 +245,8 @@ void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM:
 	{
 		struct lttng_event_field_value_enum *enum_field_val =
-				container_of(field_val,
-					struct lttng_event_field_value_enum, parent);
+				lttng::utils::container_of(field_val,
+					&lttng_event_field_value_enum::parent);
 
 		lttng_dynamic_pointer_array_reset(&enum_field_val->labels);
 		break;
@@ -254,8 +254,8 @@ void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_STRING:
 	{
 		struct lttng_event_field_value_string *str_field_val =
-				container_of(field_val,
-					struct lttng_event_field_value_string, parent);
+				lttng::utils::container_of(field_val,
+					&lttng_event_field_value_string::parent);
 
 		free(str_field_val->val);
 		break;
@@ -263,9 +263,8 @@ void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val)
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY:
 	{
 		struct lttng_event_field_value_array *array_field_expr =
-				container_of(field_val,
-					struct lttng_event_field_value_array,
-					parent);
+				lttng::utils::container_of(field_val,
+					&lttng_event_field_value_array::parent);
 
 		lttng_dynamic_pointer_array_reset(&array_field_expr->elems);
 		break;
@@ -296,8 +295,8 @@ int lttng_event_field_value_enum_append_label_with_size(
 	}
 
 	ret = lttng_dynamic_pointer_array_add_pointer(
-			&container_of(field_val,
-				struct lttng_event_field_value_enum, parent)->labels,
+			&lttng::utils::container_of(field_val,
+				&lttng_event_field_value_enum::parent)->labels,
 			new_label);
 	if (ret == 0) {
 		new_label = NULL;
@@ -324,8 +323,8 @@ int lttng_event_field_value_array_append(
 	LTTNG_ASSERT(array_field_val);
 	LTTNG_ASSERT(field_val);
 	return lttng_dynamic_pointer_array_add_pointer(
-			&container_of(array_field_val,
-				struct lttng_event_field_value_array, parent)->elems,
+			&lttng::utils::container_of(array_field_val,
+				&lttng_event_field_value_array::parent)->elems,
 			field_val);
 }
 
@@ -334,8 +333,8 @@ int lttng_event_field_value_array_append_unavailable(
 {
 	LTTNG_ASSERT(array_field_val);
 	return lttng_dynamic_pointer_array_add_pointer(
-			&container_of(array_field_val,
-				struct lttng_event_field_value_array, parent)->elems,
+			&lttng::utils::container_of(array_field_val,
+				&lttng_event_field_value_array::parent)->elems,
 			NULL);
 }
 
@@ -368,21 +367,17 @@ lttng_event_field_value_unsigned_int_get_value(
 
 	switch (field_val->type) {
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT:
-		*val = container_of(field_val,
-				const struct lttng_event_field_value_uint,
-				parent)->val;
+		*val = lttng::utils::container_of(field_val,
+				&lttng_event_field_value_uint::parent)->val;
 		break;
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM:
 	{
-		const struct lttng_event_field_value_enum *field_val_enum = container_of(
-				field_val,
-				const struct lttng_event_field_value_enum,
-				parent);
-		const struct lttng_event_field_value_enum_uint
-				*field_val_enum_uint = container_of(
-						field_val_enum,
-						const struct lttng_event_field_value_enum_uint,
-						parent);
+		const struct lttng_event_field_value_enum *field_val_enum =
+				lttng::utils::container_of(
+						field_val, &lttng_event_field_value_enum::parent);
+		const struct lttng_event_field_value_enum_uint *field_val_enum_uint =
+				lttng::utils::container_of(field_val_enum,
+						&lttng_event_field_value_enum_uint::parent);
 		*val = field_val_enum_uint->val;
 		break;
 	}
@@ -410,21 +405,17 @@ lttng_event_field_value_signed_int_get_value(
 
 	switch (field_val->type) {
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT:
-		*val = container_of(field_val,
-				const struct lttng_event_field_value_int,
-				parent)->val;
+		*val = lttng::utils::container_of(field_val,
+				&lttng_event_field_value_int::parent)->val;
 		break;
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM:
 	{
-		const struct lttng_event_field_value_enum *field_val_enum = container_of(
+		const struct lttng_event_field_value_enum *field_val_enum = lttng::utils::container_of(
 				field_val,
-				const struct lttng_event_field_value_enum,
-				parent);
-		const struct lttng_event_field_value_enum_int
-				*field_val_enum_uint = container_of(
-						field_val_enum,
-						const struct lttng_event_field_value_enum_int,
-						parent);
+				&lttng_event_field_value_enum::parent);
+		const struct lttng_event_field_value_enum_int *field_val_enum_uint =
+				lttng::utils::container_of(field_val_enum,
+						&lttng_event_field_value_enum_int::parent);
 		*val = field_val_enum_uint->val;
 		break;
 	}
@@ -451,8 +442,8 @@ lttng_event_field_value_real_get_value(
 		goto end;
 	}
 
-	*val = container_of(field_val,
-			const struct lttng_event_field_value_real, parent)->val;
+	*val = lttng::utils::container_of(field_val,
+			&lttng_event_field_value_real::parent)->val;
 	status = LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 
 end:
@@ -479,9 +470,8 @@ lttng_event_field_value_enum_get_label_count(
 	}
 
 	*count = (unsigned int) lttng_dynamic_pointer_array_get_count(
-			&container_of(field_val,
-				const struct lttng_event_field_value_enum,
-				parent)->labels);
+			&lttng::utils::container_of(field_val,
+				&lttng_event_field_value_enum::parent)->labels);
 	status = LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 
 end:
@@ -500,8 +490,8 @@ const char *lttng_event_field_value_enum_get_label_at_index(
 		goto end;
 	}
 
-	enum_field_val = container_of(field_val,
-			const struct lttng_event_field_value_enum, parent);
+	enum_field_val = lttng::utils::container_of(field_val,
+			&lttng_event_field_value_enum::parent);
 
 	if (index >= lttng_dynamic_pointer_array_get_count(&enum_field_val->labels)) {
 		ret = NULL;
@@ -526,8 +516,8 @@ enum lttng_event_field_value_status lttng_event_field_value_string_get_value(
 		goto end;
 	}
 
-	*value = container_of(field_val,
-			const struct lttng_event_field_value_string, parent)->val;
+	*value = lttng::utils::container_of(field_val,
+			&lttng_event_field_value_string::parent)->val;
 	status = LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 
 end:
@@ -547,9 +537,8 @@ enum lttng_event_field_value_status lttng_event_field_value_array_get_length(
 	}
 
 	*length = (unsigned int) lttng_dynamic_pointer_array_get_count(
-			&container_of(field_val,
-				const struct lttng_event_field_value_array,
-				parent)->elems);
+			&lttng::utils::container_of(field_val,
+				&lttng_event_field_value_array::parent)->elems);
 	status = LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 
 end:
@@ -571,8 +560,8 @@ lttng_event_field_value_array_get_element_at_index(
 		goto end;
 	}
 
-	array_field_val = container_of(field_val,
-			const struct lttng_event_field_value_array, parent);
+	array_field_val = lttng::utils::container_of(
+			field_val, &lttng_event_field_value_array::parent);
 
 	if (index >= lttng_dynamic_pointer_array_get_count(&array_field_val->elems)) {
 		status = LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;

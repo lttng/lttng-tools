@@ -487,9 +487,8 @@ lttng_rotation_schedule_size_threshold_get_threshold(
 		goto end;
 	}
 
-	size_schedule = container_of(schedule,
-			struct lttng_rotation_schedule_size_threshold,
-			parent);
+	size_schedule = lttng::utils::container_of(schedule,
+			&lttng_rotation_schedule_size_threshold::parent);
 	if (size_schedule->size.set) {
 		*size_threshold_bytes = size_schedule->size.bytes;
 	} else {
@@ -515,9 +514,8 @@ lttng_rotation_schedule_size_threshold_set_threshold(
 		goto end;
 	}
 
-	size_schedule = container_of(schedule,
-			struct lttng_rotation_schedule_size_threshold,
-			parent);
+	size_schedule = lttng::utils::container_of(schedule,
+			&lttng_rotation_schedule_size_threshold::parent);
 	size_schedule->size.bytes = size_threshold_bytes;
 	size_schedule->size.set = true;
 end:
@@ -553,9 +551,8 @@ lttng_rotation_schedule_periodic_get_period(
 		goto end;
 	}
 
-	periodic_schedule = container_of(schedule,
-			struct lttng_rotation_schedule_periodic,
-			parent);
+	periodic_schedule = lttng::utils::container_of(schedule,
+			&lttng_rotation_schedule_periodic::parent);
 	if (periodic_schedule->period.set) {
 		*period_us = periodic_schedule->period.us;
 	} else {
@@ -580,9 +577,8 @@ lttng_rotation_schedule_periodic_set_period(
 		goto end;
 	}
 
-	periodic_schedule = container_of(schedule,
-			struct lttng_rotation_schedule_periodic,
-			parent);
+	periodic_schedule = lttng::utils::container_of(schedule,
+			&lttng_rotation_schedule_periodic::parent);
 	periodic_schedule->period.us = period_us;
 	periodic_schedule->period.set = true;
 end:

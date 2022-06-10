@@ -29,7 +29,7 @@ static void lttng_event_rule_kernel_syscall_destroy(struct lttng_event_rule *rul
 		return;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	free(syscall->pattern);
 	free(syscall->filter_expression);
@@ -48,7 +48,7 @@ static bool lttng_event_rule_kernel_syscall_validate(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	/* Required field. */
 	if (!syscall->pattern) {
@@ -76,7 +76,7 @@ static int lttng_event_rule_kernel_syscall_serialize(
 	}
 
 	DBG("Serializing syscall event rule");
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	pattern_len = strlen(syscall->pattern) + 1;
 
@@ -114,8 +114,8 @@ static bool lttng_event_rule_kernel_syscall_is_equal(const struct lttng_event_ru
 	bool is_equal = false;
 	struct lttng_event_rule_kernel_syscall *a, *b;
 
-	a = container_of(_a, struct lttng_event_rule_kernel_syscall, parent);
-	b = container_of(_b, struct lttng_event_rule_kernel_syscall, parent);
+	a = lttng::utils::container_of(_a, &lttng_event_rule_kernel_syscall::parent);
+	b = lttng::utils::container_of(_b, &lttng_event_rule_kernel_syscall::parent);
 
 	if (!!a->filter_expression != !!b->filter_expression) {
 		goto end;
@@ -154,7 +154,7 @@ static enum lttng_error_code lttng_event_rule_kernel_syscall_generate_filter_byt
 
 	LTTNG_ASSERT(rule);
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	/* Generate the filter bytecode. */
 	status = lttng_event_rule_kernel_syscall_get_filter(rule, &filter);
@@ -202,7 +202,7 @@ static const char *lttng_event_rule_kernel_syscall_get_internal_filter(
 	struct lttng_event_rule_kernel_syscall *syscall;
 
 	LTTNG_ASSERT(rule);
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	return syscall->internal_filter.filter;
 }
@@ -214,7 +214,7 @@ lttng_event_rule_kernel_syscall_get_internal_filter_bytecode(
 	struct lttng_event_rule_kernel_syscall *syscall;
 
 	LTTNG_ASSERT(rule);
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	return syscall->internal_filter.bytecode;
 }
@@ -235,7 +235,7 @@ lttng_event_rule_kernel_syscall_hash(
 {
 	unsigned long hash;
 	struct lttng_event_rule_kernel_syscall *syscall_rule =
-			container_of(rule, typeof(*syscall_rule), parent);
+			lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 
 	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL,
 			lttng_ht_seed);
@@ -515,7 +515,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_name_pattern(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 	pattern_copy = strdup(pattern);
 	if (!pattern_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -543,7 +543,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_name_pattern(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 	if (!syscall->pattern) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -569,7 +569,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_syscall_set_filter(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 	expression_copy = strdup(expression);
 	if (!expression_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -597,7 +597,7 @@ enum lttng_event_rule_status lttng_event_rule_kernel_syscall_get_filter(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 	if (!syscall->filter_expression) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -619,7 +619,7 @@ lttng_event_rule_kernel_syscall_get_emission_site(
 		goto end;
 	}
 
-	syscall = container_of(rule, struct lttng_event_rule_kernel_syscall, parent);
+	syscall = lttng::utils::container_of(rule, &lttng_event_rule_kernel_syscall::parent);
 	emission_site = syscall->emission_site;
 
 end:

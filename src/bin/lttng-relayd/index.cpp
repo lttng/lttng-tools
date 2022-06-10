@@ -120,7 +120,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 	lttng_ht_lookup(stream->indexes_ht, &net_seq_num, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
-		index = caa_container_of(node, struct relay_index, index_n);
+		index = lttng::utils::container_of(node, &relay_index::index_n);
 	} else {
 		struct relay_index *oldindex;
 
@@ -200,7 +200,7 @@ static void index_destroy(struct relay_index *index)
 static void index_destroy_rcu(struct rcu_head *rcu_head)
 {
 	struct relay_index *index =
-		caa_container_of(rcu_head, struct relay_index, rcu_node);
+		lttng::utils::container_of(rcu_head, &relay_index::rcu_node);
 
 	index_destroy(index);
 }
@@ -208,7 +208,7 @@ static void index_destroy_rcu(struct rcu_head *rcu_head)
 /* Stream lock must be held by the caller. */
 static void index_release(struct urcu_ref *ref)
 {
-	struct relay_index *index = caa_container_of(ref, struct relay_index, ref);
+	struct relay_index *index = lttng::utils::container_of(ref, &relay_index::ref);
 	struct relay_stream *stream = index->stream;
 	int ret;
 	struct lttng_ht_iter iter;

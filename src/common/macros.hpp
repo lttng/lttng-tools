@@ -229,14 +229,6 @@ void *memmove(T *d, const U *s, size_t n) = delete;
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
 #endif
 
-#ifndef container_of
-#define container_of(ptr, type, member)					\
-	({								\
-		const typeof(((type *)NULL)->member) * __ptr = (ptr);	\
-		(type *)((char *)__ptr - offsetof(type, member));	\
-	})
-#endif
-
 #ifndef LTTNG_PACKED
 #define LTTNG_PACKED __attribute__((__packed__))
 #endif
@@ -316,5 +308,19 @@ int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 	strcpy(dst, src);
 	return 0;
 }
+
+namespace lttng {
+namespace utils {
+template <class Parent, class Member>
+Parent *container_of(const Member *member, const Member Parent::*ptr_to_member)
+{
+	const Parent *dummy_parent = nullptr;
+	auto *offset_of_member = reinterpret_cast<const char *>(&(dummy_parent->*ptr_to_member));
+	auto address_of_parent = reinterpret_cast<const char *>(member) - offset_of_member;
+
+	return reinterpret_cast<Parent *>(address_of_parent);
+}
+} /* namespace utils */
+} /* namespace lttng */
 
 #endif /* _MACROS_H */

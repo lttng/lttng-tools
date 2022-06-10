@@ -41,8 +41,8 @@ struct process_attr_tracker_value_node {
 
 static void process_attr_tracker_value_node_rcu_free(struct rcu_head *rcu_head)
 {
-	struct process_attr_tracker_value_node *node =
-			container_of(rcu_head, typeof(*node), rcu_head);
+	struct process_attr_tracker_value_node *node = lttng::utils::container_of(
+			rcu_head, &process_attr_tracker_value_node::rcu_head);
 
 	free(node);
 }
@@ -177,9 +177,9 @@ static struct process_attr_tracker_value_node *process_attr_tracker_lookup(
 	node = cds_lfht_iter_get_node(&iter);
 	rcu_read_unlock();
 
-	return node ? container_of(node, struct process_attr_tracker_value_node,
-				      inclusion_set_ht_node) :
-		      NULL;
+	return node ? lttng::utils::container_of(node,
+				      &process_attr_tracker_value_node::inclusion_set_ht_node) :
+			    NULL;
 }
 
 /* Protected by session mutex held by caller. */

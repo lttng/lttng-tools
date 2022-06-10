@@ -33,8 +33,8 @@ void lttng_condition_buffer_usage_destroy(struct lttng_condition *condition)
 {
 	struct lttng_condition_buffer_usage *usage;
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 
 	free(usage->session_name);
 	free(usage->channel_name);
@@ -52,8 +52,8 @@ bool lttng_condition_buffer_usage_validate(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->session_name) {
 		ERR("Invalid buffer condition: a target session name must be set.");
 		goto end;
@@ -92,8 +92,8 @@ int lttng_condition_buffer_usage_serialize(
 	}
 
 	DBG("Serializing buffer usage condition");
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 
 	session_name_len = strlen(usage->session_name) + 1;
 	channel_name_len = strlen(usage->channel_name) + 1;
@@ -142,8 +142,8 @@ bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *_a,
 	bool is_equal = false;
 	struct lttng_condition_buffer_usage *a, *b;
 
-	a = container_of(_a, struct lttng_condition_buffer_usage, parent);
-	b = container_of(_b, struct lttng_condition_buffer_usage, parent);
+	a = lttng::utils::container_of(_a, &lttng_condition_buffer_usage::parent);
+	b = lttng::utils::container_of(_b, &lttng_condition_buffer_usage::parent);
 
 	if ((a->threshold_ratio.set && !b->threshold_ratio.set) ||
 			(a->threshold_bytes.set && !b->threshold_bytes.set)) {
@@ -598,8 +598,8 @@ lttng_condition_buffer_usage_get_threshold_ratio(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->threshold_ratio.set) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -624,8 +624,8 @@ lttng_condition_buffer_usage_set_threshold_ratio(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	usage->threshold_ratio.set = true;
 	usage->threshold_bytes.set = false;
 	usage->threshold_ratio.value = threshold_ratio;
@@ -646,8 +646,8 @@ lttng_condition_buffer_usage_get_threshold(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->threshold_bytes.set) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -669,8 +669,8 @@ lttng_condition_buffer_usage_set_threshold(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	usage->threshold_ratio.set = false;
 	usage->threshold_bytes.set = true;
 	usage->threshold_bytes.value = threshold_bytes;
@@ -691,8 +691,8 @@ lttng_condition_buffer_usage_get_session_name(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->session_name) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -716,8 +716,8 @@ lttng_condition_buffer_usage_set_session_name(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	session_name_copy = strdup(session_name);
 	if (!session_name_copy) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
@@ -745,8 +745,8 @@ lttng_condition_buffer_usage_get_channel_name(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->channel_name) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -770,8 +770,8 @@ lttng_condition_buffer_usage_set_channel_name(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	channel_name_copy = strdup(channel_name);
 	if (!channel_name_copy) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
@@ -799,8 +799,8 @@ lttng_condition_buffer_usage_get_domain_type(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	if (!usage->domain.set) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -823,8 +823,8 @@ lttng_condition_buffer_usage_set_domain_type(
 		goto end;
 	}
 
-	usage = container_of(condition, struct lttng_condition_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(condition,
+			&lttng_condition_buffer_usage::parent);
 	usage->domain.set = true;
 	usage->domain.type = type;
 end:
@@ -839,8 +839,8 @@ int lttng_evaluation_buffer_usage_serialize(
 	struct lttng_evaluation_buffer_usage *usage;
 	struct lttng_evaluation_buffer_usage_comm comm;
 
-	usage = container_of(evaluation, struct lttng_evaluation_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_buffer_usage::parent);
 	comm.buffer_use = usage->buffer_use;
 	comm.buffer_capacity = usage->buffer_capacity;
 
@@ -854,8 +854,8 @@ void lttng_evaluation_buffer_usage_destroy(
 {
 	struct lttng_evaluation_buffer_usage *usage;
 
-	usage = container_of(evaluation, struct lttng_evaluation_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_buffer_usage::parent);
 	free(usage);
 }
 
@@ -894,8 +894,8 @@ lttng_evaluation_buffer_usage_get_usage_ratio(
 		goto end;
 	}
 
-	usage = container_of(evaluation, struct lttng_evaluation_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_buffer_usage::parent);
 	*usage_ratio = (double) usage->buffer_use /
 			(double) usage->buffer_capacity;
 end:
@@ -915,8 +915,8 @@ lttng_evaluation_buffer_usage_get_usage(
 		goto end;
 	}
 
-	usage = container_of(evaluation, struct lttng_evaluation_buffer_usage,
-			parent);
+	usage = lttng::utils::container_of(evaluation,
+			&lttng_evaluation_buffer_usage::parent);
 	*usage_bytes = usage->buffer_use;
 end:
 	return status;

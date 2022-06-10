@@ -49,7 +49,7 @@ static struct lttng_action_start_session *action_start_session_from_action(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_start_session, parent);
+	return lttng::utils::container_of(action, &lttng_action_start_session::parent);
 }
 
 static const struct lttng_action_start_session *
@@ -57,7 +57,7 @@ action_start_session_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_start_session, parent);
+	return lttng::utils::container_of(action, &lttng_action_start_session::parent);
 }
 
 static bool lttng_action_start_session_validate(struct lttng_action *action)
@@ -90,8 +90,8 @@ static bool lttng_action_start_session_is_equal(
 	bool is_equal = false;
 	struct lttng_action_start_session *a, *b;
 
-	a = container_of(_a, struct lttng_action_start_session, parent);
-	b = container_of(_b, struct lttng_action_start_session, parent);
+	a = lttng::utils::container_of(_a, &lttng_action_start_session::parent);
+	b = lttng::utils::container_of(_b, &lttng_action_start_session::parent);
 
 	/* Action is not valid if this is not true. */
 	LTTNG_ASSERT(a->session_name);

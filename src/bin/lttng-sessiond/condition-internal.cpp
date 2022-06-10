@@ -27,8 +27,8 @@ unsigned long lttng_condition_buffer_usage_hash(
 	unsigned long condition_type;
 	struct lttng_condition_buffer_usage *condition;
 
-	condition = container_of(_condition,
-			struct lttng_condition_buffer_usage, parent);
+	condition = lttng::utils::container_of(_condition,
+			&lttng_condition_buffer_usage::parent);
 
 	condition_type = (unsigned long) condition->parent.type;
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
@@ -64,8 +64,8 @@ unsigned long lttng_condition_session_consumed_size_hash(
 	struct lttng_condition_session_consumed_size *condition;
 	uint64_t val;
 
-	condition = container_of(_condition,
-			struct lttng_condition_session_consumed_size, parent);
+	condition = lttng::utils::container_of(_condition,
+			&lttng_condition_session_consumed_size::parent);
 
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	if (condition->session_name) {
@@ -83,8 +83,8 @@ unsigned long lttng_condition_session_rotation_hash(
 	unsigned long hash, condition_type;
 	struct lttng_condition_session_rotation *condition;
 
-	condition = container_of(_condition,
-			struct lttng_condition_session_rotation, parent);
+	condition = lttng::utils::container_of(_condition,
+			&lttng_condition_session_rotation::parent);
 	condition_type = (unsigned long) condition->parent.type;
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	LTTNG_ASSERT(condition->session_name);

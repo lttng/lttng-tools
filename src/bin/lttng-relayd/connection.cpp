@@ -37,7 +37,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 		DBG2("Relay connection by sock %d not found", sock);
 		goto end;
 	}
-	conn = caa_container_of(node, struct relay_connection, sock_n);
+	conn = lttng::utils::container_of(node, &relay_connection::sock_n);
 	if (!connection_get(conn)) {
 		conn = NULL;
 	}
@@ -110,7 +110,7 @@ end:
 static void rcu_free_connection(struct rcu_head *head)
 {
 	struct relay_connection *conn =
-		caa_container_of(head, struct relay_connection, rcu_node);
+		lttng::utils::container_of(head, &relay_connection::rcu_node);
 
 	lttcomm_destroy_sock(conn->sock);
 	if (conn->viewer_session) {
@@ -132,7 +132,7 @@ static void destroy_connection(struct relay_connection *conn)
 static void connection_release(struct urcu_ref *ref)
 {
 	struct relay_connection *conn =
-		caa_container_of(ref, struct relay_connection, ref);
+		lttng::utils::container_of(ref, &relay_connection::ref);
 
 	if (conn->in_socket_ht) {
 		struct lttng_ht_iter iter;

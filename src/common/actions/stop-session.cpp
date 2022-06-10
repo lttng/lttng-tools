@@ -49,7 +49,7 @@ static struct lttng_action_stop_session *action_stop_session_from_action(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_stop_session, parent);
+	return lttng::utils::container_of(action, &lttng_action_stop_session::parent);
 }
 
 static const struct lttng_action_stop_session *
@@ -57,7 +57,7 @@ action_stop_session_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_stop_session, parent);
+	return lttng::utils::container_of(action, &lttng_action_stop_session::parent);
 }
 
 static bool lttng_action_stop_session_validate(struct lttng_action *action)

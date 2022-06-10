@@ -48,7 +48,7 @@ static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 static void viewer_stream_destroy_rcu(struct rcu_head *head)
 {
 	struct relay_viewer_stream *vstream =
-		caa_container_of(head, struct relay_viewer_stream, rcu_node);
+		lttng::utils::container_of(head, &relay_viewer_stream::rcu_node);
 
 	viewer_stream_destroy(vstream);
 }
@@ -269,7 +269,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 		DBG("Relay viewer stream %" PRIu64 " not found", id);
 		goto end;
 	}
-	vstream = caa_container_of(node, struct relay_viewer_stream, stream_n);
+	vstream = lttng::utils::container_of(node, &relay_viewer_stream::stream_n);
 	if (!viewer_stream_get(vstream)) {
 		vstream = NULL;
 	}

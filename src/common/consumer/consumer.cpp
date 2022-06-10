@@ -209,7 +209,7 @@ static struct lttng_consumer_stream *find_stream(uint64_t key,
 	lttng_ht_lookup(ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
-		stream = caa_container_of(node, struct lttng_consumer_stream, node);
+		stream = lttng::utils::container_of(node, &lttng_consumer_stream::node);
 	}
 
 	rcu_read_unlock();
@@ -257,7 +257,7 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 	lttng_ht_lookup(the_consumer_data.channel_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
-		channel = caa_container_of(node, struct lttng_consumer_channel, node);
+		channel = lttng::utils::container_of(node, &lttng_consumer_channel::node);
 	}
 
 	return channel;
@@ -292,9 +292,9 @@ static void steal_channel_key(uint64_t key)
 static void free_channel_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
+		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct lttng_consumer_channel *channel =
-		caa_container_of(node, struct lttng_consumer_channel, node);
+		lttng::utils::container_of(node, &lttng_consumer_channel::node);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -316,9 +316,9 @@ static void free_channel_rcu(struct rcu_head *head)
 static void free_relayd_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
+		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct consumer_relayd_sock_pair *relayd =
-		caa_container_of(node, struct consumer_relayd_sock_pair, node);
+		lttng::utils::container_of(node, &consumer_relayd_sock_pair::node);
 
 	/*
 	 * Close all sockets. This is done in the call RCU since we don't want the
@@ -705,7 +705,7 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
-		relayd = caa_container_of(node, struct consumer_relayd_sock_pair, node);
+		relayd = lttng::utils::container_of(node, &consumer_relayd_sock_pair::node);
 	}
 
 error:

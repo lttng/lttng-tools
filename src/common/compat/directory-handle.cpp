@@ -176,7 +176,7 @@ void lttng_directory_handle_release(struct urcu_ref *ref)
 {
 	int ret;
 	struct lttng_directory_handle *handle =
-			container_of(ref, struct lttng_directory_handle, ref);
+			lttng::utils::container_of(ref, &lttng_directory_handle::ref);
 
 	if (handle->destroy_cb) {
 		handle->destroy_cb(handle, handle->destroy_cb_data);
@@ -557,7 +557,7 @@ static
 void lttng_directory_handle_release(struct urcu_ref *ref)
 {
 	struct lttng_directory_handle *handle =
-			container_of(ref, struct lttng_directory_handle, ref);
+			lttng::utils::container_of(ref, &lttng_directory_handle::ref);
 
 	free(handle->base_path);
 	lttng_directory_handle_invalidate(handle);

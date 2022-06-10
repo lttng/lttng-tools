@@ -276,7 +276,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 		DBG3("Snapshot output not found with id %" PRId32, id);
 		goto error;
 	}
-	output = caa_container_of(node, struct snapshot_output, node);
+	output = lttng::utils::container_of(node, &snapshot_output::node);
 
 error:
 	return output;

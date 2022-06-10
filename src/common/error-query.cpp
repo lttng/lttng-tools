@@ -256,8 +256,7 @@ void lttng_error_query_destroy(struct lttng_error_query *query)
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
 	{
 		struct lttng_error_query_trigger *trigger_query =
-				container_of(query, typeof(*trigger_query),
-					parent);
+				lttng::utils::container_of(query, &lttng_error_query_trigger::parent);
 
 		lttng_trigger_put(trigger_query->trigger);
 		free(trigger_query);
@@ -265,9 +264,8 @@ void lttng_error_query_destroy(struct lttng_error_query *query)
 	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
 	{
-		struct lttng_error_query_condition *condition_query =
-				container_of(query, typeof(*condition_query),
-					parent);
+		struct lttng_error_query_condition *condition_query = lttng::utils::container_of(
+				query, &lttng_error_query_condition::parent);
 
 		lttng_trigger_put(condition_query->trigger);
 		free(condition_query);
@@ -275,9 +273,8 @@ void lttng_error_query_destroy(struct lttng_error_query *query)
 	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 	{
-		struct lttng_error_query_action *action_query =
-				container_of(query, typeof(*action_query),
-					parent);
+		struct lttng_error_query_action *action_query = lttng::utils::container_of(
+				query, &lttng_error_query_action::parent);
 
 		lttng_trigger_put(action_query->trigger);
 		lttng_action_path_destroy(action_query->action_path);
@@ -297,7 +294,8 @@ int lttng_error_query_result_counter_serialize(
 	const struct lttng_error_query_result_counter *counter_result;
 
 	LTTNG_ASSERT(result->type == LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER);
-	counter_result = container_of(result, typeof(*counter_result), parent);
+	counter_result = lttng::utils::container_of(
+			result, &lttng_error_query_result_counter::parent);
 
 	lttng_error_query_result_counter_comm comm = {
 		.value = counter_result->value,
@@ -662,7 +660,7 @@ int lttng_error_query_trigger_serialize(const struct lttng_error_query *query,
 {
 	int ret;
 	const struct lttng_error_query_trigger *query_trigger =
-			container_of(query, typeof(*query_trigger), parent);
+			lttng::utils::container_of(query, &lttng_error_query_trigger::parent);
 
 	if (!lttng_trigger_validate(query_trigger->trigger)) {
 		ret = -1;
@@ -684,7 +682,7 @@ int lttng_error_query_condition_serialize(const struct lttng_error_query *query,
 {
 	int ret;
 	const struct lttng_error_query_condition *query_trigger =
-			container_of(query, typeof(*query_trigger), parent);
+			lttng::utils::container_of(query, &lttng_error_query_condition::parent);
 
 	if (!lttng_trigger_validate(query_trigger->trigger)) {
 		ret = -1;
@@ -706,7 +704,7 @@ int lttng_error_query_action_serialize(const struct lttng_error_query *query,
 {
 	int ret;
 	const struct lttng_error_query_action *query_action =
-			container_of(query, typeof(*query_action), parent);
+			lttng::utils::container_of(query, &lttng_error_query_action::parent);
 
 	if (!lttng_trigger_validate(query_action->trigger)) {
 		ret = -1;
@@ -737,7 +735,7 @@ const struct lttng_trigger *lttng_error_query_trigger_borrow_target(
 		const struct lttng_error_query *query)
 {
 	const struct lttng_error_query_trigger *query_trigger =
-			container_of(query, typeof(*query_trigger), parent);
+			lttng::utils::container_of(query, &lttng_error_query_trigger::parent);
 
 	return query_trigger->trigger;
 }
@@ -746,7 +744,7 @@ const struct lttng_trigger *lttng_error_query_condition_borrow_target(
 		const struct lttng_error_query *query)
 {
 	const struct lttng_error_query_condition *query_trigger =
-			container_of(query, typeof(*query_trigger), parent);
+			lttng::utils::container_of(query, &lttng_error_query_condition::parent);
 
 	return query_trigger->trigger;
 }
@@ -755,17 +753,16 @@ const struct lttng_trigger *lttng_error_query_action_borrow_trigger_target(
 		const struct lttng_error_query *query)
 {
 	const struct lttng_error_query_action *query_action =
-			container_of(query, typeof(*query_action), parent);
+			lttng::utils::container_of(query, &lttng_error_query_action::parent);
 
 	return query_action->trigger;
 }
 
 struct lttng_action *lttng_error_query_action_borrow_action_target(
-	const struct lttng_error_query *query,
-	struct lttng_trigger *trigger)
+		const struct lttng_error_query *query, struct lttng_trigger *trigger)
 {
 	const struct lttng_error_query_action *query_action =
-			container_of(query, typeof(*query_action), parent);
+			lttng::utils::container_of(query, &lttng_error_query_action::parent);
 
 	return get_trigger_action_from_path(
 			trigger, query_action->action_path);
@@ -1071,7 +1068,8 @@ enum lttng_error_query_result_status lttng_error_query_result_counter_get_value(
 		goto end;
 	}
 
-	counter_result = container_of(result, typeof(*counter_result), parent);
+	counter_result = lttng::utils::container_of(
+			result, &lttng_error_query_result_counter::parent);
 
 	*value = counter_result->value;
 	status = LTTNG_ERROR_QUERY_RESULT_STATUS_OK;

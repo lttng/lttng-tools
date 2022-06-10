@@ -54,7 +54,7 @@ void lttng_thread_destroy(struct lttng_thread *thread)
 static
 void lttng_thread_release(struct urcu_ref *ref)
 {
-	lttng_thread_destroy(container_of(ref, struct lttng_thread, ref));
+	lttng_thread_destroy(lttng::utils::container_of(ref, &lttng_thread::ref));
 }
 
 static

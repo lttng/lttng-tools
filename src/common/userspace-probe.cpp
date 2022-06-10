@@ -117,8 +117,8 @@ void lttng_userspace_probe_location_function_destroy(
 
 	LTTNG_ASSERT(location);
 
-	location_function = container_of(location,
-			struct lttng_userspace_probe_location_function, parent);
+	location_function = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_function::parent);
 
 	LTTNG_ASSERT(location_function);
 
@@ -136,9 +136,8 @@ void lttng_userspace_probe_location_tracepoint_destroy(
 
 	LTTNG_ASSERT(location);
 
-	location_tracepoint = container_of(location,
-			struct lttng_userspace_probe_location_tracepoint,
-			parent);
+	location_tracepoint = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_tracepoint::parent);
 
 	LTTNG_ASSERT(location_tracepoint);
 
@@ -225,8 +224,8 @@ static unsigned long lttng_userspace_probe_location_function_hash(
 			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION,
 			lttng_ht_seed);
 	struct lttng_userspace_probe_location_function *function_location =
-			container_of(location, typeof(*function_location),
-					parent);
+			lttng::utils::container_of(
+					location, &lttng_userspace_probe_location_function::parent);
 
 	hash ^= hash_key_str(function_location->function_name, lttng_ht_seed);
 	hash ^= hash_key_str(function_location->binary_path, lttng_ht_seed);
@@ -244,10 +243,10 @@ static bool lttng_userspace_probe_location_function_is_equal(
 	bool is_equal = false;
 	struct lttng_userspace_probe_location_function *a, *b;
 
-	a = container_of(_a, struct lttng_userspace_probe_location_function,
-			parent);
-	b = container_of(_b, struct lttng_userspace_probe_location_function,
-			parent);
+	a = lttng::utils::container_of(_a,
+			&lttng_userspace_probe_location_function::parent);
+	b = lttng::utils::container_of(_b,
+			&lttng_userspace_probe_location_function::parent);
 
 	if (a->instrumentation_type != b->instrumentation_type) {
 		goto end;
@@ -350,8 +349,8 @@ static unsigned long lttng_userspace_probe_location_tracepoint_hash(
 	unsigned long hash = hash_key_ulong(
 			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT,
 			lttng_ht_seed);
-	struct lttng_userspace_probe_location_tracepoint *tp_location =
-			container_of(location, typeof(*tp_location), parent);
+	struct lttng_userspace_probe_location_tracepoint *tp_location = lttng::utils::container_of(
+			location, &lttng_userspace_probe_location_tracepoint::parent);
 
 	hash ^= hash_key_str(tp_location->probe_name, lttng_ht_seed);
 	hash ^= hash_key_str(tp_location->provider_name, lttng_ht_seed);
@@ -370,10 +369,10 @@ static bool lttng_userspace_probe_location_tracepoint_is_equal(
 	bool is_equal = false;
 	struct lttng_userspace_probe_location_tracepoint *a, *b;
 
-	a = container_of(_a, struct lttng_userspace_probe_location_tracepoint,
-			parent);
-	b = container_of(_b, struct lttng_userspace_probe_location_tracepoint,
-			parent);
+	a = lttng::utils::container_of(_a,
+			&lttng_userspace_probe_location_tracepoint::parent);
+	b = lttng::utils::container_of(_b,
+			&lttng_userspace_probe_location_tracepoint::parent);
 
 	LTTNG_ASSERT(a->probe_name);
 	LTTNG_ASSERT(b->probe_name);
@@ -604,10 +603,10 @@ lttng_userspace_probe_location_function_copy(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
-	function_location = container_of(
-			location, typeof(*function_location), parent);
+	function_location = lttng::utils::container_of(
+			location, &lttng_userspace_probe_location_function::parent);
 
-	 /* Get probe location fields */
+	/* Get probe location fields */
 	binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
 	if (!binary_path) {
 		ERR("Userspace probe binary path is NULL");
@@ -678,8 +677,8 @@ lttng_userspace_probe_location_tracepoint_copy(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
-	tracepoint_location = container_of(
-			location, typeof(*tracepoint_location), parent);
+	tracepoint_location = lttng::utils::container_of(
+			location, &lttng_userspace_probe_location_tracepoint::parent);
 
 	/* Get probe location fields */
 	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
@@ -756,9 +755,8 @@ const char *lttng_userspace_probe_location_function_get_binary_path(
 		goto end;
 	}
 
-	function_location = container_of(location,
-		struct lttng_userspace_probe_location_function,
-			parent);
+	function_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_function::parent);
 	ret = function_location->binary_path;
 end:
 	return ret;
@@ -776,9 +774,8 @@ const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
 		goto end;
 	}
 
-	tracepoint_location = container_of(location,
-		struct lttng_userspace_probe_location_tracepoint,
-			parent);
+	tracepoint_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->binary_path;
 end:
 	return ret;
@@ -796,8 +793,8 @@ const char *lttng_userspace_probe_location_function_get_function_name(
 		goto end;
 	}
 
-	function_location = container_of(location,
-		struct lttng_userspace_probe_location_function, parent);
+	function_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_function::parent);
 	ret = function_location->function_name;
 end:
 	return ret;
@@ -815,8 +812,8 @@ const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
 		goto end;
 	}
 
-	tracepoint_location = container_of(location,
-		struct lttng_userspace_probe_location_tracepoint, parent);
+	tracepoint_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->probe_name;
 end:
 	return ret;
@@ -834,8 +831,8 @@ const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
 		goto end;
 	}
 
-	tracepoint_location = container_of(location,
-		struct lttng_userspace_probe_location_tracepoint, parent);
+	tracepoint_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->provider_name;
 end:
 	return ret;
@@ -853,8 +850,8 @@ int lttng_userspace_probe_location_function_get_binary_fd(
 		goto end;
 	}
 
-	function_location = container_of(location,
-		struct lttng_userspace_probe_location_function, parent);
+	function_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_function::parent);
 	ret = function_location->binary_fd_handle ?
 			fd_handle_get_fd(function_location->binary_fd_handle) : -1;
 end:
@@ -875,8 +872,8 @@ lttng_userspace_probe_location_function_get_instrumentation_type(
 		goto end;
 	}
 
-	function_location = container_of(location,
-		struct lttng_userspace_probe_location_function, parent);
+	function_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_function::parent);
 	type = function_location->instrumentation_type;
 end:
 	return type;
@@ -900,8 +897,8 @@ lttng_userspace_probe_location_function_set_instrumentation_type(
 		goto end;
 	}
 
-	function_location = container_of(location,
-		struct lttng_userspace_probe_location_function, parent);
+	function_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_function::parent);
 	function_location->instrumentation_type = instrumentation_type;
 end:
 	return status;
@@ -919,8 +916,8 @@ int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 		goto end;
 	}
 
-	tracepoint_location = container_of(location,
-		struct lttng_userspace_probe_location_tracepoint, parent);
+	tracepoint_location = lttng::utils::container_of(location,
+		&lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->binary_fd_handle ?
 			fd_handle_get_fd(tracepoint_location->binary_fd_handle) : -1;
 end:
@@ -1021,9 +1018,8 @@ int lttng_userspace_probe_location_function_serialize(
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	location_function = container_of(location,
-			struct lttng_userspace_probe_location_function,
-			parent);
+	location_function = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_function::parent);
 	if (!location_function->function_name || !location_function->binary_path) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1098,9 +1094,8 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
-	location_tracepoint = container_of(location,
-			struct lttng_userspace_probe_location_tracepoint,
-			parent);
+	location_tracepoint = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_tracepoint::parent);
 	if (!location_tracepoint->probe_name ||
 			!location_tracepoint->provider_name ||
 			!location_tracepoint->binary_path) {
@@ -1568,8 +1563,8 @@ int lttng_userspace_probe_location_function_set_binary_fd_handle(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	function_location = container_of(location,
-			struct lttng_userspace_probe_location_function, parent);
+	function_location = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_function::parent);
 	fd_handle_put(function_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
 	function_location->binary_fd_handle = binary_fd;
@@ -1587,8 +1582,8 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
-	tracepoint_location = container_of(location,
-			struct lttng_userspace_probe_location_tracepoint, parent);
+	tracepoint_location = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_tracepoint::parent);
 	fd_handle_put(tracepoint_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
 	tracepoint_location->binary_fd_handle = binary_fd;
@@ -1617,9 +1612,8 @@ int lttng_userspace_probe_location_function_flatten(
 		goto end;
 	}
 
-	probe_function = container_of(location,
-			struct lttng_userspace_probe_location_function,
-			parent);
+	probe_function = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_function::parent);
 	LTTNG_ASSERT(probe_function->function_name);
 	LTTNG_ASSERT(probe_function->binary_path);
 
@@ -1741,9 +1735,8 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-	probe_tracepoint = container_of(location,
-			struct lttng_userspace_probe_location_tracepoint,
-			parent);
+	probe_tracepoint = lttng::utils::container_of(location,
+			&lttng_userspace_probe_location_tracepoint::parent);
 	LTTNG_ASSERT(probe_tracepoint->probe_name);
 	LTTNG_ASSERT(probe_tracepoint->provider_name);
 	LTTNG_ASSERT(probe_tracepoint->binary_path);

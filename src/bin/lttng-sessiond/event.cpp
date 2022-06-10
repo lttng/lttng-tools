@@ -267,7 +267,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 	}
 
 	do {
-		uevent = caa_container_of(node, struct ltt_ust_event, node);
+		uevent = lttng::utils::container_of(node, &ltt_ust_event::node);
 		LTTNG_ASSERT(uevent);
 
 		if (uevent->enabled == 0) {
@@ -869,7 +869,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
 	}
 
 	do {
-		aevent = caa_container_of(node, struct agent_event, node);
+		aevent = lttng::utils::container_of(node, &agent_event::node);
 		ret = event_agent_disable_one(usess, agt, aevent);
 
 		if (ret != LTTNG_OK) {

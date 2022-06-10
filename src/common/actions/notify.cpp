@@ -21,7 +21,7 @@ static struct lttng_action_notify *action_notify_from_action(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_notify, parent);
+	return lttng::utils::container_of(action, &lttng_action_notify::parent);
 }
 
 static const struct lttng_action_notify *action_notify_from_action_const(
@@ -29,7 +29,7 @@ static const struct lttng_action_notify *action_notify_from_action_const(
 {
 	LTTNG_ASSERT(action);
 
-	return container_of(action, struct lttng_action_notify, parent);
+	return lttng::utils::container_of(action, &lttng_action_notify::parent);
 }
 
 static

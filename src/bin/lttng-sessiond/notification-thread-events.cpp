@@ -225,8 +225,8 @@ int match_client_id(struct cds_lfht_node *node, const void *key)
 {
 	/* This double-cast is intended to supress pointer-to-cast warning. */
 	const notification_client_id id = *((notification_client_id *) key);
-	const struct notification_client *client = caa_container_of(
-			node, struct notification_client, client_id_ht_node);
+	const struct notification_client *client = lttng::utils::container_of(
+			node, &notification_client::client_id_ht_node);
 
 	return client->id == id;
 }
@@ -325,8 +325,8 @@ static
 int match_session(struct cds_lfht_node *node, const void *key)
 {
 	const char *name = (const char *) key;
-	struct session_info *session_info = caa_container_of(
-		node, struct session_info, sessions_ht_node);
+	struct session_info *session_info = lttng::utils::container_of(
+		node, &session_info::sessions_ht_node);
 
 	return !strcmp(session_info->name, name);
 }
@@ -493,7 +493,7 @@ enum lttng_object_type get_condition_binding_object(
 static
 void free_channel_info_rcu(struct rcu_head *node)
 {
-	free(caa_container_of(node, struct channel_info, rcu_node));
+	free(lttng::utils::container_of(node, &channel_info::rcu_node));
 }
 
 static
@@ -517,7 +517,7 @@ void channel_info_destroy(struct channel_info *channel_info)
 static
 void free_session_info_rcu(struct rcu_head *node)
 {
-	free(caa_container_of(node, struct session_info, rcu_node));
+	free(lttng::utils::container_of(node, &session_info::rcu_node));
 }
 
 /* Don't call directly, use the ref-counting mechanism. */
@@ -672,7 +672,7 @@ static
 void notification_client_list_release(struct urcu_ref *list_ref)
 {
 	struct notification_client_list *list =
-			container_of(list_ref, typeof(*list), ref);
+			lttng::utils::container_of(list_ref, &notification_client_list::ref);
 	struct notification_client_list_element *client_list_element, *tmp;
 
 	lttng_condition_put(list->condition);
@@ -816,8 +816,8 @@ struct notification_client_list *get_client_list_from_condition(
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
-		list = container_of(node, struct notification_client_list,
-				notification_trigger_clients_ht_node);
+		list = lttng::utils::container_of(node,
+				&notification_client_list::notification_trigger_clients_ht_node);
 		list = notification_client_list_get(list) ? list : NULL;
 	}
 
@@ -1284,7 +1284,7 @@ end:
 static
 void free_notification_client_rcu(struct rcu_head *node)
 {
-	free(caa_container_of(node, struct notification_client, rcu_node));
+	free(lttng::utils::container_of(node, &notification_client::rcu_node));
 }
 
 static
@@ -4207,9 +4207,8 @@ bool evaluate_buffer_usage_condition(const struct lttng_condition *condition,
 	bool result = false;
 	uint64_t threshold;
 	enum lttng_condition_type condition_type;
-	const struct lttng_condition_buffer_usage *use_condition = container_of(
-			condition, struct lttng_condition_buffer_usage,
-			parent);
+	const struct lttng_condition_buffer_usage *use_condition = lttng::utils::container_of(
+			condition, &lttng_condition_buffer_usage::parent);
 
 	if (use_condition->threshold_bytes.set) {
 		threshold = use_condition->threshold_bytes.value;
@@ -4265,9 +4264,8 @@ bool evaluate_session_consumed_size_condition(
 {
 	uint64_t threshold;
 	const struct lttng_condition_session_consumed_size *size_condition =
-			container_of(condition,
-				struct lttng_condition_session_consumed_size,
-				parent);
+			lttng::utils::container_of(condition,
+				&lttng_condition_session_consumed_size::parent);
 
 	threshold = size_condition->consumed_threshold_bytes.value;
 	DBG("Session consumed size condition being evaluated: threshold = %" PRIu64 ", current size = %" PRIu64,
@@ -4750,10 +4748,9 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	}
 
 	evaluation = lttng_evaluation_event_rule_matches_create(
-			container_of(lttng_trigger_get_const_condition(
+			lttng::utils::container_of(lttng_trigger_get_const_condition(
 						     element->trigger),
-					struct lttng_condition_event_rule_matches,
-					parent),
+					&lttng_condition_event_rule_matches::parent),
 			notification->capture_buffer,
 			notification->capture_buf_size, false);
 

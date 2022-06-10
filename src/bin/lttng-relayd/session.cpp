@@ -464,7 +464,7 @@ struct relay_session *session_get_by_id(uint64_t id)
 		DBG("Session find by ID %" PRIu64 " id NOT found", id);
 		goto end;
 	}
-	session = caa_container_of(node, struct relay_session, session_n);
+	session = lttng::utils::container_of(node, &relay_session::session_n);
 	DBG("Session find by ID %" PRIu64 " id found", id);
 	if (!session_get(session)) {
 		session = NULL;
@@ -609,7 +609,7 @@ static void destroy_session(struct relay_session *session)
 static void session_release(struct urcu_ref *ref)
 {
 	struct relay_session *session =
-			caa_container_of(ref, struct relay_session, ref);
+			lttng::utils::container_of(ref, &relay_session::ref);
 
 	destroy_session(session);
 }

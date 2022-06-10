@@ -23,7 +23,7 @@ static pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;
 static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
 {
 	struct ctf_trace *trace =
-		caa_container_of(rcu_head, struct ctf_trace, rcu_node);
+		lttng::utils::container_of(rcu_head, &ctf_trace::rcu_node);
 
 	free(trace);
 }
@@ -53,7 +53,7 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 static void ctf_trace_release(struct urcu_ref *ref)
 {
 	struct ctf_trace *trace =
-		caa_container_of(ref, struct ctf_trace, ref);
+		lttng::utils::container_of(ref, &ctf_trace::ref);
 	int ret;
 	struct lttng_ht_iter iter;
 
@@ -156,7 +156,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 		DBG("CTF Trace path %s not found", subpath);
 		goto end;
 	}
-	trace = caa_container_of(node, struct ctf_trace, node);
+	trace = lttng::utils::container_of(node, &ctf_trace::node);
 	if (!ctf_trace_get(trace)) {
 		trace = NULL;
 	}

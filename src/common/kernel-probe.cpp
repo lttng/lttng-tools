@@ -82,9 +82,8 @@ void lttng_kernel_probe_location_symbol_destroy(
 
 	LTTNG_ASSERT(location);
 
-	location_symbol = container_of(location,
-			struct lttng_kernel_probe_location_symbol,
-			parent);
+	location_symbol = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_symbol::parent);
 
 	LTTNG_ASSERT(location_symbol);
 
@@ -195,8 +194,8 @@ lttng_kernel_probe_location_address_get_address(
 		goto end;
 	}
 
-	address_location = container_of(location,
-			struct lttng_kernel_probe_location_address, parent);
+	address_location = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_address::parent);
 	*offset = address_location->address;
 end:
 	return ret;
@@ -214,8 +213,8 @@ const char *lttng_kernel_probe_location_symbol_get_name(
 		goto end;
 	}
 
-	symbol_location = container_of(location,
-			struct lttng_kernel_probe_location_symbol, parent);
+	symbol_location = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_symbol::parent);
 	ret = symbol_location->symbol_name;
 end:
 	return ret;
@@ -239,8 +238,8 @@ lttng_kernel_probe_location_symbol_get_offset(
 		goto end;
 	}
 
-	symbol_location = container_of(location,
-			struct lttng_kernel_probe_location_symbol, parent);
+	symbol_location = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_symbol::parent);
 	*offset = symbol_location->offset;
 end:
 	return ret;
@@ -267,8 +266,8 @@ int lttng_kernel_probe_location_symbol_serialize(
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
 	original_payload_size = payload->buffer.size;
-	location_symbol = container_of(location,
-			struct lttng_kernel_probe_location_symbol, parent);
+	location_symbol = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_symbol::parent);
 
 	if (!location_symbol->symbol_name) {
 		ret = -LTTNG_ERR_INVALID;
@@ -319,9 +318,8 @@ int lttng_kernel_probe_location_address_serialize(
 			LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 
 	original_payload_size = payload->buffer.size;
-	location_address = container_of(location,
-			struct lttng_kernel_probe_location_address,
-			parent);
+	location_address = lttng::utils::container_of(location,
+			&lttng_kernel_probe_location_address::parent);
 
 	location_address_comm.address = location_address->address;
 
@@ -518,9 +516,8 @@ unsigned long lttng_kernel_probe_location_address_hash(
 	unsigned long hash = hash_key_ulong(
 			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS,
 			lttng_ht_seed);
-	struct lttng_kernel_probe_location_address *address_location =
-			container_of(location, typeof(*address_location),
-				parent);
+	struct lttng_kernel_probe_location_address *address_location = lttng::utils::container_of(
+			location, &lttng_kernel_probe_location_address::parent);
 
 	hash ^= hash_key_u64(&address_location->address, lttng_ht_seed);
 
@@ -535,10 +532,8 @@ bool lttng_kernel_probe_location_address_is_equal(
 	bool is_equal = false;
 	struct lttng_kernel_probe_location_address *a, *b;
 
-	a = container_of(_a, struct lttng_kernel_probe_location_address,
-			parent);
-	b = container_of(_b, struct lttng_kernel_probe_location_address,
-			parent);
+	a = lttng::utils::container_of(_a, &lttng_kernel_probe_location_address::parent);
+	b = lttng::utils::container_of(_b, &lttng_kernel_probe_location_address::parent);
 
 	if (a->address != b->address) {
 		goto end;
@@ -555,11 +550,9 @@ unsigned long lttng_kernel_probe_location_symbol_hash(
 		const struct lttng_kernel_probe_location *location)
 {
 	unsigned long hash = hash_key_ulong(
-			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET,
-			lttng_ht_seed);
-	struct lttng_kernel_probe_location_symbol *symbol_location =
-			container_of(location, typeof(*symbol_location),
-				parent);
+			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET, lttng_ht_seed);
+	struct lttng_kernel_probe_location_symbol *symbol_location = lttng::utils::container_of(
+			location, &lttng_kernel_probe_location_symbol::parent);
 
 	hash ^= hash_key_str(symbol_location->symbol_name, lttng_ht_seed);
 	hash ^= hash_key_u64(&symbol_location->offset, lttng_ht_seed);
@@ -575,10 +568,10 @@ bool lttng_kernel_probe_location_symbol_is_equal(
 	bool is_equal = false;
 	struct lttng_kernel_probe_location_symbol *a, *b;
 
-	a = container_of(_a, struct lttng_kernel_probe_location_symbol,
-			parent);
-	b = container_of(_b, struct lttng_kernel_probe_location_symbol,
-			parent);
+	a = lttng::utils::container_of(_a,
+			&lttng_kernel_probe_location_symbol::parent);
+	b = lttng::utils::container_of(_b,
+			&lttng_kernel_probe_location_symbol::parent);
 
 	LTTNG_ASSERT(a->symbol_name);
 	LTTNG_ASSERT(b->symbol_name);
@@ -625,15 +618,12 @@ lttng_kernel_probe_location_symbol_copy(
 		const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *new_location = NULL;
-	struct lttng_kernel_probe_location_symbol *symbol_location;
 	enum lttng_kernel_probe_location_status status;
 	const char *symbol_name = NULL;
 	uint64_t offset;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
-	symbol_location = container_of(
-			location, typeof(*symbol_location), parent);
 
 	 /* Get probe location offset */
 	status = lttng_kernel_probe_location_symbol_get_offset(location, &offset);
@@ -664,17 +654,13 @@ lttng_kernel_probe_location_address_copy(
 		const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *new_location = NULL;
-	struct lttng_kernel_probe_location_address *address_location;
 	enum lttng_kernel_probe_location_status status;
 	uint64_t address;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
-	address_location = container_of(
-			location, typeof(*address_location), parent);
 
-
-	 /* Get probe location fields */
+	/* Get probe location fields */
 	status = lttng_kernel_probe_location_address_get_address(location, &address);
 	if (status != LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK) {
 		ERR("Get kernel probe address failed.");

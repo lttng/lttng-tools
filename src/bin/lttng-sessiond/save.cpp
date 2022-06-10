@@ -199,7 +199,7 @@ int save_ust_channel_attributes(struct config_writer *writer,
 	 * Fetch the monitor timer which is located in the parent of
 	 * lttng_ust_channel_attr
 	 */
-	channel = caa_container_of(attr, struct ltt_ust_channel, attr);
+	channel = lttng::utils::container_of(attr, &ltt_ust_channel::attr);
 	ret = config_writer_write_element_unsigned_int(writer,
 		config_element_monitor_timer_interval,
 		channel->monitor_timer_interval);
@@ -1155,7 +1155,7 @@ int save_ust_events(struct config_writer *writer,
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
-		event = caa_container_of(node, struct ltt_ust_event, node);
+		event = lttng::utils::container_of(node, &ltt_ust_event::node);
 
 		if (event->internal) {
 			/* Internal events must not be exposed to clients */
@@ -1243,7 +1243,7 @@ int save_agent_events(struct config_writer *writer,
 		struct ltt_ust_event fake_event;
 
 		memset(&fake_event, 0, sizeof(fake_event));
-		agent_event = caa_container_of(node, struct agent_event, node);
+		agent_event = lttng::utils::container_of(node, &agent_event::node);
 
 		/*
 		 * Initialize a fake ust event to reuse the same serialization
@@ -2135,7 +2135,7 @@ int save_ust_domain(struct config_writer *writer,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 			&iter.iter, node, node) {
-		ust_chan = caa_container_of(node, struct ltt_ust_channel, node);
+		ust_chan = lttng::utils::container_of(node, &ltt_ust_channel::node);
 		if (domain == ust_chan->domain) {
 			ret = save_ust_channel(writer, ust_chan, session->ust_session);
 			if (ret != LTTNG_OK) {

@@ -202,7 +202,7 @@ struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 	if (!node) {
 		goto end;
 	}
-	reg = caa_container_of(node, struct buffer_reg_uid, node);
+	reg = lttng::utils::container_of(node, &buffer_reg_uid::node);
 
 end:
 	return reg;
@@ -314,7 +314,7 @@ struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id)
 	if (!node) {
 		goto end;
 	}
-	reg = caa_container_of(node, struct buffer_reg_pid, node);
+	reg = lttng::utils::container_of(node, &buffer_reg_pid::node);
 
 end:
 	return reg;
@@ -472,7 +472,7 @@ struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key,
 	if (!node) {
 		goto end;
 	}
-	chan = caa_container_of(node, struct buffer_reg_channel, node);
+	chan = lttng::utils::container_of(node, &buffer_reg_channel::node);
 
 end:
 	return chan;
@@ -630,9 +630,9 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 static void rcu_free_buffer_reg_uid(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
+		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct buffer_reg_uid *reg =
-		caa_container_of(node, struct buffer_reg_uid, node);
+		lttng::utils::container_of(node, &buffer_reg_uid::node);
 
 	buffer_reg_session_destroy(reg->registry, reg->domain);
 	free(reg);
@@ -641,9 +641,9 @@ static void rcu_free_buffer_reg_uid(struct rcu_head *head)
 static void rcu_free_buffer_reg_pid(struct rcu_head *head)
 {
 	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
+		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	struct buffer_reg_pid *reg =
-		caa_container_of(node, struct buffer_reg_pid, node);
+		lttng::utils::container_of(node, &buffer_reg_pid::node);
 
 	buffer_reg_session_destroy(reg->registry, LTTNG_DOMAIN_UST);
 	free(reg);

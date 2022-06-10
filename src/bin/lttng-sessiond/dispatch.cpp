@@ -284,7 +284,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				break;
 			}
 
-			ust_cmd = caa_container_of(node, struct ust_command, node);
+			ust_cmd = lttng::utils::container_of(node, &ust_command::node);
 
 			DBG("Dispatching UST registration pid:%d ppid:%d uid:%d"
 					" gid:%d sock:%d name:%s (version %d.%d)",
@@ -476,7 +476,7 @@ error:
 		if (node == NULL) {
 			break;
 		}
-		ust_cmd = caa_container_of(node, struct ust_command, node);
+		ust_cmd = lttng::utils::container_of(node, &ust_command::node);
 		ret = close(ust_cmd->sock);
 		if (ret < 0) {
 			PERROR("close ust sock exit dispatch %d", ust_cmd->sock);

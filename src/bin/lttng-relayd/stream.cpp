@@ -54,7 +54,7 @@ struct relay_stream *stream_get_by_id(uint64_t stream_id)
 		DBG("Relay stream %" PRIu64 " not found", stream_id);
 		goto end;
 	}
-	stream = caa_container_of(node, struct relay_stream, node);
+	stream = lttng::utils::container_of(node, &relay_stream::node);
 	if (!stream_get(stream)) {
 		stream = NULL;
 	}
@@ -760,7 +760,7 @@ static void stream_destroy(struct relay_stream *stream)
 static void stream_destroy_rcu(struct rcu_head *rcu_head)
 {
 	struct relay_stream *stream =
-		caa_container_of(rcu_head, struct relay_stream, rcu_node);
+		lttng::utils::container_of(rcu_head, &relay_stream::rcu_node);
 
 	stream_destroy(stream);
 }
@@ -772,7 +772,7 @@ static void stream_destroy_rcu(struct rcu_head *rcu_head)
 static void stream_release(struct urcu_ref *ref)
 {
 	struct relay_stream *stream =
-		caa_container_of(ref, struct relay_stream, ref);
+		lttng::utils::container_of(ref, &relay_stream::ref);
 	struct relay_session *session;
 
 	session = stream->trace->session;
