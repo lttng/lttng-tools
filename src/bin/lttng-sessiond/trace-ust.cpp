@@ -1353,6 +1353,33 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 	LTTNG_ASSERT(!ret);
 }
 
+int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
+{
+	int ret = 0;
+	struct buffer_reg_uid *uid_reg = NULL;
+	struct buffer_reg_session *session_reg = NULL;
+
+	rcu_read_lock();
+	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
+		ust_registry_session *registry;
+
+		session_reg = uid_reg->registry;
+		registry = session_reg->reg.ust;
+
+		try {
+			registry->regenerate_metadata();
+		} catch (const std::exception& ex) {
+			ERR("Failed to regenerate user space session metadata: %s", ex.what());
+			ret = -1;
+			goto end;
+		}
+	}
+
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
 /*
  * Iterate over a hash table containing channels and cleanup safely.
  */

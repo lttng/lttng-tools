@@ -221,7 +221,7 @@ class array_type : public type {
 public:
 	array_type(unsigned int alignment, type::cuptr element_type);
 
-	const type::cuptr element_type;	
+	const type::cuptr element_type;
 
 protected:
 	virtual bool _is_equal(const type& base_other) const noexcept override;

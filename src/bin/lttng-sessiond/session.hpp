@@ -15,6 +15,7 @@
 #include <common/hashtable/hashtable.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/pthread-lock.hpp>
 #include <lttng/rotation.h>
 #include <lttng/location.h>
 #include <lttng/lttng-error.h>

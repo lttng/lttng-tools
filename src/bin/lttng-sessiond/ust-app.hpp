@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include <common/index-allocator.hpp>
+#include <common/format.hpp>
 #include <common/uuid.hpp>
 
 #include "trace-ust.hpp"
@@ -255,14 +256,8 @@ struct ust_app {
 	uid_t uid;           /* User ID that owns the apps */
 	gid_t gid;           /* Group ID that owns the apps */
 
-	/* App ABI */
-	uint32_t bits_per_long;
-	uint32_t uint8_t_alignment;
-	uint32_t uint16_t_alignment;
-	uint32_t uint32_t_alignment;
-	uint32_t uint64_t_alignment;
-	uint32_t long_alignment;
-	int byte_order;		/* BIG_ENDIAN or LITTLE_ENDIAN */
+	/* App ABI. */
+	lttng::sessiond::trace::abi abi;
 
 	int compatible; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is
@@ -330,6 +325,20 @@ struct ust_app {
 	struct lttng_ht *token_to_event_notifier_rule_ht;
 };
 
+template <>
+struct fmt::formatter<ust_app> : fmt::formatter<std::string> {
+	template <typename FormatCtx>
+	typename FormatCtx::iterator format(const ust_app& app, FormatCtx& ctx)
+	{
+		return fmt::format_to(ctx.out(),
+				"{{ procname = `{}`, ppid = {}, pid = {}, uid = {}, gid = {}, version = {}.{}, registration time = {} }}",
+				app.name, app.ppid, app.pid, app.uid, app.gid, app.v_major,
+				app.v_minor,
+				lttng::utils::time_to_iso8601_str(app.registration_time));
+	}
+};
+
+
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int ust_app_register(struct ust_register_msg *msg, int sock);
@@ -367,8 +376,9 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-ssize_t ust_app_push_metadata(ust_registry_session *registry,
-		struct consumer_socket *socket, int send_zero_data);
+ssize_t ust_app_push_metadata(const ust_registry_session::locked_ptr& registry,
+		struct consumer_socket *socket,
+		int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
 enum lttng_error_code ust_app_snapshot_record(
 		const struct ltt_ust_session *usess,

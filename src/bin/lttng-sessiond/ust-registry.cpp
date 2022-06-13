@@ -6,122 +6,25 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-
-#include <common/common.hpp>
-#include <common/hashtable/utils.hpp>
-#include <common/exception.hpp>
-#include <lttng/lttng.h>
 
 #include "ust-registry.hpp"
-#include "ust-app.hpp"
-#include "ust-field-utils.hpp"
-#include "utils.hpp"
 #include "lttng-sessiond.hpp"
 #include "notification-thread-commands.hpp"
+#include "ust-app.hpp"
+#include "utils.hpp"
 
-/*
- * Hash table match function for event in the registry.
- */
-static int ht_match_event(struct cds_lfht_node *node, const void *_key)
-{
-	const struct ust_registry_event *key;
-	struct ust_registry_event *event;
+#include <common/common.hpp>
+#include <common/exception.hpp>
+#include <common/format.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/make-unique-wrapper.hpp>
+#include <lttng/lttng.h>
 
-	LTTNG_ASSERT(node);
-	LTTNG_ASSERT(_key);
+#include <inttypes.h>
 
-	event = caa_container_of(node, struct ust_registry_event, node.node);
-	LTTNG_ASSERT(event);
-	key = (ust_registry_event *) _key;
-
-	/* It has to be a perfect match. First, compare the event names. */
-	if (strncmp(event->name, key->name, sizeof(event->name))) {
-		goto no_match;
-	}
-
-	/* Compare log levels. */
-	if (event->loglevel_value != key->loglevel_value) {
-		goto no_match;
-	}
-
-	/* Compare the arrays of fields. */
-	if (!match_lttng_ust_ctl_field_array(event->fields, event->nr_fields,
-			key->fields, key->nr_fields)) {
-		goto no_match;
-	}
-
-	/* Compare model URI. */
-	if (event->model_emf_uri != NULL && key->model_emf_uri == NULL) {
-		goto no_match;
-	} else if(event->model_emf_uri == NULL && key->model_emf_uri != NULL) {
-		goto no_match;
-	} else if (event->model_emf_uri != NULL && key->model_emf_uri != NULL) {
-		if (strcmp(event->model_emf_uri, key->model_emf_uri)) {
-			goto no_match;
-		}
-	}
-
-	/* Match */
-	return 1;
-
-no_match:
-	return 0;
-}
-
-static unsigned long ht_hash_event(const void *_key, unsigned long seed)
-{
-	uint64_t hashed_key;
-	const struct ust_registry_event *key = (ust_registry_event *) _key;
-
-	LTTNG_ASSERT(key);
-
-	hashed_key = (uint64_t) hash_key_str(key->name, seed);
-
-	return hash_key_u64(&hashed_key, seed);
-}
-
-static int compare_enums(const struct ust_registry_enum *reg_enum_a,
-		const struct ust_registry_enum *reg_enum_b)
-{
-	int ret = 0;
-	size_t i;
-
-	LTTNG_ASSERT(strcmp(reg_enum_a->name, reg_enum_b->name) == 0);
-	if (reg_enum_a->nr_entries != reg_enum_b->nr_entries) {
-		ret = -1;
-		goto end;
-	}
-	for (i = 0; i < reg_enum_a->nr_entries; i++) {
-		const struct lttng_ust_ctl_enum_entry *entries_a, *entries_b;
-
-		entries_a = &reg_enum_a->entries[i];
-		entries_b = &reg_enum_b->entries[i];
-		if (entries_a->start.value != entries_b->start.value) {
-			ret = -1;
-			goto end;
-		}
-		if (entries_a->end.value != entries_b->end.value) {
-			ret = -1;
-			goto end;
-		}
-		if (entries_a->start.signedness != entries_b->start.signedness) {
-			ret = -1;
-			goto end;
-		}
-		if (entries_a->end.signedness != entries_b->end.signedness) {
-			ret = -1;
-			goto end;
-		}
-
-		if (strcmp(entries_a->string, entries_b->string)) {
-			ret = -1;
-			goto end;
-		}
-	}
-end:
-	return ret;
-}
+namespace ls = lttng::sessiond;
+namespace lst = lttng::sessiond::trace;
+namespace lsu = lttng::sessiond::ust;
 
 /*
  * Hash table match function for enumerations in the session. Match is
@@ -130,29 +33,22 @@ end:
  */
 static int ht_match_enum(struct cds_lfht_node *node, const void *_key)
 {
-	struct ust_registry_enum *_enum;
-	const struct ust_registry_enum *key;
+	lsu::registry_enum *_enum;
+	const lsu::registry_enum *key;
 
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	_enum = caa_container_of(node, struct ust_registry_enum,
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	_enum = caa_container_of(node, lsu::registry_enum,
 			node.node);
+	DIAGNOSTIC_POP
+
 	LTTNG_ASSERT(_enum);
-	key = (ust_registry_enum *) _key;
+	key = (lsu::registry_enum *) _key;
 
-	if (strncmp(_enum->name, key->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
-		goto no_match;
-	}
-	if (compare_enums(_enum, key)) {
-		goto no_match;
-	}
-
-	/* Match. */
-	return 1;
-
-no_match:
-	return 0;
+	return *_enum == *key;
 }
 
 /*
@@ -161,13 +57,17 @@ no_match:
  */
 static int ht_match_enum_id(struct cds_lfht_node *node, const void *_key)
 {
-	struct ust_registry_enum *_enum;
-	const struct ust_registry_enum *key = (ust_registry_enum *) _key;
+	lsu::registry_enum *_enum;
+	const lsu::registry_enum *key = (lsu::registry_enum *) _key;
 
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	_enum = caa_container_of(node, struct ust_registry_enum, node.node);
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	_enum = caa_container_of(node, lsu::registry_enum, node.node);
+	DIAGNOSTIC_POP
+
 	LTTNG_ASSERT(_enum);
 
 	if (_enum->id != key->id) {
@@ -187,324 +87,33 @@ no_match:
  */
 static unsigned long ht_hash_enum(void *_key, unsigned long seed)
 {
-	struct ust_registry_enum *key = (ust_registry_enum *) _key;
+	lsu::registry_enum *key = (lsu::registry_enum *) _key;
 
 	LTTNG_ASSERT(key);
-	return hash_key_str(key->name, seed);
-}
-
-/*
- * Return negative value on error, 0 if OK.
- *
- * TODO: we could add stricter verification of more types to catch
- * errors in liblttng-ust implementation earlier than consumption by the
- * trace reader.
- */
-static
-int validate_event_field(struct lttng_ust_ctl_field *field,
-		const char *event_name,
-		struct ust_app *app)
-{
-	int ret = 0;
-
-	switch(field->type.atype) {
-	case lttng_ust_ctl_atype_integer:
-	case lttng_ust_ctl_atype_enum:
-	case lttng_ust_ctl_atype_array:
-	case lttng_ust_ctl_atype_sequence:
-	case lttng_ust_ctl_atype_string:
-	case lttng_ust_ctl_atype_variant:
-	case lttng_ust_ctl_atype_array_nestable:
-	case lttng_ust_ctl_atype_sequence_nestable:
-	case lttng_ust_ctl_atype_enum_nestable:
-	case lttng_ust_ctl_atype_variant_nestable:
-		break;
-	case lttng_ust_ctl_atype_struct:
-		if (field->type.u.legacy._struct.nr_fields != 0) {
-			WARN("Unsupported non-empty struct field.");
-			ret = -EINVAL;
-			goto end;
-		}
-		break;
-	case lttng_ust_ctl_atype_struct_nestable:
-		if (field->type.u.struct_nestable.nr_fields != 0) {
-			WARN("Unsupported non-empty struct field.");
-			ret = -EINVAL;
-			goto end;
-		}
-		break;
-
-	case lttng_ust_ctl_atype_float:
-		switch (field->type.u._float.mant_dig) {
-		case 0:
-			WARN("UST application '%s' (pid: %d) has unknown float mantissa '%u' "
-				"in field '%s', rejecting event '%s'",
-				app->name, app->pid,
-				field->type.u._float.mant_dig,
-				field->name,
-				event_name);
-			ret = -EINVAL;
-			goto end;
-		default:
-			break;
-		}
-		break;
-
-	default:
-		ret = -ENOENT;
-		goto end;
-	}
-end:
-	return ret;
-}
-
-static
-int validate_event_fields(size_t nr_fields, struct lttng_ust_ctl_field *fields,
-		const char *event_name, struct ust_app *app)
-{
-	unsigned int i;
-
-	for (i = 0; i < nr_fields; i++) {
-		if (validate_event_field(&fields[i], event_name, app) < 0)
-			return -EINVAL;
-	}
-	return 0;
-}
-
-/*
- * Allocate event and initialize it. This does NOT set a valid event id from a
- * registry.
- */
-static struct ust_registry_event *alloc_event(int session_objd,
-		int channel_objd, char *name, char *sig, size_t nr_fields,
-		struct lttng_ust_ctl_field *fields, int loglevel_value,
-		char *model_emf_uri, struct ust_app *app)
-{
-	struct ust_registry_event *event = NULL;
-
-	/*
-	 * Ensure that the field content is valid.
-	 */
-	if (validate_event_fields(nr_fields, fields, name, app) < 0) {
-		return NULL;
-	}
-
-	event = zmalloc<ust_registry_event>();
-	if (!event) {
-		PERROR("zmalloc ust registry event");
-		goto error;
-	}
-
-	event->session_objd = session_objd;
-	event->channel_objd = channel_objd;
-	/* Allocated by ustctl. */
-	event->signature = sig;
-	event->nr_fields = nr_fields;
-	event->fields = fields;
-	event->loglevel_value = loglevel_value;
-	event->model_emf_uri = model_emf_uri;
-	if (name) {
-		/* Copy event name and force NULL byte. */
-		strncpy(event->name, name, sizeof(event->name));
-		event->name[sizeof(event->name) - 1] = '\0';
-	}
-	cds_lfht_node_init(&event->node.node);
-
-error:
-	return event;
-}
-
-/*
- * Free event data structure. This does NOT delete it from any hash table. It's
- * safe to pass a NULL pointer. This should be called inside a call RCU if the
- * event is previously deleted from a rcu hash table.
- */
-static void destroy_event(struct ust_registry_event *event)
-{
-	if (!event) {
-		return;
-	}
-
-	free(event->fields);
-	free(event->model_emf_uri);
-	free(event->signature);
-	free(event);
+	return hash_key_str(key->name.c_str(), seed);
 }
 
 /*
  * Destroy event function call of the call RCU.
  */
-static void destroy_event_rcu(struct rcu_head *head)
+static void ust_registry_event_destroy_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_u64 *node =
-		caa_container_of(head, struct lttng_ht_node_u64, head);
-	struct ust_registry_event *event =
-		caa_container_of(node, struct ust_registry_event, node);
+	struct lttng_ht_node_u64 *node = caa_container_of(head, struct lttng_ht_node_u64, head);
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	lttng::sessiond::ust::registry_event *event =
+			caa_container_of(node, lttng::sessiond::ust::registry_event, _node);
+	DIAGNOSTIC_POP
 
-	destroy_event(event);
-}
-
-/*
- * Find an event using the name and signature in the given registry. RCU read
- * side lock MUST be acquired before calling this function and as long as the
- * event reference is kept by the caller.
- *
- * On success, the event pointer is returned else NULL.
- */
-struct ust_registry_event *ust_registry_find_event(
-		struct ust_registry_channel *chan, char *name, char *sig)
-{
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-	struct ust_registry_event *event = NULL;
-	struct ust_registry_event key;
-
-	LTTNG_ASSERT(chan);
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(sig);
-	ASSERT_RCU_READ_LOCKED();
-
-	/* Setup key for the match function. */
-	strncpy(key.name, name, sizeof(key.name));
-	key.name[sizeof(key.name) - 1] = '\0';
-	key.signature = sig;
-
-	cds_lfht_lookup(chan->events->ht, chan->events->hash_fct(&key, lttng_ht_seed),
-			chan->events->match_fct, &key, &iter.iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
-	if (!node) {
-		goto end;
-	}
-	event = caa_container_of(node, struct ust_registry_event, node);
-
-end:
-	return event;
-}
-
-/*
- * Create a ust_registry_event from the given parameters and add it to the
- * registry hash table. If event_id is valid, it is set with the newly created
- * event id.
- *
- * On success, return 0 else a negative value. The created event MUST be unique
- * so on duplicate entry -EINVAL is returned. On error, event_id is untouched.
- *
- * Should be called with session registry mutex held.
- */
-int ust_registry_create_event(ust_registry_session *session,
-		uint64_t chan_key, int session_objd, int channel_objd, char *name,
-		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
-		int loglevel_value, char *model_emf_uri, int buffer_type,
-		uint32_t *event_id_p, struct ust_app *app)
-{
-	int ret;
-	uint32_t event_id;
-	struct cds_lfht_node *nptr;
-	struct ust_registry_event *event = NULL;
-	struct ust_registry_channel *chan;
-
-	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(name);
-	LTTNG_ASSERT(sig);
-	LTTNG_ASSERT(event_id_p);
-
-	rcu_read_lock();
-
-	/*
-	 * This should not happen but since it comes from the UST tracer, an
-	 * external party, don't assert and simply validate values.
-	 */
-	if (session_objd < 0 || channel_objd < 0) {
-		ret = -EINVAL;
-		goto error_free;
-	}
-
-	chan = ust_registry_channel_find(session, chan_key);
-	if (!chan) {
-		ret = -EINVAL;
-		goto error_free;
-	}
-
-	/* Check if we've reached the maximum possible id. */
-	if (ust_registry_is_max_id(chan->used_event_id)) {
-		ret = -ENOENT;
-		goto error_free;
-	}
-
-	event = alloc_event(session_objd, channel_objd, name, sig, nr_fields,
-			fields, loglevel_value, model_emf_uri, app);
-	if (!event) {
-		ret = -ENOMEM;
-		goto error_free;
-	}
-
-	DBG3("UST registry creating event with event: %s, sig: %s, id: %u, "
-			"chan_objd: %u, sess_objd: %u, chan_id: %u", event->name,
-			event->signature, event->id, event->channel_objd,
-			event->session_objd, chan->chan_id);
-
-	/*
-	 * This is an add unique with a custom match function for event. The node
-	 * are matched using the event name and signature.
-	 */
-	nptr = cds_lfht_add_unique(chan->events->ht, chan->events->hash_fct(event,
-				lttng_ht_seed), chan->events->match_fct, event, &event->node.node);
-	if (nptr != &event->node.node) {
-		if (buffer_type == LTTNG_BUFFER_PER_UID) {
-			/*
-			 * This is normal, we just have to send the event id of the
-			 * returned node and make sure we destroy the previously allocated
-			 * event object.
-			 */
-			destroy_event(event);
-			event = caa_container_of(nptr, struct ust_registry_event,
-					node.node);
-			LTTNG_ASSERT(event);
-			event_id = event->id;
-		} else {
-			ERR("UST registry create event add unique failed for event: %s, "
-					"sig: %s, id: %u, chan_objd: %u, sess_objd: %u",
-					event->name, event->signature, event->id,
-					event->channel_objd, event->session_objd);
-			ret = -EINVAL;
-			goto error_unlock;
-		}
-	} else {
-		/* Request next event id if the node was successfully added. */
-		event_id = event->id = ust_registry_get_next_event_id(chan);
-	}
-
-	*event_id_p = event_id;
-
-	if (!event->metadata_dumped) {
-		/* Append to metadata */
-		ret = ust_metadata_event_statedump(session, chan, event);
-		if (ret) {
-			ERR("Error appending event metadata (errno = %d)", ret);
-			rcu_read_unlock();
-			return ret;
-		}
-	}
-
-	rcu_read_unlock();
-	return 0;
-
-error_free:
-	free(sig);
-	free(fields);
-	free(model_emf_uri);
-error_unlock:
-	rcu_read_unlock();
-	destroy_event(event);
-	return ret;
+	lttng::sessiond::ust::registry_event_destroy(event);
 }
 
 /*
  * For a given event in a registry, delete the entry and destroy the event.
  * This MUST be called within a RCU read side lock section.
  */
-void ust_registry_destroy_event(struct ust_registry_channel *chan,
-		struct ust_registry_event *event)
+void ust_registry_channel_destroy_event(lsu::registry_channel *chan,
+		lttng::sessiond::ust::registry_event *event)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -514,28 +123,31 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Delete the node first. */
-	iter.iter.node = &event->node.node;
-	ret = lttng_ht_del(chan->events, &iter);
+	iter.iter.node = &event->_node.node;
+	ret = lttng_ht_del(chan->_events, &iter);
 	LTTNG_ASSERT(!ret);
 
-	call_rcu(&event->node.head, destroy_event_rcu);
+	call_rcu(&event->_node.head, ust_registry_event_destroy_rcu);
 
 	return;
 }
 
-static void destroy_enum(struct ust_registry_enum *reg_enum)
+static void destroy_enum(lsu::registry_enum *reg_enum)
 {
 	if (!reg_enum) {
 		return;
 	}
-	free(reg_enum->entries);
-	free(reg_enum);
+
+	delete reg_enum;
 }
 
 static void destroy_enum_rcu(struct rcu_head *head)
 {
-	struct ust_registry_enum *reg_enum =
-		caa_container_of(head, struct ust_registry_enum, rcu_head);
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	lsu::registry_enum *reg_enum =
+		caa_container_of(head, lsu::registry_enum, rcu_head);
+	DIAGNOSTIC_POP
 
 	destroy_enum(reg_enum);
 }
@@ -544,11 +156,11 @@ static void destroy_enum_rcu(struct rcu_head *head)
  * Lookup enumeration by name and comparing enumeration entries.
  * Needs to be called from RCU read-side critical section.
  */
-static struct ust_registry_enum *ust_registry_lookup_enum(
+static lsu::registry_enum *ust_registry_lookup_enum(
 		ust_registry_session *session,
-		const struct ust_registry_enum *reg_enum_lookup)
+		const lsu::registry_enum *reg_enum_lookup)
 {
-	struct ust_registry_enum *reg_enum = NULL;
+	lsu::registry_enum *reg_enum = NULL;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
@@ -561,44 +173,56 @@ static struct ust_registry_enum *ust_registry_lookup_enum(
 	if (!node) {
 	        goto end;
 	}
-	reg_enum = caa_container_of(node, struct ust_registry_enum, node);
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	DIAGNOSTIC_POP
+
 end:
 	return reg_enum;
 }
 
 /*
  * Lookup enumeration by enum ID.
- * Needs to be called from RCU read-side critical section.
  */
-struct ust_registry_enum *
-	ust_registry_lookup_enum_by_id(ust_registry_session *session,
+lsu::registry_enum::const_rcu_protected_reference
+ust_registry_lookup_enum_by_id(const ust_registry_session *session,
 		const char *enum_name, uint64_t enum_id)
 {
-	struct ust_registry_enum *reg_enum = NULL;
+	lsu::registry_enum *reg_enum = NULL;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
-	struct ust_registry_enum reg_enum_lookup;
+	lttng::urcu::unique_read_lock rcu_lock;
+	/*
+	 * Hack: only the name is used for hashing; the rest of the attributes
+	 * can be fudged.
+	 */
+	lsu::registry_signed_enum reg_enum_lookup(enum_name, nullptr, 0);
 
 	ASSERT_RCU_READ_LOCKED();
 
-	memset(&reg_enum_lookup, 0, sizeof(reg_enum_lookup));
-	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
-	reg_enum_lookup.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 	reg_enum_lookup.id = enum_id;
 	cds_lfht_lookup(session->_enums->ht,
 			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
 			ht_match_enum_id, &reg_enum_lookup, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
-	        goto end;
+		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+				"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
+				enum_name, enum_id));
 	}
-	reg_enum = caa_container_of(node, struct ust_registry_enum, node);
-end:
-	return reg_enum;
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+	reg_enum = caa_container_of(node, lsu::registry_enum, node);
+	DIAGNOSTIC_POP
+
+	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
 }
 
 /*
- * Create a ust_registry_enum from the given parameters and add it to the
+ * Create a lsu::registry_enum from the given parameters and add it to the
  * registry hash table, or find it if already there.
  *
  * On success, return 0 else a negative value.
@@ -609,12 +233,13 @@ end:
  */
 int ust_registry_create_or_find_enum(ust_registry_session *session,
 		int session_objd, char *enum_name,
-		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
+		struct lttng_ust_ctl_enum_entry *raw_entries, size_t nr_entries,
 		uint64_t *enum_id)
 {
 	int ret = 0;
 	struct cds_lfht_node *nodep;
-	struct ust_registry_enum *reg_enum = NULL, *old_reg_enum;
+	lsu::registry_enum *reg_enum = NULL, *old_reg_enum;
+	auto entries = lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(enum_name);
@@ -625,24 +250,26 @@ int ust_registry_create_or_find_enum(ust_registry_session *session,
 	 * This should not happen but since it comes from the UST tracer, an
 	 * external party, don't assert and simply validate values.
 	 */
-	if (session_objd < 0) {
+	if (session_objd < 0 || nr_entries == 0 ||
+			lttng_strnlen(enum_name, LTTNG_UST_ABI_SYM_NAME_LEN) ==
+					LTTNG_UST_ABI_SYM_NAME_LEN) {
 		ret = -EINVAL;
 		goto end;
 	}
 
-	/* Check if the enumeration was already dumped */
-	reg_enum = zmalloc<ust_registry_enum>();
-	if (!reg_enum) {
-		PERROR("zmalloc ust registry enumeration");
+	try {
+		if (entries->start.signedness) {
+			reg_enum = new lsu::registry_signed_enum(
+					enum_name, entries.get(), nr_entries);
+		} else {
+			reg_enum = new lsu::registry_unsigned_enum(
+					enum_name, entries.get(), nr_entries);
+		}
+	} catch (const std::exception& ex) {
+		ERR("Failed to create ust registry enumeration: %s", ex.what());
 		ret = -ENOMEM;
 		goto end;
 	}
-	strncpy(reg_enum->name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
-	reg_enum->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
-	/* entries will be owned by reg_enum. */
-	reg_enum->entries = entries;
-	reg_enum->nr_entries = nr_entries;
-	entries = NULL;
 
 	old_reg_enum = ust_registry_lookup_enum(session, reg_enum);
 	if (old_reg_enum) {
@@ -659,7 +286,6 @@ int ust_registry_create_or_find_enum(ust_registry_session *session,
 			goto end;
 		}
 		reg_enum->id = session->_next_enum_id++;
-		cds_lfht_node_init(&reg_enum->node.node);
 		nodep = cds_lfht_add_unique(session->_enums->ht,
 				ht_hash_enum(reg_enum, lttng_ht_seed),
 				ht_match_enum_id, reg_enum,
@@ -670,7 +296,6 @@ int ust_registry_create_or_find_enum(ust_registry_session *session,
 			enum_name, reg_enum->id, session_objd);
 	*enum_id = reg_enum->id;
 end:
-	free(entries);
 	rcu_read_unlock();
 	return ret;
 }
@@ -681,7 +306,7 @@ end:
  * This MUST be called within a RCU read side lock section.
  */
 void ust_registry_destroy_enum(ust_registry_session *reg_session,
-		struct ust_registry_enum *reg_enum)
+		lsu::registry_enum *reg_enum)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -697,174 +322,7 @@ void ust_registry_destroy_enum(ust_registry_session *reg_session,
 	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
 }
 
-static
-void destroy_channel_rcu(struct rcu_head *head)
-{
-	struct ust_registry_channel *chan =
-		caa_container_of(head, struct ust_registry_channel, rcu_head);
-
-	if (chan->events) {
-		lttng_ht_destroy(chan->events);
-	}
-
-	free(chan->ctx_fields);
-	free(chan);
-}
-
-/*
- * Destroy every element of the registry and free the memory. This does NOT
- * free the registry pointer since it might not have been allocated before so
- * it's the caller responsability.
- */
-void ust_registry_channel_destroy(struct ust_registry_channel *chan, bool notify)
-{
-	struct lttng_ht_iter iter;
-	struct ust_registry_event *event;
-	enum lttng_error_code cmd_ret;
-
-	LTTNG_ASSERT(chan);
-
-	if (notify) {
-		cmd_ret = notification_thread_command_remove_channel(
-				the_notification_thread_handle,
-				chan->consumer_key, LTTNG_DOMAIN_UST);
-		if (cmd_ret != LTTNG_OK) {
-			ERR("Failed to remove channel from notification thread");
-		}
-	}
-
-	if (chan->events) {
-		rcu_read_lock();
-		/* Destroy all event associated with this registry. */
-		cds_lfht_for_each_entry(
-				chan->events->ht, &iter.iter, event, node.node) {
-			/* Delete the node from the ht and free it. */
-			ust_registry_destroy_event(chan, event);
-		}
-		rcu_read_unlock();
-	}
-	call_rcu(&chan->rcu_head, destroy_channel_rcu);
-}
-
-/*
- * Initialize registry with default values.
- */
-int ust_registry_channel_add(ust_registry_session *session,
-		uint64_t key)
-{
-	int ret = 0;
-	struct ust_registry_channel *chan;
-
-	LTTNG_ASSERT(session);
-
-	chan = zmalloc<ust_registry_channel>();
-	if (!chan) {
-		PERROR("zmalloc ust registry channel");
-		ret = -ENOMEM;
-		goto error_alloc;
-	}
-
-	chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	if (!chan->events) {
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	/* Set custom match function. */
-	chan->events->match_fct = ht_match_event;
-	chan->events->hash_fct = ht_hash_event;
-
-	/*
-	 * Assign a channel ID right now since the event notification comes
-	 * *before* the channel notify so the ID needs to be set at this point so
-	 * the metadata can be dumped for that event.
-	 */
-	if (ust_registry_is_max_id(session->_used_channel_id)) {
-		ret = -1;
-		goto error;
-	}
-	chan->chan_id = ust_registry_get_next_chan_id(session);
-
-	rcu_read_lock();
-	lttng_ht_node_init_u64(&chan->node, key);
-	lttng_ht_add_unique_u64(session->_channels.get(), &chan->node);
-	rcu_read_unlock();
-
-	return 0;
-
-error:
-	ust_registry_channel_destroy(chan, false);
-error_alloc:
-	return ret;
-}
-
-/*
- * Find a channel in the given registry. RCU read side lock MUST be acquired
- * before calling this function and as long as the event reference is kept by
- * the caller.
- *
- * On success, the pointer is returned else NULL.
- */
-struct ust_registry_channel *ust_registry_channel_find(
-		ust_registry_session *session, uint64_t key)
-{
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-	struct ust_registry_channel *chan = NULL;
-
-	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(session->_channels);
-	ASSERT_RCU_READ_LOCKED();
-
-	DBG3("UST registry channel finding key %" PRIu64, key);
-
-	lttng_ht_lookup(session->_channels.get(), &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
-	if (!node) {
-		goto end;
-	}
-	chan = caa_container_of(node, struct ust_registry_channel, node);
-
-end:
-	return chan;
-}
-
-/*
- * Remove channel using key from registry and free memory.
- */
-void ust_registry_channel_del_free(ust_registry_session *session,
-		uint64_t key, bool notif)
-{
-	struct lttng_ht_iter iter;
-	struct ust_registry_channel *chan;
-	int ret;
-
-	LTTNG_ASSERT(session);
-
-	rcu_read_lock();
-	chan = ust_registry_channel_find(session, key);
-	if (!chan) {
-		rcu_read_unlock();
-		goto end;
-	}
-
-	iter.iter.node = &chan->node.node;
-	ret = lttng_ht_del(session->_channels.get(), &iter);
-	LTTNG_ASSERT(!ret);
-	rcu_read_unlock();
-	ust_registry_channel_destroy(chan, notif);
-
-end:
-	return;
-}
-
-ust_registry_session *ust_registry_session_per_uid_create(uint32_t bits_per_long,
-		uint32_t uint8_t_alignment,
-		uint32_t uint16_t_alignment,
-		uint32_t uint32_t_alignment,
-		uint32_t uint64_t_alignment,
-		uint32_t long_alignment,
-		int byte_order,
+ust_registry_session *ust_registry_session_per_uid_create(const lttng::sessiond::trace::abi& abi,
 		uint32_t major,
 		uint32_t minor,
 		const char *root_shm_path,
@@ -875,24 +333,16 @@ ust_registry_session *ust_registry_session_per_uid_create(uint32_t bits_per_long
 		uid_t tracing_uid)
 {
 	try {
-		return new ust_registry_session_per_uid(bits_per_long, uint8_t_alignment,
-				uint16_t_alignment, uint32_t_alignment, uint64_t_alignment,
-				long_alignment, byte_order, major, minor, root_shm_path, shm_path,
+		return new ust_registry_session_per_uid(abi, major, minor, root_shm_path, shm_path,
 				euid, egid, tracing_id, tracing_uid);
-	} catch (const std::exception &ex) {
+	} catch (const std::exception& ex) {
 		ERR("Failed to create per-uid registry session: %s", ex.what());
 		return nullptr;
 	}
 }
 
 ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
-		uint32_t bits_per_long,
-		uint32_t uint8_t_alignment,
-		uint32_t uint16_t_alignment,
-		uint32_t uint32_t_alignment,
-		uint32_t uint64_t_alignment,
-		uint32_t long_alignment,
-		int byte_order,
+		const lttng::sessiond::trace::abi& abi,
 		uint32_t major,
 		uint32_t minor,
 		const char *root_shm_path,
@@ -902,11 +352,9 @@ ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
 		uint64_t tracing_id)
 {
 	try {
-		return new ust_registry_session_per_pid(*app, bits_per_long, uint8_t_alignment,
-				uint16_t_alignment, uint32_t_alignment, uint64_t_alignment,
-				long_alignment, byte_order, major, minor, root_shm_path, shm_path,
-				euid, egid, tracing_id);
-	} catch (const std::exception &ex) {
+		return new ust_registry_session_per_pid(*app, abi, major, minor, root_shm_path,
+				shm_path, euid, egid, tracing_id);
+	} catch (const std::exception& ex) {
 		ERR("Failed to create per-pid registry session: %s", ex.what());
 		return nullptr;
 	}
@@ -919,4 +367,21 @@ ust_registry_session *ust_registry_session_per_pid_create(struct ust_app *app,
 void ust_registry_session_destroy(ust_registry_session *reg)
 {
 	delete reg;
+}
+
+lsu::registry_enum::registry_enum(
+		std::string in_name, enum lst::integer_type::signedness in_signedness) :
+	name{std::move(in_name)}, signedness{in_signedness}
+{
+	cds_lfht_node_init(&this->node.node);
+	this->rcu_head = {};
+}
+
+bool lsu::operator==(const lsu::registry_enum& lhs, const lsu::registry_enum& rhs) noexcept
+{
+	if (lhs.signedness != rhs.signedness) {
+		return false;
+	}
+
+	return lhs._is_equal(rhs);
 }

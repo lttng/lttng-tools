@@ -7,22 +7,26 @@
  *
  */
 
-#include "ust-clock.hpp"
+#include "ust-clock-class.hpp"
 
 #include <common/time.hpp>
 #include <common/exception.hpp>
 
+#include <lttng/ust-clock.h>
+
 #define CLOCK_OFFSET_SAMPLE_COUNT		10
+
+namespace lst = lttng::sessiond::trace;
 
 namespace {
 struct offset_sample {
 	/* correlation offset */
-	lttng::ust::clock_attributes_sample::scycles_t offset;
+	lst::clock_class::scycles_t offset;
 	/* lower is better */
-	lttng::ust::clock_attributes_sample::cycles_t measure_delta;
+	lst::clock_class::cycles_t measure_delta;
 };
 
-lttng::ust::clock_attributes_sample::cycles_t sample_clock_read64()
+lst::clock_class::cycles_t sample_clock_read64()
 {
 	lttng_ust_clock_read64_function read64_cb;
 
@@ -33,7 +37,7 @@ lttng::ust::clock_attributes_sample::cycles_t sample_clock_read64()
 	return read64_cb();
 }
 
-lttng::ust::clock_attributes_sample::cycles_t sample_clock_frequency()
+lst::clock_class::cycles_t sample_clock_frequency()
 {
 	lttng_ust_clock_freq_function get_freq_cb;
 
@@ -103,7 +107,7 @@ const char *sample_clock_description()
  */
 void measure_single_clock_offset(struct offset_sample *sample)
 {
-	lttng::ust::clock_attributes_sample::cycles_t monotonic_avg, monotonic[2], measure_delta,
+	lst::clock_class::cycles_t monotonic_avg, monotonic[2], measure_delta,
 			realtime;
 	const auto tcf = sample_clock_frequency();
 	struct timespec rts = { 0, 0 };
@@ -124,15 +128,15 @@ void measure_single_clock_offset(struct offset_sample *sample)
 	}
 
 	monotonic_avg = (monotonic[0] + monotonic[1]) >> 1;
-	realtime = (lttng::ust::clock_attributes_sample::cycles_t) rts.tv_sec * tcf;
+	realtime = (lst::clock_class::cycles_t) rts.tv_sec * tcf;
 	if (tcf == NSEC_PER_SEC) {
 		realtime += rts.tv_nsec;
 	} else {
-		realtime += (lttng::ust::clock_attributes_sample::cycles_t) rts.tv_nsec * tcf /
+		realtime += (lst::clock_class::cycles_t) rts.tv_nsec * tcf /
 				NSEC_PER_SEC;
 	}
 
-	sample->offset = (lttng::ust::clock_attributes_sample::scycles_t) realtime - monotonic_avg;
+	sample->offset = (lst::clock_class::scycles_t) realtime - monotonic_avg;
 	sample->measure_delta = measure_delta;
 }
 
@@ -142,7 +146,7 @@ void measure_single_clock_offset(struct offset_sample *sample)
  * to complete, thus removing imprecision caused by preemption.
  * May return a negative offset.
  */
-lttng::ust::clock_attributes_sample::scycles_t measure_clock_offset(void)
+lst::clock_class::scycles_t measure_clock_offset(void)
 {
 	struct offset_sample offset_best_sample = {
 		.offset = 0,
@@ -155,13 +159,13 @@ lttng::ust::clock_attributes_sample::scycles_t measure_clock_offset(void)
 
 	return offset_best_sample.offset;
 }
-}
+} /* namespace */
 
-lttng::ust::clock_attributes_sample::clock_attributes_sample() :
-        _name{sample_clock_name()},
-        _description{sample_clock_description()},
-        _uuid{sample_clock_uuid()},
-	_offset{measure_clock_offset()},
-	_frequency{sample_clock_frequency()}
+lttng::sessiond::ust::clock_class::clock_class() :
+	lst::clock_class(sample_clock_name(),
+			sample_clock_description(),
+			sample_clock_uuid(),
+			measure_clock_offset(),
+			sample_clock_frequency())
 {
 }

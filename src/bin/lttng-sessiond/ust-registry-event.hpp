@@ -1,0 +1,78 @@
+/*
+ * Copyright (C) 2022 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
+#ifndef LTTNG_UST_REGISTRY_EVENT_H
+#define LTTNG_UST_REGISTRY_EVENT_H
+
+#include "event-class.hpp"
+#include "field.hpp"
+
+#include <common/format.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <vendor/optional.hpp>
+
+#include <typeinfo>
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+
+/*
+ * Event registered from a UST tracer sent to the session daemon. This is
+ * indexed and matched by <event_name/signature>.
+ */
+class registry_event : public lttng::sessiond::trace::event_class {
+public:
+	registry_event(unsigned int id,
+			unsigned int stream_class_id,
+			int session_objd,
+			int channel_objd,
+			std::string name,
+			std::string signature,
+			std::vector<lttng::sessiond::trace::field::cuptr> fields,
+			int loglevel_value,
+			nonstd::optional<std::string> model_emf_uri);
+	virtual ~registry_event() = default;
+
+	/* Both objd are set by the tracer. */
+	const int session_objd;
+	const int channel_objd;
+	const std::string signature;
+
+	/*
+	 * Flag for this channel if the metadata was dumped once during
+	 * registration.
+	 */
+	bool _metadata_dumped;
+
+	/*
+	 * Node in the ust-registry hash table. The event name is used to
+	 * initialize the node and the event_name/signature for the match function.
+	 */
+	struct lttng_ht_node_u64 _node;
+};
+
+void registry_event_destroy(registry_event *event);
+
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
+
+template <>
+struct fmt::formatter<lttng::sessiond::ust::registry_event> : fmt::formatter<std::string> {
+	template <typename FormatCtx>
+	typename FormatCtx::iterator format(
+			const lttng::sessiond::ust::registry_event& event, FormatCtx& ctx)
+	{
+		return fmt::format_to(ctx.out(),
+				"{{ name = `{}`, signature = `{}`, id = {}, session objd = {}, channel objd = {} }}",
+				event.name, event.signature, event.id, event.session_objd,
+				event.channel_objd);
+	}
+};
+
+#endif /* LTTNG_UST_REGISTRY_EVENT_H */

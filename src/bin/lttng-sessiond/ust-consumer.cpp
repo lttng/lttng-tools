@@ -25,6 +25,8 @@
 #include "session.hpp"
 #include "lttng-sessiond.hpp"
 
+namespace lsu = lttng::sessiond::ust;
+
 /*
  * Send a single channel to the consumer using command ASK_CHANNEL_CREATION.
  *
@@ -42,7 +44,6 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	uint64_t key, chan_reg_key;
 	char *pathname = NULL;
 	struct lttcomm_consumer_msg msg;
-	struct ust_registry_channel *ust_reg_chan;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
 	bool is_local_trace;
@@ -105,9 +106,13 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		 * those buffer files.
 		 */
 	} else {
-		ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
-		LTTNG_ASSERT(ust_reg_chan);
-		chan_id = ust_reg_chan->chan_id;
+		{
+			auto locked_registry = registry->lock();
+			auto& ust_reg_chan = registry->get_channel(chan_reg_key);
+
+			chan_id = ust_reg_chan.id;
+		}
+
 		if (ua_sess->shm_path[0]) {
 			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
 			shm_path[sizeof(shm_path) - 1] = '\0';
@@ -145,7 +150,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->name,
 			consumer->net_seq_index,
 			ua_chan->key,
-			registry->_uuid,
+			registry->uuid,
 			chan_id,
 			ua_chan->tracefile_size,
 			ua_chan->tracefile_count,
@@ -493,9 +498,10 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 	}
 	LTTNG_ASSERT(ust_reg);
 
-	pthread_mutex_lock(&ust_reg->_lock);
-	ret_push = ust_app_push_metadata(ust_reg, socket, 1);
-	pthread_mutex_unlock(&ust_reg->_lock);
+	{
+		auto locked_ust_reg = ust_reg->lock();
+		ret_push = ust_app_push_metadata(locked_ust_reg, socket, 1);
+	}
 	if (ret_push == -EPIPE) {
 		DBG("Application or relay closed while pushing metadata");
 	} else if (ret_push < 0) {

@@ -10,6 +10,8 @@
 #include <common/exception.hpp>
 #include <common/format.hpp>
 
+#include <set>
+
 namespace lst = lttng::sessiond::trace;
 
 namespace {
@@ -111,19 +113,16 @@ lst::floating_point_type::floating_point_type(unsigned int in_alignment,
 	mantissa_digits(in_mantissa_digits)
 {
 	/* Allowed (exponent, mantissa) pairs. */
-	static const std::vector<std::pair<unsigned int, unsigned int>> allowed_pairs{
+	static const std::set<std::pair<unsigned int, unsigned int>> allowed_pairs{
 			{5, 11}, /* binary16 */
 			{8, 24}, /* binary32 */
 			{11, 53}, /* binary64 */
 			{15, 113}, /* binary128 */
 	};
 
-	const auto input_pair = decltype(allowed_pairs)::value_type(exponent_digits, mantissa_digits);
-	for (const auto& pair : allowed_pairs) {
-		if (input_pair == pair) {
-			/* mantissa and exponent digits is a valid pair. */
-			return;
-		}
+	if (allowed_pairs.find({exponent_digits, mantissa_digits}) != allowed_pairs.end()) {
+		/* mantissa and exponent digits is a valid pair. */
+		return;
 	}
 
 	LTTNG_THROW_INVALID_ARGUMENT_ERROR(

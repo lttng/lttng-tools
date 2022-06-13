@@ -74,6 +74,8 @@
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
 
+namespace lsu = lttng::sessiond::ust;
+
 static enum lttng_error_code wait_on_path(void *path);
 
 namespace {
@@ -4296,101 +4298,6 @@ end:
 	return ret;
 }
 
-static
-int clear_metadata_file(int fd)
-{
-	int ret;
-	off_t lseek_ret;
-
-	lseek_ret = lseek(fd, 0, SEEK_SET);
-	if (lseek_ret < 0) {
-		PERROR("lseek");
-		ret = -1;
-		goto end;
-	}
-
-	ret = ftruncate(fd, 0);
-	if (ret < 0) {
-		PERROR("ftruncate");
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-static
-int ust_regenerate_metadata(struct ltt_ust_session *usess)
-{
-	int ret = 0;
-	struct buffer_reg_uid *uid_reg = NULL;
-	struct buffer_reg_session *session_reg = NULL;
-
-	rcu_read_lock();
-	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
-		ust_registry_session *registry;
-		struct ust_registry_channel *chan;
-		struct lttng_ht_iter iter_chan;
-
-		session_reg = uid_reg->registry;
-		registry = session_reg->reg.ust;
-
-		pthread_mutex_lock(&registry->_lock);
-		registry->_metadata_len_sent = 0;
-		memset(registry->_metadata, 0, registry->_metadata_alloc_len);
-		registry->_metadata_len = 0;
-		registry->_metadata_version++;
-		if (registry->_metadata_fd > 0) {
-			/* Clear the metadata file's content. */
-			ret = clear_metadata_file(registry->_metadata_fd);
-			if (ret) {
-				pthread_mutex_unlock(&registry->_lock);
-				goto end;
-			}
-		}
-
-		ret = ust_metadata_session_statedump(registry);
-		if (ret) {
-			pthread_mutex_unlock(&registry->_lock);
-			ERR("Failed to generate session metadata (err = %d)",
-					ret);
-			goto end;
-		}
-		cds_lfht_for_each_entry(registry->_channels->ht, &iter_chan.iter,
-				chan, node.node) {
-			struct ust_registry_event *event;
-			struct lttng_ht_iter iter_event;
-
-			chan->metadata_dumped = 0;
-
-			ret = ust_metadata_channel_statedump(registry, chan);
-			if (ret) {
-				pthread_mutex_unlock(&registry->_lock);
-				ERR("Failed to generate channel metadata "
-						"(err = %d)", ret);
-				goto end;
-			}
-			cds_lfht_for_each_entry(chan->events->ht, &iter_event.iter,
-						event, node.node) {
-				event->metadata_dumped = 0;
-				ret = ust_metadata_event_statedump(registry,
-						chan, event);
-				if (ret) {
-					pthread_mutex_unlock(&registry->_lock);
-					ERR("Failed to generate event metadata "
-							"(err = %d)", ret);
-					goto end;
-				}
-			}
-		}
-		pthread_mutex_unlock(&registry->_lock);
-	}
-
-end:
-	rcu_read_unlock();
-	return ret;
-}
-
 /*
  * Command LTTNG_REGENERATE_METADATA from the lttng-ctl library.
  *
@@ -4421,7 +4328,7 @@ int cmd_regenerate_metadata(struct ltt_session *session)
 	}
 
 	if (session->ust_session) {
-		ret = ust_regenerate_metadata(session->ust_session);
+		ret = trace_ust_regenerate_metadata(session->ust_session);
 		if (ret < 0) {
 			ERR("Failed to regenerate the UST metadata");
 			goto end;

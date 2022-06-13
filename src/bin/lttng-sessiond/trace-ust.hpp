@@ -209,6 +209,8 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 void trace_ust_delete_channel(struct lttng_ht *ht,
 		struct ltt_ust_channel *channel);
 
+int trace_ust_regenerate_metadata(struct ltt_ust_session *usess);
+
 /*
  * Destroy functions free() the data structure and remove from linked list if
  * it's applies.
@@ -346,6 +348,12 @@ void trace_ust_delete_channel(
 		struct ltt_ust_channel *channel __attribute__((unused)))
 {
 	return;
+}
+
+static inline int trace_ust_regenerate_metadata(
+		struct ltt_ust_session *usess __attribute__((unused)))
+{
+	return 0;
 }
 
 static inline

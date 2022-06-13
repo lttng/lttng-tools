@@ -67,14 +67,16 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \
 			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
-			ust-metadata.cpp ust-clock.hpp ust-clock.cpp \
+			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
-			ust-field-utils.hpp ust-field-utils.cpp \
+			ust-field-convert.cpp ust-field-convert.hpp \
 			ust-sigbus.cpp \
 			ust-registry-session.cpp \
+			ust-registry-event.cpp ust-registry-event.hpp \
+			ust-registry-channel.cpp ust-registry-channel.hpp \
 			ust-registry-session-uid.cpp \
-			ust-registry-session-pid.cpp
-
+			ust-registry-session-pid.cpp \
+			tsdl-trace-class-visitor.hpp tsdl-trace-class-visitor.cpp
 endif
 
 # link on liblttngctl for check if sessiond is already alive.

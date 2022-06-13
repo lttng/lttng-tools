@@ -68,6 +68,8 @@ private:
 	std::lock_guard<details::read_lock> _guard;
 };
 
+using unique_read_lock = std::unique_lock<details::read_lock>;
+
 } /* namespace urcu */
 } /* namespace lttng */
 
