@@ -99,6 +99,13 @@ lsu::registry_channel::registry_channel(unsigned int channel_id,
 	/* Set custom match function. */
 	_events->match_fct = ht_match_event;
 	_events->hash_fct = ht_hash_event;
+
+	_rcu_head = {};
+	/*
+	 * Node's key is initialized by the channel's parent session. Its value is irrelevant to the
+	 * channel object itself.
+	 */
+	_node = {};
 }
 
 void lsu::registry_channel::add_event(
