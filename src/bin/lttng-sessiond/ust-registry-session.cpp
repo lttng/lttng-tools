@@ -125,7 +125,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 		cds_lfht_for_each_entry(
-				chan->_events->ht, &iter.iter, event, _node.node) {
+				chan->_events->ht, &iter.iter, event, _node) {
 			/* Delete the node from the ht and free it. */
 			ust_registry_channel_destroy_event(chan, event);
 		}

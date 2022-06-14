@@ -53,7 +53,8 @@ public:
 	 * Node in the ust-registry hash table. The event name is used to
 	 * initialize the node and the event_name/signature for the match function.
 	 */
-	struct lttng_ht_node_u64 _node;
+	struct cds_lfht_node _node;
+	struct rcu_head _head;
 };
 
 void registry_event_destroy(registry_event *event);

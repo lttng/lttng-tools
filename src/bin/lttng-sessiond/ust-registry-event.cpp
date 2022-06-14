@@ -34,7 +34,8 @@ lsu::registry_event::registry_event(unsigned int in_id,
 	signature{std::move(in_signature)},
 	_metadata_dumped{false}
 {
-	cds_lfht_node_init(&this->_node.node);
+	cds_lfht_node_init(&_node);
+	_head = {};
 }
 
 /*

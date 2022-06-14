@@ -48,12 +48,7 @@ int ht_match_event(struct cds_lfht_node *node, const void *_key)
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	DIAGNOSTIC_PUSH
-	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	event = caa_container_of(node, lttng::sessiond::ust::registry_event, _node.node);
-	DIAGNOSTIC_POP
-
-	LTTNG_ASSERT(event);
+	event = lttng::utils::container_of(node, &lttng::sessiond::ust::registry_event::_node);
 	key = (lttng::sessiond::ust::registry_event *) _key;
 
 	/* It has to be a perfect match. First, compare the event names. */
@@ -158,18 +153,15 @@ void lsu::registry_channel::add_event(
 	 * are matched using the event name and signature.
 	 */
 	nptr = cds_lfht_add_unique(_events->ht, _events->hash_fct(event.get(), lttng_ht_seed),
-			_events->match_fct, event.get(), &event->_node.node);
-	if (nptr != &event->_node.node) {
+			_events->match_fct, event.get(), &event->_node);
+	if (nptr != &event->_node) {
 		if (buffer_type == LTTNG_BUFFER_PER_UID) {
 			/*
 			 * This is normal, we just have to send the event id of the
 			 * returned node.
 			 */
-			DIAGNOSTIC_PUSH
-			DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-			const auto existing_event = caa_container_of(
-					nptr, lttng::sessiond::ust::registry_event, _node.node);
-			DIAGNOSTIC_POP
+			const auto existing_event = lttng::utils::container_of(
+					nptr, &lttng::sessiond::ust::registry_event::_node);
 			event_id = existing_event->id;
 		} else {
 			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
@@ -239,7 +231,7 @@ void lsu::registry_channel::_accept_on_event_classes(
 
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry(_events->ht, &iter.iter, event, _node.node) {
+		cds_lfht_for_each_entry(_events->ht, &iter.iter, event, _node) {
 			sorted_event_classes.emplace_back(event);
 		}
 		DIAGNOSTIC_POP

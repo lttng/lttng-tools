@@ -33,11 +33,10 @@ namespace lsu = lttng::sessiond::ust;
  */
 static void ust_registry_event_destroy_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
 	lttng::sessiond::ust::registry_event *event =
-			lttng::utils::container_of(node, &lttng::sessiond::ust::registry_event::_node);
+			lttng::utils::container_of(head, &lttng::sessiond::ust::registry_event::_head);
 	DIAGNOSTIC_POP
 
 	lttng::sessiond::ust::registry_event_destroy(event);
@@ -58,11 +57,11 @@ void ust_registry_channel_destroy_event(lsu::registry_channel *chan,
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Delete the node first. */
-	iter.iter.node = &event->_node.node;
+	iter.iter.node = &event->_node;
 	ret = lttng_ht_del(chan->_events, &iter);
 	LTTNG_ASSERT(!ret);
 
-	call_rcu(&event->_node.head, ust_registry_event_destroy_rcu);
+	call_rcu(&event->_head, ust_registry_event_destroy_rcu);
 
 	return;
 }
