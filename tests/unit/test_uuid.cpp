@@ -108,12 +108,15 @@ void run_test_lttng_uuid_is_equal(void)
 	int ret;
 	lttng_uuid uuid1, uuid2;
 
-	lttng_uuid_from_str(valid_str_1, uuid1);
-	lttng_uuid_from_str(valid_str_1, uuid2);
+	ret = lttng_uuid_from_str(valid_str_1, uuid1);
+	assert(ret == 0);
+	ret = lttng_uuid_from_str(valid_str_1, uuid2);
+	assert(ret == 0);
 	ret = uuid1 == uuid2;
 	ok(ret == true, "lttng_uuid_is_equal - Compare same UUID, expect success");
 
-	lttng_uuid_from_str(valid_str_2, uuid2);
+	ret = lttng_uuid_from_str(valid_str_2, uuid2);
+	assert(ret == 0);
 	ret = uuid1 == uuid2;
 	ok(ret == false, "lttng_uuid_is_equal - Compare different UUID, expect failure");
 }
