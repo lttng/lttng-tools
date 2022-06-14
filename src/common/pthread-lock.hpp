@@ -57,7 +57,10 @@ public:
 	void unlock()
 	{
 		if (pthread_mutex_unlock(&_mutex) != 0) {
-			LTTNG_THROW_POSIX("Failed to unlock mutex", errno);
+			/*
+			 * Unlock cannot throw as it is called as part of lock_guard's destructor.
+			 */
+			abort();
 		}
 	}
 
