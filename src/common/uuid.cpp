@@ -57,6 +57,7 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out)
 	if (sscanf(str_in, LTTNG_UUID_FMT, LTTNG_UUID_SCAN_VALUES(uuid_scan)) !=
 			LTTNG_UUID_LEN) {
 		ret = -1;
+		goto end;
 	}
 
 	uuid_out = uuid_scan;
