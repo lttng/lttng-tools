@@ -32,7 +32,12 @@ public:
 	virtual const lttng::sessiond::trace::type& get_context() const;
 
 	const unsigned int id;
-	const header_type header_type;
+	/*
+	 * header_type is suffixed with '_' to work-around a bug in older
+	 * GCCs (before 6) that do not recognize hidden/shadowed enumeration as valid
+	 * nested-name-specifiers.
+	 */
+	const header_type header_type_;
 
 protected:
 	stream_class(unsigned int id, enum header_type header_type);

@@ -6468,7 +6468,7 @@ reply:
 			ret_code);
 
 	ret = lttng_ust_ctl_reply_register_channel(sock, chan_id,
-			ust_reg_chan.header_type == lst::stream_class::header_type::COMPACT ?
+			ust_reg_chan.header_type_ == lst::stream_class::header_type::COMPACT ?
 					LTTNG_UST_CTL_CHANNEL_HEADER_COMPACT :
 					      LTTNG_UST_CTL_CHANNEL_HEADER_LARGE,
 			ret_code);

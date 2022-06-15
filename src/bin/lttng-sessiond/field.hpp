@@ -86,8 +86,13 @@ public:
 
 	const enum byte_order byte_order;
 	const unsigned int size;
-	const signedness signedness;
-	const base base;
+	/*
+	 * signedness and base are suffixed with '_' to work-around a bug in older
+	 * GCCs (before 6) that do not recognize hidden/shadowed enumeration as valid
+	 * nested-name-specifiers.
+	 */
+	const signedness signedness_;
+	const base base_;
 
 protected:
 	virtual bool _is_equal(const type& other) const noexcept override;
@@ -264,7 +269,12 @@ public:
 
 	string_type(unsigned int alignment, enum encoding encoding);
 
-	const encoding encoding;
+	/*
+	 * encoding is suffixed with '_' to work-around a bug in older
+	 * GCCs (before 6) that do not recognize hidden/shadowed enumeration as valid
+	 * nested-name-specifiers.
+	 */
+	const encoding encoding_;
 
 protected:
 	virtual bool _is_equal(const type& base_other) const noexcept override;

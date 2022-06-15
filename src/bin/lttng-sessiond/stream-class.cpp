@@ -12,7 +12,7 @@ namespace lst = lttng::sessiond::trace;
 
 lttng::sessiond::trace::stream_class::stream_class(
 		unsigned int in_id, enum header_type in_header_type) :
-	id{in_id}, header_type{in_header_type}
+	id{in_id}, header_type_{in_header_type}
 {
 }
 

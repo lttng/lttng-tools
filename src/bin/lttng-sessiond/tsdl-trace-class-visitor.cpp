@@ -134,15 +134,15 @@ private:
 				fmt::arg("alignment", type.alignment));
 
 		/* Defaults to unsigned. */
-		if (type.signedness == lst::integer_type::signedness::SIGNED) {
+		if (type.signedness_ == lst::integer_type::signedness::SIGNED) {
 			_description += " signed = true;";
 		}
 
 		/* Defaults to 10. */
-		if (type.base != lst::integer_type::base::DECIMAL) {
+		if (type.base_ != lst::integer_type::base::DECIMAL) {
 			unsigned int base;
 
-			switch (type.base) {
+			switch (type.base_) {
 			case lst::integer_type::base::BINARY:
 				base = 2;
 				break;
@@ -155,7 +155,7 @@ private:
 			default:
 				LTTNG_THROW_ERROR(fmt::format(
 						"Unexpected base encountered while serializing integer type to TSDL: base = {}",
-						(int) type.base));
+						(int) type.base_));
 			}
 
 			_description += fmt::format(" base = {};", base);
@@ -303,7 +303,7 @@ private:
 	virtual void visit(const lst::null_terminated_string_type& type) override final
 	{
 		/* Defaults to UTF-8.  */
-		if (type.encoding == lst::null_terminated_string_type::encoding::ASCII) {
+		if (type.encoding_ == lst::null_terminated_string_type::encoding::ASCII) {
 			_description += "string { encoding = ASCII }";
 		} else {
 			_description += "string";
@@ -376,7 +376,7 @@ private:
 		 * an encoding specified.
 		 */
 		const auto char_array = lttng::make_unique<lst::static_length_array_type>(
-				type.alignment, create_character_type(type.encoding), type.length);
+				type.alignment, create_character_type(type.encoding_), type.length);
 
 		visit(*char_array);
 	}
@@ -388,7 +388,7 @@ private:
 		 * an encoding specified.
 		 */
 		const auto char_sequence = lttng::make_unique<lst::dynamic_length_array_type>(
-				type.alignment, create_character_type(type.encoding),
+				type.alignment, create_character_type(type.encoding_),
 				type.length_field_name);
 
 		visit(*char_sequence);
@@ -556,7 +556,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 					    "	event.header := {header_type};\n"
 					    "	packet.context := struct packet_context;\n",
 			fmt::arg("id", stream_class.id),
-			fmt::arg("header_type", stream_class.header_type == lst::stream_class::header_type::COMPACT ?
+			fmt::arg("header_type", stream_class.header_type_ == lst::stream_class::header_type::COMPACT ?
 							"struct event_header_compact" :
 							      "struct event_header_large"));
 

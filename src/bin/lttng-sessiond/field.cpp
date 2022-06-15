@@ -74,8 +74,8 @@ lst::integer_type::integer_type(unsigned int in_alignment,
 	type(in_alignment),
 	byte_order{in_byte_order},
 	size{in_size},
-	signedness{in_signedness},
-	base{in_base}
+	signedness_{in_signedness},
+	base_{in_base}
 {
 }
 
@@ -85,8 +85,8 @@ bool lst::integer_type::_is_equal(const type &base_other) const noexcept
 
 	return this->byte_order == other.byte_order &&
 		this->size == other.size &&
-		this->signedness == other.signedness &&
-		this->base == other.base;
+		this->signedness_ == other.signedness_ &&
+		this->base_ == other.base_;
 }
 
 void lst::integer_type::accept(type_visitor& visitor) const
@@ -219,7 +219,7 @@ void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
 }
 
 lst::string_type::string_type(unsigned int in_alignment, enum encoding in_encoding) :
-	type(in_alignment), encoding{in_encoding}
+	type(in_alignment), encoding_{in_encoding}
 {
 }
 
@@ -227,7 +227,7 @@ bool lst::string_type::_is_equal(const type& base_other) const noexcept
 {
 	const auto& other = static_cast<decltype(*this)&>(base_other);
 
-	return this->encoding == other.encoding;
+	return this->encoding_ == other.encoding_;
 }
 
 lst::static_length_string_type::static_length_string_type(
