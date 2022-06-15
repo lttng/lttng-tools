@@ -326,19 +326,20 @@ struct ust_app {
 	struct lttng_ht *token_to_event_notifier_rule_ht;
 };
 
+namespace fmt {
 template <>
-struct fmt::formatter<ust_app> : fmt::formatter<std::string> {
+struct formatter<ust_app> : formatter<std::string> {
 	template <typename FormatCtx>
 	typename FormatCtx::iterator format(const ust_app& app, FormatCtx& ctx)
 	{
-		return fmt::format_to(ctx.out(),
+		return format_to(ctx.out(),
 				"{{ procname = `{}`, ppid = {}, pid = {}, uid = {}, gid = {}, version = {}.{}, registration time = {} }}",
 				app.name, app.ppid, app.pid, app.uid, app.gid, app.v_major,
 				app.v_minor,
 				lttng::utils::time_to_iso8601_str(app.registration_time));
 	}
 };
-
+} /* namespace fmt */
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 

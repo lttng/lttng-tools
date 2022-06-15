@@ -63,17 +63,19 @@ void registry_event_destroy(registry_event *event);
 } /* namespace sessiond */
 } /* namespace lttng */
 
+namespace fmt {
 template <>
-struct fmt::formatter<lttng::sessiond::ust::registry_event> : fmt::formatter<std::string> {
+struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {
 	template <typename FormatCtx>
 	typename FormatCtx::iterator format(
 			const lttng::sessiond::ust::registry_event& event, FormatCtx& ctx)
 	{
-		return fmt::format_to(ctx.out(),
+		return format_to(ctx.out(),
 				"{{ name = `{}`, signature = `{}`, id = {}, session objd = {}, channel objd = {} }}",
 				event.name, event.signature, event.id, event.session_objd,
 				event.channel_objd);
 	}
 };
+} /* namespace fmt */
 
 #endif /* LTTNG_UST_REGISTRY_EVENT_H */

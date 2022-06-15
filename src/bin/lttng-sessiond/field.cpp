@@ -153,6 +153,9 @@ lst::enumeration_type::enumeration_type(unsigned int in_alignment,
 {
 }
 
+namespace lttng {
+namespace sessiond {
+namespace trace {
 template <>
 void lst::signed_enumeration_type::accept(type_visitor& visitor) const
 {
@@ -164,6 +167,9 @@ void lst::unsigned_enumeration_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
 }
+} /* namespace trace */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 lst::array_type::array_type(unsigned int in_alignment, type::cuptr in_element_type) :
 	type(in_alignment), element_type{std::move(in_element_type)}

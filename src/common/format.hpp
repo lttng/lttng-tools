@@ -19,19 +19,21 @@ DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #include <vendor/fmt/core.h>
 DIAGNOSTIC_POP
 
+namespace fmt {
 template <>
-struct fmt::formatter<std::type_info> : fmt::formatter<std::string> {
+struct formatter<std::type_info> : formatter<std::string> {
 	template <typename FormatCtx>
 	typename FormatCtx::iterator format(const std::type_info& type_info, FormatCtx& ctx)
 	{
 		int status;
 		auto demangled_name = abi::__cxa_demangle(type_info.name(), nullptr, 0, &status);
-		auto it = status == 0 ? fmt::formatter<std::string>::format(demangled_name, ctx) :
-					      fmt::formatter<std::string>::format(type_info.name(), ctx);
+		auto it = status == 0 ? formatter<std::string>::format(demangled_name, ctx) :
+					formatter<std::string>::format(type_info.name(), ctx);
 
 		free(demangled_name);
 		return it;
 	}
 };
+} /* namespace fmt */
 
 #endif /* LTTNG_FORMAT_H */
