@@ -276,9 +276,13 @@ void *memmove(T *d, const U *s, size_t n) = delete;
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
 # define DIAGNOSTIC_IGNORE_LOGICAL_OP \
 	_Pragma("GCC diagnostic ignored \"-Wlogical-op\"")
-# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES \
+#if __GNUG__ && __GNUC__ >= 7
+# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES				\
 	_Pragma("GCC diagnostic ignored \"-Wduplicated-branches\"")
-# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF \
+#else
+# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
+#endif /* __GNUG__ && __GNUC__ >= 7 */
+# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF				\
 	_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #endif
 
