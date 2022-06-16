@@ -772,9 +772,9 @@ int lttng_error_query_serialize(const struct lttng_error_query *query,
 		struct lttng_payload *payload)
 {
 	int ret;
-	const struct lttng_error_query_comm header = {
-		.target_type = (decltype(header.target_type)) query->target_type,
-	};
+	struct lttng_error_query_comm header;
+
+	header.target_type = (decltype(header.target_type)) query->target_type;
 
 	ret = lttng_dynamic_buffer_append(
 			&payload->buffer, &header, sizeof(header));
