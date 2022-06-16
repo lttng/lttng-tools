@@ -3748,13 +3748,13 @@ int client_send_command_reply(struct notification_client *client,
 	struct lttng_notification_channel_command_reply reply = {
 		.status = (int8_t) status,
 	};
-	struct lttng_notification_channel_message msg = {
-		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_COMMAND_REPLY,
-		.size = sizeof(reply),
-		.fds = 0,
-	};
+	struct lttng_notification_channel_message msg;
 	char buffer[sizeof(msg) + sizeof(reply)];
 	enum client_transmission_status transmission_status;
+
+	msg.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_COMMAND_REPLY;
+	msg.size = sizeof(reply);
+	msg.fds = 0;
 
 	memcpy(buffer, &msg, sizeof(msg));
 	memcpy(buffer + sizeof(msg), &reply, sizeof(reply));
@@ -3853,14 +3853,14 @@ int client_handle_message_handshake(struct notification_client *client,
 			.major = LTTNG_NOTIFICATION_CHANNEL_VERSION_MAJOR,
 			.minor = LTTNG_NOTIFICATION_CHANNEL_VERSION_MINOR,
 	};
-	const struct lttng_notification_channel_message msg_header = {
-			.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE,
-			.size = sizeof(handshake_reply),
-			.fds = 0,
-	};
+	struct lttng_notification_channel_message msg_header;
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	char send_buffer[sizeof(msg_header) + sizeof(handshake_reply)];
+
+	msg_header.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE;
+	msg_header.size = sizeof(handshake_reply);
+	msg_header.fds = 0;
 
 	memcpy(send_buffer, &msg_header, sizeof(msg_header));
 	memcpy(send_buffer + sizeof(msg_header), &handshake_reply,
@@ -4363,11 +4363,11 @@ static
 int client_notification_overflow(struct notification_client *client)
 {
 	int ret = 0;
-	const struct lttng_notification_channel_message msg = {
-		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED,
-		.size = 0,
-		.fds = 0,
-	};
+	struct lttng_notification_channel_message msg;
+
+	msg.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED;
+	msg.size = 0;
+	msg.fds = 0;
 
 	ASSERT_LOCKED(client->lock);
 
@@ -4469,15 +4469,15 @@ int notification_client_list_send_evaluation(
 		.trigger = (struct lttng_trigger *) trigger,
 		.evaluation = (struct lttng_evaluation *) evaluation,
 	};
-	struct lttng_notification_channel_message msg_header = {
-		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
-		.size = 0,
-		.fds = 0,
-	};
+	struct lttng_notification_channel_message msg_header;
 	const struct lttng_credentials *trigger_creds =
 			lttng_trigger_get_credentials(trigger);
 
 	lttng_payload_init(&msg_payload);
+
+	msg_header.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION;
+	msg_header.size = 0;
+	msg_header.fds = 0;
 
 	ret = lttng_dynamic_buffer_append(&msg_payload.buffer, &msg_header,
 			sizeof(msg_header));
