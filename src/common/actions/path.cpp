@@ -188,9 +188,7 @@ int lttng_action_path_serialize(const struct lttng_action_path *action_path,
 		goto end;
 	}
 
-	comm = {
-		.index_count = (uint32_t) index_count,
-	};
+	comm.index_count = (uint32_t) index_count;
 	ret = lttng_dynamic_buffer_append(&payload->buffer,
 			&comm,
 			sizeof(struct lttng_action_path_comm));
