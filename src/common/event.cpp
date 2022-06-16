@@ -113,7 +113,9 @@ static int lttng_event_function_attr_serialize(
 {
 	int ret;
 	size_t symbol_name_len;
-	struct lttng_event_function_attr_comm comm = { 0 };
+	struct lttng_event_function_attr_comm comm;
+
+	comm.symbol_name_len = 0;
 
 	symbol_name_len = lttng_strnlen(
 			function->symbol_name, sizeof(function->symbol_name));
