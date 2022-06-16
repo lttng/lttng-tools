@@ -1212,15 +1212,15 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	unsigned int i;
 	struct lttng_dynamic_buffer payload;
 	struct lttcomm_relayd_generic_reply reply = {};
-	const struct lttcomm_relayd_rotate_streams msg = {
-		.stream_count = htobe32((uint32_t) stream_count),
-		.new_chunk_id = (typeof(msg.new_chunk_id)) {
-			.is_set = !!new_chunk_id,
-			.value = htobe64(new_chunk_id ? *new_chunk_id : 0),
-		},
-	};
+	struct lttcomm_relayd_rotate_streams msg;
 	char new_chunk_id_buf[MAX_INT_DEC_LEN(*new_chunk_id)] = {};
 	const char *new_chunk_id_str;
+
+	msg.stream_count = htobe32((uint32_t) stream_count);
+	msg.new_chunk_id = (typeof(msg.new_chunk_id)){
+		.is_set = !!new_chunk_id,
+		.value = htobe64(new_chunk_id ? *new_chunk_id : 0),
+	};
 
 	if (!relayd_supports_chunks(sock)) {
 		DBG("Refusing to rotate remote streams: relayd does not support chunks");
