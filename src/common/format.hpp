@@ -19,6 +19,10 @@ DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #include <vendor/fmt/core.h>
 DIAGNOSTIC_POP
 
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
 namespace fmt {
 template <>
 struct formatter<std::type_info> : formatter<std::string> {

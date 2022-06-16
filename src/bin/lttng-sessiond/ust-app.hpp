@@ -326,6 +326,10 @@ struct ust_app {
 	struct lttng_ht *token_to_event_notifier_rule_ht;
 };
 
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
 namespace fmt {
 template <>
 struct formatter<ust_app> : formatter<std::string> {

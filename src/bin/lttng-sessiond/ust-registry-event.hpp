@@ -63,6 +63,10 @@ void registry_event_destroy(registry_event *event);
 } /* namespace sessiond */
 } /* namespace lttng */
 
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
 namespace fmt {
 template <>
 struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {

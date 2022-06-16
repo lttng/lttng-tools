@@ -2539,12 +2539,14 @@ static ssize_t relay_unpack_rotate_streams_header(
 	 * We start by "unpacking" `stream_count` to figure out the padding length
 	 * emited by our peer.
 	 */
-	memcpy(&rotate_streams.stream_count, payload->data,
-			sizeof(rotate_streams.stream_count));
-	rotate_streams = (typeof(rotate_streams)) {
-		.stream_count = be32toh(rotate_streams.stream_count),
-		.new_chunk_id = LTTNG_OPTIONAL_INIT_UNSET,
-	};
+	{
+		decltype(rotate_streams.stream_count) stream_count;
+
+		memcpy(&stream_count, payload->data, sizeof(stream_count));
+		rotate_streams.stream_count = be32toh(stream_count);
+	}
+
+	rotate_streams.new_chunk_id = LTTNG_OPTIONAL_INIT_UNSET;
 
 	/*
 	 * Payload size expected given the possible padding lengths in
@@ -2574,13 +2576,11 @@ static ssize_t relay_unpack_rotate_streams_header(
 		memcpy(&packed_rotate_streams, payload->data, header_len);
 
 		/* Unpack the packed structure to the natively-packed version. */
-		*_rotate_streams = (typeof(*_rotate_streams)) {
-			.stream_count = be32toh(packed_rotate_streams.stream_count),
-			.new_chunk_id = (typeof(_rotate_streams->new_chunk_id)) {
-				.is_set = !!packed_rotate_streams.new_chunk_id.is_set,
-				.value = be64toh(packed_rotate_streams.new_chunk_id.value),
-			}
+		_rotate_streams->new_chunk_id = (typeof(_rotate_streams->new_chunk_id)){
+			.is_set = !!packed_rotate_streams.new_chunk_id.is_set,
+			.value = be64toh(packed_rotate_streams.new_chunk_id.value),
 		};
+		_rotate_streams->stream_count = be32toh(packed_rotate_streams.stream_count);
 	} else if (payload->size == expected_payload_size_3_bytes_padding) {
 		struct lttcomm_relayd_rotate_streams_3_bytes_padding padded_rotate_streams;
 
@@ -2590,13 +2590,11 @@ static ssize_t relay_unpack_rotate_streams_header(
 		memcpy(&padded_rotate_streams, payload->data, header_len);
 
 		/* Unpack the 3-byte padded structure to the natively-packed version. */
-		*_rotate_streams = (typeof(*_rotate_streams)) {
-			.stream_count = be32toh(padded_rotate_streams.stream_count),
-			.new_chunk_id = (typeof(_rotate_streams->new_chunk_id)) {
-				.is_set = !!padded_rotate_streams.new_chunk_id.is_set,
-				.value = be64toh(padded_rotate_streams.new_chunk_id.value),
-			}
+		_rotate_streams->new_chunk_id = (typeof(_rotate_streams->new_chunk_id)){
+			.is_set = !!padded_rotate_streams.new_chunk_id.is_set,
+			.value = be64toh(padded_rotate_streams.new_chunk_id.value),
 		};
+		_rotate_streams->stream_count = be32toh(padded_rotate_streams.stream_count);
 	} else if (payload->size == expected_payload_size_7_bytes_padding) {
 		struct lttcomm_relayd_rotate_streams_7_bytes_padding padded_rotate_streams;
 
@@ -2606,13 +2604,11 @@ static ssize_t relay_unpack_rotate_streams_header(
 		memcpy(&padded_rotate_streams, payload->data, header_len);
 
 		/* Unpack the 7-byte padded structure to the natively-packed version. */
-		*_rotate_streams = (typeof(*_rotate_streams)) {
-			.stream_count = be32toh(padded_rotate_streams.stream_count),
-			.new_chunk_id = (typeof(_rotate_streams->new_chunk_id)) {
-				.is_set = !!padded_rotate_streams.new_chunk_id.is_set,
-				.value = be64toh(padded_rotate_streams.new_chunk_id.value),
-			}
+		_rotate_streams->new_chunk_id = (typeof(_rotate_streams->new_chunk_id)){
+			.is_set = !!padded_rotate_streams.new_chunk_id.is_set,
+			.value = be64toh(padded_rotate_streams.new_chunk_id.value),
 		};
+		_rotate_streams->stream_count = be32toh(padded_rotate_streams.stream_count);
 
 		header_len = sizeof(padded_rotate_streams);
 	} else {
