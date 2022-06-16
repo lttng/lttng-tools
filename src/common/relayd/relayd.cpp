@@ -1346,11 +1346,9 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 	}
 
 	chunk_name_length = overridden_name ? (strlen(chunk_name) + 1) : 0;
-	msg = (typeof(msg)){
-		.chunk_id = htobe64(chunk_id),
-		.creation_timestamp = htobe64((uint64_t) creation_timestamp),
-		.override_name_length = htobe32((uint32_t) chunk_name_length),
-	};
+	msg.chunk_id = htobe64(chunk_id);
+	msg.creation_timestamp = htobe64((uint64_t) creation_timestamp);
+	msg.override_name_length = htobe32((uint32_t) chunk_name_length);
 
 	ret = lttng_dynamic_buffer_append(&payload, &msg, sizeof(msg));
 	if (ret) {
