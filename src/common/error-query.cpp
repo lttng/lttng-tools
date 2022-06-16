@@ -311,11 +311,11 @@ int lttng_error_query_result_serialize(
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_error_query_result_comm header = {
-		.type = (uint8_t) result->type,
-		.name_len = (typeof(header.name_len)) strlen(result->name) + 1,
-		.description_len = (typeof(header.name_len)) strlen(result->description) + 1,
-	};
+	struct lttng_error_query_result_comm header;
+
+	header.type = (uint8_t) result->type;
+	header.name_len = (typeof(header.name_len)) strlen(result->name) + 1;
+	header.description_len = (typeof(header.name_len)) strlen(result->description) + 1;
 
 	/* Header. */
 	ret = lttng_dynamic_buffer_append(
