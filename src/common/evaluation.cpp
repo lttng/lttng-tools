@@ -25,9 +25,9 @@ int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_evaluation_comm evaluation_comm = {
-		.type = (int8_t) evaluation->type
-	};
+	struct lttng_evaluation_comm evaluation_comm;
+
+	evaluation_comm.type = (int8_t) evaluation->type;
 
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &evaluation_comm,
 			sizeof(evaluation_comm));
