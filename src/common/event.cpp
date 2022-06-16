@@ -1237,7 +1237,9 @@ int lttng_event_context_serialize(struct lttng_event_context *context,
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_event_context_comm context_comm = { 0 };
+	struct lttng_event_context_comm context_comm;
+
+	context_comm.type = 0;
 
 	assert(context);
 	assert(payload);
