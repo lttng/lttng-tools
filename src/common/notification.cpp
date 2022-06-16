@@ -40,8 +40,10 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 {
 	int ret;
 	size_t header_offset, size_before_payload;
-	struct lttng_notification_comm notification_comm = { 0 };
+	struct lttng_notification_comm notification_comm;
 	struct lttng_notification_comm *header;
+
+	notification_comm.length = 0;
 
 	header_offset = payload->buffer.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &notification_comm,
