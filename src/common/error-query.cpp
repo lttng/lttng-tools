@@ -565,9 +565,9 @@ int lttng_error_query_results_serialize(
 	size_t result_index;
 	const size_t result_count = lttng_dynamic_pointer_array_get_count(
 			&results->results);
-	const struct lttng_error_query_results_comm header = {
-		.count = (decltype(header.count)) result_count,
-	};
+	struct lttng_error_query_results_comm header;
+
+	header.count = (decltype(header.count)) result_count;
 
 	/* Header. */
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &header, sizeof(header));
