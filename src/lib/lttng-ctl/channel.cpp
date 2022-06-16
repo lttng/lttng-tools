@@ -577,12 +577,12 @@ int handshake(struct lttng_notification_channel *channel)
 		.major = LTTNG_NOTIFICATION_CHANNEL_VERSION_MAJOR,
 		.minor = LTTNG_NOTIFICATION_CHANNEL_VERSION_MINOR,
 	};
-	struct lttng_notification_channel_message msg_header = {
-		.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE,
-		.size = sizeof(handshake),
-		.fds = 0,
-	};
+	struct lttng_notification_channel_message msg_header;
 	char send_buffer[sizeof(msg_header) + sizeof(handshake)];
+
+	msg_header.type = LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE;
+	msg_header.size = sizeof(handshake);
+	msg_header.fds = 0;
 
 	memcpy(send_buffer, &msg_header, sizeof(msg_header));
 	memcpy(send_buffer + sizeof(msg_header), &handshake, sizeof(handshake));
@@ -627,11 +627,11 @@ enum lttng_notification_channel_status send_condition_command(
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_payload payload;
-	struct lttng_notification_channel_message cmd_header = {
-		.type = (int8_t) type,
-		.size =0,
-		.fds = 0,
-	};
+	struct lttng_notification_channel_message cmd_header;
+
+	cmd_header.type = (int8_t) type;
+	cmd_header.size = 0;
+	cmd_header.fds = 0;
 
 	lttng_payload_init(&payload);
 
