@@ -60,8 +60,7 @@ struct lttng_trigger {
 	 * clients.
 	 *
 	 * This is a property that can only be set internally by the session
-	 * daemon. As such, it is not serialized nor set by a
-	 * "create_from_buffer" constructor.
+	 * daemon.
 	 *
 	 * The hidden property is preserved by copies.
 	 *
@@ -94,6 +93,8 @@ struct lttng_trigger_comm {
 	uint32_t length;
 	/* Includes '\0' terminator. */
 	uint32_t name_length;
+	/* Hidden property. */
+	uint8_t is_hidden;
 	/* A null-terminated name, a condition, and an action follow. */
 	char payload[];
 } LTTNG_PACKED;

@@ -266,6 +266,10 @@ ssize_t lttng_trigger_create_from_payload(
 		}
 	}
 
+	if (trigger_comm->is_hidden) {
+		lttng_trigger_set_hidden(trigger);
+	}
+
 	ret = offset;
 
 error:
@@ -306,6 +310,8 @@ int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 	}
 
 	trigger_comm.name_length = size_name;
+
+	trigger_comm.is_hidden = lttng_trigger_is_hidden(trigger);
 
 	header_offset = payload->buffer.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &trigger_comm,
@@ -736,8 +742,10 @@ const struct lttng_credentials *lttng_trigger_get_credentials(
 void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds)
 {
+	/* Triggers do not use the group id to authenticate the user. */
 	LTTNG_ASSERT(creds);
-	trigger->creds = *creds;
+	LTTNG_OPTIONAL_SET(&trigger->creds.uid, LTTNG_OPTIONAL_GET(creds->uid));
+	LTTNG_OPTIONAL_UNSET(&trigger->creds.gid);
 }
 
 enum lttng_trigger_status lttng_trigger_set_owner_uid(
