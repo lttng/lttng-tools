@@ -1085,5 +1085,6 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(
 		struct lttng_consumer_channel *channel);
 int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel);
 void lttng_consumer_sigbus_handle(void *addr);
+void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel);
 
 #endif /* LIB_CONSUMER_H */

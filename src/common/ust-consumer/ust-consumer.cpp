@@ -702,6 +702,14 @@ static int flush_channel(uint64_t chan_key)
 next:
 		pthread_mutex_unlock(&stream->lock);
 	}
+
+	/*
+	 * Send one last buffer statistics update to the session daemon. This
+	 * ensures that the session daemon gets at least one statistics update
+	 * per channel even in the case of short-lived channels, such as when a
+	 * short-lived app is traced in per-pid mode.
+	 */
+	sample_and_send_channel_buffer_stats(channel);
 error:
 	rcu_read_unlock();
 	return ret;

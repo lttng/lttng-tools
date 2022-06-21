@@ -637,11 +637,8 @@ end:
 	return ret;
 }
 
-/*
- * Execute action on a monitor timer.
- */
-static
-void monitor_timer(struct lttng_consumer_channel *channel)
+/* Sample and send channel buffering statistics to the session daemon. */
+void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel)
 {
 	int ret;
 	int channel_monitor_pipe =
@@ -787,7 +784,7 @@ void *consumer_timer_thread(void *data)
 			struct lttng_consumer_channel *channel;
 
 			channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
-			monitor_timer(channel);
+			sample_and_send_channel_buffer_stats(channel);
 		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
 			LTTNG_ASSERT(CMM_LOAD_SHARED(consumer_quit));
 			goto end;
