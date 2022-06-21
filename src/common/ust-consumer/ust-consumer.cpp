@@ -2423,8 +2423,9 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 			stream->quiescent = true;
 		}
 	}
-	pthread_mutex_unlock(&stream->lock);
+
 	stream->hangup_flush_done = 1;
+	pthread_mutex_unlock(&stream->lock);
 }
 
 void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
