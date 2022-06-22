@@ -25,8 +25,6 @@
 
 #include <lttng/notification/channel-internal.h>
 #include <lttng/rotate-internal.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/action/action-internal.h>
 
 #include "session.h"
 #include "rotate.h"
@@ -47,22 +45,17 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	int ret;
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_condition *rotate_condition = NULL;
-	struct lttng_action *notify_action = NULL;
-	const struct lttng_credentials session_creds = {
-		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
-		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
-	};
+	struct lttng_action *action;
 
-	rotate_condition = lttng_condition_session_consumed_size_create();
-	if (!rotate_condition) {
+	session->rotate_condition = lttng_condition_session_consumed_size_create();
+	if (!session->rotate_condition) {
 		ERR("Failed to create session consumed size condition object");
 		ret = -1;
 		goto end;
 	}
 
 	condition_status = lttng_condition_session_consumed_size_set_threshold(
-			rotate_condition, size);
+			session->rotate_condition, size);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Could not set session consumed size condition threshold (size = %" PRIu64 ")",
 				size);
@@ -72,7 +65,7 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 
 	condition_status =
 			lttng_condition_session_consumed_size_set_session_name(
-				rotate_condition, session->name);
+				session->rotate_condition, session->name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Could not set session consumed size condition session name (name = %s)",
 				session->name);
@@ -80,16 +73,15 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 		goto end;
 	}
 
-	notify_action = lttng_action_notify_create();
-	if (!notify_action) {
+	action = lttng_action_notify_create();
+	if (!action) {
 		ERR("Could not create notify action");
 		ret = -1;
 		goto end;
 	}
 
-	assert(!session->rotate_trigger);
-	session->rotate_trigger = lttng_trigger_create(rotate_condition,
-			notify_action);
+	session->rotate_trigger = lttng_trigger_create(session->rotate_condition,
+			action);
 	if (!session->rotate_trigger) {
 		ERR("Could not create size-based rotation trigger");
 		ret = -1;
@@ -97,7 +89,7 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	}
 
 	nc_status = lttng_notification_channel_subscribe(
-			rotate_notification_channel, rotate_condition);
+			rotate_notification_channel, session->rotate_condition);
 	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Could not subscribe to session consumed size notification");
 		ret = -1;
@@ -115,11 +107,6 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	ret = 0;
 
 end:
-	lttng_condition_put(rotate_condition);
-	lttng_action_put(notify_action);
-	if (ret) {
-		lttng_trigger_put(session->rotate_trigger);
-	}
 	return ret;
 }
 
@@ -129,10 +116,9 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 	int ret = 0;
 	enum lttng_notification_channel_status status;
 
-	assert(session->rotate_trigger);
 	status = lttng_notification_channel_unsubscribe(
 			rotate_notification_channel,
-			lttng_trigger_get_const_condition(session->rotate_trigger));
+			session->rotate_condition);
 	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Session unsubscribe error: %d", (int) status);
 		ret = -1;
@@ -145,9 +131,6 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 		ERR("Session unregister trigger error: %d", ret);
 		goto end;
 	}
-
-	lttng_trigger_put(session->rotate_trigger);
-	session->rotate_trigger = NULL;
 
 	ret = 0;
 end:

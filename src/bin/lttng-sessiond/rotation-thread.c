@@ -27,7 +27,6 @@
 #include <lttng/rotate-internal.h>
 #include <lttng/location-internal.h>
 #include <lttng/condition/condition-internal.h>
-#include <lttng/notification/notification-internal.h>
 
 #include "rotation-thread.h"
 #include "lttng-sessiond.h"
@@ -623,7 +622,8 @@ end:
 }
 
 static
-int handle_condition(const struct lttng_notification *notification,
+int handle_condition(const struct lttng_condition *condition,
+		const struct lttng_evaluation *evaluation,
 		struct notification_thread_handle *notification_thread_handle)
 {
 	int ret = 0;
@@ -633,10 +633,6 @@ int handle_condition(const struct lttng_notification *notification,
 	enum lttng_evaluation_status evaluation_status;
 	uint64_t consumed;
 	struct ltt_session *session;
-	const struct lttng_condition *condition =
-			lttng_notification_get_const_condition(notification);
-	const struct lttng_evaluation *evaluation =
-			lttng_notification_get_const_evaluation(notification);
 
 	condition_type = lttng_condition_get_type(condition);
 
@@ -676,13 +672,6 @@ int handle_condition(const struct lttng_notification *notification,
 		goto end;
 	}
 	session_lock(session);
-
-	if (!lttng_trigger_is_equal(session->rotate_trigger,
-			lttng_notification_get_const_trigger(notification))) {
-		/* Notification does not originate from our rotation trigger. */
-		ret = 0;
-		goto end_unlock;
-	}
 
 	ret = unsubscribe_session_consumed_size_rotation(session,
 			notification_thread_handle);
@@ -726,6 +715,8 @@ int handle_notification_channel(int fd,
 	bool notification_pending;
 	struct lttng_notification *notification = NULL;
 	enum lttng_notification_channel_status status;
+	const struct lttng_evaluation *notification_evaluation;
+	const struct lttng_condition *notification_condition;
 
 	status = lttng_notification_channel_has_pending_notification(
 			rotate_notification_channel, &notification_pending);
@@ -763,7 +754,10 @@ int handle_notification_channel(int fd,
 		goto end;
 	}
 
-	ret = handle_condition(notification,
+	notification_condition = lttng_notification_get_condition(notification);
+	notification_evaluation = lttng_notification_get_evaluation(notification);
+
+	ret = handle_condition(notification_condition, notification_evaluation,
 			handle->notification_thread_handle);
 
 end:

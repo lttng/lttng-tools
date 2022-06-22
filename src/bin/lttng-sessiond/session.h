@@ -177,8 +177,9 @@ struct ltt_session {
 	 */
 	bool rotated;
 	/*
-	 * Trigger for size-based rotations.
+	 * Condition and trigger for size-based rotations.
 	 */
+	struct lttng_condition *rotate_condition;
 	struct lttng_trigger *rotate_trigger;
 	LTTNG_OPTIONAL(uint64_t) most_recent_chunk_id;
 	struct lttng_trace_chunk *current_trace_chunk;
