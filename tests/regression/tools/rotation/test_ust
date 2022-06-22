@@ -17,7 +17,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_ust_rotation_trace_path.XXXXXX)
 
-NUM_TESTS=145
+NUM_TESTS=152
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -267,17 +267,24 @@ function test_ust_local_size_uid ()
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
 
-	local archive_count=0
+	wait_for_archives "$TRACE_PATH" 5
 
-	diag "Waiting for 4 size-based rotations to occur"
-	while [[ archive_count -lt 4 ]]
-	do
-		archive_count=$(find "$TRACE_PATH" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
-		$TESTAPP_BIN -i 2000 -w 0 > /dev/null 2>&1
-	done
+	destroy_lttng_session_ok $SESSION_NAME
+}
 
-	[[ $archive_count -eq 4 ]]
-	ok $? "Saw four trace archives resulting from trace archive rotations"
+function test_ust_local_size_pid ()
+{
+	diag "Rotate uid local session every 2MiB"
+	local size_threshold=$((2 * 1024 * 1024))
+
+	diag "Test ust local with size-based session rotation per-pid"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME "channel0" --buffers-pid
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
+	start_lttng_tracing_ok $SESSION_NAME
+
+	wait_for_archives "$TRACE_PATH" 3
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -294,7 +301,8 @@ tests=( test_ust_streaming_uid test_ust_local_uid \
 	test_ust_streaming_pid test_ust_local_pid \
 	test_ust_local_timer_uid test_ust_streaming_timer_uid \
 	test_ust_local_timer_pid test_ust_streaming_timer_pid \
-	test_incompatible_sessions test_ust_local_size_uid )
+	test_ust_local_size_uid test_ust_local_size_pid \
+	test_incompatible_sessions )
 
 for fct_test in ${tests[@]};
 do

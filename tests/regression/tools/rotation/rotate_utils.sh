@@ -144,3 +144,20 @@ function rotate_timer_test ()
 	fi
 	shopt -u extglob
 }
+
+function wait_for_archives ()
+{
+	local trace_path=$1
+	local target_archive_count=$2
+	local archive_count=0
+
+	diag "Waiting for $target_archive_count size-based rotations to occur"
+	while [[ archive_count -lt $target_archive_count ]]
+	do
+		archive_count=$(find "$TRACE_PATH" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
+		$TESTAPP_BIN -i 2000 -w 0 > /dev/null 2>&1
+	done
+
+	[[ $archive_count -eq $target_archive_count ]]
+	ok $? "Found $target_archive_count trace archives resulting from trace archive rotations"
+}
