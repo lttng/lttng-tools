@@ -12,7 +12,7 @@ EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp --tmpdir -d -t tmp.rotation_kernel_tracing.XXXXXX)
 
-NUM_TESTS=60
+NUM_TESTS=66
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -78,6 +78,29 @@ function test_kernel_streaming_timer ()
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 0
 }
 
+function produce_n_events ()
+{
+	local event_count=$1
+
+	echo -n $event_count > /proc/lttng-test-filter-event
+}
+
+function test_kernel_local_size ()
+{
+	diag "Rotate kernel local session every 2MiB"
+	local size_threshold=$((2 * 1024 * 1024))
+
+	diag "Test ust local with size-based session rotation per-uid"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_kernel_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
+	start_lttng_tracing_ok $SESSION_NAME
+
+	trace_until_n_archives produce_n_events "$TRACE_PATH" 5
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -97,7 +120,7 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 	start_lttng_sessiond
 	modprobe lttng-test
 
-	tests=( test_kernel_streaming test_kernel_local test_kernel_local_timer test_kernel_streaming_timer)
+	tests=( test_kernel_streaming test_kernel_local test_kernel_local_timer test_kernel_streaming_timer test_kernel_local_size )
 
 	for fct_test in ${tests[@]};
 	do

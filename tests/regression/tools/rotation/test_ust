@@ -255,6 +255,13 @@ function test_incompatible_sessions ()
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
+function produce_n_events ()
+{
+	local event_count=$1
+
+	$TESTAPP_BIN -i "$event_count" -w 0 > /dev/null 2>&1
+}
+
 function test_ust_local_size_uid ()
 {
 	diag "Rotate uid local session every 2MiB"
@@ -267,7 +274,7 @@ function test_ust_local_size_uid ()
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
 
-	wait_for_archives "$TRACE_PATH" 5
+	trace_until_n_archives produce_n_events "$TRACE_PATH" 5
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -284,7 +291,7 @@ function test_ust_local_size_pid ()
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
 
-	wait_for_archives "$TRACE_PATH" 3
+	trace_until_n_archives produce_n_events "$TRACE_PATH" 3
 
 	destroy_lttng_session_ok $SESSION_NAME
 }

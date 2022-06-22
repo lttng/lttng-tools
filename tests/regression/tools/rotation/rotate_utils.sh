@@ -145,17 +145,18 @@ function rotate_timer_test ()
 	shopt -u extglob
 }
 
-function wait_for_archives ()
+function trace_until_n_archives ()
 {
-	local trace_path=$1
-	local target_archive_count=$2
+	local produce_events=$1
+	local trace_path=$2
+	local target_archive_count=$3
 	local archive_count=0
 
 	diag "Waiting for $target_archive_count size-based rotations to occur"
 	while [[ archive_count -lt $target_archive_count ]]
 	do
-		archive_count=$(find "$TRACE_PATH" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
-		$TESTAPP_BIN -i 2000 -w 0 > /dev/null 2>&1
+		archive_count=$(find "$trace_path" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
+		$produce_events 2000
 	done
 
 	[[ $archive_count -eq $target_archive_count ]]
