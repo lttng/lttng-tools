@@ -52,15 +52,25 @@ void lttng_waiter_wait(struct lttng_waiter *waiter)
 		}
 		caa_cpu_relax();
 	}
-	while (futex_noasync(&waiter->state, FUTEX_WAIT, WAITER_WAITING,
-			NULL, NULL, 0)) {
+	while (uatomic_read(&waiter->state) == WAITER_WAITING) {
+		if (!futex_noasync(&waiter->state, FUTEX_WAIT, WAITER_WAITING, NULL, NULL, 0)) {
+			/*
+			 * Prior queued wakeups queued by unrelated code
+			 * using the same address can cause futex wait to
+			 * return 0 even through the futex value is still
+			 * WAITER_WAITING (spurious wakeups). Check
+			 * the value again in user-space to validate
+			 * whether it really differs from WAITER_WAITING.
+			 */
+			continue;
+		}
 		switch (errno) {
-		case EWOULDBLOCK:
+		case EAGAIN:
 			/* Value already changed. */
 			goto skip_futex_wait;
 		case EINTR:
 			/* Retry if interrupted by signal. */
-			break;	/* Get out of switch. */
+			break;	/* Get out of switch. Check again. */
 		default:
 			/* Unexpected error. */
 			PERROR("futex_noasync");
