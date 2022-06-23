@@ -2167,7 +2167,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	consumer_stream_delete(stream, ht);
 
 	/* Close down everything including the relayd if one. */
-	consumer_stream_close(stream);
+	consumer_stream_close_output(stream);
 	/* Destroy tracer buffers of the stream. */
 	consumer_stream_destroy_buffers(stream);
 

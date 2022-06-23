@@ -41,7 +41,7 @@ struct lttng_consumer_stream *consumer_stream_create(
  * The stream lock MUST be acquired.
  * The consumer data lock MUST be acquired.
  */
-void consumer_stream_close(struct lttng_consumer_stream *stream);
+void consumer_stream_close_output(struct lttng_consumer_stream *stream);
 
 /*
  * Close stream on the relayd side. This call can destroy a relayd if the

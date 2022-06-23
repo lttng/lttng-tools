@@ -1206,7 +1206,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/* Simply close the stream so we can use it on the next snapshot. */
-		consumer_stream_close(stream);
+		consumer_stream_close_output(stream);
 		pthread_mutex_unlock(&stream->lock);
 	}
 
@@ -1218,7 +1218,7 @@ error_put_subbuf:
 		ERR("Snapshot lttng_ust_ctl_put_subbuf");
 	}
 error_close_stream:
-	consumer_stream_close(stream);
+	consumer_stream_close_output(stream);
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
 	rcu_read_unlock();
