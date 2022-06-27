@@ -168,13 +168,14 @@ void session_info_get(struct session_info *session_info);
 static
 void session_info_put(struct session_info *session_info);
 static
-struct session_info *session_info_create(const char *name,
-		uid_t uid, gid_t gid,
+struct session_info *session_info_create(uint64_t id,
+		const char *name,
+		uid_t uid,
+		gid_t gid,
 		struct lttng_session_trigger_list *trigger_list,
 		struct cds_lfht *sessions_ht);
-static
-void session_info_add_channel(struct session_info *session_info,
-		struct channel_info *channel_info);
+static void session_info_add_channel(
+		struct session_info *session_info, struct channel_info *channel_info);
 static
 void session_info_remove_channel(struct session_info *session_info,
 		struct channel_info *channel_info);
@@ -322,13 +323,60 @@ int match_client_list_condition(struct cds_lfht_node *node, const void *key)
 }
 
 static
-int match_session(struct cds_lfht_node *node, const void *key)
+int match_session_info(struct cds_lfht_node *node, const void *key)
 {
-	const char *name = (const char *) key;
-	struct session_info *session_info = lttng::utils::container_of(
+	const auto session_id = *((uint64_t *) key);
+	const auto *session_info = lttng::utils::container_of(
 		node, &session_info::sessions_ht_node);
 
-	return !strcmp(session_info->name, name);
+	return session_id == session_info->id;
+}
+
+static
+unsigned long hash_session_info_id(uint64_t id)
+{
+	return hash_key_u64(&id, lttng_ht_seed);
+}
+
+static
+unsigned long hash_session_info(const struct session_info *session_info)
+{
+	return hash_session_info_id(session_info->id);
+}
+
+static
+struct session_info *get_session_info_by_id(
+		const struct notification_thread_state *state, uint64_t id)
+{
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	lttng::urcu::read_lock_guard read_lock_guard;
+
+	cds_lfht_lookup(state->sessions_ht,
+			hash_session_info_id(id),
+			match_session_info,
+			&id,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+
+	if (node) {
+		auto session_info = lttng::utils::container_of(node, &session_info::sessions_ht_node);
+
+		session_info_get(session_info);
+		return session_info;
+	}
+
+	return NULL;
+}
+
+static
+struct session_info *get_session_info_by_name(
+		const struct notification_thread_state *state, const char *name)
+{
+	uint64_t session_id;
+	const auto found = sample_session_id_by_name(name, &session_id);
+
+	return found ? get_session_info_by_id(state, session_id) : NULL;
 }
 
 static
@@ -344,6 +392,10 @@ const char *notification_command_type_str(
 		return "ADD_CHANNEL";
 	case NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL:
 		return "REMOVE_CHANNEL";
+	case NOTIFICATION_COMMAND_TYPE_ADD_SESSION:
+		return "ADD_SESSION";
+	case NOTIFICATION_COMMAND_TYPE_REMOVE_SESSION:
+		return "REMOVE_SESSION";
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING:
 		return "SESSION_ROTATION_ONGOING";
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED:
@@ -563,7 +615,10 @@ void session_info_put(struct session_info *session_info)
 }
 
 static
-struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
+struct session_info *session_info_create(uint64_t id,
+		const char *name,
+		uid_t uid,
+		gid_t gid,
 		struct lttng_session_trigger_list *trigger_list,
 		struct cds_lfht *sessions_ht)
 {
@@ -575,6 +630,7 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
 	if (!session_info) {
 		goto end;
 	}
+
 	lttng_ref_init(&session_info->ref, session_info_destroy);
 
 	session_info->channel_infos_ht = cds_lfht_new(DEFAULT_HT_SIZE,
@@ -584,10 +640,12 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
 	}
 
 	cds_lfht_node_init(&session_info->sessions_ht_node);
+	session_info->id = id;
 	session_info->name = strdup(name);
 	if (!session_info->name) {
 		goto error;
 	}
+
 	session_info->uid = uid;
 	session_info->gid = gid;
 	session_info->trigger_list = trigger_list;
@@ -960,31 +1018,20 @@ int evaluate_session_condition_for_client(
 		uid_t *session_uid, gid_t *session_gid)
 {
 	int ret;
-	struct cds_lfht_iter iter;
-	struct cds_lfht_node *node;
 	const char *session_name;
 	struct session_info *session_info = NULL;
 
 	rcu_read_lock();
 	session_name = get_condition_session_name(condition);
 
-	/* Find the session associated with the trigger. */
-	cds_lfht_lookup(state->sessions_ht,
-			hash_key_str(session_name, lttng_ht_seed),
-			match_session,
-			session_name,
-			&iter);
-	node = cds_lfht_iter_get_node(&iter);
-	if (!node) {
-		DBG("No known session matching name \"%s\"",
+	/* Find the session associated with the condition. */
+	session_info = get_session_info_by_name(state, session_name);
+	if (!session_info) {
+		DBG("Unknown session while evaluating session condition for client: name = `%s`",
 				session_name);
 		ret = 0;
 		goto end;
 	}
-
-	session_info = caa_container_of(node, struct session_info,
-			sessions_ht_node);
-	session_info_get(session_info);
 
 	/*
 	 * Evaluation is performed in-line here since only one type of
@@ -1654,39 +1701,22 @@ error:
 }
 
 static
-struct session_info *find_or_create_session_info(
-		struct notification_thread_state *state,
-		const char *name, uid_t uid, gid_t gid)
+struct session_info *create_and_publish_session_info(struct notification_thread_state *state,
+		uint64_t id,
+		const char *name,
+		uid_t uid,
+		gid_t gid)
 {
 	struct session_info *session = NULL;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
 	struct lttng_session_trigger_list *trigger_list;
 
 	rcu_read_lock();
-	cds_lfht_lookup(state->sessions_ht,
-			hash_key_str(name, lttng_ht_seed),
-			match_session,
-			name,
-			&iter);
-	node = cds_lfht_iter_get_node(&iter);
-	if (node) {
-		DBG("Found session info of session \"%s\" (uid = %i, gid = %i)",
-				name, uid, gid);
-		session = caa_container_of(node, struct session_info,
-				sessions_ht_node);
-		LTTNG_ASSERT(session->uid == uid);
-		LTTNG_ASSERT(session->gid == gid);
-		session_info_get(session);
-		goto end;
-	}
-
 	trigger_list = lttng_session_trigger_list_build(state, name);
 	if (!trigger_list) {
 		goto error;
 	}
 
-	session = session_info_create(name, uid, gid, trigger_list,
+	session = session_info_create(id, name, uid, gid, trigger_list,
 			state->sessions_ht);
 	if (!session) {
 		ERR("Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
@@ -1694,11 +1724,16 @@ struct session_info *find_or_create_session_info(
 		lttng_session_trigger_list_destroy(trigger_list);
 		goto error;
 	}
+
+	/* Transferred ownership to the new session. */
 	trigger_list = NULL;
 
-	cds_lfht_add(state->sessions_ht, hash_key_str(name, lttng_ht_seed),
-			&session->sessions_ht_node);
-end:
+	if (cds_lfht_add_unique(state->sessions_ht, hash_session_info(session), match_session_info,
+			    &id, &session->sessions_ht_node) != &session->sessions_ht_node) {
+		ERR("Duplicate session found: name = `%s`, id = %" PRIu64, name, id);
+		goto error;
+	}
+
 	rcu_read_unlock();
 	return session;
 error:
@@ -1708,11 +1743,12 @@ error:
 }
 
 static
-int handle_notification_thread_command_add_channel(
-		struct notification_thread_state *state,
-		const char *session_name, uid_t session_uid, gid_t session_gid,
-		const char *channel_name, enum lttng_domain_type channel_domain,
-		uint64_t channel_key_int, uint64_t channel_capacity,
+int handle_notification_thread_command_add_channel(struct notification_thread_state *state,
+		uint64_t session_id,
+		const char *channel_name,
+		enum lttng_domain_type channel_domain,
+		uint64_t channel_key_int,
+		uint64_t channel_capacity,
 		enum lttng_error_code *cmd_result)
 {
 	struct cds_list_head trigger_list;
@@ -1727,16 +1763,17 @@ int handle_notification_thread_command_add_channel(
 	struct cds_lfht_iter iter;
 	struct session_info *session_info = NULL;
 
-	DBG("Adding channel %s from session %s, channel key = %" PRIu64 " in %s domain",
-			channel_name, session_name, channel_key_int,
+	DBG("Adding channel: channel name = `%s`, session id = %" PRIu64 ", channel key = %" PRIu64 ", domain = %s",
+			channel_name, session_id, channel_key_int,
 			lttng_domain_type_str(channel_domain));
 
 	CDS_INIT_LIST_HEAD(&trigger_list);
 
-	session_info = find_or_create_session_info(state, session_name,
-			session_uid, session_gid);
+	session_info = get_session_info_by_id(state, session_id);
 	if (!session_info) {
-		/* Allocation error or an internal error occurred. */
+		/* Fatal logic error. */
+		ERR("Failed to find session while adding channel: session id = %" PRIu64,
+				session_id);
 		goto error;
 	}
 
@@ -1800,6 +1837,67 @@ error:
 	channel_info_destroy(new_channel_info);
 	session_info_put(session_info);
 	return 1;
+}
+
+static
+int handle_notification_thread_command_add_session(struct notification_thread_state *state,
+		uint64_t session_id,
+		const char *session_name,
+		uid_t session_uid,
+		gid_t session_gid,
+		enum lttng_error_code *cmd_result)
+{
+	int ret;
+
+	DBG("Adding session: session name = `%s`, session id = %" PRIu64 ", session uid = %d, session gid = %d",
+			session_name, session_id, session_uid, session_gid);
+
+	auto session = create_and_publish_session_info(state, session_id, session_name, session_uid, session_gid);
+	if (!session) {
+		PERROR("Failed to add session: session name = `%s`, session id = %" PRIu64 ", session uid = %d, session gid = %d",
+				session_name, session_id, session_uid, session_gid);
+		ret = -1;
+		*cmd_result = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/*
+	 * Note that the reference to `session` is not released; this reference is
+	 * the "global" reference that is used to allow look-ups. This reference will
+	 * only be released when the session is removed. See
+	 * handle_notification_thread_command_remove_session.
+	 */
+	ret = 0;
+	*cmd_result = LTTNG_OK;
+end:
+	return ret;
+}
+
+static
+int handle_notification_thread_command_remove_session(
+		struct notification_thread_state *state,
+		uint64_t session_id,
+		enum lttng_error_code *cmd_result)
+{
+	int ret;
+
+	DBG("Removing session: session id = %" PRIu64, session_id);
+
+	auto session = get_session_info_by_id(state, session_id);
+	if (!session) {
+		ERR("Failed to remove session: session id = %" PRIu64, session_id);
+		ret = -1;
+		*cmd_result = LTTNG_ERR_NO_SESSION;
+		goto end;
+	}
+
+	/* Release the reference returned by the look-up, and then release the global reference. */
+	session_info_put(session);
+	session_info_put(session);
+	ret = 0;
+	*cmd_result = LTTNG_OK;
+end:
+	return ret;
 }
 
 static
@@ -1902,7 +2000,7 @@ static
 int handle_notification_thread_command_session_rotation(
 	struct notification_thread_state *state,
 	enum notification_thread_command_type cmd_type,
-	const char *session_name, uid_t session_uid, gid_t session_gid,
+	uint64_t session_id,
 	uint64_t trace_archive_chunk_id,
 	struct lttng_trace_archive_location *location,
 	enum lttng_error_code *_cmd_result)
@@ -1912,29 +2010,32 @@ int handle_notification_thread_command_session_rotation(
 	struct lttng_session_trigger_list *trigger_list;
 	struct lttng_trigger_list_element *trigger_list_element;
 	struct session_info *session_info;
-	const struct lttng_credentials session_creds = {
-		.uid = LTTNG_OPTIONAL_INIT_VALUE(session_uid),
-		.gid = LTTNG_OPTIONAL_INIT_VALUE(session_gid),
-	};
+	struct lttng_credentials session_creds;
 
 	rcu_read_lock();
 
-	session_info = find_or_create_session_info(state, session_name,
-			session_uid, session_gid);
+	session_info = get_session_info_by_id(state, session_id);
 	if (!session_info) {
-		/* Allocation error or an internal error occurred. */
+		/* Fatal logic error. */
+		ERR("Failed to find session while handling rotation state change: session id = %" PRIu64,
+				session_id);
 		ret = -1;
-		cmd_result = LTTNG_ERR_NOMEM;
+		cmd_result = LTTNG_ERR_FATAL;
 		goto end;
 	}
+
+	session_creds = {
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(session_info->uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(session_info->gid),
+	};
 
 	session_info->rotation.ongoing =
 			cmd_type == NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING;
 	session_info->rotation.id = trace_archive_chunk_id;
-	trigger_list = get_session_trigger_list(state, session_name);
+	trigger_list = get_session_trigger_list(state, session_info->name);
 	if (!trigger_list) {
-		DBG("No triggers applying to session \"%s\" found",
-				session_name);
+		DBG("No triggers apply to session: session name = `%s` ",
+				session_info->name);
 		goto end;
 	}
 
@@ -3180,9 +3281,7 @@ int handle_notification_thread_command(
 	case NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL:
 		ret = handle_notification_thread_command_add_channel(
 				state,
-				cmd->parameters.add_channel.session.name,
-				cmd->parameters.add_channel.session.uid,
-				cmd->parameters.add_channel.session.gid,
+				cmd->parameters.add_channel.session.id,
 				cmd->parameters.add_channel.channel.name,
 				cmd->parameters.add_channel.channel.domain,
 				cmd->parameters.add_channel.channel.key,
@@ -3195,14 +3294,23 @@ int handle_notification_thread_command(
 				cmd->parameters.remove_channel.domain,
 				&cmd->reply_code);
 		break;
+	case NOTIFICATION_COMMAND_TYPE_ADD_SESSION:
+		ret = handle_notification_thread_command_add_session(state,
+				cmd->parameters.add_session.session_id,
+				cmd->parameters.add_session.session_name,
+				cmd->parameters.add_session.session_uid,
+				cmd->parameters.add_session.session_gid, &cmd->reply_code);
+		break;
+	case NOTIFICATION_COMMAND_TYPE_REMOVE_SESSION:
+		ret = handle_notification_thread_command_remove_session(
+				state, cmd->parameters.remove_session.session_id, &cmd->reply_code);
+		break;
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING:
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED:
 		ret = handle_notification_thread_command_session_rotation(
 				state,
 				cmd->type,
-				cmd->parameters.session_rotation.session_name,
-				cmd->parameters.session_rotation.uid,
-				cmd->parameters.session_rotation.gid,
+				cmd->parameters.session_rotation.session_id,
 				cmd->parameters.session_rotation.trace_archive_chunk_id,
 				cmd->parameters.session_rotation.location,
 				&cmd->reply_code);

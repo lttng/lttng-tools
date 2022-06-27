@@ -3461,11 +3461,7 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	/* Notify the notification subsystem of the channel's creation. */
 	notification_ret = notification_thread_command_add_channel(
-			the_notification_thread_handle, session->name,
-			lttng_credentials_get_uid(
-					&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(
-					&ua_sess->effective_credentials),
+			the_notification_thread_handle, session->id,
 			ua_chan->name, ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (notification_ret != LTTNG_OK) {
@@ -3563,11 +3559,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	cmd_ret = notification_thread_command_add_channel(
-			the_notification_thread_handle, session->name,
-			lttng_credentials_get_uid(
-					&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(
-					&ua_sess->effective_credentials),
+			the_notification_thread_handle, session->id,
 			ua_chan->name, ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (cmd_ret != LTTNG_OK) {

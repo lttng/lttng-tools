@@ -3136,6 +3136,28 @@ enum lttng_error_code cmd_create_session_from_descriptor(
 		goto end;
 	}
 
+	ret_code = notification_thread_command_add_session(the_notification_thread_handle,
+			new_session->id, new_session->name, new_session->uid, new_session->gid);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Announce the session's destruction to the notification thread when it is destroyed. */
+	ret = session_add_destroy_notifier(
+			new_session,
+			[](const struct ltt_session *session,
+					void *user_data __attribute__((unused))) {
+				(void) notification_thread_command_remove_session(
+						the_notification_thread_handle, session->id);
+			},
+			NULL);
+	if (ret) {
+		PERROR("Failed to add notification thread command to session's destroy notifiers: session name = %s",
+				new_session->name);
+		ret = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
 	if (!session_name) {
 		ret = lttng_session_descriptor_set_session_name(descriptor,
 				new_session->name);
@@ -5609,8 +5631,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	chunk_being_archived = NULL;
 	if (!quiet_rotation) {
 		ret = notification_thread_command_session_rotation_ongoing(
-				the_notification_thread_handle, session->name,
-				session->uid, session->gid,
+				the_notification_thread_handle, session->id,
 				ongoing_rotation_chunk_id);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",

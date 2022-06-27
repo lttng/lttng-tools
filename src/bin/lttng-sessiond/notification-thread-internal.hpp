@@ -30,6 +30,7 @@ struct channel_key {
 
 struct session_info {
 	struct lttng_ref ref;
+	uint64_t id;
 	char *name;
 	uid_t uid;
 	gid_t gid;

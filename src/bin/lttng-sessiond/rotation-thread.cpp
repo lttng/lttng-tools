@@ -487,9 +487,7 @@ int check_session_rotation_pending(struct ltt_session *session,
 		location = session_get_trace_archive_location(session);
 		ret = notification_thread_command_session_rotation_completed(
 				notification_thread_handle,
-				session->name,
-				session->uid,
-				session->gid,
+				session->id,
 				session->last_archived_chunk_id.value,
 				location);
 		lttng_trace_archive_location_put(location);

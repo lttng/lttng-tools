@@ -25,6 +25,8 @@ enum notification_thread_command_type {
 	NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER,
 	NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL,
 	NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL,
+	NOTIFICATION_COMMAND_TYPE_ADD_SESSION,
+	NOTIFICATION_COMMAND_TYPE_REMOVE_SESSION,
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING,
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED,
 	NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE,
@@ -49,12 +51,21 @@ struct notification_thread_command {
 		struct {
 			const struct lttng_trigger *trigger;
 		} unregister_trigger;
+		/* Add session. */
+		struct {
+			uint64_t session_id;
+			const char *session_name;
+			uid_t session_uid;
+			gid_t session_gid;
+		} add_session;
+		/* Remove session. */
+		struct {
+			uint64_t session_id;
+		} remove_session;
 		/* Add channel. */
 		struct {
 			struct {
-				const char *name;
-				uid_t uid;
-				gid_t gid;
+				uint64_t id;
 			} session;
 			struct {
 				const char *name;
@@ -69,9 +80,7 @@ struct notification_thread_command {
 			enum lttng_domain_type domain;
 		} remove_channel;
 		struct {
-			const char *session_name;
-			uid_t uid;
-			gid_t gid;
+			uint64_t session_id;
 			uint64_t trace_archive_chunk_id;
 			/* Weak reference. */
 			struct lttng_trace_archive_location *location;
@@ -121,9 +130,20 @@ enum lttng_error_code notification_thread_command_unregister_trigger(
 		struct notification_thread_handle *handle,
 		const struct lttng_trigger *trigger);
 
+enum lttng_error_code notification_thread_command_add_session(
+		struct notification_thread_handle *handle,
+		uint64_t session_id,
+		const char *session_name,
+		uid_t session_uid,
+		gid_t session_gid);
+
+enum lttng_error_code notification_thread_command_remove_session(
+		struct notification_thread_handle *handle,
+		uint64_t session_id);
+
 enum lttng_error_code notification_thread_command_add_channel(
 		struct notification_thread_handle *handle,
-		char *session_name, uid_t session_uid, gid_t session_gid,
+		uint64_t session_id,
 		char *channel_name, uint64_t key,
 		enum lttng_domain_type domain, uint64_t capacity);
 
@@ -133,13 +153,13 @@ enum lttng_error_code notification_thread_command_remove_channel(
 
 enum lttng_error_code notification_thread_command_session_rotation_ongoing(
 		struct notification_thread_handle *handle,
-		const char *session_name, uid_t session_uid, gid_t session_gid,
+		uint64_t session_id,
 		uint64_t trace_archive_chunk_id);
 
 /* Ownership of location is transferred. */
 enum lttng_error_code notification_thread_command_session_rotation_completed(
 		struct notification_thread_handle *handle,
-		const char *session_name, uid_t session_uid, gid_t session_gid,
+		uint64_t session_id,
 		uint64_t trace_archive_chunk_id,
 		struct lttng_trace_archive_location *location);
 

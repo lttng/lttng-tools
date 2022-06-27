@@ -157,13 +157,15 @@ struct notification_thread_handle {
  * The thread reacts to the following internal events:
  *   1) creation of a tracing channel,
  *   2) destruction of a tracing channel,
- *   3) registration of a trigger,
- *   4) unregistration of a trigger,
- *   5) reception of a channel monitor sample from the consumer daemon,
- *   6) Session rotation ongoing,
- *   7) Session rotation completed,
- *   8) registration of a tracer event source,
- *   9) unregistration of a tracer event source,
+ *   3) creation of a tracing session,
+ *   4) destruction of a tracing session,
+ *   5)  registration of a trigger,
+ *   6)  unregistration of a trigger,
+ *   7)  reception of a channel monitor sample from the consumer daemon,
+ *   8)  Session rotation ongoing,
+ *   9)  Session rotation completed,
+ *   10) registration of a tracer event source,
+ *   11) unregistration of a tracer event source,
  *
  * Events specific to notification-emitting triggers:
  *   9) connection of a notification client,

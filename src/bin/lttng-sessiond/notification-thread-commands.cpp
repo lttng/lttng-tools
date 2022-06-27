@@ -160,9 +160,58 @@ end:
 	return ret_code;
 }
 
+enum lttng_error_code notification_thread_command_add_session(
+		struct notification_thread_handle *handle,
+		uint64_t session_id, const char *session_name, uid_t session_uid, gid_t session_gid)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct notification_thread_command cmd = {};
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_SESSION;
+	cmd.parameters.add_session.session_id = session_id;
+	cmd.parameters.add_session.session_name = session_name;
+	cmd.parameters.add_session.session_uid = session_uid;
+	cmd.parameters.add_session.session_gid = session_gid;
+
+	ret = run_command_wait(handle, &cmd);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+	ret_code = cmd.reply_code;
+end:
+	return ret_code;
+}
+
+enum lttng_error_code notification_thread_command_remove_session(
+		struct notification_thread_handle *handle,
+		uint64_t session_id)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct notification_thread_command cmd = {};
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_SESSION;
+	cmd.parameters.remove_session.session_id = session_id;
+
+	ret = run_command_wait(handle, &cmd);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+	ret_code = cmd.reply_code;
+end:
+	return ret_code;
+}
+
 enum lttng_error_code notification_thread_command_add_channel(
 		struct notification_thread_handle *handle,
-		char *session_name, uid_t uid, gid_t gid,
+		uint64_t session_id,
 		char *channel_name, uint64_t key,
 		enum lttng_domain_type domain, uint64_t capacity)
 {
@@ -173,9 +222,7 @@ enum lttng_error_code notification_thread_command_add_channel(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL;
-	cmd.parameters.add_channel.session.name = session_name;
-	cmd.parameters.add_channel.session.uid = uid;
-	cmd.parameters.add_channel.session.gid = gid;
+	cmd.parameters.add_channel.session.id = session_id;
 	cmd.parameters.add_channel.channel.name = channel_name;
 	cmd.parameters.add_channel.channel.key = key;
 	cmd.parameters.add_channel.channel.domain = domain;
@@ -217,7 +264,7 @@ end:
 
 enum lttng_error_code notification_thread_command_session_rotation_ongoing(
 		struct notification_thread_handle *handle,
-		const char *session_name, uid_t uid, gid_t gid,
+		uint64_t session_id,
 		uint64_t trace_archive_chunk_id)
 {
 	int ret;
@@ -227,9 +274,7 @@ enum lttng_error_code notification_thread_command_session_rotation_ongoing(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING;
-	cmd.parameters.session_rotation.session_name = session_name;
-	cmd.parameters.session_rotation.uid = uid;
-	cmd.parameters.session_rotation.gid = gid;
+	cmd.parameters.session_rotation.session_id = session_id;
 	cmd.parameters.session_rotation.trace_archive_chunk_id =
 			trace_archive_chunk_id;
 
@@ -245,7 +290,7 @@ end:
 
 enum lttng_error_code notification_thread_command_session_rotation_completed(
 		struct notification_thread_handle *handle,
-		const char *session_name, uid_t uid, gid_t gid,
+		uint64_t session_id,
 		uint64_t trace_archive_chunk_id,
 		struct lttng_trace_archive_location *location)
 {
@@ -256,9 +301,7 @@ enum lttng_error_code notification_thread_command_session_rotation_completed(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED;
-	cmd.parameters.session_rotation.session_name = session_name;
-	cmd.parameters.session_rotation.uid = uid;
-	cmd.parameters.session_rotation.gid = gid;
+	cmd.parameters.session_rotation.session_id = session_id;
 	cmd.parameters.session_rotation.trace_archive_chunk_id =
 			trace_archive_chunk_id;
 	cmd.parameters.session_rotation.location = location;
