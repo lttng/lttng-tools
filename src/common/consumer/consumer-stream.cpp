@@ -1075,9 +1075,11 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 		if (stream->globally_visible) {
 			pthread_mutex_lock(&the_consumer_data.lock);
 			pthread_mutex_lock(&stream->chan->lock);
+
 			pthread_mutex_lock(&stream->lock);
 			/* Remove every reference of the stream in the consumer. */
 			consumer_stream_delete(stream, ht);
+
 
 			destroy_close_stream(stream);
 

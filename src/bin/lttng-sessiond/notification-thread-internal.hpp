@@ -28,6 +28,18 @@ struct channel_key {
 	enum lttng_domain_type domain;
 };
 
+struct session_state_sample {
+	uint64_t consumed_data_size;
+	struct {
+		/* Whether a rotation is ongoing for this session. */
+		bool ongoing;
+		/* Identifier of the currently ongoing rotation. */
+		uint64_t id;
+		/* Location of last completed rotation. */
+		struct lttng_trace_archive_location *location;
+	} rotation;
+};
+
 struct session_info {
 	struct lttng_ref ref;
 	uint64_t id;
@@ -48,13 +60,8 @@ struct session_info {
 	 * destruction.
 	 */
 	struct cds_lfht *sessions_ht;
-	uint64_t consumed_data_size;
-	struct {
-		/* Whether a rotation is ongoing for this session. */
-		bool ongoing;
-		/* Identifier of the currently ongoing rotation. */
-		uint64_t id;
-	} rotation;
+	/* Session's state as of the latest update. */
+	struct session_state_sample last_state_sample;
 	/* call_rcu delayed reclaim. */
 	struct rcu_head rcu_node;
 };

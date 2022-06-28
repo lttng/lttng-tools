@@ -848,6 +848,8 @@ struct lttcomm_consumer_msg {
 struct lttcomm_consumer_channel_monitor_msg {
 	/* Key of the sampled channel. */
 	uint64_t key;
+	/* Id of the sampled channel's session. */
+	uint64_t session_id;
 	/*
 	 * Lowest and highest usage (bytes) at the moment the sample was taken.
 	 */
@@ -855,7 +857,7 @@ struct lttcomm_consumer_channel_monitor_msg {
 	/*
 	 * Sum of all the consumed positions for a channel.
 	 */
-	uint64_t total_consumed;
+	uint64_t consumed_since_last_sample;
 } LTTNG_PACKED;
 
 /*

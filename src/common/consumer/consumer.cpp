@@ -383,6 +383,12 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		consumer_timer_monitor_stop(channel);
 	}
 
+	/*
+	 * Send a last buffer statistics sample to the session daemon
+	 * to ensure it tracks the amount of data consumed by this channel.
+	 */
+	sample_and_send_channel_buffer_stats(channel);
+
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;

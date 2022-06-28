@@ -253,6 +253,7 @@ struct lttng_consumer_channel {
 	uint64_t lost_packets;
 
 	bool streams_sent_to_relayd;
+	uint64_t last_consumed_size_sample_sent;
 };
 
 struct stream_subbuffer {

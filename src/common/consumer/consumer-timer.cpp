@@ -645,9 +645,10 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 			consumer_timer_thread_get_channel_monitor_pipe();
 	struct lttcomm_consumer_channel_monitor_msg msg = {
 		.key = channel->key,
+		.session_id = channel->session_id,
 		.lowest = 0,
 		.highest = 0,
-		.total_consumed = 0,
+		.consumed_since_last_sample = 0,
 	};
 	sample_positions_cb sample;
 	get_consumed_cb get_consumed;
@@ -681,9 +682,10 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 	if (ret) {
 		return;
 	}
+
 	msg.highest = highest;
 	msg.lowest = lowest;
-	msg.total_consumed = total_consumed;
+	msg.consumed_since_last_sample = total_consumed - channel->last_consumed_size_sample_sent;
 
 	/*
 	 * Writes performed here are assumed to be atomic which is only
@@ -706,6 +708,7 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 		DBG("Sent channel monitoring sample for channel key %" PRIu64
 				", (highest = %" PRIu64 ", lowest = %" PRIu64 ")",
 				channel->key, msg.highest, msg.lowest);
+		channel->last_consumed_size_sample_sent = msg.consumed_since_last_sample;
 	}
 }
 
