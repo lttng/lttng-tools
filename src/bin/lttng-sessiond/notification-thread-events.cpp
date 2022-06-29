@@ -3278,6 +3278,7 @@ int handle_notification_thread_command_unregister_trigger(
 
 				DBG("Removed trigger from channel_triggers_ht");
 				cds_list_del(&trigger_element->node);
+				free(trigger_element);
 				/* A trigger can only appear once per channel */
 				break;
 			}
