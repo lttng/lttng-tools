@@ -2965,6 +2965,7 @@ int handle_notification_thread_command_register_trigger(
 			client_list = notification_client_list_create(state, condition);
 			if (!client_list) {
 				ERR("Error creating notification client list for trigger %s", trigger->name);
+				ret = -1;
 				goto error_free_ht_element;
 			}
 		}
