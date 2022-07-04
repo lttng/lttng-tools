@@ -190,9 +190,6 @@ lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl
 			lst::integer_type::reverse_byte_order(
 					session_attributes._native_trace_byte_order) :
 			      session_attributes._native_trace_byte_order;
-	const auto signedness = enum_container_uctl_type->signedness ?
-			lst::integer_type::signedness::SIGNED :
-			      lst::integer_type::signedness::UNSIGNED;
 
 	if (enum_container_uctl_type->signedness) {
 		const auto& enum_registry = static_cast<const lsu::registry_signed_enum&>(
@@ -201,7 +198,7 @@ lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl
 
 		return lttng::make_unique<const lst::signed_enumeration_type>(
 				enum_container_uctl_type->alignment, byte_order,
-				enum_container_uctl_type->size, signedness, base,
+				enum_container_uctl_type->size, base,
 				enum_registry._mappings);
 	} else {
 		const auto& enum_registry = static_cast<const lsu::registry_unsigned_enum&>(
@@ -210,7 +207,7 @@ lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl
 
 		return lttng::make_unique<const lst::unsigned_enumeration_type>(
 				enum_container_uctl_type->alignment, byte_order,
-				enum_container_uctl_type->size, signedness, base,
+				enum_container_uctl_type->size, base,
 				enum_registry._mappings);
 	}
 }

@@ -76,11 +76,30 @@ public:
 		HEXADECIMAL = 16,
 	};
 
+	enum class role {
+		DEFAULT_CLOCK_TIMESTAMP,
+		/* Packet header field class specific roles. */
+		DATA_STREAM_CLASS_ID,
+		DATA_STREAM_ID,
+		PACKET_MAGIC_NUMBER,
+		/* Packet context field class specific roles. */
+		DISCARDED_EVENT_RECORD_COUNTER_SNAPSHOT,
+		PACKET_CONTENT_LENGTH,
+		PACKET_END_DEFAULT_CLOCK_TIMESTAMP,
+		PACKET_SEQUENCE_NUMBER,
+		PACKET_TOTAL_LENGTH,
+		/* Event record field class roles. */
+		EVENT_RECORD_CLASS_ID,
+	};
+
+	using roles = std::vector<role>;
+
 	integer_type(unsigned int alignment,
 			byte_order byte_order,
 			unsigned int size,
 			signedness signedness,
-			base base);
+			base base,
+			roles roles = {});
 
 	virtual void accept(type_visitor& visitor) const override;
 
@@ -93,6 +112,7 @@ public:
 	 */
 	const signedness signedness_;
 	const base base_;
+	const roles roles_;
 
 protected:
 	virtual bool _is_equal(const type& other) const noexcept override;
@@ -121,7 +141,8 @@ protected:
 			enum byte_order byte_order,
 			unsigned int size,
 			enum signedness signedness,
-			enum base base);
+			enum base base,
+			integer_type::roles roles = {});
 
 	virtual void accept(type_visitor& visitor) const = 0;
 };
@@ -192,14 +213,17 @@ public:
 	typed_enumeration_type(unsigned int in_alignment,
 			enum byte_order in_byte_order,
 			unsigned int in_size,
-			enum signedness in_signedness,
 			enum base in_base,
-			const std::shared_ptr<const mappings>& in_mappings) :
+			const std::shared_ptr<const mappings>& in_mappings,
+			integer_type::roles in_roles = {}) :
 		enumeration_type(in_alignment,
 				in_byte_order,
 				in_size,
-				in_signedness,
-				in_base),
+				std::is_signed<MappingIntegerType>::value ?
+						integer_type::signedness::SIGNED :
+						      integer_type::signedness::UNSIGNED,
+				in_base,
+				std::move(in_roles)),
 		_mappings{std::move(in_mappings)}
 	{
 	}
@@ -251,6 +275,38 @@ public:
 	dynamic_length_array_type(unsigned int alignment,
 			type::cuptr element_type,
 			std::string length_field_name);
+
+	virtual void accept(type_visitor& visitor) const override final;
+
+	const std::string length_field_name;
+
+private:
+	virtual bool _is_equal(const type& base_other) const noexcept override final;
+};
+
+class static_length_blob_type : public type {
+public:
+	enum class role {
+		/* Packet header field class specific role. */
+		TRACE_CLASS_UUID,
+	};
+
+	using roles = std::vector<role>;
+
+	static_length_blob_type(unsigned int alignment, uint64_t in_length_bytes, roles roles = {});
+
+	virtual void accept(type_visitor& visitor) const override final;
+
+	const uint64_t length_bytes;
+	const roles roles_;
+
+private:
+	virtual bool _is_equal(const type& base_other) const noexcept override final;
+};
+
+class dynamic_length_blob_type : public type {
+public:
+	dynamic_length_blob_type(unsigned int alignment, std::string length_field_name);
 
 	virtual void accept(type_visitor& visitor) const override final;
 
@@ -358,6 +414,8 @@ public:
 	virtual void visit(const unsigned_enumeration_type& type) = 0;
 	virtual void visit(const static_length_array_type& type) = 0;
 	virtual void visit(const dynamic_length_array_type& type) = 0;
+	virtual void visit(const static_length_blob_type& type) = 0;
+	virtual void visit(const dynamic_length_blob_type& type) = 0;
 	virtual void visit(const null_terminated_string_type& type) = 0;
 	virtual void visit(const static_length_string_type& type) = 0;
 	virtual void visit(const dynamic_length_string_type& type) = 0;

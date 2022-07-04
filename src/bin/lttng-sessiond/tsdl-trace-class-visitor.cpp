@@ -300,6 +300,30 @@ private:
 				"[{}]", escape_tsdl_identifier(type.length_field_name)));
 	}
 
+	virtual void visit(const lst::static_length_blob_type& type) override final
+	{
+		/* This type doesn't exist in CTF 1.x, express it as a static length array of uint8_t. */
+		std::unique_ptr<const lst::type> uint8_element = lttng::make_unique<lst::integer_type>(8,
+				_trace_abi.byte_order, 8, lst::integer_type::signedness::UNSIGNED,
+				lst::integer_type::base::HEXADECIMAL);
+		const auto array = lttng::make_unique<lst::static_length_array_type>(
+				type.alignment, std::move(uint8_element), type.length_bytes);
+
+		visit(*array);
+	}
+
+	virtual void visit(const lst::dynamic_length_blob_type& type) override final
+	{
+		/* This type doesn't exist in CTF 1.x, express it as a dynamic length array of uint8_t. */
+		std::unique_ptr<const lst::type> uint8_element = lttng::make_unique<lst::integer_type>(0,
+				_trace_abi.byte_order, 8, lst::integer_type::signedness::UNSIGNED,
+				lst::integer_type::base::HEXADECIMAL);
+		const auto array = lttng::make_unique<lst::dynamic_length_array_type>(
+				type.alignment, std::move(uint8_element), type.length_field_name);
+
+		visit(*array);
+	}
+
 	virtual void visit(const lst::null_terminated_string_type& type) override final
 	{
 		/* Defaults to UTF-8.  */

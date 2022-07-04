@@ -70,12 +70,14 @@ lst::integer_type::integer_type(unsigned int in_alignment,
 		enum lst::byte_order in_byte_order,
 		unsigned int in_size,
 		enum lst::integer_type::signedness in_signedness,
-		enum lst::integer_type::base in_base) :
+		enum lst::integer_type::base in_base,
+		roles in_roles) :
 	type(in_alignment),
 	byte_order{in_byte_order},
 	size{in_size},
 	signedness_{in_signedness},
-	base_{in_base}
+	base_{in_base},
+	roles_{std::move(in_roles)}
 {
 }
 
@@ -86,7 +88,8 @@ bool lst::integer_type::_is_equal(const type &base_other) const noexcept
 	return this->byte_order == other.byte_order &&
 		this->size == other.size &&
 		this->signedness_ == other.signedness_ &&
-		this->base_ == other.base_;
+		this->base_ == other.base_ &&
+		this->roles_ == other.roles_;
 }
 
 void lst::integer_type::accept(type_visitor& visitor) const
@@ -148,8 +151,14 @@ lst::enumeration_type::enumeration_type(unsigned int in_alignment,
 		enum lst::byte_order in_byte_order,
 		unsigned int in_size,
 		enum signedness in_signedness,
-		enum base in_base) :
-	integer_type(in_alignment, in_byte_order, in_size, in_signedness, in_base)
+		enum base in_base,
+		lst::integer_type::roles in_roles) :
+	integer_type(in_alignment,
+			in_byte_order,
+			in_size,
+			in_signedness,
+			in_base,
+			std::move(in_roles))
 {
 }
 
@@ -220,6 +229,42 @@ bool lst::dynamic_length_array_type::_is_equal(const type& base_other) const noe
 }
 
 void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
+lst::static_length_blob_type::static_length_blob_type(
+		unsigned int in_alignment, uint64_t in_length_bytes, roles in_roles) :
+	type(in_alignment), length_bytes{in_length_bytes}, roles_{std::move(in_roles)}
+{
+}
+
+bool lst::static_length_blob_type::_is_equal(const type& base_other) const noexcept
+{
+	const auto& other = static_cast<decltype(*this)&>(base_other);
+
+	return length_bytes == other.length_bytes && roles_ == other.roles_;
+}
+
+void lst::static_length_blob_type::accept(type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
+lst::dynamic_length_blob_type::dynamic_length_blob_type(
+		unsigned int in_alignment, std::string in_length_field_name) :
+	type(in_alignment), length_field_name{std::move(in_length_field_name)}
+{
+}
+
+bool lst::dynamic_length_blob_type::_is_equal(const type& base_other) const noexcept
+{
+	const auto& other = dynamic_cast<decltype(*this)&>(base_other);
+
+	return length_field_name == other.length_field_name;
+}
+
+void lst::dynamic_length_blob_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
 }
