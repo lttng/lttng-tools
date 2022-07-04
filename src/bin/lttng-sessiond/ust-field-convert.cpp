@@ -594,15 +594,15 @@ typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_ty
 					 * field's name.
 					 */
 					const auto mapping_it = std::find_if(
-							typed_enumeration._mappings->begin(),
-							typed_enumeration._mappings->end(),
+							typed_enumeration.mappings_->begin(),
+							typed_enumeration.mappings_->end(),
 							[&field](const typename std::remove_reference<
 									decltype(typed_enumeration)>::type::
 											mapping& mapping) {
 								return mapping.name == field->name;
 							});
 
-					if (mapping_it == typed_enumeration._mappings->end()) {
+					if (mapping_it == typed_enumeration.mappings_->end()) {
 						LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
 								"Invalid variant choice: `{}` does not match any mapping in `{}` enumeration",
 								field->name, selector_field.name));
@@ -768,6 +768,35 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					lookup_root, current_field_location_elements)));
 }
 
+std::vector<lst::field::cuptr>::iterator lookup_field_in_vector(
+		std::vector<lst::field::cuptr>& fields, const lst::field_location& location)
+{
+	if (location.elements_.size() != 1) {
+		LTTNG_THROW_ERROR(fmt::format(
+				"Unexpected field location received during field look-up: location = {}",
+				location));
+	}
+
+	/*
+	 * In the context of fields received from LTTng-UST, field
+	 * look-up is extremely naive as the protocol can only
+	 * express empty structures. It is safe to assume that
+	 * location has a depth of 1 and directly refers to a field
+	 * in the 'fields' vector.
+	 */
+	const auto field_it = std::find_if(fields.begin(), fields.end(),
+			[location](lst::field::cuptr &field) {
+				return field->name == location.elements_[0];
+			});
+
+	if (field_it == fields.end()) {
+		LTTNG_THROW_PROTOCOL_ERROR(
+				fmt::format("Failed to look-up field: location = {}", location));
+	}
+
+	return field_it;
+}
+
 /*
  * `lttng_ust_ctl_field`s can be nested, in which case creating a field will consume
  * more than one lttng_ust_ctl_field. create_field_from_ust_ctl_fields returns the
@@ -812,34 +841,8 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 				},
 				[&fields](const lst::field_location& location)
 						-> lookup_field_fn::result_type {
-					if (location.elements_.size() != 1) {
-						LTTNG_THROW_ERROR(fmt::format(
-								"Unexpected field location received during field look-up: location = {}",
-								location));
-					}
-
-					/*
-					 * In the context of fields received from LTTng-UST, field
-					 * look-up is extremely naive as the protocol can only
-					 * express empty structures. It is safe to assume that
-					 * location has a depth of 1 and directly refers to a field
-					 * in the 'fields' vector.
-					 */
-					const auto field_it = std::find_if(fields.begin(),
-							fields.end(),
-							[&location](decltype(fields)::value_type&
-											field) {
-								return field->name ==
-										location.elements_[0];
-							});
-
-					if (field_it == fields.end()) {
-						LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
-								"Failed to look-up field: location = {}",
-								location));
-					}
-
-					return **field_it;
+					/* Resolve location to a previously-constructed field. */
+					return **lookup_field_in_vector(fields, location);
 				},
 				lookup_root, current_field_location_elements);
 

@@ -11,6 +11,7 @@
 #include "session.hpp"
 #include "trace-class.hpp"
 #include "tsdl-trace-class-visitor.hpp"
+#include "ctf2-trace-class-visitor.hpp"
 #include "ust-app.hpp"
 #include "ust-field-convert.hpp"
 #include "ust-registry.hpp"
@@ -222,7 +223,6 @@ unsigned long ht_hash_enum(void *_key, unsigned long seed)
 	LTTNG_ASSERT(key);
 	return hash_key_str(key->name.c_str(), seed);
 }
-
 } /* namespace */
 
 void lsu::details::locked_registry_session_release(lsu::registry_session *session)
@@ -302,7 +302,7 @@ lst::type::cuptr lsu::registry_session::_create_packet_header() const
 	/* uuid */
 	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("uuid",
 			lttng::make_unique<lst::static_length_blob_type>(0, 16,
-					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::TRACE_CLASS_UUID}))));
+					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::METADATA_STREAM_UUID}))));
 
 	/* uint32_t stream_id */
 	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_id",
@@ -495,8 +495,8 @@ void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 	destroy_channel(&channel, notify);
 }
 
-void lsu::registry_session::_visit_environment(
-		lttng::sessiond::trace::trace_class_visitor& visitor) const
+void lsu::registry_session::accept(
+		lttng::sessiond::trace::trace_class_environment_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 
@@ -647,7 +647,7 @@ void lsu::registry_session::_reset_metadata()
 
 void lsu::registry_session::_generate_metadata()
 {
-	accept(*_metadata_generating_visitor);
+	trace_class::accept(*_metadata_generating_visitor);
 }
 
 void lsu::registry_session::regenerate_metadata()

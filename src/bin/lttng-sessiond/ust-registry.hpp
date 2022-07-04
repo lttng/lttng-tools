@@ -48,29 +48,28 @@ class registry_session;
 namespace details {
 
 template <class MappingIntegerType>
-typename trace::typed_enumeration_type<MappingIntegerType>::mapping mapping_from_ust_ctl_entry(
-		const lttng_ust_ctl_enum_entry& entry)
-{
-	if (entry.u.extra.options & LTTNG_UST_CTL_UST_ENUM_ENTRY_OPTION_IS_AUTO) {
-		return {entry.string};
-
-	} else {
-		return {entry.string,
-				{(MappingIntegerType) entry.start.value,
-						(MappingIntegerType) entry.end.value}};
-	}
-}
-
-template <class MappingIntegerType>
 typename trace::typed_enumeration_type<MappingIntegerType>::mappings mappings_from_ust_ctl_entries(
 		const lttng_ust_ctl_enum_entry *in_entries, size_t in_entry_count)
 {
 	typename trace::typed_enumeration_type<MappingIntegerType>::mappings mappings;
 
+	MappingIntegerType next_range_begin = 0;
 	for (size_t entry_idx = 0; entry_idx < in_entry_count; entry_idx++) {
 		const auto& entry = in_entries[entry_idx];
+		MappingIntegerType range_begin, range_end;
 
-		mappings.emplace_back(mapping_from_ust_ctl_entry<MappingIntegerType>(entry));
+		if (entry.u.extra.options & LTTNG_UST_CTL_UST_ENUM_ENTRY_OPTION_IS_AUTO) {
+			range_begin = range_end = next_range_begin;
+		} else {
+			range_begin = (MappingIntegerType) entry.start.value;
+			range_end = (MappingIntegerType) entry.end.value;
+		}
+
+		next_range_begin = range_end + 1;
+		mappings.emplace_back(entry.string,
+				typename trace::typed_enumeration_type<
+						MappingIntegerType>::mapping::range_t{
+						range_begin, range_end});
 	}
 
 	return mappings;

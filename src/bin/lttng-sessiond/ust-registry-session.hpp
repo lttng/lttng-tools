@@ -104,9 +104,8 @@ protected:
 			uid_t euid,
 			gid_t egid,
 			uint64_t tracing_id);
-	virtual void _visit_environment(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override;
+	virtual void accept(
+			trace::trace_class_environment_visitor& environment_visitor) const override;
 	void _generate_metadata();
 
 private:

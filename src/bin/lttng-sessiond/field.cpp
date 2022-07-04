@@ -375,7 +375,7 @@ void lst::null_terminated_string_type::accept(type_visitor& visitor) const
 }
 
 lst::structure_type::structure_type(unsigned int in_alignment, fields in_fields) :
-	type(in_alignment), _fields{std::move(in_fields)}
+	type(in_alignment), fields_{std::move(in_fields)}
 {
 }
 
@@ -383,7 +383,7 @@ bool lst::structure_type::_is_equal(const type& base_other) const noexcept
 {
 	const auto &other = static_cast<decltype(*this)&>(base_other);
 
-	return fields_are_equal(this->_fields, other._fields);
+	return fields_are_equal(this->fields_, other.fields_);
 }
 
 void lst::structure_type::accept(type_visitor& visitor) const

@@ -5,20 +5,21 @@
  *
  */
 
-#ifndef LTTNG_TSDL_TRACE_CLASS_VISITOR_H
-#define LTTNG_TSDL_TRACE_CLASS_VISITOR_H
+#ifndef LTTNG_CTF2_TRACE_CLASS_VISITOR_H
+#define LTTNG_CTF2_TRACE_CLASS_VISITOR_H
 
 #include "trace-class.hpp"
 #include "stream-class.hpp"
 #include "event-class.hpp"
 
 #include <vendor/optional.hpp>
+#include <vendor/nlohmann/json.hpp>
 
 #include <functional>
 
 namespace lttng {
 namespace sessiond {
-namespace tsdl {
+namespace ctf2 {
 
 using append_metadata_fragment_function = std::function<void(const std::string& fragment)>;
 
@@ -33,15 +34,14 @@ public:
 	virtual void visit(const lttng::sessiond::trace::event_class& event_class) override final;
 
 private:
-	/* Coherent (parseable) fragments must be appended. */
-	void append_metadata_fragment(const std::string& fragment) const;
+	void append_metadata_fragment(const nlohmann::json& fragment) const;
 
 	const lttng::sessiond::trace::abi& _trace_abi;
 	const append_metadata_fragment_function _append_metadata_fragment;
 };
 
-} /* namespace tsdl */
+} /* namespace ctf2 */
 } /* namespace sessiond */
 } /* namespace lttng */
 
-#endif /* LTTNG_TSDL_TRACE_CLASS_VISITOR_H */
+#endif /* LTTNG_CTF2_TRACE_CLASS_VISITOR_H */

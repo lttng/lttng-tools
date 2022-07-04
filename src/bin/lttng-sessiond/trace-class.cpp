@@ -21,15 +21,10 @@ void lttng::sessiond::trace::trace_class::accept(trace_class_visitor& trace_clas
 {
 	trace_class_visitor.visit(*this);
 	_accept_on_clock_classes(trace_class_visitor);
-
-	trace_class_visitor.environment_begin();
-	_visit_environment(trace_class_visitor);
-	trace_class_visitor.environment_end();
-
 	_accept_on_stream_classes(trace_class_visitor);
 }
 
-void lst::trace_class_visitor::visit(const environment_field<std::string>& field)
+void lst::trace_class_environment_visitor::visit(const environment_field<std::string>& field)
 {
 	visit(environment_field<const char *>(field.name, field.value.c_str()));
 }

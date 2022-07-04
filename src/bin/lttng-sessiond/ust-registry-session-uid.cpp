@@ -32,8 +32,8 @@ lttng_buffer_type lsu::registry_session_per_uid::get_buffering_scheme() const no
 	return LTTNG_BUFFER_PER_UID;
 }
 
-void lsu::registry_session_per_uid::_visit_environment(lst::trace_class_visitor& visitor) const
+void lsu::registry_session_per_uid::accept(lst::trace_class_environment_visitor& visitor) const
 {
-	registry_session::_visit_environment(visitor);
+	registry_session::accept(visitor);
 	visitor.visit(lst::environment_field<int64_t>("tracer_buffering_id", _tracing_uid));
 }

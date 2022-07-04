@@ -211,8 +211,7 @@ public:
 	{
 	}
 
-	/* Mapping with an implicit value. */
-	enumeration_mapping(std::string in_name) : name{std::move(in_name)}
+	enumeration_mapping(std::string in_name, MappingIntegerType value) : name{std::move(in_name)}, range{value, value}
 	{
 	}
 
@@ -221,7 +220,12 @@ public:
 	}
 
 	const std::string name;
-	const nonstd::optional<range_t> range;
+	/*
+	 * Only one range per mapping is supported for the moment as
+	 * the tracers (and CTF 1.8) can't express multiple ranges per
+	 * mapping, which is allowed by CTF 2.
+	 */
+	const range_t range;
 };
 
 template <class MappingIntegerType>
@@ -256,13 +260,13 @@ public:
 						      integer_type::signedness::UNSIGNED,
 				in_base,
 				std::move(in_roles)),
-		_mappings{std::move(in_mappings)}
+		mappings_{std::move(in_mappings)}
 	{
 	}
 
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const std::shared_ptr<const mappings> _mappings;
+	const std::shared_ptr<const mappings> mappings_;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final
@@ -270,7 +274,7 @@ private:
 		const auto& other = static_cast<const typed_enumeration_type<MappingIntegerType>&>(
 				base_other);
 
-		return integer_type::_is_equal(base_other) && *this->_mappings == *other._mappings;
+		return integer_type::_is_equal(base_other) && *this->mappings_ == *other.mappings_;
 	}
 };
 
@@ -320,7 +324,7 @@ class static_length_blob_type : public type {
 public:
 	enum class role {
 		/* Packet header field class specific role. */
-		TRACE_CLASS_UUID,
+		METADATA_STREAM_UUID,
 	};
 
 	using roles = std::vector<role>;
@@ -407,7 +411,7 @@ public:
 
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const fields _fields;
+	const fields fields_;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
@@ -432,14 +436,15 @@ public:
 			choices in_choices) :
 		type(in_alignment),
 		selector_field_location{std::move(in_selector_field_location)},
-		_choices{std::move(in_choices)}
+		choices_{std::move(in_choices)}
 	{
 	}
 
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const field_location selector_field_location;
-	const choices _choices;
+	const choices choices_;
+;
 
 private:
 	static bool _choices_are_equal(const choices& a, const choices& b)
@@ -462,7 +467,7 @@ private:
 		const auto& other = static_cast<decltype(*this)&>(base_other);
 
 		return selector_field_location == other.selector_field_location &&
-				_choices_are_equal(_choices, other._choices);
+				_choices_are_equal(choices_, other.choices_);
 	}
 };
 

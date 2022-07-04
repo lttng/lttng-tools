@@ -128,9 +128,10 @@ public:
 	{
 	}
 
-	std::string& get_description()
+	/* Only call once. */
+	std::string transfer_description()
 	{
-		return _description;
+		return std::move(_description);
 	}
 
 private:
@@ -269,31 +270,29 @@ private:
 		tsdl_field_visitor integer_visitor{_trace_abi, _indentation_level};
 
 		integer_visitor.visit(static_cast<const lst::integer_type&>(type));
-		_description += integer_visitor.get_description() + " {\n";
+		_description += integer_visitor.transfer_description() + " {\n";
 
 		const auto mappings_indentation_level = _indentation_level + 1;
 
 		bool first_mapping = true;
-		for (const auto& mapping : *type._mappings) {
+		for (const auto& mapping : *type.mappings_) {
 			if (!first_mapping) {
 				_description += ",\n";
 			}
 
 			_description.resize(_description.size() + mappings_indentation_level, '\t');
-			if (!mapping.range) {
-				_description += fmt::format("\"{}\"", mapping.name);
-			} else if (mapping.range->begin == mapping.range->end) {
+			if (mapping.range.begin == mapping.range.end) {
 				_description += fmt::format(
 						"\"{mapping_name}\" = {mapping_value}",
 						fmt::arg("mapping_name", mapping.name),
-						fmt::arg("mapping_value", mapping.range->begin));
+						fmt::arg("mapping_value", mapping.range.begin));
 			} else {
 				_description += fmt::format(
 						"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
 						fmt::arg("mapping_name", mapping.name),
 						fmt::arg("mapping_range_begin",
-								mapping.range->begin),
-						fmt::arg("mapping_range_end", mapping.range->end));
+								mapping.range.begin),
+						fmt::arg("mapping_range_end", mapping.range.end));
 			}
 
 			first_mapping = false;
@@ -394,7 +393,7 @@ private:
 
 		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
 		_bypass_identifier_escape = false;
-		for (const auto& field : type._fields) {
+		for (const auto& field : type.fields_) {
 			_description += "\n";
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field->accept(*this);
@@ -403,7 +402,7 @@ private:
 		_bypass_identifier_escape = previous_bypass_identifier_escape;
 
 		_indentation_level--;
-		if (type._fields.size() != 0) {
+		if (type.fields_.size() != 0) {
 			_description += "\n";
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
@@ -437,7 +436,8 @@ private:
 		 */
 		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
 		_bypass_identifier_escape = true;
-		for (const auto& field : type._choices) {
+		for (const auto& field : type.choices_
+) {
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field.second->accept(*this);
 			_description += fmt::format(" {};\n", field.first.name);
@@ -513,6 +513,34 @@ private:
 	bool _bypass_identifier_escape;
 	const char *_default_clock_class_name;
 };
+
+class tsdl_trace_environment_visitor : public lst::trace_class_environment_visitor {
+public:
+	tsdl_trace_environment_visitor() : _environment{"env {\n"}
+	{
+	}
+
+	virtual void visit(const lst::environment_field<int64_t>& field) override
+	{
+		_environment += fmt::format("	{} = {};\n", field.name, field.value);
+	}
+
+	virtual void visit(const lst::environment_field<const char *>& field) override
+	{
+		_environment += fmt::format("	{} = \"{}\";\n", field.name,
+				escape_tsdl_env_string_value(field.value));
+	}
+
+	/* Only call once. */
+	std::string transfer_description()
+	{
+		_environment += "};\n\n";
+		return std::move(_environment);
+	}
+
+private:
+	std::string _environment;
+};
 } /* namespace */
 
 tsdl::trace_class_visitor::trace_class_visitor(const lst::abi& trace_abi,
@@ -555,10 +583,14 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 			fmt::arg("uuid", lttng::utils::uuid_to_str(trace_class.uuid)),
 			fmt::arg("byte_order",
 					trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le"),
-			fmt::arg("packet_header_layout", packet_header_visitor.get_description()));
+			fmt::arg("packet_header_layout", packet_header_visitor.transfer_description()));
 
 	/* Declare trace scope and type aliases. */
 	append_metadata_fragment(trace_class_tsdl);
+
+	tsdl_trace_environment_visitor environment_visitor;
+	trace_class.accept(environment_visitor);
+	append_metadata_fragment(environment_visitor.transfer_description());
 }
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class& clock_class)
@@ -600,7 +632,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		event_header->accept(event_header_visitor);
 		stream_class_str += fmt::format("	event.header := {};\n",
-				event_header_visitor.get_description());
+				event_header_visitor.transfer_description());
 	}
 
 	const auto *packet_context = stream_class.get_packet_context();
@@ -610,7 +642,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		packet_context->accept(packet_context_visitor);
 		stream_class_str += fmt::format("	packet.context := {};\n",
-				packet_context_visitor.get_description());
+				packet_context_visitor.transfer_description());
 	}
 
 	const auto *event_context = stream_class.get_event_context();
@@ -619,7 +651,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		event_context->accept(event_context_visitor);
 		stream_class_str += fmt::format("	event.context := {};\n",
-				event_context_visitor.get_description());
+				event_context_visitor.transfer_description());
 	}
 
 	stream_class_str += "};\n\n";
@@ -649,32 +681,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 	event_class.payload->accept(static_cast<lst::type_visitor&>(payload_visitor));
 
 	event_class_str += fmt::format(
-			"	fields := {};\n}};\n\n", payload_visitor.get_description());
+			"	fields := {};\n}};\n\n", payload_visitor.transfer_description());
 
 	append_metadata_fragment(event_class_str);
-}
-
-void tsdl::trace_class_visitor::environment_begin()
-{
-	_environment += "env {\n";
-}
-
-void tsdl::trace_class_visitor::visit(
-		const lttng::sessiond::trace::environment_field<int64_t>& field)
-{
-	_environment += fmt::format("	{} = {};\n", field.name, field.value);
-}
-
-void tsdl::trace_class_visitor::visit(
-		const lttng::sessiond::trace::environment_field<const char *>& field)
-{
-	_environment += fmt::format(
-			"	{} = \"{}\";\n", field.name, escape_tsdl_env_string_value(field.value));
-}
-
-void tsdl::trace_class_visitor::environment_end()
-{
-	_environment += "};\n\n";
-	append_metadata_fragment(_environment);
-	_environment.clear();
 }

@@ -87,7 +87,7 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
 		lst::unsigned_enumeration_type::mapping compact_mapping{
 				"compact", lst::unsigned_enumeration_type::mapping::range_t(0, 30)};
-		lst::unsigned_enumeration_type::mapping extended_mapping{"extended"};
+		lst::unsigned_enumeration_type::mapping extended_mapping{"extended", 31};
 
 		enum_mappings->emplace_back(compact_mapping);
 		enum_mappings->emplace_back(extended_mapping);
@@ -149,7 +149,7 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
 		lst::unsigned_enumeration_type::mapping compact_mapping{"compact",
 				lst::unsigned_enumeration_type::mapping::range_t(0, 65534)};
-		lst::unsigned_enumeration_type::mapping extended_mapping{"extended"};
+		lst::unsigned_enumeration_type::mapping extended_mapping{"extended", 65535};
 		enum_mappings->emplace_back(compact_mapping);
 		enum_mappings->emplace_back(extended_mapping);
 

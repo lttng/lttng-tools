@@ -20,6 +20,7 @@ class clock_class;
 class stream_class;
 class event_class;
 class trace_class_visitor;
+class trace_class_environment_visitor;
 
 struct abi {
 	unsigned int bits_per_long;
@@ -39,20 +40,22 @@ public:
 	{
 	}
 
-	const char * const name;
+	const char* const name;
 	const ValueType& value;
 };
 
 class trace_class {
 public:
+
+	virtual ~trace_class() = default;
+
 	/*
 	 * Derived classes must implement the _accept_on_*()
 	 * to continue the traversal to the trace class' children.
 	 */
 	virtual void accept(trace_class_visitor& trace_class_visitor) const;
+	virtual void accept(trace_class_environment_visitor& environment_visitor) const = 0;
 	virtual const lttng::sessiond::trace::type *get_packet_header() const noexcept = 0;
-
-	virtual ~trace_class() = default;
 
 	const struct abi abi;
 	const lttng_uuid uuid;
@@ -60,8 +63,16 @@ public:
 protected:
 	trace_class(const struct abi& abi, const lttng_uuid& trace_uuid);
 	virtual void _accept_on_clock_classes(trace_class_visitor& trace_class_visitor) const = 0;
-	virtual void _visit_environment(trace_class_visitor& trace_class_visitor) const = 0;
 	virtual void _accept_on_stream_classes(trace_class_visitor& trace_class_visitor) const = 0;
+};
+
+class trace_class_environment_visitor {
+public:
+	virtual ~trace_class_environment_visitor() = default;
+
+	virtual void visit(const environment_field<int64_t>& field) = 0;
+	virtual void visit(const environment_field<const char *>& field) = 0;
+	virtual void visit(const environment_field<std::string>& field);
 };
 
 class trace_class_visitor {
@@ -70,23 +81,9 @@ public:
 
 	virtual ~trace_class_visitor() = default;
 
-	/* trace class visitor interface. */
 	virtual void visit(const lttng::sessiond::trace::trace_class& trace_class) = 0;
-
-	/* clock class visitor interface. */
 	virtual void visit(const lttng::sessiond::trace::clock_class& clock_class) = 0;
-
-	/* environment visitor interface. */
-	virtual void environment_begin() = 0;
-	virtual void visit(const environment_field<int64_t>& field) = 0;
-	virtual void visit(const environment_field<const char *>& field) = 0;
-	void visit(const environment_field<std::string>& field);
-	virtual void environment_end() = 0;
-
-	/* stream class visitor interface. */
 	virtual void visit(const lttng::sessiond::trace::stream_class& stream_class) = 0;
-
-	/* event class visitor interface. */
 	virtual void visit(const lttng::sessiond::trace::event_class& event_class) = 0;
 };
 

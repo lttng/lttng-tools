@@ -76,7 +76,8 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-registry-channel.cpp ust-registry-channel.hpp \
 			ust-registry-session-uid.cpp ust-registry-session-uid.hpp \
 			ust-registry-session-pid.cpp ust-registry-session-pid.hpp \
-			tsdl-trace-class-visitor.cpp tsdl-trace-class-visitor.hpp
+			tsdl-trace-class-visitor.cpp tsdl-trace-class-visitor.hpp \
+			ctf2-trace-class-visitor.cpp ctf2-trace-class-visitor.hpp
 endif
 
 # link on liblttngctl for check if sessiond is already alive.

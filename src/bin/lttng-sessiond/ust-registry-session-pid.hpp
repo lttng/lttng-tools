@@ -34,12 +34,10 @@ public:
 			uint64_t tracing_id);
 
 	virtual lttng_buffer_type get_buffering_scheme() const noexcept override final;
+	virtual void accept(lttng::sessiond::trace::trace_class_environment_visitor&
+					environment_visitor) const override final;
 
 private:
-	virtual void _visit_environment(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override final;
-
 	const unsigned int _tracer_patch_level_version;
 	const pid_t _vpid;
 	const std::string _procname;
