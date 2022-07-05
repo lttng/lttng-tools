@@ -150,14 +150,21 @@ function trace_until_n_archives ()
 	local produce_events=$1
 	local trace_path=$2
 	local target_archive_count=$3
+	local trace_size_cutoff=$4
 	local archive_count=0
+	local trace_size=0
 
 	diag "Waiting for $target_archive_count size-based rotations to occur"
-	while [[ archive_count -lt $target_archive_count ]]
+	while [[ archive_count -lt $target_archive_count && $trace_size -lt $trace_size_cutoff ]]
 	do
 		archive_count=$(find "$trace_path" -mindepth 2 -maxdepth 2 -type d -path "*archives*" | wc -l)
+		trace_size=$(du -b "$trace_path" | tail -n1 | cut -f1)
 		$produce_events 2000
 	done
+
+	if [[ $trace_size -ge $trace_size_cutoff ]]; then
+		diag "Exceeded size cutoff of $trace_size_cutoff bytes while waiting for $target_archive_count rotations"
+	fi
 
 	[[ $archive_count -eq $target_archive_count ]]
 	ok $? "Found $target_archive_count trace archives resulting from trace archive rotations"

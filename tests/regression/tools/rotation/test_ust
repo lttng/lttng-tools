@@ -274,7 +274,8 @@ function test_ust_local_size_uid ()
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
 
-	trace_until_n_archives produce_n_events "$TRACE_PATH" 5
+	# Cutoff at 100 times the expected size
+	trace_until_n_archives produce_n_events "$TRACE_PATH" 5 $((5 * 100 * size_threshold))
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -291,7 +292,8 @@ function test_ust_local_size_pid ()
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
 
-	trace_until_n_archives produce_n_events "$TRACE_PATH" 3
+	# Cutoff at 100 times the expected size
+	trace_until_n_archives produce_n_events "$TRACE_PATH" 3 $((3 * 100 * size_threshold))
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
