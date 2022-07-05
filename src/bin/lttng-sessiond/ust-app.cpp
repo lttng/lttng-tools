@@ -6445,15 +6445,6 @@ static int handle_app_register_channel_notification(int sock,
 		}
 	}
 
-	/* Append to metadata */
-	if (!ust_reg_chan._metadata_dumped) {
-		/*ret_code = ust_metadata_channel_statedump(registry, ust_reg_chan);*/
-		if (ret_code) {
-			ERR("Error appending channel metadata (errno = %d)", ret_code);
-			goto reply;
-		}
-	}
-
 reply:
 	DBG3("UST app replying to register channel key %" PRIu64
 			" with id %u, ret = %d", chan_reg_key, chan_id,

@@ -56,12 +56,6 @@ public:
 	uint64_t _consumer_key;
 
 	/*
-	 * Flag for this channel if the metadata was dumped once during
-	 * registration. 0 means no, 1 yes.
-	 */
-	unsigned int _metadata_dumped;
-
-	/*
 	 * Hash table containing events sent by the UST tracer. MUST be accessed
 	 * with a RCU read side lock acquired.
 	 */
