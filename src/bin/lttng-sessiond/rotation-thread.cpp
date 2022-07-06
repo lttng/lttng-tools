@@ -693,19 +693,28 @@ int handle_condition(const struct lttng_notification *notification,
 		goto end_unlock;
 	}
 
-	ret = cmd_rotate_session(session, NULL, false,
-		LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
-	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
+	ret = cmd_rotate_session(
+			session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+	switch (ret) {
+	case LTTNG_OK:
+		break;
+	case -LTTNG_ERR_ROTATION_PENDING:
 		DBG("Rotate already pending, subscribe to the next threshold value");
-	} else if (ret != LTTNG_OK) {
-		ERR("Failed to rotate on size notification with error: %s",
-				lttng_strerror(ret));
+		break;
+	case -LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP:
+		DBG("Rotation already happened since last stop, subscribe to the next threshold value");
+		break;
+	case -LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR:
+		DBG("Rotation already happened since last stop and clear, subscribe to the next threshold value");
+		break;
+	default:
+		ERR("Failed to rotate on size notification with error: %s", lttng_strerror(ret));
 		ret = -1;
 		goto end_unlock;
 	}
-	ret = subscribe_session_consumed_size_rotation(session,
-			consumed + session->rotate_size,
-			notification_thread_handle);
+
+	ret = subscribe_session_consumed_size_rotation(
+			session, consumed + session->rotate_size, notification_thread_handle);
 	if (ret) {
 		ERR("Failed to subscribe to session consumed size condition");
 		goto end_unlock;
