@@ -13,6 +13,7 @@
 #include <common/exception.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/make-unique.hpp>
 #include <common/urcu.hpp>
 
 namespace lst = lttng::sessiond::trace;
@@ -77,12 +78,197 @@ int ht_match_event(struct cds_lfht_node *node, const void *_key)
 no_match:
 	return 0;
 }
+
+lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_class::header_type header_type)
+{
+	lst::structure_type::fields event_header_fields;
+
+	if (header_type == lst::stream_class::header_type::COMPACT) {
+		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
+
+		enum_mappings->emplace_back("compact", lst::unsigned_enumeration_type::mapping::range_t(0, 30));
+		enum_mappings->emplace_back("extended");
+
+		lst::type::cuptr choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(1,
+				trace_abi.byte_order, 5, lst::integer_type::base::DECIMAL,
+				std::move(enum_mappings),
+				std::initializer_list<lst::integer_type::role>(
+						{lst::integer_type::role::EVENT_RECORD_CLASS_ID}));
+
+		lst::variant_type::choices variant_choices;
+
+		lst::structure_type::fields compact_fields;
+		compact_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
+				lttng::make_unique<lst::integer_type>(1, trace_abi.byte_order, 27,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										DEFAULT_CLOCK_TIMESTAMP}))));
+
+		lst::type::cuptr compact = lttng::make_unique<lst::structure_type>(
+				0, std::move(compact_fields));
+		variant_choices.emplace_back(lttng::make_unique<lst::field>("compact", std::move(compact)));
+
+		lst::structure_type::fields extended_fields;
+		extended_fields.emplace_back(lttng::make_unique<lst::field>("id",
+				lttng::make_unique<lst::integer_type>(trace_abi.uint32_t_alignment,
+						trace_abi.byte_order, 32,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										EVENT_RECORD_CLASS_ID}))));
+		extended_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
+				lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+						trace_abi.byte_order, 64,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										DEFAULT_CLOCK_TIMESTAMP}))));
+
+		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
+		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
+
+		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(
+				0, "id", std::move(variant_choices));
+
+		event_header_fields.emplace_back(lttng::make_unique<lst::field>("id", std::move(choice_enum)));
+		event_header_fields.emplace_back(
+				lttng::make_unique<lst::field>("v", std::move(variant)));
+	} else {
+		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
+
+		enum_mappings->emplace_back("compact", lst::unsigned_enumeration_type::mapping::range_t(0, 65534));
+		enum_mappings->emplace_back("extended");
+
+		lst::type::cuptr choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(
+				trace_abi.uint16_t_alignment, trace_abi.byte_order, 16,
+				lst::integer_type::base::DECIMAL, std::move(enum_mappings),
+				std::initializer_list<lst::integer_type::role>(
+						{lst::integer_type::role::EVENT_RECORD_CLASS_ID}));
+
+		lst::variant_type::choices variant_choices;
+
+		lst::structure_type::fields compact_fields;
+		compact_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
+				lttng::make_unique<lst::integer_type>(trace_abi.uint32_t_alignment,
+						trace_abi.byte_order, 32,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										DEFAULT_CLOCK_TIMESTAMP}))));
+
+		lst::type::cuptr compact = lttng::make_unique<lst::structure_type>(
+				0, std::move(compact_fields));
+		variant_choices.emplace_back(
+				lttng::make_unique<lst::field>("compact", std::move(compact)));
+
+		lst::structure_type::fields extended_fields;
+		extended_fields.emplace_back(lttng::make_unique<lst::field>("id",
+				lttng::make_unique<lst::integer_type>(trace_abi.uint32_t_alignment,
+						trace_abi.byte_order, 32,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										EVENT_RECORD_CLASS_ID}))));
+		extended_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
+				lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+						trace_abi.byte_order, 64,
+						lst::integer_type::signedness::UNSIGNED,
+						lst::integer_type::base::DECIMAL,
+						std::initializer_list<lst::integer_type::
+										role>({lst::integer_type::role::
+										DEFAULT_CLOCK_TIMESTAMP}))));
+
+		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
+		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
+
+		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(
+				0, "id", std::move(variant_choices));
+
+		event_header_fields.emplace_back(lttng::make_unique<lst::field>("id", std::move(choice_enum)));
+		event_header_fields.emplace_back(
+				lttng::make_unique<lst::field>("v", std::move(variant)));
+	}
+
+	return lttng::make_unique<lst::structure_type>(0, std::move(event_header_fields));
+}
+
+lst::type::cuptr create_packet_context(const lst::abi& trace_abi)
+{
+	lst::structure_type::fields packet_context_fields;
+
+	/* uint64_t timestamp_begin */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("timestamp_begin",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+					trace_abi.byte_order, 64,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DEFAULT_CLOCK_TIMESTAMP}))));
+
+	/* uint64_t timestamp_end */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("timestamp_end",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+					trace_abi.byte_order, 64,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_END_DEFAULT_CLOCK_TIMESTAMP}))));
+
+	/* uint64_t content_size */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("content_size",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+					trace_abi.byte_order, 64,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_CONTENT_LENGTH}))));
+
+	/* uint64_t packet_size */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("packet_size",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+					trace_abi.byte_order, 64,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_TOTAL_LENGTH}))));
+
+	/* uint64_t packet_seq_num */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("packet_seq_num",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint64_t_alignment,
+					trace_abi.byte_order, 64,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_SEQUENCE_NUMBER}))));
+
+	/* unsigned long events_discarded */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("events_discarded",
+			lttng::make_unique<lst::integer_type>(trace_abi.long_alignment,
+					trace_abi.byte_order, trace_abi.bits_per_long,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DISCARDED_EVENT_RECORD_COUNTER_SNAPSHOT}))));
+
+	/* uint32_t cpu_id */
+	packet_context_fields.emplace_back(lttng::make_unique<lst::field>("cpu_id",
+			lttng::make_unique<lst::integer_type>(trace_abi.uint32_t_alignment,
+					trace_abi.byte_order, 32,
+					lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL)));
+
+	return lttng::make_unique<lst::structure_type>(0, std::move(packet_context_fields));
+}
 }; /* namespace */
 
 lsu::registry_channel::registry_channel(unsigned int channel_id,
+		const lst::abi& trace_abi,
+		std::string in_default_clock_class_name,
 		lsu::registry_channel::registered_listener_fn channel_registered_listener,
 		lsu::registry_channel::event_added_listener_fn event_added_listener) :
-	lst::stream_class(channel_id, lst::stream_class::header_type::LARGE),
+	lst::stream_class(channel_id,
+			lst::stream_class::header_type::LARGE,
+			std::move(in_default_clock_class_name)),
 	_key{-1ULL},
 	_consumer_key{-1ULL},
 	_next_event_id{0},
@@ -105,6 +291,9 @@ lsu::registry_channel::registry_channel(unsigned int channel_id,
 	 * channel object itself.
 	 */
 	_node = {};
+
+	_packet_context = create_packet_context(trace_abi);
+	_event_header = create_event_header(trace_abi, header_type_);
 }
 
 void lsu::registry_channel::add_event(
@@ -199,17 +388,17 @@ lsu::registry_channel::~registry_channel()
 	lttng_ht_destroy(_events);
 }
 
-const lttng::sessiond::trace::type& lsu::registry_channel::get_context() const
+const lttng::sessiond::trace::type* lsu::registry_channel::get_event_context() const
 {
 	LTTNG_ASSERT(_is_registered);
-	return lst::stream_class::get_context();
+	return lst::stream_class::get_event_context();
 }
 
-void lsu::registry_channel::set_context(lttng::sessiond::trace::type::cuptr context)
+void lsu::registry_channel::set_event_context(lttng::sessiond::trace::type::cuptr context)
 {
 	/* Must only be set once, on the first channel registration provided by an application. */
-	LTTNG_ASSERT(!_context);
-	_context = std::move(context);
+	LTTNG_ASSERT(!_event_context);
+	_event_context = std::move(context);
 }
 
 bool lsu::registry_channel::is_registered() const

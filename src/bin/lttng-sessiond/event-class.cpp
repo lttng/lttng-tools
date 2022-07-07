@@ -6,6 +6,7 @@
  */
 
 #include "event-class.hpp"
+#include "trace-class.hpp"
 
 namespace lst = lttng::sessiond::trace;
 

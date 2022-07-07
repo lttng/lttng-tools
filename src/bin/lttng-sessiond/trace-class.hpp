@@ -8,6 +8,8 @@
 #ifndef LTTNG_TRACE_CLASS_H
 #define LTTNG_TRACE_CLASS_H
 
+#include "field.hpp"
+
 #include <common/uuid.hpp>
 
 namespace lttng {
@@ -18,11 +20,6 @@ class clock_class;
 class stream_class;
 class event_class;
 class trace_class_visitor;
-
-enum class byte_order {
-	BIG_ENDIAN_,
-	LITTLE_ENDIAN_,
-};
 
 struct abi {
 	unsigned int bits_per_long;
@@ -53,6 +50,7 @@ public:
 	 * to continue the traversal to the trace class' children.
 	 */
 	virtual void accept(trace_class_visitor& trace_class_visitor) const;
+	virtual lttng::sessiond::trace::type::cuptr get_packet_header() const = 0;
 
 	virtual ~trace_class() = default;
 

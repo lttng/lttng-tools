@@ -8,8 +8,6 @@
 #ifndef LTTNG_FIELD_H
 #define LTTNG_FIELD_H
 
-#include "trace-class.hpp"
-
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -23,6 +21,11 @@ namespace trace {
 
 class field_visitor;
 class type_visitor;
+
+enum class byte_order {
+	BIG_ENDIAN_,
+	LITTLE_ENDIAN_,
+};
 
 /*
  * Field, and the various field types, represents fields as exposed by the

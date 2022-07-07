@@ -5,18 +5,22 @@
  *
  */
 
-#include "clock-class.hpp"
 #include "tsdl-trace-class-visitor.hpp"
+#include "clock-class.hpp"
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/uuid.hpp>
 
+#include <vendor/optional.hpp>
+
+#include <algorithm>
 #include <array>
 #include <locale>
 #include <queue>
 #include <set>
+#include <stack>
 
 namespace lst = lttng::sessiond::trace;
 namespace tsdl = lttng::sessiond::tsdl;
@@ -29,7 +33,22 @@ const auto ctf_spec_minor = 8;
  * Although the CTF v1.8 specification recommends ignoring any leading underscore, Some readers,
  * such as Babeltrace 1.x, expect special identifiers without a prepended underscore.
  */
-const std::set<std::string> safe_tsdl_identifiers = {"stream_id"};
+const std::set<std::string> safe_tsdl_identifiers = {
+	"stream_id",
+	"packet_size",
+	"content_size",
+	"id",
+	"v",
+	"timestamp",
+	"events_discarded",
+	"packet_seq_num",
+	"timestamp_begin",
+	"timestamp_end",
+	"cpu_id",
+	"magic",
+	"uuid",
+	"stream_instance_id"
+};
 
 /*
  * A previous implementation always prepended '_' to the identifiers in order to
@@ -96,8 +115,16 @@ std::string escape_tsdl_env_string_value(const std::string& original_string)
 class tsdl_field_visitor : public lttng::sessiond::trace::field_visitor,
 			   public lttng::sessiond::trace::type_visitor {
 public:
-	tsdl_field_visitor(const lst::abi& abi, unsigned int indentation_level) :
-		_indentation_level{indentation_level}, _trace_abi{abi}
+	tsdl_field_visitor(const lst::abi& abi,
+			unsigned int indentation_level,
+			const nonstd::optional<std::string>& in_default_clock_class_name =
+					nonstd::nullopt) :
+		_indentation_level{indentation_level},
+		_trace_abi{abi},
+		_bypass_identifier_escape{false},
+		_default_clock_class_name{in_default_clock_class_name ?
+						in_default_clock_class_name->c_str() :
+						nullptr}
 	{
 	}
 
@@ -116,11 +143,13 @@ private:
 		 * empty structure declaration is inserted when needed to express the aligment
 		 * constraint. The name of this structure is generated using the field's name.
 		 */
-		_escaped_current_field_name = escape_tsdl_identifier(field.name);
+		_current_field_name.push(_bypass_identifier_escape ?
+				field.name : escape_tsdl_identifier(field.name));
 
 		field._type->accept(*this);
 		_description += " ";
-		_description += _escaped_current_field_name;
+		_description += _current_field_name.top();
+		_current_field_name.pop();
 
 		/*
 		 * Some types requires suffixes to be appended (e.g. the length of arrays
@@ -132,7 +161,6 @@ private:
 		}
 
 		_description += ";";
-		_escaped_current_field_name.clear();
 	}
 
 	virtual void visit(const lst::integer_type& type) override final
@@ -197,6 +225,18 @@ private:
 
 			_description += fmt::format(" encoding = {};", encoding_str);
 			_current_integer_encoding_override.reset();
+		}
+
+		if (std::find(type.roles_.begin(), type.roles_.end(),
+				    lst::integer_type::role::DEFAULT_CLOCK_TIMESTAMP) !=
+						type.roles_.end() ||
+				std::find(type.roles_.begin(), type.roles_.end(),
+						lst::integer_type::role::
+								PACKET_END_DEFAULT_CLOCK_TIMESTAMP) !=
+						type.roles_.end()) {
+			LTTNG_ASSERT(_default_clock_class_name);
+			_description += fmt::format(
+					" map = clock.{}.value;", _default_clock_class_name);
 		}
 
 		_description += " }";
@@ -277,11 +317,11 @@ private:
 	virtual void visit(const lst::static_length_array_type& type) override final
 	{
 		if (type.alignment != 0) {
-			LTTNG_ASSERT(_escaped_current_field_name.size() > 0);
+			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
 					"struct {{ }} align({alignment}) {field_name}_padding;\n",
 					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _escaped_current_field_name));
+					fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
@@ -298,17 +338,19 @@ private:
 			 * could wrap nested sequences in structures, which
 			 * would allow us to express alignment constraints.
 			 */
-			LTTNG_ASSERT(_escaped_current_field_name.size() > 0);
+			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
 					"struct {{ }} align({alignment}) {field_name}_padding;\n",
 					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _escaped_current_field_name));
+					fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
 		type.element_type->accept(*this);
-		_type_suffixes.emplace(fmt::format(
-				"[{}]", escape_tsdl_identifier(type.length_field_name)));
+		_type_suffixes.emplace(fmt::format("[{}]",
+				_bypass_identifier_escape ?
+						type.length_field_name :
+						      escape_tsdl_identifier(type.length_field_name)));
 	}
 
 	virtual void visit(const lst::static_length_blob_type& type) override final
@@ -337,7 +379,7 @@ private:
 
 	virtual void visit(const lst::null_terminated_string_type& type) override final
 	{
-		/* Defaults to UTF-8.  */
+		/* Defaults to UTF-8. */
 		if (type.encoding_ == lst::null_terminated_string_type::encoding::ASCII) {
 			_description += "string { encoding = ASCII }";
 		} else {
@@ -350,11 +392,15 @@ private:
 		_indentation_level++;
 		_description += "struct {";
 
+		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
+		_bypass_identifier_escape = false;
 		for (const auto& field : type._fields) {
 			_description += "\n";
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field->accept(*this);
 		}
+
+		_bypass_identifier_escape = previous_bypass_identifier_escape;
 
 		_indentation_level--;
 		if (type._fields.size() != 0) {
@@ -362,38 +408,45 @@ private:
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
-		_description += "};";
+		_description += "}";
 	}
 
 	virtual void visit(const lst::variant_type& type) override final
 	{
 		if (type.alignment != 0) {
-			LTTNG_ASSERT(_escaped_current_field_name.size() > 0);
+			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
 					"struct {{ }} align({alignment}) {field_name}_padding;\n",
 					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _escaped_current_field_name));
+					fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
 		_indentation_level++;
-		_description += fmt::format("variant <{}> {\n", escape_tsdl_identifier(type.tag_name));
+		_description += fmt::format("variant <{}> {{\n",
+				_bypass_identifier_escape ?
+						type.tag_name :
+						      escape_tsdl_identifier(type.tag_name));
 
-		bool first_field = true;
+		/*
+		 * The CTF 1.8 specification only recommends that implementations ignore
+		 * leading underscores in field names. Both babeltrace 1 and 2 expect the
+		 * variant choice and enumeration mapping name to match perfectly. Given that we
+		 * don't have access to the tag in this context, we have to assume they match.
+		 */
+		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
+		_bypass_identifier_escape = true;
 		for (const auto& field : type._choices) {
-			if (!first_field) {
-				_description += ",\n";
-			}
-
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field->accept(*this);
-			first_field = false;
+			_description += fmt::format("\n", field->name);
 		}
 
-		_description += "\n";
-		_description.resize(_description.size() + _indentation_level, '\t');
-		_description += "};";
+		_bypass_identifier_escape = previous_bypass_identifier_escape;
+
 		_indentation_level--;
+		_description.resize(_description.size() + _indentation_level, '\t');
+		_description += "}";
 	}
 
 	lst::type::cuptr create_character_type(enum lst::string_type::encoding encoding)
@@ -429,7 +482,7 @@ private:
 		visit(*char_sequence);
 	}
 
-	std::string _escaped_current_field_name;
+	std::stack<std::string> _current_field_name;
 	/*
 	 * Encoding to specify for the next serialized integer type.
 	 * Since the integer_type does not allow an encoding to be specified (it is a TSDL-specific
@@ -445,12 +498,16 @@ private:
 
 	/* Description in TSDL format. */
 	std::string _description;
+
+	bool _bypass_identifier_escape;
+	const char *_default_clock_class_name;
 };
 } /* namespace */
 
 tsdl::trace_class_visitor::trace_class_visitor(const lst::abi& trace_abi,
 		tsdl::append_metadata_fragment_function append_metadata_fragment) :
-	_trace_abi{trace_abi}, _append_metadata_fragment(append_metadata_fragment)
+	_trace_abi{trace_abi},
+	_append_metadata_fragment(append_metadata_fragment)
 {
 }
 
@@ -461,28 +518,19 @@ void tsdl::trace_class_visitor::append_metadata_fragment(const std::string& frag
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class& trace_class)
 {
+	tsdl_field_visitor packet_header_visitor(trace_class.abi, 1);
+
+	trace_class.get_packet_header()->accept(packet_header_visitor);
+
 	/* Declare type aliases, trace class, and packet header. */
 	auto trace_class_tsdl = fmt::format(
 			"/* CTF {ctf_major}.{ctf_minor} */\n\n"
-			"typealias integer {{ size = 8; align = {uint8_t_alignment}; signed = false; }} := uint8_t;\n"
-			"typealias integer {{ size = 16; align = {uint16_t_alignment}; signed = false; }} := uint16_t;\n"
-			"typealias integer {{ size = 32; align = {uint32_t_alignment}; signed = false; }} := uint32_t;\n"
-			"typealias integer {{ size = 64; align = {uint64_t_alignment}; signed = false; }} := uint64_t;\n"
-			"typealias integer {{ size = {bits_per_long}; align = {long_alignment}; signed = false; }} := unsigned long;\n"
-			"typealias integer {{ size = 5; align = 1; signed = false; }} := uint5_t;\n"
-			"typealias integer {{ size = 27; align = 1; signed = false; }} := uint27_t;\n"
-			"\n"
 			"trace {{\n"
 			"	major = {ctf_major};\n"
 			"	minor = {ctf_minor};\n"
 			"	uuid = \"{uuid}\";\n"
 			"	byte_order = {byte_order};\n"
-			"	packet.header := struct {{\n"
-			"		uint32_t magic;\n"
-			"		uint8_t  uuid[16];\n"
-			"		uint32_t stream_id;\n"
-			"		uint64_t stream_instance_id;\n"
-			"	}};\n"
+			"	packet.header := {packet_header_layout};\n"
 			"}};\n\n",
 			fmt::arg("ctf_major", ctf_spec_major),
 			fmt::arg("ctf_minor", ctf_spec_minor),
@@ -495,9 +543,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 			fmt::arg("bits_per_long", trace_class.abi.bits_per_long),
 			fmt::arg("uuid", lttng::utils::uuid_to_str(trace_class.uuid)),
 			fmt::arg("byte_order",
-					trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ?
-							"be" :
-							      "le"));
+					trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le"),
+			fmt::arg("packet_header_layout", packet_header_visitor.get_description()));
 
 	/* Declare trace scope and type aliases. */
 	append_metadata_fragment(std::move(trace_class_tsdl));
@@ -520,87 +567,51 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class&
 			"	freq = {frequency};\n"
 			"	offset = {offset};\n"
 			"}};\n"
-			"\n"
-			"typealias integer {{\n"
-			"	size = 27; align = 1; signed = false;\n"
-			"	map = clock.{name}.value;\n"
-			"}} := uint27_clock_{name}_t;\n"
-			"\n"
-			"typealias integer {{\n"
-			"	size = 32; align = {uint32_t_alignment}; signed = false;\n"
-			"	map = clock.{name}.value;\n"
-			"}} := uint32_clock_{name}_t;\n"
-			"\n"
-			"typealias integer {{\n"
-			"	size = 64; align = {uint64_t_alignment}; signed = false;\n"
-			"	map = clock.{name}.value;\n"
-			"}} := uint64_clock_{name}_t;\n"
-			"\n"
-			"struct packet_context {{\n"
-			"	uint64_clock_{name}_t timestamp_begin;\n"
-			"	uint64_clock_{name}_t timestamp_end;\n"
-			"	uint64_t content_size;\n"
-			"	uint64_t packet_size;\n"
-			"	uint64_t packet_seq_num;\n"
-			"	unsigned long events_discarded;\n"
-			"	uint32_t cpu_id;\n"
-			"}};\n"
-			"\n"
-			"struct event_header_compact {{\n"
-			"	enum : uint5_t {{ compact = 0 ... 30, extended = 31 }} id;\n"
-			"	variant <id> {{\n"
-			"		struct {{\n"
-			"			uint27_clock_{name}_t timestamp;\n"
-			"		}} compact;\n"
-			"		struct {{\n"
-			"			uint32_t id;\n"
-			"			uint64_clock_{name}_t timestamp;\n"
-			"		}} extended;\n"
-			"	}} v;\n"
-			"}} align({uint32_t_alignment});\n"
-			"\n"
-			"struct event_header_large {{\n"
-			"	enum : uint16_t {{ compact = 0 ... 65534, extended = 65535 }} id;\n"
-			"	variant <id> {{\n"
-			"		struct {{\n"
-			"			uint32_clock_{name}_t timestamp;\n"
-			"		}} compact;\n"
-			"		struct {{\n"
-			"			uint32_t id;\n"
-			"			uint64_clock_{name}_t timestamp;\n"
-			"		}} extended;\n"
-			"	}} v;\n"
-			"}} align({uint16_t_alignment});\n\n",
+			"\n",
 			fmt::arg("name", clock_class.name),
 			fmt::arg("uuid", uuid_str),
 			fmt::arg("description", clock_class.description),
 			fmt::arg("frequency", clock_class.frequency),
-			fmt::arg("offset", clock_class.offset),
-			fmt::arg("uint16_t_alignment", _trace_abi.uint16_t_alignment),
-			fmt::arg("uint32_t_alignment", _trace_abi.uint32_t_alignment),
-			fmt::arg("uint64_t_alignment", _trace_abi.uint64_t_alignment));
+			fmt::arg("offset", clock_class.offset));
 
 	append_metadata_fragment(std::move(clock_class_str));
 }
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class& stream_class)
 {
-	/* Declare stream. */
 	auto stream_class_str = fmt::format("stream {{\n"
-					    "	id = {id};\n"
-					    "	event.header := {header_type};\n"
-					    "	packet.context := struct packet_context;\n",
-			fmt::arg("id", stream_class.id),
-			fmt::arg("header_type", stream_class.header_type_ == lst::stream_class::header_type::COMPACT ?
-							"struct event_header_compact" :
-							      "struct event_header_large"));
+		"	id = {};\n", stream_class.id);
 
-	auto context_field_visitor = tsdl_field_visitor(_trace_abi, 1);
+	const auto *event_header = stream_class.get_event_header();
+	if (event_header) {
+		auto event_header_visitor = tsdl_field_visitor(
+				_trace_abi, 1, stream_class.default_clock_class_name);
 
-	stream_class.get_context().accept(static_cast<lst::type_visitor&>(context_field_visitor));
+		event_header->accept(event_header_visitor);
+		stream_class_str += fmt::format("	event.header := {};\n",
+				event_header_visitor.get_description());
+	}
 
-	stream_class_str += fmt::format("	event.context := {}\n}};\n\n",
-			context_field_visitor.get_description());
+	const auto *packet_context = stream_class.get_packet_context();
+	if (packet_context) {
+		auto packet_context_visitor = tsdl_field_visitor(
+				_trace_abi, 1, stream_class.default_clock_class_name);
+
+		packet_context->accept(packet_context_visitor);
+		stream_class_str += fmt::format("	packet.context := {};\n",
+				packet_context_visitor.get_description());
+	}
+
+	const auto *event_context = stream_class.get_event_context();
+	if (event_context) {
+		auto event_context_visitor = tsdl_field_visitor(_trace_abi, 1);
+
+		event_context->accept(event_context_visitor);
+		stream_class_str += fmt::format("	event.context := {};\n",
+				event_context_visitor.get_description());
+	}
+
+	stream_class_str += "};\n\n";
 
 	append_metadata_fragment(stream_class_str);
 }
@@ -627,7 +638,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 	event_class.payload->accept(static_cast<lst::type_visitor&>(payload_visitor));
 
 	event_class_str += fmt::format(
-			"	fields := {}\n}};\n\n", payload_visitor.get_description());
+			"	fields := {};\n}};\n\n", payload_visitor.get_description());
 
 	append_metadata_fragment(event_class_str);
 }

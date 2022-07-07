@@ -6426,23 +6426,47 @@ static int handle_app_register_channel_notification(int sock,
 	 * that all apps provide the same typing for the context fields as a
 	 * sanity check.
 	 */
-	lst::type::cuptr context_fields = lttng::make_unique<lst::structure_type>(0,
-			lsu::create_trace_fields_from_ust_ctl_fields(*locked_registry_session,
-					ust_ctl_context_fields.get(), context_field_count));
+	try {
+		auto app_context_fields = lsu::create_trace_fields_from_ust_ctl_fields(
+				*locked_registry_session, ust_ctl_context_fields.get(),
+				context_field_count);
 
-	if (!ust_reg_chan.is_registered()) {
-		ust_reg_chan.set_context(std::move(context_fields));
-	} else {
-		/*
-		 * Validate that the context fields match between
-		 * registry and newcoming application.
-		 */
-		if (ust_reg_chan.get_context() != *context_fields) {
-			ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
-				app->pid, app->sock);
-			ret_code = -EINVAL;
-			goto reply;
+		if (!ust_reg_chan.is_registered()) {
+			lst::type::cuptr event_context = app_context_fields.size() ?
+					lttng::make_unique<lst::structure_type>(
+							0, std::move(app_context_fields)) :
+					nullptr;
+
+			ust_reg_chan.set_event_context(std::move(event_context));
+		} else {
+			/*
+			 * Validate that the context fields match between
+			 * registry and newcoming application.
+			 */
+			bool context_fields_match;
+			const auto *previous_event_context = ust_reg_chan.get_event_context();
+
+			if (!previous_event_context) {
+				context_fields_match = app_context_fields.size() == 0;
+			} else {
+				const lst::structure_type app_event_context_struct(
+						0, std::move(app_context_fields));
+
+				context_fields_match = *previous_event_context ==
+						app_event_context_struct;
+			}
+
+			if (!context_fields_match) {
+				ERR("Registering application channel due to context field mismatch: pid = %d, sock = %d",
+						app->pid, app->sock);
+				ret_code = -EINVAL;
+				goto reply;
+			}
 		}
+	} catch (std::exception& ex) {
+		ERR("Failed to handle application context: %s", ex.what());
+		ret_code = -EINVAL;
+		goto reply;
 	}
 
 reply:

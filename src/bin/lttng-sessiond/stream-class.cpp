@@ -10,9 +10,12 @@
 
 namespace lst = lttng::sessiond::trace;
 
-lttng::sessiond::trace::stream_class::stream_class(
-		unsigned int in_id, enum header_type in_header_type) :
-	id{in_id}, header_type_{in_header_type}
+lttng::sessiond::trace::stream_class::stream_class(unsigned int in_id,
+		enum header_type in_header_type,
+		nonstd::optional<std::string> in_default_clock_class_name) :
+	id{in_id},
+	header_type_{in_header_type},
+	default_clock_class_name{std::move(in_default_clock_class_name)}
 {
 }
 
@@ -22,8 +25,17 @@ void lst::stream_class::accept(trace_class_visitor& visitor) const
 	_accept_on_event_classes(visitor);
 }
 
-const lttng::sessiond::trace::type& lst::stream_class::get_context() const
+const lttng::sessiond::trace::type *lst::stream_class::get_packet_context() const
 {
-	LTTNG_ASSERT(_context);
-	return *_context;
+	return _packet_context.get();
+}
+
+const lttng::sessiond::trace::type *lst::stream_class::get_event_header() const
+{
+	return _event_header.get();
+}
+
+const lttng::sessiond::trace::type *lst::stream_class::get_event_context() const
+{
+	return _event_context.get();
 }

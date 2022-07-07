@@ -9,6 +9,7 @@
 #define LTTNG_UST_REGISTRY_CHANNEL_H
 
 #include "stream-class.hpp"
+#include "trace-class.hpp"
 
 #include <common/hashtable/hashtable.hpp>
 
@@ -31,6 +32,8 @@ public:
 	using event_added_listener_fn = std::function<void(const registry_channel&, const registry_event &)>;
 
 	registry_channel(uint32_t channel_id,
+			const lttng::sessiond::trace::abi& trace_abi,
+			std::string default_clock_class_name,
 			registered_listener_fn channel_registered_listener,
 			event_added_listener_fn new_event_listener);
 	void add_event(int session_objd,
@@ -45,8 +48,8 @@ public:
 			uint32_t& out_event_id);
 	virtual ~registry_channel();
 
-	virtual const lttng::sessiond::trace::type& get_context() const override final;
-	void set_context(lttng::sessiond::trace::type::cuptr context);
+	virtual const lttng::sessiond::trace::type *get_event_context() const override final;
+	void set_event_context(lttng::sessiond::trace::type::cuptr context);
 
 	/* Channel was registered to at least one application. */
 	bool is_registered() const;

@@ -10,6 +10,8 @@
 
 #include "field.hpp"
 
+#include <vendor/optional.hpp>
+
 #include <vector>
 
 namespace lttng {
@@ -29,7 +31,9 @@ public:
 	void accept(trace_class_visitor& visitor) const;
 	virtual ~stream_class() = default;
 
-	virtual const lttng::sessiond::trace::type& get_context() const;
+	virtual const type* get_packet_context() const;
+	virtual const type* get_event_header() const;
+	virtual const type* get_event_context() const;
 
 	const unsigned int id;
 	/*
@@ -38,12 +42,17 @@ public:
 	 * nested-name-specifiers.
 	 */
 	const header_type header_type_;
+	const nonstd::optional<std::string> default_clock_class_name;
 
 protected:
-	stream_class(unsigned int id, enum header_type header_type);
+	stream_class(unsigned int id,
+			enum header_type header_type,
+			nonstd::optional<std::string> default_clock_class_name = nonstd::nullopt);
 	virtual void _accept_on_event_classes(trace_class_visitor& trace_class_visitor) const = 0;
 
-	lttng::sessiond::trace::type::cuptr _context;
+	lttng::sessiond::trace::type::cuptr _packet_context;
+	lttng::sessiond::trace::type::cuptr _event_header;
+	lttng::sessiond::trace::type::cuptr _event_context;
 };
 
 } /* namespace trace */

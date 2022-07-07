@@ -62,6 +62,8 @@ public:
 	void regenerate_metadata();
 	virtual ~registry_session();
 
+	virtual lttng::sessiond::trace::type::cuptr get_packet_header() const override;
+
 	/*
 	 * With multiple writers and readers, use this lock to access
 	 * the registry. Can nest within the ust app session lock.

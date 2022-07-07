@@ -29,6 +29,7 @@
 
 #include <fcntl.h>
 #include <functional>
+#include <initializer_list>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -240,15 +241,15 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
 	_root_shm_path{root_shm_path ? root_shm_path : ""},
 	_shm_path{shm_path ? shm_path : ""},
-	_metadata_path{_shm_path.size() > 0 ?
-			fmt::format("{}/metadata", _shm_path) : std::string("")},
+	_metadata_path{_shm_path.size() > 0 ? fmt::format("{}/metadata", _shm_path) :
+						    std::string("")},
 	_uid{euid},
 	_gid{egid},
 	_app_tracer_version{.major = major, .minor = minor},
 	_tracing_id{tracing_id},
 	_clock{lttng::make_unique<lsu::clock_class>()},
-	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(abi,
-			[this](const std::string& fragment) {
+	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(
+			abi, [this](const std::string& fragment) {
 				_append_metadata_fragment(fragment);
 			})}
 {
@@ -390,7 +391,7 @@ void lsu::registry_session::add_channel(uint64_t key)
 	}
 
 	auto chan = new lsu::registry_channel(
-			_get_next_channel_id(),
+			_get_next_channel_id(), abi, _clock->name,
 			/* Registered channel listener. */
 			[this](const lsu::registry_channel& registered_channel) {
 				/*
@@ -662,6 +663,39 @@ lsu::registry_session::get_enumeration(const char *enum_name, uint64_t enum_id) 
 	DIAGNOSTIC_POP
 
 	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
+}
+
+lst::type::cuptr lsu::registry_session::get_packet_header() const
+{
+	lst::structure_type::fields packet_header_fields;
+
+	/* uint32_t magic */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("magic",
+			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
+					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::HEXADECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_MAGIC_NUMBER}))));
+
+	/* uuid */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("uuid",
+			lttng::make_unique<lst::static_length_blob_type>(0, 16,
+					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::TRACE_CLASS_UUID}))));
+
+	/* uint32_t stream_id */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_id",
+			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
+					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_CLASS_ID}))));
+
+	/* uint64_t stream_instance_id */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_instance_id",
+			lttng::make_unique<lst::integer_type>(abi.uint64_t_alignment,
+					abi.byte_order, 64, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_ID}))));
+
+	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
 
 /*

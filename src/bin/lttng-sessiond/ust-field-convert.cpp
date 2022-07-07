@@ -190,8 +190,11 @@ lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl
 			lst::integer_type::reverse_byte_order(
 					session_attributes._native_trace_byte_order) :
 			      session_attributes._native_trace_byte_order;
+	const auto signedness = enum_container_uctl_type->signedness ?
+			lst::integer_type::signedness::SIGNED :
+			      lst::integer_type::signedness::UNSIGNED;
 
-	if (enum_container_uctl_type->signedness) {
+	if (signedness == lst::integer_type::signedness::SIGNED) {
 		const auto& enum_registry = static_cast<const lsu::registry_signed_enum&>(
 				*session_attributes.get_registry_enum(
 						enumeration_name, enumeration_id));
