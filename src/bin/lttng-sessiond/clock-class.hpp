@@ -30,6 +30,7 @@ class clock_class {
 public:
 	using cycles_t = uint64_t;
 	using scycles_t = int64_t;
+	using cuptr = std::unique_ptr<const clock_class>;
 
 	const std::string name;
 	const std::string description;

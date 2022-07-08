@@ -191,7 +191,7 @@ private:
 	/* The id of the parent session. */
 	const ltt_session::id_t _tracing_id;
 
-	lttng::sessiond::ust::clock_class _clock;
+	lttng::sessiond::ust::clock_class::cuptr _clock;
 	const lttng::sessiond::trace::trace_class_visitor::cuptr _metadata_generating_visitor;
 };
 

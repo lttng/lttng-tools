@@ -246,6 +246,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	_gid{egid},
 	_app_tracer_version{.major = major, .minor = minor},
 	_tracing_id{tracing_id},
+	_clock{lttng::make_unique<lsu::clock_class>()},
 	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(abi,
 			[this](const std::string& fragment) {
 				_append_metadata_fragment(fragment);
@@ -487,7 +488,7 @@ void lsu::registry_session::_visit_environment(
 void lsu::registry_session::_accept_on_clock_classes(lst::trace_class_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
-	_clock.accept(visitor);
+	_clock->accept(visitor);
 }
 
 void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& visitor) const
@@ -612,6 +613,9 @@ void lsu::registry_session::_generate_metadata()
 void lsu::registry_session::regenerate_metadata()
 {
 	lttng::pthread::lock_guard registry_lock(_lock);
+
+	/* Resample the clock */
+	_clock = lttng::make_unique<lsu::clock_class>();
 
 	_metadata_version++;
 	_reset_metadata();
