@@ -1107,13 +1107,12 @@ int evaluate_session_condition(
 	}
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 	{
-		const auto rotation_id = new_state ?
-				new_state->rotation.id :
-				      session_info->last_state_sample.rotation.id;
+		const auto& sample = new_state ? *new_state : session_info->last_state_sample;
+		const auto rotation_id = sample.rotation.id;
 
 		/* Callee acquires a reference to location. */
 		*evaluation = lttng_evaluation_session_rotation_completed_create(
-				rotation_id, new_state->rotation.location);
+				rotation_id, sample.rotation.location);
 		break;
 	}
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
