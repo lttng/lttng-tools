@@ -14,8 +14,9 @@
 #include <common/uuid.hpp>
 
 #include <array>
-#include <queue>
 #include <locale>
+#include <queue>
+#include <set>
 
 namespace lst = lttng::sessiond::trace;
 namespace tsdl = lttng::sessiond::tsdl;
@@ -23,6 +24,12 @@ namespace tsdl = lttng::sessiond::tsdl;
 namespace {
 const auto ctf_spec_major = 1;
 const auto ctf_spec_minor = 8;
+
+/*
+ * Although the CTF v1.8 specification recommends ignoring any leading underscore, Some readers,
+ * such as Babeltrace 1.x, expect special identifiers without a prepended underscore.
+ */
+const std::set<std::string> safe_tsdl_identifiers = {"stream_id"};
 
 /*
  * A previous implementation always prepended '_' to the identifiers in order to
@@ -36,6 +43,10 @@ std::string escape_tsdl_identifier(const std::string& original_identifier)
 {
 	if (original_identifier.size() == 0) {
 		LTTNG_THROW_ERROR("Invalid 0-length identifier used in trace description");
+	}
+
+	if (safe_tsdl_identifiers.find(original_identifier) != safe_tsdl_identifiers.end()) {
+		return original_identifier;
 	}
 
 	std::string new_identifier;
