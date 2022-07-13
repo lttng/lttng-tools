@@ -547,7 +547,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 			fmt::arg("packet_header_layout", packet_header_visitor.get_description()));
 
 	/* Declare trace scope and type aliases. */
-	append_metadata_fragment(std::move(trace_class_tsdl));
+	append_metadata_fragment(trace_class_tsdl);
 }
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class& clock_class)
@@ -574,7 +574,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class&
 			fmt::arg("frequency", clock_class.frequency),
 			fmt::arg("offset", clock_class.offset));
 
-	append_metadata_fragment(std::move(clock_class_str));
+	append_metadata_fragment(clock_class_str);
 }
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class& stream_class)
