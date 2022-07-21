@@ -2396,7 +2396,6 @@ init_setup_error:
 static int create_client_sock(void)
 {
 	int ret, client_sock;
-	const mode_t old_umask = umask(0);
 
 	/* Create client tool unix socket */
 	client_sock = lttcomm_create_unix_sock(
@@ -2430,7 +2429,6 @@ static int create_client_sock(void)
 	DBG("Created client socket (fd = %i)", client_sock);
 	ret = client_sock;
 end:
-	umask(old_umask);
 	return ret;
 }
 

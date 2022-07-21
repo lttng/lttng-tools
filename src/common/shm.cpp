@@ -21,8 +21,7 @@
 #include "shm.hpp"
 
 /*
- * Using fork to set umask in the child process (not multi-thread safe). We
- * deal with the shm_open vs ftruncate race (happening when the sessiond owns
+ * We deal with the shm_open vs ftruncate race (happening when the sessiond owns
  * the shm and does not let everybody modify it, to ensure safety against
  * shm_unlink) by simply letting the mmap fail and retrying after a few
  * seconds. For global shm, everybody has rw access to it until the sessiond
@@ -31,7 +30,7 @@
 static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
-	mode_t mode;
+	mode_t mode, old_mode;
 
 	LTTNG_ASSERT(shm_path);
 
@@ -51,11 +50,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		mode |= S_IROTH | S_IWOTH;
 	}
 
-	/*
-	 * We're alone in a child process, so we can modify the process-wide
-	 * umask.
-	 */
-	umask(~mode);
+	old_mode = umask(~mode);
 
 	/*
 	 * Try creating shm (or get rw access). We don't do an exclusive open,
@@ -104,7 +99,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	if (ret < 0) {
 		PERROR("Failed to truncate \"wait\" shared memory object: fd = %d, size = %zu",
 				wait_shm_fd, mmap_size);
-		exit(EXIT_FAILURE);
+		goto error;
 	}
 
 	if (global) {
@@ -112,7 +107,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		if (ret < 0) {
 			PERROR("Failed to set ownership of \"wait\" shared memory object: fd = %d, owner = 0, group = 0",
 					wait_shm_fd);
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 		/*
 		 * If global session daemon, any application can
@@ -124,14 +119,14 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		if (ret < 0) {
 			PERROR("Failed to set the mode of the \"wait\" shared memory object: fd = %d, mode = %d",
 					wait_shm_fd, mode);
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 	} else {
 		ret = fchown(wait_shm_fd, getuid(), getgid());
 		if (ret < 0) {
 			PERROR("Failed to set ownership of \"wait\" shared memory object: fd = %d, owner = %d, group = %d",
 					wait_shm_fd, getuid(), getgid());
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 	}
 
@@ -139,13 +134,20 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 			shm_path, mmap_size, global ? "true" : "false",
 			wait_shm_fd);
 
+end:
+	(void) umask(old_mode);
 	return wait_shm_fd;
 
 error:
-	DBG("Failed to open shared memory file descriptor: path = '%s', mmap_size = %zu, global = %s",
-			shm_path, mmap_size, global ? "true" : "false");
+	DBG("Failing to get the wait shm fd");
+	if (wait_shm_fd >= 0) {
+		if (close(wait_shm_fd)) {
+			PERROR("Failed to close wait shm file descriptor during error handling");
+		}
+	}
 
-	return -1;
+	wait_shm_fd = -1;
+	goto end;
 }
 
 /*

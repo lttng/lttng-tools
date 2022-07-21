@@ -212,30 +212,40 @@ end:
  */
 int utils_create_pid_file(pid_t pid, const char *filepath)
 {
-	int ret;
-	FILE *fp;
+	int ret, fd = -1;
+	FILE *fp = NULL;
 
 	LTTNG_ASSERT(filepath);
 
-	fp = fopen(filepath, "w");
-	if (fp == NULL) {
-		PERROR("open pid file %s", filepath);
+	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR |S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0) {
+		PERROR("open file %s", filepath);
 		ret = -1;
+		goto error;
+	}
+
+	fp = fdopen(fd, "w");
+	if (fp == NULL) {
+		PERROR("fdopen file %s", filepath);
+		ret = -1;
+		close(fd);
 		goto error;
 	}
 
 	ret = fprintf(fp, "%d\n", (int) pid);
 	if (ret < 0) {
-		PERROR("fprintf pid file");
+		PERROR("fprintf file %s", filepath);
+		ret = -1;
 		goto error;
 	}
 
-	if (fclose(fp)) {
-		PERROR("fclose");
-	}
-	DBG("Pid %d written in file %s", (int) pid, filepath);
+	DBG("'%d' written in file %s", (int) pid, filepath);
 	ret = 0;
+
 error:
+	if (fp && fclose(fp)) {
+		PERROR("fclose file %s", filepath);
+	}
 	return ret;
 }
 
