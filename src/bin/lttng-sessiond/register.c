@@ -39,7 +39,6 @@ static int create_application_socket(void)
 {
 	int ret = 0;
 	int apps_sock;
-	const mode_t old_umask = umask(0);
 
 	/* Create the application unix socket */
 	apps_sock = lttcomm_create_unix_sock(
@@ -72,7 +71,6 @@ static int create_application_socket(void)
 	DBG3("Session daemon application socket created (fd = %d) ", apps_sock);
 	ret = apps_sock;
 end:
-	umask(old_umask);
 	return ret;
 error_close_socket:
 	if (close(apps_sock)) {
