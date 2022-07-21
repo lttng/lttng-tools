@@ -21,8 +21,7 @@
 #include "shm.h"
 
 /*
- * Using fork to set umask in the child process (not multi-thread safe). We
- * deal with the shm_open vs ftruncate race (happening when the sessiond owns
+ * We deal with the shm_open vs ftruncate race (happening when the sessiond owns
  * the shm and does not let everybody modify it, to ensure safety against
  * shm_unlink) by simply letting the mmap fail and retrying after a few
  * seconds. For global shm, everybody has rw access to it until the sessiond
@@ -31,7 +30,7 @@
 static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
-	mode_t mode;
+	mode_t mode, old_mode;
 
 	assert(shm_path);
 
@@ -51,11 +50,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		mode |= S_IROTH | S_IWOTH;
 	}
 
-	/*
-	 * We're alone in a child process, so we can modify the process-wide
-	 * umask.
-	 */
-	umask(~mode);
+	old_mode = umask(~mode);
 
 	/*
 	 * Try creating shm (or get rw access). We don't do an exclusive open,
@@ -103,7 +98,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	ret = ftruncate(wait_shm_fd, mmap_size);
 	if (ret < 0) {
 		PERROR("ftruncate wait shm");
-		exit(EXIT_FAILURE);
+		goto error;
 	}
 
 #ifndef __FreeBSD__
@@ -111,7 +106,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = fchown(wait_shm_fd, 0, 0);
 		if (ret < 0) {
 			PERROR("fchown");
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 		/*
 		 * If global session daemon, any application can
@@ -122,13 +117,13 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = fchmod(wait_shm_fd, mode);
 		if (ret < 0) {
 			PERROR("fchmod");
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 	} else {
 		ret = fchown(wait_shm_fd, getuid(), getgid());
 		if (ret < 0) {
 			PERROR("fchown");
-			exit(EXIT_FAILURE);
+			goto error;
 		}
 	}
 #else
@@ -136,13 +131,20 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 #endif
 
 	DBG("Got the wait shm fd %d", wait_shm_fd);
-
+end:
+	(void) umask(old_mode);
 	return wait_shm_fd;
 
 error:
 	DBG("Failing to get the wait shm fd");
+	if (wait_shm_fd >= 0) {
+		if (close(wait_shm_fd)) {
+			PERROR("Failed to close wait shm file descriptor during error handling");
+		}
+	}
 
-	return -1;
+	wait_shm_fd = -1;
+	goto end;
 }
 
 /*
