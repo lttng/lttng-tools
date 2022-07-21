@@ -62,7 +62,7 @@ public:
 	void regenerate_metadata();
 	virtual ~registry_session();
 
-	virtual lttng::sessiond::trace::type::cuptr get_packet_header() const override;
+	virtual const lttng::sessiond::trace::type *get_packet_header() const noexcept override;
 
 	/*
 	 * With multiple writers and readers, use this lock to access
@@ -116,6 +116,7 @@ private:
 	void _reset_metadata();
 	void _destroy_enum(registry_enum *reg_enum) noexcept;
 	registry_enum *_lookup_enum(const registry_enum *target_enum) const;
+	lttng::sessiond::trace::type::cuptr _create_packet_header() const;
 
 	virtual void _accept_on_clock_classes(
 			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
@@ -195,6 +196,7 @@ private:
 
 	lttng::sessiond::ust::clock_class::cuptr _clock;
 	const lttng::sessiond::trace::trace_class_visitor::cuptr _metadata_generating_visitor;
+	lttng::sessiond::trace::type::cuptr _packet_header;
 };
 
 } /* namespace ust */

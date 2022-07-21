@@ -50,7 +50,7 @@ public:
 	 * to continue the traversal to the trace class' children.
 	 */
 	virtual void accept(trace_class_visitor& trace_class_visitor) const;
-	virtual lttng::sessiond::trace::type::cuptr get_packet_header() const = 0;
+	virtual const lttng::sessiond::trace::type *get_packet_header() const noexcept = 0;
 
 	virtual ~trace_class() = default;
 

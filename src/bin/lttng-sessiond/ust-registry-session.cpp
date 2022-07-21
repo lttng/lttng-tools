@@ -251,7 +251,8 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(
 			abi, [this](const std::string& fragment) {
 				_append_metadata_fragment(fragment);
-			})}
+			})},
+	_packet_header{_create_packet_header()}
 {
 	pthread_mutex_init(&_lock, NULL);
 	if (_shm_path.size() > 0) {
@@ -285,6 +286,44 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	if (!_channels) {
 		LTTNG_THROW_POSIX("Failed to create channels hash table", ENOMEM);
 	}
+}
+
+lst::type::cuptr lsu::registry_session::_create_packet_header() const
+{
+	lst::structure_type::fields packet_header_fields;
+
+	/* uint32_t magic */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("magic",
+			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
+					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::HEXADECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_MAGIC_NUMBER}))));
+
+	/* uuid */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("uuid",
+			lttng::make_unique<lst::static_length_blob_type>(0, 16,
+					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::TRACE_CLASS_UUID}))));
+
+	/* uint32_t stream_id */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_id",
+			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
+					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_CLASS_ID}))));
+
+	/* uint64_t stream_instance_id */
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_instance_id",
+			lttng::make_unique<lst::integer_type>(abi.uint64_t_alignment,
+					abi.byte_order, 64, lst::integer_type::signedness::UNSIGNED,
+					lst::integer_type::base::DECIMAL,
+					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_ID}))));
+
+	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
+}
+
+const lst::type *lsu::registry_session::get_packet_header() const noexcept
+{
+	return _packet_header.get();
 }
 
 /*
@@ -663,39 +702,6 @@ lsu::registry_session::get_enumeration(const char *enum_name, uint64_t enum_id) 
 	DIAGNOSTIC_POP
 
 	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
-}
-
-lst::type::cuptr lsu::registry_session::get_packet_header() const
-{
-	lst::structure_type::fields packet_header_fields;
-
-	/* uint32_t magic */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("magic",
-			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
-					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::HEXADECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_MAGIC_NUMBER}))));
-
-	/* uuid */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("uuid",
-			lttng::make_unique<lst::static_length_blob_type>(0, 16,
-					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::TRACE_CLASS_UUID}))));
-
-	/* uint32_t stream_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_id",
-			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
-					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::DECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_CLASS_ID}))));
-
-	/* uint64_t stream_instance_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_instance_id",
-			lttng::make_unique<lst::integer_type>(abi.uint64_t_alignment,
-					abi.byte_order, 64, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::DECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_ID}))));
-
-	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
 
 /*
