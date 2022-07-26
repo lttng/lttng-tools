@@ -8,12 +8,14 @@
 #ifndef LTTNG_FIELD_H
 #define LTTNG_FIELD_H
 
+#include <common/format.hpp>
+
+#include <vendor/optional.hpp>
+
 #include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
-
-#include <vendor/optional.hpp>
 
 namespace lttng {
 namespace sessiond {
@@ -455,5 +457,49 @@ protected:
 } /* namespace trace */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string> {
+	template <typename FormatCtx>
+	typename FormatCtx::iterator format(
+			const lttng::sessiond::trace::field_location& location, FormatCtx& ctx)
+	{
+		std::string location_str{"["};
+
+		switch (location.root_) {
+		case lttng::sessiond::trace::field_location::root::PACKET_HEADER:
+			location_str += "\"packet-header\"";
+			break;
+		case lttng::sessiond::trace::field_location::root::PACKET_CONTEXT:
+			location_str += "\"packet-context\"";
+			break;
+		case lttng::sessiond::trace::field_location::root::EVENT_RECORD_HEADER:
+			location_str += "\"event-record-header\"";
+			break;
+		case lttng::sessiond::trace::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
+			location_str += "\"event-record-common-context\"";
+			break;
+		case lttng::sessiond::trace::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
+			location_str += "\"event-record-specific-context\"";
+			break;
+		case lttng::sessiond::trace::field_location::root::EVENT_RECORD_PAYLOAD:
+			location_str += "\"event-record-payload\"";
+			break;
+		}
+
+		for (const auto &name : location.elements_) {
+			location_str += ", \"" + name + "\"";
+		}
+
+		location_str += "]";
+		return format_to(ctx.out(), location_str);
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_FIELD_H */

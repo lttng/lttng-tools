@@ -7,6 +7,7 @@
 
 #include "ust-field-convert.hpp"
 
+#include <common/exception.hpp>
 #include <common/make-unique.hpp>
 
 #include <unordered_map>
@@ -39,11 +40,15 @@ public:
 /* Used to publish fields on which a field being decoded has an implicit dependency. */
 using publish_field_fn = std::function<void(lst::field::cuptr)>;
 
+/* Look-up field from a field location. */
+using lookup_field_fn = std::function<const lst::field &(const lst::field_location &)>;
+
 lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements& current_field_location_elements);
 
@@ -52,6 +57,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements& current_field_location_elements);
 
@@ -321,6 +327,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(const lttng_ust_
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements &current_field_location_elements)
 {
@@ -343,7 +350,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(const lttng_ust_
 
 	/* next_ust_ctl_field is updated as needed. */
 	element_type = create_type_from_ust_ctl_fields(&element_uctl_field, end, session_attributes,
-			next_ust_ctl_field, publish_field, lookup_root,
+			next_ust_ctl_field, publish_field, lookup_field, lookup_root,
 			current_field_location_elements);
 	if (element_uctl_field.type.atype == lttng_ust_ctl_atype_integer &&
 			element_uctl_field.type.u.integer.encoding != lttng_ust_ctl_encode_none) {
@@ -457,6 +464,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements &current_field_location_elements)
 {
@@ -483,8 +491,8 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 
 	/* next_ust_ctl_field is updated as needed. */
 	auto element_type = create_type_from_ust_ctl_fields(&element_uctl_field, end,
-			session_attributes, next_ust_ctl_field, publish_field, lookup_root,
-			current_field_location_elements);
+			session_attributes, next_ust_ctl_field, publish_field, lookup_field,
+			lookup_root, current_field_location_elements);
 
 	if (lttng_strnlen(sequence_uctl_field.type.u.sequence_nestable.length_name,
 			    sizeof(sequence_uctl_field.type.u.sequence_nestable.length_name)) ==
@@ -492,13 +500,20 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		LTTNG_THROW_PROTOCOL_ERROR("Sequence length field name is not null terminated");
 	}
 
-
 	lst::field_location::elements length_field_location_elements =
 			current_field_location_elements;
 	length_field_location_elements.emplace_back(std::move(length_field_name));
 
 	const lst::field_location length_field_location{
 			lookup_root, std::move(length_field_location_elements)};
+
+	/* Validate existence of length field (throws if not found). */
+	const auto &length_field = lookup_field(length_field_location);
+	const auto *integer_selector_field =
+			dynamic_cast<const lst::integer_type *>(length_field._type.get());
+	if (!integer_selector_field) {
+		LTTNG_THROW_PROTOCOL_ERROR("Invalid selector field type referenced from sequence: expected integer or enumeration");
+	}
 
 	if (element_encoding) {
 		const auto integer_element_size =
@@ -556,6 +571,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements &current_field_location_elements)
 {
@@ -589,6 +605,13 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 	const lst::field_location selector_field_location{
 			lookup_root, std::move(selector_field_location_elements)};
 
+	/* Validate existence of selector field (throws if not found). */
+	const auto &selector_field = lookup_field(selector_field_location);
+	const auto *integer_selector_field = dynamic_cast<const lst::integer_type *>(selector_field._type.get());
+	if (!integer_selector_field) {
+		LTTNG_THROW_PROTOCOL_ERROR("Invalid selector field type referenced from variant: expected integer or enumeration");
+	}
+
 	/* Choices follow. next_ust_ctl_field is updated as needed. */
 	lst::variant_type::choices choices;
 	for (unsigned int i = 0; i < choice_count; i++) {
@@ -597,6 +620,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 				[&choices](lst::field::cuptr field) {
 					choices.emplace_back(std::move(field));
 				},
+				lookup_field,
 				lookup_root, current_field_location_elements);
 
 		current = *next_ust_ctl_field;
@@ -611,6 +635,7 @@ lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curr
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements &current_field_location_elements)
 {
@@ -633,16 +658,16 @@ lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curr
 				next_ust_ctl_field);
 	case lttng_ust_ctl_atype_array_nestable:
 		return create_array_nestable_type_from_ust_ctl_fields(current, end,
-				session_attributes, next_ust_ctl_field, publish_field, lookup_root,
-				current_field_location_elements);
+				session_attributes, next_ust_ctl_field, publish_field, lookup_field,
+				lookup_root, current_field_location_elements);
 	case lttng_ust_ctl_atype_sequence:
 		return create_sequence_type_from_ust_ctl_fields(current, end, session_attributes,
 				next_ust_ctl_field, publish_field, lookup_root,
 				current_field_location_elements);
 	case lttng_ust_ctl_atype_sequence_nestable:
 		return create_sequence_nestable_type_from_ust_ctl_fields(current, end,
-				session_attributes, next_ust_ctl_field, publish_field, lookup_root,
-				current_field_location_elements);
+				session_attributes, next_ust_ctl_field, publish_field, lookup_field,
+				lookup_root, current_field_location_elements);
 	case lttng_ust_ctl_atype_struct:
 	case lttng_ust_ctl_atype_struct_nestable:
 		return create_structure_field_from_ust_ctl_fields(
@@ -650,7 +675,8 @@ lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curr
 	case lttng_ust_ctl_atype_variant:
 	case lttng_ust_ctl_atype_variant_nestable:
 		return create_variant_field_from_ust_ctl_fields(current, end, session_attributes,
-				next_ust_ctl_field, lookup_root, current_field_location_elements);
+				next_ust_ctl_field, lookup_field, lookup_root,
+				current_field_location_elements);
 	default:
 		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
 				"Unknown {} value `{}` encountered while converting {} to {}",
@@ -664,6 +690,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const session_attributes& session_attributes,
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
+		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
 		lst::field_location::elements& current_field_location_elements)
 {
@@ -676,9 +703,8 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 
 	publish_field(lttng::make_unique<lst::field>(current->name,
 			create_type_from_ust_ctl_fields(current, end, session_attributes,
-					next_ust_ctl_field, publish_field,
-					lookup_root,
-					current_field_location_elements)));
+					next_ust_ctl_field, publish_field, lookup_field,
+					lookup_root, current_field_location_elements)));
 }
 
 /*
@@ -717,12 +743,44 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 		 * The lambda allows the factory functions to push as many fields as
 		 * needed depending on the decoded field's type.
 		 */
-		create_field_from_ust_ctl_fields(current, end, session_attributes, &next_field,
+		create_field_from_ust_ctl_fields(
+				current, end, session_attributes, &next_field,
 				[&fields](lst::field::cuptr field) {
+					/* Publishing a field simply adds it to the converted fields. */
 					fields.emplace_back(std::move(field));
 				},
-				lookup_root,
-				current_field_location_elements);
+				[&fields](const lst::field_location& location)
+						-> lookup_field_fn::result_type {
+					if (location.elements_.size() != 1) {
+						LTTNG_THROW_ERROR(fmt::format(
+								"Unexpected field location received during field look-up: location = {}",
+								location));
+					}
+
+					/*
+					 * In the context of fields received from LTTng-UST, field
+					 * look-up is extremely naive as the protocol can only
+					 * express empty structures. It is safe to assume that
+					 * location has a depth of 1 and directly refers to a field
+					 * in the 'fields' vector.
+					 */
+					const auto field_it = std::find_if(fields.begin(),
+							fields.end(),
+							[&location](decltype(fields)::value_type&
+											field) {
+								return field->name ==
+										location.elements_[0];
+							});
+
+					if (field_it == fields.end()) {
+						LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+								"Failed to look-up field: location = {}",
+								location));
+					}
+
+					return **field_it;
+				},
+				lookup_root, current_field_location_elements);
 
 		current = next_field;
 	}
