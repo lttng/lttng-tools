@@ -27,6 +27,26 @@ enum class byte_order {
 	LITTLE_ENDIAN_,
 };
 
+class field_location {
+public:
+	enum class root {
+		PACKET_HEADER,
+		PACKET_CONTEXT,
+		EVENT_RECORD_HEADER,
+		EVENT_RECORD_COMMON_CONTEXT,
+		EVENT_RECORD_SPECIFIC_CONTEXT,
+		EVENT_RECORD_PAYLOAD,
+	};
+
+	using elements = std::vector<std::string>;
+
+	field_location(root lookup_root, elements elements);
+	bool operator==(const field_location& other) const noexcept;
+
+	const root root_;
+	const elements elements_;
+};
+
 /*
  * Field, and the various field types, represents fields as exposed by the
  * LTTng tracers. These classes do not attempt to describe the complete spectrum of the CTF
@@ -277,11 +297,11 @@ class dynamic_length_array_type : public array_type {
 public:
 	dynamic_length_array_type(unsigned int alignment,
 			type::cuptr element_type,
-			std::string length_field_name);
+			field_location length_field_location);
 
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const std::string length_field_name;
+	const field_location length_field_location;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
@@ -309,11 +329,11 @@ private:
 
 class dynamic_length_blob_type : public type {
 public:
-	dynamic_length_blob_type(unsigned int alignment, std::string length_field_name);
+	dynamic_length_blob_type(unsigned int alignment, field_location length_field_location);
 
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const std::string length_field_name;
+	const field_location length_field_location;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
@@ -355,10 +375,10 @@ class dynamic_length_string_type : public string_type {
 public:
 	dynamic_length_string_type(unsigned int alignment,
 			enum encoding in_encoding,
-			std::string length_field_name);
+			field_location length_field_location);
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const std::string length_field_name;
+	const field_location length_field_location;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
@@ -388,12 +408,15 @@ class variant_type : public type {
 public:
 	using choices = std::vector<field::cuptr>;
 
-	variant_type(unsigned int alignment, std::string tag_name, choices in_choices);
+	variant_type(unsigned int alignment,
+			field_location selector_field_location,
+			choices in_choices);
 
 	virtual void accept(type_visitor& visitor) const override final;
 
-	const std::string tag_name;
+	const field_location selector_field_location;
 	const choices _choices;
+;
 
 private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;

@@ -131,8 +131,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
 		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
 
-		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(
-				0, "id", std::move(variant_choices));
+		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(0,
+				lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
+						{"id"}),
+				std::move(variant_choices));
 
 		event_header_fields.emplace_back(lttng::make_unique<lst::field>("id", std::move(choice_enum)));
 		event_header_fields.emplace_back(
@@ -187,8 +189,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
 		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
 
-		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(
-				0, "id", std::move(variant_choices));
+		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(0,
+				lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
+						{"id"}),
+				std::move(variant_choices));
 
 		event_header_fields.emplace_back(lttng::make_unique<lst::field>("id", std::move(choice_enum)));
 		event_header_fields.emplace_back(

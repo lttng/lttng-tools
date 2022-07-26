@@ -349,8 +349,8 @@ private:
 		type.element_type->accept(*this);
 		_type_suffixes.emplace(fmt::format("[{}]",
 				_bypass_identifier_escape ?
-						type.length_field_name :
-						      escape_tsdl_identifier(type.length_field_name)));
+						*(type.length_field_location.elements_.end() - 1) :
+							escape_tsdl_identifier(*(type.length_field_location.elements_.end() - 1))));
 	}
 
 	virtual void visit(const lst::static_length_blob_type& type) override final
@@ -372,7 +372,7 @@ private:
 				_trace_abi.byte_order, 8, lst::integer_type::signedness::UNSIGNED,
 				lst::integer_type::base::HEXADECIMAL);
 		const auto array = lttng::make_unique<lst::dynamic_length_array_type>(
-				type.alignment, std::move(uint8_element), type.length_field_name);
+				type.alignment, std::move(uint8_element), type.length_field_location);
 
 		visit(*array);
 	}
@@ -425,8 +425,8 @@ private:
 		_indentation_level++;
 		_description += fmt::format("variant <{}> {{\n",
 				_bypass_identifier_escape ?
-						type.tag_name :
-						      escape_tsdl_identifier(type.tag_name));
+						*(type.selector_field_location.elements_.end() - 1) :
+							escape_tsdl_identifier(*(type.selector_field_location.elements_.end() - 1)));
 
 		/*
 		 * The CTF 1.8 specification only recommends that implementations ignore
@@ -477,7 +477,7 @@ private:
 		 */
 		const auto char_sequence = lttng::make_unique<lst::dynamic_length_array_type>(
 				type.alignment, create_character_type(type.encoding_),
-				type.length_field_name);
+				type.length_field_location);
 
 		visit(*char_sequence);
 	}

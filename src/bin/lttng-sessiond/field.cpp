@@ -30,6 +30,18 @@ bool fields_are_equal(const FieldTypeSet& a, const FieldTypeSet& b)
 }
 } /* namespace */
 
+lst::field_location::field_location(lst::field_location::root in_lookup_root,
+		lst::field_location::elements in_elements) :
+	root_{in_lookup_root}, elements_{std::move(in_elements)}
+{
+}
+
+bool lst::field_location::operator==(const lst::field_location& other) const noexcept
+{
+	return root_ == other.root_ &&
+			elements_ == other.elements_;
+}
+
 lst::type::type(unsigned int in_alignment) : alignment{in_alignment}
 {
 }
@@ -214,9 +226,9 @@ void lst::static_length_array_type::accept(type_visitor& visitor) const
 
 lst::dynamic_length_array_type::dynamic_length_array_type(unsigned int in_alignment,
 		type::cuptr in_element_type,
-		std::string in_length_field_name) :
+		lst::field_location in_length_field_location) :
 	array_type(in_alignment, std::move(in_element_type)),
-	length_field_name{std::move(in_length_field_name)}
+	length_field_location{std::move(in_length_field_location)}
 {
 }
 
@@ -225,7 +237,7 @@ bool lst::dynamic_length_array_type::_is_equal(const type& base_other) const noe
 	const auto& other = static_cast<decltype(*this)&>(base_other);
 
 	return array_type::_is_equal(base_other) &&
-			this->length_field_name == other.length_field_name;
+			this->length_field_location == other.length_field_location;
 }
 
 void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
@@ -252,8 +264,8 @@ void lst::static_length_blob_type::accept(type_visitor& visitor) const
 }
 
 lst::dynamic_length_blob_type::dynamic_length_blob_type(
-		unsigned int in_alignment, std::string in_length_field_name) :
-	type(in_alignment), length_field_name{std::move(in_length_field_name)}
+		unsigned int in_alignment, lst::field_location in_length_field_location) :
+	type(in_alignment), length_field_location{std::move(in_length_field_location)}
 {
 }
 
@@ -261,7 +273,7 @@ bool lst::dynamic_length_blob_type::_is_equal(const type& base_other) const noex
 {
 	const auto& other = dynamic_cast<decltype(*this)&>(base_other);
 
-	return length_field_name == other.length_field_name;
+	return length_field_location == other.length_field_location;
 }
 
 void lst::dynamic_length_blob_type::accept(type_visitor& visitor) const
@@ -301,8 +313,9 @@ void lst::static_length_string_type::accept(type_visitor& visitor) const
 
 lst::dynamic_length_string_type::dynamic_length_string_type(unsigned int in_alignment,
 		enum encoding in_encoding,
-		std::string in_length_field_name) :
-	string_type(in_alignment, in_encoding), length_field_name{std::move(in_length_field_name)}
+		field_location in_length_field_location) :
+	string_type(in_alignment, in_encoding),
+	length_field_location{std::move(in_length_field_location)}
 {
 }
 
@@ -311,7 +324,7 @@ bool lst::dynamic_length_string_type::_is_equal(const type& base_other) const no
 	const auto& other = static_cast<decltype(*this)&>(base_other);
 
 	return string_type::_is_equal(base_other) &&
-			this->length_field_name == other.length_field_name;
+			this->length_field_location == other.length_field_location;
 }
 
 void lst::dynamic_length_string_type::accept(type_visitor& visitor) const
@@ -348,11 +361,12 @@ void lst::structure_type::accept(type_visitor& visitor) const
 }
 
 lst::variant_type::variant_type(unsigned int in_alignment,
-		std::string in_tag_name,
+		field_location in_selector_field_location,
 		choices in_choices) :
 	type(in_alignment),
-	tag_name{std::move(in_tag_name)},
-	_choices{std::move(in_choices)}
+	selector_field_location{std::move(in_selector_field_location)},
+	_choices
+{std::move(in_choices)}
 {
 }
 
@@ -360,8 +374,10 @@ bool lst::variant_type::_is_equal(const type& base_other) const noexcept
 {
 	const auto &other = static_cast<decltype(*this)&>(base_other);
 
-	return this->tag_name == other.tag_name &&
-			fields_are_equal(this->_choices, other._choices);
+	return this->selector_field_location == other.selector_field_location &&
+			fields_are_equal(this->_choices
+, other._choices
+);
 }
 
 void lst::variant_type::accept(type_visitor& visitor) const

@@ -22,7 +22,8 @@ namespace ust {
 std::vector<trace::field::cuptr> create_trace_fields_from_ust_ctl_fields(
 		const lttng::sessiond::ust::registry_session& session,
 		const lttng_ust_ctl_field *fields,
-		std::size_t field_count);
+		std::size_t field_count,
+		trace::field_location::root lookup_root);
 
 } /* namespace ust */
 } /* namespace sessiond */
