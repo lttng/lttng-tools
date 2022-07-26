@@ -85,9 +85,12 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 
 	if (header_type == lst::stream_class::header_type::COMPACT) {
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
+		lst::unsigned_enumeration_type::mapping compact_mapping{
+				"compact", lst::unsigned_enumeration_type::mapping::range_t(0, 30)};
+		lst::unsigned_enumeration_type::mapping extended_mapping{"extended"};
 
-		enum_mappings->emplace_back("compact", lst::unsigned_enumeration_type::mapping::range_t(0, 30));
-		enum_mappings->emplace_back("extended");
+		enum_mappings->emplace_back(compact_mapping);
+		enum_mappings->emplace_back(extended_mapping);
 
 		lst::type::cuptr choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(1,
 				trace_abi.byte_order, 5, lst::integer_type::base::DECIMAL,
@@ -95,7 +98,8 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 				std::initializer_list<lst::integer_type::role>(
 						{lst::integer_type::role::EVENT_RECORD_CLASS_ID}));
 
-		lst::variant_type::choices variant_choices;
+		lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::
+				choices variant_choices;
 
 		lst::structure_type::fields compact_fields;
 		compact_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
@@ -106,9 +110,9 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 										role>({lst::integer_type::role::
 										DEFAULT_CLOCK_TIMESTAMP}))));
 
-		lst::type::cuptr compact = lttng::make_unique<lst::structure_type>(
+		auto compact_type = lttng::make_unique<lst::structure_type>(
 				0, std::move(compact_fields));
-		variant_choices.emplace_back(lttng::make_unique<lst::field>("compact", std::move(compact)));
+		variant_choices.emplace_back(std::move(compact_mapping), std::move(compact_type));
 
 		lst::structure_type::fields extended_fields;
 		extended_fields.emplace_back(lttng::make_unique<lst::field>("id",
@@ -128,10 +132,12 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 										role>({lst::integer_type::role::
 										DEFAULT_CLOCK_TIMESTAMP}))));
 
-		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
-		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
+		lst::type::cuptr extended_type = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
+		variant_choices.emplace_back(std::move(extended_mapping), std::move(extended_type));
 
-		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(0,
+		auto variant = lttng::make_unique<lst::variant_type<
+				lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>>(
+				0,
 				lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
 						{"id"}),
 				std::move(variant_choices));
@@ -141,17 +147,20 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 				lttng::make_unique<lst::field>("v", std::move(variant)));
 	} else {
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
+		lst::unsigned_enumeration_type::mapping compact_mapping{"compact",
+				lst::unsigned_enumeration_type::mapping::range_t(0, 65534)};
+		lst::unsigned_enumeration_type::mapping extended_mapping{"extended"};
+		enum_mappings->emplace_back(compact_mapping);
+		enum_mappings->emplace_back(extended_mapping);
 
-		enum_mappings->emplace_back("compact", lst::unsigned_enumeration_type::mapping::range_t(0, 65534));
-		enum_mappings->emplace_back("extended");
-
-		lst::type::cuptr choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(
+		auto choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(
 				trace_abi.uint16_t_alignment, trace_abi.byte_order, 16,
 				lst::integer_type::base::DECIMAL, std::move(enum_mappings),
 				std::initializer_list<lst::integer_type::role>(
 						{lst::integer_type::role::EVENT_RECORD_CLASS_ID}));
 
-		lst::variant_type::choices variant_choices;
+		lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::
+				choices variant_choices;
 
 		lst::structure_type::fields compact_fields;
 		compact_fields.emplace_back(lttng::make_unique<lst::field>("timestamp",
@@ -163,10 +172,9 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 										role>({lst::integer_type::role::
 										DEFAULT_CLOCK_TIMESTAMP}))));
 
-		lst::type::cuptr compact = lttng::make_unique<lst::structure_type>(
+		lst::type::cuptr compact_type = lttng::make_unique<lst::structure_type>(
 				0, std::move(compact_fields));
-		variant_choices.emplace_back(
-				lttng::make_unique<lst::field>("compact", std::move(compact)));
+		variant_choices.emplace_back(std::move(compact_mapping), std::move(compact_type));
 
 		lst::structure_type::fields extended_fields;
 		extended_fields.emplace_back(lttng::make_unique<lst::field>("id",
@@ -186,15 +194,19 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi, lst::stream_clas
 										role>({lst::integer_type::role::
 										DEFAULT_CLOCK_TIMESTAMP}))));
 
-		lst::type::cuptr extended = lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
-		variant_choices.emplace_back(lttng::make_unique<lst::field>("extended", std::move(extended)));
+		auto extended_type = lttng::make_unique<lst::structure_type>(
+				0, std::move(extended_fields));
+		variant_choices.emplace_back(std::move(extended_mapping), std::move(extended_type));
 
-		lst::type::cuptr variant = lttng::make_unique<lst::variant_type>(0,
+		auto variant = lttng::make_unique<lst::variant_type<
+				lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>>(
+				0,
 				lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
 						{"id"}),
 				std::move(variant_choices));
 
-		event_header_fields.emplace_back(lttng::make_unique<lst::field>("id", std::move(choice_enum)));
+		event_header_fields.emplace_back(
+				lttng::make_unique<lst::field>("id", std::move(choice_enum)));
 		event_header_fields.emplace_back(
 				lttng::make_unique<lst::field>("v", std::move(variant)));
 	}

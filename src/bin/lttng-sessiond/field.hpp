@@ -12,6 +12,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -77,14 +78,20 @@ private:
 
 class field {
 public:
+	using uptr = std::unique_ptr<field>;
 	using cuptr = std::unique_ptr<const field>;
 
 	field(std::string name, type::cuptr type);
 	void accept(field_visitor& visitor) const;
 	bool operator==(const field& other) const noexcept;
 
+	const type& get_type() const;
+	type::cuptr move_type() noexcept;
+
 	const std::string name;
-	const type::cuptr _type;
+
+private:
+	type::cuptr _type;
 };
 
 class integer_type : public type {
@@ -198,7 +205,7 @@ class enumeration_mapping {
 public:
 	using range_t = enumeration_mapping_range<MappingIntegerType>;
 
-	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = delete;
+	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = default;
 	enumeration_mapping(const enumeration_mapping<MappingIntegerType>&& other) :
 		name{std::move(other.name)}, range{other.range}
 	{
@@ -406,22 +413,57 @@ private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
 };
 
+template <class MappingIntegerType>
 class variant_type : public type {
-public:
-	using choices = std::vector<field::cuptr>;
+	static_assert(std::is_same<MappingIntegerType,
+					unsigned_enumeration_type::mapping::range_t::
+							range_integer_t>::value ||
+					std::is_same<MappingIntegerType,
+							signed_enumeration_type::mapping::range_t::
+									range_integer_t>::value,
+			"Variant mapping integer type must be one of those allowed by typed_enumeration_type");
 
-	variant_type(unsigned int alignment,
-			field_location selector_field_location,
-			choices in_choices);
+public:
+	using choice = std::pair<const details::enumeration_mapping<MappingIntegerType>, type::cuptr>;
+	using choices = std::vector<choice>;
+
+	variant_type(unsigned int in_alignment,
+			field_location in_selector_field_location,
+			choices in_choices) :
+		type(in_alignment),
+		selector_field_location{std::move(in_selector_field_location)},
+		_choices{std::move(in_choices)}
+	{
+	}
 
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const field_location selector_field_location;
 	const choices _choices;
-;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	static bool _choices_are_equal(const choices& a, const choices& b)
+	{
+		if (a.size() != b.size()) {
+			return false;
+		}
+
+		return true;
+
+		return std::equal(a.cbegin(), a.cend(), b.cbegin(),
+				[](const choice& choice_a, const choice& choice_b) {
+					return choice_a.first == choice_b.first &&
+						*choice_a.second == *choice_b.second;
+				});
+	}
+
+	virtual bool _is_equal(const type& base_other) const noexcept override final
+	{
+		const auto& other = static_cast<decltype(*this)&>(base_other);
+
+		return selector_field_location == other.selector_field_location &&
+				_choices_are_equal(_choices, other._choices);
+	}
 };
 
 class field_visitor {
@@ -448,7 +490,8 @@ public:
 	virtual void visit(const static_length_string_type& type) = 0;
 	virtual void visit(const dynamic_length_string_type& type) = 0;
 	virtual void visit(const structure_type& type) = 0;
-	virtual void visit(const variant_type& type) = 0;
+	virtual void visit(const variant_type<signed_enumeration_type::mapping::range_t::range_integer_t>& type) = 0;
+	virtual void visit(const variant_type<unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) = 0;
 
 protected:
 	type_visitor() = default;

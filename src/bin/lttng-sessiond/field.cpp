@@ -66,6 +66,9 @@ bool lst::type::operator!=(const lst::type& other) const noexcept
 lst::field::field(std::string in_name, lst::type::cuptr in_type) :
 	name{std::move(in_name)}, _type{std::move(in_type)}
 {
+	if (!_type) {
+		LTTNG_THROW_ERROR(fmt::format("Invalid type used to create field: field name = `{}`", name));
+	}
 }
 
 void lst::field::accept(lst::field_visitor& visitor) const
@@ -76,6 +79,20 @@ void lst::field::accept(lst::field_visitor& visitor) const
 bool lst::field::operator==(const lst::field& other) const noexcept
 {
 	return name == other.name && *_type == *other._type;
+}
+
+lst::type::cuptr lst::field::move_type() noexcept
+{
+	return std::move(_type);
+}
+
+const lst::type &lst::field::get_type() const
+{
+	if (_type) {
+		return *_type;
+	} else {
+		LTTNG_THROW_ERROR(fmt::format("Invalid attempt to access field type after transfer: field name = `{}`", name));
+	}
 }
 
 lst::integer_type::integer_type(unsigned int in_alignment,
@@ -191,6 +208,20 @@ void lst::unsigned_enumeration_type::accept(type_visitor& visitor) const
 } /* namespace trace */
 } /* namespace sessiond */
 } /* namespace lttng */
+
+template <>
+void lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>::accept(
+		lst::type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
+template <>
+void lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::accept(
+		lst::type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
 
 lst::array_type::array_type(unsigned int in_alignment, type::cuptr in_element_type) :
 	type(in_alignment), element_type{std::move(in_element_type)}
@@ -356,31 +387,6 @@ bool lst::structure_type::_is_equal(const type& base_other) const noexcept
 }
 
 void lst::structure_type::accept(type_visitor& visitor) const
-{
-	visitor.visit(*this);
-}
-
-lst::variant_type::variant_type(unsigned int in_alignment,
-		field_location in_selector_field_location,
-		choices in_choices) :
-	type(in_alignment),
-	selector_field_location{std::move(in_selector_field_location)},
-	_choices
-{std::move(in_choices)}
-{
-}
-
-bool lst::variant_type::_is_equal(const type& base_other) const noexcept
-{
-	const auto &other = static_cast<decltype(*this)&>(base_other);
-
-	return this->selector_field_location == other.selector_field_location &&
-			fields_are_equal(this->_choices
-, other._choices
-);
-}
-
-void lst::variant_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
 }

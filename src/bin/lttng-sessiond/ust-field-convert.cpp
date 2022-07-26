@@ -38,7 +38,7 @@ public:
 };
 
 /* Used to publish fields on which a field being decoded has an implicit dependency. */
-using publish_field_fn = std::function<void(lst::field::cuptr)>;
+using publish_field_fn = std::function<void(lst::field::uptr)>;
 
 /* Look-up field from a field location. */
 using lookup_field_fn = std::function<const lst::field &(const lst::field_location &)>;
@@ -510,7 +510,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 	/* Validate existence of length field (throws if not found). */
 	const auto &length_field = lookup_field(length_field_location);
 	const auto *integer_selector_field =
-			dynamic_cast<const lst::integer_type *>(length_field._type.get());
+			dynamic_cast<const lst::integer_type *>(&length_field.get_type());
 	if (!integer_selector_field) {
 		LTTNG_THROW_PROTOCOL_ERROR("Invalid selector field type referenced from sequence: expected integer or enumeration");
 	}
@@ -567,6 +567,57 @@ lst::type::cuptr create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_
 	return lttng::make_unique<lst::structure_type>(alignment, lst::structure_type::fields());
 }
 
+template <class VariantSelectorMappingIntegerType>
+typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_typed_variant_choices(
+		const lttng_ust_ctl_field *current,
+		const lttng_ust_ctl_field *end,
+		const session_attributes& session_attributes,
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lookup_field_fn lookup_field,
+		lst::field_location::root lookup_root,
+		lst::field_location::elements& current_field_location_elements,
+		unsigned int choice_count,
+		const lst::field& selector_field)
+{
+	typename lst::variant_type<VariantSelectorMappingIntegerType>::choices choices;
+	const auto& typed_enumeration = static_cast<
+			const lst::typed_enumeration_type<VariantSelectorMappingIntegerType>&>(
+			selector_field.get_type());
+
+	for (unsigned int i = 0; i < choice_count; i++) {
+		create_field_from_ust_ctl_fields(
+				current, end, session_attributes, next_ust_ctl_field,
+				[&choices, typed_enumeration, &selector_field](
+						lst::field::uptr field) {
+					/*
+					 * Find the enumeration mapping that matches the
+					 * field's name.
+					 */
+					const auto mapping_it = std::find_if(
+							typed_enumeration._mappings->begin(),
+							typed_enumeration._mappings->end(),
+							[&field](const typename std::remove_reference<
+									decltype(typed_enumeration)>::type::
+											mapping& mapping) {
+								return mapping.name == field->name;
+							});
+
+					if (mapping_it == typed_enumeration._mappings->end()) {
+						LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+								"Invalid variant choice: `{}` does not match any mapping in `{}` enumeration",
+								field->name, selector_field.name));
+					}
+
+					choices.emplace_back(*mapping_it, field->move_type());
+				},
+				lookup_field, lookup_root, current_field_location_elements);
+
+		current = *next_ust_ctl_field;
+	}
+
+	return choices;
+}
+
 lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
@@ -607,27 +658,37 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 
 	/* Validate existence of selector field (throws if not found). */
 	const auto &selector_field = lookup_field(selector_field_location);
-	const auto *integer_selector_field = dynamic_cast<const lst::integer_type *>(selector_field._type.get());
-	if (!integer_selector_field) {
-		LTTNG_THROW_PROTOCOL_ERROR("Invalid selector field type referenced from variant: expected integer or enumeration");
+	const auto *enumeration_selector_type =
+			dynamic_cast<const lst::enumeration_type *>(&selector_field.get_type());
+	if (!enumeration_selector_type) {
+		LTTNG_THROW_PROTOCOL_ERROR("Invalid selector field type referenced from variant: expected enumeration");
 	}
+
+	const bool selector_is_signed = enumeration_selector_type->signedness_ ==
+			lst::integer_type::signedness::SIGNED;
 
 	/* Choices follow. next_ust_ctl_field is updated as needed. */
-	lst::variant_type::choices choices;
-	for (unsigned int i = 0; i < choice_count; i++) {
-		create_field_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field,
-				[&choices](lst::field::cuptr field) {
-					choices.emplace_back(std::move(field));
-				},
-				lookup_field,
-				lookup_root, current_field_location_elements);
+	if (selector_is_signed) {
+		lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>::
+				choices choices = create_typed_variant_choices<int64_t>(current,
+						end, session_attributes, next_ust_ctl_field,
+						lookup_field, lookup_root,
+						current_field_location_elements, choice_count,
+						selector_field);
 
-		current = *next_ust_ctl_field;
+		return lttng::make_unique<lst::variant_type<int64_t>>(
+				alignment, std::move(selector_field_location), std::move(choices));
+	} else {
+		lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::
+				choices choices = create_typed_variant_choices<uint64_t>(current,
+						end, session_attributes, next_ust_ctl_field,
+						lookup_field, lookup_root,
+						current_field_location_elements, choice_count,
+						selector_field);
+
+		return lttng::make_unique<lst::variant_type<uint64_t>>(
+				alignment, std::move(selector_field_location), std::move(choices));
 	}
-
-	return lttng::make_unique<lst::variant_type>(
-			alignment, std::move(selector_field_location), std::move(choices));
 }
 
 lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,

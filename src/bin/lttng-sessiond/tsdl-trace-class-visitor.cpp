@@ -146,7 +146,7 @@ private:
 		_current_field_name.push(_bypass_identifier_escape ?
 				field.name : escape_tsdl_identifier(field.name));
 
-		field._type->accept(*this);
+		field.get_type().accept(*this);
 		_description += " ";
 		_description += _current_field_name.top();
 		_current_field_name.pop();
@@ -411,7 +411,8 @@ private:
 		_description += "}";
 	}
 
-	virtual void visit(const lst::variant_type& type) override final
+	template <class MappingIntegerType>
+	void visit_variant(const lst::variant_type<MappingIntegerType>& type)
 	{
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
@@ -438,8 +439,8 @@ private:
 		_bypass_identifier_escape = true;
 		for (const auto& field : type._choices) {
 			_description.resize(_description.size() + _indentation_level, '\t');
-			field->accept(*this);
-			_description += fmt::format("\n", field->name);
+			field.second->accept(*this);
+			_description += fmt::format(" {};\n", field.first.name);
 		}
 
 		_bypass_identifier_escape = previous_bypass_identifier_escape;
@@ -447,6 +448,16 @@ private:
 		_indentation_level--;
 		_description.resize(_description.size() + _indentation_level, '\t');
 		_description += "}";
+	}
+
+	virtual void visit(const lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	{
+		visit_variant(type);
+	}
+
+	virtual void visit(const lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	{
+		visit_variant(type);
 	}
 
 	lst::type::cuptr create_character_type(enum lst::string_type::encoding encoding)
