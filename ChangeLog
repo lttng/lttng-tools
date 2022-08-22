@@ -1,3 +1,32 @@
+2022-08-22 lttng-tools 2.13.8 (National Bao Day)
+	* Fix: waiter: futex wait: handle spurious futex wakeups
+	* Fix: futex wait: handle spurious futex wakeups
+	* Fix: utils: unhandled close return value
+	* Fix: agent port file is o+w when launching as root
+	* Fix: tests: don't assume sequential cpuids
+	* Fix: sessiond: handle empty scheduled rotations
+	* Fix: sessiond: report client list allocation failure as a fatal error
+	* Fix: ust-consumerd: set `hangup_flush_done` in a locked context
+	* Fix: sessiond: size-based rotations never trigger
+	* Fix: lttng-snapshot: use after free of max size argument
+	* Fix: lttng: snapshot: add-output: leak of max size parameter
+	* Tests: fix: lttng-create: leaked command parameter
+	* Fix: sessiond: rotation trigger leak
+	* Tests: fix: schedule api: leak of rotation schedule list
+	* Fix: lttng: enable-rotation: leak of command parameter
+	* Fix: lttng: track: leaked command parameter
+	* Fix: lttng: add-trigger: leak of parser context on capture
+	* Tests: fix: leak of trigger in trigger listing tests
+	* Fix: action error query: leak of action path
+	* Fix: lttng: enable-channel: leak of popt arguments
+	* Tests: clean-up: rate policy: remove stale comment
+	* Tests: fix: leak of rate policy in rate policy unit tests
+	* Tests: fix: leak of payload in serdes test of log level rule
+	* Tests: fix: leak of some attributes of ltt_ust_session
+	* Fix: liblttng-ctl: leak of payload on field listing
+	* Fix: liblttng-ctl: non-packed structure used for tracker serialization
+	* Fix: test: lttng kernel modules still loaded after running test_clock_override
+
 2022-04-13 lttng-tools 2.13.7 (International Day of Pink)
 	* Fix: sessiond: assert on empty payload when handling client out event
 	* Fix: Revert of 814b4934e2604a419bcb8eec57c0450dbb47e2c3
