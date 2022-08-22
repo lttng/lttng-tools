@@ -1,3 +1,23 @@
+2022-08-22 lttng-tools 2.12.12 (National Bao Day)
+	* Fix: waiter: futex wait: handle spurious futex wakeups
+	* Fix: futex wait: handle spurious futex wakeups
+	* Fix: utils: unhandled close return value
+	* Fix: agent port file is o+w when launching as root
+	* Fix: tests: don't assume sequential cpuids
+	* Fix: ust-consumerd: set `hangup_flush_done` in a locked context
+	* Revert "Fix: sessiond: rotation trigger leak"
+	* Fix: lttng-snapshot: use after free of max size argument
+	* Fix: lttng: snapshot: add-output: leak of max size parameter
+	* Tests: fix: lttng-create: leaked command parameter
+	* Fix: sessiond: rotation trigger leak
+	* Tests: fix: schedule api: leak of rotation schedule list
+	* Fix: lttng: enable-rotation: leak of command parameter
+	* Fix: lttng: track: leaked command parameter
+	* Fix: lttng: enable-channel: leak of popt arguments
+	* Tests: fix: leak of some attributes of ltt_ust_session
+	* Fix: liblttng-ctl: non-packed structure used for tracker serialization
+	* Fix: test: lttng kernel modules still loaded after running test_clock_override
+
 2022-04-13 lttng-tools 2.12.11 (International Day of Pink)
 	* Fix: notification: assert on len > 0 for dropped notification message
 	* Fix: sessiond: cmd_enable_channel: negative error code used
