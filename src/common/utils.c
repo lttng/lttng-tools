@@ -240,7 +240,10 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	if (fp == NULL) {
 		PERROR("fdopen file %s", filepath);
 		ret = -1;
-		close(fd);
+		if (close(fd)) {
+			PERROR("Failed to close `%s` file descriptor while handling fdopen error", filepath);
+		}
+
 		goto error;
 	}
 
