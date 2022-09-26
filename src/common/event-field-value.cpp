@@ -183,8 +183,16 @@ struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		goto error;
 	}
 
-	LTTNG_ASSERT(val);
-	field_val->val = strndup(val, size);
+	if (size) {
+		LTTNG_ASSERT(val);
+		field_val->val = strndup(val, size);
+	} else {
+		/*
+		 * User code do not expect a NULL string pointer. Populate with
+		 * an empty string when length is 0.
+		 */
+		field_val->val = strdup("");
+	}
 	if (!field_val->val) {
 		goto error;
 	}
