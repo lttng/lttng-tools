@@ -54,7 +54,7 @@ components:
 
 * **Linux kernel{nbsp}≥{nbsp}2.6.30**
 
-* **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.11.0**.
+* **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.14.0**.
 +
 Debian/Ubuntu package: `liburcu{nbh}dev`.
 
