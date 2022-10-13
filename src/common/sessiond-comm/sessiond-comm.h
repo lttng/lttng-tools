@@ -54,6 +54,7 @@
 #define LTTCOMM_ERR_INDEX(code) (code - LTTCOMM_CONSUMERD_COMMAND_SOCK_READY)
 
 enum lttcomm_sessiond_command {
+	LTTCOMM_SESSIOND_COMMAND_MIN                    = -1,
 	/* Tracer command */
 	LTTNG_ADD_CONTEXT                               = 0,
 	/* LTTNG_CALIBRATE used to be here */
@@ -108,7 +109,14 @@ enum lttcomm_sessiond_command {
 	LTTNG_CLEAR_SESSION                             = 50,
 	LTTNG_LIST_TRIGGERS                             = 51,
 	LTTNG_EXECUTE_ERROR_QUERY                       = 52,
+	LTTCOMM_SESSIOND_COMMAND_MAX,
 };
+
+static inline
+bool lttcomm_sessiond_command_is_valid(enum lttcomm_sessiond_command cmd)
+{
+	return cmd > LTTCOMM_SESSIOND_COMMAND_MIN && cmd < LTTCOMM_SESSIOND_COMMAND_MAX;
+}
 
 static inline
 const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_command cmd)
