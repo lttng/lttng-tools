@@ -1003,6 +1003,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	bool need_domain;
 	bool need_consumerd;
 
+	if (!lttcomm_sessiond_command_is_valid((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type)) {
+		ERR("Unknown client command received: command id = %" PRIu32,
+				cmd_ctx->lsm.cmd_type);
+		ret = LTTNG_ERR_UND;
+		goto error;
+	}
+
 	DBG("Processing client command '%s\' (%d)",
 		lttcomm_sessiond_command_str((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type),
 		cmd_ctx->lsm.cmd_type);
