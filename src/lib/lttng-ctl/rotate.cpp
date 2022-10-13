@@ -33,7 +33,7 @@ enum lttng_rotation_status ask_rotation_info(
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ROTATION_GET_INFO;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_ROTATION_GET_INFO;
 	lsm.u.get_rotation_info.rotation_id = rotation_handle->rotation_id;
 
 	ret = lttng_strncpy(lsm.session.name, rotation_handle->session_name,
@@ -217,7 +217,7 @@ int lttng_rotate_session(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ROTATE_SESSION;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_ROTATE_SESSION;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
@@ -283,7 +283,7 @@ enum lttng_rotation_status lttng_rotation_update_schedule(
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ROTATION_SET_SCHEDULE;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_ROTATION_SET_SCHEDULE;
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 	/* Source length already validated. */
@@ -376,7 +376,7 @@ int get_schedules(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SESSION_LIST_ROTATION_SCHEDULES;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SESSION_LIST_ROTATION_SCHEDULES;
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 	if (ret) {

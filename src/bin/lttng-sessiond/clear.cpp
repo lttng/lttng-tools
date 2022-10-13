@@ -35,7 +35,7 @@ void cmd_clear_session_reply(const struct ltt_session *session,
 	const struct cmd_clear_session_reply_context *reply_context =
 			(cmd_clear_session_reply_context *) _reply_context;
 	struct lttcomm_lttng_msg llm = {
-		.cmd_type = LTTNG_CLEAR_SESSION,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION,
 		.ret_code = LTTNG_OK,
 		.pid = UINT32_MAX,
 		.cmd_header_size = 0,

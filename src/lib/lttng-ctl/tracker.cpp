@@ -102,7 +102,7 @@ lttng_process_attr_tracker_handle_get_tracking_policy(
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_PROCESS_ATTR_TRACKER_GET_POLICY,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_POLICY,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -153,7 +153,7 @@ lttng_process_attr_tracker_handle_set_tracking_policy(
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_PROCESS_ATTR_TRACKER_SET_POLICY,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_SET_POLICY,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -205,7 +205,7 @@ end:
 		enum lttng_process_attr_tracker_handle_status status =                                               \
 				LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;                                         \
 		struct lttcomm_session_msg lsm = {                                                                   \
-			.cmd_type = LTTNG_PROCESS_ATTR_TRACKER_##command_upper##_INCLUDE_VALUE,                      \
+			.cmd_type = LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_##command_upper##_INCLUDE_VALUE,                      \
 			.session = {},                                                                               \
 			.domain = {},                                                                                \
 			.u = {},                                                                                     \
@@ -273,7 +273,7 @@ end:
 		enum lttng_process_attr_tracker_handle_status status =                                               \
 				LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;                                         \
 		struct lttcomm_session_msg lsm = {                                                                   \
-			.cmd_type = LTTNG_PROCESS_ATTR_TRACKER_##command_upper##_INCLUDE_VALUE,                      \
+			.cmd_type = LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_##command_upper##_INCLUDE_VALUE,                      \
 			.session = {},                                                                               \
 			.domain = {},                                                                                \
 			.u = {},                                                                                     \
@@ -392,7 +392,7 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET,
 		.session = {},
 		.domain = {},
 		.u = {},

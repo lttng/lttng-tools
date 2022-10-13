@@ -207,7 +207,7 @@ int lttng_save_session(struct lttng_save_session_attr *attr)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SAVE_SESSION;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION;
 
 	memcpy(&lsm.u.save_session.attr, attr,
 		sizeof(struct lttng_save_session_attr));

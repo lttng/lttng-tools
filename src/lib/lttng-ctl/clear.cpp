@@ -282,7 +282,7 @@ enum lttng_error_code lttng_clear_session(const char *session_name,
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_clear_handle *handle = NULL;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_CLEAR_SESSION,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION,
 		.session = {},
 		.domain = {},
 		.u = {},

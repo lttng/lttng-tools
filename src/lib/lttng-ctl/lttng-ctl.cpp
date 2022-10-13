@@ -779,7 +779,7 @@ int lttng_register_consumer(struct lttng_handle *handle,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER;
 	ret = lttng_strncpy(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 	if (ret) {
@@ -817,7 +817,7 @@ int lttng_start_tracing(const char *session_name)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_START_TRACE;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_START_TRACE;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
@@ -845,7 +845,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_STOP_TRACE;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_STOP_TRACE;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
@@ -917,7 +917,7 @@ int lttng_add_context(struct lttng_handle *handle,
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_ADD_CONTEXT,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_ADD_CONTEXT,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -1091,7 +1091,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_ENABLE_EVENT,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -1276,7 +1276,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 		const char *original_filter_expression)
 {
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_DISABLE_EVENT,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -1591,7 +1591,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	/* Prepare the payload */
 	memset(&lsm, 0, sizeof(lsm));
 
-	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_strncpy(lsm.session.name, handle->session_name,
@@ -1633,7 +1633,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	lsm.cmd_type = LTTNG_DISABLE_CHANNEL;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL;
 
 	ret = lttng_strncpy(lsm.u.disable.channel_name, name,
 			sizeof(lsm.u.disable.channel_name));
@@ -1669,7 +1669,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
         int ret, total_payload_received;
         char *reception_buffer = NULL;
         struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_LIST_TRACEPOINTS,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -1755,7 +1755,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	{
@@ -1833,7 +1833,7 @@ int lttng_list_syscalls(struct lttng_event **events)
                 goto end;
         }
 
-        lsm.cmd_type = LTTNG_LIST_SYSCALLS;
+        lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS;
         /* Force kernel domain for system calls. */
         lsm.domain.type = LTTNG_DOMAIN_KERNEL;
 
@@ -1899,7 +1899,7 @@ enum lttng_error_code lttng_create_session_ext(
 {
 	enum lttng_error_code ret_code;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_CREATE_SESSION_EXT,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -2219,7 +2219,7 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 	struct lttng_session *sessions = NULL;
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_LIST_SESSIONS;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS;
 	/*
 	 * Initialize out_sessions to NULL so it is initialized when
 	 * lttng_list_sessions returns 0, thus allowing *out_sessions to
@@ -2292,7 +2292,7 @@ int lttng_set_session_shm_path(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SET_SESSION_SHM_PATH;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -2331,7 +2331,7 @@ int lttng_list_domains(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_LIST_DOMAINS;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -2374,7 +2374,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_LIST_CHANNELS;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_CHANNELS;
 	ret = lttng_strncpy(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 	if (ret) {
@@ -2455,7 +2455,7 @@ int lttng_list_events(struct lttng_handle *handle,
 	}
 
 	/* Initialize command parameters. */
-	lsm.cmd_type = LTTNG_LIST_EVENTS;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS;
 	ret = lttng_strncpy(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 	if (ret) {
@@ -2825,7 +2825,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	lsm.cmd_type = LTTNG_SET_CONSUMER_URI;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SET_CONSUMER_URI;
 
 	ret = lttng_strncpy(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -2901,7 +2901,7 @@ int lttng_data_pending(const char *session_name)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_DATA_PENDING;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_DATA_PENDING;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -2944,7 +2944,7 @@ int lttng_regenerate_metadata(const char *session_name)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_REGENERATE_METADATA;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -2986,7 +2986,7 @@ int lttng_regenerate_statedump(const char *session_name)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_REGENERATE_STATEDUMP;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -3011,7 +3011,7 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_REGISTER_TRIGGER,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -3187,7 +3187,7 @@ enum lttng_error_code lttng_error_query_execute(
 	int ret;
 	enum lttng_error_code ret_code;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_EXECUTE_ERROR_QUERY,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY,
 		.session = {},
 		.domain = {},
 		.u = {},
@@ -3318,7 +3318,7 @@ int lttng_unregister_trigger(const struct lttng_trigger *trigger)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER;
 
 	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
 	if (ret) {
@@ -3377,7 +3377,7 @@ enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttcomm_session_msg lsm = {
-		.cmd_type = LTTNG_LIST_TRIGGERS,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS,
 		.session = {},
 		.domain = {},
 		.u = {},

@@ -3316,7 +3316,7 @@ void cmd_destroy_session_reply(const struct ltt_session *session,
 	struct lttcomm_session_destroy_command_header cmd_header;
 	struct lttng_trace_archive_location *location = NULL;
 	struct lttcomm_lttng_msg llm = {
-		.cmd_type = LTTNG_DESTROY_SESSION,
+		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION,
 		.ret_code = reply_context->destruction_status,
 		.pid = UINT32_MAX,
 		.cmd_header_size =

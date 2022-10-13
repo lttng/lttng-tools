@@ -33,7 +33,7 @@ int lttng_snapshot_add_output(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SNAPSHOT_ADD_OUTPUT;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_ADD_OUTPUT;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -74,7 +74,7 @@ int lttng_snapshot_del_output(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SNAPSHOT_DEL_OUTPUT;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
@@ -111,7 +111,7 @@ int lttng_snapshot_list_output(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SNAPSHOT_LIST_OUTPUT;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			    sizeof(lsm.session.name));
@@ -208,7 +208,7 @@ int lttng_snapshot_record(const char *session_name,
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_SNAPSHOT_RECORD;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD;
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));

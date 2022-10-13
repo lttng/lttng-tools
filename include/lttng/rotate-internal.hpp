@@ -70,12 +70,12 @@ struct lttng_rotation_schedules {
  * are then copied to the user's lttng_rotation_handle object.
  */
 
-/* For the LTTNG_ROTATE_SESSION command. */
+/* For the LTTCOMM_SESSIOND_COMMAND_ROTATE_SESSION command. */
 struct lttng_rotate_session_return {
 	uint64_t rotation_id;
 } LTTNG_PACKED;
 
-/* For the LTTNG_ROTATION_GET_INFO command. */
+/* For the LTTCOMM_SESSIOND_COMMAND_ROTATION_GET_INFO command. */
 struct lttng_rotation_get_info_return {
 	/* Represents values defined in enum lttng_rotation_state. */
 	int32_t status;

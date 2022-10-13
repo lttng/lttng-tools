@@ -772,9 +772,9 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	struct lttng_event_exclusion *local_exclusion = NULL;
 
 	lttng_payload_init(&event_payload);
-	if (cmd_ctx->lsm.cmd_type == LTTNG_ENABLE_EVENT) {
+	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT) {
 		event_len = (size_t) cmd_ctx->lsm.u.enable.length;
-	} else if (cmd_ctx->lsm.cmd_type == LTTNG_DISABLE_EVENT) {
+	} else if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT) {
 		event_len = (size_t) cmd_ctx->lsm.u.disable.length;
 	} else {
 		abort();
@@ -1017,28 +1017,28 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	*sock_error = 0;
 
 	switch (cmd_ctx->lsm.cmd_type) {
-	case LTTNG_CREATE_SESSION_EXT:
-	case LTTNG_DESTROY_SESSION:
-	case LTTNG_LIST_SESSIONS:
-	case LTTNG_LIST_DOMAINS:
-	case LTTNG_START_TRACE:
-	case LTTNG_STOP_TRACE:
-	case LTTNG_DATA_PENDING:
-	case LTTNG_SNAPSHOT_ADD_OUTPUT:
-	case LTTNG_SNAPSHOT_DEL_OUTPUT:
-	case LTTNG_SNAPSHOT_LIST_OUTPUT:
-	case LTTNG_SNAPSHOT_RECORD:
-	case LTTNG_SAVE_SESSION:
-	case LTTNG_SET_SESSION_SHM_PATH:
-	case LTTNG_REGENERATE_METADATA:
-	case LTTNG_REGENERATE_STATEDUMP:
-	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATION_GET_INFO:
-	case LTTNG_ROTATION_SET_SCHEDULE:
-	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
-	case LTTNG_CLEAR_SESSION:
-	case LTTNG_LIST_TRIGGERS:
-	case LTTNG_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
+	case LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
+	case LTTCOMM_SESSIOND_COMMAND_START_TRACE:
+	case LTTCOMM_SESSIOND_COMMAND_STOP_TRACE:
+	case LTTCOMM_SESSIOND_COMMAND_DATA_PENDING:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_ADD_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
+	case LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH:
+	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA:
+	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATION_GET_INFO:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATION_SET_SCHEDULE:
+	case LTTCOMM_SESSIOND_COMMAND_SESSION_LIST_ROTATION_SCHEDULES:
+	case LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
+	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 		need_domain = false;
 		break;
 	default:
@@ -1047,9 +1047,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 
 	/* Needs a functioning consumerd? */
 	switch (cmd_ctx->lsm.cmd_type) {
-	case LTTNG_REGISTER_TRIGGER:
-	case LTTNG_UNREGISTER_TRIGGER:
-	case LTTNG_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 		need_consumerd = false;
 		break;
 	default:
@@ -1068,7 +1068,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	}
 
 	/* Deny register consumer if we already have a spawned consumer. */
-	if (cmd_ctx->lsm.cmd_type == LTTNG_REGISTER_CONSUMER) {
+	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 		pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
 		if (the_kconsumer_data.pid > 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
@@ -1084,22 +1084,22 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	 * command.
 	 */
 	switch(cmd_ctx->lsm.cmd_type) {
-	case LTTNG_LIST_SESSIONS:
-	case LTTNG_LIST_TRACEPOINTS:
-	case LTTNG_LIST_TRACEPOINT_FIELDS:
-	case LTTNG_LIST_DOMAINS:
-	case LTTNG_LIST_CHANNELS:
-	case LTTNG_LIST_EVENTS:
-	case LTTNG_LIST_SYSCALLS:
-	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
-	case LTTNG_PROCESS_ATTR_TRACKER_GET_POLICY:
-	case LTTNG_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
-	case LTTNG_DATA_PENDING:
-	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATION_GET_INFO:
-	case LTTNG_REGISTER_TRIGGER:
-	case LTTNG_LIST_TRIGGERS:
-	case LTTNG_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_CHANNELS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS:
+	case LTTCOMM_SESSIOND_COMMAND_SESSION_LIST_ROTATION_SCHEDULES:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_POLICY:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
+	case LTTCOMM_SESSIOND_COMMAND_DATA_PENDING:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATION_GET_INFO:
+	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
+	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -1112,16 +1112,16 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm.cmd_type) {
-	case LTTNG_CREATE_SESSION_EXT:
-	case LTTNG_LIST_SESSIONS:
-	case LTTNG_LIST_TRACEPOINTS:
-	case LTTNG_LIST_SYSCALLS:
-	case LTTNG_LIST_TRACEPOINT_FIELDS:
-	case LTTNG_SAVE_SESSION:
-	case LTTNG_REGISTER_TRIGGER:
-	case LTTNG_UNREGISTER_TRIGGER:
-	case LTTNG_LIST_TRIGGERS:
-	case LTTNG_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS:
+	case LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
+	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 		need_tracing_session = false;
 		break;
 	default:
@@ -1150,8 +1150,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	 * code path.
 	 */
 	switch (cmd_ctx->lsm.cmd_type) {
-	case LTTNG_DISABLE_CHANNEL:
-	case LTTNG_DISABLE_EVENT:
+	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:
+	case LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT:
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
 			if (!cmd_ctx->session->kernel_session) {
@@ -1219,7 +1219,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
 			if (the_kconsumer_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 				ret = start_consumerd(&the_kconsumer_data);
 				if (ret < 0) {
@@ -1281,7 +1281,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			pthread_mutex_lock(&the_ustconsumer64_data.pid_mutex);
 			if (the_config.consumerd64_bin_path.value &&
 					the_ustconsumer64_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer64_data);
 				if (ret < 0) {
@@ -1310,7 +1310,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			pthread_mutex_lock(&the_ustconsumer32_data.pid_mutex);
 			if (the_config.consumerd32_bin_path.value &&
 					the_ustconsumer32_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
+					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer32_data);
 				if (ret < 0) {
@@ -1343,8 +1343,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 skip_domain:
 
 	/* Validate consumer daemon state when start/stop trace command */
-	if (cmd_ctx->lsm.cmd_type == LTTNG_START_TRACE ||
-			cmd_ctx->lsm.cmd_type == LTTNG_STOP_TRACE) {
+	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_START_TRACE ||
+			cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_STOP_TRACE) {
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_NONE:
 			break;
@@ -1399,7 +1399,7 @@ skip_domain:
 
 	/* Process by command type */
 	switch (cmd_ctx->lsm.cmd_type) {
-	case LTTNG_ADD_CONTEXT:
+	case LTTCOMM_SESSIOND_COMMAND_ADD_CONTEXT:
 	{
 		struct lttng_event_context *event_context = NULL;
 		const enum lttng_error_code ret_code =
@@ -1415,26 +1415,26 @@ skip_domain:
 		lttng_event_context_destroy(event_context);
 		break;
 	}
-	case LTTNG_DISABLE_CHANNEL:
+	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:
 	{
 		ret = cmd_disable_channel(cmd_ctx->session, cmd_ctx->lsm.domain.type,
 				cmd_ctx->lsm.u.disable.channel_name);
 		break;
 	}
-	case LTTNG_ENABLE_CHANNEL:
+	case LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL:
 	{
 		ret = cmd_enable_channel(
 				cmd_ctx, *sock, the_kernel_poll_pipe[1]);
 		break;
 	}
-	case LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
-	case LTTNG_PROCESS_ATTR_TRACKER_REMOVE_INCLUDE_VALUE:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_REMOVE_INCLUDE_VALUE:
 	{
 		struct lttng_dynamic_buffer payload;
 		struct lttng_buffer_view payload_view;
 		const bool add_value =
 				cmd_ctx->lsm.cmd_type ==
-				LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE;
+				LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE;
 		const size_t name_len =
 				cmd_ctx->lsm.u.process_attr_tracker_add_remove_include_value
 						.name_len;
@@ -1538,7 +1538,7 @@ skip_domain:
 		lttng_dynamic_buffer_reset(&payload);
 		break;
 	}
-	case LTTNG_PROCESS_ATTR_TRACKER_GET_POLICY:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_POLICY:
 	{
 		enum lttng_tracking_policy tracking_policy;
 		const enum lttng_domain_type domain_type =
@@ -1566,7 +1566,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_PROCESS_ATTR_TRACKER_SET_POLICY:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_SET_POLICY:
 	{
 		const enum lttng_tracking_policy tracking_policy =
 				(enum lttng_tracking_policy) cmd_ctx->lsm.u
@@ -1588,7 +1588,7 @@ skip_domain:
 		}
 		break;
 	}
-	case LTTNG_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
+	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET:
 	{
 		struct lttng_process_attr_values *values;
 		struct lttng_dynamic_buffer reply;
@@ -1626,8 +1626,8 @@ skip_domain:
 		lttng_dynamic_buffer_reset(&reply);
 		break;
 	}
-	case LTTNG_ENABLE_EVENT:
-	case LTTNG_DISABLE_EVENT:
+	case LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT:
+	case LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT:
 	{
 		struct lttng_event *event;
 		char *filter_expression;
@@ -1646,7 +1646,7 @@ skip_domain:
 		 * Ownership of filter_expression, exclusions, and bytecode is
 		 * always transferred.
 		 */
-		ret = cmd_ctx->lsm.cmd_type == LTTNG_ENABLE_EVENT ?
+		ret = cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT ?
 				cmd_enable_event(cmd_ctx, event,
 						filter_expression, exclusions,
 						bytecode,
@@ -1657,7 +1657,7 @@ skip_domain:
 		lttng_event_destroy(event);
 		break;
 	}
-	case LTTNG_LIST_TRACEPOINTS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS:
 	{
 		enum lttng_error_code ret_code;
 		size_t original_payload_size;
@@ -1688,7 +1688,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_TRACEPOINT_FIELDS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS:
 	{
 		enum lttng_error_code ret_code;
 		size_t original_payload_size;
@@ -1719,7 +1719,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_SYSCALLS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS:
 	{
 		enum lttng_error_code ret_code;
 		size_t original_payload_size;
@@ -1747,7 +1747,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_SET_CONSUMER_URI:
+	case LTTCOMM_SESSIOND_COMMAND_SET_CONSUMER_URI:
 	{
 		size_t nb_uri, len;
 		struct lttng_uri *uris;
@@ -1786,7 +1786,7 @@ skip_domain:
 
 		break;
 	}
-	case LTTNG_START_TRACE:
+	case LTTCOMM_SESSIOND_COMMAND_START_TRACE:
 	{
 		/*
 		 * On the first start, if we have a kernel session and we have
@@ -1805,18 +1805,18 @@ skip_domain:
 		ret = cmd_start_trace(cmd_ctx->session);
 		break;
 	}
-	case LTTNG_STOP_TRACE:
+	case LTTCOMM_SESSIOND_COMMAND_STOP_TRACE:
 	{
 		ret = cmd_stop_trace(cmd_ctx->session);
 		break;
 	}
-	case LTTNG_DESTROY_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
 				the_notification_thread_handle, sock);
 		break;
 	}
-	case LTTNG_LIST_DOMAINS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
 	{
 		ssize_t nb_dom;
 		struct lttng_domain *domains = NULL;
@@ -1839,7 +1839,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_CHANNELS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_CHANNELS:
 	{
 		enum lttng_error_code ret_code;
 		size_t original_payload_size;
@@ -1868,7 +1868,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_EVENTS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS:
 	{
 		enum lttng_error_code ret_code;
 		size_t original_payload_size;
@@ -1898,7 +1898,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_SESSIONS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS:
 	{
 		unsigned int nr_sessions;
 		lttng_session *sessions_payload = nullptr;
@@ -1939,7 +1939,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_REGISTER_CONSUMER:
+	case LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER:
 	{
 		struct consumer_data *cdata;
 
@@ -1956,7 +1956,7 @@ skip_domain:
 				cmd_ctx->lsm.u.reg.path, cdata);
 		break;
 	}
-	case LTTNG_DATA_PENDING:
+	case LTTCOMM_SESSIOND_COMMAND_DATA_PENDING:
 	{
 		int pending_ret;
 		uint8_t pending_ret_byte;
@@ -1998,7 +1998,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_SNAPSHOT_ADD_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_ADD_OUTPUT:
 	{
 		uint32_t snapshot_id;
 		struct lttcomm_lttng_output_id reply;
@@ -2022,13 +2022,13 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_SNAPSHOT_DEL_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
 		ret = cmd_snapshot_del_output(cmd_ctx->session, &output);
 		break;
 	}
-	case LTTNG_SNAPSHOT_LIST_OUTPUT:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT:
 	{
 		ssize_t nb_output;
 		struct lttng_snapshot_output *outputs = NULL;
@@ -2051,14 +2051,14 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_SNAPSHOT_RECORD:
+	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
 		ret = cmd_snapshot_record(cmd_ctx->session,
 				&output, 0); // RFC: set to zero since it's ignored by cmd_snapshot_record
 		break;
 	}
-	case LTTNG_CREATE_SESSION_EXT:
+	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
 	{
 		struct lttng_dynamic_buffer payload;
 		struct lttng_session_descriptor *return_descriptor = NULL;
@@ -2089,29 +2089,29 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_SAVE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION:
 	{
 		ret = cmd_save_sessions(&cmd_ctx->lsm.u.save_session.attr,
 			&cmd_ctx->creds);
 		break;
 	}
-	case LTTNG_SET_SESSION_SHM_PATH:
+	case LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH:
 	{
 		ret = cmd_set_session_shm_path(cmd_ctx->session,
 				cmd_ctx->lsm.u.set_shm_path.shm_path);
 		break;
 	}
-	case LTTNG_REGENERATE_METADATA:
+	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA:
 	{
 		ret = cmd_regenerate_metadata(cmd_ctx->session);
 		break;
 	}
-	case LTTNG_REGENERATE_STATEDUMP:
+	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP:
 	{
 		ret = cmd_regenerate_statedump(cmd_ctx->session);
 		break;
 	}
-	case LTTNG_REGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
 	{
 		struct lttng_trigger *payload_trigger;
 		struct lttng_trigger *return_trigger;
@@ -2162,7 +2162,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_UNREGISTER_TRIGGER:
+	case LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER:
 	{
 		struct lttng_trigger *payload_trigger;
 		const struct lttng_credentials cmd_creds = {
@@ -2181,7 +2181,7 @@ skip_domain:
 		lttng_trigger_put(payload_trigger);
 		break;
 	}
-	case LTTNG_ROTATE_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATE_SESSION:
 	{
 		struct lttng_rotate_session_return rotate_return;
 
@@ -2212,7 +2212,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATION_GET_INFO:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATION_GET_INFO:
 	{
 		struct lttng_rotation_get_info_return get_info_return;
 
@@ -2234,7 +2234,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATION_SET_SCHEDULE:
+	case LTTCOMM_SESSIOND_COMMAND_ROTATION_SET_SCHEDULE:
 	{
 		bool set_schedule;
 		enum lttng_rotation_schedule_type schedule_type;
@@ -2259,7 +2259,7 @@ skip_domain:
 
 		break;
 	}
-	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
+	case LTTCOMM_SESSIOND_COMMAND_SESSION_LIST_ROTATION_SCHEDULES:
 	{
 		lttng_session_list_schedules_return schedules;
 
@@ -2278,12 +2278,12 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_CLEAR_SESSION:
+	case LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION:
 	{
 		ret = cmd_clear_session(cmd_ctx->session, sock);
 		break;
 	}
-	case LTTNG_LIST_TRIGGERS:
+	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	{
 		struct lttng_triggers *return_triggers = NULL;
 		size_t original_payload_size;
@@ -2321,7 +2321,7 @@ skip_domain:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
 	{
 		struct lttng_error_query *query;
 		const struct lttng_credentials cmd_creds = {
