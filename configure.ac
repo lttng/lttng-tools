@@ -160,15 +160,15 @@ AC_PATH_PROG([report_fold], [fold])
 LT_INIT
 
 # Check for objcopy, required by the base address statedump and dynamic linker tests
-AC_CHECK_TOOL([OBJCOPY], [objcopy], [no])
-AS_IF([test "x$OBJCOPY" = "xno"],
+AC_CHECK_TOOL([OBJCOPY], [objcopy])
+AS_IF([test "x$OBJCOPY" = "x"],
 	[AC_MSG_WARN([Cannot find objcopy. The base address statedump and dynamic linker tests will be disabled. Install the binutils package to remediate this.])]
 )
-AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != xno])
+AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != "x"])
 
 # check for pgrep
-AC_PATH_PROG([PGREP], [pgrep], [no])
-AM_CONDITIONAL([HAVE_PGREP], [test "x$PGREP" != "xno"])
+AC_PATH_PROG([PGREP], [pgrep])
+AM_CONDITIONAL([HAVE_PGREP], [test "x$PGREP" != "x"])
 
 # set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
 # is not distributed in tarballs
@@ -660,9 +660,9 @@ if test "x$enable_python_binding" = xyes; then
     AS_IF([test -z "$PYTHON_CONFIG"], [
       AC_PATH_PROGS([PYTHON_CONFIG],
                     [python$PYTHON_VERSION-config python-config],
-                    [no],
+                    [],
                     [`dirname $PYTHON`])
-      AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON. Do you have python-dev installed?])])
+      AS_IF([test "x$PYTHON_CONFIG" = "x"], [AC_MSG_ERROR([cannot find python-config for $PYTHON. Do you have python-dev installed?])])
     ])
     AC_MSG_CHECKING([python include flags])
     PYTHON_INCLUDE=`$PYTHON_CONFIG --includes`
@@ -766,10 +766,10 @@ have_asciidoc_xmlto=no
 warn_prebuilt_man_pages=no
 
 AS_IF([test "x$man_pages_opt" = "xyes"], [
-	AC_PATH_PROG([ASCIIDOC], [asciidoc], [no])
-	AC_PATH_PROG([XMLTO], [xmlto], [no])
+	AC_PATH_PROG([ASCIIDOC], [asciidoc])
+	AC_PATH_PROG([XMLTO], [xmlto])
 
-	AS_IF([test "x$ASCIIDOC" = "xno" || test "x$XMLTO" = "xno"], [
+	AS_IF([test "x$ASCIIDOC" = "x" || test "x$XMLTO" = "x"], [
 		AS_IF([test "x$in_git_repo" = "xyes"], [
 			# this is an error because we're in the Git repo, which
 			# means the man pages are not already generated for us,
@@ -812,8 +812,8 @@ AS_IF([test "x$embedded_help" = "xyes"], [
 	AS_IF([test "x$man_pages_opt" = "xno"], [
 		AC_MSG_ERROR([You need the --enable-man-pages option with the --enable-embedded-help option.])
 	])
-	AC_PATH_PROG([man_prog_path], [man], [no])
-	AS_IF([test "x$man_prog_path" = "xno"], [
+	AC_PATH_PROG([man_prog_path], [man])
+	AS_IF([test "x$man_prog_path" = "x"], [
 		AC_MSG_ERROR([You need man with the --enable-embedded-help option.])
 	])
 	AC_DEFINE_UNQUOTED([LTTNG_EMBED_HELP], 1, [Embed --help messages.])
