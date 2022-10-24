@@ -37,7 +37,19 @@ function userspace_probe_testapp
 	shift 
 
 	for i in $(seq 1 "$nr"); do
-		$USERSPACE_PROBE_ELF_TESTAPP_BIN "$@"
+		# This userspace probe test has to instrument the actual elf
+		# binary and not the generated libtool wrapper. However, we
+		# can't invoke the wrapper either since it will re-link the test
+		# application binary on its first invocation, resulting in a new
+		# binary with an 'lt-*' prefix under the .libs folder. The
+		# relinking stage adds the .libs folder to the 'lt-*' binary's
+		# rpath.
+		#
+		# To ensure the binary (inode) that instrumented is the same as
+		# what is running, set LD_LIBRARY_PATH to find the .libs folder
+		# that contains the libfoo.so library and invoke the binary
+		# directly.
+		LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TESTDIR/utils/testapp/userspace-probe-elf-binary/.libs" $USERSPACE_PROBE_ELF_TESTAPP_BIN "$@"
 	done
 }
 

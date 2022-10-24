@@ -22,19 +22,19 @@ noinst_LTLIBRARIES = libfoo.la libbar.la libzzz.la
 libfoo_la_SOURCES = libfoo.h libfoo.c
 libfoo_la_LIBADD = foobar_provider.o
 libfoo_la_CFLAGS = -I$(abs_builddir)
-libfoo_la_LDFLAGS = -module -shared -avoid-version -rpath $(abs_builddir)/.libs/
+libfoo_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
 nodist_libfoo_la_SOURCES = $(abs_builddir)/foobar_provider.h
 
 libbar_la_SOURCES = libbar.h libbar.c
 libbar_la_LIBADD = foobar_provider.o
 libbar_la_CFLAGS = -I$(abs_builddir)
-libbar_la_LDFLAGS = -module -shared -avoid-version -rpath $(abs_builddir)/.libs/
+libbar_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
 nodist_libbar_la_SOURCES = $(abs_builddir)/foobar_provider.h
 
 libzzz_la_SOURCES = libzzz.h libzzz.c
 libzzz_la_LIBADD = foobar_provider.o
 libzzz_la_CFLAGS = -I$(abs_builddir)
-libzzz_la_LDFLAGS = -module -shared -avoid-version -rpath $(abs_builddir)/.libs/
+libzzz_la_LDFLAGS = -module -shared -avoid-version -rpath $(libdir)
 nodist_libzzz_la_SOURCES = $(abs_builddir)/foobar_provider.h
 
 dtrace_verbose = $(dtrace_verbose_@AM_V@)
