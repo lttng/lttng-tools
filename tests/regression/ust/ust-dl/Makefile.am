@@ -27,16 +27,16 @@ noinst_LTLIBRARIES = libzzz.la libbar.la libfoo.la libtp.la
 
 libzzz_la_SOURCES = libzzz.c libzzz.h
 libzzz_la_LDFLAGS = -module -shared -avoid-version \
-		-rpath $(abs_builddir)
+		-rpath $(libdir)
 
 libbar_la_SOURCES = libbar.c libbar.h
 libbar_la_LDFLAGS = -module -shared -avoid-version \
-		-rpath $(abs_builddir)
+		-rpath $(libdir)
 libbar_la_LIBADD = libzzz.la
 
 libfoo_la_SOURCES = libfoo.c libfoo.h
 libfoo_la_LDFLAGS = -module -shared -avoid-version \
-		-rpath $(abs_builddir)
+		-rpath $(libdir)
 libfoo_la_LIBADD = libbar.la
 
 CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
@@ -44,7 +44,7 @@ CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
 
 libtp_la_SOURCES = libbar-tp.h libbar-tp.c libfoo-tp.h libfoo-tp.c \
 	libzzz-tp.h libzzz-tp.c
-libtp_la_LDFLAGS = -module -shared -rpath $(abs_builddir)
+libtp_la_LDFLAGS = -module -shared -rpath $(libdir)
 
 # Extract debug symbols
 libfoo.so.debug: libfoo.la

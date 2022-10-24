@@ -5,7 +5,7 @@ AM_CFLAGS += -O0
 noinst_LTLIBRARIES = libfoo.la
 
 libfoo_la_SOURCES = foo.c foo.h
-libfoo_la_LDFLAGS = -shared -module -avoid-version -rpath $(abs_builddir)/.libs/
+libfoo_la_LDFLAGS = -shared -module -avoid-version -rpath $(libdir)
 
 noinst_PROGRAMS = userspace-probe-elf-binary
 userspace_probe_elf_binary_SOURCES = userspace-probe-elf-binary.c
