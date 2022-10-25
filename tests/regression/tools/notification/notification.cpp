@@ -1998,7 +1998,7 @@ static void test_uprobe_event_rule_notification(
 	ok(notification_channel, "Notification channel object creation");
 
 	event_rule = lttng_event_rule_kernel_uprobe_create(probe_location);
-	ok(event_rule, "kprobe event rule object creation");
+	ok(event_rule, "uprobe event rule object creation");
 
 	event_rule_status = lttng_event_rule_kernel_uprobe_set_event_name(
 			event_rule, trigger_name);
