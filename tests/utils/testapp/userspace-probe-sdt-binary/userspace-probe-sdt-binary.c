@@ -31,16 +31,16 @@ int main(int argc, char *argv[])
 	FOOBAR_TP1();
 	FOOBAR_TP2();
 	/*
-	 * This SDT tracepoint has an argument. Argument extraction is not support
-	 * at the moment but tracing of the tracepoint should work.
+	 * This SDT tracepoint has an argument. Argument extraction is not supported
+	 * at the moment, but tracing of the tracepoint should work.
 	 */
 	FOOBAR_TP_WITH_ARG(42);
 
-	/* Call function containing an SDT tracepoint in shared object */
+	/* Call a function containing an SDT tracepoint in shared object. */
 	foo_function();
 
 	/*
-	 * Load a show shared object and call a function containing an SDT
+	 * Load a shared object and call a function containing an SDT
 	 * tracepoint
 	 */
 	handle = dlopen("libbar.so", RTLD_LAZY);
@@ -52,12 +52,12 @@ int main(int argc, char *argv[])
 	bar_function();
 	dlclose(handle);
 
-	/* This tracepoint has 2 callsites in this binary */
+	/* This tracepoint has 2 call sites in this binary. */
 	FOOBAR_TP2();
 
 	/*
-	 * This function is defined in libfoo AND in libzzz. For a test, libzzz is
-	 * LD_PRELOADed and should override this function
+	 * This function is defined in libfoo and in libzzz. For a test, libzzz is
+	 * LD_PRELOADed and should override this function.
 	 */
 	overridable_function();
 
