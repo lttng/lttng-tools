@@ -12,8 +12,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <tap/tap.h>
-
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <lttng/domain.h>
@@ -37,6 +35,8 @@
 #include <lttng/userspace-probe-internal.hpp>
 #include <lttng/userspace-probe.h>
 #include "bin/lttng/loglevel.hpp"
+
+#include <tap/tap.h>
 
 /* For error.h. */
 int lttng_opt_quiet = 1;

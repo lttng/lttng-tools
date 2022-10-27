@@ -9,11 +9,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tap/tap.h>
 
 #include <common/time.hpp>
 
 #include "backward-compatibility-group-by.hpp"
+
+#include <tap/tap.h>
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS_PER_TEST 1

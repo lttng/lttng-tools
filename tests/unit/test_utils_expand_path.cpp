@@ -13,11 +13,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <tap/tap.h>
-
 #include <common/utils.hpp>
 #include <common/path.hpp>
 #include <common/common.hpp>
+
+#include <tap/tap.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;

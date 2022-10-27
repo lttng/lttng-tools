@@ -20,7 +20,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <tap/tap.h>
 #include <lttng/lttng.h>
 
 #include <urcu/list.h>
@@ -31,6 +30,8 @@
 
 #include <common/compat/errno.hpp>
 #include <common/compat/endian.hpp>
+
+#include <tap/tap.h>
 
 #define SESSION1 "test1"
 #define RELAYD_URL "net://localhost"

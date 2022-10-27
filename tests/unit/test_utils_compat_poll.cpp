@@ -16,12 +16,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <tap/tap.h>
-
 #include <common/compat/poll.hpp>
 #include <common/readwrite.hpp>
 #include <common/pipe.hpp>
 #include <common/dynamic-array.hpp>
+
+#include <tap/tap.h>
 
 /* Verification without trashing test order in the child process */
 #define childok(e, test, ...) do { \

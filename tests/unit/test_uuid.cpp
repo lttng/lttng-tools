@@ -9,9 +9,9 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <tap/tap.h>
-
 #include "common/uuid.hpp"
+
+#include <tap/tap.h>
 
 #define NR_TESTS 21
 
