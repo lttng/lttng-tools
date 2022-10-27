@@ -5,6 +5,14 @@
  *
  */
 
+/*
+ * This test voluntarily does buffer overflows and stack overruns, disable
+ * source fortification.
+ */
+#ifdef _FORTIFY_SOURCE
+#undef _FORTIFY_SOURCE
+#endif
+
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>

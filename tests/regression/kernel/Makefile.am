@@ -19,7 +19,9 @@ EXTRA_DIST = test_all_events \
 noinst_PROGRAMS = select_poll_epoll
 select_poll_epoll_SOURCES = select_poll_epoll.cpp
 select_poll_epoll_LDADD = $(POPT_LIBS) $(top_builddir)/src/common/libcommon-lgpl.la
-select_poll_epoll_CFLAGS = $(POPT_CFLAGS) -fno-stack-protector -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(AM_CFLAGS)
+select_poll_epoll_CPPFLAGS = $(POPT_CFLAGS) $(AM_CPPFLAGS)
+# Disable stack protection, the test overflows the stack to test the poll/epoll syscalls
+select_poll_epoll_CXXFLAGS = -fno-stack-protector $(AM_CXXFLAGS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
