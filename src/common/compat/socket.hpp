@@ -228,10 +228,11 @@ int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 {
 	int ret;
 	struct xucred sock_creds = {};
+	socklen_t sock_creds_len = (socklen_t) sizeof(sock_creds);
 
 	/* Only available in FreeBSD 13.0 and up. */
 	ret = getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERCRED, &sock_creds,
-			&((socklen_t) {sizeof(sock_creds)}));
+			&sock_creds_len);
 	if (ret) {
 		goto end;
 	}
