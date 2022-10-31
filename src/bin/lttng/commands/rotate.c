@@ -24,7 +24,6 @@
 #include <lttng/rotation.h>
 #include <lttng/location.h>
 
-static char *opt_session_name;
 static int opt_no_wait;
 static struct mi_writer *writer;
 
@@ -165,14 +164,15 @@ int cmd_rotate(int argc, const char **argv)
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	int popt_ret;
 	static poptContext pc;
+	const char *arg_session_name = NULL;
 	char *session_name = NULL;
-	bool free_session_name = false;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
 		ERR("poptReadDefaultConfig");
-		goto error;
+		cmd_ret = CMD_ERROR;
+		goto end;
 	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -189,37 +189,43 @@ int cmd_rotate(int argc, const char **argv)
 		}
 	}
 
-	opt_session_name = (char*) poptGetArg(pc);
-
-	if (!opt_session_name) {
+	arg_session_name = poptGetArg(pc);
+	if (arg_session_name == NULL) {
 		session_name = get_session_name();
-		if (!session_name) {
-			goto error;
-		}
-		free_session_name = true;
 	} else {
-		session_name = opt_session_name;
+		session_name = strdup(arg_session_name);
+		if (session_name == NULL) {
+			PERROR("Failed to copy session name");
+		}
+	}
+
+	if (session_name == NULL) {
+		cmd_ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 
 		/* Open rotate command */
 		ret = mi_lttng_writer_command_open(writer,
 				mi_lttng_element_command_rotate);
 		if (ret) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 
 		/* Open output element */
 		ret = mi_lttng_writer_open_element(writer,
 				mi_lttng_element_command_output);
 		if (ret) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 	}
 
@@ -230,35 +236,34 @@ int cmd_rotate(int argc, const char **argv)
 		/* Close output element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 		/* Success ? */
 		ret = mi_lttng_writer_write_element_bool(writer,
 				mi_lttng_element_command_success,
 				cmd_ret == CMD_SUCCESS);
 		if (ret) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 
 		/* Command element close */
 		ret = mi_lttng_writer_command_close(writer);
 		if (ret) {
-			goto error;
+			cmd_ret = CMD_ERROR;
+			goto end;
 		}
 	}
 
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		goto error;
+		cmd_ret = CMD_ERROR;
+		goto end;
 	}
 end:
+	free(session_name);
 	poptFreeContext(pc);
-	if (free_session_name) {
-		free(session_name);
-	}
 
 	return cmd_ret;
-error:
-	cmd_ret = CMD_ERROR;
-	goto end;
 }
