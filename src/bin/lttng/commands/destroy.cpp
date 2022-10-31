@@ -22,7 +22,6 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
 
-static char *opt_session_name;
 static int opt_destroy_all;
 static int opt_no_wait;
 
@@ -270,6 +269,7 @@ int cmd_destroy(int argc, const char **argv)
 	int ret = CMD_SUCCESS , i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *arg_session_name = NULL;
 	const char *leftover = NULL;
 
 	struct lttng_session *sessions = NULL;
@@ -342,18 +342,22 @@ int cmd_destroy(int argc, const char **argv)
 			success = 0;
 		}
 	} else {
-		opt_session_name = (char *) poptGetArg(pc);
+		arg_session_name = poptGetArg(pc);
 
-		if (!opt_session_name) {
+		if (!arg_session_name) {
 			/* No session name specified, lookup default */
 			session_name = get_session_name();
-			if (session_name == NULL) {
-				command_ret = CMD_ERROR;
-				success = 0;
-				goto mi_closing;
-			}
 		} else {
-			session_name = opt_session_name;
+			session_name = strdup(arg_session_name);
+			if (session_name == NULL) {
+				PERROR("Failed to copy session name");
+			}
+		}
+
+		if (session_name == NULL) {
+			command_ret = CMD_ERROR;
+			success = 0;
+			goto mi_closing;
 		}
 
 		/* Find the corresponding lttng_session struct */
@@ -419,10 +423,7 @@ end:
 		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	if (opt_session_name == NULL) {
-		free(session_name);
-	}
-
+	free(session_name);
 	free(sessions);
 
 	/* Overwrite ret if an error occurred during destroy_session/all */

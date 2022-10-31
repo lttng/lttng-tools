@@ -116,7 +116,7 @@ int cmd_save(int argc, const char **argv)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
-	const char *session_name = NULL, *leftover = NULL;
+	const char *arg_session_name = NULL, *leftover = NULL;
 	poptContext pc;
 	struct lttng_save_session_attr *attr;
 
@@ -144,9 +144,9 @@ int cmd_save(int argc, const char **argv)
 	}
 
 	if (!opt_save_all) {
-		session_name = poptGetArg(pc);
-		if (session_name) {
-			DBG2("Session name: %s", session_name);
+		arg_session_name = poptGetArg(pc);
+		if (arg_session_name) {
+			DBG2("Session name: %s", arg_session_name);
 		} else {
 			/* default to opt_save_all */
 			opt_save_all = true;
@@ -166,7 +166,7 @@ int cmd_save(int argc, const char **argv)
 		goto end_destroy;
 	}
 
-	if (lttng_save_session_attr_set_session_name(attr, session_name)) {
+	if (lttng_save_session_attr_set_session_name(attr, arg_session_name)) {
 		ret = CMD_ERROR;
 		goto end_destroy;
 	}
@@ -212,12 +212,12 @@ int cmd_save(int argc, const char **argv)
 		success = 0;
 	} else {
 		/* Inform the user of what just happened on success. */
-		if (session_name && opt_output_path) {
-			MSG("Session %s saved successfully in %s.", session_name,
+		if (arg_session_name && opt_output_path) {
+			MSG("Session %s saved successfully in %s.", arg_session_name,
 					opt_output_path);
-		} else if (session_name && !opt_output_path) {
-			MSG("Session %s saved successfully.", session_name);
-		} else if (!session_name && opt_output_path) {
+		} else if (arg_session_name && !opt_output_path) {
+			MSG("Session %s saved successfully.", arg_session_name);
+		} else if (!arg_session_name && opt_output_path) {
 			MSG("All sessions have been saved successfully in %s.",
 					opt_output_path);
 		} else {
@@ -229,7 +229,7 @@ int cmd_save(int argc, const char **argv)
 	/* Mi Printing and closing */
 	if (lttng_opt_mi) {
 		/* Mi print */
-		ret = mi_save_print(session_name);
+		ret = mi_save_print(arg_session_name);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end_destroy;

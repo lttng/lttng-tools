@@ -27,7 +27,6 @@
 
 
 static struct lttng_channel chan_opts;
-static char *opt_channels;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
@@ -139,7 +138,7 @@ static void set_default_attr(struct lttng_domain *dom)
 /*
  * Adding channel using the lttng API.
  */
-static int enable_channel(char *session_name)
+static int enable_channel(char *session_name, char *channel_list)
 {
 	struct lttng_channel *channel = NULL;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
@@ -230,7 +229,7 @@ static int enable_channel(char *session_name)
 	}
 
 	/* Strip channel list (format: chan1,chan2,...) */
-	channel_name = strtok(opt_channels, ",");
+	channel_name = strtok(channel_list, ",");
 	while (channel_name != NULL) {
 		void *extended_ptr;
 
@@ -391,7 +390,9 @@ int cmd_enable_channels(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	char *channel_list = NULL;
 	char *opt_arg = NULL;
+	const char *arg_channel_list = NULL;
 	const char *leftover = NULL;
 
 	init_channel_config();
@@ -691,9 +692,17 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 	}
 
-	opt_channels = (char*) poptGetArg(pc);
-	if (opt_channels == NULL) {
-		ERR("Missing channel name.\n");
+	arg_channel_list = poptGetArg(pc);
+	if (arg_channel_list == NULL) {
+		ERR("Missing channel name.");
+		ret = CMD_ERROR;
+		success = 0;
+		goto mi_closing;
+	}
+
+	channel_list = strdup(arg_channel_list);
+	if (channel_list == NULL) {
+		PERROR("Failed to copy channel name");
 		ret = CMD_ERROR;
 		success = 0;
 		goto mi_closing;
@@ -718,7 +727,7 @@ int cmd_enable_channels(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	command_ret = enable_channel(session_name);
+	command_ret = enable_channel(session_name, channel_list);
 	if (command_ret) {
 		success = 0;
 	}
@@ -756,6 +765,8 @@ end:
 	if (!opt_session_name && session_name) {
 		free(session_name);
 	}
+
+	free(channel_list);
 
 	/* Overwrite ret if an error occurred when enable_channel */
 	ret = command_ret ? command_ret : ret;

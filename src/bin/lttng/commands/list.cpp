@@ -2271,7 +2271,7 @@ end:
 int cmd_list(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
-	const char *session_name, *leftover = NULL;
+	const char *arg_session_name, *leftover = NULL;
 	static poptContext pc;
 	struct lttng_domain domain;
 	struct lttng_domain *domains = NULL;
@@ -2330,8 +2330,8 @@ int cmd_list(int argc, const char **argv)
 	}
 
 	/* Get session name (trailing argument) */
-	session_name = poptGetArg(pc);
-	DBG2("Session name: %s", session_name);
+	arg_session_name = poptGetArg(pc);
+	DBG2("Session name: %s", arg_session_name);
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
@@ -2361,14 +2361,14 @@ int cmd_list(int argc, const char **argv)
 	}
 
 	if (opt_kernel || opt_userspace || opt_jul || opt_log4j || opt_python) {
-		the_handle = lttng_create_handle(session_name, &domain);
+		the_handle = lttng_create_handle(arg_session_name, &domain);
 		if (the_handle == NULL) {
 			ret = CMD_FATAL;
 			goto end;
 		}
 	}
 
-	if (session_name == NULL) {
+	if (arg_session_name == NULL) {
 		if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j
 				&& !opt_python) {
 			ret = list_sessions(NULL);
@@ -2416,19 +2416,19 @@ int cmd_list(int argc, const char **argv)
 			}
 		}
 		/* MI: the ouptut of list_sessions is an unclosed session element */
-		ret = list_sessions(session_name);
+		ret = list_sessions(arg_session_name);
 		if (ret) {
 			goto end;
 		}
 
-		ret = list_rotate_settings(session_name);
+		ret = list_rotate_settings(arg_session_name);
 		if (ret) {
 			goto end;
 		}
 
 		/* Domain listing */
 		if (opt_domain) {
-			ret = list_domains(session_name);
+			ret = list_domains(arg_session_name);
 			goto end;
 		}
 
@@ -2479,7 +2479,7 @@ int cmd_list(int argc, const char **argv)
 			int i, nb_domain;
 
 			/* We want all domain(s) */
-			nb_domain = lttng_list_domains(session_name, &domains);
+			nb_domain = lttng_list_domains(arg_session_name, &domains);
 			if (nb_domain < 0) {
 				ret = CMD_ERROR;
 				ERR("%s", lttng_strerror(nb_domain));
@@ -2534,7 +2534,7 @@ int cmd_list(int argc, const char **argv)
 				}
 
 				the_handle = lttng_create_handle(
-						session_name, &domains[i]);
+						arg_session_name, &domains[i]);
 				if (the_handle == NULL) {
 					ret = CMD_FATAL;
 					goto end;

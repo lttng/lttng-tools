@@ -17,7 +17,6 @@
 #include <common/spawn-viewer.hpp>
 #include "../command.hpp"
 
-static char *opt_session_name;
 static char *opt_viewer;
 static char *opt_trace_path;
 
@@ -73,7 +72,7 @@ error:
 /*
  * Exec viewer if found and use session name path.
  */
-static int view_trace(void)
+static int view_trace(const char *arg_session_name)
 {
 	int ret;
 	char *session_name, *trace_path = NULL;
@@ -99,14 +98,20 @@ static int view_trace(void)
 	/* User define trace path override the session name */
 	if (opt_trace_path) {
 		session_name = NULL;
-	} else if(opt_session_name == NULL) {
-		session_name = get_session_name();
+	} else {
+		if (arg_session_name == NULL) {
+			session_name = get_session_name();
+		} else {
+			session_name = strdup(arg_session_name);
+			if (session_name == NULL) {
+				PERROR("Failed to copy session name");
+			}
+		}
+
 		if (session_name == NULL) {
 			ret = CMD_ERROR;
 			goto error;
 		}
-	} else {
-		session_name = opt_session_name;
 	}
 
 	DBG("Viewing trace for session %s", session_name);
@@ -179,9 +184,7 @@ free_sessions:
 	}
 	free(sessions);
 free_error:
-	if (opt_session_name == NULL) {
-		free(session_name);
-	}
+	free(session_name);
 error:
 	return ret;
 }
@@ -193,6 +196,7 @@ int cmd_view(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
+	const char *arg_session_name = NULL;
 	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -216,7 +220,7 @@ int cmd_view(int argc, const char **argv)
 		}
 	}
 
-	opt_session_name = (char*) poptGetArg(pc);
+	arg_session_name = poptGetArg(pc);
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
@@ -225,7 +229,7 @@ int cmd_view(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = view_trace();
+	ret = view_trace(arg_session_name);
 
 end:
 	poptFreeContext(pc);
