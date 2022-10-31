@@ -156,8 +156,8 @@ int cmd_clear(int argc, const char **argv)
 	int ret = CMD_SUCCESS , i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *arg_session_name = NULL;
 	const char *leftover = NULL;
-	bool free_session_name = false;
 	struct lttng_session *sessions = NULL;
 	int count;
 	int found;
@@ -213,19 +213,22 @@ int cmd_clear(int argc, const char **argv)
 	}
 
 	if (!opt_clear_all) {
-		session_name = (char *) poptGetArg(pc);
-		if (!session_name) {
+		arg_session_name = poptGetArg(pc);
+		if (!arg_session_name) {
 			/* No session name specified, lookup default */
 			session_name = get_session_name();
+		} else {
+			session_name = strdup(arg_session_name);
 			if (session_name == NULL) {
-				command_ret = CMD_ERROR;
-				success = 0;
-				goto mi_closing;
+				PERROR("Failed to copy session name");
 			}
-			free_session_name = true;
 		}
-	} else {
-		session_name = NULL;
+
+		if (session_name == NULL) {
+			command_ret = CMD_ERROR;
+			success = 0;
+			goto mi_closing;
+		}
 	}
 
 	leftover = poptGetArg(pc);
@@ -307,9 +310,7 @@ end:
 	}
 
 	free(sessions);
-	if (free_session_name) {
-		free(session_name);
-	}
+	free(session_name);
 
 	/* Overwrite ret if an error occurred during clear_session/all */
 	ret = command_ret ? command_ret : ret;

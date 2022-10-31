@@ -33,7 +33,6 @@
 #include <lttng/lttng.h>
 
 static char *opt_output_path;
-static char *opt_session_name;
 static char *opt_url;
 static char *opt_ctrl_url;
 static char *opt_data_url;
@@ -131,7 +130,7 @@ end:
 }
 
 static
-struct lttng_session_descriptor *create_session_descriptor(void)
+struct lttng_session_descriptor *create_session_descriptor(const char *session_name)
 {
 	ssize_t uri_count;
 	enum output_type output_type;
@@ -203,17 +202,17 @@ struct lttng_session_descriptor *create_session_descriptor(void)
 		case OUTPUT_UNSPECIFIED:
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_snapshot_local_create(
-					opt_session_name,
+					session_name,
 					output_type == OUTPUT_LOCAL ?
 						local_output_path : NULL);
 			break;
 		case OUTPUT_NONE:
 			descriptor = lttng_session_descriptor_snapshot_create(
-					opt_session_name);
+					session_name);
 			break;
 		case OUTPUT_NETWORK:
 			descriptor = lttng_session_descriptor_snapshot_network_create(
-					opt_session_name, uri_str1, uri_str2);
+					session_name, uri_str1, uri_str2);
 			break;
 		default:
 			abort();
@@ -226,7 +225,7 @@ struct lttng_session_descriptor *create_session_descriptor(void)
 			goto end;
 		}
 		descriptor = lttng_session_descriptor_live_network_create(
-				opt_session_name, uri_str1, uri_str2,
+				session_name, uri_str1, uri_str2,
 				opt_live_timer);
 	} else {
 		/* Regular session. */
@@ -234,17 +233,17 @@ struct lttng_session_descriptor *create_session_descriptor(void)
 		case OUTPUT_UNSPECIFIED:
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_local_create(
-					opt_session_name,
+					session_name,
 					output_type == OUTPUT_LOCAL ?
 						local_output_path : NULL);
 			break;
 		case OUTPUT_NONE:
 			descriptor = lttng_session_descriptor_create(
-					opt_session_name);
+					session_name);
 			break;
 		case OUTPUT_NETWORK:
 			descriptor = lttng_session_descriptor_network_create(
-					opt_session_name, uri_str1, uri_str2);
+					session_name, uri_str1, uri_str2);
 			break;
 		default:
 			abort();
@@ -281,7 +280,7 @@ end:
  *
  *  Returns one of the CMD_* result constants.
  */
-static int create_session(void)
+static int create_session(const char *session_name)
 {
 	int ret, i;
 	char shm_path[LTTNG_PATH_MAX] = {};
@@ -293,8 +292,8 @@ static int create_session(void)
 	const char *created_session_name;
 
 	/* Validate options. */
-	if (opt_session_name) {
-		if (strlen(opt_session_name) > NAME_MAX) {
+	if (session_name) {
+		if (strlen(session_name) > NAME_MAX) {
 			ERR("Session name too long. Length must be lower or equal to %d",
 					NAME_MAX);
 			ret = CMD_ERROR;
@@ -305,11 +304,11 @@ static int create_session(void)
 		 * Both are reserved for the default session name. See bug #449 to
 		 * understand why we need to check both here.
 		 */
-		if ((strncmp(opt_session_name, DEFAULT_SESSION_NAME "-",
+		if ((strncmp(session_name, DEFAULT_SESSION_NAME "-",
 					strlen(DEFAULT_SESSION_NAME) + 1) == 0) ||
-				(strncmp(opt_session_name, DEFAULT_SESSION_NAME,
+				(strncmp(session_name, DEFAULT_SESSION_NAME,
 					strlen(DEFAULT_SESSION_NAME)) == 0 &&
-				strlen(opt_session_name) == strlen(DEFAULT_SESSION_NAME))) {
+				strlen(session_name) == strlen(DEFAULT_SESSION_NAME))) {
 			ERR("%s is a reserved keyword for default session(s)",
 					DEFAULT_SESSION_NAME);
 			ret = CMD_ERROR;
@@ -329,7 +328,7 @@ static int create_session(void)
 		goto error;
 	}
 
-	session_descriptor = create_session_descriptor();
+	session_descriptor = create_session_descriptor(session_name);
 	if (!session_descriptor) {
 		ret = CMD_ERROR;
 		goto error;
@@ -375,7 +374,7 @@ static int create_session(void)
 		 * An auto-generated session name already includes the creation
 		 * timestamp.
 		 */
-		if (opt_session_name) {
+		if (session_name) {
 			uint64_t creation_time;
 			struct tm *timeinfo;
 			time_t creation_time_t;
@@ -655,6 +654,7 @@ int cmd_create(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	char *opt_arg = NULL;
+	const char *arg_session_name = NULL;
 	const char *leftover = NULL;
 	static poptContext pc;
 
@@ -761,7 +761,9 @@ int cmd_create(int argc, const char **argv)
 			goto end;
 		}
 	}
-	opt_session_name = (char*) poptGetArg(pc);
+
+	/* Get the optional session name argument. */
+	arg_session_name = poptGetArg(pc);
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
@@ -770,7 +772,7 @@ int cmd_create(int argc, const char **argv)
 		goto end;
 	}
 
-	command_ret = create_session();
+	command_ret = create_session(arg_session_name);
 	if (command_ret) {
 		success = 0;
 	}

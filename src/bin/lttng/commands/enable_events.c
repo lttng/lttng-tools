@@ -36,7 +36,6 @@
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API	"255"
 #endif
 
-static char *opt_event_list;
 static int opt_event_type;
 static const char *opt_loglevel;
 static int opt_loglevel_type;
@@ -431,7 +430,7 @@ static void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer
  * Enabling event using the lttng API.
  * Note: in case of error only the last error code will be return.
  */
-static int enable_events(char *session_name)
+static int enable_events(char *session_name, char *event_list)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
@@ -813,7 +812,7 @@ static int enable_events(char *session_name)
 	}
 
 	/* Strip event list */
-	event_name = strtok(opt_event_list, ",");
+	event_name = strtok(event_list, ",");
 	while (event_name != NULL) {
 		/* Copy name and type of the event */
 		strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
@@ -1223,6 +1222,8 @@ int cmd_enable_events(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	char *event_list = NULL;
+	const char *arg_event_list = NULL;
 	const char *leftover = NULL;
 	int event_type = -1;
 
@@ -1321,11 +1322,20 @@ int cmd_enable_events(int argc, const char **argv)
 		}
 	}
 
-	opt_event_list = (char*) poptGetArg(pc);
-	if (opt_event_list == NULL && opt_enable_all == 0) {
-		ERR("Missing event name(s).\n");
+	arg_event_list = poptGetArg(pc);
+	if (arg_event_list == NULL && opt_enable_all == 0) {
+		ERR("Missing event name(s).");
 		ret = CMD_ERROR;
 		goto end;
+	}
+
+	if (opt_enable_all == 0) {
+		event_list = strdup(arg_event_list);
+		if (event_list == NULL) {
+			PERROR("Failed to copy event name(s)");
+			ret = CMD_ERROR;
+			goto end;
+		}
 	}
 
 	leftover = poptGetArg(pc);
@@ -1346,7 +1356,7 @@ int cmd_enable_events(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	command_ret = enable_events(session_name);
+	command_ret = enable_events(session_name, event_list);
 	if (command_ret) {
 		success = 0;
 		goto mi_closing;
@@ -1387,6 +1397,8 @@ end:
 	if (opt_session_name == NULL) {
 		free(session_name);
 	}
+
+	free(event_list);
 
 	/* Overwrite ret if an error occurred in enable_events */
 	ret = command_ret ? command_ret : ret;

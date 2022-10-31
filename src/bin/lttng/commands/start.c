@@ -20,7 +20,6 @@
 #include "../command.h"
 
 
-static char *opt_session_name;
 static struct mi_writer *writer;
 
 #ifdef LTTNG_EMBED_HELP
@@ -76,19 +75,23 @@ end:
  *
  *  Start tracing for all trace of the session.
  */
-static int start_tracing(void)
+static int start_tracing(const char *arg_session_name)
 {
 	int ret;
 	char *session_name;
 
-	if (opt_session_name == NULL) {
+	if (arg_session_name == NULL) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
-			ret = CMD_ERROR;
-			goto error;
-		}
 	} else {
-		session_name = opt_session_name;
+		session_name = strdup(arg_session_name);
+		if (session_name == NULL) {
+			PERROR("Failed to copy session name");
+		}
+	}
+
+	if (session_name == NULL) {
+		ret = CMD_ERROR;
+		goto error;
 	}
 
 	DBG("Starting tracing for session %s", session_name);
@@ -118,9 +121,7 @@ static int start_tracing(void)
 	}
 
 free_name:
-	if (opt_session_name == NULL) {
-		free(session_name);
-	}
+	free(session_name);
 error:
 	return ret;
 }
@@ -134,6 +135,7 @@ int cmd_start(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
+	const char *arg_session_name = NULL;
 	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -153,7 +155,7 @@ int cmd_start(int argc, const char **argv)
 		}
 	}
 
-	opt_session_name = (char*) poptGetArg(pc);
+	arg_session_name = poptGetArg(pc);
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
@@ -198,7 +200,7 @@ int cmd_start(int argc, const char **argv)
 		}
 	}
 
-	command_ret = start_tracing();
+	command_ret = start_tracing(arg_session_name);
 	if (command_ret) {
 		success = 0;
 	}

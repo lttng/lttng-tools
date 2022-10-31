@@ -19,8 +19,6 @@
 
 #include "../command.h"
 
-static char *opt_session_name;
-
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-set-session.1.h>
@@ -44,7 +42,7 @@ static struct poptOption long_options[] = {
 /*
  * Print the necessary mi for a session and name.
  */
-static int mi_print(char *session_name)
+static int mi_print(const char *session_name)
 {
 	int ret;
 
@@ -85,14 +83,14 @@ end:
 /*
  *  set_session
  */
-static int set_session(void)
+static int set_session(const char *session_name)
 {
 	int ret = CMD_SUCCESS;
 	int count, i;
 	unsigned int session_found = 0;
 	struct lttng_session *sessions;
 
-	if (opt_session_name && strlen(opt_session_name) > NAME_MAX) {
+	if (session_name && strlen(session_name) > NAME_MAX) {
 		ERR("Session name too long. Length must be lower or equal to %d",
 			NAME_MAX);
 		ret = CMD_ERROR;
@@ -107,28 +105,28 @@ static int set_session(void)
 	}
 
 	for (i = 0; i < count; i++) {
-		if (strncmp(sessions[i].name, opt_session_name, NAME_MAX) == 0) {
+		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 			session_found = 1;
 			break;
 		}
 	}
 
 	if (!session_found) {
-		ERR("Session '%s' not found", opt_session_name);
+		ERR("Session '%s' not found", session_name);
 		ret = CMD_ERROR;
 		goto error;
 	}
 
-	ret = config_init(opt_session_name);
+	ret = config_init(session_name);
 	if (ret < 0) {
 		ERR("Unable to set session name");
 		ret = CMD_ERROR;
 		goto error;
 	}
 
-	MSG("Session set to %s", opt_session_name);
+	MSG("Session set to %s", session_name);
 	if (lttng_opt_mi) {
-		ret = mi_print(opt_session_name);
+		ret = mi_print(session_name);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -150,6 +148,7 @@ int cmd_set_session(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
+	const char *arg_session_name = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -168,8 +167,8 @@ int cmd_set_session(int argc, const char **argv)
 		}
 	}
 
-	opt_session_name = (char *) poptGetArg(pc);
-	if (opt_session_name == NULL) {
+	arg_session_name = poptGetArg(pc);
+	if (arg_session_name == NULL) {
 		ERR("Missing session name");
 		ret = CMD_ERROR;
 		goto end;
@@ -200,7 +199,7 @@ int cmd_set_session(int argc, const char **argv)
 		}
 	}
 
-	command_ret = set_session();
+	command_ret = set_session(arg_session_name);
 	if (command_ret) {
 		success = 0;
 	}

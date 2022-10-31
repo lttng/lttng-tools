@@ -20,7 +20,6 @@
 
 #include "../command.h"
 
-static char *opt_channels;
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
@@ -95,7 +94,7 @@ end:
 /*
  * Disabling channel using the lttng API.
  */
-static int disable_channels(char *session_name)
+static int disable_channels(char *session_name, char *channel_list)
 {
 	int ret = CMD_SUCCESS, warn = 0, success;
 
@@ -134,7 +133,7 @@ static int disable_channels(char *session_name)
 	}
 
 	/* Strip channel list */
-	channel_name = strtok(opt_channels, ",");
+	channel_name = strtok(channel_list, ",");
 	while (channel_name != NULL) {
 		DBG("Disabling channel %s", channel_name);
 
@@ -208,6 +207,8 @@ int cmd_disable_channels(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	char *channel_list = NULL;
+	const char *arg_channel_list = NULL;
 	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -237,9 +238,16 @@ int cmd_disable_channels(int argc, const char **argv)
 		goto end;
 	}
 
-	opt_channels = (char*) poptGetArg(pc);
-	if (opt_channels == NULL) {
-		ERR("Missing channel name(s).\n");
+	arg_channel_list = poptGetArg(pc);
+	if (arg_channel_list == NULL) {
+		ERR("Missing channel name(s).");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	channel_list = strdup(arg_channel_list);
+	if (channel_list == NULL) {
+		PERROR("Failed to copy channel name");
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -286,7 +294,7 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 	}
 
-	command_ret = disable_channels(session_name);
+	command_ret = disable_channels(session_name, channel_list);
 	if (command_ret) {
 		success = 0;
 	}
@@ -326,6 +334,8 @@ end:
 	if (!opt_session_name && session_name) {
 		free(session_name);
 	}
+
+	free(channel_list);
 
 	/* Overwrite ret if an error occurred in disable_channels */
 	ret = command_ret ? command_ret : ret;

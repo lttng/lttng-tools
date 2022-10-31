@@ -20,7 +20,6 @@
 
 #include "../command.h"
 
-static char *opt_event_list;
 static int opt_kernel;
 static char *opt_channel_name;
 static char *opt_session_name;
@@ -152,7 +151,7 @@ end:
  *
  *  Disabling event using the lttng API.
  */
-static int disable_events(char *session_name)
+static int disable_events(char *session_name, char *event_list)
 {
 	int ret = CMD_SUCCESS, warn = 0, command_ret = CMD_SUCCESS;
 	int enabled = 1, success = 1;
@@ -241,7 +240,7 @@ static int disable_events(char *session_name)
 		}
 	} else {
 		/* Strip event list */
-		event_name = strtok(opt_event_list, ",");
+		event_name = strtok(event_list, ",");
 		while (event_name != NULL) {
 			DBG("Disabling event %s", event_name);
 
@@ -319,6 +318,8 @@ int cmd_disable_events(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	char *event_list = NULL;
+	const char *arg_event_list = NULL;
 	const char *leftover = NULL;
 	int event_type = -1;
 
@@ -385,11 +386,20 @@ int cmd_disable_events(int argc, const char **argv)
 		goto end;
 	}
 
-	opt_event_list = (char*) poptGetArg(pc);
-	if (opt_event_list == NULL && opt_disable_all == 0) {
+	arg_event_list = poptGetArg(pc);
+	if (arg_event_list == NULL && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");
 		ret = CMD_ERROR;
 		goto end;
+	}
+
+	if (opt_disable_all == 0) {
+		event_list = strdup(arg_event_list);
+		if (event_list == NULL) {
+			PERROR("Failed to copy event name(s)");
+			ret = CMD_ERROR;
+			goto end;
+		}
 	}
 
 	leftover = poptGetArg(pc);
@@ -434,7 +444,7 @@ int cmd_disable_events(int argc, const char **argv)
 		}
 	}
 
-	command_ret = disable_events(session_name);
+	command_ret = disable_events(session_name, event_list);
 	if (command_ret) {
 		success = 0;
 	}
@@ -467,6 +477,8 @@ end:
 	if (!opt_session_name && session_name) {
 		free(session_name);
 	}
+
+	free(event_list);
 
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {

@@ -47,7 +47,7 @@ static struct poptOption long_options[] = {
 int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 {
 	int opt, ret = CMD_SUCCESS;
-	char *cmd_name;
+	const char *arg_cmd_name;
 	static poptContext pc;
 	const struct cmd_struct *cmd;
 	int found = 0;
@@ -71,9 +71,8 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	}
 
 	/* Get command name */
-	cmd_name = (char *) poptGetArg(pc);
-
-	if (cmd_name == NULL) {
+	arg_cmd_name = poptGetArg(pc);
+	if (arg_cmd_name == NULL) {
 		/* Fall back to lttng(1) */
 		ret = utils_show_help(1, "lttng", lttng_help_msg);
 		if (ret) {
@@ -86,7 +85,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	}
 
 	/* Help about help? */
-	if (strcmp(cmd_name, "help") == 0) {
+	if (strcmp(arg_cmd_name, "help") == 0) {
 		SHOW_HELP();
 		goto end;
 	}
@@ -95,7 +94,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	cmd = &commands[0];
 
 	while (cmd->name != NULL) {
-		if (strcmp(cmd->name, cmd_name) == 0) {
+		if (strcmp(cmd->name, arg_cmd_name) == 0) {
 			found = 1;
 			break;
 		}
@@ -104,7 +103,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	}
 
 	if (!found) {
-		ERR("Unknown command \"%s\"", cmd_name);
+		ERR("Unknown command \"%s\"", arg_cmd_name);
 		ret = CMD_ERROR;
 		goto end;
 	}
