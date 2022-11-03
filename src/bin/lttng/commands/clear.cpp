@@ -56,7 +56,6 @@ static int clear_session(struct lttng_session *session)
 	struct lttng_clear_handle *handle = NULL;
 	enum lttng_error_code ret_code;
 	bool printed_wait_msg = false;
-	char *session_name = NULL;
 	int ret;
 
 	ret = lttng_clear_session(session->name, &handle);
@@ -117,7 +116,6 @@ error:
 		MSG("");
 	}
 	lttng_clear_handle_destroy(handle);
-	free(session_name);
 	return ret;
 }
 
