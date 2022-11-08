@@ -14,7 +14,7 @@ dist_doc_DATA = LICENSE \
                 ChangeLog \
 		README.adoc
 
-dist_noinst_DATA = CodingStyle
+dist_noinst_DATA = CodingStyle.md
 
 EXTRA_DIST = extras/lttng-bash_completion \
 	     LICENSES/BSD-2-Clause \
