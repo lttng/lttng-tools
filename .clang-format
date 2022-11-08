@@ -1,7 +1,8 @@
 AccessModifierOffset: -8
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: Consecutive
 AlignEscapedNewlines: Left
 AlignOperands: false
 AlignTrailingComments: false
@@ -14,7 +15,7 @@ AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
-BinPackArguments: true
+BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
@@ -38,10 +39,12 @@ BreakStringLiterals: false
 ColumnLimit: 100
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 8
-ContinuationIndentWidth: 16
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: false
 DerivePointerAlignment: false
 DisableFormat: false
 EmptyLineBeforeAccessModifier: LogicalBlock
+FixNamespaceComments: true
 ForEachMacros:
   - 'cds_lfht_for_each_entry'
   - 'cds_lfht_for_each_entry_safe'
@@ -49,10 +52,19 @@ ForEachMacros:
   - 'cds_list_for_each_entry'
   - 'cds_list_for_each_entry_safe'
 
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '.*'
+  - Regex: '".*"'
+    Priority: 0
+  - Regex: '<common/.*>'
     Priority: 1
+  - Regex: '<lttng/.*>'
+    Priority: 2
+  - Regex: '<vendor/.*>'
+    Priority: 3
+  - Regex: '<.*>'
+    Priority: 9
+
 IncludeIsMainRegex: '(Test)?$'
 IndentCaseLabels: false
 IndentPPDirectives: None
