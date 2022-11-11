@@ -228,7 +228,7 @@ class TraceParser:
         pass
 
 
-class Test1(TraceParser):
+class WorkingCases(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
 
@@ -403,7 +403,7 @@ class Test1(TraceParser):
         # Save values of local variables to print in case of test failure
         self.recorded_values["epoll_pwait_exit"] = locals()
 
-class Test2(TraceParser):
+class WorkingCasesTimeout(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["select_timeout_in_fd0"] = 0
@@ -515,7 +515,7 @@ class Test2(TraceParser):
         self.recorded_values["epoll_wait_exit"] = locals()
 
 
-class Test3(TraceParser):
+class PselectInvalidFd(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["select_invalid_fd_in"] = 0
@@ -544,7 +544,7 @@ class Test3(TraceParser):
         self.recorded_values["select_exit"] = locals()
 
 
-class Test4(TraceParser):
+class PpollBig(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["big_poll_in"] = 0
@@ -584,7 +584,7 @@ class Test4(TraceParser):
         # Save values of local variables to print in case of test failure
         self.recorded_values["poll_exit"] = locals()
 
-class Test5(TraceParser):
+class PpollFdsBufferOverflow(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["poll_overflow_in"] = 0
@@ -618,7 +618,7 @@ class Test5(TraceParser):
         self.recorded_values["poll_exit"] = locals()
 
 
-class Test6(TraceParser):
+class PselectInvalidPointer(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["select_entry"]["pselect_invalid_in"] = 0
@@ -651,7 +651,7 @@ class Test6(TraceParser):
         self.recorded_values["select_exit"] = locals()
 
 
-class Test7(TraceParser):
+class PpollFdsULongMax(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
         self.expect["poll_entry"]["poll_max_in"] = 0
@@ -682,7 +682,7 @@ class Test7(TraceParser):
         self.recorded_values["poll_exit"] = locals()
 
 
-class Test8(TraceParser):
+class EpollPwaitInvalidPointer(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
 
@@ -719,7 +719,7 @@ class Test8(TraceParser):
         self.recorded_values["epoll_wait_exit"] = locals()
 
 
-class Test9(TraceParser):
+class EpollPwaitIntMax(TraceParser):
     def __init__(self, trace, validation_args):
         super().__init__(trace, validation_args['pid'])
 
@@ -757,7 +757,7 @@ class Test9(TraceParser):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Trace parser')
     parser.add_argument('path', metavar="<path/to/trace>", help='Trace path')
-    parser.add_argument('-t', '--test', type=int, help='Test to validate')
+    parser.add_argument('-t', '--test', type=str, help='Test to validate')
     parser.add_argument('-o', '--validation-file', type=str, help='Validation file path')
     args = parser.parse_args()
 
@@ -780,28 +780,28 @@ if __name__ == "__main__":
 
     t = None
 
-    if args.test == 1:
-        t = Test1(traces, test_validation_args)
-    elif args.test == 2:
-        t = Test2(traces, test_validation_args)
-    elif args.test == 3:
-        t = Test3(traces, test_validation_args)
-    elif args.test == 4:
-        t = Test4(traces, test_validation_args)
-    elif args.test == 5:
-        t = Test5(traces, test_validation_args)
-    elif args.test == 6:
-        t = Test6(traces, test_validation_args)
-    elif args.test == 7:
-        t = Test7(traces, test_validation_args)
-    elif args.test == 8:
-        t = Test8(traces, test_validation_args)
-    elif args.test == 9:
-        t = Test9(traces, test_validation_args)
-    elif args.test == 10:
+    if args.test == "working_cases":
+        t = WorkingCases(traces, test_validation_args)
+    elif args.test == "working_cases_timeout":
+        t = WorkingCasesTimeout(traces, test_validation_args)
+    elif args.test == "pselect_invalid_fd":
+        t = PselectInvalidFd(traces, test_validation_args)
+    elif args.test == "ppoll_big":
+        t = PpollBig(traces, test_validation_args)
+    elif args.test == "ppoll_fds_buffer_overflow":
+        t = PpollFdsBufferOverflow(traces, test_validation_args)
+    elif args.test == "pselect_invalid_pointer":
+        t = PselectInvalidPointer(traces, test_validation_args)
+    elif args.test == "ppoll_fds_ulong_max":
+        t = PpollFdsULongMax(traces, test_validation_args)
+    elif args.test == "epoll_pwait_invalid_pointer":
+        t = EpollPwaitInvalidPointer(traces, test_validation_args)
+    elif args.test == "epoll_pwait_int_max":
+        t = EpollPwaitIntMax(traces, test_validation_args)
+    elif args.test == "ppoll_concurrent_write":
         # stress test, nothing reliable to check
         ret = 0
-    elif args.test == 11:
+    elif args.test == "epoll_pwait_concurrent_munmap":
         # stress test, nothing reliable to check
         ret = 0
     else:
