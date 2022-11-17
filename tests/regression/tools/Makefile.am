@@ -3,6 +3,7 @@
 SUBDIRS = base-path \
 	channel \
 	clear \
+	context \
 	crash \
 	exclusion \
 	filtering \

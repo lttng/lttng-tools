@@ -63,7 +63,8 @@ TESTS = tools/base-path/test_ust \
 	tools/trigger/test_list_triggers_cli \
 	tools/trigger/test_remove_trigger_cli \
 	tools/trigger/name/test_trigger_name_backwards_compat \
-	tools/trigger/hidden/test_hidden_trigger
+	tools/trigger/hidden/test_hidden_trigger \
+	tools/context/test_ust.py
 
 # Only build kernel tests on Linux.
 if IS_LINUX

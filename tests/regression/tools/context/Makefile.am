@@ -1,15 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS = . tap testapp xml-utils lttngtest
-
-EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh \
-             parse-callstack.py
-dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl tap-driver.sh
-noinst_LTLIBRARIES = libtestutils.la
-
-libtestutils_la_SOURCES = \
-	utils.cpp \
-	utils.h
+noinst_SCRIPTS = test_ust.py
+EXTRA_DIST = test_ust.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
