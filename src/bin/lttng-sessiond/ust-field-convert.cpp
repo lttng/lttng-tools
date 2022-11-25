@@ -50,7 +50,8 @@ lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curr
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements& current_field_location_elements);
+		lst::field_location::elements& current_field_location_elements,
+		lsu::ctl_field_quirks quirks);
 
 void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
@@ -59,7 +60,8 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements& current_field_location_elements);
+		lst::field_location::elements& current_field_location_elements,
+		lsu::ctl_field_quirks quirks);
 
 template <class UstCtlEncodingType>
 enum lst::null_terminated_string_type::encoding ust_ctl_encoding_to_string_field_encoding(UstCtlEncodingType encoding)
@@ -104,7 +106,8 @@ enum lst::integer_type::base ust_ctl_base_to_integer_field_base(UstCtlBaseType b
 lst::type::cuptr create_integer_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -129,7 +132,8 @@ lst::type::cuptr create_integer_type_from_ust_ctl_fields(const lttng_ust_ctl_fie
 lst::type::cuptr create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -156,7 +160,8 @@ lst::type::cuptr create_floating_point_type_from_ust_ctl_fields(const lttng_ust_
 lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -228,7 +233,8 @@ lst::type::cuptr create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl
 lst::type::cuptr create_string_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes __attribute__((unused)),
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -269,7 +275,8 @@ lst::type::cuptr create_integer_type_from_ust_ctl_basic_type(
 lst::type::cuptr create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes,
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -329,7 +336,8 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(const lttng_ust_
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements &current_field_location_elements)
+		lst::field_location::elements &current_field_location_elements,
+		lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -351,7 +359,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(const lttng_ust_
 	/* next_ust_ctl_field is updated as needed. */
 	element_type = create_type_from_ust_ctl_fields(&element_uctl_field, end, session_attributes,
 			next_ust_ctl_field, publish_field, lookup_field, lookup_root,
-			current_field_location_elements);
+			current_field_location_elements, quirks);
 	if (element_uctl_field.type.atype == lttng_ust_ctl_atype_integer &&
 			element_uctl_field.type.u.integer.encoding != lttng_ust_ctl_encode_none) {
 		/* Element represents a text character. */
@@ -388,7 +396,8 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(const lttng_ust_ctl_fi
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		publish_field_fn publish_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements &current_field_location_elements)
+		lst::field_location::elements &current_field_location_elements,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -466,7 +475,8 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements &current_field_location_elements)
+		lst::field_location::elements &current_field_location_elements,
+		lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -492,7 +502,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 	/* next_ust_ctl_field is updated as needed. */
 	auto element_type = create_type_from_ust_ctl_fields(&element_uctl_field, end,
 			session_attributes, next_ust_ctl_field, publish_field, lookup_field,
-			lookup_root, current_field_location_elements);
+			lookup_root, current_field_location_elements, quirks);
 
 	if (lttng_strnlen(sequence_uctl_field.type.u.sequence_nestable.length_name,
 			    sizeof(sequence_uctl_field.type.u.sequence_nestable.length_name)) ==
@@ -537,7 +547,8 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 lst::type::cuptr create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
 		const session_attributes& session_attributes __attribute__((unused)),
-		const lttng_ust_ctl_field **next_ust_ctl_field)
+		const lttng_ust_ctl_field **next_ust_ctl_field,
+		lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -577,7 +588,8 @@ typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_ty
 		lst::field_location::root lookup_root,
 		lst::field_location::elements& current_field_location_elements,
 		unsigned int choice_count,
-		const lst::field& selector_field)
+		const lst::field& selector_field,
+		lsu::ctl_field_quirks quirks)
 {
 	typename lst::variant_type<VariantSelectorMappingIntegerType>::choices choices;
 	const auto& typed_enumeration = static_cast<
@@ -587,7 +599,7 @@ typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_ty
 	for (unsigned int i = 0; i < choice_count; i++) {
 		create_field_from_ust_ctl_fields(
 				current, end, session_attributes, next_ust_ctl_field,
-				[&choices, typed_enumeration, &selector_field](
+				[&choices, typed_enumeration, &selector_field, quirks](
 						lst::field::uptr field) {
 					/*
 					 * Find the enumeration mapping that matches the
@@ -596,9 +608,21 @@ typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_ty
 					const auto mapping_it = std::find_if(
 							typed_enumeration.mappings_->begin(),
 							typed_enumeration.mappings_->end(),
-							[&field](const typename std::remove_reference<
+							[&field, quirks](const typename std::remove_reference<
 									decltype(typed_enumeration)>::type::
 											mapping& mapping) {
+								if (static_cast<bool>(quirks & lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS)) {
+									/*
+									 * Check if they match with
+									 * a prepended underscore
+									 * and, if not, perform the
+									 * regular check.
+									 */
+									if ((std::string("_") + field->name) == mapping.name) {
+										return true;
+									}
+								}
+
 								return mapping.name == field->name;
 							});
 
@@ -610,7 +634,7 @@ typename lst::variant_type<VariantSelectorMappingIntegerType>::choices create_ty
 
 					choices.emplace_back(*mapping_it, field->move_type());
 				},
-				lookup_field, lookup_root, current_field_location_elements);
+				lookup_field, lookup_root, current_field_location_elements, quirks);
 
 		current = *next_ust_ctl_field;
 	}
@@ -624,7 +648,8 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 		const lttng_ust_ctl_field **next_ust_ctl_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements &current_field_location_elements)
+		lst::field_location::elements &current_field_location_elements,
+		lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
 		LTTNG_THROW_PROTOCOL_ERROR(
@@ -674,7 +699,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 						end, session_attributes, next_ust_ctl_field,
 						lookup_field, lookup_root,
 						current_field_location_elements, choice_count,
-						selector_field);
+						selector_field, quirks);
 
 		return lttng::make_unique<lst::variant_type<int64_t>>(
 				alignment, std::move(selector_field_location), std::move(choices));
@@ -684,7 +709,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(const lttng_ust_ctl_fi
 						end, session_attributes, next_ust_ctl_field,
 						lookup_field, lookup_root,
 						current_field_location_elements, choice_count,
-						selector_field);
+						selector_field, quirks);
 
 		return lttng::make_unique<lst::variant_type<uint64_t>>(
 				alignment, std::move(selector_field_location), std::move(choices));
@@ -698,46 +723,47 @@ lst::type::cuptr create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curr
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements &current_field_location_elements)
+		lst::field_location::elements& current_field_location_elements,
+		lsu::ctl_field_quirks quirks)
 {
 	switch (current->type.atype) {
 	case lttng_ust_ctl_atype_integer:
 		return create_integer_type_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field);
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_enum:
 	case lttng_ust_ctl_atype_enum_nestable:
 		return create_enumeration_type_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field);
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_float:
 		return create_floating_point_type_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field);
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_string:
 		return create_string_type_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field);
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_array:
-		return create_array_type_from_ust_ctl_fields(current, end, session_attributes,
-				next_ust_ctl_field);
+		return create_array_type_from_ust_ctl_fields(
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_array_nestable:
 		return create_array_nestable_type_from_ust_ctl_fields(current, end,
 				session_attributes, next_ust_ctl_field, publish_field, lookup_field,
-				lookup_root, current_field_location_elements);
+				lookup_root, current_field_location_elements, quirks);
 	case lttng_ust_ctl_atype_sequence:
 		return create_sequence_type_from_ust_ctl_fields(current, end, session_attributes,
 				next_ust_ctl_field, publish_field, lookup_root,
-				current_field_location_elements);
+				current_field_location_elements, quirks);
 	case lttng_ust_ctl_atype_sequence_nestable:
 		return create_sequence_nestable_type_from_ust_ctl_fields(current, end,
 				session_attributes, next_ust_ctl_field, publish_field, lookup_field,
-				lookup_root, current_field_location_elements);
+				lookup_root, current_field_location_elements, quirks);
 	case lttng_ust_ctl_atype_struct:
 	case lttng_ust_ctl_atype_struct_nestable:
 		return create_structure_field_from_ust_ctl_fields(
-				current, end, session_attributes, next_ust_ctl_field);
+				current, end, session_attributes, next_ust_ctl_field, quirks);
 	case lttng_ust_ctl_atype_variant:
 	case lttng_ust_ctl_atype_variant_nestable:
 		return create_variant_field_from_ust_ctl_fields(current, end, session_attributes,
 				next_ust_ctl_field, lookup_field, lookup_root,
-				current_field_location_elements);
+				current_field_location_elements, quirks);
 	default:
 		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
 				"Unknown {} value `{}` encountered while converting {} to {}",
@@ -753,7 +779,8 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		publish_field_fn publish_field,
 		lookup_field_fn lookup_field,
 		lst::field_location::root lookup_root,
-		lst::field_location::elements& current_field_location_elements)
+		lst::field_location::elements& current_field_location_elements,
+		lsu::ctl_field_quirks quirks)
 {
 	LTTNG_ASSERT(current < end);
 
@@ -765,7 +792,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	publish_field(lttng::make_unique<lst::field>(current->name,
 			create_type_from_ust_ctl_fields(current, end, session_attributes,
 					next_ust_ctl_field, publish_field, lookup_field,
-					lookup_root, current_field_location_elements)));
+					lookup_root, current_field_location_elements, quirks)));
 }
 
 std::vector<lst::field::cuptr>::iterator lookup_field_in_vector(
@@ -809,7 +836,8 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 		const lsu::registry_session& session,
 		const lttng_ust_ctl_field *current,
 		const lttng_ust_ctl_field *end,
-		lst::field_location::root lookup_root)
+		lst::field_location::root lookup_root,
+		lsu::ctl_field_quirks quirks)
 {
 	std::vector<lst::field::cuptr> fields;
 	const auto trace_native_byte_order = session.abi.byte_order;
@@ -836,7 +864,8 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 		create_field_from_ust_ctl_fields(
 				current, end, session_attributes, &next_field,
 				[&fields](lst::field::cuptr field) {
-					/* Publishing a field simply adds it to the converted fields. */
+					/* Publishing a field simply adds it to the converted
+					 * fields. */
 					fields.emplace_back(std::move(field));
 				},
 				[&fields](const lst::field_location& location)
@@ -844,7 +873,7 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 					/* Resolve location to a previously-constructed field. */
 					return **lookup_field_in_vector(fields, location);
 				},
-				lookup_root, current_field_location_elements);
+				lookup_root, current_field_location_elements, quirks);
 
 		current = next_field;
 	}
@@ -857,7 +886,9 @@ std::vector<lst::field::cuptr> lsu::create_trace_fields_from_ust_ctl_fields(
 		const lsu::registry_session& session,
 		const lttng_ust_ctl_field *fields,
 		std::size_t field_count,
-		lst::field_location::root lookup_root)
+		lst::field_location::root lookup_root,
+		lsu::ctl_field_quirks quirks)
 {
-	return create_fields_from_ust_ctl_fields(session, fields, fields + field_count, lookup_root);
+	return create_fields_from_ust_ctl_fields(
+			session, fields, fields + field_count, lookup_root, quirks);
 }

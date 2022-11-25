@@ -6430,7 +6430,8 @@ static int handle_app_register_channel_notification(int sock,
 		auto app_context_fields = lsu::create_trace_fields_from_ust_ctl_fields(
 				*locked_registry_session, ust_ctl_context_fields.get(),
 				context_field_count,
-				lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT);
+				lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT,
+				lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS);
 
 		if (!ust_reg_chan.is_registered()) {
 			lst::type::cuptr event_context = app_context_fields.size() ?
@@ -6566,7 +6567,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, const char *na
 								*locked_registry, fields.get(),
 								nr_fields,
 								lst::field_location::root::
-										EVENT_RECORD_PAYLOAD),
+										EVENT_RECORD_PAYLOAD,
+								lsu::ctl_field_quirks::
+										UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS),
 						loglevel_value,
 						model_emf_uri.get() ?
 								nonstd::optional<std::string>(
