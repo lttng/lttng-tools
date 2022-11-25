@@ -436,8 +436,7 @@ private:
 		 */
 		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
 		_bypass_identifier_escape = true;
-		for (const auto& field : type.choices_
-) {
+		for (const auto& field : type.choices_) {
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field.second->accept(*this);
 			_description += fmt::format(" {};\n", field.first.name);
