@@ -50,6 +50,14 @@ lttng::runtime_error::runtime_error(const std::string& msg,
 {
 }
 
+lttng::unsupported_error::unsupported_error(const std::string& msg,
+		const char *file_name,
+		const char *function_name,
+		unsigned int line_number) :
+	std::runtime_error(msg + " " + format_throw_location(file_name, function_name, line_number))
+{
+}
+
 lttng::communication_error::communication_error(const std::string& msg,
 		const char *file_name,
 		const char *function_name,

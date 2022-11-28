@@ -7895,3 +7895,30 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
+
+lsu::ctl_field_quirks ust_app::ctl_field_quirks() const
+{
+	/*
+	 * Application contexts are expressed as variants. LTTng-UST announces
+	 * those by registering an enumeration named `..._tag`. It then registers a
+	 * variant as part of the event context that contains the various possible
+	 * types.
+	 *
+	 * Unfortunately, the names used in the enumeration and variant don't
+	 * match: the enumeration names are all prefixed with an underscore while
+	 * the variant type tag fields aren't.
+	 *
+	 * While the CTF 1.8.3 specification mentions that
+	 * underscores *should* (not *must*) be removed by CTF readers. Babeltrace
+	 * 1.x (and possibly others) expect a perfect match between the names used
+	 * by tags and variants.
+	 *
+	 * When the UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS quirk is enabled,
+	 * the variant's fields are modified to match the mappings of its tag.
+	 *
+	 * From ABI version >= 10.x, the variant fields and tag mapping names
+	 * correctly match, making this quirk unnecessary.
+	 */
+	return v_major <= 9 ? lsu::ctl_field_quirks::UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS :
+		lsu::ctl_field_quirks::NONE;
+}

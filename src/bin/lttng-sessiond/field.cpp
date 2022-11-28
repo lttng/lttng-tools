@@ -110,6 +110,12 @@ lst::integer_type::integer_type(unsigned int in_alignment,
 {
 }
 
+lst::type::cuptr lst::integer_type::copy() const
+{
+	return lttng::make_unique<integer_type>(
+			alignment, byte_order, size, signedness_, base_, roles_);
+}
+
 bool lst::integer_type::_is_equal(const type &base_other) const noexcept
 {
 	const auto& other = static_cast<decltype(*this)&>(base_other);
@@ -160,6 +166,12 @@ lst::floating_point_type::floating_point_type(unsigned int in_alignment,
 	LTTNG_THROW_INVALID_ARGUMENT_ERROR(
 			fmt::format("Invalid exponent/mantissa values provided while creating {}",
 					typeid(*this)));
+}
+
+lst::type::cuptr lst::floating_point_type::copy() const
+{
+	return lttng::make_unique<floating_point_type>(
+			alignment, byte_order, exponent_digits, mantissa_digits);
 }
 
 void lst::floating_point_type::accept(type_visitor& visitor) const
@@ -255,6 +267,12 @@ bool lst::static_length_array_type::_is_equal(const type& base_other) const noex
 	return array_type::_is_equal(base_other) && this->length == other.length;
 }
 
+lst::type::cuptr lst::static_length_array_type::copy() const
+{
+	return lttng::make_unique<static_length_array_type>(
+			alignment, element_type->copy(), length);
+}
+
 void lst::static_length_array_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
@@ -276,6 +294,12 @@ bool lst::dynamic_length_array_type::_is_equal(const type& base_other) const noe
 			this->length_field_location == other.length_field_location;
 }
 
+lst::type::cuptr lst::dynamic_length_array_type::copy() const
+{
+	return lttng::make_unique<dynamic_length_array_type>(
+			alignment, element_type->copy(), length_field_location);
+}
+
 void lst::dynamic_length_array_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
@@ -294,6 +318,11 @@ bool lst::static_length_blob_type::_is_equal(const type& base_other) const noexc
 	return length_bytes == other.length_bytes && roles_ == other.roles_;
 }
 
+lst::type::cuptr lst::static_length_blob_type::copy() const
+{
+	return lttng::make_unique<static_length_blob_type>(alignment, length_bytes, roles_);
+}
+
 void lst::static_length_blob_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
@@ -310,6 +339,11 @@ bool lst::dynamic_length_blob_type::_is_equal(const type& base_other) const noex
 	const auto& other = dynamic_cast<decltype(*this)&>(base_other);
 
 	return length_field_location == other.length_field_location;
+}
+
+lst::type::cuptr lst::dynamic_length_blob_type::copy() const
+{
+	return lttng::make_unique<dynamic_length_blob_type>(alignment, length_field_location);
 }
 
 void lst::dynamic_length_blob_type::accept(type_visitor& visitor) const
@@ -342,6 +376,11 @@ bool lst::static_length_string_type::_is_equal(const type& base_other) const noe
 	return string_type::_is_equal(base_other) && this->length == other.length;
 }
 
+lst::type::cuptr lst::static_length_string_type::copy() const
+{
+	return lttng::make_unique<static_length_string_type>(alignment, encoding_, length);
+}
+
 void lst::static_length_string_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
@@ -363,6 +402,12 @@ bool lst::dynamic_length_string_type::_is_equal(const type& base_other) const no
 			this->length_field_location == other.length_field_location;
 }
 
+lst::type::cuptr lst::dynamic_length_string_type::copy() const
+{
+	return lttng::make_unique<dynamic_length_string_type>(
+			alignment, encoding_, length_field_location);
+}
+
 void lst::dynamic_length_string_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
@@ -372,6 +417,11 @@ lst::null_terminated_string_type::null_terminated_string_type(unsigned int in_al
 		enum encoding in_encoding) :
 	string_type(in_alignment, in_encoding)
 {
+}
+
+lst::type::cuptr lst::null_terminated_string_type::copy() const
+{
+	return lttng::make_unique<null_terminated_string_type>(alignment, encoding_);
 }
 
 void lst::null_terminated_string_type::accept(type_visitor& visitor) const
@@ -389,6 +439,19 @@ bool lst::structure_type::_is_equal(const type& base_other) const noexcept
 	const auto &other = static_cast<decltype(*this)&>(base_other);
 
 	return fields_are_equal(this->fields_, other.fields_);
+}
+
+lst::type::cuptr lst::structure_type::copy() const
+{
+	structure_type::fields copy_of_fields;
+
+	copy_of_fields.reserve(fields_.size());
+	for (const auto& field : fields_) {
+		copy_of_fields.emplace_back(lttng::make_unique<lst::field>(
+				field->name, field->get_type().copy()));
+	}
+
+	return lttng::make_unique<structure_type>(alignment, std::move(copy_of_fields));
 }
 
 void lst::structure_type::accept(type_visitor& visitor) const

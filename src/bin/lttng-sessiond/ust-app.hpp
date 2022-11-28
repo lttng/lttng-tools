@@ -19,6 +19,7 @@
 #include "ust-registry.hpp"
 #include "ust-registry-session.hpp"
 #include "session.hpp"
+#include "ust-field-convert.hpp"
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
@@ -324,6 +325,8 @@ struct ust_app {
 	 * (ust_app_event_notifier_rule) by their token's value.
 	 */
 	struct lttng_ht *token_to_event_notifier_rule_ht;
+
+	lttng::sessiond::ust::ctl_field_quirks ctl_field_quirks() const;
 };
 
 /*

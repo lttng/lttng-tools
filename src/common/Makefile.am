@@ -102,6 +102,7 @@ libcommon_lgpl_la_SOURCES = \
 	random.cpp random.hpp \
 	readwrite.cpp readwrite.hpp \
 	runas.cpp runas.hpp \
+	scope-exit.hpp \
 	session-descriptor.cpp \
 	snapshot.cpp snapshot.hpp \
 	spawn-viewer.cpp spawn-viewer.hpp \

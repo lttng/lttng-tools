@@ -12,6 +12,7 @@
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
 #include <common/uuid.hpp>
+#include <common/scope-exit.hpp>
 
 #include <vendor/optional.hpp>
 
@@ -21,6 +22,7 @@
 #include <queue>
 #include <set>
 #include <stack>
+#include <unordered_set>
 
 namespace lst = lttng::sessiond::trace;
 namespace tsdl = lttng::sessiond::tsdl;
@@ -33,7 +35,7 @@ const auto ctf_spec_minor = 8;
  * Although the CTF v1.8 specification recommends ignoring any leading underscore, Some readers,
  * such as Babeltrace 1.x, expect special identifiers without a prepended underscore.
  */
-const std::set<std::string> safe_tsdl_identifiers = {
+const std::unordered_set<std::string> safe_tsdl_identifiers = {
 	"stream_id",
 	"packet_size",
 	"content_size",
@@ -112,11 +114,276 @@ std::string escape_tsdl_env_string_value(const std::string& original_string)
 	return escaped_string;
 }
 
+/*
+ * Variants produced by LTTng-UST contain TSDL-unsafe names. A variant/selector
+ * sanitization pass is performed before serializing a trace class hierarchy to
+ * TSDL.
+ *
+ * The variant_tsdl_keyword_sanitizer visitor is used to visit field before it
+ * is handed-over to the actual TSDL-producing visitor.
+ *
+ * As it visits fields, the variant_tsdl_keyword_sanitizer populates a
+ * "type_overrider" with TSDL-safe replacements for any variant or enumeration
+ * that uses TSDL-unsafe identifiers (reserved keywords).
+ *
+ * The type_overrider, in turn, is used by the rest of the TSDL serialization
+ * visitor (tsdl_field_visitor) to swap any TSDL-unsafe types with their
+ * sanitized version.
+ *
+ * The tsdl_field_visitor owns the type_overrider and only briefly shares it
+ * with the variant_tsdl_keyword_sanitizer which takes a reference to it.
+ */
+class variant_tsdl_keyword_sanitizer : public lttng::sessiond::trace::field_visitor,
+				       public lttng::sessiond::trace::type_visitor {
+public:
+	using type_lookup_function = std::function<const lst::type&(const lst::field_location&)>;
+
+	variant_tsdl_keyword_sanitizer(tsdl::details::type_overrider& type_overrides,
+			type_lookup_function lookup_type) :
+		_type_overrides{type_overrides}, _lookup_type(lookup_type)
+	{
+	}
+
+private:
+	class _c_string_comparator {
+	public:
+		int operator()(const char *lhs, const char *rhs) const
+		{
+			return std::strcmp(lhs, rhs) < 0;
+		}
+	};
+	using unsafe_names = std::set<const char *, _c_string_comparator>;
+
+	virtual void visit(const lst::field& field) override final
+	{
+		_type_overrides.type(field.get_type()).accept(*this);
+	}
+
+	virtual void visit(const lst::integer_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::floating_point_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::signed_enumeration_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::unsigned_enumeration_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::static_length_array_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::dynamic_length_array_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::static_length_blob_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::dynamic_length_blob_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::null_terminated_string_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::structure_type& type) override final
+	{
+		/* Recurse into structure attributes. */
+		for (const auto& field : type.fields_) {
+			field->accept(*this);
+		}
+	}
+
+	/*
+	 * Create a new enumeration type replacing any mapping that match, by name, the elements in `unsafe_names_found`
+	 * with a TSDL-safe version. Currently, unsafe identifiers are made safe by adding
+	 * a leading underscore.
+	 */
+	template <typename MappingIntegerType>
+	lst::type::cuptr _create_sanitized_selector(
+			const lst::typed_enumeration_type<MappingIntegerType>& original_selector,
+			const unsafe_names& unsafe_names_found)
+	{
+		auto new_mappings = std::make_shared<typename lst::typed_enumeration_type<
+				MappingIntegerType>::mappings>();
+
+		for (const auto& mapping : *original_selector.mappings_) {
+			if (unsafe_names_found.find(mapping.name.c_str()) ==
+					unsafe_names_found.end()) {
+				/* Mapping is safe, simply copy it. */
+				new_mappings->emplace_back(mapping);
+			} else {
+				/* Unsafe mapping, rename it and keep the rest of its attributes. */
+				new_mappings->emplace_back(
+						fmt::format("_{}", mapping.name), mapping.range);
+			}
+		}
+
+		return lttng::make_unique<lst::typed_enumeration_type<MappingIntegerType>>(
+				original_selector.alignment, original_selector.byte_order,
+				original_selector.size, original_selector.base_, new_mappings);
+	}
+
+	template <typename MappingIntegerType>
+	const typename lst::typed_enumeration_type<MappingIntegerType>::mapping&
+	_find_enumeration_mapping_by_range(
+			const typename lst::typed_enumeration_type<MappingIntegerType>&
+					enumeration_type,
+			const typename lst::typed_enumeration_type<
+					MappingIntegerType>::mapping::range_t& target_mapping_range)
+	{
+		for (const auto& mapping : *enumeration_type.mappings_) {
+			if (mapping.range == target_mapping_range) {
+				return mapping;
+			}
+		}
+
+		LTTNG_THROW_ERROR(fmt::format(
+				"Failed to find mapping by range in enumeration while sanitizing a variant: target_mapping_range={}",
+				target_mapping_range));
+	}
+
+	/*
+	 * Copy `original_variant`, but use the mappings of a previously-published sanitized tag
+	 * to produce a TSDL-safe version of the variant.
+	 */
+	template <typename MappingIntegerType>
+	lst::type::cuptr _create_sanitized_variant(
+			const lst::variant_type<MappingIntegerType>& original_variant)
+	{
+		typename lst::variant_type<MappingIntegerType>::choices new_choices;
+		const auto& sanitized_selector = static_cast<
+				const lst::typed_enumeration_type<MappingIntegerType>&>(
+				_type_overrides.type(_lookup_type(
+						original_variant.selector_field_location)));
+
+		/* Visit variant choices to sanitize them as needed. */
+		for (const auto& choice : original_variant.choices_) {
+			choice.second->accept(*this);
+		}
+
+		for (const auto& choice : original_variant.choices_) {
+			const auto& sanitized_choice_type = _type_overrides.type(*choice.second);
+
+			new_choices.emplace_back(
+					_find_enumeration_mapping_by_range(
+							sanitized_selector, choice.first.range),
+					sanitized_choice_type.copy());
+		}
+
+		return lttng::make_unique<lst::variant_type<MappingIntegerType>>(
+					       original_variant.alignment,
+					       original_variant.selector_field_location,
+					       std::move(new_choices));
+	}
+
+	template <typename MappingIntegerType>
+	void visit_variant(const lst::variant_type<MappingIntegerType>& type)
+	{
+		unsafe_names unsafe_names_found;
+		static const std::unordered_set<std::string> tsdl_protected_keywords = {
+				"align",
+				"callsite",
+				"const",
+				"char",
+				"clock",
+				"double",
+				"enum",
+				"env",
+				"event",
+				"floating_point",
+				"float",
+				"integer",
+				"int",
+				"long",
+				"short",
+				"signed",
+				"stream",
+				"string",
+				"struct",
+				"trace",
+				"typealias",
+				"typedef",
+				"unsigned",
+				"variant",
+				"void",
+				"_Bool",
+				"_Complex",
+				"_Imaginary",
+		};
+
+		for (const auto& choice : type.choices_) {
+			if (tsdl_protected_keywords.find(choice.first.name) != tsdl_protected_keywords.cend()) {
+				/* Choice name is illegal, we have to rename it and its matching mapping. */
+				unsafe_names_found.insert(choice.first.name.c_str());
+			}
+		}
+
+		if (unsafe_names_found.empty()) {
+			return;
+		}
+
+		/*
+		 * Look-up selector field type.
+		 *
+		 * Since it may have been overriden previously, keep the original and overriden
+		 * selector field types (which may be the same, if the original was not overriden).
+		 *
+		 * We work from the "overriden" selector field type to preserve any existing
+		 * modifications. However, the original field type will be used to publish the new
+		 * version of the type leaving only the most recent overriden type in the type
+		 * overrides.
+		 */
+		const auto& original_selector_type = _lookup_type(type.selector_field_location);
+		const auto& overriden_selector_type = _type_overrides.type(original_selector_type);
+
+		auto sanitized_selector_type = _create_sanitized_selector(
+				static_cast<const lst::typed_enumeration_type<MappingIntegerType>&>(
+					overriden_selector_type), unsafe_names_found);
+		_type_overrides.publish(original_selector_type, std::move(sanitized_selector_type));
+
+		auto sanitized_variant_type = _create_sanitized_variant(
+				static_cast<const lst::variant_type<MappingIntegerType>&>(type));
+		_type_overrides.publish(type, std::move(sanitized_variant_type));
+	}
+
+	virtual void visit(const lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	{
+		visit_variant(type);
+	}
+
+	virtual void visit(const lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	{
+		visit_variant(type);
+	}
+
+	virtual void visit(const lst::static_length_string_type& type __attribute__((unused))) override final
+	{
+	}
+
+	virtual void visit(const lst::dynamic_length_string_type& type __attribute__((unused))) override final
+	{
+	}
+
+	tsdl::details::type_overrider& _type_overrides;
+	const type_lookup_function _lookup_type;
+};
+
 class tsdl_field_visitor : public lttng::sessiond::trace::field_visitor,
 			   public lttng::sessiond::trace::type_visitor {
 public:
 	tsdl_field_visitor(const lst::abi& abi,
 			unsigned int indentation_level,
+			const tsdl::details::type_overrider& type_overrides,
 			const nonstd::optional<std::string>& in_default_clock_class_name =
 					nonstd::nullopt) :
 		_indentation_level{indentation_level},
@@ -124,7 +391,8 @@ public:
 		_bypass_identifier_escape{false},
 		_default_clock_class_name{in_default_clock_class_name ?
 						in_default_clock_class_name->c_str() :
-						nullptr}
+						nullptr},
+		_type_overrides{type_overrides}
 	{
 	}
 
@@ -146,8 +414,7 @@ private:
 		 */
 		_current_field_name.push(_bypass_identifier_escape ?
 				field.name : escape_tsdl_identifier(field.name));
-
-		field.get_type().accept(*this);
+		_type_overrides.type(field.get_type()).accept(*this);
 		_description += " ";
 		_description += _current_field_name.top();
 		_current_field_name.pop();
@@ -267,10 +534,8 @@ private:
 		/* name follows, when applicable. */
 		_description += "enum : ";
 
-		tsdl_field_visitor integer_visitor{_trace_abi, _indentation_level};
-
-		integer_visitor.visit(static_cast<const lst::integer_type&>(type));
-		_description += integer_visitor.transfer_description() + " {\n";
+		visit(static_cast<const lst::integer_type&>(type));
+		_description += " {\n";
 
 		const auto mappings_indentation_level = _indentation_level + 1;
 
@@ -511,6 +776,7 @@ private:
 
 	bool _bypass_identifier_escape;
 	const char *_default_clock_class_name;
+	const tsdl::details::type_overrider& _type_overrides;
 };
 
 class tsdl_trace_environment_visitor : public lst::trace_class_environment_visitor {
@@ -556,7 +822,11 @@ void tsdl::trace_class_visitor::append_metadata_fragment(const std::string& frag
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class& trace_class)
 {
-	tsdl_field_visitor packet_header_visitor(trace_class.abi, 1);
+	/* Ensure this instance is not used against multiple trace classes. */
+	LTTNG_ASSERT(!_current_trace_class || _current_trace_class == &trace_class);
+	_current_trace_class = &trace_class;
+
+	tsdl_field_visitor packet_header_visitor{trace_class.abi, 1, _sanitized_types_overrides};
 
 	trace_class.get_packet_header()->accept(packet_header_visitor);
 
@@ -621,14 +891,24 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class&
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class& stream_class)
 {
+	_current_stream_class = &stream_class;
+	const auto clear_stream_class_on_exit = lttng::make_scope_exit(
+			[this]() noexcept { _current_stream_class = nullptr; });
+
 	auto stream_class_str = fmt::format("stream {{\n"
 		"	id = {};\n", stream_class.id);
+	variant_tsdl_keyword_sanitizer variant_sanitizer(_sanitized_types_overrides,
+			[this](const lttng::sessiond::trace::field_location& location)
+					-> const lst::type& {
+				return _lookup_field_type(location);
+			});
 
 	const auto *event_header = stream_class.get_event_header();
 	if (event_header) {
-		auto event_header_visitor = tsdl_field_visitor(
-				_trace_abi, 1, stream_class.default_clock_class_name);
+		tsdl_field_visitor event_header_visitor{_trace_abi, 1, _sanitized_types_overrides,
+				stream_class.default_clock_class_name};
 
+		event_header->accept(variant_sanitizer);
 		event_header->accept(event_header_visitor);
 		stream_class_str += fmt::format("	event.header := {};\n",
 				event_header_visitor.transfer_description());
@@ -636,9 +916,10 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 	const auto *packet_context = stream_class.get_packet_context();
 	if (packet_context) {
-		auto packet_context_visitor = tsdl_field_visitor(
-				_trace_abi, 1, stream_class.default_clock_class_name);
+		tsdl_field_visitor packet_context_visitor{_trace_abi, 1, _sanitized_types_overrides,
+				stream_class.default_clock_class_name};
 
+		packet_context->accept(variant_sanitizer);
 		packet_context->accept(packet_context_visitor);
 		stream_class_str += fmt::format("	packet.context := {};\n",
 				packet_context_visitor.transfer_description());
@@ -646,8 +927,9 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 	const auto *event_context = stream_class.get_event_context();
 	if (event_context) {
-		auto event_context_visitor = tsdl_field_visitor(_trace_abi, 1);
+		tsdl_field_visitor event_context_visitor{_trace_abi, 1, _sanitized_types_overrides};
 
+		event_context->accept(variant_sanitizer);
 		event_context->accept(event_context_visitor);
 		stream_class_str += fmt::format("	event.context := {};\n",
 				event_context_visitor.transfer_description());
@@ -660,6 +942,10 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class& event_class)
 {
+	_current_event_class = &event_class;
+	const auto clear_event_class_on_exit = lttng::make_scope_exit(
+			[this]() noexcept { _current_event_class = nullptr; });
+
 	auto event_class_str = fmt::format("event {{\n"
 					   "	name = \"{name}\";\n"
 					   "	id = {id};\n"
@@ -675,12 +961,155 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 				"	model.emf.uri = \"{}\";\n", *event_class.model_emf_uri);
 	}
 
-	auto payload_visitor = tsdl_field_visitor(_trace_abi, 1);
+	tsdl_field_visitor payload_visitor{_trace_abi, 1, _sanitized_types_overrides};
+	variant_tsdl_keyword_sanitizer variant_sanitizer(_sanitized_types_overrides,
+			[this](const lttng::sessiond::trace::field_location& location)
+					-> const lst::type& {
+				return _lookup_field_type(location);
+			});
 
-	event_class.payload->accept(static_cast<lst::type_visitor&>(payload_visitor));
+	event_class.payload->accept(variant_sanitizer);
+	event_class.payload->accept(payload_visitor);
 
 	event_class_str += fmt::format(
 			"	fields := {};\n}};\n\n", payload_visitor.transfer_description());
 
 	append_metadata_fragment(event_class_str);
+}
+
+void tsdl::details::type_overrider::publish(
+		const lttng::sessiond::trace::type& original_type,
+		lttng::sessiond::trace::type::cuptr new_type_override)
+{
+	auto current_override = _overriden_types.find(&original_type);
+
+	if (current_override != _overriden_types.end()) {
+		current_override->second = std::move(new_type_override);
+	} else {
+		_overriden_types.insert(std::make_pair(&original_type, std::move(new_type_override)));
+	}
+}
+
+const lst::type& tsdl::details::type_overrider::type(
+		const lttng::sessiond::trace::type& original) const noexcept
+{
+	const auto result = _overriden_types.find(&original);
+
+	if (result != _overriden_types.end()) {
+		/* Provide the overriden type. */
+		return *result->second;
+	}
+
+	/* Pass the original type through. */
+	return original;
+}
+
+namespace {
+const lttng::sessiond::trace::type& lookup_type_from_root_type(
+		const lttng::sessiond::trace::type& root_type,
+		const lttng::sessiond::trace::field_location& field_location)
+{
+	const auto *type = &root_type;
+
+	for (const auto& location_element : field_location.elements_) {
+		/* Only structures can be traversed. */
+		const auto *struct_type = dynamic_cast<const lst::structure_type *>(type);
+
+		/*
+		 * Traverse the type by following the field location path.
+		 *
+		 * While field paths are assumed to have been validated before-hand,
+		 * a dynamic cast is performed here as an additional precaution
+		 * since none of this is performance-critical; it can be removed
+		 * safely.
+		 */
+		if (!struct_type) {
+			LTTNG_THROW_ERROR(fmt::format(
+					"Encountered a type that is not a structure while traversing field location: field-location=`{}`",
+					field_location));
+		}
+
+		const auto field_found_it = std::find_if(struct_type->fields_.cbegin(),
+				struct_type->fields_.cend(),
+				[&location_element](const lst::field::cuptr& struct_field) {
+					return struct_field->name == location_element;
+				});
+
+		if (field_found_it == struct_type->fields_.cend()) {
+			LTTNG_THROW_ERROR(fmt::format(
+					"Failed to find field using field location: field-name:=`{field_name}`, field-location=`{field_location}`",
+					fmt::arg("field_location", field_location),
+					fmt::arg("field_name", location_element)));
+		}
+
+		type = &(*field_found_it)->get_type();
+	}
+
+	return *type;
+}
+} /* anonymous namespace. */
+
+/*
+ * The trace hierarchy is assumed to have been validated on creation.
+ * This function can only fail due to a validation error, hence
+ * why it throws on any unexpected/invalid field location.
+ *
+ * Does not return an overriden field type; it returns the original field type
+ * as found in the trace hierarchy.
+ */
+const lttng::sessiond::trace::type& lttng::sessiond::tsdl::trace_class_visitor::_lookup_field_type(
+		const lttng::sessiond::trace::field_location& location) const
+{
+	/* Validate the look-up is happening in a valid visit context. */
+	switch (location.root_) {
+	case lst::field_location::root::EVENT_RECORD_HEADER:
+	case lst::field_location::root::EVENT_RECORD_PAYLOAD:
+		if (!_current_event_class) {
+			LTTNG_THROW_ERROR(
+					"Field type look-up failure: no current event class in visitor's context");
+		}
+		/* fall through. */
+	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
+	case lst::field_location::root::PACKET_CONTEXT:
+		if (!_current_stream_class) {
+			LTTNG_THROW_ERROR(
+					"Field type look-up failure: no current stream class in visitor's context");
+		}
+		/* fall through. */
+	case lst::field_location::root::PACKET_HEADER:
+		if (!_current_trace_class) {
+			LTTNG_THROW_ERROR(
+					"Field type look-up failure: no current trace class in visitor's context");
+		}
+
+		break;
+	case lst::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+				"Field type look-up failure: event-record specific contexts are not supported");
+	default:
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+				"Field type look-up failure: unknown field location root");
+	}
+
+	switch (location.root_) {
+	case lst::field_location::root::PACKET_HEADER:
+		return lookup_type_from_root_type(
+				*_current_trace_class->get_packet_header(), location);
+	case lst::field_location::root::PACKET_CONTEXT:
+		return lookup_type_from_root_type(
+				*_current_stream_class->get_packet_context(), location);
+	case lst::field_location::root::EVENT_RECORD_HEADER:
+		return lookup_type_from_root_type(
+				*_current_stream_class->get_event_header(), location);
+	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
+		return lookup_type_from_root_type(
+				*_current_stream_class->get_event_context(), location);
+	case lst::field_location::root::EVENT_RECORD_PAYLOAD:
+		return lookup_type_from_root_type(
+				*_current_event_class->payload, location);
+	case lst::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
+	default:
+		/* Unreachable as it was checked before. */
+		abort();
+	}
 }

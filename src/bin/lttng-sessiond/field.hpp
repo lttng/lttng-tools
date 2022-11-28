@@ -9,6 +9,7 @@
 #define LTTNG_FIELD_H
 
 #include <common/format.hpp>
+#include <common/make-unique.hpp>
 
 #include <vendor/optional.hpp>
 
@@ -65,6 +66,10 @@ public:
 	bool operator==(const type& other) const noexcept;
 	bool operator!=(const type& other) const noexcept;
 	virtual ~type();
+
+	/* Obtain an independent copy of `type`. */
+	virtual type::cuptr copy() const = 0;
+
 	virtual void accept(type_visitor& visitor) const = 0;
 
 	const unsigned int alignment;
@@ -133,6 +138,8 @@ public:
 			base base,
 			roles roles = {});
 
+	virtual type::cuptr copy() const override;
+
 	virtual void accept(type_visitor& visitor) const override;
 
 	const enum byte_order byte_order;
@@ -156,6 +163,8 @@ public:
 			byte_order byte_order,
 			unsigned int exponent_digits,
 			unsigned int mantissa_digits);
+
+	virtual type::cuptr copy() const override final;
 
 	virtual void accept(type_visitor& visitor) const override final;
 
@@ -236,7 +245,7 @@ bool operator==(const enumeration_mapping<MappingIntegerType>& lhs,
 }
 } /* namespace details */
 
-template <class MappingIntegerType>
+template <typename MappingIntegerType>
 class typed_enumeration_type : public enumeration_type {
 public:
 	using mapping = details::enumeration_mapping<MappingIntegerType>;
@@ -262,6 +271,12 @@ public:
 				std::move(in_roles)),
 		mappings_{std::move(in_mappings)}
 	{
+	}
+
+	virtual type::cuptr copy() const override
+	{
+		return lttng::make_unique<typed_enumeration_type<MappingIntegerType>>(
+				alignment, byte_order, size, base_, mappings_, roles_);
 	}
 
 	virtual void accept(type_visitor& visitor) const override final;
@@ -298,6 +313,8 @@ public:
 			type::cuptr element_type,
 			uint64_t in_length);
 
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const uint64_t length;
@@ -311,6 +328,8 @@ public:
 	dynamic_length_array_type(unsigned int alignment,
 			type::cuptr element_type,
 			field_location length_field_location);
+
+	virtual type::cuptr copy() const override final;
 
 	virtual void accept(type_visitor& visitor) const override final;
 
@@ -331,6 +350,8 @@ public:
 
 	static_length_blob_type(unsigned int alignment, uint64_t in_length_bytes, roles roles = {});
 
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const uint64_t length_bytes;
@@ -343,6 +364,8 @@ private:
 class dynamic_length_blob_type : public type {
 public:
 	dynamic_length_blob_type(unsigned int alignment, field_location length_field_location);
+
+	virtual type::cuptr copy() const override final;
 
 	virtual void accept(type_visitor& visitor) const override final;
 
@@ -376,6 +399,9 @@ class static_length_string_type : public string_type {
 public:
 	static_length_string_type(
 			unsigned int alignment, enum encoding in_encoding, uint64_t length);
+
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const uint64_t length;
@@ -389,6 +415,9 @@ public:
 	dynamic_length_string_type(unsigned int alignment,
 			enum encoding in_encoding,
 			field_location length_field_location);
+
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const field_location length_field_location;
@@ -400,6 +429,9 @@ private:
 class null_terminated_string_type : public string_type {
 public:
 	null_terminated_string_type(unsigned int alignment, enum encoding in_encoding);
+
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 };
 
@@ -409,6 +441,8 @@ public:
 
 	structure_type(unsigned int alignment, fields in_fields);
 
+	virtual type::cuptr copy() const override final;
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const fields fields_;
@@ -417,7 +451,7 @@ private:
 	virtual bool _is_equal(const type& base_other) const noexcept override final;
 };
 
-template <class MappingIntegerType>
+template <typename MappingIntegerType>
 class variant_type : public type {
 	static_assert(std::is_same<MappingIntegerType,
 					unsigned_enumeration_type::mapping::range_t::
@@ -440,11 +474,24 @@ public:
 	{
 	}
 
+	virtual type::cuptr copy() const override final
+	{
+		choices copy_of_choices;
+
+		copy_of_choices.reserve(choices_.size());
+		for (const auto& current_choice : choices_) {
+			copy_of_choices.emplace_back(
+					current_choice.first, current_choice.second->copy());
+		}
+
+		return lttng::make_unique<variant_type<MappingIntegerType>>(
+			alignment, selector_field_location, std::move(copy_of_choices));
+	}
+
 	virtual void accept(type_visitor& visitor) const override final;
 
 	const field_location selector_field_location;
 	const choices choices_;
-;
 
 private:
 	static bool _choices_are_equal(const choices& a, const choices& b)
@@ -507,6 +554,8 @@ protected:
 } /* namespace lttng */
 
 /*
+ * Field formatters for libfmt.
+ *
  * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
  * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
  */
@@ -548,6 +597,52 @@ struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string
 		return format_to(ctx.out(), location_str);
 	}
 };
+
+namespace details {
+template <typename MappingIntegerType>
+::std::string format_mapping_range(typename lttng::sessiond::trace::typed_enumeration_type<
+		MappingIntegerType>::mapping::range_t range)
+{
+	if (range.begin == range.end) {
+		return ::fmt::format("[{}]", range.begin);
+	} else {
+		return ::fmt::format("[{}, {}]", range.begin, range.end);
+	}
+}
+} /* namespace details */
+
+template <>
+struct formatter<typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t>
+	: formatter<std::string> {
+	template <typename FormatCtx>
+	typename FormatCtx::iterator
+	format(typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t range,
+			FormatCtx& ctx)
+	{
+		return format_to(ctx.out(),
+				details::format_mapping_range<
+						lttng::sessiond::trace::signed_enumeration_type::
+								mapping::range_t::range_integer_t>(
+						range));
+	}
+};
+
+template <>
+struct formatter<typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t>
+	: formatter<std::string> {
+	template <typename FormatCtx>
+	typename FormatCtx::iterator
+	format(typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t range,
+			FormatCtx& ctx)
+	{
+		return format_to(ctx.out(),
+				details::format_mapping_range<
+						lttng::sessiond::trace::unsigned_enumeration_type::
+								mapping::range_t::range_integer_t>(
+						range));
+	}
+};
+
 } /* namespace fmt */
 
 #endif /* LTTNG_FIELD_H */
