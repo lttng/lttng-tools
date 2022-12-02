@@ -126,7 +126,7 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session,
 	pthread_mutex_init(&trace->stream_list_lock, NULL);
 	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
 
-	DBG("Created ctf_trace %" PRIu64 "of session \"%s\" from host \"%s\" with path: %s",
+	DBG("Created ctf_trace %" PRIu64 " of session \"%s\" from host \"%s\" with path: %s",
 			trace->id, session->session_name, session->hostname,
 			subpath);
 
