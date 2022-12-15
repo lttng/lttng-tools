@@ -7,7 +7,6 @@
 
 #ifndef _COMPAT_FCNTL_H
 #define _COMPAT_FCNTL_H
-
 #include <fcntl.h>
 #include <sys/types.h>
 
@@ -22,6 +21,7 @@ typedef off64_t loff_t;
 #endif
 
 #ifdef __linux__
+typedef off_t off64_t;
 extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 		unsigned int flags);
 #define lttng_sync_file_range(fd, offset, nbytes, flags) \
