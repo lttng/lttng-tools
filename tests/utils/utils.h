@@ -8,6 +8,8 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 
+#include <unistd.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
