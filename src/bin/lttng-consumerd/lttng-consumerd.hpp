@@ -9,6 +9,7 @@
 #ifndef _LTTNG_CONSUMERD_H
 #define _LTTNG_CONSUMERD_H
 
+#include <common/consumer/consumer.hpp>
 
 #define NR_LTTNG_CONSUMER_READY		1
 extern int lttng_consumer_ready;
