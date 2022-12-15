@@ -14,6 +14,8 @@
 
 #include "filter-ast.hpp"
 
+#include <cstdlib>
+
 enum ir_op_signedness {
 	IR_SIGN_UNKNOWN = 0,
 	IR_SIGNED,
