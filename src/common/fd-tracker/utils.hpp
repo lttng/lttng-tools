@@ -9,10 +9,9 @@
 #define FD_TRACKER_UTILS_H
 
 #include <common/compat/directory-handle.hpp>
+#include <common/compat/poll.hpp>
 #include <common/fd-tracker/fd-tracker.hpp>
 #include <common/macros.hpp>
-
-struct lttng_poll_event;
 
 /*
  * Utility implementing a close_fd callback which receives one file descriptor

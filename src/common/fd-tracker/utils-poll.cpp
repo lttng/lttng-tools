@@ -5,8 +5,6 @@
  *
  */
 
-#include <common/compat/poll.hpp>
-
 #include "utils.hpp"
 
 #ifdef HAVE_EPOLL
