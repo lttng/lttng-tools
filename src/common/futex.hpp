@@ -9,6 +9,8 @@
 #ifndef _LTT_FUTEX_H
 #define _LTT_FUTEX_H
 
+#include <cstdint>
+
 void futex_wait_update(int32_t *futex, int active);
 void futex_nto1_prepare(int32_t *futex);
 void futex_nto1_wait(int32_t *futex);
