@@ -9,6 +9,7 @@
 #define LTTNG_TESTAPP_SIGNAL_HELPER_H
 
 #include <signal.h>
+#include <stdio.h>
 
 static volatile int should_quit;
 
