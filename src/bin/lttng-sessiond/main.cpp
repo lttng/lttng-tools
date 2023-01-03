@@ -42,6 +42,8 @@
 #include <common/config/session-config.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/logging-utils.hpp>
+
 #include <lttng/event-internal.hpp>
 #include "lttng-sessiond.hpp"
 #include "buffer-registry.hpp"
@@ -1538,6 +1540,7 @@ int main(int argc, char **argv)
 
 	sessiond_config_log(&the_config);
 	sessiond_uuid_log();
+	lttng::logging::log_system_information(PRINT_DBG);
 
 	if (opt_print_version) {
 		print_version();
