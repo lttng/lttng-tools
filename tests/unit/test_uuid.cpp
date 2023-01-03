@@ -41,6 +41,11 @@ static const char invalid_str_4[] = "2d-6c6d756574-470e-9142-a4e6ad03f143";
 static const char invalid_str_5[] = "4542ad19-9e4f-4931-8261-2101c3e089ae7";
 static const char invalid_str_6[] = "XX0123";
 
+/* For error.hpp */
+int lttng_opt_quiet = 1;
+int lttng_opt_verbose = 0;
+int lttng_opt_mi;
+
 static
 void run_test_lttng_uuid_from_str(void)
 {

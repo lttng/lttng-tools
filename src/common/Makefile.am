@@ -84,6 +84,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
 	exception.cpp exception.hpp \
+	file-descriptor.hpp \
 	fd-handle.cpp fd-handle.hpp\
 	format.hpp \
 	kernel-probe.cpp \
@@ -98,6 +99,7 @@ libcommon_lgpl_la_SOURCES = \
 	payload.cpp payload.hpp \
 	payload-view.cpp payload-view.hpp \
 	pthread-lock.hpp \
+	random.cpp random.hpp \
 	readwrite.cpp readwrite.hpp \
 	runas.cpp runas.hpp \
 	session-descriptor.cpp \

@@ -7,6 +7,10 @@
  */
 
 #include <common/compat/string.hpp>
+#include <common/error.hpp>
+#include <common/format.hpp>
+#include <common/random.hpp>
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -78,18 +82,17 @@ int lttng_uuid_generate(lttng_uuid& uuid_out)
 	int i, ret = 0;
 
 	if (!lttng_uuid_is_init) {
-		/*
-		 * We don't need cryptographic quality randomness to
-		 * generate UUIDs, seed rand with the epoch.
-		 */
-		const time_t epoch = time(NULL);
-
-		if (epoch == (time_t) -1) {
+		try {
+			srand(lttng::random::produce_best_effort_random_seed());
+		} catch (std::exception& e) {
+			ERR("%s",
+					fmt::format("Failed to initialize random seed during generation of UUID: {}",
+							e.what())
+							.c_str());
 			ret = -1;
 			goto end;
 		}
 
-		srand(epoch);
 		lttng_uuid_is_init = true;
 	}
 

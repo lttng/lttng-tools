@@ -300,7 +300,7 @@ AC_CHECK_HEADERS([ \
 	signal.h stdlib.h sys/un.h sys/socket.h stdlib.h stdio.h \
 	getopt.h sys/ipc.h sys/shm.h popt.h grp.h arpa/inet.h \
 	netdb.h netinet/in.h paths.h stddef.h sys/file.h sys/ioctl.h \
-	sys/mount.h sys/param.h sys/time.h elf.h
+	sys/mount.h sys/param.h sys/time.h elf.h sys/random.h sys/syscall.h
 ])
 
 AM_CONDITIONAL([HAVE_ELF_H], [test x$ac_cv_header_elf_h = xyes])
@@ -312,7 +312,7 @@ AC_CHECK_FUNCS([ \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
-	sched_getcpu sysconf sync_file_range
+	sched_getcpu sysconf sync_file_range getrandom
 ])
 
 # Check for pthread_setname_np and pthread_getname_np
