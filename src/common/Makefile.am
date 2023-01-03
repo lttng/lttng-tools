@@ -89,6 +89,7 @@ libcommon_lgpl_la_SOURCES = \
 	notification.c \
 	payload.c payload.h \
 	payload-view.c payload-view.h \
+	random.c random.h \
 	readwrite.c readwrite.h \
 	runas.c runas.h \
 	session-descriptor.c \
