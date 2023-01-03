@@ -47,6 +47,7 @@ libcommon_lgpl_la_SOURCES = \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
 	notify.c \
+	random.c random.h \
 	readwrite.c readwrite.h \
 	runas.c runas.h \
 	session-consumed-size.c \

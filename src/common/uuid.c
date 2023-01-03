@@ -7,6 +7,9 @@
  */
 
 #include <common/compat/string.h>
+#include <common/random.h>
+#include <common/error.h>
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -78,18 +81,15 @@ int lttng_uuid_generate(lttng_uuid uuid_out)
 	}
 
 	if (!lttng_uuid_is_init) {
-		/*
-		 * We don't need cryptographic quality randomness to
-		 * generate UUIDs, seed rand with the epoch.
-		 */
-		const time_t epoch = time(NULL);
+		seed_t new_seed;
 
-		if (epoch == (time_t) -1) {
-			ret = -1;
+		ret = lttng_produce_best_effort_random_seed(&new_seed);
+		if (ret) {
+			ERR("Failed to initialize random seed while generating UUID");
 			goto end;
 		}
-		srand(epoch);
 
+		srand(new_seed);
 		lttng_uuid_is_init = true;
 	}
 
