@@ -191,37 +191,42 @@ lst::enumeration_type::enumeration_type(unsigned int in_alignment,
 {
 }
 
+/*
+ * Due to a bug in g++ < 7.1, these specializations must be enclosed in the namespaces
+ * rather than using the usual `namespace::namespace::function` notation:
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
 namespace lttng {
 namespace sessiond {
 namespace trace {
 template <>
-void lst::signed_enumeration_type::accept(type_visitor& visitor) const
+void signed_enumeration_type::accept(type_visitor& visitor) const
 {
 	visitor.visit(*this);
 }
 
 template <>
-void lst::unsigned_enumeration_type::accept(type_visitor& visitor) const
+void unsigned_enumeration_type::accept(type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
+template <>
+void variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>::accept(
+		lst::type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
+template <>
+void variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::accept(
+		lst::type_visitor& visitor) const
 {
 	visitor.visit(*this);
 }
 } /* namespace trace */
 } /* namespace sessiond */
 } /* namespace lttng */
-
-template <>
-void lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>::accept(
-		lst::type_visitor& visitor) const
-{
-	visitor.visit(*this);
-}
-
-template <>
-void lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::accept(
-		lst::type_visitor& visitor) const
-{
-	visitor.visit(*this);
-}
 
 lst::array_type::array_type(unsigned int in_alignment, type::cuptr in_element_type) :
 	type(in_alignment), element_type{std::move(in_element_type)}
