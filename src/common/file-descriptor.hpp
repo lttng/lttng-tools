@@ -41,10 +41,7 @@ public:
 
 		const auto ret = ::close(_raw_fd);
 		if (ret) {
-			PERROR("%s",
-					fmt::format("Failed to close file descriptor: fd = {}",
-							_raw_fd)
-							.c_str());
+			PERROR("Failed to close file descriptor: fd=%i", _raw_fd);
 		}
 	}
 

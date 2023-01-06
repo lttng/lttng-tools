@@ -85,10 +85,8 @@ int lttng_uuid_generate(lttng_uuid& uuid_out)
 		try {
 			srand(lttng::random::produce_best_effort_random_seed());
 		} catch (std::exception& e) {
-			ERR("%s",
-					fmt::format("Failed to initialize random seed during generation of UUID: {}",
-							e.what())
-							.c_str());
+			ERR("Failed to initialize random seed during generation of UUID: %s",
+					e.what());
 			ret = -1;
 			goto end;
 		}
