@@ -1,3 +1,13 @@
+2023-01-05 lttng-tools 2.13.9 (National Whipped Cream Day)
+	* Fix: lttng: poptGetArg doesn't provide string ownership
+	* Fix: relayd: missing space in trace creation logging statement
+	* Fix: event field value: assertion fails on empty string
+	* Build fix: rpath of test libraries results in non-reproducible build
+	* Fix: never use 'no' in a command variable
+	* Fix: sessiond: abort called on undefined client command
+	* Fix: consumer: snapshot: assertion on subsequent snapshot
+	* Fix: sessiond: instance uuid is not sufficiently unique
+
 2022-08-22 lttng-tools 2.13.8 (National Bao Day)
 	* Fix: waiter: futex wait: handle spurious futex wakeups
 	* Fix: futex wait: handle spurious futex wakeups
