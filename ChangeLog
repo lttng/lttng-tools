@@ -1,3 +1,10 @@
+2023-01-05 lttng-tools 2.12.13 (National Whipped Cream Day)
+	* Fix: lttng: poptGetArg doesn't provide string ownership
+	* Fix: relayd: missing space in trace creation logging statement
+	* Fix: never use 'no' in a command variable
+	* Fix: consumer: snapshot: assertion on subsequent snapshot
+	* Fix: sessiond: instance uuid is not sufficiently unique
+
 2022-08-22 lttng-tools 2.12.12 (National Bao Day)
 	* Fix: waiter: futex wait: handle spurious futex wakeups
 	* Fix: futex wait: handle spurious futex wakeups
