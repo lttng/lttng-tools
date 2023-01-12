@@ -116,7 +116,7 @@ public:
 	}
 
 	/* Only call once. */
-	json::json transfer_fragment()
+	json::json move_fragment()
 	{
 		return std::move(_environment);
 	}
@@ -139,7 +139,7 @@ public:
 	}
 
 	/* Only call once. */
-	json::json transfer_fragment()
+	json::json move_fragment()
 	{
 		return std::move(_fragment);
 	}
@@ -151,7 +151,7 @@ private:
 		field.get_type().accept(field_type_visitor);
 
 		_fragment["name"] = field.name;
-		_fragment["field-class"] = field_type_visitor.transfer_fragment();
+		_fragment["field-class"] = field_type_visitor.move_fragment();
 	}
 
 	virtual void visit(const lst::integer_type& type) override final
@@ -247,7 +247,7 @@ private:
 
 		::ctf2::field_visitor element_visitor;
 		type.element_type->accept(element_visitor);
-		_fragment["element-field-class"] = element_visitor.transfer_fragment();
+		_fragment["element-field-class"] = element_visitor.move_fragment();
 
 		if (type.alignment != 0) {
 			_fragment["minimum-alignment"] = type.alignment;
@@ -262,7 +262,7 @@ private:
 
 		::ctf2::field_visitor element_visitor;
 		type.element_type->accept(element_visitor);
-		_fragment["element-field-class"] = element_visitor.transfer_fragment();
+		_fragment["element-field-class"] = element_visitor.move_fragment();
 
 		if (type.alignment != 0) {
 			_fragment["minimum-alignment"] = type.alignment;
@@ -313,7 +313,7 @@ private:
 			json::json member_class;
 
 			field->accept(member_visitor);
-			member_classes_value.emplace_back(member_visitor.transfer_fragment());
+			member_classes_value.emplace_back(member_visitor.move_fragment());
 		}
 
 		_fragment["member-classes"] = std::move(member_classes_value);
@@ -333,7 +333,7 @@ private:
 			/* TODO missing selector-field-range. */
 			member_class["selector-field-ranges"] = {{option.first.range.begin, option.first.range.end}};
 			option.second->accept(option_visitor);
-			member_class["field-class"] = option_visitor.transfer_fragment();
+			member_class["field-class"] = option_visitor.move_fragment();
 			options_value.emplace_back(std::move(member_class));
 		}
 
@@ -388,14 +388,14 @@ void lsc::trace_class_visitor::visit(const lst::trace_class& trace_class)
 
 	::ctf2::trace_environment_visitor environment_visitor;
 	trace_class.accept(environment_visitor);
-	trace_class_fragment["environment"] = environment_visitor.transfer_fragment();
+	trace_class_fragment["environment"] = environment_visitor.move_fragment();
 
 	const auto packet_header = trace_class.get_packet_header();
 	if (packet_header) {
 		::ctf2::field_visitor field_visitor;
 
 		packet_header->accept(field_visitor);
-		trace_class_fragment["packet-header-field-class"] = field_visitor.transfer_fragment();
+		trace_class_fragment["packet-header-field-class"] = field_visitor.move_fragment();
 	}
 
 	append_metadata_fragment(trace_class_fragment);
@@ -437,7 +437,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 		::ctf2::field_visitor visitor;
 
 		packet_context->accept(visitor);
-		stream_class_fragment["packet-context-field-class"] = visitor.transfer_fragment();
+		stream_class_fragment["packet-context-field-class"] = visitor.move_fragment();
 	}
 
 	const auto event_header = stream_class.get_event_header();
@@ -446,7 +446,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 
 		event_header->accept(visitor);
 		stream_class_fragment["event-record-header-field-class"] =
-				visitor.transfer_fragment();
+				visitor.move_fragment();
 	}
 
 	const auto event_context = stream_class.get_event_context();
@@ -455,7 +455,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 
 		event_context->accept(visitor);
 		stream_class_fragment["event-record-common-context-field-class"] =
-				visitor.transfer_fragment();
+				visitor.move_fragment();
 	}
 
 	append_metadata_fragment(stream_class_fragment);
@@ -473,7 +473,7 @@ void lsc::trace_class_visitor::visit(const lst::event_class& event_class)
 		::ctf2::field_visitor visitor;
 
 		event_class.payload->accept(visitor);
-		event_class_fragment["payload-field-class"] = visitor.transfer_fragment();
+		event_class_fragment["payload-field-class"] = visitor.move_fragment();
 	}
 
 	append_metadata_fragment(event_class_fragment);

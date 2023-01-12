@@ -397,7 +397,7 @@ public:
 	}
 
 	/* Only call once. */
-	std::string transfer_description()
+	std::string move_description()
 	{
 		return std::move(_description);
 	}
@@ -797,7 +797,7 @@ public:
 	}
 
 	/* Only call once. */
-	std::string transfer_description()
+	std::string move_description()
 	{
 		_environment += "};\n\n";
 		return std::move(_environment);
@@ -852,14 +852,14 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 			fmt::arg("uuid", lttng::utils::uuid_to_str(trace_class.uuid)),
 			fmt::arg("byte_order",
 					trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le"),
-			fmt::arg("packet_header_layout", packet_header_visitor.transfer_description()));
+			fmt::arg("packet_header_layout", packet_header_visitor.move_description()));
 
 	/* Declare trace scope and type aliases. */
 	append_metadata_fragment(trace_class_tsdl);
 
 	tsdl_trace_environment_visitor environment_visitor;
 	trace_class.accept(environment_visitor);
-	append_metadata_fragment(environment_visitor.transfer_description());
+	append_metadata_fragment(environment_visitor.move_description());
 }
 
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class& clock_class)
@@ -911,7 +911,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 		event_header->accept(variant_sanitizer);
 		event_header->accept(event_header_visitor);
 		stream_class_str += fmt::format("	event.header := {};\n",
-				event_header_visitor.transfer_description());
+				event_header_visitor.move_description());
 	}
 
 	const auto *packet_context = stream_class.get_packet_context();
@@ -922,7 +922,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 		packet_context->accept(variant_sanitizer);
 		packet_context->accept(packet_context_visitor);
 		stream_class_str += fmt::format("	packet.context := {};\n",
-				packet_context_visitor.transfer_description());
+				packet_context_visitor.move_description());
 	}
 
 	const auto *event_context = stream_class.get_event_context();
@@ -932,7 +932,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 		event_context->accept(variant_sanitizer);
 		event_context->accept(event_context_visitor);
 		stream_class_str += fmt::format("	event.context := {};\n",
-				event_context_visitor.transfer_description());
+				event_context_visitor.move_description());
 	}
 
 	stream_class_str += "};\n\n";
@@ -972,7 +972,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 	event_class.payload->accept(payload_visitor);
 
 	event_class_str += fmt::format(
-			"	fields := {};\n}};\n\n", payload_visitor.transfer_description());
+			"	fields := {};\n}};\n\n", payload_visitor.move_description());
 
 	append_metadata_fragment(event_class_str);
 }
