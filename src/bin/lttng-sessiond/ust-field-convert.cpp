@@ -843,7 +843,7 @@ std::vector<lst::field::cuptr> create_fields_from_ust_ctl_fields(
 	const auto trace_native_byte_order = session.abi.byte_order;
 	const session_attributes session_attributes{
 			[&session](const char *enum_name, uint64_t enum_id) {
-				return session.get_enumeration(enum_name, enum_id);
+				return session.enumeration(enum_name, enum_id);
 			},
 			trace_native_byte_order};
 	/* Location of field being created. */

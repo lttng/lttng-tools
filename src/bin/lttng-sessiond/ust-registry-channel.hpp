@@ -48,8 +48,8 @@ public:
 			uint32_t& out_event_id);
 	virtual ~registry_channel();
 
-	virtual const lttng::sessiond::trace::type *get_event_context() const override final;
-	void set_event_context(lttng::sessiond::trace::type::cuptr context);
+	virtual const lttng::sessiond::trace::type *event_context() const override final;
+	void event_context(lttng::sessiond::trace::type::cuptr context);
 
 	/* Channel was registered to at least one application. */
 	bool is_registered() const;

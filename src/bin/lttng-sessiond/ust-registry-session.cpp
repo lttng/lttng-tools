@@ -321,7 +321,7 @@ lst::type::cuptr lsu::registry_session::_create_packet_header() const
 	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
 
-const lst::type *lsu::registry_session::get_packet_header() const noexcept
+const lst::type *lsu::registry_session::packet_header() const noexcept
 {
 	return _packet_header.get();
 }
@@ -457,7 +457,7 @@ void lsu::registry_session::add_channel(uint64_t key)
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
-lttng::sessiond::ust::registry_channel& lsu::registry_session::get_channel(
+lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(
 		uint64_t channel_key) const
 {
 	lttng::urcu::read_lock_guard read_lock_guard;
@@ -487,12 +487,12 @@ void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 	lttng::urcu::read_lock_guard read_lock_guard;
 
 	ASSERT_LOCKED(_lock);
-	auto& channel = get_channel(channel_key);
+	auto& channel_to_remove = channel(channel_key);
 
-	iter.iter.node = &channel._node.node;
+	iter.iter.node = &channel_to_remove._node.node;
 	ret = lttng_ht_del(_channels.get(), &iter);
 	LTTNG_ASSERT(!ret);
-	destroy_channel(&channel, notify);
+	destroy_channel(&channel_to_remove, notify);
 }
 
 void lsu::registry_session::accept(
@@ -505,7 +505,7 @@ void lsu::registry_session::accept(
 	visitor.visit(lst::environment_field<int64_t>("tracer_major", _app_tracer_version.major));
 	visitor.visit(lst::environment_field<int64_t>("tracer_minor", _app_tracer_version.minor));
 	visitor.visit(lst::environment_field<const char *>("tracer_buffering_scheme",
-			get_buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
+			buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
 	visitor.visit(lst::environment_field<int64_t>("architecture_bit_width", abi.bits_per_long));
 
 	{
@@ -671,7 +671,7 @@ void lsu::registry_session::regenerate_metadata()
  * disposes of the object.
  */
 lsu::registry_enum::const_rcu_protected_reference
-lsu::registry_session::get_enumeration(const char *enum_name, uint64_t enum_id) const
+lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) const
 {
 	lsu::registry_enum *reg_enum = NULL;
 	struct lttng_ht_node_str *node;

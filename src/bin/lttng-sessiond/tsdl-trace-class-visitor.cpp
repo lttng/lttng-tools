@@ -828,7 +828,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 
 	tsdl_field_visitor packet_header_visitor{trace_class.abi, 1, _sanitized_types_overrides};
 
-	trace_class.get_packet_header()->accept(packet_header_visitor);
+	trace_class.packet_header()->accept(packet_header_visitor);
 
 	/* Declare type aliases, trace class, and packet header. */
 	auto trace_class_tsdl = fmt::format(
@@ -903,7 +903,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 				return _lookup_field_type(location);
 			});
 
-	const auto *event_header = stream_class.get_event_header();
+	const auto *event_header = stream_class.event_header();
 	if (event_header) {
 		tsdl_field_visitor event_header_visitor{_trace_abi, 1, _sanitized_types_overrides,
 				stream_class.default_clock_class_name};
@@ -914,7 +914,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 				event_header_visitor.move_description());
 	}
 
-	const auto *packet_context = stream_class.get_packet_context();
+	const auto *packet_context = stream_class.packet_context();
 	if (packet_context) {
 		tsdl_field_visitor packet_context_visitor{_trace_abi, 1, _sanitized_types_overrides,
 				stream_class.default_clock_class_name};
@@ -925,7 +925,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 				packet_context_visitor.move_description());
 	}
 
-	const auto *event_context = stream_class.get_event_context();
+	const auto *event_context = stream_class.event_context();
 	if (event_context) {
 		tsdl_field_visitor event_context_visitor{_trace_abi, 1, _sanitized_types_overrides};
 
@@ -1094,16 +1094,16 @@ const lttng::sessiond::trace::type& lttng::sessiond::tsdl::trace_class_visitor::
 	switch (location.root_) {
 	case lst::field_location::root::PACKET_HEADER:
 		return lookup_type_from_root_type(
-				*_current_trace_class->get_packet_header(), location);
+				*_current_trace_class->packet_header(), location);
 	case lst::field_location::root::PACKET_CONTEXT:
 		return lookup_type_from_root_type(
-				*_current_stream_class->get_packet_context(), location);
+				*_current_stream_class->packet_context(), location);
 	case lst::field_location::root::EVENT_RECORD_HEADER:
 		return lookup_type_from_root_type(
-				*_current_stream_class->get_event_header(), location);
+				*_current_stream_class->event_header(), location);
 	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
 		return lookup_type_from_root_type(
-				*_current_stream_class->get_event_context(), location);
+				*_current_stream_class->event_context(), location);
 	case lst::field_location::root::EVENT_RECORD_PAYLOAD:
 		return lookup_type_from_root_type(
 				*_current_event_class->payload, location);

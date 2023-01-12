@@ -31,9 +31,9 @@ public:
 	void accept(trace_class_visitor& visitor) const;
 	virtual ~stream_class() = default;
 
-	virtual const type* get_packet_context() const;
-	virtual const type* get_event_header() const;
-	virtual const type* get_event_context() const;
+	virtual const type* packet_context() const;
+	virtual const type* event_header() const;
+	virtual const type* event_context() const;
 
 	const unsigned int id;
 	/*

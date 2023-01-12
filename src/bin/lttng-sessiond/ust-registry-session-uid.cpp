@@ -27,7 +27,7 @@ lsu::registry_session_per_uid::registry_session_per_uid(
 	_generate_metadata();
 }
 
-lttng_buffer_type lsu::registry_session_per_uid::get_buffering_scheme() const noexcept
+lttng_buffer_type lsu::registry_session_per_uid::buffering_scheme() const noexcept
 {
 	return LTTNG_BUFFER_PER_UID;
 }

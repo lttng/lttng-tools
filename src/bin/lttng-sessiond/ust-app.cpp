@@ -3454,7 +3454,7 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	{
 		auto locked_registry = reg_uid->registry->reg.ust->lock();
-		auto& ust_reg_chan = locked_registry->get_channel(ua_chan->tracing_channel_id);
+		auto& ust_reg_chan = locked_registry->channel(ua_chan->tracing_channel_id);
 
 		ust_reg_chan._consumer_key = ua_chan->key;
 	}
@@ -3554,7 +3554,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	{
 		auto locked_registry = registry->lock();
 
-		auto& ust_reg_chan = locked_registry->get_channel(chan_reg_key);
+		auto& ust_reg_chan = locked_registry->channel(chan_reg_key);
 		ust_reg_chan._consumer_key = ua_chan->key;
 	}
 
@@ -6408,7 +6408,7 @@ static int handle_app_register_channel_notification(int sock,
 		chan_reg_key = ua_chan->key;
 	}
 
-	auto& ust_reg_chan = locked_registry_session->get_channel(chan_reg_key);
+	auto& ust_reg_chan = locked_registry_session->channel(chan_reg_key);
 
 	/* Channel id is set during the object creation. */
 	chan_id = ust_reg_chan.id;
@@ -6439,14 +6439,14 @@ static int handle_app_register_channel_notification(int sock,
 							0, std::move(app_context_fields)) :
 					nullptr;
 
-			ust_reg_chan.set_event_context(std::move(event_context));
+			ust_reg_chan.event_context(std::move(event_context));
 		} else {
 			/*
 			 * Validate that the context fields match between
 			 * registry and newcoming application.
 			 */
 			bool context_fields_match;
-			const auto *previous_event_context = ust_reg_chan.get_event_context();
+			const auto *previous_event_context = ust_reg_chan.event_context();
 
 			if (!previous_event_context) {
 				context_fields_match = app_context_fields.size() == 0;
@@ -6559,7 +6559,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, const char *na
 			 * These three variables MUST NOT be read/write after this.
 			 */
 			try {
-				auto& channel = locked_registry->get_channel(chan_reg_key);
+				auto& channel = locked_registry->channel(chan_reg_key);
 
 				/* event_id is set on success. */
 				channel.add_event(sobjd, cobjd, name, signature.get(),

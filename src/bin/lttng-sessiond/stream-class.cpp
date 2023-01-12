@@ -25,17 +25,17 @@ void lst::stream_class::accept(trace_class_visitor& visitor) const
 	_accept_on_event_classes(visitor);
 }
 
-const lttng::sessiond::trace::type *lst::stream_class::get_packet_context() const
+const lttng::sessiond::trace::type *lst::stream_class::packet_context() const
 {
 	return _packet_context.get();
 }
 
-const lttng::sessiond::trace::type *lst::stream_class::get_event_header() const
+const lttng::sessiond::trace::type *lst::stream_class::event_header() const
 {
 	return _event_header.get();
 }
 
-const lttng::sessiond::trace::type *lst::stream_class::get_event_context() const
+const lttng::sessiond::trace::type *lst::stream_class::event_context() const
 {
 	return _event_context.get();
 }

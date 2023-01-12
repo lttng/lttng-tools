@@ -108,7 +108,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	} else {
 		{
 			auto locked_registry = registry->lock();
-			auto& ust_reg_chan = registry->get_channel(chan_reg_key);
+			auto& ust_reg_chan = registry->channel(chan_reg_key);
 
 			chan_id = ust_reg_chan.id;
 		}

@@ -32,7 +32,7 @@ lsu::registry_session_per_pid::registry_session_per_pid(const struct ust_app& ap
 	_generate_metadata();
 }
 
-lttng_buffer_type lsu::registry_session_per_pid::get_buffering_scheme() const noexcept
+lttng_buffer_type lsu::registry_session_per_pid::buffering_scheme() const noexcept
 {
 	return LTTNG_BUFFER_PER_PID;
 }

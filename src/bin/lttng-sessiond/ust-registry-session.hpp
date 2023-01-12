@@ -41,13 +41,13 @@ public:
 					details::locked_registry_session_release>::
 					deleter>;
 
-	virtual lttng_buffer_type get_buffering_scheme() const noexcept = 0;
+	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
 	locked_ptr lock() noexcept;
 
 	void add_channel(uint64_t channel_key);
 
 	/* A channel is protected by its parent registry session's lock. */
-	lttng::sessiond::ust::registry_channel& get_channel(uint64_t channel_key) const;
+	lttng::sessiond::ust::registry_channel& channel(uint64_t channel_key) const;
 
 	void remove_channel(uint64_t channel_key, bool notify);
 
@@ -56,13 +56,13 @@ public:
 			struct lttng_ust_ctl_enum_entry *raw_entries,
 			size_t nr_entries,
 			uint64_t *enum_id);
-	registry_enum::const_rcu_protected_reference get_enumeration(
+	registry_enum::const_rcu_protected_reference enumeration(
 			const char *enum_name, uint64_t enum_id) const;
 
 	void regenerate_metadata();
 	virtual ~registry_session();
 
-	virtual const lttng::sessiond::trace::type *get_packet_header() const noexcept override;
+	virtual const lttng::sessiond::trace::type *packet_header() const noexcept override;
 
 	/*
 	 * With multiple writers and readers, use this lock to access

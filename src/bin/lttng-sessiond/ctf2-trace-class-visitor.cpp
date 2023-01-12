@@ -390,7 +390,7 @@ void lsc::trace_class_visitor::visit(const lst::trace_class& trace_class)
 	trace_class.accept(environment_visitor);
 	trace_class_fragment["environment"] = environment_visitor.move_fragment();
 
-	const auto packet_header = trace_class.get_packet_header();
+	const auto packet_header = trace_class.packet_header();
 	if (packet_header) {
 		::ctf2::field_visitor field_visitor;
 
@@ -432,7 +432,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 				*stream_class.default_clock_class_name;
 	}
 
-	const auto packet_context = stream_class.get_packet_context();
+	const auto packet_context = stream_class.packet_context();
 	if (packet_context) {
 		::ctf2::field_visitor visitor;
 
@@ -440,7 +440,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 		stream_class_fragment["packet-context-field-class"] = visitor.move_fragment();
 	}
 
-	const auto event_header = stream_class.get_event_header();
+	const auto event_header = stream_class.event_header();
 	if (event_header) {
 		::ctf2::field_visitor visitor;
 
@@ -449,7 +449,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 				visitor.move_fragment();
 	}
 
-	const auto event_context = stream_class.get_event_context();
+	const auto event_context = stream_class.event_context();
 	if (event_context) {
 		::ctf2::field_visitor visitor;
 

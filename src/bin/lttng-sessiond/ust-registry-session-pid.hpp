@@ -33,7 +33,7 @@ public:
 			gid_t egid,
 			uint64_t tracing_id);
 
-	virtual lttng_buffer_type get_buffering_scheme() const noexcept override final;
+	virtual lttng_buffer_type buffering_scheme() const noexcept override final;
 	virtual void accept(lttng::sessiond::trace::trace_class_environment_visitor&
 					environment_visitor) const override final;
 

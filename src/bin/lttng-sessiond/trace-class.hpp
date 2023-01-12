@@ -55,7 +55,7 @@ public:
 	 */
 	virtual void accept(trace_class_visitor& trace_class_visitor) const;
 	virtual void accept(trace_class_environment_visitor& environment_visitor) const = 0;
-	virtual const lttng::sessiond::trace::type *get_packet_header() const noexcept = 0;
+	virtual const lttng::sessiond::trace::type *packet_header() const noexcept = 0;
 
 	const struct abi abi;
 	const lttng_uuid uuid;

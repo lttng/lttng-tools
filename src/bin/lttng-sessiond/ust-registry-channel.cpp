@@ -404,13 +404,13 @@ lsu::registry_channel::~registry_channel()
 	lttng_ht_destroy(_events);
 }
 
-const lttng::sessiond::trace::type* lsu::registry_channel::get_event_context() const
+const lttng::sessiond::trace::type* lsu::registry_channel::event_context() const
 {
 	LTTNG_ASSERT(_is_registered);
-	return lst::stream_class::get_event_context();
+	return lst::stream_class::event_context();
 }
 
-void lsu::registry_channel::set_event_context(lttng::sessiond::trace::type::cuptr context)
+void lsu::registry_channel::event_context(lttng::sessiond::trace::type::cuptr context)
 {
 	/* Must only be set once, on the first channel registration provided by an application. */
 	LTTNG_ASSERT(!_event_context);
