@@ -229,9 +229,9 @@ void session_unlock(struct ltt_session *session);
  * In other words, it prevents tracer configurations from changing while they
  * are being transmitted to the various applications.
  */
-void session_lock_list(void);
-int session_trylock_list(void);
-void session_unlock_list(void);
+void session_lock_list();
+int session_trylock_list();
+void session_unlock_list();
 
 void session_destroy(struct ltt_session *session);
 int session_add_destroy_notifier(struct ltt_session *session,
@@ -257,8 +257,8 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 struct ltt_session *session_find_by_name(const char *name);
 struct ltt_session *session_find_by_id(ltt_session::id_t id);
 
-struct ltt_session_list *session_get_list(void);
-void session_list_wait_empty(void);
+struct ltt_session_list *session_get_list();
+void session_list_wait_empty();
 
 bool session_access_ok(struct ltt_session *session, uid_t uid);
 

@@ -22,8 +22,8 @@ struct health_app *the_health_sessiond;
 
 struct notification_thread_handle *the_notification_thread_handle;
 
-struct lttng_ht *the_agent_apps_ht_by_sock = NULL;
-struct lttng_ht *the_trigger_agents_ht_by_domain = NULL;
+struct lttng_ht *the_agent_apps_ht_by_sock = nullptr;
+struct lttng_ht *the_trigger_agents_ht_by_domain = nullptr;
 
 struct lttng_kernel_abi_tracer_version the_kernel_tracer_version;
 struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
@@ -42,7 +42,7 @@ consumer_data the_ustconsumer32_data(LTTNG_CONSUMER32_UST);
 enum consumerd_state the_ust_consumerd_state;
 enum consumerd_state the_kernel_consumerd_state;
 
-static void __attribute__((constructor)) init_sessiond_uuid(void)
+static void __attribute__((constructor)) init_sessiond_uuid()
 {
 	if (lttng_uuid_generate(the_sessiond_uuid)) {
 		ERR("Failed to generate a session daemon UUID");

@@ -18,11 +18,11 @@ int lttng_opt_mi;
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
-static void test_uri_parsing(void)
+static void test_uri_parsing()
 {
 	ssize_t size;
 	const char *s_uri1;
-	struct lttng_uri *uri = NULL;
+	struct lttng_uri *uri = nullptr;
 
 	s_uri1 = "net://localhost";
 
@@ -37,7 +37,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "net://localhost:8989:4242/my/test/path";
@@ -54,7 +54,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "net://localhost:8989:4242";
@@ -70,7 +70,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "net6://[::1]:8989";
@@ -86,7 +86,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "tcp://42.42.42.42/my/test/path";
@@ -101,7 +101,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "tcp6://[fe80::f66d:4ff:fe53:d220]/my/test/path";
@@ -116,7 +116,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	s_uri1 = "file:///my/test/path";
@@ -130,7 +130,7 @@ static void test_uri_parsing(void)
 
 	if (uri) {
 		uri_free(uri);
-		uri = NULL;
+		uri = nullptr;
 	}
 
 	/* FIXME: Noisy on stdout */
@@ -145,7 +145,7 @@ static void test_uri_parsing(void)
 	LTTNG_ASSERT(!uri);
 }
 
-static void test_uri_cmp(void)
+static void test_uri_cmp()
 {
 	struct lttng_uri *uri1, *uri2;
 	const char *s_uri1 = "net://localhost";
@@ -198,7 +198,7 @@ static void test_uri_cmp(void)
 	uri_free(uri2);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 

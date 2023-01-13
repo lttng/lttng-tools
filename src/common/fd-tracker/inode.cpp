@@ -152,14 +152,14 @@ static int lttng_unlinked_file_pool_add_inode(struct lttng_unlinked_file_pool *p
 	}
 
 	lttng_directory_handle_put(inode->location.directory_handle);
-	inode->location.directory_handle = NULL;
+	inode->location.directory_handle = nullptr;
 	reference_acquired = lttng_directory_handle_get(pool->unlink_directory_handle);
 	LTTNG_ASSERT(reference_acquired);
 	inode->location.directory_handle = pool->unlink_directory_handle;
 
 	free(inode->location.path);
 	inode->location.path = inode_unlinked_name;
-	inode_unlinked_name = NULL;
+	inode_unlinked_name = nullptr;
 	LTTNG_OPTIONAL_SET(&inode->unlinked_id, unlinked_id);
 	pool->file_count++;
 end:
@@ -183,9 +183,9 @@ static int lttng_unlinked_file_pool_remove_inode(struct lttng_unlinked_file_pool
 		goto end;
 	}
 	free(inode->location.path);
-	inode->location.path = NULL;
+	inode->location.path = nullptr;
 	lttng_directory_handle_put(inode->location.directory_handle);
-	inode->location.directory_handle = NULL;
+	inode->location.directory_handle = nullptr;
 
 	pool->file_count--;
 	if (pool->file_count == 0) {
@@ -199,7 +199,7 @@ static int lttng_unlinked_file_pool_remove_inode(struct lttng_unlinked_file_pool
 			       pool->unlink_directory_path);
 		}
 		lttng_directory_handle_put(pool->unlink_directory_handle);
-		pool->unlink_directory_handle = NULL;
+		pool->unlink_directory_handle = nullptr;
 	}
 end:
 	return ret;
@@ -228,9 +228,9 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 	}
 
 	lttng_directory_handle_put(inode->location.directory_handle);
-	inode->location.directory_handle = NULL;
+	inode->location.directory_handle = nullptr;
 	free(inode->location.path);
-	inode->location.path = NULL;
+	inode->location.path = nullptr;
 	call_rcu(&inode->rcu_head, lttng_inode_free);
 }
 
@@ -267,7 +267,7 @@ struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(const char *pat
 	return pool;
 error:
 	lttng_unlinked_file_pool_destroy(pool);
-	return NULL;
+	return nullptr;
 }
 
 void lttng_unlinked_file_pool_destroy(struct lttng_unlinked_file_pool *pool)
@@ -372,7 +372,7 @@ int lttng_inode_rename(struct lttng_inode *inode,
 	inode->location.directory_handle = new_directory_handle;
 	/* Ownership transferred. */
 	inode->location.path = new_path_copy;
-	new_path_copy = NULL;
+	new_path_copy = nullptr;
 end:
 	free(new_path_copy);
 	return ret;
@@ -412,7 +412,7 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 					      struct lttng_directory_handle *directory_handle,
 					      const char *path)
 {
-	struct lttng_inode *inode = NULL;
+	struct lttng_inode *inode = nullptr;
 	char *path_copy;
 	bool reference_acquired;
 
@@ -436,14 +436,14 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	inode->unlinked_file_pool = unlinked_file_pool;
 	/* Ownership of path copy is transferred to inode. */
 	inode->location.path = path_copy;
-	path_copy = NULL;
+	path_copy = nullptr;
 	inode->location.directory_handle = directory_handle;
 end:
 	free(path_copy);
 	return inode;
 }
 
-struct lttng_inode_registry *lttng_inode_registry_create(void)
+struct lttng_inode_registry *lttng_inode_registry_create()
 {
 	struct lttng_inode_registry *registry = zmalloc<lttng_inode_registry>();
 
@@ -453,13 +453,13 @@ struct lttng_inode_registry *lttng_inode_registry_create(void)
 
 	pthread_mutex_lock(&seed.lock);
 	if (!seed.initialized) {
-		seed.value = (unsigned long) time(NULL);
+		seed.value = (unsigned long) time(nullptr);
 		seed.initialized = true;
 	}
 	pthread_mutex_unlock(&seed.lock);
 
 	registry->inodes = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!registry->inodes) {
 		goto error;
 	}
@@ -467,7 +467,7 @@ end:
 	return registry;
 error:
 	lttng_inode_registry_destroy(registry);
-	return NULL;
+	return nullptr;
 }
 
 void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
@@ -476,7 +476,7 @@ void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
 		return;
 	}
 	if (registry->inodes) {
-		int ret = cds_lfht_destroy(registry->inodes, NULL);
+		int ret = cds_lfht_destroy(registry->inodes, nullptr);
 
 		LTTNG_ASSERT(!ret);
 	}
@@ -495,7 +495,7 @@ lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 	struct inode_id id;
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
-	struct lttng_inode *inode = NULL;
+	struct lttng_inode *inode = nullptr;
 
 	ret = fstat(fd, &statbuf);
 	if (ret < 0) {

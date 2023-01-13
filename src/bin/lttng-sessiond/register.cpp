@@ -38,7 +38,7 @@ struct thread_state {
 /*
  * Creates the application socket.
  */
-static int create_application_socket(void)
+static int create_application_socket()
 {
 	int ret = 0;
 	int apps_sock;
@@ -92,7 +92,7 @@ static int notify_ust_apps(int active, bool is_root)
 
 	/* See shm.c for this call implying mmap, shm and futex calls */
 	wait_shm_mmap = shm_ust_get_mmap(the_config.wait_shm_path.value, is_root);
-	if (wait_shm_mmap == NULL) {
+	if (wait_shm_mmap == nullptr) {
 		goto error;
 	}
 
@@ -157,7 +157,7 @@ static void *thread_application_registration(void *data)
 	 * Gets allocated in this thread, enqueued to a global queue, dequeued
 	 * and freed in the manage apps thread.
 	 */
-	struct ust_command *ust_cmd = NULL;
+	struct ust_command *ust_cmd = nullptr;
 	const bool is_root = (getuid() == 0);
 	struct thread_state *thread_state = (struct thread_state *) data;
 	const int application_socket = thread_state->application_socket;
@@ -201,7 +201,7 @@ static void *thread_application_registration(void *data)
 		goto error_poll_add;
 	}
 
-	while (1) {
+	while (true) {
 		DBG("Accepting application registration");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -263,7 +263,7 @@ static void *thread_application_registration(void *data)
 
 				/* Create UST registration command for enqueuing */
 				ust_cmd = zmalloc<ust_command>();
-				if (ust_cmd == NULL) {
+				if (ust_cmd == nullptr) {
 					PERROR("ust command zmalloc");
 					ret = close(sock);
 					if (ret) {
@@ -370,7 +370,7 @@ error_create_poll:
 		ERR("Health error occurred in %s", __func__);
 	}
 	health_unregister(the_health_sessiond);
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_application_registration_thread(void *data)
@@ -385,8 +385,8 @@ struct lttng_thread *launch_application_registration_thread(struct ust_cmd_queue
 {
 	int ret;
 	struct lttng_pipe *quit_pipe;
-	struct thread_state *thread_state = NULL;
-	struct lttng_thread *thread = NULL;
+	struct thread_state *thread_state = nullptr;
+	struct lttng_thread *thread = nullptr;
 	const bool is_root = (getuid() == 0);
 	int application_socket = -1;
 
@@ -422,7 +422,7 @@ struct lttng_thread *launch_application_registration_thread(struct ust_cmd_queue
 	 */
 	application_socket = -1;
 	if (!wait_thread_status(thread_state)) {
-		thread_state = NULL;
+		thread_state = nullptr;
 		goto error;
 	}
 
@@ -444,5 +444,5 @@ error:
 		}
 	}
 error_alloc:
-	return NULL;
+	return nullptr;
 }

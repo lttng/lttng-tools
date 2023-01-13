@@ -16,7 +16,7 @@
 int parse_application_context(const char *str, char **out_provider_name, char **out_ctx_name)
 {
 	const char app_ctx_prefix[] = "$app.";
-	char *provider_name = NULL, *ctx_name = NULL;
+	char *provider_name = nullptr, *ctx_name = nullptr;
 	size_t i, len, colon_pos = 0, provider_name_len, ctx_name_len;
 
 	if (!str || !out_provider_name || !out_ctx_name) {

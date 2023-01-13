@@ -99,7 +99,7 @@ int wait_on_file(const char *path)
 	for (;;) {
 		ret = stat(path, &buf);
 		if (ret == -1 && errno == ENOENT) {
-			ret = poll(NULL, 0, 10); /* 10 ms delay */
+			ret = poll(nullptr, 0, 10); /* 10 ms delay */
 			/* Should return 0 everytime */
 			if (ret) {
 				if (ret < 0) {

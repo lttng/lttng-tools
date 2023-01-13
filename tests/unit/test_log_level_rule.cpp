@@ -26,33 +26,33 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 29
 
-static void test_log_level_rule_error(void)
+static void test_log_level_rule_error()
 {
 	int level = 9000;
 	struct lttng_log_level_rule *exactly = lttng_log_level_rule_exactly_create(level);
 	struct lttng_log_level_rule *at_least_as_severe =
 		lttng_log_level_rule_at_least_as_severe_as_create(level);
 
-	ok(lttng_log_level_rule_get_type(NULL) == LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN,
+	ok(lttng_log_level_rule_get_type(nullptr) == LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN,
 	   "Get type on invalid pointer");
 
-	ok(lttng_log_level_rule_exactly_get_level(NULL, NULL) ==
+	ok(lttng_log_level_rule_exactly_get_level(nullptr, nullptr) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_exactly_get_level (NULL, NULL) returns invalid");
-	ok(lttng_log_level_rule_exactly_get_level(exactly, NULL) ==
+	ok(lttng_log_level_rule_exactly_get_level(exactly, nullptr) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_exactly_get_level (valid, NULL) returns invalid");
-	ok(lttng_log_level_rule_exactly_get_level(NULL, &level) ==
+	ok(lttng_log_level_rule_exactly_get_level(nullptr, &level) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_exactly_get_level (NULL, valid) returns invalid");
 
-	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(NULL, NULL) ==
+	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(nullptr, nullptr) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_at_least_as_severe_as_get_level (NULL, NULL) returns invalid");
-	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(exactly, NULL) ==
+	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(exactly, nullptr) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_at_least_as_severe_as_get_level (valid, NULL) returns invalid");
-	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(NULL, &level) ==
+	ok(lttng_log_level_rule_at_least_as_severe_as_get_level(nullptr, &level) ==
 		   LTTNG_LOG_LEVEL_RULE_STATUS_INVALID,
 	   "lttng_log_level_rule_at_least_as_severe_as_get_level (NULL, valid) returns invalid");
 
@@ -62,7 +62,7 @@ static void test_log_level_rule_error(void)
 
 static void test_log_level_rule_serialize_deserialize(const struct lttng_log_level_rule *rule)
 {
-	struct lttng_log_level_rule *log_level_rule_from_buffer = NULL;
+	struct lttng_log_level_rule *log_level_rule_from_buffer = nullptr;
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
@@ -83,7 +83,7 @@ static void test_log_level_rule_serialize_deserialize(const struct lttng_log_lev
 	lttng_payload_reset(&payload);
 }
 
-static void test_log_level_rule_is_equal_exactly(void)
+static void test_log_level_rule_is_equal_exactly()
 {
 	int level = 9000, no_eq_level = 420;
 	struct lttng_log_level_rule *a, *b, *different_level, *different_type;
@@ -113,7 +113,7 @@ static void test_log_level_rule_is_equal_exactly(void)
 	lttng_log_level_rule_destroy(different_type);
 }
 
-static void test_log_level_rule_is_equal_at_least_as_severe_as(void)
+static void test_log_level_rule_is_equal_at_least_as_severe_as()
 {
 	int level = 9000, no_eq_level = 420;
 	struct lttng_log_level_rule *a, *b, *different_level, *different_type;
@@ -143,11 +143,11 @@ static void test_log_level_rule_is_equal_at_least_as_severe_as(void)
 	lttng_log_level_rule_destroy(different_type);
 }
 
-static void test_log_level_rule_exactly(void)
+static void test_log_level_rule_exactly()
 {
 	int level = 9000;
 	int _level;
-	struct lttng_log_level_rule *exactly = NULL;
+	struct lttng_log_level_rule *exactly = nullptr;
 	enum lttng_log_level_rule_status status;
 
 	exactly = lttng_log_level_rule_exactly_create(level);
@@ -165,11 +165,11 @@ static void test_log_level_rule_exactly(void)
 	lttng_log_level_rule_destroy(exactly);
 }
 
-static void test_log_level_rule_at_least_as_severe_as(void)
+static void test_log_level_rule_at_least_as_severe_as()
 {
 	int level = 9000;
 	int _level;
-	struct lttng_log_level_rule *at_least_as_severe_as = NULL;
+	struct lttng_log_level_rule *at_least_as_severe_as = nullptr;
 	enum lttng_log_level_rule_status status;
 
 	at_least_as_severe_as = lttng_log_level_rule_at_least_as_severe_as_create(level);
@@ -189,7 +189,7 @@ static void test_log_level_rule_at_least_as_severe_as(void)
 	lttng_log_level_rule_destroy(at_least_as_severe_as);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_log_level_rule_exactly();

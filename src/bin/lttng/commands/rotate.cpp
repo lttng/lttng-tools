@@ -39,25 +39,25 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static int rotate_tracing(char *session_name)
 {
 	int ret;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
-	struct lttng_rotation_handle *handle = NULL;
+	struct lttng_rotation_handle *handle = nullptr;
 	enum lttng_rotation_status rotation_status;
 	enum lttng_rotation_state rotation_state = LTTNG_ROTATION_STATE_ONGOING;
-	const struct lttng_trace_archive_location *location = NULL;
+	const struct lttng_trace_archive_location *location = nullptr;
 	bool print_location = true;
 
 	DBG("Rotating the output files of session %s", session_name);
 
-	ret = lttng_rotate_session(session_name, NULL, &handle);
+	ret = lttng_rotate_session(session_name, nullptr, &handle);
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_SESSION_NOT_STARTED:
@@ -159,10 +159,10 @@ int cmd_rotate(int argc, const char **argv)
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	int popt_ret;
 	static poptContext pc;
-	const char *arg_session_name = NULL;
-	char *session_name = NULL;
+	const char *arg_session_name = nullptr;
+	char *session_name = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
 		ERR("poptReadDefaultConfig");
@@ -185,16 +185,16 @@ int cmd_rotate(int argc, const char **argv)
 	}
 
 	arg_session_name = poptGetArg(pc);
-	if (arg_session_name == NULL) {
+	if (arg_session_name == nullptr) {
 		session_name = get_session_name();
 	} else {
 		session_name = strdup(arg_session_name);
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			PERROR("Failed to copy session name");
 		}
 	}
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		cmd_ret = CMD_ERROR;
 		goto end;
 	}

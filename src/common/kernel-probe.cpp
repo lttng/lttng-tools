@@ -69,7 +69,7 @@ lttng_kernel_probe_location_address_destroy(struct lttng_kernel_probe_location *
 
 static void lttng_kernel_probe_location_symbol_destroy(struct lttng_kernel_probe_location *location)
 {
-	struct lttng_kernel_probe_location_symbol *location_symbol = NULL;
+	struct lttng_kernel_probe_location_symbol *location_symbol = nullptr;
 
 	LTTNG_ASSERT(location);
 
@@ -102,7 +102,7 @@ void lttng_kernel_probe_location_destroy(struct lttng_kernel_probe_location *loc
 
 struct lttng_kernel_probe_location *lttng_kernel_probe_location_address_create(uint64_t address)
 {
-	struct lttng_kernel_probe_location *ret = NULL;
+	struct lttng_kernel_probe_location *ret = nullptr;
 	struct lttng_kernel_probe_location_address *location;
 
 	location = zmalloc<lttng_kernel_probe_location_address>();
@@ -127,8 +127,8 @@ end:
 struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_symbol_create(const char *symbol_name, uint64_t offset)
 {
-	char *symbol_name_copy = NULL;
-	struct lttng_kernel_probe_location *ret = NULL;
+	char *symbol_name_copy = nullptr;
+	struct lttng_kernel_probe_location *ret = nullptr;
 	struct lttng_kernel_probe_location_symbol *location;
 
 	if (!symbol_name || strlen(symbol_name) >= LTTNG_SYMBOL_NAME_LEN) {
@@ -191,7 +191,7 @@ end:
 const char *
 lttng_kernel_probe_location_symbol_get_name(const struct lttng_kernel_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_kernel_probe_location_symbol *symbol_location;
 
 	if (!location ||
@@ -580,9 +580,9 @@ end:
 static struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_symbol_copy(const struct lttng_kernel_probe_location *location)
 {
-	struct lttng_kernel_probe_location *new_location = NULL;
+	struct lttng_kernel_probe_location *new_location = nullptr;
 	enum lttng_kernel_probe_location_status status;
-	const char *symbol_name = NULL;
+	const char *symbol_name = nullptr;
 	uint64_t offset;
 
 	LTTNG_ASSERT(location);
@@ -607,14 +607,14 @@ lttng_kernel_probe_location_symbol_copy(const struct lttng_kernel_probe_location
 	goto end;
 
 error:
-	new_location = NULL;
+	new_location = nullptr;
 end:
 	return new_location;
 }
 static struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_address_copy(const struct lttng_kernel_probe_location *location)
 {
-	struct lttng_kernel_probe_location *new_location = NULL;
+	struct lttng_kernel_probe_location *new_location = nullptr;
 	enum lttng_kernel_probe_location_status status;
 	uint64_t address;
 
@@ -634,7 +634,7 @@ lttng_kernel_probe_location_address_copy(const struct lttng_kernel_probe_locatio
 	goto end;
 
 error:
-	new_location = NULL;
+	new_location = nullptr;
 end:
 	return new_location;
 }
@@ -642,7 +642,7 @@ end:
 struct lttng_kernel_probe_location *
 lttng_kernel_probe_location_copy(const struct lttng_kernel_probe_location *location)
 {
-	struct lttng_kernel_probe_location *new_location = NULL;
+	struct lttng_kernel_probe_location *new_location = nullptr;
 	enum lttng_kernel_probe_location_type type;
 
 	if (!location) {
@@ -664,7 +664,7 @@ lttng_kernel_probe_location_copy(const struct lttng_kernel_probe_location *locat
 		}
 		break;
 	default:
-		new_location = NULL;
+		new_location = nullptr;
 		goto err;
 	}
 err:
@@ -726,7 +726,7 @@ lttng_kernel_probe_location_symbol_mi_serialize(const struct lttng_kernel_probe_
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_kernel_probe_location_status status;
-	const char *name = NULL;
+	const char *name = nullptr;
 	uint64_t offset;
 
 	LTTNG_ASSERT(location);

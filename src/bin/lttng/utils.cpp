@@ -35,18 +35,18 @@ static const char *str_function = "Function";
 static char *_get_session_name(int quiet)
 {
 	const char *path;
-	char *session_name = NULL;
+	char *session_name = nullptr;
 
 	/* Get path to config file */
 	path = utils_get_home_dir();
-	if (path == NULL) {
+	if (path == nullptr) {
 		goto error;
 	}
 
 	/* Get session name from config */
 	session_name = quiet ? config_read_session_name_quiet(path) :
 			       config_read_session_name(path);
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		goto error;
 	}
 
@@ -55,7 +55,7 @@ static char *_get_session_name(int quiet)
 	return session_name;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -64,7 +64,7 @@ error:
  *  Return allocated string with the session name found in the config
  *  directory.
  */
-char *get_session_name(void)
+char *get_session_name()
 {
 	return _get_session_name(0);
 }
@@ -75,7 +75,7 @@ char *get_session_name(void)
  *  Return allocated string with the session name found in the config
  *  directory.
  */
-char *get_session_name_quiet(void)
+char *get_session_name_quiet()
 {
 	return _get_session_name(1);
 }
@@ -89,10 +89,10 @@ char *get_session_name_quiet(void)
 void list_commands(struct cmd_struct *commands, FILE *ofp)
 {
 	int i = 0;
-	struct cmd_struct *cmd = NULL;
+	struct cmd_struct *cmd = nullptr;
 
 	cmd = &commands[i];
-	while (cmd->name != NULL) {
+	while (cmd->name != nullptr) {
 		fprintf(ofp, "%s\n", cmd->name);
 		i++;
 		cmd = &commands[i];
@@ -108,9 +108,9 @@ void list_commands(struct cmd_struct *commands, FILE *ofp)
 void list_cmd_options(FILE *ofp, struct poptOption *options)
 {
 	int i;
-	struct poptOption *option = NULL;
+	struct poptOption *option = nullptr;
 
-	for (i = 0; options[i].longName != NULL; i++) {
+	for (i = 0; options[i].longName != nullptr; i++) {
 		option = &options[i];
 
 		fprintf(ofp, "--%s\n", option->longName);
@@ -128,7 +128,7 @@ void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options)
 {
 	int i;
 
-	for (i = 0; options[i].long_name != NULL; i++) {
+	for (i = 0; options[i].long_name != nullptr; i++) {
 		const struct argpar_opt_descr *option = &options[i];
 
 		fprintf(ofp, "--%s\n", option->long_name);
@@ -370,7 +370,7 @@ end:
  *
  * Return 1 if found else 0 if NOT found. Negative value on error.
  */
-int check_relayd(void)
+int check_relayd()
 {
 	int ret, fd;
 	struct sockaddr_in sin;
@@ -445,12 +445,12 @@ void print_session_stats(const char *session_name)
 int get_session_stats_str(const char *session_name, char **out_str)
 {
 	int count, nb_domains, domain_idx, channel_idx, session_idx, ret;
-	struct lttng_domain *domains = NULL;
-	struct lttng_channel *channels = NULL;
+	struct lttng_domain *domains = nullptr;
+	struct lttng_channel *channels = nullptr;
 	uint64_t discarded_events_total = 0, lost_packets_total = 0;
-	struct lttng_session *sessions = NULL;
-	const struct lttng_session *selected_session = NULL;
-	char *stats_str = NULL;
+	struct lttng_session *sessions = nullptr;
+	const struct lttng_session *selected_session = nullptr;
+	char *stats_str = nullptr;
 	bool print_discarded_events = false, print_lost_packets = false;
 
 	count = lttng_list_sessions(&sessions);
@@ -490,7 +490,7 @@ int get_session_stats_str(const char *session_name, char **out_str)
 		}
 
 		free(channels);
-		channels = NULL;
+		channels = nullptr;
 		count = lttng_list_channels(handle, &channels);
 		for (channel_idx = 0; channel_idx < count; channel_idx++) {
 			uint64_t discarded_events = 0, lost_packets = 0;

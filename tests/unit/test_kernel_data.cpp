@@ -38,7 +38,7 @@ static char random_string[RANDOM_STRING_LEN];
  * Return random string of 10 characters.
  * Not thread-safe.
  */
-static char *get_random_string(void)
+static char *get_random_string()
 {
 	int i;
 
@@ -51,10 +51,10 @@ static char *get_random_string(void)
 	return random_string;
 }
 
-static void test_create_one_kernel_session(void)
+static void test_create_one_kernel_session()
 {
 	kern = trace_kernel_create_session();
-	ok(kern != NULL, "Create kernel session");
+	ok(kern != nullptr, "Create kernel session");
 
 	if (!kern) {
 		skip(1, "Kernel session is null");
@@ -62,18 +62,18 @@ static void test_create_one_kernel_session(void)
 	}
 	ok(kern->fd == -1 && kern->metadata_stream_fd == -1 && kern->consumer_fds_sent == 0 &&
 		   kern->channel_count == 0 && kern->stream_count_global == 0 &&
-		   kern->metadata == NULL,
+		   kern->metadata == nullptr,
 	   "Validate kernel session");
 }
 
-static void test_create_kernel_metadata(void)
+static void test_create_kernel_metadata()
 {
-	LTTNG_ASSERT(kern != NULL);
+	LTTNG_ASSERT(kern != nullptr);
 
 	kern->metadata = trace_kernel_create_metadata();
-	ok(kern->metadata != NULL, "Create kernel metadata");
+	ok(kern->metadata != nullptr, "Create kernel metadata");
 
-	ok(kern->metadata->fd == -1 && kern->metadata->conf != NULL &&
+	ok(kern->metadata->fd == -1 && kern->metadata->conf != nullptr &&
 		   kern->metadata->conf->attr.overwrite == DEFAULT_METADATA_OVERWRITE &&
 		   kern->metadata->conf->attr.subbuf_size == default_get_metadata_subbuf_size() &&
 		   kern->metadata->conf->attr.num_subbuf == DEFAULT_METADATA_SUBBUF_NUM &&
@@ -86,7 +86,7 @@ static void test_create_kernel_metadata(void)
 	trace_kernel_destroy_metadata(kern->metadata);
 }
 
-static void test_create_kernel_channel(void)
+static void test_create_kernel_channel()
 {
 	struct ltt_kernel_channel *chan;
 	struct lttng_channel attr;
@@ -97,7 +97,7 @@ static void test_create_kernel_channel(void)
 	attr.attr.extended.ptr = &extended;
 
 	chan = trace_kernel_create_channel(&attr);
-	ok(chan != NULL, "Create kernel channel");
+	ok(chan != nullptr, "Create kernel channel");
 
 	if (!chan) {
 		skip(1, "Channel is null");
@@ -113,7 +113,7 @@ static void test_create_kernel_channel(void)
 	trace_kernel_destroy_channel(chan);
 }
 
-static void test_create_kernel_event(void)
+static void test_create_kernel_event()
 {
 	enum lttng_error_code ret;
 	struct ltt_kernel_event *event;
@@ -125,7 +125,7 @@ static void test_create_kernel_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	ret = trace_kernel_create_event(&ev, NULL, NULL, &event);
+	ret = trace_kernel_create_event(&ev, nullptr, nullptr, &event);
 	ok(ret == LTTNG_OK, "Create kernel event");
 
 	if (!event) {
@@ -143,12 +143,12 @@ static void test_create_kernel_event(void)
 	trace_kernel_destroy_event(event);
 }
 
-static void test_create_kernel_stream(void)
+static void test_create_kernel_stream()
 {
 	struct ltt_kernel_stream *stream;
 
 	stream = trace_kernel_create_stream("stream1", 0);
-	ok(stream != NULL, "Create kernel stream");
+	ok(stream != nullptr, "Create kernel stream");
 
 	if (!stream) {
 		skip(1, "Stream is null");
@@ -162,7 +162,7 @@ static void test_create_kernel_stream(void)
 	trace_kernel_destroy_stream(stream);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 

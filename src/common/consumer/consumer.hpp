@@ -899,7 +899,7 @@ const char *lttng_consumer_type_str(enum lttng_consumer_type type)
 /*
  * Init consumer data structures.
  */
-int lttng_consumer_init(void);
+int lttng_consumer_init();
 
 /*
  * Set the error socket for communication with a session daemon.
@@ -929,7 +929,7 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx);
 /*
  * Cleanup the daemon's socket on exit.
  */
-void lttng_consumer_cleanup(void);
+void lttng_consumer_cleanup();
 
 /*
  * Poll on the should_quit pipe and the command socket return -1 on error and

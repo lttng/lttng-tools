@@ -135,7 +135,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 static int build_network_session_path(char *dst, size_t size, struct ltt_session *session)
 {
 	int ret, kdata_port, udata_port;
-	struct lttng_uri *kuri = NULL, *uuri = NULL, *uri = NULL;
+	struct lttng_uri *kuri = nullptr, *uuri = nullptr, *uri = nullptr;
 	char tmp_uurl[PATH_MAX], tmp_urls[PATH_MAX];
 
 	LTTNG_ASSERT(session);
@@ -156,7 +156,7 @@ static int build_network_session_path(char *dst, size_t size, struct ltt_session
 		udata_port = session->ust_session->consumer->dst.net.data.port;
 	}
 
-	if (uuri == NULL && kuri == NULL) {
+	if (uuri == nullptr && kuri == nullptr) {
 		uri = &session->consumer->dst.net.control;
 		kdata_port = session->consumer->dst.net.data.port;
 	} else if (kuri && uuri) {
@@ -172,9 +172,9 @@ static int build_network_session_path(char *dst, size_t size, struct ltt_session
 		} else {
 			uri = kuri;
 		}
-	} else if (kuri && uuri == NULL) {
+	} else if (kuri && uuri == nullptr) {
 		uri = kuri;
-	} else if (uuri && kuri == NULL) {
+	} else if (uuri && kuri == nullptr) {
 		uri = uuri;
 	}
 
@@ -358,7 +358,7 @@ static enum lttng_error_code list_lttng_agent_events(struct agent *agt,
 		tmp_event->loglevel_type = event->loglevel_type;
 
 		ret = lttng_event_serialize(
-			tmp_event, 0, NULL, event->filter_expression, 0, NULL, reply_payload);
+			tmp_event, 0, nullptr, event->filter_expression, 0, nullptr, reply_payload);
 		lttng_event_destroy(tmp_event);
 		if (ret) {
 			ret_code = LTTNG_ERR_FATAL;
@@ -400,7 +400,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 
 	lttng_ht_lookup(ust_global->channels, (void *) channel_name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;
 	}
@@ -424,7 +424,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 	DBG3("Listing UST global %d events", *nb_events);
 
 	cds_lfht_for_each_entry (uchan->events->ht, &iter.iter, uevent, node.node) {
-		struct lttng_event *tmp_event = NULL;
+		struct lttng_event *tmp_event = nullptr;
 
 		if (uevent->internal) {
 			/* This event should remain hidden from clients */
@@ -485,10 +485,10 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 		ret = lttng_event_serialize(tmp_event,
 					    uevent->exclusion ? uevent->exclusion->count : 0,
 					    uevent->exclusion ? (char **) uevent->exclusion->names :
-								NULL,
+								nullptr,
 					    uevent->filter_expression,
 					    0,
-					    NULL,
+					    nullptr,
 					    reply_payload);
 		lttng_event_destroy(tmp_event);
 		if (ret) {
@@ -522,7 +522,7 @@ static enum lttng_error_code list_lttng_kernel_events(char *channel_name,
 	assert(reply_payload);
 
 	kchan = trace_kernel_get_channel_by_name(channel_name, kernel_session);
-	if (kchan == NULL) {
+	if (kchan == nullptr) {
 		ret_code = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		goto end;
 	}
@@ -614,7 +614,7 @@ static enum lttng_error_code list_lttng_kernel_events(char *channel_name,
 		}
 
 		ret = lttng_event_serialize(
-			tmp_event, 0, NULL, event->filter_expression, 0, NULL, reply_payload);
+			tmp_event, 0, nullptr, event->filter_expression, 0, nullptr, reply_payload);
 		lttng_event_destroy(tmp_event);
 		if (ret) {
 			ret_code = LTTNG_ERR_FATAL;
@@ -641,7 +641,7 @@ static enum lttng_error_code add_uri_to_consumer(const struct ltt_session *sessi
 
 	LTTNG_ASSERT(uri);
 
-	if (consumer == NULL) {
+	if (consumer == nullptr) {
 		DBG("No consumer detected. Don't add URI. Stopping.");
 		ret_code = LTTNG_ERR_NO_CONSUMER;
 		goto error;
@@ -740,7 +740,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 
 	rcu_read_lock();
 
-	if (session->consumer_fds_sent == 0 && session->consumer != NULL) {
+	if (session->consumer_fds_sent == 0 && session->consumer != nullptr) {
 		cds_lfht_for_each_entry (
 			session->consumer->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -862,7 +862,7 @@ static enum lttng_error_code send_consumer_relayd_socket(unsigned int session_id
 							 bool session_name_contains_creation_time)
 {
 	int ret;
-	struct lttcomm_relayd_sock *rsock = NULL;
+	struct lttcomm_relayd_sock *rsock = nullptr;
 	enum lttng_error_code status;
 
 	/* Connect to relayd and make version check if uri is the control. */
@@ -1044,7 +1044,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 				session->hostname,
 				session->base_path,
 				session->live_timer,
-				current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 				session->creation_time,
 				session->name_contains_creation_time);
 			pthread_mutex_unlock(socket->lock);
@@ -1072,7 +1072,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 				session->hostname,
 				session->base_path,
 				session->live_timer,
-				current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 				session->creation_time,
 				session->name_contains_creation_time);
 			pthread_mutex_unlock(socket->lock);
@@ -1101,7 +1101,7 @@ int start_kernel_session(struct ltt_kernel_session *ksess)
 	struct ltt_kernel_channel *kchan;
 
 	/* Open kernel metadata */
-	if (ksess->metadata == NULL && ksess->output_traces) {
+	if (ksess->metadata == nullptr && ksess->output_traces) {
 		ret = kernel_open_metadata(ksess);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_META_FAIL;
@@ -1237,7 +1237,7 @@ int cmd_disable_channel(struct ltt_session *session,
 		chan_ht = usess->domain_global.channels;
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
-		if (uchan == NULL) {
+		if (uchan == nullptr) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
@@ -1270,7 +1270,7 @@ int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe)
 	int ret;
 	size_t channel_len;
 	ssize_t sock_recv_len;
-	struct lttng_channel *channel = NULL;
+	struct lttng_channel *channel = nullptr;
 	struct lttng_buffer_view view;
 	struct lttng_dynamic_buffer channel_buffer;
 	const struct lttng_domain command_domain = cmd_ctx->lsm.domain;
@@ -1319,7 +1319,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
-	struct lttng_channel *attr = NULL;
+	struct lttng_channel *attr = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(_attr);
@@ -1334,7 +1334,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 	len = lttng_strnlen(attr->name, sizeof(attr->name));
 
 	/* Validate channel name */
-	if (attr->name[0] == '.' || memchr(attr->name, '/', len) != NULL) {
+	if (attr->name[0] == '.' || memchr(attr->name, '/', len) != nullptr) {
 		ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 		goto end;
 	}
@@ -1390,7 +1390,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 		struct ltt_kernel_channel *kchan;
 
 		kchan = trace_kernel_get_channel_by_name(attr->name, session->kernel_session);
-		if (kchan == NULL) {
+		if (kchan == nullptr) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
@@ -1456,7 +1456,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 		chan_ht = usess->domain_global.channels;
 
 		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
-		if (uchan == NULL) {
+		if (uchan == nullptr) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
@@ -1751,7 +1751,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		}
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
-		if (kchan == NULL) {
+		if (kchan == nullptr) {
 			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 			goto error_unlock;
 		}
@@ -1764,7 +1764,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY: /* fall-through */
 			if (event_name[0] == '\0') {
-				ret = event_kernel_disable_event(kchan, NULL, event->type);
+				ret = event_kernel_disable_event(kchan, nullptr, event->type);
 			} else {
 				ret = event_kernel_disable_event(kchan, event_name, event->type);
 			}
@@ -1803,7 +1803,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		}
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
-		if (uchan == NULL) {
+		if (uchan == nullptr) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error_unlock;
 		}
@@ -1912,7 +1912,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 
 		if (session->kernel_session->channel_count == 0) {
 			/* Create default channel */
-			ret = channel_kernel_create(session->kernel_session, NULL, kwpipe);
+			ret = channel_kernel_create(session->kernel_session, nullptr, kwpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -1957,7 +1957,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 			struct lttng_channel *attr;
 			/* Create default channel */
 			attr = channel_new_default_attr(domain, usess->buffer_type);
-			if (attr == NULL) {
+			if (attr == nullptr) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
@@ -2055,7 +2055,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			     bool internal_event)
 {
 	int ret = 0, channel_created = 0;
-	struct lttng_channel *attr = NULL;
+	struct lttng_channel *attr = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(event);
@@ -2098,9 +2098,9 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, session->kernel_session);
-		if (kchan == NULL) {
+		if (kchan == nullptr) {
 			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
-			if (attr == NULL) {
+			if (attr == nullptr) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
@@ -2118,7 +2118,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 
 		/* Get the newly created kernel channel pointer */
 		kchan = trace_kernel_get_channel_by_name(channel_name, session->kernel_session);
-		if (kchan == NULL) {
+		if (kchan == nullptr) {
 			/* This sould not happen... */
 			ret = LTTNG_ERR_FATAL;
 			goto error;
@@ -2127,8 +2127,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
 		{
-			char *filter_expression_a = NULL;
-			struct lttng_bytecode *filter_a = NULL;
+			char *filter_expression_a = nullptr;
+			struct lttng_bytecode *filter_a = nullptr;
 
 			/*
 			 * We need to duplicate filter_expression and filter,
@@ -2154,8 +2154,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 			event->type = LTTNG_EVENT_TRACEPOINT; /* Hack */
 			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
 			/* We have passed ownership */
-			filter_expression = NULL;
-			filter = NULL;
+			filter_expression = nullptr;
+			filter = nullptr;
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
@@ -2169,8 +2169,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 			ret = event_kernel_enable_event(
 				kchan, event, filter_expression_a, filter_a);
 			/* We have passed ownership */
-			filter_expression_a = NULL;
-			filter_a = NULL;
+			filter_expression_a = nullptr;
+			filter_a = nullptr;
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2183,8 +2183,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		case LTTNG_EVENT_TRACEPOINT:
 			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
 			/* We have passed ownership */
-			filter_expression = NULL;
-			filter = NULL;
+			filter_expression = nullptr;
+			filter = nullptr;
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
@@ -2196,8 +2196,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		case LTTNG_EVENT_SYSCALL:
 			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
 			/* We have passed ownership */
-			filter_expression = NULL;
-			filter = NULL;
+			filter_expression = nullptr;
+			filter = nullptr;
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2229,10 +2229,10 @@ static int _cmd_enable_event(struct ltt_session *session,
 
 		/* Get channel from global UST domain */
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
-		if (uchan == NULL) {
+		if (uchan == nullptr) {
 			/* Create default channel */
 			attr = channel_new_default_attr(LTTNG_DOMAIN_UST, usess->buffer_type);
-			if (attr == NULL) {
+			if (attr == nullptr) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
@@ -2279,9 +2279,9 @@ static int _cmd_enable_event(struct ltt_session *session,
 		ret = event_ust_enable_tracepoint(
 			usess, uchan, event, filter_expression, filter, exclusion, internal_event);
 		/* We have passed ownership */
-		filter_expression = NULL;
-		filter = NULL;
-		exclusion = NULL;
+		filter_expression = nullptr;
+		filter = nullptr;
+		exclusion = nullptr;
 		if (ret == LTTNG_ERR_UST_EVENT_ENABLED) {
 			goto already_enabled;
 		} else if (ret != LTTNG_OK) {
@@ -2353,8 +2353,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 
 		{
-			char *filter_expression_copy = NULL;
-			struct lttng_bytecode *filter_copy = NULL;
+			char *filter_expression_copy = nullptr;
+			struct lttng_bytecode *filter_copy = nullptr;
 
 			if (filter) {
 				const size_t filter_size =
@@ -2385,7 +2385,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 							&uevent,
 							filter_expression_copy,
 							filter_copy,
-							NULL,
+							nullptr,
 							wpipe);
 		}
 
@@ -2401,8 +2401,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 		} else {
 			ret = event_agent_enable(usess, agt, event, filter, filter_expression);
 		}
-		filter = NULL;
-		filter_expression = NULL;
+		filter = nullptr;
+		filter_expression = nullptr;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2460,9 +2460,9 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 				exclusion,
 				wpipe,
 				false);
-	filter_expression = NULL;
-	bytecode = NULL;
-	exclusion = NULL;
+	filter_expression = nullptr;
+	bytecode = nullptr;
+	exclusion = nullptr;
 	return ret;
 }
 
@@ -2500,7 +2500,7 @@ enum lttng_error_code cmd_list_tracepoints(enum lttng_domain_type domain,
 	enum lttng_error_code ret_code;
 	int ret;
 	ssize_t i, nb_events = 0;
-	struct lttng_event *events = NULL;
+	struct lttng_event *events = nullptr;
 	struct lttcomm_list_command_header reply_command_header = {};
 	size_t reply_command_header_offset;
 
@@ -2546,7 +2546,8 @@ enum lttng_error_code cmd_list_tracepoints(enum lttng_domain_type domain,
 	}
 
 	for (i = 0; i < nb_events; i++) {
-		ret = lttng_event_serialize(&events[i], 0, NULL, NULL, 0, NULL, reply_payload);
+		ret = lttng_event_serialize(
+			&events[i], 0, nullptr, nullptr, 0, nullptr, reply_payload);
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto error;
@@ -2580,7 +2581,7 @@ enum lttng_error_code cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 	enum lttng_error_code ret_code;
 	int ret;
 	unsigned int i, nb_fields;
-	struct lttng_event_field *fields = NULL;
+	struct lttng_event_field *fields = nullptr;
 	struct lttcomm_list_command_header reply_command_header = {};
 	size_t reply_command_header_offset;
 
@@ -2646,7 +2647,7 @@ enum lttng_error_code cmd_list_syscalls(struct lttng_payload *reply_payload)
 	enum lttng_error_code ret_code;
 	ssize_t nb_events, i;
 	int ret;
-	struct lttng_event *events = NULL;
+	struct lttng_event *events = nullptr;
 	struct lttcomm_list_command_header reply_command_header = {};
 	size_t reply_command_header_offset;
 
@@ -2669,7 +2670,8 @@ enum lttng_error_code cmd_list_syscalls(struct lttng_payload *reply_payload)
 	}
 
 	for (i = 0; i < nb_events; i++) {
-		ret = lttng_event_serialize(&events[i], 0, NULL, NULL, 0, NULL, reply_payload);
+		ret = lttng_event_serialize(
+			&events[i], 0, nullptr, nullptr, 0, nullptr, reply_payload);
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
@@ -2760,14 +2762,15 @@ int cmd_start_trace(struct ltt_session *session)
 			struct lttng_trace_chunk *trace_chunk;
 
 			DBG("Creating initial trace chunk of session \"%s\"", session->name);
-			trace_chunk = session_create_new_trace_chunk(session, NULL, NULL, NULL);
+			trace_chunk =
+				session_create_new_trace_chunk(session, nullptr, nullptr, nullptr);
 			if (!trace_chunk) {
 				ret = LTTNG_ERR_CREATE_DIR_FAIL;
 				goto error;
 			}
 			LTTNG_ASSERT(!session->current_trace_chunk);
 			ret = (lttng_error_code) session_set_trace_chunk(
-				session, trace_chunk, NULL);
+				session, trace_chunk, nullptr);
 			lttng_trace_chunk_put(trace_chunk);
 			if (ret) {
 				ret = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
@@ -2787,7 +2790,7 @@ int cmd_start_trace(struct ltt_session *session)
 			 * rotation should happen on reception of the command.
 			 */
 			ret = (lttng_error_code) cmd_rotate_session(
-				session, NULL, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION);
+				session, nullptr, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2795,7 +2798,7 @@ int cmd_start_trace(struct ltt_session *session)
 	}
 
 	/* Kernel tracing */
-	if (ksession != NULL) {
+	if (ksession != nullptr) {
 		DBG("Start kernel tracing session %s", session->name);
 		ret = (lttng_error_code) start_kernel_session(ksession);
 		if (ret != LTTNG_OK) {
@@ -2916,9 +2919,9 @@ set_session_base_path_from_uris(struct ltt_session *session, size_t nb_uri, stru
 			continue;
 		}
 
-		if (session->base_path != NULL) {
+		if (session->base_path != nullptr) {
 			free(session->base_path);
-			session->base_path = NULL;
+			session->base_path = nullptr;
 		}
 
 		/* Set session base_path */
@@ -3054,7 +3057,7 @@ set_session_output_from_descriptor(struct ltt_session *session,
 	switch (session_type) {
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_SNAPSHOT:
 	{
-		struct snapshot_output *new_output = NULL;
+		struct snapshot_output *new_output = nullptr;
 
 		new_output = snapshot_output_alloc();
 		if (!new_output) {
@@ -3064,7 +3067,7 @@ set_session_output_from_descriptor(struct ltt_session *session,
 
 		ret = snapshot_output_init_with_uri(session,
 						    DEFAULT_SNAPSHOT_MAX_SIZE,
-						    NULL,
+						    nullptr,
 						    uris,
 						    uri_count,
 						    session->consumer,
@@ -3100,7 +3103,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 	int ret;
 	enum lttng_error_code ret_code;
 	const char *session_name;
-	struct ltt_session *new_session = NULL;
+	struct ltt_session *new_session = nullptr;
 	enum lttng_session_descriptor_status descriptor_status;
 
 	session_lock_list();
@@ -3117,7 +3120,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 	case LTTNG_SESSION_DESCRIPTOR_STATUS_OK:
 		break;
 	case LTTNG_SESSION_DESCRIPTOR_STATUS_UNSET:
-		session_name = NULL;
+		session_name = nullptr;
 		break;
 	default:
 		ret_code = LTTNG_ERR_INVALID;
@@ -3145,7 +3148,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 			(void) notification_thread_command_remove_session(
 				the_notification_thread_handle, session->id);
 		},
-		NULL);
+		nullptr);
 	if (ret) {
 		PERROR("Failed to add notification thread command to session's destroy notifiers: session name = %s",
 		       new_session->name);
@@ -3168,7 +3171,9 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 		 * not auto-generated.
 		 */
 		ret_code = lttng_session_descriptor_set_default_output(
-			descriptor, session_name ? &new_session->creation_time : NULL, home_path);
+			descriptor,
+			session_name ? &new_session->creation_time : nullptr,
+			home_path);
 		if (ret_code != LTTNG_OK) {
 			goto end;
 		}
@@ -3215,7 +3220,7 @@ enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx,
 	struct lttng_dynamic_buffer payload;
 	struct lttng_buffer_view home_dir_view;
 	struct lttng_buffer_view session_descriptor_view;
-	struct lttng_session_descriptor *session_descriptor = NULL;
+	struct lttng_session_descriptor *session_descriptor = nullptr;
 	enum lttng_error_code ret_code;
 
 	lttng_dynamic_buffer_init(&payload);
@@ -3275,17 +3280,17 @@ enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx,
 	 * Sets the descriptor's auto-generated properties (name, output) if
 	 * needed.
 	 */
-	ret_code =
-		cmd_create_session_from_descriptor(session_descriptor,
-						   &cmd_ctx->creds,
-						   home_dir_view.size ? home_dir_view.data : NULL);
+	ret_code = cmd_create_session_from_descriptor(session_descriptor,
+						      &cmd_ctx->creds,
+						      home_dir_view.size ? home_dir_view.data :
+									   nullptr);
 	if (ret_code != LTTNG_OK) {
 		goto error;
 	}
 
 	ret_code = LTTNG_OK;
 	*return_descriptor = session_descriptor;
-	session_descriptor = NULL;
+	session_descriptor = nullptr;
 error:
 	lttng_dynamic_buffer_reset(&payload);
 	lttng_session_descriptor_destroy(session_descriptor);
@@ -3300,7 +3305,7 @@ static void cmd_destroy_session_reply(const struct ltt_session *session, void *_
 		(cmd_destroy_session_reply_context *) _reply_context;
 	struct lttng_dynamic_buffer payload;
 	struct lttcomm_session_destroy_command_header cmd_header;
-	struct lttng_trace_archive_location *location = NULL;
+	struct lttng_trace_archive_location *location = nullptr;
 	struct lttcomm_lttng_msg llm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION,
 		.ret_code = reply_context->destruction_status,
@@ -3383,7 +3388,7 @@ int cmd_destroy_session(struct ltt_session *session,
 {
 	int ret;
 	enum lttng_error_code destruction_last_error = LTTNG_OK;
-	struct cmd_destroy_session_reply_context *reply_context = NULL;
+	struct cmd_destroy_session_reply_context *reply_context = nullptr;
 
 	if (sock_fd) {
 		reply_context = zmalloc<cmd_destroy_session_reply_context>();
@@ -3431,7 +3436,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		 * occurred during the session's lifetime.
 		 */
 		ret = cmd_rotate_session(
-			session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+			session, nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to perform an implicit rotation as part of the destruction of session \"%s\": %s",
 			    session->name,
@@ -3452,7 +3457,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		 * place.
 		 */
 		ret = cmd_rotate_session(
-			session, NULL, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION);
+			session, nullptr, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION);
 		/*
 		 * Rotation operations may not be supported by the kernel
 		 * tracer. Hence, do not consider this implicit rotation as
@@ -3553,7 +3558,7 @@ int cmd_register_consumer(struct ltt_session *session,
 			  struct consumer_data *cdata)
 {
 	int ret, sock;
-	struct consumer_socket *socket = NULL;
+	struct consumer_socket *socket = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(cdata);
@@ -3580,7 +3585,7 @@ int cmd_register_consumer(struct ltt_session *session,
 		cdata->cmd_sock = sock;
 
 		socket = consumer_allocate_socket(&cdata->cmd_sock);
-		if (socket == NULL) {
+		if (socket == nullptr) {
 			ret = close(sock);
 			if (ret < 0) {
 				PERROR("close register consumer");
@@ -3591,13 +3596,13 @@ int cmd_register_consumer(struct ltt_session *session,
 		}
 
 		socket->lock = zmalloc<pthread_mutex_t>();
-		if (socket->lock == NULL) {
+		if (socket->lock == nullptr) {
 			PERROR("zmalloc pthread mutex");
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
 
-		pthread_mutex_init(socket->lock, NULL);
+		pthread_mutex_init(socket->lock, nullptr);
 		socket->registered = 1;
 
 		rcu_read_lock();
@@ -3635,12 +3640,12 @@ ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **doma
 	struct agent *agt;
 	struct lttng_ht_iter iter;
 
-	if (session->kernel_session != NULL) {
+	if (session->kernel_session != nullptr) {
 		DBG3("Listing domains found kernel domain");
 		nb_dom++;
 	}
 
-	if (session->ust_session != NULL) {
+	if (session->ust_session != nullptr) {
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
@@ -3659,12 +3664,12 @@ ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **doma
 	}
 
 	*domains = calloc<lttng_domain>(nb_dom);
-	if (*domains == NULL) {
+	if (*domains == nullptr) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
-	if (session->kernel_session != NULL) {
+	if (session->kernel_session != nullptr) {
 		(*domains)[index].type = LTTNG_DOMAIN_KERNEL;
 
 		/* Kernel session buffer type is always GLOBAL */
@@ -3673,7 +3678,7 @@ ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **doma
 		index++;
 	}
 
-	if (session->ust_session != NULL) {
+	if (session->ust_session != nullptr) {
 		(*domains)[index].type = LTTNG_DOMAIN_UST;
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
@@ -3730,7 +3735,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	{
 		/* Kernel channels */
 		struct ltt_kernel_channel *kchan;
-		if (session->kernel_session != NULL) {
+		if (session->kernel_session != nullptr) {
 			cds_list_for_each_entry (
 				kchan, &session->kernel_session->channel_list.head, list) {
 				uint64_t discarded_events, lost_packets;
@@ -3777,7 +3782,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 					 uchan,
 					 node.node) {
 			uint64_t discarded_events = 0, lost_packets = 0;
-			struct lttng_channel *channel = NULL;
+			struct lttng_channel *channel = nullptr;
 			struct lttng_channel_extended *extended;
 
 			channel = trace_ust_channel_to_lttng_channel(uchan);
@@ -3861,7 +3866,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		if (session->kernel_session != NULL) {
+		if (session->kernel_session != nullptr) {
 			ret_code = list_lttng_kernel_events(
 				channel_name, session->kernel_session, reply_payload, &nb_events);
 		}
@@ -3869,7 +3874,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 		break;
 	case LTTNG_DOMAIN_UST:
 	{
-		if (session->ust_session != NULL) {
+		if (session->ust_session != nullptr) {
 			ret_code =
 				list_lttng_ust_global_events(channel_name,
 							     &session->ust_session->domain_global,
@@ -4133,7 +4138,7 @@ error:
 int cmd_snapshot_del_output(struct ltt_session *session, const struct lttng_snapshot_output *output)
 {
 	int ret;
-	struct snapshot_output *sout = NULL;
+	struct snapshot_output *sout = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
@@ -4183,7 +4188,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 				  struct lttng_snapshot_output **outputs)
 {
 	int ret, idx = 0;
-	struct lttng_snapshot_output *list = NULL;
+	struct lttng_snapshot_output *list = nullptr;
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
@@ -4252,7 +4257,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	}
 
 	*outputs = list;
-	list = NULL;
+	list = nullptr;
 	ret = session->snapshot.nb_output;
 error:
 	rcu_read_unlock();
@@ -4580,7 +4585,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 		lttng_trigger_get(trigger);
 		*return_trigger = trigger;
 		/* Ownership of trigger was transferred to caller. */
-		trigger = NULL;
+		trigger = nullptr;
 	}
 end:
 	return ret_code;
@@ -4649,7 +4654,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_trigger *sessiond_trigger = NULL;
+	struct lttng_trigger *sessiond_trigger = nullptr;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
@@ -4735,7 +4740,7 @@ enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 
 	/* Get the set of triggers from the notification thread. */
 	ret_code = notification_thread_command_list_triggers(
@@ -4751,7 +4756,7 @@ enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 	}
 
 	*return_triggers = triggers;
-	triggers = NULL;
+	triggers = nullptr;
 	ret_code = LTTNG_OK;
 end:
 	lttng_triggers_destroy(triggers);
@@ -4766,12 +4771,12 @@ cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
 {
 	enum lttng_error_code ret_code;
 	const struct lttng_trigger *query_target_trigger;
-	const struct lttng_action *query_target_action = NULL;
-	struct lttng_trigger *matching_trigger = NULL;
+	const struct lttng_action *query_target_action = nullptr;
+	struct lttng_trigger *matching_trigger = nullptr;
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_error_query_results *results = NULL;
+	struct lttng_error_query_results *results = nullptr;
 
 	switch (lttng_error_query_get_target_type(query)) {
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
@@ -4796,7 +4801,7 @@ cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
 	}
 
 	/* No longer needed. */
-	query_target_trigger = NULL;
+	query_target_trigger = nullptr;
 
 	if (lttng_error_query_get_target_type(query) == LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION) {
 		/* Get the sessiond-side version of the target action. */
@@ -4886,7 +4891,7 @@ cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
 	}
 
 	*_results = results;
-	results = NULL;
+	results = nullptr;
 	ret_code = LTTNG_OK;
 end:
 	lttng_trigger_put(matching_trigger);
@@ -4957,7 +4962,7 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 			session->hostname,
 			base_path,
 			session->live_timer,
-			current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+			current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
 			session->creation_time,
 			session->name_contains_creation_time);
 		pthread_mutex_unlock(socket->lock);
@@ -5103,10 +5108,10 @@ static enum lttng_error_code snapshot_record(struct ltt_session *session,
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_trace_chunk *snapshot_trace_chunk;
-	struct consumer_output *original_ust_consumer_output = NULL;
-	struct consumer_output *original_kernel_consumer_output = NULL;
-	struct consumer_output *snapshot_ust_consumer_output = NULL;
-	struct consumer_output *snapshot_kernel_consumer_output = NULL;
+	struct consumer_output *original_ust_consumer_output = nullptr;
+	struct consumer_output *original_kernel_consumer_output = nullptr;
+	struct consumer_output *snapshot_ust_consumer_output = nullptr;
+	struct consumer_output *snapshot_kernel_consumer_output = nullptr;
 
 	ret = snprintf(snapshot_chunk_name,
 		       sizeof(snapshot_chunk_name),
@@ -5188,9 +5193,9 @@ static enum lttng_error_code snapshot_record(struct ltt_session *session,
 		goto error;
 	}
 	LTTNG_ASSERT(!session->current_trace_chunk);
-	ret = session_set_trace_chunk(session, snapshot_trace_chunk, NULL);
+	ret = session_set_trace_chunk(session, snapshot_trace_chunk, nullptr);
 	lttng_trace_chunk_put(snapshot_trace_chunk);
-	snapshot_trace_chunk = NULL;
+	snapshot_trace_chunk = nullptr;
 	if (ret) {
 		ERR("Failed to set temporary trace chunk to record a snapshot of session \"%s\"",
 		    session->name);
@@ -5226,7 +5231,7 @@ static enum lttng_error_code snapshot_record(struct ltt_session *session,
 	}
 
 error_close_trace_chunk:
-	if (session_set_trace_chunk(session, NULL, &snapshot_trace_chunk)) {
+	if (session_set_trace_chunk(session, nullptr, &snapshot_trace_chunk)) {
 		ERR("Failed to release the current trace chunk of session \"%s\"", session->name);
 		ret_code = LTTNG_ERR_UNK;
 	}
@@ -5234,7 +5239,7 @@ error_close_trace_chunk:
 	if (session_close_trace_chunk(session,
 				      snapshot_trace_chunk,
 				      LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION,
-				      NULL)) {
+				      nullptr)) {
 		/*
 		 * Don't goto end; make sure the chunk is closed for the session
 		 * to allow future snapshots.
@@ -5244,7 +5249,7 @@ error_close_trace_chunk:
 	}
 
 	lttng_trace_chunk_put(snapshot_trace_chunk);
-	snapshot_trace_chunk = NULL;
+	snapshot_trace_chunk = nullptr;
 error:
 	if (original_ust_consumer_output) {
 		session->ust_session->consumer = original_ust_consumer_output;
@@ -5273,7 +5278,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	int ret;
 	unsigned int snapshot_success = 0;
 	char datetime[16];
-	struct snapshot_output *tmp_output = NULL;
+	struct snapshot_output *tmp_output = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
@@ -5317,7 +5322,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 					   output->data_url,
 					   session->consumer,
 					   tmp_output,
-					   NULL);
+					   nullptr);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
 				cmd_ret = LTTNG_ERR_NOMEM;
@@ -5430,8 +5435,8 @@ int cmd_rotate_session(struct ltt_session *session,
 	int ret;
 	uint64_t ongoing_rotation_chunk_id;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
-	struct lttng_trace_chunk *chunk_being_archived = NULL;
-	struct lttng_trace_chunk *new_trace_chunk = NULL;
+	struct lttng_trace_chunk *chunk_being_archived = nullptr;
+	struct lttng_trace_chunk *new_trace_chunk = nullptr;
 	enum lttng_trace_chunk_status chunk_status;
 	bool failed_to_rotate = false;
 	enum lttng_error_code rotation_fail_code = LTTNG_OK;
@@ -5498,7 +5503,8 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	if (session->active) {
-		new_trace_chunk = session_create_new_trace_chunk(session, NULL, NULL, NULL);
+		new_trace_chunk =
+			session_create_new_trace_chunk(session, nullptr, nullptr, nullptr);
 		if (!new_trace_chunk) {
 			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
@@ -5576,7 +5582,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	session->chunk_being_archived = chunk_being_archived;
-	chunk_being_archived = NULL;
+	chunk_being_archived = nullptr;
 	if (!quiet_rotation) {
 		ret = notification_thread_command_session_rotation_ongoing(
 			the_notification_thread_handle, session->id, ongoing_rotation_chunk_id);
@@ -5931,18 +5937,18 @@ static enum lttng_error_code wait_on_path(void *path_data)
  * Returns a pointer to a handler to run on completion of a command.
  * Returns NULL if no handler has to be run for the last command executed.
  */
-const struct cmd_completion_handler *cmd_pop_completion_handler(void)
+const struct cmd_completion_handler *cmd_pop_completion_handler()
 {
 	struct cmd_completion_handler *handler = current_completion_handler;
 
-	current_completion_handler = NULL;
+	current_completion_handler = nullptr;
 	return handler;
 }
 
 /*
  * Init command subsystem.
  */
-void cmd_init(void)
+void cmd_init()
 {
 	/*
 	 * Set network sequence index to 1 for streams to match a relayd

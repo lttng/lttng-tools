@@ -472,7 +472,7 @@ _lttcomm_send_payload_view_fds_unix_sock(int sock, struct lttng_payload_view *vi
 	struct lttng_dynamic_array raw_fds;
 	const int fd_count = lttng_payload_view_get_fd_handle_count(view);
 
-	lttng_dynamic_array_init(&raw_fds, sizeof(int), NULL);
+	lttng_dynamic_array_init(&raw_fds, sizeof(int), nullptr);
 
 	if (fd_count < 0) {
 		ret = -LTTNG_ERR_INVALID;
@@ -685,7 +685,7 @@ retry:
 	 * need to expect a cmsg of the SCM_CREDENTIALS as the first control
 	 * message.
 	 */
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 		if (cmsg->cmsg_level != SOL_SOCKET) {
 			fprintf(stderr, "Error: The socket needs to be of type SOL_SOCKET\n");
 			ret = -1;
@@ -932,7 +932,7 @@ retry:
 	 * need to expect a cmsg of the SCM_CREDENTIALS as the first control
 	 * message.
 	 */
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 		if (cmsg->cmsg_level != SOL_SOCKET) {
 			fprintf(stderr, "Error: The socket needs to be of type SOL_SOCKET\n");
 			ret = -1;
@@ -1095,7 +1095,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len, lttng_sock
 	}
 
 	cmptr = CMSG_FIRSTHDR(&msg);
-	if (cmptr == NULL) {
+	if (cmptr == nullptr) {
 		fprintf(stderr, "Error: Invalid control message header\n");
 		ret = -1;
 		goto end;

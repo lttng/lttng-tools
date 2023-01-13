@@ -33,10 +33,10 @@ char *backward_compat_group_by_session(const char *path,
 	int ret;
 	size_t len;
 	char *leftover_ptr;
-	char *local_copy = NULL;
-	char *datetime = NULL;
-	char *partial_base_path = NULL;
-	char *filepath_per_session = NULL;
+	char *local_copy = nullptr;
+	char *datetime = nullptr;
+	char *partial_base_path = nullptr;
+	char *filepath_per_session = nullptr;
 	const char *second_token_ptr;
 	const char *leftover_second_token_ptr;
 	const char *hostname_ptr;
@@ -78,7 +78,7 @@ char *backward_compat_group_by_session(const char *path,
 		goto error;
 	}
 
-	second_token_ptr = strtok_r(NULL, "/", &leftover_ptr);
+	second_token_ptr = strtok_r(nullptr, "/", &leftover_ptr);
 	if (!second_token_ptr) {
 		ERR("Failed to parse session path \"%s\": couldn't identify session name", path);
 		goto error;
@@ -155,7 +155,7 @@ char *backward_compat_group_by_session(const char *path,
 		 * session_name. If this is a auto session name, we need to
 		 * fetch the creation datetime.
 		 */
-		ret = regexec(&regex, local_session_name, 0, NULL, 0);
+		ret = regexec(&regex, local_session_name, 0, nullptr, 0);
 		if (ret == 0) {
 			const ssize_t local_session_name_offset =
 				strlen(local_session_name) - DATETIME_STR_LEN + 1;
@@ -181,7 +181,7 @@ char *backward_compat_group_by_session(const char *path,
 			}
 		}
 	} else if (len == DATETIME_STR_LEN &&
-		   !regexec(&regex, leftover_second_token_ptr, 0, NULL, 0)) {
+		   !regexec(&regex, leftover_second_token_ptr, 0, nullptr, 0)) {
 		/*
 		 * The leftover from the second token is of format
 		 * "-<datetime>", use it as the creation time.
@@ -200,8 +200,8 @@ char *backward_compat_group_by_session(const char *path,
 		 * "name-<datetime>" format. Using the datetime from such a
 		 * session would be invalid.
 		 * */
-		LTTNG_ASSERT(partial_base_path == NULL);
-		LTTNG_ASSERT(datetime == NULL);
+		LTTNG_ASSERT(partial_base_path == nullptr);
+		LTTNG_ASSERT(datetime == nullptr);
 
 		partial_base_path = strdup(second_token_ptr);
 		if (!partial_base_path) {
@@ -220,7 +220,7 @@ char *backward_compat_group_by_session(const char *path,
 		       partial_base_path ? "/" : "",
 		       leftover_ptr);
 	if (ret < 0) {
-		filepath_per_session = NULL;
+		filepath_per_session = nullptr;
 		goto error;
 	}
 error_regex:

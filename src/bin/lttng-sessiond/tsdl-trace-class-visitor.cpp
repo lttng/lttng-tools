@@ -23,6 +23,7 @@
 #include <set>
 #include <stack>
 #include <unordered_set>
+#include <utility>
 
 namespace lst = lttng::sessiond::trace;
 namespace tsdl = lttng::sessiond::tsdl;
@@ -138,7 +139,7 @@ public:
 
 	variant_tsdl_keyword_sanitizer(tsdl::details::type_overrider& type_overrides,
 				       type_lookup_function lookup_type) :
-		_type_overrides{ type_overrides }, _lookup_type(lookup_type)
+		_type_overrides{ type_overrides }, _lookup_type(std::move(lookup_type))
 	{
 	}
 
@@ -152,56 +153,48 @@ private:
 	};
 	using unsafe_names = std::set<const char *, _c_string_comparator>;
 
-	virtual void visit(const lst::field& field) override final
+	void visit(const lst::field& field) final
 	{
 		_type_overrides.type(field.get_type()).accept(*this);
 	}
 
-	virtual void visit(const lst::integer_type& type __attribute__((unused))) override final
+	void visit(const lst::integer_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::floating_point_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::floating_point_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::signed_enumeration_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::signed_enumeration_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::unsigned_enumeration_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::unsigned_enumeration_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::static_length_array_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::static_length_array_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_array_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::dynamic_length_array_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::static_length_blob_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::static_length_blob_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_blob_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::dynamic_length_blob_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::null_terminated_string_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::null_terminated_string_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::structure_type& type) override final
+	void visit(const lst::structure_type& type) final
 	{
 		/* Recurse into structure attributes. */
 		for (const auto& field : type.fields_) {
@@ -343,27 +336,23 @@ private:
 		_type_overrides.publish(type, std::move(sanitized_variant_type));
 	}
 
-	virtual void visit(const lst::variant_type<
-			   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type)
-		override final
+	void visit(const lst::variant_type<
+		   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::variant_type<
-			   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type)
-		override final
+	void visit(const lst::variant_type<
+		   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::static_length_string_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::static_length_string_type& type __attribute__((unused))) final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_string_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::dynamic_length_string_type& type __attribute__((unused))) final
 	{
 	}
 
@@ -381,7 +370,7 @@ public:
 				   nonstd::nullopt) :
 		_indentation_level{ indentation_level },
 		_trace_abi{ abi },
-		_bypass_identifier_escape{ false },
+
 		_default_clock_class_name{ in_default_clock_class_name ?
 						   in_default_clock_class_name->c_str() :
 						   nullptr },
@@ -396,7 +385,7 @@ public:
 	}
 
 private:
-	virtual void visit(const lst::field& field) override final
+	void visit(const lst::field& field) final
 	{
 		/*
 		 * Hack: keep the name of the field being visited since
@@ -425,7 +414,7 @@ private:
 		_description += ";";
 	}
 
-	virtual void visit(const lst::integer_type& type) override final
+	void visit(const lst::integer_type& type) final
 	{
 		_description += "integer { ";
 
@@ -506,7 +495,7 @@ private:
 		_description += " }";
 	}
 
-	virtual void visit(const lst::floating_point_type& type) override final
+	void visit(const lst::floating_point_type& type) final
 	{
 		_description += fmt::format(
 			"floating_point {{ align = {alignment}; mant_dig = {mantissa_digits}; exp_dig = {exponent_digits};",
@@ -564,17 +553,17 @@ private:
 		_description += "}";
 	}
 
-	virtual void visit(const lst::signed_enumeration_type& type) override final
+	void visit(const lst::signed_enumeration_type& type) final
 	{
 		visit_enumeration(type);
 	}
 
-	virtual void visit(const lst::unsigned_enumeration_type& type) override final
+	void visit(const lst::unsigned_enumeration_type& type) final
 	{
 		visit_enumeration(type);
 	}
 
-	virtual void visit(const lst::static_length_array_type& type) override final
+	void visit(const lst::static_length_array_type& type) final
 	{
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
@@ -589,7 +578,7 @@ private:
 		_type_suffixes.emplace(fmt::format("[{}]", type.length));
 	}
 
-	virtual void visit(const lst::dynamic_length_array_type& type) override final
+	void visit(const lst::dynamic_length_array_type& type) final
 	{
 		if (type.alignment != 0) {
 			/*
@@ -615,7 +604,7 @@ private:
 					*(type.length_field_location.elements_.end() - 1))));
 	}
 
-	virtual void visit(const lst::static_length_blob_type& type) override final
+	void visit(const lst::static_length_blob_type& type) final
 	{
 		/* This type doesn't exist in CTF 1.x, express it as a static length array of
 		 * uint8_t. */
@@ -632,7 +621,7 @@ private:
 		visit(*array);
 	}
 
-	virtual void visit(const lst::dynamic_length_blob_type& type) override final
+	void visit(const lst::dynamic_length_blob_type& type) final
 	{
 		/* This type doesn't exist in CTF 1.x, express it as a dynamic length array of
 		 * uint8_t. */
@@ -649,7 +638,7 @@ private:
 		visit(*array);
 	}
 
-	virtual void visit(const lst::null_terminated_string_type& type) override final
+	void visit(const lst::null_terminated_string_type& type) final
 	{
 		/* Defaults to UTF-8. */
 		if (type.encoding_ == lst::null_terminated_string_type::encoding::ASCII) {
@@ -659,7 +648,7 @@ private:
 		}
 	}
 
-	virtual void visit(const lst::structure_type& type) override final
+	void visit(const lst::structure_type& type) final
 	{
 		_indentation_level++;
 		_description += "struct {";
@@ -724,16 +713,14 @@ private:
 		_description += "}";
 	}
 
-	virtual void visit(const lst::variant_type<
-			   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type)
-		override final
+	void visit(const lst::variant_type<
+		   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::variant_type<
-			   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type)
-		override final
+	void visit(const lst::variant_type<
+		   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) final
 	{
 		visit_variant(type);
 	}
@@ -749,7 +736,7 @@ private:
 			lst::integer_type::base::DECIMAL);
 	}
 
-	virtual void visit(const lst::static_length_string_type& type) override final
+	void visit(const lst::static_length_string_type& type) final
 	{
 		/*
 		 * TSDL expresses static-length strings as arrays of 8-bit integer with
@@ -761,7 +748,7 @@ private:
 		visit(*char_array);
 	}
 
-	virtual void visit(const lst::dynamic_length_string_type& type) override final
+	void visit(const lst::dynamic_length_string_type& type) final
 	{
 		/*
 		 * TSDL expresses dynamic-length strings as arrays of 8-bit integer with
@@ -792,7 +779,7 @@ private:
 	/* Description in TSDL format. */
 	std::string _description;
 
-	bool _bypass_identifier_escape;
+	bool _bypass_identifier_escape{ false };
 	const char *_default_clock_class_name;
 	const tsdl::details::type_overrider& _type_overrides;
 };
@@ -803,15 +790,16 @@ public:
 	{
 	}
 
-	virtual void visit(const lst::environment_field<int64_t>& field) override
+	void visit(const lst::environment_field<int64_t>& field) override
 	{
 		_environment += fmt::format("	{} = {};\n", field.name, field.value);
 	}
 
-	virtual void visit(const lst::environment_field<const char *>& field) override
+	void visit(const lst::environment_field<const char *>& field) override
 	{
-		_environment += fmt::format(
-			"	{} = \"{}\";\n", field.name, escape_tsdl_env_string_value(field.value));
+		_environment += fmt::format("	{} = \"{}\";\n",
+					    field.name,
+					    escape_tsdl_env_string_value(field.value));
 	}
 
 	/* Only call once. */
@@ -829,7 +817,7 @@ private:
 tsdl::trace_class_visitor::trace_class_visitor(
 	const lst::abi& trace_abi,
 	tsdl::append_metadata_fragment_function append_metadata_fragment) :
-	_trace_abi{ trace_abi }, _append_metadata_fragment(append_metadata_fragment)
+	_trace_abi{ trace_abi }, _append_metadata_fragment(std::move(append_metadata_fragment))
 {
 }
 

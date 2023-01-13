@@ -188,7 +188,7 @@ static struct fs_handle *fs_handle_untracked_create(struct lttng_directory_handl
 						    const char *path,
 						    int fd)
 {
-	struct fs_handle_untracked *handle = NULL;
+	struct fs_handle_untracked *handle = nullptr;
 	bool reference_acquired;
 	char *path_copy = strdup(path);
 
@@ -217,10 +217,10 @@ static struct fs_handle *fs_handle_untracked_create(struct lttng_directory_handl
 	handle->location.directory_handle = directory_handle;
 	/* Ownership is transferred. */
 	handle->location.path = path_copy;
-	path_copy = NULL;
+	path_copy = nullptr;
 end:
 	free(path_copy);
-	return handle ? &handle->parent : NULL;
+	return handle ? &handle->parent : nullptr;
 }
 
 static int fs_handle_untracked_get_fd(struct fs_handle *_handle)
@@ -305,7 +305,7 @@ static char *
 generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp, const time_t *close_timestamp)
 {
 	int ret = 0;
-	char *new_name = NULL;
+	char *new_name = nullptr;
 	char start_datetime[ISO8601_STR_LEN] = {};
 	/* Add 1 for a '-' prefix. */
 	char end_datetime_suffix[ISO8601_STR_LEN + 1] = {};
@@ -343,13 +343,13 @@ generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp, const time_t *
 	return new_name;
 error:
 	free(new_name);
-	return NULL;
+	return nullptr;
 }
 
 static void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
 {
 	urcu_ref_init(&chunk->ref);
-	pthread_mutex_init(&chunk->lock, NULL);
+	pthread_mutex_init(&chunk->lock, nullptr);
 	lttng_dynamic_pointer_array_init(&chunk->top_level_directories, free);
 	lttng_dynamic_pointer_array_init(&chunk->files, free);
 }
@@ -358,24 +358,24 @@ static void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 {
 	if (chunk->session_output_directory) {
 		lttng_directory_handle_put(chunk->session_output_directory);
-		chunk->session_output_directory = NULL;
+		chunk->session_output_directory = nullptr;
 	}
 	if (chunk->chunk_directory) {
 		lttng_directory_handle_put(chunk->chunk_directory);
-		chunk->chunk_directory = NULL;
+		chunk->chunk_directory = nullptr;
 	}
 	free(chunk->name);
-	chunk->name = NULL;
+	chunk->name = nullptr;
 	free(chunk->path);
-	chunk->path = NULL;
+	chunk->path = nullptr;
 	lttng_dynamic_pointer_array_reset(&chunk->top_level_directories);
 	lttng_dynamic_pointer_array_reset(&chunk->files);
 	pthread_mutex_destroy(&chunk->lock);
 }
 
-static struct lttng_trace_chunk *lttng_trace_chunk_allocate(void)
+static struct lttng_trace_chunk *lttng_trace_chunk_allocate()
 {
-	struct lttng_trace_chunk *chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr;
 
 	chunk = zmalloc<lttng_trace_chunk>();
 	if (!chunk) {
@@ -387,7 +387,7 @@ end:
 	return chunk;
 }
 
-struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous(void)
+struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous()
 {
 	DBG("Creating anonymous trace chunk");
 	return lttng_trace_chunk_allocate();
@@ -426,7 +426,7 @@ lttng_trace_chunk_create(uint64_t chunk_id, time_t chunk_creation_time, const ch
 	LTTNG_OPTIONAL_SET(&chunk->id, chunk_id);
 	LTTNG_OPTIONAL_SET(&chunk->timestamp_creation, chunk_creation_time);
 	if (chunk_id != 0) {
-		chunk->name = generate_chunk_name(chunk_id, chunk_creation_time, NULL);
+		chunk->name = generate_chunk_name(chunk_id, chunk_creation_time, nullptr);
 		if (!chunk->name) {
 			ERR("Failed to allocate trace chunk name storage");
 			goto error;
@@ -451,7 +451,7 @@ end:
 	return chunk;
 error:
 	lttng_trace_chunk_put(chunk);
-	return NULL;
+	return nullptr;
 }
 
 void lttng_trace_chunk_set_fd_tracker(struct lttng_trace_chunk *chunk,
@@ -526,7 +526,7 @@ end:
 error_unlock:
 	pthread_mutex_unlock(&source_chunk->lock);
 	lttng_trace_chunk_put(new_chunk);
-	return NULL;
+	return nullptr;
 }
 
 enum lttng_trace_chunk_status lttng_trace_chunk_get_id(struct lttng_trace_chunk *chunk,
@@ -718,7 +718,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 
 {
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
-	struct lttng_directory_handle *rename_directory = NULL;
+	struct lttng_directory_handle *rename_directory = nullptr;
 	char *new_path, *old_path;
 	int ret;
 
@@ -763,7 +763,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 			chunk->session_output_directory,
 			path,
 			LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
-				NULL :
+				nullptr :
 				&chunk->credentials.value.user);
 		if (ret) {
 			PERROR("Failed to move trace chunk directory \"%s\" to \"%s\"",
@@ -790,7 +790,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 		 * handle.
 		 */
 		chunk->chunk_directory = rename_directory;
-		rename_directory = NULL;
+		rename_directory = nullptr;
 	} else if (old_path && old_path[0] == '\0') {
 		size_t i,
 			count = lttng_dynamic_pointer_array_get_count(
@@ -801,7 +801,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 			path,
 			DIR_CREATION_MODE,
 			LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
-				NULL :
+				nullptr :
 				&chunk->credentials.value.user);
 		if (ret) {
 			PERROR("Failed to create trace chunk rename directory \"%s\"", path);
@@ -829,7 +829,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 				rename_directory,
 				top_level_name,
 				LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
-					NULL :
+					nullptr :
 					&chunk->credentials.value.user);
 			if (ret) {
 				PERROR("Failed to move \"%s\" to trace chunk rename directory",
@@ -845,7 +845,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 		 * handle.
 		 */
 		chunk->chunk_directory = rename_directory;
-		rename_directory = NULL;
+		rename_directory = nullptr;
 	} else if (old_path) {
 		size_t i,
 			count = lttng_dynamic_pointer_array_get_count(
@@ -868,7 +868,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 				rename_directory,
 				top_level_name,
 				LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
-					NULL :
+					nullptr :
 					&chunk->credentials.value.user);
 			if (ret) {
 				PERROR("Failed to move \"%s\" to trace chunk rename directory",
@@ -884,7 +884,7 @@ lttng_trace_chunk_rename_path_no_lock(struct lttng_trace_chunk *chunk, const cha
 		 * handle.
 		 */
 		chunk->chunk_directory = rename_directory;
-		rename_directory = NULL;
+		rename_directory = nullptr;
 
 		/* Remove old directory. */
 		status = (lttng_trace_chunk_status) lttng_directory_handle_remove_subdirectory(
@@ -994,7 +994,7 @@ lttng_trace_chunk_set_as_owner(struct lttng_trace_chunk *chunk,
 {
 	int ret;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
-	struct lttng_directory_handle *chunk_directory_handle = NULL;
+	struct lttng_directory_handle *chunk_directory_handle = nullptr;
 	bool reference_acquired;
 
 	pthread_mutex_lock(&chunk->lock);
@@ -1018,7 +1018,7 @@ lttng_trace_chunk_set_as_owner(struct lttng_trace_chunk *chunk,
 			DIR_CREATION_MODE,
 			!chunk->credentials.value.use_current_user ?
 				&chunk->credentials.value.user :
-				NULL);
+				nullptr);
 		if (ret) {
 			PERROR("Failed to create chunk output directory \"%s\"", chunk->path);
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -1045,7 +1045,7 @@ lttng_trace_chunk_set_as_owner(struct lttng_trace_chunk *chunk,
 		chunk_directory_handle = session_output_directory;
 	}
 	chunk->chunk_directory = chunk_directory_handle;
-	chunk_directory_handle = NULL;
+	chunk_directory_handle = nullptr;
 	reference_acquired = lttng_directory_handle_get(session_output_directory);
 	LTTNG_ASSERT(reference_acquired);
 	chunk->session_output_directory = session_output_directory;
@@ -1090,7 +1090,7 @@ lttng_trace_chunk_get_session_output_directory_handle(struct lttng_trace_chunk *
 	pthread_mutex_lock(&chunk->lock);
 	if (!chunk->session_output_directory) {
 		status = LTTNG_TRACE_CHUNK_STATUS_NONE;
-		*handle = NULL;
+		*handle = nullptr;
 		goto end;
 	} else {
 		const bool reference_acquired =
@@ -1207,7 +1207,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_create_subdirectory(struct lttng
 		chunk->chunk_directory,
 		path,
 		DIR_CREATION_MODE,
-		chunk->credentials.value.use_current_user ? NULL : &chunk->credentials.value.user);
+		chunk->credentials.value.use_current_user ? nullptr :
+							    &chunk->credentials.value.user);
 	if (ret) {
 		PERROR("Failed to create trace chunk subdirectory \"%s\"", path);
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -1252,7 +1253,7 @@ static enum lttng_trace_chunk_status lttng_trace_chunk_add_file(struct lttng_tra
 	int ret;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 
-	if (lttng_trace_chunk_find_file(chunk, path, NULL)) {
+	if (lttng_trace_chunk_find_file(chunk, path, nullptr)) {
 		return LTTNG_TRACE_CHUNK_STATUS_OK;
 	}
 	DBG("Adding new file \"%s\" to trace chunk \"%s\"", path, chunk->name ?: "(unnamed)");
@@ -1330,7 +1331,7 @@ _lttng_trace_chunk_open_fs_handle_locked(struct lttng_trace_chunk *chunk,
 			file_path,
 			flags,
 			mode,
-			chunk->credentials.value.use_current_user ? NULL :
+			chunk->credentials.value.use_current_user ? nullptr :
 								    &chunk->credentials.value.user);
 		if (ret >= 0) {
 			*out_handle =
@@ -1429,10 +1430,11 @@ int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk, const char *f
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}
-	ret = lttng_directory_handle_unlink_file_as_user(
-		chunk->chunk_directory,
-		file_path,
-		chunk->credentials.value.use_current_user ? NULL : &chunk->credentials.value.user);
+	ret = lttng_directory_handle_unlink_file_as_user(chunk->chunk_directory,
+							 file_path,
+							 chunk->credentials.value.use_current_user ?
+								 nullptr :
+								 &chunk->credentials.value.user);
 	if (ret < 0) {
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
@@ -1470,7 +1472,8 @@ static int lttng_trace_chunk_remove_subdirectory_recursive(struct lttng_trace_ch
 	ret = lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		chunk->chunk_directory,
 		path,
-		chunk->credentials.value.use_current_user ? NULL : &chunk->credentials.value.user,
+		chunk->credentials.value.use_current_user ? nullptr :
+							    &chunk->credentials.value.user,
 		LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	if (ret < 0) {
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -1484,11 +1487,11 @@ end:
 static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk)
 {
 	int ret = 0;
-	char *archived_chunk_name = NULL;
+	char *archived_chunk_name = nullptr;
 	const uint64_t chunk_id = LTTNG_OPTIONAL_GET(trace_chunk->id);
 	const time_t creation_timestamp = LTTNG_OPTIONAL_GET(trace_chunk->timestamp_creation);
 	const time_t close_timestamp = LTTNG_OPTIONAL_GET(trace_chunk->timestamp_close);
-	struct lttng_directory_handle *archived_chunks_directory = NULL;
+	struct lttng_directory_handle *archived_chunks_directory = nullptr;
 	enum lttng_trace_chunk_status status;
 
 	if (!trace_chunk->mode.is_set || trace_chunk->mode.value != TRACE_CHUNK_MODE_OWNER ||
@@ -1517,7 +1520,7 @@ static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_c
 		DIR_CREATION_MODE,
 		!trace_chunk->credentials.value.use_current_user ?
 			&trace_chunk->credentials.value.user :
-			NULL);
+			nullptr);
 	if (ret) {
 		PERROR("Failed to create \"" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY
 		       "\" directory for archived trace chunks");
@@ -1558,7 +1561,7 @@ static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_c
 		archived_chunks_directory,
 		archived_chunk_name,
 		LTTNG_OPTIONAL_GET(trace_chunk->credentials).use_current_user ?
-			NULL :
+			nullptr :
 			&trace_chunk->credentials.value.user);
 	if (ret) {
 		PERROR("Failed to rename folder \"%s\" to \"%s\"",
@@ -1639,7 +1642,7 @@ static int lttng_trace_chunk_delete_post_release_owner(struct lttng_trace_chunk 
 	}
 	if (!ret) {
 		lttng_directory_handle_put(trace_chunk->chunk_directory);
-		trace_chunk->chunk_directory = NULL;
+		trace_chunk->chunk_directory = nullptr;
 
 		if (trace_chunk->path && trace_chunk->path[0] != '\0') {
 			status = (lttng_trace_chunk_status)
@@ -1653,7 +1656,7 @@ static int lttng_trace_chunk_delete_post_release_owner(struct lttng_trace_chunk 
 		}
 	}
 	free(trace_chunk->path);
-	trace_chunk->path = NULL;
+	trace_chunk->path = nullptr;
 end:
 	return ret;
 }
@@ -1848,7 +1851,7 @@ void lttng_trace_chunk_put(struct lttng_trace_chunk *chunk)
 	urcu_ref_put(&chunk->ref, lttng_trace_chunk_release);
 }
 
-struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void)
+struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create()
 {
 	struct lttng_trace_chunk_registry *registry;
 
@@ -1858,7 +1861,7 @@ struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void)
 	}
 
 	registry->ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!registry->ht) {
 		goto error;
 	}
@@ -1866,7 +1869,7 @@ end:
 	return registry;
 error:
 	lttng_trace_chunk_registry_destroy(registry);
-	return NULL;
+	return nullptr;
 }
 
 void lttng_trace_chunk_registry_destroy(struct lttng_trace_chunk_registry *registry)
@@ -1875,7 +1878,7 @@ void lttng_trace_chunk_registry_destroy(struct lttng_trace_chunk_registry *regis
 		return;
 	}
 	if (registry->ht) {
-		int ret = cds_lfht_destroy(registry->ht, NULL);
+		int ret = cds_lfht_destroy(registry->ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	free(registry);
@@ -1899,19 +1902,19 @@ lttng_trace_chunk_registry_element_create_from_chunk(struct lttng_trace_chunk *c
 	if (chunk->session_output_directory) {
 		/* Transferred ownership. */
 		element->chunk.session_output_directory = chunk->session_output_directory;
-		chunk->session_output_directory = NULL;
+		chunk->session_output_directory = nullptr;
 	}
 	if (chunk->chunk_directory) {
 		/* Transferred ownership. */
 		element->chunk.chunk_directory = chunk->chunk_directory;
-		chunk->chunk_directory = NULL;
+		chunk->chunk_directory = nullptr;
 	}
 	/*
 	 * The original chunk becomes invalid; the name and path attributes are
 	 * transferred to the new chunk instance.
 	 */
-	chunk->name = NULL;
-	chunk->path = NULL;
+	chunk->name = nullptr;
+	chunk->path = nullptr;
 	element->chunk.fd_tracker = chunk->fd_tracker;
 	element->chunk.in_registry_element = true;
 end:
@@ -1947,11 +1950,11 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 	 * chunk is now invalid, the only valid operation is a 'put' from the
 	 * caller.
 	 */
-	chunk = NULL;
+	chunk = nullptr;
 	element_hash = lttng_trace_chunk_registry_element_hash(element);
 
 	rcu_read_lock();
-	while (1) {
+	while (true) {
 		struct cds_lfht_node *published_node;
 		struct lttng_trace_chunk *published_chunk;
 		struct lttng_trace_chunk_registry_element *published_element;
@@ -2004,7 +2007,7 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 	}
 	rcu_read_unlock();
 end:
-	return element ? &element->chunk : NULL;
+	return element ? &element->chunk : nullptr;
 }
 
 /*
@@ -2028,7 +2031,7 @@ static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 	const unsigned long element_hash = lttng_trace_chunk_registry_element_hash(&target_element);
 	struct cds_lfht_node *published_node;
 	struct lttng_trace_chunk_registry_element *published_element;
-	struct lttng_trace_chunk *published_chunk = NULL;
+	struct lttng_trace_chunk *published_chunk = nullptr;
 	struct cds_lfht_iter iter;
 
 	rcu_read_lock();
@@ -2096,7 +2099,7 @@ struct lttng_trace_chunk *
 lttng_trace_chunk_registry_find_anonymous_chunk(const struct lttng_trace_chunk_registry *registry,
 						uint64_t session_id)
 {
-	return _lttng_trace_chunk_registry_find_chunk(registry, session_id, NULL);
+	return _lttng_trace_chunk_registry_find_chunk(registry, session_id, nullptr);
 }
 
 unsigned int

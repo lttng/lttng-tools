@@ -41,12 +41,12 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "timer", 0, POPT_ARG_NONE, 0, OPT_TIMER, 0, 0 },
-	{ "size", 0, POPT_ARG_NONE, 0, OPT_SIZE, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "timer", 0, POPT_ARG_NONE, nullptr, OPT_TIMER, nullptr, nullptr },
+	{ "size", 0, POPT_ARG_NONE, nullptr, OPT_SIZE, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static const char *schedule_type_str[] = {
@@ -61,7 +61,7 @@ get_schedule(const char *session_name,
 {
 	unsigned int count, i;
 	enum lttng_rotation_status status;
-	const struct lttng_rotation_schedule *ret = NULL;
+	const struct lttng_rotation_schedule *ret = nullptr;
 
 	status = lttng_rotation_schedules_get_count(schedules, &count);
 	if (status != LTTNG_ROTATION_STATUS_OK) {
@@ -71,7 +71,7 @@ get_schedule(const char *session_name,
 	}
 
 	for (i = 0; i < count; i++) {
-		const struct lttng_rotation_schedule *schedule = NULL;
+		const struct lttng_rotation_schedule *schedule = nullptr;
 
 		schedule = lttng_rotation_schedules_get_at_index(schedules, i);
 		if (!schedule) {
@@ -96,7 +96,7 @@ end:
 
 static struct lttng_rotation_schedule *create_empty_schedule(enum lttng_rotation_schedule_type type)
 {
-	struct lttng_rotation_schedule *schedule = NULL;
+	struct lttng_rotation_schedule *schedule = nullptr;
 
 	switch (type) {
 	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
@@ -116,11 +116,11 @@ static enum cmd_error_code remove_schedule(const char *session_name,
 {
 	enum cmd_error_code cmd_ret;
 	int ret;
-	const struct lttng_rotation_schedule *schedule = NULL;
-	struct lttng_rotation_schedules *schedules = NULL;
+	const struct lttng_rotation_schedule *schedule = nullptr;
+	struct lttng_rotation_schedules *schedules = nullptr;
 	enum lttng_rotation_status status;
 	const char *schedule_type_name;
-	struct lttng_rotation_schedule *empty_schedule = NULL;
+	struct lttng_rotation_schedule *empty_schedule = nullptr;
 
 	switch (schedule_type) {
 	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
@@ -203,11 +203,11 @@ int cmd_disable_rotation(int argc, const char **argv)
 	int popt_ret, opt, ret = 0;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	static poptContext pc;
-	char *session_name = NULL;
+	char *session_name = nullptr;
 	bool free_session_name = false;
 	bool periodic_rotation = false, size_rotation = false;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
 		cmd_ret = CMD_ERROR;
@@ -235,9 +235,9 @@ int cmd_disable_rotation(int argc, const char **argv)
 		}
 	}
 
-	if (opt_session_name == NULL) {
+	if (opt_session_name == nullptr) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			goto error;
 		}
 		free_session_name = true;

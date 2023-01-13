@@ -29,7 +29,7 @@ struct lttng_index {
 
 struct lttng_index_allocator *lttng_index_allocator_create(uint64_t index_count)
 {
-	struct lttng_index_allocator *allocator = NULL;
+	struct lttng_index_allocator *allocator = nullptr;
 
 	allocator = zmalloc<lttng_index_allocator>();
 	if (!allocator) {
@@ -82,7 +82,7 @@ end:
 enum lttng_index_allocator_status
 lttng_index_allocator_release(struct lttng_index_allocator *allocator, uint64_t idx)
 {
-	struct lttng_index *index = NULL;
+	struct lttng_index *index = nullptr;
 	enum lttng_index_allocator_status status = LTTNG_INDEX_ALLOCATOR_STATUS_OK;
 
 	LTTNG_ASSERT(idx < allocator->size);
@@ -104,7 +104,7 @@ end:
 
 void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator)
 {
-	struct lttng_index *index = NULL, *tmp_index = NULL;
+	struct lttng_index *index = nullptr, *tmp_index = nullptr;
 
 	if (!allocator) {
 		return;

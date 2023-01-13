@@ -25,11 +25,11 @@
 
 static struct option long_options[] = {
 	/* These options set a flag. */
-	{ "iter", required_argument, 0, 'i' },
-	{ "wait", required_argument, 0, 'w' },
-	{ "create-in-main", required_argument, 0, 'm' },
-	{ "wait-before-first-event", required_argument, 0, 'b' },
-	{ 0, 0, 0, 0 }
+	{ "iter", required_argument, nullptr, 'i' },
+	{ "wait", required_argument, nullptr, 'w' },
+	{ "create-in-main", required_argument, nullptr, 'm' },
+	{ "wait-before-first-event", required_argument, nullptr, 'b' },
+	{ nullptr, 0, nullptr, 0 }
 };
 
 int main(int argc, char **argv)
@@ -41,8 +41,8 @@ int main(int argc, char **argv)
 	float flt = 2222.0;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
-	char *wait_before_first_event_file_path = NULL;
-	char *create_in_main_file_path = NULL;
+	char *wait_before_first_event_file_path = nullptr;
+	char *create_in_main_file_path = nullptr;
 
 	while ((option = getopt_long(argc, argv, "i:w:b:m:", long_options, &option_index)) != -1) {
 		switch (option) {

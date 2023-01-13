@@ -35,12 +35,12 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 60
 
-static void test_action_notify(void)
+static void test_action_notify()
 {
 	int ret;
 	enum lttng_action_status status;
-	struct lttng_action *notify_action = NULL, *notify_action_from_buffer = NULL;
-	struct lttng_rate_policy *policy = NULL, *default_policy;
+	struct lttng_action *notify_action = nullptr, *notify_action_from_buffer = nullptr;
+	struct lttng_rate_policy *policy = nullptr, *default_policy;
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
@@ -59,7 +59,7 @@ static void test_action_notify(void)
 
 	/* Validate the default policy for a notify action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_notify_get_rate_policy(notify_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
 			   lttng_rate_policy_is_equal(default_policy, cur_policy),
@@ -72,7 +72,7 @@ static void test_action_notify(void)
 
 	/* Validate the custom policy for a notify action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_notify_get_rate_policy(notify_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
 			   lttng_rate_policy_is_equal(policy, cur_policy),
@@ -98,13 +98,13 @@ static void test_action_notify(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_rotate_session(void)
+static void test_action_rotate_session()
 {
 	int ret;
 	enum lttng_action_status status;
-	struct lttng_action *rotate_session_action = NULL,
-			    *rotate_session_action_from_buffer = NULL;
-	struct lttng_rate_policy *policy = NULL, *default_policy;
+	struct lttng_action *rotate_session_action = nullptr,
+			    *rotate_session_action_from_buffer = nullptr;
+	struct lttng_rate_policy *policy = nullptr, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -124,11 +124,11 @@ static void test_action_rotate_session(void)
 	   "Action has type LTTNG_ACTION_TYPE_ROTATE_SESSION");
 
 	/* Session name setter. */
-	status = lttng_action_rotate_session_set_session_name(NULL, NULL);
+	status = lttng_action_rotate_session_set_session_name(nullptr, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,NULL) expect invalid");
-	status = lttng_action_rotate_session_set_session_name(rotate_session_action, NULL);
+	status = lttng_action_rotate_session_set_session_name(rotate_session_action, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (object,NULL) expect invalid");
-	status = lttng_action_rotate_session_set_session_name(NULL, session_name);
+	status = lttng_action_rotate_session_set_session_name(nullptr, session_name);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,object) expect invalid");
 
 	/* Set the session name */
@@ -144,7 +144,7 @@ static void test_action_rotate_session(void)
 
 	/* Validate the default policy for a rotate_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_rotate_session_get_rate_policy(rotate_session_action,
 								     &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -158,7 +158,7 @@ static void test_action_rotate_session(void)
 
 	/* Validate the custom policy for a rotate_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_rotate_session_get_rate_policy(rotate_session_action,
 								     &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -187,12 +187,13 @@ static void test_action_rotate_session(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_start_session(void)
+static void test_action_start_session()
 {
 	int ret;
 	enum lttng_action_status status;
-	struct lttng_action *start_session_action = NULL, *start_session_action_from_buffer = NULL;
-	struct lttng_rate_policy *policy = NULL, *default_policy;
+	struct lttng_action *start_session_action = nullptr,
+			    *start_session_action_from_buffer = nullptr;
+	struct lttng_rate_policy *policy = nullptr, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -212,11 +213,11 @@ static void test_action_start_session(void)
 	   "Action has type LTTNG_ACTION_TYPE_START_SESSION");
 
 	/* Session name setter. */
-	status = lttng_action_start_session_set_session_name(NULL, NULL);
+	status = lttng_action_start_session_set_session_name(nullptr, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,NULL) expect invalid");
-	status = lttng_action_start_session_set_session_name(start_session_action, NULL);
+	status = lttng_action_start_session_set_session_name(start_session_action, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (object,NULL) expect invalid");
-	status = lttng_action_start_session_set_session_name(NULL, session_name);
+	status = lttng_action_start_session_set_session_name(nullptr, session_name);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,object) expect invalid");
 
 	/* Set the session name */
@@ -232,7 +233,7 @@ static void test_action_start_session(void)
 
 	/* Validate the default policy for a start_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_start_session_get_rate_policy(start_session_action,
 								    &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -246,7 +247,7 @@ static void test_action_start_session(void)
 
 	/* Validate the custom policy for a start_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_start_session_get_rate_policy(start_session_action,
 								    &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -275,12 +276,13 @@ static void test_action_start_session(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_stop_session(void)
+static void test_action_stop_session()
 {
 	int ret;
 	enum lttng_action_status status;
-	struct lttng_action *stop_session_action = NULL, *stop_session_action_from_buffer = NULL;
-	struct lttng_rate_policy *policy = NULL, *default_policy;
+	struct lttng_action *stop_session_action = nullptr,
+			    *stop_session_action_from_buffer = nullptr;
+	struct lttng_rate_policy *policy = nullptr, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -300,11 +302,11 @@ static void test_action_stop_session(void)
 	   "Action has type LTTNG_ACTION_TYPE_STOP_SESSION");
 
 	/* Session name setter. */
-	status = lttng_action_stop_session_set_session_name(NULL, NULL);
+	status = lttng_action_stop_session_set_session_name(nullptr, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,NULL) expect invalid");
-	status = lttng_action_stop_session_set_session_name(stop_session_action, NULL);
+	status = lttng_action_stop_session_set_session_name(stop_session_action, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (object,NULL) expect invalid");
-	status = lttng_action_stop_session_set_session_name(NULL, session_name);
+	status = lttng_action_stop_session_set_session_name(nullptr, session_name);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,object) expect invalid");
 
 	/* Set the session name */
@@ -319,7 +321,7 @@ static void test_action_stop_session(void)
 
 	/* Validate the default policy for a stop_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status =
 			lttng_action_stop_session_get_rate_policy(stop_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -333,7 +335,7 @@ static void test_action_stop_session(void)
 
 	/* Validate the custom policy for a stop_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status =
 			lttng_action_stop_session_get_rate_policy(stop_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -361,13 +363,13 @@ static void test_action_stop_session(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_snapshot_session(void)
+static void test_action_snapshot_session()
 {
 	int ret;
 	enum lttng_action_status status;
-	struct lttng_action *snapshot_session_action = NULL,
-			    *snapshot_session_action_from_buffer = NULL;
-	struct lttng_rate_policy *policy = NULL, *default_policy;
+	struct lttng_action *snapshot_session_action = nullptr,
+			    *snapshot_session_action_from_buffer = nullptr;
+	struct lttng_rate_policy *policy = nullptr, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -387,11 +389,11 @@ static void test_action_snapshot_session(void)
 	   "Action has type LTTNG_ACTION_TYPE_SNAPSHOT_SESSION");
 
 	/* Session name setter. */
-	status = lttng_action_snapshot_session_set_session_name(NULL, NULL);
+	status = lttng_action_snapshot_session_set_session_name(nullptr, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,NULL) expect invalid");
-	status = lttng_action_snapshot_session_set_session_name(snapshot_session_action, NULL);
+	status = lttng_action_snapshot_session_set_session_name(snapshot_session_action, nullptr);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (object,NULL) expect invalid");
-	status = lttng_action_snapshot_session_set_session_name(NULL, session_name);
+	status = lttng_action_snapshot_session_set_session_name(nullptr, session_name);
 	ok(status == LTTNG_ACTION_STATUS_INVALID, "Set session name (NULL,object) expect invalid");
 
 	/* Set the session name */
@@ -408,7 +410,7 @@ static void test_action_snapshot_session(void)
 
 	/* Validate the default policy for a snapshot_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_snapshot_session_get_rate_policy(snapshot_session_action,
 								       &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -422,7 +424,7 @@ static void test_action_snapshot_session(void)
 
 	/* Validate the custom policy for a snapshot_session action. */
 	{
-		const struct lttng_rate_policy *cur_policy = NULL;
+		const struct lttng_rate_policy *cur_policy = nullptr;
 		status = lttng_action_snapshot_session_get_rate_policy(snapshot_session_action,
 								       &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
@@ -452,7 +454,7 @@ static void test_action_snapshot_session(void)
 	lttng_payload_reset(&payload);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_action_notify();

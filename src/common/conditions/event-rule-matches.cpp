@@ -238,7 +238,7 @@ lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 {
 	const struct lttng_condition_event_rule_matches *event_rule_matches_cond =
 		lttng::utils::container_of(condition, &lttng_condition_event_rule_matches::parent);
-	struct lttng_capture_descriptor *desc = NULL;
+	struct lttng_capture_descriptor *desc = nullptr;
 	unsigned int count;
 	enum lttng_condition_status status;
 
@@ -417,7 +417,7 @@ lttng_condition_event_rule_matches_mi_serialize(const struct lttng_condition *co
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_condition_status status;
-	const struct lttng_event_rule *rule = NULL;
+	const struct lttng_event_rule *rule = nullptr;
 	unsigned int capture_descriptor_count, i;
 
 	LTTNG_ASSERT(condition);
@@ -426,7 +426,7 @@ lttng_condition_event_rule_matches_mi_serialize(const struct lttng_condition *co
 
 	status = lttng_condition_event_rule_matches_get_rule(condition, &rule);
 	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
-	LTTNG_ASSERT(rule != NULL);
+	LTTNG_ASSERT(rule != nullptr);
 
 	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 		condition, &capture_descriptor_count);
@@ -451,7 +451,7 @@ lttng_condition_event_rule_matches_mi_serialize(const struct lttng_condition *co
 	}
 
 	for (i = 0; i < capture_descriptor_count; i++) {
-		const struct lttng_event_expr *descriptor = NULL;
+		const struct lttng_event_expr *descriptor = nullptr;
 
 		descriptor = lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 			condition, i);
@@ -485,8 +485,8 @@ end:
 
 struct lttng_condition *lttng_condition_event_rule_matches_create(struct lttng_event_rule *rule)
 {
-	struct lttng_condition *parent = NULL;
-	struct lttng_condition_event_rule_matches *condition = NULL;
+	struct lttng_condition *parent = nullptr;
+	struct lttng_condition_event_rule_matches *condition = nullptr;
 
 	if (!rule) {
 		goto end;
@@ -494,7 +494,7 @@ struct lttng_condition *lttng_condition_event_rule_matches_create(struct lttng_e
 
 	condition = zmalloc<lttng_condition_event_rule_matches>();
 	if (!condition) {
-		return NULL;
+		return nullptr;
 	}
 
 	lttng_condition_init(&condition->parent, LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
@@ -506,7 +506,7 @@ struct lttng_condition *lttng_condition_event_rule_matches_create(struct lttng_e
 
 	lttng_event_rule_get(rule);
 	condition->rule = rule;
-	rule = NULL;
+	rule = nullptr;
 
 	lttng_dynamic_pointer_array_init(&condition->capture_descriptors,
 					 destroy_capture_descriptor);
@@ -571,7 +571,7 @@ static const char *str_from_buffer(const struct lttng_buffer_view *view, size_t 
 	goto end;
 
 error:
-	ret = NULL;
+	ret = nullptr;
 
 end:
 	return ret;
@@ -580,7 +580,7 @@ end:
 static struct lttng_event_expr *event_expr_from_payload(struct lttng_payload_view *view,
 							size_t *offset)
 {
-	struct lttng_event_expr *expr = NULL;
+	struct lttng_event_expr *expr = nullptr;
 	const char *str;
 	uint64_t type;
 
@@ -659,7 +659,7 @@ static struct lttng_event_expr *event_expr_from_payload(struct lttng_payload_vie
 
 error:
 	lttng_event_expr_destroy(expr);
-	expr = NULL;
+	expr = nullptr;
 
 end:
 	return expr;
@@ -672,8 +672,8 @@ ssize_t lttng_condition_event_rule_matches_create_from_payload(struct lttng_payl
 	size_t offset = 0;
 	ssize_t event_rule_length;
 	uint32_t i, capture_descr_count;
-	struct lttng_condition *condition = NULL;
-	struct lttng_event_rule *event_rule = NULL;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
 
 	if (!view || !_condition) {
 		goto error;
@@ -728,7 +728,7 @@ ssize_t lttng_condition_event_rule_matches_create_from_payload(struct lttng_payl
 
 	consumed_length = (ssize_t) offset;
 	*_condition = condition;
-	condition = NULL;
+	condition = nullptr;
 	goto end;
 
 error:
@@ -768,7 +768,7 @@ enum lttng_condition_status
 lttng_condition_event_rule_matches_get_rule(const struct lttng_condition *condition,
 					    const struct lttng_event_rule **rule)
 {
-	struct lttng_event_rule *mutable_rule = NULL;
+	struct lttng_event_rule *mutable_rule = nullptr;
 	const enum lttng_condition_status status =
 		lttng_condition_event_rule_matches_borrow_rule_mutable(condition, &mutable_rule);
 
@@ -802,8 +802,8 @@ lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condit
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 	struct lttng_condition_event_rule_matches *event_rule_matches_cond =
 		lttng::utils::container_of(condition, &lttng_condition_event_rule_matches::parent);
-	struct lttng_capture_descriptor *descriptor = NULL;
-	const struct lttng_event_rule *rule = NULL;
+	struct lttng_capture_descriptor *descriptor = nullptr;
+	const struct lttng_event_rule *rule = nullptr;
 
 	/* Only accept l-values. */
 	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition) || !expr ||
@@ -840,13 +840,13 @@ lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condit
 	}
 
 	descriptor = malloc<lttng_capture_descriptor>();
-	if (descriptor == NULL) {
+	if (descriptor == nullptr) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
 		goto end;
 	}
 
 	descriptor->event_expression = expr;
-	descriptor->bytecode = NULL;
+	descriptor->bytecode = nullptr;
 
 	ret = lttng_dynamic_pointer_array_add_pointer(&event_rule_matches_cond->capture_descriptors,
 						      descriptor);
@@ -856,7 +856,7 @@ lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condit
 	}
 
 	/* Ownership is transfered to the internal capture_descriptors array */
-	descriptor = NULL;
+	descriptor = nullptr;
 end:
 	free(descriptor);
 	return status;
@@ -884,12 +884,12 @@ end:
 const struct lttng_event_expr *lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 	const struct lttng_condition *condition, unsigned int index)
 {
-	const struct lttng_event_expr *expr = NULL;
-	const struct lttng_capture_descriptor *desc = NULL;
+	const struct lttng_event_expr *expr = nullptr;
+	const struct lttng_capture_descriptor *desc = nullptr;
 
 	desc = lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 		condition, index);
-	if (desc == NULL) {
+	if (desc == nullptr) {
 		goto end;
 	}
 	expr = desc->event_expression;
@@ -904,9 +904,9 @@ ssize_t lttng_evaluation_event_rule_matches_create_from_payload(
 	struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret, offset = 0;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 	uint32_t capture_payload_size;
-	const char *capture_payload = NULL;
+	const char *capture_payload = nullptr;
 
 	if (!_evaluation) {
 		ret = -1;
@@ -949,7 +949,7 @@ ssize_t lttng_evaluation_event_rule_matches_create_from_payload(
 
 	offset += capture_payload_size;
 	*_evaluation = evaluation;
-	evaluation = NULL;
+	evaluation = nullptr;
 	ret = offset;
 
 error:
@@ -1006,7 +1006,7 @@ end:
 static const msgpack_object *get_msgpack_map_obj(const struct msgpack_object *map_obj,
 						 const char *name)
 {
-	const msgpack_object *ret = NULL;
+	const msgpack_object *ret = nullptr;
 	size_t i;
 
 	LTTNG_ASSERT(map_obj->type == MSGPACK_OBJECT_MAP);
@@ -1047,7 +1047,7 @@ static int event_field_value_from_obj(const msgpack_object *obj,
 	switch (obj->type) {
 	case MSGPACK_OBJECT_NIL:
 		/* Unavailable. */
-		*field_val = NULL;
+		*field_val = nullptr;
 		goto end;
 	case MSGPACK_OBJECT_POSITIVE_INTEGER:
 		*field_val = lttng_event_field_value_uint_create(obj->via.u64);
@@ -1193,7 +1193,7 @@ static int event_field_value_from_obj(const msgpack_object *obj,
 
 error:
 	lttng_event_field_value_destroy(*field_val);
-	*field_val = NULL;
+	*field_val = nullptr;
 	ret = -1;
 
 end:
@@ -1205,7 +1205,7 @@ event_field_value_from_capture_payload(const struct lttng_condition_event_rule_m
 				       const char *capture_payload,
 				       size_t capture_payload_size)
 {
-	struct lttng_event_field_value *ret = NULL;
+	struct lttng_event_field_value *ret = nullptr;
 	msgpack_unpacked unpacked;
 	msgpack_unpack_return unpack_return;
 	const msgpack_object *root_obj;
@@ -1220,7 +1220,8 @@ event_field_value_from_capture_payload(const struct lttng_condition_event_rule_m
 	msgpack_unpacked_init(&unpacked);
 
 	/* Decode. */
-	unpack_return = msgpack_unpack_next(&unpacked, capture_payload, capture_payload_size, NULL);
+	unpack_return =
+		msgpack_unpack_next(&unpacked, capture_payload, capture_payload_size, nullptr);
 	if (unpack_return != MSGPACK_UNPACK_SUCCESS) {
 		ERR("msgpack_unpack_next() failed to decode the "
 		    "MessagePack-encoded capture payload: "
@@ -1292,7 +1293,7 @@ event_field_value_from_capture_payload(const struct lttng_condition_event_rule_m
 
 error:
 	lttng_event_field_value_destroy(ret);
-	ret = NULL;
+	ret = nullptr;
 
 end:
 	msgpack_unpacked_destroy(&unpacked);
@@ -1306,7 +1307,7 @@ struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
 	bool decode_capture_payload)
 {
 	struct lttng_evaluation_event_rule_matches *hit;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	hit = zmalloc<lttng_evaluation_event_rule_matches>();
 	if (!hit) {
@@ -1339,7 +1340,7 @@ struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
 	hit->parent.destroy = lttng_evaluation_event_rule_matches_destroy;
 
 	evaluation = &hit->parent;
-	hit = NULL;
+	hit = nullptr;
 
 error:
 	if (hit) {
@@ -1399,7 +1400,7 @@ enum lttng_error_code lttng_condition_event_rule_matches_generate_capture_descri
 				condition, i);
 		int bytecode_ret;
 
-		if (local_capture_desc == NULL) {
+		if (local_capture_desc == nullptr) {
 			ret = LTTNG_ERR_FATAL;
 			goto end;
 		}
@@ -1407,7 +1408,7 @@ enum lttng_error_code lttng_condition_event_rule_matches_generate_capture_descri
 		/* Generate the bytecode. */
 		bytecode_ret = lttng_event_expr_to_bytecode(local_capture_desc->event_expression,
 							    &local_capture_desc->bytecode);
-		if (bytecode_ret < 0 || local_capture_desc->bytecode == NULL) {
+		if (bytecode_ret < 0 || local_capture_desc->bytecode == nullptr) {
 			ret = LTTNG_ERR_INVALID_CAPTURE_EXPRESSION;
 			goto end;
 		}
@@ -1425,8 +1426,8 @@ const struct lttng_bytecode *lttng_condition_event_rule_matches_get_capture_byte
 {
 	const struct lttng_condition_event_rule_matches *event_rule_matches_cond =
 		lttng::utils::container_of(condition, &lttng_condition_event_rule_matches::parent);
-	struct lttng_capture_descriptor *desc = NULL;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_capture_descriptor *desc = nullptr;
+	struct lttng_bytecode *bytecode = nullptr;
 	unsigned int count;
 	enum lttng_condition_status status;
 
@@ -1445,7 +1446,7 @@ const struct lttng_bytecode *lttng_condition_event_rule_matches_get_capture_byte
 
 	desc = (lttng_capture_descriptor *) lttng_dynamic_pointer_array_get_pointer(
 		&event_rule_matches_cond->capture_descriptors, index);
-	if (desc == NULL) {
+	if (desc == nullptr) {
 		goto end;
 	}
 

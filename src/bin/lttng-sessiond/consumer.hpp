@@ -75,7 +75,7 @@ struct consumer_socket {
 };
 
 struct consumer_data {
-	consumer_data (lttng_consumer_type type_)
+	explicit consumer_data (lttng_consumer_type type_)
 		: type(type_)
 	{}
 

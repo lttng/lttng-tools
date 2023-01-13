@@ -41,12 +41,12 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static int mi_partial_channel_print(char *channel_name, unsigned int enabled, int success)
@@ -112,7 +112,7 @@ static int disable_channels(char *session_name, char *channel_list)
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -1;
 		goto error;
 	}
@@ -129,7 +129,7 @@ static int disable_channels(char *session_name, char *channel_list)
 
 	/* Strip channel list */
 	channel_name = strtok(channel_list, ",");
-	while (channel_name != NULL) {
+	while (channel_name != nullptr) {
 		DBG("Disabling channel %s", channel_name);
 
 		ret = lttng_disable_channel(handle, channel_name);
@@ -169,7 +169,7 @@ static int disable_channels(char *session_name, char *channel_list)
 		}
 
 		/* Next channel */
-		channel_name = strtok(NULL, ",");
+		channel_name = strtok(nullptr, ",");
 	}
 
 	ret = CMD_SUCCESS;
@@ -204,12 +204,12 @@ int cmd_disable_channels(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	char *session_name = NULL;
-	char *channel_list = NULL;
-	const char *arg_channel_list = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	char *channel_list = nullptr;
+	const char *arg_channel_list = nullptr;
+	const char *leftover = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -236,14 +236,14 @@ int cmd_disable_channels(int argc, const char **argv)
 	}
 
 	arg_channel_list = poptGetArg(pc);
-	if (arg_channel_list == NULL) {
+	if (arg_channel_list == nullptr) {
 		ERR("Missing channel name(s).");
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	channel_list = strdup(arg_channel_list);
-	if (channel_list == NULL) {
+	if (channel_list == nullptr) {
 		PERROR("Failed to copy channel name");
 		ret = CMD_ERROR;
 		goto end;
@@ -258,7 +258,7 @@ int cmd_disable_channels(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			ret = CMD_ERROR;
 			goto end;
 		}

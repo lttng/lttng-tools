@@ -176,7 +176,7 @@ lttng_viewer_get_packet_return_code_str(enum lttng_viewer_get_packet_return_code
 /*
  * Cleanup the daemon
  */
-static void cleanup_relayd_live(void)
+static void cleanup_relayd_live()
 {
 	DBG("Cleaning up");
 
@@ -318,7 +318,7 @@ send_viewer_streams(struct lttcomm_sock *sock, uint64_t session_id, unsigned int
 		}
 
 		DBG("Sending stream %" PRIu64 " to viewer", vstream->stream->stream_handle);
-		vstream->sent_flag = 1;
+		vstream->sent_flag = true;
 		pthread_mutex_unlock(&vstream->stream->lock);
 
 		ret = send_response(sock, &send_stream, sizeof(send_stream));
@@ -357,7 +357,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 	int ret;
 	struct lttng_ht_iter iter;
 	struct ctf_trace *ctf_trace;
-	struct relay_stream *relay_stream = NULL;
+	struct relay_stream *relay_stream = nullptr;
 
 	LTTNG_ASSERT(relay_session);
 	ASSERT_LOCKED(relay_session->lock);
@@ -399,7 +399,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 			}
 		}
 
-		relay_stream = NULL;
+		relay_stream = nullptr;
 
 		/*
 		 * If there is no metadata stream in this trace at the moment
@@ -428,7 +428,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 			}
 			viewer_stream = viewer_stream_get_by_id(relay_stream->stream_handle);
 			if (!viewer_stream) {
-				struct lttng_trace_chunk *viewer_stream_trace_chunk = NULL;
+				struct lttng_trace_chunk *viewer_stream_trace_chunk = nullptr;
 
 				/*
 				 * Save that we sent the metadata stream to the
@@ -500,7 +500,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 				viewer_stream = viewer_stream_create(
 					relay_stream, viewer_stream_trace_chunk, seek_t);
 				lttng_trace_chunk_put(viewer_stream_trace_chunk);
-				viewer_stream_trace_chunk = NULL;
+				viewer_stream_trace_chunk = nullptr;
 				if (!viewer_stream) {
 					ret = -1;
 					ctf_trace_put(ctf_trace);
@@ -547,7 +547,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 			pthread_mutex_unlock(&relay_stream->lock);
 			stream_put(relay_stream);
 		}
-		relay_stream = NULL;
+		relay_stream = nullptr;
 		ctf_trace_put(ctf_trace);
 	}
 
@@ -564,7 +564,7 @@ error_unlock:
 	return ret;
 }
 
-int relayd_live_stop(void)
+int relayd_live_stop()
 {
 	/* Stop dispatch thread */
 	CMM_STORE_SHARED(live_dispatch_thread_exit, 1);
@@ -614,8 +614,8 @@ end:
 static struct lttcomm_sock *accept_live_sock(struct lttcomm_sock *listening_sock, const char *name)
 {
 	int out_fd, ret;
-	struct lttcomm_sock *socks[2] = { listening_sock, NULL };
-	struct lttcomm_sock *new_sock = NULL;
+	struct lttcomm_sock *socks[2] = { listening_sock, nullptr };
+	struct lttcomm_sock *new_sock = nullptr;
 
 	ret = fd_tracker_open_unsuspendable_fd(
 		the_fd_tracker, &out_fd, (const char **) &name, 1, accept_sock, &socks);
@@ -634,12 +634,12 @@ end:
 static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 {
 	int ret, sock_fd;
-	struct lttcomm_sock *sock = NULL;
+	struct lttcomm_sock *sock = nullptr;
 	char uri_str[LTTNG_PATH_MAX];
-	char *formated_name = NULL;
+	char *formated_name = nullptr;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		ERR("Allocating socket");
 		goto error;
 	}
@@ -653,14 +653,14 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	if (ret >= 0) {
 		ret = asprintf(&formated_name, "%s socket @ %s", name, uri_str);
 		if (ret < 0) {
-			formated_name = NULL;
+			formated_name = nullptr;
 		}
 	}
 
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
 					       &sock_fd,
 					       (const char **) (formated_name ? &formated_name :
-										NULL),
+										nullptr),
 					       1,
 					       create_sock,
 					       sock);
@@ -689,7 +689,7 @@ error:
 		lttcomm_destroy_sock(sock);
 	}
 	free(formated_name);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -732,7 +732,7 @@ static void *thread_listener(void *data __attribute__((unused)))
 		goto error_testpoint;
 	}
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		DBG("Listener accepting live viewers connections");
@@ -799,7 +799,7 @@ static void *thread_listener(void *data __attribute__((unused)))
 					goto error;
 				}
 				/* Ownership assumed by the connection. */
-				newsock = NULL;
+				newsock = nullptr;
 
 				/* Enqueue request for the dispatcher thread. */
 				cds_wfcq_head_ptr_t head;
@@ -850,7 +850,7 @@ error_sock_control:
 	if (lttng_relay_stop_threads()) {
 		ERR("Error stopping threads");
 	}
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -861,7 +861,7 @@ static void *thread_dispatcher(void *data __attribute__((unused)))
 	int err = -1;
 	ssize_t ret;
 	struct cds_wfcq_node *node;
-	struct relay_connection *conn = NULL;
+	struct relay_connection *conn = nullptr;
 
 	DBG("[thread] Live viewer relay dispatcher started");
 
@@ -889,7 +889,7 @@ static void *thread_dispatcher(void *data __attribute__((unused)))
 			/* Dequeue commands */
 			node = cds_wfcq_dequeue_blocking(&viewer_conn_queue.head,
 							 &viewer_conn_queue.tail);
-			if (node == NULL) {
+			if (node == nullptr) {
 				DBG("Woken up but nothing in the live-viewer "
 				    "relay command queue");
 				/* Continue thread execution */
@@ -910,7 +910,7 @@ static void *thread_dispatcher(void *data __attribute__((unused)))
 				connection_put(conn);
 				goto error;
 			}
-		} while (node != NULL);
+		} while (node != nullptr);
 
 		/* Futex wait on queue. Blocking call on futex() */
 		health_poll_entry();
@@ -932,7 +932,7 @@ error_testpoint:
 	if (lttng_relay_stop_threads()) {
 		ERR("Error stopping threads");
 	}
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -945,7 +945,7 @@ static int viewer_connect(struct relay_connection *conn)
 	int ret;
 	struct lttng_viewer_connect reply, msg;
 
-	conn->version_check_done = 1;
+	conn->version_check_done = true;
 
 	health_code_update();
 
@@ -1031,7 +1031,7 @@ static int viewer_list_sessions(struct relay_connection *conn)
 	struct lttng_viewer_list_sessions session_list;
 	struct lttng_ht_iter iter;
 	struct relay_session *session;
-	struct lttng_viewer_session *send_session_buf = NULL;
+	struct lttng_viewer_session *send_session_buf = nullptr;
 	uint32_t buf_count = SESSION_BUF_DEFAULT_COUNT;
 	uint32_t count = 0;
 
@@ -1131,7 +1131,7 @@ static int viewer_get_new_streams(struct relay_connection *conn)
 	uint32_t nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
 	struct lttng_viewer_new_streams_request request;
 	struct lttng_viewer_new_streams_response response;
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 	uint64_t session_id;
 	bool closed = false;
 
@@ -1263,7 +1263,7 @@ static int viewer_attach_session(struct relay_connection *conn)
 	enum lttng_viewer_seek seek_type;
 	struct lttng_viewer_attach_session_request request;
 	struct lttng_viewer_attach_session_response response;
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 	enum lttng_viewer_attach_return_code viewer_attach_status;
 	bool closed = false;
 	uint64_t session_id;
@@ -1346,13 +1346,13 @@ static int viewer_attach_session(struct relay_connection *conn)
 	}
 
 	ret = make_viewer_streams(
-		session, conn->viewer_session, seek_type, &nb_streams, NULL, NULL, &closed);
+		session, conn->viewer_session, seek_type, &nb_streams, nullptr, nullptr, &closed);
 	if (ret < 0) {
 		goto end_put_session;
 	}
 	pthread_mutex_unlock(&session->lock);
 	session_put(session);
-	session = NULL;
+	session = nullptr;
 
 	response.streams_count = htobe32(nb_streams);
 	/*
@@ -1633,10 +1633,10 @@ static int viewer_get_next_index(struct relay_connection *conn)
 	struct lttng_viewer_get_next_index request_index;
 	struct lttng_viewer_index viewer_index;
 	struct ctf_packet_index packet_index;
-	struct relay_viewer_stream *vstream = NULL;
-	struct relay_stream *rstream = NULL;
-	struct ctf_trace *ctf_trace = NULL;
-	struct relay_viewer_stream *metadata_viewer_stream = NULL;
+	struct relay_viewer_stream *vstream = nullptr;
+	struct relay_stream *rstream = nullptr;
+	struct ctf_trace *ctf_trace = nullptr;
+	struct relay_viewer_stream *metadata_viewer_stream = nullptr;
 	bool viewer_stream_and_session_in_same_chunk, viewer_stream_one_rotation_behind;
 	uint64_t stream_file_chunk_id = -1ULL, viewer_session_chunk_id = -1ULL;
 	enum lttng_trace_chunk_status status;
@@ -1847,7 +1847,7 @@ static int viewer_get_next_index(struct relay_connection *conn)
 					     rstream->channel_name,
 					     rstream->tracefile_size,
 					     vstream->current_tracefile_id,
-					     NULL,
+					     nullptr,
 					     file_path,
 					     sizeof(file_path));
 		if (ret < 0) {
@@ -1984,10 +1984,10 @@ static int viewer_get_packet(struct relay_connection *conn)
 {
 	int ret;
 	off_t lseek_ret;
-	char *reply = NULL;
+	char *reply = nullptr;
 	struct lttng_viewer_get_packet get_packet_info;
 	struct lttng_viewer_trace_packet reply_header;
-	struct relay_viewer_stream *vstream = NULL;
+	struct relay_viewer_stream *vstream = nullptr;
 	uint32_t reply_size = sizeof(reply_header);
 	uint32_t packet_data_len = 0;
 	ssize_t read_len;
@@ -2103,10 +2103,10 @@ static int viewer_get_metadata(struct relay_connection *conn)
 	int fd = -1;
 	ssize_t read_len;
 	uint64_t len = 0;
-	char *data = NULL;
+	char *data = nullptr;
 	struct lttng_viewer_get_metadata request;
 	struct lttng_viewer_metadata_packet reply;
-	struct relay_viewer_stream *vstream = NULL;
+	struct relay_viewer_stream *vstream = nullptr;
 
 	LTTNG_ASSERT(conn);
 
@@ -2223,7 +2223,7 @@ static int viewer_get_metadata(struct relay_connection *conn)
 					     rstream->channel_name,
 					     rstream->tracefile_size,
 					     vstream->current_tracefile_id,
-					     NULL,
+					     nullptr,
 					     file_path,
 					     sizeof(file_path));
 		if (ret < 0) {
@@ -2407,7 +2407,7 @@ static int viewer_detach_session(struct relay_connection *conn)
 	int ret;
 	struct lttng_viewer_detach_session_response response;
 	struct lttng_viewer_detach_session_request request;
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 	uint64_t viewer_session_to_close;
 
 	LTTNG_ASSERT(conn);
@@ -2548,7 +2548,7 @@ static void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollf
 	(void) lttng_poll_del(events, pollfd);
 
 	ret = fd_tracker_close_unsuspendable_fd(
-		the_fd_tracker, &pollfd, 1, fd_tracker_util_close_fd, NULL);
+		the_fd_tracker, &pollfd, 1, fd_tracker_util_close_fd, nullptr);
 	if (ret < 0) {
 		ERR("Closing pollfd %d", pollfd);
 	}
@@ -2594,7 +2594,7 @@ static void *thread_worker(void *data __attribute__((unused)))
 	}
 
 restart:
-	while (1) {
+	while (true) {
 		int i;
 
 		health_code_update();
@@ -2737,20 +2737,20 @@ error_testpoint:
 		ERR("Error stopping threads");
 	}
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 /*
  * Create the relay command pipe to wake thread_manage_apps.
  * Closed in cleanup().
  */
-static int create_conn_pipe(void)
+static int create_conn_pipe()
 {
 	return fd_tracker_util_pipe_open_cloexec(
 		the_fd_tracker, "Live connection pipe", live_conn_pipe);
 }
 
-int relayd_live_join(void)
+int relayd_live_join()
 {
 	int ret, retval = 0;
 	void *status;
@@ -2823,8 +2823,10 @@ int relayd_live_create(struct lttng_uri *uri)
 	}
 
 	/* Setup the dispatcher thread */
-	ret = pthread_create(
-		&live_dispatcher_thread, default_pthread_attr(), thread_dispatcher, (void *) NULL);
+	ret = pthread_create(&live_dispatcher_thread,
+			     default_pthread_attr(),
+			     thread_dispatcher,
+			     (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create viewer dispatcher");
@@ -2833,7 +2835,7 @@ int relayd_live_create(struct lttng_uri *uri)
 	}
 
 	/* Setup the worker thread */
-	ret = pthread_create(&live_worker_thread, default_pthread_attr(), thread_worker, NULL);
+	ret = pthread_create(&live_worker_thread, default_pthread_attr(), thread_worker, nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create viewer worker");
@@ -2843,7 +2845,7 @@ int relayd_live_create(struct lttng_uri *uri)
 
 	/* Setup the listener thread */
 	ret = pthread_create(
-		&live_listener_thread, default_pthread_attr(), thread_listener, (void *) NULL);
+		&live_listener_thread, default_pthread_attr(), thread_listener, (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create viewer listener");

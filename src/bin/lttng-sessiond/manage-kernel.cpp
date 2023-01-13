@@ -44,7 +44,7 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			continue;
 		}
 		session_lock(session);
-		if (session->kernel_session == NULL) {
+		if (session->kernel_session == nullptr) {
 			session_unlock(session);
 			session_put(session);
 			continue;
@@ -95,7 +95,7 @@ static int update_kernel_stream(int fd)
 			continue;
 		}
 		session_lock(session);
-		if (session->kernel_session == NULL) {
+		if (session->kernel_session == nullptr) {
 			session_unlock(session);
 			session_put(session);
 			continue;
@@ -122,7 +122,7 @@ static int update_kernel_stream(int fd)
 			 * means that tracing is started so it is safe to send
 			 * our updated stream fds.
 			 */
-			if (ksess->consumer_fds_sent != 1 || ksess->consumer == NULL) {
+			if (ksess->consumer_fds_sent != 1 || ksess->consumer == nullptr) {
 				ret = -1;
 				goto error;
 			}
@@ -189,7 +189,7 @@ static void *thread_kernel_management(void *data)
 		goto error_testpoint;
 	}
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		if (update_poll_flag == 1) {
@@ -303,7 +303,7 @@ error_testpoint:
 	}
 	health_unregister(the_health_sessiond);
 	DBG("Kernel thread dying");
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_kernel_management_thread(void *data)
@@ -325,7 +325,7 @@ static void cleanup_kernel_management_thread(void *data)
 bool launch_kernel_management_thread(int kernel_poll_pipe_read_fd)
 {
 	struct lttng_pipe *quit_pipe;
-	struct thread_notifiers *notifiers = NULL;
+	struct thread_notifiers *notifiers = nullptr;
 	struct lttng_thread *thread;
 
 	notifiers = zmalloc<thread_notifiers>();

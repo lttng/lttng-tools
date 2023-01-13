@@ -27,7 +27,7 @@ static char *create_channel_path(struct consumer_output *consumer, size_t *consu
 {
 	int ret;
 	char tmp_path[PATH_MAX];
-	char *pathname = NULL;
+	char *pathname = nullptr;
 
 	LTTNG_ASSERT(consumer);
 
@@ -75,7 +75,7 @@ static char *create_channel_path(struct consumer_output *consumer, size_t *consu
 
 error:
 	free(pathname);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -87,11 +87,11 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 				       unsigned int monitor)
 {
 	int ret;
-	char *pathname = NULL;
+	char *pathname = nullptr;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 	enum lttng_error_code status;
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 	struct lttng_channel_extended *channel_attr_extended;
 	bool is_local_trace;
 	size_t consumer_path_offset = 0;

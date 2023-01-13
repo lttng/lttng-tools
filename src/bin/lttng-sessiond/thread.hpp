@@ -57,6 +57,6 @@ bool lttng_thread_shutdown(struct lttng_thread *thread);
  *
  * Returns once all orphaned threads have been joined.
  */
-void lttng_thread_list_shutdown_orphans(void);
+void lttng_thread_list_shutdown_orphans();
 
 #endif /* THREAD_H */

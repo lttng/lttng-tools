@@ -103,7 +103,7 @@ end:
 	return ret_val;
 }
 
-static struct lttng_pipe *_pipe_create(void)
+static struct lttng_pipe *_pipe_create()
 {
 	int ret;
 	struct lttng_pipe *p;
@@ -115,12 +115,12 @@ static struct lttng_pipe *_pipe_create(void)
 	}
 	p->fd[0] = p->fd[1] = -1;
 
-	ret = pthread_mutex_init(&p->read_mutex, NULL);
+	ret = pthread_mutex_init(&p->read_mutex, nullptr);
 	if (ret) {
 		PERROR("pthread_mutex_init read lock pipe create");
 		goto error_destroy;
 	}
-	ret = pthread_mutex_init(&p->write_mutex, NULL);
+	ret = pthread_mutex_init(&p->write_mutex, nullptr);
 	if (ret) {
 		PERROR("pthread_mutex_init write lock pipe create");
 		goto error_destroy_rmutex;
@@ -131,7 +131,7 @@ error_destroy_rmutex:
 	(void) pthread_mutex_destroy(&p->read_mutex);
 error_destroy:
 	free(p);
-	return NULL;
+	return nullptr;
 }
 
 static int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
@@ -205,7 +205,7 @@ struct lttng_pipe *lttng_pipe_open(int flags)
 	return p;
 error:
 	lttng_pipe_destroy(p);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -254,7 +254,7 @@ struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode, int flag
 	return pipe;
 error:
 	lttng_pipe_destroy(pipe);
-	return NULL;
+	return nullptr;
 }
 
 /*

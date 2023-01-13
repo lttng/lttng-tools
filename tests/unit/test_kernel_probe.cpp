@@ -26,10 +26,10 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 24
 
-static void test_kernel_probe_location_address(void)
+static void test_kernel_probe_location_address()
 {
-	struct lttng_kernel_probe_location *location = NULL;
-	struct lttng_kernel_probe_location *location_from_buffer = NULL;
+	struct lttng_kernel_probe_location *location = nullptr;
+	struct lttng_kernel_probe_location *location_from_buffer = nullptr;
 	enum lttng_kernel_probe_location_status status;
 	enum lttng_kernel_probe_location_type type;
 	uint64_t address = 50, _address;
@@ -84,10 +84,10 @@ static void test_kernel_probe_location_address(void)
 	lttng_kernel_probe_location_destroy(location_from_buffer);
 }
 
-static void test_kernel_probe_location_symbol(void)
+static void test_kernel_probe_location_symbol()
 {
-	struct lttng_kernel_probe_location *location = NULL;
-	struct lttng_kernel_probe_location *location_from_buffer = NULL;
+	struct lttng_kernel_probe_location *location = nullptr;
+	struct lttng_kernel_probe_location *location_from_buffer = nullptr;
 	enum lttng_kernel_probe_location_status status;
 	enum lttng_kernel_probe_location_type type;
 	uint64_t offset = 50, _offset;
@@ -151,7 +151,7 @@ static void test_kernel_probe_location_symbol(void)
 	lttng_kernel_probe_location_destroy(location_from_buffer);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_kernel_probe_location_address();

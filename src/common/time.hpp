@@ -32,7 +32,7 @@
 #define ISO8601_STR_LEN sizeof("YYYYmmddTHHMMSS+HHMM")
 #define DATETIME_STR_LEN sizeof("YYYYmmdd-HHMMSS")
 
-bool locale_supports_utf8(void);
+bool locale_supports_utf8();
 
 #define NSEC_UNIT       "ns"
 #define USEC_UNIT       (locale_supports_utf8() ? "µs" : "us")

@@ -64,7 +64,7 @@ static void set_thread_status(bool running)
 	sem_post(&thread_state.ready);
 }
 
-static bool wait_thread_status(void)
+static bool wait_thread_status()
 {
 	DBG("Waiting for client thread to be ready");
 	sem_wait(&thread_state.ready);
@@ -491,7 +491,7 @@ error:
 static int create_ust_session(struct ltt_session *session, const struct lttng_domain *domain)
 {
 	int ret;
-	struct ltt_ust_session *lus = NULL;
+	struct ltt_ust_session *lus = nullptr;
 
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(domain);
@@ -512,7 +512,7 @@ static int create_ust_session(struct ltt_session *session, const struct lttng_do
 	DBG("Creating UST session");
 
 	lus = trace_ust_create_session(session->id);
-	if (lus == NULL) {
+	if (lus == nullptr) {
 		ret = LTTNG_ERR_UST_SESS_FAIL;
 		goto error;
 	}
@@ -540,7 +540,7 @@ static int create_ust_session(struct ltt_session *session, const struct lttng_do
 
 error:
 	free(lus);
-	session->ust_session = NULL;
+	session->ust_session = nullptr;
 	return ret;
 }
 
@@ -578,7 +578,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 error:
 	trace_kernel_destroy_session(session->kernel_session);
-	session->kernel_session = NULL;
+	session->kernel_session = nullptr;
 error_create:
 	return ret;
 }
@@ -618,7 +618,7 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload trigger_payload;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_trigger *trigger = nullptr;
 
 	lttng_payload_init(&trigger_payload);
 	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
@@ -688,7 +688,7 @@ static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_c
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload query_payload;
-	struct lttng_error_query *query = NULL;
+	struct lttng_error_query *query = nullptr;
 
 	lttng_payload_init(&query_payload);
 	query_len = (size_t) cmd_ctx->lsm.u.error_query.length;
@@ -760,10 +760,10 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload event_payload;
-	struct lttng_event *local_event = NULL;
-	char *local_filter_expression = NULL;
-	struct lttng_bytecode *local_bytecode = NULL;
-	struct lttng_event_exclusion *local_exclusion = NULL;
+	struct lttng_event *local_event = nullptr;
+	char *local_filter_expression = nullptr;
+	struct lttng_bytecode *local_bytecode = nullptr;
+	struct lttng_event_exclusion *local_exclusion = nullptr;
 
 	lttng_payload_init(&event_payload);
 	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT) {
@@ -841,10 +841,10 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	*out_exclusion = local_exclusion;
 	*out_filter_expression = local_filter_expression;
 	*out_bytecode = local_bytecode;
-	local_event = NULL;
-	local_exclusion = NULL;
-	local_filter_expression = NULL;
-	local_bytecode = NULL;
+	local_event = nullptr;
+	local_exclusion = nullptr;
+	local_filter_expression = nullptr;
+	local_bytecode = nullptr;
 
 	ret_code = LTTNG_OK;
 
@@ -868,7 +868,7 @@ receive_lttng_event_context(const struct command_ctx *cmd_ctx,
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload event_context_payload;
-	struct lttng_event_context *context = NULL;
+	struct lttng_event_context *context = nullptr;
 
 	lttng_payload_init(&event_context_payload);
 
@@ -911,7 +911,7 @@ receive_lttng_event_context(const struct command_ctx *cmd_ctx,
 	}
 
 	*out_event_context = context;
-	context = NULL;
+	context = nullptr;
 	ret_code = LTTNG_OK;
 
 end:
@@ -926,14 +926,14 @@ end:
 static int
 setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx, void *payload_buf, size_t payload_len)
 {
-	return setup_lttng_msg(cmd_ctx, payload_buf, payload_len, NULL, 0);
+	return setup_lttng_msg(cmd_ctx, payload_buf, payload_len, nullptr, 0);
 }
 
 /*
  * Check if the current kernel tracer supports the session rotation feature.
  * Return 1 if it does, 0 otherwise.
  */
-static int check_rotate_compatible(void)
+static int check_rotate_compatible()
 {
 	int ret = 1;
 
@@ -1095,7 +1095,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		break;
 	default:
 		/* Setup lttng message with no payload */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, NULL, 0);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, nullptr, 0);
 		if (ret < 0) {
 			/* This label does not try to unlock the session */
 			goto init_setup_error;
@@ -1125,7 +1125,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		 */
 		session_lock_list();
 		cmd_ctx->session = session_find_by_name(cmd_ctx->lsm.session.name);
-		if (cmd_ctx->session == NULL) {
+		if (cmd_ctx->session == nullptr) {
 			ret = LTTNG_ERR_SESS_NOT_FOUND;
 			goto error;
 		} else {
@@ -1199,7 +1199,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
-			if (cmd_ctx->session->kernel_session == NULL) {
+			if (cmd_ctx->session->kernel_session == nullptr) {
 				ret = create_kernel_session(cmd_ctx->session);
 				if (ret != LTTNG_OK) {
 					ret = LTTNG_ERR_KERN_SESS_FAIL;
@@ -1257,7 +1257,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 
 		if (need_tracing_session) {
 			/* Create UST session if none exist. */
-			if (cmd_ctx->session->ust_session == NULL) {
+			if (cmd_ctx->session->ust_session == nullptr) {
 				lttng_domain domain = cmd_ctx->lsm.domain;
 				ret = create_ust_session(cmd_ctx->session, &domain);
 				if (ret != LTTNG_OK) {
@@ -1392,7 +1392,7 @@ skip_domain:
 	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTCOMM_SESSIOND_COMMAND_ADD_CONTEXT:
 	{
-		struct lttng_event_context *event_context = NULL;
+		struct lttng_event_context *event_context = nullptr;
 		const enum lttng_error_code ret_code =
 			receive_lttng_event_context(cmd_ctx, *sock, sock_error, &event_context);
 
@@ -1736,7 +1736,7 @@ skip_domain:
 		}
 
 		uris = calloc<lttng_uri>(nb_uri);
-		if (uris == NULL) {
+		if (uris == nullptr) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
@@ -1790,7 +1790,7 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
 	{
 		ssize_t nb_dom;
-		struct lttng_domain *domains = NULL;
+		struct lttng_domain *domains = nullptr;
 
 		nb_dom = cmd_list_domains(cmd_ctx->session, &domains);
 		if (nb_dom < 0) {
@@ -1996,7 +1996,7 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT:
 	{
 		ssize_t nb_output;
-		struct lttng_snapshot_output *outputs = NULL;
+		struct lttng_snapshot_output *outputs = nullptr;
 
 		nb_output = cmd_snapshot_list_outputs(cmd_ctx->session, &outputs);
 		if (nb_output < 0) {
@@ -2027,7 +2027,7 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
 	{
 		struct lttng_dynamic_buffer payload;
-		struct lttng_session_descriptor *return_descriptor = NULL;
+		struct lttng_session_descriptor *return_descriptor = nullptr;
 
 		lttng_dynamic_buffer_init(&payload);
 		ret = cmd_create_session(cmd_ctx, *sock, &return_descriptor);
@@ -2250,7 +2250,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	{
-		struct lttng_triggers *return_triggers = NULL;
+		struct lttng_triggers *return_triggers = nullptr;
 		size_t original_payload_size;
 		size_t payload_size;
 
@@ -2290,7 +2290,7 @@ skip_domain:
 			.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
 			.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
 		};
-		struct lttng_error_query_results *results = NULL;
+		struct lttng_error_query_results *results = nullptr;
 		size_t original_payload_size;
 		size_t payload_size;
 
@@ -2339,7 +2339,7 @@ skip_domain:
 error:
 	if (cmd_ctx->reply_payload.buffer.size == 0) {
 		DBG("Missing llm header, creating one.");
-		if (setup_lttng_msg_no_cmd_header(cmd_ctx, NULL, 0) < 0) {
+		if (setup_lttng_msg_no_cmd_header(cmd_ctx, nullptr, 0) < 0) {
 			goto setup_error;
 		}
 	}
@@ -2349,7 +2349,7 @@ setup_error:
 	if (cmd_ctx->session) {
 		session_unlock(cmd_ctx->session);
 		session_put(cmd_ctx->session);
-		cmd_ctx->session = NULL;
+		cmd_ctx->session = nullptr;
 	}
 	if (need_tracing_session) {
 		session_unlock_list();
@@ -2359,7 +2359,7 @@ init_setup_error:
 	return ret;
 }
 
-static int create_client_sock(void)
+static int create_client_sock()
 {
 	int ret, client_sock;
 
@@ -2428,7 +2428,7 @@ static void *thread_manage_clients(void *data)
 
 	is_root = (getuid() == 0);
 
-	pthread_cleanup_push(thread_init_cleanup, NULL);
+	pthread_cleanup_push(thread_init_cleanup, nullptr);
 
 	rcu_register_thread();
 
@@ -2477,13 +2477,13 @@ static void *thread_manage_clients(void *data)
 
 	health_code_update();
 
-	while (1) {
+	while (true) {
 		const struct cmd_completion_handler *cmd_completion_handler;
 
 		cmd_ctx.creds.uid = UINT32_MAX;
 		cmd_ctx.creds.gid = UINT32_MAX;
 		cmd_ctx.creds.pid = 0;
-		cmd_ctx.session = NULL;
+		cmd_ctx.session = nullptr;
 		lttng_payload_clear(&cmd_ctx.reply_payload);
 		cmd_ctx.lttng_msg_size = 0;
 
@@ -2687,7 +2687,7 @@ error_create_poll:
 	DBG("Client thread dying");
 	lttng_payload_reset(&cmd_ctx.reply_payload);
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_client_thread(void *thread_data)
@@ -2698,11 +2698,11 @@ static bool shutdown_client_thread(void *thread_data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-struct lttng_thread *launch_client_thread(void)
+struct lttng_thread *launch_client_thread()
 {
 	bool thread_running;
 	struct lttng_pipe *client_quit_pipe;
-	struct lttng_thread *thread = NULL;
+	struct lttng_thread *thread = nullptr;
 	int client_sock_fd = -1;
 
 	sem_init(&thread_state.ready, 0, 0);
@@ -2727,7 +2727,7 @@ struct lttng_thread *launch_client_thread(void)
 	}
 	/* The client thread now owns the client sock fd and the quit pipe. */
 	client_sock_fd = -1;
-	client_quit_pipe = NULL;
+	client_quit_pipe = nullptr;
 
 	/*
 	 * This thread is part of the threads that need to be fully
@@ -2746,5 +2746,5 @@ error:
 	}
 	lttng_thread_put(thread);
 	cleanup_client_thread(client_quit_pipe);
-	return NULL;
+	return nullptr;
 }

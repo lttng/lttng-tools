@@ -41,7 +41,7 @@ end:
 	return event;
 error:
 	free(event);
-	event = NULL;
+	event = nullptr;
 	goto end;
 }
 
@@ -80,7 +80,7 @@ int lttng_event_get_filter_expression(struct lttng_event *event, const char **fi
 		 * This can happen since the lttng_event structure is
 		 * used for other tasks where this pointer is never set.
 		 */
-		*filter_expression = NULL;
+		*filter_expression = nullptr;
 		goto end;
 	}
 
@@ -157,7 +157,7 @@ end:
 const struct lttng_userspace_probe_location *
 lttng_event_get_userspace_probe_location(const struct lttng_event *event)
 {
-	struct lttng_userspace_probe_location *probe_location = NULL;
+	struct lttng_userspace_probe_location *probe_location = nullptr;
 	struct lttng_event_extended *event_extended;
 
 	if (!event) {

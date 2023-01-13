@@ -22,7 +22,7 @@ void sighandler(int sig)
 }
 
 static
-int set_signal_handler(void)
+int set_signal_handler()
 {
 	int ret;
 	struct sigaction sa {};
@@ -35,7 +35,7 @@ int set_signal_handler(void)
 		goto end;
 	}
 
-	ret = sigaction(SIGTERM, &sa, NULL);
+	ret = sigaction(SIGTERM, &sa, nullptr);
 	if (ret) {
 		perror("sigaction");
 		goto end;

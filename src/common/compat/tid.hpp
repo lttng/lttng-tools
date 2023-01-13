@@ -15,7 +15,7 @@
 #if defined(__NR_gettid)
 
 #include <unistd.h>
-static inline pid_t lttng_gettid(void)
+static inline pid_t lttng_gettid()
 {
 	return syscall(__NR_gettid);
 }

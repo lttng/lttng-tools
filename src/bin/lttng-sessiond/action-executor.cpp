@@ -273,7 +273,7 @@ static int action_executor_notify_handler(struct action_executor *executor,
 		work_item->client_list,
 		work_item->trigger,
 		work_item->evaluation,
-		work_item->object_creds.is_set ? &(work_item->object_creds.value) : NULL,
+		work_item->object_creds.is_set ? &(work_item->object_creds.value) : nullptr,
 		client_handle_transmission_status,
 		executor);
 }
@@ -518,7 +518,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	}
 
 	cmd_ret = (lttng_error_code) cmd_rotate_session(
-		session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		session, nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully started rotation of session `%s` on behalf of trigger `%s`",
@@ -769,7 +769,7 @@ static void *action_executor_thread(void *_data)
 		/* Execute item only if a trigger is registered. */
 		lttng_trigger_lock(work_item->trigger);
 		if (!lttng_trigger_is_registered(work_item->trigger)) {
-			const char *trigger_name = NULL;
+			const char *trigger_name = nullptr;
 			uid_t trigger_owner_uid;
 			enum lttng_trigger_status trigger_status;
 
@@ -813,7 +813,7 @@ static void *action_executor_thread(void *_data)
 	rcu_unregister_thread();
 	health_unregister(the_health_sessiond);
 
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_action_executor_thread(void *_data)
@@ -847,8 +847,8 @@ struct action_executor *action_executor_create(struct notification_thread_handle
 	}
 
 	CDS_INIT_LIST_HEAD(&executor->work.list);
-	pthread_cond_init(&executor->work.cond, NULL);
-	pthread_mutex_init(&executor->work.lock, NULL);
+	pthread_cond_init(&executor->work.cond, nullptr);
+	pthread_mutex_init(&executor->work.lock, nullptr);
 	executor->notification_thread_handle = handle;
 
 	executor->thread = lttng_thread_create(THREAD_NAME,
@@ -933,7 +933,7 @@ action_executor_enqueue_trigger(struct action_executor *executor,
 
 	/* Ownership transferred to the work item. */
 	work_item->evaluation = evaluation;
-	evaluation = NULL;
+	evaluation = nullptr;
 
 	work_item->client_list = client_list;
 	work_item->object_creds.is_set = !!object_creds;
@@ -978,10 +978,10 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 {
 	int ret = 0;
 	enum lttng_action_type type = lttng_action_get_type(action);
-	const char *session_name = NULL;
+	const char *session_name = nullptr;
 	enum lttng_action_status status;
 	struct action_work_subitem subitem = {
-		.action = NULL,
+		.action = nullptr,
 		.context = {
 			.session_id = LTTNG_OPTIONAL_INIT_UNSET,
 		},
@@ -997,7 +997,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
-			struct lttng_action *inner_action = NULL;
+			struct lttng_action *inner_action = nullptr;
 
 			inner_action = lttng_action_list_borrow_mutable_at_index(action, i);
 			LTTNG_ASSERT(inner_action);
@@ -1049,7 +1049,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	 * now we leave the decision to skip to the action executor for sake of
 	 * simplicity and consistency.
 	 */
-	if (session_name != NULL) {
+	if (session_name != nullptr) {
 		uint64_t session_id;
 
 		/*

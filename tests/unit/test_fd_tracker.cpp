@@ -79,7 +79,7 @@ static void get_temporary_directories(char **_test_directory, char **_unlink_dir
 	}
 }
 
-static int fd_count(void)
+static int fd_count()
 {
 	DIR *dir;
 	struct dirent *entry;
@@ -93,7 +93,7 @@ static int fd_count(void)
 		goto end;
 	}
 
-	while ((entry = readdir(dir)) != NULL) {
+	while ((entry = readdir(dir)) != nullptr) {
 		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
 			continue;
 		}
@@ -169,7 +169,7 @@ static void untrack_std_fds(struct fd_tracker *tracker)
 	for (i = 0; i < sizeof(files) / sizeof(*files); i++) {
 		int fd = files[i].fd;
 		int ret = fd_tracker_close_unsuspendable_fd(
-			tracker, &files[i].fd, 1, noop_close, NULL);
+			tracker, &files[i].fd, 1, noop_close, nullptr);
 
 		ok(ret == 0, "Untrack unsuspendable fd %d (%s)", fd, files[i].name);
 	}
@@ -178,11 +178,11 @@ static void untrack_std_fds(struct fd_tracker *tracker)
 /*
  * Basic test opening and closing three unsuspendable fds.
  */
-static void test_unsuspendable_basic(void)
+static void test_unsuspendable_basic()
 {
 	int ret;
 	struct fd_tracker *tracker;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
@@ -219,12 +219,12 @@ static int error_close(void *data, int *fds __attribute__((unused)))
  * Validate that user callback return values are returned to the
  * caller of the fd tracker.
  */
-static void test_unsuspendable_cb_return(void)
+static void test_unsuspendable_cb_return()
 {
 	int ret, stdout_fd = fileno(stdout), out_fd = 42;
 	struct fd_tracker *tracker;
 	int expected_error = -ENETDOWN;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
@@ -233,7 +233,7 @@ static void test_unsuspendable_cb_return(void)
 
 	/* The error_open callback should fail and return 'expected_error'. */
 	ret = fd_tracker_open_unsuspendable_fd(
-		tracker, &out_fd, NULL, 1, error_open, &expected_error);
+		tracker, &out_fd, nullptr, 1, error_open, &expected_error);
 	ok(ret == expected_error,
 	   "fd_tracker_open_unsuspendable_fd() forwards the user callback's error code");
 	ok(out_fd == 42,
@@ -243,7 +243,7 @@ static void test_unsuspendable_cb_return(void)
 	 * Track a valid fd since we don't want the tracker to fail with an
 	 * invalid fd error for this test.
 	 */
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, NULL, 1, noop_open, &stdout_fd);
+	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, nullptr, 1, noop_open, &stdout_fd);
 	ok(out_fd == stdout_fd,
 	   "fd_tracker_open_unsuspendable_fd() sets the output fd parameter to the newly-tracked fd's value");
 	LTTNG_ASSERT(!ret);
@@ -267,23 +267,23 @@ static void test_unsuspendable_cb_return(void)
  * Validate that the tracker refuses to track two identical unsuspendable
  * file descriptors.
  */
-static void test_unsuspendable_duplicate(void)
+static void test_unsuspendable_duplicate()
 {
 	int ret, stdout_fd = fileno(stdout), out_fd;
 	struct fd_tracker *tracker;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
 	tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	LTTNG_ASSERT(tracker);
 
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, NULL, 1, noop_open, &stdout_fd);
+	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, nullptr, 1, noop_open, &stdout_fd);
 	LTTNG_ASSERT(!ret);
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, NULL, 1, noop_open, &stdout_fd);
+	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, nullptr, 1, noop_open, &stdout_fd);
 	ok(ret == -EEXIST, "EEXIST reported on open of an already tracked file descriptor");
 
-	ret = fd_tracker_close_unsuspendable_fd(tracker, &stdout_fd, 1, noop_close, NULL);
+	ret = fd_tracker_close_unsuspendable_fd(tracker, &stdout_fd, 1, noop_close, nullptr);
 	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
@@ -327,12 +327,12 @@ static int close_pipes(void *data __attribute__((unused)), int *fds)
  * Validate that the tracker enforces the open file descriptor limit
  * when unsuspendable file descriptors are being opened.
  */
-static void test_unsuspendable_limit(void)
+static void test_unsuspendable_limit()
 {
 	struct fd_tracker *tracker;
 	int ret, stdout_fd = fileno(stdout), out_fd;
 	int fds[TRACKER_FD_LIMIT];
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
@@ -343,16 +343,17 @@ static void test_unsuspendable_limit(void)
 	LTTNG_ASSERT(tracker);
 
 	ret = fd_tracker_open_unsuspendable_fd(
-		tracker, fds, NULL, TRACKER_FD_LIMIT, open_pipes, NULL);
+		tracker, fds, nullptr, TRACKER_FD_LIMIT, open_pipes, nullptr);
 	ok(ret == 0,
 	   "File descriptor tracker allowed the user to meet its limit with unsuspendable file descriptors (%d)",
 	   TRACKER_FD_LIMIT);
 
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, NULL, 1, noop_open, &stdout_fd);
+	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, nullptr, 1, noop_open, &stdout_fd);
 	ok(ret == -EMFILE,
 	   "EMFILE reported when exceeding the file descriptor limit while opening an unsuspendable fd");
 
-	ret = fd_tracker_close_unsuspendable_fd(tracker, fds, TRACKER_FD_LIMIT, close_pipes, NULL);
+	ret = fd_tracker_close_unsuspendable_fd(
+		tracker, fds, TRACKER_FD_LIMIT, close_pipes, nullptr);
 	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
@@ -366,11 +367,11 @@ static void test_unsuspendable_limit(void)
  * Validate that the tracker refuses to track two identical unsuspendable
  * file descriptors.
  */
-static void test_unsuspendable_close_untracked(void)
+static void test_unsuspendable_close_untracked()
 {
 	int ret, stdout_fd = fileno(stdout), unknown_fds[2], out_fd;
 	struct fd_tracker *tracker;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
@@ -387,13 +388,13 @@ static void test_unsuspendable_close_untracked(void)
 	ret = close(unknown_fds[1]);
 	LTTNG_ASSERT(ret == 0);
 
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, NULL, 1, noop_open, &stdout_fd);
+	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd, nullptr, 1, noop_open, &stdout_fd);
 	LTTNG_ASSERT(!ret);
 
-	ret = fd_tracker_close_unsuspendable_fd(tracker, unknown_fds, 1, noop_close, NULL);
+	ret = fd_tracker_close_unsuspendable_fd(tracker, unknown_fds, 1, noop_close, nullptr);
 	ok(ret == -EINVAL, "EINVAL reported on close of an untracked file descriptor");
 
-	ret = fd_tracker_close_unsuspendable_fd(tracker, &stdout_fd, 1, noop_close, NULL);
+	ret = fd_tracker_close_unsuspendable_fd(tracker, &stdout_fd, 1, noop_close, nullptr);
 	LTTNG_ASSERT(!ret);
 
 	fd_tracker_destroy(tracker);
@@ -486,15 +487,15 @@ static int cleanup_files(struct fd_tracker *tracker __attribute__((unused)),
 	return ret;
 }
 
-static void test_suspendable_limit(void)
+static void test_suspendable_limit()
 {
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT * 10;
 	struct fd_tracker *tracker;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 	char *output_files[files_to_create];
 	struct fs_handle *handles[files_to_create];
-	struct lttng_directory_handle *dir_handle = NULL;
+	struct lttng_directory_handle *dir_handle = nullptr;
 	int dir_handle_fd_count;
 
 	memset(output_files, 0, sizeof(output_files));
@@ -529,15 +530,15 @@ end:
 	free(unlinked_files_directory);
 }
 
-static void test_mixed_limit(void)
+static void test_mixed_limit()
 {
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT;
 	struct fd_tracker *tracker;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 	char *output_files[files_to_create];
 	struct fs_handle *handles[files_to_create];
-	struct lttng_directory_handle *dir_handle = NULL;
+	struct lttng_directory_handle *dir_handle = nullptr;
 	int dir_handle_fd_count;
 
 	memset(output_files, 0, sizeof(output_files));
@@ -592,7 +593,7 @@ end:
  *
  * The content of the files is also verified at the end.
  */
-static void test_suspendable_restore(void)
+static void test_suspendable_restore()
 {
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT * 10;
@@ -604,9 +605,9 @@ static void test_suspendable_restore(void)
 	bool write_success = true;
 	bool fd_cap_respected = true;
 	bool content_ok = true;
-	struct lttng_directory_handle *dir_handle = NULL;
+	struct lttng_directory_handle *dir_handle = nullptr;
 	int dir_handle_fd_count;
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
 
 	memset(output_files, 0, sizeof(output_files));
 	memset(handles, 0, sizeof(handles));
@@ -723,18 +724,18 @@ end:
 	free(unlinked_files_directory);
 }
 
-static void test_unlink(void)
+static void test_unlink()
 {
 	int ret;
 	struct fd_tracker *tracker;
 	const int handles_to_open = 2;
 	struct fs_handle *handles[handles_to_open];
-	struct fs_handle *new_handle = NULL;
+	struct fs_handle *new_handle = nullptr;
 	struct stat statbuf;
-	struct lttng_directory_handle *dir_handle = NULL;
+	struct lttng_directory_handle *dir_handle = nullptr;
 	const char file_name[] = "my_file";
-	char *test_directory = NULL, *unlinked_files_directory = NULL;
-	char *unlinked_file_zero = NULL, *unlinked_file_one = NULL;
+	char *test_directory = nullptr, *unlinked_files_directory = nullptr;
+	char *unlinked_file_zero = nullptr, *unlinked_file_one = nullptr;
 	int fd;
 
 	get_temporary_directories(&test_directory, &unlinked_files_directory);
@@ -853,7 +854,7 @@ end:
 	lttng_directory_handle_put(dir_handle);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	diag("File descriptor tracker unit tests");

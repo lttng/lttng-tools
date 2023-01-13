@@ -157,7 +157,7 @@ int snapshot_output_init(const struct ltt_session *session,
 			 struct snapshot *snapshot)
 {
 	int ret = 0, nb_uri;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 
 	/* Create an array of URIs from URLs. */
 	nb_uri = uri_parse_str_urls(ctrl_url, data_url, &uris);
@@ -173,7 +173,7 @@ error:
 	return ret;
 }
 
-struct snapshot_output *snapshot_output_alloc(void)
+struct snapshot_output *snapshot_output_alloc()
 {
 	return zmalloc<snapshot_output>();
 }
@@ -244,7 +244,7 @@ void snapshot_output_destroy(struct snapshot_output *obj)
 struct snapshot_output *snapshot_find_output_by_name(const char *name, struct snapshot *snapshot)
 {
 	struct lttng_ht_iter iter;
-	struct snapshot_output *output = NULL;
+	struct snapshot_output *output = nullptr;
 
 	LTTNG_ASSERT(snapshot);
 	LTTNG_ASSERT(name);
@@ -257,7 +257,7 @@ struct snapshot_output *snapshot_find_output_by_name(const char *name, struct sn
 	}
 
 	/* Not found */
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -270,7 +270,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id, struct snapshot 
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct snapshot_output *output = NULL;
+	struct snapshot_output *output = nullptr;
 
 	LTTNG_ASSERT(snapshot);
 	ASSERT_RCU_READ_LOCKED();

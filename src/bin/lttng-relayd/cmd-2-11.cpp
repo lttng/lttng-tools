@@ -181,8 +181,8 @@ int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 	size_t header_len, received_names_size;
 	struct lttng_buffer_view channel_name_view;
 	struct lttng_buffer_view pathname_view;
-	char *path_name = NULL;
-	char *channel_name = NULL;
+	char *path_name = nullptr;
+	char *channel_name = nullptr;
 
 	header_len = sizeof(header);
 
@@ -271,8 +271,8 @@ int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 	*ret_path_name = path_name;
 	*ret_channel_name = channel_name;
 	/* Move ownership to caller */
-	path_name = NULL;
-	channel_name = NULL;
+	path_name = nullptr;
+	channel_name = nullptr;
 	ret = 0;
 error:
 	free(channel_name);

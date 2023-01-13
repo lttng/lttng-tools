@@ -63,7 +63,7 @@ int config_get_section_entries(const char *override_path,
 {
 	int ret = 0;
 	const char *path;
-	FILE *config_file = NULL;
+	FILE *config_file = nullptr;
 	struct handler_filter_args filter = { section, handler, user_data };
 
 	/* First, try system-wide conf. file. */

@@ -53,7 +53,7 @@ static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-crash.1.h>
 #else
-	NULL
+	nullptr
 #endif
 	;
 
@@ -176,8 +176,8 @@ struct lttng_crash_layout {
 
 /* Variables */
 static const char *progname;
-static char *opt_viewer_path = NULL;
-static char *opt_output_path = NULL;
+static char *opt_viewer_path = nullptr;
+static char *opt_output_path = nullptr;
 
 static char *the_input_path;
 
@@ -189,13 +189,13 @@ enum {
 
 /* Getopt options. No first level command. */
 static struct option long_options[] = {
-	{ "version", 0, NULL, 'V' }, { "help", 0, NULL, 'h' },
-	{ "verbose", 0, NULL, 'v' }, { "viewer", 1, NULL, 'e' },
-	{ "extract", 1, NULL, 'x' }, { "list-options", 0, NULL, OPT_DUMP_OPTIONS },
-	{ NULL, 0, NULL, 0 },
+	{ "version", 0, nullptr, 'V' }, { "help", 0, nullptr, 'h' },
+	{ "verbose", 0, nullptr, 'v' }, { "viewer", 1, nullptr, 'e' },
+	{ "extract", 1, nullptr, 'x' }, { "list-options", 0, nullptr, OPT_DUMP_OPTIONS },
+	{ nullptr, 0, nullptr, 0 },
 };
 
-static void usage(void)
+static void usage()
 {
 	int ret = utils_show_help(1, "lttng-crash", help_msg);
 
@@ -224,10 +224,10 @@ static void version(FILE *ofp)
 static void list_options(FILE *ofp)
 {
 	int i = 0;
-	struct option *option = NULL;
+	struct option *option = nullptr;
 
 	option = &long_options[i];
-	while (option->name != NULL) {
+	while (option->name != nullptr) {
 		fprintf(ofp, "--%s\n", option->name);
 
 		if (isprint(option->val)) {
@@ -253,7 +253,7 @@ static int parse_args(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+Vhve:x:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+Vhve:x:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'V':
 			version(stdout);
@@ -505,7 +505,7 @@ static int get_crash_layout(struct lttng_crash_layout *layout, int fd, const cha
 		    RB_CRASH_DUMP_ABI_LEN);
 		return -1;
 	}
-	map = (char *) mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE, fd, 0);
+	map = (char *) mmap(nullptr, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED) {
 		PERROR("Mapping file");
 		return -1;
@@ -1178,7 +1178,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	bool has_warning = false;
-	const char *output_path = NULL;
+	const char *output_path = nullptr;
 	char tmppath[] = "/tmp/lttng-crash-XXXXXX";
 
 	progname = argv[0] ? argv[0] : "lttng-crash";

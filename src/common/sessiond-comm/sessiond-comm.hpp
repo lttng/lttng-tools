@@ -950,8 +950,8 @@ int lttcomm_sock_get_port(const struct lttcomm_sock *sock,
  */
 int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port);
 
-void lttcomm_init(void);
+void lttcomm_init();
 /* Get network timeout, in milliseconds */
-unsigned long lttcomm_get_network_timeout(void);
+unsigned long lttcomm_get_network_timeout();
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */

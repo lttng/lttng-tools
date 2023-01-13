@@ -159,7 +159,7 @@ static const char *lttng_event_rule_kernel_kprobe_get_filter(const struct lttng_
 							     __attribute__((unused)))
 {
 	/* Not supported. */
-	return NULL;
+	return nullptr;
 }
 
 static const struct lttng_bytecode *
@@ -167,7 +167,7 @@ lttng_event_rule_kernel_kprobe_get_filter_bytecode(const struct lttng_event_rule
 						   __attribute__((unused)))
 {
 	/* Not supported. */
-	return NULL;
+	return nullptr;
 }
 
 static enum lttng_event_rule_generate_exclusions_status
@@ -176,7 +176,7 @@ lttng_event_rule_kernel_kprobe_generate_exclusions(const struct lttng_event_rule
 						   struct lttng_event_exclusion **exclusions)
 {
 	/* Not supported. */
-	*exclusions = NULL;
+	*exclusions = nullptr;
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
@@ -197,7 +197,7 @@ static int kernel_probe_set_location(struct lttng_event_rule_kernel_kprobe *kpro
 				     const struct lttng_kernel_probe_location *location)
 {
 	int ret;
-	struct lttng_kernel_probe_location *location_copy = NULL;
+	struct lttng_kernel_probe_location *location_copy = nullptr;
 
 	if (!kprobe || !location || kprobe->location) {
 		ret = -1;
@@ -211,7 +211,7 @@ static int kernel_probe_set_location(struct lttng_event_rule_kernel_kprobe *kpro
 	}
 
 	kprobe->location = location_copy;
-	location_copy = NULL;
+	location_copy = nullptr;
 	ret = 0;
 end:
 	lttng_kernel_probe_location_destroy(location_copy);
@@ -225,8 +225,8 @@ lttng_event_rule_kernel_kprobe_mi_serialize(const struct lttng_event_rule *rule,
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_event_rule_status status;
-	const char *event_name = NULL;
-	const struct lttng_kernel_probe_location *location = NULL;
+	const char *event_name = nullptr;
+	const struct lttng_kernel_probe_location *location = nullptr;
 
 	LTTNG_ASSERT(rule);
 	LTTNG_ASSERT(writer);
@@ -277,7 +277,7 @@ end:
 struct lttng_event_rule *
 lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *location)
 {
-	struct lttng_event_rule *rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_kernel_kprobe *krule;
 
 	krule = zmalloc<lttng_event_rule_kernel_kprobe>();
@@ -301,7 +301,7 @@ lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *
 
 	if (kernel_probe_set_location(krule, location)) {
 		lttng_event_rule_destroy(rule);
-		rule = NULL;
+		rule = nullptr;
 	}
 
 end:
@@ -316,8 +316,8 @@ ssize_t lttng_event_rule_kernel_kprobe_create_from_payload(struct lttng_payload_
 	const struct lttng_event_rule_kernel_kprobe_comm *kprobe_comm;
 	const char *name;
 	struct lttng_buffer_view current_buffer_view;
-	struct lttng_event_rule *rule = NULL;
-	struct lttng_kernel_probe_location *location = NULL;
+	struct lttng_event_rule *rule = nullptr;
+	struct lttng_kernel_probe_location *location = nullptr;
 
 	if (!_event_rule) {
 		ret = -1;
@@ -399,7 +399,7 @@ ssize_t lttng_event_rule_kernel_kprobe_create_from_payload(struct lttng_payload_
 	}
 
 	*_event_rule = rule;
-	rule = NULL;
+	rule = nullptr;
 	ret = offset;
 end:
 	lttng_kernel_probe_location_destroy(location);
@@ -434,7 +434,7 @@ end:
 enum lttng_event_rule_status
 lttng_event_rule_kernel_kprobe_set_event_name(struct lttng_event_rule *rule, const char *name)
 {
-	char *name_copy = NULL;
+	char *name_copy = nullptr;
 	struct lttng_event_rule_kernel_kprobe *kprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -453,7 +453,7 @@ lttng_event_rule_kernel_kprobe_set_event_name(struct lttng_event_rule *rule, con
 	free(kprobe->name);
 
 	kprobe->name = name_copy;
-	name_copy = NULL;
+	name_copy = nullptr;
 end:
 	return status;
 }

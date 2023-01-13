@@ -42,12 +42,12 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "timer", 0, POPT_ARG_INT, 0, OPT_TIMER, 0, 0 },
-	{ "size", 0, POPT_ARG_INT, 0, OPT_SIZE, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "timer", 0, POPT_ARG_INT, nullptr, OPT_TIMER, nullptr, nullptr },
+	{ "size", 0, POPT_ARG_INT, nullptr, OPT_SIZE, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static const char *schedule_type_str[] = {
@@ -60,7 +60,7 @@ static enum cmd_error_code add_schedule(const char *session_name,
 					uint64_t value)
 {
 	enum cmd_error_code ret = CMD_SUCCESS;
-	struct lttng_rotation_schedule *schedule = NULL;
+	struct lttng_rotation_schedule *schedule = nullptr;
 	enum lttng_rotation_status status;
 	const char *schedule_type_name;
 
@@ -167,13 +167,13 @@ int cmd_enable_rotation(int argc, const char **argv)
 	int popt_ret, opt, ret = 0;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	static poptContext pc;
-	char *session_name = NULL;
-	char *opt_arg = NULL;
+	char *session_name = nullptr;
+	char *opt_arg = nullptr;
 	bool free_session_name = false;
 	uint64_t timer_us = 0, size_bytes = 0;
 	bool periodic_rotation = false, size_rotation = false;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
 		ERR("poptReadDefaultConfig");
@@ -228,9 +228,9 @@ int cmd_enable_rotation(int argc, const char **argv)
 		}
 	}
 
-	if (opt_session_name == NULL) {
+	if (opt_session_name == nullptr) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			goto error;
 		}
 		free_session_name = true;

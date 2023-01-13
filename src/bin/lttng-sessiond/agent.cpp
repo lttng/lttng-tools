@@ -311,8 +311,8 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 	uint32_t nb_event;
 	size_t data_size;
 	uint32_t reply_ret_code;
-	struct lttng_event *tmp_events = NULL;
-	struct lttcomm_agent_list_reply *reply = NULL;
+	struct lttng_event *tmp_events = nullptr;
+	struct lttcomm_agent_list_reply *reply = nullptr;
 	struct lttcomm_agent_list_reply_hdr reply_hdr;
 
 	LTTNG_ASSERT(app);
@@ -713,7 +713,7 @@ static void destroy_app_ctx(struct agent_app_ctx *ctx)
 
 static struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
 {
-	struct agent_app_ctx *agent_ctx = NULL;
+	struct agent_app_ctx *agent_ctx = nullptr;
 
 	if (!ctx) {
 		goto end;
@@ -729,7 +729,7 @@ static struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ct
 	agent_ctx->ctx_name = strdup(ctx->u.app_ctx.ctx_name);
 	if (!agent_ctx->provider_name || !agent_ctx->ctx_name) {
 		destroy_app_ctx(agent_ctx);
-		agent_ctx = NULL;
+		agent_ctx = nullptr;
 	}
 end:
 	return agent_ctx;
@@ -876,7 +876,7 @@ int agent_list_events(struct lttng_event **events, enum lttng_domain_type domain
 	int ret;
 	size_t nbmem, count = 0;
 	struct agent_app *app;
-	struct lttng_event *tmp_events = NULL;
+	struct lttng_event *tmp_events = nullptr;
 	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(events);
@@ -993,7 +993,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 
 	lttng_ht_lookup(the_agent_apps_ht_by_sock, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto error;
 	}
 	app = lttng::utils::container_of(node, &agent_app::node);
@@ -1003,7 +1003,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 
 error:
 	DBG3("Agent app NOT found by sock %d.", sock);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1111,7 +1111,7 @@ struct agent *agent_create(enum lttng_domain_type domain)
 	ret = agent_init(agt);
 	if (ret < 0) {
 		free(agt);
-		agt = NULL;
+		agt = nullptr;
 		goto error;
 	}
 
@@ -1131,7 +1131,7 @@ struct agent_event *agent_create_event(const char *name,
 				       struct lttng_bytecode *filter,
 				       char *filter_expression)
 {
-	struct agent_event *event = NULL;
+	struct agent_event *event = nullptr;
 
 	DBG3("Agent create new event with name %s, loglevel type %d, \
 			loglevel value %d and filter %s",
@@ -1182,7 +1182,7 @@ void agent_add_event(struct agent_event *event, struct agent *agt)
 int agent_add_context(const struct lttng_event_context *ctx, struct agent *agt)
 {
 	int ret = LTTNG_OK;
-	struct agent_app_ctx *agent_ctx = NULL;
+	struct agent_app_ctx *agent_ctx = nullptr;
 
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(agt);
@@ -1364,7 +1364,7 @@ struct agent_event *agent_find_event(const char *name,
 			&key,
 			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto error;
 	}
 
@@ -1373,7 +1373,7 @@ struct agent_event *agent_find_event(const char *name,
 
 error:
 	DBG3("Agent event NOT found %s.", name);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1444,7 +1444,7 @@ void agent_destroy(struct agent *agt)
 /*
  * Allocate agent_apps_ht_by_sock.
  */
-int agent_app_ht_alloc(void)
+int agent_app_ht_alloc()
 {
 	the_agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	return the_agent_apps_ht_by_sock ? 0 : -1;
@@ -1479,7 +1479,7 @@ void agent_destroy_app_by_sock(int sock)
 /*
  * Clean-up the agent app hash table and destroy it.
  */
-void agent_app_ht_clean(void)
+void agent_app_ht_clean()
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -1560,7 +1560,7 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
  * Allocate the per-event notifier domain agent hash table. It is lazily
  * populated as domains are used.
  */
-int agent_by_event_notifier_domain_ht_create(void)
+int agent_by_event_notifier_domain_ht_create()
 {
 	the_trigger_agents_ht_by_domain = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	return the_trigger_agents_ht_by_domain ? 0 : -1;
@@ -1569,7 +1569,7 @@ int agent_by_event_notifier_domain_ht_create(void)
 /*
  * Clean-up the per-event notifier domain agent hash table and destroy it.
  */
-void agent_by_event_notifier_domain_ht_destroy(void)
+void agent_by_event_notifier_domain_ht_destroy()
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
@@ -1593,7 +1593,7 @@ void agent_by_event_notifier_domain_ht_destroy(void)
 
 struct agent *agent_find_by_event_notifier_domain(enum lttng_domain_type domain_type)
 {
-	struct agent *agt = NULL;
+	struct agent *agt = nullptr;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	const uint64_t key = (uint64_t) domain_type;

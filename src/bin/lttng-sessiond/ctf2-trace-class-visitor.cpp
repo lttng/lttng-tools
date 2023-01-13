@@ -15,6 +15,7 @@
 #include <vendor/nlohmann/json.hpp>
 
 #include <algorithm>
+#include <utility>
 
 namespace lsc = lttng::sessiond::ctf2;
 namespace lst = lttng::sessiond::trace;
@@ -102,16 +103,14 @@ const char *get_role_name(lst::static_length_blob_type::role role)
 namespace ctf2 {
 class trace_environment_visitor : public lst::trace_class_environment_visitor {
 public:
-	trace_environment_visitor()
-	{
-	}
+	trace_environment_visitor() = default;
 
-	virtual void visit(const lst::environment_field<int64_t>& field) override
+	void visit(const lst::environment_field<int64_t>& field) override
 	{
 		_visit(field);
 	}
 
-	virtual void visit(const lst::environment_field<const char *>& field) override
+	void visit(const lst::environment_field<const char *>& field) override
 	{
 		_visit(field);
 	}
@@ -135,9 +134,7 @@ private:
 class field_visitor : public lttng::sessiond::trace::field_visitor,
 		      public lttng::sessiond::trace::type_visitor {
 public:
-	field_visitor()
-	{
-	}
+	field_visitor() = default;
 
 	/* Only call once. */
 	json::json move_fragment()
@@ -146,7 +143,7 @@ public:
 	}
 
 private:
-	virtual void visit(const lst::field& field) override final
+	void visit(const lst::field& field) final
 	{
 		field_visitor field_type_visitor;
 		field.get_type().accept(field_type_visitor);
@@ -155,7 +152,7 @@ private:
 		_fragment["field-class"] = field_type_visitor.move_fragment();
 	}
 
-	virtual void visit(const lst::integer_type& type) override final
+	void visit(const lst::integer_type& type) final
 	{
 		_fragment["type"] = type.signedness_ == lst::integer_type::signedness::SIGNED ?
 			"fixed-length-signed-integer" :
@@ -178,7 +175,7 @@ private:
 		}
 	}
 
-	virtual void visit(const lst::floating_point_type& type) override final
+	void visit(const lst::floating_point_type& type) final
 	{
 		_fragment["type"] = "fixed-length-floating-point-number";
 		_fragment["length"] = type.exponent_digits + type.mantissa_digits;
@@ -235,17 +232,17 @@ private:
 		_fragment["mappings"] = std::move(mappings_value);
 	}
 
-	virtual void visit(const lst::signed_enumeration_type& type) override final
+	void visit(const lst::signed_enumeration_type& type) final
 	{
 		visit_enumeration(type);
 	}
 
-	virtual void visit(const lst::unsigned_enumeration_type& type) override final
+	void visit(const lst::unsigned_enumeration_type& type) final
 	{
 		visit_enumeration(type);
 	}
 
-	virtual void visit(const lst::static_length_array_type& type) override final
+	void visit(const lst::static_length_array_type& type) final
 	{
 		_fragment["type"] = "static-length-array";
 
@@ -260,7 +257,7 @@ private:
 		_fragment["length"] = type.length;
 	}
 
-	virtual void visit(const lst::dynamic_length_array_type& type) override final
+	void visit(const lst::dynamic_length_array_type& type) final
 	{
 		_fragment["type"] = "dynamic-length-array";
 
@@ -275,7 +272,7 @@ private:
 		_fragment["length-field-location"] = to_json(type.length_field_location);
 	}
 
-	virtual void visit(const lst::static_length_blob_type& type) override final
+	void visit(const lst::static_length_blob_type& type) final
 	{
 		_fragment["type"] = "static-length-blob";
 		_fragment["length"] = type.length_bytes;
@@ -291,19 +288,18 @@ private:
 		}
 	}
 
-	virtual void visit(const lst::dynamic_length_blob_type& type) override final
+	void visit(const lst::dynamic_length_blob_type& type) final
 	{
 		_fragment["type"] = "dynamic-length-blob";
 		_fragment["length-field-location"] = to_json(type.length_field_location);
 	}
 
-	virtual void visit(const lst::null_terminated_string_type& type
-			   __attribute__((unused))) override final
+	void visit(const lst::null_terminated_string_type& type __attribute__((unused))) final
 	{
 		_fragment["type"] = "null-terminated-string";
 	}
 
-	virtual void visit(const lst::structure_type& type) override final
+	void visit(const lst::structure_type& type) final
 	{
 		_fragment["type"] = "structure";
 
@@ -345,23 +341,23 @@ private:
 		_fragment["options"] = std::move(options_value);
 	}
 
-	virtual void visit(const lst::variant_type<int64_t>& type) override final
+	void visit(const lst::variant_type<int64_t>& type) final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::variant_type<uint64_t>& type) override final
+	void visit(const lst::variant_type<uint64_t>& type) final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::static_length_string_type& type) override final
+	void visit(const lst::static_length_string_type& type) final
 	{
 		_fragment["type"] = "static-length-string";
 		_fragment["length"] = type.length;
 	}
 
-	virtual void visit(const lst::dynamic_length_string_type& type) override final
+	void visit(const lst::dynamic_length_string_type& type) final
 	{
 		_fragment["type"] = "dynamic-length-string";
 		_fragment["length-field-location"] = to_json(type.length_field_location);
@@ -375,7 +371,7 @@ private:
 
 lsc::trace_class_visitor::trace_class_visitor(
 	lsc::append_metadata_fragment_function append_metadata_fragment) :
-	_append_metadata_fragment(append_metadata_fragment)
+	_append_metadata_fragment(std::move(append_metadata_fragment))
 {
 }
 

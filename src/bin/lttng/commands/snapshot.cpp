@@ -54,15 +54,15 @@ static struct mi_writer *writer;
 
 static struct poptOption snapshot_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0 },
-	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0 },
-	{ "name", 'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0 },
-	{ "max-size", 'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "list-commands", 0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, nullptr, nullptr },
+	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, nullptr, nullptr },
+	{ "name", 'n', POPT_ARG_STRING, &opt_output_name, 0, nullptr, nullptr },
+	{ "max-size", 'm', POPT_ARG_STRING, nullptr, OPT_MAX_SIZE, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "list-commands", 0, POPT_ARG_NONE, nullptr, OPT_LIST_COMMANDS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static struct cmd_struct actions[] = {
@@ -70,7 +70,7 @@ static struct cmd_struct actions[] = {
 	{ "del-output", cmd_del_output },
 	{ "list-output", cmd_list_output },
 	{ "record", cmd_record },
-	{ NULL, NULL } /* Array closure */
+	{ nullptr, nullptr } /* Array closure */
 };
 
 /*
@@ -82,7 +82,7 @@ static int count_arguments(const char **argv)
 
 	LTTNG_ASSERT(argv);
 
-	while (argv[i] != NULL) {
+	while (argv[i] != nullptr) {
 		i++;
 	}
 
@@ -97,7 +97,7 @@ static int count_arguments(const char **argv)
 static struct lttng_snapshot_output *create_output_from_args(const char *url)
 {
 	int ret = 0;
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 
 	output = lttng_snapshot_output_create();
 	if (!output) {
@@ -142,10 +142,10 @@ static struct lttng_snapshot_output *create_output_from_args(const char *url)
 error:
 	lttng_snapshot_output_destroy(output);
 error_create:
-	return NULL;
+	return nullptr;
 }
 
-static int list_output(void)
+static int list_output()
 {
 	int ret, output_seen = 0;
 	struct lttng_snapshot_output *s_iter;
@@ -166,7 +166,7 @@ static int list_output(void)
 		}
 	}
 
-	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
+	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != nullptr) {
 		if (lttng_snapshot_output_get_maxsize(s_iter)) {
 			MSG("%s[%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)",
 			    indent4,
@@ -222,7 +222,7 @@ error:
 static int del_output(uint32_t id, const char *name)
 {
 	int ret;
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 
 	output = lttng_snapshot_output_create();
 	if (!output) {
@@ -276,7 +276,7 @@ error:
 static int add_output(const char *url)
 {
 	int ret;
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 	char name[NAME_MAX];
 	const char *n_ptr;
 
@@ -378,7 +378,7 @@ static int cmd_del_output(int argc, const char **argv)
 	if (id == 0 && (errno == 0 || errno == EINVAL)) {
 		ret = del_output(UINT32_MAX, name);
 	} else if (errno == 0 && *name == '\0') {
-		ret = del_output(id, NULL);
+		ret = del_output(id, nullptr);
 	} else {
 		ERR("Argument %s not recognized", argv[1]);
 		ret = -1;
@@ -405,7 +405,7 @@ static int cmd_list_output(int argc __attribute__((unused)),
 static int record(const char *url)
 {
 	int ret;
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 
 	output = create_output_from_args(url);
 	if (!output) {
@@ -448,7 +448,7 @@ static int cmd_record(int argc, const char **argv)
 	if (argc == 2) {
 		ret = record(argv[1]);
 	} else {
-		ret = record(NULL);
+		ret = record(nullptr);
 	}
 
 	return ret;
@@ -477,7 +477,7 @@ static enum cmd_error_code handle_command(const char **argv)
 	LTTNG_ASSERT(argc > 0);
 
 	cmd = &actions[i];
-	while (cmd->func != NULL) {
+	while (cmd->func != nullptr) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			int result;
@@ -573,10 +573,10 @@ int cmd_snapshot(int argc, const char **argv)
 	int opt;
 	int mi_ret;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
-	char *session_name = NULL;
+	char *session_name = nullptr;
 	static poptContext pc;
 
-	pc = poptGetContext(NULL, argc, argv, snapshot_opts, 0);
+	pc = poptGetContext(nullptr, argc, argv, snapshot_opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	/* Mi check */
@@ -644,7 +644,7 @@ int cmd_snapshot(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			cmd_ret = CMD_ERROR;
 			goto end;
 		}

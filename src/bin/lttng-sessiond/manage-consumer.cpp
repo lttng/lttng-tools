@@ -61,7 +61,7 @@ static void *thread_consumer_management(void *data)
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	struct consumer_data *consumer_data = notifiers->consumer_data;
 	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
-	struct consumer_socket *cmd_socket_wrapper = NULL;
+	struct consumer_socket *cmd_socket_wrapper = nullptr;
 
 	DBG("[thread] Manage consumer started");
 
@@ -191,12 +191,12 @@ static void *thread_consumer_management(void *data)
 
 	/* Create metadata socket lock. */
 	consumer_data->metadata_sock.lock = zmalloc<pthread_mutex_t>();
-	if (consumer_data->metadata_sock.lock == NULL) {
+	if (consumer_data->metadata_sock.lock == nullptr) {
 		PERROR("zmalloc pthread mutex");
 		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
-	pthread_mutex_init(consumer_data->metadata_sock.lock, NULL);
+	pthread_mutex_init(consumer_data->metadata_sock.lock, nullptr);
 
 	DBG("Consumer command socket ready (fd: %d)", consumer_data->cmd_sock);
 	DBG("Consumer metadata socket ready (fd: %d)", consumer_data->metadata_fd);
@@ -256,13 +256,13 @@ static void *thread_consumer_management(void *data)
 
 	/* Discard the socket wrapper as it is no longer needed. */
 	consumer_destroy_socket(cmd_socket_wrapper);
-	cmd_socket_wrapper = NULL;
+	cmd_socket_wrapper = nullptr;
 
 	/* The thread is completely initialized, signal that it is ready. */
 	mark_thread_as_ready(notifiers);
 
 	/* Infinite blocking call, waiting for transmission */
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		/* Exit the thread because the thread quit pipe has been triggered. */
@@ -405,7 +405,7 @@ error_poll:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_consumer_management_thread(void *data)
@@ -427,7 +427,7 @@ static void cleanup_consumer_management_thread(void *data)
 bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 {
 	struct lttng_pipe *quit_pipe;
-	struct thread_notifiers *notifiers = NULL;
+	struct thread_notifiers *notifiers = nullptr;
 	struct lttng_thread *thread;
 
 	notifiers = zmalloc<thread_notifiers>();

@@ -34,11 +34,11 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "viewer", 'e', POPT_ARG_STRING, &opt_viewer, 0, 0, 0 },
-	{ "trace-path", 't', POPT_ARG_STRING, &opt_trace_path, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "viewer", 'e', POPT_ARG_STRING, &opt_viewer, 0, nullptr, nullptr },
+	{ "trace-path", 't', POPT_ARG_STRING, &opt_trace_path, 0, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /* Is the session we are trying to view is in live mode. */
@@ -50,7 +50,7 @@ static int session_live_mode;
 static char *build_live_path(char *session_name)
 {
 	int ret;
-	char *path = NULL;
+	char *path = nullptr;
 	char hostname[LTTNG_HOST_NAME_MAX];
 
 	ret = gethostname(hostname, sizeof(hostname));
@@ -75,8 +75,8 @@ error:
 static int view_trace(const char *arg_session_name)
 {
 	int ret;
-	char *session_name, *trace_path = NULL;
-	struct lttng_session *sessions = NULL;
+	char *session_name, *trace_path = nullptr;
+	struct lttng_session *sessions = nullptr;
 	bool free_trace_path = false;
 
 	/*
@@ -97,18 +97,18 @@ static int view_trace(const char *arg_session_name)
 
 	/* User define trace path override the session name */
 	if (opt_trace_path) {
-		session_name = NULL;
+		session_name = nullptr;
 	} else {
-		if (arg_session_name == NULL) {
+		if (arg_session_name == nullptr) {
 			session_name = get_session_name();
 		} else {
 			session_name = strdup(arg_session_name);
-			if (session_name == NULL) {
+			if (session_name == nullptr) {
 				PERROR("Failed to copy session name");
 			}
 		}
 
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -195,10 +195,10 @@ int cmd_view(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
-	const char *arg_session_name = NULL;
-	const char *leftover = NULL;
+	const char *arg_session_name = nullptr;
+	const char *leftover = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	if (lttng_opt_mi) {

@@ -30,7 +30,7 @@ namespace {
 /*
  * Return the default pipe buffer size or a negative error.
  */
-int get_pipe_size(void)
+int get_pipe_size()
 {
 	int ret;
 	/*
@@ -66,7 +66,7 @@ int get_pipe_size(void)
 #endif
 } /* namespace */
 
-int main(void)
+int main()
 {
 	int ret;
 

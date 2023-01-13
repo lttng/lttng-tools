@@ -64,7 +64,7 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -104,7 +104,7 @@ struct ltt_kernel_event *trace_kernel_find_event(char *name,
 		DBG("Found event %s for channel %s", name, channel->channel->name);
 		return ev;
 	} else {
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -135,7 +135,7 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
 		DBG("Found event %s for channel %s", name, channel->channel->name);
 		return ev;
 	} else {
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -144,13 +144,13 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_session *trace_kernel_create_session(void)
+struct ltt_kernel_session *trace_kernel_create_session()
 {
-	struct ltt_kernel_session *lks = NULL;
+	struct ltt_kernel_session *lks = nullptr;
 
 	/* Allocate a new ltt kernel session */
 	lks = zmalloc<ltt_kernel_session>();
-	if (lks == NULL) {
+	if (lks == nullptr) {
 		PERROR("create kernel session zmalloc");
 		goto alloc_error;
 	}
@@ -160,7 +160,7 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 	lks->metadata_stream_fd = -1;
 	lks->channel_count = 0;
 	lks->stream_count_global = 0;
-	lks->metadata = NULL;
+	lks->metadata = nullptr;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
 	lks->tracker_pid = process_attr_tracker_create();
@@ -188,7 +188,7 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 		goto error;
 	}
 	lks->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (lks->consumer == NULL) {
+	if (lks->consumer == nullptr) {
 		goto error;
 	}
 
@@ -204,7 +204,7 @@ error:
 	free(lks);
 
 alloc_error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -215,18 +215,18 @@ alloc_error:
 struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan)
 {
 	struct ltt_kernel_channel *lkc;
-	struct lttng_channel_extended *extended = NULL;
+	struct lttng_channel_extended *extended = nullptr;
 
 	LTTNG_ASSERT(chan);
 
 	lkc = zmalloc<ltt_kernel_channel>();
-	if (lkc == NULL) {
+	if (lkc == nullptr) {
 		PERROR("ltt_kernel_channel zmalloc");
 		goto error;
 	}
 
 	lkc->channel = zmalloc<lttng_channel>();
-	if (lkc->channel == NULL) {
+	if (lkc->channel == nullptr) {
 		PERROR("lttng_channel zmalloc");
 		goto error;
 	}
@@ -239,7 +239,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	memcpy(lkc->channel, chan, sizeof(struct lttng_channel));
 	memcpy(extended, chan->attr.extended.ptr, sizeof(struct lttng_channel_extended));
 	lkc->channel->attr.extended.ptr = extended;
-	extended = NULL;
+	extended = nullptr;
 
 	/*
 	 * If we receive an empty string for channel name, it means the
@@ -268,7 +268,7 @@ error:
 	}
 	free(extended);
 	free(lkc);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -331,13 +331,13 @@ enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
 	enum lttng_error_code ret;
 	struct lttng_kernel_abi_event *attr;
 	struct ltt_kernel_event *local_kernel_event;
-	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
+	struct lttng_userspace_probe_location *userspace_probe_location = nullptr;
 
 	LTTNG_ASSERT(ev);
 
 	local_kernel_event = zmalloc<ltt_kernel_event>();
 	attr = zmalloc<lttng_kernel_abi_event>();
-	if (local_kernel_event == NULL || attr == NULL) {
+	if (local_kernel_event == nullptr || attr == nullptr) {
 		PERROR("kernel event zmalloc");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -355,8 +355,8 @@ enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
 		break;
 	case LTTNG_EVENT_USERSPACE_PROBE:
 	{
-		const struct lttng_userspace_probe_location *location = NULL;
-		const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+		const struct lttng_userspace_probe_location *location = nullptr;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = nullptr;
 
 		location = lttng_event_get_userspace_probe_location(ev);
 		if (!location) {
@@ -488,8 +488,8 @@ trace_kernel_create_event_notifier_rule(struct lttng_trigger *trigger,
 	enum lttng_event_rule_type event_rule_type;
 	enum lttng_condition_status condition_status;
 	struct ltt_kernel_event_notifier_rule *local_kernel_token_event_rule;
-	const struct lttng_condition *condition = NULL;
-	const struct lttng_event_rule *event_rule = NULL;
+	const struct lttng_condition *condition = nullptr;
+	const struct lttng_event_rule *event_rule = nullptr;
 
 	LTTNG_ASSERT(event_notifier_rule);
 
@@ -507,7 +507,7 @@ trace_kernel_create_event_notifier_rule(struct lttng_trigger *trigger,
 	LTTNG_ASSERT(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
 	local_kernel_token_event_rule = zmalloc<ltt_kernel_event_notifier_rule>();
-	if (local_kernel_token_event_rule == NULL) {
+	if (local_kernel_token_event_rule == nullptr) {
 		PERROR("Failed to allocate ltt_kernel_token_event_rule structure");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -547,8 +547,8 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	{
 		uint64_t address = 0, offset = 0;
-		const char *symbol_name = NULL;
-		const struct lttng_kernel_probe_location *location = NULL;
+		const char *symbol_name = nullptr;
+		const struct lttng_kernel_probe_location *location = nullptr;
 		enum lttng_kernel_probe_location_status k_status;
 		enum lttng_event_rule_status status;
 
@@ -602,8 +602,8 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 	}
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	{
-		const struct lttng_userspace_probe_location *location = NULL;
-		const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+		const struct lttng_userspace_probe_location *location = nullptr;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = nullptr;
 		enum lttng_event_rule_status status;
 
 		status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
@@ -710,7 +710,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
+struct ltt_kernel_metadata *trace_kernel_create_metadata()
 {
 	int ret;
 	struct ltt_kernel_metadata *lkm;
@@ -718,7 +718,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 
 	lkm = zmalloc<ltt_kernel_metadata>();
 	chan = zmalloc<lttng_channel>();
-	if (lkm == NULL || chan == NULL) {
+	if (lkm == nullptr || chan == nullptr) {
 		PERROR("kernel metadata zmalloc");
 		goto error;
 	}
@@ -763,7 +763,7 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 error:
 	free(lkm);
 	free(chan);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -780,7 +780,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned 
 	LTTNG_ASSERT(name);
 
 	lks = zmalloc<ltt_kernel_stream>();
-	if (lks == NULL) {
+	if (lks == nullptr) {
 		PERROR("kernel stream zmalloc");
 		goto error;
 	}
@@ -801,7 +801,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned 
 	return lks;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -999,7 +999,7 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 		}
 	}
 
-	if (session->metadata != NULL) {
+	if (session->metadata != nullptr) {
 		trace_kernel_destroy_metadata(session->metadata);
 	}
 

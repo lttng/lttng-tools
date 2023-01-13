@@ -138,7 +138,7 @@ end:
 	return ret;
 }
 
-static int establish_connection(void)
+static int establish_connection()
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_connect connect;
@@ -229,7 +229,7 @@ error:
 	return -1;
 }
 
-static int create_viewer_session(void)
+static int create_viewer_session()
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_create_session_response resp;
@@ -337,8 +337,12 @@ static int attach_session(uint64_t id)
 
 		session->streams[i].ctf_trace_id = be64toh(stream.ctf_trace_id);
 		session->streams[i].first_read = 1;
-		session->streams[i].mmap_base = mmap(
-			NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		session->streams[i].mmap_base = mmap(nullptr,
+						     mmap_size,
+						     PROT_READ | PROT_WRITE,
+						     MAP_PRIVATE | MAP_ANONYMOUS,
+						     -1,
+						     0);
 		if (session->streams[i].mmap_base == MAP_FAILED) {
 			diag("mmap error");
 			goto error;
@@ -354,7 +358,7 @@ error:
 	return -1;
 }
 
-static int get_metadata(void)
+static int get_metadata()
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_metadata rq;
@@ -362,7 +366,7 @@ static int get_metadata(void)
 	ssize_t ret_len;
 	int ret;
 	uint64_t i;
-	char *data = NULL;
+	char *data = nullptr;
 	uint64_t len = 0;
 	int metadata_stream_id = -1;
 
@@ -449,7 +453,7 @@ error:
 	return -1;
 }
 
-static int get_next_index(void)
+static int get_next_index()
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_next_index rq;
@@ -661,7 +665,7 @@ error:
 	return ret;
 }
 
-int main(void)
+int main()
 {
 	int ret;
 	uint64_t session_id;

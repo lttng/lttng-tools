@@ -70,7 +70,7 @@ struct lttng_session_descriptor_live_comm {
 
 static struct lttng_uri *uri_copy(const struct lttng_uri *uri)
 {
-	struct lttng_uri *new_uri = NULL;
+	struct lttng_uri *new_uri = nullptr;
 
 	if (!uri) {
 		goto end;
@@ -87,7 +87,7 @@ end:
 
 static struct lttng_uri *uri_from_path(const char *path)
 {
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 	ssize_t uri_count;
 	char local_protocol_string[LTTNG_PATH_MAX + sizeof("file://")] = "file://";
 
@@ -113,7 +113,7 @@ end:
 	return uris;
 error:
 	free(uris);
-	return NULL;
+	return nullptr;
 }
 
 static void network_location_fini(struct lttng_session_descriptor_network_location *location)
@@ -149,8 +149,8 @@ network_location_set_from_lttng_uris(struct lttng_session_descriptor_network_loc
 	free(location->data);
 	location->control = control;
 	location->data = data;
-	control = NULL;
-	data = NULL;
+	control = nullptr;
+	data = nullptr;
 end:
 	free(control);
 	free(data);
@@ -164,9 +164,9 @@ network_location_set_from_uri_strings(struct lttng_session_descriptor_network_lo
 {
 	int ret = 0;
 	ssize_t uri_count;
-	struct lttng_uri *parsed_uris = NULL;
-	struct lttng_uri *control_uri = NULL;
-	struct lttng_uri *data_uri = NULL;
+	struct lttng_uri *parsed_uris = nullptr;
+	struct lttng_uri *control_uri = nullptr;
+	struct lttng_uri *data_uri = nullptr;
 
 	uri_count = uri_parse_str_urls(control, data, &parsed_uris);
 	if (uri_count != 2 && uri_count != 0) {
@@ -191,8 +191,8 @@ network_location_set_from_uri_strings(struct lttng_session_descriptor_network_lo
 
 	/* Ownership of control and data uris is transferred. */
 	ret = network_location_set_from_lttng_uris(location, control_uri, data_uri);
-	control_uri = NULL;
-	data_uri = NULL;
+	control_uri = nullptr;
+	data_uri = nullptr;
 end:
 	free(parsed_uris);
 	free(control_uri);
@@ -217,7 +217,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_create(const char *nam
 	return descriptor;
 error:
 	lttng_session_descriptor_destroy(descriptor);
-	return NULL;
+	return nullptr;
 }
 
 /* Ownership of uri is transferred. */
@@ -237,19 +237,19 @@ _lttng_session_descriptor_local_create(const char *name, struct lttng_uri *uri)
 			goto error;
 		}
 		descriptor->output.local = uri;
-		uri = NULL;
+		uri = nullptr;
 	}
 	return descriptor;
 error:
 	free(uri);
 	lttng_session_descriptor_destroy(descriptor);
-	return NULL;
+	return nullptr;
 }
 
 struct lttng_session_descriptor *lttng_session_descriptor_local_create(const char *name,
 								       const char *path)
 {
-	struct lttng_uri *uri = NULL;
+	struct lttng_uri *uri = nullptr;
 	struct lttng_session_descriptor *descriptor;
 
 	if (path) {
@@ -261,7 +261,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_local_create(const cha
 	descriptor = _lttng_session_descriptor_local_create(name, uri);
 	return descriptor;
 error:
-	return NULL;
+	return nullptr;
 }
 
 /* Assumes the ownership of both uris. */
@@ -280,8 +280,8 @@ static struct lttng_session_descriptor *_lttng_session_descriptor_network_create
 	descriptor->output_type = LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK;
 	/* Assumes the ownership of both uris. */
 	ret = network_location_set_from_lttng_uris(&descriptor->output.network, control, data);
-	control = NULL;
-	data = NULL;
+	control = nullptr;
+	data = nullptr;
 	if (ret) {
 		goto error;
 	}
@@ -290,7 +290,7 @@ error:
 	lttng_session_descriptor_destroy(descriptor);
 	free(control);
 	free(data);
-	return NULL;
+	return nullptr;
 }
 
 struct lttng_session_descriptor *lttng_session_descriptor_network_create(const char *name,
@@ -300,7 +300,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_network_create(const c
 	int ret;
 	struct lttng_session_descriptor *descriptor;
 
-	descriptor = _lttng_session_descriptor_network_create(name, NULL, NULL);
+	descriptor = _lttng_session_descriptor_network_create(name, nullptr, nullptr);
 	if (!descriptor) {
 		goto error;
 	}
@@ -313,7 +313,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_network_create(const c
 	return descriptor;
 error:
 	lttng_session_descriptor_destroy(descriptor);
-	return NULL;
+	return nullptr;
 }
 
 static struct lttng_session_descriptor_snapshot *
@@ -333,8 +333,8 @@ _lttng_session_descriptor_snapshot_create(const char *name)
 	}
 	return descriptor;
 error:
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 /* Ownership of control and data is transferred. */
@@ -352,8 +352,8 @@ static struct lttng_session_descriptor_snapshot *_lttng_session_descriptor_snaps
 	descriptor->base.output_type = LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK;
 	/* Ownership of control and data is transferred. */
 	ret = network_location_set_from_lttng_uris(&descriptor->base.output.network, control, data);
-	control = NULL;
-	data = NULL;
+	control = nullptr;
+	data = nullptr;
 	if (ret) {
 		goto error;
 	}
@@ -361,8 +361,8 @@ static struct lttng_session_descriptor_snapshot *_lttng_session_descriptor_snaps
 error:
 	free(control);
 	free(data);
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 struct lttng_session_descriptor *lttng_session_descriptor_snapshot_create(const char *name)
@@ -370,7 +370,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_snapshot_create(const 
 	struct lttng_session_descriptor_snapshot *descriptor;
 
 	descriptor = _lttng_session_descriptor_snapshot_create(name);
-	return descriptor ? &descriptor->base : NULL;
+	return descriptor ? &descriptor->base : nullptr;
 }
 
 struct lttng_session_descriptor *lttng_session_descriptor_snapshot_network_create(
@@ -379,7 +379,7 @@ struct lttng_session_descriptor *lttng_session_descriptor_snapshot_network_creat
 	int ret;
 	struct lttng_session_descriptor_snapshot *descriptor;
 
-	descriptor = _lttng_session_descriptor_snapshot_network_create(name, NULL, NULL);
+	descriptor = _lttng_session_descriptor_snapshot_network_create(name, nullptr, nullptr);
 	if (!descriptor) {
 		goto error;
 	}
@@ -391,8 +391,8 @@ struct lttng_session_descriptor *lttng_session_descriptor_snapshot_network_creat
 	}
 	return &descriptor->base;
 error:
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 /* Ownership of uri is transferred. */
@@ -411,19 +411,19 @@ _lttng_session_descriptor_snapshot_local_create(const char *name, struct lttng_u
 			goto error;
 		}
 		descriptor->base.output.local = uri;
-		uri = NULL;
+		uri = nullptr;
 	}
 	return descriptor;
 error:
 	free(uri);
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 struct lttng_session_descriptor *lttng_session_descriptor_snapshot_local_create(const char *name,
 										const char *path)
 {
-	struct lttng_uri *path_uri = NULL;
+	struct lttng_uri *path_uri = nullptr;
 	struct lttng_session_descriptor_snapshot *descriptor;
 
 	if (path) {
@@ -433,15 +433,15 @@ struct lttng_session_descriptor *lttng_session_descriptor_snapshot_local_create(
 		}
 	}
 	descriptor = _lttng_session_descriptor_snapshot_local_create(name, path_uri);
-	return descriptor ? &descriptor->base : NULL;
+	return descriptor ? &descriptor->base : nullptr;
 error:
-	return NULL;
+	return nullptr;
 }
 
 static struct lttng_session_descriptor_live *
 _lttng_session_descriptor_live_create(const char *name, unsigned long long live_timer_interval_us)
 {
-	struct lttng_session_descriptor_live *descriptor = NULL;
+	struct lttng_session_descriptor_live *descriptor = nullptr;
 
 	if (live_timer_interval_us == 0) {
 		goto error;
@@ -460,8 +460,8 @@ _lttng_session_descriptor_live_create(const char *name, unsigned long long live_
 
 	return descriptor;
 error:
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 /* Ownership of control and data is transferred. */
@@ -483,8 +483,8 @@ _lttng_session_descriptor_live_network_create(const char *name,
 
 	/* Ownerwhip of control and data is transferred. */
 	ret = network_location_set_from_lttng_uris(&descriptor->base.output.network, control, data);
-	control = NULL;
-	data = NULL;
+	control = nullptr;
+	data = nullptr;
 	if (ret) {
 		goto error;
 	}
@@ -492,8 +492,8 @@ _lttng_session_descriptor_live_network_create(const char *name,
 error:
 	free(control);
 	free(data);
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 struct lttng_session_descriptor *
@@ -503,7 +503,7 @@ lttng_session_descriptor_live_create(const char *name, unsigned long long live_t
 
 	descriptor = _lttng_session_descriptor_live_create(name, live_timer_us);
 
-	return descriptor ? &descriptor->base : NULL;
+	return descriptor ? &descriptor->base : nullptr;
 }
 
 struct lttng_session_descriptor *
@@ -515,7 +515,8 @@ lttng_session_descriptor_live_network_create(const char *name,
 	int ret;
 	struct lttng_session_descriptor_live *descriptor;
 
-	descriptor = _lttng_session_descriptor_live_network_create(name, NULL, NULL, live_timer_us);
+	descriptor = _lttng_session_descriptor_live_network_create(
+		name, nullptr, nullptr, live_timer_us);
 	if (!descriptor) {
 		goto error;
 	}
@@ -527,8 +528,8 @@ lttng_session_descriptor_live_network_create(const char *name,
 	}
 	return &descriptor->base;
 error:
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
+	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : nullptr);
+	return nullptr;
 }
 
 void lttng_session_descriptor_destroy(struct lttng_session_descriptor *descriptor)
@@ -560,7 +561,7 @@ ssize_t lttng_session_descriptor_create_from_buffer(const struct lttng_buffer_vi
 	int i;
 	ssize_t offset = 0, ret;
 	struct lttng_buffer_view current_view;
-	const char *name = NULL;
+	const char *name = nullptr;
 	const struct lttng_session_descriptor_comm *base_header;
 	size_t max_expected_uri_count;
 	uint64_t live_timer_us = 0;
@@ -705,7 +706,7 @@ skip_name:
 			/* Already checked. */
 			abort();
 		}
-		*descriptor = snapshot ? &snapshot->base : NULL;
+		*descriptor = snapshot ? &snapshot->base : nullptr;
 		break;
 	}
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_LIVE:
@@ -727,7 +728,7 @@ skip_name:
 			/* Already checked. */
 			abort();
 		}
-		*descriptor = live ? &live->base : NULL;
+		*descriptor = live ? &live->base : nullptr;
 		break;
 	}
 	default:
@@ -766,7 +767,7 @@ int lttng_session_descriptor_serialize(const struct lttng_session_descriptor *de
 		.live_timer_us = 0,
 
 	};
-	const void *header_ptr = NULL;
+	const void *header_ptr = nullptr;
 	size_t header_size;
 
 	switch (descriptor->output_type) {
@@ -940,7 +941,7 @@ lttng_session_descriptor_set_default_output(struct lttng_session_descriptor *des
 					    const char *absolute_home_path)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 
 	switch (descriptor->output_type) {
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NONE:
@@ -996,16 +997,16 @@ lttng_session_descriptor_set_default_output(struct lttng_session_descriptor *des
 		}
 		free(descriptor->output.local);
 		descriptor->output.local = &uris[0];
-		uris = NULL;
+		uris = nullptr;
 		break;
 	}
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
 	{
 		int ret;
 		ssize_t uri_ret;
-		struct lttng_uri *control = NULL, *data = NULL;
+		struct lttng_uri *control = nullptr, *data = nullptr;
 
-		uri_ret = uri_parse_str_urls("net://127.0.0.1", NULL, &uris);
+		uri_ret = uri_parse_str_urls("net://127.0.0.1", nullptr, &uris);
 		if (uri_ret != 2) {
 			ret_code = LTTNG_ERR_SET_URL;
 			goto end;
@@ -1070,7 +1071,7 @@ int lttng_session_descriptor_assign(struct lttng_session_descriptor *dst,
 		break;
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
 	{
-		struct lttng_uri *control_copy = NULL, *data_copy = NULL;
+		struct lttng_uri *control_copy = nullptr, *data_copy = nullptr;
 
 		control_copy = uri_copy(dst->output.network.control);
 		if (!control_copy && dst->output.network.control) {

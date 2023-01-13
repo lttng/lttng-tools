@@ -187,8 +187,8 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 		goto error;
 	}
 
-	wait_shm_mmap =
-		(char *) mmap(NULL, mmap_size, PROT_WRITE | PROT_READ, MAP_SHARED, wait_shm_fd, 0);
+	wait_shm_mmap = (char *) mmap(
+		nullptr, mmap_size, PROT_WRITE | PROT_READ, MAP_SHARED, wait_shm_fd, 0);
 
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
@@ -207,7 +207,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	return wait_shm_mmap;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*

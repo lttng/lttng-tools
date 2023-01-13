@@ -149,7 +149,7 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
  * Allocate a new set of triggers.
  * The returned object must be freed via lttng_triggers_destroy.
  */
-struct lttng_triggers *lttng_triggers_create(void);
+struct lttng_triggers *lttng_triggers_create();
 
 /*
  * Return the a pointer to a mutable element at index "index" of an

@@ -69,10 +69,10 @@ static struct poptOption long_options[] = {
 		"help",
 		'h',
 		POPT_ARG_NONE,
-		0,
+		nullptr,
 		OPT_HELP,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"session",
@@ -80,8 +80,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING,
 		&opt_session_name,
 		OPT_SESSION,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"kernel",
@@ -89,8 +89,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_VAL,
 		&opt_kernel,
 		1,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"userspace",
@@ -98,8 +98,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_VAL,
 		&opt_userspace,
 		1,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"pid",
@@ -107,8 +107,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_PID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"vpid",
@@ -116,8 +116,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_VPID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"uid",
@@ -125,8 +125,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_UID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"vuid",
@@ -134,8 +134,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_VUID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"gid",
@@ -143,8 +143,8 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_GID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"vgid",
@@ -152,35 +152,35 @@ static struct poptOption long_options[] = {
 		POPT_ARG_STRING | POPT_ARGFLAG_OPTIONAL,
 		&opt_str_arg,
 		OPT_VGID,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"all",
 		'a',
 		POPT_ARG_NONE,
-		0,
+		nullptr,
 		OPT_ALL,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
 		"list-options",
 		0,
 		POPT_ARG_NONE,
-		NULL,
+		nullptr,
 		OPT_LIST_OPTIONS,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 	{
+		nullptr,
 		0,
 		0,
+		nullptr,
 		0,
-		0,
-		0,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 };
 
@@ -218,7 +218,7 @@ static const char *get_capitalized_process_attr_str(enum lttng_process_attr proc
 	default:
 		return "Unknown";
 	}
-	return NULL;
+	return nullptr;
 }
 
 static bool ust_process_attr_supported(enum lttng_process_attr *process_attr)
@@ -261,7 +261,7 @@ static enum cmd_error_code run_command_all(enum cmd_type cmd_type,
 					   enum lttng_process_attr process_attr,
 					   struct mi_writer *writer)
 {
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	const enum lttng_error_code handle_ret_code = lttng_session_get_tracker_handle(
 		session_name, domain_type, process_attr, &tracker_handle);
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
@@ -328,7 +328,7 @@ static enum cmd_error_code run_command_string(enum cmd_type cmd_type,
 					      const char *_args,
 					      struct mi_writer *writer)
 {
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	const enum lttng_error_code handle_ret_code = lttng_session_get_tracker_handle(
 		session_name, domain_type, process_attr, &tracker_handle);
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
@@ -349,7 +349,7 @@ static enum cmd_error_code run_command_string(enum cmd_type cmd_type,
 		goto end;
 	}
 
-	while ((one_value_str = strtok_r(iter, ",", &iter)) != NULL) {
+	while ((one_value_str = strtok_r(iter, ",", &iter)) != nullptr) {
 		const bool is_numerical_argument = isdigit(one_value_str[0]);
 		enum lttng_process_attr_tracker_handle_status status;
 		enum lttng_tracking_policy policy;
@@ -374,7 +374,7 @@ static enum cmd_error_code run_command_string(enum cmd_type cmd_type,
 		}
 
 		if (is_numerical_argument) {
-			const unsigned long one_value_int = strtoul(one_value_str, NULL, 10);
+			const unsigned long one_value_int = strtoul(one_value_str, nullptr, 10);
 
 			if (writer) {
 				ret = mi_lttng_integral_process_attribute_value(
@@ -637,9 +637,9 @@ static int cmd_track_untrack(enum cmd_type cmd_type,
 		sizeof(process_attr_commands) / sizeof(struct process_attr_command_args);
 	enum cmd_error_code command_ret = CMD_SUCCESS;
 	static poptContext pc;
-	char *session_name = NULL;
-	const char *leftover = NULL;
-	struct mi_writer *writer = NULL;
+	char *session_name = nullptr;
+	const char *leftover = nullptr;
+	struct mi_writer *writer = nullptr;
 	size_t i;
 
 	for (i = 0; i < command_count; i++) {
@@ -651,7 +651,7 @@ static int cmd_track_untrack(enum cmd_type cmd_type,
 		goto end;
 	}
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -740,7 +740,7 @@ static int cmd_track_untrack(enum cmd_type cmd_type,
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			command_ret = CMD_ERROR;
 			goto end;
 		}
@@ -850,7 +850,7 @@ int cmd_track(int argc, const char **argv)
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-track.1.h>
 #else
-		NULL
+		nullptr
 #endif
 		;
 
@@ -863,7 +863,7 @@ int cmd_untrack(int argc, const char **argv)
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-untrack.1.h>
 #else
-		NULL
+		nullptr
 #endif
 		;
 

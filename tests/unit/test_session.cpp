@@ -41,7 +41,7 @@ static char random_string[RANDOM_STRING_LEN];
  * Return random string of 10 characters.
  * Not thread-safe.
  */
-static char *get_random_string(void)
+static char *get_random_string()
 {
 	int i;
 
@@ -70,7 +70,7 @@ static int find_session_name(const char *name)
 	return -1;
 }
 
-static int session_list_count(void)
+static int session_list_count()
 {
 	int count = 0;
 	struct ltt_session *iter;
@@ -84,7 +84,7 @@ static int session_list_count(void)
 /*
  * Empty session list manually.
  */
-static void empty_session_list(void)
+static void empty_session_list()
 {
 	struct ltt_session *iter, *tmp;
 
@@ -105,7 +105,7 @@ static int create_one_session(const char *name)
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 
 	session_lock_list();
 	ret_code = session_create(name, geteuid(), getegid(), &session);
@@ -161,7 +161,7 @@ static int destroy_one_session(struct ltt_session *session)
  * This test is supposed to fail at the second create call. If so, return 0 for
  * test success, else -1.
  */
-static int two_session_same_name(void)
+static int two_session_same_name()
 {
 	int ret;
 	struct ltt_session *sess;
@@ -192,28 +192,28 @@ end:
 	return ret;
 }
 
-static void test_session_list(void)
+static void test_session_list()
 {
 	session_list = session_get_list();
-	ok(session_list != NULL, "Session list: not NULL");
+	ok(session_list != nullptr, "Session list: not NULL");
 }
 
-static void test_create_one_session(void)
+static void test_create_one_session()
 {
 	ok(create_one_session(SESSION1) == 0, "Create session: %s", SESSION1);
 }
 
-static void test_validate_session(void)
+static void test_validate_session()
 {
 	struct ltt_session *tmp;
 
 	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
-	ok(tmp != NULL, "Validating session: session found");
+	ok(tmp != nullptr, "Validating session: session found");
 
 	if (tmp) {
-		ok(tmp->kernel_session == NULL && strlen(tmp->name),
+		ok(tmp->kernel_session == nullptr && strlen(tmp->name),
 		   "Validating session: basic sanity check");
 	} else {
 		skip(1, "Skipping session validation check as session was not found");
@@ -227,14 +227,14 @@ end:
 	session_unlock_list();
 }
 
-static void test_destroy_session(void)
+static void test_destroy_session()
 {
 	struct ltt_session *tmp;
 
 	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
-	ok(tmp != NULL, "Destroying session: session found");
+	ok(tmp != nullptr, "Destroying session: session found");
 
 	if (tmp) {
 		ok(destroy_one_session(tmp) == 0, "Destroying session: %s destroyed", SESSION1);
@@ -244,19 +244,19 @@ static void test_destroy_session(void)
 	session_unlock_list();
 }
 
-static void test_duplicate_session(void)
+static void test_duplicate_session()
 {
 	ok(two_session_same_name() == 0, "Duplicate session creation");
 }
 
-static void test_session_name_generation(void)
+static void test_session_name_generation()
 {
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 	enum lttng_error_code ret_code;
 	const char *expected_session_name_prefix = DEFAULT_SESSION_NAME;
 
 	session_lock_list();
-	ret_code = session_create(NULL, geteuid(), getegid(), &session);
+	ret_code = session_create(nullptr, geteuid(), getegid(), &session);
 	ok(ret_code == LTTNG_OK, "Create session with a NULL name (auto-generate a name)");
 	if (!session) {
 		skip(1, "Skipping session name generation tests as session_create() failed.");
@@ -274,7 +274,7 @@ end:
 	session_unlock_list();
 }
 
-static void test_large_session_number(void)
+static void test_large_session_number()
 {
 	int ret, i, failed = 0;
 	struct ltt_session *iter, *tmp;
@@ -310,7 +310,7 @@ static void test_large_session_number(void)
 	   MAX_SESSIONS);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 

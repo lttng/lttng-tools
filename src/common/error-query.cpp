@@ -100,8 +100,8 @@ lttng_error_query_result_counter_mi_serialize(const struct lttng_error_query_res
 
 struct lttng_error_query *lttng_error_query_trigger_create(const struct lttng_trigger *trigger)
 {
-	struct lttng_error_query_trigger *query = NULL;
-	struct lttng_trigger *trigger_copy = NULL;
+	struct lttng_error_query_trigger *query = nullptr;
+	struct lttng_trigger *trigger_copy = nullptr;
 
 	if (!trigger) {
 		goto end;
@@ -120,18 +120,18 @@ struct lttng_error_query *lttng_error_query_trigger_create(const struct lttng_tr
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER;
 	query->trigger = trigger_copy;
-	trigger_copy = NULL;
+	trigger_copy = nullptr;
 
 error:
 	lttng_trigger_put(trigger_copy);
 end:
-	return query ? &query->parent : NULL;
+	return query ? &query->parent : nullptr;
 }
 
 struct lttng_error_query *lttng_error_query_condition_create(const struct lttng_trigger *trigger)
 {
-	struct lttng_error_query_condition *query = NULL;
-	struct lttng_trigger *trigger_copy = NULL;
+	struct lttng_error_query_condition *query = nullptr;
+	struct lttng_trigger *trigger_copy = nullptr;
 
 	if (!trigger) {
 		goto end;
@@ -150,12 +150,12 @@ struct lttng_error_query *lttng_error_query_condition_create(const struct lttng_
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION;
 	query->trigger = trigger_copy;
-	trigger_copy = NULL;
+	trigger_copy = nullptr;
 
 error:
 	lttng_trigger_put(trigger_copy);
 end:
-	return query ? &query->parent : NULL;
+	return query ? &query->parent : nullptr;
 }
 
 static struct lttng_action *
@@ -164,7 +164,7 @@ get_trigger_action_from_path(struct lttng_trigger *trigger,
 {
 	size_t index_count, i;
 	enum lttng_action_path_status path_status;
-	struct lttng_action *current_action = NULL;
+	struct lttng_action *current_action = nullptr;
 
 	path_status = lttng_action_path_get_index_count(action_path, &index_count);
 	if (path_status != LTTNG_ACTION_PATH_STATUS_OK) {
@@ -202,8 +202,8 @@ struct lttng_error_query *
 lttng_error_query_action_create(const struct lttng_trigger *trigger,
 				const struct lttng_action_path *action_path)
 {
-	struct lttng_error_query_action *query = NULL;
-	struct lttng_trigger *trigger_copy = NULL;
+	struct lttng_error_query_action *query = nullptr;
+	struct lttng_trigger *trigger_copy = nullptr;
 	int ret_copy;
 
 	if (!trigger || !action_path || !is_valid_action_path(trigger, action_path)) {
@@ -228,14 +228,14 @@ lttng_error_query_action_create(const struct lttng_trigger *trigger,
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION;
 	query->trigger = trigger_copy;
-	trigger_copy = NULL;
+	trigger_copy = nullptr;
 	goto end;
 
 error:
 	lttng_trigger_put(trigger_copy);
-	lttng_error_query_destroy(query ? &query->parent : NULL);
+	lttng_error_query_destroy(query ? &query->parent : nullptr);
 end:
-	return query ? &query->parent : NULL;
+	return query ? &query->parent : nullptr;
 }
 
 void lttng_error_query_destroy(struct lttng_error_query *query)
@@ -417,7 +417,7 @@ lttng_error_query_result_counter_create(const char *name, const char *descriptio
 error:
 	lttng_error_query_result_destroy(&counter->parent);
 end:
-	return counter ? &counter->parent : NULL;
+	return counter ? &counter->parent : nullptr;
 }
 
 static void destroy_result(void *ptr)
@@ -427,7 +427,7 @@ static void destroy_result(void *ptr)
 	lttng_error_query_result_destroy(result);
 }
 
-struct lttng_error_query_results *lttng_error_query_results_create(void)
+struct lttng_error_query_results *lttng_error_query_results_create()
 {
 	struct lttng_error_query_results *set = zmalloc<lttng_error_query_results>();
 
@@ -569,7 +569,7 @@ ssize_t lttng_error_query_results_create_from_payload(struct lttng_payload_view 
 	struct lttng_error_query_results_comm *header;
 	struct lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
-	struct lttng_error_query_results *results = NULL;
+	struct lttng_error_query_results *results = nullptr;
 
 	if (!lttng_payload_view_is_valid(&header_view)) {
 		ERR("Failed to map view to error query result set header");
@@ -612,7 +612,7 @@ ssize_t lttng_error_query_results_create_from_payload(struct lttng_payload_view 
 	}
 
 	*_results = results;
-	results = NULL;
+	results = nullptr;
 end:
 	lttng_error_query_results_destroy(results);
 	return total_used_size;
@@ -777,7 +777,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t used_size = 0;
 	struct lttng_error_query_comm *header;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_trigger *trigger = nullptr;
 	struct lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
 
@@ -847,7 +847,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 	{
-		struct lttng_action_path *action_path = NULL;
+		struct lttng_action_path *action_path = nullptr;
 
 		{
 			ssize_t trigger_used_size;
@@ -1077,8 +1077,8 @@ lttng_error_query_result_mi_serialize(const struct lttng_error_query_result *res
 	enum lttng_error_code ret_code;
 	enum lttng_error_query_result_status result_status;
 	enum lttng_error_query_result_type type;
-	const char *name = NULL;
-	const char *description = NULL;
+	const char *name = nullptr;
+	const char *description = nullptr;
 
 	LTTNG_ASSERT(result);
 	LTTNG_ASSERT(writer);

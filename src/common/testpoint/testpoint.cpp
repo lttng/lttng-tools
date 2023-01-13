@@ -23,12 +23,12 @@ int lttng_testpoint_activated;
 /*
  * Toggle the support for testpoints on the application startup.
  */
-static void __attribute__((constructor)) lttng_testpoint_check(void)
+static void __attribute__((constructor)) lttng_testpoint_check()
 {
-	char *testpoint_env_val = NULL;
+	char *testpoint_env_val = nullptr;
 
 	testpoint_env_val = getenv(lttng_testpoint_env_var);
-	if (testpoint_env_val != NULL && (strncmp(testpoint_env_val, "1", 1) == 0)) {
+	if (testpoint_env_val != nullptr && (strncmp(testpoint_env_val, "1", 1) == 0)) {
 		lttng_testpoint_activated = 1;
 	}
 }
@@ -42,7 +42,7 @@ static void __attribute__((constructor)) lttng_testpoint_check(void)
 void *lttng_testpoint_lookup(const char *name)
 {
 	if (!name) {
-		return NULL;
+		return nullptr;
 	}
 
 	return dlsym(RTLD_DEFAULT, name);

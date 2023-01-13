@@ -34,9 +34,9 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static int mi_print_session(char *session_name, int enabled)
@@ -77,16 +77,16 @@ static int start_tracing(const char *arg_session_name)
 	int ret;
 	char *session_name;
 
-	if (arg_session_name == NULL) {
+	if (arg_session_name == nullptr) {
 		session_name = get_session_name();
 	} else {
 		session_name = strdup(arg_session_name);
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			PERROR("Failed to copy session name");
 		}
 	}
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -132,10 +132,10 @@ int cmd_start(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	const char *arg_session_name = NULL;
-	const char *leftover = NULL;
+	const char *arg_session_name = nullptr;
+	const char *leftover = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {

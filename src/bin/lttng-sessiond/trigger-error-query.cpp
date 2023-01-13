@@ -26,7 +26,7 @@ lttng_trigger_condition_add_error_results(const struct lttng_trigger *trigger,
 	enum lttng_trigger_status status;
 	uint64_t discarded_tracer_messages_count;
 	enum event_notifier_error_accounting_status error_accounting_status;
-	struct lttng_error_query_result *discarded_tracer_messages_counter = NULL;
+	struct lttng_error_query_result *discarded_tracer_messages_counter = nullptr;
 	const char *trigger_name;
 	uid_t trigger_owner;
 
@@ -71,7 +71,7 @@ lttng_trigger_condition_add_error_results(const struct lttng_trigger *trigger,
 	}
 
 	/* Ownership transferred to the results. */
-	discarded_tracer_messages_counter = NULL;
+	discarded_tracer_messages_counter = nullptr;
 
 	status = LTTNG_TRIGGER_STATUS_OK;
 end:

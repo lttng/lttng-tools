@@ -16,7 +16,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-static void test_contains_string(void)
+static void test_contains_string()
 {
 	const char buf[] = { 'A', 'l', 'l', 'o', '\0' };
 	struct lttng_buffer_view view = lttng_buffer_view_init(buf, 0, 5);
@@ -30,7 +30,7 @@ static void test_contains_string(void)
 	ok1(!lttng_buffer_view_contains_string(&view_minus_one, buf, 5));
 }
 
-int main(void)
+int main()
 {
 	plan_tests(TEST_COUNT);
 

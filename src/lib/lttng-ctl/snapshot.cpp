@@ -81,7 +81,7 @@ int lttng_snapshot_del_output(const char *session_name, struct lttng_snapshot_ou
 
 	memcpy(&lsm.u.snapshot_output.output, output, sizeof(lsm.u.snapshot_output.output));
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -97,7 +97,7 @@ int lttng_snapshot_list_output(const char *session_name, struct lttng_snapshot_o
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_snapshot_output_list *new_list = NULL;
+	struct lttng_snapshot_output_list *new_list = nullptr;
 
 	if (!session_name || !list) {
 		ret = -LTTNG_ERR_INVALID;
@@ -144,7 +144,7 @@ error:
 struct lttng_snapshot_output *
 lttng_snapshot_output_list_get_next(struct lttng_snapshot_output_list *list)
 {
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 
 	if (!list) {
 		goto error;
@@ -219,7 +219,7 @@ int lttng_snapshot_record(const char *session_name,
 	}
 
 	/* The wait param is ignored. */
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -365,7 +365,7 @@ end:
 int lttng_snapshot_output_set_local_path(const char *path, struct lttng_snapshot_output *output)
 {
 	int ret;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 	ssize_t num_uris;
 
 	if (!path || !output) {
@@ -373,7 +373,7 @@ int lttng_snapshot_output_set_local_path(const char *path, struct lttng_snapshot
 		goto end;
 	}
 
-	num_uris = uri_parse_str_urls(path, NULL, &uris);
+	num_uris = uri_parse_str_urls(path, nullptr, &uris);
 	if (num_uris != 1) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -398,7 +398,7 @@ end:
 int lttng_snapshot_output_set_network_url(const char *url, struct lttng_snapshot_output *output)
 {
 	int ret;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 	ssize_t num_uris;
 
 	if (!url || !output) {
@@ -406,7 +406,7 @@ int lttng_snapshot_output_set_network_url(const char *url, struct lttng_snapshot
 		goto end;
 	}
 
-	num_uris = uri_parse_str_urls(url, NULL, &uris);
+	num_uris = uri_parse_str_urls(url, nullptr, &uris);
 	if (num_uris != 2) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -438,7 +438,7 @@ int lttng_snapshot_output_set_network_urls(const char *ctrl_url,
 					   struct lttng_snapshot_output *output)
 {
 	int ret;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 	ssize_t num_uris;
 
 	if (!ctrl_url || !data_url || !output) {

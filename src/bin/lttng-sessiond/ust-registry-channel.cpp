@@ -16,6 +16,8 @@
 #include <common/make-unique.hpp>
 #include <common/urcu.hpp>
 
+#include <utility>
+
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
@@ -342,8 +344,8 @@ lsu::registry_channel::registry_channel(
 	_key{ -1ULL },
 	_consumer_key{ -1ULL },
 	_next_event_id{ 0 },
-	_is_registered_listener{ channel_registered_listener },
-	_event_added_listener{ event_added_listener },
+	_is_registered_listener{ std::move(channel_registered_listener) },
+	_event_added_listener{ std::move(event_added_listener) },
 	_is_registered{ false }
 {
 	_events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);

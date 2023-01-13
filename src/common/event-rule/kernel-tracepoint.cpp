@@ -28,7 +28,7 @@ static void lttng_event_rule_kernel_tracepoint_destroy(struct lttng_event_rule *
 {
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
 
-	if (rule == NULL) {
+	if (rule == nullptr) {
 		return;
 	}
 
@@ -81,7 +81,7 @@ static int lttng_event_rule_kernel_tracepoint_serialize(const struct lttng_event
 
 	pattern_len = strlen(tracepoint->pattern) + 1;
 
-	if (tracepoint->filter_expression != NULL) {
+	if (tracepoint->filter_expression != nullptr) {
 		filter_expression_len = strlen(tracepoint->filter_expression) + 1;
 	} else {
 		filter_expression_len = 0;
@@ -154,7 +154,7 @@ lttng_event_rule_kernel_tracepoint_generate_filter_bytecode(struct lttng_event_r
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
 	enum lttng_event_rule_status status;
 	const char *filter;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 
 	LTTNG_ASSERT(rule);
 
@@ -162,7 +162,7 @@ lttng_event_rule_kernel_tracepoint_generate_filter_bytecode(struct lttng_event_r
 
 	status = lttng_event_rule_kernel_tracepoint_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
-		filter = NULL;
+		filter = nullptr;
 	} else if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret_code = LTTNG_ERR_FILTER_INVAL;
 		goto end;
@@ -175,15 +175,15 @@ lttng_event_rule_kernel_tracepoint_generate_filter_bytecode(struct lttng_event_r
 
 	if (filter) {
 		tracepoint->internal_filter.filter = strdup(filter);
-		if (tracepoint->internal_filter.filter == NULL) {
+		if (tracepoint->internal_filter.filter == nullptr) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto error;
 		}
 	} else {
-		tracepoint->internal_filter.filter = NULL;
+		tracepoint->internal_filter.filter = nullptr;
 	}
 
-	if (tracepoint->internal_filter.filter == NULL) {
+	if (tracepoint->internal_filter.filter == nullptr) {
 		ret_code = LTTNG_OK;
 		goto end;
 	}
@@ -195,7 +195,7 @@ lttng_event_rule_kernel_tracepoint_generate_filter_bytecode(struct lttng_event_r
 	}
 
 	tracepoint->internal_filter.bytecode = bytecode;
-	bytecode = NULL;
+	bytecode = nullptr;
 	ret_code = LTTNG_OK;
 
 error:
@@ -230,7 +230,7 @@ lttng_event_rule_kernel_tracepoint_generate_exclusions(const struct lttng_event_
 						       struct lttng_event_exclusion **_exclusions)
 {
 	/* Unsupported. */
-	*_exclusions = NULL;
+	*_exclusions = nullptr;
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
@@ -257,8 +257,8 @@ lttng_event_rule_kernel_tracepoint_mi_serialize(const struct lttng_event_rule *r
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_event_rule_status status;
-	const char *filter = NULL;
-	const char *name_pattern = NULL;
+	const char *filter = nullptr;
+	const char *name_pattern = nullptr;
 
 	LTTNG_ASSERT(rule);
 	LTTNG_ASSERT(writer);
@@ -286,7 +286,7 @@ lttng_event_rule_kernel_tracepoint_mi_serialize(const struct lttng_event_rule *r
 	}
 
 	/* Filter. */
-	if (filter != NULL) {
+	if (filter != nullptr) {
 		ret = mi_lttng_writer_write_element_string(
 			writer, mi_lttng_element_event_rule_filter_expression, filter);
 		if (ret) {
@@ -311,7 +311,7 @@ end:
 
 struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 {
-	struct lttng_event_rule *rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_kernel_tracepoint *tp_rule;
 	enum lttng_event_rule_status status;
 
@@ -337,13 +337,13 @@ struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 	tp_rule->parent.mi_serialize = lttng_event_rule_kernel_tracepoint_mi_serialize;
 
 	/* Not necessary for now. */
-	tp_rule->parent.generate_lttng_event = NULL;
+	tp_rule->parent.generate_lttng_event = nullptr;
 
 	/* Default pattern is '*'. */
 	status = lttng_event_rule_kernel_tracepoint_set_name_pattern(rule, "*");
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		lttng_event_rule_destroy(rule);
-		rule = NULL;
+		rule = nullptr;
 	}
 
 end:
@@ -358,9 +358,9 @@ lttng_event_rule_kernel_tracepoint_create_from_payload(struct lttng_payload_view
 	enum lttng_event_rule_status status;
 	const struct lttng_event_rule_kernel_tracepoint_comm *tracepoint_comm;
 	const char *pattern;
-	const char *filter_expression = NULL;
+	const char *filter_expression = nullptr;
 	struct lttng_buffer_view current_buffer_view;
-	struct lttng_event_rule *rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
 
 	if (!_event_rule) {
 		ret = -1;
@@ -448,7 +448,7 @@ skip_filter_expression:
 	}
 
 	*_event_rule = rule;
-	rule = NULL;
+	rule = nullptr;
 	ret = offset;
 end:
 	lttng_event_rule_destroy(rule);
@@ -459,7 +459,7 @@ enum lttng_event_rule_status
 lttng_event_rule_kernel_tracepoint_set_name_pattern(struct lttng_event_rule *rule,
 						    const char *pattern)
 {
-	char *pattern_copy = NULL;
+	char *pattern_copy = nullptr;
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -481,7 +481,7 @@ lttng_event_rule_kernel_tracepoint_set_name_pattern(struct lttng_event_rule *rul
 	free(tracepoint->pattern);
 
 	tracepoint->pattern = pattern_copy;
-	pattern_copy = NULL;
+	pattern_copy = nullptr;
 end:
 	return status;
 }
@@ -512,7 +512,7 @@ end:
 enum lttng_event_rule_status
 lttng_event_rule_kernel_tracepoint_set_filter(struct lttng_event_rule *rule, const char *expression)
 {
-	char *expression_copy = NULL;
+	char *expression_copy = nullptr;
 	struct lttng_event_rule_kernel_tracepoint *tracepoint;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -535,7 +535,7 @@ lttng_event_rule_kernel_tracepoint_set_filter(struct lttng_event_rule *rule, con
 	}
 
 	tracepoint->filter_expression = expression_copy;
-	expression_copy = NULL;
+	expression_copy = nullptr;
 end:
 	return status;
 }

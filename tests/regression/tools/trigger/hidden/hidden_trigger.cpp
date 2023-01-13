@@ -25,12 +25,12 @@
 #define TEST_SESSION_NAME "test_session"
 #define TEST_CHANNEL_NAME "test_channel"
 
-static int get_registered_triggers_count(void)
+static int get_registered_triggers_count()
 {
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count;
 
 	ret_code = lttng_list_triggers(&triggers);
@@ -57,7 +57,7 @@ end:
 static int setup_session_with_size_rotation_schedule(const char *session_output_path)
 {
 	int ret;
-	struct lttng_session_descriptor *session_desriptor = NULL;
+	struct lttng_session_descriptor *session_desriptor = nullptr;
 	enum lttng_error_code ret_code;
 	struct lttng_handle ust_channel_handle = { TEST_SESSION_NAME,
 						   {
@@ -77,7 +77,7 @@ static int setup_session_with_size_rotation_schedule(const char *session_output_
 	channel_cfg.attr.output = LTTNG_EVENT_MMAP;
 
 	enum lttng_rotation_status rotation_status;
-	struct lttng_rotation_schedule *rotation_schedule = NULL;
+	struct lttng_rotation_schedule *rotation_schedule = nullptr;
 
 	session_desriptor =
 		lttng_session_descriptor_local_create(TEST_SESSION_NAME, session_output_path);

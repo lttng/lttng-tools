@@ -233,8 +233,8 @@ ssize_t lttng_action_snapshot_session_create_from_payload(struct lttng_payload_v
 	const char *variable_data;
 	struct lttng_action *action;
 	enum lttng_action_status status;
-	struct lttng_snapshot_output *snapshot_output = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_snapshot_output *snapshot_output = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 	const struct lttng_action_snapshot_session_comm *comm;
 	const struct lttng_payload_view snapshot_session_comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*comm));
@@ -295,7 +295,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(struct lttng_payload_v
 		}
 
 		/* Ownership has been transferred to the action. */
-		snapshot_output = NULL;
+		snapshot_output = nullptr;
 	}
 
 	variable_data += comm->snapshot_output_len;
@@ -340,7 +340,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(struct lttng_payload_v
 	consumed_len += comm->rate_policy_len;
 
 	*p_action = action;
-	action = NULL;
+	action = nullptr;
 
 	goto end;
 
@@ -362,20 +362,20 @@ lttng_action_snapshot_session_mi_serialize(const struct lttng_action *action,
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_action_status status;
-	const char *session_name = NULL;
-	const struct lttng_snapshot_output *output = NULL;
-	const struct lttng_rate_policy *policy = NULL;
+	const char *session_name = nullptr;
+	const struct lttng_snapshot_output *output = nullptr;
+	const struct lttng_rate_policy *policy = nullptr;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_SNAPSHOT_SESSION_ACTION(action));
 
 	status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(session_name != NULL);
+	LTTNG_ASSERT(session_name != nullptr);
 
 	status = lttng_action_snapshot_session_get_rate_policy(action, &policy);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(policy != NULL);
+	LTTNG_ASSERT(policy != nullptr);
 
 	/* Open action snapshot session element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_snapshot_session);
@@ -393,7 +393,7 @@ lttng_action_snapshot_session_mi_serialize(const struct lttng_action *action,
 	/* Output if any. */
 	status = lttng_action_snapshot_session_get_output(action, &output);
 	if (status == LTTNG_ACTION_STATUS_OK) {
-		LTTNG_ASSERT(output != NULL);
+		LTTNG_ASSERT(output != nullptr);
 		ret_code = lttng_snapshot_output_mi_serialize(output, writer);
 		if (ret_code != LTTNG_OK) {
 			goto end;
@@ -426,8 +426,8 @@ end:
 
 struct lttng_action *lttng_action_snapshot_session_create(void)
 {
-	struct lttng_action_snapshot_session *action_snapshot = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_action_snapshot_session *action_snapshot = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 	enum lttng_action_status status;
 
 	/* Create a every N = 1 rate policy. */
@@ -454,7 +454,7 @@ struct lttng_action *lttng_action_snapshot_session_create(void)
 	status = lttng_action_snapshot_session_set_rate_policy(&action_snapshot->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		lttng_action_destroy(&action_snapshot->parent);
-		action_snapshot = NULL;
+		action_snapshot = nullptr;
 		goto end;
 	}
 
@@ -570,7 +570,7 @@ lttng_action_snapshot_session_set_rate_policy(struct lttng_action *action,
 {
 	enum lttng_action_status status;
 	struct lttng_action_snapshot_session *snapshot_session_action;
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 
 	if (!action || !policy || !IS_SNAPSHOT_SESSION_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
@@ -591,7 +591,7 @@ lttng_action_snapshot_session_set_rate_policy(struct lttng_action *action,
 	/* Assign the policy. */
 	snapshot_session_action->policy = copy;
 	status = LTTNG_ACTION_STATUS_OK;
-	copy = NULL;
+	copy = nullptr;
 
 end:
 	lttng_rate_policy_destroy(copy);

@@ -75,7 +75,7 @@ public:
 	const unsigned int alignment;
 
 protected:
-	type(unsigned int alignment);
+	explicit type(unsigned int alignment);
 
 private:
 	virtual bool _is_equal(const type& rhs) const noexcept = 0;
@@ -138,9 +138,9 @@ public:
 			base base,
 			roles roles = {});
 
-	virtual type::cuptr copy() const override;
+	type::cuptr copy() const override;
 
-	virtual void accept(type_visitor& visitor) const override;
+	void accept(type_visitor& visitor) const override;
 
 	const enum byte_order byte_order;
 	const unsigned int size;
@@ -154,7 +154,7 @@ public:
 	const roles roles_;
 
 protected:
-	virtual bool _is_equal(const type& other) const noexcept override;
+	bool _is_equal(const type& other) const noexcept override;
 };
 
 class floating_point_type : public type {
@@ -164,16 +164,16 @@ public:
 			unsigned int exponent_digits,
 			unsigned int mantissa_digits);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const enum byte_order byte_order;
 	const unsigned int exponent_digits;
 	const unsigned int mantissa_digits;
 
 private:
-	virtual bool _is_equal(const type& other) const noexcept override final;
+	bool _is_equal(const type& other) const noexcept final;
 };
 
 class enumeration_type : public integer_type {
@@ -185,7 +185,7 @@ protected:
 			enum base base,
 			integer_type::roles roles = {});
 
-	virtual void accept(type_visitor& visitor) const = 0;
+	void accept(type_visitor& visitor) const override = 0;
 };
 
 namespace details {
@@ -215,8 +215,8 @@ public:
 	using range_t = enumeration_mapping_range<MappingIntegerType>;
 
 	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = default;
-	enumeration_mapping(const enumeration_mapping<MappingIntegerType>&& other) :
-		name{std::move(other.name)}, range{other.range}
+	enumeration_mapping(const enumeration_mapping<MappingIntegerType>&& other) noexcept :
+		name{ std::move(other.name) }, range{ other.range }
 	{
 	}
 
@@ -273,18 +273,18 @@ public:
 	{
 	}
 
-	virtual type::cuptr copy() const override
+	type::cuptr copy() const override
 	{
 		return lttng::make_unique<typed_enumeration_type<MappingIntegerType>>(
 				alignment, byte_order, size, base_, mappings_, roles_);
 	}
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const std::shared_ptr<const mappings> mappings_;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final
+	bool _is_equal(const type& base_other) const noexcept final
 	{
 		const auto& other = static_cast<const typed_enumeration_type<MappingIntegerType>&>(
 				base_other);
@@ -304,7 +304,7 @@ public:
 	const type::cuptr element_type;
 
 protected:
-	virtual bool _is_equal(const type& base_other) const noexcept override;
+	bool _is_equal(const type& base_other) const noexcept override;
 };
 
 class static_length_array_type : public array_type {
@@ -313,14 +313,14 @@ public:
 			type::cuptr element_type,
 			uint64_t in_length);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const uint64_t length;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class dynamic_length_array_type : public array_type {
@@ -329,14 +329,14 @@ public:
 			type::cuptr element_type,
 			field_location length_field_location);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const field_location length_field_location;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class static_length_blob_type : public type {
@@ -350,29 +350,29 @@ public:
 
 	static_length_blob_type(unsigned int alignment, uint64_t in_length_bytes, roles roles = {});
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const uint64_t length_bytes;
 	const roles roles_;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class dynamic_length_blob_type : public type {
 public:
 	dynamic_length_blob_type(unsigned int alignment, field_location length_field_location);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const field_location length_field_location;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class string_type : public type {
@@ -392,7 +392,7 @@ public:
 	const encoding encoding_;
 
 protected:
-	virtual bool _is_equal(const type& base_other) const noexcept override;
+	bool _is_equal(const type& base_other) const noexcept override;
 };
 
 class static_length_string_type : public string_type {
@@ -400,14 +400,14 @@ public:
 	static_length_string_type(
 			unsigned int alignment, enum encoding in_encoding, uint64_t length);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const uint64_t length;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class dynamic_length_string_type : public string_type {
@@ -416,23 +416,23 @@ public:
 			enum encoding in_encoding,
 			field_location length_field_location);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const field_location length_field_location;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 class null_terminated_string_type : public string_type {
 public:
 	null_terminated_string_type(unsigned int alignment, enum encoding in_encoding);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 };
 
 class structure_type : public type {
@@ -441,14 +441,14 @@ public:
 
 	structure_type(unsigned int alignment, fields in_fields);
 
-	virtual type::cuptr copy() const override final;
+	type::cuptr copy() const final;
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const fields fields_;
 
 private:
-	virtual bool _is_equal(const type& base_other) const noexcept override final;
+	bool _is_equal(const type& base_other) const noexcept final;
 };
 
 template <typename MappingIntegerType>
@@ -474,7 +474,7 @@ public:
 	{
 	}
 
-	virtual type::cuptr copy() const override final
+	type::cuptr copy() const final
 	{
 		choices copy_of_choices;
 
@@ -488,7 +488,7 @@ public:
 			alignment, selector_field_location, std::move(copy_of_choices));
 	}
 
-	virtual void accept(type_visitor& visitor) const override final;
+	void accept(type_visitor& visitor) const final;
 
 	const field_location selector_field_location;
 	const choices choices_;
@@ -509,7 +509,7 @@ private:
 				});
 	}
 
-	virtual bool _is_equal(const type& base_other) const noexcept override final
+	bool _is_equal(const type& base_other) const noexcept final
 	{
 		const auto& other = static_cast<decltype(*this)&>(base_other);
 

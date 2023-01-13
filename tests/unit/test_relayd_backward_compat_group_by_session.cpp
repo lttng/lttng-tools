@@ -144,14 +144,14 @@ struct test tests[] = {
 static char *craft_expected(struct test *test, time_t relay_session_creation_time)
 {
 	int ret;
-	char *result = NULL;
+	char *result = nullptr;
 	char relay_session_creation_datetime[DATETIME_STR_LEN];
 
 	ret = time_to_datetime_str(relay_session_creation_time,
 				   relay_session_creation_datetime,
 				   sizeof(relay_session_creation_datetime));
 	if (ret < 0) {
-		result = NULL;
+		result = nullptr;
 		goto end;
 	}
 
@@ -165,18 +165,18 @@ static char *craft_expected(struct test *test, time_t relay_session_creation_tim
 		       test->extra_path[0] != '\0' ? "/" : "",
 		       test->leftover);
 	if (ret < 0) {
-		result = NULL;
+		result = nullptr;
 		goto end;
 	}
 end:
 	return result;
 }
 
-int main(void)
+int main()
 {
 	int i;
 	int num_test = sizeof(tests) / sizeof(struct test);
-	const time_t test_time = time(NULL);
+	const time_t test_time = time(nullptr);
 
 	plan_tests(NUM_TESTS_PER_TEST * num_test);
 	diag("Backward compatibility utils for lttng-relayd --group-by-session");
@@ -187,8 +187,8 @@ int main(void)
 	}
 
 	for (i = 0; i < num_test; i++) {
-		char *expected = NULL;
-		char *result = NULL;
+		char *expected = nullptr;
+		char *result = nullptr;
 
 		expected = craft_expected(&tests[i], test_time);
 		if (!expected) {

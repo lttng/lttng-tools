@@ -12,7 +12,7 @@
 #include <signal.h>
 
 /* Notify parents that we are ready for cmd and health check */
-void sessiond_signal_parents(void)
+void sessiond_signal_parents()
 {
 	/*
 	 * Notify parent pid that we are ready to accept command

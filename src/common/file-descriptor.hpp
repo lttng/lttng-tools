@@ -27,8 +27,7 @@ public:
 
 	file_descriptor(const file_descriptor&) = delete;
 
-	file_descriptor(file_descriptor&& other) : _raw_fd{-1}
-	{
+	file_descriptor(file_descriptor&& other) noexcept {
 		LTTNG_ASSERT(_is_valid_fd(_raw_fd));
 		std::swap(_raw_fd, other._raw_fd);
 	}
@@ -57,7 +56,7 @@ private:
 		return fd >= 0;
 	}
 
-	int _raw_fd;
+	int _raw_fd = -1;
 };
 
 } /* namespace lttng */

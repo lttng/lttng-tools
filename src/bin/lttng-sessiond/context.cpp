@@ -17,8 +17,6 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <urcu/list.h>
 
@@ -51,7 +49,7 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 
 		/* Ownership of kctx_copy is transferred to the callee. */
 		ret = kernel_add_channel_context(kchan, kctx_copy);
-		kctx_copy = NULL;
+		kctx_copy = nullptr;
 		if (ret != 0) {
 			goto error;
 		}
@@ -80,7 +78,7 @@ static int add_kctx_to_channel(struct ltt_kernel_context *kctx, struct ltt_kerne
 
 	/* Ownership of kctx is transferred to the callee. */
 	ret = kernel_add_channel_context(kchan, kctx);
-	kctx = NULL;
+	kctx = nullptr;
 	if (ret != 0) {
 		goto error;
 	}
@@ -100,7 +98,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 			       const struct lttng_event_context *ctx)
 {
 	int ret;
-	struct ltt_ust_context *uctx = NULL;
+	struct ltt_ust_context *uctx = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
@@ -113,7 +111,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 			goto duplicate;
 		}
 	}
-	uctx = NULL;
+	uctx = nullptr;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_JUL:
@@ -154,7 +152,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 
 	/* Create ltt UST context */
 	uctx = trace_ust_create_context(ctx);
-	if (uctx == NULL) {
+	if (uctx == nullptr) {
 		ret = LTTNG_ERR_UST_CONTEXT_INVAL;
 		goto error;
 	}
@@ -197,7 +195,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(channel_name);
 
-	kctx = trace_kernel_create_context(NULL);
+	kctx = trace_kernel_create_context(nullptr);
 	if (!kctx) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
@@ -330,21 +328,21 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	if (*channel_name == '\0') {
 		ret = add_kctx_all_channels(ksession, kctx);
 		/* Ownership of kctx is transferred to the callee. */
-		kctx = NULL;
+		kctx = nullptr;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	} else {
 		/* Get kernel channel */
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
-		if (kchan == NULL) {
+		if (kchan == nullptr) {
 			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 			goto error;
 		}
 
 		ret = add_kctx_to_channel(kctx, kchan);
 		/* Ownership of kctx is transferred to the callee. */
-		kctx = NULL;
+		kctx = nullptr;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -370,7 +368,7 @@ int context_ust_add(struct ltt_ust_session *usess,
 	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
-	struct ltt_ust_channel *uchan = NULL;
+	struct ltt_ust_channel *uchan = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(ctx);
@@ -383,7 +381,7 @@ int context_ust_add(struct ltt_ust_session *usess,
 	/* Get UST channel if defined */
 	if (channel_name[0] != '\0') {
 		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
-		if (uchan == NULL) {
+		if (uchan == nullptr) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}

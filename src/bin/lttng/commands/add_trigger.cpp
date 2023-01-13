@@ -321,7 +321,7 @@ static int parse_kernel_probe_opts(const char *source,
 	int match;
 	char s_hex[19];
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	char *symbol_name = NULL;
+	char *symbol_name = nullptr;
 	uint64_t offset;
 
 	/* Check for symbol+offset. */
@@ -338,7 +338,7 @@ static int parse_kernel_probe_opts(const char *source,
 			PERROR("Failed to copy kernel probe location symbol name.");
 			goto error;
 		}
-		offset = strtoull(s_hex, NULL, 0);
+		offset = strtoull(s_hex, nullptr, 0);
 
 		*location = lttng_kernel_probe_location_symbol_create(symbol_name, offset);
 		if (!*location) {
@@ -379,7 +379,7 @@ static int parse_kernel_probe_opts(const char *source,
 			goto error;
 		}
 
-		address = strtoull(s_hex, NULL, 0);
+		address = strtoull(s_hex, nullptr, 0);
 		*location = lttng_kernel_probe_location_address_create(address);
 		if (!*location) {
 			ERR("Failed to create symbol kernel probe location.");
@@ -392,7 +392,7 @@ static int parse_kernel_probe_opts(const char *source,
 error:
 	/* No match */
 	ret = -1;
-	*location = NULL;
+	*location = nullptr;
 
 end:
 	free(symbol_name);
@@ -402,8 +402,8 @@ end:
 static struct lttng_event_expr *
 ir_op_load_expr_to_event_expr(const struct ir_load_expression *load_expr, const char *capture_str)
 {
-	char *provider_name = NULL;
-	struct lttng_event_expr *event_expr = NULL;
+	char *provider_name = nullptr;
+	struct lttng_event_expr *event_expr = nullptr;
 	const struct ir_load_expression_op *load_expr_op = load_expr->child;
 	const enum ir_load_expression_type load_expr_child_type = load_expr_op->type;
 
@@ -525,7 +525,7 @@ ir_op_load_expr_to_event_expr(const struct ir_load_expression *load_expr, const 
 
 error:
 	lttng_event_expr_destroy(event_expr);
-	event_expr = NULL;
+	event_expr = nullptr;
 
 end:
 	free(provider_name);
@@ -536,7 +536,7 @@ end:
 static struct lttng_event_expr *ir_op_load_to_event_expr(const struct ir_op *ir,
 							 const char *capture_str)
 {
-	struct lttng_event_expr *event_expr = NULL;
+	struct lttng_event_expr *event_expr = nullptr;
 
 	LTTNG_ASSERT(ir->op == IR_OP_LOAD);
 
@@ -580,7 +580,7 @@ static const char *ir_operator_type_human_str(enum ir_op_type op)
 static struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
 							 const char *capture_str)
 {
-	struct lttng_event_expr *event_expr = NULL;
+	struct lttng_event_expr *event_expr = nullptr;
 
 	LTTNG_ASSERT(ir->op == IR_OP_ROOT);
 	ir = ir->u.root.child;
@@ -622,33 +622,33 @@ struct parse_event_rule_res {
 static struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv, int argc_offset)
 {
 	enum lttng_event_rule_type event_rule_type = LTTNG_EVENT_RULE_TYPE_UNKNOWN;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
 	int consumed_args = -1;
-	struct lttng_kernel_probe_location *kernel_probe_location = NULL;
-	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
+	struct lttng_kernel_probe_location *kernel_probe_location = nullptr;
+	struct lttng_userspace_probe_location *userspace_probe_location = nullptr;
 	struct parse_event_rule_res res = {};
-	struct lttng_event_expr *event_expr = NULL;
-	struct filter_parser_ctx *parser_ctx = NULL;
-	struct lttng_log_level_rule *log_level_rule = NULL;
+	struct lttng_event_expr *event_expr = nullptr;
+	struct filter_parser_ctx *parser_ctx = nullptr;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
 
 	/* Event rule type option */
-	char *event_rule_type_str = NULL;
+	char *event_rule_type_str = nullptr;
 
 	/* Tracepoint and syscall options. */
-	char *name = NULL;
+	char *name = nullptr;
 	/* Array of strings. */
 	struct lttng_dynamic_pointer_array exclude_names;
 
 	/* For userspace / kernel probe and function. */
-	char *location = NULL;
-	char *event_name = NULL;
+	char *location = nullptr;
+	char *event_name = nullptr;
 
 	/* Filter. */
-	char *filter = NULL;
+	char *filter = nullptr;
 
 	/* Log level. */
-	char *log_level_str = NULL;
+	char *log_level_str = nullptr;
 
 	lttng_dynamic_pointer_array_init(&res.capture_descriptors, destroy_event_expr);
 
@@ -664,7 +664,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 		enum parse_next_item_status status;
 
 		status = parse_next_item(
-			argpar_iter, &argpar_item, argc_offset, *argv, false, NULL, NULL);
+			argpar_iter, &argpar_item, argc_offset, *argv, false, nullptr, nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
@@ -765,7 +765,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 				 * The ownership of event expression was
 				 * transferred to the dynamic array.
 				 */
-				event_expr = NULL;
+				event_expr = nullptr;
 
 				break;
 			}
@@ -934,7 +934,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 					log_level);
 			}
 
-			if (log_level_rule == NULL) {
+			if (log_level_rule == nullptr) {
 				ERR("Failed to create log level rule object.");
 				goto error;
 			}
@@ -1252,7 +1252,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 
 error:
 	lttng_event_rule_destroy(res.er);
-	res.er = NULL;
+	res.er = nullptr;
 	lttng_dynamic_pointer_array_reset(&res.capture_descriptors);
 
 end:
@@ -1286,13 +1286,13 @@ handle_condition_event(int *argc, const char ***argv, int argc_offset)
 
 	res = parse_event_rule(argc, argv, argc_offset);
 	if (!res.er) {
-		c = NULL;
+		c = nullptr;
 		goto error;
 	}
 
 	c = lttng_condition_event_rule_matches_create(res.er);
 	lttng_event_rule_destroy(res.er);
-	res.er = NULL;
+	res.er = nullptr;
 	if (!c) {
 		goto error;
 	}
@@ -1315,14 +1315,14 @@ handle_condition_event(int *argc, const char ***argv, int argc_offset)
 		}
 
 		/* Ownership of event expression moved to `c` */
-		*expr = NULL;
+		*expr = nullptr;
 	}
 
 	goto end;
 
 error:
 	lttng_condition_destroy(c);
-	c = NULL;
+	c = nullptr;
 
 end:
 	lttng_dynamic_pointer_array_reset(&res.capture_descriptors);
@@ -1341,7 +1341,7 @@ static const struct condition_descr condition_descrs[] = {
 	{ "event-rule-matches", handle_condition_event },
 };
 
-static void print_valid_condition_names(void)
+static void print_valid_condition_names()
 {
 	unsigned int i;
 
@@ -1361,7 +1361,7 @@ static struct lttng_condition *parse_condition(const char *condition_name,
 {
 	int i;
 	struct lttng_condition *cond;
-	const struct condition_descr *descr = NULL;
+	const struct condition_descr *descr = nullptr;
 
 	for (i = 0; i < ARRAY_SIZE(condition_descrs); i++) {
 		if (strcmp(condition_name, condition_descrs[i].name) == 0) {
@@ -1387,7 +1387,7 @@ static struct lttng_condition *parse_condition(const char *condition_name,
 
 	goto end;
 error:
-	cond = NULL;
+	cond = nullptr;
 end:
 	return cond;
 }
@@ -1397,17 +1397,17 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 	int ret;
 	size_t num_token = 0;
 	struct lttng_dynamic_pointer_array tokens;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 	enum lttng_rate_policy_type policy_type;
 	unsigned long long value;
 	char *policy_type_str;
 	char *policy_value_str;
 
 	LTTNG_ASSERT(policy_str);
-	lttng_dynamic_pointer_array_init(&tokens, NULL);
+	lttng_dynamic_pointer_array_init(&tokens, nullptr);
 
 	/* Rate policy fields are separated by ':'. */
-	ret = strutils_split(policy_str, ':', 1, &tokens);
+	ret = strutils_split(policy_str, ':', true, &tokens);
 	if (ret == 0) {
 		num_token = lttng_dynamic_pointer_array_get_count(&tokens);
 	}
@@ -1456,7 +1456,7 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 		abort();
 	}
 
-	if (policy == NULL) {
+	if (policy == nullptr) {
 		ERR("Failed to create rate policy `%s`.", policy_str);
 	}
 
@@ -1471,10 +1471,10 @@ static const struct argpar_opt_descr notify_action_opt_descrs[] = {
 
 static struct lttng_action *handle_action_notify(int *argc, const char ***argv, int argc_offset)
 {
-	struct lttng_action *action = NULL;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_action *action = nullptr;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 
 	argpar_iter = argpar_iter_create(*argc, *argv, notify_action_opt_descrs);
 	if (!argpar_iter) {
@@ -1490,7 +1490,7 @@ static struct lttng_action *handle_action_notify(int *argc, const char ***argv, 
 					 argc_offset,
 					 *argv,
 					 false,
-					 NULL,
+					 nullptr,
 					 "While parsing `notify` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
@@ -1547,7 +1547,7 @@ static struct lttng_action *handle_action_notify(int *argc, const char ***argv, 
 
 error:
 	lttng_action_destroy(action);
-	action = NULL;
+	action = nullptr;
 end:
 	lttng_rate_policy_destroy(policy);
 	argpar_item_destroy(argpar_item);
@@ -1564,18 +1564,18 @@ static struct lttng_action *handle_action_simple_session_with_policy(
 	int *argc,
 	const char ***argv,
 	int argc_offset,
-	struct lttng_action *(*create_action_cb)(void),
+	struct lttng_action *(*create_action_cb)(),
 	enum lttng_action_status (*set_session_name_cb)(struct lttng_action *, const char *),
 	enum lttng_action_status (*set_rate_policy_cb)(struct lttng_action *,
 						       const struct lttng_rate_policy *),
 	const char *action_name)
 {
-	struct lttng_action *action = NULL;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	const char *session_name_arg = NULL;
+	struct lttng_action *action = nullptr;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	const char *session_name_arg = nullptr;
 	enum lttng_action_status action_status;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 
 	LTTNG_ASSERT(set_session_name_cb);
 	LTTNG_ASSERT(set_rate_policy_cb);
@@ -1598,7 +1598,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(
 					 argc_offset,
 					 *argv,
 					 false,
-					 NULL,
+					 nullptr,
 					 "While parsing `%s` action:",
 					 action_name);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
@@ -1675,7 +1675,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(
 
 error:
 	lttng_action_destroy(action);
-	action = NULL;
+	action = nullptr;
 
 end:
 	lttng_rate_policy_destroy(policy);
@@ -1735,20 +1735,20 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 static struct lttng_action *
 handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 {
-	struct lttng_action *action = NULL;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	const char *session_name_arg = NULL;
-	char *snapshot_name_arg = NULL;
-	char *ctrl_url_arg = NULL;
-	char *data_url_arg = NULL;
-	char *max_size_arg = NULL;
-	char *url_arg = NULL;
-	char *path_arg = NULL;
-	char *error = NULL;
+	struct lttng_action *action = nullptr;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	const char *session_name_arg = nullptr;
+	char *snapshot_name_arg = nullptr;
+	char *ctrl_url_arg = nullptr;
+	char *data_url_arg = nullptr;
+	char *max_size_arg = nullptr;
+	char *url_arg = nullptr;
+	char *path_arg = nullptr;
+	char *error = nullptr;
 	enum lttng_action_status action_status;
-	struct lttng_snapshot_output *snapshot_output = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_snapshot_output *snapshot_output = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 	int ret;
 	unsigned int locations_specified = 0;
 
@@ -1766,7 +1766,7 @@ handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 					 argc_offset,
 					 *argv,
 					 false,
-					 NULL,
+					 nullptr,
 					 "While parsing `snapshot` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
@@ -1942,7 +1942,7 @@ handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 			goto error;
 		}
 
-		num_uris = uri_parse_str_urls(url_arg, NULL, &uris);
+		num_uris = uri_parse_str_urls(url_arg, nullptr, &uris);
 		if (num_uris < 1) {
 			ERR("Failed to parse '%s' as an URL.", url_arg);
 			goto error;
@@ -1997,7 +1997,7 @@ handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 		}
 
 		/* Ownership of `snapshot_output` has been transferred to the action. */
-		snapshot_output = NULL;
+		snapshot_output = nullptr;
 	}
 
 	if (policy) {
@@ -2013,7 +2013,7 @@ handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 
 error:
 	lttng_action_destroy(action);
-	action = NULL;
+	action = nullptr;
 	free(error);
 end:
 	free(snapshot_name_arg);
@@ -2044,7 +2044,7 @@ static const struct action_descr action_descrs[] = {
 	{ "snapshot-session", handle_action_snapshot_session },
 };
 
-static void print_valid_action_names(void)
+static void print_valid_action_names()
 {
 	unsigned int i;
 
@@ -2064,7 +2064,7 @@ static struct lttng_action *parse_action(const char *action_name,
 {
 	int i;
 	struct lttng_action *action;
-	const struct action_descr *descr = NULL;
+	const struct action_descr *descr = nullptr;
 
 	for (i = 0; i < ARRAY_SIZE(action_descrs); i++) {
 		if (strcmp(action_name, action_descrs[i].name) == 0) {
@@ -2090,7 +2090,7 @@ static struct lttng_action *parse_action(const char *action_name,
 
 	goto end;
 error:
-	action = NULL;
+	action = nullptr;
 end:
 	return action;
 }
@@ -2117,19 +2117,19 @@ int cmd_add_trigger(int argc, const char **argv)
 	int ret;
 	int my_argc = argc - 1;
 	const char **my_argv = argv + 1;
-	struct lttng_condition *condition = NULL;
+	struct lttng_condition *condition = nullptr;
 	struct lttng_dynamic_pointer_array actions;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	const struct argpar_error *argpar_error = NULL;
-	struct lttng_action *action_list = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
-	char *name = NULL;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	const struct argpar_error *argpar_error = nullptr;
+	struct lttng_action *action_list = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
+	char *name = nullptr;
 	int i;
-	char *owner_uid = NULL;
+	char *owner_uid = nullptr;
 	enum lttng_error_code ret_code;
-	struct mi_writer *mi_writer = NULL;
+	struct mi_writer *mi_writer = nullptr;
 
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
 
@@ -2174,10 +2174,10 @@ int cmd_add_trigger(int argc, const char **argv)
 					 my_argv,
 					 true,
 					 &argpar_error,
-					 NULL);
+					 nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			if (argpar_error_type(argpar_error) == ARGPAR_ERROR_TYPE_MISSING_OPT_ARG) {
-				int opt_id = argpar_error_opt_descr(argpar_error, NULL)->id;
+				int opt_id = argpar_error_opt_descr(argpar_error, nullptr)->id;
 
 				if (opt_id == OPT_CONDITION) {
 					print_valid_condition_names();
@@ -2263,7 +2263,7 @@ int cmd_add_trigger(int argc, const char **argv)
 			}
 
 			/* Ownership of the action was transferred to the list. */
-			action = NULL;
+			action = nullptr;
 
 			break;
 		}
@@ -2318,7 +2318,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		 * the action. We can destroy ours.
 		 */
 		lttng_action_destroy(action);
-		action = NULL;
+		action = nullptr;
 	}
 
 	trigger = lttng_trigger_create(condition, action_list);
@@ -2357,7 +2357,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	}
 
 	if (lttng_opt_mi) {
-		ret_code = lttng_trigger_mi_serialize(trigger, mi_writer, NULL);
+		ret_code = lttng_trigger_mi_serialize(trigger, mi_writer, nullptr);
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}

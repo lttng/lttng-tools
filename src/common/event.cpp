@@ -67,7 +67,7 @@ end:
 	return new_event;
 error:
 	free(new_event);
-	new_event = NULL;
+	new_event = nullptr;
 	goto end;
 }
 
@@ -141,7 +141,7 @@ lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_probe_attr_comm *comm;
-	struct lttng_event_probe_attr *local_attr = NULL;
+	struct lttng_event_probe_attr *local_attr = nullptr;
 	struct lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, offset, sizeof(*comm));
 
@@ -154,7 +154,7 @@ lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
 	offset += sizeof(*comm);
 
 	local_attr = zmalloc<lttng_event_probe_attr>();
-	if (local_attr == NULL) {
+	if (local_attr == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -190,7 +190,7 @@ lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
 	}
 
 	*probe_attr = local_attr;
-	local_attr = NULL;
+	local_attr = nullptr;
 	ret = offset;
 end:
 	free(local_attr);
@@ -203,7 +203,7 @@ lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_function_attr_comm *comm;
-	struct lttng_event_function_attr *local_attr = NULL;
+	struct lttng_event_function_attr *local_attr = nullptr;
 	struct lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, offset, sizeof(*comm));
 
@@ -216,7 +216,7 @@ lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 	offset += sizeof(*comm);
 
 	local_attr = zmalloc<lttng_event_function_attr>();
-	if (local_attr == NULL) {
+	if (local_attr == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -249,7 +249,7 @@ lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 	}
 
 	*function_attr = local_attr;
-	local_attr = NULL;
+	local_attr = nullptr;
 	ret = offset;
 end:
 	free(local_attr);
@@ -315,7 +315,7 @@ static ssize_t lttng_event_exclusions_create_from_payload(struct lttng_payload_v
 	}
 
 	*exclusions = local_exclusions;
-	local_exclusions = NULL;
+	local_exclusions = nullptr;
 	ret = offset;
 end:
 	free(local_exclusions);
@@ -329,14 +329,14 @@ ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 					struct lttng_bytecode **out_bytecode)
 {
 	ssize_t ret, offset = 0;
-	struct lttng_event *local_event = NULL;
-	struct lttng_event_exclusion *local_exclusions = NULL;
-	struct lttng_bytecode *local_bytecode = NULL;
-	char *local_filter_expression = NULL;
+	struct lttng_event *local_event = nullptr;
+	struct lttng_event_exclusion *local_exclusions = nullptr;
+	struct lttng_bytecode *local_bytecode = nullptr;
+	char *local_filter_expression = nullptr;
 	const struct lttng_event_comm *event_comm;
-	struct lttng_event_function_attr *local_function_attr = NULL;
-	struct lttng_event_probe_attr *local_probe_attr = NULL;
-	struct lttng_userspace_probe_location *local_userspace_probe_location = NULL;
+	struct lttng_event_function_attr *local_function_attr = nullptr;
+	struct lttng_event_probe_attr *local_probe_attr = nullptr;
+	struct lttng_userspace_probe_location *local_userspace_probe_location = nullptr;
 
 	/*
 	 * Only event is obligatory, the other output argument are optional and
@@ -360,7 +360,7 @@ ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 	}
 
 	local_event = lttng_event_create();
-	if (local_event == NULL) {
+	if (local_event == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -612,7 +612,7 @@ deserialize_event_type_payload:
 		 * Userspace probe location object ownership transfered to the
 		 * event object.
 		 */
-		local_userspace_probe_location = NULL;
+		local_userspace_probe_location = nullptr;
 		offset += event_comm->userspace_probe_location_len;
 		break;
 	}
@@ -633,21 +633,21 @@ deserialize_event_type_payload:
 
 	/* Transfer ownership to the caller. */
 	*out_event = local_event;
-	local_event = NULL;
+	local_event = nullptr;
 
 	if (out_bytecode) {
 		*out_bytecode = local_bytecode;
-		local_bytecode = NULL;
+		local_bytecode = nullptr;
 	}
 
 	if (out_exclusion) {
 		*out_exclusion = local_exclusions;
-		local_exclusions = NULL;
+		local_exclusions = nullptr;
 	}
 
 	if (out_filter_expression) {
 		*out_filter_expression = local_filter_expression;
-		local_filter_expression = NULL;
+		local_filter_expression = nullptr;
 	}
 
 	ret = offset;
@@ -858,7 +858,7 @@ static ssize_t lttng_event_context_app_populate_from_payload(const struct lttng_
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_context_app_comm *comm;
-	char *provider_name = NULL, *context_name = NULL;
+	char *provider_name = nullptr, *context_name = nullptr;
 	size_t provider_name_len, context_name_len;
 	const struct lttng_buffer_view comm_view =
 		lttng_buffer_view_from_view(&view->buffer, offset, sizeof(*comm));
@@ -941,8 +941,8 @@ static ssize_t lttng_event_context_app_populate_from_payload(const struct lttng_
 	/* Transfer ownership of the strings */
 	event_ctx->u.app_ctx.provider_name = provider_name;
 	event_ctx->u.app_ctx.ctx_name = context_name;
-	provider_name = NULL;
-	context_name = NULL;
+	provider_name = nullptr;
+	context_name = nullptr;
 
 	ret = offset;
 end:
@@ -1018,7 +1018,7 @@ ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t ret, offset = 0;
 	const struct lttng_event_context_comm *comm;
-	struct lttng_event_context *local_context = NULL;
+	struct lttng_event_context *local_context = nullptr;
 	struct lttng_buffer_view comm_view =
 		lttng_buffer_view_from_view(&view->buffer, offset, sizeof(*comm));
 
@@ -1070,7 +1070,7 @@ ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
 	offset += ret;
 
 	*event_ctx = local_context;
-	local_context = NULL;
+	local_context = nullptr;
 	ret = offset;
 
 end:
@@ -1246,17 +1246,17 @@ static void lttng_event_field_populate_lttng_event_from_event(const struct lttng
 	memcpy(destination, src, sizeof(*destination));
 
 	/* Remove all possible dynamic data from the destination event rule. */
-	destination->extended.ptr = NULL;
+	destination->extended.ptr = nullptr;
 }
 
 ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
 					      struct lttng_event_field **field)
 {
 	ssize_t ret, offset = 0;
-	struct lttng_event_field *local_event_field = NULL;
-	struct lttng_event *event = NULL;
+	struct lttng_event_field *local_event_field = nullptr;
+	struct lttng_event *event = nullptr;
 	const struct lttng_event_field_comm *comm;
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	assert(field);
 	assert(view);
@@ -1320,7 +1320,8 @@ ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
 			goto end;
 		}
 
-		ret = lttng_event_create_from_payload(&event_view, &event, NULL, NULL, NULL);
+		ret = lttng_event_create_from_payload(
+			&event_view, &event, nullptr, nullptr, nullptr);
 		if (ret != comm->event_len) {
 			ret = -1;
 			goto end;
@@ -1341,7 +1342,7 @@ ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
 	lttng_event_field_populate_lttng_event_from_event(event, &local_event_field->event);
 
 	*field = local_event_field;
-	local_event_field = NULL;
+	local_event_field = nullptr;
 	ret = offset;
 end:
 	lttng_event_destroy(event);
@@ -1392,7 +1393,7 @@ int lttng_event_field_serialize(const struct lttng_event_field *field,
 	}
 
 	size_before_event = payload->buffer.size;
-	ret = lttng_event_serialize(&field->event, 0, NULL, NULL, 0, 0, payload);
+	ret = lttng_event_serialize(&field->event, 0, nullptr, nullptr, 0, nullptr, payload);
 	if (ret) {
 		ret = -1;
 		goto end;
@@ -1429,11 +1430,11 @@ static enum lttng_error_code compute_flattened_size(struct lttng_dynamic_pointer
 		const struct event_list_element *element =
 			(const struct event_list_element *) lttng_dynamic_pointer_array_get_pointer(
 				events, i);
-		const struct lttng_userspace_probe_location *location = NULL;
+		const struct lttng_userspace_probe_location *location = nullptr;
 
 		location = lttng_event_get_userspace_probe_location(element->event);
 		if (location) {
-			ret = lttng_userspace_probe_location_flatten(location, NULL);
+			ret = lttng_userspace_probe_location_flatten(location, nullptr);
 			if (ret < 0) {
 				ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto end;
@@ -1543,7 +1544,7 @@ static enum lttng_error_code flatten_lttng_events(struct lttng_dynamic_pointer_a
 		struct lttng_event_extended *event_extended =
 			(struct lttng_event_extended *) (local_flattened_events.data +
 							 local_flattened_events.size);
-		const struct lttng_userspace_probe_location *location = NULL;
+		const struct lttng_userspace_probe_location *location = nullptr;
 
 		assert(element);
 
@@ -1662,7 +1663,7 @@ event_list_create_from_payload(struct lttng_payload_view *view,
 							     &element->event,
 							     &element->exclusions,
 							     &element->filter_expression,
-							     NULL);
+							     nullptr);
 		if (event_size < 0) {
 			ret_code = LTTNG_ERR_INVALID;
 			goto end;
@@ -1782,7 +1783,7 @@ event_field_list_create_from_payload(struct lttng_payload_view *view,
 	enum lttng_error_code ret_code;
 	int ret, offset = 0;
 	unsigned int i;
-	struct lttng_dynamic_pointer_array *list = NULL;
+	struct lttng_dynamic_pointer_array *list = nullptr;
 
 	assert(view);
 	assert(event_field_list);
@@ -1797,7 +1798,7 @@ event_field_list_create_from_payload(struct lttng_payload_view *view,
 
 	for (i = 0; i < count; i++) {
 		ssize_t event_field_size;
-		struct lttng_event_field *field = NULL;
+		struct lttng_event_field *field = nullptr;
 		struct lttng_payload_view event_field_view =
 			lttng_payload_view_from_view(view, offset, -1);
 
@@ -1824,7 +1825,7 @@ event_field_list_create_from_payload(struct lttng_payload_view *view,
 	}
 
 	*event_field_list = list;
-	list = NULL;
+	list = nullptr;
 	ret_code = LTTNG_OK;
 
 end:
@@ -1840,7 +1841,7 @@ enum lttng_error_code lttng_event_fields_create_and_flatten_from_payload(
 	struct lttng_payload_view *view, unsigned int count, struct lttng_event_field **fields)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_dynamic_pointer_array *local_event_fields = NULL;
+	struct lttng_dynamic_pointer_array *local_event_fields = nullptr;
 
 	ret_code = event_field_list_create_from_payload(view, count, &local_event_fields);
 	if (ret_code != LTTNG_OK) {

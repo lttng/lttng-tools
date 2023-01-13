@@ -252,7 +252,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 		[this](const std::string& fragment) { _append_metadata_fragment(fragment); }) },
 	_packet_header{ _create_packet_header() }
 {
-	pthread_mutex_init(&_lock, NULL);
+	pthread_mutex_init(&_lock, nullptr);
 	if (_shm_path.size() > 0) {
 		if (run_as_mkdir_recursive(_shm_path.c_str(), S_IRWXU | S_IRWXG, euid, egid)) {
 			LTTNG_THROW_POSIX("run_as_mkdir_recursive", errno);
@@ -283,8 +283,8 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	}
 
 	/* hash/match functions are specified at call site. */
-	_enums->match_fct = NULL;
-	_enums->hash_fct = NULL;
+	_enums->match_fct = nullptr;
+	_enums->hash_fct = nullptr;
 
 	_channels.reset(lttng_ht_new(0, LTTNG_HT_TYPE_U64));
 	if (!_channels) {
@@ -702,7 +702,7 @@ void lsu::registry_session::regenerate_metadata()
 lsu::registry_enum::const_rcu_protected_reference
 lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) const
 {
-	lsu::registry_enum *reg_enum = NULL;
+	lsu::registry_enum *reg_enum = nullptr;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	lttng::urcu::unique_read_lock rcu_lock;
@@ -743,7 +743,7 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
 lsu::registry_enum *
 lsu::registry_session::_lookup_enum(const lsu::registry_enum *reg_enum_lookup) const
 {
-	lsu::registry_enum *reg_enum = NULL;
+	lsu::registry_enum *reg_enum = nullptr;
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 
@@ -783,7 +783,7 @@ void lsu::registry_session::create_or_find_enum(int session_objd,
 						uint64_t *enum_id)
 {
 	struct cds_lfht_node *nodep;
-	lsu::registry_enum *reg_enum = NULL, *old_reg_enum;
+	lsu::registry_enum *reg_enum = nullptr, *old_reg_enum;
 	lttng::urcu::read_lock_guard read_lock_guard;
 	auto entries =
 		lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);

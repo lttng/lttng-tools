@@ -83,7 +83,7 @@ char *setup_channel_trace_path(struct consumer_output *consumer,
 	return pathname;
 error:
 	free(pathname);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -319,7 +319,7 @@ int consumer_create_socket(struct consumer_data *data, struct consumer_output *o
 
 	LTTNG_ASSERT(data);
 
-	if (output == NULL || data->cmd_sock < 0) {
+	if (output == nullptr || data->cmd_sock < 0) {
 		/*
 		 * Not an error. Possible there is simply not spawned consumer or it's
 		 * disabled for the tracing session asking the socket.
@@ -330,9 +330,9 @@ int consumer_create_socket(struct consumer_data *data, struct consumer_output *o
 	rcu_read_lock();
 	socket = consumer_find_socket(data->cmd_sock, output);
 	rcu_read_unlock();
-	if (socket == NULL) {
+	if (socket == nullptr) {
 		socket = consumer_allocate_socket(&data->cmd_sock);
-		if (socket == NULL) {
+		if (socket == nullptr) {
 			ret = -1;
 			goto error;
 		}
@@ -363,7 +363,7 @@ struct consumer_socket *consumer_find_socket_by_bitness(int bits,
 							const struct consumer_output *consumer)
 {
 	int consumer_fd;
-	struct consumer_socket *socket = NULL;
+	struct consumer_socket *socket = nullptr;
 
 	ASSERT_RCU_READ_LOCKED();
 
@@ -397,18 +397,18 @@ struct consumer_socket *consumer_find_socket(int key, const struct consumer_outp
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
-	struct consumer_socket *socket = NULL;
+	struct consumer_socket *socket = nullptr;
 
 	ASSERT_RCU_READ_LOCKED();
 
 	/* Negative keys are lookup failures */
-	if (key < 0 || consumer == NULL) {
-		return NULL;
+	if (key < 0 || consumer == nullptr) {
+		return nullptr;
 	}
 
 	lttng_ht_lookup(consumer->socks, (void *) ((unsigned long) key), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node != NULL) {
+	if (node != nullptr) {
 		socket = lttng::utils::container_of(node, &consumer_socket::node);
 	}
 
@@ -420,12 +420,12 @@ struct consumer_socket *consumer_find_socket(int key, const struct consumer_outp
  */
 struct consumer_socket *consumer_allocate_socket(int *fd)
 {
-	struct consumer_socket *socket = NULL;
+	struct consumer_socket *socket = nullptr;
 
 	LTTNG_ASSERT(fd);
 
 	socket = zmalloc<consumer_socket>();
-	if (socket == NULL) {
+	if (socket == nullptr) {
 		PERROR("zmalloc consumer socket");
 		goto error;
 	}
@@ -510,10 +510,10 @@ void consumer_destroy_socket(struct consumer_socket *sock)
  */
 struct consumer_output *consumer_create_output(enum consumer_dst_type type)
 {
-	struct consumer_output *output = NULL;
+	struct consumer_output *output = nullptr;
 
 	output = zmalloc<consumer_output>();
-	if (output == NULL) {
+	if (output == nullptr) {
 		PERROR("zmalloc consumer_output");
 		goto error;
 	}
@@ -599,7 +599,7 @@ struct consumer_output *consumer_copy_output(struct consumer_output *src)
 	LTTNG_ASSERT(src);
 
 	output = consumer_create_output(src->type);
-	if (output == NULL) {
+	if (output == nullptr) {
 		goto end;
 	}
 	output->enabled = src->enabled;
@@ -619,7 +619,7 @@ end:
 
 error_put:
 	consumer_output_put(output);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -646,7 +646,7 @@ int consumer_copy_sockets(struct consumer_output *dst, struct consumer_output *s
 
 		/* Create new socket object. */
 		copy_sock = consumer_allocate_socket(socket->fd_ptr);
-		if (copy_sock == NULL) {
+		if (copy_sock == nullptr) {
 			rcu_read_unlock();
 			ret = -ENOMEM;
 			goto error;
@@ -678,7 +678,7 @@ int consumer_set_network_uri(const struct ltt_session *session,
 			     struct lttng_uri *uri)
 {
 	int ret;
-	struct lttng_uri *dst_uri = NULL;
+	struct lttng_uri *dst_uri = nullptr;
 
 	/* Code flow error safety net. */
 	LTTNG_ASSERT(output);
@@ -1811,8 +1811,8 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	int ret;
 	enum lttng_trace_chunk_status chunk_status;
 	struct lttng_credentials chunk_credentials;
-	const struct lttng_directory_handle *chunk_directory_handle = NULL;
-	struct lttng_directory_handle *domain_handle = NULL;
+	const struct lttng_directory_handle *chunk_directory_handle = nullptr;
+	struct lttng_directory_handle *domain_handle = nullptr;
 	int domain_dirfd;
 	const char *chunk_name;
 	bool chunk_name_overridden;

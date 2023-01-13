@@ -46,13 +46,13 @@ const struct viewer {
 } viewers[] = {
 	{ "babeltrace", VIEWER_BABELTRACE },
 	{ "babeltrace2", VIEWER_BABELTRACE2 },
-	{ NULL, VIEWER_USER_DEFINED },
+	{ nullptr, VIEWER_USER_DEFINED },
 };
 } /* namespace */
 
 static const struct viewer *parse_viewer_option(const char *opt_viewer)
 {
-	if (opt_viewer == NULL) {
+	if (opt_viewer == nullptr) {
 		/* Default is babeltrace2 */
 		return &(viewers[VIEWER_BABELTRACE2]);
 	}
@@ -70,7 +70,7 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 {
 	int i = 0, ignore_space = 0;
 	unsigned int num_opts = 1;
-	char **argv, *token = opts, *saveptr = NULL;
+	char **argv, *token = opts, *saveptr = nullptr;
 
 	/* Count number of arguments. */
 	do {
@@ -88,22 +88,22 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 
 	/* Add two here for the NULL terminating element and trace path */
 	argv = calloc<char *>(num_opts + 2);
-	if (argv == NULL) {
+	if (argv == nullptr) {
 		goto error;
 	}
 
 	token = strtok_r(opts, " ", &saveptr);
-	while (token != NULL) {
+	while (token != nullptr) {
 		argv[i] = strdup(token);
-		if (argv[i] == NULL) {
+		if (argv[i] == nullptr) {
 			goto error;
 		}
-		token = strtok_r(NULL, " ", &saveptr);
+		token = strtok_r(nullptr, " ", &saveptr);
 		i++;
 	}
 
 	argv[num_opts] = (char *) trace_path;
-	argv[num_opts + 1] = NULL;
+	argv[num_opts + 1] = nullptr;
 
 	return argv;
 
@@ -115,7 +115,7 @@ error:
 		free(argv);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -143,7 +143,7 @@ static char **alloc_argv_from_local_opts(const char **opts,
 	}
 
 	argv = calloc<char *>(mem_len);
-	if (argv == NULL) {
+	if (argv == nullptr) {
 		goto error;
 	}
 
@@ -153,10 +153,10 @@ static char **alloc_argv_from_local_opts(const char **opts,
 		argv[opts_len] = (char *) "-i";
 		argv[opts_len + 1] = (char *) "lttng-live";
 		argv[opts_len + 2] = (char *) trace_path;
-		argv[opts_len + 3] = NULL;
+		argv[opts_len + 3] = nullptr;
 	} else {
 		argv[opts_len] = (char *) trace_path;
-		argv[opts_len + 1] = NULL;
+		argv[opts_len + 1] = nullptr;
 	}
 
 error:
@@ -170,13 +170,13 @@ int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode)
 {
 	int ret = 0;
 	struct stat status;
-	const char *viewer_bin = NULL;
+	const char *viewer_bin = nullptr;
 	const struct viewer *viewer;
-	char **argv = NULL;
+	char **argv = nullptr;
 
 	/* Check for --viewer option. */
 	viewer = parse_viewer_option(opt_viewer);
-	if (viewer == NULL) {
+	if (viewer == nullptr) {
 		ret = -1;
 		goto error;
 	}
@@ -211,7 +211,7 @@ retry_viewer:
 		abort();
 	}
 
-	if (argv == NULL || !viewer_bin) {
+	if (argv == nullptr || !viewer_bin) {
 		ret = -1;
 		goto error;
 	}
@@ -228,7 +228,7 @@ retry_viewer:
 				    viewers[VIEWER_BABELTRACE].exec_name);
 				viewer = &viewers[VIEWER_BABELTRACE];
 				free(argv);
-				argv = NULL;
+				argv = nullptr;
 				goto retry_viewer;
 			} else {
 				ERR("Default viewer \"%s\" (and fallback \"%s\") not found on the system",

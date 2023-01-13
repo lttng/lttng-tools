@@ -22,11 +22,11 @@
 static char *create_output_path_auto(const char *path_name)
 {
 	int ret;
-	char *traces_path = NULL;
+	char *traces_path = nullptr;
 	const char *default_path;
 
 	default_path = utils_get_home_dir();
-	if (default_path == NULL) {
+	if (default_path == nullptr) {
 		ERR("Home path not found.\n \
 				Please specify an output path using -o, --output PATH");
 		goto exit;
@@ -43,7 +43,7 @@ exit:
 static char *create_output_path_noauto(const char *path_name)
 {
 	int ret;
-	char *traces_path = NULL;
+	char *traces_path = nullptr;
 	char *full_path;
 
 	full_path = utils_expand_path(opt_output_path);
@@ -70,7 +70,7 @@ char *create_output_path(const char *path_name)
 {
 	LTTNG_ASSERT(path_name);
 
-	if (opt_output_path == NULL) {
+	if (opt_output_path == nullptr) {
 		return create_output_path_auto(path_name);
 	} else {
 		return create_output_path_noauto(path_name);

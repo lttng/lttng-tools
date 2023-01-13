@@ -67,7 +67,7 @@ process_attr_value_from_comm(enum lttng_domain_type domain,
 			     const struct lttng_buffer_view *value_view,
 			     struct process_attr_value **_value)
 {
-	char *name = NULL;
+	char *name = nullptr;
 	enum lttng_error_code ret = LTTNG_OK;
 	struct process_attr_value *value = zmalloc<process_attr_value>();
 
@@ -133,7 +133,7 @@ process_attr_value_from_comm(enum lttng_domain_type domain,
 			}
 
 			value->value.user_name = name;
-			name = NULL;
+			name = nullptr;
 			break;
 		default:
 			ERR("Invalid value type used for user ID process attribute");
@@ -154,7 +154,7 @@ process_attr_value_from_comm(enum lttng_domain_type domain,
 			}
 
 			value->value.group_name = name;
-			name = NULL;
+			name = nullptr;
 			break;
 		default:
 			ERR("Invalid value type used for group ID process attribute");
@@ -168,7 +168,7 @@ process_attr_value_from_comm(enum lttng_domain_type domain,
 	}
 
 	*_value = value;
-	value = NULL;
+	value = nullptr;
 	free(name);
 	return LTTNG_OK;
 error:
@@ -204,7 +204,7 @@ static void process_attr_tracker_value_destructor(void *ptr)
 	process_attr_value_destroy(value);
 }
 
-struct lttng_process_attr_values *lttng_process_attr_values_create(void)
+struct lttng_process_attr_values *lttng_process_attr_values_create()
 {
 	struct lttng_process_attr_values *values = zmalloc<lttng_process_attr_values>();
 
@@ -238,7 +238,7 @@ static int process_attr_tracker_value_serialize(const struct process_attr_value 
 		.type = (int32_t) value->type,
 		.value = {},
 	};
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	switch (value->type) {
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
@@ -398,7 +398,7 @@ void lttng_process_attr_values_destroy(struct lttng_process_attr_values *values)
 
 struct process_attr_value *process_attr_value_copy(const struct process_attr_value *value)
 {
-	struct process_attr_value *new_value = NULL;
+	struct process_attr_value *new_value = nullptr;
 
 	if (!value) {
 		goto end;
@@ -428,7 +428,7 @@ end:
 	return new_value;
 error:
 	free(new_value);
-	return NULL;
+	return nullptr;
 }
 
 unsigned long process_attr_value_hash(const struct process_attr_value *a)

@@ -406,15 +406,15 @@ static int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *meta
 			}
 			metadata_stream->out_fd = -1;
 			lttng_trace_chunk_put(metadata_stream->trace_chunk);
-			metadata_stream->trace_chunk = NULL;
+			metadata_stream->trace_chunk = nullptr;
 		}
 	}
 
 	ret = 0;
 error_snapshot:
 	metadata_stream->read_subbuffer_ops.unlock(metadata_stream);
-	consumer_stream_destroy(metadata_stream, NULL);
-	metadata_channel->metadata_stream = NULL;
+	consumer_stream_destroy(metadata_stream, nullptr);
+	metadata_channel->metadata_stream = nullptr;
 	rcu_read_unlock();
 	return ret;
 }
@@ -496,23 +496,23 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		DBG("consumer_add_channel %" PRIu64, msg.u.channel.channel_key);
-		new_channel =
-			consumer_allocate_channel(msg.u.channel.channel_key,
-						  msg.u.channel.session_id,
-						  msg.u.channel.chunk_id.is_set ? &chunk_id : NULL,
-						  msg.u.channel.pathname,
-						  msg.u.channel.name,
-						  msg.u.channel.relayd_id,
-						  msg.u.channel.output,
-						  msg.u.channel.tracefile_size,
-						  msg.u.channel.tracefile_count,
-						  0,
-						  msg.u.channel.monitor,
-						  msg.u.channel.live_timer_interval,
-						  msg.u.channel.is_live,
-						  NULL,
-						  NULL);
-		if (new_channel == NULL) {
+		new_channel = consumer_allocate_channel(msg.u.channel.channel_key,
+							msg.u.channel.session_id,
+							msg.u.channel.chunk_id.is_set ? &chunk_id :
+											nullptr,
+							msg.u.channel.pathname,
+							msg.u.channel.name,
+							msg.u.channel.relayd_id,
+							msg.u.channel.output,
+							msg.u.channel.tracefile_size,
+							msg.u.channel.tracefile_count,
+							0,
+							msg.u.channel.monitor,
+							msg.u.channel.live_timer_interval,
+							msg.u.channel.is_live,
+							nullptr,
+							nullptr);
+		if (new_channel == nullptr) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
@@ -542,7 +542,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		if (ctx->on_recv_channel != NULL) {
+		if (ctx->on_recv_channel != nullptr) {
 			int ret_recv_channel = ctx->on_recv_channel(new_channel);
 			if (ret_recv_channel == 0) {
 				ret_add_channel = consumer_add_channel(new_channel, ctx);
@@ -663,7 +663,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 						    &alloc_ret,
 						    channel->type,
 						    channel->monitor);
-		if (new_stream == NULL) {
+		if (new_stream == nullptr) {
 			switch (alloc_ret) {
 			case -ENOMEM:
 			case -EINVAL:
@@ -880,7 +880,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(index);
-		if (relayd == NULL) {
+		if (relayd == nullptr) {
 			DBG("Unable to find relayd %" PRIu64, index);
 			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 		}
@@ -1246,8 +1246,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t relayd_id = msg.u.create_trace_chunk.relayd_id.value;
 		const char *chunk_override_name = *msg.u.create_trace_chunk.override_name ?
 			msg.u.create_trace_chunk.override_name :
-			NULL;
-		struct lttng_directory_handle *chunk_directory_handle = NULL;
+			nullptr;
+		struct lttng_directory_handle *chunk_directory_handle = nullptr;
 
 		/*
 		 * The session daemon will only provide a chunk directory file
@@ -1284,12 +1284,12 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		ret_code = lttng_consumer_create_trace_chunk(
-			!is_local_trace ? &relayd_id : NULL,
+			!is_local_trace ? &relayd_id : nullptr,
 			msg.u.create_trace_chunk.session_id,
 			msg.u.create_trace_chunk.chunk_id,
 			(time_t) msg.u.create_trace_chunk.creation_timestamp,
 			chunk_override_name,
-			msg.u.create_trace_chunk.credentials.is_set ? &credentials : NULL,
+			msg.u.create_trace_chunk.credentials.is_set ? &credentials : nullptr,
 			chunk_directory_handle);
 		lttng_directory_handle_put(chunk_directory_handle);
 		goto end_msg_sessiond;
@@ -1304,11 +1304,11 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ssize_t ret_send;
 
 		ret_code = lttng_consumer_close_trace_chunk(
-			msg.u.close_trace_chunk.relayd_id.is_set ? &relayd_id : NULL,
+			msg.u.close_trace_chunk.relayd_id.is_set ? &relayd_id : nullptr,
 			msg.u.close_trace_chunk.session_id,
 			msg.u.close_trace_chunk.chunk_id,
 			(time_t) msg.u.close_trace_chunk.close_timestamp,
-			msg.u.close_trace_chunk.close_command.is_set ? &close_command : NULL,
+			msg.u.close_trace_chunk.close_command.is_set ? &close_command : nullptr,
 			path);
 		reply.ret_code = ret_code;
 		reply.path_length = strlen(path) + 1;
@@ -1327,7 +1327,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t relayd_id = msg.u.trace_chunk_exists.relayd_id.value;
 
 		ret_code = lttng_consumer_trace_chunk_exists(
-			msg.u.trace_chunk_exists.relayd_id.is_set ? &relayd_id : NULL,
+			msg.u.trace_chunk_exists.relayd_id.is_set ? &relayd_id : nullptr,
 			msg.u.trace_chunk_exists.session_id,
 			msg.u.trace_chunk_exists.chunk_id);
 		goto end_msg_sessiond;
@@ -1689,7 +1689,7 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 
 static bool is_get_next_check_metadata_available(int tracer_fd)
 {
-	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, NULL);
+	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, nullptr);
 	const bool available = ret != -ENOTTY;
 
 	if (ret == 0) {
@@ -1732,7 +1732,7 @@ static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 			 */
 			WARN("Kernel tracer does not support get_next_subbuffer_metadata_check which may cause live clients to fail to parse the metadata stream");
 			metadata_bucket_destroy(stream->metadata_bucket);
-			stream->metadata_bucket = NULL;
+			stream->metadata_bucket = nullptr;
 		}
 
 		stream->read_subbuffer_ops.on_sleep = signal_metadata;
@@ -1790,7 +1790,7 @@ int lttng_kconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 		stream->mmap_len = (size_t) mmap_len;
 
 		stream->mmap_base =
-			mmap(NULL, stream->mmap_len, PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
+			mmap(nullptr, stream->mmap_len, PROT_READ, MAP_PRIVATE, stream->wait_fd, 0);
 		if (stream->mmap_base == MAP_FAILED) {
 			PERROR("Error mmaping");
 			ret = -1;

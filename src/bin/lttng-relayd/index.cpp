@@ -42,13 +42,13 @@ static struct relay_index *relay_index_create(struct relay_stream *stream, uint6
 	if (!stream_get(stream)) {
 		ERR("Cannot get stream");
 		free(index);
-		index = NULL;
+		index = nullptr;
 		goto end;
 	}
 	index->stream = stream;
 
 	lttng_ht_node_init_u64(&index->index_n, net_seq_num);
-	pthread_mutex_init(&index->lock, NULL);
+	pthread_mutex_init(&index->lock, nullptr);
 	urcu_ref_init(&index->ref);
 
 end:
@@ -81,7 +81,7 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
 	if (node_ptr != &index->index_n.node) {
 		_index = caa_container_of(node_ptr, struct relay_index, index_n.node);
 	} else {
-		_index = NULL;
+		_index = nullptr;
 	}
 	return _index;
 }
@@ -113,7 +113,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-	struct relay_index *index = NULL;
+	struct relay_index *index = nullptr;
 
 	DBG3("Finding index for stream id %" PRIu64 " and seq_num %" PRIu64,
 	     stream->stream_handle,
@@ -140,7 +140,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 			relay_index_put(index);
 			index = oldindex;
 			if (!relay_index_get(index)) {
-				index = NULL;
+				index = nullptr;
 			}
 		} else {
 			stream->indexes_in_flight++;
@@ -219,7 +219,7 @@ static void index_release(struct urcu_ref *ref)
 
 	if (index->index_file) {
 		lttng_index_file_put(index->index_file);
-		index->index_file = NULL;
+		index->index_file = nullptr;
 	}
 	if (index->in_hash_table) {
 		/* Delete index from hash table. */
@@ -230,7 +230,7 @@ static void index_release(struct urcu_ref *ref)
 	}
 
 	stream_put(index->stream);
-	index->stream = NULL;
+	index->stream = nullptr;
 
 	call_rcu(&index->rcu_node, index_destroy_rcu);
 }

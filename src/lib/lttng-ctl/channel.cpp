@@ -103,7 +103,7 @@ static struct lttng_notification *
 create_notification_from_current_message(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
-	struct lttng_notification *notification = NULL;
+	struct lttng_notification *notification = nullptr;
 
 	if (channel->reception_payload.buffer.size <=
 	    sizeof(struct lttng_notification_channel_message)) {
@@ -123,7 +123,7 @@ create_notification_from_current_message(struct lttng_notification_channel *chan
 	    channel->reception_payload.buffer.size -
 		    sizeof(struct lttng_notification_channel_message)) {
 		lttng_notification_destroy(notification);
-		notification = NULL;
+		notification = nullptr;
 		goto end;
 	}
 end:
@@ -135,8 +135,8 @@ lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 {
 	int fd, ret;
 	bool is_in_tracing_group = false, is_root = false;
-	char *sock_path = NULL;
-	struct lttng_notification_channel *channel = NULL;
+	char *sock_path = nullptr;
+	struct lttng_notification_channel *channel = nullptr;
 
 	if (!endpoint || endpoint != lttng_session_daemon_notification_endpoint) {
 		goto end;
@@ -152,7 +152,7 @@ lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 		goto end;
 	}
 	channel->socket = -1;
-	pthread_mutex_init(&channel->lock, NULL);
+	pthread_mutex_init(&channel->lock, nullptr);
 	lttng_payload_init(&channel->reception_payload);
 	CDS_INIT_LIST_HEAD(&channel->pending_notifications.list);
 
@@ -203,7 +203,7 @@ end:
 	return channel;
 error:
 	lttng_notification_channel_destroy(channel);
-	channel = NULL;
+	channel = nullptr;
 	goto end;
 }
 
@@ -212,7 +212,7 @@ lttng_notification_channel_get_next_notification(struct lttng_notification_chann
 						 struct lttng_notification **_notification)
 {
 	int ret;
-	struct lttng_notification *notification = NULL;
+	struct lttng_notification *notification = nullptr;
 	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_poll_event events;
 
@@ -327,7 +327,7 @@ static int enqueue_dropped_notification(struct lttng_notification_channel *chann
 		 * that notifications were dropped at this point.
 		 */
 		lttng_notification_destroy(pending_notification->notification);
-		pending_notification->notification = NULL;
+		pending_notification->notification = nullptr;
 		goto end;
 	}
 

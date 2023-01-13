@@ -50,7 +50,7 @@ static void update_ust_app(int app_sock)
 	rcu_read_lock();
 	LTTNG_ASSERT(app_sock >= 0);
 	app = ust_app_find_by_sock(app_sock);
-	if (app == NULL) {
+	if (app == nullptr) {
 		/*
 		 * Application can be unregistered before so
 		 * this is possible hence simply stopping the
@@ -93,7 +93,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 	int ret, nb_fd = 0, i;
 	unsigned int fd_added = 0;
 	struct lttng_poll_event events;
-	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
+	struct ust_reg_wait_node *wait_node = nullptr, *tmp_wait_node;
 
 	LTTNG_ASSERT(wait_queue);
 
@@ -149,7 +149,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 				 * cds_list_for_each_entry_safe which uses
 				 * __typeof__(*wait_node).
 				 */
-				wait_node = NULL;
+				wait_node = nullptr;
 				break;
 			} else {
 				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
@@ -224,8 +224,8 @@ static void *thread_dispatch_ust_registration(void *data)
 {
 	int ret, err = -1;
 	struct cds_wfcq_node *node;
-	struct ust_command *ust_cmd = NULL;
-	struct ust_reg_wait_node *wait_node = NULL, *tmp_wait_node;
+	struct ust_command *ust_cmd = nullptr;
+	struct ust_reg_wait_node *wait_node = nullptr, *tmp_wait_node;
 	struct ust_reg_wait_queue wait_queue = {
 		.count = 0,
 		.head = {},
@@ -257,8 +257,8 @@ static void *thread_dispatch_ust_registration(void *data)
 		}
 
 		do {
-			struct ust_app *app = NULL;
-			ust_cmd = NULL;
+			struct ust_app *app = nullptr;
+			ust_cmd = nullptr;
 
 			/*
 			 * Make sure we don't have node(s) that have hung up before receiving
@@ -271,7 +271,7 @@ static void *thread_dispatch_ust_registration(void *data)
 			/* Dequeue command for registration */
 			node = cds_wfcq_dequeue_blocking(&notifiers->ust_cmd_queue->head,
 							 &notifiers->ust_cmd_queue->tail);
-			if (node == NULL) {
+			if (node == nullptr) {
 				DBG("Woken up but nothing in the UST command queue");
 				/* Continue thread execution */
 				break;
@@ -300,7 +300,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(ust_cmd);
-					ust_cmd = NULL;
+					ust_cmd = nullptr;
 					goto error;
 				}
 				CDS_INIT_LIST_HEAD(&wait_node->head);
@@ -314,9 +314,9 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(wait_node);
-					wait_node = NULL;
+					wait_node = nullptr;
 					free(ust_cmd);
-					ust_cmd = NULL;
+					ust_cmd = nullptr;
 					continue;
 				}
 				/*
@@ -327,7 +327,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_queue.count++;
 
 				free(ust_cmd);
-				ust_cmd = NULL;
+				ust_cmd = nullptr;
 				/*
 				 * We have to continue here since we don't have the notify
 				 * socket and the application MUST be added to the hash table
@@ -348,7 +348,7 @@ static void *thread_dispatch_ust_registration(void *data)
 						wait_queue.count--;
 						app = wait_node->app;
 						free(wait_node);
-						wait_node = NULL;
+						wait_node = nullptr;
 						DBG3("UST app notify socket %d is set",
 						     ust_cmd->sock);
 						break;
@@ -368,7 +368,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 				}
 				free(ust_cmd);
-				ust_cmd = NULL;
+				ust_cmd = nullptr;
 			}
 
 			if (app) {
@@ -443,7 +443,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				rcu_read_unlock();
 				session_unlock_list();
 			}
-		} while (node != NULL);
+		} while (node != nullptr);
 
 		health_poll_entry();
 		/* Futex wait on queue. Blocking call on futex() */
@@ -466,7 +466,7 @@ error:
 		/* Dequeue command for registration */
 		node = cds_wfcq_dequeue_blocking(&notifiers->ust_cmd_queue->head,
 						 &notifiers->ust_cmd_queue->tail);
-		if (node == NULL) {
+		if (node == nullptr) {
 			break;
 		}
 		ust_cmd = lttng::utils::container_of(node, &ust_command::node);
@@ -486,7 +486,7 @@ error_testpoint:
 	}
 	health_unregister(the_health_sessiond);
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_ust_dispatch_thread(void *data)

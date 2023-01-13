@@ -159,7 +159,7 @@ lttng_condition_session_rotation_create(enum lttng_condition_type type)
 
 	condition = zmalloc<lttng_condition_session_rotation>();
 	if (!condition) {
-		return NULL;
+		return nullptr;
 	}
 
 	memcpy(&condition->parent, &rotation_condition_template, sizeof(condition->parent));
@@ -243,7 +243,7 @@ lttng_condition_session_rotation_create_from_payload(struct lttng_payload_view *
 						     enum lttng_condition_type type)
 {
 	ssize_t ret;
-	struct lttng_condition *condition = NULL;
+	struct lttng_condition *condition = nullptr;
 
 	switch (type) {
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
@@ -297,7 +297,7 @@ static struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 
 	evaluation = zmalloc<lttng_evaluation_session_rotation>();
 	if (!evaluation) {
-		return NULL;
+		return nullptr;
 	}
 
 	memcpy(&evaluation->parent, &rotation_evaluation_template, sizeof(evaluation->parent));
@@ -315,8 +315,8 @@ static ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
 					      struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret, size;
-	struct lttng_evaluation *evaluation = NULL;
-	struct lttng_trace_archive_location *location = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
+	struct lttng_trace_archive_location *location = nullptr;
 	const struct lttng_evaluation_session_rotation_comm *comm;
 	struct lttng_payload_view comm_view = lttng_payload_view_from_view(view, 0, sizeof(*comm));
 
@@ -352,7 +352,7 @@ static ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
 	return ret;
 error:
 	lttng_trace_archive_location_put(location);
-	evaluation = NULL;
+	evaluation = nullptr;
 	return -1;
 }
 
@@ -362,7 +362,7 @@ lttng_evaluation_session_rotation_create_from_payload(enum lttng_condition_type 
 						      struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (!_evaluation) {
 		ret = -1;
@@ -399,7 +399,7 @@ ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
 struct lttng_evaluation *lttng_evaluation_session_rotation_ongoing_create(uint64_t id)
 {
 	return lttng_evaluation_session_rotation_create(
-		LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING, id, NULL);
+		LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING, id, nullptr);
 }
 
 struct lttng_evaluation *
@@ -543,8 +543,8 @@ lttng_condition_session_rotation_mi_serialize(const struct lttng_condition *cond
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_condition_status status;
-	const char *session_name = NULL;
-	const char *type_element_str = NULL;
+	const char *session_name = nullptr;
+	const char *type_element_str = nullptr;
 
 	LTTNG_ASSERT(condition);
 	LTTNG_ASSERT(writer);

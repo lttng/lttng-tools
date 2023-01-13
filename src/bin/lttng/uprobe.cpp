@@ -28,10 +28,10 @@
  */
 static int walk_command_search_path(const char *binary, char *binary_full_path)
 {
-	char *tentative_binary_path = NULL;
-	char *command_search_path = NULL;
-	char *curr_search_dir_end = NULL;
-	char *curr_search_dir = NULL;
+	char *tentative_binary_path = nullptr;
+	char *command_search_path = nullptr;
+	char *curr_search_dir_end = nullptr;
+	char *curr_search_dir = nullptr;
 	struct stat stat_output;
 	int ret = 0;
 
@@ -68,7 +68,7 @@ static int walk_command_search_path(const char *binary, char *binary_full_path)
 		 * matching character.
 		 */
 		curr_search_dir_end = strchr(curr_search_dir, ':');
-		if (curr_search_dir_end != NULL) {
+		if (curr_search_dir_end != nullptr) {
 			/*
 			 * Add a NULL byte to the end of the first token so it
 			 * can be used as a string.
@@ -117,7 +117,7 @@ static int walk_command_search_path(const char *binary, char *binary_full_path)
 		}
 		/* Go to the next entry in the $PATH variable. */
 		curr_search_dir = curr_search_dir_end + 1;
-	} while (curr_search_dir_end != NULL);
+	} while (curr_search_dir_end != nullptr);
 
 free_binary_path:
 	free(tentative_binary_path);
@@ -196,12 +196,12 @@ int parse_userspace_probe_opts(const char *opt,
 {
 	int ret = CMD_SUCCESS;
 	size_t num_token = 0;
-	char *target_path = NULL;
-	char *unescaped_target_path = NULL;
-	char *real_target_path = NULL;
-	char *symbol_name = NULL, *probe_name = NULL, *provider_name = NULL;
-	struct lttng_userspace_probe_location *probe_location_local = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	char *target_path = nullptr;
+	char *unescaped_target_path = nullptr;
+	char *real_target_path = nullptr;
+	char *symbol_name = nullptr, *probe_name = nullptr, *provider_name = nullptr;
+	struct lttng_userspace_probe_location *probe_location_local = nullptr;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
 	struct lttng_dynamic_pointer_array tokens;
 
 	LTTNG_ASSERT(opt);
@@ -288,7 +288,7 @@ int parse_userspace_probe_opts(const char *opt,
 	 * If there is not forward slash in the path. Walk the $PATH else
 	 * expand.
 	 */
-	if (strchr(unescaped_target_path, '/') == NULL) {
+	if (strchr(unescaped_target_path, '/') == nullptr) {
 		/* Walk the $PATH variable to find the targeted binary. */
 		real_target_path = calloc<char>(LTTNG_PATH_MAX);
 		if (!real_target_path) {
@@ -346,7 +346,7 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 
 		/* Ownership transferred to probe_location. */
-		lookup_method = NULL;
+		lookup_method = nullptr;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 		probe_location_local = lttng_userspace_probe_location_tracepoint_create(
@@ -358,7 +358,7 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 
 		/* Ownership transferred to probe_location. */
-		lookup_method = NULL;
+		lookup_method = nullptr;
 		break;
 	default:
 		ret = CMD_ERROR;
@@ -370,7 +370,7 @@ int parse_userspace_probe_opts(const char *opt,
 	 * caller.
 	 */
 	*probe_location = probe_location_local;
-	probe_location_local = NULL;
+	probe_location_local = nullptr;
 
 end:
 	lttng_userspace_probe_location_destroy(probe_location_local);

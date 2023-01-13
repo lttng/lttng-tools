@@ -452,13 +452,13 @@ end:
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
 	uint64_t tracer_token, enum lttng_domain_type domain, char *payload, size_t payload_size)
 {
-	struct lttng_event_notifier_notification *notification = NULL;
+	struct lttng_event_notifier_notification *notification = nullptr;
 
 	LTTNG_ASSERT(domain != LTTNG_DOMAIN_NONE);
 	LTTNG_ASSERT((payload && payload_size) || (!payload && !payload_size));
 
 	notification = zmalloc<lttng_event_notifier_notification>();
-	if (notification == NULL) {
+	if (notification == nullptr) {
 		ERR("Error allocating notification");
 		goto end;
 	}

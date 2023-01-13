@@ -201,7 +201,7 @@ static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 	 * required size (excluding closing null).
 	 */
 	home = utils_get_home_dir();
-	if (home == NULL) {
+	if (home == nullptr) {
 		/* Fallback in /tmp */
 		home = "/tmp";
 	}
@@ -224,7 +224,7 @@ static struct lttng_health *lttng_health_create(enum health_component hc, unsign
 
 	lh = zmalloc<lttng_health>(sizeof(*lh) + sizeof(lh->thread[0]) * nr_threads);
 	if (!lh) {
-		return NULL;
+		return nullptr;
 	}
 
 	lh->component = hc;
@@ -242,7 +242,7 @@ struct lttng_health *lttng_health_create_sessiond(void)
 
 	lh = lttng_health_create(HEALTH_COMPONENT_SESSIOND, NR_HEALTH_SESSIOND_TYPES);
 	if (!lh) {
-		return NULL;
+		return nullptr;
 	}
 	return lh;
 }
@@ -253,7 +253,7 @@ struct lttng_health *lttng_health_create_consumerd(enum lttng_health_consumerd c
 
 	lh = lttng_health_create(HEALTH_COMPONENT_CONSUMERD, NR_HEALTH_CONSUMERD_TYPES);
 	if (!lh) {
-		return NULL;
+		return nullptr;
 	}
 	lh->consumerd_type = consumerd;
 	return lh;
@@ -262,7 +262,7 @@ struct lttng_health *lttng_health_create_consumerd(enum lttng_health_consumerd c
 struct lttng_health *lttng_health_create_relayd(const char *path)
 {
 	int ret;
-	struct lttng_health *lh = NULL;
+	struct lttng_health *lh = nullptr;
 
 	if (!path) {
 		goto error;
@@ -282,7 +282,7 @@ struct lttng_health *lttng_health_create_relayd(const char *path)
 
 error:
 	free(lh);
-	return NULL;
+	return nullptr;
 }
 
 void lttng_health_destroy(struct lttng_health *lh)
@@ -381,7 +381,7 @@ const struct lttng_health_thread *lttng_health_get_thread(const struct lttng_hea
 							  unsigned int nth_thread)
 {
 	if (!health || nth_thread >= health->nr_threads) {
-		return NULL;
+		return nullptr;
 	}
 	return &health->thread[nth_thread];
 }
@@ -399,7 +399,7 @@ const char *lttng_health_thread_name(const struct lttng_health_thread *thread)
 	unsigned int nr;
 
 	if (!thread) {
-		return NULL;
+		return nullptr;
 	}
 	nr = thread - &thread->p->thread[0];
 	return get_thread_name(thread->p->component, nr);

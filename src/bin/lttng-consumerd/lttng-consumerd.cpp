@@ -115,7 +115,7 @@ static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unu
  * Setup signal handler for :
  *      SIGINT, SIGTERM, SIGPIPE, SIGBUS
  */
-static int set_signal_handler(void)
+static int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -130,24 +130,24 @@ static int set_signal_handler(void)
 	sa.sa_flags = SA_SIGINFO;
 
 	sa.sa_sigaction = sighandler;
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGBUS, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGBUS, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGPIPE, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
@@ -206,21 +206,21 @@ static int parse_args(int argc, char **argv)
 {
 	int c, ret = 0;
 
-	static struct option long_options[] = { { "consumerd-cmd-sock", 1, 0, 'c' },
-						{ "consumerd-err-sock", 1, 0, 'e' },
-						{ "daemonize", 0, 0, 'd' },
-						{ "group", 1, 0, 'g' },
-						{ "help", 0, 0, 'h' },
-						{ "quiet", 0, 0, 'q' },
-						{ "verbose", 0, 0, 'v' },
-						{ "version", 0, 0, 'V' },
-						{ "kernel", 0, 0, 'k' },
+	static struct option long_options[] = { { "consumerd-cmd-sock", 1, nullptr, 'c' },
+						{ "consumerd-err-sock", 1, nullptr, 'e' },
+						{ "daemonize", 0, nullptr, 'd' },
+						{ "group", 1, nullptr, 'g' },
+						{ "help", 0, nullptr, 'h' },
+						{ "quiet", 0, nullptr, 'q' },
+						{ "verbose", 0, nullptr, 'v' },
+						{ "version", 0, nullptr, 'V' },
+						{ "kernel", 0, nullptr, 'k' },
 #ifdef HAVE_LIBLTTNG_UST_CTL
-						{ "ust", 0, 0, 'u' },
+						{ "ust", 0, nullptr, 'u' },
 #endif
-						{ NULL, 0, 0, 0 } };
+						{ nullptr, 0, nullptr, 0 } };
 
-	while (1) {
+	while (true) {
 		int option_index = 0;
 		c = getopt_long(argc,
 				argv,
@@ -308,7 +308,7 @@ end:
  * Set open files limit to unlimited. This daemon can open a large number of
  * file descriptors in order to consumer multiple kernel traces.
  */
-static void set_ulimit(void)
+static void set_ulimit()
 {
 	int ret;
 	struct rlimit lim;
@@ -334,7 +334,7 @@ int main(int argc, char **argv)
 
 	rcu_register_thread();
 
-	if (run_as_create_worker(argv[0], NULL, NULL) < 0) {
+	if (run_as_create_worker(argv[0], nullptr, nullptr) < 0) {
 		goto exit_set_signal_handler;
 	}
 
@@ -442,8 +442,11 @@ int main(int argc, char **argv)
 	}
 
 	/* create the consumer instance with and assign the callbacks */
-	the_consumer_context = lttng_consumer_create(
-		opt_type, lttng_consumer_read_subbuffer, NULL, lttng_consumer_on_recv_stream, NULL);
+	the_consumer_context = lttng_consumer_create(opt_type,
+						     lttng_consumer_read_subbuffer,
+						     nullptr,
+						     lttng_consumer_on_recv_stream,
+						     nullptr);
 	if (!the_consumer_context) {
 		retval = -1;
 		goto exit_init_data;
@@ -521,7 +524,7 @@ int main(int argc, char **argv)
 	ret = pthread_create(&health_thread,
 			     default_pthread_attr(),
 			     thread_manage_health_consumerd,
-			     (void *) NULL);
+			     (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create health");
@@ -542,8 +545,10 @@ int main(int argc, char **argv)
 	 * Create the thread to manage the UST metadata periodic timer and
 	 * live timer.
 	 */
-	ret = pthread_create(
-		&metadata_timer_thread, NULL, consumer_timer_thread, (void *) the_consumer_context);
+	ret = pthread_create(&metadata_timer_thread,
+			     nullptr,
+			     consumer_timer_thread,
+			     (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -687,7 +692,7 @@ exit_init_data:
 		metadata_timer_thread_online = false;
 	}
 	tmp_ctx = the_consumer_context;
-	the_consumer_context = NULL;
+	the_consumer_context = nullptr;
 	cmm_barrier(); /* Clear ctx for signal handler. */
 	lttng_consumer_destroy(tmp_ctx);
 

@@ -251,16 +251,16 @@ void lttng_action_increase_execution_failure_count(struct lttng_action *action)
 
 bool lttng_action_should_execute(const struct lttng_action *action)
 {
-	const struct lttng_rate_policy *policy = NULL;
+	const struct lttng_rate_policy *policy = nullptr;
 	bool execute = false;
 
-	if (action->get_rate_policy == NULL) {
+	if (action->get_rate_policy == nullptr) {
 		execute = true;
 		goto end;
 	}
 
 	policy = action->get_rate_policy(action);
-	if (policy == NULL) {
+	if (policy == nullptr) {
 		execute = true;
 		goto end;
 	}
@@ -282,7 +282,7 @@ lttng_action_generic_add_error_query_results(const struct lttng_action *action,
 					     struct lttng_error_query_results *results)
 {
 	enum lttng_action_status action_status;
-	struct lttng_error_query_result *error_counter = NULL;
+	struct lttng_error_query_result *error_counter = nullptr;
 	const uint64_t execution_failure_counter = uatomic_read(&action->execution_failure_counter);
 
 	error_counter = lttng_error_query_result_counter_create(
@@ -300,7 +300,7 @@ lttng_action_generic_add_error_query_results(const struct lttng_action *action,
 	}
 
 	/* Ownership transferred to the results. */
-	error_counter = NULL;
+	error_counter = nullptr;
 	action_status = LTTNG_ACTION_STATUS_OK;
 end:
 	lttng_error_query_result_destroy(error_counter);
@@ -316,8 +316,8 @@ lttng_action_mi_serialize(const struct lttng_trigger *trigger,
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct lttng_action_path *action_path = NULL;
-	struct lttng_error_query_results *error_query_results = NULL;
+	struct lttng_action_path *action_path = nullptr;
+	struct lttng_error_query_results *error_query_results = nullptr;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(writer);
@@ -351,7 +351,7 @@ lttng_action_mi_serialize(const struct lttng_trigger *trigger,
 
 	/* Error query for the action. */
 	if (error_query_callbacks && error_query_callbacks->action_cb) {
-		const uint64_t *action_path_indexes_raw_pointer = NULL;
+		const uint64_t *action_path_indexes_raw_pointer = nullptr;
 		const size_t action_path_indexes_size =
 			lttng_dynamic_array_get_count(action_path_indexes);
 

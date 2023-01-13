@@ -71,7 +71,7 @@ create_trace_archive_location_from_get_info(const struct lttng_rotation_get_info
 			info->location.relay.relative_path);
 		break;
 	default:
-		location = NULL;
+		location = nullptr;
 		break;
 	}
 	return location;
@@ -82,7 +82,7 @@ lttng_rotation_handle_get_state(struct lttng_rotation_handle *rotation_handle,
 				enum lttng_rotation_state *state)
 {
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
-	struct lttng_rotation_get_info_return *info = NULL;
+	struct lttng_rotation_get_info_return *info = nullptr;
 
 	if (!rotation_handle || !state) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
@@ -122,7 +122,7 @@ lttng_rotation_handle_get_archive_location(struct lttng_rotation_handle *rotatio
 					   const struct lttng_trace_archive_location **location)
 {
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
-	struct lttng_rotation_get_info_return *info = NULL;
+	struct lttng_rotation_get_info_return *info = nullptr;
 
 	if (!rotation_handle || !location) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
@@ -192,7 +192,7 @@ int lttng_rotate_session(const char *session_name,
 			 struct lttng_rotation_handle **rotation_handle)
 {
 	struct lttcomm_session_msg lsm;
-	struct lttng_rotate_session_return *rotate_return = NULL;
+	struct lttng_rotate_session_return *rotate_return = nullptr;
 	int ret;
 	size_t session_name_len;
 
@@ -217,7 +217,7 @@ int lttng_rotate_session(const char *session_name,
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &rotate_return);
 	if (ret <= 0) {
-		*rotation_handle = NULL;
+		*rotation_handle = nullptr;
 		goto end;
 	}
 
@@ -313,7 +313,7 @@ static enum lttng_rotation_status lttng_rotation_update_schedule(
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 	if (ret >= 0) {
 		goto end;
 	}
@@ -332,7 +332,7 @@ end:
 	return status;
 }
 
-static struct lttng_rotation_schedules *lttng_rotation_schedules_create(void)
+static struct lttng_rotation_schedules *lttng_rotation_schedules_create()
 {
 	return zmalloc<lttng_rotation_schedules>();
 }
@@ -347,9 +347,9 @@ static int get_schedules(const char *session_name, struct lttng_rotation_schedul
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_session_list_schedules_return *schedules_comm = NULL;
-	struct lttng_rotation_schedules *schedules = NULL;
-	struct lttng_rotation_schedule *periodic = NULL, *size = NULL;
+	struct lttng_session_list_schedules_return *schedules_comm = nullptr;
+	struct lttng_rotation_schedules *schedules = nullptr;
+	struct lttng_rotation_schedule *periodic = nullptr, *size = nullptr;
 
 	if (!session_name) {
 		ret = -LTTNG_ERR_INVALID;
@@ -396,7 +396,7 @@ static int get_schedules(const char *session_name, struct lttng_rotation_schedul
 		}
 
 		lttng_schedules_add(schedules, periodic);
-		periodic = NULL;
+		periodic = nullptr;
 	}
 
 	if (schedules_comm->size.set == 1) {
@@ -420,7 +420,7 @@ static int get_schedules(const char *session_name, struct lttng_rotation_schedul
 		}
 
 		lttng_schedules_add(schedules, size);
-		size = NULL;
+		size = nullptr;
 	}
 
 	ret = LTTNG_OK;
@@ -599,7 +599,7 @@ const struct lttng_rotation_schedule *
 lttng_rotation_schedules_get_at_index(const struct lttng_rotation_schedules *schedules,
 				      unsigned int index)
 {
-	const struct lttng_rotation_schedule *schedule = NULL;
+	const struct lttng_rotation_schedule *schedule = nullptr;
 
 	if (!schedules || index >= schedules->count) {
 		goto end;

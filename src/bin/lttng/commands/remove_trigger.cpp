@@ -62,17 +62,17 @@ int cmd_remove_trigger(int argc, const char **argv)
 {
 	enum lttng_error_code ret_code;
 	int ret;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	const char *name = NULL;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	const char *name = nullptr;
 	int i;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int triggers_count;
 	enum lttng_trigger_status trigger_status;
-	const struct lttng_trigger *trigger_to_remove = NULL;
-	char *owner_uid = NULL;
+	const struct lttng_trigger *trigger_to_remove = nullptr;
+	char *owner_uid = nullptr;
 	long long uid;
-	struct mi_writer *mi_writer = NULL;
+	struct mi_writer *mi_writer = nullptr;
 
 	if (lttng_opt_mi) {
 		mi_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
@@ -109,7 +109,8 @@ int cmd_remove_trigger(int argc, const char **argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, 1, argv, true, NULL, NULL);
+		status =
+			parse_next_item(argpar_iter, &argpar_item, 1, argv, true, nullptr, nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
@@ -218,7 +219,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	}
 
 	if (lttng_opt_mi) {
-		ret_code = lttng_trigger_mi_serialize(trigger_to_remove, mi_writer, NULL);
+		ret_code = lttng_trigger_mi_serialize(trigger_to_remove, mi_writer, nullptr);
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}

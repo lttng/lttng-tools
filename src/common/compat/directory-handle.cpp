@@ -114,7 +114,7 @@ lttng_directory_handle_create_from_handle(const char *path,
 					  const struct lttng_directory_handle *ref_handle)
 {
 	int dirfd;
-	struct lttng_directory_handle *handle = NULL;
+	struct lttng_directory_handle *handle = nullptr;
 
 	if (!path) {
 		handle = lttng_directory_handle_copy(ref_handle);
@@ -141,7 +141,7 @@ error_close:
 	if (close(dirfd)) {
 		PERROR("Failed to close directory file descriptor");
 	}
-	return NULL;
+	return nullptr;
 }
 
 struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(int dirfd)
@@ -159,7 +159,7 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(int dirf
 		if (ret) {
 			PERROR("Failed to fstat directory file descriptor %i", dirfd);
 			lttng_directory_handle_release(&handle->ref);
-			handle = NULL;
+			handle = nullptr;
 			goto end;
 		}
 	} else {
@@ -196,7 +196,7 @@ end:
 struct lttng_directory_handle *
 lttng_directory_handle_copy(const struct lttng_directory_handle *handle)
 {
-	struct lttng_directory_handle *new_handle = NULL;
+	struct lttng_directory_handle *new_handle = nullptr;
 
 	if (handle->dirfd == AT_FDCWD) {
 		new_handle = lttng_directory_handle_create_from_dirfd(AT_FDCWD);
@@ -317,7 +317,7 @@ static int _run_as_rename(const struct lttng_directory_handle *old_handle,
 static DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *handle,
 					   const char *path)
 {
-	DIR *dir_stream = NULL;
+	DIR *dir_stream = nullptr;
 	int fd = openat(handle->dirfd, path, O_RDONLY);
 
 	if (fd < 0) {
@@ -1025,14 +1025,15 @@ int lttng_directory_handle_create_subdirectory(const struct lttng_directory_hand
 					       const char *subdirectory,
 					       mode_t mode)
 {
-	return lttng_directory_handle_create_subdirectory_as_user(handle, subdirectory, mode, NULL);
+	return lttng_directory_handle_create_subdirectory_as_user(
+		handle, subdirectory, mode, nullptr);
 }
 
 int lttng_directory_handle_create_subdirectory_recursive(
 	const struct lttng_directory_handle *handle, const char *subdirectory_path, mode_t mode)
 {
 	return lttng_directory_handle_create_subdirectory_recursive_as_user(
-		handle, subdirectory_path, mode, NULL);
+		handle, subdirectory_path, mode, nullptr);
 }
 
 int lttng_directory_handle_open_file_as_user(const struct lttng_directory_handle *handle,
@@ -1062,7 +1063,7 @@ int lttng_directory_handle_open_file(const struct lttng_directory_handle *handle
 				     int flags,
 				     mode_t mode)
 {
-	return lttng_directory_handle_open_file_as_user(handle, filename, flags, mode, NULL);
+	return lttng_directory_handle_open_file_as_user(handle, filename, flags, mode, nullptr);
 }
 
 int lttng_directory_handle_unlink_file_as_user(const struct lttng_directory_handle *handle,
@@ -1086,7 +1087,7 @@ int lttng_directory_handle_unlink_file_as_user(const struct lttng_directory_hand
 int lttng_directory_handle_unlink_file(const struct lttng_directory_handle *handle,
 				       const char *filename)
 {
-	return lttng_directory_handle_unlink_file_as_user(handle, filename, NULL);
+	return lttng_directory_handle_unlink_file_as_user(handle, filename, nullptr);
 }
 
 int lttng_directory_handle_rename(const struct lttng_directory_handle *old_handle,
@@ -1095,7 +1096,7 @@ int lttng_directory_handle_rename(const struct lttng_directory_handle *old_handl
 				  const char *new_name)
 {
 	return lttng_directory_handle_rename_as_user(
-		old_handle, old_name, new_handle, new_name, NULL);
+		old_handle, old_name, new_handle, new_name, nullptr);
 }
 
 int lttng_directory_handle_rename_as_user(const struct lttng_directory_handle *old_handle,
@@ -1123,7 +1124,7 @@ int lttng_directory_handle_rename_as_user(const struct lttng_directory_handle *o
 int lttng_directory_handle_remove_subdirectory(const struct lttng_directory_handle *handle,
 					       const char *name)
 {
-	return lttng_directory_handle_remove_subdirectory_as_user(handle, name, NULL);
+	return lttng_directory_handle_remove_subdirectory_as_user(handle, name, nullptr);
 }
 
 int lttng_directory_handle_remove_subdirectory_as_user(const struct lttng_directory_handle *handle,
@@ -1341,7 +1342,7 @@ int lttng_directory_handle_remove_subdirectory_recursive(
 	const struct lttng_directory_handle *handle, const char *name, int flags)
 {
 	return lttng_directory_handle_remove_subdirectory_recursive_as_user(
-		handle, name, NULL, flags);
+		handle, name, nullptr, flags);
 }
 
 int lttng_directory_handle_remove_subdirectory_recursive_as_user(

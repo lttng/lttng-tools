@@ -23,12 +23,12 @@
  */
 static char *utils_partial_realpath(const char *path)
 {
-	char *cut_path = NULL, *try_path = NULL, *try_path_prev = NULL;
+	char *cut_path = nullptr, *try_path = nullptr, *try_path_prev = nullptr;
 	const char *next, *prev, *end;
-	char *resolved_path = NULL;
+	char *resolved_path = nullptr;
 
 	/* Safety net */
-	if (path == NULL) {
+	if (path == nullptr) {
 		goto error;
 	}
 
@@ -50,21 +50,21 @@ static char *utils_partial_realpath(const char *path)
 	try_path = (char *) next;
 
 	/* Resolve the canonical path of the first part of the path */
-	while (try_path != NULL && next != end) {
-		char *try_path_buf = NULL;
+	while (try_path != nullptr && next != end) {
+		char *try_path_buf = nullptr;
 
 		/*
 		 * If there is not any '/' left, we want to try with
 		 * the full path
 		 */
 		next = strpbrk(next + 1, "/");
-		if (next == NULL) {
+		if (next == nullptr) {
 			next = end;
 		}
 
 		/* Cut the part we will be trying to resolve */
 		cut_path = lttng_strndup(path, next - path);
-		if (cut_path == NULL) {
+		if (cut_path == nullptr) {
 			PERROR("lttng_strndup");
 			goto error;
 		}
@@ -77,7 +77,7 @@ static char *utils_partial_realpath(const char *path)
 
 		/* Try to resolve this part */
 		try_path = realpath((char *) cut_path, try_path_buf);
-		if (try_path == NULL) {
+		if (try_path == nullptr) {
 			free(try_path_buf);
 			/*
 			 * There was an error, we just want to be assured it
@@ -95,7 +95,7 @@ static char *utils_partial_realpath(const char *path)
 			}
 		} else {
 			/* Save the place we are before trying the next step */
-			try_path_buf = NULL;
+			try_path_buf = nullptr;
 			free(try_path_prev);
 			try_path_prev = try_path;
 			prev = next;
@@ -103,12 +103,12 @@ static char *utils_partial_realpath(const char *path)
 
 		/* Free the allocated memory */
 		free(cut_path);
-		cut_path = NULL;
+		cut_path = nullptr;
 	}
 
 	/* Allocate memory for the resolved path. */
 	resolved_path = zmalloc<char>(LTTNG_PATH_MAX);
-	if (resolved_path == NULL) {
+	if (resolved_path == nullptr) {
 		PERROR("zmalloc resolved path");
 		goto error;
 	}
@@ -117,7 +117,7 @@ static char *utils_partial_realpath(const char *path)
 	 * If we were able to solve at least partially the path, we can concatenate
 	 * what worked and what didn't work
 	 */
-	if (try_path_prev != NULL) {
+	if (try_path_prev != nullptr) {
 		/* If we risk to concatenate two '/', we remove one of them */
 		if (try_path_prev[strlen(try_path_prev) - 1] == '/' && prev[0] == '/') {
 			try_path_prev[strlen(try_path_prev) - 1] = '\0';
@@ -128,7 +128,7 @@ static char *utils_partial_realpath(const char *path)
 		 * path are pointers for the same memory space
 		 */
 		cut_path = strdup(prev);
-		if (cut_path == NULL) {
+		if (cut_path == nullptr) {
 			PERROR("strdup");
 			goto error;
 		}
@@ -139,8 +139,8 @@ static char *utils_partial_realpath(const char *path)
 		/* Free the allocated memory */
 		free(cut_path);
 		free(try_path_prev);
-		cut_path = NULL;
-		try_path_prev = NULL;
+		cut_path = nullptr;
+		try_path_prev = nullptr;
 		/*
 		 * Else, we just copy the path in our resolved_path to
 		 * return it as is
@@ -159,7 +159,7 @@ error:
 	if (try_path_prev != try_path) {
 		free(try_path_prev);
 	}
-	return NULL;
+	return nullptr;
 }
 
 static int expand_double_slashes_dot_and_dotdot(char *path)
@@ -187,7 +187,7 @@ static int expand_double_slashes_dot_and_dotdot(char *path)
 		}
 
 		next_slash = (const char *) memchr(curr_char, '/', path_last_char - curr_char);
-		if (next_slash == NULL) {
+		if (next_slash == nullptr) {
 			/* Reached the end of the provided path. */
 			next_slash = path_last_char;
 		}
@@ -234,7 +234,7 @@ static int expand_double_slashes_dot_and_dotdot(char *path)
 				 * beginning of the path. We can't go back any
 				 * further.
 				 */
-				if (prev_slash != NULL) {
+				if (prev_slash != nullptr) {
 					expanded_path_len = prev_slash - path;
 				}
 				continue;
@@ -275,18 +275,18 @@ error:
 static char *_utils_expand_path(const char *path, bool keep_symlink)
 {
 	int ret;
-	char *absolute_path = NULL;
+	char *absolute_path = nullptr;
 	char *last_token;
 	bool is_dot, is_dotdot;
 
 	/* Safety net */
-	if (path == NULL) {
+	if (path == nullptr) {
 		goto error;
 	}
 
 	/* Allocate memory for the absolute_path */
 	absolute_path = zmalloc<char>(LTTNG_PATH_MAX);
-	if (absolute_path == NULL) {
+	if (absolute_path == nullptr) {
 		PERROR("zmalloc expand path");
 		goto error;
 	}
@@ -368,7 +368,7 @@ static char *_utils_expand_path(const char *path, bool keep_symlink)
 
 error:
 	free(absolute_path);
-	return NULL;
+	return nullptr;
 }
 char *utils_expand_path(const char *path)
 {

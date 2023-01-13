@@ -15,7 +15,7 @@ void test_cxx_function()
 	not_a_function += 1;
 }
 
-int main(void)
+int main()
 {
 	test_class my_test_class;
 	/* Call test function. */

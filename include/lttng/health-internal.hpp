@@ -70,7 +70,7 @@ extern DECLARE_URCU_TLS(struct health_state, health_state);
  * blocking state caused by a poll(). If the counter's value is not an even
  * number (meaning a code execution flow), an LTTNG_ASSERT() is raised.
  */
-static inline void health_poll_entry(void)
+static inline void health_poll_entry()
 {
 	/* Code MUST be in code execution state which is an even number. */
 	LTTNG_ASSERT(!(uatomic_read(&URCU_TLS(health_state).current)
@@ -84,7 +84,7 @@ static inline void health_poll_entry(void)
  * If the counter's value is not an odd number (a poll execution), an LTTNG_ASSERT()
  * is raised.
  */
-static inline void health_poll_exit(void)
+static inline void health_poll_exit()
 {
 	/* Code MUST be in poll execution state which is an odd number. */
 	LTTNG_ASSERT(uatomic_read(&URCU_TLS(health_state).current)
@@ -97,7 +97,7 @@ static inline void health_poll_exit(void)
  * Update current counter by 2 indicates progress in execution of a
  * thread.
  */
-static inline void health_code_update(void)
+static inline void health_code_update()
 {
 	uatomic_add(&URCU_TLS(health_state).current, HEALTH_CODE_VALUE);
 }
@@ -105,7 +105,7 @@ static inline void health_code_update(void)
 /*
  * Set health "error" flag.
  */
-static inline void health_error(void)
+static inline void health_error()
 {
 	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
 }

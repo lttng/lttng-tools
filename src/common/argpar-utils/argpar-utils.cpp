@@ -31,8 +31,8 @@ static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_err
 							 const char *context_fmt,
 							 va_list args)
 {
-	char *str = NULL;
-	char *str_ret = NULL;
+	char *str = nullptr;
+	char *str_ret = nullptr;
 	int ret;
 
 	if (context_fmt) {
@@ -42,7 +42,7 @@ static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_err
 			 * If vasprintf fails, the content of str is undefined,
 			 * and we shouldn't try to free it.
 			 */
-			str = NULL;
+			str = nullptr;
 			goto end;
 		}
 
@@ -121,7 +121,7 @@ static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_err
 	}
 
 	str_ret = str;
-	str = NULL;
+	str = nullptr;
 
 end:
 	free(str);
@@ -138,7 +138,7 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 					    ...)
 {
 	enum argpar_iter_next_status status;
-	const struct argpar_error *error = NULL;
+	const struct argpar_error *error = nullptr;
 	enum parse_next_item_status ret;
 
 	ARGPAR_ITEM_DESTROY_AND_RESET(*item);
@@ -187,7 +187,7 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 	if (error_out) {
 		argpar_error_destroy(*error_out);
 		*error_out = error;
-		error = NULL;
+		error = nullptr;
 	}
 
 	argpar_error_destroy(error);

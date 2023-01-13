@@ -14,7 +14,7 @@
 #include <common/error.hpp>
 
 static inline
-int lttng_is_setuid_setgid(void)
+int lttng_is_setuid_setgid()
 {
 	return geteuid() != getuid() || getegid() != getgid();
 }
@@ -25,7 +25,7 @@ char *lttng_secure_getenv(const char *name)
 	if (lttng_is_setuid_setgid()) {
 		WARN("Getting environment variable '%s' from setuid/setgid binary refused for security reasons.",
 			name);
-		return NULL;
+		return nullptr;
 	}
 	return getenv(name);
 }

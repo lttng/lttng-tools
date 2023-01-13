@@ -40,7 +40,7 @@ static int init_session_output_path_group_by_host(struct relay_session *session)
 	 * else
 	 *   hostname/base_path
 	 */
-	char *session_directory = NULL;
+	char *session_directory = nullptr;
 	int ret = 0;
 
 	if (session->output_path[0] != '\0') {
@@ -110,7 +110,7 @@ static int init_session_output_path_group_by_session(struct relay_session *sessi
 	 * integral part of the name and how a user identify a session.
 	 */
 	int ret = 0;
-	char *session_directory = NULL;
+	char *session_directory = nullptr;
 	char creation_datetime[DATETIME_STR_LEN];
 
 	if (session->output_path[0] != '\0') {
@@ -181,8 +181,8 @@ session_create_output_directory_handle(struct relay_session *session)
 	 * relayd_output_path/session_directory
 	 * e.g. /home/user/lttng-traces/hostname/session_name
 	 */
-	char *full_session_path = NULL;
-	struct lttng_directory_handle *handle = NULL;
+	char *full_session_path = nullptr;
+	struct lttng_directory_handle *handle = nullptr;
 
 	pthread_mutex_lock(&session->lock);
 	full_session_path = create_output_path(session->output_path);
@@ -206,7 +206,7 @@ end:
 static int session_set_anonymous_chunk(struct relay_session *session)
 {
 	int ret = 0;
-	struct lttng_trace_chunk *chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr;
 	enum lttng_trace_chunk_status status;
 	struct lttng_directory_handle *output_directory;
 
@@ -234,7 +234,7 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	}
 
 	session->current_trace_chunk = chunk;
-	chunk = NULL;
+	chunk = nullptr;
 end:
 	lttng_trace_chunk_put(chunk);
 	lttng_directory_handle_put(output_directory);
@@ -293,7 +293,7 @@ struct relay_session *session_create(const char *session_name,
 				     bool session_name_contains_creation_time)
 {
 	int ret;
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 
 	LTTNG_ASSERT(session_name);
 	LTTNG_ASSERT(hostname);
@@ -325,8 +325,8 @@ struct relay_session *session_create(const char *session_name,
 	lttng_ht_node_init_u64(&session->session_n, session->id);
 	urcu_ref_init(&session->ref);
 	CDS_INIT_LIST_HEAD(&session->recv_list);
-	pthread_mutex_init(&session->lock, NULL);
-	pthread_mutex_init(&session->recv_list_lock, NULL);
+	pthread_mutex_init(&session->lock, nullptr);
+	pthread_mutex_init(&session->recv_list_lock, nullptr);
 
 	if (lttng_strncpy(session->session_name, session_name, sizeof(session->session_name))) {
 		WARN("Session name exceeds maximal allowed length");
@@ -343,7 +343,7 @@ struct relay_session *session_create(const char *session_name,
 	if (creation_time) {
 		LTTNG_OPTIONAL_SET(&session->creation_time, *creation_time);
 	} else {
-		LTTNG_OPTIONAL_SET(&session->creation_time, time(NULL));
+		LTTNG_OPTIONAL_SET(&session->creation_time, time(nullptr));
 		if (session->creation_time.value == (time_t) -1) {
 			PERROR("Failed to sample session creation time");
 			goto error;
@@ -432,7 +432,7 @@ struct relay_session *session_create(const char *session_name,
 
 error:
 	session_put(session);
-	return NULL;
+	return nullptr;
 }
 
 /* Should be called with RCU read-side lock held. */
@@ -450,7 +450,7 @@ bool session_get(struct relay_session *session)
  */
 struct relay_session *session_get_by_id(uint64_t id)
 {
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
@@ -464,7 +464,7 @@ struct relay_session *session_get_by_id(uint64_t id)
 	session = lttng::utils::container_of(node, &relay_session::session_n);
 	DBG("Session find by ID %" PRIu64 " id found", id);
 	if (!session_get(session)) {
-		session = NULL;
+		session = nullptr;
 	}
 end:
 	rcu_read_unlock();
@@ -588,14 +588,14 @@ static void destroy_session(struct relay_session *session)
 	ret = session_delete(session);
 	LTTNG_ASSERT(!ret);
 	lttng_trace_chunk_put(session->current_trace_chunk);
-	session->current_trace_chunk = NULL;
+	session->current_trace_chunk = nullptr;
 	lttng_trace_chunk_put(session->pending_closure_trace_chunk);
-	session->pending_closure_trace_chunk = NULL;
+	session->pending_closure_trace_chunk = nullptr;
 	ret = sessiond_trace_chunk_registry_session_destroyed(sessiond_trace_chunk_registry,
 							      session->sessiond_uuid);
 	LTTNG_ASSERT(!ret);
 	lttng_directory_handle_put(session->output_directory);
-	session->output_directory = NULL;
+	session->output_directory = nullptr;
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 
@@ -667,7 +667,7 @@ int session_abort(struct relay_session *session)
 	return ret;
 }
 
-void print_sessions(void)
+void print_sessions()
 {
 	struct lttng_ht_iter iter;
 	struct relay_session *session;

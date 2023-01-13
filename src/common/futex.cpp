@@ -42,7 +42,7 @@ void futex_wait_update(int32_t *futex, int active)
 {
 	if (active) {
 		uatomic_set(futex, 1);
-		if (futex_async(futex, FUTEX_WAKE, INT_MAX, NULL, NULL, 0) < 0) {
+		if (futex_async(futex, FUTEX_WAKE, INT_MAX, nullptr, nullptr, 0) < 0) {
 			PERROR("futex_async");
 			abort();
 		}
@@ -72,7 +72,7 @@ void futex_nto1_wait(int32_t *futex)
 	cmm_smp_mb();
 
 	while (uatomic_read(futex) == -1) {
-		if (!futex_async(futex, FUTEX_WAIT, -1, NULL, NULL, 0)) {
+		if (!futex_async(futex, FUTEX_WAIT, -1, nullptr, nullptr, 0)) {
 			/*
 			 * Prior queued wakeups queued by unrelated code
 			 * using the same address can cause futex wait to
@@ -108,7 +108,7 @@ void futex_nto1_wake(int32_t *futex)
 	if (caa_unlikely(uatomic_read(futex) != -1))
 		goto end;
 	uatomic_set(futex, 0);
-	if (futex_async(futex, FUTEX_WAKE, 1, NULL, NULL, 0) < 0) {
+	if (futex_async(futex, FUTEX_WAKE, 1, nullptr, nullptr, 0) < 0) {
 		PERROR("futex_async");
 		abort();
 	}

@@ -599,7 +599,7 @@ static const char *mi_lttng_event_contexttype_string(enum lttng_event_context_ty
 	case LTTNG_EVENT_CONTEXT_VSGID:
 		return config_event_context_vsgid;
 	default:
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -635,7 +635,7 @@ const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 	default:
 		/* Should not have an unknown domain */
 		abort();
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -651,7 +651,7 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 	default:
 		/* Should not have an unknow buffer type */
 		abort();
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -669,7 +669,7 @@ const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value)
 	default:
 		/* Should not have an unknow rotation state. */
 		abort();
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -682,7 +682,7 @@ const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
 	default:
 		/* Should not have an unknown relay protocol. */
 		abort();
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -710,7 +710,7 @@ end:
 
 err_destroy:
 	free(mi_writer);
-	return NULL;
+	return nullptr;
 }
 
 int mi_lttng_writer_destroy(struct mi_writer *writer)

@@ -49,7 +49,7 @@ int fd_tracker_util_pipe_open_cloexec(struct fd_tracker *tracker, const char *na
 	}
 
 	ret = fd_tracker_open_unsuspendable_fd(
-		tracker, pipe, (const char **) names, 2, open_pipe_cloexec, NULL);
+		tracker, pipe, (const char **) names, 2, open_pipe_cloexec, nullptr);
 	free(names[0]);
 	free(names[1]);
 end:
@@ -58,7 +58,7 @@ end:
 
 int fd_tracker_util_pipe_close(struct fd_tracker *tracker, int *pipe)
 {
-	return fd_tracker_close_unsuspendable_fd(tracker, pipe, 2, close_pipe, NULL);
+	return fd_tracker_close_unsuspendable_fd(tracker, pipe, 2, close_pipe, nullptr);
 }
 
 namespace {
@@ -73,7 +73,7 @@ static int open_directory_handle(void *_args, int *out_fds)
 {
 	int ret = 0;
 	struct open_directory_handle_args *args = (open_directory_handle_args *) _args;
-	struct lttng_directory_handle *new_handle = NULL;
+	struct lttng_directory_handle *new_handle = nullptr;
 
 	new_handle = args->in_handle ?
 		lttng_directory_handle_create_from_handle(args->path, args->in_handle) :
@@ -119,7 +119,7 @@ static void directory_handle_destroy(struct lttng_directory_handle *handle, void
 {
 	struct fd_tracker *tracker = (fd_tracker *) data;
 	const int ret =
-		fd_tracker_close_unsuspendable_fd(tracker, &handle->dirfd, 1, fd_close, NULL);
+		fd_tracker_close_unsuspendable_fd(tracker, &handle->dirfd, 1, fd_close, nullptr);
 
 	if (ret) {
 		ERR("Failed to untrack directory handle file descriptor");
@@ -130,7 +130,7 @@ static void directory_handle_destroy(struct lttng_directory_handle *handle, void
 struct lttng_directory_handle *fd_tracker_create_directory_handle(struct fd_tracker *tracker,
 								  const char *path)
 {
-	return fd_tracker_create_directory_handle_from_handle(tracker, NULL, path);
+	return fd_tracker_create_directory_handle_from_handle(tracker, nullptr, path);
 }
 
 struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
@@ -138,9 +138,9 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 {
 	int ret;
 	int dirfd = -1;
-	char *handle_name = NULL;
+	char *handle_name = nullptr;
 	char cwd_path[LTTNG_PATH_MAX] = "working directory";
-	struct lttng_directory_handle *new_handle = NULL;
+	struct lttng_directory_handle *new_handle = nullptr;
 	open_directory_handle_args open_args{};
 
 	open_args.in_handle = in_handle;

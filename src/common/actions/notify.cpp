@@ -83,7 +83,7 @@ static enum lttng_error_code lttng_action_notify_mi_serialize(const struct lttng
 	int ret;
 	enum lttng_action_status status;
 	enum lttng_error_code ret_code;
-	const struct lttng_rate_policy *policy = NULL;
+	const struct lttng_rate_policy *policy = nullptr;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_NOTIFY_ACTION(action));
@@ -91,7 +91,7 @@ static enum lttng_error_code lttng_action_notify_mi_serialize(const struct lttng
 
 	status = lttng_action_notify_get_rate_policy(action, &policy);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(policy != NULL);
+	LTTNG_ASSERT(policy != nullptr);
 
 	/* Open action notify. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_notify);
@@ -121,9 +121,9 @@ end:
 
 struct lttng_action *lttng_action_notify_create(void)
 {
-	struct lttng_rate_policy *policy = NULL;
-	struct lttng_action_notify *notify = NULL;
-	struct lttng_action *action = NULL;
+	struct lttng_rate_policy *policy = nullptr;
+	struct lttng_action_notify *notify = nullptr;
+	struct lttng_action *action = nullptr;
 
 	notify = zmalloc<lttng_action_notify>();
 	if (!notify) {
@@ -138,7 +138,7 @@ struct lttng_action *lttng_action_notify_create(void)
 
 	lttng_action_init(&notify->parent,
 			  LTTNG_ACTION_TYPE_NOTIFY,
-			  NULL,
+			  nullptr,
 			  lttng_action_notify_serialize,
 			  lttng_action_notify_is_equal,
 			  lttng_action_notify_destroy,
@@ -147,10 +147,10 @@ struct lttng_action *lttng_action_notify_create(void)
 			  lttng_action_notify_mi_serialize);
 
 	notify->policy = policy;
-	policy = NULL;
+	policy = nullptr;
 
 	action = &notify->parent;
-	notify = NULL;
+	notify = nullptr;
 
 end:
 	free(notify);
@@ -163,8 +163,8 @@ ssize_t lttng_action_notify_create_from_payload(struct lttng_payload_view *view,
 {
 	enum lttng_action_status status;
 	ssize_t consumed_length;
-	struct lttng_rate_policy *rate_policy = NULL;
-	struct lttng_action *_action = NULL;
+	struct lttng_rate_policy *rate_policy = nullptr;
+	struct lttng_action *_action = nullptr;
 
 	consumed_length = lttng_rate_policy_create_from_payload(view, &rate_policy);
 	if (!rate_policy) {
@@ -185,7 +185,7 @@ ssize_t lttng_action_notify_create_from_payload(struct lttng_payload_view *view,
 	}
 
 	*action = _action;
-	_action = NULL;
+	_action = nullptr;
 
 end:
 	lttng_rate_policy_destroy(rate_policy);
@@ -198,7 +198,7 @@ enum lttng_action_status lttng_action_notify_set_rate_policy(struct lttng_action
 {
 	enum lttng_action_status status;
 	struct lttng_action_notify *notify_action;
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 
 	if (!action || !policy || !IS_NOTIFY_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
@@ -219,7 +219,7 @@ enum lttng_action_status lttng_action_notify_set_rate_policy(struct lttng_action
 	/* Assign the policy. */
 	notify_action->policy = copy;
 	status = LTTNG_ACTION_STATUS_OK;
-	copy = NULL;
+	copy = nullptr;
 
 end:
 	lttng_rate_policy_destroy(copy);

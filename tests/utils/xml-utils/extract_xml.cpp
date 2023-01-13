@@ -56,7 +56,7 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 	int i;
 
 	xmlNodePtr cur;
-	xmlChar *node_child_value_string = NULL;
+	xmlChar *node_child_value_string = nullptr;
 
 	LTTNG_ASSERT(output);
 	size = (nodes) ? nodes->nodeNr : 0;
@@ -135,7 +135,7 @@ static int register_lttng_namespace(xmlXPathContextPtr xpathCtx)
 {
 	int ret;
 	xmlChar *prefix;
-	xmlChar *ns = NULL;
+	xmlChar *ns = nullptr;
 
 	prefix = xmlCharStrdup("lttng");
 	if (!prefix) {
@@ -169,9 +169,9 @@ end:
 static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 {
 	int ret;
-	xmlDocPtr doc = NULL;
-	xmlXPathContextPtr xpathCtx = NULL;
-	xmlXPathObjectPtr xpathObj = NULL;
+	xmlDocPtr doc = nullptr;
+	xmlXPathContextPtr xpathCtx = nullptr;
+	xmlXPathObjectPtr xpathObj = nullptr;
 
 	LTTNG_ASSERT(xml_path);
 	LTTNG_ASSERT(xpath);

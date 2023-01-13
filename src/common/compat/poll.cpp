@@ -49,7 +49,7 @@ static int resize_poll_event(struct lttng_poll_event *events, uint32_t new_size)
 	LTTNG_ASSERT(events);
 
 	ptr = (epoll_event *) realloc(events->events, new_size * sizeof(*ptr));
-	if (ptr == NULL) {
+	if (ptr == nullptr) {
 		PERROR("realloc epoll add");
 		goto error;
 	}
@@ -73,7 +73,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int count, int flags)
 {
 	int ret;
 
-	if (events == NULL || count <= 0) {
+	if (events == nullptr || count <= 0) {
 		goto error;
 	}
 
@@ -99,7 +99,7 @@ int compat_epoll_create(struct lttng_poll_event *events, int count, int flags)
 
 	/* This *must* be freed by using lttng_poll_free() */
 	events->events = calloc<epoll_event>(count);
-	if (events->events == NULL) {
+	if (events->events == nullptr) {
 		PERROR("zmalloc epoll set");
 		goto error_close;
 	}
@@ -126,7 +126,7 @@ int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_event
 	int ret;
 	struct epoll_event ev;
 
-	if (events == NULL || events->events == NULL || fd < 0) {
+	if (events == nullptr || events->events == nullptr || fd < 0) {
 		ERR("Bad compat epoll add arguments");
 		goto error;
 	}
@@ -172,11 +172,11 @@ int compat_epoll_del(struct lttng_poll_event *events, int fd)
 {
 	int ret;
 
-	if (events == NULL || fd < 0 || events->nb_fd == 0) {
+	if (events == nullptr || fd < 0 || events->nb_fd == 0) {
 		goto error;
 	}
 
-	ret = epoll_ctl(events->epfd, EPOLL_CTL_DEL, fd, NULL);
+	ret = epoll_ctl(events->epfd, EPOLL_CTL_DEL, fd, nullptr);
 	if (ret < 0) {
 		switch (errno) {
 		case ENOENT:
@@ -207,7 +207,7 @@ int compat_epoll_mod(struct lttng_poll_event *events, int fd, uint32_t req_event
 	int ret;
 	struct epoll_event ev;
 
-	if (events == NULL || fd < 0 || events->nb_fd == 0) {
+	if (events == nullptr || fd < 0 || events->nb_fd == 0) {
 		goto error;
 	}
 
@@ -248,7 +248,7 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout, bool interru
 	int ret;
 	uint32_t new_size;
 
-	if (events == NULL || events->events == NULL) {
+	if (events == nullptr || events->events == nullptr) {
 		ERR("Wrong arguments in compat_epoll_wait");
 		goto error;
 	}
@@ -296,7 +296,7 @@ error:
 /*
  * Setup poll set maximum size.
  */
-int compat_epoll_set_max_size(void)
+int compat_epoll_set_max_size()
 {
 	int ret, fd, retval = 0;
 	ssize_t size_ret;

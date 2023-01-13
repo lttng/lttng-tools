@@ -127,7 +127,7 @@ ssize_t lttng_snapshot_output_create_from_payload(struct lttng_payload_view *vie
 						  struct lttng_snapshot_output **output_p)
 {
 	const struct lttng_snapshot_output_comm *comm;
-	struct lttng_snapshot_output *output = NULL;
+	struct lttng_snapshot_output *output = nullptr;
 	int ret;
 
 	if (view->buffer.size != sizeof(*comm)) {
@@ -162,7 +162,7 @@ ssize_t lttng_snapshot_output_create_from_payload(struct lttng_payload_view *vie
 	}
 
 	*output_p = output;
-	output = NULL;
+	output = nullptr;
 	ret = sizeof(*comm);
 
 end:

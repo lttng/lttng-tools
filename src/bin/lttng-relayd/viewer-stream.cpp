@@ -25,18 +25,18 @@ static void viewer_stream_release_composite_objects(struct relay_viewer_stream *
 {
 	if (vstream->stream_file.handle) {
 		fs_handle_close(vstream->stream_file.handle);
-		vstream->stream_file.handle = NULL;
+		vstream->stream_file.handle = nullptr;
 	}
 	if (vstream->index_file) {
 		lttng_index_file_put(vstream->index_file);
-		vstream->index_file = NULL;
+		vstream->index_file = nullptr;
 	}
 	if (vstream->stream) {
 		stream_put(vstream->stream);
-		vstream->stream = NULL;
+		vstream->stream = nullptr;
 	}
 	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
-	vstream->stream_file.trace_chunk = NULL;
+	vstream->stream_file.trace_chunk = nullptr;
 }
 
 static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
@@ -59,7 +59,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 						 struct lttng_trace_chunk *trace_chunk,
 						 enum lttng_viewer_seek seek_t)
 {
-	struct relay_viewer_stream *vstream = NULL;
+	struct relay_viewer_stream *vstream = nullptr;
 
 	ASSERT_LOCKED(stream->lock);
 
@@ -77,12 +77,12 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 
 	vstream->stream_file.trace_chunk = trace_chunk;
 	vstream->path_name = lttng_strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
-	if (vstream->path_name == NULL) {
+	if (vstream->path_name == nullptr) {
 		PERROR("relay viewer path_name alloc");
 		goto error;
 	}
 	vstream->channel_name = lttng_strndup(stream->channel_name, LTTNG_VIEWER_NAME_MAX);
-	if (vstream->channel_name == NULL) {
+	if (vstream->channel_name == nullptr) {
 		PERROR("relay viewer channel_name alloc");
 		goto error;
 	}
@@ -135,8 +135,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 * If we never received an index for the current stream, delay
 	 * the opening of the index, otherwise open it right now.
 	 */
-	if (stream->index_file == NULL) {
-		vstream->index_file = NULL;
+	if (stream->index_file == nullptr) {
+		vstream->index_file = nullptr;
 	} else if (vstream->stream_file.trace_chunk) {
 		const uint32_t connection_major = stream->trace->session->major;
 		const uint32_t connection_minor = stream->trace->session->minor;
@@ -154,7 +154,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 			&vstream->index_file);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE) {
-				vstream->index_file = NULL;
+				vstream->index_file = nullptr;
 			} else {
 				goto error;
 			}
@@ -174,7 +174,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 					     stream->channel_name,
 					     stream->tracefile_size,
 					     vstream->current_tracefile_id,
-					     NULL,
+					     nullptr,
 					     file_path,
 					     sizeof(file_path));
 		if (ret < 0) {
@@ -219,7 +219,7 @@ error:
 		viewer_stream_release_composite_objects(vstream);
 		viewer_stream_destroy(vstream);
 	}
-	return NULL;
+	return nullptr;
 }
 
 static void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
@@ -260,7 +260,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-	struct relay_viewer_stream *vstream = NULL;
+	struct relay_viewer_stream *vstream = nullptr;
 
 	rcu_read_lock();
 	lttng_ht_lookup(viewer_streams_ht, &id, &iter);
@@ -271,7 +271,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 	}
 	vstream = lttng::utils::container_of(node, &relay_viewer_stream::stream_n);
 	if (!viewer_stream_get(vstream)) {
-		vstream = NULL;
+		vstream = nullptr;
 	}
 end:
 	rcu_read_unlock();
@@ -289,11 +289,11 @@ void viewer_stream_close_files(struct relay_viewer_stream *vstream)
 {
 	if (vstream->index_file) {
 		lttng_index_file_put(vstream->index_file);
-		vstream->index_file = NULL;
+		vstream->index_file = nullptr;
 	}
 	if (vstream->stream_file.handle) {
 		fs_handle_close(vstream->stream_file.handle);
-		vstream->stream_file.handle = NULL;
+		vstream->stream_file.handle = nullptr;
 	}
 }
 
@@ -369,7 +369,7 @@ end:
 	return ret;
 }
 
-void print_viewer_streams(void)
+void print_viewer_streams()
 {
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream;

@@ -32,7 +32,7 @@ char *config_get_file_path(const char *path)
 	ret = asprintf(&file_path, "%s/%s", path, CONFIG_FILENAME);
 	if (ret < 0) {
 		ERR("Fail allocating config file path");
-		file_path = NULL;
+		file_path = nullptr;
 	}
 
 	return file_path;
@@ -44,16 +44,16 @@ char *config_get_file_path(const char *path)
  */
 static FILE *open_config(const char *path, const char *mode)
 {
-	FILE *fp = NULL;
+	FILE *fp = nullptr;
 	char *file_path;
 
 	file_path = config_get_file_path(path);
-	if (file_path == NULL) {
+	if (file_path == nullptr) {
 		goto error;
 	}
 
 	fp = fopen(file_path, mode);
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		goto error;
 	}
 
@@ -73,7 +73,7 @@ static int create_config_file(const char *path)
 	FILE *fp;
 
 	fp = open_config(path, "w+");
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		ERR("Unable to create config file");
 		ret = -1;
 		goto error;
@@ -97,7 +97,7 @@ static int write_config(const char *file_path, size_t size, char *data)
 	int ret = 0;
 
 	fp = open_config(file_path, "a");
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -123,7 +123,7 @@ void config_destroy(const char *path)
 	char *config_path;
 
 	config_path = config_get_file_path(path);
-	if (config_path == NULL) {
+	if (config_path == nullptr) {
 		return;
 	}
 
@@ -143,10 +143,10 @@ end:
 /*
  * Destroys the default config
  */
-void config_destroy_default(void)
+void config_destroy_default()
 {
 	const char *path = utils_get_home_dir();
-	if (path == NULL) {
+	if (path == nullptr) {
 		return;
 	}
 	config_destroy(path);
@@ -178,14 +178,14 @@ static int _config_read_session_name(const char *path, char **name)
 #endif
 
 	session_name = calloc<char>(NAME_MAX);
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = -ENOMEM;
 		ERR("Out of memory");
 		goto error;
 	}
 
 	fp = open_config(path, "r");
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		ret = -ENOENT;
 		goto error;
 	}
@@ -232,7 +232,7 @@ found:
 char *config_read_session_name(const char *path)
 {
 	int ret;
-	char *name = NULL;
+	char *name = nullptr;
 
 	ret = _config_read_session_name(path, &name);
 	if (ret == -ENOENT) {
@@ -253,7 +253,7 @@ char *config_read_session_name(const char *path)
  */
 char *config_read_session_name_quiet(const char *path)
 {
-	char *name = NULL;
+	char *name = nullptr;
 
 	(void) _config_read_session_name(path, &name);
 	return name;
@@ -296,7 +296,7 @@ int config_init(const char *session_name)
 	const char *path;
 
 	path = utils_get_home_dir();
-	if (path == NULL) {
+	if (path == nullptr) {
 		ret = -1;
 		goto error;
 	}

@@ -18,7 +18,7 @@ struct lttng_action_path *lttng_action_path_create(const uint64_t *indexes, size
 {
 	int ret;
 	size_t i;
-	struct lttng_action_path *path = NULL;
+	struct lttng_action_path *path = nullptr;
 
 	if (!indexes && index_count > 0) {
 		goto error;
@@ -29,7 +29,7 @@ struct lttng_action_path *lttng_action_path_create(const uint64_t *indexes, size
 		goto error;
 	}
 
-	lttng_dynamic_array_init(&path->indexes, sizeof(uint64_t), NULL);
+	lttng_dynamic_array_init(&path->indexes, sizeof(uint64_t), nullptr);
 
 	for (i = 0; i < index_count; i++) {
 		ret = lttng_dynamic_array_add_element(&path->indexes, &indexes[i]);
@@ -41,7 +41,7 @@ struct lttng_action_path *lttng_action_path_create(const uint64_t *indexes, size
 	goto end;
 error:
 	lttng_action_path_destroy(path);
-	path = NULL;
+	path = nullptr;
 end:
 	return path;
 }
@@ -117,7 +117,7 @@ ssize_t lttng_action_path_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t consumed_size = 0, ret = -1;
 	const struct lttng_action_path_comm *header;
-	struct lttng_action_path *action_path = NULL;
+	struct lttng_action_path *action_path = nullptr;
 	const struct lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
 
@@ -148,7 +148,7 @@ ssize_t lttng_action_path_create_from_payload(struct lttng_payload_view *view,
 			goto end;
 		}
 	} else {
-		action_path = lttng_action_path_create(NULL, 0);
+		action_path = lttng_action_path_create(nullptr, 0);
 		if (!action_path) {
 			goto end;
 		}

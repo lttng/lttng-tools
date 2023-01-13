@@ -195,7 +195,7 @@ static struct unsuspendable_fd *unsuspendable_fd_create(const char *name, int fd
 	return entry;
 error:
 	unsuspendable_fd_destroy(entry);
-	return NULL;
+	return nullptr;
 }
 
 static void fs_handle_tracked_log(struct fs_handle_tracked *handle)
@@ -203,7 +203,7 @@ static void fs_handle_tracked_log(struct fs_handle_tracked *handle)
 	const char *path;
 
 	pthread_mutex_lock(&handle->lock);
-	lttng_inode_borrow_location(handle->inode, NULL, &path);
+	lttng_inode_borrow_location(handle->inode, nullptr, &path);
 
 	if (handle->fd >= 0) {
 		DBG_NO_LOC("    %s [active, fd %d%s]",
@@ -360,7 +360,7 @@ struct fd_tracker *fd_tracker_create(const char *unlinked_file_path, unsigned in
 
 	pthread_mutex_lock(&seed.lock);
 	if (!seed.initialized) {
-		seed.value = (unsigned long) time(NULL);
+		seed.value = (unsigned long) time(nullptr);
 		seed.initialized = true;
 	}
 	pthread_mutex_unlock(&seed.lock);
@@ -369,7 +369,7 @@ struct fd_tracker *fd_tracker_create(const char *unlinked_file_path, unsigned in
 	CDS_INIT_LIST_HEAD(&tracker->suspended_handles);
 	tracker->capacity = capacity;
 	tracker->unsuspendable_fds = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!tracker->unsuspendable_fds) {
 		ERR("Failed to create fd-tracker's unsuspendable_fds hash table");
 		goto error;
@@ -390,7 +390,7 @@ end:
 	return tracker;
 error:
 	fd_tracker_destroy(tracker);
-	return NULL;
+	return nullptr;
 }
 
 void fd_tracker_log(struct fd_tracker *tracker)
@@ -462,7 +462,7 @@ int fd_tracker_destroy(struct fd_tracker *tracker)
 	pthread_mutex_unlock(&tracker->lock);
 
 	if (tracker->unsuspendable_fds) {
-		ret = cds_lfht_destroy(tracker->unsuspendable_fds, NULL);
+		ret = cds_lfht_destroy(tracker->unsuspendable_fds, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 
@@ -481,7 +481,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 					    mode_t *mode)
 {
 	int ret;
-	struct fs_handle_tracked *handle = NULL;
+	struct fs_handle_tracked *handle = nullptr;
 	struct stat fd_stat;
 	struct open_properties properties = { .flags = flags,
 					      .mode = {
@@ -522,7 +522,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 
 	handle->tracker = tracker;
 
-	ret = pthread_mutex_init(&handle->lock, NULL);
+	ret = pthread_mutex_init(&handle->lock, nullptr);
 	if (ret) {
 		PERROR("Failed to initialize handle mutex while creating fs handle");
 		goto error_mutex_init;
@@ -552,7 +552,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	fd_tracker_track(tracker, handle);
 end:
 	pthread_mutex_unlock(&tracker->lock);
-	return handle ? &handle->parent : NULL;
+	return handle ? &handle->parent : nullptr;
 error:
 	if (handle->inode) {
 		lttng_inode_put(handle->inode);
@@ -560,7 +560,7 @@ error:
 	pthread_mutex_destroy(&handle->lock);
 error_mutex_init:
 	free(handle);
-	handle = NULL;
+	handle = nullptr;
 	goto end;
 }
 
@@ -641,7 +641,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 	 */
 	for (i = 0; i < fd_count; i++) {
 		struct unsuspendable_fd *entry =
-			unsuspendable_fd_create(names ? names[i] : NULL, out_fds[i]);
+			unsuspendable_fd_create(names ? names[i] : nullptr, out_fds[i]);
 
 		if (!entry) {
 			ret = -1;
@@ -667,7 +667,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 			rcu_read_unlock();
 			goto end_free_entries;
 		}
-		entries[i] = NULL;
+		entries[i] = nullptr;
 	}
 	tracker->count.unsuspendable += fd_count;
 	rcu_read_unlock();
@@ -691,7 +691,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 				      void *user_data)
 {
 	int i, ret, user_ret;
-	int *fds = NULL;
+	int *fds = nullptr;
 
 	/*
 	 * Maintain a local copy of fds_in as the user's callback may modify its
@@ -860,10 +860,10 @@ static int fs_handle_tracked_unlink(struct fs_handle *_handle)
 static int fs_handle_tracked_close(struct fs_handle *_handle)
 {
 	int ret = 0;
-	const char *path = NULL;
+	const char *path = nullptr;
 	struct fs_handle_tracked *handle =
 		lttng::utils::container_of(_handle, &fs_handle_tracked::parent);
-	struct lttng_directory_handle *inode_directory_handle = NULL;
+	struct lttng_directory_handle *inode_directory_handle = nullptr;
 
 	if (!handle) {
 		ret = -EINVAL;
@@ -873,7 +873,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
 	if (handle->inode) {
-		lttng_inode_borrow_location(handle->inode, NULL, &path);
+		lttng_inode_borrow_location(handle->inode, nullptr, &path);
 		/*
 		 * Here a reference to the inode's directory handle is acquired
 		 * to prevent the last reference to it from being released while

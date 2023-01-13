@@ -375,7 +375,7 @@ int strutils_append_str(char **s, const char *append)
 {
 	char *old = *s;
 	char *new_str;
-	size_t oldlen = (old == NULL) ? 0 : strlen(old);
+	size_t oldlen = (old == nullptr) ? 0 : strlen(old);
 	size_t appendlen = strlen(append);
 
 	new_str = zmalloc<char>(oldlen + appendlen + 1);
@@ -400,7 +400,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 
 	/* Compute length of formatted string we append. */
 	va_start(args, fmt);
-	ret = vsnprintf(NULL, 0, fmt, args);
+	ret = vsnprintf(nullptr, 0, fmt, args);
 	va_end(args);
 
 	if (ret == -1) {
@@ -431,7 +431,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 
 	free(*s);
 	*s = new_str;
-	new_str = NULL;
+	new_str = nullptr;
 
 end:
 	return ret;

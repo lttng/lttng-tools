@@ -19,7 +19,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-static void test_fd_push_pop_order(void)
+static void test_fd_push_pop_order()
 {
 	int ret, i;
 	struct lttng_payload payload;
@@ -65,7 +65,7 @@ static void test_fd_push_pop_order(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_fd_push_pop_imbalance(void)
+static void test_fd_push_pop_imbalance()
 {
 	int ret, i;
 	struct lttng_payload payload;
@@ -115,7 +115,7 @@ fail:
 	lttng_payload_reset(&payload);
 }
 
-static void test_fd_pop_fd_root_views(void)
+static void test_fd_pop_fd_root_views()
 {
 	int ret, i;
 	int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
@@ -163,13 +163,13 @@ fail:
 	fd_handle_put(handle);
 }
 
-static void test_fd_pop_fd_descendant_views(void)
+static void test_fd_pop_fd_descendant_views()
 {
 	int ret;
 	const int fd1 = 42, fd2 = 1837;
 	struct fd_handle *handle1 = fd_handle_create(fd1);
 	struct fd_handle *handle2 = fd_handle_create(fd2);
-	struct fd_handle *view_handle1 = NULL, *view_handle2 = NULL;
+	struct fd_handle *view_handle1 = nullptr, *view_handle2 = nullptr;
 	struct lttng_payload payload;
 	const char *const test_description =
 		"Different file descriptors returned when popping from descendant views";
@@ -220,7 +220,7 @@ fail:
 	fd_handle_put(view_handle2);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(TEST_COUNT);
 

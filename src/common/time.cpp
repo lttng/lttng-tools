@@ -21,7 +21,7 @@
 
 static bool utf8_output_supported;
 
-bool locale_supports_utf8(void)
+bool locale_supports_utf8()
 {
 	return utf8_output_supported;
 }
@@ -57,9 +57,9 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	return res;
 }
 
-static void __attribute__((constructor)) init_locale_utf8_support(void)
+static void __attribute__((constructor)) init_locale_utf8_support()
 {
-	const char *program_locale = setlocale(LC_ALL, NULL);
+	const char *program_locale = setlocale(LC_ALL, nullptr);
 	const char *lang = getenv("LANG");
 
 	if (program_locale && strstr(program_locale, "utf8")) {

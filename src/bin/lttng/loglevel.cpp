@@ -322,7 +322,7 @@ static const char *
 lookup_name_from_value(const struct loglevel_name_value values[], size_t values_count, int loglevel)
 {
 	size_t i;
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	for (i = 0; i < values_count; i++) {
 		if (values[i].value == loglevel) {

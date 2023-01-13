@@ -77,7 +77,7 @@ static unsigned long ht_hash_reg_uid(const void *_key, unsigned long seed)
 /*
  * Initialize global buffer per UID registry. Should only be called ONCE!.
  */
-void buffer_reg_init_uid_registry(void)
+void buffer_reg_init_uid_registry()
 {
 	/* Should be called once. */
 	LTTNG_ASSERT(!buffer_registry_uid);
@@ -103,7 +103,7 @@ int buffer_reg_uid_create(uint64_t session_id,
 			  const char *shm_path)
 {
 	int ret = 0;
-	struct buffer_reg_uid *reg = NULL;
+	struct buffer_reg_uid *reg = nullptr;
 
 	LTTNG_ASSERT(regp);
 
@@ -188,7 +188,7 @@ struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id, uint32_t bits_pe
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-	struct buffer_reg_uid *reg = NULL, key;
+	struct buffer_reg_uid *reg = nullptr, key;
 	struct lttng_ht *ht = buffer_registry_uid;
 
 	ASSERT_RCU_READ_LOCKED();
@@ -218,7 +218,7 @@ end:
 /*
  * Initialize global buffer per PID registry. Should only be called ONCE!.
  */
-void buffer_reg_init_pid_registry(void)
+void buffer_reg_init_pid_registry()
 {
 	/* Should be called once. */
 	LTTNG_ASSERT(!buffer_registry_pid);
@@ -239,7 +239,7 @@ int buffer_reg_pid_create(uint64_t session_id,
 			  const char *shm_path)
 {
 	int ret = 0;
-	struct buffer_reg_pid *reg = NULL;
+	struct buffer_reg_pid *reg = nullptr;
 
 	LTTNG_ASSERT(regp);
 
@@ -313,7 +313,7 @@ struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id)
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-	struct buffer_reg_pid *reg = NULL;
+	struct buffer_reg_pid *reg = nullptr;
 	struct lttng_ht *ht = buffer_registry_pid;
 
 	DBG3("Buffer registry per PID find id: %" PRIu64, session_id);
@@ -339,8 +339,8 @@ int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_lis
 					uint64_t *consumer_chan_key)
 {
 	struct lttng_ht_iter iter;
-	struct buffer_reg_uid *uid_reg = NULL;
-	struct buffer_reg_session *session_reg = NULL;
+	struct buffer_reg_uid *uid_reg = nullptr;
+	struct buffer_reg_session *session_reg = nullptr;
 	struct buffer_reg_channel *reg_chan;
 	int ret = -1;
 
@@ -388,7 +388,7 @@ int buffer_reg_channel_create(uint64_t key, struct buffer_reg_channel **regp)
 
 	reg->key = key;
 	CDS_INIT_LIST_HEAD(&reg->streams);
-	pthread_mutex_init(&reg->stream_list_lock, NULL);
+	pthread_mutex_init(&reg->stream_list_lock, nullptr);
 
 	lttng_ht_node_init_u64(&reg->node, key);
 	*regp = reg;
@@ -459,7 +459,7 @@ struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key, struct buffer_r
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
-	struct buffer_reg_channel *chan = NULL;
+	struct buffer_reg_channel *chan = nullptr;
 	struct lttng_ht *ht;
 
 	LTTNG_ASSERT(reg);
@@ -500,7 +500,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain
 	{
 		int ret;
 
-		ret = ust_app_release_object(NULL, regp->obj.ust);
+		ret = ust_app_release_object(nullptr, regp->obj.ust);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Buffer reg stream release obj handle %d failed with ret %d",
 			    regp->obj.ust->handle,
@@ -559,7 +559,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 		}
 
 		if (regp->obj.ust) {
-			ret = ust_app_release_object(NULL, regp->obj.ust);
+			ret = ust_app_release_object(nullptr, regp->obj.ust);
 			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("Buffer reg channel release obj handle %d failed with ret %d",
 				    regp->obj.ust->handle,
@@ -733,7 +733,7 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 /*
  * Destroy per PID and UID registry hash table.
  */
-void buffer_reg_destroy_registries(void)
+void buffer_reg_destroy_registries()
 {
 	DBG3("Buffer registry destroy all registry");
 	lttng_ht_destroy(buffer_registry_uid);

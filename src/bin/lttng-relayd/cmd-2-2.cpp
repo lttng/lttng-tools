@@ -31,8 +31,8 @@ int cmd_recv_stream_2_2(const struct lttng_buffer_view *payload,
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_2 stream_info;
-	char *path_name = NULL;
-	char *channel_name = NULL;
+	char *path_name = nullptr;
+	char *channel_name = nullptr;
 	size_t len;
 
 	if (payload->size < sizeof(stream_info)) {

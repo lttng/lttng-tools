@@ -39,7 +39,7 @@
 #define PROC_MEMINFO_MEMAVAILABLE_LINE "MemAvailable:"
 #define PROC_MEMINFO_MEMTOTAL_LINE     "MemTotal:"
 
-/* The length of the longest field of `/proc/meminfo`. */
+/* The lnullptrh of the longest field of `/proc/meminfo`. */
 #define PROC_MEMINFO_FIELD_MAX_NAME_LEN 20
 
 #if (PROC_MEMINFO_FIELD_MAX_NAME_LEN == 20)
@@ -58,7 +58,7 @@ int utils_create_pipe(int *dst)
 {
 	int ret;
 
-	if (dst == NULL) {
+	if (dst == nullptr) {
 		return -1;
 	}
 
@@ -80,7 +80,7 @@ int utils_create_pipe_cloexec(int *dst)
 {
 	int ret, i;
 
-	if (dst == NULL) {
+	if (dst == nullptr) {
 		return -1;
 	}
 
@@ -112,7 +112,7 @@ int utils_create_pipe_cloexec_nonblock(int *dst)
 {
 	int ret, i;
 
-	if (dst == NULL) {
+	if (dst == nullptr) {
 		return -1;
 	}
 
@@ -149,7 +149,7 @@ void utils_close_pipe(int *src)
 {
 	int i, ret;
 
-	if (src == NULL) {
+	if (src == nullptr) {
 		return;
 	}
 
@@ -174,7 +174,7 @@ char *utils_strdupdelim(const char *begin, const char *end)
 {
 	char *str = zmalloc<char>(end - begin + 1);
 
-	if (str == NULL) {
+	if (str == nullptr) {
 		PERROR("zmalloc strdupdelim");
 		goto error;
 	}
@@ -214,7 +214,7 @@ end:
 int utils_create_pid_file(pid_t pid, const char *filepath)
 {
 	int ret, fd = -1;
-	FILE *fp = NULL;
+	FILE *fp = nullptr;
 
 	LTTNG_ASSERT(filepath);
 
@@ -226,7 +226,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 	}
 
 	fp = fdopen(fd, "w");
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		PERROR("fdopen file %s", filepath);
 		ret = -1;
 		if (close(fd)) {
@@ -311,13 +311,13 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 		.gid = LTTNG_OPTIONAL_INIT_VALUE((gid_t) gid),
 	};
 
-	handle = lttng_directory_handle_create(NULL);
+	handle = lttng_directory_handle_create(nullptr);
 	if (!handle) {
 		ret = -1;
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_as_user(
-		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : NULL);
+		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : nullptr);
 end:
 	lttng_directory_handle_put(handle);
 	return ret;
@@ -338,13 +338,13 @@ int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 		.gid = LTTNG_OPTIONAL_INIT_VALUE((gid_t) gid),
 	};
 
-	handle = lttng_directory_handle_create(NULL);
+	handle = lttng_directory_handle_create(nullptr);
 	if (!handle) {
 		ret = -1;
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_recursive_as_user(
-		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : NULL);
+		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : nullptr);
 end:
 	lttng_directory_handle_put(handle);
 	return ret;
@@ -427,7 +427,7 @@ int utils_parse_size_suffix(const char *const str, uint64_t *const size)
 	}
 
 	/* strtoull will accept a negative number, but we don't want to. */
-	if (strchr(str, '-') != NULL) {
+	if (strchr(str, '-') != nullptr) {
 		DBG("utils_parse_size_suffix: invalid size string, should not contain '-'.");
 		ret = -1;
 		goto end;
@@ -533,7 +533,7 @@ int utils_parse_time_suffix(char const *const str, uint64_t *const time_us)
 	}
 
 	/* strtoull will accept a negative number, but we don't want to. */
-	if (strchr(str, '-') != NULL) {
+	if (strchr(str, '-') != nullptr) {
 		DBG("utils_parse_time_suffix: invalid time string, should not contain '-'.");
 		ret = -1;
 		goto end;
@@ -756,17 +756,17 @@ int utils_get_count_order_u64(uint64_t x)
  * Obtain the value of LTTNG_HOME environment variable, if exists.
  * Otherwise returns the value of HOME.
  */
-const char *utils_get_home_dir(void)
+const char *utils_get_home_dir()
 {
-	char *val = NULL;
+	char *val = nullptr;
 	struct passwd *pwd;
 
 	val = lttng_secure_getenv(DEFAULT_LTTNG_HOME_ENV_VAR);
-	if (val != NULL) {
+	if (val != nullptr) {
 		goto end;
 	}
 	val = lttng_secure_getenv(DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR);
-	if (val != NULL) {
+	if (val != nullptr) {
 		goto end;
 	}
 
@@ -791,8 +791,8 @@ char *utils_get_user_home_dir(uid_t uid)
 {
 	struct passwd pwd;
 	struct passwd *result;
-	char *home_dir = NULL;
-	char *buf = NULL;
+	char *home_dir = nullptr;
+	char *buf = nullptr;
 	long buflen;
 	int ret;
 
@@ -978,7 +978,7 @@ int utils_recursive_rmdir(const char *path)
 	int ret;
 	struct lttng_directory_handle *handle;
 
-	handle = lttng_directory_handle_create(NULL);
+	handle = lttng_directory_handle_create(nullptr);
 	if (!handle) {
 		ret = -1;
 		goto end;
@@ -1009,7 +1009,7 @@ end:
 	return ret;
 }
 
-static const char *get_man_bin_path(void)
+static const char *get_man_bin_path()
 {
 	char *env_man_path = lttng_secure_getenv(DEFAULT_MAN_BIN_PATH_ENV);
 
@@ -1160,7 +1160,7 @@ enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *uid)
 	struct passwd p, *pres;
 	int ret;
 	enum lttng_error_code ret_val = LTTNG_OK;
-	char *buf = NULL;
+	char *buf = nullptr;
 	ssize_t buflen;
 
 	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -1196,7 +1196,7 @@ end_loop:
 
 	switch (ret) {
 	case 0:
-		if (pres == NULL) {
+		if (pres == nullptr) {
 			ret_val = LTTNG_ERR_USER_NOT_FOUND;
 		} else {
 			*uid = p.pw_uid;
@@ -1225,7 +1225,7 @@ enum lttng_error_code utils_group_id_from_name(const char *group_name, gid_t *gi
 	struct group g, *gres;
 	int ret;
 	enum lttng_error_code ret_val = LTTNG_OK;
-	char *buf = NULL;
+	char *buf = nullptr;
 	ssize_t buflen;
 
 	buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
@@ -1261,7 +1261,7 @@ end_loop:
 
 	switch (ret) {
 	case 0:
-		if (gres == NULL) {
+		if (gres == nullptr) {
 			ret_val = LTTNG_ERR_GROUP_NOT_FOUND;
 		} else {
 			*gid = g.gr_gid;

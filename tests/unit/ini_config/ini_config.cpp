@@ -66,7 +66,7 @@ end:
 
 int main(int argc, char **argv)
 {
-	char *path = NULL;
+	char *path = nullptr;
 	int ret;
 	struct state state = {};
 
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 
 	plan_no_plan();
 	ret = config_get_section_entries(
-		path, NULL, (config_entry_handler_cb) entry_handler, &state);
+		path, nullptr, (config_entry_handler_cb) entry_handler, &state);
 	ok(ret == 0, "Successfully opened a config file, registered to all sections");
 	ok(state.section_1 && state.section_2 && state.section_3 && state.section_global,
 	   "Processed entries from each sections");

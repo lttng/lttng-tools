@@ -42,7 +42,7 @@ static char random_string[RANDOM_STRING_LEN];
  * Return random string of 10 characters.
  * Not thread-safe.
  */
-static char *get_random_string(void)
+static char *get_random_string()
 {
 	int i;
 
@@ -55,18 +55,18 @@ static char *get_random_string(void)
 	return random_string;
 }
 
-static void test_create_one_ust_session(void)
+static void test_create_one_ust_session()
 {
 	struct ltt_ust_session *usess = trace_ust_create_session(42);
 
-	ok(usess != NULL, "Create UST session");
+	ok(usess != nullptr, "Create UST session");
 
 	if (!usess) {
 		skip(1, "UST session is null");
 		return;
 	}
 
-	ok(usess->id == 42 && usess->active == 0 && usess->domain_global.channels != NULL &&
+	ok(usess->id == 42 && usess->active == 0 && usess->domain_global.channels != nullptr &&
 		   usess->uid == 0 && usess->gid == 0,
 	   "Validate UST session");
 
@@ -74,7 +74,7 @@ static void test_create_one_ust_session(void)
 	trace_ust_free_session(usess);
 }
 
-static void test_create_ust_channel(void)
+static void test_create_ust_channel()
 {
 	struct ltt_ust_channel *uchan;
 	struct lttng_channel attr;
@@ -87,7 +87,7 @@ static void test_create_ust_channel(void)
 	ok(lttng_strncpy(attr.name, "channel0", sizeof(attr.name)) == 0,
 	   "Validate channel name length");
 	uchan = trace_ust_create_channel(&attr, LTTNG_DOMAIN_UST);
-	ok(uchan != NULL, "Create UST channel");
+	ok(uchan != nullptr, "Create UST channel");
 
 	if (!uchan) {
 		skip(1, "UST channel is null");
@@ -95,14 +95,14 @@ static void test_create_ust_channel(void)
 	}
 
 	ok(uchan->enabled == 0 && strncmp(uchan->name, "channel0", 8) == 0 &&
-		   uchan->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0' && uchan->ctx != NULL &&
-		   uchan->events != NULL && uchan->attr.overwrite == attr.attr.overwrite,
+		   uchan->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0' && uchan->ctx != nullptr &&
+		   uchan->events != nullptr && uchan->attr.overwrite == attr.attr.overwrite,
 	   "Validate UST channel");
 
 	trace_ust_destroy_channel(uchan);
 }
 
-static void test_create_ust_event(void)
+static void test_create_ust_event()
 {
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
@@ -114,7 +114,7 @@ static void test_create_ust_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	ret = trace_ust_create_event(&ev, NULL, NULL, NULL, false, &event);
+	ret = trace_ust_create_event(&ev, nullptr, nullptr, nullptr, false, &event);
 
 	ok(ret == LTTNG_OK, "Create UST event");
 
@@ -131,7 +131,7 @@ static void test_create_ust_event(void)
 	trace_ust_destroy_event(event);
 }
 
-static void test_create_ust_event_exclusion(void)
+static void test_create_ust_event_exclusion()
 {
 	int copy_ret;
 	enum lttng_error_code ret;
@@ -139,8 +139,8 @@ static void test_create_ust_event_exclusion(void)
 	struct lttng_event ev;
 	char *name;
 	char *random_name;
-	struct lttng_event_exclusion *exclusion = NULL;
-	struct lttng_event_exclusion *exclusion_copy = NULL;
+	struct lttng_event_exclusion *exclusion = nullptr;
+	struct lttng_event_exclusion *exclusion_copy = nullptr;
 	const int exclusion_count = 2;
 
 	memset(&ev, 0, sizeof(ev));
@@ -156,7 +156,7 @@ static void test_create_ust_event_exclusion(void)
 	/* set up an exclusion set */
 	exclusion = zmalloc<lttng_event_exclusion>(sizeof(*exclusion) +
 						   LTTNG_SYMBOL_NAME_LEN * exclusion_count);
-	ok(exclusion != NULL, "Create UST exclusion");
+	ok(exclusion != nullptr, "Create UST exclusion");
 	if (!exclusion) {
 		skip(4, "zmalloc failed");
 		goto end;
@@ -171,14 +171,14 @@ static void test_create_ust_event_exclusion(void)
 		random_name,
 		LTTNG_SYMBOL_NAME_LEN - 1);
 
-	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
-	exclusion = NULL;
+	ret = trace_ust_create_event(&ev, nullptr, nullptr, exclusion, false, &event);
+	exclusion = nullptr;
 
 	ok(ret != LTTNG_OK, "Create UST event with identical exclusion names fails");
 
 	exclusion = zmalloc<lttng_event_exclusion>(sizeof(*exclusion) +
 						   LTTNG_SYMBOL_NAME_LEN * exclusion_count);
-	ok(exclusion != NULL, "Create UST exclusion");
+	ok(exclusion != nullptr, "Create UST exclusion");
 	if (!exclusion) {
 		skip(2, "zmalloc failed");
 		goto end;
@@ -217,8 +217,8 @@ static void test_create_ust_event_exclusion(void)
 				 sizeof(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 1)));
 	LTTNG_ASSERT(copy_ret == 0);
 
-	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
-	exclusion = NULL;
+	ret = trace_ust_create_event(&ev, nullptr, nullptr, exclusion, false, &event);
+	exclusion = nullptr;
 	ok(ret == LTTNG_OK, "Create UST event with different exclusion names");
 
 	if (!event) {
@@ -227,7 +227,7 @@ static void test_create_ust_event_exclusion(void)
 	}
 
 	ok(event->enabled == 0 && event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
-		   strcmp(event->attr.name, ev.name) == 0 && event->exclusion != NULL &&
+		   strcmp(event->attr.name, ev.name) == 0 && event->exclusion != nullptr &&
 		   event->exclusion->count == exclusion_count &&
 		   !memcmp(event->exclusion->names,
 			   exclusion_copy->names,
@@ -242,7 +242,7 @@ end:
 	return;
 }
 
-static void test_create_ust_context(void)
+static void test_create_ust_context()
 {
 	struct lttng_event_context ectx;
 	struct ltt_ust_context *uctx;
@@ -250,7 +250,7 @@ static void test_create_ust_context(void)
 	ectx.ctx = LTTNG_EVENT_CONTEXT_VTID;
 
 	uctx = trace_ust_create_context(&ectx);
-	ok(uctx != NULL, "Create UST context");
+	ok(uctx != nullptr, "Create UST context");
 
 	if (uctx) {
 		ok((int) uctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_VTID, "Validate UST context");
@@ -260,7 +260,7 @@ static void test_create_ust_context(void)
 	free(uctx);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 

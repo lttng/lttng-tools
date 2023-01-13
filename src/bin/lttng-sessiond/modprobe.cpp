@@ -330,7 +330,7 @@ static int setup_kmod_ctx(struct kmod_ctx **ctx)
 {
 	int ret = 0;
 
-	*ctx = kmod_new(NULL, NULL);
+	*ctx = kmod_new(nullptr, nullptr);
 	if (!ctx) {
 		PERROR("Unable to create kmod library context");
 		ret = -ENOMEM;
@@ -344,7 +344,7 @@ static int setup_kmod_ctx(struct kmod_ctx **ctx)
 	 */
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
-	kmod_set_log_fn(*ctx, log_kmod, NULL);
+	kmod_set_log_fn(*ctx, log_kmod, nullptr);
 	DIAGNOSTIC_POP
 	ret = kmod_load_resources(*ctx);
 	if (ret < 0) {
@@ -379,7 +379,7 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 	}
 
 	for (i = 0; i < entries; i++) {
-		struct kmod_module *mod = NULL;
+		struct kmod_module *mod = nullptr;
 
 		ret = kmod_module_new_from_name(ctx, modules[i].name, &mod);
 		if (ret < 0) {
@@ -387,7 +387,7 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 			goto error;
 		}
 
-		ret = kmod_module_probe_insert_module(mod, 0, NULL, NULL, NULL, NULL);
+		ret = kmod_module_probe_insert_module(mod, 0, nullptr, nullptr, nullptr, nullptr);
 		if (ret == -EEXIST) {
 			DBG("Module %s is already loaded", modules[i].name);
 			ret = 0;
@@ -440,7 +440,7 @@ static int rmmod_recurse(struct kmod_module *mod)
 	ret = kmod_module_remove_module(mod, 0);
 
 	deps = kmod_module_get_dependencies(mod);
-	if (deps != NULL) {
+	if (deps != nullptr) {
 		kmod_list_foreach(itr, deps)
 		{
 			struct kmod_module *dep = kmod_module_get_module(itr);
@@ -474,7 +474,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules, int 
 	}
 
 	for (i = entries - 1; i >= 0; i--) {
-		struct kmod_module *mod = NULL;
+		struct kmod_module *mod = nullptr;
 
 		if (!modules[i].loaded) {
 			continue;
@@ -598,12 +598,12 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules, int 
 /*
  * Remove control kernel module(s) in reverse load order.
  */
-void modprobe_remove_lttng_control(void)
+void modprobe_remove_lttng_control()
 {
 	modprobe_remove_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
 
-static void free_probes(void)
+static void free_probes()
 {
 	int i;
 
@@ -614,14 +614,14 @@ static void free_probes(void)
 		free(probes[i].name);
 	}
 	free(probes);
-	probes = NULL;
+	probes = nullptr;
 	nr_probes = 0;
 }
 
 /*
  * Remove data kernel modules in reverse load order.
  */
-void modprobe_remove_lttng_data(void)
+void modprobe_remove_lttng_data()
 {
 	if (!probes) {
 		return;
@@ -634,7 +634,7 @@ void modprobe_remove_lttng_data(void)
 /*
  * Remove all kernel modules in reverse order.
  */
-void modprobe_remove_lttng_all(void)
+void modprobe_remove_lttng_all()
 {
 	modprobe_remove_lttng_data();
 	modprobe_remove_lttng_control();
@@ -643,7 +643,7 @@ void modprobe_remove_lttng_all(void)
 /*
  * Load control kernel module(s).
  */
-int modprobe_lttng_control(void)
+int modprobe_lttng_control()
 {
 	return modprobe_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
@@ -652,7 +652,7 @@ int modprobe_lttng_control(void)
  * Grow global list of probes (double capacity or set it to 1 if
  * currently 0 and copy existing data).
  */
-static int grow_probes(void)
+static int grow_probes()
 {
 	int i;
 	struct kern_modules_param *tmp_probes;
@@ -716,7 +716,7 @@ static int append_list_to_probes(const char *list)
 		if (!next) {
 			break;
 		}
-		cur_list = NULL;
+		cur_list = nullptr;
 
 		/* filter leading spaces */
 		while (*next == ' ') {
@@ -765,7 +765,7 @@ error:
 /*
  * Load data kernel module(s).
  */
-int modprobe_lttng_data(void)
+int modprobe_lttng_data()
 {
 	int ret, i;
 	char *list;

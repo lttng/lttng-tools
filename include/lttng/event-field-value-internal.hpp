@@ -153,7 +153,7 @@ struct lttng_event_field_value *lttng_event_field_value_string_create(
 struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
 		const char *val, size_t size);
 
-struct lttng_event_field_value *lttng_event_field_value_array_create(void);
+struct lttng_event_field_value *lttng_event_field_value_array_create();
 
 int lttng_event_field_value_enum_append_label(
 		struct lttng_event_field_value *field_val, const char *label);

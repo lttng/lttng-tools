@@ -158,7 +158,7 @@ extern int compat_epoll_mod(struct lttng_poll_event *events,
 /*
  * Set up the poll set limits variable poll_max_size
  */
-extern int compat_epoll_set_max_size(void);
+extern int compat_epoll_set_max_size();
 #define lttng_poll_set_max_size() \
 	compat_epoll_set_max_size()
 

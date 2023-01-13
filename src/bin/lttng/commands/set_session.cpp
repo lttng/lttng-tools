@@ -33,9 +33,9 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -145,9 +145,9 @@ int cmd_set_session(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	const char *arg_session_name = NULL;
+	const char *arg_session_name = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -165,7 +165,7 @@ int cmd_set_session(int argc, const char **argv)
 	}
 
 	arg_session_name = poptGetArg(pc);
-	if (arg_session_name == NULL) {
+	if (arg_session_name == nullptr) {
 		ERR("Missing session name");
 		ret = CMD_ERROR;
 		goto end;

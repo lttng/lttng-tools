@@ -31,10 +31,10 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 {
 	struct lttng_channel *chan;
 	const char *channel_name = DEFAULT_CHANNEL_NAME;
-	struct lttng_channel_extended *extended_attr = NULL;
+	struct lttng_channel_extended *extended_attr = nullptr;
 
 	chan = zmalloc<lttng_channel>();
-	if (chan == NULL) {
+	if (chan == nullptr) {
 		PERROR("zmalloc channel init");
 		goto error_alloc;
 	}
@@ -115,7 +115,7 @@ error:
 	free(extended_attr);
 	free(chan);
 error_alloc:
-	return NULL;
+	return nullptr;
 }
 
 void channel_attr_destroy(struct lttng_channel *channel)
@@ -139,7 +139,7 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_na
 	LTTNG_ASSERT(channel_name);
 
 	kchan = trace_kernel_get_channel_by_name(channel_name, ksession);
-	if (kchan == NULL) {
+	if (kchan == nullptr) {
 		ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		goto error;
 	}
@@ -216,14 +216,14 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 					    int kernel_pipe)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_channel *defattr = NULL;
+	struct lttng_channel *defattr = nullptr;
 
 	LTTNG_ASSERT(ksession);
 
 	/* Creating channel attributes if needed */
-	if (attr == NULL) {
+	if (attr == nullptr) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
-		if (defattr == NULL) {
+		if (defattr == nullptr) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto error;
 		}
@@ -321,17 +321,17 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 					 enum lttng_buffer_type type)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct ltt_ust_channel *uchan = NULL;
-	struct lttng_channel *defattr = NULL;
+	struct ltt_ust_channel *uchan = nullptr;
+	struct lttng_channel *defattr = nullptr;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 	bool chan_published = false;
 
 	LTTNG_ASSERT(usess);
 
 	/* Creating channel attributes if needed */
-	if (attr == NULL) {
+	if (attr == nullptr) {
 		defattr = channel_new_default_attr(LTTNG_DOMAIN_UST, type);
-		if (defattr == NULL) {
+		if (defattr == nullptr) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto error;
 		}
@@ -420,7 +420,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Create UST channel */
 	uchan = trace_ust_create_channel(attr, domain);
-	if (uchan == NULL) {
+	if (uchan == nullptr) {
 		ret_code = LTTNG_ERR_FATAL;
 		goto error;
 	}
@@ -535,7 +535,7 @@ error:
 
 struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan)
 {
-	struct lttng_channel *channel = NULL, *ret = NULL;
+	struct lttng_channel *channel = nullptr, *ret = nullptr;
 
 	channel = lttng_channel_create_internal();
 	if (!channel) {
@@ -577,7 +577,7 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 	lttng_channel_set_monitor_timer_interval(channel, uchan->monitor_timer_interval);
 
 	ret = channel;
-	channel = NULL;
+	channel = nullptr;
 
 end:
 	lttng_channel_destroy(channel);

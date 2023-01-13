@@ -26,7 +26,7 @@ static int main_quit_pipe[2] = { -1, -1 };
  *
  * Return -1 on error or 0 if all pipes are created.
  */
-int sessiond_init_main_quit_pipe(void)
+int sessiond_init_main_quit_pipe()
 {
 	int ret, i;
 
@@ -91,12 +91,12 @@ end:
 	return ret;
 }
 
-int sessiond_notify_main_quit_pipe(void)
+int sessiond_notify_main_quit_pipe()
 {
 	return notify_thread_pipe(main_quit_pipe[1]);
 }
 
-void sessiond_close_main_quit_pipe(void)
+void sessiond_close_main_quit_pipe()
 {
 	utils_close_pipe(main_quit_pipe);
 }

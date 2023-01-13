@@ -23,7 +23,7 @@ bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view)
 struct lttng_buffer_view
 lttng_buffer_view_from_view(const struct lttng_buffer_view *src, size_t offset, ptrdiff_t len)
 {
-	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
+	struct lttng_buffer_view view = { .data = nullptr, .size = 0 };
 
 	LTTNG_ASSERT(src);
 
@@ -52,7 +52,7 @@ end:
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 	const struct lttng_dynamic_buffer *src, size_t offset, ptrdiff_t len)
 {
-	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
+	struct lttng_buffer_view view = { .data = nullptr, .size = 0 };
 
 	LTTNG_ASSERT(src);
 

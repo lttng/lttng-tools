@@ -166,7 +166,7 @@ static int timer_start(timer_t *timer_id,
 		its.it_interval.tv_nsec = its.it_value.tv_nsec;
 	}
 
-	ret = timer_settime(*timer_id, 0, &its, NULL);
+	ret = timer_settime(*timer_id, 0, &its, nullptr);
 	if (ret == -1) {
 		PERROR("timer_settime");
 		goto error_destroy_timer;
@@ -194,7 +194,7 @@ static int timer_stop(timer_t *timer_id, int signal)
 	}
 
 	timer_signal_thread_qs(signal);
-	*timer_id = 0;
+	*timer_id = nullptr;
 end:
 	return ret;
 }
@@ -316,14 +316,14 @@ end:
  * Block the RT signals for the entire process. It must be called from the
  * sessiond main before creating the threads
  */
-int timer_signal_init(void)
+int timer_signal_init()
 {
 	int ret;
 	sigset_t mask;
 
 	/* Block signal for entire process, so only our thread processes it. */
 	setmask(&mask);
-	ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+	ret = pthread_sigmask(SIG_BLOCK, &mask, nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_sigmask");
@@ -352,7 +352,7 @@ static void *thread_timer(void *data)
 	setmask(&mask);
 	CMM_STORE_SHARED(timer_signal.tid, pthread_self());
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		health_poll_entry();
@@ -402,7 +402,7 @@ end:
 	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_timer_thread(void *data __attribute__((unused)))
@@ -415,7 +415,7 @@ bool launch_timer_thread(struct timer_thread_parameters *timer_thread_parameters
 	struct lttng_thread *thread;
 
 	thread = lttng_thread_create(
-		"Timer", thread_timer, shutdown_timer_thread, NULL, timer_thread_parameters);
+		"Timer", thread_timer, shutdown_timer_thread, nullptr, timer_thread_parameters);
 	if (!thread) {
 		goto error;
 	}

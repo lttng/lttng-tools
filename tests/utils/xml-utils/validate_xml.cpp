@@ -88,7 +88,7 @@ static int init_validation_ctx(struct validation_ctx *ctx, char *xsd_path)
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		goto end;
 	}
-	xmlSchemaSetParserErrors(ctx->parser_ctx, xml_error_handler, xml_error_handler, NULL);
+	xmlSchemaSetParserErrors(ctx->parser_ctx, xml_error_handler, xml_error_handler, nullptr);
 
 	ctx->schema = xmlSchemaParse(ctx->parser_ctx);
 	if (!ctx->schema) {
@@ -103,7 +103,7 @@ static int init_validation_ctx(struct validation_ctx *ctx, char *xsd_path)
 	}
 
 	xmlSchemaSetValidErrors(
-		ctx->schema_validation_ctx, xml_error_handler, xml_error_handler, NULL);
+		ctx->schema_validation_ctx, xml_error_handler, xml_error_handler, nullptr);
 	ret = 0;
 
 end:
@@ -116,7 +116,7 @@ end:
 static int validate_xml(const char *xml_file_path, struct validation_ctx *ctx)
 {
 	int ret;
-	xmlDocPtr doc = NULL;
+	xmlDocPtr doc = nullptr;
 
 	LTTNG_ASSERT(xml_file_path);
 	LTTNG_ASSERT(ctx);

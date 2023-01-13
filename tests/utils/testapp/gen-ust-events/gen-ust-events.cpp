@@ -30,15 +30,15 @@
 
 static struct option long_options[] = {
 	/* These options set a flag. */
-	{ "iter", required_argument, 0, 'i' },
-	{ "wait", required_argument, 0, 'w' },
-	{ "sync-after-first-event", required_argument, 0, 'a' },
-	{ "sync-before-last-event", required_argument, 0, 'b' },
-	{ "sync-before-last-event-touch", required_argument, 0, 'c' },
-	{ "sync-before-exit", required_argument, 0, 'd' },
-	{ "sync-before-exit-touch", required_argument, 0, 'e' },
-	{ "emit-end-event", no_argument, 0, 'f' },
-	{ 0, 0, 0, 0 }
+	{ "iter", required_argument, nullptr, 'i' },
+	{ "wait", required_argument, nullptr, 'w' },
+	{ "sync-after-first-event", required_argument, nullptr, 'a' },
+	{ "sync-before-last-event", required_argument, nullptr, 'b' },
+	{ "sync-before-last-event-touch", required_argument, nullptr, 'c' },
+	{ "sync-before-exit", required_argument, nullptr, 'd' },
+	{ "sync-before-exit-touch", required_argument, nullptr, 'e' },
+	{ "emit-end-event", no_argument, nullptr, 'f' },
+	{ nullptr, 0, nullptr, 0 }
 };
 
 int main(int argc, char **argv)
@@ -54,17 +54,17 @@ int main(int argc, char **argv)
 	uint32_t net_values[] = { 1, 2, 3 };
 	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;
-	char *after_first_event_file_path = NULL;
-	char *before_last_event_file_path = NULL;
+	char *after_first_event_file_path = nullptr;
+	char *before_last_event_file_path = nullptr;
 	/*
 	 * Touch a file to indicate that all events except one were
 	 * generated.
 	 */
-	char *before_last_event_file_path_touch = NULL;
+	char *before_last_event_file_path_touch = nullptr;
 	/* Touch file when we are exiting */
-	char *before_exit_file_path_touch = NULL;
+	char *before_exit_file_path_touch = nullptr;
 	/* Wait on file before exiting */
-	char *before_exit_file_path = NULL;
+	char *before_exit_file_path = nullptr;
 	/* Emit an end event */
 	bool emit_end_event = false;
 

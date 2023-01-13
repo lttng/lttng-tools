@@ -180,7 +180,7 @@ struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto)
 {
 	struct lttcomm_sock *sock = zmalloc<lttcomm_sock>();
 
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		PERROR("zmalloc create sock");
 		goto end;
 	}
@@ -207,7 +207,7 @@ struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src)
 	LTTNG_ASSERT(src);
 
 	sock = lttcomm_alloc_sock(src->proto);
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		goto alloc_error;
 	}
 
@@ -299,7 +299,7 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 {
 	int ret;
 	int _sock_proto;
-	struct lttcomm_sock *sock = NULL;
+	struct lttcomm_sock *sock = nullptr;
 
 	/* Safety net */
 	LTTNG_ASSERT(uri);
@@ -313,7 +313,7 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 	}
 
 	sock = lttcomm_alloc_sock((lttcomm_sock_proto) _sock_proto);
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		goto alloc_error;
 	}
 
@@ -339,7 +339,7 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 error:
 	lttcomm_destroy_sock(sock);
 alloc_error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -360,7 +360,7 @@ struct lttcomm_relayd_sock *
 lttcomm_alloc_relayd_sock(struct lttng_uri *uri, uint32_t major, uint32_t minor)
 {
 	int ret;
-	struct lttcomm_sock *tmp_sock = NULL;
+	struct lttcomm_sock *tmp_sock = nullptr;
 	struct lttcomm_relayd_sock *rsock = zmalloc<lttcomm_relayd_sock>();
 
 	LTTNG_ASSERT(uri);
@@ -372,7 +372,7 @@ lttcomm_alloc_relayd_sock(struct lttng_uri *uri, uint32_t major, uint32_t minor)
 
 	/* Allocate socket object from URI */
 	tmp_sock = lttcomm_alloc_sock_from_uri(uri);
-	if (tmp_sock == NULL) {
+	if (tmp_sock == nullptr) {
 		goto error_free;
 	}
 
@@ -396,7 +396,7 @@ lttcomm_alloc_relayd_sock(struct lttng_uri *uri, uint32_t major, uint32_t minor)
 error_free:
 	free(rsock);
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -478,7 +478,7 @@ int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
 	return 0;
 }
 
-void lttcomm_init(void)
+void lttcomm_init()
 {
 	const char *env;
 
@@ -487,7 +487,7 @@ void lttcomm_init(void)
 		long timeout;
 
 		errno = 0;
-		timeout = strtol(env, NULL, 0);
+		timeout = strtol(env, nullptr, 0);
 		if (errno != 0 || timeout < -1L) {
 			PERROR("Network timeout");
 		} else {
@@ -498,7 +498,7 @@ void lttcomm_init(void)
 	}
 }
 
-unsigned long lttcomm_get_network_timeout(void)
+unsigned long lttcomm_get_network_timeout()
 {
 	return network_timeout;
 }

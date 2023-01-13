@@ -11,6 +11,7 @@
 #include <common/make-unique.hpp>
 
 #include <unordered_map>
+#include <utility>
 
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
@@ -29,7 +30,7 @@ public:
 
 	session_attributes(registry_enum_getter_fn reg_enum_getter,
 			   lst::byte_order native_trace_byte_order) :
-		get_registry_enum{ reg_enum_getter },
+		get_registry_enum{ std::move(reg_enum_getter) },
 		_native_trace_byte_order{ native_trace_byte_order }
 	{
 	}
@@ -49,8 +50,8 @@ create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				const lttng_ust_ctl_field *end,
 				const session_attributes& session_attributes,
 				const lttng_ust_ctl_field **next_ust_ctl_field,
-				publish_field_fn publish_field,
-				lookup_field_fn lookup_field,
+				const publish_field_fn& publish_field,
+				const lookup_field_fn& lookup_field,
 				lst::field_location::root lookup_root,
 				lst::field_location::elements& current_field_location_elements,
 				lsu::ctl_field_quirks quirks);
@@ -59,8 +60,8 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				      const lttng_ust_ctl_field *end,
 				      const session_attributes& session_attributes,
 				      const lttng_ust_ctl_field **next_ust_ctl_field,
-				      publish_field_fn publish_field,
-				      lookup_field_fn lookup_field,
+				      const publish_field_fn& publish_field,
+				      const lookup_field_fn& lookup_field,
 				      lst::field_location::root lookup_root,
 				      lst::field_location::elements& current_field_location_elements,
 				      lsu::ctl_field_quirks quirks);
@@ -346,8 +347,8 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *end,
 	const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
-	publish_field_fn publish_field,
-	lookup_field_fn lookup_field,
+	const publish_field_fn& publish_field,
+	const lookup_field_fn& lookup_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
 	lsu::ctl_field_quirks quirks)
@@ -413,7 +414,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *end,
 	const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
-	publish_field_fn publish_field,
+	const publish_field_fn& publish_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
 	lsu::ctl_field_quirks quirks __attribute__((unused)))
@@ -450,7 +451,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 			element_uctl_type.u.basic.integer.encoding);
 	}
 
-	const auto length_field_name = fmt::format("_{}_length", sequence_uctl_field.name);
+	auto length_field_name = fmt::format("_{}_length", sequence_uctl_field.name);
 	auto element_type =
 		create_integer_type_from_ust_ctl_basic_type(element_uctl_type, session_attributes);
 	auto length_type =
@@ -460,9 +461,8 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 		current_field_location_elements;
 	length_field_location_elements.emplace_back(length_field_name);
 
-	const lst::field_location length_field_location{
-		lookup_root, std::move(length_field_location_elements)
-	};
+	lst::field_location length_field_location{ lookup_root,
+						   std::move(length_field_location_elements) };
 
 	/* Publish an implicit length field _before_ the sequence field. */
 	publish_field(lttng::make_unique<lst::field>(std::move(length_field_name),
@@ -494,8 +494,8 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *end,
 	const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
-	publish_field_fn publish_field,
-	lookup_field_fn lookup_field,
+	const publish_field_fn& publish_field,
+	const lookup_field_fn& lookup_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
 	lsu::ctl_field_quirks quirks)
@@ -541,9 +541,8 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 		current_field_location_elements;
 	length_field_location_elements.emplace_back(std::move(length_field_name));
 
-	const lst::field_location length_field_location{
-		lookup_root, std::move(length_field_location_elements)
-	};
+	lst::field_location length_field_location{ lookup_root,
+						   std::move(length_field_location_elements) };
 
 	/* Validate existence of length field (throws if not found). */
 	const auto& length_field = lookup_field(length_field_location);
@@ -689,7 +688,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 	const lttng_ust_ctl_field *end,
 	const session_attributes& session_attributes,
 	const lttng_ust_ctl_field **next_ust_ctl_field,
-	lookup_field_fn lookup_field,
+	const lookup_field_fn& lookup_field,
 	lst::field_location::root lookup_root,
 	lst::field_location::elements& current_field_location_elements,
 	lsu::ctl_field_quirks quirks)
@@ -720,9 +719,8 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 		current_field_location_elements;
 	selector_field_location_elements.emplace_back(tag_name);
 
-	const lst::field_location selector_field_location{
-		lookup_root, std::move(selector_field_location_elements)
-	};
+	lst::field_location selector_field_location{ lookup_root,
+						     std::move(selector_field_location_elements) };
 
 	/* Validate existence of selector field (throws if not found). */
 	const auto& selector_field = lookup_field(selector_field_location);
@@ -778,8 +776,8 @@ create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				const lttng_ust_ctl_field *end,
 				const session_attributes& session_attributes,
 				const lttng_ust_ctl_field **next_ust_ctl_field,
-				publish_field_fn publish_field,
-				lookup_field_fn lookup_field,
+				const publish_field_fn& publish_field,
+				const lookup_field_fn& lookup_field,
 				lst::field_location::root lookup_root,
 				lst::field_location::elements& current_field_location_elements,
 				lsu::ctl_field_quirks quirks)
@@ -860,8 +858,8 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				      const lttng_ust_ctl_field *end,
 				      const session_attributes& session_attributes,
 				      const lttng_ust_ctl_field **next_ust_ctl_field,
-				      publish_field_fn publish_field,
-				      lookup_field_fn lookup_field,
+				      const publish_field_fn& publish_field,
+				      const lookup_field_fn& lookup_field,
 				      lst::field_location::root lookup_root,
 				      lst::field_location::elements& current_field_location_elements,
 				      lsu::ctl_field_quirks quirks)

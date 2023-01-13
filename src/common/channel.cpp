@@ -65,7 +65,7 @@ end:
 /*
  * The channel object is NOT populated.
  */
-struct lttng_channel *lttng_channel_create_internal(void)
+struct lttng_channel *lttng_channel_create_internal()
 {
 	struct lttng_channel *local_channel = nullptr, *ret = nullptr;
 	struct lttng_channel_extended *extended = nullptr;

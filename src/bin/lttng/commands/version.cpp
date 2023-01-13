@@ -34,9 +34,9 @@ static const char *lttng_license = "lttng is free software and under the GPL lic
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -56,10 +56,10 @@ static void create_version(struct mi_lttng_version_data *version)
 /*
  * Print the machine interface output of this command.
  */
-static int print_mi(void)
+static int print_mi()
 {
 	int ret = CMD_SUCCESS;
-	struct mi_writer *writer = NULL;
+	struct mi_writer *writer = nullptr;
 	struct mi_lttng_version_data version;
 
 	create_version(&version);
@@ -123,7 +123,7 @@ int cmd_version(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {

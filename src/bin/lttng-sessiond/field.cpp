@@ -47,9 +47,7 @@ lst::type::type(unsigned int in_alignment) : alignment{ in_alignment }
 {
 }
 
-lst::type::~type()
-{
-}
+lst::type::~type() = default;
 
 bool lst::type::operator==(const lst::type& other) const noexcept
 {

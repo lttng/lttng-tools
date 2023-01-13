@@ -39,7 +39,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 0;
 int lttng_opt_mi;
 
-static void run_test_lttng_uuid_from_str(void)
+static void run_test_lttng_uuid_from_str()
 {
 	int ret;
 	lttng_uuid uuid1;
@@ -96,7 +96,7 @@ static void run_test_lttng_uuid_from_str(void)
 	   invalid_str_6);
 }
 
-static void run_test_lttng_uuid_to_str(void)
+static void run_test_lttng_uuid_to_str()
 {
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
@@ -116,7 +116,7 @@ static void run_test_lttng_uuid_to_str(void)
 	   valid_str_3);
 }
 
-static void run_test_lttng_uuid_is_equal(void)
+static void run_test_lttng_uuid_is_equal()
 {
 	int ret;
 	lttng_uuid uuid1, uuid2;
@@ -134,7 +134,7 @@ static void run_test_lttng_uuid_is_equal(void)
 	ok(ret == false, "lttng_uuid_is_equal - Compare different UUID, expect failure");
 }
 
-static void run_test_lttng_uuid_copy(void)
+static void run_test_lttng_uuid_copy()
 {
 	bool ret;
 	lttng_uuid uuid1;
@@ -145,7 +145,7 @@ static void run_test_lttng_uuid_copy(void)
 	ok(ret == true, "lttng_uuid_copy - Compare copied UUID with source, expect success");
 }
 
-static void run_test_lttng_uuid_generate(void)
+static void run_test_lttng_uuid_generate()
 {
 	int ret;
 	lttng_uuid uuid1, uuid2;
@@ -174,7 +174,7 @@ static void run_test_lttng_uuid_generate(void)
 	ok(ret == LTTNG_UUID_VER, "lttng_uuid_generate - Generated UUID version check");
 }
 
-static void run_test(void)
+static void run_test()
 {
 	plan_tests(NR_TESTS);
 
@@ -185,7 +185,7 @@ static void run_test(void)
 	run_test_lttng_uuid_generate();
 }
 
-int main(void)
+int main()
 {
 	/* Run tap-formated tests */
 	run_test();

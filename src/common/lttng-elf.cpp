@@ -343,7 +343,7 @@ error:
  */
 static char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 {
-	char *name = NULL;
+	char *name = nullptr;
 	size_t name_length = 0, to_read; /* name_length does not include \0 */
 
 	if (!elf) {
@@ -407,14 +407,14 @@ end:
 
 error:
 	free(name);
-	return NULL;
+	return nullptr;
 }
 
 static int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 {
 	uint8_t version;
 	uint8_t e_ident[EI_NIDENT];
-	uint8_t *magic_number = NULL;
+	uint8_t *magic_number = nullptr;
 	int ret = 0;
 
 	if (elf->fd == -1) {
@@ -509,7 +509,7 @@ static int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 
 free_elf_error:
 	free(elf->ehdr);
-	elf->ehdr = NULL;
+	elf->ehdr = nullptr;
 end:
 	return ret;
 }
@@ -523,7 +523,7 @@ end:
 static struct lttng_elf *lttng_elf_create(int fd)
 {
 	struct lttng_elf_shdr section_names_shdr;
-	struct lttng_elf *elf = NULL;
+	struct lttng_elf *elf = nullptr;
 	int ret;
 	struct stat stat_buf;
 
@@ -581,7 +581,7 @@ error:
 		}
 		free(elf);
 	}
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -667,7 +667,7 @@ static char *lttng_elf_get_section_data(struct lttng_elf *elf, struct lttng_elf_
 free_error:
 	free(data);
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -744,13 +744,13 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	int sym_count = 0;
 	int sym_idx = 0;
 	uint64_t addr = 0;
-	char *curr_sym_str = NULL;
-	char *symbol_table_data = NULL;
-	char *string_table_data = NULL;
-	const char *string_table_name = NULL;
+	char *curr_sym_str = nullptr;
+	char *symbol_table_data = nullptr;
+	char *string_table_data = nullptr;
+	const char *string_table_name = nullptr;
 	struct lttng_elf_shdr symtab_hdr;
 	struct lttng_elf_shdr strtab_hdr;
-	struct lttng_elf *elf = NULL;
+	struct lttng_elf *elf = nullptr;
 
 	if (!symbol || !offset) {
 		ret = LTTNG_ERR_ELF_PARSING;
@@ -787,7 +787,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 
 	/* Get the data associated with the symbol table section. */
 	symbol_table_data = lttng_elf_get_section_data(elf, &symtab_hdr);
-	if (symbol_table_data == NULL) {
+	if (symbol_table_data == nullptr) {
 		DBG("Cannot get ELF Symbol Table data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto destroy_elf;
@@ -802,7 +802,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 
 	/* Get the data associated with the string table section. */
 	string_table_data = lttng_elf_get_section_data(elf, &strtab_hdr);
-	if (string_table_data == NULL) {
+	if (string_table_data == nullptr) {
 		DBG("Cannot get ELF string table section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto free_symbol_table_data;
@@ -905,13 +905,13 @@ int lttng_elf_get_sdt_probe_offsets(int fd,
 {
 	int ret = 0, nb_match = 0;
 	struct lttng_elf_shdr stap_note_section_hdr;
-	struct lttng_elf *elf = NULL;
-	char *stap_note_section_data = NULL;
+	struct lttng_elf *elf = nullptr;
+	char *stap_note_section_data = nullptr;
 	char *curr_note_section_begin, *curr_data_ptr, *curr_probe, *curr_provider;
 	char *next_note_ptr;
 	uint32_t name_size, desc_size, note_type;
 	uint64_t curr_probe_location, curr_probe_offset, curr_semaphore_location;
-	uint64_t *probe_locs = NULL, *new_probe_locs = NULL;
+	uint64_t *probe_locs = nullptr, *new_probe_locs = nullptr;
 
 	if (!provider_name || !probe_name || !nb_probes || !offsets) {
 		DBG("Invalid arguments.");
@@ -936,7 +936,7 @@ int lttng_elf_get_sdt_probe_offsets(int fd,
 
 	/* Get the data associated with the stap note section. */
 	stap_note_section_data = lttng_elf_get_section_data(elf, &stap_note_section_hdr);
-	if (stap_note_section_data == NULL) {
+	if (stap_note_section_data == nullptr) {
 		DBG("Cannot get ELF stap note section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto destroy_elf_error;
@@ -945,8 +945,8 @@ int lttng_elf_get_sdt_probe_offsets(int fd,
 	next_note_ptr = stap_note_section_data;
 	curr_note_section_begin = stap_note_section_data;
 
-	*offsets = NULL;
-	while (1) {
+	*offsets = nullptr;
+	while (true) {
 		curr_data_ptr = next_note_ptr;
 		/* Check if we have reached the end of the note section. */
 		if (curr_data_ptr >= curr_note_section_begin + stap_note_section_hdr.sh_size) {
@@ -1041,7 +1041,7 @@ int lttng_elf_get_sdt_probe_offsets(int fd,
 				goto realloc_error;
 			}
 			probe_locs = new_probe_locs;
-			new_probe_locs = NULL;
+			new_probe_locs = nullptr;
 
 			/*
 			 * Use the virtual address of the probe to compute the offset of

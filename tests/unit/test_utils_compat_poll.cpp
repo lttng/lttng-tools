@@ -56,7 +56,7 @@ int lttng_opt_mi;
 #define CLOE_VALUE FD_CLOEXEC
 #endif
 
-static void test_epoll_compat(void)
+static void test_epoll_compat()
 {
 	/*
 	 * Type conversion present to disable warning of anonymous enum from
@@ -66,14 +66,14 @@ static void test_epoll_compat(void)
 }
 #endif
 
-static void test_alloc(void)
+static void test_alloc()
 {
 	struct lttng_poll_event poll_events;
 
 	lttng_poll_init(&poll_events);
 
 	/* Null pointer */
-	ok(lttng_poll_create(NULL, 1, 0) != 0, "Create over NULL pointer fails");
+	ok(lttng_poll_create(nullptr, 1, 0) != 0, "Create over NULL pointer fails");
 	/* Size 0 */
 	ok(lttng_poll_create(&poll_events, 0, 0) != 0, "Create with size 0 fails");
 	/* without CLOEXEC */
@@ -87,12 +87,12 @@ static void test_alloc(void)
 }
 
 /* Tests stuff related to what would be handled with epoll_ctl. */
-static void test_add_del(void)
+static void test_add_del()
 {
 	struct lttng_poll_event poll_events;
 
 	lttng_poll_init(&poll_events);
-	ok(lttng_poll_add(NULL, 1, LPOLLIN) != 0, "Adding to NULL set fails");
+	ok(lttng_poll_add(nullptr, 1, LPOLLIN) != 0, "Adding to NULL set fails");
 	ok(lttng_poll_add(&poll_events, 1, LPOLLIN) != 0,
 	   "Adding to uninitialized structure fails");
 	ok(lttng_poll_add(&poll_events, -1, LPOLLIN) != 0, "Adding invalid FD fails");
@@ -100,7 +100,7 @@ static void test_add_del(void)
 	ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create a poll set succeeds");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 0, "Set created empty");
 
-	ok(lttng_poll_add(NULL, 1, LPOLLIN) != 0, "Adding to NULL set fails");
+	ok(lttng_poll_add(nullptr, 1, LPOLLIN) != 0, "Adding to NULL set fails");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 0, "Set still empty");
 	ok(lttng_poll_add(&poll_events, -1, LPOLLIN) != 0, "Adding invalid FD fails");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 0, "Set still empty");
@@ -108,7 +108,7 @@ static void test_add_del(void)
 	ok(lttng_poll_add(&poll_events, 1, LPOLLIN) == 0, "Adding valid FD succeeds");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 1, "Nb of elements incremented");
 
-	ok(lttng_poll_del(NULL, 1) != 0, "Removing from NULL set fails");
+	ok(lttng_poll_del(nullptr, 1) != 0, "Removing from NULL set fails");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 1, "Number of FD in set unchanged");
 
 	ok(lttng_poll_del(&poll_events, -1) != 0, "Removing from negative FD fails");
@@ -126,7 +126,7 @@ static void test_add_del(void)
 	lttng_poll_clean(&poll_events);
 }
 
-static void test_mod_wait(void)
+static void test_mod_wait()
 {
 	struct lttng_poll_event poll_events;
 	struct lttng_poll_event cpoll_events;
@@ -146,7 +146,7 @@ static void test_mod_wait(void)
 	if (cpid == 0) {
 		childok(lttng_poll_create(&cpoll_events, 1, 0) == 0,
 			"Create valid poll set succeeds");
-		childok(lttng_poll_mod(NULL, infd[0], LPOLLIN) == -1,
+		childok(lttng_poll_mod(nullptr, infd[0], LPOLLIN) == -1,
 			"lttng_poll_mod with invalid input returns an error");
 		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == -1,
 			"lttng_poll_mod with invalid input returns an error");
@@ -172,7 +172,7 @@ static void test_mod_wait(void)
 		ok(close(hupfd[1]) == 0, "Close valid FD succeeds");
 		ok(close(infd[0]) == 0, "Close valid FD succeeds");
 
-		ok(lttng_poll_wait(NULL, -1) == -1,
+		ok(lttng_poll_wait(nullptr, -1) == -1,
 		   "lttng_poll_wait call with invalid input returns error");
 
 		ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create valid poll set succeeds");
@@ -203,7 +203,7 @@ static int run_active_set_combination(unsigned int fd_count, unsigned int active
 	const unsigned int active_fds_count = __builtin_popcount(active_fds_mask);
 	struct lttng_poll_event poll_events;
 	struct lttng_dynamic_pointer_array pipes;
-	struct lttng_pipe *pipe = NULL;
+	struct lttng_pipe *pipe = nullptr;
 
 	lttng_poll_init(&poll_events);
 	lttng_dynamic_pointer_array_init(&pipes, destroy_pipe);
@@ -238,7 +238,7 @@ static int run_active_set_combination(unsigned int fd_count, unsigned int active
 		}
 
 		/* Ownership transferred to the pointer array. */
-		pipe = NULL;
+		pipe = nullptr;
 	}
 
 	/* Write one byte for all active fds that should be active. */
@@ -305,7 +305,7 @@ fail:
 	fail("Test all combinations of active file descriptors for %u file descriptors", fd_count);
 }
 
-static void test_func_def(void)
+static void test_func_def()
 {
 #ifdef LTTNG_POLL_GETFD
 #define PASS_GETFD 1
@@ -339,7 +339,7 @@ static void test_func_def(void)
 	ok(PASS_GET_PREV_FD, "GET_PREV_FD is defined");
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 #ifdef HAVE_EPOLL

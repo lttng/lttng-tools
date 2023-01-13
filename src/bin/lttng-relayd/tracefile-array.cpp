@@ -14,7 +14,7 @@
 
 struct tracefile_array *tracefile_array_create(size_t count)
 {
-	struct tracefile_array *tfa = NULL;
+	struct tracefile_array *tfa = nullptr;
 	int i;
 
 	tfa = zmalloc<tracefile_array>();
@@ -39,7 +39,7 @@ error:
 		free(tfa->tf);
 	}
 	free(tfa);
-	return NULL;
+	return nullptr;
 }
 
 void tracefile_array_destroy(struct tracefile_array *tfa)

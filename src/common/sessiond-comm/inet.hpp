@@ -51,6 +51,6 @@ extern ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock,
 		const void *buf, size_t len, int flags);
 
 /* Initialize inet communication layer. */
-extern void lttcomm_inet_init(void);
+extern void lttcomm_inet_init();
 
 #endif	/* _LTTCOMM_INET_H */

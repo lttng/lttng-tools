@@ -29,7 +29,7 @@ static void lttng_event_rule_log4j_logging_destroy(struct lttng_event_rule *rule
 {
 	struct lttng_event_rule_log4j_logging *log4j_logging;
 
-	if (rule == NULL) {
+	if (rule == nullptr) {
 		return;
 	}
 
@@ -87,7 +87,7 @@ static int lttng_event_rule_log4j_logging_serialize(const struct lttng_event_rul
 
 	pattern_len = strlen(log4j_logging->pattern) + 1;
 
-	if (log4j_logging->filter_expression != NULL) {
+	if (log4j_logging->filter_expression != nullptr) {
 		filter_expression_len = strlen(log4j_logging->filter_expression) + 1;
 	} else {
 		filter_expression_len = 0;
@@ -178,10 +178,10 @@ static int generate_agent_filter(const struct lttng_event_rule *rule, char **_ag
 {
 	int err;
 	int ret = 0;
-	char *agent_filter = NULL;
+	char *agent_filter = nullptr;
 	const char *pattern;
 	const char *filter;
-	const struct lttng_log_level_rule *log_level_rule = NULL;
+	const struct lttng_log_level_rule *log_level_rule = nullptr;
 	enum lttng_event_rule_status status;
 
 	LTTNG_ASSERT(rule);
@@ -195,7 +195,7 @@ static int generate_agent_filter(const struct lttng_event_rule *rule, char **_ag
 
 	status = lttng_event_rule_log4j_logging_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
-		filter = NULL;
+		filter = nullptr;
 	} else if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -266,7 +266,7 @@ static int generate_agent_filter(const struct lttng_event_rule *rule, char **_ag
 	}
 
 	*_agent_filter = agent_filter;
-	agent_filter = NULL;
+	agent_filter = nullptr;
 
 end:
 	free(agent_filter);
@@ -282,7 +282,7 @@ lttng_event_rule_log4j_logging_generate_filter_bytecode(struct lttng_event_rule 
 	struct lttng_event_rule_log4j_logging *log4j_logging;
 	enum lttng_event_rule_status status;
 	const char *filter;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 	char *agent_filter;
 
 	LTTNG_ASSERT(rule);
@@ -291,7 +291,7 @@ lttng_event_rule_log4j_logging_generate_filter_bytecode(struct lttng_event_rule 
 
 	status = lttng_event_rule_log4j_logging_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
-		filter = NULL;
+		filter = nullptr;
 	} else if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret_code = LTTNG_ERR_FILTER_INVAL;
 		goto end;
@@ -310,7 +310,7 @@ lttng_event_rule_log4j_logging_generate_filter_bytecode(struct lttng_event_rule 
 
 	log4j_logging->internal_filter.filter = agent_filter;
 
-	if (log4j_logging->internal_filter.filter == NULL) {
+	if (log4j_logging->internal_filter.filter == nullptr) {
 		ret_code = LTTNG_OK;
 		goto end;
 	}
@@ -323,7 +323,7 @@ lttng_event_rule_log4j_logging_generate_filter_bytecode(struct lttng_event_rule 
 	}
 
 	log4j_logging->internal_filter.bytecode = bytecode;
-	bytecode = NULL;
+	bytecode = nullptr;
 	ret_code = LTTNG_OK;
 
 error:
@@ -358,7 +358,7 @@ lttng_event_rule_log4j_logging_generate_exclusions(const struct lttng_event_rule
 						   struct lttng_event_exclusion **_exclusions)
 {
 	/* Unsupported. */
-	*_exclusions = NULL;
+	*_exclusions = nullptr;
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
@@ -387,8 +387,8 @@ lttng_event_rule_log4j_logging_generate_lttng_event(const struct lttng_event_rul
 {
 	int ret;
 	const struct lttng_event_rule_log4j_logging *log4j_logging;
-	struct lttng_event *local_event = NULL;
-	struct lttng_event *event = NULL;
+	struct lttng_event *local_event = nullptr;
+	struct lttng_event *event = nullptr;
 	enum lttng_loglevel_type loglevel_type;
 	int loglevel_value = 0;
 	enum lttng_event_rule_status status;
@@ -444,7 +444,7 @@ lttng_event_rule_log4j_logging_generate_lttng_event(const struct lttng_event_rul
 	local_event->loglevel = loglevel_value;
 
 	event = local_event;
-	local_event = NULL;
+	local_event = nullptr;
 error:
 	free(local_event);
 	return event;
@@ -457,9 +457,9 @@ lttng_event_rule_log4j_logging_mi_serialize(const struct lttng_event_rule *rule,
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_event_rule_status status;
-	const char *filter = NULL;
-	const char *name_pattern = NULL;
-	const struct lttng_log_level_rule *log_level_rule = NULL;
+	const char *filter = nullptr;
+	const char *name_pattern = nullptr;
+	const struct lttng_log_level_rule *log_level_rule = nullptr;
 
 	LTTNG_ASSERT(rule);
 	LTTNG_ASSERT(writer);
@@ -491,7 +491,7 @@ lttng_event_rule_log4j_logging_mi_serialize(const struct lttng_event_rule *rule,
 	}
 
 	/* Filter expression. */
-	if (filter != NULL) {
+	if (filter != nullptr) {
 		ret = mi_lttng_writer_write_element_string(
 			writer, mi_lttng_element_event_rule_filter_expression, filter);
 		if (ret) {
@@ -524,7 +524,7 @@ end:
 
 struct lttng_event_rule *lttng_event_rule_log4j_logging_create(void)
 {
-	struct lttng_event_rule *rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_log4j_logging *tp_rule;
 	enum lttng_event_rule_status status;
 
@@ -549,13 +549,13 @@ struct lttng_event_rule *lttng_event_rule_log4j_logging_create(void)
 	tp_rule->parent.generate_lttng_event = lttng_event_rule_log4j_logging_generate_lttng_event;
 	tp_rule->parent.mi_serialize = lttng_event_rule_log4j_logging_mi_serialize;
 
-	tp_rule->log_level_rule = NULL;
+	tp_rule->log_level_rule = nullptr;
 
 	/* Default pattern is '*'. */
 	status = lttng_event_rule_log4j_logging_set_name_pattern(rule, "*");
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		lttng_event_rule_destroy(rule);
-		rule = NULL;
+		rule = nullptr;
 	}
 
 end:
@@ -569,10 +569,10 @@ ssize_t lttng_event_rule_log4j_logging_create_from_payload(struct lttng_payload_
 	enum lttng_event_rule_status status;
 	const struct lttng_event_rule_log4j_logging_comm *log4j_logging_comm;
 	const char *pattern;
-	const char *filter_expression = NULL;
+	const char *filter_expression = nullptr;
 	struct lttng_buffer_view current_buffer_view;
-	struct lttng_event_rule *rule = NULL;
-	struct lttng_log_level_rule *log_level_rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
 
 	if (!_event_rule) {
 		ret = -1;
@@ -692,7 +692,7 @@ skip_log_level_rule:
 	}
 
 	*_event_rule = rule;
-	rule = NULL;
+	rule = nullptr;
 	ret = offset;
 end:
 	lttng_log_level_rule_destroy(log_level_rule);
@@ -703,7 +703,7 @@ end:
 enum lttng_event_rule_status
 lttng_event_rule_log4j_logging_set_name_pattern(struct lttng_event_rule *rule, const char *pattern)
 {
-	char *pattern_copy = NULL;
+	char *pattern_copy = nullptr;
 	struct lttng_event_rule_log4j_logging *log4j_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -725,7 +725,7 @@ lttng_event_rule_log4j_logging_set_name_pattern(struct lttng_event_rule *rule, c
 	free(log4j_logging->pattern);
 
 	log4j_logging->pattern = pattern_copy;
-	pattern_copy = NULL;
+	pattern_copy = nullptr;
 end:
 	return status;
 }
@@ -756,7 +756,7 @@ end:
 enum lttng_event_rule_status
 lttng_event_rule_log4j_logging_set_filter(struct lttng_event_rule *rule, const char *expression)
 {
-	char *expression_copy = NULL;
+	char *expression_copy = nullptr;
 	struct lttng_event_rule_log4j_logging *log4j_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -778,7 +778,7 @@ lttng_event_rule_log4j_logging_set_filter(struct lttng_event_rule *rule, const c
 	}
 
 	log4j_logging->filter_expression = expression_copy;
-	expression_copy = NULL;
+	expression_copy = nullptr;
 end:
 	return status;
 }
@@ -821,7 +821,7 @@ lttng_event_rule_log4j_logging_set_log_level_rule(struct lttng_event_rule *rule,
 {
 	struct lttng_event_rule_log4j_logging *log4j_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-	struct lttng_log_level_rule *copy = NULL;
+	struct lttng_log_level_rule *copy = nullptr;
 
 	if (!rule || !IS_LOG4J_LOGGING_EVENT_RULE(rule)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -836,7 +836,7 @@ lttng_event_rule_log4j_logging_set_log_level_rule(struct lttng_event_rule *rule,
 	}
 
 	copy = lttng_log_level_rule_copy(log_level_rule);
-	if (copy == NULL) {
+	if (copy == nullptr) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
 		goto end;
 	}
@@ -863,7 +863,7 @@ enum lttng_event_rule_status lttng_event_rule_log4j_logging_get_log_level_rule(
 	}
 
 	log4j_logging = lttng::utils::container_of(rule, &lttng_event_rule_log4j_logging::parent);
-	if (log4j_logging->log_level_rule == NULL) {
+	if (log4j_logging->log_level_rule == nullptr) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
 	}

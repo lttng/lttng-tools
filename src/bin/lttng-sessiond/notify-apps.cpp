@@ -69,7 +69,7 @@ static void *thread_application_notification(void *data)
 
 	health_code_update();
 
-	while (1) {
+	while (true) {
 		DBG3("[ust-thread] Manage notify polling");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -197,7 +197,7 @@ error_testpoint:
 	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_application_notification_thread(void *data)

@@ -173,7 +173,7 @@ ssize_t lttng_action_rotate_session_create_from_payload(struct lttng_payload_vie
 	const char *session_name;
 	struct lttng_action *action;
 	enum lttng_action_status status;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 
 	action = lttng_action_rotate_session_create();
 	if (!action) {
@@ -217,7 +217,7 @@ ssize_t lttng_action_rotate_session_create_from_payload(struct lttng_payload_vie
 	}
 
 	*p_action = action;
-	action = NULL;
+	action = nullptr;
 
 end:
 	lttng_rate_policy_destroy(policy);
@@ -233,19 +233,19 @@ lttng_action_rotate_session_mi_serialize(const struct lttng_action *action,
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_action_status status;
-	const char *session_name = NULL;
-	const struct lttng_rate_policy *policy = NULL;
+	const char *session_name = nullptr;
+	const struct lttng_rate_policy *policy = nullptr;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_ROTATE_SESSION_ACTION(action));
 
 	status = lttng_action_rotate_session_get_session_name(action, &session_name);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(session_name != NULL);
+	LTTNG_ASSERT(session_name != nullptr);
 
 	status = lttng_action_notify_get_rate_policy(action, &policy);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(policy != NULL);
+	LTTNG_ASSERT(policy != nullptr);
 
 	/* Open action rotate session element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_rotate_session);
@@ -283,8 +283,8 @@ end:
 
 struct lttng_action *lttng_action_rotate_session_create(void)
 {
-	struct lttng_action_rotate_session *action_rotate = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_action_rotate_session *action_rotate = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 	enum lttng_action_status status;
 
 	/* Create a every N = 1 rate policy. */
@@ -311,7 +311,7 @@ struct lttng_action *lttng_action_rotate_session_create(void)
 	status = lttng_action_rotate_session_set_rate_policy(&action_rotate->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		lttng_action_destroy(&action_rotate->parent);
-		action_rotate = NULL;
+		action_rotate = nullptr;
 		goto end;
 	}
 
@@ -374,7 +374,7 @@ lttng_action_rotate_session_set_rate_policy(struct lttng_action *action,
 {
 	enum lttng_action_status status;
 	struct lttng_action_rotate_session *rotate_session_action;
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 
 	if (!action || !policy || !IS_ROTATE_SESSION_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
@@ -395,7 +395,7 @@ lttng_action_rotate_session_set_rate_policy(struct lttng_action *action,
 	/* Assign the policy. */
 	rotate_session_action->policy = copy;
 	status = LTTNG_ACTION_STATUS_OK;
-	copy = NULL;
+	copy = nullptr;
 
 end:
 	lttng_rate_policy_destroy(copy);

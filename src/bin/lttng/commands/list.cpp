@@ -57,18 +57,18 @@ static struct lttng_session the_listed_session;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0 },
-	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0 },
-	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
-	{ "channel", 'c', POPT_ARG_STRING, &opt_channel, 0, 0, 0 },
-	{ "domain", 'd', POPT_ARG_VAL, &opt_domain, 1, 0, 0 },
-	{ "fields", 'f', POPT_ARG_VAL, &opt_fields, 1, 0, 0 },
-	{ "syscall", 'S', POPT_ARG_VAL, &opt_syscall, 1, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
+	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
+	{ "channel", 'c', POPT_ARG_STRING, &opt_channel, 0, nullptr, nullptr },
+	{ "domain", 'd', POPT_ARG_VAL, &opt_domain, 1, nullptr, nullptr },
+	{ "fields", 'f', POPT_ARG_VAL, &opt_fields, 1, nullptr, nullptr },
+	{ "syscall", 'S', POPT_ARG_VAL, &opt_syscall, 1, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -80,14 +80,14 @@ static struct poptOption long_options[] = {
 static char *get_cmdline_by_pid(pid_t pid)
 {
 	int ret;
-	FILE *fp = NULL;
-	char *cmdline = NULL;
+	FILE *fp = nullptr;
+	char *cmdline = nullptr;
 	/* Can't go bigger than /proc/LTTNG_MAX_PID/cmdline */
 	char path[sizeof("/proc//cmdline") + sizeof(LTTNG_MAX_PID_STR) - 1];
 
 	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 	fp = fopen(path, "r");
-	if (fp == NULL) {
+	if (fp == nullptr) {
 		goto end;
 	}
 
@@ -120,7 +120,7 @@ static const char *active_string(int value)
 	case -1:
 		return "";
 	default:
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -144,7 +144,7 @@ static const char *enabled_string(int value)
 	case -1:
 		return "";
 	default:
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -191,7 +191,7 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 {
 	int ret;
 	int exclusion_count;
-	char *exclusion_msg = NULL;
+	char *exclusion_msg = nullptr;
 	char *at;
 	size_t i;
 	const char *const exclusion_fmt = " [exclusions: ";
@@ -283,7 +283,7 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		MSG("%sType: Function", indent8);
 		function_name = lttng_userspace_probe_location_function_get_function_name(location);
 		binary_path = realpath(
-			lttng_userspace_probe_location_function_get_binary_path(location), NULL);
+			lttng_userspace_probe_location_function_get_binary_path(location), nullptr);
 
 		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
 		MSG("%sFunction:      %s()", indent8, function_name ? function_name : "NULL");
@@ -312,7 +312,8 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		provider_name =
 			lttng_userspace_probe_location_tracepoint_get_provider_name(location);
 		binary_path = realpath(
-			lttng_userspace_probe_location_tracepoint_get_binary_path(location), NULL);
+			lttng_userspace_probe_location_tracepoint_get_binary_path(location),
+			nullptr);
 		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
 		MSG("%sTracepoint:    %s:%s",
 		    indent8,
@@ -342,8 +343,8 @@ static void print_events(struct lttng_event *event)
 {
 	int ret;
 	const char *filter_str;
-	char *filter_msg = NULL;
-	char *exclusion_msg = NULL;
+	char *filter_msg = nullptr;
+	char *exclusion_msg = nullptr;
 
 	ret = lttng_event_get_filter_expression(event, &filter_str);
 
@@ -351,7 +352,7 @@ static void print_events(struct lttng_event *event)
 		filter_msg = strdup(" [failed to retrieve filter]");
 	} else if (filter_str) {
 		if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
-			filter_msg = NULL;
+			filter_msg = nullptr;
 		}
 	}
 
@@ -488,7 +489,7 @@ mi_list_agent_ust_events(struct lttng_event *events, int count, struct lttng_dom
 {
 	int ret, i;
 	pid_t cur_pid = 0;
-	char *cmdline = NULL;
+	char *cmdline = nullptr;
 	int pid_element_open = 0;
 
 	/* Open domains element */
@@ -567,14 +568,14 @@ error:
 	return ret;
 }
 
-static int list_agent_events(void)
+static int list_agent_events()
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
-	struct lttng_handle *handle = NULL;
-	struct lttng_event *event_list = NULL;
+	struct lttng_handle *handle = nullptr;
+	struct lttng_event *event_list = nullptr;
 	pid_t cur_pid = 0;
-	char *cmdline = NULL;
+	char *cmdline = nullptr;
 	const char *agent_domain_str;
 
 	memset(&domain, 0, sizeof(domain));
@@ -594,8 +595,8 @@ static int list_agent_events(void)
 
 	DBG("Getting %s tracing events", agent_domain_str);
 
-	handle = lttng_create_handle(NULL, &domain);
-	if (handle == NULL) {
+	handle = lttng_create_handle(nullptr, &domain);
+	if (handle == nullptr) {
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -626,7 +627,7 @@ static int list_agent_events(void)
 			if (cur_pid != event_list[i].pid) {
 				cur_pid = event_list[i].pid;
 				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == NULL) {
+				if (cmdline == nullptr) {
 					ret = CMD_ERROR;
 					goto error;
 				}
@@ -649,14 +650,14 @@ end:
 /*
  * Ask session daemon for all user space tracepoints available.
  */
-static int list_ust_events(void)
+static int list_ust_events()
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
 	struct lttng_handle *handle;
-	struct lttng_event *event_list = NULL;
+	struct lttng_event *event_list = nullptr;
 	pid_t cur_pid = 0;
-	char *cmdline = NULL;
+	char *cmdline = nullptr;
 
 	memset(&domain, 0, sizeof(domain));
 
@@ -664,8 +665,8 @@ static int list_ust_events(void)
 
 	domain.type = LTTNG_DOMAIN_UST;
 
-	handle = lttng_create_handle(NULL, &domain);
-	if (handle == NULL) {
+	handle = lttng_create_handle(nullptr, &domain);
+	if (handle == nullptr) {
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -692,7 +693,7 @@ static int list_ust_events(void)
 			if (cur_pid != event_list[i].pid) {
 				cur_pid = event_list[i].pid;
 				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == NULL) {
+				if (cmdline == nullptr) {
 					ret = CMD_ERROR;
 					goto error;
 				}
@@ -721,7 +722,7 @@ mi_list_ust_event_fields(struct lttng_event_field *fields, int count, struct ltt
 {
 	int ret, i;
 	pid_t cur_pid = 0;
-	char *cmdline = NULL;
+	char *cmdline = nullptr;
 	int pid_element_open = 0;
 	int event_element_open = 0;
 	struct lttng_event cur_event;
@@ -834,14 +835,14 @@ error:
 /*
  * Ask session daemon for all user space tracepoint fields available.
  */
-static int list_ust_event_fields(void)
+static int list_ust_event_fields()
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
 	struct lttng_handle *handle;
 	struct lttng_event_field *event_field_list;
 	pid_t cur_pid = 0;
-	char *cmdline = NULL;
+	char *cmdline = nullptr;
 
 	struct lttng_event cur_event;
 
@@ -852,8 +853,8 @@ static int list_ust_event_fields(void)
 
 	domain.type = LTTNG_DOMAIN_UST;
 
-	handle = lttng_create_handle(NULL, &domain);
-	if (handle == NULL) {
+	handle = lttng_create_handle(nullptr, &domain);
+	if (handle == nullptr) {
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -884,7 +885,7 @@ static int list_ust_event_fields(void)
 			if (cur_pid != event_field_list[i].event.pid) {
 				cur_pid = event_field_list[i].event.pid;
 				cmdline = get_cmdline_by_pid(cur_pid);
-				if (cmdline == NULL) {
+				if (cmdline == nullptr) {
 					ret = CMD_ERROR;
 					goto error;
 				}
@@ -956,7 +957,7 @@ end:
 /*
  * Ask for all trace events in the kernel
  */
-static int list_kernel_events(void)
+static int list_kernel_events()
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_domain domain;
@@ -969,8 +970,8 @@ static int list_kernel_events(void)
 
 	domain.type = LTTNG_DOMAIN_KERNEL;
 
-	handle = lttng_create_handle(NULL, &domain);
-	if (handle == NULL) {
+	handle = lttng_create_handle(nullptr, &domain);
+	if (handle == nullptr) {
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -1044,7 +1045,7 @@ end:
 /*
  * Ask for kernel system calls.
  */
-static int list_syscalls(void)
+static int list_syscalls()
 {
 	int i, size, ret = CMD_SUCCESS;
 	struct lttng_event *event_list;
@@ -1116,10 +1117,10 @@ end:
  *
  * Return CMD_SUCCESS on success else a negative value.
  */
-static int list_session_agent_events(void)
+static int list_session_agent_events()
 {
 	int ret = CMD_SUCCESS, count, i;
-	struct lttng_event *events = NULL;
+	struct lttng_event *events = nullptr;
 
 	count = lttng_list_events(the_handle, "", &events);
 	if (count < 0) {
@@ -1145,7 +1146,7 @@ static int list_session_agent_events(void)
 
 		for (i = 0; i < count; i++) {
 			const char *filter_str;
-			char *filter_msg = NULL;
+			char *filter_msg = nullptr;
 			struct lttng_event *event = &events[i];
 
 			ret = lttng_event_get_filter_expression(event, &filter_str);
@@ -1153,7 +1154,7 @@ static int list_session_agent_events(void)
 				filter_msg = strdup(" [failed to retrieve filter]");
 			} else if (filter_str) {
 				if (asprintf(&filter_msg, " [filter: '%s']", filter_str) == -1) {
-					filter_msg = NULL;
+					filter_msg = nullptr;
 				}
 			}
 
@@ -1219,7 +1220,7 @@ end:
 static int list_events(const char *channel_name)
 {
 	int ret = CMD_SUCCESS, count, i;
-	struct lttng_event *events = NULL;
+	struct lttng_event *events = nullptr;
 
 	count = lttng_list_events(the_handle, channel_name, &events);
 	if (count < 0) {
@@ -1387,7 +1388,7 @@ static int mi_list_channels(struct lttng_channel *channels, int count, const cha
 	}
 
 	for (i = 0; i < count; i++) {
-		if (channel_name != NULL) {
+		if (channel_name != nullptr) {
 			if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
 				chan_found = 1;
 			} else {
@@ -1437,7 +1438,7 @@ static int list_channels(const char *channel_name)
 {
 	int count, i, ret = CMD_SUCCESS;
 	unsigned int chan_found = 0;
-	struct lttng_channel *channels = NULL;
+	struct lttng_channel *channels = nullptr;
 
 	DBG("Listing channel(s) (%s)", channel_name ?: "<all>");
 
@@ -1477,7 +1478,7 @@ static int list_channels(const char *channel_name)
 		}
 
 		for (i = 0; i < count; i++) {
-			if (channel_name != NULL) {
+			if (channel_name != nullptr) {
 				if (strncmp(channels[i].name, channel_name, NAME_MAX) == 0) {
 					chan_found = 1;
 				} else {
@@ -1497,7 +1498,7 @@ static int list_channels(const char *channel_name)
 			}
 		}
 
-		if (!chan_found && channel_name != NULL) {
+		if (!chan_found && channel_name != nullptr) {
 			ret = CMD_ERROR;
 			ERR("Channel %s not found", channel_name);
 			goto error;
@@ -1528,7 +1529,7 @@ static const char *get_capitalized_process_attr_str(enum lttng_process_attr proc
 	default:
 		return "Unknown";
 	}
-	return NULL;
+	return nullptr;
 }
 
 static int handle_process_attr_status(enum lttng_process_attr process_attr,
@@ -1594,7 +1595,7 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 	enum lttng_process_attr_tracker_handle_status handle_status;
 	enum lttng_process_attr_values_status values_status;
 	const struct lttng_process_attr_values *values;
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 
 	ret_code = lttng_session_get_tracker_handle(
 		the_handle->session_name, the_handle->domain.type, process_attr, &tracker_handle);
@@ -1916,7 +1917,7 @@ static enum cmd_error_code list_rotate_settings(const char *session_name)
 	int ret;
 	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	unsigned int count, i;
-	struct lttng_rotation_schedules *schedules = NULL;
+	struct lttng_rotation_schedules *schedules = nullptr;
 	enum lttng_rotation_status status;
 
 	ret = lttng_session_list_rotation_schedules(session_name, &schedules);
@@ -1998,7 +1999,7 @@ static int mi_list_session(const char *session_name, struct lttng_session *sessi
 	int ret, i;
 	unsigned int session_found = 0;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = -LTTNG_ERR_SESS_NOT_FOUND;
 		goto end;
 	}
@@ -2068,7 +2069,7 @@ static int list_sessions(const char *session_name)
 	int ret = CMD_SUCCESS;
 	int count, i;
 	unsigned int session_found = 0;
-	struct lttng_session *sessions = NULL;
+	struct lttng_session *sessions = nullptr;
 
 	count = lttng_list_sessions(&sessions);
 	DBG("Session count %d", count);
@@ -2080,7 +2081,7 @@ static int list_sessions(const char *session_name)
 
 	if (lttng_opt_mi) {
 		/* Mi */
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			/* List all sessions */
 			ret = mi_list_sessions(sessions, count);
 		} else {
@@ -2098,12 +2099,12 @@ static int list_sessions(const char *session_name)
 			goto end;
 		}
 
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			MSG("Available recording sessions:");
 		}
 
 		for (i = 0; i < count; i++) {
-			if (session_name != NULL) {
+			if (session_name != nullptr) {
 				if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 					session_found = 1;
 					MSG("Recording session %s: [%s%s]",
@@ -2139,13 +2140,13 @@ static int list_sessions(const char *session_name)
 			}
 		}
 
-		if (!session_found && session_name != NULL) {
+		if (!session_found && session_name != nullptr) {
 			ERR("Session '%s' not found", session_name);
 			ret = CMD_ERROR;
 			goto end;
 		}
 
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			MSG("\nUse lttng list <session_name> for more details");
 		}
 	}
@@ -2190,7 +2191,7 @@ end:
 static int list_domains(const char *session_name)
 {
 	int i, count, ret = CMD_SUCCESS;
-	struct lttng_domain *domains = NULL;
+	struct lttng_domain *domains = nullptr;
 
 	count = lttng_list_domains(session_name, &domains);
 	if (count < 0) {
@@ -2250,10 +2251,10 @@ end:
 int cmd_list(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
-	const char *arg_session_name, *leftover = NULL;
+	const char *arg_session_name, *leftover = nullptr;
 	static poptContext pc;
 	struct lttng_domain domain;
-	struct lttng_domain *domains = NULL;
+	struct lttng_domain *domains = nullptr;
 
 	memset(&domain, 0, sizeof(domain));
 
@@ -2262,7 +2263,7 @@ int cmd_list(int argc, const char **argv)
 		goto end;
 	}
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -2338,15 +2339,15 @@ int cmd_list(int argc, const char **argv)
 
 	if (opt_kernel || opt_userspace || opt_jul || opt_log4j || opt_python) {
 		the_handle = lttng_create_handle(arg_session_name, &domain);
-		if (the_handle == NULL) {
+		if (the_handle == nullptr) {
 			ret = CMD_FATAL;
 			goto end;
 		}
 	}
 
-	if (arg_session_name == NULL) {
+	if (arg_session_name == nullptr) {
 		if (!opt_kernel && !opt_userspace && !opt_jul && !opt_log4j && !opt_python) {
-			ret = list_sessions(NULL);
+			ret = list_sessions(nullptr);
 			if (ret) {
 				goto end;
 			}
@@ -2505,7 +2506,7 @@ int cmd_list(int argc, const char **argv)
 				}
 
 				the_handle = lttng_create_handle(arg_session_name, &domains[i]);
-				if (the_handle == NULL) {
+				if (the_handle == nullptr) {
 					ret = CMD_FATAL;
 					goto end;
 				}

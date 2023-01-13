@@ -45,12 +45,12 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 		unsigned int monitor_timer_interval_us);
 int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
 void *consumer_timer_thread(void *data);
-int consumer_signal_init(void);
+int consumer_signal_init();
 
 int consumer_flush_kernel_index(struct lttng_consumer_stream *stream);
 int consumer_flush_ust_index(struct lttng_consumer_stream *stream);
 
-int consumer_timer_thread_get_channel_monitor_pipe(void);
+int consumer_timer_thread_get_channel_monitor_pipe();
 int consumer_timer_thread_set_channel_monitor_pipe(int fd);
 
 #endif /* CONSUMER_TIMER_H */

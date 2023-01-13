@@ -42,7 +42,7 @@
 #include <urcu.h>
 #include <urcu/list.h>
 
-struct lttng_notification_channel *rotate_notification_channel = NULL;
+struct lttng_notification_channel *rotate_notification_channel = nullptr;
 
 struct rotation_thread {
 	struct lttng_poll_event events;
@@ -87,9 +87,9 @@ static const char *get_job_type_str(enum rotation_thread_job_type job_type)
 	}
 }
 
-struct rotation_thread_timer_queue *rotation_thread_timer_queue_create(void)
+struct rotation_thread_timer_queue *rotation_thread_timer_queue_create()
 {
-	struct rotation_thread_timer_queue *queue = NULL;
+	struct rotation_thread_timer_queue *queue = nullptr;
 
 	queue = zmalloc<rotation_thread_timer_queue>();
 	if (!queue) {
@@ -99,7 +99,7 @@ struct rotation_thread_timer_queue *rotation_thread_timer_queue_create(void)
 
 	queue->event_pipe = lttng_pipe_open(FD_CLOEXEC | O_NONBLOCK);
 	CDS_INIT_LIST_HEAD(&queue->list);
-	pthread_mutex_init(&queue->lock, NULL);
+	pthread_mutex_init(&queue->lock, nullptr);
 end:
 	return queue;
 }
@@ -150,7 +150,7 @@ end:
 	return handle;
 error:
 	rotation_thread_handle_destroy(handle);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -180,7 +180,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 {
 	int ret;
 	const char dummy = '!';
-	struct rotation_thread_job *job = NULL;
+	struct rotation_thread_job *job = nullptr;
 	const char *job_type_str = get_job_type_str(job_type);
 
 	pthread_mutex_lock(&queue->lock);
@@ -460,7 +460,7 @@ check_session_rotation_pending(struct ltt_session *session,
 	 * rotations can start now.
 	 */
 	chunk_status = lttng_trace_chunk_get_name(
-		session->chunk_being_archived, &archived_chunk_name, NULL);
+		session->chunk_being_archived, &archived_chunk_name, nullptr);
 	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 	free(session->last_archived_chunk_name);
 	session->last_archived_chunk_name = strdup(archived_chunk_name);
@@ -609,7 +609,7 @@ static int handle_condition(const struct lttng_notification *notification,
 			    struct notification_thread_handle *notification_thread_handle)
 {
 	int ret = 0;
-	const char *condition_session_name = NULL;
+	const char *condition_session_name = nullptr;
 	enum lttng_condition_type condition_type;
 	enum lttng_condition_status condition_status;
 	enum lttng_evaluation_status evaluation_status;
@@ -673,7 +673,7 @@ static int handle_condition(const struct lttng_notification *notification,
 	}
 
 	ret = cmd_rotate_session(
-		session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		session, nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	switch (ret) {
 	case LTTNG_OK:
 		break;
@@ -714,7 +714,7 @@ static int handle_notification_channel(int fd __attribute__((unused)),
 {
 	int ret;
 	bool notification_pending;
-	struct lttng_notification *notification = NULL;
+	struct lttng_notification *notification = nullptr;
 	enum lttng_notification_channel_status status;
 
 	status = lttng_notification_channel_has_pending_notification(rotate_notification_channel,
@@ -862,7 +862,7 @@ end:
 	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_rotation_thread(void *thread_data)
@@ -878,7 +878,7 @@ bool launch_rotation_thread(struct rotation_thread_handle *handle)
 	struct lttng_thread *thread;
 
 	thread = lttng_thread_create(
-		"Rotation", thread_rotation, shutdown_rotation_thread, NULL, handle);
+		"Rotation", thread_rotation, shutdown_rotation_thread, nullptr, handle);
 	if (!thread) {
 		goto error;
 	}

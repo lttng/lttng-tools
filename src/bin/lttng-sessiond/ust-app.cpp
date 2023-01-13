@@ -87,7 +87,7 @@ namespace {
  */
 static lsu::registry_session *get_session_registry(const struct ust_app_session *ua_sess)
 {
-	lsu::registry_session *registry = NULL;
+	lsu::registry_session *registry = nullptr;
 
 	LTTNG_ASSERT(ua_sess);
 
@@ -135,7 +135,7 @@ lsu::registry_session::locked_ptr get_locked_session_registry(const struct ust_a
 /*
  * Return the incremented value of next_channel_key.
  */
-static uint64_t get_next_channel_key(void)
+static uint64_t get_next_channel_key()
 {
 	uint64_t ret;
 
@@ -148,7 +148,7 @@ static uint64_t get_next_channel_key(void)
 /*
  * Return the atomically incremented value of next_session_id.
  */
-static uint64_t get_next_session_id(void)
+static uint64_t get_next_session_id()
 {
 	uint64_t ret;
 
@@ -346,9 +346,9 @@ static void delete_ust_app_event(int sock, struct ust_app_event *ua_event, struc
 	ASSERT_RCU_READ_LOCKED();
 
 	free(ua_event->filter);
-	if (ua_event->exclusion != NULL)
+	if (ua_event->exclusion != nullptr)
 		free(ua_event->exclusion);
-	if (ua_event->obj != NULL) {
+	if (ua_event->obj != nullptr) {
 		pthread_mutex_lock(&app->sock_lock);
 		ret = lttng_ust_ctl_release_object(sock, ua_event->obj);
 		pthread_mutex_unlock(&app->sock_lock);
@@ -395,11 +395,11 @@ static void delete_ust_app_event_notifier_rule(
 
 	LTTNG_ASSERT(ua_event_notifier_rule);
 
-	if (ua_event_notifier_rule->exclusion != NULL) {
+	if (ua_event_notifier_rule->exclusion != nullptr) {
 		free(ua_event_notifier_rule->exclusion);
 	}
 
-	if (ua_event_notifier_rule->obj != NULL) {
+	if (ua_event_notifier_rule->obj != nullptr) {
 		pthread_mutex_lock(&app->sock_lock);
 		ret = lttng_ust_ctl_release_object(sock, ua_event_notifier_rule->obj);
 		pthread_mutex_unlock(&app->sock_lock);
@@ -617,7 +617,7 @@ static void delete_ust_app_channel(int sock,
 		}
 	}
 
-	if (ua_chan->obj != NULL) {
+	if (ua_chan->obj != nullptr) {
 		/* Remove channel from application UST object descriptor. */
 		iter.iter.node = &ua_chan->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_objd, &iter);
@@ -694,7 +694,7 @@ ssize_t ust_app_push_metadata(const lsu::registry_session::locked_ptr& locked_re
 			      int send_zero_data)
 {
 	int ret;
-	char *metadata_str = NULL;
+	char *metadata_str = nullptr;
 	size_t len, offset, new_metadata_len_sent;
 	ssize_t ret_val;
 	uint64_t metadata_key, metadata_version;
@@ -1163,13 +1163,13 @@ end:
 /*
  * Alloc new UST app session.
  */
-static struct ust_app_session *alloc_ust_app_session(void)
+static struct ust_app_session *alloc_ust_app_session()
 {
 	struct ust_app_session *ua_sess;
 
 	/* Init most of the default value by allocating and zeroing */
 	ua_sess = zmalloc<ust_app_session>();
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		PERROR("malloc");
 		goto error_free;
 	}
@@ -1177,12 +1177,12 @@ static struct ust_app_session *alloc_ust_app_session(void)
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	ua_sess->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
-	pthread_mutex_init(&ua_sess->lock, NULL);
+	pthread_mutex_init(&ua_sess->lock, nullptr);
 
 	return ua_sess;
 
 error_free:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1196,7 +1196,7 @@ static struct ust_app_channel *alloc_ust_app_channel(const char *name,
 
 	/* Init most of the default value by allocating and zeroing */
 	ua_chan = zmalloc<ust_app_channel>();
-	if (ua_chan == NULL) {
+	if (ua_chan == nullptr) {
 		PERROR("malloc");
 		goto error;
 	}
@@ -1235,7 +1235,7 @@ static struct ust_app_channel *alloc_ust_app_channel(const char *name,
 	return ua_chan;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1243,12 +1243,12 @@ error:
  *
  * Return newly allocated stream pointer or NULL on error.
  */
-struct ust_app_stream *ust_app_alloc_stream(void)
+struct ust_app_stream *ust_app_alloc_stream()
 {
-	struct ust_app_stream *stream = NULL;
+	struct ust_app_stream *stream = nullptr;
 
 	stream = zmalloc<ust_app_stream>();
-	if (stream == NULL) {
+	if (stream == nullptr) {
 		PERROR("zmalloc ust app stream");
 		goto error;
 	}
@@ -1269,7 +1269,7 @@ static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_ab
 
 	/* Init most of the default value by allocating and zeroing */
 	ua_event = zmalloc<ust_app_event>();
-	if (ua_event == NULL) {
+	if (ua_event == nullptr) {
 		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
 	}
@@ -1289,7 +1289,7 @@ static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_ab
 	return ua_event;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1301,11 +1301,11 @@ alloc_ust_app_event_notifier_rule(struct lttng_trigger *trigger)
 	enum lttng_event_rule_generate_exclusions_status generate_exclusion_status;
 	enum lttng_condition_status cond_status;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
-	struct lttng_condition *condition = NULL;
-	const struct lttng_event_rule *event_rule = NULL;
+	struct lttng_condition *condition = nullptr;
+	const struct lttng_event_rule *event_rule = nullptr;
 
 	ua_event_notifier_rule = zmalloc<ust_app_event_notifier_rule>();
-	if (ua_event_notifier_rule == NULL) {
+	if (ua_event_notifier_rule == nullptr) {
 		PERROR("Failed to allocate ust_app_event_notifier_rule structure");
 		goto error;
 	}
@@ -1351,7 +1351,7 @@ error_put_trigger:
 	lttng_trigger_put(trigger);
 error:
 	free(ua_event_notifier_rule);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1362,7 +1362,7 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	struct ust_app_ctx *ua_ctx;
 
 	ua_ctx = zmalloc<ust_app_ctx>();
-	if (ua_ctx == NULL) {
+	if (ua_ctx == nullptr) {
 		goto error;
 	}
 
@@ -1371,7 +1371,7 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
 		if (uctx->ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
-			char *provider_name = NULL, *ctx_name = NULL;
+			char *provider_name = nullptr, *ctx_name = nullptr;
 
 			provider_name = strdup(uctx->u.app_ctx.provider_name);
 			ctx_name = strdup(uctx->u.app_ctx.ctx_name);
@@ -1390,7 +1390,7 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	return ua_ctx;
 error:
 	free(ua_ctx);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1401,7 +1401,7 @@ error:
 static struct lttng_ust_abi_filter_bytecode *
 create_ust_filter_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 {
-	struct lttng_ust_abi_filter_bytecode *filter = NULL;
+	struct lttng_ust_abi_filter_bytecode *filter = nullptr;
 
 	/* Copy filter bytecode. */
 	filter = zmalloc<lttng_ust_abi_filter_bytecode>(sizeof(*filter) + orig_f->len);
@@ -1426,7 +1426,7 @@ error:
 static struct lttng_ust_abi_capture_bytecode *
 create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 {
-	struct lttng_ust_abi_capture_bytecode *capture = NULL;
+	struct lttng_ust_abi_capture_bytecode *capture = nullptr;
 
 	/* Copy capture bytecode. */
 	capture = zmalloc<lttng_ust_abi_capture_bytecode>(sizeof(*capture) + orig_f->len);
@@ -1457,7 +1457,7 @@ struct ust_app *ust_app_find_by_sock(int sock)
 
 	lttng_ht_lookup(ust_app_ht_by_sock, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app find by sock %d not found", sock);
 		goto error;
 	}
@@ -1465,7 +1465,7 @@ struct ust_app *ust_app_find_by_sock(int sock)
 	return lttng::utils::container_of(node, &ust_app::sock_n);
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1481,7 +1481,7 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 
 	lttng_ht_lookup(ust_app_ht_by_notify_sock, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app find by notify sock %d not found", sock);
 		goto error;
 	}
@@ -1489,7 +1489,7 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 	return lttng::utils::container_of(node, &ust_app::notify_sock_n);
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1506,7 +1506,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *node;
-	struct ust_app_event *event = NULL;
+	struct ust_app_event *event = nullptr;
 	struct ust_app_ht_key key;
 
 	LTTNG_ASSERT(name);
@@ -1526,7 +1526,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 			&key,
 			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto end;
 	}
 
@@ -1547,14 +1547,14 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(stru
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
-	struct ust_app_event_notifier_rule *event_notifier_rule = NULL;
+	struct ust_app_event_notifier_rule *event_notifier_rule = nullptr;
 
 	LTTNG_ASSERT(ht);
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ht, &token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app event notifier rule token not found: token = %" PRIu64, token);
 		goto end;
 	}
@@ -1619,7 +1619,7 @@ static int set_ust_object_filter(struct ust_app *app,
 				 struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_abi_filter_bytecode *ust_bytecode = NULL;
+	struct lttng_ust_abi_filter_bytecode *ust_bytecode = nullptr;
 
 	health_code_update();
 
@@ -1671,7 +1671,7 @@ static int set_ust_capture(struct ust_app *app,
 			   struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_abi_capture_bytecode *ust_bytecode = NULL;
+	struct lttng_ust_abi_capture_bytecode *ust_bytecode = nullptr;
 
 	health_code_update();
 
@@ -1721,7 +1721,7 @@ error:
 static struct lttng_ust_abi_event_exclusion *
 create_ust_exclusion_from_exclusion(const struct lttng_event_exclusion *exclusion)
 {
-	struct lttng_ust_abi_event_exclusion *ust_exclusion = NULL;
+	struct lttng_ust_abi_event_exclusion *ust_exclusion = nullptr;
 	size_t exclusion_alloc_size = sizeof(struct lttng_ust_abi_event_exclusion) +
 		LTTNG_UST_ABI_SYM_NAME_LEN * exclusion->count;
 
@@ -1746,7 +1746,7 @@ static int set_ust_object_exclusions(struct ust_app *app,
 				     struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_abi_event_exclusion *ust_exclusions = NULL;
+	struct lttng_ust_abi_event_exclusion *ust_exclusions = nullptr;
 
 	LTTNG_ASSERT(exclusions && exclusions->count > 0);
 
@@ -2212,9 +2212,9 @@ static int create_ust_event_notifier(struct ust_app *app,
 {
 	int ret = 0;
 	enum lttng_condition_status condition_status;
-	const struct lttng_condition *condition = NULL;
+	const struct lttng_condition *condition = nullptr;
 	struct lttng_ust_abi_event_notifier event_notifier;
-	const struct lttng_event_rule *event_rule = NULL;
+	const struct lttng_event_rule *event_rule = nullptr;
 	unsigned int capture_bytecode_count = 0, i;
 	enum lttng_condition_status cond_status;
 	enum lttng_event_rule_type event_rule_type;
@@ -2373,7 +2373,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event, struct ltt_ust_eve
 		exclusion_alloc_size = sizeof(struct lttng_event_exclusion) +
 			LTTNG_UST_ABI_SYM_NAME_LEN * uevent->exclusion->count;
 		ua_event->exclusion = zmalloc<lttng_event_exclusion>(exclusion_alloc_size);
-		if (ua_event->exclusion == NULL) {
+		if (ua_event->exclusion == nullptr) {
 			PERROR("malloc");
 		} else {
 			memcpy(ua_event->exclusion, uevent->exclusion, exclusion_alloc_size);
@@ -2539,14 +2539,14 @@ static struct ust_app_session *lookup_session_by_app(const struct ltt_ust_sessio
 
 	__lookup_session_by_app(usess, app, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto error;
 	}
 
 	return lttng::utils::container_of(node, &ust_app_session::node);
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -2675,7 +2675,7 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 		 * that if the buffer registry can be found, its ust registry is
 		 * non-NULL.
 		 */
-		buffer_reg_uid_destroy(reg_uid, NULL);
+		buffer_reg_uid_destroy(reg_uid, nullptr);
 		goto error;
 	}
 
@@ -2720,12 +2720,12 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 	health_code_update();
 
 	ua_sess = lookup_session_by_app(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 		     app->pid,
 		     usess->id);
 		ua_sess = alloc_ust_app_session();
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			/* Only malloc can failed so something is really wrong */
 			ret = -ENOMEM;
 			goto error;
@@ -2737,7 +2737,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 		/* Init local registry. */
-		ret = setup_buffer_reg_pid(ua_sess, app, NULL);
+		ret = setup_buffer_reg_pid(ua_sess, app, nullptr);
 		if (ret < 0) {
 			delete_ust_app_session(-1, ua_sess, app);
 			goto error;
@@ -2745,7 +2745,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		break;
 	case LTTNG_BUFFER_PER_UID:
 		/* Look for a global registry. If none exists, create one. */
-		ret = setup_buffer_reg_uid(usess, ua_sess, app, NULL);
+		ret = setup_buffer_reg_uid(usess, ua_sess, app, nullptr);
 		if (ret < 0) {
 			delete_ust_app_session(-1, ua_sess, app);
 			goto error;
@@ -2873,7 +2873,7 @@ static struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
-	struct ust_app_ctx *app_ctx = NULL;
+	struct ust_app_ctx *app_ctx = nullptr;
 
 	LTTNG_ASSERT(uctx);
 	LTTNG_ASSERT(ht);
@@ -2919,7 +2919,7 @@ static int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 	}
 
 	ua_ctx = alloc_ust_app_ctx(uctx);
-	if (ua_ctx == NULL) {
+	if (ua_ctx == nullptr) {
 		/* malloc failed */
 		ret = -ENOMEM;
 		goto error;
@@ -3013,7 +3013,7 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_chan_node == NULL) {
+	if (ua_chan_node == nullptr) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 		     uchan->name,
 		     ua_sess->tracing_id);
@@ -3238,7 +3238,7 @@ static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
 		 * stream call does not release the object.
 		 */
 		reg_stream->obj.ust = stream->obj;
-		stream->obj = NULL;
+		stream->obj = nullptr;
 		buffer_reg_stream_add(reg_stream, buf_reg_chan);
 
 		/* We don't need the streams anymore. */
@@ -3263,7 +3263,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 				     struct buffer_reg_channel **regp)
 {
 	int ret;
-	struct buffer_reg_channel *buf_reg_chan = NULL;
+	struct buffer_reg_channel *buf_reg_chan = nullptr;
 
 	LTTNG_ASSERT(reg_sess);
 	LTTNG_ASSERT(ua_chan);
@@ -3332,7 +3332,7 @@ static int setup_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	}
 
 	buf_reg_chan->obj.ust = ua_chan->obj;
-	ua_chan->obj = NULL;
+	ua_chan->obj = nullptr;
 
 	return 0;
 
@@ -3448,7 +3448,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *buf_reg_chan;
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 	enum lttng_error_code notification_ret;
 
 	LTTNG_ASSERT(app);
@@ -3571,7 +3571,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	int ret;
 	lsu::registry_session *registry;
 	enum lttng_error_code cmd_ret;
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 	uint64_t chan_reg_key;
 
 	LTTNG_ASSERT(app);
@@ -3743,13 +3743,13 @@ static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
-	if (ua_chan_node != NULL) {
+	if (ua_chan_node != nullptr) {
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
 	}
 
 	ua_chan = alloc_ust_app_channel(uchan->name, ua_sess, &uchan->attr);
-	if (ua_chan == NULL) {
+	if (ua_chan == nullptr) {
 		/* Only malloc can fail here */
 		ret = -ENOMEM;
 		goto error;
@@ -3789,7 +3789,7 @@ static int create_ust_app_event(struct ust_app_channel *ua_chan,
 	ASSERT_RCU_READ_LOCKED();
 
 	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
-	if (ua_event == NULL) {
+	if (ua_event == nullptr) {
 		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
 		goto end;
@@ -3844,7 +3844,7 @@ static int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger, str
 	ASSERT_RCU_READ_LOCKED();
 
 	ua_event_notifier_rule = alloc_ust_app_event_notifier_rule(trigger);
-	if (ua_event_notifier_rule == NULL) {
+	if (ua_event_notifier_rule == nullptr) {
 		ret = -ENOMEM;
 		goto end;
 	}
@@ -3899,7 +3899,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	int ret = 0;
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
-	struct ltt_session *session = NULL;
+	struct ltt_session *session = nullptr;
 
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
@@ -3917,7 +3917,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	}
 
 	/* Allocate UST metadata */
-	metadata = alloc_ust_app_channel(DEFAULT_METADATA_NAME, ua_sess, NULL);
+	metadata = alloc_ust_app_channel(DEFAULT_METADATA_NAME, ua_sess, nullptr);
 	if (!metadata) {
 		/* malloc() failed */
 		ret = -ENOMEM;
@@ -4002,13 +4002,13 @@ error:
  */
 struct ust_app *ust_app_find_by_pid(pid_t pid)
 {
-	struct ust_app *app = NULL;
+	struct ust_app *app = nullptr;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
 	lttng_ht_lookup(ust_app_ht, (void *) ((unsigned long) pid), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app no found with pid %d", pid);
 		goto error;
 	}
@@ -4031,8 +4031,8 @@ error:
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 {
 	int ret;
-	struct ust_app *lta = NULL;
-	struct lttng_pipe *event_notifier_event_source_pipe = NULL;
+	struct ust_app *lta = nullptr;
+	struct lttng_pipe *event_notifier_event_source_pipe = nullptr;
 
 	LTTNG_ASSERT(msg);
 	LTTNG_ASSERT(sock >= 0);
@@ -4071,7 +4071,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	}
 
 	lta = zmalloc<ust_app>();
-	if (lta == NULL) {
+	if (lta == nullptr) {
 		PERROR("malloc");
 		goto error_free_pipe;
 	}
@@ -4116,7 +4116,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->pid = msg->pid;
 	lttng_ht_node_init_ulong(&lta->pid_n, (unsigned long) lta->pid);
 	lta->sock = sock;
-	pthread_mutex_init(&lta->sock_lock, NULL);
+	pthread_mutex_init(&lta->sock_lock, nullptr);
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->sock);
 
 	CDS_INIT_LIST_HEAD(&lta->teardown_head);
@@ -4126,7 +4126,7 @@ error_free_pipe:
 	lttng_pipe_destroy(event_notifier_event_source_pipe);
 	lttng_fd_put(LTTNG_FD_APPS, 2);
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -4137,7 +4137,7 @@ void ust_app_add(struct ust_app *app)
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(app->notify_sock >= 0);
 
-	app->registration_time = time(NULL);
+	app->registration_time = time(nullptr);
 
 	rcu_read_lock();
 
@@ -4228,7 +4228,7 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 {
 	int ret;
 	int event_pipe_write_fd;
-	struct lttng_ust_abi_object_data *event_notifier_group = NULL;
+	struct lttng_ust_abi_object_data *event_notifier_group = nullptr;
 	enum lttng_error_code lttng_ret;
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
@@ -4331,7 +4331,7 @@ error_accounting:
 error:
 	lttng_ust_ctl_release_object(app->sock, app->event_notifier_group.object);
 	free(app->event_notifier_group.object);
-	app->event_notifier_group.object = NULL;
+	app->event_notifier_group.object = nullptr;
 	return ret;
 }
 
@@ -4476,7 +4476,7 @@ int ust_app_list_events(struct lttng_event **events)
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
 	tmp_event = calloc<lttng_event>(nbmem);
-	if (tmp_event == NULL) {
+	if (tmp_event == nullptr) {
 		PERROR("zmalloc ust app events");
 		ret = -ENOMEM;
 		goto error;
@@ -4545,7 +4545,7 @@ int ust_app_list_events(struct lttng_event **events)
 				     new_nbmem);
 				new_tmp_event = (lttng_event *) realloc(
 					tmp_event, new_nbmem * sizeof(struct lttng_event));
-				if (new_tmp_event == NULL) {
+				if (new_tmp_event == nullptr) {
 					int release_ret;
 
 					PERROR("realloc ust app events");
@@ -4622,7 +4622,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
 	tmp_event = calloc<lttng_event_field>(nbmem);
-	if (tmp_event == NULL) {
+	if (tmp_event == nullptr) {
 		PERROR("zmalloc ust app event fields");
 		ret = -ENOMEM;
 		goto error;
@@ -4691,7 +4691,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 				     new_nbmem);
 				new_tmp_event = (lttng_event_field *) realloc(
 					tmp_event, new_nbmem * sizeof(struct lttng_event_field));
-				if (new_tmp_event == NULL) {
+				if (new_tmp_event == nullptr) {
 					int release_ret;
 
 					PERROR("realloc ust app event fields");
@@ -4754,7 +4754,7 @@ error:
 /*
  * Free and clean all traceable apps of the global list.
  */
-void ust_app_clean_list(void)
+void ust_app_clean_list()
 {
 	int ret;
 	struct ust_app *app;
@@ -4811,7 +4811,7 @@ void ust_app_clean_list(void)
 /*
  * Init UST app hash table.
  */
-int ust_app_ht_alloc(void)
+int ust_app_ht_alloc()
 {
 	ust_app_ht = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!ust_app_ht) {
@@ -4858,7 +4858,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			continue;
 		}
 
@@ -4911,7 +4911,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			continue;
 		}
 
@@ -4961,7 +4961,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			/* Next app */
 			continue;
 		}
@@ -4969,7 +4969,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_chan_node == NULL) {
+		if (ua_chan_node == nullptr) {
 			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
 			     "Skipping",
 			     uchan->name,
@@ -4984,7 +4984,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 					      uevent->filter,
 					      uevent->attr.loglevel,
 					      uevent->exclusion);
-		if (ua_event == NULL) {
+		if (ua_event == nullptr) {
 			DBG2("Event %s not found in channel %s for app pid %d."
 			     "Skipping",
 			     uevent->attr.name,
@@ -5012,7 +5012,7 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 				  struct ust_app_channel **_ua_chan)
 {
 	int ret = 0;
-	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app_channel *ua_chan = nullptr;
 
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_LOCKED(ua_sess->lock);
@@ -5021,7 +5021,7 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
 		ret = 0;
 	} else {
-		struct ltt_ust_context *uctx = NULL;
+		struct ltt_ust_context *uctx = nullptr;
 
 		/*
 		 * Create channel onto application and synchronize its
@@ -5146,7 +5146,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 					      uevent->filter,
 					      uevent->attr.loglevel,
 					      uevent->exclusion);
-		if (ua_event == NULL) {
+		if (ua_event == nullptr) {
 			DBG3("UST app enable event %s not found for app PID %d."
 			     "Skipping app",
 			     uevent->attr.name,
@@ -5258,7 +5258,7 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		goto end;
 	}
@@ -5368,7 +5368,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		goto end_no_session;
 	}
 
@@ -5581,7 +5581,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 
 		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 			ua_sess = lookup_session_by_app(usess, app);
-			if (ua_sess == NULL) {
+			if (ua_sess == nullptr) {
 				continue;
 			}
 			(void) ust_app_flush_app_session(app, ua_sess);
@@ -5721,7 +5721,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 
 		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 			ua_sess = lookup_session_by_app(usess, app);
-			if (ua_sess == NULL) {
+			if (ua_sess == nullptr) {
 				continue;
 			}
 			(void) ust_app_clear_quiescent_app_session(app, ua_sess);
@@ -5759,7 +5759,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	__lookup_session_by_app(usess, app, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		/* Session is being or is deleted. */
 		goto end;
 	}
@@ -5923,7 +5923,7 @@ static int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
 					     struct ust_app *app)
 {
 	int ret = 0;
-	struct ust_app_event *ua_event = NULL;
+	struct ust_app_event *ua_event = nullptr;
 
 	ua_event = find_ust_app_event(ua_chan->events,
 				      uevent->attr.name,
@@ -5953,7 +5953,7 @@ static void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status t_status;
 	struct lttng_ht_iter app_trigger_iter;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	struct ust_app_event_notifier_rule *event_notifier_rule;
 	unsigned int count, i;
 
@@ -6156,7 +6156,7 @@ end:
 static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *app)
 {
 	int ret = 0;
-	struct ust_app_session *ua_sess = NULL;
+	struct ust_app_session *ua_sess = nullptr;
 
 	/*
 	 * The application's configuration should only be synchronized for
@@ -6164,7 +6164,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 	 */
 	LTTNG_ASSERT(usess->active);
 
-	ret = find_or_create_ust_app_session(usess, app, &ua_sess, NULL);
+	ret = find_or_create_ust_app_session(usess, app, &ua_sess, nullptr);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
 		if (ua_sess) {
@@ -6212,7 +6212,7 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
 	struct ust_app_session *ua_sess;
 
 	ua_sess = lookup_session_by_app(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		return;
 	}
 	destroy_app_session(app, ua_sess);
@@ -6267,7 +6267,7 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 		return;
 	}
 
-	if (app->event_notifier_group.object == NULL) {
+	if (app->event_notifier_group.object == nullptr) {
 		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s', pid = %d",
 		     app->name,
 		     app->pid);
@@ -6292,7 +6292,7 @@ void ust_app_global_update_all(struct ltt_ust_session *usess)
 	rcu_read_unlock();
 }
 
-void ust_app_global_update_all_event_notifier_rules(void)
+void ust_app_global_update_all_event_notifier_rules()
 {
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
@@ -6315,7 +6315,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
 	struct lttng_ht_iter iter, uiter;
-	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app_channel *ua_chan = nullptr;
 	struct ust_app_session *ua_sess;
 	struct ust_app *app;
 
@@ -6331,7 +6331,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			continue;
 		}
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			continue;
 		}
 
@@ -6345,7 +6345,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		/* Lookup channel in the ust app session */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
-		if (ua_chan_node == NULL) {
+		if (ua_chan_node == nullptr) {
 			goto next_app;
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
@@ -6427,14 +6427,14 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app, int obj
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct ust_app_session *ua_sess = NULL;
+	struct ust_app_session *ua_sess = nullptr;
 
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_sessions_objd, (void *) ((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app session find by objd %d not found", objd);
 		goto error;
 	}
@@ -6454,14 +6454,14 @@ static struct ust_app_channel *find_channel_by_objd(struct ust_app *app, int obj
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct ust_app_channel *ua_chan = NULL;
+	struct ust_app_channel *ua_chan = nullptr;
 
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_objd, (void *) ((unsigned long) objd), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("UST app channel find by objd %d not found", objd);
 		goto error;
 	}
@@ -7134,7 +7134,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
-	char *trace_path = NULL;
+	char *trace_path = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(output);
@@ -7434,7 +7434,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		struct lttng_ht_iter uiter;
 
 		ua_sess = lookup_session_by_app(usess, app);
-		if (ua_sess == NULL) {
+		if (ua_sess == nullptr) {
 			continue;
 		}
 
@@ -7480,7 +7480,7 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 	rcu_read_lock();
 
 	ua_sess = lookup_session_by_app(usess, app);
-	if (ua_sess == NULL) {
+	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		goto end;
 	}

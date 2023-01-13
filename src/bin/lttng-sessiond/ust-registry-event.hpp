@@ -36,7 +36,7 @@ public:
 			std::vector<lttng::sessiond::trace::field::cuptr> fields,
 			int loglevel_value,
 			nonstd::optional<std::string> model_emf_uri);
-	virtual ~registry_event() = default;
+	~registry_event() override = default;
 
 	/* Both objd are set by the tracer. */
 	const int session_objd;

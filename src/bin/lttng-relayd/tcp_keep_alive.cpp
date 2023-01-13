@@ -129,7 +129,7 @@ static int get_env_int(const char *env_var, const char *value)
 {
 	int ret;
 	long tmp;
-	char *endptr = NULL;
+	char *endptr = nullptr;
 
 	errno = 0;
 	tmp = strtol(value, &endptr, 0);
@@ -493,7 +493,7 @@ error:
 }
 
 /* Initialize the TCP keep-alive configuration. */
-__attribute__((constructor)) static void tcp_keep_alive_init(void)
+__attribute__((constructor)) static void tcp_keep_alive_init()
 {
 	tcp_keep_alive_init_support(&the_support);
 	(void) tcp_keep_alive_init_config(&the_support, &the_config);

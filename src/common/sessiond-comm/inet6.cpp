@@ -251,7 +251,7 @@ struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
 	}
 
 	new_sock = lttcomm_alloc_sock(sock->proto);
-	if (new_sock == NULL) {
+	if (new_sock == nullptr) {
 		goto error;
 	}
 
@@ -272,7 +272,7 @@ end:
 
 error:
 	free(new_sock);
-	return NULL;
+	return nullptr;
 }
 
 /*

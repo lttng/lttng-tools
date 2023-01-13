@@ -174,7 +174,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, cons
 
 	lttng_ht_lookup(ht, (void *) name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto error;
 	}
 
@@ -184,7 +184,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, cons
 
 error:
 	DBG2("Trace UST channel %s not found by name", name);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -218,7 +218,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 			&key,
 			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto error;
 	}
 
@@ -228,7 +228,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 
 error:
 	DBG2("Trace UST event %s NOT found", key.name);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -241,7 +241,7 @@ error:
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 				   enum lttng_domain_type domain_type)
 {
-	struct agent *agt = NULL;
+	struct agent *agt = nullptr;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	uint64_t key;
@@ -274,7 +274,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Allocate a new ltt ust session */
 	lus = zmalloc<ltt_ust_session>();
-	if (lus == NULL) {
+	if (lus == nullptr) {
 		PERROR("create ust session zmalloc");
 		goto error_alloc;
 	}
@@ -321,7 +321,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 		goto error;
 	}
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (lus->consumer == NULL) {
+	if (lus->consumer == nullptr) {
 		goto error;
 	}
 
@@ -337,7 +337,7 @@ error:
 	lttng_ht_destroy(lus->agents);
 	free(lus);
 error_alloc:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -353,7 +353,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	LTTNG_ASSERT(chan);
 
 	luc = zmalloc<ltt_ust_channel>();
-	if (luc == NULL) {
+	if (luc == nullptr) {
 		PERROR("ltt_ust_channel zmalloc");
 		goto error;
 	}
@@ -464,7 +464,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	}
 
 	local_ust_event = zmalloc<ltt_ust_event>();
-	if (local_ust_event == NULL) {
+	if (local_ust_event == nullptr) {
 		PERROR("ust event zmalloc");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -669,7 +669,7 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
  */
 struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_context *ctx)
 {
-	struct ltt_ust_context *uctx = NULL;
+	struct ltt_ust_context *uctx = nullptr;
 	int utype;
 
 	LTTNG_ASSERT(ctx);
@@ -698,7 +698,7 @@ struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_contex
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 	{
-		char *provider_name = NULL, *ctx_name = NULL;
+		char *provider_name = nullptr, *ctx_name = nullptr;
 
 		provider_name = strdup(ctx->u.app_ctx.provider_name);
 		if (!provider_name) {
@@ -721,7 +721,7 @@ end:
 	return uctx;
 error:
 	trace_ust_destroy_context(uctx);
-	return NULL;
+	return nullptr;
 }
 
 static void destroy_id_tracker_node_rcu(struct rcu_head *head)
@@ -770,7 +770,7 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 	}
 	rcu_read_unlock();
 	lttng_ht_destroy(id_tracker->ht);
-	id_tracker->ht = NULL;
+	id_tracker->ht = nullptr;
 }
 
 static struct ust_id_tracker_node *
@@ -784,7 +784,7 @@ id_tracker_lookup(struct ust_id_tracker *id_tracker, int id, struct lttng_ht_ite
 	if (node) {
 		return lttng::utils::container_of(node, &ust_id_tracker_node::node);
 	} else {
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -850,7 +850,7 @@ static struct ust_id_tracker *get_id_tracker(struct ltt_ust_session *session,
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		return &session->vgid_tracker;
 	default:
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -866,7 +866,7 @@ _trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		return session->tracker_vgid;
 	default:
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -1333,8 +1333,8 @@ void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *chann
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct buffer_reg_uid *uid_reg = NULL;
-	struct buffer_reg_session *session_reg = NULL;
+	struct buffer_reg_uid *uid_reg = nullptr;
+	struct buffer_reg_session *session_reg = nullptr;
 
 	rcu_read_lock();
 	cds_list_for_each_entry (uid_reg, &usess->buffer_reg_uid_list, lnode) {

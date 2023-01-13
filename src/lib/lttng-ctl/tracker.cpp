@@ -41,7 +41,7 @@ lttng_session_get_tracker_handle(const char *session_name,
 				 struct lttng_process_attr_tracker_handle **out_tracker_handle)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct lttng_process_attr_tracker_handle *handle = NULL;
+	struct lttng_process_attr_tracker_handle *handle = nullptr;
 	enum lttng_process_attr_tracker_handle_status status;
 	enum lttng_tracking_policy policy;
 
@@ -96,7 +96,7 @@ error:
 enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_get_tracking_policy(
 	const struct lttng_process_attr_tracker_handle *tracker, enum lttng_tracking_policy *policy)
 {
-	void *reply = NULL;
+	void *reply = nullptr;
 	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 		LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
@@ -124,7 +124,7 @@ enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_
 		(int32_t) tracker->process_attr;
 
 	/* Command returns a session descriptor on success. */
-	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, NULL, 0, &reply);
+	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, nullptr, 0, &reply);
 	if (reply_ret != sizeof(uint32_t)) {
 		if (reply_ret == -LTTNG_ERR_SESSION_NOT_EXIST ||
 		    reply_ret == -LTTNG_ERR_SESS_NOT_FOUND) {
@@ -172,7 +172,7 @@ enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_
 	lsm.u.process_attr_tracker_set_tracking_policy.tracking_policy = (int32_t) policy;
 
 	/* Command returns a session descriptor on success. */
-	reply_ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	reply_ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 	if (reply_ret < 0) {
 		if (reply_ret == -LTTNG_ERR_SESSION_NOT_EXIST) {
 			status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_SESSION_DOES_NOT_EXIST;
@@ -358,7 +358,7 @@ enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_
 	struct lttng_process_attr_tracker_handle *tracker,
 	const struct lttng_process_attr_values **values)
 {
-	char *reply = NULL;
+	char *reply = nullptr;
 	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 		LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
@@ -378,7 +378,7 @@ enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_
 	}
 
 	lttng_process_attr_values_destroy(tracker->inclusion_set);
-	tracker->inclusion_set = NULL;
+	tracker->inclusion_set = nullptr;
 
 	copy_ret = lttng_strncpy(lsm.session.name, tracker->session_name, sizeof(lsm.session.name));
 	if (copy_ret) {
@@ -391,7 +391,7 @@ enum lttng_process_attr_tracker_handle_status lttng_process_attr_tracker_handle_
 		(int32_t) tracker->process_attr;
 
 	/* Command returns a session descriptor on success. */
-	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, NULL, 0, (void **) &reply);
+	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, nullptr, 0, (void **) &reply);
 	if (reply_ret < 0) {
 		if (reply_ret == -LTTNG_ERR_SESSION_NOT_EXIST) {
 			status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_SESSION_DOES_NOT_EXIST;
@@ -532,7 +532,7 @@ handle_status_to_error_code(enum lttng_process_attr_tracker_handle_status handle
 int lttng_track_pid(struct lttng_handle *handle, int pid)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	enum lttng_process_attr_tracker_handle_status handle_status;
 	enum lttng_tracking_policy policy;
 	enum lttng_process_attr process_attr;
@@ -592,7 +592,7 @@ end:
 int lttng_untrack_pid(struct lttng_handle *handle, int pid)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	enum lttng_process_attr_tracker_handle_status handle_status;
 	enum lttng_tracking_policy policy;
 	enum lttng_process_attr process_attr;
@@ -662,12 +662,12 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 			    size_t *_nr_pids)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	struct lttng_process_attr_tracker_handle *tracker_handle = nullptr;
 	enum lttng_process_attr_tracker_handle_status handle_status;
 	const struct lttng_process_attr_values *values;
 	enum lttng_tracking_policy policy;
 	unsigned int pid_count, i;
-	int32_t *pid_array = NULL;
+	int32_t *pid_array = nullptr;
 
 	if (!handle || !_enabled || !_pids || !_nr_pids) {
 		ret_code = LTTNG_ERR_INVALID;
@@ -752,7 +752,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 	}
 	*_nr_pids = (size_t) pid_count;
 	*_pids = pid_array;
-	pid_array = NULL;
+	pid_array = nullptr;
 end:
 	lttng_process_attr_tracker_handle_destroy(tracker_handle);
 	free(pid_array);

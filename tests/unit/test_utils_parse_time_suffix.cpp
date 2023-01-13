@@ -71,7 +71,7 @@ const char *invalid_tests_inputs[] = {
 const int num_invalid_tests = sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
 } /* namespace */
 
-static void test_utils_parse_time_suffix(void)
+static void test_utils_parse_time_suffix()
 {
 	uint64_t result;
 	int ret;
@@ -100,7 +100,7 @@ static void test_utils_parse_time_suffix(void)
 	}
 }
 
-int main(void)
+int main()
 {
 	plan_tests(num_valid_tests + num_invalid_tests);
 

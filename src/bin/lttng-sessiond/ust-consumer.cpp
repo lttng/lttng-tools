@@ -42,7 +42,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	int ret, output;
 	uint32_t chan_id;
 	uint64_t key, chan_reg_key;
-	char *pathname = NULL;
+	char *pathname = nullptr;
 	struct lttcomm_consumer_msg msg;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
@@ -266,12 +266,12 @@ int ust_consumer_get_channel(struct consumer_socket *socket, struct ust_app_chan
 	}
 
 	/* Next, get all streams. */
-	while (1) {
+	while (true) {
 		struct ust_app_stream *stream;
 
 		/* Create UST stream */
 		stream = ust_app_alloc_stream();
-		if (stream == NULL) {
+		if (stream == nullptr) {
 			ret = -ENOMEM;
 			goto error;
 		}

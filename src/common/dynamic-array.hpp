@@ -144,7 +144,7 @@ void *lttng_dynamic_pointer_array_steal_pointer(
 	void **p_element = (void **) lttng_dynamic_array_get_element(&array->array, index);
 	void *element = *p_element;
 
-	*p_element = NULL;
+	*p_element = nullptr;
 
 	return element;
 }

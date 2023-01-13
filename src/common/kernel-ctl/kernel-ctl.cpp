@@ -155,7 +155,7 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 
 int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 {
-	struct lttng_kernel_abi_syscall_mask kmask_len, *kmask = NULL;
+	struct lttng_kernel_abi_syscall_mask kmask_len, *kmask = nullptr;
 	size_t array_alloc_len;
 	char *new_mask;
 	int ret = 0;

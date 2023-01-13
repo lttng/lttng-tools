@@ -187,12 +187,12 @@ lttng_condition_buffer_usage_mi_serialize(const struct lttng_condition *conditio
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_condition_status status;
-	const char *session_name = NULL, *channel_name = NULL;
+	const char *session_name = nullptr, *channel_name = nullptr;
 	enum lttng_domain_type domain_type;
 	bool is_threshold_bytes = false;
 	double threshold_ratio;
 	uint64_t threshold_bytes;
-	const char *condition_type_str = NULL;
+	const char *condition_type_str = nullptr;
 
 	LTTNG_ASSERT(condition);
 	LTTNG_ASSERT(IS_USAGE_CONDITION(condition));
@@ -299,7 +299,7 @@ static struct lttng_condition *lttng_condition_buffer_usage_create(enum lttng_co
 
 	condition = zmalloc<lttng_condition_buffer_usage>();
 	if (!condition) {
-		return NULL;
+		return nullptr;
 	}
 
 	lttng_condition_init(&condition->parent, type);
@@ -477,7 +477,7 @@ static struct lttng_evaluation *create_evaluation_from_payload(enum lttng_condit
 							       struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_buffer_usage_comm *comm = (typeof(comm)) view->buffer.data;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (view->buffer.size < sizeof(*comm)) {
 		goto end;
@@ -493,7 +493,7 @@ ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(struct lttng_paylo
 							      struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (!_evaluation) {
 		ret = -1;
@@ -519,7 +519,7 @@ lttng_evaluation_buffer_usage_high_create_from_payload(struct lttng_payload_view
 						       struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (!_evaluation) {
 		ret = -1;

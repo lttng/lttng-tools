@@ -156,7 +156,7 @@ lttng_rate_policy_once_after_n_create_from_payload(struct lttng_payload_view *vi
 						   struct lttng_rate_policy **rate_policy)
 {
 	ssize_t consumed_len = -1;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 	const struct lttng_rate_policy_once_after_n_comm *comm;
 	const struct lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*comm));
@@ -175,7 +175,7 @@ lttng_rate_policy_once_after_n_create_from_payload(struct lttng_payload_view *vi
 	comm = (const struct lttng_rate_policy_once_after_n_comm *) comm_view.buffer.data;
 
 	policy = lttng_rate_policy_once_after_n_create(comm->threshold);
-	if (policy == NULL) {
+	if (policy == nullptr) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -191,7 +191,7 @@ static ssize_t lttng_rate_policy_every_n_create_from_payload(struct lttng_payloa
 							     struct lttng_rate_policy **rate_policy)
 {
 	ssize_t consumed_len = -1;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 	const struct lttng_rate_policy_every_n_comm *comm;
 	const struct lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*comm));
@@ -210,7 +210,7 @@ static ssize_t lttng_rate_policy_every_n_create_from_payload(struct lttng_payloa
 	comm = (const struct lttng_rate_policy_every_n_comm *) comm_view.buffer.data;
 
 	policy = lttng_rate_policy_every_n_create(comm->interval);
-	if (policy == NULL) {
+	if (policy == nullptr) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -398,7 +398,7 @@ end:
 static struct lttng_rate_policy *
 lttng_rate_policy_every_n_copy(const struct lttng_rate_policy *source)
 {
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 	const struct lttng_rate_policy_every_n *every_n_policy;
 
 	if (!source) {
@@ -418,7 +418,7 @@ lttng_rate_policy_every_n_mi_serialize(const struct lttng_rate_policy *rate_poli
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const struct lttng_rate_policy_every_n *every_n_policy = NULL;
+	const struct lttng_rate_policy_every_n *every_n_policy = nullptr;
 
 	LTTNG_ASSERT(rate_policy);
 	LTTNG_ASSERT(IS_EVERY_N_RATE_POLICY(rate_policy));
@@ -456,8 +456,8 @@ end:
 
 struct lttng_rate_policy *lttng_rate_policy_every_n_create(uint64_t interval)
 {
-	struct lttng_rate_policy_every_n *policy = NULL;
-	struct lttng_rate_policy *_policy = NULL;
+	struct lttng_rate_policy_every_n *policy = nullptr;
+	struct lttng_rate_policy *_policy = nullptr;
 
 	if (interval == 0) {
 		/*
@@ -482,7 +482,7 @@ struct lttng_rate_policy *lttng_rate_policy_every_n_create(uint64_t interval)
 	policy->interval = interval;
 
 	_policy = &policy->parent;
-	policy = NULL;
+	policy = nullptr;
 
 end:
 	free(policy);
@@ -604,7 +604,7 @@ end:
 static struct lttng_rate_policy *
 lttng_rate_policy_once_after_n_copy(const struct lttng_rate_policy *source)
 {
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 	const struct lttng_rate_policy_once_after_n *once_after_n_policy;
 
 	if (!source) {
@@ -624,7 +624,7 @@ lttng_rate_policy_once_after_n_mi_serialize(const struct lttng_rate_policy *rate
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const struct lttng_rate_policy_once_after_n *once_after_n_policy = NULL;
+	const struct lttng_rate_policy_once_after_n *once_after_n_policy = nullptr;
 
 	LTTNG_ASSERT(rate_policy);
 	LTTNG_ASSERT(IS_ONCE_AFTER_N_RATE_POLICY(rate_policy));
@@ -664,8 +664,8 @@ end:
 
 struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(uint64_t threshold)
 {
-	struct lttng_rate_policy_once_after_n *policy = NULL;
-	struct lttng_rate_policy *_policy = NULL;
+	struct lttng_rate_policy_once_after_n *policy = nullptr;
+	struct lttng_rate_policy *_policy = nullptr;
 
 	if (threshold == 0) {
 		/* threshold is expected to be > 0 */
@@ -688,7 +688,7 @@ struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(uint64_t thresho
 	policy->threshold = threshold;
 
 	_policy = &policy->parent;
-	policy = NULL;
+	policy = nullptr;
 
 end:
 	free(policy);

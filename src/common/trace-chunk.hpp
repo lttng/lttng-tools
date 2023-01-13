@@ -70,7 +70,7 @@ enum lttng_trace_chunk_command_type {
 	LTTNG_TRACE_CHUNK_COMMAND_TYPE_MAX,
 };
 
-struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous(void);
+struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous();
 
 struct lttng_trace_chunk *lttng_trace_chunk_create(
 		uint64_t chunk_id,

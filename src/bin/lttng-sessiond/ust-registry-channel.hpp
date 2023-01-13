@@ -46,9 +46,9 @@ public:
 			lttng_buffer_type buffer_type,
 			const ust_app& app,
 			uint32_t& out_event_id);
-	virtual ~registry_channel();
+	~registry_channel() override;
 
-	virtual const lttng::sessiond::trace::type *event_context() const override final;
+	const lttng::sessiond::trace::type *event_context() const final;
 	void event_context(lttng::sessiond::trace::type::cuptr context);
 
 	/* Channel was registered to at least one application. */
@@ -70,8 +70,8 @@ public:
 	uint32_t _next_event_id;
 
 private:
-	virtual void _accept_on_event_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const override final;
+	void _accept_on_event_classes(
+			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const final;
 
 	registered_listener_fn _is_registered_listener;
 	event_added_listener_fn _event_added_listener;

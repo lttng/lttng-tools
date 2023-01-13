@@ -40,7 +40,7 @@ lttng_log_level_rule_get_type(const struct lttng_log_level_rule *rule)
 
 struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(int level)
 {
-	struct lttng_log_level_rule *rule = NULL;
+	struct lttng_log_level_rule *rule = nullptr;
 
 	rule = zmalloc<lttng_log_level_rule>();
 	if (!rule) {
@@ -71,7 +71,7 @@ end:
 
 struct lttng_log_level_rule *lttng_log_level_rule_at_least_as_severe_as_create(int level)
 {
-	struct lttng_log_level_rule *rule = NULL;
+	struct lttng_log_level_rule *rule = nullptr;
 
 	rule = zmalloc<lttng_log_level_rule>();
 	if (!rule) {
@@ -111,7 +111,7 @@ ssize_t lttng_log_level_rule_create_from_payload(struct lttng_payload_view *view
 {
 	ssize_t ret;
 	size_t offset = 0;
-	struct lttng_log_level_rule *rule = NULL;
+	struct lttng_log_level_rule *rule = nullptr;
 	const struct lttng_log_level_rule_comm *comm =
 		(const struct lttng_log_level_rule_comm *) view->buffer.data;
 
@@ -179,13 +179,13 @@ bool lttng_log_level_rule_is_equal(const struct lttng_log_level_rule *a,
 {
 	bool is_equal = false;
 
-	if (a == NULL && b == NULL) {
+	if (a == nullptr && b == nullptr) {
 		/* Both are null. */
 		is_equal = true;
 		goto end;
 	}
 
-	if (a == NULL || b == NULL) {
+	if (a == nullptr || b == nullptr) {
 		/* One is NULL.*/
 		goto end;
 	}
@@ -212,7 +212,7 @@ end:
 
 struct lttng_log_level_rule *lttng_log_level_rule_copy(const struct lttng_log_level_rule *source)
 {
-	struct lttng_log_level_rule *copy = NULL;
+	struct lttng_log_level_rule *copy = nullptr;
 
 	LTTNG_ASSERT(source);
 
@@ -287,7 +287,7 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(const struct lttng_log_l
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_log_level_rule_status status;
-	const char *element_str = NULL;
+	const char *element_str = nullptr;
 	int level;
 
 	LTTNG_ASSERT(rule);

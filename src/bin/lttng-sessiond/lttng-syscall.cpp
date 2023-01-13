@@ -85,7 +85,7 @@ int syscall_init_table(int tracer_fd)
 				/* Overflow, stop everything, something went really wrong. */
 				ERR("Syscall listing memory size overflow. Stopping");
 				free(syscall_table);
-				syscall_table = NULL;
+				syscall_table = nullptr;
 				ret = -EINVAL;
 				goto error;
 			}
@@ -110,7 +110,7 @@ int syscall_init_table(int tracer_fd)
 			    syscall_table[index].name, name, sizeof(syscall_table[index].name))) {
 			ret = -EINVAL;
 			free(syscall_table);
-			syscall_table = NULL;
+			syscall_table = nullptr;
 			goto error;
 		}
 		/*
@@ -203,7 +203,7 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
-	struct syscall *ksyscall = NULL;
+	struct syscall *ksyscall = nullptr;
 
 	LTTNG_ASSERT(ht);
 	LTTNG_ASSERT(name);
@@ -277,7 +277,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 	ssize_t ret;
 	struct lttng_event *events;
 	/* Hash table used to filter duplicate out. */
-	struct lttng_ht *syscalls_ht = NULL;
+	struct lttng_ht *syscalls_ht = nullptr;
 
 	LTTNG_ASSERT(_events);
 

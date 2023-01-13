@@ -113,7 +113,7 @@ notification_thread_handle_create(struct lttng_pipe *ust32_channel_monitor_pipe,
 	handle->cmd_queue.event_fd = event_fd;
 
 	CDS_INIT_LIST_HEAD(&handle->cmd_queue.list);
-	ret = pthread_mutex_init(&handle->cmd_queue.lock, NULL);
+	ret = pthread_mutex_init(&handle->cmd_queue.lock, nullptr);
 	if (ret) {
 		goto error;
 	}
@@ -150,10 +150,10 @@ end:
 	return handle;
 error:
 	notification_thread_handle_destroy(handle);
-	return NULL;
+	return nullptr;
 }
 
-static char *get_notification_channel_sock_path(void)
+static char *get_notification_channel_sock_path()
 {
 	int ret;
 	bool is_root = !getuid();
@@ -190,7 +190,7 @@ static char *get_notification_channel_sock_path(void)
 	return sock_path;
 error:
 	free(sock_path);
-	return NULL;
+	return nullptr;
 }
 
 static void notification_channel_socket_destroy(int fd)
@@ -214,7 +214,7 @@ static void notification_channel_socket_destroy(int fd)
 	}
 }
 
-static int notification_channel_socket_create(void)
+static int notification_channel_socket_create()
 {
 	int fd = -1, ret;
 	char *sock_path = get_notification_channel_sock_path();
@@ -324,45 +324,45 @@ static void fini_thread_state(struct notification_thread_state *state)
 	if (state->client_socket_ht) {
 		ret = handle_notification_thread_client_disconnect_all(state);
 		LTTNG_ASSERT(!ret);
-		ret = cds_lfht_destroy(state->client_socket_ht, NULL);
+		ret = cds_lfht_destroy(state->client_socket_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->client_id_ht) {
-		ret = cds_lfht_destroy(state->client_id_ht, NULL);
+		ret = cds_lfht_destroy(state->client_id_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->triggers_ht) {
 		ret = handle_notification_thread_trigger_unregister_all(state);
 		LTTNG_ASSERT(!ret);
-		ret = cds_lfht_destroy(state->triggers_ht, NULL);
+		ret = cds_lfht_destroy(state->triggers_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->channel_triggers_ht) {
-		ret = cds_lfht_destroy(state->channel_triggers_ht, NULL);
+		ret = cds_lfht_destroy(state->channel_triggers_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->channel_state_ht) {
-		ret = cds_lfht_destroy(state->channel_state_ht, NULL);
+		ret = cds_lfht_destroy(state->channel_state_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_trigger_clients_ht) {
-		ret = cds_lfht_destroy(state->notification_trigger_clients_ht, NULL);
+		ret = cds_lfht_destroy(state->notification_trigger_clients_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->channels_ht) {
-		ret = cds_lfht_destroy(state->channels_ht, NULL);
+		ret = cds_lfht_destroy(state->channels_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->sessions_ht) {
-		ret = cds_lfht_destroy(state->sessions_ht, NULL);
+		ret = cds_lfht_destroy(state->sessions_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->triggers_by_name_uid_ht) {
-		ret = cds_lfht_destroy(state->triggers_by_name_uid_ht, NULL);
+		ret = cds_lfht_destroy(state->triggers_by_name_uid_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->trigger_tokens_ht) {
-		ret = cds_lfht_destroy(state->trigger_tokens_ht, NULL);
+		ret = cds_lfht_destroy(state->trigger_tokens_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	/*
@@ -370,7 +370,7 @@ static void fini_thread_state(struct notification_thread_state *state)
 	 * See comment in struct lttng_session_trigger_list.
 	 */
 	if (state->session_triggers_ht) {
-		ret = cds_lfht_destroy(state->session_triggers_ht, NULL);
+		ret = cds_lfht_destroy(state->session_triggers_ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_channel_socket >= 0) {
@@ -427,64 +427,64 @@ static int init_thread_state(struct notification_thread_handle *handle,
 	}
 
 	state->client_socket_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->client_socket_ht) {
 		goto error;
 	}
 
 	state->client_id_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->client_id_ht) {
 		goto error;
 	}
 
 	state->channel_triggers_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->channel_triggers_ht) {
 		goto error;
 	}
 
 	state->session_triggers_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->session_triggers_ht) {
 		goto error;
 	}
 
 	state->channel_state_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->channel_state_ht) {
 		goto error;
 	}
 
 	state->notification_trigger_clients_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->notification_trigger_clients_ht) {
 		goto error;
 	}
 
 	state->channels_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->channels_ht) {
 		goto error;
 	}
 	state->sessions_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->sessions_ht) {
 		goto error;
 	}
 	state->triggers_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->triggers_ht) {
 		goto error;
 	}
 	state->triggers_by_name_uid_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->triggers_by_name_uid_ht) {
 		goto error;
 	}
 
 	state->trigger_tokens_ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!state->trigger_tokens_ht) {
 		goto error;
 	}
@@ -753,7 +753,7 @@ end:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	health_unregister(the_health_sessiond);
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_notification_thread(void *thread_data)
@@ -769,7 +769,7 @@ struct lttng_thread *launch_notification_thread(struct notification_thread_handl
 	struct lttng_thread *thread;
 
 	thread = lttng_thread_create(
-		"Notification", thread_notification, shutdown_notification_thread, NULL, handle);
+		"Notification", thread_notification, shutdown_notification_thread, nullptr, handle);
 	if (!thread) {
 		goto error;
 	}
@@ -782,5 +782,5 @@ struct lttng_thread *launch_notification_thread(struct notification_thread_handl
 	wait_until_thread_is_ready(handle);
 	return thread;
 error:
-	return NULL;
+	return nullptr;
 }

@@ -486,7 +486,7 @@ error:
 	lttng_payload_reset(&received_payload);
 }
 
-static void test_creds_passing(void)
+static void test_creds_passing()
 {
 	pid_t fork_ret = -1;
 	int ret, parent_socket = -1, child_connection_socket = -1;
@@ -651,7 +651,7 @@ error:
 	}
 }
 
-int main(void)
+int main()
 {
 	plan_tests(TEST_COUNT);
 

@@ -81,7 +81,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 		enum lttng_event_expr_status status;
 
 		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(event_expr);
-		LTTNG_ASSERT(parent_expr != NULL);
+		LTTNG_ASSERT(parent_expr != nullptr);
 
 		print_one_event_expr(parent_expr);
 
@@ -128,7 +128,7 @@ static int print_capture(const struct lttng_condition *condition,
 	uint64_t u_val;
 	int64_t s_val;
 	double d_val;
-	const char *string_val = NULL;
+	const char *string_val = nullptr;
 
 	switch (lttng_event_field_value_get_type(capture)) {
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT:
@@ -216,7 +216,7 @@ end:
 	return ret;
 }
 
-static void print_unavailabe(void)
+static void print_unavailabe()
 {
 	printf("Capture unavailable");
 }
@@ -236,7 +236,7 @@ static int print_array(const struct lttng_condition *condition,
 	}
 
 	for (unsigned int i = 0; i < captured_field_count; i++) {
-		const struct lttng_event_field_value *captured_field = NULL;
+		const struct lttng_event_field_value *captured_field = nullptr;
 		const struct lttng_event_expr *expr =
 			lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 				condition, i);
@@ -283,7 +283,7 @@ static int print_captures(struct lttng_notification *notification)
 	enum lttng_condition_status condition_status;
 	enum lttng_evaluation_event_rule_matches_status evaluation_status;
 
-	const struct lttng_event_field_value *captured_field_array = NULL;
+	const struct lttng_event_field_value *captured_field_array = nullptr;
 	unsigned int expected_capture_field_count;
 
 	LTTNG_ASSERT(lttng_evaluation_get_type(evaluation) ==
@@ -341,9 +341,9 @@ static int print_notification(struct lttng_notification *notification)
 		char time_str[64];
 		struct timeval tv;
 		time_t the_time;
-		const struct lttng_trigger *trigger = NULL;
+		const struct lttng_trigger *trigger = nullptr;
 
-		gettimeofday(&tv, NULL);
+		gettimeofday(&tv, nullptr);
 		the_time = tv.tv_sec;
 
 		strftime(time_str, sizeof(time_str), "[%m-%d-%Y] %T", localtime(&the_time));
@@ -377,10 +377,10 @@ end:
 int main(int argc, char **argv)
 {
 	int ret;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int count, i, j, subcription_count = 0, trigger_count;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_notification_channel *notification_channel = nullptr;
 
 	if (argc < 2) {
 		fprintf(stderr, "Missing trigger name(s)\n");
@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 		const struct lttng_action *action = lttng_trigger_get_const_action(trigger);
 		const enum lttng_action_type action_type = lttng_action_get_type(action);
 		enum lttng_notification_channel_status channel_status;
-		const char *trigger_name = NULL;
+		const char *trigger_name = nullptr;
 		bool subscribe = false;
 
 		lttng_trigger_get_name(trigger, &trigger_name);

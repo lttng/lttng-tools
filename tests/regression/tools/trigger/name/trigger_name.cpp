@@ -71,12 +71,12 @@ unregistration_trigger_instance_name(enum unregistration_trigger_instance unregi
  * Returns a negative error code on error, else the number of unregistered
  * triggers.
  */
-static int unregister_all_triggers(void)
+static int unregister_all_triggers()
 {
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count, i, unregistered_trigger_count = 0;
 
 	ret_code = lttng_list_triggers(&triggers);
@@ -122,12 +122,12 @@ end:
 	return ret;
 }
 
-static int get_registered_triggers_count(void)
+static int get_registered_triggers_count()
 {
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count;
 
 	ret_code = lttng_list_triggers(&triggers);
@@ -157,9 +157,9 @@ end:
  */
 static struct lttng_trigger *create_trigger(uint64_t threshold)
 {
-	struct lttng_condition *condition = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	enum lttng_condition_status condition_status;
 	const char *const session_name = "test session";
 
@@ -207,7 +207,7 @@ static void register_anonymous_trigger(enum unregistration_trigger_instance unre
 	struct lttng_trigger *trigger = create_trigger(0xbadc0ffee);
 	enum lttng_trigger_status trigger_status;
 	const char *trigger_name;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count, i;
 	enum lttng_error_code ret_code;
 
@@ -278,7 +278,7 @@ static void register_named_trigger(enum unregistration_trigger_instance unregist
 	struct lttng_trigger *trigger = create_trigger(0xbadc0ffee);
 	enum lttng_trigger_status trigger_status;
 	const char *returned_trigger_name;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count, i;
 	enum lttng_error_code ret_code;
 	const char *const trigger_name = "some name that is hopefully unique";
@@ -362,7 +362,7 @@ register_automatic_name_trigger(enum unregistration_trigger_instance unregistrat
 	struct lttng_trigger *trigger = create_trigger(0xbadc0ffee);
 	enum lttng_trigger_status trigger_status;
 	const char *returned_trigger_name;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count, i;
 	enum lttng_error_code ret_code;
 
@@ -436,7 +436,7 @@ double_register_anonymous_trigger(enum unregistration_trigger_instance unregistr
 {
 	int ret;
 	struct lttng_trigger *trigger = create_trigger(0xbadc0ffee);
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 
 	diag("Register duplicate anonymous trigger (Unregistration performed with the trigger instance %s)",
 	     unregistration_trigger_instance_name(unregistration_trigger));
@@ -474,7 +474,7 @@ double_register_named_trigger(enum unregistration_trigger_instance unregistratio
 	int ret;
 	struct lttng_trigger *trigger_a = create_trigger(0xbadc0ffee);
 	struct lttng_trigger *trigger_b = create_trigger(0xbadc0ffee);
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	const char *const trigger_name = "a unique trigger name";
 	enum lttng_error_code ret_code;
 
@@ -527,7 +527,7 @@ double_register_automatic_name_trigger(enum unregistration_trigger_instance unre
 	int ret;
 	struct lttng_trigger *trigger_a = create_trigger(0xbadc0ffee);
 	struct lttng_trigger *trigger_b = create_trigger(0xbadc0ffee);
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	enum lttng_error_code ret_code;
 
 	diag("Register duplicate automatic name trigger (Unregistration performed with the trigger instance %s)",
@@ -571,7 +571,7 @@ end:
 	lttng_trigger_destroy(trigger_b);
 }
 
-static void register_multiple_anonymous_triggers(void)
+static void register_multiple_anonymous_triggers()
 {
 	int ret;
 	struct lttng_trigger *trigger_a = create_trigger(0xbadc0ffee);
@@ -604,7 +604,7 @@ const test_function test_functions[] = {
 	double_register_named_trigger,	 double_register_automatic_name_trigger,
 };
 
-int main(void)
+int main()
 {
 	size_t i;
 

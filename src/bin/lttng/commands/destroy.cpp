@@ -42,11 +42,11 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "all", 'a', POPT_ARG_VAL, &opt_destroy_all, 1, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_VAL, &opt_destroy_all, 1, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -58,14 +58,14 @@ static struct poptOption long_options[] = {
 static int destroy_session(struct lttng_session *session)
 {
 	int ret;
-	char *session_name = NULL;
+	char *session_name = nullptr;
 	bool session_was_already_stopped;
 	enum lttng_error_code ret_code;
-	struct lttng_destruction_handle *handle = NULL;
+	struct lttng_destruction_handle *handle = nullptr;
 	enum lttng_destruction_handle_status status;
 	bool newline_needed = false, printed_destroy_msg = false;
 	enum lttng_rotation_state rotation_state;
-	char *stats_str = NULL;
+	char *stats_str = nullptr;
 
 	ret = lttng_stop_tracing_no_wait(session->name);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
@@ -263,15 +263,15 @@ int cmd_destroy(int argc, const char **argv)
 	int opt;
 	int ret = CMD_SUCCESS, i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	char *session_name = NULL;
-	const char *arg_session_name = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	const char *arg_session_name = nullptr;
+	const char *leftover = nullptr;
 
-	struct lttng_session *sessions = NULL;
+	struct lttng_session *sessions = nullptr;
 	int count;
 	int found;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -342,12 +342,12 @@ int cmd_destroy(int argc, const char **argv)
 			session_name = get_session_name();
 		} else {
 			session_name = strdup(arg_session_name);
-			if (session_name == NULL) {
+			if (session_name == nullptr) {
 				PERROR("Failed to copy session name");
 			}
 		}
 
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			command_ret = CMD_ERROR;
 			success = 0;
 			goto mi_closing;

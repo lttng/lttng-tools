@@ -34,7 +34,7 @@ static void fd_handle_release(struct urcu_ref *ref)
 
 struct fd_handle *fd_handle_create(int fd)
 {
-	struct fd_handle *handle = NULL;
+	struct fd_handle *handle = nullptr;
 
 	if (fd < 0) {
 		ERR("Attempted to create an fd_handle from an invalid file descriptor: fd = %d",
@@ -81,7 +81,7 @@ int fd_handle_get_fd(struct fd_handle *handle)
 
 struct fd_handle *fd_handle_copy(const struct fd_handle *handle)
 {
-	struct fd_handle *new_handle = NULL;
+	struct fd_handle *new_handle = nullptr;
 	const int new_fd = dup(handle->fd);
 
 	if (new_fd < 0) {

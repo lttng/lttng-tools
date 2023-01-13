@@ -62,7 +62,7 @@ static void test_one_split(const char *input, char delim, int escape_delim, ...)
 	   escape_delim);
 }
 
-static void test_split(void)
+static void test_split()
 {
 	test_one_split("a/b/c/d/e", '/', false, "a", "b", "c", "d", "e", NULL);
 	test_one_split("a/b//d/e", '/', false, "a", "b", "", "d", "e", NULL);
@@ -91,7 +91,7 @@ static void test_one_is_star_at_the_end_only_glob_pattern(const char *pattern, b
 	   expected);
 }
 
-static void test_is_star_at_the_end_only_glob_pattern(void)
+static void test_is_star_at_the_end_only_glob_pattern()
 {
 	test_one_is_star_at_the_end_only_glob_pattern("allo*", true);
 	test_one_is_star_at_the_end_only_glob_pattern("allo\\\\*", true);
@@ -113,7 +113,7 @@ static void test_one_is_star_glob_pattern(const char *pattern, bool expected)
 	   expected);
 }
 
-static void test_is_star_glob_pattern(void)
+static void test_is_star_glob_pattern()
 {
 	test_one_is_star_glob_pattern("allo*", true);
 	test_one_is_star_glob_pattern("*allo", true);
@@ -145,7 +145,7 @@ static void test_one_normalize_star_glob_pattern(const char *pattern, const char
 	free(rw_pattern);
 }
 
-static void test_normalize_star_glob_pattern(void)
+static void test_normalize_star_glob_pattern()
 {
 	test_one_normalize_star_glob_pattern("salut", "salut");
 	test_one_normalize_star_glob_pattern("sal*ut", "sal*ut");
@@ -176,7 +176,7 @@ static void test_normalize_star_glob_pattern(void)
 	test_one_normalize_star_glob_pattern("**\\***", "*\\**");
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	diag("String utils unit tests");

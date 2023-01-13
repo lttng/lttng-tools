@@ -59,9 +59,9 @@ namespace ls = lttng::sessiond;
 const char *forbidden_name_chars = "/";
 
 /* Global hash table to keep the sessions, indexed by id. */
-struct lttng_ht *ltt_sessions_ht_by_id = NULL;
+struct lttng_ht *ltt_sessions_ht_by_id = nullptr;
 /* Global hash table to keep the sessions, indexed by name. */
-struct lttng_ht *ltt_sessions_ht_by_name = NULL;
+struct lttng_ht *ltt_sessions_ht_by_name = nullptr;
 
 /*
  * Init tracing session list.
@@ -138,7 +138,7 @@ static void del_session_list(struct ltt_session *ls)
 /*
  * Return a pointer to the session list.
  */
-struct ltt_session_list *session_get_list(void)
+struct ltt_session_list *session_get_list()
 {
 	return &the_session_list;
 }
@@ -146,7 +146,7 @@ struct ltt_session_list *session_get_list(void)
 /*
  * Returns once the session list is empty.
  */
-void session_list_wait_empty(void)
+void session_list_wait_empty()
 {
 	pthread_mutex_lock(&the_session_list.lock);
 	while (!cds_list_empty(&the_session_list.head)) {
@@ -158,7 +158,7 @@ void session_list_wait_empty(void)
 /*
  * Acquire session list lock
  */
-void session_lock_list(void)
+void session_lock_list()
 {
 	pthread_mutex_lock(&the_session_list.lock);
 }
@@ -166,7 +166,7 @@ void session_lock_list(void)
 /*
  * Try to acquire session list lock
  */
-int session_trylock_list(void)
+int session_trylock_list()
 {
 	return pthread_mutex_trylock(&the_session_list.lock);
 }
@@ -174,7 +174,7 @@ int session_trylock_list(void)
 /*
  * Release session list lock
  */
-void session_unlock_list(void)
+void session_unlock_list()
 {
 	pthread_mutex_unlock(&the_session_list.lock);
 }
@@ -203,7 +203,7 @@ enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_se
  */
 const char *session_get_net_consumer_hostname(const struct ltt_session *session)
 {
-	const char *hostname = NULL;
+	const char *hostname = nullptr;
 	const struct consumer_output *output;
 
 	output = session->kernel_session ? session->kernel_session->consumer :
@@ -253,8 +253,8 @@ struct lttng_trace_archive_location *
 session_get_trace_archive_location(const struct ltt_session *session)
 {
 	int ret;
-	struct lttng_trace_archive_location *location = NULL;
-	char *chunk_path = NULL;
+	struct lttng_trace_archive_location *location = nullptr;
+	char *chunk_path = nullptr;
 
 	if (session->rotation_state != LTTNG_ROTATION_STATE_COMPLETED ||
 	    !session->last_archived_chunk_name) {
@@ -300,7 +300,7 @@ end:
  *
  * The session list lock must be held.
  */
-static int ltt_sessions_ht_alloc(void)
+static int ltt_sessions_ht_alloc()
 {
 	int ret = 0;
 
@@ -329,16 +329,16 @@ end:
  *
  * The session list lock must be held.
  */
-static void ltt_sessions_ht_destroy(void)
+static void ltt_sessions_ht_destroy()
 {
 	if (ltt_sessions_ht_by_id) {
 		lttng_ht_destroy(ltt_sessions_ht_by_id);
-		ltt_sessions_ht_by_id = NULL;
+		ltt_sessions_ht_by_id = nullptr;
 	}
 
 	if (ltt_sessions_ht_by_name) {
 		lttng_ht_destroy(ltt_sessions_ht_by_name);
-		ltt_sessions_ht_by_name = NULL;
+		ltt_sessions_ht_by_name = nullptr;
 	}
 
 	return;
@@ -381,7 +381,7 @@ end:
  * Return `false` if hash table objects are null.
  * The session list lock must be held.
  */
-static bool ltt_sessions_ht_empty(void)
+static bool ltt_sessions_ht_empty()
 {
 	bool empty = false;
 
@@ -481,14 +481,14 @@ static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	 * `current_trace_chunk`.
 	 */
 	current_trace_chunk = session->current_trace_chunk;
-	session->current_trace_chunk = NULL;
+	session->current_trace_chunk = nullptr;
 	if (session->ust_session) {
 		lttng_trace_chunk_put(session->ust_session->current_trace_chunk);
-		session->ust_session->current_trace_chunk = NULL;
+		session->ust_session->current_trace_chunk = nullptr;
 	}
 	if (session->kernel_session) {
 		lttng_trace_chunk_put(session->kernel_session->current_trace_chunk);
-		session->kernel_session->current_trace_chunk = NULL;
+		session->kernel_session->current_trace_chunk = nullptr;
 	}
 	if (!new_trace_chunk) {
 		ret = 0;
@@ -577,7 +577,7 @@ static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 end:
 	if (_current_trace_chunk) {
 		*_current_trace_chunk = current_trace_chunk;
-		current_trace_chunk = NULL;
+		current_trace_chunk = nullptr;
 	}
 end_no_move:
 	rcu_read_unlock();
@@ -585,10 +585,10 @@ end_no_move:
 	return ret;
 error:
 	if (session->ust_session) {
-		session->ust_session->current_trace_chunk = NULL;
+		session->ust_session->current_trace_chunk = nullptr;
 	}
 	if (session->kernel_session) {
-		session->kernel_session->current_trace_chunk = NULL;
+		session->kernel_session->current_trace_chunk = nullptr;
 	}
 	/*
 	 * Release references taken in the case where all references could not
@@ -609,12 +609,12 @@ session_create_new_trace_chunk(const struct ltt_session *session,
 			       const char *chunk_name_override)
 {
 	int ret;
-	struct lttng_trace_chunk *trace_chunk = NULL;
+	struct lttng_trace_chunk *trace_chunk = nullptr;
 	enum lttng_trace_chunk_status chunk_status;
-	const time_t chunk_creation_ts = time(NULL);
+	const time_t chunk_creation_ts = time(nullptr);
 	bool is_local_trace;
 	const char *base_path;
-	struct lttng_directory_handle *session_output_directory = NULL;
+	struct lttng_directory_handle *session_output_directory = nullptr;
 	const struct lttng_credentials session_credentials = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
 		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
@@ -655,7 +655,7 @@ session_create_new_trace_chunk(const struct ltt_session *session,
 		if (!session->rotated) {
 			new_path = "";
 		} else {
-			new_path = NULL;
+			new_path = nullptr;
 		}
 	} else {
 		new_path = DEFAULT_CHUNK_TMP_NEW_DIRECTORY;
@@ -697,7 +697,7 @@ session_create_new_trace_chunk(const struct ltt_session *session,
 	}
 	chunk_status = lttng_trace_chunk_set_as_owner(trace_chunk, session_output_directory);
 	lttng_directory_handle_put(session_output_directory);
-	session_output_directory = NULL;
+	session_output_directory = nullptr;
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto error;
 	}
@@ -706,7 +706,7 @@ end:
 error:
 	lttng_directory_handle_put(session_output_directory);
 	lttng_trace_chunk_put(trace_chunk);
-	trace_chunk = NULL;
+	trace_chunk = nullptr;
 	goto end;
 }
 
@@ -720,7 +720,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 	struct cds_lfht_iter iter;
 	struct consumer_socket *socket;
 	enum lttng_trace_chunk_status chunk_status;
-	const time_t chunk_close_timestamp = time(NULL);
+	const time_t chunk_close_timestamp = time(nullptr);
 	const char *new_path;
 
 	chunk_status = lttng_trace_chunk_set_close_command(trace_chunk, close_command);
@@ -741,7 +741,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 		new_path = "";
 	} else {
 		/* Use chunk name for new chunk. */
-		new_path = NULL;
+		new_path = nullptr;
 	}
 	if (session->current_trace_chunk &&
 	    !lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
@@ -760,7 +760,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 		if (!session->rotated) {
 			old_path = "";
 		} else {
-			old_path = NULL;
+			old_path = nullptr;
 		}
 		/* We need to move back the .tmp_old_chunk to its rightful place. */
 		chunk_status = lttng_trace_chunk_rename_path(trace_chunk, old_path);
@@ -1000,10 +1000,10 @@ static void session_release(struct urcu_ref *ref)
 
 	consumer_output_put(session->consumer);
 	kernel_free_session(ksess);
-	session->kernel_session = NULL;
+	session->kernel_session = nullptr;
 	if (usess) {
 		trace_ust_free_session(usess);
-		session->ust_session = NULL;
+		session->ust_session = nullptr;
 	}
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	lttng_dynamic_array_reset(&session->clear_notifiers);
@@ -1121,9 +1121,9 @@ struct ltt_session *session_find_by_name(const char *name)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 found:
-	return session_get(iter) ? iter : NULL;
+	return session_get(iter) ? iter : nullptr;
 }
 
 /*
@@ -1146,17 +1146,17 @@ struct ltt_session *session_find_by_id(uint64_t id)
 
 	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		goto end;
 	}
 	ls = lttng::utils::container_of(node, &ltt_session::node);
 
 	DBG3("Session %" PRIu64 " found by id.", id);
-	return session_get(ls) ? ls : NULL;
+	return session_get(ls) ? ls : nullptr;
 
 end:
 	DBG3("Session %" PRIu64 " NOT found by id", id);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1168,7 +1168,7 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct ltt_session *new_session = NULL;
+	struct ltt_session *new_session = nullptr;
 
 	ASSERT_LOCKED(the_session_list.lock);
 	if (name) {
@@ -1190,14 +1190,14 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 
 	lttng_dynamic_array_init(&new_session->destroy_notifiers,
 				 sizeof(struct ltt_session_destroy_notifier_element),
-				 NULL);
+				 nullptr);
 	lttng_dynamic_array_init(&new_session->clear_notifiers,
 				 sizeof(struct ltt_session_clear_notifier_element),
-				 NULL);
+				 nullptr);
 	urcu_ref_init(&new_session->ref);
-	pthread_mutex_init(&new_session->lock, NULL);
+	pthread_mutex_init(&new_session->lock, nullptr);
 
-	new_session->creation_time = time(NULL);
+	new_session->creation_time = time(nullptr);
 	if (new_session->creation_time == (time_t) -1) {
 		PERROR("Failed to sample session creation time");
 		ret_code = LTTNG_ERR_SESSION_FAIL;
@@ -1206,7 +1206,7 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 
 	/* Create default consumer output. */
 	new_session->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (new_session->consumer == NULL) {
+	if (new_session->consumer == nullptr) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
 	}
@@ -1332,7 +1332,7 @@ end:
 	return ret_code;
 error:
 	session_put(new_session);
-	new_session = NULL;
+	new_session = nullptr;
 	goto end;
 }
 
@@ -1380,7 +1380,7 @@ int session_reset_rotation_state(struct ltt_session *session, enum lttng_rotatio
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id, chunk_id);
 		lttng_trace_chunk_put(session->chunk_being_archived);
-		session->chunk_being_archived = NULL;
+		session->chunk_being_archived = nullptr;
 		/*
 		 * Fire the clear reply notifiers if we are completing a clear
 		 * rotation.
@@ -1415,7 +1415,7 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 
 	lttng_ht_lookup(ltt_sessions_ht_by_name, name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		found = false;
 		goto end;
 	}

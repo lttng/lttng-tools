@@ -80,7 +80,7 @@ static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-relayd.8.h>
 #else
-	NULL
+	nullptr
 #endif
 	;
 
@@ -179,100 +179,100 @@ static struct option long_options[] = {
 	{
 		"control-port",
 		1,
-		0,
+		nullptr,
 		'C',
 	},
 	{
 		"data-port",
 		1,
-		0,
+		nullptr,
 		'D',
 	},
 	{
 		"live-port",
 		1,
-		0,
+		nullptr,
 		'L',
 	},
 	{
 		"daemonize",
 		0,
-		0,
+		nullptr,
 		'd',
 	},
 	{
 		"background",
 		0,
-		0,
+		nullptr,
 		'b',
 	},
 	{
 		"group",
 		1,
-		0,
+		nullptr,
 		'g',
 	},
 	{
 		"fd-pool-size",
 		1,
-		0,
+		nullptr,
 		'\0',
 	},
 	{
 		"help",
 		0,
-		0,
+		nullptr,
 		'h',
 	},
 	{
 		"output",
 		1,
-		0,
+		nullptr,
 		'o',
 	},
 	{
 		"verbose",
 		0,
-		0,
+		nullptr,
 		'v',
 	},
-	{ "config", 1, 0, 'f' },
-	{ "version", 0, 0, 'V' },
+	{ "config", 1, nullptr, 'f' },
+	{ "version", 0, nullptr, 'V' },
 	{
 		"working-directory",
 		1,
-		0,
+		nullptr,
 		'w',
 	},
 	{
 		"group-output-by-session",
 		0,
-		0,
+		nullptr,
 		's',
 	},
 	{
 		"group-output-by-host",
 		0,
-		0,
+		nullptr,
 		'p',
 	},
-	{ "disallow-clear", 0, 0, 'x' },
+	{ "disallow-clear", 0, nullptr, 'x' },
 	{
-		NULL,
+		nullptr,
 		0,
-		0,
+		nullptr,
 		0,
 	},
 };
 
 static const char *config_ignore_options[] = { "help", "config", "version" };
 
-static void print_version(void)
+static void print_version()
 {
 	fprintf(stdout, "%s\n", VERSION);
 }
 
-static void relayd_config_log(void)
+static void relayd_config_log()
 {
 	DBG("LTTng-relayd " VERSION " - " VERSION_NAME "%s%s",
 	    GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
@@ -301,7 +301,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			unsigned long v;
 
 			errno = 0;
-			v = strtoul(arg, NULL, 0);
+			v = strtoul(arg, nullptr, 0);
 			if (errno != 0 || !isdigit((unsigned char) arg[0])) {
 				ERR("Wrong value in --fd-pool-size parameter: %s", arg);
 				ret = -1;
@@ -378,7 +378,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			     "-g, --group");
 		} else {
 			tracing_group_name = strdup(arg);
-			if (tracing_group_name == NULL) {
+			if (tracing_group_name == nullptr) {
 				ret = -errno;
 				PERROR("strdup");
 				goto end;
@@ -522,10 +522,10 @@ end:
 	return ret;
 }
 
-static int parse_env_options(void)
+static int parse_env_options()
 {
 	int ret = 0;
-	char *value = NULL;
+	char *value = nullptr;
 
 	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_WORKING_DIRECTORY_ENV);
 	if (value) {
@@ -538,7 +538,7 @@ static int parse_env_options(void)
 	return ret;
 }
 
-static int set_fd_pool_size(void)
+static int set_fd_pool_size()
 {
 	int ret = 0;
 	struct rlimit rlimit;
@@ -596,7 +596,7 @@ static int set_options(int argc, char **argv)
 	int c, ret = 0, option_index = 0, retval = 0;
 	int orig_optopt = optopt, orig_optind = optind;
 	char *default_address, *optstring;
-	char *config_path = NULL;
+	char *config_path = nullptr;
 
 	optstring = utils_generate_optstring(long_options,
 					     sizeof(long_options) / sizeof(struct option));
@@ -628,7 +628,7 @@ static int set_options(int argc, char **argv)
 	}
 
 	ret = config_get_section_entries(
-		config_path, config_section_name, config_entry_handler, NULL);
+		config_path, config_section_name, config_entry_handler, nullptr);
 	if (ret) {
 		if (ret > 0) {
 			ERR("Invalid configuration option at line %i", ret);
@@ -640,7 +640,7 @@ static int set_options(int argc, char **argv)
 	/* Reset getopt's global state */
 	optopt = orig_optopt;
 	optind = orig_optind;
-	while (1) {
+	while (true) {
 		c = getopt_long(argc, argv, optstring, long_options, &option_index);
 		if (c == -1) {
 			break;
@@ -654,7 +654,7 @@ static int set_options(int argc, char **argv)
 	}
 
 	/* assign default values */
-	if (control_uri == NULL) {
+	if (control_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_CONTROL_BIND_ADDRESS ":%d",
 			       DEFAULT_NETWORK_CONTROL_PORT);
@@ -672,7 +672,7 @@ static int set_options(int argc, char **argv)
 			goto exit;
 		}
 	}
-	if (data_uri == NULL) {
+	if (data_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_DATA_BIND_ADDRESS ":%d",
 			       DEFAULT_NETWORK_DATA_PORT);
@@ -690,7 +690,7 @@ static int set_options(int argc, char **argv)
 			goto exit;
 		}
 	}
-	if (live_uri == NULL) {
+	if (live_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS ":%d",
 			       DEFAULT_NETWORK_VIEWER_PORT);
@@ -738,7 +738,7 @@ exit:
 	return retval;
 }
 
-static void print_global_objects(void)
+static void print_global_objects()
 {
 	print_viewer_streams();
 	print_relay_streams();
@@ -750,7 +750,7 @@ static int noop_close(void *data __attribute__((unused)), int *fds __attribute__
 	return 0;
 }
 
-static void untrack_stdio(void)
+static void untrack_stdio()
 {
 	int fds[] = { fileno(stdout), fileno(stderr) };
 
@@ -758,13 +758,13 @@ static void untrack_stdio(void)
 	 * noop_close is used since we don't really want to close
 	 * the stdio output fds; we merely want to stop tracking them.
 	 */
-	(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker, fds, 2, noop_close, NULL);
+	(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker, fds, 2, noop_close, nullptr);
 }
 
 /*
  * Cleanup the daemon
  */
-static void relayd_cleanup(void)
+static void relayd_cleanup()
 {
 	print_global_objects();
 
@@ -826,7 +826,7 @@ end:
 /*
  * Stop all relayd and relayd-live threads.
  */
-int lttng_relay_stop_threads(void)
+int lttng_relay_stop_threads()
 {
 	int retval = 0;
 
@@ -885,7 +885,7 @@ static void sighandler(int sig)
  * Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
-static int set_signal_handler(void)
+static int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -900,23 +900,23 @@ static int set_signal_handler(void)
 	sa.sa_flags = 0;
 
 	sa.sa_handler = sighandler;
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGUSR1, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
 	sa.sa_handler = SIG_IGN;
-	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGPIPE, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
@@ -926,7 +926,7 @@ static int set_signal_handler(void)
 	return ret;
 }
 
-void lttng_relay_notify_ready(void)
+void lttng_relay_notify_ready()
 {
 	/* Notify the parent of the fork() process that we are ready. */
 	if (opt_daemon || opt_background) {
@@ -941,7 +941,7 @@ void lttng_relay_notify_ready(void)
  *
  * Return -1 on error or 0 if all pipes are created.
  */
-static int init_health_quit_pipe(void)
+static int init_health_quit_pipe()
 {
 	return fd_tracker_util_pipe_open_cloexec(
 		the_fd_tracker, "Health quit pipe", health_quit_pipe);
@@ -992,12 +992,12 @@ end:
 static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri, const char *name)
 {
 	int ret, sock_fd;
-	struct lttcomm_sock *sock = NULL;
+	struct lttcomm_sock *sock = nullptr;
 	char uri_str[PATH_MAX];
-	char *formated_name = NULL;
+	char *formated_name = nullptr;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		ERR("Allocating socket");
 		goto error;
 	}
@@ -1011,14 +1011,14 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri, const cha
 	if (ret >= 0) {
 		ret = asprintf(&formated_name, "%s socket @ %s", name, uri_str);
 		if (ret < 0) {
-			formated_name = NULL;
+			formated_name = nullptr;
 		}
 	}
 
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
 					       &sock_fd,
 					       (const char **) (formated_name ? &formated_name :
-										NULL),
+										nullptr),
 					       1,
 					       create_sock,
 					       sock);
@@ -1047,15 +1047,15 @@ error:
 		lttcomm_destroy_sock(sock);
 	}
 	free(formated_name);
-	return NULL;
+	return nullptr;
 }
 
 static struct lttcomm_sock *accept_relayd_sock(struct lttcomm_sock *listening_sock,
 					       const char *name)
 {
 	int out_fd, ret;
-	struct lttcomm_sock *socks[2] = { listening_sock, NULL };
-	struct lttcomm_sock *new_sock = NULL;
+	struct lttcomm_sock *socks[2] = { listening_sock, nullptr };
+	struct lttcomm_sock *new_sock = nullptr;
 
 	ret = fd_tracker_open_unsuspendable_fd(
 		the_fd_tracker, &out_fd, (const char **) &name, 1, accept_sock, &socks);
@@ -1122,7 +1122,7 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 		goto error_testpoint;
 	}
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		DBG("Listener accepting connections");
@@ -1167,7 +1167,7 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 				 */
 				int val = 1;
 				struct relay_connection *new_conn;
-				struct lttcomm_sock *newsock = NULL;
+				struct lttcomm_sock *newsock = nullptr;
 				enum connection_type type;
 
 				if (pollfd == data_sock->fd) {
@@ -1266,7 +1266,7 @@ error_sock_control:
 	rcu_unregister_thread();
 	DBG("Relay listener thread cleanup complete");
 	lttng_relay_stop_threads();
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1277,7 +1277,7 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 	int err = -1;
 	ssize_t ret;
 	struct cds_wfcq_node *node;
-	struct relay_connection *new_conn = NULL;
+	struct relay_connection *new_conn = nullptr;
 
 	DBG("[thread] Relay dispatcher started");
 
@@ -1305,7 +1305,7 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 			/* Dequeue commands */
 			node = cds_wfcq_dequeue_blocking(&relay_conn_queue.head,
 							 &relay_conn_queue.tail);
-			if (node == NULL) {
+			if (node == nullptr) {
 				DBG("Woken up but nothing in the relay command queue");
 				/* Continue thread execution */
 				break;
@@ -1326,7 +1326,7 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 				connection_put(new_conn);
 				goto error;
 			}
-		} while (node != NULL);
+		} while (node != nullptr);
 
 		/* Futex wait on queue. Blocking call on futex() */
 		health_poll_entry();
@@ -1346,7 +1346,7 @@ error_testpoint:
 	health_unregister(health_relayd);
 	DBG("Dispatch thread dying");
 	lttng_relay_stop_threads();
-	return NULL;
+	return nullptr;
 }
 
 static bool session_streams_have_index(const struct relay_session *session)
@@ -1365,7 +1365,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 {
 	int ret = 0;
 	ssize_t send_ret;
-	struct relay_session *session = NULL;
+	struct relay_session *session = nullptr;
 	struct lttcomm_relayd_create_session_reply_2_11 reply = {};
 	char session_name[LTTNG_NAME_MAX] = {};
 	char hostname[LTTNG_HOST_NAME_MAX] = {};
@@ -1431,9 +1431,9 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr __attr
 				 live_timer,
 				 snapshot,
 				 sessiond_uuid,
-				 id_sessiond.is_set ? &id_sessiond.value : NULL,
-				 current_chunk_id.is_set ? &current_chunk_id.value : NULL,
-				 creation_time.is_set ? &creation_time.value : NULL,
+				 id_sessiond.is_set ? &id_sessiond.value : nullptr,
+				 current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
+				 creation_time.is_set ? &creation_time.value : nullptr,
 				 conn->major,
 				 conn->minor,
 				 session_name_contains_creation_timestamp);
@@ -1566,11 +1566,11 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr __attribut
 	int ret;
 	ssize_t send_ret;
 	struct relay_session *session = conn->session;
-	struct relay_stream *stream = NULL;
+	struct relay_stream *stream = nullptr;
 	struct lttcomm_relayd_status_stream reply;
-	struct ctf_trace *trace = NULL;
+	struct ctf_trace *trace = nullptr;
 	uint64_t stream_handle = -1ULL;
-	char *path_name = NULL, *channel_name = NULL;
+	char *path_name = nullptr, *channel_name = nullptr;
 	uint64_t tracefile_size = 0, tracefile_count = 0;
 	LTTNG_OPTIONAL(uint64_t) stream_chunk_id = {};
 
@@ -1664,8 +1664,8 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr __attribut
 	/* We pass ownership of path_name and channel_name. */
 	stream = stream_create(
 		trace, stream_handle, path_name, channel_name, tracefile_size, tracefile_count);
-	path_name = NULL;
-	channel_name = NULL;
+	path_name = nullptr;
+	channel_name = nullptr;
 
 	/*
 	 * Streams are the owners of their trace. Reference to trace is
@@ -2062,7 +2062,7 @@ static int relay_data_pending(const struct lttcomm_relayd_hdr *recv_hdr __attrib
 	msg.last_net_seq_num = be64toh(msg.last_net_seq_num);
 
 	stream = stream_get_by_id(msg.stream_id);
-	if (stream == NULL) {
+	if (stream == nullptr) {
 		ret = -1;
 		goto end;
 	}
@@ -2611,8 +2611,8 @@ static int relay_rotate_session_streams(const struct lttcomm_relayd_hdr *recv_hd
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_rotate_streams rotate_streams;
 	struct lttcomm_relayd_generic_reply reply = {};
-	struct relay_stream *stream = NULL;
-	struct lttng_trace_chunk *next_trace_chunk = NULL;
+	struct relay_stream *stream = nullptr;
+	struct lttng_trace_chunk *next_trace_chunk = nullptr;
 	struct lttng_buffer_view stream_positions;
 	char chunk_id_buf[MAX_INT_DEC_LEN(uint64_t)];
 	const char *chunk_id_str = "none";
@@ -2711,7 +2711,7 @@ static int relay_rotate_session_streams(const struct lttcomm_relayd_hdr *recv_hd
 		}
 
 		stream_put(stream);
-		stream = NULL;
+		stream = nullptr;
 	}
 
 	reply_code = LTTNG_OK;
@@ -2747,7 +2747,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 	struct lttcomm_relayd_create_trace_chunk *msg;
 	struct lttcomm_relayd_generic_reply reply = {};
 	struct lttng_buffer_view header_view;
-	struct lttng_trace_chunk *chunk = NULL, *published_chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr, *published_chunk = nullptr;
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 	const char *new_path;
@@ -2794,7 +2794,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 		if (!session->has_rotated) {
 			new_path = "";
 		} else {
-			new_path = NULL;
+			new_path = nullptr;
 		}
 	} else {
 		new_path = DEFAULT_CHUNK_TMP_NEW_DIRECTORY;
@@ -2892,7 +2892,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 	}
 	conn->session->pending_closure_trace_chunk = conn->session->current_trace_chunk;
 	conn->session->current_trace_chunk = published_chunk;
-	published_chunk = NULL;
+	published_chunk = nullptr;
 	if (!conn->session->pending_closure_trace_chunk) {
 		session->ongoing_rotation = false;
 	}
@@ -2925,7 +2925,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 	struct lttcomm_relayd_close_trace_chunk *msg;
 	struct lttcomm_relayd_close_trace_chunk_reply reply = {};
 	struct lttng_buffer_view header_view;
-	struct lttng_trace_chunk *chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr;
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 	uint64_t chunk_id;
@@ -2933,7 +2933,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 	time_t close_timestamp;
 	char closed_trace_chunk_path[LTTNG_PATH_MAX];
 	size_t path_length = 0;
-	const char *chunk_name = NULL;
+	const char *chunk_name = nullptr;
 	struct lttng_dynamic_buffer reply_payload;
 	const char *new_path;
 
@@ -3016,7 +3016,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 			new_path = "";
 		} else {
 			/* Use chunk name for new chunk. */
-			new_path = NULL;
+			new_path = nullptr;
 		}
 		/* Rename new chunk path. */
 		chunk_status =
@@ -3035,7 +3035,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 		if (!session->has_rotated) {
 			old_path = "";
 		} else {
-			old_path = NULL;
+			old_path = nullptr;
 		}
 		/* We need to move back the .tmp_old_chunk to its rightful place. */
 		chunk_status = lttng_trace_chunk_rename_path(chunk, old_path);
@@ -3060,7 +3060,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 			goto end_unlock_session;
 		}
 	}
-	chunk_status = lttng_trace_chunk_get_name(chunk, &chunk_name, NULL);
+	chunk_status = lttng_trace_chunk_get_name(chunk, &chunk_name, nullptr);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to get chunk name");
 		ret = -1;
@@ -3123,10 +3123,10 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr
 		 * the last stream releases its reference to it.
 		 */
 		lttng_trace_chunk_put(session->current_trace_chunk);
-		session->current_trace_chunk = NULL;
+		session->current_trace_chunk = nullptr;
 	}
 	lttng_trace_chunk_put(session->pending_closure_trace_chunk);
-	session->pending_closure_trace_chunk = NULL;
+	session->pending_closure_trace_chunk = nullptr;
 end_unlock_session:
 	pthread_mutex_unlock(&session->lock);
 
@@ -3750,7 +3750,7 @@ relay_process_data_receive_payload(struct relay_connection *conn)
 		goto end_stream_unlock;
 	}
 
-	ret = stream_write(stream, NULL, state->header.padding_size);
+	ret = stream_write(stream, nullptr, state->header.padding_size);
 	if (ret) {
 		status = RELAY_CONNECTION_STATUS_ERROR;
 		goto end_stream_unlock;
@@ -3792,7 +3792,7 @@ relay_process_data_receive_payload(struct relay_connection *conn)
 	 * the new state. Don't use it beyond this point.
 	 */
 	connection_reset_protocol_state(conn);
-	state = NULL;
+	state = nullptr;
 
 end_stream_unlock:
 	close_requested = stream->close_requested;
@@ -3841,7 +3841,7 @@ static void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollf
 	(void) lttng_poll_del(events, pollfd);
 
 	ret = fd_tracker_close_unsuspendable_fd(
-		the_fd_tracker, &pollfd, 1, fd_tracker_util_close_fd, NULL);
+		the_fd_tracker, &pollfd, 1, fd_tracker_util_close_fd, nullptr);
 	if (ret < 0) {
 		ERR("Closing pollfd %d", pollfd);
 	}
@@ -3884,7 +3884,7 @@ static void *relay_thread_worker(void *data __attribute__((unused)))
 	struct lttng_poll_event events;
 	struct lttng_ht *relay_connections_ht;
 	struct lttng_ht_iter iter;
-	struct relay_connection *destroy_conn = NULL;
+	struct relay_connection *destroy_conn = nullptr;
 
 	DBG("[thread] Relay worker started");
 
@@ -3915,7 +3915,7 @@ static void *relay_thread_worker(void *data __attribute__((unused)))
 	}
 
 restart:
-	while (1) {
+	while (true) {
 		int idx = -1, i, seen_control = 0, last_notdel_data_fd = -1;
 
 		health_code_update();
@@ -4185,14 +4185,14 @@ error_testpoint:
 	health_unregister(health_relayd);
 	rcu_unregister_thread();
 	lttng_relay_stop_threads();
-	return NULL;
+	return nullptr;
 }
 
 /*
  * Create the relay command pipe to wake thread_manage_apps.
  * Closed in cleanup().
  */
-static int create_relay_conn_pipe(void)
+static int create_relay_conn_pipe()
 {
 	return fd_tracker_util_pipe_open_cloexec(
 		the_fd_tracker, "Relayd connection pipe", relay_conn_pipe);
@@ -4205,12 +4205,12 @@ static int stdio_open(void *data __attribute__((unused)), int *fds)
 	return 0;
 }
 
-static int track_stdio(void)
+static int track_stdio()
 {
 	int fds[2];
 	const char *names[] = { "stdout", "stderr" };
 
-	return fd_tracker_open_unsuspendable_fd(the_fd_tracker, fds, names, 2, stdio_open, NULL);
+	return fd_tracker_open_unsuspendable_fd(the_fd_tracker, fds, names, 2, stdio_open, nullptr);
 }
 
 /*
@@ -4221,7 +4221,7 @@ int main(int argc, char **argv)
 	bool thread_is_rcu_registered = false;
 	int ret = 0, retval = 0;
 	void *status;
-	char *unlinked_file_directory_path = NULL, *output_path = NULL;
+	char *unlinked_file_directory_path = nullptr, *output_path = nullptr;
 
 	/* Parse environment variables */
 	ret = parse_env_options();
@@ -4394,8 +4394,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(
-		&health_thread, default_pthread_attr(), thread_manage_health_relayd, (void *) NULL);
+	ret = pthread_create(&health_thread,
+			     default_pthread_attr(),
+			     thread_manage_health_relayd,
+			     (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create health");
@@ -4404,8 +4406,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the dispatcher thread */
-	ret = pthread_create(
-		&dispatcher_thread, default_pthread_attr(), relay_thread_dispatcher, (void *) NULL);
+	ret = pthread_create(&dispatcher_thread,
+			     default_pthread_attr(),
+			     relay_thread_dispatcher,
+			     (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create dispatcher");
@@ -4414,7 +4418,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the worker thread */
-	ret = pthread_create(&worker_thread, default_pthread_attr(), relay_thread_worker, NULL);
+	ret = pthread_create(&worker_thread, default_pthread_attr(), relay_thread_worker, nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create worker");
@@ -4424,7 +4428,7 @@ int main(int argc, char **argv)
 
 	/* Setup the listener thread */
 	ret = pthread_create(
-		&listener_thread, default_pthread_attr(), relay_thread_listener, (void *) NULL);
+		&listener_thread, default_pthread_attr(), relay_thread_listener, (void *) nullptr);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create listener");

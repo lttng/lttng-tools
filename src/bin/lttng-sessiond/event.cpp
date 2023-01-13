@@ -80,7 +80,7 @@ int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 	cds_list_for_each_entry (kevent, &kchan->events_list.head, list) {
 		if (type != LTTNG_EVENT_ALL && kevent->type != type)
 			continue;
-		if (event_name != NULL && strcmp(event_name, kevent->event->name)) {
+		if (event_name != nullptr && strcmp(event_name, kevent->event->name)) {
 			continue;
 		}
 		found++;
@@ -95,7 +95,7 @@ int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 	    event_name ? event_name : "NULL",
 	    type);
 
-	if (event_name != NULL && !found) {
+	if (event_name != nullptr && !found) {
 		ret = LTTNG_ERR_NO_EVENT;
 	} else {
 		ret = error ? LTTNG_ERR_KERN_DISABLE_FAIL : LTTNG_OK;
@@ -120,11 +120,11 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	LTTNG_ASSERT(event);
 
 	kevent = trace_kernel_find_event(event->name, kchan, event->type, filter);
-	if (kevent == NULL) {
+	if (kevent == nullptr) {
 		ret = kernel_create_event(event, kchan, filter_expression, filter);
 		/* We have passed ownership */
-		filter_expression = NULL;
-		filter = NULL;
+		filter_expression = nullptr;
+		filter = nullptr;
 		if (ret) {
 			goto end;
 		}
@@ -184,9 +184,9 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		ret = trace_ust_create_event(
 			event, filter_expression, filter, exclusion, internal_event, &uevent);
 		/* We have passed ownership */
-		filter_expression = NULL;
-		filter = NULL;
-		exclusion = NULL;
+		filter_expression = nullptr;
+		filter = nullptr;
+		exclusion = nullptr;
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -275,7 +275,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 			event_name,
 			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("Trace UST event NOT found by name %s", event_name);
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto error;
@@ -321,8 +321,8 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_
 {
 	int ret, i, size, error = 0;
 	struct lttng_ht_iter iter;
-	struct ltt_ust_event *uevent = NULL;
-	struct lttng_event *events = NULL;
+	struct ltt_ust_event *uevent = nullptr;
+	struct lttng_event *events = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
@@ -419,7 +419,7 @@ static int add_filter_app_ctx(struct lttng_bytecode *bytecode,
 			      struct agent *agt)
 {
 	int ret = LTTNG_OK;
-	char *provider_name = NULL, *ctx_name = NULL;
+	char *provider_name = nullptr, *ctx_name = nullptr;
 	struct bytecode_symbol_iterator *it = bytecode_symbol_iterator_create(bytecode);
 
 	if (!it) {
@@ -460,7 +460,7 @@ static int add_filter_app_ctx(struct lttng_bytecode *bytecode,
 
 		free(provider_name);
 		free(ctx_name);
-		provider_name = ctx_name = NULL;
+		provider_name = ctx_name = nullptr;
 	} while (bytecode_symbol_iterator_next(it) == 0);
 end:
 	free(provider_name);
@@ -493,8 +493,8 @@ static int agent_enable(struct agent *agt,
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		filter = NULL;
-		filter_expression = NULL;
+		filter = nullptr;
+		filter_expression = nullptr;
 		created = 1;
 		LTTNG_ASSERT(!AGENT_EVENT_IS_ENABLED(aevent));
 	}
@@ -576,10 +576,10 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	const struct lttng_condition *condition;
 	const struct lttng_event_rule *rule;
 	const char *filter_expression;
-	char *filter_expression_copy = NULL;
+	char *filter_expression_copy = nullptr;
 	const struct lttng_bytecode *filter_bytecode;
-	struct lttng_bytecode *filter_bytecode_copy = NULL;
-	struct lttng_event *event = NULL;
+	struct lttng_bytecode *filter_bytecode_copy = nullptr;
+	struct lttng_event *event = nullptr;
 	uid_t trigger_owner_uid = 0;
 	const char *trigger_name;
 
@@ -648,8 +648,8 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 
 	ret = agent_enable(agt, event, filter_bytecode_copy, filter_expression_copy);
 	/* Ownership was passed even in case of error. */
-	filter_expression_copy = NULL;
-	filter_bytecode_copy = NULL;
+	filter_expression_copy = nullptr;
+	filter_bytecode_copy = nullptr;
 
 end:
 	free(filter_expression_copy);
@@ -664,7 +664,7 @@ end:
  */
 const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 {
-	const char *default_event_name = NULL;
+	const char *default_event_name = nullptr;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_LOG4J:
@@ -733,8 +733,8 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 				   struct agent_event *aevent)
 {
 	int ret;
-	struct ltt_ust_event *uevent = NULL;
-	struct ltt_ust_channel *uchan = NULL;
+	struct ltt_ust_event *uevent = nullptr;
+	struct ltt_ust_channel *uchan = nullptr;
 	const char *ust_event_name, *ust_channel_name;
 
 	LTTNG_ASSERT(agt);
@@ -791,7 +791,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 				      aevent->filter,
 				      LTTNG_UST_ABI_LOGLEVEL_ALL,
 				      -1,
-				      NULL);
+				      nullptr);
 	/* If the agent event exists, it must be available on the UST side. */
 	LTTNG_ASSERT(uevent);
 
@@ -839,7 +839,7 @@ int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt
 	rcu_read_lock();
 	aevent = agent_find_event_by_trigger(trigger, agt);
 
-	if (aevent == NULL) {
+	if (aevent == nullptr) {
 		DBG2("Event agent NOT found by trigger %" PRIu64,
 		     lttng_trigger_get_tracer_token(trigger));
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
@@ -879,7 +879,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 	agent_find_events_by_name(event_name, agt, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 
-	if (node == NULL) {
+	if (node == nullptr) {
 		DBG2("Event agent NOT found by name %s", event_name);
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		goto end;

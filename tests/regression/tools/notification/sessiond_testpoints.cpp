@@ -29,7 +29,7 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
-static void __attribute__((destructor)) pause_pipe_fini(void)
+static void __attribute__((destructor)) pause_pipe_fini()
 {
 	int ret;
 
@@ -56,7 +56,7 @@ int __testpoint_sessiond_thread_notification(void)
 		goto end;
 	}
 
-	notifier_notif_consumption_state = (int *) dlsym(NULL, "notifier_consumption_paused");
+	notifier_notif_consumption_state = (int *) dlsym(nullptr, "notifier_consumption_paused");
 	LTTNG_ASSERT(notifier_notif_consumption_state);
 
 	ret = asprintf(&pause_pipe_path, "%s", pause_pipe_path_prefix);

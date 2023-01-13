@@ -51,22 +51,22 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "all-events", 'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0 },
-	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0 },
-	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0 },
-	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0 },
-	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0 },
-	{ "syscall", 0, POPT_ARG_NONE, 0, OPT_TYPE_SYSCALL, 0, 0 },
-	{ "probe", 0, POPT_ARG_NONE, 0, OPT_TYPE_PROBE, 0, 0 },
-	{ "tracepoint", 0, POPT_ARG_NONE, 0, OPT_TYPE_TRACEPOINT, 0, 0 },
-	{ "function", 0, POPT_ARG_NONE, 0, OPT_TYPE_FUNCTION, 0, 0 },
-	{ "all", 0, POPT_ARG_NONE, 0, OPT_TYPE_ALL, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "all-events", 'a', POPT_ARG_VAL, &opt_disable_all, 1, nullptr, nullptr },
+	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, nullptr, nullptr },
+	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
+	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, nullptr, nullptr },
+	{ "syscall", 0, POPT_ARG_NONE, nullptr, OPT_TYPE_SYSCALL, nullptr, nullptr },
+	{ "probe", 0, POPT_ARG_NONE, nullptr, OPT_TYPE_PROBE, nullptr, nullptr },
+	{ "tracepoint", 0, POPT_ARG_NONE, nullptr, OPT_TYPE_TRACEPOINT, nullptr, nullptr },
+	{ "function", 0, POPT_ARG_NONE, nullptr, OPT_TYPE_FUNCTION, nullptr, nullptr },
+	{ "all", 0, POPT_ARG_NONE, nullptr, OPT_TYPE_ALL, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static const char *print_channel_name(const char *name)
@@ -149,7 +149,7 @@ static int disable_events(char *session_name, char *event_list)
 {
 	int ret = CMD_SUCCESS, warn = 0, command_ret = CMD_SUCCESS;
 	int enabled = 1, success = 1;
-	char *event_name, *channel_name = NULL;
+	char *event_name, *channel_name = nullptr;
 	struct lttng_domain dom;
 	struct lttng_event event;
 
@@ -174,7 +174,7 @@ static int disable_events(char *session_name, char *event_list)
 	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -1;
 		goto error;
 	}
@@ -210,7 +210,7 @@ static int disable_events(char *session_name, char *event_list)
 	event.type = (lttng_event_type) opt_event_type;
 
 	if (opt_disable_all) {
-		command_ret = lttng_disable_event_ext(handle, &event, channel_name, NULL);
+		command_ret = lttng_disable_event_ext(handle, &event, channel_name, nullptr);
 		if (command_ret < 0) {
 			ERR("%s", lttng_strerror(command_ret));
 			enabled = 1;
@@ -235,12 +235,13 @@ static int disable_events(char *session_name, char *event_list)
 	} else {
 		/* Strip event list */
 		event_name = strtok(event_list, ",");
-		while (event_name != NULL) {
+		while (event_name != nullptr) {
 			DBG("Disabling event %s", event_name);
 
 			strncpy(event.name, event_name, sizeof(event.name));
 			event.name[sizeof(event.name) - 1] = '\0';
-			command_ret = lttng_disable_event_ext(handle, &event, channel_name, NULL);
+			command_ret =
+				lttng_disable_event_ext(handle, &event, channel_name, nullptr);
 			if (command_ret < 0) {
 				ERR("%s of type %s : %s (channel %s, session %s)",
 				    event_name,
@@ -277,7 +278,7 @@ static int disable_events(char *session_name, char *event_list)
 			}
 
 			/* Next event */
-			event_name = strtok(NULL, ",");
+			event_name = strtok(nullptr, ",");
 		}
 	}
 
@@ -311,13 +312,13 @@ int cmd_disable_events(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	char *session_name = NULL;
-	char *event_list = NULL;
-	const char *arg_event_list = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	char *event_list = nullptr;
+	const char *arg_event_list = nullptr;
+	const char *leftover = nullptr;
 	int event_type = -1;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	/* Default event type */
@@ -379,7 +380,7 @@ int cmd_disable_events(int argc, const char **argv)
 	}
 
 	arg_event_list = poptGetArg(pc);
-	if (arg_event_list == NULL && opt_disable_all == 0) {
+	if (arg_event_list == nullptr && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");
 		ret = CMD_ERROR;
 		goto end;
@@ -387,7 +388,7 @@ int cmd_disable_events(int argc, const char **argv)
 
 	if (opt_disable_all == 0) {
 		event_list = strdup(arg_event_list);
-		if (event_list == NULL) {
+		if (event_list == nullptr) {
 			PERROR("Failed to copy event name(s)");
 			ret = CMD_ERROR;
 			goto end;
@@ -403,7 +404,7 @@ int cmd_disable_events(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			ret = CMD_ERROR;
 			goto end;
 		}

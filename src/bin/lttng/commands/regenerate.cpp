@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 static char *opt_session_name;
-static char *session_name = NULL;
+static char *session_name = nullptr;
 
 static int regenerate_metadata(int argc, const char **argv);
 static int regenerate_statedump(int argc, const char **argv);
@@ -43,37 +43,37 @@ static struct poptOption long_options[] = {
 		"help",
 		'h',
 		POPT_ARG_NONE,
-		0,
+		nullptr,
 		OPT_HELP,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
 	{
 		"list-options",
 		0,
 		POPT_ARG_NONE,
-		NULL,
+		nullptr,
 		OPT_LIST_OPTIONS,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
-	{ "list-commands", 0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL },
+	{ "list-commands", 0, POPT_ARG_NONE, nullptr, OPT_LIST_COMMANDS, nullptr, nullptr },
 	{
+		nullptr,
 		0,
 		0,
+		nullptr,
 		0,
-		0,
-		0,
-		0,
-		0,
+		nullptr,
+		nullptr,
 	},
 };
 
 static struct cmd_struct actions[] = {
 	{ "metadata", regenerate_metadata },
 	{ "statedump", regenerate_statedump },
-	{ NULL, NULL } /* Array closure */
+	{ nullptr, nullptr } /* Array closure */
 };
 
 /*
@@ -85,7 +85,7 @@ static int count_arguments(const char **argv)
 
 	LTTNG_ASSERT(argv);
 
-	while (argv[i] != NULL) {
+	while (argv[i] != nullptr) {
 		i++;
 	}
 
@@ -133,7 +133,7 @@ static int handle_command(const char **argv)
 	struct cmd_struct *cmd;
 	int ret = CMD_SUCCESS, i = 0, argc, command_ret = CMD_SUCCESS;
 
-	if (argv == NULL) {
+	if (argv == nullptr) {
 		ERR("No object specified for regenerate command.");
 		command_ret = CMD_ERROR;
 		goto end;
@@ -143,7 +143,7 @@ static int handle_command(const char **argv)
 	LTTNG_ASSERT(argc >= 1);
 
 	cmd = &actions[i];
-	while (cmd->func != NULL) {
+	while (cmd->func != nullptr) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			if (lttng_opt_mi) {
@@ -200,7 +200,7 @@ int cmd_regenerate(int argc, const char **argv)
 		goto end;
 	}
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	if (lttng_opt_mi) {
@@ -244,7 +244,7 @@ int cmd_regenerate(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			ret = CMD_ERROR;
 			goto end;
 		}

@@ -60,7 +60,7 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
-static int setup_health_path(void)
+static int setup_health_path()
 {
 	int is_root, ret = 0;
 	enum lttng_consumer_type type;
@@ -95,7 +95,7 @@ static int setup_health_path(void)
 		}
 	} else {
 		home_path = utils_get_home_dir();
-		if (home_path == NULL) {
+		if (home_path == nullptr) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
 			ret = -EPERM;
@@ -224,7 +224,7 @@ void *thread_manage_health_consumerd(void *data __attribute__((unused)))
 	cmm_smp_mb__before_uatomic_dec();
 	uatomic_dec(&lttng_consumer_ready);
 
-	while (1) {
+	while (true) {
 		DBG("Health check ready");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -334,5 +334,5 @@ error:
 	lttng_poll_clean(&events);
 
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }

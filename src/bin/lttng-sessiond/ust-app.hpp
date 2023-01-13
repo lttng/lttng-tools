@@ -374,12 +374,12 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app);
 void ust_app_global_update_all(struct ltt_ust_session *usess);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
-void ust_app_global_update_all_event_notifier_rules(void);
+void ust_app_global_update_all_event_notifier_rules();
 
-void ust_app_clean_list(void);
-int ust_app_ht_alloc(void);
+void ust_app_clean_list();
+int ust_app_ht_alloc();
 struct ust_app *ust_app_find_by_pid(pid_t pid);
-struct ust_app_stream *ust_app_alloc_stream(void);
+struct ust_app_stream *ust_app_alloc_stream();
 int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
 int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
@@ -416,7 +416,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session);
 int ust_app_setup_event_notifier_group(struct ust_app *app);
 
 static inline
-int ust_app_supported(void)
+int ust_app_supported()
 {
 	return 1;
 }

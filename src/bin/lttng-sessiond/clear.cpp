@@ -56,7 +56,7 @@ static void cmd_clear_session_reply(const struct ltt_session *session, void *_re
 int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 {
 	int ret = LTTNG_OK;
-	struct cmd_clear_session_reply_context *reply_context = NULL;
+	struct cmd_clear_session_reply_context *reply_context = nullptr;
 	bool session_was_active = false;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
@@ -158,11 +158,11 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 			 * On success, ownership of reply_context has been
 			 * passed to session_add_clear_notifier().
 			 */
-			reply_context = NULL;
+			reply_context = nullptr;
 			*sock_fd = -1;
 		}
 		ret = cmd_rotate_session(
-			session, NULL, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE);
+			session, nullptr, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -172,7 +172,7 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 	}
 	if (session_was_active) {
 		/* Kernel tracing */
-		if (ksession != NULL) {
+		if (ksession != nullptr) {
 			DBG("Start kernel tracing session \"%s\"", session->name);
 			ret = start_kernel_session(ksession);
 			if (ret != LTTNG_OK) {

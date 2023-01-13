@@ -90,7 +90,7 @@ end:
 	return handle;
 error:
 	lttng_destruction_handle_destroy(handle);
-	return NULL;
+	return nullptr;
 }
 
 static int handle_state_transition(struct lttng_destruction_handle *handle)
@@ -377,7 +377,7 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 		.fd_count = 0,
 	};
 	int sessiond_socket = -1;
-	struct lttng_destruction_handle *handle = NULL;
+	struct lttng_destruction_handle *handle = nullptr;
 
 	if (!session_name) {
 		ret_code = LTTNG_ERR_INVALID;
@@ -414,7 +414,7 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	/* Transfer the handle to the caller. */
 	if (_handle) {
 		*_handle = handle;
-		handle = NULL;
+		handle = nullptr;
 	}
 error:
 	if (sessiond_socket >= 0) {

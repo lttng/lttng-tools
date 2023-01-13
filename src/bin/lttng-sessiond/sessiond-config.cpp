@@ -72,7 +72,7 @@ static struct sessiond_config sessiond_config_build_defaults = {
 
 static void config_string_fini(struct config_string *str)
 {
-	config_string_set(str, NULL);
+	config_string_set(str, nullptr);
 }
 
 static void config_string_set_static(struct config_string *config_str, const char *value)
@@ -178,7 +178,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 	const char *home_path = utils_get_home_dir();
 	char *str;
 
-	if (home_path == NULL) {
+	if (home_path == nullptr) {
 		ERR("Can't get HOME directory for sockets creation.");
 		ret = -1;
 		goto end;
@@ -194,7 +194,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->rundir, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_APPS_UNIX_SOCK, home_path);
 	if (ret < 0) {
@@ -202,7 +202,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->apps_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
 	if (ret < 0) {
@@ -210,7 +210,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->client_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_APPS_WAIT_SHM_PATH, getuid());
 	if (ret < 0) {
@@ -218,7 +218,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->wait_shm_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_HEALTH_UNIX_SOCK, home_path);
 	if (ret < 0) {
@@ -226,7 +226,7 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->health_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = 0;
 end:
@@ -258,7 +258,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd32_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -266,7 +266,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd32_err_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -274,7 +274,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd32_cmd_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	/* 64 bits consumerd path setup */
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_PATH, config->rundir.value);
@@ -283,7 +283,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd64_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -291,7 +291,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd64_err_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -299,7 +299,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->consumerd64_cmd_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	/* kconsumerd consumerd path setup */
 	ret = asprintf(&str, DEFAULT_KCONSUMERD_PATH, config->rundir.value);
@@ -308,7 +308,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->kconsumerd_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_KCONSUMERD_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -316,7 +316,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->kconsumerd_err_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_KCONSUMERD_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
@@ -324,7 +324,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->kconsumerd_cmd_unix_sock_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_PIDFILE);
 	if (ret < 0) {
@@ -332,7 +332,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->pid_file_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_LOCKFILE);
 	if (ret < 0) {
@@ -340,7 +340,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->lock_file_path, str);
-	str = NULL;
+	str = nullptr;
 
 	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
 	if (ret < 0) {
@@ -348,7 +348,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto error;
 	}
 	config_string_set(&config->agent_port_file_path, str);
-	str = NULL;
+	str = nullptr;
 
 	/*
 	 * Allow INSTALL_BIN_PATH to be used as a target path for the

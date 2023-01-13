@@ -14,10 +14,10 @@
 
 #define NR_TESTS 4
 
-static void test_event_payload_field(void)
+static void test_event_payload_field()
 {
 	struct lttng_event_expr *event_expr;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 	int ret;
 
 	event_expr = lttng_event_expr_event_payload_field_create("tourlou");
@@ -29,10 +29,10 @@ static void test_event_payload_field(void)
 	free(bytecode);
 }
 
-static void test_channel_context_field(void)
+static void test_channel_context_field()
 {
 	struct lttng_event_expr *event_expr;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 	int ret;
 
 	event_expr = lttng_event_expr_channel_context_field_create("tourlou");
@@ -44,10 +44,10 @@ static void test_channel_context_field(void)
 	free(bytecode);
 }
 
-static void test_app_specific_context_field(void)
+static void test_app_specific_context_field()
 {
 	struct lttng_event_expr *event_expr;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 	int ret;
 
 	event_expr = lttng_event_expr_app_specific_context_field_create("Bob", "Leponge");
@@ -59,10 +59,10 @@ static void test_app_specific_context_field(void)
 	free(bytecode);
 }
 
-static void test_array_field_element(void)
+static void test_array_field_element()
 {
 	struct lttng_event_expr *event_expr;
-	struct lttng_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = nullptr;
 	int ret;
 
 	event_expr = lttng_event_expr_event_payload_field_create("allo");
@@ -75,7 +75,7 @@ static void test_array_field_element(void)
 	free(bytecode);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NR_TESTS);
 

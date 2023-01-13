@@ -36,15 +36,15 @@ public:
 	 * must be `noexcept` lest we anger the undefined behaviour gods.
 	 */
 	static_assert(details::is_invocation_noexcept<ScopeExitInvocableType>::value,
-			"scope_exit requires a noexcept invocable type");
+		      "scope_exit requires a noexcept invocable type");
 
 	explicit scope_exit(ScopeExitInvocableType&& scope_exit_callable) :
-		_on_scope_exit{std::forward<ScopeExitInvocableType>(scope_exit_callable)}
+		_on_scope_exit{ std::forward<ScopeExitInvocableType>(scope_exit_callable) }
 	{
 	}
 
-	scope_exit(scope_exit&& rhs) :
-		_on_scope_exit{std::move(rhs._on_scope_exit)}, _armed{rhs._armed}
+	scope_exit(scope_exit&& rhs) noexcept :
+		_on_scope_exit{ std::move(rhs._on_scope_exit) }, _armed{ rhs._armed }
 	{
 		/* Don't invoke ScopeExitInvocableType for the moved-from copy. */
 		rhs.disarm();
@@ -81,7 +81,7 @@ template <typename ScopeExitInvocableType>
 scope_exit<ScopeExitInvocableType> make_scope_exit(ScopeExitInvocableType&& scope_exit_callable)
 {
 	return scope_exit<ScopeExitInvocableType>(
-			std::forward<ScopeExitInvocableType>(scope_exit_callable));
+		std::forward<ScopeExitInvocableType>(scope_exit_callable));
 }
 
 } /* namespace lttng */

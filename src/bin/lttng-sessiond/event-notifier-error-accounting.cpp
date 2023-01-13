@@ -172,7 +172,7 @@ static void ust_error_accounting_entry_put(struct ust_error_accounting_entry *en
 /*
  * Put one reference to every UID entries.
  */
-static void put_ref_all_ust_error_accounting_entry(void)
+static void put_ref_all_ust_error_accounting_entry()
 {
 	struct lttng_ht_iter iter;
 	struct ust_error_accounting_entry *uid_entry;
@@ -190,7 +190,7 @@ static void put_ref_all_ust_error_accounting_entry(void)
 /*
  * Get one reference to every UID entries.
  */
-static void get_ref_all_ust_error_accounting_entry(void)
+static void get_ref_all_ust_error_accounting_entry()
 {
 	struct lttng_ht_iter iter;
 	struct ust_error_accounting_entry *uid_entry;
@@ -235,7 +235,7 @@ init_error_accounting_state(struct error_accounting_state *state, uint64_t index
 
 error_indices_ht:
 	lttng_index_allocator_destroy(state->index_allocator);
-	state->index_allocator = NULL;
+	state->index_allocator = nullptr;
 end:
 	return status;
 }
@@ -331,8 +331,8 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
 
 	lttng_ht_lookup(uid_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == NULL) {
-		entry = NULL;
+	if (node == nullptr) {
+		entry = nullptr;
 	} else {
 		bool got_ref;
 
@@ -340,7 +340,7 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
 
 		got_ref = ust_error_accounting_entry_get(entry);
 		if (!got_ref) {
-			entry = NULL;
+			entry = nullptr;
 		}
 	}
 
@@ -354,10 +354,10 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
 static struct ust_error_accounting_entry *
 ust_error_accounting_entry_create(const struct ust_app *app)
 {
-	int i, ret, *cpu_counter_fds = NULL;
+	int i, ret, *cpu_counter_fds = nullptr;
 	struct lttng_ust_ctl_daemon_counter *daemon_counter;
 	struct lttng_ust_abi_object_data *counter, **cpu_counters;
-	struct ust_error_accounting_entry *entry = NULL;
+	struct ust_error_accounting_entry *entry = nullptr;
 	lttng_ust_ctl_counter_dimension dimension = {};
 
 	dimension.size = ust_state.number_indices;
@@ -508,7 +508,7 @@ error_counter_cpus_alloc:
 error_counter_cpu_fds_alloc:
 	free(entry);
 error:
-	entry = NULL;
+	entry = nullptr;
 end:
 	free(cpu_counter_fds);
 	return entry;
@@ -603,7 +603,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	 */
 	rcu_read_lock();
 	entry = ust_error_accounting_entry_find(error_counter_uid_ht, app);
-	if (entry == NULL) {
+	if (entry == nullptr) {
 		/*
 		 * Take the event notifier counter lock before creating the new
 		 * entry to ensure that no event notifier is registered between
@@ -668,7 +668,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	}
 
 	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
-		struct lttng_ust_abi_object_data *new_counter_cpu = NULL;
+		struct lttng_ust_abi_object_data *new_counter_cpu = nullptr;
 
 		ret = lttng_ust_ctl_duplicate_ust_object_data(&new_counter_cpu,
 							      entry->cpu_counters[i]);
@@ -700,10 +700,10 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	}
 
 	app->event_notifier_group.counter = new_counter;
-	new_counter = NULL;
+	new_counter = nullptr;
 	app->event_notifier_group.nr_counter_cpu = entry->nr_counter_cpu_fds;
 	app->event_notifier_group.counter_cpu = cpu_counters;
-	cpu_counters = NULL;
+	cpu_counters = nullptr;
 	goto end_unlock;
 
 error_send_cpu_counter_data:
@@ -731,7 +731,7 @@ error_send_counter_data:
 error_duplicate_counter:
 	ust_error_accounting_entry_put(entry);
 error_creating_entry:
-	app->event_notifier_group.counter = NULL;
+	app->event_notifier_group.counter = nullptr;
 end_unlock:
 	rcu_read_unlock();
 end:
@@ -754,7 +754,7 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 	}
 
 	entry = ust_error_accounting_entry_find(error_counter_uid_ht, app);
-	if (entry == NULL) {
+	if (entry == nullptr) {
 		ERR("Failed to find event notitifier error accounting entry on application teardown: pid = %d, application name = '%s'",
 		    app->pid,
 		    app->name);
@@ -1042,7 +1042,7 @@ static enum event_notifier_error_accounting_status create_error_counter_index_fo
 	}
 
 	index_entry = zmalloc<index_ht_entry>();
-	if (index_entry == NULL) {
+	if (index_entry == nullptr) {
 		PERROR("Failed to allocate event notifier error counter hash table entry");
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM;
 		goto end;
@@ -1335,7 +1335,7 @@ end:
 	rcu_read_unlock();
 }
 
-void event_notifier_error_accounting_fini(void)
+void event_notifier_error_accounting_fini()
 {
 	if (kernel_error_accounting_entry.error_counter_fd) {
 		const int ret = close(kernel_error_accounting_entry.error_counter_fd);

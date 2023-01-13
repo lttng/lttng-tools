@@ -35,7 +35,7 @@ struct lttng_process_attr_values {
 
 const char *lttng_process_attr_to_string(enum lttng_process_attr process_attr);
 
-struct lttng_process_attr_values *lttng_process_attr_values_create(void);
+struct lttng_process_attr_values *lttng_process_attr_values_create();
 
 /* Prefixed with '_' since the name conflicts with a public API. */
 unsigned int _lttng_process_attr_values_get_count(

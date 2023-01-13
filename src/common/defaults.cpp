@@ -20,7 +20,7 @@
 static int pthread_attr_init_done;
 static pthread_attr_t tattr;
 
-static size_t get_page_size(void)
+static size_t get_page_size()
 {
 	const long ret = sysconf(_SC_PAGE_SIZE);
 
@@ -35,42 +35,42 @@ static size_t get_page_size(void)
 	return (size_t) ret;
 }
 
-size_t default_get_channel_subbuf_size(void)
+size_t default_get_channel_subbuf_size()
 {
 	return std::max<size_t>(_DEFAULT_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
-size_t default_get_metadata_subbuf_size(void)
+size_t default_get_metadata_subbuf_size()
 {
 	return std::max<size_t>(DEFAULT_METADATA_SUBBUF_SIZE, get_page_size());
 }
 
-size_t default_get_kernel_channel_subbuf_size(void)
+size_t default_get_kernel_channel_subbuf_size()
 {
 	return std::max<size_t>(DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
-size_t default_get_ust_pid_channel_subbuf_size(void)
+size_t default_get_ust_pid_channel_subbuf_size()
 {
 	return std::max<size_t>(DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
-size_t default_get_ust_uid_channel_subbuf_size(void)
+size_t default_get_ust_uid_channel_subbuf_size()
 {
 	return std::max<size_t>(DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE, get_page_size());
 }
 
-pthread_attr_t *default_pthread_attr(void)
+pthread_attr_t *default_pthread_attr()
 {
 	if (pthread_attr_init_done) {
 		return &tattr;
 	}
 
 	WARN("Uninitialized pthread attributes, using libc defaults.");
-	return NULL;
+	return nullptr;
 }
 
-static void __attribute__((constructor)) init_default_pthread_attr(void)
+static void __attribute__((constructor)) init_default_pthread_attr()
 {
 	int ret;
 	struct rlimit rlim;
@@ -138,7 +138,7 @@ error_destroy:
 	}
 }
 
-static void __attribute__((destructor)) fini_default_pthread_attr(void)
+static void __attribute__((destructor)) fini_default_pthread_attr()
 {
 	int ret;
 

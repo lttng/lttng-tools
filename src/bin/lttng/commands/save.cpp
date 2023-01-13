@@ -38,12 +38,12 @@ enum {
 
 static struct poptOption save_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
-	{ "all", 'a', POPT_ARG_NONE, NULL, OPT_ALL, NULL, NULL },
-	{ "output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL },
-	{ "force", 'f', POPT_ARG_NONE, NULL, OPT_FORCE, NULL, NULL },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
+	{ "output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, nullptr, nullptr },
+	{ "force", 'f', POPT_ARG_NONE, nullptr, OPT_FORCE, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static int mi_partial_session(const char *session_name)
@@ -116,11 +116,11 @@ int cmd_save(int argc, const char **argv)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
-	const char *arg_session_name = NULL, *leftover = NULL;
+	const char *arg_session_name = nullptr, *leftover = nullptr;
 	poptContext pc;
 	struct lttng_save_session_attr *attr;
 
-	pc = poptGetContext(NULL, argc, argv, save_opts, 0);
+	pc = poptGetContext(nullptr, argc, argv, save_opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {

@@ -29,7 +29,7 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
-static void __attribute__((destructor)) pause_pipe_fini(void)
+static void __attribute__((destructor)) pause_pipe_fini()
 {
 	int ret;
 
@@ -67,9 +67,10 @@ int __testpoint_consumerd_thread_data(void)
 	 * dynamically would not allow this shared object to be LD_PRELOAD-ed
 	 * when launching the session daemon.
 	 */
-	data_consumption_state = (int *) dlsym(NULL, "data_consumption_paused");
+	data_consumption_state = (int *) dlsym(nullptr, "data_consumption_paused");
 	LTTNG_ASSERT(data_consumption_state);
-	lttng_consumer_get_type = (lttng_consumer_type(*)()) dlsym(NULL, "lttng_consumer_get_type");
+	lttng_consumer_get_type =
+		(lttng_consumer_type(*)()) dlsym(nullptr, "lttng_consumer_get_type");
 	LTTNG_ASSERT(lttng_consumer_get_type);
 
 	switch (lttng_consumer_get_type()) {

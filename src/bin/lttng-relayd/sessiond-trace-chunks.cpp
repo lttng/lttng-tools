@@ -115,7 +115,7 @@ static void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 		rcu_read_lock();
 		cds_lfht_del(element->sessiond_trace_chunk_registry->ht, &element->ht_node);
 		rcu_read_unlock();
-		element->sessiond_trace_chunk_registry = NULL;
+		element->sessiond_trace_chunk_registry = nullptr;
 	}
 
 	lttng_trace_chunk_registry_destroy(element->trace_chunk_registry);
@@ -142,7 +142,7 @@ static struct trace_chunk_registry_ht_element *
 trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessiond_registry,
 				     const struct trace_chunk_registry_ht_key *key)
 {
-	struct trace_chunk_registry_ht_element *element = NULL;
+	struct trace_chunk_registry_ht_element *element = nullptr;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
@@ -161,7 +161,7 @@ trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessi
 		 * could be acquired.
 		 */
 		if (!trace_chunk_registry_ht_element_get(element)) {
-			element = NULL;
+			element = nullptr;
 		}
 	}
 	rcu_read_unlock();
@@ -195,11 +195,11 @@ trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *ses
 	urcu_ref_init(&new_element->ref);
 	cds_lfht_node_init(&new_element->ht_node);
 	new_element->trace_chunk_registry = trace_chunk_registry;
-	trace_chunk_registry = NULL;
+	trace_chunk_registry = nullptr;
 
 	/* Attempt to publish the new element. */
 	rcu_read_lock();
-	while (1) {
+	while (true) {
 		struct cds_lfht_node *published_node;
 		struct trace_chunk_registry_ht_element *published_element;
 
@@ -228,7 +228,7 @@ trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *ses
 			DBG("Acquired reference to trace chunk registry of sessiond {%s}",
 			    uuid_str);
 			trace_chunk_registry_ht_element_put(new_element);
-			new_element = NULL;
+			new_element = nullptr;
 			break;
 		}
 		/*
@@ -246,7 +246,7 @@ end:
 	return ret;
 }
 
-struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create(void)
+struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create()
 {
 	struct sessiond_trace_chunk_registry *sessiond_registry =
 		zmalloc<sessiond_trace_chunk_registry>();
@@ -256,7 +256,7 @@ struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create(void)
 	}
 
 	sessiond_registry->ht = cds_lfht_new(
-		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 	if (!sessiond_registry->ht) {
 		goto error;
 	}
@@ -265,12 +265,12 @@ end:
 	return sessiond_registry;
 error:
 	sessiond_trace_chunk_registry_destroy(sessiond_registry);
-	return NULL;
+	return nullptr;
 }
 
 void sessiond_trace_chunk_registry_destroy(struct sessiond_trace_chunk_registry *sessiond_registry)
 {
-	int ret = cds_lfht_destroy(sessiond_registry->ht, NULL);
+	int ret = cds_lfht_destroy(sessiond_registry->ht, nullptr);
 
 	LTTNG_ASSERT(!ret);
 	free(sessiond_registry);
@@ -336,10 +336,10 @@ sessiond_trace_chunk_registry_publish_chunk(struct sessiond_trace_chunk_registry
 	uint64_t chunk_id;
 	bool is_anonymous_chunk;
 	struct trace_chunk_registry_ht_key key;
-	struct trace_chunk_registry_ht_element *element = NULL;
+	struct trace_chunk_registry_ht_element *element = nullptr;
 	char uuid_str[LTTNG_UUID_STR_LEN];
 	char chunk_id_str[MAX_INT_DEC_LEN(typeof(chunk_id))] = "-1";
-	struct lttng_trace_chunk *published_chunk = NULL;
+	struct lttng_trace_chunk *published_chunk = nullptr;
 	bool trace_chunk_already_published;
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
@@ -409,7 +409,7 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_get_anonymous_chunk(
 	const lttng_uuid& sessiond_uuid,
 	uint64_t session_id)
 {
-	struct lttng_trace_chunk *chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr;
 	struct trace_chunk_registry_ht_element *element;
 	struct trace_chunk_registry_ht_key key;
 	char uuid_str[LTTNG_UUID_STR_LEN];
@@ -436,7 +436,7 @@ sessiond_trace_chunk_registry_get_chunk(struct sessiond_trace_chunk_registry *se
 					uint64_t session_id,
 					uint64_t chunk_id)
 {
-	struct lttng_trace_chunk *chunk = NULL;
+	struct lttng_trace_chunk *chunk = nullptr;
 	struct trace_chunk_registry_ht_element *element;
 	struct trace_chunk_registry_ht_key key;
 	char uuid_str[LTTNG_UUID_STR_LEN];

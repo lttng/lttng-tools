@@ -63,18 +63,24 @@ enum output_type {
 static struct mi_writer *writer;
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
-	{ "output", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "set-url", 'U', POPT_ARG_STRING, &opt_url, 0, 0, 0 },
-	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0 },
-	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0 },
-	{ "no-output", 0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0 },
-	{ "no-consumer", 0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0 },
-	{ "snapshot", 0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0 },
-	{ "live", 0, POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL, 0, OPT_LIVE_TIMER, 0, 0 },
-	{ "shm-path", 0, POPT_ARG_STRING, &opt_shm_path, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "output", 'o', POPT_ARG_STRING, &opt_output_path, 0, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "set-url", 'U', POPT_ARG_STRING, &opt_url, 0, nullptr, nullptr },
+	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, nullptr, nullptr },
+	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, nullptr, nullptr },
+	{ "no-output", 0, POPT_ARG_VAL, &opt_no_output, 1, nullptr, nullptr },
+	{ "no-consumer", 0, POPT_ARG_VAL, &opt_no_consumer, 1, nullptr, nullptr },
+	{ "snapshot", 0, POPT_ARG_VAL, &opt_snapshot, 1, nullptr, nullptr },
+	{ "live",
+	  0,
+	  POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL,
+	  nullptr,
+	  OPT_LIVE_TIMER,
+	  nullptr,
+	  nullptr },
+	{ "shm-path", 0, POPT_ARG_STRING, &opt_shm_path, 0, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -132,9 +138,9 @@ static struct lttng_session_descriptor *create_session_descriptor(const char *se
 {
 	ssize_t uri_count;
 	enum output_type output_type;
-	struct lttng_uri *uris = NULL;
-	struct lttng_session_descriptor *descriptor = NULL;
-	const char *uri_str1 = NULL, *uri_str2 = NULL;
+	struct lttng_uri *uris = nullptr;
+	struct lttng_session_descriptor *descriptor = nullptr;
+	const char *uri_str1 = nullptr, *uri_str2 = nullptr;
 	char local_output_path[LTTNG_PATH_MAX] = {};
 
 	if (opt_no_output) {
@@ -201,7 +207,7 @@ static struct lttng_session_descriptor *create_session_descriptor(const char *se
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_snapshot_local_create(
 				session_name,
-				output_type == OUTPUT_LOCAL ? local_output_path : NULL);
+				output_type == OUTPUT_LOCAL ? local_output_path : nullptr);
 			break;
 		case OUTPUT_NONE:
 			descriptor = lttng_session_descriptor_snapshot_create(session_name);
@@ -228,7 +234,7 @@ static struct lttng_session_descriptor *create_session_descriptor(const char *se
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_local_create(
 				session_name,
-				output_type == OUTPUT_LOCAL ? local_output_path : NULL);
+				output_type == OUTPUT_LOCAL ? local_output_path : nullptr);
 			break;
 		case OUTPUT_NONE:
 			descriptor = lttng_session_descriptor_create(session_name);
@@ -256,7 +262,7 @@ static struct lttng_session_descriptor *create_session_descriptor(const char *se
 			ret = spawn_relayd(pathname, 0);
 			if (ret < 0) {
 				lttng_session_descriptor_destroy(descriptor);
-				descriptor = NULL;
+				descriptor = nullptr;
 			}
 		}
 	}
@@ -275,11 +281,11 @@ static int create_session(const char *session_name)
 {
 	int ret, i;
 	char shm_path[LTTNG_PATH_MAX] = {};
-	struct lttng_session_descriptor *session_descriptor = NULL;
+	struct lttng_session_descriptor *session_descriptor = nullptr;
 	enum lttng_session_descriptor_status descriptor_status;
 	enum lttng_error_code ret_code;
-	struct lttng_session *sessions = NULL;
-	const struct lttng_session *created_session = NULL;
+	struct lttng_session *sessions = nullptr;
+	const struct lttng_session *created_session = nullptr;
 	const char *created_session_name;
 
 	/* Validate options. */
@@ -440,7 +446,7 @@ static int create_session(const char *session_name)
 		}
 
 		while ((iter = lttng_snapshot_output_list_get_next(list))) {
-			const char *url = NULL;
+			const char *url = nullptr;
 
 			url = lttng_snapshot_output_get_ctrl_url(iter);
 			ret = lttng_strncpy(snapshot_url, url, sizeof(snapshot_url));
@@ -563,10 +569,10 @@ end:
  *  the liblttngctl API for the check. If not, try to
  *  spawn a daemon.
  */
-static int launch_sessiond(void)
+static int launch_sessiond()
 {
 	int ret;
-	const char *pathname = NULL;
+	const char *pathname = nullptr;
 
 	ret = lttng_session_daemon_alive();
 	if (ret) {
@@ -579,19 +585,19 @@ static int launch_sessiond(void)
 	pathname = opt_sessiond_path;
 
 	/* Try LTTNG_SESSIOND_PATH env variable */
-	if (pathname == NULL) {
+	if (pathname == nullptr) {
 		pathname = getenv(DEFAULT_SESSIOND_PATH_ENV);
 	}
 
 	/* Try with configured path */
-	if (pathname == NULL) {
+	if (pathname == nullptr) {
 		if (CONFIG_SESSIOND_BIN[0] != '\0') {
 			pathname = CONFIG_SESSIOND_BIN;
 		}
 	}
 
 	/* Try the default path */
-	if (pathname == NULL) {
+	if (pathname == nullptr) {
 		pathname = INSTALL_BIN_PATH "/lttng-sessiond";
 	}
 
@@ -612,7 +618,7 @@ end:
 	return ret;
 }
 
-static int validate_url_option_combination(void)
+static int validate_url_option_combination()
 {
 	int ret = 0;
 	int used_count = 0;
@@ -636,12 +642,12 @@ static int validate_url_option_combination(void)
 int cmd_create(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
-	char *opt_arg = NULL;
-	const char *arg_session_name = NULL;
-	const char *leftover = NULL;
+	char *opt_arg = nullptr;
+	const char *arg_session_name = nullptr;
+	const char *leftover = nullptr;
 	static poptContext pc;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {

@@ -31,7 +31,7 @@ struct lttng_trace_chunk_registry;
  *
  * Note that a trace chunk registry may only be accessed by an RCU thread.
  */
-struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create(void);
+struct lttng_trace_chunk_registry *lttng_trace_chunk_registry_create();
 
 /*
  * Destroy an lttng trace chunk registry. The registry must be emptied

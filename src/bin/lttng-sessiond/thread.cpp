@@ -121,7 +121,7 @@ error_pthread_create:
 	/* Release initial reference. */
 	lttng_thread_put(thread);
 error_alloc:
-	return NULL;
+	return nullptr;
 }
 
 bool lttng_thread_get(struct lttng_thread *thread)
@@ -183,7 +183,7 @@ bool lttng_thread_shutdown(struct lttng_thread *thread)
 	return result;
 }
 
-void lttng_thread_list_shutdown_orphans(void)
+void lttng_thread_list_shutdown_orphans()
 {
 	struct lttng_thread *thread, *tmp;
 

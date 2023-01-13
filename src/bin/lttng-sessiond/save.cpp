@@ -101,7 +101,7 @@ static int save_kernel_channel_attributes(struct config_writer *writer,
 	}
 
 	if (attr->extended.ptr) {
-		struct lttng_channel_extended *ext = NULL;
+		struct lttng_channel_extended *ext = nullptr;
 
 		ext = (struct lttng_channel_extended *) attr->extended.ptr;
 		ret = config_writer_write_element_unsigned_int(
@@ -129,7 +129,7 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 				       struct lttng_ust_abi_channel_attr *attr)
 {
 	int ret;
-	struct ltt_ust_channel *channel = NULL;
+	struct ltt_ust_channel *channel = nullptr;
 
 	ret = config_writer_write_element_string(writer,
 						 config_element_overwrite_mode,
@@ -233,7 +233,7 @@ get_kernel_instrumentation_string(enum lttng_kernel_abi_instrumentation instrume
 		instrumentation_string = config_event_type_syscall;
 		break;
 	default:
-		instrumentation_string = NULL;
+		instrumentation_string = nullptr;
 	}
 
 	return instrumentation_string;
@@ -353,7 +353,7 @@ static const char *get_kernel_context_type_string(enum lttng_kernel_abi_context_
 		context_type_string = config_event_context_vsgid;
 		break;
 	default:
-		context_type_string = NULL;
+		context_type_string = nullptr;
 	}
 
 	return context_type_string;
@@ -430,7 +430,7 @@ static const char *get_ust_context_type_string(enum lttng_ust_abi_context_type c
 		 * are stored as a node of type event_perf_context_type.
 		 */
 	default:
-		context_type_string = NULL;
+		context_type_string = nullptr;
 		break;
 	}
 
@@ -452,7 +452,7 @@ static const char *get_buffer_type_string(enum lttng_buffer_type buffer_type)
 		buffer_type_string = config_buffer_type_global;
 		break;
 	default:
-		buffer_type_string = NULL;
+		buffer_type_string = nullptr;
 	}
 
 	return buffer_type_string;
@@ -473,7 +473,7 @@ static const char *get_loglevel_type_string(enum lttng_ust_abi_loglevel_type log
 		loglevel_type_string = config_loglevel_type_single;
 		break;
 	default:
-		loglevel_type_string = NULL;
+		loglevel_type_string = nullptr;
 	}
 
 	return loglevel_type_string;
@@ -522,12 +522,12 @@ static int save_kernel_kprobe_event(struct config_writer *writer, struct ltt_ker
 		 */
 		addr = event->event->u.kprobe.addr;
 		offset = event->event->u.kprobe.offset;
-		symbol_name = addr ? NULL : event->event->u.kprobe.symbol_name;
+		symbol_name = addr ? nullptr : event->event->u.kprobe.symbol_name;
 		break;
 	case LTTNG_KERNEL_ABI_KRETPROBE:
 		addr = event->event->u.kretprobe.addr;
 		offset = event->event->u.kretprobe.offset;
-		symbol_name = addr ? NULL : event->event->u.kretprobe.symbol_name;
+		symbol_name = addr ? nullptr : event->event->u.kretprobe.symbol_name;
 		break;
 	default:
 		LTTNG_ASSERT(1);
@@ -1629,7 +1629,7 @@ static int save_ust_channel(struct config_writer *writer,
 			goto end;
 		}
 	} else {
-		struct agent *agent = NULL;
+		struct agent *agent = nullptr;
 
 		agent = trace_ust_find_agent(session, ust_chan->domain);
 		if (!agent) {
@@ -1752,7 +1752,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	const char *element_id_tracker, *element_target_id, *element_id;
 	const struct process_attr_tracker *tracker;
 	enum lttng_tracking_policy tracking_policy;
-	struct lttng_process_attr_values *values = NULL;
+	struct lttng_process_attr_values *values = nullptr;
 
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -1844,7 +1844,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 
 		for (i = 0; i < count; i++) {
 			unsigned int integral_value = UINT_MAX;
-			const char *name = NULL;
+			const char *name = nullptr;
 			const struct process_attr_value *value =
 				lttng_process_attr_tracker_values_get_at_index(values, i);
 
@@ -2499,7 +2499,7 @@ static int save_session(struct ltt_session *session,
 	int ret, fd = -1;
 	char config_file_path[LTTNG_PATH_MAX];
 	size_t len;
-	struct config_writer *writer = NULL;
+	struct config_writer *writer = nullptr;
 	size_t session_name_len;
 	const char *provided_path;
 	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;

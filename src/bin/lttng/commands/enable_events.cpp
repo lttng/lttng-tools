@@ -78,26 +78,32 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "all", 'a', POPT_ARG_VAL, &opt_enable_all, 1, 0, 0 },
-	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
-	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0 },
-	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0 },
-	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, 0, 0 },
-	{ "tracepoint", 0, POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0 },
-	{ "probe", 0, POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0 },
-	{ "userspace-probe", 0, POPT_ARG_STRING, &opt_userspace_probe, OPT_USERSPACE_PROBE, 0, 0 },
-	{ "function", 0, POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0 },
-	{ "syscall", 0, POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0 },
-	{ "loglevel", 0, POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0 },
-	{ "loglevel-only", 0, POPT_ARG_STRING, 0, OPT_LOGLEVEL_ONLY, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "filter", 'f', POPT_ARG_STRING, &opt_filter, OPT_FILTER, 0, 0 },
-	{ "exclude", 'x', POPT_ARG_STRING, &opt_exclude, OPT_EXCLUDE, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_VAL, &opt_enable_all, 1, nullptr, nullptr },
+	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
+	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, nullptr, nullptr },
+	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, nullptr, nullptr },
+	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
+	{ "tracepoint", 0, POPT_ARG_NONE, nullptr, OPT_TRACEPOINT, nullptr, nullptr },
+	{ "probe", 0, POPT_ARG_STRING, &opt_probe, OPT_PROBE, nullptr, nullptr },
+	{ "userspace-probe",
+	  0,
+	  POPT_ARG_STRING,
+	  &opt_userspace_probe,
+	  OPT_USERSPACE_PROBE,
+	  nullptr,
+	  nullptr },
+	{ "function", 0, POPT_ARG_STRING, &opt_function, OPT_FUNCTION, nullptr, nullptr },
+	{ "syscall", 0, POPT_ARG_NONE, nullptr, OPT_SYSCALL, nullptr, nullptr },
+	{ "loglevel", 0, POPT_ARG_STRING, nullptr, OPT_LOGLEVEL, nullptr, nullptr },
+	{ "loglevel-only", 0, POPT_ARG_STRING, nullptr, OPT_LOGLEVEL_ONLY, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "filter", 'f', POPT_ARG_STRING, &opt_filter, OPT_FILTER, nullptr, nullptr },
+	{ "exclude", 'x', POPT_ARG_STRING, &opt_exclude, OPT_EXCLUDE, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -111,7 +117,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 #define S_HEX_LEN_SCANF_IS_A_BROKEN_API "18" /* 18 is (19 - 1) (\0 is extra) */
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
-	if (opt == NULL) {
+	if (opt == nullptr) {
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -131,7 +137,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end;
 		}
-		ev->attr.probe.offset = strtoull(s_hex, NULL, 0);
+		ev->attr.probe.offset = strtoull(s_hex, nullptr, 0);
 		DBG("probe offset %" PRIu64, ev->attr.probe.offset);
 		ev->attr.probe.addr = 0;
 		goto end;
@@ -164,7 +170,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end;
 		}
-		ev->attr.probe.addr = strtoull(s_hex, NULL, 0);
+		ev->attr.probe.addr = strtoull(s_hex, nullptr, 0);
 		DBG("probe addr %" PRIu64, ev->attr.probe.addr);
 		ev->attr.probe.offset = 0;
 		memset(ev->attr.probe.symbol_name, 0, LTTNG_SYMBOL_NAME_LEN);
@@ -253,7 +259,7 @@ static char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusio
 	length += sizeof(preamble);
 	ret = calloc<char>(length);
 	if (!ret) {
-		return NULL;
+		return nullptr;
 	}
 
 	strncpy(ret, preamble, length);
@@ -432,13 +438,13 @@ static int enable_events(char *session_name, char *event_list)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
-	char *event_name, *channel_name = NULL;
+	char *event_name, *channel_name = nullptr;
 	struct lttng_event *ev;
 	struct lttng_domain dom = {};
 	struct lttng_dynamic_pointer_array exclusions;
-	struct lttng_userspace_probe_location *uprobe_loc = NULL;
+	struct lttng_userspace_probe_location *uprobe_loc = nullptr;
 
-	lttng_dynamic_pointer_array_init(&exclusions, NULL);
+	lttng_dynamic_pointer_array_init(&exclusions, nullptr);
 
 	ev = lttng_event_create();
 	if (!ev) {
@@ -522,7 +528,7 @@ static int enable_events(char *session_name, char *event_list)
 	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -1;
 		goto error;
 	}
@@ -614,7 +620,7 @@ static int enable_events(char *session_name, char *event_list)
 				handle,
 				ev,
 				channel_name,
-				NULL,
+				nullptr,
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
 			if (ret < 0) {
@@ -824,7 +830,7 @@ static int enable_events(char *session_name, char *event_list)
 
 	/* Strip event list */
 	event_name = strtok(event_list, ",");
-	while (event_name != NULL) {
+	while (event_name != nullptr) {
 		/* Copy name and type of the event */
 		strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
 		ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
@@ -882,7 +888,7 @@ static int enable_events(char *session_name, char *event_list)
 				}
 
 				/* Ownership of the uprobe location was transferred to the event. */
-				uprobe_loc = NULL;
+				uprobe_loc = nullptr;
 				break;
 			case LTTNG_EVENT_FUNCTION:
 				ret = parse_probe_opts(ev, opt_function);
@@ -1024,7 +1030,7 @@ static int enable_events(char *session_name, char *event_list)
 				handle,
 				ev,
 				channel_name,
-				NULL,
+				nullptr,
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
 			exclusion_string = print_exclusions(&exclusions);
@@ -1212,7 +1218,7 @@ static int enable_events(char *session_name, char *event_list)
 		}
 
 		/* Next event */
-		event_name = strtok(NULL, ",");
+		event_name = strtok(nullptr, ",");
 		/* Reset warn, error and success */
 		success = 1;
 	}
@@ -1254,13 +1260,13 @@ int cmd_enable_events(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	char *session_name = NULL;
-	char *event_list = NULL;
-	const char *arg_event_list = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	char *event_list = nullptr;
+	const char *arg_event_list = nullptr;
+	const char *leftover = nullptr;
 	int event_type = -1;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	/* Default event type */
@@ -1352,7 +1358,7 @@ int cmd_enable_events(int argc, const char **argv)
 	}
 
 	arg_event_list = poptGetArg(pc);
-	if (arg_event_list == NULL && opt_enable_all == 0) {
+	if (arg_event_list == nullptr && opt_enable_all == 0) {
 		ERR("Missing event name(s).");
 		ret = CMD_ERROR;
 		goto end;
@@ -1360,7 +1366,7 @@ int cmd_enable_events(int argc, const char **argv)
 
 	if (opt_enable_all == 0) {
 		event_list = strdup(arg_event_list);
-		if (event_list == NULL) {
+		if (event_list == nullptr) {
 			PERROR("Failed to copy event name(s)");
 			ret = CMD_ERROR;
 			goto end;
@@ -1376,7 +1382,7 @@ int cmd_enable_events(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			command_ret = CMD_ERROR;
 			success = 0;
 			goto mi_closing;
@@ -1423,7 +1429,7 @@ end:
 		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	if (opt_session_name == NULL) {
+	if (opt_session_name == nullptr) {
 		free(session_name);
 	}
 

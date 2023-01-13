@@ -99,11 +99,11 @@ static void update_agent_app(const struct agent_app *app)
 /*
  * Create and init socket from uri.
  */
-static struct lttcomm_sock *init_tcp_socket(void)
+static struct lttcomm_sock *init_tcp_socket()
 {
 	int ret;
-	struct lttng_uri *uri = NULL;
-	struct lttcomm_sock *sock = NULL;
+	struct lttng_uri *uri = nullptr;
+	struct lttcomm_sock *sock = nullptr;
 	unsigned int port;
 	bool bind_succeeded = false;
 
@@ -118,7 +118,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
-	if (sock == NULL) {
+	if (sock == nullptr) {
 		ERR("agent allocating TCP socket");
 		goto error;
 	}
@@ -178,7 +178,7 @@ error:
 	if (sock) {
 		lttcomm_destroy_sock(sock);
 	}
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -302,7 +302,7 @@ static int accept_agent_connection(struct lttcomm_sock *reg_sock,
 	     new_sock->fd);
 
 	*agent_app_socket = new_sock;
-	new_sock = NULL;
+	new_sock = nullptr;
 	ret = 0;
 	goto end;
 
@@ -313,7 +313,7 @@ end:
 	return ret;
 }
 
-bool agent_tracing_is_enabled(void)
+bool agent_tracing_is_enabled()
 {
 	int enabled;
 
@@ -407,7 +407,7 @@ static void *thread_agent_management(void *data)
 		goto error;
 	}
 
-	while (1) {
+	while (true) {
 		DBG3("Manage agent polling");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -440,7 +440,7 @@ static void *thread_agent_management(void *data)
 			/* Activity on the registration socket. */
 			if (revents & LPOLLIN) {
 				struct agent_app_id new_app_id;
-				struct agent_app *new_app = NULL;
+				struct agent_app *new_app = nullptr;
 				struct lttcomm_sock *new_app_socket;
 				int new_app_socket_fd;
 
@@ -464,7 +464,7 @@ static void *thread_agent_management(void *data)
 					continue;
 				}
 				new_app_socket_fd = new_app_socket->fd;
-				new_app_socket = NULL;
+				new_app_socket = nullptr;
 
 				/*
 				 * Since this is a command socket (write then
@@ -532,7 +532,7 @@ error_poll_create:
 	DBG("Cleaning up and stopping.");
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_agent_management_thread(void *data)
@@ -552,7 +552,7 @@ static void cleanup_agent_management_thread(void *data)
 	free(notifiers);
 }
 
-bool launch_agent_management_thread(void)
+bool launch_agent_management_thread()
 {
 	struct thread_notifiers *notifiers;
 	struct lttng_thread *thread;

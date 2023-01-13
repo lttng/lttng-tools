@@ -59,6 +59,6 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 		struct lttng_bytecode **bytecode);
 int run_as_create_worker(const char *procname,
 		post_fork_cleanup_cb clean_up_func, void *clean_up_user_data);
-void run_as_destroy_worker(void);
+void run_as_destroy_worker();
 
 #endif /* _RUNAS_H */

@@ -31,16 +31,16 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int status(void)
+static int status()
 {
 	const char *argv[2];
 	int ret = CMD_SUCCESS;
-	char *session_name = NULL;
+	char *session_name = nullptr;
 
 	session_name = get_session_name();
 	if (!session_name) {
@@ -64,7 +64,7 @@ int cmd_status(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -81,7 +81,7 @@ int cmd_status(int argc, const char **argv)
 		}
 	}
 
-	if (poptPeekArg(pc) != NULL) {
+	if (poptPeekArg(pc) != nullptr) {
 		ERR("This command does not accept positional arguments.\n");
 		ret = CMD_UNDEFINED;
 		goto end;

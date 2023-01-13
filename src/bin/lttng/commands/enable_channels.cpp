@@ -73,26 +73,26 @@ const char *output_splice = "splice";
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
-	{ "discard", 0, POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0 },
-	{ "overwrite", 0, POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0 },
-	{ "subbuf-size", 0, POPT_ARG_STRING, 0, OPT_SUBBUF_SIZE, 0, 0 },
-	{ "num-subbuf", 0, POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0 },
-	{ "switch-timer", 0, POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0 },
-	{ "monitor-timer", 0, POPT_ARG_INT, 0, OPT_MONITOR_TIMER, 0, 0 },
-	{ "read-timer", 0, POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, 0, 0 },
-	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_uid, 1, 0, 0 },
-	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_pid, 1, 0, 0 },
-	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0 },
-	{ "tracefile-size", 'C', POPT_ARG_INT, 0, OPT_TRACEFILE_SIZE, 0, 0 },
-	{ "tracefile-count", 'W', POPT_ARG_INT, 0, OPT_TRACEFILE_COUNT, 0, 0 },
-	{ "blocking-timeout", 0, POPT_ARG_INT, 0, OPT_BLOCKING_TIMEOUT, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
+	{ "discard", 0, POPT_ARG_NONE, nullptr, OPT_DISCARD, nullptr, nullptr },
+	{ "overwrite", 0, POPT_ARG_NONE, nullptr, OPT_OVERWRITE, nullptr, nullptr },
+	{ "subbuf-size", 0, POPT_ARG_STRING, nullptr, OPT_SUBBUF_SIZE, nullptr, nullptr },
+	{ "num-subbuf", 0, POPT_ARG_INT, nullptr, OPT_NUM_SUBBUF, nullptr, nullptr },
+	{ "switch-timer", 0, POPT_ARG_INT, nullptr, OPT_SWITCH_TIMER, nullptr, nullptr },
+	{ "monitor-timer", 0, POPT_ARG_INT, nullptr, OPT_MONITOR_TIMER, nullptr, nullptr },
+	{ "read-timer", 0, POPT_ARG_INT, nullptr, OPT_READ_TIMER, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
+	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_uid, 1, nullptr, nullptr },
+	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_pid, 1, nullptr, nullptr },
+	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_global, 1, nullptr, nullptr },
+	{ "tracefile-size", 'C', POPT_ARG_INT, nullptr, OPT_TRACEFILE_SIZE, nullptr, nullptr },
+	{ "tracefile-count", 'W', POPT_ARG_INT, nullptr, OPT_TRACEFILE_COUNT, nullptr, nullptr },
+	{ "blocking-timeout", 0, POPT_ARG_INT, nullptr, OPT_BLOCKING_TIMEOUT, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -139,7 +139,7 @@ static void set_default_attr(struct lttng_domain *dom)
  */
 static int enable_channel(char *session_name, char *channel_list)
 {
-	struct lttng_channel *channel = NULL;
+	struct lttng_channel *channel = nullptr;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
 	char *channel_name;
 	struct lttng_domain dom;
@@ -215,7 +215,7 @@ static int enable_channel(char *session_name, char *channel_list)
 	}
 
 	handle = lttng_create_handle(session_name, &dom);
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -1;
 		goto error;
 	}
@@ -232,7 +232,7 @@ static int enable_channel(char *session_name, char *channel_list)
 
 	/* Strip channel list (format: chan1,chan2,...) */
 	channel_name = strtok(channel_list, ",");
-	while (channel_name != NULL) {
+	while (channel_name != nullptr) {
 		void *extended_ptr;
 
 		/* Validate channel name's length */
@@ -343,9 +343,9 @@ static int enable_channel(char *session_name, char *channel_list)
 		}
 
 		/* Next channel */
-		channel_name = strtok(NULL, ",");
+		channel_name = strtok(nullptr, ",");
 		lttng_channel_destroy(channel);
-		channel = NULL;
+		channel = nullptr;
 	}
 
 	if (lttng_opt_mi) {
@@ -380,14 +380,14 @@ error:
 /*
  * Default value for channel configuration.
  */
-static void init_channel_config(void)
+static void init_channel_config()
 {
 	/*
 	 * Put -1 everywhere so we can identify those set by the command line and
 	 * those needed to be set by the default values.
 	 */
 	memset(&chan_opts.attr, -1, sizeof(chan_opts.attr));
-	chan_opts.attr.extended.ptr = NULL;
+	chan_opts.attr.extended.ptr = nullptr;
 }
 
 /*
@@ -397,15 +397,15 @@ int cmd_enable_channels(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	char *session_name = NULL;
-	char *channel_list = NULL;
-	char *opt_arg = NULL;
-	const char *arg_channel_list = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	char *channel_list = nullptr;
+	char *opt_arg = nullptr;
+	const char *arg_channel_list = nullptr;
+	const char *leftover = nullptr;
 
 	init_channel_config();
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -467,7 +467,7 @@ int cmd_enable_channels(int argc, const char **argv)
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			chan_opts.attr.num_subbuf = strtoull(opt_arg, NULL, 0);
+			chan_opts.attr.num_subbuf = strtoull(opt_arg, nullptr, 0);
 			if (errno != 0 || !chan_opts.attr.num_subbuf || !isdigit(opt_arg[0])) {
 				ERR("Wrong value in --num-subbuf parameter: %s", opt_arg);
 				ret = CMD_ERROR;
@@ -638,7 +638,7 @@ int cmd_enable_channels(int argc, const char **argv)
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			v = strtoul(opt_arg, NULL, 0);
+			v = strtoul(opt_arg, nullptr, 0);
 			if (errno != 0 || !isdigit(opt_arg[0])) {
 				ERR("Wrong value in --tracefile-count parameter: %s", opt_arg);
 				ret = CMD_ERROR;
@@ -707,7 +707,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	}
 
 	arg_channel_list = poptGetArg(pc);
-	if (arg_channel_list == NULL) {
+	if (arg_channel_list == nullptr) {
 		ERR("Missing channel name.");
 		ret = CMD_ERROR;
 		success = 0;
@@ -715,7 +715,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	}
 
 	channel_list = strdup(arg_channel_list);
-	if (channel_list == NULL) {
+	if (channel_list == nullptr) {
 		PERROR("Failed to copy channel name");
 		ret = CMD_ERROR;
 		success = 0;
@@ -732,7 +732,7 @@ int cmd_enable_channels(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			command_ret = CMD_ERROR;
 			success = 0;
 			goto mi_closing;

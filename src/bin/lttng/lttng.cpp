@@ -29,7 +29,7 @@ static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng.1.h>
 #else
-	NULL
+	nullptr
 #endif
 	;
 
@@ -48,18 +48,18 @@ enum {
 };
 
 /* Getopt options. No first level command. */
-static struct option long_options[] = { { "version", 0, NULL, 'V' },
-					{ "help", 0, NULL, 'h' },
-					{ "group", 1, NULL, 'g' },
-					{ "verbose", 0, NULL, 'v' },
-					{ "quiet", 0, NULL, 'q' },
-					{ "mi", 1, NULL, 'm' },
-					{ "no-sessiond", 0, NULL, 'n' },
-					{ "sessiond-path", 1, NULL, OPT_SESSION_PATH },
-					{ "relayd-path", 1, NULL, OPT_RELAYD_PATH },
-					{ "list-options", 0, NULL, OPT_DUMP_OPTIONS },
-					{ "list-commands", 0, NULL, OPT_DUMP_COMMANDS },
-					{ NULL, 0, NULL, 0 } };
+static struct option long_options[] = { { "version", 0, nullptr, 'V' },
+					{ "help", 0, nullptr, 'h' },
+					{ "group", 1, nullptr, 'g' },
+					{ "verbose", 0, nullptr, 'v' },
+					{ "quiet", 0, nullptr, 'q' },
+					{ "mi", 1, nullptr, 'm' },
+					{ "no-sessiond", 0, nullptr, 'n' },
+					{ "sessiond-path", 1, nullptr, OPT_SESSION_PATH },
+					{ "relayd-path", 1, nullptr, OPT_RELAYD_PATH },
+					{ "list-options", 0, nullptr, OPT_DUMP_OPTIONS },
+					{ "list-commands", 0, nullptr, OPT_DUMP_COMMANDS },
+					{ nullptr, 0, nullptr, 0 } };
 
 /* First level command */
 static struct cmd_struct commands[] = {
@@ -72,7 +72,7 @@ static struct cmd_struct commands[] = {
 	{ "disable-event", cmd_disable_events },
 	{ "enable-channel", cmd_enable_channels },
 	{ "enable-event", cmd_enable_events },
-	{ "help", NULL },
+	{ "help", nullptr },
 	{ "list", cmd_list },
 	{ "list-triggers", cmd_list_triggers },
 	{ "load", cmd_load },
@@ -92,7 +92,7 @@ static struct cmd_struct commands[] = {
 	{ "untrack", cmd_untrack },
 	{ "version", cmd_version },
 	{ "view", cmd_view },
-	{ NULL, NULL } /* Array closure */
+	{ nullptr, nullptr } /* Array closure */
 };
 
 static void version(FILE *ofp)
@@ -132,10 +132,10 @@ static int mi_output_type(const char *output_type)
 static void list_options(FILE *ofp)
 {
 	int i = 0;
-	struct option *option = NULL;
+	struct option *option = nullptr;
 
 	option = &long_options[i];
-	while (option->name != NULL) {
+	while (option->name != nullptr) {
 		fprintf(ofp, "--%s\n", option->name);
 
 		if (isprint(option->val)) {
@@ -181,7 +181,7 @@ static void sighandler(int sig)
  *
  *  Setup signal handler for SIGCHLD and SIGTERM.
  */
-static int set_signal_handler(void)
+static int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -196,7 +196,7 @@ static int set_signal_handler(void)
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
 
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		goto end;
 	}
@@ -219,7 +219,7 @@ static int handle_command(int argc, char **argv)
 	int i = 0, ret;
 	struct cmd_struct *cmd;
 
-	if (*argv == NULL) {
+	if (*argv == nullptr) {
 		ret = CMD_SUCCESS;
 		goto end;
 	}
@@ -231,7 +231,7 @@ static int handle_command(int argc, char **argv)
 	}
 
 	cmd = &commands[i];
-	while (cmd->name != NULL) {
+	while (cmd->name != nullptr) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			ret = cmd->func(argc, (const char **) argv);
@@ -253,7 +253,7 @@ static bool command_exists(const char *command)
 	const struct cmd_struct *cmd = commands;
 	bool exists = false;
 
-	while (cmd->name != NULL) {
+	while (cmd->name != nullptr) {
 		if (!strcmp(command, cmd->name)) {
 			exists = true;
 			goto end;
@@ -265,7 +265,7 @@ end:
 	return exists;
 }
 
-static void show_basic_help(void)
+static void show_basic_help()
 {
 	puts("Usage: lttng [--group=GROUP] [--mi=TYPE] [--no-sessiond | --sessiond-path=PATH]");
 	puts("             [--quiet | -v | -vv | -vvv] COMMAND [COMMAND OPTIONS]");
@@ -344,7 +344,7 @@ static int parse_args(int argc, char **argv)
 		clean_exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt_long(argc, argv, "+Vhnvqg:m:", long_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+Vhnvqg:m:", long_options, nullptr)) != -1) {
 		switch (opt) {
 		case 'V':
 			version(stdout);

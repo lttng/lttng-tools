@@ -121,7 +121,7 @@ public:
 			_mappings;
 
 protected:
-	virtual bool _is_equal(const registry_enum& base_other) const noexcept
+	bool _is_equal(const registry_enum& base_other) const noexcept override
 	{
 		const auto &other = static_cast<decltype(*this)&>(base_other);
 

@@ -349,7 +349,7 @@ static int use_clone(void)
 	return 0;
 }
 #else
-static int use_clone(void)
+static int use_clone()
 {
 	return !lttng_secure_getenv("LTTNG_DEBUG_NOCLONE");
 }
@@ -517,7 +517,7 @@ end:
 static int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *old_path, *new_path;
-	struct lttng_directory_handle *old_handle = NULL, *new_handle = NULL;
+	struct lttng_directory_handle *old_handle = nullptr, *new_handle = nullptr;
 
 	old_path = data->u.rename.old_path;
 	new_path = data->u.rename.new_path;
@@ -569,7 +569,7 @@ static int _extract_elf_symbol_offset(struct run_as_data *data, struct run_as_re
 static int _extract_sdt_probe_offsets(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
-	uint64_t *offsets = NULL;
+	uint64_t *offsets = nullptr;
 	uint32_t num_offset;
 
 	ret_value->_error = false;
@@ -625,8 +625,8 @@ static int _extract_sdt_probe_offsets(struct run_as_data *data __attribute__((un
 static int _generate_filter_bytecode(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
-	const char *filter_expression = NULL;
-	struct filter_parser_ctx *ctx = NULL;
+	const char *filter_expression = nullptr;
+	struct filter_parser_ctx *ctx = nullptr;
 
 	ret_value->_error = false;
 
@@ -694,7 +694,7 @@ static run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 		return _generate_filter_bytecode;
 	default:
 		ERR("Unknown command %d", (int) cmd);
-		return NULL;
+		return nullptr;
 	}
 }
 
@@ -867,11 +867,11 @@ end:
 static int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gid)
 {
 	int ret;
-	char *buf = NULL;
+	char *buf = nullptr;
 	long raw_get_pw_buf_size;
 	size_t get_pw_buf_size;
 	struct passwd pwd;
-	struct passwd *result = NULL;
+	struct passwd *result = nullptr;
 
 	/* Fetch the max size for the temporary buffer. */
 	errno = 0;
@@ -891,7 +891,7 @@ static int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gi
 	get_pw_buf_size = (size_t) raw_get_pw_buf_size;
 
 	buf = calloc<char>(get_pw_buf_size);
-	if (buf == NULL) {
+	if (buf == nullptr) {
 		PERROR("Failed to allocate buffer to get password file entries");
 		goto error;
 	}
@@ -902,14 +902,14 @@ static int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gi
 		goto error;
 	}
 
-	if (result == NULL) {
+	if (result == nullptr) {
 		ERR("Failed to find user information in password entries: uid = %d", (int) uid);
 		ret = -1;
 		goto error;
 	}
 
 	*username = strdup(result->pw_name);
-	if (*username == NULL) {
+	if (*username == nullptr) {
 		PERROR("Failed to copy user name");
 		goto error;
 	}
@@ -920,7 +920,7 @@ end:
 	free(buf);
 	return ret;
 error:
-	*username = NULL;
+	*username = nullptr;
 	*primary_gid = -1;
 	ret = -1;
 	goto end;
@@ -930,7 +930,7 @@ static int demote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new
 {
 	int ret = 0;
 	gid_t primary_gid;
-	char *username = NULL;
+	char *username = nullptr;
 
 	/* Change the group id. */
 	if (prev_gid != new_gid) {
@@ -997,7 +997,7 @@ static int promote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t ne
 {
 	int ret = 0;
 	gid_t primary_gid;
-	char *username = NULL;
+	char *username = nullptr;
 
 	/* Change the group id. */
 	if (prev_gid != new_gid) {
@@ -1316,7 +1316,7 @@ end:
 	return ret;
 }
 
-static int reset_sighandler(void)
+static int reset_sighandler()
 {
 	int sig;
 
@@ -1345,7 +1345,7 @@ static void worker_sighandler(int sig)
 		signame = "SIGTERM";
 		break;
 	default:
-		signame = NULL;
+		signame = nullptr;
 	}
 
 	if (signame) {
@@ -1355,7 +1355,7 @@ static void worker_sighandler(int sig)
 	}
 }
 
-static int set_worker_sighandlers(void)
+static int set_worker_sighandlers()
 {
 	int ret = 0;
 	sigset_t sigset;
@@ -1369,12 +1369,12 @@ static int set_worker_sighandlers(void)
 	sa.sa_handler = worker_sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
-	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
 		PERROR("sigaction SIGINT");
 		goto end;
 	}
 
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
 		PERROR("sigaction SIGTERM");
 		goto end;
 	}
@@ -1510,7 +1510,7 @@ error_procname_alloc:
 	return ret;
 }
 
-static void run_as_destroy_worker_no_lock(void)
+static void run_as_destroy_worker_no_lock()
 {
 	run_as_worker_data *worker = global_worker;
 
@@ -1551,13 +1551,13 @@ static void run_as_destroy_worker_no_lock(void)
 	}
 	free(worker->procname);
 	free(worker);
-	global_worker = NULL;
+	global_worker = nullptr;
 }
 
 static int run_as_restart_worker(run_as_worker_data *worker)
 {
 	int ret = 0;
-	char *procname = NULL;
+	char *procname = nullptr;
 
 	procname = worker->procname;
 
@@ -1565,7 +1565,7 @@ static int run_as_restart_worker(run_as_worker_data *worker)
 	run_as_destroy_worker_no_lock();
 
 	/* Create a new run_as worker process*/
-	ret = run_as_create_worker_no_lock(procname, NULL, NULL);
+	ret = run_as_create_worker_no_lock(procname, nullptr, nullptr);
 	if (ret < 0) {
 		ERR("Restarting the worker process failed");
 		ret = -1;
@@ -1957,8 +1957,8 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
-	const struct lttng_bytecode *view_bytecode = NULL;
-	struct lttng_bytecode *local_bytecode = NULL;
+	const struct lttng_bytecode *view_bytecode = nullptr;
+	struct lttng_bytecode *local_bytecode = nullptr;
 	const uid_t uid = lttng_credentials_get_uid(creds);
 	const gid_t gid = lttng_credentials_get_gid(creds);
 
@@ -2010,7 +2010,7 @@ int run_as_create_worker(const char *procname,
 	return ret;
 }
 
-void run_as_destroy_worker(void)
+void run_as_destroy_worker()
 {
 	pthread_mutex_lock(&worker_lock);
 	run_as_destroy_worker_no_lock();

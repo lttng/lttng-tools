@@ -117,7 +117,7 @@ int ini_parse_file(FILE *file, ini_entry_handler handler, void *user)
 #endif
 
 	/* Scan through file line by line */
-	while (fgets(line, INI_MAX_LINE, file) != NULL) {
+	while (fgets(line, INI_MAX_LINE, file) != nullptr) {
 		lineno++;
 
 		start = line;

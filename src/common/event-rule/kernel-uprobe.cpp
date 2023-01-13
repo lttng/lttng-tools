@@ -146,7 +146,7 @@ static const char *lttng_event_rule_kernel_uprobe_get_filter(const struct lttng_
 							     __attribute__((unused)))
 {
 	/* Unsupported. */
-	return NULL;
+	return nullptr;
 }
 
 static const struct lttng_bytecode *
@@ -154,7 +154,7 @@ lttng_event_rule_kernel_uprobe_get_filter_bytecode(const struct lttng_event_rule
 						   __attribute__((unused)))
 {
 	/* Unsupported. */
-	return NULL;
+	return nullptr;
 }
 
 static enum lttng_event_rule_generate_exclusions_status
@@ -163,7 +163,7 @@ lttng_event_rule_kernel_uprobe_generate_exclusions(const struct lttng_event_rule
 						   struct lttng_event_exclusion **exclusions)
 {
 	/* Unsupported. */
-	*exclusions = NULL;
+	*exclusions = nullptr;
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
@@ -184,7 +184,7 @@ static int userspace_probe_set_location(struct lttng_event_rule_kernel_uprobe *u
 					const struct lttng_userspace_probe_location *location)
 {
 	int ret;
-	struct lttng_userspace_probe_location *location_copy = NULL;
+	struct lttng_userspace_probe_location *location_copy = nullptr;
 
 	if (!uprobe || !location || uprobe->location) {
 		ret = -1;
@@ -198,7 +198,7 @@ static int userspace_probe_set_location(struct lttng_event_rule_kernel_uprobe *u
 	}
 
 	uprobe->location = location_copy;
-	location_copy = NULL;
+	location_copy = nullptr;
 	ret = 0;
 end:
 	lttng_userspace_probe_location_destroy(location_copy);
@@ -212,8 +212,8 @@ lttng_event_rule_kernel_uprobe_mi_serialize(const struct lttng_event_rule *rule,
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_event_rule_status status;
-	const char *event_name = NULL;
-	const struct lttng_userspace_probe_location *location = NULL;
+	const char *event_name = nullptr;
+	const struct lttng_userspace_probe_location *location = nullptr;
 
 	LTTNG_ASSERT(rule);
 	LTTNG_ASSERT(writer);
@@ -264,7 +264,7 @@ end:
 struct lttng_event_rule *
 lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_location *location)
 {
-	struct lttng_event_rule *rule = NULL;
+	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_kernel_uprobe *urule;
 
 	urule = zmalloc<lttng_event_rule_kernel_uprobe>();
@@ -288,7 +288,7 @@ lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_locatio
 
 	if (userspace_probe_set_location(urule, location)) {
 		lttng_event_rule_destroy(rule);
-		rule = NULL;
+		rule = nullptr;
 	}
 
 end:
@@ -302,8 +302,8 @@ ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(struct lttng_payload_
 	const struct lttng_event_rule_kernel_uprobe_comm *uprobe_comm;
 	const char *name;
 	struct lttng_buffer_view current_buffer_view;
-	struct lttng_event_rule *rule = NULL;
-	struct lttng_userspace_probe_location *location = NULL;
+	struct lttng_event_rule *rule = nullptr;
+	struct lttng_userspace_probe_location *location = nullptr;
 	enum lttng_event_rule_status status;
 
 	if (!_event_rule) {
@@ -384,7 +384,7 @@ ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(struct lttng_payload_
 	}
 
 	*_event_rule = rule;
-	rule = NULL;
+	rule = nullptr;
 	ret = offset;
 end:
 	lttng_userspace_probe_location_destroy(location);
@@ -427,7 +427,7 @@ lttng_event_rule_kernel_uprobe_get_location_mutable(const struct lttng_event_rul
 enum lttng_event_rule_status
 lttng_event_rule_kernel_uprobe_set_event_name(struct lttng_event_rule *rule, const char *name)
 {
-	char *name_copy = NULL;
+	char *name_copy = nullptr;
 	struct lttng_event_rule_kernel_uprobe *uprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
@@ -448,7 +448,7 @@ lttng_event_rule_kernel_uprobe_set_event_name(struct lttng_event_rule *rule, con
 	}
 
 	uprobe->name = name_copy;
-	name_copy = NULL;
+	name_copy = nullptr;
 end:
 	return status;
 }

@@ -256,7 +256,7 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 	}
 
 	new_sock = lttcomm_alloc_sock(sock->proto);
-	if (new_sock == NULL) {
+	if (new_sock == nullptr) {
 		goto error;
 	}
 
@@ -296,7 +296,7 @@ error_close:
 
 error:
 	free(new_sock);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -480,7 +480,7 @@ static unsigned long read_proc_value(const char *path)
 	buf[size_ret] = '\0';
 
 	errno = 0;
-	r_val = strtol(buf, NULL, 10);
+	r_val = strtol(buf, nullptr, 10);
 	if (errno != 0 || r_val < -1L) {
 		val = 0;
 		goto error_close;
@@ -499,7 +499,7 @@ error:
 	return val;
 }
 
-void lttcomm_inet_init(void)
+void lttcomm_inet_init()
 {
 	unsigned long syn_retries, fin_timeout, syn_timeout, env;
 

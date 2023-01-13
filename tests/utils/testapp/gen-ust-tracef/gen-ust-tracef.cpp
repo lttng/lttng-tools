@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 	int i;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
-	char *tmp_file_path = NULL;
+	char *tmp_file_path = nullptr;
 
 	if (set_signal_handler()) {
 		return 1;

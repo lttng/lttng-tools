@@ -67,7 +67,7 @@ lttng_error_query_result_counter_create(
 
 void lttng_error_query_result_destroy(struct lttng_error_query_result *result);
 
-struct lttng_error_query_results *lttng_error_query_results_create(void);
+struct lttng_error_query_results *lttng_error_query_results_create();
 
 /* Ownership of `result` is transferred on success. */
 int lttng_error_query_results_add_result(

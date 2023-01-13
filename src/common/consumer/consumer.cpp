@@ -79,7 +79,7 @@ int data_consumption_paused;
  */
 int consumer_quit;
 
-static const char *get_consumer_domain(void)
+static const char *get_consumer_domain()
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -100,7 +100,7 @@ static const char *get_consumer_domain(void)
  */
 static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 {
-	struct lttng_consumer_stream *null_stream = NULL;
+	struct lttng_consumer_stream *null_stream = nullptr;
 
 	LTTNG_ASSERT(pipe);
 
@@ -138,7 +138,7 @@ static void notify_channel_pipe(struct lttng_consumer_local_data *ctx,
 
 void notify_thread_del_channel(struct lttng_consumer_local_data *ctx, uint64_t key)
 {
-	notify_channel_pipe(ctx, NULL, key, CONSUMER_CHANNEL_DEL);
+	notify_channel_pipe(ctx, nullptr, key, CONSUMER_CHANNEL_DEL);
 }
 
 static int read_channel_pipe(struct lttng_consumer_local_data *ctx,
@@ -180,7 +180,7 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 		 * global hash table.
 		 */
 		stream->monitor = 0;
-		consumer_stream_destroy(stream, NULL);
+		consumer_stream_destroy(stream, nullptr);
 	}
 }
 
@@ -192,20 +192,20 @@ static struct lttng_consumer_stream *find_stream(uint64_t key, struct lttng_ht *
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
-	struct lttng_consumer_stream *stream = NULL;
+	struct lttng_consumer_stream *stream = nullptr;
 
 	LTTNG_ASSERT(ht);
 
 	/* -1ULL keys are lookup failures */
 	if (key == (uint64_t) -1ULL) {
-		return NULL;
+		return nullptr;
 	}
 
 	rcu_read_lock();
 
 	lttng_ht_lookup(ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node != NULL) {
+	if (node != nullptr) {
 		stream = lttng::utils::container_of(node, &lttng_consumer_stream::node);
 	}
 
@@ -242,18 +242,18 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
-	struct lttng_consumer_channel *channel = NULL;
+	struct lttng_consumer_channel *channel = nullptr;
 
 	ASSERT_RCU_READ_LOCKED();
 
 	/* -1ULL keys are lookup failures */
 	if (key == (uint64_t) -1ULL) {
-		return NULL;
+		return nullptr;
 	}
 
 	lttng_ht_lookup(the_consumer_data.channel_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node != NULL) {
+	if (node != nullptr) {
 		channel = lttng::utils::container_of(node, &lttng_consumer_channel::node);
 	}
 
@@ -338,7 +338,7 @@ void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 	int ret;
 	struct lttng_ht_iter iter;
 
-	if (relayd == NULL) {
+	if (relayd == nullptr) {
 		return;
 	}
 
@@ -398,7 +398,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	}
 
 	lttng_trace_chunk_put(channel->trace_chunk);
-	channel->trace_chunk = NULL;
+	channel->trace_chunk = nullptr;
 
 	if (channel->is_published) {
 		int ret;
@@ -425,7 +425,7 @@ end:
  * Iterate over the relayd hash table and destroy each element. Finally,
  * destroy the whole hash table.
  */
-static void cleanup_relayd_ht(void)
+static void cleanup_relayd_ht()
 {
 	struct lttng_ht_iter iter;
 	struct consumer_relayd_sock_pair *relayd;
@@ -635,7 +635,7 @@ static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &relayd->net_seq_idx, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node != NULL) {
+	if (node != nullptr) {
 		goto end;
 	}
 	lttng_ht_add_unique_u64(the_consumer_data.relayd_ht, &relayd->node);
@@ -649,7 +649,7 @@ end:
  */
 static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint64_t net_seq_idx)
 {
-	struct consumer_relayd_sock_pair *obj = NULL;
+	struct consumer_relayd_sock_pair *obj = nullptr;
 
 	/* net sequence index of -1 is a failure */
 	if (net_seq_idx == (uint64_t) -1ULL) {
@@ -657,7 +657,7 @@ static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint
 	}
 
 	obj = zmalloc<consumer_relayd_sock_pair>();
-	if (obj == NULL) {
+	if (obj == nullptr) {
 		PERROR("zmalloc relayd sock");
 		goto error;
 	}
@@ -668,7 +668,7 @@ static struct consumer_relayd_sock_pair *consumer_allocate_relayd_sock_pair(uint
 	obj->control_sock.sock.fd = -1;
 	obj->data_sock.sock.fd = -1;
 	lttng_ht_node_init_u64(&obj->node, obj->net_seq_idx);
-	pthread_mutex_init(&obj->ctrl_sock_mutex, NULL);
+	pthread_mutex_init(&obj->ctrl_sock_mutex, nullptr);
 
 error:
 	return obj;
@@ -685,7 +685,7 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 
 	ASSERT_RCU_READ_LOCKED();
 
@@ -696,7 +696,7 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node != NULL) {
+	if (node != nullptr) {
 		relayd = lttng::utils::container_of(node, &consumer_relayd_sock_pair::node);
 	}
 
@@ -721,7 +721,7 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream, char *path
 	/* The stream is not metadata. Get relayd reference if exists. */
 	rcu_read_lock();
 	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd != NULL) {
+	if (relayd != nullptr) {
 		/* Add stream on the relayd */
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_add_stream(&relayd->control_sock,
@@ -775,7 +775,7 @@ int consumer_send_relayd_streams_sent(uint64_t net_seq_idx)
 	/* The stream is not metadata. Get relayd reference if exists. */
 	rcu_read_lock();
 	relayd = consumer_find_relayd(net_seq_idx);
-	if (relayd != NULL) {
+	if (relayd != nullptr) {
 		/* Add stream on the relayd */
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_streams_sent(&relayd->control_sock);
@@ -1010,8 +1010,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 							 const char *root_shm_path,
 							 const char *shm_path)
 {
-	struct lttng_consumer_channel *channel = NULL;
-	struct lttng_trace_chunk *trace_chunk = NULL;
+	struct lttng_consumer_channel *channel = nullptr;
+	struct lttng_trace_chunk *trace_chunk = nullptr;
 
 	if (chunk_id) {
 		trace_chunk = lttng_trace_chunk_registry_find_chunk(
@@ -1023,7 +1023,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	}
 
 	channel = zmalloc<lttng_consumer_channel>();
-	if (channel == NULL) {
+	if (channel == nullptr) {
 		PERROR("malloc struct lttng_consumer_channel");
 		goto end;
 	}
@@ -1038,8 +1038,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->monitor = monitor;
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
-	pthread_mutex_init(&channel->lock, NULL);
-	pthread_mutex_init(&channel->timer_lock, NULL);
+	pthread_mutex_init(&channel->lock, nullptr);
+	pthread_mutex_init(&channel->timer_lock, nullptr);
 
 	switch (output) {
 	case LTTNG_EVENT_SPLICE:
@@ -1051,7 +1051,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	default:
 		abort();
 		free(channel);
-		channel = NULL;
+		channel = nullptr;
 		goto end;
 	}
 
@@ -1103,7 +1103,7 @@ end:
 	return channel;
 error:
 	consumer_del_channel(channel);
-	channel = NULL;
+	channel = nullptr;
 	goto end;
 }
 
@@ -1271,7 +1271,7 @@ int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx, int cmd)
  * Close all the tracefiles and stream fds and MUST be called when all
  * instances are destroyed i.e. when all threads were joined and are ended.
  */
-void lttng_consumer_cleanup(void)
+void lttng_consumer_cleanup()
 {
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_channel *channel;
@@ -1414,14 +1414,14 @@ lttng_consumer_create(enum lttng_consumer_type type,
 	the_consumer_data.type = type;
 
 	ctx = zmalloc<lttng_consumer_local_data>();
-	if (ctx == NULL) {
+	if (ctx == nullptr) {
 		PERROR("allocating context");
 		goto error;
 	}
 
 	ctx->consumer_error_socket = -1;
 	ctx->consumer_metadata_socket = -1;
-	pthread_mutex_init(&ctx->metadata_socket_lock, NULL);
+	pthread_mutex_init(&ctx->metadata_socket_lock, nullptr);
 	/* assign the callbacks */
 	ctx->on_buffer_ready = buffer_ready;
 	ctx->on_recv_channel = recv_channel;
@@ -1470,7 +1470,7 @@ error_wakeup_pipe:
 error_poll_pipe:
 	free(ctx);
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1481,7 +1481,7 @@ static void destroy_data_stream_ht(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
-	if (ht == NULL) {
+	if (ht == nullptr) {
 		return;
 	}
 
@@ -1507,7 +1507,7 @@ static void destroy_metadata_stream_ht(struct lttng_ht *ht)
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 
-	if (ht == NULL) {
+	if (ht == nullptr) {
 		return;
 	}
 
@@ -1615,7 +1615,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(struct lttng_consumer_stream *stre
 	off_t orig_offset = stream->out_fd_offset;
 	/* Default is on the disk */
 	int outfd = stream->out_fd;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 	unsigned int relayd_hang_up = 0;
 	const size_t subbuf_content_size = buffer->size - padding;
 	size_t write_len;
@@ -1627,7 +1627,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(struct lttng_consumer_stream *stre
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
-		if (relayd == NULL) {
+		if (relayd == nullptr) {
 			ret = -EPIPE;
 			goto end;
 		}
@@ -1783,7 +1783,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(struct lttng_consumer_local_data
 	int fd = stream->wait_fd;
 	/* Default is on the disk */
 	int outfd = stream->out_fd;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 	int *splice_pipe;
 	unsigned int relayd_hang_up = 0;
 
@@ -1805,7 +1805,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(struct lttng_consumer_local_data
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		relayd = consumer_find_relayd(stream->net_seq_idx);
-		if (relayd == NULL) {
+		if (relayd == nullptr) {
 			written = -ret;
 			goto end;
 		}
@@ -1886,7 +1886,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(struct lttng_consumer_local_data
 		    fd,
 		    splice_pipe[1]);
 		ret_splice = splice(
-			fd, &offset, splice_pipe[1], NULL, len, SPLICE_F_MOVE | SPLICE_F_MORE);
+			fd, &offset, splice_pipe[1], nullptr, len, SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("splice chan to pipe, ret %zd", ret_splice);
 		if (ret_splice < 0) {
 			ret = errno;
@@ -1912,9 +1912,9 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(struct lttng_consumer_local_data
 
 		/* Splice data out */
 		ret_splice = splice(splice_pipe[0],
-				    NULL,
+				    nullptr,
 				    outfd,
-				    NULL,
+				    nullptr,
 				    ret_splice,
 				    SPLICE_F_MOVE | SPLICE_F_MORE);
 		DBG("Consumer splice pipe to file (out_fd: %d), ret %zd", outfd, ret_splice);
@@ -2083,7 +2083,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-static void lttng_consumer_close_all_metadata(void)
+static void lttng_consumer_close_all_metadata()
 {
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -2114,7 +2114,7 @@ static void lttng_consumer_close_all_metadata(void)
  */
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct lttng_ht *ht)
 {
-	struct lttng_consumer_channel *channel = NULL;
+	struct lttng_consumer_channel *channel = nullptr;
 	bool free_channel = false;
 
 	LTTNG_ASSERT(stream);
@@ -2154,14 +2154,14 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct l
 		/* Go for channel deletion! */
 		free_channel = true;
 	}
-	stream->chan = NULL;
+	stream->chan = nullptr;
 
 	/*
 	 * Nullify the stream reference so it is not used after deletion. The
 	 * channel lock MUST be acquired before being able to check for a NULL
 	 * pointer value.
 	 */
-	channel->metadata_stream = NULL;
+	channel->metadata_stream = nullptr;
 
 	if (channel->metadata_cache) {
 		pthread_mutex_unlock(&channel->metadata_cache->lock);
@@ -2175,7 +2175,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct l
 	}
 
 	lttng_trace_chunk_put(stream->trace_chunk);
-	stream->trace_chunk = NULL;
+	stream->trace_chunk = nullptr;
 	consumer_stream_free(stream);
 }
 
@@ -2249,7 +2249,7 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 /*
  * Delete data stream that are flagged for deletion (endpoint_status).
  */
-static void validate_endpoint_status_data_stream(void)
+static void validate_endpoint_status_data_stream()
 {
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
@@ -2306,7 +2306,7 @@ void *consumer_thread_metadata_poll(void *data)
 {
 	int ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;
-	struct lttng_consumer_stream *stream = NULL;
+	struct lttng_consumer_stream *stream = nullptr;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_poll_event events;
@@ -2340,7 +2340,7 @@ void *consumer_thread_metadata_poll(void *data)
 	/* Main loop */
 	DBG("Metadata main loop started");
 
-	while (1) {
+	while (true) {
 	restart:
 		health_code_update();
 		health_poll_entry();
@@ -2393,7 +2393,7 @@ void *consumer_thread_metadata_poll(void *data)
 					}
 
 					/* A NULL stream means that the state has changed. */
-					if (stream == NULL) {
+					if (stream == nullptr) {
 						/* Check for deleted streams. */
 						validate_endpoint_status_metadata_stream(&events);
 						goto restart;
@@ -2513,7 +2513,7 @@ error_testpoint:
 	}
 	health_unregister(health_consumerd);
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -2523,9 +2523,9 @@ error_testpoint:
 void *consumer_thread_data_poll(void *data)
 {
 	int num_rdy, num_hup, high_prio, ret, i, err = -1;
-	struct pollfd *pollfd = NULL;
+	struct pollfd *pollfd = nullptr;
 	/* local view of the streams */
-	struct lttng_consumer_stream **local_stream = NULL, *new_stream = NULL;
+	struct lttng_consumer_stream **local_stream = nullptr, *new_stream = nullptr;
 	/* local view of consumer_data.fds_count */
 	int nb_fd = 0;
 	/* 2 for the consumer_data_pipe and wake up pipe */
@@ -2546,12 +2546,12 @@ void *consumer_thread_data_poll(void *data)
 	health_code_update();
 
 	local_stream = zmalloc<lttng_consumer_stream *>();
-	if (local_stream == NULL) {
+	if (local_stream == nullptr) {
 		PERROR("local_stream malloc");
 		goto end;
 	}
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		high_prio = 0;
@@ -2564,15 +2564,15 @@ void *consumer_thread_data_poll(void *data)
 		pthread_mutex_lock(&the_consumer_data.lock);
 		if (the_consumer_data.need_update) {
 			free(pollfd);
-			pollfd = NULL;
+			pollfd = nullptr;
 
 			free(local_stream);
-			local_stream = NULL;
+			local_stream = nullptr;
 
 			/* Allocate for all fds */
 			pollfd =
 				calloc<struct pollfd>(the_consumer_data.stream_count + nb_pipes_fd);
-			if (pollfd == NULL) {
+			if (pollfd == nullptr) {
 				PERROR("pollfd malloc");
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
@@ -2580,7 +2580,7 @@ void *consumer_thread_data_poll(void *data)
 
 			local_stream = calloc<lttng_consumer_stream *>(
 				the_consumer_data.stream_count + nb_pipes_fd);
-			if (local_stream == NULL) {
+			if (local_stream == nullptr) {
 				PERROR("local_stream malloc");
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
@@ -2656,7 +2656,7 @@ void *consumer_thread_data_poll(void *data)
 			 * the sessiond poll thread changed the consumer_quit state and is
 			 * waking us up to test it.
 			 */
-			if (new_stream == NULL) {
+			if (new_stream == nullptr) {
 				validate_endpoint_status_data_stream();
 				continue;
 			}
@@ -2683,7 +2683,7 @@ void *consumer_thread_data_poll(void *data)
 		for (i = 0; i < nb_fd; i++) {
 			health_code_update();
 
-			if (local_stream[i] == NULL) {
+			if (local_stream[i] == nullptr) {
 				continue;
 			}
 			if (pollfd[i].revents & POLLPRI) {
@@ -2694,7 +2694,7 @@ void *consumer_thread_data_poll(void *data)
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
 					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = NULL;
+					local_stream[i] = nullptr;
 				} else if (len > 0) {
 					local_stream[i]->has_data_left_to_be_read_before_teardown =
 						1;
@@ -2714,7 +2714,7 @@ void *consumer_thread_data_poll(void *data)
 		for (i = 0; i < nb_fd; i++) {
 			health_code_update();
 
-			if (local_stream[i] == NULL) {
+			if (local_stream[i] == nullptr) {
 				continue;
 			}
 			if ((pollfd[i].revents & POLLIN) || local_stream[i]->hangup_flush_done ||
@@ -2725,7 +2725,7 @@ void *consumer_thread_data_poll(void *data)
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
 					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = NULL;
+					local_stream[i] = nullptr;
 				} else if (len > 0) {
 					local_stream[i]->has_data_left_to_be_read_before_teardown =
 						1;
@@ -2737,7 +2737,7 @@ void *consumer_thread_data_poll(void *data)
 		for (i = 0; i < nb_fd; i++) {
 			health_code_update();
 
-			if (local_stream[i] == NULL) {
+			if (local_stream[i] == nullptr) {
 				continue;
 			}
 			if (!local_stream[i]->hangup_flush_done &&
@@ -2767,25 +2767,25 @@ void *consumer_thread_data_poll(void *data)
 				DBG("Polling fd %d tells it has hung up.", pollfd[i].fd);
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = NULL;
+					local_stream[i] = nullptr;
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLERR) {
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = NULL;
+					local_stream[i] = nullptr;
 					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLNVAL) {
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
-					local_stream[i] = NULL;
+					local_stream[i] = nullptr;
 					num_hup++;
 				}
 			}
-			if (local_stream[i] != NULL) {
+			if (local_stream[i] != nullptr) {
 				local_stream[i]->has_data_left_to_be_read_before_teardown = 0;
 			}
 		}
@@ -2815,7 +2815,7 @@ error_testpoint:
 	health_unregister(health_consumerd);
 
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -2880,7 +2880,7 @@ static void destroy_channel_ht(struct lttng_ht *ht)
 	struct lttng_consumer_channel *channel;
 	int ret;
 
-	if (ht == NULL) {
+	if (ht == nullptr) {
 		return;
 	}
 
@@ -2905,7 +2905,7 @@ void *consumer_thread_channel_poll(void *data)
 {
 	int ret, i, pollfd, err = -1;
 	uint32_t revents, nb_fd;
-	struct lttng_consumer_channel *chan = NULL;
+	struct lttng_consumer_channel *chan = nullptr;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_poll_event events;
@@ -2945,7 +2945,7 @@ void *consumer_thread_channel_poll(void *data)
 	/* Main loop */
 	DBG("Channel main loop started");
 
-	while (1) {
+	while (true) {
 	restart:
 		health_code_update();
 		DBG("Channel poll wait");
@@ -3143,7 +3143,7 @@ error_testpoint:
 	}
 	health_unregister(health_consumerd);
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
@@ -3266,7 +3266,7 @@ void *consumer_thread_sessiond_poll(void *data)
 	consumer_sockpoll[1].fd = sock;
 	consumer_sockpoll[1].events = POLLIN | POLLPRI;
 
-	while (1) {
+	while (true) {
 		health_code_update();
 
 		health_poll_entry();
@@ -3323,7 +3323,7 @@ end:
 	 */
 	notify_thread_lttng_pipe(ctx->consumer_data_pipe);
 
-	notify_channel_pipe(ctx, NULL, -1, CONSUMER_CHANNEL_QUIT);
+	notify_channel_pipe(ctx, nullptr, -1, CONSUMER_CHANNEL_QUIT);
 
 	notify_health_quit_pipe(health_quit_pipe);
 
@@ -3349,7 +3349,7 @@ error_testpoint:
 	health_unregister(health_consumerd);
 
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static int post_consume(struct lttng_consumer_stream *stream,
@@ -3503,7 +3503,7 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 /*
  * Allocate and set consumer data hash tables.
  */
-int lttng_consumer_init(void)
+int lttng_consumer_init()
 {
 	the_consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!the_consumer_data.channel_ht) {
@@ -3570,7 +3570,7 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 {
 	int fd = -1, ret = -1, relayd_created = 0;
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(sock >= 0);
@@ -3580,11 +3580,11 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 
 	/* Get relayd reference if exists. */
 	relayd = consumer_find_relayd(net_seq_idx);
-	if (relayd == NULL) {
+	if (relayd == nullptr) {
 		LTTNG_ASSERT(sock_type == LTTNG_STREAM_CONTROL);
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
-		if (relayd == NULL) {
+		if (relayd == nullptr) {
 			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			goto error;
 		} else {
@@ -3727,7 +3727,7 @@ error_nosignal:
 static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 {
 	struct lttng_ht_iter iter;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 
 	ASSERT_RCU_READ_LOCKED();
 
@@ -3743,7 +3743,7 @@ static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 
 found:
 	return relayd;
@@ -3761,7 +3761,7 @@ int consumer_data_pending(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht;
 	struct lttng_consumer_stream *stream;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 	int (*data_pending)(struct lttng_consumer_stream *);
 
 	DBG("Consumer data pending command on session id %" PRIu64, id);
@@ -3998,7 +3998,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	uint64_t next_chunk_id, stream_count = 0;
 	enum lttng_trace_chunk_status chunk_status;
 	const bool is_local_trace = relayd_id == -1ULL;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 	bool rotating_to_new_chunk = true;
 	/* Array of `struct lttng_consumer_stream *` */
 	struct lttng_dynamic_pointer_array streams_packet_to_open;
@@ -4008,9 +4008,10 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 
 	DBG("Consumer sample rotate position for channel %" PRIu64, key);
 
-	lttng_dynamic_array_init(
-		&stream_rotation_positions, sizeof(struct relayd_stream_rotation_position), NULL);
-	lttng_dynamic_pointer_array_init(&streams_packet_to_open, NULL);
+	lttng_dynamic_array_init(&stream_rotation_positions,
+				 sizeof(struct relayd_stream_rotation_position),
+				 nullptr);
+	lttng_dynamic_pointer_array_init(&streams_packet_to_open, nullptr);
 
 	rcu_read_lock();
 
@@ -4107,7 +4108,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 						chunk_status = lttng_trace_chunk_get_name(
 							stream->trace_chunk,
 							&trace_chunk_name,
-							NULL);
+							nullptr);
 						if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
 							trace_chunk_name = "none";
 						}
@@ -4290,7 +4291,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 
 		pthread_mutex_unlock(&stream->lock);
 	}
-	stream = NULL;
+	stream = nullptr;
 
 	if (!is_local_trace) {
 		relayd = consumer_find_relayd(relayd_id);
@@ -4303,7 +4304,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_rotate_streams(&relayd->control_sock,
 					    stream_count,
-					    rotating_to_new_chunk ? &next_chunk_id : NULL,
+					    rotating_to_new_chunk ? &next_chunk_id : nullptr,
 					    (const struct relayd_stream_rotation_position *)
 						    stream_rotation_positions.buffer.data);
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
@@ -4427,7 +4428,7 @@ static int consumer_clear_stream(struct lttng_consumer_stream *stream)
 {
 	int ret;
 
-	ret = consumer_stream_flush_buffer(stream, 1);
+	ret = consumer_stream_flush_buffer(stream, true);
 	if (ret < 0) {
 		ERR("Failed to flush stream %" PRIu64 " during channel clear", stream->key);
 		ret = LTTCOMM_CONSUMERD_FATAL;
@@ -4561,7 +4562,7 @@ static int rotate_local_stream(struct lttng_consumer_stream *stream)
 
 	if (stream->index_file) {
 		lttng_index_file_put(stream->index_file);
-		stream->index_file = NULL;
+		stream->index_file = nullptr;
 	}
 
 	if (!stream->trace_chunk) {
@@ -4599,7 +4600,7 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_stream *stream)
 		 * parent channel, becomes part of no chunk and can't output
 		 * anything until a new trace chunk is created.
 		 */
-		stream->trace_chunk = NULL;
+		stream->trace_chunk = nullptr;
 	} else if (stream->chan->trace_chunk && !lttng_trace_chunk_get(stream->chan->trace_chunk)) {
 		ERR("Failed to acquire a reference to channel's trace chunk during stream rotation");
 		ret = -1;
@@ -4735,7 +4736,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 {
 	int ret;
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
-	struct lttng_trace_chunk *created_chunk = NULL, *published_chunk = NULL;
+	struct lttng_trace_chunk *created_chunk = nullptr, *published_chunk = nullptr;
 	enum lttng_trace_chunk_status chunk_status;
 	char relayd_id_buffer[MAX_INT_DEC_LEN(*relayd_id)];
 	char creation_timestamp_buffer[ISO8601_STR_LEN];
@@ -4784,7 +4785,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 	 * the session daemon through the LTTNG_CONSUMER_CREATE_TRACE_CHUNK
 	 * and LTTNG_CONSUMER_DESTROY_TRACE_CHUNK commands.
 	 */
-	created_chunk = lttng_trace_chunk_create(chunk_id, chunk_creation_timestamp, NULL);
+	created_chunk = lttng_trace_chunk_create(chunk_id, chunk_creation_timestamp, nullptr);
 	if (!created_chunk) {
 		ERR("Failed to create trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
@@ -4811,7 +4812,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 		 * directory.
 		 */
 		chunk_status = lttng_trace_chunk_set_as_user(created_chunk, chunk_directory_handle);
-		chunk_directory_handle = NULL;
+		chunk_directory_handle = nullptr;
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ERR("Failed to set trace chunk's directory handle");
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
@@ -4822,7 +4823,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 	published_chunk = lttng_trace_chunk_registry_publish_chunk(
 		the_consumer_data.chunk_registry, session_id, created_chunk);
 	lttng_trace_chunk_put(created_chunk);
-	created_chunk = NULL;
+	created_chunk = nullptr;
 	if (!published_chunk) {
 		ERR("Failed to publish trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
@@ -4858,7 +4859,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 								     session_id,
 								     chunk_id,
 								     chunk_creation_timestamp,
-								     NULL,
+								     nullptr,
 								     path);
 			if (close_ret != LTTCOMM_CONSUMERD_SUCCESS) {
 				ERR("Failed to roll-back the creation of new chunk: session_id = %" PRIu64
@@ -4892,7 +4893,7 @@ lttng_consumer_create_trace_chunk(const uint64_t *relayd_id,
 								     session_id,
 								     chunk_id,
 								     chunk_creation_timestamp,
-								     NULL,
+								     nullptr,
 								     path);
 			if (close_ret != LTTCOMM_CONSUMERD_SUCCESS) {
 				ERR("Failed to roll-back the creation of new chunk: session_id = %" PRIu64
@@ -4996,7 +4997,7 @@ lttng_consumer_close_trace_chunk(const uint64_t *relayd_id,
 		if (channel->trace_chunk != chunk) {
 			continue;
 		}
-		ret = lttng_consumer_channel_set_trace_chunk(channel, NULL);
+		ret = lttng_consumer_channel_set_trace_chunk(channel, nullptr);
 		if (ret) {
 			/*
 			 * Attempt to close the chunk on as many channels as
@@ -5045,7 +5046,7 @@ lttng_consumer_trace_chunk_exists(const uint64_t *relayd_id, uint64_t session_id
 	char relayd_id_buffer[MAX_INT_DEC_LEN(*relayd_id)];
 	const char *relayd_id_str = "(none)";
 	const bool is_local_trace = !relayd_id;
-	struct consumer_relayd_sock_pair *relayd = NULL;
+	struct consumer_relayd_sock_pair *relayd = nullptr;
 	bool chunk_exists_local, chunk_exists_remote;
 
 	if (relayd_id) {

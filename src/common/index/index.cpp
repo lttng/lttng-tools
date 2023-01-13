@@ -40,7 +40,7 @@ _lttng_index_file_create_from_trace_chunk(struct lttng_trace_chunk *chunk,
 	struct lttng_index_file *index_file;
 	enum lttng_trace_chunk_status chunk_status;
 	int ret;
-	struct fs_handle *fs_handle = NULL;
+	struct fs_handle *fs_handle = nullptr;
 	ssize_t size_ret;
 	struct ctf_packet_index_file_hdr hdr;
 	char index_directory_path[LTTNG_PATH_MAX];

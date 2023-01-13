@@ -25,7 +25,7 @@ static const char *lttng_help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng.1.h>
 #else
-	NULL
+	nullptr
 #endif
 	;
 
@@ -36,9 +36,9 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -53,7 +53,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	int found = 0;
 	const char *cmd_argv[2];
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -72,7 +72,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 
 	/* Get command name */
 	arg_cmd_name = poptGetArg(pc);
-	if (arg_cmd_name == NULL) {
+	if (arg_cmd_name == nullptr) {
 		/* Fall back to lttng(1) */
 		ret = utils_show_help(1, "lttng", lttng_help_msg);
 		if (ret) {
@@ -93,7 +93,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	/* Make sure command name exists */
 	cmd = &commands[0];
 
-	while (cmd->name != NULL) {
+	while (cmd->name != nullptr) {
 		if (strcmp(cmd->name, arg_cmd_name) == 0) {
 			found = 1;
 			break;

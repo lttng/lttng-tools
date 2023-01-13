@@ -66,7 +66,7 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 	}
 
 	buf = calloc<char>(buf_size);
-	if (buf == NULL) {
+	if (buf == nullptr) {
 		PERROR("zmalloc relayd send command buf");
 		ret = -1;
 		goto alloc_error;
@@ -159,7 +159,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 				      char *output_path)
 {
 	int ret;
-	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
+	struct lttcomm_relayd_create_session_2_11 *msg = nullptr;
 	size_t session_name_len;
 	size_t hostname_len;
 	size_t base_path_len;
@@ -299,7 +299,7 @@ static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
 	int ret;
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_CREATE_SESSION, NULL, 0, 0);
+	ret = send_command(rsock, RELAYD_CREATE_SESSION, nullptr, 0, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -457,7 +457,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 				  uint64_t trace_archive_id)
 {
 	int ret;
-	struct lttcomm_relayd_add_stream_2_11 *msg = NULL;
+	struct lttcomm_relayd_add_stream_2_11 *msg = nullptr;
 	size_t channel_name_len;
 	size_t pathname_len;
 	size_t msg_length;
@@ -629,7 +629,7 @@ int relayd_streams_sent(struct lttcomm_relayd_sock *rsock)
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_STREAMS_SENT, NULL, 0, 0);
+	ret = send_command(rsock, RELAYD_STREAMS_SENT, nullptr, 0, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -748,7 +748,7 @@ int relayd_send_metadata(struct lttcomm_relayd_sock *rsock, size_t len)
 	DBG("Relayd sending metadata of size %zu", len);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_SEND_METADATA, NULL, len, 0);
+	ret = send_command(rsock, RELAYD_SEND_METADATA, nullptr, len, 0);
 	if (ret < 0) {
 		goto error;
 	}

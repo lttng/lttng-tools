@@ -17,7 +17,7 @@ struct bytecode_symbol_iterator {
 
 struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(struct lttng_bytecode *bytecode)
 {
-	struct bytecode_symbol_iterator *it = NULL;
+	struct bytecode_symbol_iterator *it = nullptr;
 
 	if (!bytecode) {
 		goto end;
@@ -68,7 +68,7 @@ end:
 
 const char *bytecode_symbol_iterator_get_name(struct bytecode_symbol_iterator *it)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (!it) {
 		goto end;

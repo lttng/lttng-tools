@@ -190,7 +190,7 @@ ssize_t lttng_action_list_create_from_payload(struct lttng_payload_view *view,
 	ssize_t consumed_len;
 	const struct lttng_action_list_comm *comm;
 	struct lttng_action *list;
-	struct lttng_action *child_action = NULL;
+	struct lttng_action *child_action = nullptr;
 	enum lttng_action_status status;
 	size_t i;
 
@@ -228,13 +228,13 @@ ssize_t lttng_action_list_create_from_payload(struct lttng_payload_view *view,
 
 		/* Transfer ownership to the action list. */
 		lttng_action_put(child_action);
-		child_action = NULL;
+		child_action = nullptr;
 
 		consumed_len += consumed_len_child;
 	}
 
 	*p_action = list;
-	list = NULL;
+	list = nullptr;
 
 end:
 	lttng_action_list_destroy(list);
@@ -347,7 +347,7 @@ struct lttng_action *lttng_action_list_create(void)
 
 	action_list = zmalloc<lttng_action_list>();
 	if (!action_list) {
-		action = NULL;
+		action = nullptr;
 		goto end;
 	}
 
@@ -363,9 +363,9 @@ struct lttng_action *lttng_action_list_create(void)
 			  lttng_action_list_serialize,
 			  lttng_action_list_is_equal,
 			  lttng_action_list_destroy,
-			  NULL,
+			  nullptr,
 			  lttng_action_list_add_error_query_results,
-			  NULL);
+			  nullptr);
 
 	lttng_dynamic_pointer_array_init(&action_list->actions, destroy_lttng_action_list_element);
 
@@ -438,7 +438,7 @@ struct lttng_action *lttng_action_list_borrow_mutable_at_index(const struct lttn
 {
 	unsigned int count;
 	const struct lttng_action_list *action_list;
-	struct lttng_action *action = NULL;
+	struct lttng_action *action = nullptr;
 
 	if (lttng_action_list_get_count(list, &count) != LTTNG_ACTION_STATUS_OK) {
 		goto end;

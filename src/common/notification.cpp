@@ -18,7 +18,7 @@
 struct lttng_notification *lttng_notification_create(struct lttng_trigger *trigger,
 						     struct lttng_evaluation *evaluation)
 {
-	struct lttng_notification *notification = NULL;
+	struct lttng_notification *notification = nullptr;
 
 	if (!trigger || !evaluation) {
 		goto end;
@@ -74,8 +74,8 @@ ssize_t lttng_notification_create_from_payload(struct lttng_payload_view *src_vi
 					       struct lttng_notification **notification)
 {
 	ssize_t ret, notification_size = 0, trigger_size, evaluation_size;
-	struct lttng_trigger *trigger = NULL;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_trigger *trigger = nullptr;
+	struct lttng_evaluation *evaluation = nullptr;
 	const struct lttng_notification_comm *notification_comm;
 	const struct lttng_payload_view notification_comm_view =
 		lttng_payload_view_from_view(src_view, 0, sizeof(*notification_comm));
@@ -159,34 +159,34 @@ void lttng_notification_destroy(struct lttng_notification *notification)
 const struct lttng_condition *
 lttng_notification_get_condition(struct lttng_notification *notification)
 {
-	return notification ? lttng_trigger_get_const_condition(notification->trigger) : NULL;
+	return notification ? lttng_trigger_get_const_condition(notification->trigger) : nullptr;
 }
 
 const struct lttng_evaluation *
 lttng_notification_get_evaluation(struct lttng_notification *notification)
 {
-	return notification ? notification->evaluation : NULL;
+	return notification ? notification->evaluation : nullptr;
 }
 
 const struct lttng_condition *
 lttng_notification_get_const_condition(const struct lttng_notification *notification)
 {
-	return notification ? lttng_trigger_get_const_condition(notification->trigger) : NULL;
+	return notification ? lttng_trigger_get_const_condition(notification->trigger) : nullptr;
 }
 
 const struct lttng_evaluation *
 lttng_notification_get_const_evaluation(const struct lttng_notification *notification)
 {
-	return notification ? notification->evaluation : NULL;
+	return notification ? notification->evaluation : nullptr;
 }
 
 const struct lttng_trigger *
 lttng_notification_get_const_trigger(const struct lttng_notification *notification)
 {
-	return notification ? notification->trigger : NULL;
+	return notification ? notification->trigger : nullptr;
 }
 
 const struct lttng_trigger *lttng_notification_get_trigger(struct lttng_notification *notification)
 {
-	return notification ? notification->trigger : NULL;
+	return notification ? notification->trigger : nullptr;
 }

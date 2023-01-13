@@ -125,7 +125,7 @@ ssize_t lttng_condition_create_from_payload(struct lttng_payload_view *view,
 					    struct lttng_condition **condition)
 {
 	ssize_t ret, condition_size = 0;
-	condition_create_from_payload_cb create_from_payload = NULL;
+	condition_create_from_payload_cb create_from_payload = nullptr;
 	const struct lttng_condition_comm *condition_comm;
 	const struct lttng_payload_view condition_comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*condition_comm));
@@ -234,7 +234,7 @@ lttng_condition_mi_serialize(const struct lttng_trigger *trigger,
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct lttng_error_query_results *error_query_results = NULL;
+	struct lttng_error_query_results *error_query_results = nullptr;
 
 	LTTNG_ASSERT(condition);
 	LTTNG_ASSERT(writer);

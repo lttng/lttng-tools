@@ -26,13 +26,13 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 42
 
-static void test_rate_policy_every_n(void)
+static void test_rate_policy_every_n()
 {
 	enum lttng_rate_policy_status status;
-	struct lttng_rate_policy *policy_a = NULL; /* Interval of 100. */
-	struct lttng_rate_policy *policy_b = NULL; /* Interval of 100 */
-	struct lttng_rate_policy *policy_c = NULL; /* Interval of 1 */
-	struct lttng_rate_policy *policy_from_buffer = NULL;
+	struct lttng_rate_policy *policy_a = nullptr; /* Interval of 100. */
+	struct lttng_rate_policy *policy_b = nullptr; /* Interval of 100 */
+	struct lttng_rate_policy *policy_c = nullptr; /* Interval of 1 */
+	struct lttng_rate_policy *policy_from_buffer = nullptr;
 	uint64_t interval_a_b = 100;
 	uint64_t interval_c = 1;
 	uint64_t interval_query = 0;
@@ -43,21 +43,21 @@ static void test_rate_policy_every_n(void)
 	policy_a = lttng_rate_policy_every_n_create(interval_a_b);
 	policy_b = lttng_rate_policy_every_n_create(interval_a_b);
 	policy_c = lttng_rate_policy_every_n_create(interval_c);
-	ok(policy_a != NULL, "Rate policy every n A created: interval: %" PRIu64, interval_a_b);
-	ok(policy_b != NULL, "Rate policy every n B created: interval: %" PRIu64, interval_a_b);
-	ok(policy_c != NULL, "Rate policy every n C created: interval: %" PRIu64, interval_c);
+	ok(policy_a != nullptr, "Rate policy every n A created: interval: %" PRIu64, interval_a_b);
+	ok(policy_b != nullptr, "Rate policy every n B created: interval: %" PRIu64, interval_a_b);
+	ok(policy_c != nullptr, "Rate policy every n C created: interval: %" PRIu64, interval_c);
 
 	ok(LTTNG_RATE_POLICY_TYPE_EVERY_N == lttng_rate_policy_get_type(policy_a),
 	   "Type is LTTNG_RATE_POLICY_TYPE_EVERY_N");
 
 	/* Getter tests */
-	status = lttng_rate_policy_every_n_get_interval(NULL, NULL);
+	status = lttng_rate_policy_every_n_get_interval(nullptr, nullptr);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get interval returns INVALID");
 
-	status = lttng_rate_policy_every_n_get_interval(NULL, &interval_query);
+	status = lttng_rate_policy_every_n_get_interval(nullptr, &interval_query);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get interval returns INVALID");
 
-	status = lttng_rate_policy_every_n_get_interval(policy_a, NULL);
+	status = lttng_rate_policy_every_n_get_interval(policy_a, nullptr);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get interval returns INVALID");
 
 	status = lttng_rate_policy_every_n_get_interval(policy_a, &interval_query);
@@ -77,9 +77,9 @@ static void test_rate_policy_every_n(void)
 	 * lttng_condition_is_equal back in 2017 do we want to fix this and
 	 * return true if both are NULL?
 	 */
-	ok(false == lttng_rate_policy_is_equal(NULL, NULL), "is equal (NULL,NULL)");
-	ok(false == lttng_rate_policy_is_equal(policy_a, NULL), "is equal (object, NULL)");
-	ok(false == lttng_rate_policy_is_equal(NULL, policy_a), " is equal (NULL, object)");
+	ok(false == lttng_rate_policy_is_equal(nullptr, nullptr), "is equal (NULL,NULL)");
+	ok(false == lttng_rate_policy_is_equal(policy_a, nullptr), "is equal (object, NULL)");
+	ok(false == lttng_rate_policy_is_equal(nullptr, policy_a), " is equal (NULL, object)");
 	ok(true == lttng_rate_policy_is_equal(policy_a, policy_a), "is equal (object A, object A)");
 
 	ok(true == lttng_rate_policy_is_equal(policy_a, policy_b), "is equal (object A, object B");
@@ -96,7 +96,7 @@ static void test_rate_policy_every_n(void)
 		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
 		ok(lttng_rate_policy_create_from_payload(&view, &policy_from_buffer) > 0 &&
-			   policy_from_buffer != NULL,
+			   policy_from_buffer != nullptr,
 		   "Deserializing");
 	}
 
@@ -110,13 +110,13 @@ static void test_rate_policy_every_n(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_rate_policy_once_after_n(void)
+static void test_rate_policy_once_after_n()
 {
 	enum lttng_rate_policy_status status;
-	struct lttng_rate_policy *policy_a = NULL; /* Threshold of 100. */
-	struct lttng_rate_policy *policy_b = NULL; /* threshold of 100 */
-	struct lttng_rate_policy *policy_c = NULL; /* threshold of 1 */
-	struct lttng_rate_policy *policy_from_buffer = NULL;
+	struct lttng_rate_policy *policy_a = nullptr; /* Threshold of 100. */
+	struct lttng_rate_policy *policy_b = nullptr; /* threshold of 100 */
+	struct lttng_rate_policy *policy_c = nullptr; /* threshold of 1 */
+	struct lttng_rate_policy *policy_from_buffer = nullptr;
 	uint64_t threshold_a_b = 100;
 	uint64_t threshold_c = 1;
 	uint64_t threshold_query = 0;
@@ -127,21 +127,25 @@ static void test_rate_policy_once_after_n(void)
 	policy_a = lttng_rate_policy_once_after_n_create(threshold_a_b);
 	policy_b = lttng_rate_policy_once_after_n_create(threshold_a_b);
 	policy_c = lttng_rate_policy_once_after_n_create(threshold_c);
-	ok(policy_a != NULL, "Rate policy every n A created: threshold: %" PRIu64, threshold_a_b);
-	ok(policy_b != NULL, "Rate policy every n B created: threshold: %" PRIu64, threshold_a_b);
-	ok(policy_c != NULL, "Rate policy every n C created: threshold: %" PRIu64, threshold_c);
+	ok(policy_a != nullptr,
+	   "Rate policy every n A created: threshold: %" PRIu64,
+	   threshold_a_b);
+	ok(policy_b != nullptr,
+	   "Rate policy every n B created: threshold: %" PRIu64,
+	   threshold_a_b);
+	ok(policy_c != nullptr, "Rate policy every n C created: threshold: %" PRIu64, threshold_c);
 
 	ok(LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N == lttng_rate_policy_get_type(policy_a),
 	   "Type is LTTNG_RATE_POLICY_TYPE_once_after_n");
 
 	/* Getter tests */
-	status = lttng_rate_policy_once_after_n_get_threshold(NULL, NULL);
+	status = lttng_rate_policy_once_after_n_get_threshold(nullptr, nullptr);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get threshold returns INVALID");
 
-	status = lttng_rate_policy_once_after_n_get_threshold(NULL, &threshold_query);
+	status = lttng_rate_policy_once_after_n_get_threshold(nullptr, &threshold_query);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get threshold returns INVALID");
 
-	status = lttng_rate_policy_once_after_n_get_threshold(policy_a, NULL);
+	status = lttng_rate_policy_once_after_n_get_threshold(policy_a, nullptr);
 	ok(status == LTTNG_RATE_POLICY_STATUS_INVALID, "Get threshold returns INVALID");
 
 	status = lttng_rate_policy_once_after_n_get_threshold(policy_a, &threshold_query);
@@ -157,9 +161,9 @@ static void test_rate_policy_once_after_n(void)
 	   " Getting threshold C");
 
 	/* is_equal tests */
-	ok(false == lttng_rate_policy_is_equal(NULL, NULL), "is equal (NULL,NULL)");
-	ok(false == lttng_rate_policy_is_equal(policy_a, NULL), "is equal (object, NULL)");
-	ok(false == lttng_rate_policy_is_equal(NULL, policy_a), " is equal (NULL, object)");
+	ok(false == lttng_rate_policy_is_equal(nullptr, nullptr), "is equal (NULL,NULL)");
+	ok(false == lttng_rate_policy_is_equal(policy_a, nullptr), "is equal (object, NULL)");
+	ok(false == lttng_rate_policy_is_equal(nullptr, policy_a), " is equal (NULL, object)");
 	ok(true == lttng_rate_policy_is_equal(policy_a, policy_a), "is equal (object A, object A)");
 
 	ok(true == lttng_rate_policy_is_equal(policy_a, policy_b), "is equal (object A, object B");
@@ -176,7 +180,7 @@ static void test_rate_policy_once_after_n(void)
 		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
 		ok(lttng_rate_policy_create_from_payload(&view, &policy_from_buffer) > 0 &&
-			   policy_from_buffer != NULL,
+			   policy_from_buffer != nullptr,
 		   "Deserializing");
 	}
 
@@ -190,7 +194,7 @@ static void test_rate_policy_once_after_n(void)
 	lttng_payload_reset(&payload);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_rate_policy_every_n();

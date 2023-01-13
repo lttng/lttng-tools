@@ -135,7 +135,7 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel)
 		ret = -1;
 		goto end;
 	}
-	ret = pthread_mutex_init(&channel->metadata_cache->lock, NULL);
+	ret = pthread_mutex_init(&channel->metadata_cache->lock, nullptr);
 	if (ret != 0) {
 		PERROR("mutex init");
 		goto end_free_cache;

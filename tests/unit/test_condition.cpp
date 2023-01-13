@@ -33,19 +33,19 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 13
 
-static void test_condition_event_rule(void)
+static void test_condition_event_rule()
 {
 	int ret, i;
-	struct lttng_event_rule *tracepoint = NULL;
-	const struct lttng_event_rule *tracepoint_tmp = NULL;
+	struct lttng_event_rule *tracepoint = nullptr;
+	const struct lttng_event_rule *tracepoint_tmp = nullptr;
 	enum lttng_event_rule_status status;
-	struct lttng_condition *condition = NULL;
-	struct lttng_condition *condition_from_buffer = NULL;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_condition *condition_from_buffer = nullptr;
 	enum lttng_condition_status condition_status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *exclusions[] = { "my_event_test1", "my_event_test2", "my_event_test3" };
-	struct lttng_log_level_rule *log_level_rule_at_least_as_severe = NULL;
+	struct lttng_log_level_rule *log_level_rule_at_least_as_severe = nullptr;
 	struct lttng_payload buffer;
 
 	lttng_payload_init(&buffer);
@@ -104,7 +104,7 @@ static void test_condition_event_rule(void)
 	lttng_log_level_rule_destroy(log_level_rule_at_least_as_severe);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_condition_event_rule();

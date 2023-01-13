@@ -30,7 +30,8 @@ struct formatter<std::type_info> : formatter<std::string> {
 	typename FormatCtx::iterator format(const std::type_info& type_info, FormatCtx& ctx)
 	{
 		int status;
-		auto demangled_name = abi::__cxa_demangle(type_info.name(), nullptr, 0, &status);
+		auto demangled_name =
+			abi::__cxa_demangle(type_info.name(), nullptr, nullptr, &status);
 		auto it = status == 0 ? formatter<std::string>::format(demangled_name, ctx) :
 					formatter<std::string>::format(type_info.name(), ctx);
 

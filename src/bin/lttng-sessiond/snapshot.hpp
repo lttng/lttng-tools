@@ -52,7 +52,7 @@ struct snapshot {
 };
 
 /* Snapshot object. */
-struct snapshot *snapshot_alloc(void);
+struct snapshot *snapshot_alloc();
 void snapshot_destroy(struct snapshot *obj);
 int snapshot_init(struct snapshot *obj);
 void snapshot_delete_output(struct snapshot *snapshot,
@@ -61,7 +61,7 @@ void snapshot_add_output(struct snapshot *snapshot,
 		struct snapshot_output *output);
 
 /* Snapshot output object. */
-struct snapshot_output *snapshot_output_alloc(void);
+struct snapshot_output *snapshot_output_alloc();
 void snapshot_output_destroy(struct snapshot_output *obj);
 int snapshot_output_init(const struct ltt_session *session,
 		uint64_t max_size, const char *name,

@@ -62,7 +62,7 @@ void lttng_userspace_probe_location_lookup_method_destroy(
 struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_elf_create(void)
 {
-	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+	struct lttng_userspace_probe_location_lookup_method *ret = nullptr;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 
 	elf_method = zmalloc<lttng_userspace_probe_location_lookup_method_elf>();
@@ -80,7 +80,7 @@ end:
 struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void)
 {
-	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+	struct lttng_userspace_probe_location_lookup_method *ret = nullptr;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 
 	sdt_method = zmalloc<lttng_userspace_probe_location_lookup_method_sdt>();
@@ -104,7 +104,7 @@ lttng_userspace_probe_location_get_type(const struct lttng_userspace_probe_locat
 static void
 lttng_userspace_probe_location_function_destroy(struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_function *location_function = NULL;
+	struct lttng_userspace_probe_location_function *location_function = nullptr;
 
 	LTTNG_ASSERT(location);
 
@@ -122,7 +122,7 @@ lttng_userspace_probe_location_function_destroy(struct lttng_userspace_probe_loc
 static void
 lttng_userspace_probe_location_tracepoint_destroy(struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_tracepoint *location_tracepoint = NULL;
+	struct lttng_userspace_probe_location_tracepoint *location_tracepoint = nullptr;
 
 	LTTNG_ASSERT(location);
 
@@ -260,9 +260,9 @@ lttng_userspace_probe_location_function_create_no_check(
 	bool open_binary)
 {
 	int binary_fd = -1;
-	struct fd_handle *binary_fd_handle = NULL;
-	char *function_name_copy = NULL, *binary_path_copy = NULL;
-	struct lttng_userspace_probe_location *ret = NULL;
+	struct fd_handle *binary_fd_handle = nullptr;
+	char *function_name_copy = nullptr, *binary_path_copy = nullptr;
+	struct lttng_userspace_probe_location *ret = nullptr;
 	struct lttng_userspace_probe_location_function *location;
 
 	if (open_binary) {
@@ -302,7 +302,7 @@ lttng_userspace_probe_location_function_create_no_check(
 	location->function_name = function_name_copy;
 	location->binary_path = binary_path_copy;
 	location->binary_fd_handle = binary_fd_handle;
-	binary_fd_handle = NULL;
+	binary_fd_handle = nullptr;
 	location->instrumentation_type =
 		LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY;
 
@@ -388,11 +388,11 @@ lttng_userspace_probe_location_tracepoint_create_no_check(
 	bool open_binary)
 {
 	int binary_fd = -1;
-	struct fd_handle *binary_fd_handle = NULL;
-	char *probe_name_copy = NULL;
-	char *provider_name_copy = NULL;
-	char *binary_path_copy = NULL;
-	struct lttng_userspace_probe_location *ret = NULL;
+	struct fd_handle *binary_fd_handle = nullptr;
+	char *probe_name_copy = nullptr;
+	char *provider_name_copy = nullptr;
+	char *binary_path_copy = nullptr;
+	struct lttng_userspace_probe_location *ret = nullptr;
 	struct lttng_userspace_probe_location_tracepoint *location;
 
 	if (open_binary) {
@@ -439,7 +439,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(
 	location->provider_name = provider_name_copy;
 	location->binary_path = binary_path_copy;
 	location->binary_fd_handle = binary_fd_handle;
-	binary_fd_handle = NULL;
+	binary_fd_handle = nullptr;
 
 	ret = &location->parent;
 	ret->lookup_method = lookup_method;
@@ -467,7 +467,7 @@ struct lttng_userspace_probe_location *lttng_userspace_probe_location_function_c
 	const char *function_name,
 	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	struct lttng_userspace_probe_location *ret = NULL;
+	struct lttng_userspace_probe_location *ret = nullptr;
 
 	if (!binary_path || !function_name) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
@@ -495,7 +495,7 @@ struct lttng_userspace_probe_location *lttng_userspace_probe_location_tracepoint
 	const char *probe_name,
 	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	struct lttng_userspace_probe_location *ret = NULL;
+	struct lttng_userspace_probe_location *ret = nullptr;
 
 	if (!binary_path || !probe_name || !provider_name) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
@@ -520,7 +520,7 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_elf_copy(
 	const struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
+	struct lttng_userspace_probe_location_lookup_method *parent = nullptr;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 
 	LTTNG_ASSERT(lookup_method);
@@ -538,7 +538,7 @@ lttng_userspace_probe_location_lookup_method_function_elf_copy(
 
 	goto end;
 error:
-	parent = NULL;
+	parent = nullptr;
 end:
 	return parent;
 }
@@ -547,7 +547,7 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
+	struct lttng_userspace_probe_location_lookup_method *parent = nullptr;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 
 	LTTNG_ASSERT(lookup_method);
@@ -566,7 +566,7 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	goto end;
 
 error:
-	parent = NULL;
+	parent = nullptr;
 end:
 	return parent;
 }
@@ -575,10 +575,10 @@ static struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_function_copy(const struct lttng_userspace_probe_location *location)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
-	struct lttng_userspace_probe_location *new_location = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	const char *binary_path = NULL;
-	const char *function_name = NULL;
+	struct lttng_userspace_probe_location *new_location = nullptr;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
+	const char *binary_path = nullptr;
+	const char *function_name = nullptr;
 	struct lttng_userspace_probe_location_function *function_location;
 
 	LTTNG_ASSERT(location);
@@ -637,7 +637,7 @@ destroy_probe_location:
 destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 error:
-	new_location = NULL;
+	new_location = nullptr;
 end:
 	return new_location;
 }
@@ -646,11 +646,11 @@ static struct lttng_userspace_probe_location *lttng_userspace_probe_location_tra
 	const struct lttng_userspace_probe_location *location)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
-	struct lttng_userspace_probe_location *new_location = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	const char *binary_path = NULL;
-	const char *probe_name = NULL;
-	const char *provider_name = NULL;
+	struct lttng_userspace_probe_location *new_location = nullptr;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
+	const char *binary_path = nullptr;
+	const char *probe_name = nullptr;
+	const char *provider_name = nullptr;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
 	LTTNG_ASSERT(location);
@@ -715,7 +715,7 @@ destroy_probe_location:
 destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 error:
-	new_location = NULL;
+	new_location = nullptr;
 end:
 	return new_location;
 }
@@ -723,7 +723,7 @@ end:
 const char *lttng_userspace_probe_location_function_get_binary_path(
 	const struct lttng_userspace_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_userspace_probe_location_function *function_location;
 
 	if (!location ||
@@ -743,7 +743,7 @@ end:
 const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
 	const struct lttng_userspace_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
 	if (!location ||
@@ -763,7 +763,7 @@ end:
 const char *lttng_userspace_probe_location_function_get_function_name(
 	const struct lttng_userspace_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_userspace_probe_location_function *function_location;
 
 	if (!location ||
@@ -783,7 +783,7 @@ end:
 const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
 	const struct lttng_userspace_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
 	if (!location ||
@@ -803,7 +803,7 @@ end:
 const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
 	const struct lttng_userspace_probe_location *location)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
 	if (!location ||
@@ -916,7 +916,7 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
 	const struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+	struct lttng_userspace_probe_location_lookup_method *ret = nullptr;
 
 	if (!location ||
 	    lttng_userspace_probe_location_get_type(location) !=
@@ -934,7 +934,7 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_tracepoint_get_lookup_method(
 	const struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+	struct lttng_userspace_probe_location_lookup_method *ret = nullptr;
 
 	if (!location ||
 	    lttng_userspace_probe_location_get_type(location) !=
@@ -952,7 +952,7 @@ const struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
 	const struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+	struct lttng_userspace_probe_location_lookup_method *ret = nullptr;
 
 	LTTNG_ASSERT(location);
 	switch (location->type) {
@@ -1208,7 +1208,7 @@ static int lttng_userspace_probe_location_function_create_from_payload(
 {
 	struct lttng_userspace_probe_location_function_comm *location_function_comm;
 	const char *function_name_src, *binary_path_src;
-	char *function_name = NULL, *binary_path = NULL;
+	char *function_name = nullptr, *binary_path = nullptr;
 	int ret = 0;
 	size_t expected_size;
 	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
@@ -1260,7 +1260,7 @@ static int lttng_userspace_probe_location_function_create_from_payload(
 	}
 
 	*location = lttng_userspace_probe_location_function_create_no_check(
-		binary_path, function_name, NULL, false);
+		binary_path, function_name, nullptr, false);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1286,7 +1286,7 @@ static int lttng_userspace_probe_location_tracepoint_create_from_payload(
 {
 	struct lttng_userspace_probe_location_tracepoint_comm *location_tracepoint_comm;
 	const char *probe_name_src, *provider_name_src, *binary_path_src;
-	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
+	char *probe_name = nullptr, *provider_name = nullptr, *binary_path = nullptr;
 	int ret = 0;
 	size_t expected_size;
 	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
@@ -1359,7 +1359,7 @@ static int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	}
 
 	*location = lttng_userspace_probe_location_tracepoint_create_no_check(
-		binary_path, provider_name, probe_name, NULL, false);
+		binary_path, provider_name, probe_name, nullptr, false);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1401,7 +1401,7 @@ static int lttng_userspace_probe_location_lookup_method_create_from_payload(
 	type = (enum lttng_userspace_probe_location_lookup_method_type) lookup_comm->type;
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
-		*lookup_method = NULL;
+		*lookup_method = nullptr;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 		*lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
@@ -1442,7 +1442,7 @@ int lttng_userspace_probe_location_create_from_payload(
 	LTTNG_ASSERT(view);
 	LTTNG_ASSERT(location);
 
-	lookup_method = NULL;
+	lookup_method = nullptr;
 
 	if (!lttng_payload_view_is_valid(&probe_location_comm_view)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1503,7 +1503,7 @@ int lttng_userspace_probe_location_create_from_payload(
 
 	LTTNG_ASSERT(lookup_method);
 	(*location)->lookup_method = lookup_method;
-	lookup_method = NULL;
+	lookup_method = nullptr;
 	ret += consumed;
 end:
 	return ret;
@@ -1614,12 +1614,12 @@ static int lttng_userspace_probe_location_function_flatten(
 				 *) (flat_probe_start + sizeof(flat_probe) + function_name_len +
 				     binary_path_len + padding_needed);
 	} else {
-		flat_probe.parent.lookup_method = NULL;
+		flat_probe.parent.lookup_method = nullptr;
 	}
 
 	flat_probe.function_name = flat_probe_start + sizeof(flat_probe);
 	flat_probe.binary_path = flat_probe.function_name + function_name_len;
-	flat_probe.binary_fd_handle = NULL;
+	flat_probe.binary_fd_handle = nullptr;
 	ret = lttng_dynamic_buffer_append(buffer, &flat_probe, sizeof(flat_probe));
 	if (ret) {
 		goto end;
@@ -1738,13 +1738,13 @@ static int lttng_userspace_probe_location_tracepoint_flatten(
 				 *) (flat_probe_start + sizeof(flat_probe) + probe_name_len +
 				     provider_name_len + binary_path_len + padding_needed);
 	} else {
-		flat_probe.parent.lookup_method = NULL;
+		flat_probe.parent.lookup_method = nullptr;
 	}
 
 	flat_probe.probe_name = flat_probe_start + sizeof(flat_probe);
 	flat_probe.provider_name = flat_probe.probe_name + probe_name_len;
 	flat_probe.binary_path = flat_probe.provider_name + provider_name_len;
-	flat_probe.binary_fd_handle = NULL;
+	flat_probe.binary_fd_handle = nullptr;
 	ret = lttng_dynamic_buffer_append(buffer, &flat_probe, sizeof(flat_probe));
 	if (ret) {
 		goto end;
@@ -1819,7 +1819,7 @@ end:
 struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_copy(const struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location *new_location = NULL;
+	struct lttng_userspace_probe_location *new_location = nullptr;
 	enum lttng_userspace_probe_location_type type;
 
 	if (!location) {
@@ -1841,7 +1841,7 @@ lttng_userspace_probe_location_copy(const struct lttng_userspace_probe_location 
 		}
 		break;
 	default:
-		new_location = NULL;
+		new_location = nullptr;
 		goto err;
 	}
 err:
@@ -1915,7 +1915,7 @@ lttng_userspace_probe_location_mi_serialize(const struct lttng_userspace_probe_l
 
 	int ret;
 	enum lttng_error_code ret_code;
-	mi_fp mi_function = NULL;
+	mi_fp mi_function = nullptr;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);
@@ -2020,10 +2020,10 @@ static enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serial
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const char *probe_name = NULL;
-	const char *provider_name = NULL;
-	const char *binary_path = NULL;
-	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	const char *probe_name = nullptr;
+	const char *provider_name = nullptr;
+	const char *binary_path = nullptr;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);
@@ -2091,11 +2091,11 @@ static enum lttng_error_code lttng_userspace_probe_location_function_mi_serializ
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const char *function_name = NULL;
-	const char *binary_path = NULL;
-	const char *instrumentation_type_str = NULL;
+	const char *function_name = nullptr;
+	const char *binary_path = nullptr;
+	const char *instrumentation_type_str = nullptr;
 	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type;
-	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);

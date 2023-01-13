@@ -111,7 +111,7 @@ error:
 	return ret;
 }
 
-static int parse_health_env(void)
+static int parse_health_env()
 {
 	const char *health_path;
 
@@ -124,11 +124,11 @@ static int parse_health_env(void)
 	return 0;
 }
 
-static int setup_health_path(void)
+static int setup_health_path()
 {
 	int is_root, ret = 0;
-	const char *home_path = NULL;
-	char *rundir = NULL, *relayd_path = NULL;
+	const char *home_path = nullptr;
+	char *rundir = nullptr, *relayd_path = nullptr;
 
 	ret = parse_health_env();
 	if (ret) {
@@ -150,7 +150,7 @@ static int setup_health_path(void)
 		 */
 		home_path = utils_get_home_dir();
 
-		if (home_path == NULL) {
+		if (home_path == nullptr) {
 			/* TODO: Add --socket PATH option */
 			ERR("Can't get HOME directory for sockets creation.");
 			ret = -EPERM;
@@ -341,7 +341,7 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 
 	lttng_relay_notify_ready();
 
-	while (1) {
+	while (true) {
 		char *accepted_socket_name;
 
 		DBG("Health check ready");
@@ -419,7 +419,7 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
 			ret = fd_tracker_close_unsuspendable_fd(
-				the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, NULL);
+				the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, nullptr);
 			if (ret) {
 				PERROR("close");
 			}
@@ -451,7 +451,7 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 
 		/* End of transmission */
 		ret = fd_tracker_close_unsuspendable_fd(
-			the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, NULL);
+			the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, nullptr);
 		if (ret) {
 			PERROR("close");
 		}
@@ -468,7 +468,7 @@ exit:
 	unlink(health_unix_sock_path);
 	if (sock >= 0) {
 		ret = fd_tracker_close_unsuspendable_fd(
-			the_fd_tracker, &sock, 1, fd_tracker_util_close_fd, NULL);
+			the_fd_tracker, &sock, 1, fd_tracker_util_close_fd, nullptr);
 		if (ret) {
 			PERROR("close");
 		}
@@ -482,5 +482,5 @@ exit:
 	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }

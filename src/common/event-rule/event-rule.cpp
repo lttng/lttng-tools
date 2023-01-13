@@ -149,7 +149,7 @@ ssize_t lttng_event_rule_create_from_payload(struct lttng_payload_view *view,
 					     struct lttng_event_rule **event_rule)
 {
 	ssize_t ret, consumed = 0;
-	event_rule_create_from_payload_cb create_from_payload = NULL;
+	event_rule_create_from_payload_cb create_from_payload = nullptr;
 	const struct lttng_event_rule_comm *event_rule_comm;
 	const struct lttng_payload_view event_rule_comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*event_rule_comm));

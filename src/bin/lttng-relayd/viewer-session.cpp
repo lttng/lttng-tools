@@ -19,7 +19,7 @@
 
 #include <urcu/rculist.h>
 
-struct relay_viewer_session *viewer_session_create(void)
+struct relay_viewer_session *viewer_session_create()
 {
 	struct relay_viewer_session *vsession;
 
@@ -39,7 +39,7 @@ int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
 	struct lttng_trace_chunk *viewer_chunk;
 
 	lttng_trace_chunk_put(vsession->current_trace_chunk);
-	vsession->current_trace_chunk = NULL;
+	vsession->current_trace_chunk = nullptr;
 
 	DBG("Copying relay session's current trace chunk to the viewer session");
 	if (!relay_session_trace_chunk) {
@@ -167,7 +167,7 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		viewer_stream_put(vstream);
 	}
 	lttng_trace_chunk_put(vsession->current_trace_chunk);
-	vsession->current_trace_chunk = NULL;
+	vsession->current_trace_chunk = nullptr;
 	viewer_session_detach(vsession, session);
 }
 

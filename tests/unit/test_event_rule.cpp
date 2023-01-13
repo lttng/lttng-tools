@@ -65,10 +65,10 @@ using event_rule_create = struct lttng_event_rule *(*) ();
 using event_rule_set_log_level = enum lttng_event_rule_status (*)(
 	struct lttng_event_rule *, const struct lttng_log_level_rule *);
 
-static void test_event_rule_kernel_tracepoint(void)
+static void test_event_rule_kernel_tracepoint()
 {
-	struct lttng_event_rule *tracepoint = NULL;
-	struct lttng_event_rule *tracepoint_from_buffer = NULL;
+	struct lttng_event_rule *tracepoint = nullptr;
+	struct lttng_event_rule *tracepoint_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
@@ -111,12 +111,12 @@ static void test_event_rule_kernel_tracepoint(void)
 	lttng_event_rule_destroy(tracepoint_from_buffer);
 }
 
-static void test_event_rule_user_tracepoint(void)
+static void test_event_rule_user_tracepoint()
 {
 	int i;
 	unsigned int count;
-	struct lttng_event_rule *tracepoint = NULL;
-	struct lttng_event_rule *tracepoint_from_buffer = NULL;
+	struct lttng_event_rule *tracepoint = nullptr;
+	struct lttng_event_rule *tracepoint_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
@@ -124,8 +124,8 @@ static void test_event_rule_user_tracepoint(void)
 	const char *name_pattern_exclusions[] = { "my_event_test1",
 						  "my_event_test2",
 						  "my_event_test3" };
-	struct lttng_log_level_rule *log_level_rule = NULL;
-	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
+	const struct lttng_log_level_rule *log_level_rule_return = nullptr;
 	struct lttng_payload payload;
 
 	diag("Testing lttng_event_rule_user_tracepoint.");
@@ -204,10 +204,10 @@ static void test_event_rule_user_tracepoint(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static void test_event_rule_syscall(void)
+static void test_event_rule_syscall()
 {
-	struct lttng_event_rule *syscall = NULL;
-	struct lttng_event_rule *syscall_from_buffer = NULL;
+	struct lttng_event_rule *syscall = nullptr;
+	struct lttng_event_rule *syscall_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
@@ -251,16 +251,16 @@ static void test_event_rule_syscall(void)
 	lttng_event_rule_destroy(syscall_from_buffer);
 }
 
-static void test_event_rule_jul_logging(void)
+static void test_event_rule_jul_logging()
 {
-	struct lttng_event_rule *jul_logging = NULL;
-	struct lttng_event_rule *jul_logging_from_buffer = NULL;
+	struct lttng_event_rule *jul_logging = nullptr;
+	struct lttng_event_rule *jul_logging_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
-	struct lttng_log_level_rule *log_level_rule = NULL;
-	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
+	const struct lttng_log_level_rule *log_level_rule_return = nullptr;
 	struct lttng_payload payload;
 
 	diag("Testing lttng_event_rule_user_jul_logging.");
@@ -313,16 +313,16 @@ static void test_event_rule_jul_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static void test_event_rule_log4j_logging(void)
+static void test_event_rule_log4j_logging()
 {
-	struct lttng_event_rule *log4j_logging = NULL;
-	struct lttng_event_rule *log4j_logging_from_buffer = NULL;
+	struct lttng_event_rule *log4j_logging = nullptr;
+	struct lttng_event_rule *log4j_logging_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
-	struct lttng_log_level_rule *log_level_rule = NULL;
-	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
+	const struct lttng_log_level_rule *log_level_rule_return = nullptr;
 	struct lttng_payload payload;
 
 	diag("Testing lttng_event_rule_user_log4j_logging.");
@@ -375,16 +375,16 @@ static void test_event_rule_log4j_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static void test_event_rule_python_logging(void)
+static void test_event_rule_python_logging()
 {
-	struct lttng_event_rule *python_logging = NULL;
-	struct lttng_event_rule *python_logging_from_buffer = NULL;
+	struct lttng_event_rule *python_logging = nullptr;
+	struct lttng_event_rule *python_logging_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const char *pattern = "my_event_*";
 	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
-	struct lttng_log_level_rule *log_level_rule = NULL;
-	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_log_level_rule *log_level_rule = nullptr;
+	const struct lttng_log_level_rule *log_level_rule_return = nullptr;
 	struct lttng_payload payload;
 
 	diag("Testing lttng_event_rule_user_python_logging.");
@@ -438,13 +438,13 @@ static void test_event_rule_python_logging(void)
 }
 
 #ifdef __linux__
-static void test_event_rule_userspace_probe(void)
+static void test_event_rule_userspace_probe()
 {
-	struct lttng_event_rule *uprobe = NULL;
-	struct lttng_event_rule *uprobe_from_buffer = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	struct lttng_userspace_probe_location *probe_location = NULL;
-	const struct lttng_userspace_probe_location *probe_location_tmp = NULL;
+	struct lttng_event_rule *uprobe = nullptr;
+	struct lttng_event_rule *uprobe_from_buffer = nullptr;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
+	struct lttng_userspace_probe_location *probe_location = nullptr;
+	const struct lttng_userspace_probe_location *probe_location_tmp = nullptr;
 	enum lttng_event_rule_status status;
 
 	const char *probe_name = "my_probe.";
@@ -470,7 +470,7 @@ static void test_event_rule_userspace_probe(void)
 	}
 
 	/* Ownership transferred to the probe location function object. */
-	lookup_method = NULL;
+	lookup_method = nullptr;
 
 	lttng_payload_init(&payload);
 
@@ -516,8 +516,8 @@ static void test_event_rule_userspace_probe(void)
 static void
 test_event_rule_kernel_probe_by_location(const struct lttng_kernel_probe_location *location)
 {
-	struct lttng_event_rule *kprobe = NULL;
-	struct lttng_event_rule *kprobe_from_buffer = NULL;
+	struct lttng_event_rule *kprobe = nullptr;
+	struct lttng_event_rule *kprobe_from_buffer = nullptr;
 	enum lttng_event_rule_status status;
 	const struct lttng_kernel_probe_location *_location;
 
@@ -560,10 +560,10 @@ test_event_rule_kernel_probe_by_location(const struct lttng_kernel_probe_locatio
 	lttng_event_rule_destroy(kprobe_from_buffer);
 }
 
-static void test_event_rule_kernel_probe(void)
+static void test_event_rule_kernel_probe()
 {
-	struct lttng_kernel_probe_location *address_location = NULL;
-	struct lttng_kernel_probe_location *symbol_location = NULL;
+	struct lttng_kernel_probe_location *address_location = nullptr;
+	struct lttng_kernel_probe_location *symbol_location = nullptr;
 
 	address_location = lttng_kernel_probe_location_address_create(50);
 	symbol_location = lttng_kernel_probe_location_symbol_create("une_bonne", 50);
@@ -676,7 +676,7 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 	lttng_event_rule_destroy(rule);
 }
 
-static void test_event_rule_log_level_ust(void)
+static void test_event_rule_log_level_ust()
 {
 	const int tagged_log_level_values[] = {
 		LTTNG_LOGLEVEL_EMERG,	       LTTNG_LOGLEVEL_ALERT,
@@ -701,13 +701,13 @@ static void test_event_rule_log_level_ust(void)
 					  lttng_event_rule_user_tracepoint_set_log_level_rule,
 					  tagged_log_level_values,
 					  ARRAY_SIZE(tagged_log_level_values),
-					  NULL,
+					  nullptr,
 					  0,
 					  invalid_log_level_values,
 					  ARRAY_SIZE(invalid_log_level_values));
 }
 
-static void test_event_rule_log_level_jul(void)
+static void test_event_rule_log_level_jul()
 {
 	const int tagged_log_level_values[] = {
 		LTTNG_LOGLEVEL_JUL_OFF,	  LTTNG_LOGLEVEL_JUL_SEVERE, LTTNG_LOGLEVEL_JUL_WARNING,
@@ -724,11 +724,11 @@ static void test_event_rule_log_level_jul(void)
 					  ARRAY_SIZE(tagged_log_level_values),
 					  valid_log_level_values,
 					  ARRAY_SIZE(valid_log_level_values),
-					  NULL,
+					  nullptr,
 					  0);
 }
 
-static void test_event_rule_log_level_log4j(void)
+static void test_event_rule_log_level_log4j()
 {
 	const int tagged_log_level_values[] = {
 		LTTNG_LOGLEVEL_LOG4J_OFF,   LTTNG_LOGLEVEL_LOG4J_FATAL, LTTNG_LOGLEVEL_LOG4J_ERROR,
@@ -745,11 +745,11 @@ static void test_event_rule_log_level_log4j(void)
 					  ARRAY_SIZE(tagged_log_level_values),
 					  valid_log_level_values,
 					  ARRAY_SIZE(valid_log_level_values),
-					  NULL,
+					  nullptr,
 					  0);
 }
 
-static void test_event_rule_log_level_python(void)
+static void test_event_rule_log_level_python()
 {
 	const int tagged_log_level_values[] = {
 		LTTNG_LOGLEVEL_PYTHON_CRITICAL, LTTNG_LOGLEVEL_PYTHON_ERROR,
@@ -771,11 +771,11 @@ static void test_event_rule_log_level_python(void)
 					  ARRAY_SIZE(tagged_log_level_values),
 					  valid_log_level_values,
 					  ARRAY_SIZE(valid_log_level_values),
-					  NULL,
+					  nullptr,
 					  0);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_event_rule_kernel_tracepoint();

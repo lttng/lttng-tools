@@ -30,6 +30,6 @@ enum health_type_sessiond {
 /* Application health monitoring */
 extern struct health_app *the_health_sessiond;
 
-bool launch_health_management_thread(void);
+bool launch_health_management_thread();
 
 #endif /* HEALTH_SESSIOND_H */

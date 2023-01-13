@@ -146,7 +146,7 @@ void measure_single_clock_offset(struct offset_sample *sample)
  * to complete, thus removing imprecision caused by preemption.
  * May return a negative offset.
  */
-lst::clock_class::scycles_t measure_clock_offset(void)
+lst::clock_class::scycles_t measure_clock_offset()
 {
 	struct offset_sample offset_best_sample = {
 		.offset = 0,

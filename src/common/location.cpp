@@ -65,7 +65,7 @@ void lttng_trace_archive_location_put(struct lttng_trace_archive_location *locat
 struct lttng_trace_archive_location *
 lttng_trace_archive_location_local_create(const char *absolute_path)
 {
-	struct lttng_trace_archive_location *location = NULL;
+	struct lttng_trace_archive_location *location = nullptr;
 
 	if (!absolute_path) {
 		goto end;
@@ -85,7 +85,7 @@ end:
 	return location;
 error:
 	lttng_trace_archive_location_put(location);
-	return NULL;
+	return nullptr;
 }
 
 struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
@@ -95,7 +95,7 @@ struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
 	uint16_t data_port,
 	const char *relative_path)
 {
-	struct lttng_trace_archive_location *location = NULL;
+	struct lttng_trace_archive_location *location = nullptr;
 
 	if (!host || !relative_path) {
 		goto end;
@@ -122,7 +122,7 @@ end:
 	return location;
 error:
 	lttng_trace_archive_location_put(location);
-	return NULL;
+	return nullptr;
 }
 
 ssize_t

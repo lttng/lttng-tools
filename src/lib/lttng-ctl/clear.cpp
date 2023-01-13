@@ -87,7 +87,7 @@ end:
 	return handle;
 error:
 	lttng_clear_handle_destroy(handle);
-	return NULL;
+	return nullptr;
 }
 
 static int handle_state_transition(struct lttng_clear_handle *handle)
@@ -270,7 +270,7 @@ enum lttng_error_code lttng_clear_session(const char *session_name,
 					  struct lttng_clear_handle **_handle)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct lttng_clear_handle *handle = NULL;
+	struct lttng_clear_handle *handle = nullptr;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION,
 		.session = {},
@@ -282,7 +282,7 @@ enum lttng_error_code lttng_clear_session(const char *session_name,
 	ssize_t comm_ret;
 	int ret;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -314,7 +314,7 @@ error:
 	/* Transfer the handle to the caller. */
 	if (_handle) {
 		*_handle = handle;
-		handle = NULL;
+		handle = nullptr;
 	}
 	if (sessiond_socket >= 0) {
 		ret = close(sessiond_socket);

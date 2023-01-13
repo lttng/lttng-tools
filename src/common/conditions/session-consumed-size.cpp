@@ -136,7 +136,7 @@ lttng_condition_session_consumed_size_mi_serialize(const struct lttng_condition 
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_condition_status status;
-	const char *session_name = NULL;
+	const char *session_name = nullptr;
 	uint64_t threshold_bytes;
 
 	LTTNG_ASSERT(condition);
@@ -192,7 +192,7 @@ struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 
 	condition = zmalloc<lttng_condition_session_consumed_size>();
 	if (!condition) {
-		return NULL;
+		return nullptr;
 	}
 
 	lttng_condition_init(&condition->parent, LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE);
@@ -299,7 +299,7 @@ create_evaluation_from_payload(const struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_session_consumed_size_comm *comm =
 		(typeof(comm)) view->buffer.data;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (view->buffer.size < sizeof(*comm)) {
 		goto end;
@@ -315,7 +315,7 @@ lttng_evaluation_session_consumed_size_create_from_payload(struct lttng_payload_
 							   struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
-	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_evaluation *evaluation = nullptr;
 
 	if (!_evaluation) {
 		ret = -1;

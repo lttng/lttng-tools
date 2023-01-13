@@ -134,7 +134,7 @@ static void *thread_manage_health(void *data)
 	}
 
 	mark_thread_as_ready(notifiers);
-	while (1) {
+	while (true) {
 		DBG("Health check ready");
 
 		/* Infinite blocking call, waiting for transmission */
@@ -241,7 +241,7 @@ error:
 
 	lttng_poll_clean(&events);
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_health_management_thread(void *data)
@@ -252,7 +252,7 @@ static bool shutdown_health_management_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-bool launch_health_management_thread(void)
+bool launch_health_management_thread()
 {
 	struct thread_notifiers *notifiers;
 	struct lttng_thread *thread;

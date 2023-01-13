@@ -35,8 +35,8 @@ int lttng_opt_mi;
 static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_condition)
 {
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
-	const char *session_name = NULL;
-	const char *channel_name = NULL;
+	const char *session_name = nullptr;
+	const char *channel_name = nullptr;
 	enum lttng_domain_type domain_type;
 	/* Start at a non zero value to validate initialization */
 	double threshold_ratio;
@@ -67,9 +67,9 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Domain name is unset");
 
 	diag("Testing session name set/get");
-	status = lttng_condition_buffer_usage_set_session_name(NULL, "Test");
+	status = lttng_condition_buffer_usage_set_session_name(nullptr, "Test");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null condition on set session name");
-	status = lttng_condition_buffer_usage_get_session_name(NULL, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(nullptr, &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get session name with null condition");
 	ok(!session_name, "Session name is null");
 	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
@@ -77,7 +77,7 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Session name is unset");
 	ok(!session_name, "Session name is null");
 
-	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, NULL);
+	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, nullptr);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null session name");
 	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
 							       &session_name);
@@ -114,16 +114,16 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(strcmp("session420", session_name) == 0, "Session is still name is %s", "session420");
 
 	diag("Testing channel name set/get");
-	status = lttng_condition_buffer_usage_set_channel_name(NULL, "Test");
+	status = lttng_condition_buffer_usage_set_channel_name(nullptr, "Test");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null condition on set channel name");
-	status = lttng_condition_buffer_usage_get_channel_name(NULL, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(nullptr, &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get channel name with null condition");
 	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
 							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Channel name is unset");
 	ok(!channel_name, "Channel name is null");
 
-	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, NULL);
+	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, nullptr);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null channel name");
 	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
 							       &channel_name);
@@ -160,9 +160,9 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(strcmp("channel420", channel_name) == 0, "Channel is still name is %s", "channel420");
 
 	diag("Testing threshold ratio set/get");
-	status = lttng_condition_buffer_usage_set_threshold_ratio(NULL, 0.420);
+	status = lttng_condition_buffer_usage_set_threshold_ratio(nullptr, 0.420);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set threshold ratio with null condition");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(NULL, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(nullptr, &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get threshold ratio with null condition");
 	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
 								  &threshold_ratio);
@@ -202,9 +202,9 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(threshold_ratio == 0.420, "Threshold ratio is 0.420");
 
 	diag("Testing threshold bytes set/get");
-	status = lttng_condition_buffer_usage_set_threshold(NULL, 100000);
+	status = lttng_condition_buffer_usage_set_threshold(nullptr, 100000);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set threshold with null condition");
-	status = lttng_condition_buffer_usage_get_threshold(NULL, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(nullptr, &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get threshold value with null condition ");
 	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
 							    &threshold_bytes);
@@ -258,9 +258,9 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(threshold_bytes == 420, "Threshold is untouched");
 
 	diag("Testing domain type set/get");
-	status = lttng_condition_buffer_usage_set_domain_type(NULL, LTTNG_DOMAIN_UST);
+	status = lttng_condition_buffer_usage_set_domain_type(nullptr, LTTNG_DOMAIN_UST);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set domain type with null condition");
-	status = lttng_condition_buffer_usage_get_domain_type(NULL, &domain_type);
+	status = lttng_condition_buffer_usage_get_domain_type(nullptr, &domain_type);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get domain type with null condition");
 
 	status = lttng_condition_buffer_usage_set_domain_type(buffer_usage_condition,
@@ -277,9 +277,9 @@ static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_con
 	ok(domain_type == LTTNG_DOMAIN_UST, "Domain type is LTTNG_DOMAIN_UST");
 }
 
-static void test_condition_buffer_usage_low(void)
+static void test_condition_buffer_usage_low()
 {
-	struct lttng_condition *buffer_usage_low = NULL;
+	struct lttng_condition *buffer_usage_low = nullptr;
 
 	diag("Testing lttng_condition_buffer_usage_low_create");
 	buffer_usage_low = lttng_condition_buffer_usage_low_create();
@@ -293,9 +293,9 @@ static void test_condition_buffer_usage_low(void)
 	lttng_condition_destroy(buffer_usage_low);
 }
 
-static void test_condition_buffer_usage_high(void)
+static void test_condition_buffer_usage_high()
 {
-	struct lttng_condition *buffer_usage_high = NULL;
+	struct lttng_condition *buffer_usage_high = nullptr;
 
 	diag("Testing lttng_condition_buffer_usage_high_create");
 	buffer_usage_high = lttng_condition_buffer_usage_high_create();
@@ -309,20 +309,20 @@ static void test_condition_buffer_usage_high(void)
 	lttng_condition_destroy(buffer_usage_high);
 }
 
-static void test_trigger(void)
+static void test_trigger()
 {
-	struct lttng_action *notify_action = NULL;
-	struct lttng_condition *buffer_usage_high = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_action *notify_action = nullptr;
+	struct lttng_condition *buffer_usage_high = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 
 	notify_action = lttng_action_notify_create();
 	buffer_usage_high = lttng_condition_buffer_usage_high_create();
 
-	trigger = lttng_trigger_create(NULL, NULL);
+	trigger = lttng_trigger_create(nullptr, nullptr);
 	ok(!trigger, "lttng_trigger_create(NULL, NULL) returns null");
-	trigger = lttng_trigger_create(buffer_usage_high, NULL);
+	trigger = lttng_trigger_create(buffer_usage_high, nullptr);
 	ok(!trigger, "lttng_trigger_create(NON-NULL, NULL) returns null");
-	trigger = lttng_trigger_create(NULL, notify_action);
+	trigger = lttng_trigger_create(nullptr, notify_action);
 	ok(!trigger, "lttng_trigger_create(NULL, NON-NULL) returns null");
 
 	trigger = lttng_trigger_create(buffer_usage_high, notify_action);
@@ -333,7 +333,7 @@ static void test_trigger(void)
 	lttng_trigger_destroy(trigger);
 }
 
-int main(void)
+int main()
 {
 	plan_tests(NUM_TESTS);
 	test_condition_buffer_usage_low();

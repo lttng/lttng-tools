@@ -60,37 +60,37 @@
 #endif
 
 static int debug = 0;
-static char *ns_opt = NULL;
-static char *before_unshare_wait_file_path = NULL;
-static char *after_unshare_wait_file_path = NULL;
-static char *after_unshare_signal_file_path = NULL;
+static char *ns_opt = nullptr;
+static char *before_unshare_wait_file_path = nullptr;
+static char *after_unshare_wait_file_path = nullptr;
+static char *after_unshare_signal_file_path = nullptr;
 
 static struct poptOption opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "debug", 'd', POPT_ARG_NONE, &debug, 0, "Enable debug output", NULL },
-	{ "ns", 'n', POPT_ARG_STRING, &ns_opt, 0, "Namespace short identifier", NULL },
+	{ "debug", 'd', POPT_ARG_NONE, &debug, 0, "Enable debug output", nullptr },
+	{ "ns", 'n', POPT_ARG_STRING, &ns_opt, 0, "Namespace short identifier", nullptr },
 	{ "before",
 	  'b',
 	  POPT_ARG_STRING,
 	  &before_unshare_wait_file_path,
 	  0,
 	  "Wait for file before unshare",
-	  NULL },
+	  nullptr },
 	{ "after",
 	  'a',
 	  POPT_ARG_STRING,
 	  &after_unshare_wait_file_path,
 	  0,
 	  "Wait for file after unshare",
-	  NULL },
+	  nullptr },
 	{ "signal",
 	  's',
 	  POPT_ARG_STRING,
 	  &after_unshare_signal_file_path,
 	  0,
 	  "Create signal file after unshare",
-	  NULL },
-	POPT_AUTOHELP{ NULL, 0, 0, NULL, 0, NULL, NULL }
+	  nullptr },
+	POPT_AUTOHELP{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static ATTR_FORMAT_PRINTF(1, 2) void debug_printf(const char *format, ...)
@@ -200,7 +200,7 @@ int main(int argc, const char **argv)
 	int ret = EXIT_SUCCESS;
 	poptContext pc;
 
-	pc = poptGetContext(NULL, argc, argv, opts, 0);
+	pc = poptGetContext(nullptr, argc, argv, opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	if (argc < 2) {
@@ -229,7 +229,7 @@ int main(int argc, const char **argv)
 		goto end;
 	}
 
-	if (ns_opt == NULL) {
+	if (ns_opt == nullptr) {
 		poptPrintUsage(pc, stderr, 0);
 		ret = EXIT_FAILURE;
 		goto end;

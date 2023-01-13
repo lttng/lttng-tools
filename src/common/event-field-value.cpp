@@ -206,7 +206,7 @@ static void destroy_field_val(void *field_val)
 	lttng_event_field_value_destroy((lttng_event_field_value *) field_val);
 }
 
-struct lttng_event_field_value *lttng_event_field_value_array_create(void)
+struct lttng_event_field_value *lttng_event_field_value_array_create()
 {
 	struct lttng_event_field_value_array *field_val = lttng::utils::container_of(
 		create_empty_field_val(LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY, sizeof(*field_val)),
@@ -288,7 +288,7 @@ int lttng_event_field_value_enum_append_label_with_size(struct lttng_event_field
 			 ->labels,
 		new_label);
 	if (ret == 0) {
-		new_label = NULL;
+		new_label = nullptr;
 	}
 
 end:
@@ -320,7 +320,7 @@ int lttng_event_field_value_array_append_unavailable(struct lttng_event_field_va
 	return lttng_dynamic_pointer_array_add_pointer(
 		&lttng::utils::container_of(array_field_val, &lttng_event_field_value_array::parent)
 			 ->elems,
-		NULL);
+		nullptr);
 }
 
 enum lttng_event_field_value_type
@@ -466,7 +466,7 @@ lttng_event_field_value_enum_get_label_at_index(const struct lttng_event_field_v
 	const struct lttng_event_field_value_enum *enum_field_val;
 
 	if (!field_val || !is_enum_field_val(field_val)) {
-		ret = NULL;
+		ret = nullptr;
 		goto end;
 	}
 
@@ -474,7 +474,7 @@ lttng_event_field_value_enum_get_label_at_index(const struct lttng_event_field_v
 		lttng::utils::container_of(field_val, &lttng_event_field_value_enum::parent);
 
 	if (index >= lttng_dynamic_pointer_array_get_count(&enum_field_val->labels)) {
-		ret = NULL;
+		ret = nullptr;
 		goto end;
 	}
 

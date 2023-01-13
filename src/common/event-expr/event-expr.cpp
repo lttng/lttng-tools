@@ -71,7 +71,7 @@ error:
 	if (expr) {
 		lttng_event_expr_destroy(&expr->parent);
 	}
-	expr = NULL;
+	expr = nullptr;
 
 end:
 	return expr;
@@ -79,7 +79,7 @@ end:
 
 struct lttng_event_expr *lttng_event_expr_event_payload_field_create(const char *field_name)
 {
-	struct lttng_event_expr *expr = NULL;
+	struct lttng_event_expr *expr = nullptr;
 
 	if (!field_name) {
 		goto end;
@@ -94,7 +94,7 @@ end:
 
 struct lttng_event_expr *lttng_event_expr_channel_context_field_create(const char *field_name)
 {
-	struct lttng_event_expr *expr = NULL;
+	struct lttng_event_expr *expr = nullptr;
 
 	if (!field_name) {
 		goto end;
@@ -110,7 +110,7 @@ end:
 struct lttng_event_expr *
 lttng_event_expr_app_specific_context_field_create(const char *provider_name, const char *type_name)
 {
-	struct lttng_event_expr_app_specific_context_field *expr = NULL;
+	struct lttng_event_expr_app_specific_context_field *expr = nullptr;
 	struct lttng_event_expr *ret_parent_expr;
 
 	if (!type_name || !provider_name) {
@@ -141,7 +141,7 @@ error:
 	if (expr) {
 		lttng_event_expr_destroy(&expr->parent);
 	}
-	ret_parent_expr = NULL;
+	ret_parent_expr = nullptr;
 
 end:
 	return ret_parent_expr;
@@ -151,7 +151,7 @@ struct lttng_event_expr *
 lttng_event_expr_array_field_element_create(struct lttng_event_expr *array_field_expr,
 					    unsigned int index)
 {
-	struct lttng_event_expr_array_field_element *expr = NULL;
+	struct lttng_event_expr_array_field_element *expr = nullptr;
 	struct lttng_event_expr *ret_parent_expr;
 
 	/* The parent array field expression must be an l-value */
@@ -172,7 +172,7 @@ lttng_event_expr_array_field_element_create(struct lttng_event_expr *array_field
 	goto end;
 
 error:
-	ret_parent_expr = NULL;
+	ret_parent_expr = nullptr;
 
 end:
 	return ret_parent_expr;
@@ -180,7 +180,7 @@ end:
 
 const char *lttng_event_expr_event_payload_field_get_name(const struct lttng_event_expr *expr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD) {
 		goto end;
@@ -194,7 +194,7 @@ end:
 
 const char *lttng_event_expr_channel_context_field_get_name(const struct lttng_event_expr *expr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD) {
 		goto end;
@@ -209,7 +209,7 @@ end:
 const char *
 lttng_event_expr_app_specific_context_field_get_provider_name(const struct lttng_event_expr *expr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD) {
 		goto end;
@@ -225,7 +225,7 @@ end:
 const char *
 lttng_event_expr_app_specific_context_field_get_type_name(const struct lttng_event_expr *expr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD) {
 		goto end;
@@ -241,7 +241,7 @@ end:
 const struct lttng_event_expr *
 lttng_event_expr_array_field_element_get_parent_expr(const struct lttng_event_expr *expr)
 {
-	const struct lttng_event_expr *ret = NULL;
+	const struct lttng_event_expr *ret = nullptr;
 
 	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT) {
 		goto end;
@@ -464,7 +464,7 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		int ret;
-		char *name = NULL;
+		char *name = nullptr;
 		const char *provider_name, *type_name;
 
 		status = bytecode_push_get_app_context_root(bytecode);
@@ -556,8 +556,8 @@ int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 {
 	int status;
 	struct return_op ret_insn;
-	struct lttng_bytecode_alloc *bytecode = NULL;
-	struct lttng_bytecode_alloc *bytecode_reloc = NULL;
+	struct lttng_bytecode_alloc *bytecode = nullptr;
+	struct lttng_bytecode_alloc *bytecode_reloc = nullptr;
 
 	status = bytecode_init(&bytecode);
 	if (status) {
@@ -614,7 +614,7 @@ lttng_event_expr_event_payload_field_mi_serialize(const struct lttng_event_expr 
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	LTTNG_ASSERT(expression);
 	LTTNG_ASSERT(writer);
@@ -656,7 +656,7 @@ lttng_event_expr_channel_context_field_mi_serialize(const struct lttng_event_exp
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	LTTNG_ASSERT(expression);
 	LTTNG_ASSERT(writer);
@@ -699,8 +699,8 @@ lttng_event_expr_app_specific_context_field_mi_serialize(const struct lttng_even
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	const char *provider_name = NULL;
-	const char *type_name = NULL;
+	const char *provider_name = nullptr;
+	const char *type_name = nullptr;
 
 	LTTNG_ASSERT(expression);
 	LTTNG_ASSERT(writer);
@@ -755,7 +755,7 @@ lttng_event_expr_array_field_element_mi_serialize(const struct lttng_event_expr 
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_event_expr_status status;
-	const struct lttng_event_expr *parent_expr = NULL;
+	const struct lttng_event_expr *parent_expr = nullptr;
 	unsigned int index;
 
 	LTTNG_ASSERT(expression);
@@ -766,7 +766,7 @@ lttng_event_expr_array_field_element_mi_serialize(const struct lttng_event_expr 
 	LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
 	parent_expr = lttng_event_expr_array_field_element_get_parent_expr(expression);
-	LTTNG_ASSERT(parent_expr != NULL);
+	LTTNG_ASSERT(parent_expr != nullptr);
 
 	/* Open event expr array field element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_expr_array_field_element);

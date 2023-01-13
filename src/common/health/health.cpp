@@ -66,14 +66,14 @@ struct health_app *health_app_create(int nr_types)
 
 	ha = zmalloc<health_app>();
 	if (!ha) {
-		return NULL;
+		return nullptr;
 	}
 	ha->flags = calloc<health_flags>(nr_types);
 	if (!ha->flags) {
 		goto error_flags;
 	}
 	CDS_INIT_LIST_HEAD(&ha->list);
-	pthread_mutex_init(&ha->lock, NULL);
+	pthread_mutex_init(&ha->lock, nullptr);
 	ha->nr_types = nr_types;
 	ha->time_delta.tv_sec = DEFAULT_HEALTH_CHECK_DELTA_S;
 	ha->time_delta.tv_nsec = DEFAULT_HEALTH_CHECK_DELTA_NS;
@@ -82,7 +82,7 @@ struct health_app *health_app_create(int nr_types)
 
 error_flags:
 	free(ha);
-	return NULL;
+	return nullptr;
 }
 
 void health_app_destroy(struct health_app *ha)

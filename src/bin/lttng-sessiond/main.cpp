@@ -84,7 +84,7 @@ static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-sessiond.8.h>
 #else
-	NULL
+	nullptr
 #endif
 	;
 
@@ -104,37 +104,37 @@ static int recv_child_signal;
 
 /* Command line options */
 static const struct option long_options[] = {
-	{ "client-sock", required_argument, 0, 'c' },
-	{ "apps-sock", required_argument, 0, 'a' },
-	{ "kconsumerd-cmd-sock", required_argument, 0, '\0' },
-	{ "kconsumerd-err-sock", required_argument, 0, '\0' },
-	{ "ustconsumerd32-cmd-sock", required_argument, 0, '\0' },
-	{ "ustconsumerd32-err-sock", required_argument, 0, '\0' },
-	{ "ustconsumerd64-cmd-sock", required_argument, 0, '\0' },
-	{ "ustconsumerd64-err-sock", required_argument, 0, '\0' },
-	{ "consumerd32-path", required_argument, 0, '\0' },
-	{ "consumerd32-libdir", required_argument, 0, '\0' },
-	{ "consumerd64-path", required_argument, 0, '\0' },
-	{ "consumerd64-libdir", required_argument, 0, '\0' },
-	{ "daemonize", no_argument, 0, 'd' },
-	{ "background", no_argument, 0, 'b' },
-	{ "sig-parent", no_argument, 0, 'S' },
-	{ "help", no_argument, 0, 'h' },
-	{ "group", required_argument, 0, 'g' },
-	{ "version", no_argument, 0, 'V' },
-	{ "quiet", no_argument, 0, 'q' },
-	{ "verbose", no_argument, 0, 'v' },
-	{ "verbose-consumer", no_argument, 0, '\0' },
-	{ "no-kernel", no_argument, 0, '\0' },
-	{ "pidfile", required_argument, 0, 'p' },
-	{ "agent-tcp-port", required_argument, 0, '\0' },
-	{ "config", required_argument, 0, 'f' },
-	{ "load", required_argument, 0, 'l' },
-	{ "kmod-probes", required_argument, 0, '\0' },
-	{ "extra-kmod-probes", required_argument, 0, '\0' },
-	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, required_argument, 0, '\0' },
-	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, required_argument, 0, '\0' },
-	{ NULL, 0, 0, 0 }
+	{ "client-sock", required_argument, nullptr, 'c' },
+	{ "apps-sock", required_argument, nullptr, 'a' },
+	{ "kconsumerd-cmd-sock", required_argument, nullptr, '\0' },
+	{ "kconsumerd-err-sock", required_argument, nullptr, '\0' },
+	{ "ustconsumerd32-cmd-sock", required_argument, nullptr, '\0' },
+	{ "ustconsumerd32-err-sock", required_argument, nullptr, '\0' },
+	{ "ustconsumerd64-cmd-sock", required_argument, nullptr, '\0' },
+	{ "ustconsumerd64-err-sock", required_argument, nullptr, '\0' },
+	{ "consumerd32-path", required_argument, nullptr, '\0' },
+	{ "consumerd32-libdir", required_argument, nullptr, '\0' },
+	{ "consumerd64-path", required_argument, nullptr, '\0' },
+	{ "consumerd64-libdir", required_argument, nullptr, '\0' },
+	{ "daemonize", no_argument, nullptr, 'd' },
+	{ "background", no_argument, nullptr, 'b' },
+	{ "sig-parent", no_argument, nullptr, 'S' },
+	{ "help", no_argument, nullptr, 'h' },
+	{ "group", required_argument, nullptr, 'g' },
+	{ "version", no_argument, nullptr, 'V' },
+	{ "quiet", no_argument, nullptr, 'q' },
+	{ "verbose", no_argument, nullptr, 'v' },
+	{ "verbose-consumer", no_argument, nullptr, '\0' },
+	{ "no-kernel", no_argument, nullptr, '\0' },
+	{ "pidfile", required_argument, nullptr, 'p' },
+	{ "agent-tcp-port", required_argument, nullptr, '\0' },
+	{ "config", required_argument, nullptr, 'f' },
+	{ "load", required_argument, nullptr, 'l' },
+	{ "kmod-probes", required_argument, nullptr, '\0' },
+	{ "extra-kmod-probes", required_argument, nullptr, '\0' },
+	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, required_argument, nullptr, '\0' },
+	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, required_argument, nullptr, '\0' },
+	{ nullptr, 0, nullptr, 0 }
 };
 
 /* Command line options to ignore from configuration file */
@@ -170,7 +170,7 @@ static int is_root;
  * Notify the main thread to initiate the teardown of the worker threads by
  * writing to the main quit pipe.
  */
-static void notify_main_quit_pipe(void)
+static void notify_main_quit_pipe()
 {
 	int ret;
 
@@ -185,7 +185,7 @@ static void notify_main_quit_pipe(void)
 /*
  * Close every consumer sockets.
  */
-static void close_consumer_sockets(void)
+static void close_consumer_sockets()
 {
 	int ret;
 
@@ -273,7 +273,7 @@ static void wait_consumer(struct consumer_data *consumer_data)
 /*
  * Cleanup the session daemon's data structures.
  */
-static void sessiond_cleanup(void)
+static void sessiond_cleanup()
 {
 	int ret;
 	struct ltt_session_list *session_list = session_get_list();
@@ -357,7 +357,7 @@ static void sessiond_cleanup(void)
 /*
  * Cleanup the daemon's option data structures.
  */
-static void sessiond_cleanup_options(void)
+static void sessiond_cleanup_options()
 {
 	DBG("Cleaning up options");
 
@@ -641,7 +641,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			unsigned long v;
 
 			errno = 0;
-			v = strtoul(arg, NULL, 0);
+			v = strtoul(arg, nullptr, 0);
 			if (errno != 0 || !isdigit(arg[0])) {
 				ERR("Wrong value in --agent-tcp-port parameter: %s", arg);
 				return -1;
@@ -702,7 +702,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		unsigned long v;
 
 		errno = 0;
-		v = strtoul(arg, NULL, 0);
+		v = strtoul(arg, nullptr, 0);
 		if (errno != 0 || !isdigit(arg[0])) {
 			ERR("Wrong value in --%s parameter: %s",
 			    EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR,
@@ -723,7 +723,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		unsigned long v;
 
 		errno = 0;
-		v = strtoul(arg, NULL, 0);
+		v = strtoul(arg, nullptr, 0);
 		if (errno != 0 || !isdigit(arg[0])) {
 			ERR("Wrong value in --%s parameter: %s",
 			    EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR,
@@ -823,7 +823,7 @@ end:
 	return ret;
 }
 
-static void print_version(void)
+static void print_version()
 {
 	fprintf(stdout, "%s\n", VERSION);
 }
@@ -836,7 +836,7 @@ static int set_options(int argc, char **argv)
 	int ret = 0, c = 0, option_index = 0;
 	int orig_optopt = optopt, orig_optind = optind;
 	char *optstring;
-	char *config_path = NULL;
+	char *config_path = nullptr;
 
 	optstring = utils_generate_optstring(long_options,
 					     sizeof(long_options) / sizeof(struct option));
@@ -868,7 +868,7 @@ static int set_options(int argc, char **argv)
 	}
 
 	ret = config_get_section_entries(
-		config_path, config_section_name, config_entry_handler, NULL);
+		config_path, config_section_name, config_entry_handler, nullptr);
 	if (ret) {
 		if (ret > 0) {
 			ERR("Invalid configuration option at line %i", ret);
@@ -880,7 +880,7 @@ static int set_options(int argc, char **argv)
 	/* Reset getopt's global state */
 	optopt = orig_optopt;
 	optind = orig_optind;
-	while (1) {
+	while (true) {
 		option_index = -1;
 		/*
 		 * getopt_long() will not set option_index if it encounters a
@@ -896,7 +896,7 @@ static int set_options(int argc, char **argv)
 		 * unset.
 		 */
 		ret = set_option(
-			c, optarg, option_index < 0 ? NULL : long_options[option_index].name);
+			c, optarg, option_index < 0 ? nullptr : long_options[option_index].name);
 		if (ret < 0) {
 			break;
 		}
@@ -911,7 +911,7 @@ end:
 /*
  * Create lockfile using the rundir and return its fd.
  */
-static int create_lockfile(void)
+static int create_lockfile()
 {
 	return utils_create_lock_file(the_config.lock_file_path.value);
 }
@@ -922,7 +922,7 @@ static int create_lockfile(void)
  *
  * Also attempts to create and hold the lock file.
  */
-static int check_existing_daemon(void)
+static int check_existing_daemon()
 {
 	int ret = 0;
 
@@ -941,7 +941,7 @@ end:
 	return ret;
 }
 
-static void sessiond_cleanup_lock_file(void)
+static void sessiond_cleanup_lock_file()
 {
 	int ret;
 
@@ -1032,7 +1032,7 @@ static int set_permissions(char *rundir)
 /*
  * Create the lttng run directory needed for all global sockets and pipe.
  */
-static int create_lttng_rundir(void)
+static int create_lttng_rundir()
 {
 	int ret;
 
@@ -1059,7 +1059,7 @@ error:
 static int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
-	char *path = NULL;
+	char *path = nullptr;
 
 	switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1179,7 +1179,7 @@ static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unu
  * Setup signal handler for :
  *		SIGINT, SIGTERM, SIGPIPE
  */
-static int set_signal_handler(void)
+static int set_signal_handler()
 {
 	int ret = 0;
 	struct sigaction sa;
@@ -1194,29 +1194,29 @@ static int set_signal_handler(void)
 	sa.sa_flags = SA_SIGINFO;
 
 	sa.sa_sigaction = sighandler;
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGINT, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGUSR1, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGBUS, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGBUS, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGPIPE, &sa, nullptr)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
@@ -1230,7 +1230,7 @@ static int set_signal_handler(void)
  * Set open files limit to unlimited. This daemon can open a large number of
  * file descriptors in order to consume multiple kernel traces.
  */
-static void set_ulimit(void)
+static void set_ulimit()
 {
 	int ret;
 	struct rlimit lim;
@@ -1245,15 +1245,15 @@ static void set_ulimit(void)
 	}
 }
 
-static int write_pidfile(void)
+static int write_pidfile()
 {
 	return utils_create_pid_file(getpid(), the_config.pid_file_path.value);
 }
 
-static int set_clock_plugin_env(void)
+static int set_clock_plugin_env()
 {
 	int ret = 0;
-	char *env_value = NULL;
+	char *env_value = nullptr;
 
 	if (!the_config.lttng_ust_clock_plugin.value) {
 		goto end;
@@ -1279,7 +1279,7 @@ end:
 	return ret;
 }
 
-static void destroy_all_sessions_and_wait(void)
+static void destroy_all_sessions_and_wait()
 {
 	struct ltt_session *session, *tmp;
 	struct ltt_session_list *session_list;
@@ -1303,7 +1303,7 @@ static void destroy_all_sessions_and_wait(void)
 			goto unlock_session;
 		}
 		(void) cmd_stop_trace(session);
-		(void) cmd_destroy_session(session, the_notification_thread_handle, NULL);
+		(void) cmd_destroy_session(session, the_notification_thread_handle, nullptr);
 	unlock_session:
 		session_unlock(session);
 		session_put(session);
@@ -1316,11 +1316,11 @@ static void destroy_all_sessions_and_wait(void)
 	DBG("Destruction of all sessions completed");
 }
 
-static void unregister_all_triggers(void)
+static void unregister_all_triggers()
 {
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_triggers *triggers = NULL;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int trigger_count, i;
 	const struct lttng_credentials creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(0),
@@ -1392,7 +1392,7 @@ static int launch_run_as_worker(const char *procname)
 	return run_as_create_worker(procname, run_as_worker_post_fork_cleanup, &the_config);
 }
 
-static void sessiond_uuid_log(void)
+static void sessiond_uuid_log()
 {
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
@@ -1407,16 +1407,17 @@ int main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	const char *env_app_timeout;
-	struct lttng_pipe *ust32_channel_monitor_pipe = NULL, *ust64_channel_monitor_pipe = NULL,
-			  *kernel_channel_monitor_pipe = NULL;
+	struct lttng_pipe *ust32_channel_monitor_pipe = nullptr,
+			  *ust64_channel_monitor_pipe = nullptr,
+			  *kernel_channel_monitor_pipe = nullptr;
 	struct timer_thread_parameters timer_thread_parameters;
 	/* Rotation thread handle. */
-	struct rotation_thread_handle *rotation_thread_handle = NULL;
+	struct rotation_thread_handle *rotation_thread_handle = nullptr;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
-	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
-	struct lttng_thread *client_thread = NULL;
-	struct lttng_thread *notification_thread = NULL;
-	struct lttng_thread *register_apps_thread = NULL;
+	struct rotation_thread_timer_queue *rotation_timer_queue = nullptr;
+	struct lttng_thread *client_thread = nullptr;
+	struct lttng_thread *notification_thread = nullptr;
+	struct lttng_thread *register_apps_thread = nullptr;
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
 	logger_set_thread_name("Main", false);
@@ -1850,7 +1851,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Load sessions. */
-	ret = config_load_session(the_config.load_session_path.value, NULL, 1, 1, NULL);
+	ret = config_load_session(the_config.load_session_path.value, nullptr, 1, 1, nullptr);
 	if (ret) {
 		ERR("Session load failed: %s", error_get_str(ret));
 		retval = -1;

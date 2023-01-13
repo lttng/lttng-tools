@@ -125,7 +125,7 @@ struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condi
 {
 	int ret;
 	struct lttng_payload copy_buffer;
-	struct lttng_condition *copy = NULL;
+	struct lttng_condition *copy = nullptr;
 
 	lttng_payload_init(&copy_buffer);
 
@@ -140,7 +140,7 @@ struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condi
 
 		ret = lttng_condition_create_from_payload(&view, &copy);
 		if (ret < 0) {
-			copy = NULL;
+			copy = nullptr;
 			goto end;
 		}
 	}

@@ -168,17 +168,17 @@ enum perf_hw_cache_op_result_id {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
-	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0 },
-	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
-	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
-	{ "jul", 'j', POPT_ARG_NONE, 0, OPT_JUL, 0, 0 },
-	{ "log4j", 'l', POPT_ARG_NONE, 0, OPT_LOG4J, 0, 0 },
-	{ "type", 't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0 },
-	{ "list", 0, POPT_ARG_NONE, NULL, OPT_LIST, NULL, NULL },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
+	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, nullptr, nullptr },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, nullptr, nullptr },
+	{ "userspace", 'u', POPT_ARG_NONE, nullptr, OPT_USERSPACE, nullptr, nullptr },
+	{ "jul", 'j', POPT_ARG_NONE, nullptr, OPT_JUL, nullptr, nullptr },
+	{ "log4j", 'l', POPT_ARG_NONE, nullptr, OPT_LOG4J, nullptr, nullptr },
+	{ "type", 't', POPT_ARG_STRING, &opt_type, OPT_TYPE, nullptr, nullptr },
+	{ "list", 0, POPT_ARG_NONE, nullptr, OPT_LIST, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
@@ -491,7 +491,7 @@ static int find_ctx_type_idx(const char *opt)
 {
 	int ret, i = 0;
 
-	while (ctx_opts[i].symbol != NULL) {
+	while (ctx_opts[i].symbol != nullptr) {
 		if (strcmp(opt, ctx_opts[i].symbol) == 0) {
 			ret = i;
 			goto end;
@@ -504,7 +504,7 @@ end:
 	return ret;
 }
 
-static enum lttng_domain_type get_domain(void)
+static enum lttng_domain_type get_domain()
 {
 	if (opt_kernel) {
 		return LTTNG_DOMAIN_KERNEL;
@@ -519,7 +519,7 @@ static enum lttng_domain_type get_domain(void)
 	}
 }
 
-static int mi_open(void)
+static int mi_open()
 {
 	int ret;
 
@@ -607,10 +607,10 @@ static void populate_context(struct lttng_event_context *context, const struct c
 		strncpy(context->u.perf_counter.name, opt->symbol, LTTNG_SYMBOL_NAME_LEN);
 		context->u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		/* Replace : and - by _ */
-		while ((ptr = strchr(context->u.perf_counter.name, '-')) != NULL) {
+		while ((ptr = strchr(context->u.perf_counter.name, '-')) != nullptr) {
 			*ptr = '_';
 		}
-		while ((ptr = strchr(context->u.perf_counter.name, ':')) != NULL) {
+		while ((ptr = strchr(context->u.perf_counter.name, ':')) != nullptr) {
 			*ptr = '_';
 		}
 		break;
@@ -626,7 +626,7 @@ static void populate_context(struct lttng_event_context *context, const struct c
 /*
  * Pretty print context type.
  */
-static int print_ctx_type(void)
+static int print_ctx_type()
 {
 	FILE *ofp = stdout;
 	int i = 0;
@@ -650,7 +650,7 @@ static int print_ctx_type(void)
 		}
 	}
 
-	while (ctx_opts[i].symbol != NULL) {
+	while (ctx_opts[i].symbol != nullptr) {
 		if (!ctx_opts[i].hide_help) {
 			if (lttng_opt_mi) {
 				populate_context(&context, &ctx_opts[i]);
@@ -712,7 +712,7 @@ static int add_context(char *session_name)
 
 	dom.type = get_domain();
 	handle = lttng_create_handle(session_name, &dom);
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -747,7 +747,7 @@ static int add_context(char *session_name)
 			}
 		}
 
-		ret = lttng_add_context(handle, &context, NULL, opt_channel_name);
+		ret = lttng_add_context(handle, &context, nullptr, opt_channel_name);
 		if (ret < 0) {
 			ERR("%s: %s", type->opt->symbol, lttng_strerror(ret));
 			warn = 1;
@@ -819,7 +819,7 @@ static void destroy_ctx_type(struct ctx_type *type)
 	free(type);
 }
 
-static struct ctx_type *create_ctx_type(void)
+static struct ctx_type *create_ctx_type()
 {
 	struct ctx_type *type = zmalloc<ctx_type>();
 
@@ -832,7 +832,7 @@ static struct ctx_type *create_ctx_type(void)
 	if (!type->opt) {
 		PERROR("malloc ctx_type options");
 		destroy_ctx_type(type);
-		type = NULL;
+		type = nullptr;
 		goto end;
 	}
 end:
@@ -860,7 +860,7 @@ static int find_ctx_type_perf_raw(const char *ctx, struct ctx_type *type)
 		if (!next) {
 			break;
 		}
-		cur_list = NULL;
+		cur_list = nullptr;
 		switch (field_pos) {
 		case 0:
 			if (strncmp(next, "perf", 4) != 0) {
@@ -932,9 +932,9 @@ end:
 static struct ctx_type *get_context_type(const char *ctx)
 {
 	int opt_index, ret;
-	struct ctx_type *type = NULL;
+	struct ctx_type *type = nullptr;
 	const char app_ctx_prefix[] = "$app.";
-	char *provider_name = NULL, *ctx_name = NULL;
+	char *provider_name = nullptr, *ctx_name = nullptr;
 	size_t i, len, colon_pos = 0, provider_name_len, ctx_name_len;
 
 	if (!ctx) {
@@ -1024,7 +1024,7 @@ not_found:
 	free(provider_name);
 	free(ctx_name);
 	destroy_ctx_type(type);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1035,15 +1035,15 @@ int cmd_add_context(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
-	char *session_name = NULL;
-	const char *leftover = NULL;
+	char *session_name = nullptr;
+	const char *leftover = nullptr;
 
 	if (argc < 2) {
 		ret = CMD_ERROR;
 		goto end;
 	}
 
-	pc = poptGetContext(NULL, argc, argv, long_options, 0);
+	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -1105,7 +1105,7 @@ int cmd_add_context(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		session_name = get_session_name();
-		if (session_name == NULL) {
+		if (session_name == nullptr) {
 			ret = CMD_ERROR;
 			goto end;
 		}

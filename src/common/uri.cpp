@@ -85,7 +85,7 @@ const struct uri_proto proto_uri[] = { { .name = "file",
 static inline const char *strpbrk_or_eos(const char *s, const char *accept)
 {
 	char *p = (char *) strpbrk(s, accept);
-	if (p == NULL) {
+	if (p == nullptr) {
 		p = (char *) strchr(s, '\0');
 	}
 
@@ -97,14 +97,14 @@ static inline const char *strpbrk_or_eos(const char *s, const char *accept)
  */
 static const struct uri_proto *get_uri_proto(const char *uri_str)
 {
-	const struct uri_proto *supported = NULL;
+	const struct uri_proto *supported = nullptr;
 
 	/* Safety net */
-	if (uri_str == NULL) {
+	if (uri_str == nullptr) {
 		goto end;
 	}
 
-	for (supported = &proto_uri[0]; supported->leading_string != NULL; ++supported) {
+	for (supported = &proto_uri[0]; supported->leading_string != nullptr; ++supported) {
 		if (strncasecmp(uri_str,
 				supported->leading_string,
 				strlen(supported->leading_string)) == 0) {
@@ -113,7 +113,7 @@ static const struct uri_proto *get_uri_proto(const char *uri_str)
 	}
 
 	/* Proto not found */
-	return NULL;
+	return nullptr;
 
 end:
 	return supported;
@@ -313,9 +313,9 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	unsigned int ctrl_port = 0;
 	unsigned int data_port = 0;
 	struct lttng_uri *tmp_uris;
-	char *addr_f = NULL;
+	char *addr_f = nullptr;
 	const struct uri_proto *proto;
-	const char *purl, *addr_e, *addr_b, *subdir_b = NULL;
+	const char *purl, *addr_e, *addr_b, *subdir_b = nullptr;
 	const char *seps = ":/\0";
 
 	/*
@@ -329,7 +329,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	DBG3("URI string: %s", str_uri);
 
 	proto = get_uri_proto(str_uri);
-	if (proto == NULL) {
+	if (proto == nullptr) {
 		ERR("URI parse unknown protocol %s", str_uri);
 		goto error;
 	}
@@ -343,7 +343,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 
 	/* Allocate URI array */
 	tmp_uris = calloc<lttng_uri>(size);
-	if (tmp_uris == NULL) {
+	if (tmp_uris == nullptr) {
 		PERROR("zmalloc uri");
 		goto error;
 	}
@@ -382,7 +382,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		/* Address begins after '[' */
 		addr_b = purl + 1;
 		addr_e = strchr(addr_b, ']');
-		if (addr_e == NULL || addr_b == addr_e) {
+		if (addr_e == nullptr || addr_b == addr_e) {
 			ERR("Broken IPv6 address %s", addr_b);
 			goto free_error;
 		}
@@ -393,7 +393,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		/*
 		 * The closing bracket must be followed by a seperator or NULL char.
 		 */
-		if (strchr(seps, *purl) == NULL) {
+		if (strchr(seps, *purl) == nullptr) {
 			ERR("Unknown symbol after IPv6 address: %s", purl);
 			goto free_error;
 		}
@@ -409,7 +409,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 	}
 
 	addr_f = utils_strdupdelim(addr_b, addr_e);
-	if (addr_f == NULL) {
+	if (addr_f == nullptr) {
 		goto free_error;
 	}
 
@@ -446,7 +446,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 			int port;
 
 			port_f = utils_strdupdelim(port_b, port_e);
-			if (port_f == NULL) {
+			if (port_f == nullptr) {
 				goto free_error;
 			}
 
@@ -568,11 +568,11 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lt
 	/* Add the "file://" size to the URL maximum size */
 	char url[PATH_MAX + 7];
 	ssize_t ctrl_uri_count = 0, data_uri_count = 0, uri_count;
-	struct lttng_uri *ctrl_uris = NULL, *data_uris = NULL;
-	struct lttng_uri *tmp_uris = NULL;
+	struct lttng_uri *ctrl_uris = nullptr, *data_uris = nullptr;
+	struct lttng_uri *tmp_uris = nullptr;
 
 	/* No URL(s) is allowed. This means that the consumer will be disabled. */
-	if (ctrl_url == NULL && data_url == NULL) {
+	if (ctrl_url == nullptr && data_url == nullptr) {
 		return 0;
 	}
 
@@ -632,7 +632,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lt
 				 * The data_url and ctrl_url are equal and the ctrl_url
 				 * contains a net:// protocol so we just skip the data part.
 				 */
-				data_url = NULL;
+				data_url = nullptr;
 			}
 		}
 	}
@@ -671,7 +671,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lt
 	}
 
 	tmp_uris = calloc<lttng_uri>(uri_count);
-	if (tmp_uris == NULL) {
+	if (tmp_uris == nullptr) {
 		PERROR("zmalloc uris");
 		goto error;
 	}

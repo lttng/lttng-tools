@@ -174,9 +174,9 @@ ssize_t lttng_action_start_session_create_from_payload(struct lttng_payload_view
 	ssize_t consumed_len, ret;
 	const struct lttng_action_start_session_comm *comm;
 	const char *session_name;
-	struct lttng_action *action = NULL;
+	struct lttng_action *action = nullptr;
 	enum lttng_action_status status;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_rate_policy *policy = nullptr;
 
 	comm = (typeof(comm)) view->buffer.data;
 	session_name = (const char *) &comm->data;
@@ -221,7 +221,7 @@ ssize_t lttng_action_start_session_create_from_payload(struct lttng_payload_view
 	}
 
 	*p_action = action;
-	action = NULL;
+	action = nullptr;
 
 end:
 	lttng_rate_policy_destroy(policy);
@@ -236,19 +236,19 @@ lttng_action_start_session_mi_serialize(const struct lttng_action *action, struc
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_action_status status;
-	const char *session_name = NULL;
-	const struct lttng_rate_policy *policy = NULL;
+	const char *session_name = nullptr;
+	const struct lttng_rate_policy *policy = nullptr;
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_START_SESSION_ACTION(action));
 
 	status = lttng_action_start_session_get_session_name(action, &session_name);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(session_name != NULL);
+	LTTNG_ASSERT(session_name != nullptr);
 
 	status = lttng_action_start_session_get_rate_policy(action, &policy);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
-	LTTNG_ASSERT(policy != NULL);
+	LTTNG_ASSERT(policy != nullptr);
 
 	/* Open action start session element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_start_session);
@@ -286,8 +286,8 @@ end:
 
 struct lttng_action *lttng_action_start_session_create(void)
 {
-	struct lttng_action_start_session *action_start = NULL;
-	struct lttng_rate_policy *policy = NULL;
+	struct lttng_action_start_session *action_start = nullptr;
+	struct lttng_rate_policy *policy = nullptr;
 	enum lttng_action_status status;
 
 	/* Create a every N = 1 rate policy. */
@@ -314,7 +314,7 @@ struct lttng_action *lttng_action_start_session_create(void)
 	status = lttng_action_start_session_set_rate_policy(&action_start->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		lttng_action_destroy(&action_start->parent);
-		action_start = NULL;
+		action_start = nullptr;
 		goto end;
 	}
 
@@ -377,7 +377,7 @@ lttng_action_start_session_set_rate_policy(struct lttng_action *action,
 {
 	enum lttng_action_status status;
 	struct lttng_action_start_session *start_session_action;
-	struct lttng_rate_policy *copy = NULL;
+	struct lttng_rate_policy *copy = nullptr;
 
 	if (!action || !policy || !IS_START_SESSION_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
@@ -398,7 +398,7 @@ lttng_action_start_session_set_rate_policy(struct lttng_action *action,
 	/* Assign the policy. */
 	start_session_action->policy = copy;
 	status = LTTNG_ACTION_STATUS_OK;
-	copy = NULL;
+	copy = nullptr;
 
 end:
 	lttng_rate_policy_destroy(copy);

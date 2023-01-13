@@ -63,7 +63,7 @@ static int add_channel(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(ctx);
 
-	if (ctx->on_recv_channel != NULL) {
+	if (ctx->on_recv_channel != nullptr) {
 		ret = ctx->on_recv_channel(channel);
 		if (ret == 0) {
 			ret = consumer_add_channel(channel, ctx);
@@ -95,7 +95,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu,
 						     int *_alloc_ret)
 {
 	int alloc_ret;
-	struct lttng_consumer_stream *stream = NULL;
+	struct lttng_consumer_stream *stream = nullptr;
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(ctx);
@@ -111,7 +111,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu,
 					&alloc_ret,
 					channel->type,
 					channel->monitor);
-	if (stream == NULL) {
+	if (stream == nullptr) {
 		switch (alloc_ret) {
 		case -ENOENT:
 			/*
@@ -214,7 +214,7 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 	int ret, cpu = 0;
 	struct lttng_ust_ctl_consumer_stream *ustream;
 	struct lttng_consumer_stream *stream;
-	pthread_mutex_t *current_stream_lock = NULL;
+	pthread_mutex_t *current_stream_lock = nullptr;
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(ctx);
@@ -302,7 +302,7 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 			}
 		}
 		pthread_mutex_unlock(&stream->lock);
-		current_stream_lock = NULL;
+		current_stream_lock = nullptr;
 	}
 
 	return 0;
@@ -539,7 +539,7 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 	}
 
 	/* Tell sessiond there is no more stream. */
-	ret = lttng_ust_ctl_send_stream_to_sessiond(sock, NULL);
+	ret = lttng_ust_ctl_send_stream_to_sessiond(sock, nullptr);
 	if (ret < 0) {
 		goto error;
 	}
@@ -928,8 +928,8 @@ error:
 	 * the stream is still in the local stream list of the channel. This call
 	 * will make sure to clean that list.
 	 */
-	consumer_stream_destroy(metadata->metadata_stream, NULL);
-	metadata->metadata_stream = NULL;
+	consumer_stream_destroy(metadata->metadata_stream, nullptr);
+	metadata->metadata_stream = nullptr;
 send_streams_error:
 error_no_stream:
 end:
@@ -1011,8 +1011,8 @@ error_stream:
 	 * Clean up the stream completely because the next snapshot will use a
 	 * new metadata stream.
 	 */
-	consumer_stream_destroy(metadata_stream, NULL);
-	metadata_channel->metadata_stream = NULL;
+	consumer_stream_destroy(metadata_stream, nullptr);
+	metadata_channel->metadata_stream = nullptr;
 
 error:
 	rcu_read_unlock();
@@ -1306,7 +1306,7 @@ int lttng_ustconsumer_recv_metadata(int sock,
 		 * channel is under a snapshot session type. No need to update
 		 * the stream position in that scenario.
 		 */
-		if (channel->metadata_stream != NULL) {
+		if (channel->metadata_stream != nullptr) {
 			pthread_mutex_lock(&channel->metadata_stream->lock);
 			metadata_stream_reset_cache_consumed_position(channel->metadata_stream);
 			pthread_mutex_unlock(&channel->metadata_stream->lock);
@@ -1368,7 +1368,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	int ret_func;
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttcomm_consumer_msg msg;
-	struct lttng_consumer_channel *channel = NULL;
+	struct lttng_consumer_channel *channel = nullptr;
 
 	health_code_update();
 
@@ -1432,7 +1432,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get relayd reference if exists. */
 		relayd = consumer_find_relayd(index);
-		if (relayd == NULL) {
+		if (relayd == nullptr) {
 			DBG("Unable to find relayd %" PRIu64, index);
 			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
 		}
@@ -1495,7 +1495,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		channel = consumer_allocate_channel(
 			msg.u.ask_channel.key,
 			msg.u.ask_channel.session_id,
-			msg.u.ask_channel.chunk_id.is_set ? &chunk_id : NULL,
+			msg.u.ask_channel.chunk_id.is_set ? &chunk_id : nullptr,
 			msg.u.ask_channel.pathname,
 			msg.u.ask_channel.name,
 			msg.u.ask_channel.relayd_id,
@@ -2131,8 +2131,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t relayd_id = msg.u.create_trace_chunk.relayd_id.value;
 		const char *chunk_override_name = *msg.u.create_trace_chunk.override_name ?
 			msg.u.create_trace_chunk.override_name :
-			NULL;
-		struct lttng_directory_handle *chunk_directory_handle = NULL;
+			nullptr;
+		struct lttng_directory_handle *chunk_directory_handle = nullptr;
 
 		/*
 		 * The session daemon will only provide a chunk directory file
@@ -2172,12 +2172,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		ret_code = lttng_consumer_create_trace_chunk(
-			!is_local_trace ? &relayd_id : NULL,
+			!is_local_trace ? &relayd_id : nullptr,
 			msg.u.create_trace_chunk.session_id,
 			msg.u.create_trace_chunk.chunk_id,
 			(time_t) msg.u.create_trace_chunk.creation_timestamp,
 			chunk_override_name,
-			msg.u.create_trace_chunk.credentials.is_set ? &credentials : NULL,
+			msg.u.create_trace_chunk.credentials.is_set ? &credentials : nullptr,
 			chunk_directory_handle);
 		lttng_directory_handle_put(chunk_directory_handle);
 		goto end_msg_sessiond;
@@ -2192,11 +2192,11 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int ret;
 
 		ret_code = lttng_consumer_close_trace_chunk(
-			msg.u.close_trace_chunk.relayd_id.is_set ? &relayd_id : NULL,
+			msg.u.close_trace_chunk.relayd_id.is_set ? &relayd_id : nullptr,
 			msg.u.close_trace_chunk.session_id,
 			msg.u.close_trace_chunk.chunk_id,
 			(time_t) msg.u.close_trace_chunk.close_timestamp,
-			msg.u.close_trace_chunk.close_command.is_set ? &close_command : NULL,
+			msg.u.close_trace_chunk.close_command.is_set ? &close_command : nullptr,
 			closed_trace_chunk_path);
 		reply.ret_code = ret_code;
 		reply.path_length = strlen(closed_trace_chunk_path) + 1;
@@ -2215,7 +2215,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		const uint64_t relayd_id = msg.u.trace_chunk_exists.relayd_id.value;
 
 		ret_code = lttng_consumer_trace_chunk_exists(
-			msg.u.trace_chunk_exists.relayd_id.is_set ? &relayd_id : NULL,
+			msg.u.trace_chunk_exists.relayd_id.is_set ? &relayd_id : nullptr,
 			msg.u.trace_chunk_exists.session_id,
 			msg.u.trace_chunk_exists.chunk_id);
 		goto end_msg_sessiond;
@@ -2279,7 +2279,7 @@ end_channel_error:
 	{
 		int ret_send_status;
 
-		ret_send_status = consumer_send_status_channel(sock, NULL);
+		ret_send_status = consumer_send_status_channel(sock, nullptr);
 		if (ret_send_status < 0) {
 			/* Stop everything if session daemon can not be notified. */
 			goto error_fatal;
@@ -2864,7 +2864,7 @@ static int get_next_subbuffer_common(struct lttng_consumer_stream *stream,
 
 	subbuffer->buffer.buffer =
 		lttng_buffer_view_init(addr, 0, subbuffer->info.data.padded_subbuf_size);
-	LTTNG_ASSERT(subbuffer->buffer.buffer.data != NULL);
+	LTTNG_ASSERT(subbuffer->buffer.buffer.data != nullptr);
 end:
 	return ret;
 }

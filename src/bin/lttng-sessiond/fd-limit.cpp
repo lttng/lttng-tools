@@ -49,7 +49,7 @@ void lttng_fd_put(enum lttng_fd_type type __attribute__((unused)), unsigned int 
 	uatomic_sub(&fd_count, (long) nr);
 }
 
-void lttng_fd_init(void)
+void lttng_fd_init()
 {
 	struct rlimit rlim;
 	int ret;

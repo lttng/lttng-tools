@@ -84,7 +84,7 @@ static void *thread_application_management(void *data)
 
 	health_code_update();
 
-	while (1) {
+	while (true) {
 		DBG("Apps thread polling");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -198,7 +198,7 @@ error_testpoint:
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	return NULL;
+	return nullptr;
 }
 
 static bool shutdown_application_management_thread(void *data)
@@ -212,7 +212,7 @@ static bool shutdown_application_management_thread(void *data)
 bool launch_application_management_thread(int apps_cmd_pipe_read_fd)
 {
 	struct lttng_pipe *quit_pipe;
-	struct thread_notifiers *notifiers = NULL;
+	struct thread_notifiers *notifiers = nullptr;
 	struct lttng_thread *thread;
 
 	notifiers = zmalloc<thread_notifiers>();

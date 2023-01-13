@@ -259,7 +259,7 @@ const char *error_get_str(int32_t code);
  * the caller. On error, an empty string is returned thus no time will be
  * printed in the log.
  */
-const char *log_add_time(void);
+const char *log_add_time();
 
 /* Name must be a statically-allocated string. */
 void logger_set_thread_name(const char *name, bool set_pthread_name);

@@ -244,7 +244,7 @@ end:
  *
  * If yes return 1, else return -1.
  */
-int lttng_check_tracing_group(void)
+int lttng_check_tracing_group()
 {
 	gid_t *grp_list, tracing_gid;
 	int grp_list_size, grp_id, i;
@@ -258,7 +258,7 @@ int lttng_check_tracing_group(void)
 	}
 
 	/* Get number of supplementary group IDs */
-	grp_list_size = getgroups(0, NULL);
+	grp_list_size = getgroups(0, nullptr);
 	if (grp_list_size < 0) {
 		PERROR("getgroups");
 		goto end;
@@ -390,7 +390,7 @@ error:
  * Returns 0 on success, negative value on failure (the sessiond socket path
  * is somehow too long or ENOMEM).
  */
-static int set_session_daemon_path(void)
+static int set_session_daemon_path()
 {
 	int in_tgroup = 0; /* In tracing group. */
 	uid_t uid;
@@ -451,7 +451,7 @@ error:
  *
  * On success, return the socket's file descriptor. On error, return -1.
  */
-int connect_sessiond(void)
+int connect_sessiond()
 {
 	int ret;
 
@@ -472,7 +472,7 @@ error:
 	return -1;
 }
 
-static void reset_global_sessiond_connection_state(void)
+static void reset_global_sessiond_connection_state()
 {
 	sessiond_socket = -1;
 	connected = 0;
@@ -483,7 +483,7 @@ static void reset_global_sessiond_connection_state(void)
  *
  *  On success, return 0. On error, return -1.
  */
-static int disconnect_sessiond(void)
+static int disconnect_sessiond()
 {
 	int ret = 0;
 
@@ -498,7 +498,7 @@ static int disconnect_sessiond(void)
 static int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user_len)
 {
 	int ret = 0;
-	char *buf = NULL;
+	char *buf = nullptr;
 
 	if (len) {
 		if (!user_len) {
@@ -524,7 +524,7 @@ static int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user
 
 		/* Move ownership of command header buffer to user. */
 		*user_buf = buf;
-		buf = NULL;
+		buf = nullptr;
 		*user_len = len;
 	} else {
 		/* No command header. */
@@ -533,7 +533,7 @@ static int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user
 		}
 
 		if (user_buf) {
-			*user_buf = NULL;
+			*user_buf = nullptr;
 		}
 	}
 
@@ -724,10 +724,10 @@ end:
 struct lttng_handle *lttng_create_handle(const char *session_name, struct lttng_domain *domain)
 {
 	int ret;
-	struct lttng_handle *handle = NULL;
+	struct lttng_handle *handle = nullptr;
 
 	handle = zmalloc<lttng_handle>();
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		PERROR("malloc handle");
 		goto end;
 	}
@@ -747,7 +747,7 @@ end:
 	return handle;
 error:
 	free(handle);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -768,7 +768,7 @@ int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (handle == NULL || socket_path == NULL) {
+	if (handle == nullptr || socket_path == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -789,7 +789,7 @@ int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -804,7 +804,7 @@ int lttng_start_tracing(const char *session_name)
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -818,7 +818,7 @@ int lttng_start_tracing(const char *session_name)
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -831,7 +831,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 	int ret, data_ret;
 	struct lttcomm_session_msg lsm;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -845,7 +845,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		goto error;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		goto error;
 	}
@@ -919,7 +919,7 @@ int lttng_add_context(struct lttng_handle *handle,
 	lttng_payload_init(&payload);
 
 	/* Safety check. Both are mandatory. */
-	if (handle == NULL || ctx == NULL) {
+	if (handle == nullptr || ctx == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -986,7 +986,7 @@ int lttng_enable_event(struct lttng_handle *handle,
 		       struct lttng_event *ev,
 		       const char *channel_name)
 {
-	return lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL, 0, NULL);
+	return lttng_enable_event_with_exclusions(handle, ev, channel_name, nullptr, 0, nullptr);
 }
 
 /*
@@ -1001,7 +1001,7 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 				   const char *filter_expression)
 {
 	return lttng_enable_event_with_exclusions(
-		handle, event, channel_name, filter_expression, 0, NULL);
+		handle, event, channel_name, filter_expression, 0, nullptr);
 }
 
 /*
@@ -1013,7 +1013,7 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 {
 	int err;
-	char *agent_filter = NULL;
+	char *agent_filter = nullptr;
 
 	LTTNG_ASSERT(ev);
 
@@ -1065,7 +1065,7 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 	return agent_filter;
 error:
 	free(agent_filter);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -1093,7 +1093,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	struct lttng_payload payload;
 	int ret = 0;
 	unsigned int free_filter_expression = 0;
-	struct filter_parser_ctx *ctx = NULL;
+	struct filter_parser_ctx *ctx = nullptr;
 	size_t bytecode_len = 0;
 
 	/*
@@ -1109,7 +1109,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 */
 	char *filter_expression = (char *) original_filter_expression;
 
-	if (handle == NULL || ev == NULL) {
+	if (handle == nullptr || ev == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -1131,7 +1131,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 	/* Parse filter expression. */
-	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL ||
+	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
@@ -1183,7 +1183,7 @@ serialize:
 				    exclusion_list,
 				    filter_expression,
 				    bytecode_len,
-				    (ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
+				    (ctx && bytecode_len) ? &ctx->bytecode->b : nullptr,
 				    &payload);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1235,13 +1235,14 @@ serialize:
 		lsm.fd_count = fd_count;
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-							fd_count ? &fd_to_send : NULL,
+							fd_count ? &fd_to_send : nullptr,
 							fd_count,
-							view.buffer.size ? view.buffer.data : NULL,
+							view.buffer.size ? view.buffer.data :
+									   nullptr,
 							view.buffer.size,
-							NULL,
-							NULL,
-							0);
+							nullptr,
+							nullptr,
+							nullptr);
 	}
 
 error:
@@ -1281,7 +1282,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	struct lttng_payload payload;
 	int ret = 0;
 	unsigned int free_filter_expression = 0;
-	struct filter_parser_ctx *ctx = NULL;
+	struct filter_parser_ctx *ctx = nullptr;
 	size_t bytecode_len = 0;
 
 	/*
@@ -1297,7 +1298,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	 */
 	char *filter_expression = (char *) original_filter_expression;
 
-	if (handle == NULL || ev == NULL) {
+	if (handle == nullptr || ev == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -1313,7 +1314,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	}
 
 	/* Parse filter expression. */
-	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL ||
+	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
@@ -1362,10 +1363,10 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 serialize:
 	ret = lttng_event_serialize(ev,
 				    0,
-				    NULL,
+				    nullptr,
 				    filter_expression,
 				    bytecode_len,
-				    (ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
+				    (ctx && bytecode_len) ? &ctx->bytecode->b : nullptr,
 				    &payload);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1415,13 +1416,14 @@ serialize:
 		}
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-							fd_count ? &fd_to_send : NULL,
+							fd_count ? &fd_to_send : nullptr,
 							fd_count,
-							view.buffer.size ? view.buffer.data : NULL,
+							view.buffer.size ? view.buffer.data :
+									   nullptr,
 							view.buffer.size,
-							NULL,
-							NULL,
-							0);
+							nullptr,
+							nullptr,
+							nullptr);
 	}
 
 error:
@@ -1466,14 +1468,14 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name, const cha
 		goto end;
 	}
 
-	ret = lttng_disable_event_ext(handle, &ev, channel_name, NULL);
+	ret = lttng_disable_event_ext(handle, &ev, channel_name, nullptr);
 end:
 	return ret;
 }
 
 struct lttng_channel *lttng_channel_create(struct lttng_domain *domain)
 {
-	struct lttng_channel *channel = NULL;
+	struct lttng_channel *channel = nullptr;
 
 	if (!domain) {
 		goto end;
@@ -1532,12 +1534,12 @@ int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *in_c
 	struct lttng_dynamic_buffer buffer;
 	struct lttcomm_session_msg lsm;
 	uint64_t total_buffer_size_needed_per_cpu = 0;
-	struct lttng_channel *channel = NULL;
+	struct lttng_channel *channel = nullptr;
 
 	lttng_dynamic_buffer_init(&buffer);
 
 	/* NULL arguments are forbidden. No default values. */
-	if (handle == NULL || in_chan == NULL) {
+	if (handle == nullptr || in_chan == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1599,7 +1601,7 @@ int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *in_c
 
 	lsm.u.channel.length = buffer.size;
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data, buffer.size, NULL);
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data, buffer.size, nullptr);
 end:
 	lttng_channel_destroy(channel);
 	lttng_dynamic_buffer_reset(&buffer);
@@ -1616,7 +1618,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 	struct lttcomm_session_msg lsm;
 
 	/* Safety check. Both are mandatory. */
-	if (handle == NULL || name == NULL) {
+	if (handle == nullptr || name == nullptr) {
 		return -LTTNG_ERR_INVALID;
 	}
 
@@ -1638,7 +1640,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -1653,7 +1655,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **eve
 {
 	enum lttng_error_code ret_code;
 	int ret, total_payload_received;
-	char *reception_buffer = NULL;
+	char *reception_buffer = nullptr;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS,
 		.session = {},
@@ -1661,11 +1663,11 @@ int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **eve
 		.u = {},
 		.fd_count = 0,
 	};
-	struct lttcomm_list_command_header *cmd_header = NULL;
+	struct lttcomm_list_command_header *cmd_header = nullptr;
 	size_t cmd_header_len;
 	unsigned int nb_events = 0;
 
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1673,9 +1675,9 @@ int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **eve
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-						NULL,
+						nullptr,
 						0,
-						NULL,
+						nullptr,
 						0,
 						(void **) &reception_buffer,
 						(void **) &cmd_header,
@@ -1731,13 +1733,13 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle, struct lttng_event
 	enum lttng_error_code ret_code;
 	int ret;
 	struct lttcomm_session_msg lsm;
-	const struct lttcomm_list_command_header *cmd_header = NULL;
+	const struct lttcomm_list_command_header *cmd_header = nullptr;
 	unsigned int nb_event_fields = 0;
 	struct lttng_payload reply;
 
 	lttng_payload_init(&reply);
 
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1805,9 +1807,9 @@ int lttng_list_syscalls(struct lttng_event **events)
 {
 	enum lttng_error_code ret_code;
 	int ret, total_payload_received;
-	char *reception_buffer = NULL;
+	char *reception_buffer = nullptr;
 	struct lttcomm_session_msg lsm = {};
-	struct lttcomm_list_command_header *cmd_header = NULL;
+	struct lttcomm_list_command_header *cmd_header = nullptr;
 	size_t cmd_header_len;
 	uint32_t nb_events = 0;
 
@@ -1821,9 +1823,9 @@ int lttng_list_syscalls(struct lttng_event **events)
 	lsm.domain.type = LTTNG_DOMAIN_KERNEL;
 
 	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-						NULL,
+						nullptr,
 						0,
-						NULL,
+						nullptr,
 						0,
 						(void **) &reception_buffer,
 						(void **) &cmd_header,
@@ -1890,14 +1892,14 @@ enum lttng_error_code lttng_create_session_ext(struct lttng_session_descriptor *
 		.u = {},
 		.fd_count = 0,
 	};
-	void *reply = NULL;
+	void *reply = nullptr;
 	struct lttng_buffer_view reply_view;
 	int reply_ret;
 	bool sessiond_must_generate_ouput;
 	struct lttng_dynamic_buffer payload;
 	int ret;
 	size_t descriptor_size;
-	struct lttng_session_descriptor *descriptor_reply = NULL;
+	struct lttng_session_descriptor *descriptor_reply = nullptr;
 
 	lttng_dynamic_buffer_init(&payload);
 	if (!session_descriptor) {
@@ -1969,8 +1971,8 @@ int lttng_create_session(const char *name, const char *url)
 {
 	int ret;
 	ssize_t size;
-	struct lttng_uri *uris = NULL;
-	struct lttng_session_descriptor *descriptor = NULL;
+	struct lttng_uri *uris = nullptr;
+	struct lttng_session_descriptor *descriptor = nullptr;
 	enum lttng_error_code ret_code;
 
 	if (!name) {
@@ -1978,7 +1980,7 @@ int lttng_create_session(const char *name, const char *url)
 		goto end;
 	}
 
-	size = uri_parse_str_urls(url, NULL, &uris);
+	size = uri_parse_str_urls(url, nullptr, &uris);
 	if (size < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1995,7 +1997,7 @@ int lttng_create_session(const char *name, const char *url)
 		descriptor = lttng_session_descriptor_local_create(name, uris[0].dst.path);
 		break;
 	case 2:
-		descriptor = lttng_session_descriptor_network_create(name, url, NULL);
+		descriptor = lttng_session_descriptor_network_create(name, url, nullptr);
 		break;
 	default:
 		ret = -LTTNG_ERR_INVALID;
@@ -2023,15 +2025,15 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 	int ret;
 	enum lttng_error_code ret_code;
 	ssize_t size;
-	struct lttng_uri *uris = NULL;
-	struct lttng_session_descriptor *descriptor = NULL;
+	struct lttng_uri *uris = nullptr;
+	struct lttng_session_descriptor *descriptor = nullptr;
 
 	if (!name) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	size = uri_parse_str_urls(snapshot_url, NULL, &uris);
+	size = uri_parse_str_urls(snapshot_url, nullptr, &uris);
 	if (size < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2064,8 +2066,8 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 		descriptor = lttng_session_descriptor_snapshot_local_create(name, uris[0].dst.path);
 		break;
 	case 2:
-		descriptor =
-			lttng_session_descriptor_snapshot_network_create(name, snapshot_url, NULL);
+		descriptor = lttng_session_descriptor_snapshot_network_create(
+			name, snapshot_url, nullptr);
 		break;
 	default:
 		ret = -LTTNG_ERR_INVALID;
@@ -2092,7 +2094,7 @@ int lttng_create_session_live(const char *name, const char *url, unsigned int ti
 {
 	int ret;
 	enum lttng_error_code ret_code;
-	struct lttng_session_descriptor *descriptor = NULL;
+	struct lttng_session_descriptor *descriptor = nullptr;
 
 	if (!name) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2101,7 +2103,7 @@ int lttng_create_session_live(const char *name, const char *url, unsigned int ti
 
 	if (url) {
 		descriptor = lttng_session_descriptor_live_network_create(
-			name, url, NULL, timer_interval);
+			name, url, nullptr, timer_interval);
 	} else {
 		descriptor = lttng_session_descriptor_live_create(name, timer_interval);
 	}
@@ -2126,7 +2128,7 @@ int lttng_destroy_session(const char *session_name)
 	int ret;
 	enum lttng_error_code ret_code;
 	enum lttng_destruction_handle_status status;
-	struct lttng_destruction_handle *handle = NULL;
+	struct lttng_destruction_handle *handle = nullptr;
 
 	/*
 	 * Stop the tracing and wait for the data to be
@@ -2169,7 +2171,7 @@ int lttng_destroy_session_no_wait(const char *session_name)
 {
 	enum lttng_error_code ret_code;
 
-	ret_code = lttng_destroy_session_ext(session_name, NULL);
+	ret_code = lttng_destroy_session_ext(session_name, nullptr);
 	return ret_code == LTTNG_OK ? 0 : -ret_code;
 }
 
@@ -2187,7 +2189,7 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 		sizeof(struct lttng_session) + sizeof(struct lttng_session_extended);
 	size_t session_count, i;
 	struct lttng_session_extended *sessions_extended_begin;
-	struct lttng_session *sessions = NULL;
+	struct lttng_session *sessions = nullptr;
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS;
@@ -2196,7 +2198,7 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 	 * lttng_list_sessions returns 0, thus allowing *out_sessions to
 	 * be subsequently freed.
 	 */
-	*out_sessions = NULL;
+	*out_sessions = nullptr;
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &sessions);
 	if (ret <= 0) {
 		goto end;
@@ -2255,7 +2257,7 @@ int lttng_set_session_shm_path(const char *session_name, const char *shm_path)
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		return -LTTNG_ERR_INVALID;
 	}
 
@@ -2275,7 +2277,7 @@ int lttng_set_session_shm_path(const char *session_name, const char *shm_path)
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
@@ -2291,7 +2293,7 @@ int lttng_list_domains(const char *session_name, struct lttng_domain **domains)
 	int ret;
 	struct lttcomm_session_msg lsm;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -2325,14 +2327,14 @@ int lttng_list_channels(struct lttng_handle *handle, struct lttng_channel **chan
 {
 	int ret, total_payload_received;
 	struct lttcomm_session_msg lsm;
-	char *reception_buffer = NULL;
+	char *reception_buffer = nullptr;
 	size_t cmd_header_len = 0;
-	struct lttcomm_list_command_header *cmd_header = NULL;
+	struct lttcomm_list_command_header *cmd_header = nullptr;
 	struct lttng_dynamic_buffer tmp_buffer;
 
 	lttng_dynamic_buffer_init(&tmp_buffer);
 
-	if (handle == NULL) {
+	if (handle == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -2348,9 +2350,9 @@ int lttng_list_channels(struct lttng_handle *handle, struct lttng_channel **chan
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-						NULL,
+						nullptr,
 						0,
-						NULL,
+						nullptr,
 						0,
 						(void **) &reception_buffer,
 						(void **) &cmd_header,
@@ -2416,7 +2418,7 @@ int lttng_list_events(struct lttng_handle *handle,
 	lttng_payload_init(&reply);
 
 	/* Safety check. An handle and channel name are mandatory. */
-	if (handle == NULL || channel_name == NULL) {
+	if (handle == nullptr || channel_name == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -2444,7 +2446,7 @@ int lttng_list_events(struct lttng_handle *handle,
 	}
 
 	{
-		const struct lttcomm_list_command_header *cmd_reply_header = NULL;
+		const struct lttcomm_list_command_header *cmd_reply_header = nullptr;
 		const lttng_payload_view cmd_reply_header_view =
 			lttng_payload_view_from_payload(&reply, 0, sizeof(*cmd_reply_header));
 
@@ -2492,7 +2494,7 @@ int lttng_set_tracing_group(const char *name)
 	int ret = 0;
 	char *new_group;
 
-	if (name == NULL) {
+	if (name == nullptr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -2505,7 +2507,7 @@ int lttng_set_tracing_group(const char *name)
 
 	free(tracing_group);
 	tracing_group = new_group;
-	new_group = NULL;
+	new_group = nullptr;
 
 end:
 	return ret;
@@ -2529,7 +2531,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_ch
 	struct lttng_channel_extended *extended;
 
 	/* Safety check */
-	if (attr == NULL || domain == NULL) {
+	if (attr == nullptr || domain == nullptr) {
 		return;
 	}
 
@@ -2767,9 +2769,9 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 	int ret;
 	ssize_t size;
 	struct lttcomm_session_msg lsm;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 
-	if (handle == NULL || (control_url == NULL && data_url == NULL)) {
+	if (handle == nullptr || (control_url == nullptr && data_url == nullptr)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -2795,7 +2797,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 	lsm.u.uri.size = size;
 
 	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
-		&lsm, uris, sizeof(struct lttng_uri) * size, NULL);
+		&lsm, uris, sizeof(struct lttng_uri) * size, nullptr);
 
 	free(uris);
 error:
@@ -2841,9 +2843,9 @@ int lttng_data_pending(const char *session_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	uint8_t *pending = NULL;
+	uint8_t *pending = nullptr;
 
-	if (session_name == NULL) {
+	if (session_name == nullptr) {
 		return -LTTNG_ERR_INVALID;
 	}
 
@@ -2898,7 +2900,7 @@ int lttng_regenerate_metadata(const char *session_name)
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 	if (ret < 0) {
 		goto end;
 	}
@@ -2939,7 +2941,7 @@ int lttng_regenerate_statedump(const char *session_name)
 		goto end;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 	if (ret < 0) {
 		goto end;
 	}
@@ -2964,13 +2966,13 @@ _lttng_register_trigger(struct lttng_trigger *trigger, const char *name, bool ge
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
-	struct lttng_trigger *reply_trigger = NULL;
+	struct lttng_trigger *reply_trigger = nullptr;
 	enum lttng_domain_type domain_type;
 	const struct lttng_credentials user_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
-	const char *unused_trigger_name = NULL;
+	const char *unused_trigger_name = nullptr;
 	enum lttng_trigger_status trigger_status;
 
 	lttng_payload_init(&message);
@@ -3084,7 +3086,7 @@ _lttng_register_trigger(struct lttng_trigger *trigger, const char *name, bool ge
 	goto end;
 
 end_unset_name:
-	trigger_status = lttng_trigger_set_name(trigger, NULL);
+	trigger_status = lttng_trigger_set_name(trigger, nullptr);
 	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
 		ret = -LTTNG_ERR_UNK;
 	}
@@ -3098,7 +3100,7 @@ end:
 int lttng_register_trigger(struct lttng_trigger *trigger)
 {
 	/* Register an anonymous trigger. */
-	return _lttng_register_trigger(trigger, NULL, false);
+	return _lttng_register_trigger(trigger, nullptr, false);
 }
 
 enum lttng_error_code lttng_register_trigger_with_name(struct lttng_trigger *trigger,
@@ -3200,7 +3202,7 @@ int lttng_unregister_trigger(const struct lttng_trigger *trigger)
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
-	struct lttng_trigger *copy = NULL;
+	struct lttng_trigger *copy = nullptr;
 	const struct lttng_credentials user_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
@@ -3312,7 +3314,7 @@ enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
 		.u = {},
 		.fd_count = 0,
 	};
-	struct lttng_triggers *local_triggers = NULL;
+	struct lttng_triggers *local_triggers = nullptr;
 	struct lttng_payload reply;
 	struct lttng_payload_view lsm_view =
 		lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
@@ -3337,7 +3339,7 @@ enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
 	}
 
 	*triggers = local_triggers;
-	local_triggers = NULL;
+	local_triggers = nullptr;
 end:
 	lttng_payload_reset(&reply);
 	lttng_triggers_destroy(local_triggers);
@@ -3347,7 +3349,7 @@ end:
 /*
  * lib constructor.
  */
-static void __attribute__((constructor)) init(void)
+static void __attribute__((constructor)) init()
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
@@ -3356,7 +3358,7 @@ static void __attribute__((constructor)) init(void)
 /*
  * lib destructor.
  */
-static void __attribute__((destructor)) lttng_ctl_exit(void)
+static void __attribute__((destructor)) lttng_ctl_exit()
 {
 	free(tracing_group);
 }

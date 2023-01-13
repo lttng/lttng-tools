@@ -104,13 +104,13 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 
 	pthread_mutex_lock(&seed_lock);
 	if (!seed_init) {
-		lttng_ht_seed = (unsigned long) time(NULL);
+		lttng_ht_seed = (unsigned long) time(nullptr);
 		seed_init = true;
 	}
 	pthread_mutex_unlock(&seed_lock);
 
 	ht = zmalloc<lttng_ht>();
-	if (ht == NULL) {
+	if (ht == nullptr) {
 		PERROR("zmalloc lttng_ht");
 		goto error;
 	}
@@ -119,7 +119,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 			      min_hash_alloc_size,
 			      max_hash_buckets_size,
 			      CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING,
-			      NULL);
+			      nullptr);
 	/*
 	 * There is already an assert in the RCU hashtable code so if the ht is
 	 * NULL here there is a *huge* problem.
@@ -154,7 +154,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 	return ht;
 
 error:
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -164,7 +164,7 @@ void lttng_ht_destroy(struct lttng_ht *ht)
 {
 	int ret;
 
-	ret = cds_lfht_destroy(ht->ht, NULL);
+	ret = cds_lfht_destroy(ht->ht, nullptr);
 	LTTNG_ASSERT(!ret);
 	free(ht);
 }
@@ -410,7 +410,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 					&node->node);
 	rcu_read_unlock();
 	if (!node_ptr) {
-		return NULL;
+		return nullptr;
 	} else {
 		return lttng::utils::container_of(node_ptr, &lttng_ht_node_ulong::node);
 	}
@@ -437,7 +437,7 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 					&node->node);
 	rcu_read_unlock();
 	if (!node_ptr) {
-		return NULL;
+		return nullptr;
 	} else {
 		return lttng::utils::container_of(node_ptr, &lttng_ht_node_u64::node);
 	}
@@ -515,7 +515,7 @@ struct lttng_ht_node_str *lttng_ht_iter_get_node_str(struct lttng_ht_iter *iter)
 	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
-		return NULL;
+		return nullptr;
 	}
 	return lttng::utils::container_of(node, &lttng_ht_node_str::node);
 }
@@ -530,7 +530,7 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(struct lttng_ht_iter *i
 	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
-		return NULL;
+		return nullptr;
 	}
 	return lttng::utils::container_of(node, &lttng_ht_node_ulong::node);
 }
@@ -545,7 +545,7 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(struct lttng_ht_iter *iter)
 	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
-		return NULL;
+		return nullptr;
 	}
 	return lttng::utils::container_of(node, &lttng_ht_node_u64::node);
 }
@@ -560,7 +560,7 @@ struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(struct lttng_ht_ite
 	LTTNG_ASSERT(iter);
 	node = cds_lfht_iter_get_node(&iter->iter);
 	if (!node) {
-		return NULL;
+		return nullptr;
 	}
 	return lttng::utils::container_of(node, &lttng_ht_node_two_u64::node);
 }

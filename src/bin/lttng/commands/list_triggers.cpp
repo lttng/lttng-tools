@@ -124,7 +124,7 @@ static void print_condition_session_rotation(const struct lttng_condition *condi
 static const char *get_pretty_loglevel_name(enum lttng_event_rule_type event_rule_type,
 					    int loglevel)
 {
-	const char *name = NULL;
+	const char *name = nullptr;
 
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
@@ -152,7 +152,7 @@ static void print_event_rule_user_tracepoint(const struct lttng_event_rule *even
 	const char *pattern;
 	const char *filter;
 	int log_level;
-	const struct lttng_log_level_rule *log_level_rule = NULL;
+	const struct lttng_log_level_rule *log_level_rule = nullptr;
 	unsigned int exclusions_count;
 	int i;
 
@@ -252,8 +252,8 @@ static void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 	const char *pattern;
 	const char *filter;
 	int log_level;
-	const struct lttng_log_level_rule *log_level_rule = NULL;
-	const char *type_str = NULL;
+	const struct lttng_log_level_rule *log_level_rule = nullptr;
+	const char *type_str = nullptr;
 
 	event_rule_logging_get_name_pattern logging_get_name_pattern;
 	event_rule_logging_get_filter logging_get_filter;
@@ -573,7 +573,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 		enum lttng_event_expr_status status;
 
 		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(event_expr);
-		LTTNG_ASSERT(parent_expr != NULL);
+		LTTNG_ASSERT(parent_expr != nullptr);
 
 		print_one_event_expr(parent_expr);
 
@@ -692,7 +692,7 @@ static void print_action_errors(const struct lttng_trigger *trigger,
 				size_t action_path_length)
 {
 	enum lttng_error_code error_query_ret;
-	struct lttng_error_query_results *results = NULL;
+	struct lttng_error_query_results *results = nullptr;
 	const char *trigger_name;
 	uid_t trigger_uid;
 	enum lttng_trigger_status trigger_status;
@@ -740,7 +740,7 @@ static void print_one_action(const struct lttng_trigger *trigger,
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
-	const struct lttng_rate_policy *policy = NULL;
+	const struct lttng_rate_policy *policy = nullptr;
 	const char *value;
 
 	action_type = lttng_action_get_type(action);
@@ -897,7 +897,7 @@ end:
 static void print_trigger_errors(const struct lttng_trigger *trigger)
 {
 	enum lttng_error_code error_query_ret;
-	struct lttng_error_query_results *results = NULL;
+	struct lttng_error_query_results *results = nullptr;
 	enum lttng_trigger_status trigger_status;
 	const char *trigger_name;
 	uid_t trigger_uid;
@@ -934,7 +934,7 @@ end:
 static void print_condition_errors(const struct lttng_trigger *trigger)
 {
 	enum lttng_error_code error_query_ret;
-	struct lttng_error_query_results *results = NULL;
+	struct lttng_error_query_results *results = nullptr;
 	enum lttng_trigger_status trigger_status;
 	const char *trigger_name;
 	uid_t trigger_uid;
@@ -1040,7 +1040,7 @@ static void print_one_trigger(const struct lttng_trigger *trigger)
 		}
 	} else {
 		_MSG(" action:");
-		print_one_action(trigger, action, NULL, 0);
+		print_one_action(trigger, action, nullptr, 0);
 	}
 
 	print_trigger_errors(trigger);
@@ -1073,7 +1073,7 @@ static int print_sorted_triggers(const struct lttng_triggers *triggers)
 	enum lttng_trigger_status trigger_status;
 	unsigned int num_triggers;
 
-	lttng_dynamic_pointer_array_init(&sorted_triggers, NULL);
+	lttng_dynamic_pointer_array_init(&sorted_triggers, nullptr);
 
 	trigger_status = lttng_triggers_get_count(triggers, &num_triggers);
 	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
@@ -1228,10 +1228,10 @@ mi_error_query_condition_callback(const struct lttng_trigger *trigger,
 int cmd_list_triggers(int argc, const char **argv)
 {
 	int ret;
-	struct argpar_iter *argpar_iter = NULL;
-	const struct argpar_item *argpar_item = NULL;
-	struct lttng_triggers *triggers = NULL;
-	struct mi_writer *mi_writer = NULL;
+	struct argpar_iter *argpar_iter = nullptr;
+	const struct argpar_item *argpar_item = nullptr;
+	struct lttng_triggers *triggers = nullptr;
+	struct mi_writer *mi_writer = nullptr;
 
 	argc--;
 	argv++;
@@ -1245,7 +1245,8 @@ int cmd_list_triggers(int argc, const char **argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, 1, argv, true, NULL, NULL);
+		status =
+			parse_next_item(argpar_iter, &argpar_item, 1, argv, true, nullptr, nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;

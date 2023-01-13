@@ -44,9 +44,9 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 	ASSERT_RCU_READ_LOCKED();
 
 	session_put(trace->session);
-	trace->session = NULL;
+	trace->session = nullptr;
 	free(trace->path);
-	trace->path = NULL;
+	trace->path = nullptr;
 	call_rcu(&trace->rcu_node, rcu_destroy_ctf_trace);
 }
 
@@ -120,8 +120,8 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session, const c
 
 	lttng_ht_node_init_str(&trace->node, trace->path);
 	trace->session = session;
-	pthread_mutex_init(&trace->lock, NULL);
-	pthread_mutex_init(&trace->stream_list_lock, NULL);
+	pthread_mutex_init(&trace->lock, nullptr);
+	pthread_mutex_init(&trace->stream_list_lock, nullptr);
 	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
 
 	DBG("Created ctf_trace %" PRIu64 " of session \"%s\" from host \"%s\" with path: %s",
@@ -134,7 +134,7 @@ end:
 	return trace;
 error:
 	ctf_trace_put(trace);
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -147,7 +147,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
-	struct ctf_trace *trace = NULL;
+	struct ctf_trace *trace = nullptr;
 
 	rcu_read_lock();
 	lttng_ht_lookup(session->ctf_traces_ht, subpath, &iter);
@@ -158,7 +158,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 	}
 	trace = lttng::utils::container_of(node, &ctf_trace::node);
 	if (!ctf_trace_get(trace)) {
-		trace = NULL;
+		trace = nullptr;
 	}
 end:
 	rcu_read_unlock();
@@ -207,7 +207,7 @@ struct relay_viewer_stream *ctf_trace_get_viewer_metadata_stream(struct ctf_trac
 		goto end;
 	}
 	if (!viewer_stream_get(vstream)) {
-		vstream = NULL;
+		vstream = nullptr;
 	}
 end:
 	rcu_read_unlock();

@@ -40,7 +40,7 @@ struct lttng_channel_comm {
 	int64_t blocking_timeout;
 } LTTNG_PACKED;
 
-struct lttng_channel *lttng_channel_create_internal(void);
+struct lttng_channel *lttng_channel_create_internal();
 
 struct lttng_channel *lttng_channel_copy(const struct lttng_channel *src);
 

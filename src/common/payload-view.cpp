@@ -122,7 +122,7 @@ end:
 
 struct fd_handle *lttng_payload_view_pop_fd_handle(struct lttng_payload_view *view)
 {
-	struct fd_handle *handle = NULL;
+	struct fd_handle *handle = nullptr;
 	size_t fd_handle_count;
 	size_t *pos;
 

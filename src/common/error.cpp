@@ -30,7 +30,7 @@ static int lttng_opt_abort_on_error = -1;
 DEFINE_URCU_TLS(struct log_time, error_log_time);
 DEFINE_URCU_TLS(const char *, logger_thread_name);
 
-const char *log_add_time(void)
+const char *log_add_time()
 {
 	int ret;
 	struct tm tm, *res;

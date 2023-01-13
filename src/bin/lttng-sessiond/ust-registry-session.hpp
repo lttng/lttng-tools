@@ -60,9 +60,9 @@ public:
 			const char *enum_name, uint64_t enum_id) const;
 
 	void regenerate_metadata();
-	virtual ~registry_session();
+	~registry_session() override;
 
-	virtual const lttng::sessiond::trace::type *packet_header() const noexcept override;
+	const lttng::sessiond::trace::type *packet_header() const noexcept override;
 
 	/*
 	 * With multiple writers and readers, use this lock to access
@@ -104,7 +104,7 @@ protected:
 			uid_t euid,
 			gid_t egid,
 			uint64_t tracing_id);
-	virtual void accept(
+	void accept(
 			trace::trace_class_environment_visitor& environment_visitor) const override;
 	void _generate_metadata();
 
@@ -117,12 +117,12 @@ private:
 	registry_enum *_lookup_enum(const registry_enum *target_enum) const;
 	lttng::sessiond::trace::type::cuptr _create_packet_header() const;
 
-	virtual void _accept_on_clock_classes(
+	void _accept_on_clock_classes(
 			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override final;
-	virtual void _accept_on_stream_classes(
+			const final;
+	void _accept_on_stream_classes(
 			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const override final;
+			const final;
 
 	/* Next channel ID available for a newly registered channel. */
 	uint32_t _next_channel_id = 0;

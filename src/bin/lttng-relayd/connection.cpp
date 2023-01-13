@@ -25,7 +25,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
-	struct relay_connection *conn = NULL;
+	struct relay_connection *conn = nullptr;
 
 	LTTNG_ASSERT(sock >= 0);
 
@@ -38,7 +38,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 	}
 	conn = lttng::utils::container_of(node, &relay_connection::sock_n);
 	if (!connection_get(conn)) {
-		conn = NULL;
+		conn = nullptr;
 	}
 end:
 	rcu_read_unlock();
@@ -110,7 +110,7 @@ static void rcu_free_connection(struct rcu_head *head)
 	lttcomm_destroy_sock(conn->sock);
 	if (conn->viewer_session) {
 		viewer_session_destroy(conn->viewer_session);
-		conn->viewer_session = NULL;
+		conn->viewer_session = nullptr;
 	}
 	if (conn->type == RELAY_CONTROL) {
 		lttng_dynamic_buffer_reset(&conn->protocol.ctrl.reception_buffer);
@@ -140,7 +140,7 @@ static void connection_release(struct urcu_ref *ref)
 		if (session_close(conn->session)) {
 			ERR("session_close");
 		}
-		conn->session = NULL;
+		conn->session = nullptr;
 	}
 	if (conn->viewer_session) {
 		viewer_session_close(conn->viewer_session);
@@ -159,7 +159,7 @@ void connection_ht_add(struct lttng_ht *relay_connections_ht, struct relay_conne
 {
 	LTTNG_ASSERT(!conn->in_socket_ht);
 	lttng_ht_add_unique_ulong(relay_connections_ht, &conn->sock_n);
-	conn->in_socket_ht = 1;
+	conn->in_socket_ht = true;
 	conn->socket_ht = relay_connections_ht;
 }
 

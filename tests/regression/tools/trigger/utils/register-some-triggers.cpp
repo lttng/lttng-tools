@@ -67,7 +67,7 @@ static struct lttng_condition *create_session_consumed_size_condition(const char
 	return condition;
 }
 
-static void test_session_consumed_size_condition(void)
+static void test_session_consumed_size_condition()
 {
 	register_trigger_action_list_notify(
 		"trigger-with-session-consumed-size-condition",
@@ -175,7 +175,7 @@ create_buffer_usage_low_ratio_condition(const char *session_name,
 	return condition;
 }
 
-static void test_buffer_usage_conditions(void)
+static void test_buffer_usage_conditions()
 {
 	register_trigger_action_list_notify(
 		"trigger-with-buffer-usage-high-bytes-condition",
@@ -230,7 +230,7 @@ static struct lttng_condition *create_session_rotation_completed_condition(const
 	return condition;
 }
 
-static void test_session_rotation_conditions(void)
+static void test_session_rotation_conditions()
 {
 	register_trigger_action_list_notify(
 		"trigger-with-session-rotation-ongoing-condition",
@@ -243,7 +243,7 @@ static void test_session_rotation_conditions(void)
 
 static struct {
 	const char *name;
-	void (*callback)(void);
+	void (*callback)();
 } tests[] = {
 	{
 		"test_session_consumed_size_condition",
@@ -253,7 +253,7 @@ static struct {
 	{ "test_session_rotation_conditions", test_session_rotation_conditions },
 };
 
-static void show_known_tests(void)
+static void show_known_tests()
 {
 	size_t i;
 

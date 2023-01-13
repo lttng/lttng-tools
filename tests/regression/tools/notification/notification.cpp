@@ -39,7 +39,7 @@ using validate_cb = int (*)(const struct lttng_event_field_value *, unsigned int
 int nb_args = 0;
 int named_pipe_args_start = 0;
 pid_t app_pid = 0;
-const char *app_state_file = NULL;
+const char *app_state_file = nullptr;
 
 enum field_type {
 	FIELD_TYPE_PAYLOAD,
@@ -335,7 +335,7 @@ end:
 static int validate_string(const struct lttng_event_field_value *event_field, const char *expect)
 {
 	int ret;
-	const char *value = NULL;
+	const char *value = nullptr;
 	enum lttng_event_field_value_status status;
 
 	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_STRING);
@@ -532,7 +532,7 @@ static int validate_context_procname_kernel(const struct lttng_event_field_value
 }
 
 struct capture_base_field_tuple test_capture_base_fields[] = {
-	{ "DOESNOTEXIST", FIELD_TYPE_PAYLOAD, false, false, NULL, NULL },
+	{ "DOESNOTEXIST", FIELD_TYPE_PAYLOAD, false, false, nullptr, nullptr },
 	{ "intfield",
 	  FIELD_TYPE_PAYLOAD,
 	  true,
@@ -615,7 +615,7 @@ struct capture_base_field_tuple test_capture_base_fields[] = {
 
 static const char *get_notification_trigger_name(struct lttng_notification *notification)
 {
-	const char *trigger_name = NULL;
+	const char *trigger_name = nullptr;
 	enum lttng_trigger_status trigger_status;
 	const struct lttng_trigger *trigger;
 
@@ -652,7 +652,7 @@ static int validator_notification_trigger_name(struct lttng_notification *notifi
 	LTTNG_ASSERT(trigger_name);
 
 	name = get_notification_trigger_name(notification);
-	if (name == NULL) {
+	if (name == nullptr) {
 		ret = 1;
 		goto end;
 	}
@@ -682,7 +682,7 @@ static void wait_on_file(const char *path, bool file_exist)
 				 * The file does not exist. wait a bit and
 				 * continue looping until it does.
 				 */
-				(void) poll(NULL, 0, 10);
+				(void) poll(nullptr, 0, 10);
 				continue;
 			}
 
@@ -757,7 +757,7 @@ static int resume_consumer(const char **argv)
 	return ret;
 }
 
-static int suspend_application(void)
+static int suspend_application()
 {
 	int ret;
 	struct stat buf;
@@ -786,7 +786,7 @@ error:
 	return ret;
 }
 
-static int resume_application(void)
+static int resume_application()
 {
 	int ret;
 	struct stat buf;
@@ -832,14 +832,14 @@ static void test_triggers_buffer_usage_condition(const char *session_name,
 	}
 
 	/* Test lttng_register_trigger with null value */
-	ok(lttng_register_trigger(NULL) == -LTTNG_ERR_INVALID,
+	ok(lttng_register_trigger(nullptr) == -LTTNG_ERR_INVALID,
 	   "Registering a NULL trigger fails as expected");
 
 	/* Test: register a trigger */
 
 	for (i = 0; i < pow(2, test_vector_size); i++) {
 		int loop_ret = 0;
-		char *test_tuple_string = NULL;
+		char *test_tuple_string = nullptr;
 		unsigned int mask_position = 0;
 		bool session_name_set = false;
 		bool channel_name_set = false;
@@ -847,8 +847,8 @@ static void test_triggers_buffer_usage_condition(const char *session_name,
 		bool threshold_byte_set = false;
 		bool domain_type_set = false;
 
-		struct lttng_trigger *trigger = NULL;
-		struct lttng_condition *condition = NULL;
+		struct lttng_trigger *trigger = nullptr;
+		struct lttng_condition *condition = nullptr;
 
 		/* Create base condition */
 		switch (condition_type) {
@@ -1051,9 +1051,9 @@ static void test_invalid_channel_subscription(const enum lttng_domain_type domai
 {
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_condition *dummy_condition = NULL;
-	struct lttng_condition *dummy_invalid_condition = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_condition *dummy_condition = nullptr;
+	struct lttng_condition *dummy_invalid_condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
 	int ret = 0;
 
 	notification_channel =
@@ -1110,15 +1110,15 @@ static void test_invalid_channel_subscription(const enum lttng_domain_type domai
 	 * Test subscription and unsubscription to/from a channel with invalid
 	 * parameters.
 	 */
-	nc_status = lttng_notification_channel_subscribe(NULL, NULL);
+	nc_status = lttng_notification_channel_subscribe(nullptr, nullptr);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
 	   "Notification channel subscription is invalid: NULL, NULL");
 
-	nc_status = lttng_notification_channel_subscribe(notification_channel, NULL);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, nullptr);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
 	   "Notification channel subscription is invalid: NON-NULL, NULL");
 
-	nc_status = lttng_notification_channel_subscribe(NULL, dummy_condition);
+	nc_status = lttng_notification_channel_subscribe(nullptr, dummy_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
 	   "Notification channel subscription is invalid: NULL, NON-NULL");
 
@@ -1148,9 +1148,9 @@ static int register_buffer_usage_notify_trigger(const char *session_name,
 						struct lttng_trigger **trigger)
 {
 	enum lttng_condition_status condition_status;
-	struct lttng_action *tmp_action = NULL;
-	struct lttng_condition *tmp_condition = NULL;
-	struct lttng_trigger *tmp_trigger = NULL;
+	struct lttng_action *tmp_action = nullptr;
+	struct lttng_condition *tmp_condition = nullptr;
+	struct lttng_trigger *tmp_trigger = nullptr;
 	int ret = 0;
 
 	/* Set-up */
@@ -1225,11 +1225,11 @@ static void test_subscription_twice(const char *session_name,
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
 
-	struct lttng_action *action = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_action *action = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 
-	struct lttng_condition *condition = NULL;
+	struct lttng_condition *condition = nullptr;
 
 	ret = register_buffer_usage_notify_trigger(session_name,
 						   channel_name,
@@ -1281,15 +1281,15 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
 
-	struct lttng_action *low_action = NULL;
-	struct lttng_action *high_action = NULL;
-	struct lttng_notification *notification = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *low_trigger = NULL;
-	struct lttng_trigger *high_trigger = NULL;
+	struct lttng_action *low_action = nullptr;
+	struct lttng_action *high_action = nullptr;
+	struct lttng_notification *notification = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *low_trigger = nullptr;
+	struct lttng_trigger *high_trigger = nullptr;
 
-	struct lttng_condition *low_condition = NULL;
-	struct lttng_condition *high_condition = NULL;
+	struct lttng_condition *low_condition = nullptr;
+	struct lttng_condition *high_condition = nullptr;
 
 	const double low_ratio = 0.0;
 	const double high_ratio = 0.90;
@@ -1352,7 +1352,7 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
-	notification = NULL;
+	notification = nullptr;
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
@@ -1381,7 +1381,7 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 	   "Low notification received after intermediary communication");
 	lttng_notification_destroy(notification);
-	notification = NULL;
+	notification = nullptr;
 
 	/* Stop consumer to force a high notification */
 	stop_consumer(argv);
@@ -1397,7 +1397,7 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
-	notification = NULL;
+	notification = nullptr;
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
@@ -1413,7 +1413,7 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 	   "Low notification received after re-subscription");
 	lttng_notification_destroy(notification);
-	notification = NULL;
+	notification = nullptr;
 
 	stop_consumer(argv);
 	resume_application();
@@ -1429,7 +1429,7 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification");
 	lttng_notification_destroy(notification);
-	notification = NULL;
+	notification = nullptr;
 
 	suspend_application();
 
@@ -1475,10 +1475,10 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		enum lttng_event_rule_status (*)(struct lttng_event_rule *, const char *);
 
 	enum lttng_event_rule_status event_rule_status;
-	struct lttng_action *tmp_action = NULL;
-	struct lttng_event_rule *event_rule = NULL;
-	struct lttng_condition *tmp_condition = NULL;
-	struct lttng_trigger *tmp_trigger = NULL;
+	struct lttng_action *tmp_action = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
+	struct lttng_condition *tmp_condition = nullptr;
+	struct lttng_trigger *tmp_trigger = nullptr;
 	int ret;
 	enum lttng_error_code ret_code;
 	event_rule_create create;
@@ -1504,7 +1504,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		create = lttng_event_rule_kernel_tracepoint_create;
 		set_name_pattern = lttng_event_rule_kernel_tracepoint_set_name_pattern;
 		set_filter = lttng_event_rule_kernel_tracepoint_set_filter;
-		add_name_pattern_exclusion = NULL;
+		add_name_pattern_exclusion = nullptr;
 		break;
 	default:
 		abort();
@@ -1531,7 +1531,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		bool success = true;
 
 		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_UST);
-		LTTNG_ASSERT(add_name_pattern_exclusion != NULL);
+		LTTNG_ASSERT(add_name_pattern_exclusion != nullptr);
 		LTTNG_ASSERT(exclusion_count > 0);
 
 		for (i = 0; i < exclusion_count; i++) {
@@ -1577,7 +1577,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 static struct lttng_notification *
 get_next_notification(struct lttng_notification_channel *notification_channel)
 {
-	struct lttng_notification *local_notification = NULL;
+	struct lttng_notification *local_notification = nullptr;
 	enum lttng_notification_channel_status status;
 
 	/* Receive the next notification. */
@@ -1589,13 +1589,13 @@ get_next_notification(struct lttng_notification_channel *notification_channel)
 		break;
 	case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
 		fail("Notifications have been dropped");
-		local_notification = NULL;
+		local_notification = nullptr;
 		break;
 	default:
 		/* Unhandled conditions / errors. */
 		fail("Failed to get next notification (unknown notification channel status): status = %d",
 		     (int) status);
-		local_notification = NULL;
+		local_notification = nullptr;
 		break;
 	}
 
@@ -1608,10 +1608,10 @@ static void test_tracepoint_event_rule_notification(enum lttng_domain_type domai
 	int ret;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_action *action = NULL;
-	struct lttng_condition *condition = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_action *action = nullptr;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *const trigger_name = "my_precious";
 	const char *pattern;
 
@@ -1621,8 +1621,15 @@ static void test_tracepoint_event_rule_notification(enum lttng_domain_type domai
 		pattern = "lttng_test_filter_event";
 	}
 
-	create_tracepoint_event_rule_trigger(
-		pattern, trigger_name, NULL, 0, NULL, domain_type, NULL, &condition, &trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     trigger_name,
+					     nullptr,
+					     0,
+					     nullptr,
+					     domain_type,
+					     nullptr,
+					     &condition,
+					     &trigger);
 
 	notification_channel =
 		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
@@ -1642,7 +1649,7 @@ static void test_tracepoint_event_rule_notification(enum lttng_domain_type domai
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -1668,9 +1675,9 @@ static void test_tracepoint_event_rule_notification_filter(enum lttng_domain_typ
 	int i;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
+	struct lttng_condition *ctrl_condition = nullptr, *condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *ctrl_trigger = nullptr, *trigger = nullptr;
 	const char *const ctrl_trigger_name = "control_trigger";
 	const char *const trigger_name = "trigger";
 	const char *pattern;
@@ -1688,11 +1695,11 @@ static void test_tracepoint_event_rule_notification_filter(enum lttng_domain_typ
 
 	create_tracepoint_event_rule_trigger(pattern,
 					     ctrl_trigger_name,
-					     NULL,
+					     nullptr,
 					     0,
-					     NULL,
+					     nullptr,
 					     domain_type,
-					     NULL,
+					     nullptr,
 					     &ctrl_condition,
 					     &ctrl_trigger);
 
@@ -1708,9 +1715,9 @@ static void test_tracepoint_event_rule_notification_filter(enum lttng_domain_typ
 					     trigger_name,
 					     "(intfield & 1) == 0",
 					     0,
-					     NULL,
+					     nullptr,
 					     domain_type,
-					     NULL,
+					     nullptr,
 					     &condition,
 					     &trigger);
 
@@ -1739,12 +1746,12 @@ static void test_tracepoint_event_rule_notification_filter(enum lttng_domain_typ
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
 		name = get_notification_trigger_name(notification);
-		if (name == NULL) {
+		if (name == nullptr) {
 			lttng_notification_destroy(notification);
 			goto end;
 		}
@@ -1775,9 +1782,9 @@ end:
 static void test_tracepoint_event_rule_notification_exclusion(enum lttng_domain_type domain_type)
 {
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
+	struct lttng_condition *ctrl_condition = nullptr, *condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *ctrl_trigger = nullptr, *trigger = nullptr;
 	int ctrl_count = 0, count = 0, i;
 	const int notification_count = 6;
 	const char *const ctrl_trigger_name = "control_exclusion_trigger";
@@ -1791,11 +1798,11 @@ static void test_tracepoint_event_rule_notification_exclusion(enum lttng_domain_
 
 	create_tracepoint_event_rule_trigger(pattern,
 					     ctrl_trigger_name,
-					     NULL,
+					     nullptr,
 					     0,
-					     NULL,
+					     nullptr,
 					     domain_type,
-					     NULL,
+					     nullptr,
 					     &ctrl_condition,
 					     &ctrl_trigger);
 
@@ -1803,8 +1810,15 @@ static void test_tracepoint_event_rule_notification_exclusion(enum lttng_domain_
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
 	   "Subscribe to tracepoint event rule condition");
 
-	create_tracepoint_event_rule_trigger(
-		pattern, trigger_name, NULL, 4, exclusions, domain_type, NULL, &condition, &trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     trigger_name,
+					     nullptr,
+					     4,
+					     exclusions,
+					     domain_type,
+					     nullptr,
+					     &condition,
+					     &trigger);
 
 	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
@@ -1835,12 +1849,12 @@ static void test_tracepoint_event_rule_notification_exclusion(enum lttng_domain_
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
 		name = get_notification_trigger_name(notification);
-		if (name == NULL) {
+		if (name == nullptr) {
 			lttng_notification_destroy(notification);
 			goto end;
 		}
@@ -1869,19 +1883,19 @@ end:
 	return;
 }
 
-static void test_kprobe_event_rule_notification(void)
+static void test_kprobe_event_rule_notification()
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_condition *condition = NULL;
-	struct lttng_kernel_probe_location *location = NULL;
-	struct lttng_event_rule *event_rule = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_kernel_probe_location *location = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *const trigger_name = "kprobe_trigger";
 	const char *const symbol_name = "lttng_test_filter_event_write";
 
@@ -1938,7 +1952,7 @@ static void test_kprobe_event_rule_notification(void)
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -1969,13 +1983,13 @@ static void test_uprobe_event_rule_notification(const char *testapp_path,
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_userspace_probe_location *probe_location = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	struct lttng_condition *condition = NULL;
-	struct lttng_event_rule *event_rule = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_userspace_probe_location *probe_location = nullptr;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = nullptr;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *const trigger_name = "uprobe_trigger";
 
 	action = lttng_action_notify_create();
@@ -2038,7 +2052,7 @@ static void test_uprobe_event_rule_notification(const char *testapp_path,
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -2061,18 +2075,18 @@ end:
 	return;
 }
 
-static void test_syscall_event_rule_notification(void)
+static void test_syscall_event_rule_notification()
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_condition *condition = NULL;
-	struct lttng_event_rule *event_rule = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *const trigger_name = "syscall_trigger";
 	const char *const syscall_name = "openat";
 
@@ -2125,7 +2139,7 @@ static void test_syscall_event_rule_notification(void)
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -2145,18 +2159,18 @@ end:
 	return;
 }
 
-static void test_syscall_event_rule_notification_filter(void)
+static void test_syscall_event_rule_notification_filter()
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_condition *condition = NULL;
-	struct lttng_event_rule *event_rule = NULL;
-	struct lttng_action *action = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_event_rule *event_rule = nullptr;
+	struct lttng_action *action = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *const trigger_name = "syscall_trigger";
 	const char *const syscall_name = "openat";
 	const char *const filter_pattern = "filename == \"/proc/cpuinfo\"";
@@ -2213,7 +2227,7 @@ static void test_syscall_event_rule_notification_filter(void)
 		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -2238,7 +2252,7 @@ end:
 static int generate_capture_descr(struct lttng_condition *condition)
 {
 	int ret, i;
-	struct lttng_event_expr *expr = NULL;
+	struct lttng_event_expr *expr = nullptr;
 	const unsigned int basic_field_count =
 		sizeof(test_capture_base_fields) / sizeof(*test_capture_base_fields);
 	enum lttng_condition_status cond_status;
@@ -2260,7 +2274,7 @@ static int generate_capture_descr(struct lttng_condition *condition)
 			int nb_matches;
 			unsigned int index;
 			char field_name[FIELD_NAME_MAX_LEN];
-			struct lttng_event_expr *array_expr = NULL;
+			struct lttng_event_expr *array_expr = nullptr;
 
 			nb_matches = sscanf(test_capture_base_fields[i].field_name,
 					    "%[^[][%u]",
@@ -2286,7 +2300,7 @@ static int generate_capture_descr(struct lttng_condition *condition)
 			goto end;
 		}
 
-		if (expr == NULL) {
+		if (expr == nullptr) {
 			fail("Failed to create capture expression");
 			ret = -1;
 			goto end;
@@ -2321,7 +2335,7 @@ static int validator_notification_trigger_capture(enum lttng_domain_type domain,
 	bool at_least_one_error = false;
 
 	evaluation = lttng_notification_get_evaluation(notification);
-	if (evaluation == NULL) {
+	if (evaluation == nullptr) {
 		fail("Failed to get evaluation from notification during trigger capture test");
 		ret = 1;
 		goto end;
@@ -2346,7 +2360,7 @@ static int validator_notification_trigger_capture(enum lttng_domain_type domain,
 	}
 
 	for (i = 0; i < capture_count; i++) {
-		const struct lttng_event_field_value *captured_field = NULL;
+		const struct lttng_event_field_value *captured_field = nullptr;
 		validate_cb validate;
 		bool expected;
 
@@ -2413,9 +2427,9 @@ static void test_tracepoint_event_rule_notification_capture(enum lttng_domain_ty
 	enum lttng_notification_channel_status nc_status;
 
 	int i, ret;
-	struct lttng_condition *condition = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_condition *condition = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
+	struct lttng_trigger *trigger = nullptr;
 	const char *trigger_name = "my_precious";
 	const char *pattern;
 
@@ -2427,9 +2441,9 @@ static void test_tracepoint_event_rule_notification_capture(enum lttng_domain_ty
 
 	create_tracepoint_event_rule_trigger(pattern,
 					     trigger_name,
-					     NULL,
+					     nullptr,
 					     0,
-					     NULL,
+					     nullptr,
 					     domain_type,
 					     generate_capture_descr,
 					     &condition,
@@ -2452,7 +2466,7 @@ static void test_tracepoint_event_rule_notification_capture(enum lttng_domain_ty
 		ok(notification, "Received notification");
 
 		/* Error */
-		if (notification == NULL) {
+		if (notification == nullptr) {
 			goto end;
 		}
 
@@ -2483,7 +2497,7 @@ end:
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
-	const char *domain_type_string = NULL;
+	const char *domain_type_string = nullptr;
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
 	if (argc < 5) {

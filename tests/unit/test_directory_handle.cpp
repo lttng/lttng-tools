@@ -69,7 +69,7 @@ static int create_non_empty_hierarchy_with_root(struct lttng_directory_handle *t
 	int ret;
 	const int file_flags = O_WRONLY | O_CREAT | O_TRUNC;
 	const mode_t file_mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
-	char *branch_name = NULL;
+	char *branch_name = nullptr;
 
 	ret = asprintf(&branch_name, "%s/%s", test_root_name, "a/b/c/d");
 	if (ret < 0) {
@@ -122,7 +122,7 @@ static int remove_file_from_hierarchy(struct lttng_directory_handle *test_dir_ha
 				      const char *test_root_name)
 {
 	int ret;
-	char *file_name = NULL;
+	char *file_name = nullptr;
 
 	ret = asprintf(&file_name, "%s/%s", test_root_name, "a/b/e/file1");
 	if (ret < 0) {
@@ -144,9 +144,9 @@ static int test_rmdir_fail_non_empty(const char *test_dir)
 {
 	int ret, tests_ran = 0;
 	struct lttng_directory_handle *test_dir_handle;
-	char *created_dir = NULL;
+	char *created_dir = nullptr;
 	const char test_root_name[] = "fail_non_empty";
-	char *test_dir_path = NULL;
+	char *test_dir_path = nullptr;
 
 	diag("rmdir (fail if non-empty)");
 
@@ -203,9 +203,9 @@ static int test_rmdir_skip_non_empty(const char *test_dir)
 {
 	int ret, tests_ran = 0;
 	struct lttng_directory_handle *test_dir_handle;
-	char *created_dir = NULL;
+	char *created_dir = nullptr;
 	const char test_root_name[] = "skip_non_empty";
-	char *test_dir_path = NULL;
+	char *test_dir_path = nullptr;
 
 	diag("rmdir (skip if non-empty)");
 
@@ -261,7 +261,7 @@ end:
 	return ret == 0 ? tests_ran : ret;
 }
 
-int main(void)
+int main()
 {
 	int ret;
 	char test_dir[] = "/tmp/lttng-XXXXXX";

@@ -22,7 +22,7 @@ enum process_attr_tracker_status {
 	PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY,
 };
 
-struct process_attr_tracker *process_attr_tracker_create(void);
+struct process_attr_tracker *process_attr_tracker_create();
 void process_attr_tracker_destroy(struct process_attr_tracker *tracker);
 
 enum lttng_tracking_policy process_attr_tracker_get_tracking_policy(

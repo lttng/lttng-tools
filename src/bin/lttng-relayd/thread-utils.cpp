@@ -39,7 +39,7 @@ static int notify_thread_pipe(int wpipe)
  *
  * Return -1 on error or 0 if all pipes are created.
  */
-int relayd_init_thread_quit_pipe(void)
+int relayd_init_thread_quit_pipe()
 {
 	return fd_tracker_util_pipe_open_cloexec(
 		the_fd_tracker, "Thread quit pipe", thread_quit_pipe);
@@ -50,7 +50,7 @@ int relayd_init_thread_quit_pipe(void)
  *
  * Return 0 on success or -1 on error.
  */
-int relayd_notify_thread_quit_pipe(void)
+int relayd_notify_thread_quit_pipe()
 {
 	return notify_thread_pipe(thread_quit_pipe[1]);
 }
@@ -58,7 +58,7 @@ int relayd_notify_thread_quit_pipe(void)
 /*
  * Close the thread quit pipe.
  */
-void relayd_close_thread_quit_pipe(void)
+void relayd_close_thread_quit_pipe()
 {
 	if (thread_quit_pipe[0] != -1) {
 		(void) fd_tracker_util_pipe_close(the_fd_tracker, thread_quit_pipe);
@@ -78,7 +78,7 @@ bool relayd_is_thread_quit_pipe(const int fd)
  */
 int create_named_thread_poll_set(struct lttng_poll_event *events, int size, const char *name)
 {
-	if (events == NULL || size == 0) {
+	if (events == nullptr || size == 0) {
 		return -1;
 	}
 

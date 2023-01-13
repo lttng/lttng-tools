@@ -44,14 +44,14 @@ static struct mi_writer *the_writer;
 
 static struct poptOption the_load_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
-	{ "all", 'a', POPT_ARG_NONE, 0, OPT_ALL, 0, 0 },
-	{ "input-path", 'i', POPT_ARG_STRING, &the_opt_input_path, 0, 0, 0 },
-	{ "force", 'f', POPT_ARG_NONE, 0, OPT_FORCE, 0, 0 },
-	{ "override-url", 0, POPT_ARG_STRING, &the_opt_override_url, 0, 0, 0 },
-	{ "override-name", 0, POPT_ARG_STRING, &the_opt_override_session_name, 0, 0, 0 },
-	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
-	{ 0, 0, 0, 0, 0, 0, 0 }
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
+	{ "input-path", 'i', POPT_ARG_STRING, &the_opt_input_path, 0, nullptr, nullptr },
+	{ "force", 'f', POPT_ARG_NONE, nullptr, OPT_FORCE, nullptr, nullptr },
+	{ "override-url", 0, POPT_ARG_STRING, &the_opt_override_url, 0, nullptr, nullptr },
+	{ "override-name", 0, POPT_ARG_STRING, &the_opt_override_session_name, 0, nullptr, nullptr },
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 static int mi_partial_session(const char *session_name)
@@ -149,11 +149,11 @@ int cmd_load(int argc, const char **argv)
 	int ret, success;
 	int opt;
 	poptContext pc;
-	struct lttng_load_session_attr *session_attr = NULL;
-	char *input_path = NULL;
-	const char *leftover = NULL;
+	struct lttng_load_session_attr *session_attr = nullptr;
+	char *input_path = nullptr;
+	const char *leftover = nullptr;
 
-	pc = poptGetContext(NULL, argc, argv, the_load_opts, 0);
+	pc = poptGetContext(nullptr, argc, argv, the_load_opts, 0);
 	poptReadDefaultConfig(pc, 0);
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -239,14 +239,14 @@ int cmd_load(int argc, const char **argv)
 	 * Use realpath to resolve any relative path.
 	 * */
 	if (the_opt_input_path) {
-		input_path = realpath(the_opt_input_path, NULL);
+		input_path = realpath(the_opt_input_path, nullptr);
 		if (!input_path) {
 			PERROR("Invalid input path");
 			ret = CMD_ERROR;
 			goto end;
 		}
 	} else {
-		input_path = NULL;
+		input_path = nullptr;
 	}
 
 	ret = lttng_load_session_attr_set_input_url(session_attr, input_path);

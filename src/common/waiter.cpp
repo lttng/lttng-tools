@@ -51,7 +51,8 @@ void lttng_waiter_wait(struct lttng_waiter *waiter)
 		caa_cpu_relax();
 	}
 	while (uatomic_read(&waiter->state) == WAITER_WAITING) {
-		if (!futex_noasync(&waiter->state, FUTEX_WAIT, WAITER_WAITING, NULL, NULL, 0)) {
+		if (!futex_noasync(
+			    &waiter->state, FUTEX_WAIT, WAITER_WAITING, nullptr, nullptr, 0)) {
 			/*
 			 * Prior queued wakeups queued by unrelated code
 			 * using the same address can cause futex wait to
@@ -91,7 +92,7 @@ skip_futex_wait:
 		caa_cpu_relax();
 	}
 	while (!(uatomic_read(&waiter->state) & WAITER_TEARDOWN)) {
-		poll(NULL, 0, 10);
+		poll(nullptr, 0, 10);
 	}
 	LTTNG_ASSERT(uatomic_read(&waiter->state) & WAITER_TEARDOWN);
 	DBG("End of waiter wait period");
@@ -108,7 +109,7 @@ void lttng_waiter_wake_up(struct lttng_waiter *waiter)
 	LTTNG_ASSERT(uatomic_read(&waiter->state) == WAITER_WAITING);
 	uatomic_set(&waiter->state, WAITER_WOKEN_UP);
 	if (!(uatomic_read(&waiter->state) & WAITER_RUNNING)) {
-		if (futex_noasync(&waiter->state, FUTEX_WAKE, 1, NULL, NULL, 0) < 0) {
+		if (futex_noasync(&waiter->state, FUTEX_WAKE, 1, nullptr, nullptr, 0) < 0) {
 			PERROR("futex_noasync");
 			abort();
 		}

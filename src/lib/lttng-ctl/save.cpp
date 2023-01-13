@@ -30,7 +30,7 @@ void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output)
 
 const char *lttng_save_session_attr_get_session_name(struct lttng_save_session_attr *attr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (attr && attr->session_name[0]) {
 		ret = attr->session_name;
@@ -41,7 +41,7 @@ const char *lttng_save_session_attr_get_session_name(struct lttng_save_session_a
 
 const char *lttng_save_session_attr_get_output_url(struct lttng_save_session_attr *attr)
 {
-	const char *ret = NULL;
+	const char *ret = nullptr;
 
 	if (attr && attr->configuration_url[0]) {
 		ret = attr->configuration_url;
@@ -101,7 +101,7 @@ int lttng_save_session_attr_set_output_url(struct lttng_save_session_attr *attr,
 	int ret = 0;
 	size_t len;
 	ssize_t size;
-	struct lttng_uri *uris = NULL;
+	struct lttng_uri *uris = nullptr;
 
 	if (!attr) {
 		ret = -LTTNG_ERR_INVALID;
@@ -120,7 +120,7 @@ int lttng_save_session_attr_set_output_url(struct lttng_save_session_attr *attr,
 		goto error;
 	}
 
-	size = uri_parse_str_urls(url, NULL, &uris);
+	size = uri_parse_str_urls(url, nullptr, &uris);
 	if (size <= 0 || uris[0].dtype != LTTNG_DST_PATH) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -201,7 +201,7 @@ int lttng_save_session(struct lttng_save_session_attr *attr)
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION;
 
 	memcpy(&lsm.u.save_session.attr, attr, sizeof(struct lttng_save_session_attr));
-	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, nullptr);
 end:
 	return ret;
 }
