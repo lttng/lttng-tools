@@ -368,9 +368,9 @@ private:
 
 }; /* namespace */
 
-lsc::trace_class_visitor::trace_class_visitor(const lst::abi& trace_abi,
+lsc::trace_class_visitor::trace_class_visitor(
 		lsc::append_metadata_fragment_function append_metadata_fragment) :
-	_trace_abi{trace_abi}, _append_metadata_fragment(append_metadata_fragment)
+	_append_metadata_fragment(append_metadata_fragment)
 {
 }
 

@@ -25,8 +25,7 @@ using append_metadata_fragment_function = std::function<void(const std::string& 
 
 class trace_class_visitor : public lttng::sessiond::trace::trace_class_visitor {
 public:
-	trace_class_visitor(const lttng::sessiond::trace::abi& trace_abi,
-			append_metadata_fragment_function append_metadata);
+	trace_class_visitor(append_metadata_fragment_function append_metadata);
 
 	virtual void visit(const lttng::sessiond::trace::trace_class& trace_class) override final;
 	virtual void visit(const lttng::sessiond::trace::clock_class& clock_class) override final;
@@ -36,7 +35,6 @@ public:
 private:
 	void append_metadata_fragment(const nlohmann::json& fragment) const;
 
-	const lttng::sessiond::trace::abi& _trace_abi;
 	const append_metadata_fragment_function _append_metadata_fragment;
 };
 
