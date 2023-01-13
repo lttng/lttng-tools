@@ -25,11 +25,11 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
+namespace {
 #ifdef __linux__
 /*
  * Return the default pipe buffer size or a negative error.
  */
-static
 int get_pipe_size(void)
 {
 	int ret;
@@ -57,7 +57,6 @@ end:
 	return ret;
 }
 #elif defined(__FreeBSD__)
-static
 int get_pipe_size(void)
 {
 	return 65536;
@@ -65,6 +64,7 @@ int get_pipe_size(void)
 #else
 #error "Implement get_pipe_size() for your platform."
 #endif
+} /* namespace */
 
 int main(void)
 {
@@ -75,8 +75,8 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 
-	/* Print the pipe buffer size to stdout */
+	/* Print the pipe buffer size to stdout. */
 	printf("%d\n", ret);
 
-	return  EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
