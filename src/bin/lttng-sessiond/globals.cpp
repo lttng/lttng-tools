@@ -8,6 +8,7 @@
  */
 
 #include "lttng-sessiond.hpp"
+
 #include <common/uuid.hpp>
 
 lttng_uuid the_sessiond_uuid;
@@ -27,7 +28,7 @@ struct lttng_ht *the_trigger_agents_ht_by_domain = NULL;
 struct lttng_kernel_abi_tracer_version the_kernel_tracer_version;
 struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
 
-int the_kernel_poll_pipe[2] = {-1, -1};
+int the_kernel_poll_pipe[2] = { -1, -1 };
 
 pid_t the_ppid;
 pid_t the_child_ppid;

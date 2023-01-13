@@ -11,36 +11,34 @@
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+
 #include <lttng/log-level-rule-internal.hpp>
 #include <lttng/log-level-rule.h>
+
 #include <stdbool.h>
 #include <stdlib.h>
 
 static bool is_log_level_rule_exactly_type(const struct lttng_log_level_rule *rule)
 {
-	enum lttng_log_level_rule_type type =
-			lttng_log_level_rule_get_type(rule);
+	enum lttng_log_level_rule_type type = lttng_log_level_rule_get_type(rule);
 
 	return type == LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY;
 }
 
 static bool is_log_level_rule_at_least_as_severe_type(const struct lttng_log_level_rule *rule)
 {
-
-	enum lttng_log_level_rule_type type =
-			lttng_log_level_rule_get_type(rule);
+	enum lttng_log_level_rule_type type = lttng_log_level_rule_get_type(rule);
 
 	return type == LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS;
 }
 
-enum lttng_log_level_rule_type lttng_log_level_rule_get_type(
-		const struct lttng_log_level_rule *rule)
+enum lttng_log_level_rule_type
+lttng_log_level_rule_get_type(const struct lttng_log_level_rule *rule)
 {
 	return rule ? rule->type : LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN;
 }
 
-struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(
-		int level)
+struct lttng_log_level_rule *lttng_log_level_rule_exactly_create(int level)
 {
 	struct lttng_log_level_rule *rule = NULL;
 
@@ -56,11 +54,10 @@ end:
 	return rule;
 }
 
-enum lttng_log_level_rule_status lttng_log_level_rule_exactly_get_level(
-		const struct lttng_log_level_rule *rule, int *level)
+enum lttng_log_level_rule_status
+lttng_log_level_rule_exactly_get_level(const struct lttng_log_level_rule *rule, int *level)
 {
-	enum lttng_log_level_rule_status status =
-			LTTNG_LOG_LEVEL_RULE_STATUS_OK;
+	enum lttng_log_level_rule_status status = LTTNG_LOG_LEVEL_RULE_STATUS_OK;
 
 	if (!rule || !level || !is_log_level_rule_exactly_type(rule)) {
 		status = LTTNG_LOG_LEVEL_RULE_STATUS_INVALID;
@@ -72,8 +69,7 @@ end:
 	return status;
 }
 
-struct lttng_log_level_rule *
-lttng_log_level_rule_at_least_as_severe_as_create(int level)
+struct lttng_log_level_rule *lttng_log_level_rule_at_least_as_severe_as_create(int level)
 {
 	struct lttng_log_level_rule *rule = NULL;
 
@@ -90,13 +86,12 @@ end:
 }
 
 enum lttng_log_level_rule_status
-lttng_log_level_rule_at_least_as_severe_as_get_level(
-		const struct lttng_log_level_rule *rule, int *level)
+lttng_log_level_rule_at_least_as_severe_as_get_level(const struct lttng_log_level_rule *rule,
+						     int *level)
 {
 	enum lttng_log_level_rule_status status = LTTNG_LOG_LEVEL_RULE_STATUS_OK;
 
-	if (!rule || !level ||
-			!is_log_level_rule_at_least_as_severe_type(rule)) {
+	if (!rule || !level || !is_log_level_rule_at_least_as_severe_type(rule)) {
 		status = LTTNG_LOG_LEVEL_RULE_STATUS_INVALID;
 		goto end;
 	}
@@ -111,16 +106,14 @@ void lttng_log_level_rule_destroy(struct lttng_log_level_rule *log_level_rule)
 	free(log_level_rule);
 }
 
-ssize_t lttng_log_level_rule_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_log_level_rule **_rule)
+ssize_t lttng_log_level_rule_create_from_payload(struct lttng_payload_view *view,
+						 struct lttng_log_level_rule **_rule)
 {
 	ssize_t ret;
 	size_t offset = 0;
 	struct lttng_log_level_rule *rule = NULL;
 	const struct lttng_log_level_rule_comm *comm =
-			(const struct lttng_log_level_rule_comm *)
-					view->buffer.data;
+		(const struct lttng_log_level_rule_comm *) view->buffer.data;
 
 	offset += sizeof(*comm);
 
@@ -139,8 +132,7 @@ ssize_t lttng_log_level_rule_create_from_payload(
 		rule = lttng_log_level_rule_exactly_create((int) comm->level);
 		break;
 	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
-		rule = lttng_log_level_rule_at_least_as_severe_as_create(
-				(int) comm->level);
+		rule = lttng_log_level_rule_at_least_as_severe_as_create((int) comm->level);
 		break;
 	default:
 		abort();
@@ -159,11 +151,10 @@ end:
 }
 
 int lttng_log_level_rule_serialize(const struct lttng_log_level_rule *rule,
-		struct lttng_payload *payload)
+				   struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_log_level_rule_comm comm;
-
 
 	if (!rule) {
 		ret = 0;
@@ -174,8 +165,7 @@ int lttng_log_level_rule_serialize(const struct lttng_log_level_rule *rule,
 	comm.level = (int32_t) rule->level;
 
 	DBG("Serializing log level rule of type %d", rule->type);
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm,
-			sizeof(comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		goto end;
 	}
@@ -185,7 +175,7 @@ end:
 }
 
 bool lttng_log_level_rule_is_equal(const struct lttng_log_level_rule *a,
-		const struct lttng_log_level_rule *b)
+				   const struct lttng_log_level_rule *b)
 {
 	bool is_equal = false;
 
@@ -220,8 +210,7 @@ end:
 	return is_equal;
 }
 
-struct lttng_log_level_rule *lttng_log_level_rule_copy(
-		const struct lttng_log_level_rule *source)
+struct lttng_log_level_rule *lttng_log_level_rule_copy(const struct lttng_log_level_rule *source)
 {
 	struct lttng_log_level_rule *copy = NULL;
 
@@ -238,10 +227,9 @@ end:
 	return copy;
 }
 
-void lttng_log_level_rule_to_loglevel(
-		const struct lttng_log_level_rule *log_level_rule,
-		enum lttng_loglevel_type *loglevel_type,
-		int *loglevel_value)
+void lttng_log_level_rule_to_loglevel(const struct lttng_log_level_rule *log_level_rule,
+				      enum lttng_loglevel_type *loglevel_type,
+				      int *loglevel_value)
 {
 	LTTNG_ASSERT(log_level_rule);
 
@@ -259,8 +247,7 @@ void lttng_log_level_rule_to_loglevel(
 	*loglevel_value = log_level_rule->level;
 }
 
-unsigned long lttng_log_level_rule_hash(
-		const struct lttng_log_level_rule *log_level_rule)
+unsigned long lttng_log_level_rule_hash(const struct lttng_log_level_rule *log_level_rule)
 {
 	unsigned long hash;
 	enum lttng_log_level_rule_status llr_status;
@@ -273,12 +260,12 @@ unsigned long lttng_log_level_rule_hash(
 
 	switch (type) {
 	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
-		llr_status = lttng_log_level_rule_exactly_get_level(
-				log_level_rule, &log_level_value);
+		llr_status =
+			lttng_log_level_rule_exactly_get_level(log_level_rule, &log_level_value);
 		break;
 	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
-		llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
-				log_level_rule, &log_level_value);
+		llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(log_level_rule,
+										  &log_level_value);
 		break;
 	default:
 		abort();
@@ -289,15 +276,13 @@ unsigned long lttng_log_level_rule_hash(
 
 	hash = hash_key_ulong((void *) (unsigned long) type, lttng_ht_seed);
 
-	hash ^= hash_key_ulong((void *) (unsigned long) log_level_value,
-			lttng_ht_seed);
+	hash ^= hash_key_ulong((void *) (unsigned long) log_level_value, lttng_ht_seed);
 
 	return hash;
 }
 
-enum lttng_error_code lttng_log_level_rule_mi_serialize(
-		const struct lttng_log_level_rule *rule,
-		struct mi_writer *writer)
+enum lttng_error_code lttng_log_level_rule_mi_serialize(const struct lttng_log_level_rule *rule,
+							struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -315,8 +300,7 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(
 		break;
 	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
 		element_str = mi_lttng_element_log_level_rule_at_least_as_severe_as;
-		status = lttng_log_level_rule_at_least_as_severe_as_get_level(
-				rule, &level);
+		status = lttng_log_level_rule_at_least_as_severe_as_get_level(rule, &level);
 		break;
 	default:
 		abort();
@@ -326,8 +310,7 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(
 	LTTNG_ASSERT(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 	/* Open log level rule element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_log_level_rule);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_log_level_rule);
 	if (ret) {
 		goto mi_error;
 	}
@@ -340,7 +323,7 @@ enum lttng_error_code lttng_log_level_rule_mi_serialize(
 
 	/* Level. */
 	ret = mi_lttng_writer_write_element_signed_int(
-			writer, mi_lttng_element_log_level_rule_level, level);
+		writer, mi_lttng_element_log_level_rule_level, level);
 	if (ret) {
 		goto mi_error;
 	}

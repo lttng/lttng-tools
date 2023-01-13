@@ -7,28 +7,27 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-#include <string.h>
-#include <unistd.h>
+#include "agent.hpp"
+#include "channel.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "ust-app.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "channel.hpp"
-#include "lttng-sessiond.hpp"
-#include "kernel.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
-#include "utils.hpp"
-#include "ust-app.hpp"
-#include "agent.hpp"
+#include <inttypes.h>
+#include <string.h>
+#include <unistd.h>
 
 /*
  * Return allocated channel attributes.
  */
-struct lttng_channel *channel_new_default_attr(int dom,
-		enum lttng_buffer_type type)
+struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type type)
 {
 	struct lttng_channel *chan;
 	const char *channel_name = DEFAULT_CHANNEL_NAME;
@@ -56,16 +55,14 @@ struct lttng_channel *channel_new_default_attr(int dom,
 	switch (dom) {
 	case LTTNG_DOMAIN_KERNEL:
 		LTTNG_ASSERT(type == LTTNG_BUFFER_GLOBAL);
-		chan->attr.subbuf_size =
-			default_get_kernel_channel_subbuf_size();
+		chan->attr.subbuf_size = default_get_kernel_channel_subbuf_size();
 		chan->attr.num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
 		chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 		chan->attr.live_timer_interval = DEFAULT_KERNEL_CHANNEL_LIVE_TIMER;
 		extended_attr->blocking_timeout = DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
-		extended_attr->monitor_timer_interval =
-			DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
+		extended_attr->monitor_timer_interval = DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
 		break;
 	case LTTNG_DOMAIN_JUL:
 		channel_name = DEFAULT_JUL_CHANNEL_NAME;
@@ -77,18 +74,15 @@ struct lttng_channel *channel_new_default_attr(int dom,
 		channel_name = DEFAULT_PYTHON_CHANNEL_NAME;
 		goto common_ust;
 	case LTTNG_DOMAIN_UST:
-common_ust:
+	common_ust:
 		switch (type) {
 		case LTTNG_BUFFER_PER_UID:
 			chan->attr.subbuf_size = default_get_ust_uid_channel_subbuf_size();
 			chan->attr.num_subbuf = DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM;
 			chan->attr.output = DEFAULT_UST_UID_CHANNEL_OUTPUT;
-			chan->attr.switch_timer_interval =
-				DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
-			chan->attr.read_timer_interval =
-				DEFAULT_UST_UID_CHANNEL_READ_TIMER;
-			chan->attr.live_timer_interval =
-				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
+			chan->attr.switch_timer_interval = DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
+			chan->attr.read_timer_interval = DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval = DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
@@ -98,12 +92,9 @@ common_ust:
 			chan->attr.subbuf_size = default_get_ust_pid_channel_subbuf_size();
 			chan->attr.num_subbuf = DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM;
 			chan->attr.output = DEFAULT_UST_PID_CHANNEL_OUTPUT;
-			chan->attr.switch_timer_interval =
-				DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
-			chan->attr.read_timer_interval =
-				DEFAULT_UST_PID_CHANNEL_READ_TIMER;
-			chan->attr.live_timer_interval =
-				DEFAULT_UST_PID_CHANNEL_LIVE_TIMER;
+			chan->attr.switch_timer_interval = DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
+			chan->attr.read_timer_interval = DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			chan->attr.live_timer_interval = DEFAULT_UST_PID_CHANNEL_LIVE_TIMER;
 			extended_attr->blocking_timeout = DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
@@ -111,11 +102,10 @@ common_ust:
 		}
 		break;
 	default:
-		goto error;	/* Not implemented */
+		goto error; /* Not implemented */
 	}
 
-	if (snprintf(chan->name, sizeof(chan->name), "%s",
-			channel_name) < 0) {
+	if (snprintf(chan->name, sizeof(chan->name), "%s", channel_name) < 0) {
 		PERROR("snprintf default channel name");
 		goto error;
 	}
@@ -140,8 +130,7 @@ void channel_attr_destroy(struct lttng_channel *channel)
 /*
  * Disable kernel channel of the kernel session.
  */
-int channel_kernel_disable(struct ltt_kernel_session *ksession,
-		char *channel_name)
+int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -174,7 +163,7 @@ error:
  * Enable kernel channel of the kernel session.
  */
 enum lttng_error_code channel_kernel_enable(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_channel *kchan)
+					    struct ltt_kernel_channel *kchan)
 {
 	enum lttng_error_code ret_code;
 
@@ -213,7 +202,7 @@ static int channel_validate(struct lttng_channel *attr)
 static int channel_validate_kernel(struct lttng_channel *attr)
 {
 	/* Kernel channels do not support blocking timeout. */
-	if (((struct lttng_channel_extended *)attr->attr.extended.ptr)->blocking_timeout) {
+	if (((struct lttng_channel_extended *) attr->attr.extended.ptr)->blocking_timeout) {
 		return -1;
 	}
 	return 0;
@@ -223,7 +212,8 @@ static int channel_validate_kernel(struct lttng_channel *attr)
  * Create kernel channel of the kernel session and notify kernel thread.
  */
 enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
-		struct lttng_channel *attr, int kernel_pipe)
+					    struct lttng_channel *attr,
+					    int kernel_pipe)
 {
 	enum lttng_error_code ret_code;
 	struct lttng_channel *defattr = NULL;
@@ -232,8 +222,7 @@ enum lttng_error_code channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Creating channel attributes if needed */
 	if (attr == NULL) {
-		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL,
-				LTTNG_BUFFER_GLOBAL);
+		defattr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
 		if (defattr == NULL) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto error;
@@ -282,7 +271,7 @@ error:
  * Enable UST channel for session and domain.
  */
 enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
+					 struct ltt_ust_channel *uchan)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 
@@ -320,7 +309,6 @@ enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
 	 */
 	(void) ust_app_enable_channel_glb(usess, uchan);
 
-
 end:
 	return ret_code;
 }
@@ -329,7 +317,8 @@ end:
  * Create UST channel for session and domain.
  */
 enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
-		struct lttng_channel *attr, enum lttng_buffer_type type)
+					 struct lttng_channel *attr,
+					 enum lttng_buffer_type type)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct ltt_ust_channel *uchan = NULL;
@@ -385,8 +374,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	 * and nonzero. We validate right here for UST, because applications will
 	 * not report the error to the user (unlike kernel tracing).
 	 */
-	if (!attr->attr.subbuf_size ||
-			(attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
+	if (!attr->attr.subbuf_size || (attr->attr.subbuf_size & (attr->attr.subbuf_size - 1))) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -399,8 +387,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	if (!attr->attr.num_subbuf ||
-			(attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
+	if (!attr->attr.num_subbuf || (attr->attr.num_subbuf & (attr->attr.num_subbuf - 1))) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -415,7 +402,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	 * we won't be able to write the packets on disk
 	 */
 	if ((attr->attr.tracefile_size > 0) &&
-			(attr->attr.tracefile_size < attr->attr.subbuf_size)) {
+	    (attr->attr.tracefile_size < attr->attr.subbuf_size)) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
@@ -446,7 +433,9 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	uchan->id = trace_ust_get_next_chan_id(usess);
 
 	DBG2("Channel %s is being created for UST with buffer %d and id %" PRIu64,
-			uchan->name, type, uchan->id);
+	     uchan->name,
+	     type,
+	     uchan->id);
 
 	/* Flag session buffer type. */
 	if (!usess->buffer_type_changed) {
@@ -460,8 +449,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Adding the channel to the channel hash table. */
 	rcu_read_lock();
-	if (strncmp(uchan->name, DEFAULT_METADATA_NAME,
-				sizeof(uchan->name))) {
+	if (strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name))) {
 		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
 		chan_published = true;
 	} else {
@@ -470,8 +458,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		 * application exists we can access that data in the shadow copy during
 		 * the global update of newly registered application.
 		 */
-		memcpy(&usess->metadata_attr, &uchan->attr,
-				sizeof(usess->metadata_attr));
+		memcpy(&usess->metadata_attr, &uchan->attr, sizeof(usess->metadata_attr));
 	}
 	rcu_read_unlock();
 
@@ -506,8 +493,7 @@ error:
 /*
  * Disable UST channel for session and domain.
  */
-int channel_ust_disable(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
+int channel_ust_disable(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
 {
 	int ret = LTTNG_OK;
 
@@ -547,8 +533,7 @@ error:
 	return ret;
 }
 
-struct lttng_channel *trace_ust_channel_to_lttng_channel(
-		const struct ltt_ust_channel *uchan)
+struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan)
 {
 	struct lttng_channel *channel = NULL, *ret = NULL;
 
@@ -588,10 +573,8 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(
 		break;
 	}
 
-	lttng_channel_set_blocking_timeout(
-			channel, uchan->attr.u.s.blocking_timeout);
-	lttng_channel_set_monitor_timer_interval(
-			channel, uchan->monitor_timer_interval);
+	lttng_channel_set_blocking_timeout(channel, uchan->attr.u.s.blocking_timeout);
+	lttng_channel_set_monitor_timer_interval(channel, uchan->monitor_timer_interval);
 
 	ret = channel;
 	channel = NULL;

@@ -7,17 +7,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "lttng-relayd.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
-#include <common/utils.hpp>
 #include <common/path.hpp>
+#include <common/utils.hpp>
 
-#include "lttng-relayd.hpp"
-#include "utils.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static char *create_output_path_auto(const char *path_name)
 {
@@ -31,8 +31,7 @@ static char *create_output_path_auto(const char *path_name)
 				Please specify an output path using -o, --output PATH");
 		goto exit;
 	}
-	ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
-			"/%s", default_path, path_name);
+	ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME "/%s", default_path, path_name);
 	if (ret < 0) {
 		PERROR("asprintf trace dir name");
 		goto exit;

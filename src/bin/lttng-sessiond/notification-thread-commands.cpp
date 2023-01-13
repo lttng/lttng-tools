@@ -5,36 +5,36 @@
  *
  */
 
-#include <lttng/trigger/trigger.h>
-#include <lttng/lttng-error.h>
-#include "notification-thread.hpp"
 #include "notification-thread-commands.hpp"
-#include <common/error.hpp>
-#include <unistd.h>
-#include <stdint.h>
-#include <inttypes.h>
+#include "notification-thread.hpp"
 
-static
-void init_notification_thread_command(struct notification_thread_command *cmd)
+#include <common/error.hpp>
+
+#include <lttng/lttng-error.h>
+#include <lttng/trigger/trigger.h>
+
+#include <inttypes.h>
+#include <stdint.h>
+#include <unistd.h>
+
+static void init_notification_thread_command(struct notification_thread_command *cmd)
 {
 	CDS_INIT_LIST_HEAD(&cmd->cmd_list_node);
 	lttng_waiter_init(&cmd->reply_waiter);
 }
 
-static
-int run_command_wait(struct notification_thread_handle *handle,
-		struct notification_thread_command *cmd)
+static int run_command_wait(struct notification_thread_handle *handle,
+			    struct notification_thread_command *cmd)
 {
 	int ret;
 	uint64_t notification_counter = 1;
 
 	pthread_mutex_lock(&handle->cmd_queue.lock);
 	/* Add to queue. */
-	cds_list_add_tail(&cmd->cmd_list_node,
-			&handle->cmd_queue.list);
+	cds_list_add_tail(&cmd->cmd_list_node, &handle->cmd_queue.list);
 	/* Wake-up thread. */
-	ret = lttng_write(handle->cmd_queue.event_fd,
-			&notification_counter, sizeof(notification_counter));
+	ret = lttng_write(
+		handle->cmd_queue.event_fd, &notification_counter, sizeof(notification_counter));
 	if (ret != sizeof(notification_counter)) {
 		PERROR("write to notification thread's queue event fd");
 		/*
@@ -53,9 +53,8 @@ error_unlock_queue:
 	return -1;
 }
 
-static
-struct notification_thread_command *notification_thread_command_copy(
-	const struct notification_thread_command *original_cmd)
+static struct notification_thread_command *
+notification_thread_command_copy(const struct notification_thread_command *original_cmd)
 {
 	struct notification_thread_command *new_cmd;
 
@@ -70,14 +69,12 @@ end:
 	return new_cmd;
 }
 
-static
-int run_command_no_wait(struct notification_thread_handle *handle,
-		const struct notification_thread_command *in_cmd)
+static int run_command_no_wait(struct notification_thread_handle *handle,
+			       const struct notification_thread_command *in_cmd)
 {
 	int ret;
 	uint64_t notification_counter = 1;
-	struct notification_thread_command *new_cmd =
-			notification_thread_command_copy(in_cmd);
+	struct notification_thread_command *new_cmd = notification_thread_command_copy(in_cmd);
 
 	if (!new_cmd) {
 		goto error;
@@ -86,11 +83,10 @@ int run_command_no_wait(struct notification_thread_handle *handle,
 
 	pthread_mutex_lock(&handle->cmd_queue.lock);
 	/* Add to queue. */
-	cds_list_add_tail(&new_cmd->cmd_list_node,
-			&handle->cmd_queue.list);
+	cds_list_add_tail(&new_cmd->cmd_list_node, &handle->cmd_queue.list);
 	/* Wake-up thread. */
-	ret = lttng_write(handle->cmd_queue.event_fd,
-			&notification_counter, sizeof(notification_counter));
+	ret = lttng_write(
+		handle->cmd_queue.event_fd, &notification_counter, sizeof(notification_counter));
 	if (ret != sizeof(notification_counter)) {
 		PERROR("write to notification thread's queue event fd");
 		/*
@@ -109,10 +105,10 @@ error:
 	return -1;
 }
 
-enum lttng_error_code notification_thread_command_register_trigger(
-		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger,
-		bool is_trigger_anonymous)
+enum lttng_error_code
+notification_thread_command_register_trigger(struct notification_thread_handle *handle,
+					     struct lttng_trigger *trigger,
+					     bool is_trigger_anonymous)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -124,8 +120,7 @@ enum lttng_error_code notification_thread_command_register_trigger(
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER;
 	lttng_trigger_get(trigger);
 	cmd.parameters.register_trigger.trigger = trigger;
-	cmd.parameters.register_trigger.is_trigger_anonymous =
-			is_trigger_anonymous;
+	cmd.parameters.register_trigger.is_trigger_anonymous = is_trigger_anonymous;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {
@@ -137,9 +132,9 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_unregister_trigger(
-		struct notification_thread_handle *handle,
-		const struct lttng_trigger *trigger)
+enum lttng_error_code
+notification_thread_command_unregister_trigger(struct notification_thread_handle *handle,
+					       const struct lttng_trigger *trigger)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -160,9 +155,12 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_add_session(
-		struct notification_thread_handle *handle,
-		uint64_t session_id, const char *session_name, uid_t session_uid, gid_t session_gid)
+enum lttng_error_code
+notification_thread_command_add_session(struct notification_thread_handle *handle,
+					uint64_t session_id,
+					const char *session_name,
+					uid_t session_uid,
+					gid_t session_gid)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -186,9 +184,9 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_remove_session(
-		struct notification_thread_handle *handle,
-		uint64_t session_id)
+enum lttng_error_code
+notification_thread_command_remove_session(struct notification_thread_handle *handle,
+					   uint64_t session_id)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -209,11 +207,13 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_add_channel(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		char *channel_name, uint64_t key,
-		enum lttng_domain_type domain, uint64_t capacity)
+enum lttng_error_code
+notification_thread_command_add_channel(struct notification_thread_handle *handle,
+					uint64_t session_id,
+					char *channel_name,
+					uint64_t key,
+					enum lttng_domain_type domain,
+					uint64_t capacity)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -239,8 +239,7 @@ end:
 }
 
 enum lttng_error_code notification_thread_command_remove_channel(
-		struct notification_thread_handle *handle,
-		uint64_t key, enum lttng_domain_type domain)
+	struct notification_thread_handle *handle, uint64_t key, enum lttng_domain_type domain)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -262,10 +261,10 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_session_rotation_ongoing(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		uint64_t trace_archive_chunk_id)
+enum lttng_error_code
+notification_thread_command_session_rotation_ongoing(struct notification_thread_handle *handle,
+						     uint64_t session_id,
+						     uint64_t trace_archive_chunk_id)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -275,8 +274,7 @@ enum lttng_error_code notification_thread_command_session_rotation_ongoing(
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING;
 	cmd.parameters.session_rotation.session_id = session_id;
-	cmd.parameters.session_rotation.trace_archive_chunk_id =
-			trace_archive_chunk_id;
+	cmd.parameters.session_rotation.trace_archive_chunk_id = trace_archive_chunk_id;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {
@@ -289,10 +287,10 @@ end:
 }
 
 enum lttng_error_code notification_thread_command_session_rotation_completed(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		uint64_t trace_archive_chunk_id,
-		struct lttng_trace_archive_location *location)
+	struct notification_thread_handle *handle,
+	uint64_t session_id,
+	uint64_t trace_archive_chunk_id,
+	struct lttng_trace_archive_location *location)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -302,8 +300,7 @@ enum lttng_error_code notification_thread_command_session_rotation_completed(
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED;
 	cmd.parameters.session_rotation.session_id = session_id;
-	cmd.parameters.session_rotation.trace_archive_chunk_id =
-			trace_archive_chunk_id;
+	cmd.parameters.session_rotation.trace_archive_chunk_id = trace_archive_chunk_id;
 	cmd.parameters.session_rotation.location = location;
 
 	ret = run_command_wait(handle, &cmd);
@@ -316,10 +313,10 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_add_tracer_event_source(
-		struct notification_thread_handle *handle,
-		int tracer_event_source_fd,
-		enum lttng_domain_type domain)
+enum lttng_error_code
+notification_thread_command_add_tracer_event_source(struct notification_thread_handle *handle,
+						    int tracer_event_source_fd,
+						    enum lttng_domain_type domain)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -330,8 +327,7 @@ enum lttng_error_code notification_thread_command_add_tracer_event_source(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE;
-	cmd.parameters.tracer_event_source.tracer_event_source_fd =
-			tracer_event_source_fd;
+	cmd.parameters.tracer_event_source.tracer_event_source_fd = tracer_event_source_fd;
 	cmd.parameters.tracer_event_source.domain = domain;
 
 	ret = run_command_wait(handle, &cmd);
@@ -345,9 +341,9 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code notification_thread_command_remove_tracer_event_source(
-		struct notification_thread_handle *handle,
-		int tracer_event_source_fd)
+enum lttng_error_code
+notification_thread_command_remove_tracer_event_source(struct notification_thread_handle *handle,
+						       int tracer_event_source_fd)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -356,8 +352,7 @@ enum lttng_error_code notification_thread_command_remove_tracer_event_source(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_TRACER_EVENT_SOURCE;
-	cmd.parameters.tracer_event_source.tracer_event_source_fd =
-			tracer_event_source_fd;
+	cmd.parameters.tracer_event_source.tracer_event_source_fd = tracer_event_source_fd;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {
@@ -371,9 +366,7 @@ end:
 }
 
 enum lttng_error_code notification_thread_command_list_triggers(
-		struct notification_thread_handle *handle,
-		uid_t uid,
-		struct lttng_triggers **triggers)
+	struct notification_thread_handle *handle, uid_t uid, struct lttng_triggers **triggers)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -400,8 +393,7 @@ end:
 	return ret_code;
 }
 
-void notification_thread_command_quit(
-		struct notification_thread_handle *handle)
+void notification_thread_command_quit(struct notification_thread_handle *handle)
 {
 	int ret;
 	struct notification_thread_command cmd = {};
@@ -414,9 +406,9 @@ void notification_thread_command_quit(
 }
 
 int notification_thread_client_communication_update(
-		struct notification_thread_handle *handle,
-		notification_client_id id,
-		enum client_transmission_status transmission_status)
+	struct notification_thread_handle *handle,
+	notification_client_id id,
+	enum client_transmission_status transmission_status)
 {
 	struct notification_thread_command cmd = {};
 
@@ -428,10 +420,10 @@ int notification_thread_client_communication_update(
 	return run_command_no_wait(handle, &cmd);
 }
 
-enum lttng_error_code notification_thread_command_get_trigger(
-		struct notification_thread_handle *handle,
-		const struct lttng_trigger *trigger,
-		struct lttng_trigger **real_trigger)
+enum lttng_error_code
+notification_thread_command_get_trigger(struct notification_thread_handle *handle,
+					const struct lttng_trigger *trigger,
+					struct lttng_trigger **real_trigger)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -458,10 +450,7 @@ end:
  * Takes ownership of the payload if present.
  */
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
-		uint64_t tracer_token,
-		enum lttng_domain_type domain,
-		char *payload,
-		size_t payload_size)
+	uint64_t tracer_token, enum lttng_domain_type domain, char *payload, size_t payload_size)
 {
 	struct lttng_event_notifier_notification *notification = NULL;
 
@@ -484,7 +473,7 @@ end:
 }
 
 void lttng_event_notifier_notification_destroy(
-		struct lttng_event_notifier_notification *notification)
+	struct lttng_event_notifier_notification *notification)
 {
 	if (!notification) {
 		return;

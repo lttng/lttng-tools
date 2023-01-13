@@ -8,19 +8,19 @@
 #include <common/error.hpp>
 #include <common/fd-tracker/utils.hpp>
 #include <common/utils.hpp>
+
 #include <lttng/constant.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-static
-int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
+static int open_pipe_cloexec(void *data __attribute__((unused)), int *fds)
 {
 	return utils_create_pipe_cloexec(fds);
 }
 
-static
-int close_pipe(void *data __attribute__((unused)), int *pipe)
+static int close_pipe(void *data __attribute__((unused)), int *pipe)
 {
 	utils_close_pipe(pipe);
 	pipe[0] = pipe[1] = -1;
@@ -32,8 +32,7 @@ int fd_tracker_util_close_fd(void *unused __attribute__((unused)), int *fd)
 	return close(*fd);
 }
 
-int fd_tracker_util_pipe_open_cloexec(
-		struct fd_tracker *tracker, const char *name, int *pipe)
+int fd_tracker_util_pipe_open_cloexec(struct fd_tracker *tracker, const char *name, int *pipe)
 {
 	int ret;
 	const char *name_prefix;
@@ -49,8 +48,8 @@ int fd_tracker_util_pipe_open_cloexec(
 		goto end;
 	}
 
-	ret = fd_tracker_open_unsuspendable_fd(tracker, pipe,
-			(const char **) names, 2, open_pipe_cloexec, NULL);
+	ret = fd_tracker_open_unsuspendable_fd(
+		tracker, pipe, (const char **) names, 2, open_pipe_cloexec, NULL);
 	free(names[0]);
 	free(names[1]);
 end:
@@ -59,8 +58,7 @@ end:
 
 int fd_tracker_util_pipe_close(struct fd_tracker *tracker, int *pipe)
 {
-	return fd_tracker_close_unsuspendable_fd(
-			tracker, pipe, 2, close_pipe, NULL);
+	return fd_tracker_close_unsuspendable_fd(tracker, pipe, 2, close_pipe, NULL);
 }
 
 namespace {
@@ -71,17 +69,15 @@ struct open_directory_handle_args {
 };
 } /* namespace */
 
-static
-int open_directory_handle(void *_args, int *out_fds)
+static int open_directory_handle(void *_args, int *out_fds)
 {
 	int ret = 0;
 	struct open_directory_handle_args *args = (open_directory_handle_args *) _args;
 	struct lttng_directory_handle *new_handle = NULL;
 
 	new_handle = args->in_handle ?
-			lttng_directory_handle_create_from_handle(
-				args->path, args->in_handle) :
-			lttng_directory_handle_create(args->path);
+		lttng_directory_handle_create_from_handle(args->path, args->in_handle) :
+		lttng_directory_handle_create(args->path);
 	if (!new_handle) {
 		ret = -errno;
 		goto end;
@@ -105,15 +101,13 @@ int open_directory_handle(void *_args, int *out_fds)
 #else
 		abort();
 #endif
-
 	}
 end:
 	return ret;
 }
 
 #ifdef HAVE_DIRFD
-static
-int fd_close(void *unused __attribute__((unused)), int *in_fds)
+static int fd_close(void *unused __attribute__((unused)), int *in_fds)
 {
 	const int ret = close(in_fds[0]);
 
@@ -121,13 +115,11 @@ int fd_close(void *unused __attribute__((unused)), int *in_fds)
 	return ret;
 }
 
-static
-void directory_handle_destroy(
-		struct lttng_directory_handle *handle, void *data)
+static void directory_handle_destroy(struct lttng_directory_handle *handle, void *data)
 {
 	struct fd_tracker *tracker = (fd_tracker *) data;
-	const int ret = fd_tracker_close_unsuspendable_fd(
-			tracker, &handle->dirfd, 1, fd_close, NULL);
+	const int ret =
+		fd_tracker_close_unsuspendable_fd(tracker, &handle->dirfd, 1, fd_close, NULL);
 
 	if (ret) {
 		ERR("Failed to untrack directory handle file descriptor");
@@ -135,24 +127,21 @@ void directory_handle_destroy(
 }
 #endif
 
-struct lttng_directory_handle *fd_tracker_create_directory_handle(
-		struct fd_tracker *tracker, const char *path)
+struct lttng_directory_handle *fd_tracker_create_directory_handle(struct fd_tracker *tracker,
+								  const char *path)
 {
-	return fd_tracker_create_directory_handle_from_handle(
-			tracker, NULL, path);
+	return fd_tracker_create_directory_handle_from_handle(tracker, NULL, path);
 }
 
 struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
-		struct fd_tracker *tracker,
-		struct lttng_directory_handle *in_handle,
-		const char *path)
+	struct fd_tracker *tracker, struct lttng_directory_handle *in_handle, const char *path)
 {
 	int ret;
 	int dirfd = -1;
 	char *handle_name = NULL;
 	char cwd_path[LTTNG_PATH_MAX] = "working directory";
 	struct lttng_directory_handle *new_handle = NULL;
-	open_directory_handle_args open_args {};
+	open_directory_handle_args open_args{};
 
 	open_args.in_handle = in_handle;
 	open_args.path = path;
@@ -164,18 +153,17 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 		}
 	}
 
-	ret = asprintf(&handle_name, "Directory handle to %s",
-			path ? path : cwd_path);
+	ret = asprintf(&handle_name, "Directory handle to %s", path ? path : cwd_path);
 	if (ret < 0) {
 		PERROR("Failed to format directory handle name");
 		goto end;
 	}
 
-	ret = fd_tracker_open_unsuspendable_fd(tracker, &dirfd,
-			(const char **) &handle_name, 1, open_directory_handle,
-			&open_args);
+	ret = fd_tracker_open_unsuspendable_fd(
+		tracker, &dirfd, (const char **) &handle_name, 1, open_directory_handle, &open_args);
 	if (ret && ret != ENOTSUP) {
-		ERR("Failed to open directory handle to %s through the fd tracker", path ? path : cwd_path);
+		ERR("Failed to open directory handle to %s through the fd tracker",
+		    path ? path : cwd_path);
 	}
 	new_handle = open_args.ret_handle;
 

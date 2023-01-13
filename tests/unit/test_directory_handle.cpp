@@ -5,6 +5,10 @@
  *
  */
 
+#include <common/compat/directory-handle.hpp>
+#include <common/compat/errno.hpp>
+#include <common/error.hpp>
+
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -12,12 +16,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
-
-#include <common/compat/directory-handle.hpp>
-#include <common/compat/errno.hpp>
-#include <common/error.hpp>
 #include <tap/tap.h>
+#include <unistd.h>
 
 #define TEST_COUNT 9
 
@@ -63,9 +63,8 @@ static bool dir_exists(const char *path)
  *             ├── f
  *             └── file1
  */
-static int create_non_empty_hierarchy_with_root(
-		struct lttng_directory_handle *test_dir_handle,
-		const char *test_root_name)
+static int create_non_empty_hierarchy_with_root(struct lttng_directory_handle *test_dir_handle,
+						const char *test_root_name)
 {
 	int ret;
 	const int file_flags = O_WRONLY | O_CREAT | O_TRUNC;
@@ -78,9 +77,7 @@ static int create_non_empty_hierarchy_with_root(
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_recursive(
-			test_dir_handle,
-			branch_name,
-			DIR_CREATION_MODE);
+		test_dir_handle, branch_name, DIR_CREATION_MODE);
 	if (ret) {
 		diag("Failed to create test folder hierarchy %s", branch_name);
 		goto end;
@@ -93,9 +90,7 @@ static int create_non_empty_hierarchy_with_root(
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_recursive(
-			test_dir_handle,
-			branch_name,
-			DIR_CREATION_MODE);
+		test_dir_handle, branch_name, DIR_CREATION_MODE);
 	if (ret) {
 		diag("Failed to create test folder hierarchy %s", branch_name);
 		goto end;
@@ -107,16 +102,14 @@ static int create_non_empty_hierarchy_with_root(
 		diag("Failed to format file path");
 		goto end;
 	}
-	ret = lttng_directory_handle_open_file(
-			test_dir_handle, branch_name, file_flags, file_mode);
+	ret = lttng_directory_handle_open_file(test_dir_handle, branch_name, file_flags, file_mode);
 	if (ret < 0) {
 		diag("Failed to create file %s", branch_name);
 		goto end;
 	}
 	ret = close(ret);
 	if (ret) {
-		PERROR("Failed to close fd to newly created file %s",
-				branch_name);
+		PERROR("Failed to close fd to newly created file %s", branch_name);
 		goto end;
 	}
 end:
@@ -125,9 +118,8 @@ end:
 }
 
 /* Remove "file1" from the test folder hierarchy. */
-static
-int remove_file_from_hierarchy(struct lttng_directory_handle *test_dir_handle,
-		const char *test_root_name)
+static int remove_file_from_hierarchy(struct lttng_directory_handle *test_dir_handle,
+				      const char *test_root_name)
 {
 	int ret;
 	char *file_name = NULL;
@@ -138,8 +130,7 @@ int remove_file_from_hierarchy(struct lttng_directory_handle *test_dir_handle,
 		goto end;
 	}
 
-	ret = lttng_directory_handle_unlink_file(test_dir_handle,
-			file_name);
+	ret = lttng_directory_handle_unlink_file(test_dir_handle, file_name);
 	if (ret) {
 		PERROR("Failed to unlink file %s", file_name);
 		goto end;
@@ -174,9 +165,9 @@ static int test_rmdir_fail_non_empty(const char *test_dir)
 	}
 
 	ret = lttng_directory_handle_remove_subdirectory_recursive(
-			test_dir_handle, test_root_name,
-			LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG);
-	ok(ret == -1, "Error returned when attempting to recursively remove non-empty hierarchy with LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG");
+		test_dir_handle, test_root_name, LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG);
+	ok(ret == -1,
+	   "Error returned when attempting to recursively remove non-empty hierarchy with LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG");
 	tests_ran++;
 
 	ret = remove_file_from_hierarchy(test_dir_handle, test_root_name);
@@ -186,9 +177,9 @@ static int test_rmdir_fail_non_empty(const char *test_dir)
 	}
 
 	ret = lttng_directory_handle_remove_subdirectory_recursive(
-			test_dir_handle, test_root_name,
-			LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG);
-	ok(ret == 0, "No error returned when recursively removing empty hierarchy with LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG");
+		test_dir_handle, test_root_name, LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG);
+	ok(ret == 0,
+	   "No error returned when recursively removing empty hierarchy with LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG");
 	tests_ran++;
 
 	ret = asprintf(&test_dir_path, "%s/%s", test_dir, test_root_name);
@@ -197,8 +188,8 @@ static int test_rmdir_fail_non_empty(const char *test_dir)
 		goto end;
 	}
 	ok(!dir_exists(test_dir_path) && errno == ENOENT,
-			"Folder hierarchy %s successfully removed",
-			test_dir_path);
+	   "Folder hierarchy %s successfully removed",
+	   test_dir_path);
 	tests_ran++;
 	ret = 0;
 end:
@@ -233,9 +224,9 @@ static int test_rmdir_skip_non_empty(const char *test_dir)
 	}
 
 	ret = lttng_directory_handle_remove_subdirectory_recursive(
-			test_dir_handle, test_root_name,
-			LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
-	ok(ret == 0, "No error returned when attempting to recursively remove non-empty hierarchy with LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG");
+		test_dir_handle, test_root_name, LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
+	ok(ret == 0,
+	   "No error returned when attempting to recursively remove non-empty hierarchy with LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG");
 	tests_ran++;
 
 	ret = asprintf(&test_dir_path, "%s/%s", test_dir, test_root_name);
@@ -253,14 +244,14 @@ static int test_rmdir_skip_non_empty(const char *test_dir)
 	}
 
 	ret = lttng_directory_handle_remove_subdirectory_recursive(
-			test_dir_handle, test_root_name,
-			LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
-	ok(ret == 0, "No error returned when recursively removing empty hierarchy with LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG");
+		test_dir_handle, test_root_name, LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
+	ok(ret == 0,
+	   "No error returned when recursively removing empty hierarchy with LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG");
 	tests_ran++;
 
 	ok(!dir_exists(test_dir_path) && errno == ENOENT,
-			"Folder hierarchy %s successfully removed",
-			test_dir_path);
+	   "Folder hierarchy %s successfully removed",
+	   test_dir_path);
 	tests_ran++;
 	ret = 0;
 end:
@@ -286,13 +277,12 @@ int main(void)
 		goto end;
 	}
 
-	for (func_idx = 0; func_idx < sizeof(test_funcs) / sizeof(*test_funcs);
-			func_idx++) {
+	for (func_idx = 0; func_idx < sizeof(test_funcs) / sizeof(*test_funcs); func_idx++) {
 		tests_left -= test_funcs[func_idx](test_dir);
 	}
 	if (tests_left) {
 		diag("Skipping %d tests that could not be executed due to a prior error",
-				tests_left);
+		     tests_left);
 		skip(tests_left, "test due to an error");
 	}
 end:

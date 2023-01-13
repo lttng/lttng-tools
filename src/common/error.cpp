@@ -6,18 +6,19 @@
  */
 
 #define _LGPL_SOURCE
+#include "error.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/thread.hpp>
+
+#include <lttng/lttng-error.h>
+
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <common/common.hpp>
-#include <common/thread.hpp>
-#include <common/compat/errno.hpp>
-#include <common/compat/getenv.hpp>
-#include <lttng/lttng-error.h>
-
-#include "error.hpp"
 
 /*
  * lttng_opt_abort_on_error: unset: -1, disabled: 0, enabled: 1.
@@ -49,9 +50,13 @@ const char *log_add_time(void)
 	}
 
 	/* Format time in the TLS variable. */
-	ret = snprintf(URCU_TLS(error_log_time).str, sizeof(URCU_TLS(error_log_time).str),
-			"%02d:%02d:%02d.%09ld",
-			tm.tm_hour, tm.tm_min, tm.tm_sec, tp.tv_nsec);
+	ret = snprintf(URCU_TLS(error_log_time).str,
+		       sizeof(URCU_TLS(error_log_time).str),
+		       "%02d:%02d:%02d.%09ld",
+		       tm.tm_hour,
+		       tm.tm_min,
+		       tm.tm_sec,
+		       tp.tv_nsec);
 	if (ret < 0) {
 		goto error;
 	}
@@ -84,8 +89,7 @@ void logger_set_thread_name(const char *name, bool set_pthread_name)
 /*
  * Human readable error message.
  */
-static
-const char *lttng_error_code_str(lttng_error_code code)
+static const char *lttng_error_code_str(lttng_error_code code)
 {
 	switch (code) {
 	case LTTNG_OK:

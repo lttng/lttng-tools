@@ -5,14 +5,14 @@
  *
  */
 
-#include "tsdl-trace-class-visitor.hpp"
 #include "clock-class.hpp"
+#include "tsdl-trace-class-visitor.hpp"
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
 #include <common/make-unique.hpp>
-#include <common/uuid.hpp>
 #include <common/scope-exit.hpp>
+#include <common/uuid.hpp>
 
 #include <vendor/optional.hpp>
 
@@ -35,22 +35,20 @@ const auto ctf_spec_minor = 8;
  * Although the CTF v1.8 specification recommends ignoring any leading underscore, Some readers,
  * such as Babeltrace 1.x, expect special identifiers without a prepended underscore.
  */
-const std::unordered_set<std::string> safe_tsdl_identifiers = {
-	"stream_id",
-	"packet_size",
-	"content_size",
-	"id",
-	"v",
-	"timestamp",
-	"events_discarded",
-	"packet_seq_num",
-	"timestamp_begin",
-	"timestamp_end",
-	"cpu_id",
-	"magic",
-	"uuid",
-	"stream_instance_id"
-};
+const std::unordered_set<std::string> safe_tsdl_identifiers = { "stream_id",
+								"packet_size",
+								"content_size",
+								"id",
+								"v",
+								"timestamp",
+								"events_discarded",
+								"packet_seq_num",
+								"timestamp_begin",
+								"timestamp_end",
+								"cpu_id",
+								"magic",
+								"uuid",
+								"stream_instance_id" };
 
 /*
  * A previous implementation always prepended '_' to the identifiers in order to
@@ -76,7 +74,7 @@ std::string escape_tsdl_identifier(const std::string& original_identifier)
 	new_identifier = "_";
 
 	/* Replace illegal characters by '_'. */
-	std::locale c_locale{"C"};
+	std::locale c_locale{ "C" };
 	for (const auto current_char : original_identifier) {
 		if (!std::isalnum(current_char, c_locale) && current_char != '_') {
 			new_identifier += '_';
@@ -139,8 +137,8 @@ public:
 	using type_lookup_function = std::function<const lst::type&(const lst::field_location&)>;
 
 	variant_tsdl_keyword_sanitizer(tsdl::details::type_overrider& type_overrides,
-			type_lookup_function lookup_type) :
-		_type_overrides{type_overrides}, _lookup_type(lookup_type)
+				       type_lookup_function lookup_type) :
+		_type_overrides{ type_overrides }, _lookup_type(lookup_type)
 	{
 	}
 
@@ -163,35 +161,43 @@ private:
 	{
 	}
 
-	virtual void visit(const lst::floating_point_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::floating_point_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::signed_enumeration_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::signed_enumeration_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::unsigned_enumeration_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::unsigned_enumeration_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::static_length_array_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::static_length_array_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_array_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::dynamic_length_array_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::static_length_blob_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::static_length_blob_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_blob_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::dynamic_length_blob_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::null_terminated_string_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::null_terminated_string_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
@@ -204,42 +210,44 @@ private:
 	}
 
 	/*
-	 * Create a new enumeration type replacing any mapping that match, by name, the elements in `unsafe_names_found`
-	 * with a TSDL-safe version. Currently, unsafe identifiers are made safe by adding
-	 * a leading underscore.
+	 * Create a new enumeration type replacing any mapping that match, by name, the elements in
+	 * `unsafe_names_found` with a TSDL-safe version. Currently, unsafe identifiers are made
+	 * safe by adding a leading underscore.
 	 */
 	template <typename MappingIntegerType>
 	lst::type::cuptr _create_sanitized_selector(
-			const lst::typed_enumeration_type<MappingIntegerType>& original_selector,
-			const unsafe_names& unsafe_names_found)
+		const lst::typed_enumeration_type<MappingIntegerType>& original_selector,
+		const unsafe_names& unsafe_names_found)
 	{
-		auto new_mappings = std::make_shared<typename lst::typed_enumeration_type<
-				MappingIntegerType>::mappings>();
+		auto new_mappings = std::make_shared<
+			typename lst::typed_enumeration_type<MappingIntegerType>::mappings>();
 
 		for (const auto& mapping : *original_selector.mappings_) {
 			if (unsafe_names_found.find(mapping.name.c_str()) ==
-					unsafe_names_found.end()) {
+			    unsafe_names_found.end()) {
 				/* Mapping is safe, simply copy it. */
 				new_mappings->emplace_back(mapping);
 			} else {
 				/* Unsafe mapping, rename it and keep the rest of its attributes. */
-				new_mappings->emplace_back(
-						fmt::format("_{}", mapping.name), mapping.range);
+				new_mappings->emplace_back(fmt::format("_{}", mapping.name),
+							   mapping.range);
 			}
 		}
 
 		return lttng::make_unique<lst::typed_enumeration_type<MappingIntegerType>>(
-				original_selector.alignment, original_selector.byte_order,
-				original_selector.size, original_selector.base_, new_mappings);
+			original_selector.alignment,
+			original_selector.byte_order,
+			original_selector.size,
+			original_selector.base_,
+			new_mappings);
 	}
 
 	template <typename MappingIntegerType>
 	const typename lst::typed_enumeration_type<MappingIntegerType>::mapping&
 	_find_enumeration_mapping_by_range(
-			const typename lst::typed_enumeration_type<MappingIntegerType>&
-					enumeration_type,
-			const typename lst::typed_enumeration_type<
-					MappingIntegerType>::mapping::range_t& target_mapping_range)
+		const typename lst::typed_enumeration_type<MappingIntegerType>& enumeration_type,
+		const typename lst::typed_enumeration_type<MappingIntegerType>::mapping::range_t&
+			target_mapping_range)
 	{
 		for (const auto& mapping : *enumeration_type.mappings_) {
 			if (mapping.range == target_mapping_range) {
@@ -248,8 +256,8 @@ private:
 		}
 
 		LTTNG_THROW_ERROR(fmt::format(
-				"Failed to find mapping by range in enumeration while sanitizing a variant: target_mapping_range={}",
-				target_mapping_range));
+			"Failed to find mapping by range in enumeration while sanitizing a variant: target_mapping_range={}",
+			target_mapping_range));
 	}
 
 	/*
@@ -257,14 +265,14 @@ private:
 	 * to produce a TSDL-safe version of the variant.
 	 */
 	template <typename MappingIntegerType>
-	lst::type::cuptr _create_sanitized_variant(
-			const lst::variant_type<MappingIntegerType>& original_variant)
+	lst::type::cuptr
+	_create_sanitized_variant(const lst::variant_type<MappingIntegerType>& original_variant)
 	{
 		typename lst::variant_type<MappingIntegerType>::choices new_choices;
-		const auto& sanitized_selector = static_cast<
-				const lst::typed_enumeration_type<MappingIntegerType>&>(
-				_type_overrides.type(_lookup_type(
-						original_variant.selector_field_location)));
+		const auto& sanitized_selector =
+			static_cast<const lst::typed_enumeration_type<MappingIntegerType>&>(
+				_type_overrides.type(
+					_lookup_type(original_variant.selector_field_location)));
 
 		/* Visit variant choices to sanitize them as needed. */
 		for (const auto& choice : original_variant.choices_) {
@@ -274,16 +282,15 @@ private:
 		for (const auto& choice : original_variant.choices_) {
 			const auto& sanitized_choice_type = _type_overrides.type(*choice.second);
 
-			new_choices.emplace_back(
-					_find_enumeration_mapping_by_range(
-							sanitized_selector, choice.first.range),
-					sanitized_choice_type.copy());
+			new_choices.emplace_back(_find_enumeration_mapping_by_range(
+							 sanitized_selector, choice.first.range),
+						 sanitized_choice_type.copy());
 		}
 
 		return lttng::make_unique<lst::variant_type<MappingIntegerType>>(
-					       original_variant.alignment,
-					       original_variant.selector_field_location,
-					       std::move(new_choices));
+			original_variant.alignment,
+			original_variant.selector_field_location,
+			std::move(new_choices));
 	}
 
 	template <typename MappingIntegerType>
@@ -291,39 +298,18 @@ private:
 	{
 		unsafe_names unsafe_names_found;
 		static const std::unordered_set<std::string> tsdl_protected_keywords = {
-				"align",
-				"callsite",
-				"const",
-				"char",
-				"clock",
-				"double",
-				"enum",
-				"env",
-				"event",
-				"floating_point",
-				"float",
-				"integer",
-				"int",
-				"long",
-				"short",
-				"signed",
-				"stream",
-				"string",
-				"struct",
-				"trace",
-				"typealias",
-				"typedef",
-				"unsigned",
-				"variant",
-				"void",
-				"_Bool",
-				"_Complex",
-				"_Imaginary",
+			"align",  "callsite", "const",	   "char",	     "clock",	 "double",
+			"enum",	  "env",      "event",	   "floating_point", "float",	 "integer",
+			"int",	  "long",     "short",	   "signed",	     "stream",	 "string",
+			"struct", "trace",    "typealias", "typedef",	     "unsigned", "variant",
+			"void",	  "_Bool",    "_Complex",  "_Imaginary",
 		};
 
 		for (const auto& choice : type.choices_) {
-			if (tsdl_protected_keywords.find(choice.first.name) != tsdl_protected_keywords.cend()) {
-				/* Choice name is illegal, we have to rename it and its matching mapping. */
+			if (tsdl_protected_keywords.find(choice.first.name) !=
+			    tsdl_protected_keywords.cend()) {
+				/* Choice name is illegal, we have to rename it and its matching
+				 * mapping. */
 				unsafe_names_found.insert(choice.first.name.c_str());
 			}
 		}
@@ -347,30 +333,37 @@ private:
 		const auto& overriden_selector_type = _type_overrides.type(original_selector_type);
 
 		auto sanitized_selector_type = _create_sanitized_selector(
-				static_cast<const lst::typed_enumeration_type<MappingIntegerType>&>(
-					overriden_selector_type), unsafe_names_found);
+			static_cast<const lst::typed_enumeration_type<MappingIntegerType>&>(
+				overriden_selector_type),
+			unsafe_names_found);
 		_type_overrides.publish(original_selector_type, std::move(sanitized_selector_type));
 
 		auto sanitized_variant_type = _create_sanitized_variant(
-				static_cast<const lst::variant_type<MappingIntegerType>&>(type));
+			static_cast<const lst::variant_type<MappingIntegerType>&>(type));
 		_type_overrides.publish(type, std::move(sanitized_variant_type));
 	}
 
-	virtual void visit(const lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	virtual void visit(const lst::variant_type<
+			   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type)
+		override final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	virtual void visit(const lst::variant_type<
+			   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type)
+		override final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::static_length_string_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::static_length_string_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
-	virtual void visit(const lst::dynamic_length_string_type& type __attribute__((unused))) override final
+	virtual void visit(const lst::dynamic_length_string_type& type
+			   __attribute__((unused))) override final
 	{
 	}
 
@@ -382,17 +375,17 @@ class tsdl_field_visitor : public lttng::sessiond::trace::field_visitor,
 			   public lttng::sessiond::trace::type_visitor {
 public:
 	tsdl_field_visitor(const lst::abi& abi,
-			unsigned int indentation_level,
-			const tsdl::details::type_overrider& type_overrides,
-			const nonstd::optional<std::string>& in_default_clock_class_name =
-					nonstd::nullopt) :
-		_indentation_level{indentation_level},
-		_trace_abi{abi},
-		_bypass_identifier_escape{false},
-		_default_clock_class_name{in_default_clock_class_name ?
-						in_default_clock_class_name->c_str() :
-						nullptr},
-		_type_overrides{type_overrides}
+			   unsigned int indentation_level,
+			   const tsdl::details::type_overrider& type_overrides,
+			   const nonstd::optional<std::string>& in_default_clock_class_name =
+				   nonstd::nullopt) :
+		_indentation_level{ indentation_level },
+		_trace_abi{ abi },
+		_bypass_identifier_escape{ false },
+		_default_clock_class_name{ in_default_clock_class_name ?
+						   in_default_clock_class_name->c_str() :
+						   nullptr },
+		_type_overrides{ type_overrides }
 	{
 	}
 
@@ -413,7 +406,8 @@ private:
 		 * constraint. The name of this structure is generated using the field's name.
 		 */
 		_current_field_name.push(_bypass_identifier_escape ?
-				field.name : escape_tsdl_identifier(field.name));
+						 field.name :
+						 escape_tsdl_identifier(field.name));
 		_type_overrides.type(field.get_type()).accept(*this);
 		_description += " ";
 		_description += _current_field_name.top();
@@ -437,8 +431,8 @@ private:
 
 		/* Mandatory properties (no defaults). */
 		_description += fmt::format("size = {size}; align = {alignment};",
-				fmt::arg("size", type.size),
-				fmt::arg("alignment", type.alignment));
+					    fmt::arg("size", type.size),
+					    fmt::arg("alignment", type.alignment));
 
 		/* Defaults to unsigned. */
 		if (type.signedness_ == lst::integer_type::signedness::SIGNED) {
@@ -461,8 +455,8 @@ private:
 				break;
 			default:
 				LTTNG_THROW_ERROR(fmt::format(
-						"Unexpected base encountered while serializing integer type to TSDL: base = {}",
-						(int) type.base_));
+					"Unexpected base encountered while serializing integer type to TSDL: base = {}",
+					(int) type.base_));
 			}
 
 			_description += fmt::format(" base = {};", base);
@@ -470,7 +464,8 @@ private:
 
 		/* Defaults to the trace's native byte order. */
 		if (type.byte_order != _trace_abi.byte_order) {
-			const auto byte_order_str = type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
+			const auto byte_order_str =
+				type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
 
 			_description += fmt::format(" byte_order = {};", byte_order_str);
 		}
@@ -487,24 +482,25 @@ private:
 				break;
 			default:
 				LTTNG_THROW_ERROR(fmt::format(
-						"Unexpected encoding encountered while serializing integer type to TSDL: encoding = {}",
-						(int) *_current_integer_encoding_override));
+					"Unexpected encoding encountered while serializing integer type to TSDL: encoding = {}",
+					(int) *_current_integer_encoding_override));
 			}
 
 			_description += fmt::format(" encoding = {};", encoding_str);
 			_current_integer_encoding_override.reset();
 		}
 
-		if (std::find(type.roles_.begin(), type.roles_.end(),
-				    lst::integer_type::role::DEFAULT_CLOCK_TIMESTAMP) !=
-						type.roles_.end() ||
-				std::find(type.roles_.begin(), type.roles_.end(),
-						lst::integer_type::role::
-								PACKET_END_DEFAULT_CLOCK_TIMESTAMP) !=
-						type.roles_.end()) {
+		if (std::find(type.roles_.begin(),
+			      type.roles_.end(),
+			      lst::integer_type::role::DEFAULT_CLOCK_TIMESTAMP) !=
+			    type.roles_.end() ||
+		    std::find(type.roles_.begin(),
+			      type.roles_.end(),
+			      lst::integer_type::role::PACKET_END_DEFAULT_CLOCK_TIMESTAMP) !=
+			    type.roles_.end()) {
 			LTTNG_ASSERT(_default_clock_class_name);
-			_description += fmt::format(
-					" map = clock.{}.value;", _default_clock_class_name);
+			_description +=
+				fmt::format(" map = clock.{}.value;", _default_clock_class_name);
 		}
 
 		_description += " }";
@@ -513,14 +509,15 @@ private:
 	virtual void visit(const lst::floating_point_type& type) override final
 	{
 		_description += fmt::format(
-				"floating_point {{ align = {alignment}; mant_dig = {mantissa_digits}; exp_dig = {exponent_digits};",
-				fmt::arg("alignment", type.alignment),
-				fmt::arg("mantissa_digits", type.mantissa_digits),
-				fmt::arg("exponent_digits", type.exponent_digits));
+			"floating_point {{ align = {alignment}; mant_dig = {mantissa_digits}; exp_dig = {exponent_digits};",
+			fmt::arg("alignment", type.alignment),
+			fmt::arg("mantissa_digits", type.mantissa_digits),
+			fmt::arg("exponent_digits", type.exponent_digits));
 
 		/* Defaults to the trace's native byte order. */
 		if (type.byte_order != _trace_abi.byte_order) {
-			const auto byte_order_str = type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
+			const auto byte_order_str =
+				type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
 
 			_description += fmt::format(" byte_order = {};", byte_order_str);
 		}
@@ -547,17 +544,16 @@ private:
 
 			_description.resize(_description.size() + mappings_indentation_level, '\t');
 			if (mapping.range.begin == mapping.range.end) {
-				_description += fmt::format(
-						"\"{mapping_name}\" = {mapping_value}",
-						fmt::arg("mapping_name", mapping.name),
-						fmt::arg("mapping_value", mapping.range.begin));
+				_description +=
+					fmt::format("\"{mapping_name}\" = {mapping_value}",
+						    fmt::arg("mapping_name", mapping.name),
+						    fmt::arg("mapping_value", mapping.range.begin));
 			} else {
 				_description += fmt::format(
-						"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
-						fmt::arg("mapping_name", mapping.name),
-						fmt::arg("mapping_range_begin",
-								mapping.range.begin),
-						fmt::arg("mapping_range_end", mapping.range.end));
+					"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
+					fmt::arg("mapping_name", mapping.name),
+					fmt::arg("mapping_range_begin", mapping.range.begin),
+					fmt::arg("mapping_range_end", mapping.range.end));
 			}
 
 			first_mapping = false;
@@ -583,9 +579,9 @@ private:
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
-					"struct {{ }} align({alignment}) {field_name}_padding;\n",
-					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _current_field_name.top()));
+				"struct {{ }} align({alignment}) {field_name}_padding;\n",
+				fmt::arg("alignment", type.alignment),
+				fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
@@ -604,39 +600,51 @@ private:
 			 */
 			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
-					"struct {{ }} align({alignment}) {field_name}_padding;\n",
-					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _current_field_name.top()));
+				"struct {{ }} align({alignment}) {field_name}_padding;\n",
+				fmt::arg("alignment", type.alignment),
+				fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
 		type.element_type->accept(*this);
-		_type_suffixes.emplace(fmt::format("[{}]",
-				_bypass_identifier_escape ?
-						*(type.length_field_location.elements_.end() - 1) :
-							escape_tsdl_identifier(*(type.length_field_location.elements_.end() - 1))));
+		_type_suffixes.emplace(fmt::format(
+			"[{}]",
+			_bypass_identifier_escape ?
+				*(type.length_field_location.elements_.end() - 1) :
+				escape_tsdl_identifier(
+					*(type.length_field_location.elements_.end() - 1))));
 	}
 
 	virtual void visit(const lst::static_length_blob_type& type) override final
 	{
-		/* This type doesn't exist in CTF 1.x, express it as a static length array of uint8_t. */
-		std::unique_ptr<const lst::type> uint8_element = lttng::make_unique<lst::integer_type>(8,
-				_trace_abi.byte_order, 8, lst::integer_type::signedness::UNSIGNED,
+		/* This type doesn't exist in CTF 1.x, express it as a static length array of
+		 * uint8_t. */
+		std::unique_ptr<const lst::type> uint8_element =
+			lttng::make_unique<lst::integer_type>(
+				8,
+				_trace_abi.byte_order,
+				8,
+				lst::integer_type::signedness::UNSIGNED,
 				lst::integer_type::base::HEXADECIMAL);
 		const auto array = lttng::make_unique<lst::static_length_array_type>(
-				type.alignment, std::move(uint8_element), type.length_bytes);
+			type.alignment, std::move(uint8_element), type.length_bytes);
 
 		visit(*array);
 	}
 
 	virtual void visit(const lst::dynamic_length_blob_type& type) override final
 	{
-		/* This type doesn't exist in CTF 1.x, express it as a dynamic length array of uint8_t. */
-		std::unique_ptr<const lst::type> uint8_element = lttng::make_unique<lst::integer_type>(0,
-				_trace_abi.byte_order, 8, lst::integer_type::signedness::UNSIGNED,
+		/* This type doesn't exist in CTF 1.x, express it as a dynamic length array of
+		 * uint8_t. */
+		std::unique_ptr<const lst::type> uint8_element =
+			lttng::make_unique<lst::integer_type>(
+				0,
+				_trace_abi.byte_order,
+				8,
+				lst::integer_type::signedness::UNSIGNED,
 				lst::integer_type::base::HEXADECIMAL);
 		const auto array = lttng::make_unique<lst::dynamic_length_array_type>(
-				type.alignment, std::move(uint8_element), type.length_field_location);
+			type.alignment, std::move(uint8_element), type.length_field_location);
 
 		visit(*array);
 	}
@@ -681,17 +689,19 @@ private:
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
 			_description += fmt::format(
-					"struct {{ }} align({alignment}) {field_name}_padding;\n",
-					fmt::arg("alignment", type.alignment),
-					fmt::arg("field_name", _current_field_name.top()));
+				"struct {{ }} align({alignment}) {field_name}_padding;\n",
+				fmt::arg("alignment", type.alignment),
+				fmt::arg("field_name", _current_field_name.top()));
 			_description.resize(_description.size() + _indentation_level, '\t');
 		}
 
 		_indentation_level++;
-		_description += fmt::format("variant <{}> {{\n",
-				_bypass_identifier_escape ?
-						*(type.selector_field_location.elements_.end() - 1) :
-							escape_tsdl_identifier(*(type.selector_field_location.elements_.end() - 1)));
+		_description += fmt::format(
+			"variant <{}> {{\n",
+			_bypass_identifier_escape ?
+				*(type.selector_field_location.elements_.end() - 1) :
+				escape_tsdl_identifier(
+					*(type.selector_field_location.elements_.end() - 1)));
 
 		/*
 		 * The CTF 1.8 specification only recommends that implementations ignore
@@ -714,12 +724,16 @@ private:
 		_description += "}";
 	}
 
-	virtual void visit(const lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	virtual void visit(const lst::variant_type<
+			   lst::signed_enumeration_type::mapping::range_t::range_integer_t>& type)
+		override final
 	{
 		visit_variant(type);
 	}
 
-	virtual void visit(const lst::variant_type<lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) override final
+	virtual void visit(const lst::variant_type<
+			   lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>& type)
+		override final
 	{
 		visit_variant(type);
 	}
@@ -727,9 +741,12 @@ private:
 	lst::type::cuptr create_character_type(enum lst::string_type::encoding encoding)
 	{
 		_current_integer_encoding_override = encoding;
-		return lttng::make_unique<lst::integer_type>(8, _trace_abi.byte_order, 8,
-				lst::integer_type::signedness::UNSIGNED,
-				lst::integer_type::base::DECIMAL);
+		return lttng::make_unique<lst::integer_type>(
+			8,
+			_trace_abi.byte_order,
+			8,
+			lst::integer_type::signedness::UNSIGNED,
+			lst::integer_type::base::DECIMAL);
 	}
 
 	virtual void visit(const lst::static_length_string_type& type) override final
@@ -739,7 +756,7 @@ private:
 		 * an encoding specified.
 		 */
 		const auto char_array = lttng::make_unique<lst::static_length_array_type>(
-				type.alignment, create_character_type(type.encoding_), type.length);
+			type.alignment, create_character_type(type.encoding_), type.length);
 
 		visit(*char_array);
 	}
@@ -751,8 +768,9 @@ private:
 		 * an encoding specified.
 		 */
 		const auto char_sequence = lttng::make_unique<lst::dynamic_length_array_type>(
-				type.alignment, create_character_type(type.encoding_),
-				type.length_field_location);
+			type.alignment,
+			create_character_type(type.encoding_),
+			type.length_field_location);
 
 		visit(*char_sequence);
 	}
@@ -781,7 +799,7 @@ private:
 
 class tsdl_trace_environment_visitor : public lst::trace_class_environment_visitor {
 public:
-	tsdl_trace_environment_visitor() : _environment{"env {\n"}
+	tsdl_trace_environment_visitor() : _environment{ "env {\n" }
 	{
 	}
 
@@ -792,8 +810,8 @@ public:
 
 	virtual void visit(const lst::environment_field<const char *>& field) override
 	{
-		_environment += fmt::format("	{} = \"{}\";\n", field.name,
-				escape_tsdl_env_string_value(field.value));
+		_environment += fmt::format(
+			"	{} = \"{}\";\n", field.name, escape_tsdl_env_string_value(field.value));
 	}
 
 	/* Only call once. */
@@ -808,10 +826,10 @@ private:
 };
 } /* namespace */
 
-tsdl::trace_class_visitor::trace_class_visitor(const lst::abi& trace_abi,
-		tsdl::append_metadata_fragment_function append_metadata_fragment) :
-	_trace_abi{trace_abi},
-	_append_metadata_fragment(append_metadata_fragment)
+tsdl::trace_class_visitor::trace_class_visitor(
+	const lst::abi& trace_abi,
+	tsdl::append_metadata_fragment_function append_metadata_fragment) :
+	_trace_abi{ trace_abi }, _append_metadata_fragment(append_metadata_fragment)
 {
 }
 
@@ -826,33 +844,33 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 	LTTNG_ASSERT(!_current_trace_class || _current_trace_class == &trace_class);
 	_current_trace_class = &trace_class;
 
-	tsdl_field_visitor packet_header_visitor{trace_class.abi, 1, _sanitized_types_overrides};
+	tsdl_field_visitor packet_header_visitor{ trace_class.abi, 1, _sanitized_types_overrides };
 
 	trace_class.packet_header()->accept(packet_header_visitor);
 
 	/* Declare type aliases, trace class, and packet header. */
 	auto trace_class_tsdl = fmt::format(
-			"/* CTF {ctf_major}.{ctf_minor} */\n\n"
-			"trace {{\n"
-			"	major = {ctf_major};\n"
-			"	minor = {ctf_minor};\n"
-			"	uuid = \"{uuid}\";\n"
-			"	byte_order = {byte_order};\n"
-			"	packet.header := {packet_header_layout};\n"
-			"}};\n\n",
-			fmt::arg("ctf_major", ctf_spec_major),
-			fmt::arg("ctf_minor", ctf_spec_minor),
-			fmt::arg("uint8_t_alignment", trace_class.abi.uint8_t_alignment),
-			fmt::arg("uint16_t_alignment", trace_class.abi.uint16_t_alignment),
-			fmt::arg("uint32_t_alignment", trace_class.abi.uint32_t_alignment),
-			fmt::arg("uint64_t_alignment", trace_class.abi.uint64_t_alignment),
-			fmt::arg("long_alignment", trace_class.abi.long_alignment),
-			fmt::arg("long_size", trace_class.abi.long_alignment),
-			fmt::arg("bits_per_long", trace_class.abi.bits_per_long),
-			fmt::arg("uuid", lttng::utils::uuid_to_str(trace_class.uuid)),
-			fmt::arg("byte_order",
-					trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le"),
-			fmt::arg("packet_header_layout", packet_header_visitor.move_description()));
+		"/* CTF {ctf_major}.{ctf_minor} */\n\n"
+		"trace {{\n"
+		"	major = {ctf_major};\n"
+		"	minor = {ctf_minor};\n"
+		"	uuid = \"{uuid}\";\n"
+		"	byte_order = {byte_order};\n"
+		"	packet.header := {packet_header_layout};\n"
+		"}};\n\n",
+		fmt::arg("ctf_major", ctf_spec_major),
+		fmt::arg("ctf_minor", ctf_spec_minor),
+		fmt::arg("uint8_t_alignment", trace_class.abi.uint8_t_alignment),
+		fmt::arg("uint16_t_alignment", trace_class.abi.uint16_t_alignment),
+		fmt::arg("uint32_t_alignment", trace_class.abi.uint32_t_alignment),
+		fmt::arg("uint64_t_alignment", trace_class.abi.uint64_t_alignment),
+		fmt::arg("long_alignment", trace_class.abi.long_alignment),
+		fmt::arg("long_size", trace_class.abi.long_alignment),
+		fmt::arg("bits_per_long", trace_class.abi.bits_per_long),
+		fmt::arg("uuid", lttng::utils::uuid_to_str(trace_class.uuid)),
+		fmt::arg("byte_order",
+			 trace_class.abi.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le"),
+		fmt::arg("packet_header_layout", packet_header_visitor.move_description()));
 
 	/* Declare trace scope and type aliases. */
 	append_metadata_fragment(trace_class_tsdl);
@@ -865,26 +883,24 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class& clock_class)
 {
 	auto uuid_str = clock_class.uuid ?
-			fmt::format("	uuid = \"{}\";\n",
-					lttng::utils::uuid_to_str(*clock_class.uuid)) :
-			      "";
+		fmt::format("	uuid = \"{}\";\n", lttng::utils::uuid_to_str(*clock_class.uuid)) :
+		"";
 
 	/* Assumes a single clock that maps to specific stream class fields/roles. */
-	auto clock_class_str = fmt::format(
-			"clock {{\n"
-			"	name = \"{name}\";\n"
-			/* Optional uuid. */
-			"{uuid}"
-			"	description = \"{description}\";\n"
-			"	freq = {frequency};\n"
-			"	offset = {offset};\n"
-			"}};\n"
-			"\n",
-			fmt::arg("name", clock_class.name),
-			fmt::arg("uuid", uuid_str),
-			fmt::arg("description", clock_class.description),
-			fmt::arg("frequency", clock_class.frequency),
-			fmt::arg("offset", clock_class.offset));
+	auto clock_class_str = fmt::format("clock {{\n"
+					   "	name = \"{name}\";\n"
+					   /* Optional uuid. */
+					   "{uuid}"
+					   "	description = \"{description}\";\n"
+					   "	freq = {frequency};\n"
+					   "	offset = {offset};\n"
+					   "}};\n"
+					   "\n",
+					   fmt::arg("name", clock_class.name),
+					   fmt::arg("uuid", uuid_str),
+					   fmt::arg("description", clock_class.description),
+					   fmt::arg("frequency", clock_class.frequency),
+					   fmt::arg("offset", clock_class.offset));
 
 	append_metadata_fragment(clock_class_str);
 }
@@ -892,47 +908,54 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class&
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class& stream_class)
 {
 	_current_stream_class = &stream_class;
-	const auto clear_stream_class_on_exit = lttng::make_scope_exit(
-			[this]() noexcept { _current_stream_class = nullptr; });
+	const auto clear_stream_class_on_exit =
+		lttng::make_scope_exit([this]() noexcept { _current_stream_class = nullptr; });
 
 	auto stream_class_str = fmt::format("stream {{\n"
-		"	id = {};\n", stream_class.id);
-	variant_tsdl_keyword_sanitizer variant_sanitizer(_sanitized_types_overrides,
-			[this](const lttng::sessiond::trace::field_location& location)
-					-> const lst::type& {
-				return _lookup_field_type(location);
-			});
+					    "	id = {};\n",
+					    stream_class.id);
+	variant_tsdl_keyword_sanitizer variant_sanitizer(
+		_sanitized_types_overrides,
+		[this](const lttng::sessiond::trace::field_location& location) -> const lst::type& {
+			return _lookup_field_type(location);
+		});
 
 	const auto *event_header = stream_class.event_header();
 	if (event_header) {
-		tsdl_field_visitor event_header_visitor{_trace_abi, 1, _sanitized_types_overrides,
-				stream_class.default_clock_class_name};
+		tsdl_field_visitor event_header_visitor{ _trace_abi,
+							 1,
+							 _sanitized_types_overrides,
+							 stream_class.default_clock_class_name };
 
 		event_header->accept(variant_sanitizer);
 		event_header->accept(event_header_visitor);
 		stream_class_str += fmt::format("	event.header := {};\n",
-				event_header_visitor.move_description());
+						event_header_visitor.move_description());
 	}
 
 	const auto *packet_context = stream_class.packet_context();
 	if (packet_context) {
-		tsdl_field_visitor packet_context_visitor{_trace_abi, 1, _sanitized_types_overrides,
-				stream_class.default_clock_class_name};
+		tsdl_field_visitor packet_context_visitor{ _trace_abi,
+							   1,
+							   _sanitized_types_overrides,
+							   stream_class.default_clock_class_name };
 
 		packet_context->accept(variant_sanitizer);
 		packet_context->accept(packet_context_visitor);
 		stream_class_str += fmt::format("	packet.context := {};\n",
-				packet_context_visitor.move_description());
+						packet_context_visitor.move_description());
 	}
 
 	const auto *event_context = stream_class.event_context();
 	if (event_context) {
-		tsdl_field_visitor event_context_visitor{_trace_abi, 1, _sanitized_types_overrides};
+		tsdl_field_visitor event_context_visitor{ _trace_abi,
+							  1,
+							  _sanitized_types_overrides };
 
 		event_context->accept(variant_sanitizer);
 		event_context->accept(event_context_visitor);
 		stream_class_str += fmt::format("	event.context := {};\n",
-				event_context_visitor.move_description());
+						event_context_visitor.move_description());
 	}
 
 	stream_class_str += "};\n\n";
@@ -943,55 +966,55 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class& event_class)
 {
 	_current_event_class = &event_class;
-	const auto clear_event_class_on_exit = lttng::make_scope_exit(
-			[this]() noexcept { _current_event_class = nullptr; });
+	const auto clear_event_class_on_exit =
+		lttng::make_scope_exit([this]() noexcept { _current_event_class = nullptr; });
 
 	auto event_class_str = fmt::format("event {{\n"
 					   "	name = \"{name}\";\n"
 					   "	id = {id};\n"
 					   "	stream_id = {stream_class_id};\n"
 					   "	loglevel = {log_level};\n",
-			fmt::arg("name", event_class.name),
-			fmt::arg("id", event_class.id),
-			fmt::arg("stream_class_id", event_class.stream_class_id),
-			fmt::arg("log_level", event_class.log_level));
+					   fmt::arg("name", event_class.name),
+					   fmt::arg("id", event_class.id),
+					   fmt::arg("stream_class_id", event_class.stream_class_id),
+					   fmt::arg("log_level", event_class.log_level));
 
 	if (event_class.model_emf_uri) {
-		event_class_str += fmt::format(
-				"	model.emf.uri = \"{}\";\n", *event_class.model_emf_uri);
+		event_class_str +=
+			fmt::format("	model.emf.uri = \"{}\";\n", *event_class.model_emf_uri);
 	}
 
-	tsdl_field_visitor payload_visitor{_trace_abi, 1, _sanitized_types_overrides};
-	variant_tsdl_keyword_sanitizer variant_sanitizer(_sanitized_types_overrides,
-			[this](const lttng::sessiond::trace::field_location& location)
-					-> const lst::type& {
-				return _lookup_field_type(location);
-			});
+	tsdl_field_visitor payload_visitor{ _trace_abi, 1, _sanitized_types_overrides };
+	variant_tsdl_keyword_sanitizer variant_sanitizer(
+		_sanitized_types_overrides,
+		[this](const lttng::sessiond::trace::field_location& location) -> const lst::type& {
+			return _lookup_field_type(location);
+		});
 
 	event_class.payload->accept(variant_sanitizer);
 	event_class.payload->accept(payload_visitor);
 
-	event_class_str += fmt::format(
-			"	fields := {};\n}};\n\n", payload_visitor.move_description());
+	event_class_str +=
+		fmt::format("	fields := {};\n}};\n\n", payload_visitor.move_description());
 
 	append_metadata_fragment(event_class_str);
 }
 
-void tsdl::details::type_overrider::publish(
-		const lttng::sessiond::trace::type& original_type,
-		lttng::sessiond::trace::type::cuptr new_type_override)
+void tsdl::details::type_overrider::publish(const lttng::sessiond::trace::type& original_type,
+					    lttng::sessiond::trace::type::cuptr new_type_override)
 {
 	auto current_override = _overriden_types.find(&original_type);
 
 	if (current_override != _overriden_types.end()) {
 		current_override->second = std::move(new_type_override);
 	} else {
-		_overriden_types.insert(std::make_pair(&original_type, std::move(new_type_override)));
+		_overriden_types.insert(
+			std::make_pair(&original_type, std::move(new_type_override)));
 	}
 }
 
-const lst::type& tsdl::details::type_overrider::type(
-		const lttng::sessiond::trace::type& original) const noexcept
+const lst::type&
+tsdl::details::type_overrider::type(const lttng::sessiond::trace::type& original) const noexcept
 {
 	const auto result = _overriden_types.find(&original);
 
@@ -1005,9 +1028,9 @@ const lst::type& tsdl::details::type_overrider::type(
 }
 
 namespace {
-const lttng::sessiond::trace::type& lookup_type_from_root_type(
-		const lttng::sessiond::trace::type& root_type,
-		const lttng::sessiond::trace::field_location& field_location)
+const lttng::sessiond::trace::type&
+lookup_type_from_root_type(const lttng::sessiond::trace::type& root_type,
+			   const lttng::sessiond::trace::field_location& field_location)
 {
 	const auto *type = &root_type;
 
@@ -1025,21 +1048,22 @@ const lttng::sessiond::trace::type& lookup_type_from_root_type(
 		 */
 		if (!struct_type) {
 			LTTNG_THROW_ERROR(fmt::format(
-					"Encountered a type that is not a structure while traversing field location: field-location=`{}`",
-					field_location));
+				"Encountered a type that is not a structure while traversing field location: field-location=`{}`",
+				field_location));
 		}
 
-		const auto field_found_it = std::find_if(struct_type->fields_.cbegin(),
-				struct_type->fields_.cend(),
-				[&location_element](const lst::field::cuptr& struct_field) {
-					return struct_field->name == location_element;
-				});
+		const auto field_found_it =
+			std::find_if(struct_type->fields_.cbegin(),
+				     struct_type->fields_.cend(),
+				     [&location_element](const lst::field::cuptr& struct_field) {
+					     return struct_field->name == location_element;
+				     });
 
 		if (field_found_it == struct_type->fields_.cend()) {
 			LTTNG_THROW_ERROR(fmt::format(
-					"Failed to find field using field location: field-name:=`{field_name}`, field-location=`{field_location}`",
-					fmt::arg("field_location", field_location),
-					fmt::arg("field_name", location_element)));
+				"Failed to find field using field location: field-name:=`{field_name}`, field-location=`{field_location}`",
+				fmt::arg("field_location", field_location),
+				fmt::arg("field_name", location_element)));
 		}
 
 		type = &(*field_found_it)->get_type();
@@ -1058,7 +1082,7 @@ const lttng::sessiond::trace::type& lookup_type_from_root_type(
  * as found in the trace hierarchy.
  */
 const lttng::sessiond::trace::type& lttng::sessiond::tsdl::trace_class_visitor::_lookup_field_type(
-		const lttng::sessiond::trace::field_location& location) const
+	const lttng::sessiond::trace::field_location& location) const
 {
 	/* Validate the look-up is happening in a valid visit context. */
 	switch (location.root_) {
@@ -1066,47 +1090,44 @@ const lttng::sessiond::trace::type& lttng::sessiond::tsdl::trace_class_visitor::
 	case lst::field_location::root::EVENT_RECORD_PAYLOAD:
 		if (!_current_event_class) {
 			LTTNG_THROW_ERROR(
-					"Field type look-up failure: no current event class in visitor's context");
+				"Field type look-up failure: no current event class in visitor's context");
 		}
 		/* fall through. */
 	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
 	case lst::field_location::root::PACKET_CONTEXT:
 		if (!_current_stream_class) {
 			LTTNG_THROW_ERROR(
-					"Field type look-up failure: no current stream class in visitor's context");
+				"Field type look-up failure: no current stream class in visitor's context");
 		}
 		/* fall through. */
 	case lst::field_location::root::PACKET_HEADER:
 		if (!_current_trace_class) {
 			LTTNG_THROW_ERROR(
-					"Field type look-up failure: no current trace class in visitor's context");
+				"Field type look-up failure: no current trace class in visitor's context");
 		}
 
 		break;
 	case lst::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
 		LTTNG_THROW_UNSUPPORTED_ERROR(
-				"Field type look-up failure: event-record specific contexts are not supported");
+			"Field type look-up failure: event-record specific contexts are not supported");
 	default:
 		LTTNG_THROW_UNSUPPORTED_ERROR(
-				"Field type look-up failure: unknown field location root");
+			"Field type look-up failure: unknown field location root");
 	}
 
 	switch (location.root_) {
 	case lst::field_location::root::PACKET_HEADER:
-		return lookup_type_from_root_type(
-				*_current_trace_class->packet_header(), location);
+		return lookup_type_from_root_type(*_current_trace_class->packet_header(), location);
 	case lst::field_location::root::PACKET_CONTEXT:
-		return lookup_type_from_root_type(
-				*_current_stream_class->packet_context(), location);
+		return lookup_type_from_root_type(*_current_stream_class->packet_context(),
+						  location);
 	case lst::field_location::root::EVENT_RECORD_HEADER:
-		return lookup_type_from_root_type(
-				*_current_stream_class->event_header(), location);
+		return lookup_type_from_root_type(*_current_stream_class->event_header(), location);
 	case lst::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
-		return lookup_type_from_root_type(
-				*_current_stream_class->event_context(), location);
+		return lookup_type_from_root_type(*_current_stream_class->event_context(),
+						  location);
 	case lst::field_location::root::EVENT_RECORD_PAYLOAD:
-		return lookup_type_from_root_type(
-				*_current_event_class->payload, location);
+		return lookup_type_from_root_type(*_current_event_class->payload, location);
 	case lst::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
 	default:
 		/* Unreachable as it was checked before. */

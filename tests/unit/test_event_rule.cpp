@@ -7,13 +7,11 @@
  *
  */
 
-#include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include "bin/lttng/loglevel.hpp"
 
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
+
 #include <lttng/domain.h>
 #include <lttng/event-rule/jul-logging-internal.hpp>
 #include <lttng/event-rule/jul-logging.h>
@@ -21,12 +19,12 @@
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall-internal.hpp>
 #include <lttng/event-rule/kernel-syscall.h>
-#include <lttng/event-rule/python-logging-internal.hpp>
-#include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.hpp>
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe-internal.hpp>
 #include <lttng/event-rule/kernel-uprobe.h>
+#include <lttng/event-rule/python-logging-internal.hpp>
+#include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/user-tracepoint-internal.hpp>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/event.h>
@@ -34,9 +32,12 @@
 #include <lttng/kernel-probe.h>
 #include <lttng/userspace-probe-internal.hpp>
 #include <lttng/userspace-probe.h>
-#include "bin/lttng/loglevel.hpp"
 
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
 #include <tap/tap.h>
+#include <unistd.h>
 
 /* For error.h. */
 int lttng_opt_quiet = 1;
@@ -62,17 +63,15 @@ typedef const char *(*log_level_name_getter)(int log_level);
 
 typedef struct lttng_event_rule *(*event_rule_create)(void);
 typedef enum lttng_event_rule_status (*event_rule_set_log_level)(
-		struct lttng_event_rule *rule,
-		const struct lttng_log_level_rule *log_level_rule);
+	struct lttng_event_rule *rule, const struct lttng_log_level_rule *log_level_rule);
 
-static
-void test_event_rule_kernel_tracepoint(void)
+static void test_event_rule_kernel_tracepoint(void)
 {
 	struct lttng_event_rule *tracepoint = NULL;
 	struct lttng_event_rule *tracepoint_from_buffer = NULL;
 	enum lttng_event_rule_status status;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
 	struct lttng_payload payload;
 
@@ -98,34 +97,33 @@ void test_event_rule_kernel_tracepoint(void)
 	ok(lttng_event_rule_serialize(tracepoint, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				&view, &tracepoint_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &tracepoint_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
-	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer), "serialized and from buffer are equal.");
+	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer),
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(tracepoint);
 	lttng_event_rule_destroy(tracepoint_from_buffer);
 }
 
-static
-void test_event_rule_user_tracepoint(void)
+static void test_event_rule_user_tracepoint(void)
 {
 	int i;
 	unsigned int count;
 	struct lttng_event_rule *tracepoint = NULL;
 	struct lttng_event_rule *tracepoint_from_buffer = NULL;
 	enum lttng_event_rule_status status;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
-	const char *name_pattern_exclusions[] = {"my_event_test1", "my_event_test2" ,"my_event_test3"};
+	const char *name_pattern_exclusions[] = { "my_event_test1",
+						  "my_event_test2",
+						  "my_event_test3" };
 	struct lttng_log_level_rule *log_level_rule = NULL;
 	const struct lttng_log_level_rule *log_level_rule_return = NULL;
 	struct lttng_payload payload;
@@ -152,55 +150,53 @@ void test_event_rule_user_tracepoint(void)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 
-	status = lttng_event_rule_user_tracepoint_get_log_level_rule(tracepoint, &log_level_rule_return);
+	status = lttng_event_rule_user_tracepoint_get_log_level_rule(tracepoint,
+								     &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
 
-	status = lttng_event_rule_user_tracepoint_set_log_level_rule(
-			tracepoint, log_level_rule);
+	status = lttng_event_rule_user_tracepoint_set_log_level_rule(tracepoint, log_level_rule);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
-	status = lttng_event_rule_user_tracepoint_get_log_level_rule(
-			tracepoint, &log_level_rule_return);
+	status = lttng_event_rule_user_tracepoint_get_log_level_rule(tracepoint,
+								     &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 
 	/* Name pattern exclusions */
 	for (i = 0; i < 3; i++) {
 		status = lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
-				tracepoint, name_pattern_exclusions[i]);
+			tracepoint, name_pattern_exclusions[i]);
 		ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-				"setting name pattern exclusions \"%s\"",
-				name_pattern_exclusions[i]);
+		   "setting name pattern exclusions \"%s\"",
+		   name_pattern_exclusions[i]);
 	}
 
-	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
-			tracepoint, &count);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"getting name pattern exclusion count.");
+	status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(tracepoint,
+										   &count);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion count.");
 	ok(count == 3, "count is %d/3", count);
 
 	for (i = 0; i < count; i++) {
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
-				tracepoint, i, &tmp);
+			tracepoint, i, &tmp);
 		ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-				"getting name pattern exclusion at index %d.",
-				i);
-		ok(!strncmp(name_pattern_exclusions[i], tmp,
-				   strlen(name_pattern_exclusions[i])),
-				"%s == %s.", tmp, name_pattern_exclusions[i]);
+		   "getting name pattern exclusion at index %d.",
+		   i);
+		ok(!strncmp(name_pattern_exclusions[i], tmp, strlen(name_pattern_exclusions[i])),
+		   "%s == %s.",
+		   tmp,
+		   name_pattern_exclusions[i]);
 	}
 
 	ok(lttng_event_rule_serialize(tracepoint, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				&view, &tracepoint_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &tracepoint_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
-	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer), "serialized and from buffer are equal.");
+	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer),
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(tracepoint);
@@ -222,7 +218,8 @@ static void test_event_rule_syscall(void)
 
 	lttng_payload_init(&payload);
 
-	syscall = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
+	syscall = lttng_event_rule_kernel_syscall_create(
+		LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(syscall, "syscall object.");
 
 	status = lttng_event_rule_kernel_syscall_set_name_pattern(syscall, pattern);
@@ -240,31 +237,27 @@ static void test_event_rule_syscall(void)
 	ok(lttng_event_rule_serialize(syscall, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				   &view, &syscall_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &syscall_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
 	ok(lttng_event_rule_is_equal(syscall, syscall_from_buffer),
-			"serialized and from buffer are equal.");
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(syscall);
 	lttng_event_rule_destroy(syscall_from_buffer);
 }
 
-static
-void test_event_rule_jul_logging(void)
+static void test_event_rule_jul_logging(void)
 {
 	struct lttng_event_rule *jul_logging = NULL;
 	struct lttng_event_rule *jul_logging_from_buffer = NULL;
 	enum lttng_event_rule_status status;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
 	struct lttng_log_level_rule *log_level_rule = NULL;
 	const struct lttng_log_level_rule *log_level_rule_return = NULL;
@@ -292,29 +285,27 @@ void test_event_rule_jul_logging(void)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 
-	status = lttng_event_rule_jul_logging_get_log_level_rule(jul_logging, &log_level_rule_return);
+	status = lttng_event_rule_jul_logging_get_log_level_rule(jul_logging,
+								 &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
 
-	status = lttng_event_rule_jul_logging_set_log_level_rule(
-			jul_logging, log_level_rule);
+	status = lttng_event_rule_jul_logging_set_log_level_rule(jul_logging, log_level_rule);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
-	status = lttng_event_rule_jul_logging_get_log_level_rule(
-			jul_logging, &log_level_rule_return);
+	status = lttng_event_rule_jul_logging_get_log_level_rule(jul_logging,
+								 &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 
 	ok(lttng_event_rule_serialize(jul_logging, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				&view, &jul_logging_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &jul_logging_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
-	ok(lttng_event_rule_is_equal(jul_logging, jul_logging_from_buffer), "serialized and from buffer are equal.");
+	ok(lttng_event_rule_is_equal(jul_logging, jul_logging_from_buffer),
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(jul_logging);
@@ -322,14 +313,13 @@ void test_event_rule_jul_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static
-void test_event_rule_log4j_logging(void)
+static void test_event_rule_log4j_logging(void)
 {
 	struct lttng_event_rule *log4j_logging = NULL;
 	struct lttng_event_rule *log4j_logging_from_buffer = NULL;
 	enum lttng_event_rule_status status;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
 	struct lttng_log_level_rule *log_level_rule = NULL;
 	const struct lttng_log_level_rule *log_level_rule_return = NULL;
@@ -357,29 +347,27 @@ void test_event_rule_log4j_logging(void)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 
-	status = lttng_event_rule_log4j_logging_get_log_level_rule(log4j_logging, &log_level_rule_return);
+	status = lttng_event_rule_log4j_logging_get_log_level_rule(log4j_logging,
+								   &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
 
-	status = lttng_event_rule_log4j_logging_set_log_level_rule(
-			log4j_logging, log_level_rule);
+	status = lttng_event_rule_log4j_logging_set_log_level_rule(log4j_logging, log_level_rule);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
-	status = lttng_event_rule_log4j_logging_get_log_level_rule(
-			log4j_logging, &log_level_rule_return);
+	status = lttng_event_rule_log4j_logging_get_log_level_rule(log4j_logging,
+								   &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 
 	ok(lttng_event_rule_serialize(log4j_logging, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				&view, &log4j_logging_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &log4j_logging_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
-	ok(lttng_event_rule_is_equal(log4j_logging, log4j_logging_from_buffer), "serialized and from buffer are equal.");
+	ok(lttng_event_rule_is_equal(log4j_logging, log4j_logging_from_buffer),
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(log4j_logging);
@@ -387,14 +375,13 @@ void test_event_rule_log4j_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static
-void test_event_rule_python_logging(void)
+static void test_event_rule_python_logging(void)
 {
 	struct lttng_event_rule *python_logging = NULL;
 	struct lttng_event_rule *python_logging_from_buffer = NULL;
 	enum lttng_event_rule_status status;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
+	const char *pattern = "my_event_*";
+	const char *filter = "msg_id == 23 && size >= 2048";
 	const char *tmp;
 	struct lttng_log_level_rule *log_level_rule = NULL;
 	const struct lttng_log_level_rule *log_level_rule_return = NULL;
@@ -422,29 +409,27 @@ void test_event_rule_python_logging(void)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 
-	status = lttng_event_rule_python_logging_get_log_level_rule(python_logging, &log_level_rule_return);
+	status = lttng_event_rule_python_logging_get_log_level_rule(python_logging,
+								    &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
 
-	status = lttng_event_rule_python_logging_set_log_level_rule(
-			python_logging, log_level_rule);
+	status = lttng_event_rule_python_logging_set_log_level_rule(python_logging, log_level_rule);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
-	status = lttng_event_rule_python_logging_get_log_level_rule(
-			python_logging, &log_level_rule_return);
+	status = lttng_event_rule_python_logging_get_log_level_rule(python_logging,
+								    &log_level_rule_return);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 
 	ok(lttng_event_rule_serialize(python_logging, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				&view, &python_logging_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &python_logging_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
-	ok(lttng_event_rule_is_equal(python_logging, python_logging_from_buffer), "serialized and from buffer are equal.");
+	ok(lttng_event_rule_is_equal(python_logging, python_logging_from_buffer),
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(python_logging);
@@ -457,8 +442,7 @@ static void test_event_rule_userspace_probe(void)
 {
 	struct lttng_event_rule *uprobe = NULL;
 	struct lttng_event_rule *uprobe_from_buffer = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method =
-			NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	struct lttng_userspace_probe_location *probe_location = NULL;
 	const struct lttng_userspace_probe_location *probe_location_tmp = NULL;
 	enum lttng_event_rule_status status;
@@ -477,9 +461,9 @@ static void test_event_rule_userspace_probe(void)
 	}
 
 	probe_location = lttng_userspace_probe_location_function_create(
-			"/proc/self/exe",
-			"lttng_userspace_probe_location_tracepoint_create",
-			lookup_method);
+		"/proc/self/exe",
+		"lttng_userspace_probe_location_tracepoint_create",
+		lookup_method);
 	if (!probe_location) {
 		fail("Setup error on userspace probe location creation.");
 		goto end;
@@ -493,17 +477,13 @@ static void test_event_rule_userspace_probe(void)
 	uprobe = lttng_event_rule_kernel_uprobe_create(probe_location);
 	ok(uprobe, "uprobe event rule object creation.");
 
-	status = lttng_event_rule_kernel_uprobe_get_location(
-			uprobe, &probe_location_tmp);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Getting uprobe event rule location.");
-	ok(lttng_userspace_probe_location_is_equal(
-			   probe_location, probe_location_tmp),
-			"Location is equal.");
+	status = lttng_event_rule_kernel_uprobe_get_location(uprobe, &probe_location_tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting uprobe event rule location.");
+	ok(lttng_userspace_probe_location_is_equal(probe_location, probe_location_tmp),
+	   "Location is equal.");
 
 	status = lttng_event_rule_kernel_uprobe_set_event_name(uprobe, probe_name);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting uprobe event rule name: %s.", probe_name);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting uprobe event rule name: %s.", probe_name);
 	status = lttng_event_rule_kernel_uprobe_get_event_name(uprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting uprobe name.");
 	ok(!strcmp(probe_name, tmp), "Uprobe name are equal.");
@@ -511,17 +491,14 @@ static void test_event_rule_userspace_probe(void)
 	ok(lttng_event_rule_serialize(uprobe, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				   &view, &uprobe_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &uprobe_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
 	ok(lttng_event_rule_is_equal(uprobe, uprobe_from_buffer),
-			"serialized and from buffer are equal.");
+	   "serialized and from buffer are equal.");
 
 end:
 	lttng_payload_reset(&payload);
@@ -531,11 +508,13 @@ end:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 }
 #else
-static void test_event_rule_userspace_probe(void) {}
+static void test_event_rule_userspace_probe(void)
+{
+}
 #endif
 
-static void test_event_rule_kernel_probe_by_location(
-		const struct lttng_kernel_probe_location *location)
+static void
+test_event_rule_kernel_probe_by_location(const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_event_rule *kprobe = NULL;
 	struct lttng_event_rule *kprobe_from_buffer = NULL;
@@ -547,7 +526,7 @@ static void test_event_rule_kernel_probe_by_location(
 	struct lttng_payload payload;
 
 	diag("Event rule kprobe for location type %d.",
-			lttng_kernel_probe_location_get_type(location));
+	     lttng_kernel_probe_location_get_type(location));
 
 	lttng_payload_init(&payload);
 
@@ -555,13 +534,11 @@ static void test_event_rule_kernel_probe_by_location(
 	ok(kprobe, "kprobe event rule object creation.");
 
 	status = lttng_event_rule_kernel_kprobe_get_location(kprobe, &_location);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Getting kprobe event rule location.");
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting kprobe event rule location.");
 	ok(lttng_kernel_probe_location_is_equal(location, _location), "Locations are equal.");
 
 	status = lttng_event_rule_kernel_kprobe_set_event_name(kprobe, probe_name);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting kprobe event rule name: %s.", probe_name);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting kprobe event rule name: %s.", probe_name);
 	status = lttng_event_rule_kernel_kprobe_get_event_name(kprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting kprobe name.");
 	ok(!strcmp(probe_name, tmp), "kprobe name are equal.");
@@ -569,17 +546,14 @@ static void test_event_rule_kernel_probe_by_location(
 	ok(lttng_event_rule_serialize(kprobe, &payload) == 0, "Serializing.");
 
 	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
-		ok(lttng_event_rule_create_from_payload(
-				   &view, &kprobe_from_buffer) > 0,
-				"Deserializing.");
+		ok(lttng_event_rule_create_from_payload(&view, &kprobe_from_buffer) > 0,
+		   "Deserializing.");
 	}
 
 	ok(lttng_event_rule_is_equal(kprobe, kprobe_from_buffer),
-			"serialized and from buffer are equal.");
+	   "serialized and from buffer are equal.");
 
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(kprobe);
@@ -603,47 +577,42 @@ static void test_event_rule_kernel_probe(void)
 	lttng_kernel_probe_location_destroy(symbol_location);
 }
 
-static void test_set_event_rule_log_level_rules(
-		struct lttng_event_rule *event_rule,
-		event_rule_set_log_level set_log_level,
-		int log_level,
-		enum lttng_event_rule_status *exactly_status,
-		enum lttng_event_rule_status *as_severe_status)
+static void test_set_event_rule_log_level_rules(struct lttng_event_rule *event_rule,
+						event_rule_set_log_level set_log_level,
+						int log_level,
+						enum lttng_event_rule_status *exactly_status,
+						enum lttng_event_rule_status *as_severe_status)
 {
 	struct lttng_log_level_rule *log_level_rule;
 
-	log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(
-			log_level);
+	log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(log_level);
 	LTTNG_ASSERT(log_level_rule);
 
-	*as_severe_status = set_log_level(
-			event_rule, log_level_rule);
+	*as_severe_status = set_log_level(event_rule, log_level_rule);
 	lttng_log_level_rule_destroy(log_level_rule);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(log_level);
 	LTTNG_ASSERT(log_level_rule);
 
-	*exactly_status = set_log_level(
-			event_rule, log_level_rule);
+	*exactly_status = set_log_level(event_rule, log_level_rule);
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
 static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_rule_type,
-		log_level_name_getter get_log_level_name,
-		event_rule_create create_event_rule,
-		event_rule_set_log_level set_log_level,
-		const int tagged_log_level_values[],
-		size_t tagged_log_level_values_count,
-		const int valid_log_level_values[],
-		size_t valid_log_level_values_count,
-		const int invalid_log_level_values[],
-		size_t invalid_log_level_values_count)
+					      log_level_name_getter get_log_level_name,
+					      event_rule_create create_event_rule,
+					      event_rule_set_log_level set_log_level,
+					      const int tagged_log_level_values[],
+					      size_t tagged_log_level_values_count,
+					      const int valid_log_level_values[],
+					      size_t valid_log_level_values_count,
+					      const int invalid_log_level_values[],
+					      size_t invalid_log_level_values_count)
 {
 	size_t i;
 	struct lttng_event_rule *rule;
 	enum lttng_event_rule_status er_exactly_status, er_as_severe_status;
 	const char *event_rule_type_str = lttng_event_rule_type_str(event_rule_type);
-
 
 	diag("Test %s event rule + log level rule", event_rule_type_str);
 
@@ -653,51 +622,55 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 	for (i = 0; i < tagged_log_level_values_count; i++) {
 		const int tagged_log_level_value = tagged_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(rule, set_log_level,
-				tagged_log_level_value,
-				&er_exactly_status, &er_as_severe_status);
+		test_set_event_rule_log_level_rules(rule,
+						    set_log_level,
+						    tagged_log_level_value,
+						    &er_exactly_status,
+						    &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"exactly\" accepted by %s event rule: level = %s",
-				event_rule_type_str,
-				get_log_level_name(
-						tagged_log_level_value));
+		   "Log level rule \"exactly\" accepted by %s event rule: level = %s",
+		   event_rule_type_str,
+		   get_log_level_name(tagged_log_level_value));
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"as least as severe as\" accepted by %s event rule: level = %s",
-				event_rule_type_str,
-				get_log_level_name(
-						tagged_log_level_value));
+		   "Log level rule \"as least as severe as\" accepted by %s event rule: level = %s",
+		   event_rule_type_str,
+		   get_log_level_name(tagged_log_level_value));
 	}
 
 	for (i = 0; i < valid_log_level_values_count; i++) {
 		const int valid_log_level_value = valid_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(rule, set_log_level,
-				valid_log_level_value,
-				&er_exactly_status, &er_as_severe_status);
+		test_set_event_rule_log_level_rules(rule,
+						    set_log_level,
+						    valid_log_level_value,
+						    &er_exactly_status,
+						    &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"exactly\" accepted by %s event rule: level = %d",
-				event_rule_type_str,
-				valid_log_level_value);
+		   "Log level rule \"exactly\" accepted by %s event rule: level = %d",
+		   event_rule_type_str,
+		   valid_log_level_value);
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"as least as severe as\" accepted by %s event rule: level = %d",
-				event_rule_type_str,
-				valid_log_level_value);
+		   "Log level rule \"as least as severe as\" accepted by %s event rule: level = %d",
+		   event_rule_type_str,
+		   valid_log_level_value);
 	}
 
 	for (i = 0; i < invalid_log_level_values_count; i++) {
 		const int invalid_log_level_value = invalid_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(rule, set_log_level,
-				invalid_log_level_value,
-				&er_exactly_status, &er_as_severe_status);
+		test_set_event_rule_log_level_rules(rule,
+						    set_log_level,
+						    invalid_log_level_value,
+						    &er_exactly_status,
+						    &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_INVALID,
-				"Log level rule \"exactly\" rejected by %s event rule: level = %d",
-				event_rule_type_str,
-				invalid_log_level_value);
+		   "Log level rule \"exactly\" rejected by %s event rule: level = %d",
+		   event_rule_type_str,
+		   invalid_log_level_value);
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_INVALID,
-				"Log level rule \"as least as severe as\" rejected by %s event rule: level = %d",
-				event_rule_type_str,
-				invalid_log_level_value);
+		   "Log level rule \"as least as severe as\" rejected by %s event rule: level = %d",
+		   event_rule_type_str,
+		   invalid_log_level_value);
 	}
 
 	lttng_event_rule_destroy(rule);
@@ -706,20 +679,13 @@ static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_r
 static void test_event_rule_log_level_ust(void)
 {
 	const int tagged_log_level_values[] = {
-		LTTNG_LOGLEVEL_EMERG,
-		LTTNG_LOGLEVEL_ALERT,
-		LTTNG_LOGLEVEL_CRIT,
-		LTTNG_LOGLEVEL_ERR,
-		LTTNG_LOGLEVEL_WARNING,
-		LTTNG_LOGLEVEL_NOTICE,
-		LTTNG_LOGLEVEL_INFO,
-		LTTNG_LOGLEVEL_DEBUG_SYSTEM,
-		LTTNG_LOGLEVEL_DEBUG_PROGRAM,
-		LTTNG_LOGLEVEL_DEBUG_PROCESS,
-		LTTNG_LOGLEVEL_DEBUG_MODULE,
-		LTTNG_LOGLEVEL_DEBUG_UNIT,
-		LTTNG_LOGLEVEL_DEBUG_FUNCTION,
-		LTTNG_LOGLEVEL_DEBUG_LINE,
+		LTTNG_LOGLEVEL_EMERG,	       LTTNG_LOGLEVEL_ALERT,
+		LTTNG_LOGLEVEL_CRIT,	       LTTNG_LOGLEVEL_ERR,
+		LTTNG_LOGLEVEL_WARNING,	       LTTNG_LOGLEVEL_NOTICE,
+		LTTNG_LOGLEVEL_INFO,	       LTTNG_LOGLEVEL_DEBUG_SYSTEM,
+		LTTNG_LOGLEVEL_DEBUG_PROGRAM,  LTTNG_LOGLEVEL_DEBUG_PROCESS,
+		LTTNG_LOGLEVEL_DEBUG_MODULE,   LTTNG_LOGLEVEL_DEBUG_UNIT,
+		LTTNG_LOGLEVEL_DEBUG_FUNCTION, LTTNG_LOGLEVEL_DEBUG_LINE,
 		LTTNG_LOGLEVEL_DEBUG,
 	};
 	const int invalid_log_level_values[] = {
@@ -730,81 +696,65 @@ static void test_event_rule_log_level_ust(void)
 	};
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT,
-			loglevel_value_to_name,
-			lttng_event_rule_user_tracepoint_create,
-			lttng_event_rule_user_tracepoint_set_log_level_rule,
-			tagged_log_level_values,
-			ARRAY_SIZE(tagged_log_level_values), NULL, 0,
-			invalid_log_level_values,
-			ARRAY_SIZE(invalid_log_level_values));
+					  loglevel_value_to_name,
+					  lttng_event_rule_user_tracepoint_create,
+					  lttng_event_rule_user_tracepoint_set_log_level_rule,
+					  tagged_log_level_values,
+					  ARRAY_SIZE(tagged_log_level_values),
+					  NULL,
+					  0,
+					  invalid_log_level_values,
+					  ARRAY_SIZE(invalid_log_level_values));
 }
 
 static void test_event_rule_log_level_jul(void)
 {
 	const int tagged_log_level_values[] = {
-		LTTNG_LOGLEVEL_JUL_OFF,
-		LTTNG_LOGLEVEL_JUL_SEVERE,
-		LTTNG_LOGLEVEL_JUL_WARNING,
-		LTTNG_LOGLEVEL_JUL_INFO,
-		LTTNG_LOGLEVEL_JUL_CONFIG,
-		LTTNG_LOGLEVEL_JUL_FINE,
-		LTTNG_LOGLEVEL_JUL_FINER,
-		LTTNG_LOGLEVEL_JUL_FINEST,
-		LTTNG_LOGLEVEL_JUL_ALL,
+		LTTNG_LOGLEVEL_JUL_OFF,	  LTTNG_LOGLEVEL_JUL_SEVERE, LTTNG_LOGLEVEL_JUL_WARNING,
+		LTTNG_LOGLEVEL_JUL_INFO,  LTTNG_LOGLEVEL_JUL_CONFIG, LTTNG_LOGLEVEL_JUL_FINE,
+		LTTNG_LOGLEVEL_JUL_FINER, LTTNG_LOGLEVEL_JUL_FINEST, LTTNG_LOGLEVEL_JUL_ALL,
 	};
-	const int valid_log_level_values[] = {
-		0,
-		-1980,
-		1995
-	};
+	const int valid_log_level_values[] = { 0, -1980, 1995 };
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_JUL_LOGGING,
-			loglevel_jul_value_to_name,
-			lttng_event_rule_jul_logging_create,
-			lttng_event_rule_jul_logging_set_log_level_rule,
-			tagged_log_level_values,
-			ARRAY_SIZE(tagged_log_level_values),
-			valid_log_level_values,
-			ARRAY_SIZE(valid_log_level_values), NULL, 0);
+					  loglevel_jul_value_to_name,
+					  lttng_event_rule_jul_logging_create,
+					  lttng_event_rule_jul_logging_set_log_level_rule,
+					  tagged_log_level_values,
+					  ARRAY_SIZE(tagged_log_level_values),
+					  valid_log_level_values,
+					  ARRAY_SIZE(valid_log_level_values),
+					  NULL,
+					  0);
 }
 
 static void test_event_rule_log_level_log4j(void)
 {
 	const int tagged_log_level_values[] = {
-		LTTNG_LOGLEVEL_LOG4J_OFF,
-		LTTNG_LOGLEVEL_LOG4J_FATAL,
-		LTTNG_LOGLEVEL_LOG4J_ERROR,
-		LTTNG_LOGLEVEL_LOG4J_WARN,
-		LTTNG_LOGLEVEL_LOG4J_INFO,
-		LTTNG_LOGLEVEL_LOG4J_DEBUG,
-		LTTNG_LOGLEVEL_LOG4J_TRACE,
-		LTTNG_LOGLEVEL_LOG4J_ALL,
+		LTTNG_LOGLEVEL_LOG4J_OFF,   LTTNG_LOGLEVEL_LOG4J_FATAL, LTTNG_LOGLEVEL_LOG4J_ERROR,
+		LTTNG_LOGLEVEL_LOG4J_WARN,  LTTNG_LOGLEVEL_LOG4J_INFO,	LTTNG_LOGLEVEL_LOG4J_DEBUG,
+		LTTNG_LOGLEVEL_LOG4J_TRACE, LTTNG_LOGLEVEL_LOG4J_ALL,
 	};
-	const int valid_log_level_values[] = {
-		0
-		-1980,
-		1995
-	};
+	const int valid_log_level_values[] = { 0 - 1980, 1995 };
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING,
-			loglevel_log4j_value_to_name,
-			lttng_event_rule_log4j_logging_create,
-			lttng_event_rule_log4j_logging_set_log_level_rule,
-			tagged_log_level_values,
-			ARRAY_SIZE(tagged_log_level_values),
-			valid_log_level_values,
-			ARRAY_SIZE(valid_log_level_values), NULL, 0);
+					  loglevel_log4j_value_to_name,
+					  lttng_event_rule_log4j_logging_create,
+					  lttng_event_rule_log4j_logging_set_log_level_rule,
+					  tagged_log_level_values,
+					  ARRAY_SIZE(tagged_log_level_values),
+					  valid_log_level_values,
+					  ARRAY_SIZE(valid_log_level_values),
+					  NULL,
+					  0);
 }
 
 static void test_event_rule_log_level_python(void)
 {
 	const int tagged_log_level_values[] = {
-		LTTNG_LOGLEVEL_PYTHON_CRITICAL,
-		LTTNG_LOGLEVEL_PYTHON_ERROR,
-		LTTNG_LOGLEVEL_PYTHON_WARNING,
-		LTTNG_LOGLEVEL_PYTHON_INFO,
-		LTTNG_LOGLEVEL_PYTHON_DEBUG,
-		LTTNG_LOGLEVEL_PYTHON_NOTSET,
+		LTTNG_LOGLEVEL_PYTHON_CRITICAL, LTTNG_LOGLEVEL_PYTHON_ERROR,
+		LTTNG_LOGLEVEL_PYTHON_WARNING,	LTTNG_LOGLEVEL_PYTHON_INFO,
+		LTTNG_LOGLEVEL_PYTHON_DEBUG,	LTTNG_LOGLEVEL_PYTHON_NOTSET,
 	};
 	const int valid_log_level_values[] = {
 		45,
@@ -814,14 +764,15 @@ static void test_event_rule_log_level_python(void)
 	};
 
 	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING,
-			loglevel_python_value_to_name,
-			lttng_event_rule_python_logging_create,
-			lttng_event_rule_python_logging_set_log_level_rule,
-			tagged_log_level_values,
-			ARRAY_SIZE(tagged_log_level_values),
-			valid_log_level_values,
-			ARRAY_SIZE(valid_log_level_values),
-			NULL, 0);
+					  loglevel_python_value_to_name,
+					  lttng_event_rule_python_logging_create,
+					  lttng_event_rule_python_logging_set_log_level_rule,
+					  tagged_log_level_values,
+					  ARRAY_SIZE(tagged_log_level_values),
+					  valid_log_level_values,
+					  ARRAY_SIZE(valid_log_level_values),
+					  NULL,
+					  0);
 }
 
 int main(void)

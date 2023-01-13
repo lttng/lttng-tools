@@ -9,21 +9,20 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
+#include "filter-ast.hpp"
+#include "filter-ir.hpp"
+#include "filter-parser.hpp"
 
 #include <common/compat/errno.hpp>
 #include <common/macros.hpp>
 
-#include "filter-ast.hpp"
-#include "filter-parser.hpp"
-#include "filter-ir.hpp"
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-static
-int validate_globbing(struct ir_op *node)
+static int validate_globbing(struct ir_op *node)
 {
 	int ret;
 
@@ -45,30 +44,32 @@ int validate_globbing(struct ir_op *node)
 		struct ir_op *right = node->u.binary.right;
 
 		if (left->op == IR_OP_LOAD && right->op == IR_OP_LOAD &&
-				left->data_type == IR_DATA_STRING &&
-				right->data_type == IR_DATA_STRING) {
+		    left->data_type == IR_DATA_STRING && right->data_type == IR_DATA_STRING) {
 			/* Test 1. */
 			if (left->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR &&
-					right->u.load.u.string.type != IR_LOAD_STRING_TYPE_PLAIN) {
+			    right->u.load.u.string.type != IR_LOAD_STRING_TYPE_PLAIN) {
 				fprintf(stderr, "[error] Cannot compare two globbing patterns\n");
 				return -1;
 			}
 
 			if (right->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR &&
-					left->u.load.u.string.type != IR_LOAD_STRING_TYPE_PLAIN) {
+			    left->u.load.u.string.type != IR_LOAD_STRING_TYPE_PLAIN) {
 				fprintf(stderr, "[error] Cannot compare two globbing patterns\n");
 				return -1;
 			}
 		}
 
 		if ((left->op == IR_OP_LOAD && left->data_type == IR_DATA_STRING) ||
-				(right->op == IR_OP_LOAD && right->data_type == IR_DATA_STRING)) {
-			if ((left->op == IR_OP_LOAD && left->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR) ||
-					(right->op == IR_OP_LOAD && right->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR)) {
+		    (right->op == IR_OP_LOAD && right->data_type == IR_DATA_STRING)) {
+			if ((left->op == IR_OP_LOAD &&
+			     left->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR) ||
+			    (right->op == IR_OP_LOAD &&
+			     right->u.load.u.string.type == IR_LOAD_STRING_TYPE_GLOB_STAR)) {
 				/* Test 2. */
 				if (node->u.binary.type != AST_OP_EQ &&
-						node->u.binary.type != AST_OP_NE) {
-					fprintf(stderr, "[error] Only the `==` and `!=` operators are allowed with a globbing pattern\n");
+				    node->u.binary.type != AST_OP_NE) {
+					fprintf(stderr,
+						"[error] Only the `==` and `!=` operators are allowed with a globbing pattern\n");
 					return -1;
 				}
 			}

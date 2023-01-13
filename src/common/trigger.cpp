@@ -12,7 +12,7 @@
 #include <common/optional.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
-#include <inttypes.h>
+
 #include <lttng/action/action-internal.hpp>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.hpp>
@@ -23,6 +23,8 @@
 #include <lttng/event-expr-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/trigger/trigger-internal.hpp>
+
+#include <inttypes.h>
 #include <pthread.h>
 
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
@@ -40,14 +42,13 @@ bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 	}
 
 	valid = lttng_condition_validate(trigger->condition) &&
-			lttng_action_validate(trigger->action);
+		lttng_action_validate(trigger->action);
 end:
 	return valid;
 }
 
-struct lttng_trigger *lttng_trigger_create(
-		struct lttng_condition *condition,
-		struct lttng_action *action)
+struct lttng_trigger *lttng_trigger_create(struct lttng_condition *condition,
+					   struct lttng_action *action)
 {
 	struct lttng_trigger *trigger = NULL;
 
@@ -80,14 +81,12 @@ end:
  * This API was exposed as such in 2.11. The client is not expected to call
  * lttng_condition_destroy on the returned object.
  */
-struct lttng_condition *lttng_trigger_get_condition(
-		struct lttng_trigger *trigger)
+struct lttng_condition *lttng_trigger_get_condition(struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->condition : NULL;
 }
 
-const struct lttng_condition *lttng_trigger_get_const_condition(
-		const struct lttng_trigger *trigger)
+const struct lttng_condition *lttng_trigger_get_const_condition(const struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->condition : NULL;
 }
@@ -97,25 +96,21 @@ const struct lttng_condition *lttng_trigger_get_const_condition(
  * This API was exposed as such in 2.11. The client is not expected to call
  * lttng_action_destroy on the returned object.
  */
-struct lttng_action *lttng_trigger_get_action(
-		struct lttng_trigger *trigger)
+struct lttng_action *lttng_trigger_get_action(struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->action : NULL;
 }
 
-const struct lttng_action *lttng_trigger_get_const_action(
-		const struct lttng_trigger *trigger)
+const struct lttng_action *lttng_trigger_get_const_action(const struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->action : NULL;
 }
 
 static void trigger_destroy_ref(struct urcu_ref *ref)
 {
-	struct lttng_trigger *trigger =
-			lttng::utils::container_of(ref, &lttng_trigger::ref);
+	struct lttng_trigger *trigger = lttng::utils::container_of(ref, &lttng_trigger::ref);
 	struct lttng_action *action = lttng_trigger_get_action(trigger);
-	struct lttng_condition *condition =
-			lttng_trigger_get_condition(trigger);
+	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
 
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(condition);
@@ -135,9 +130,8 @@ void lttng_trigger_destroy(struct lttng_trigger *trigger)
 	lttng_trigger_put(trigger);
 }
 
-ssize_t lttng_trigger_create_from_payload(
-		struct lttng_payload_view *src_view,
-		struct lttng_trigger **_trigger)
+ssize_t lttng_trigger_create_from_payload(struct lttng_payload_view *src_view,
+					  struct lttng_trigger **_trigger)
 {
 	ssize_t ret, offset = 0, condition_size, action_size, name_size = 0;
 	struct lttng_condition *condition = NULL;
@@ -150,8 +144,7 @@ ssize_t lttng_trigger_create_from_payload(
 	};
 	struct lttng_trigger *trigger = NULL;
 	const struct lttng_payload_view trigger_comm_view =
-			lttng_payload_view_from_view(
-					src_view, 0, sizeof(*trigger_comm));
+		lttng_payload_view_from_view(src_view, 0, sizeof(*trigger_comm));
 
 	if (!src_view || !_trigger) {
 		ret = -1;
@@ -181,9 +174,7 @@ ssize_t lttng_trigger_create_from_payload(
 	if (trigger_comm->name_length != 0) {
 		/* Name. */
 		const struct lttng_payload_view name_view =
-				lttng_payload_view_from_view(
-						src_view, offset,
-						trigger_comm->name_length);
+			lttng_payload_view_from_view(src_view, offset, trigger_comm->name_length);
 
 		if (!lttng_payload_view_is_valid(&name_view)) {
 			ret = -1;
@@ -191,8 +182,8 @@ ssize_t lttng_trigger_create_from_payload(
 		}
 
 		name = name_view.buffer.data;
-		if (!lttng_buffer_view_contains_string(&name_view.buffer, name,
-				    trigger_comm->name_length)) {
+		if (!lttng_buffer_view_contains_string(
+			    &name_view.buffer, name, trigger_comm->name_length)) {
 			ret = -1;
 			goto end;
 		}
@@ -204,11 +195,9 @@ ssize_t lttng_trigger_create_from_payload(
 	{
 		/* struct lttng_condition */
 		struct lttng_payload_view condition_view =
-				lttng_payload_view_from_view(
-						src_view, offset, -1);
+			lttng_payload_view_from_view(src_view, offset, -1);
 
-		condition_size = lttng_condition_create_from_payload(&condition_view,
-				&condition);
+		condition_size = lttng_condition_create_from_payload(&condition_view, &condition);
 	}
 
 	if (condition_size < 0) {
@@ -220,8 +209,7 @@ ssize_t lttng_trigger_create_from_payload(
 	{
 		/* struct lttng_action */
 		struct lttng_payload_view action_view =
-				lttng_payload_view_from_view(
-					src_view, offset, -1);
+			lttng_payload_view_from_view(src_view, offset, -1);
 
 		action_size = lttng_action_create_from_payload(&action_view, &action);
 	}
@@ -257,8 +245,7 @@ ssize_t lttng_trigger_create_from_payload(
 	action = NULL;
 
 	if (name) {
-		const enum lttng_trigger_status status =
-				lttng_trigger_set_name(trigger, name);
+		const enum lttng_trigger_status status = lttng_trigger_set_name(trigger, name);
 
 		if (status != LTTNG_TRIGGER_STATUS_OK) {
 			ret = -1;
@@ -289,8 +276,7 @@ end:
  * Both elements are stored contiguously, see their "*_comm" structure
  * for the detailed format.
  */
-int lttng_trigger_serialize(const struct lttng_trigger *trigger,
-		struct lttng_payload *payload)
+int lttng_trigger_serialize(const struct lttng_trigger *trigger, struct lttng_payload *payload)
 {
 	int ret;
 	size_t header_offset, size_before_payload, size_name;
@@ -314,8 +300,7 @@ int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 	trigger_comm.is_hidden = lttng_trigger_is_hidden(trigger);
 
 	header_offset = payload->buffer.size;
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &trigger_comm,
-			sizeof(trigger_comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &trigger_comm, sizeof(trigger_comm));
 	if (ret) {
 		goto end;
 	}
@@ -323,8 +308,7 @@ int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 	size_before_payload = payload->buffer.size;
 
 	/* Trigger name. */
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, trigger->name, size_name);
+	ret = lttng_dynamic_buffer_append(&payload->buffer, trigger->name, size_name);
 	if (ret) {
 		goto end;
 	}
@@ -346,8 +330,7 @@ end:
 	return ret;
 }
 
-bool lttng_trigger_is_equal(
-		const struct lttng_trigger *a, const struct lttng_trigger *b)
+bool lttng_trigger_is_equal(const struct lttng_trigger *a, const struct lttng_trigger *b)
 {
 	if (!!a->name != !!b->name) {
 		/* Both must be either anonymous or named. */
@@ -367,7 +350,7 @@ bool lttng_trigger_is_equal(
 	}
 
 	if (!lttng_credentials_is_equal(lttng_trigger_get_credentials(a),
-			lttng_trigger_get_credentials(b))) {
+					lttng_trigger_get_credentials(b))) {
 		return false;
 	}
 
@@ -390,8 +373,7 @@ void lttng_trigger_set_hidden(struct lttng_trigger *trigger)
 	trigger->is_hidden = true;
 }
 
-enum lttng_trigger_status lttng_trigger_set_name(struct lttng_trigger *trigger,
-		const char* name)
+enum lttng_trigger_status lttng_trigger_set_name(struct lttng_trigger *trigger, const char *name)
 {
 	char *name_copy = NULL;
 	enum lttng_trigger_status status = LTTNG_TRIGGER_STATUS_OK;
@@ -417,8 +399,8 @@ end:
 	return status;
 }
 
-enum lttng_trigger_status lttng_trigger_get_name(
-		const struct lttng_trigger *trigger, const char **name)
+enum lttng_trigger_status lttng_trigger_get_name(const struct lttng_trigger *trigger,
+						 const char **name)
 {
 	enum lttng_trigger_status status = LTTNG_TRIGGER_STATUS_OK;
 
@@ -436,8 +418,7 @@ end:
 	return status;
 }
 
-int lttng_trigger_assign_name(struct lttng_trigger *dst,
-		const struct lttng_trigger *src)
+int lttng_trigger_assign_name(struct lttng_trigger *dst, const struct lttng_trigger *src)
 {
 	int ret = 0;
 	enum lttng_trigger_status status;
@@ -452,8 +433,7 @@ end:
 	return ret;
 }
 
-void lttng_trigger_set_tracer_token(struct lttng_trigger *trigger,
-		uint64_t token)
+void lttng_trigger_set_tracer_token(struct lttng_trigger *trigger, uint64_t token)
 {
 	LTTNG_ASSERT(trigger);
 	LTTNG_OPTIONAL_SET(&trigger->tracer_token, token);
@@ -466,8 +446,7 @@ uint64_t lttng_trigger_get_tracer_token(const struct lttng_trigger *trigger)
 	return LTTNG_OPTIONAL_GET(trigger->tracer_token);
 }
 
-int lttng_trigger_generate_name(struct lttng_trigger *trigger,
-		uint64_t unique_id)
+int lttng_trigger_generate_name(struct lttng_trigger *trigger, uint64_t unique_id)
 {
 	int ret = 0;
 	char *generated_name = NULL;
@@ -497,7 +476,7 @@ void lttng_trigger_put(struct lttng_trigger *trigger)
 		return;
 	}
 
-	urcu_ref_put(&trigger->ref , trigger_destroy_ref);
+	urcu_ref_put(&trigger->ref, trigger_destroy_ref);
 }
 
 static void delete_trigger_array_element(void *ptr)
@@ -522,8 +501,8 @@ end:
 	return triggers;
 }
 
-struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
-		const struct lttng_triggers *triggers, unsigned int index)
+struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(const struct lttng_triggers *triggers,
+							     unsigned int index)
 {
 	struct lttng_trigger *trigger = NULL;
 
@@ -532,15 +511,13 @@ struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
 		goto end;
 	}
 
-	trigger = (struct lttng_trigger *)
-			lttng_dynamic_pointer_array_get_pointer(
-					&triggers->array, index);
+	trigger = (struct lttng_trigger *) lttng_dynamic_pointer_array_get_pointer(&triggers->array,
+										   index);
 end:
 	return trigger;
 }
 
-int lttng_triggers_add(
-		struct lttng_triggers *triggers, struct lttng_trigger *trigger)
+int lttng_triggers_add(struct lttng_triggers *triggers, struct lttng_trigger *trigger)
 {
 	int ret;
 
@@ -569,12 +546,10 @@ int lttng_triggers_remove_hidden_triggers(struct lttng_triggers *triggers)
 	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	while (i < trigger_count) {
-		const struct lttng_trigger *trigger =
-				lttng_triggers_get_at_index(triggers, i);
+		const struct lttng_trigger *trigger = lttng_triggers_get_at_index(triggers, i);
 
 		if (lttng_trigger_is_hidden(trigger)) {
-			ret = lttng_dynamic_pointer_array_remove_pointer(
-					&triggers->array, i);
+			ret = lttng_dynamic_pointer_array_remove_pointer(&triggers->array, i);
 			if (ret) {
 				goto end;
 			}
@@ -590,13 +565,14 @@ end:
 	return ret;
 }
 
-const struct lttng_trigger *lttng_triggers_get_at_index(
-		const struct lttng_triggers *triggers, unsigned int index)
+const struct lttng_trigger *lttng_triggers_get_at_index(const struct lttng_triggers *triggers,
+							unsigned int index)
 {
 	return lttng_triggers_borrow_mutable_at_index(triggers, index);
 }
 
-enum lttng_trigger_status lttng_triggers_get_count(const struct lttng_triggers *triggers, unsigned int *count)
+enum lttng_trigger_status lttng_triggers_get_count(const struct lttng_triggers *triggers,
+						   unsigned int *count)
 {
 	enum lttng_trigger_status status = LTTNG_TRIGGER_STATUS_OK;
 
@@ -620,8 +596,7 @@ void lttng_triggers_destroy(struct lttng_triggers *triggers)
 	free(triggers);
 }
 
-int lttng_triggers_serialize(const struct lttng_triggers *triggers,
-		struct lttng_payload *payload)
+int lttng_triggers_serialize(const struct lttng_triggers *triggers, struct lttng_payload *payload)
 {
 	int ret;
 	unsigned int i, count;
@@ -640,8 +615,7 @@ int lttng_triggers_serialize(const struct lttng_triggers *triggers,
 	triggers_comm.count = count;
 
 	/* Placeholder header; updated at the end. */
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &triggers_comm,
-			sizeof(triggers_comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &triggers_comm, sizeof(triggers_comm));
 	if (ret) {
 		goto end;
 	}
@@ -649,8 +623,7 @@ int lttng_triggers_serialize(const struct lttng_triggers *triggers,
 	size_before_payload = payload->buffer.size;
 
 	for (i = 0; i < count; i++) {
-		const struct lttng_trigger *trigger =
-				lttng_triggers_get_at_index(triggers, i);
+		const struct lttng_trigger *trigger = lttng_triggers_get_at_index(triggers, i);
 
 		LTTNG_ASSERT(trigger);
 
@@ -667,9 +640,8 @@ end:
 	return ret;
 }
 
-ssize_t lttng_triggers_create_from_payload(
-		struct lttng_payload_view *src_view,
-		struct lttng_triggers **triggers)
+ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *src_view,
+					   struct lttng_triggers **triggers)
 {
 	ssize_t ret, offset = 0, triggers_size = 0;
 	unsigned int i;
@@ -694,11 +666,10 @@ ssize_t lttng_triggers_create_from_payload(
 	for (i = 0; i < triggers_comm->count; i++) {
 		struct lttng_trigger *trigger = NULL;
 		struct lttng_payload_view trigger_view =
-				lttng_payload_view_from_view(src_view, offset, -1);
+			lttng_payload_view_from_view(src_view, offset, -1);
 		ssize_t trigger_size;
 
-		trigger_size = lttng_trigger_create_from_payload(
-				&trigger_view, &trigger);
+		trigger_size = lttng_trigger_create_from_payload(&trigger_view, &trigger);
 		if (trigger_size < 0) {
 			ret = trigger_size;
 			goto error;
@@ -733,14 +704,13 @@ error:
 	return ret;
 }
 
-const struct lttng_credentials *lttng_trigger_get_credentials(
-		const struct lttng_trigger *trigger)
+const struct lttng_credentials *lttng_trigger_get_credentials(const struct lttng_trigger *trigger)
 {
 	return &trigger->creds;
 }
 
 void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
-		const struct lttng_credentials *creds)
+				   const struct lttng_credentials *creds)
 {
 	/* Triggers do not use the group id to authenticate the user. */
 	LTTNG_ASSERT(creds);
@@ -748,8 +718,7 @@ void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 	LTTNG_OPTIONAL_UNSET(&trigger->creds.gid);
 }
 
-enum lttng_trigger_status lttng_trigger_set_owner_uid(
-		struct lttng_trigger *trigger, uid_t uid)
+enum lttng_trigger_status lttng_trigger_set_owner_uid(struct lttng_trigger *trigger, uid_t uid)
 {
 	enum lttng_trigger_status ret = LTTNG_TRIGGER_STATUS_OK;
 	const uid_t euid = geteuid();
@@ -775,18 +744,18 @@ end:
 	return ret;
 }
 
-enum lttng_trigger_status lttng_trigger_get_owner_uid(
-		const struct lttng_trigger *trigger, uid_t *uid)
+enum lttng_trigger_status lttng_trigger_get_owner_uid(const struct lttng_trigger *trigger,
+						      uid_t *uid)
 {
 	enum lttng_trigger_status ret = LTTNG_TRIGGER_STATUS_OK;
 	const struct lttng_credentials *creds = NULL;
 
-	if (!trigger || !uid ) {
+	if (!trigger || !uid) {
 		ret = LTTNG_TRIGGER_STATUS_INVALID;
 		goto end;
 	}
 
-	if (!trigger->creds.uid.is_set ) {
+	if (!trigger->creds.uid.is_set) {
 		ret = LTTNG_TRIGGER_STATUS_UNSET;
 		goto end;
 	}
@@ -798,8 +767,8 @@ end:
 	return ret;
 }
 
-enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
-		const struct lttng_trigger *trigger)
+enum lttng_domain_type
+lttng_trigger_get_underlying_domain_type_restriction(const struct lttng_trigger *trigger)
 {
 	enum lttng_domain_type type = LTTNG_DOMAIN_NONE;
 	const struct lttng_event_rule *event_rule;
@@ -810,7 +779,7 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 	LTTNG_ASSERT(trigger->condition);
 
 	c_type = lttng_condition_get_type(trigger->condition);
-	assert (c_type != LTTNG_CONDITION_TYPE_UNKNOWN);
+	assert(c_type != LTTNG_CONDITION_TYPE_UNKNOWN);
 
 	switch (c_type) {
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
@@ -821,16 +790,15 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 		break;
 	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		/* Return the domain of the event rule. */
-		c_status = lttng_condition_event_rule_matches_get_rule(
-				trigger->condition, &event_rule);
+		c_status = lttng_condition_event_rule_matches_get_rule(trigger->condition,
+								       &event_rule);
 		LTTNG_ASSERT(c_status == LTTNG_CONDITION_STATUS_OK);
 		type = lttng_event_rule_get_domain_type(event_rule);
 		break;
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
 		/* Return the domain of the channel being monitored. */
-		c_status = lttng_condition_buffer_usage_get_domain_type(
-				trigger->condition, &type);
+		c_status = lttng_condition_buffer_usage_get_domain_type(trigger->condition, &type);
 		LTTNG_ASSERT(c_status == LTTNG_CONDITION_STATUS_OK);
 		break;
 	default:
@@ -844,9 +812,8 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
  * Generate bytecode related to the trigger.
  * On success LTTNG_OK. On error, returns lttng_error code.
  */
-enum lttng_error_code lttng_trigger_generate_bytecode(
-		struct lttng_trigger *trigger,
-		const struct lttng_credentials *creds)
+enum lttng_error_code lttng_trigger_generate_bytecode(struct lttng_trigger *trigger,
+						      const struct lttng_credentials *creds)
 {
 	enum lttng_error_code ret;
 	struct lttng_condition *condition = NULL;
@@ -862,21 +829,20 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 	{
 		struct lttng_event_rule *event_rule;
 		const enum lttng_condition_status condition_status =
-				lttng_condition_event_rule_matches_borrow_rule_mutable(
-						condition, &event_rule);
+			lttng_condition_event_rule_matches_borrow_rule_mutable(condition,
+									       &event_rule);
 
 		LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 		/* Generate the filter bytecode. */
-		ret = lttng_event_rule_generate_filter_bytecode(
-				event_rule, creds);
+		ret = lttng_event_rule_generate_filter_bytecode(event_rule, creds);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 
 		/* Generate the capture bytecode. */
 		ret = lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
-				condition);
+			condition);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -912,11 +878,9 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 
 	{
 		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&copy_buffer, 0, -1);
+			lttng_payload_view_from_payload(&copy_buffer, 0, -1);
 
-		ret = lttng_condition_create_from_payload(
-				&view, &condition_copy);
+		ret = lttng_condition_create_from_payload(&view, &condition_copy);
 		if (ret < 0) {
 			goto end;
 		}
@@ -931,11 +895,9 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 
 	{
 		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&copy_buffer, 0, -1);
+			lttng_payload_view_from_payload(&copy_buffer, 0, -1);
 
-		ret = lttng_action_create_from_payload(
-				&view, &action_copy);
+		ret = lttng_action_create_from_payload(&view, &action_copy);
 		if (ret < 0) {
 			goto end;
 		}
@@ -963,8 +925,7 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 		goto error_cleanup_trigger;
 	}
 
-	trigger_status = lttng_trigger_get_owner_uid(
-			trigger, &trigger_owner_uid);
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner_uid);
 	switch (trigger_status) {
 	case LTTNG_TRIGGER_STATUS_OK:
 		LTTNG_OPTIONAL_SET(&copy->creds.uid, trigger_owner_uid);
@@ -994,8 +955,7 @@ end:
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
 {
 	bool needs_tracer_notifier = false;
-	const struct lttng_condition *condition =
-			lttng_trigger_get_const_condition(trigger);
+	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
 
 	switch (lttng_condition_get_type(condition)) {
 	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
@@ -1052,10 +1012,10 @@ void lttng_trigger_unlock(struct lttng_trigger *trigger)
 	pthread_mutex_unlock(&trigger->lock);
 }
 
-enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
-		struct mi_writer *writer,
-		const struct mi_lttng_error_query_callbacks
-				*error_query_callbacks)
+enum lttng_error_code
+lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
+			   struct mi_writer *writer,
+			   const struct mi_lttng_error_query_callbacks *error_query_callbacks)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -1080,16 +1040,14 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
 	LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	/* Name. */
-	ret = mi_lttng_writer_write_element_string(
-			writer, config_element_name, trigger->name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, trigger->name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Owner uid. */
-	ret = mi_lttng_writer_write_element_signed_int(writer,
-			mi_lttng_element_trigger_owner_uid,
-			(int64_t) owner_uid);
+	ret = mi_lttng_writer_write_element_signed_int(
+		writer, mi_lttng_element_trigger_owner_uid, (int64_t) owner_uid);
 	if (ret) {
 		goto mi_error;
 	}
@@ -1097,8 +1055,7 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
 	/* Condition. */
 	condition = lttng_trigger_get_const_condition(trigger);
 	LTTNG_ASSERT(condition);
-	ret_code = lttng_condition_mi_serialize(
-			trigger, condition, writer, error_query_callbacks);
+	ret_code = lttng_condition_mi_serialize(trigger, condition, writer, error_query_callbacks);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
@@ -1106,8 +1063,8 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
 	/* Action. */
 	action = lttng_trigger_get_const_action(trigger);
 	LTTNG_ASSERT(action);
-	ret_code = lttng_action_mi_serialize(trigger, action, writer,
-			error_query_callbacks, &action_path_indexes);
+	ret_code = lttng_action_mi_serialize(
+		trigger, action, writer, error_query_callbacks, &action_path_indexes);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
@@ -1120,8 +1077,7 @@ enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *tri
 			goto end;
 		}
 
-		ret_code = lttng_error_query_results_mi_serialize(
-				results, writer);
+		ret_code = lttng_error_query_results_mi_serialize(results, writer);
 		lttng_error_query_results_destroy(results);
 		if (ret_code != LTTNG_OK) {
 			goto end;
@@ -1147,10 +1103,8 @@ end:
 /* Used by qsort, which expects the semantics of strcmp(). */
 static int compare_triggers_by_name(const void *a, const void *b)
 {
-	const struct lttng_trigger *trigger_a =
-			*((const struct lttng_trigger **) a);
-	const struct lttng_trigger *trigger_b =
-			*((const struct lttng_trigger **) b);
+	const struct lttng_trigger *trigger_a = *((const struct lttng_trigger **) a);
+	const struct lttng_trigger *trigger_b = *((const struct lttng_trigger **) b);
 	const char *name_a, *name_b;
 	enum lttng_trigger_status trigger_status;
 
@@ -1164,10 +1118,10 @@ static int compare_triggers_by_name(const void *a, const void *b)
 	return strcmp(name_a, name_b);
 }
 
-enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
-		struct mi_writer *writer,
-		const struct mi_lttng_error_query_callbacks
-				*error_query_callbacks)
+enum lttng_error_code
+lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
+			    struct mi_writer *writer,
+			    const struct mi_lttng_error_query_callbacks *error_query_callbacks)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -1190,8 +1144,7 @@ enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *t
 	for (i = 0; i < count; i++) {
 		int add_ret;
 		const char *unused_name;
-		const struct lttng_trigger *trigger =
-				lttng_triggers_get_at_index(triggers, i);
+		const struct lttng_trigger *trigger = lttng_triggers_get_at_index(triggers, i);
 
 		status = lttng_trigger_get_name(trigger, &unused_name);
 		switch (status) {
@@ -1204,8 +1157,8 @@ enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *t
 			abort();
 		}
 
-		add_ret = lttng_dynamic_pointer_array_add_pointer(
-				&sorted_triggers, (void *) trigger);
+		add_ret =
+			lttng_dynamic_pointer_array_add_pointer(&sorted_triggers, (void *) trigger);
 
 		if (add_ret) {
 			ERR("Failed to lttng_trigger to sorting array.");
@@ -1214,9 +1167,10 @@ enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *t
 		}
 	}
 
-	qsort(sorted_triggers.array.buffer.data, count,
-			sizeof(struct lttng_trigger *),
-			compare_triggers_by_name);
+	qsort(sorted_triggers.array.buffer.data,
+	      count,
+	      sizeof(struct lttng_trigger *),
+	      compare_triggers_by_name);
 
 	/* Open triggers element. */
 	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_triggers);
@@ -1227,9 +1181,8 @@ enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *t
 
 	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&sorted_triggers); i++) {
 		const struct lttng_trigger *trigger =
-				(const struct lttng_trigger *)
-				lttng_dynamic_pointer_array_get_pointer(
-						&sorted_triggers, i);
+			(const struct lttng_trigger *) lttng_dynamic_pointer_array_get_pointer(
+				&sorted_triggers, i);
 
 		lttng_trigger_mi_serialize(trigger, writer, error_query_callbacks);
 	}

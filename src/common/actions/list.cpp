@@ -11,12 +11,12 @@
 #include <common/mi-lttng.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
+
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/action/list.h>
 
-#define IS_LIST_ACTION(action) \
-	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_LIST)
+#define IS_LIST_ACTION(action) (lttng_action_get_type(action) == LTTNG_ACTION_TYPE_LIST)
 
 namespace {
 struct lttng_action_list {
@@ -43,16 +43,15 @@ static void destroy_lttng_action_list_element(void *ptr)
 	lttng_action_destroy(element);
 }
 
-static struct lttng_action_list *action_list_from_action(
-		const struct lttng_action *action)
+static struct lttng_action_list *action_list_from_action(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
 	return lttng::utils::container_of(action, &lttng_action_list::parent);
 }
 
-static const struct lttng_action_list *action_list_from_action_const(
-		const struct lttng_action *action)
+static const struct lttng_action_list *
+action_list_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
@@ -73,8 +72,8 @@ static bool lttng_action_list_validate(struct lttng_action *action)
 
 	for (i = 0; i < count; i++) {
 		struct lttng_action *child =
-				(lttng_action *) lttng_dynamic_pointer_array_get_pointer(
-						&action_list->actions, i);
+			(lttng_action *) lttng_dynamic_pointer_array_get_pointer(
+				&action_list->actions, i);
 
 		LTTNG_ASSERT(child);
 
@@ -90,20 +89,17 @@ end:
 	return valid;
 }
 
-static bool lttng_action_list_is_equal(
-		const struct lttng_action *_a, const struct lttng_action *_b)
+static bool lttng_action_list_is_equal(const struct lttng_action *_a, const struct lttng_action *_b)
 {
 	bool is_equal = false;
 	unsigned int i;
 	unsigned int a_count, b_count;
 
-	if (lttng_action_list_get_count(_a, &a_count) !=
-			LTTNG_ACTION_STATUS_OK) {
+	if (lttng_action_list_get_count(_a, &a_count) != LTTNG_ACTION_STATUS_OK) {
 		goto end;
 	}
 
-	if (lttng_action_list_get_count(_b, &b_count) !=
-			LTTNG_ACTION_STATUS_OK) {
+	if (lttng_action_list_get_count(_b, &b_count) != LTTNG_ACTION_STATUS_OK) {
 		goto end;
 	}
 
@@ -112,10 +108,8 @@ static bool lttng_action_list_is_equal(
 	}
 
 	for (i = 0; i < a_count; i++) {
-		const struct lttng_action *child_a =
-			lttng_action_list_get_at_index(_a, i);
-		const struct lttng_action *child_b =
-			lttng_action_list_get_at_index(_b, i);
+		const struct lttng_action *child_a = lttng_action_list_get_at_index(_a, i);
+		const struct lttng_action *child_b = lttng_action_list_get_at_index(_b, i);
 
 		LTTNG_ASSERT(child_a);
 		LTTNG_ASSERT(child_b);
@@ -130,8 +124,7 @@ end:
 	return is_equal;
 }
 
-static int lttng_action_list_serialize(
-		struct lttng_action *action, struct lttng_payload *payload)
+static int lttng_action_list_serialize(struct lttng_action *action, struct lttng_payload *payload)
 {
 	struct lttng_action_list *action_list;
 	struct lttng_action_list_comm comm;
@@ -150,8 +143,7 @@ static int lttng_action_list_serialize(
 
 	comm.action_count = count;
 
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		ret = -1;
 		goto end;
@@ -159,8 +151,8 @@ static int lttng_action_list_serialize(
 
 	for (i = 0; i < count; i++) {
 		struct lttng_action *child =
-				(lttng_action *) lttng_dynamic_pointer_array_get_pointer(
-						&action_list->actions, i);
+			(lttng_action *) lttng_dynamic_pointer_array_get_pointer(
+				&action_list->actions, i);
 
 		LTTNG_ASSERT(child);
 
@@ -192,9 +184,8 @@ end:
 	return;
 }
 
-ssize_t lttng_action_list_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_action **p_action)
+ssize_t lttng_action_list_create_from_payload(struct lttng_payload_view *view,
+					      struct lttng_action **p_action)
 {
 	ssize_t consumed_len;
 	const struct lttng_action_list_comm *comm;
@@ -215,17 +206,15 @@ ssize_t lttng_action_list_create_from_payload(
 
 	for (i = 0; i < comm->action_count; i++) {
 		ssize_t consumed_len_child;
-		struct lttng_payload_view child_view =
-				lttng_payload_view_from_view(view, consumed_len,
-						view->buffer.size - consumed_len);
+		struct lttng_payload_view child_view = lttng_payload_view_from_view(
+			view, consumed_len, view->buffer.size - consumed_len);
 
 		if (!lttng_payload_view_is_valid(&child_view)) {
 			consumed_len = -1;
 			goto end;
 		}
 
-		consumed_len_child = lttng_action_create_from_payload(
-				&child_view, &child_action);
+		consumed_len_child = lttng_action_create_from_payload(&child_view, &child_action);
 		if (consumed_len_child < 0) {
 			consumed_len = -1;
 			goto end;
@@ -252,9 +241,9 @@ end:
 	return consumed_len;
 }
 
-static enum lttng_action_status lttng_action_list_add_error_query_results(
-		const struct lttng_action *action,
-		struct lttng_error_query_results *results)
+static enum lttng_action_status
+lttng_action_list_add_error_query_results(const struct lttng_action *action,
+					  struct lttng_error_query_results *results)
 {
 	unsigned int i, count;
 	enum lttng_action_status action_status;
@@ -266,10 +255,9 @@ static enum lttng_action_status lttng_action_list_add_error_query_results(
 
 	for (i = 0; i < count; i++) {
 		struct lttng_action *inner_action =
-				lttng_action_list_borrow_mutable_at_index(action, i);
+			lttng_action_list_borrow_mutable_at_index(action, i);
 
-		action_status = lttng_action_add_error_query_results(
-				inner_action, results);
+		action_status = lttng_action_add_error_query_results(inner_action, results);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
 			goto end;
 		}
@@ -278,13 +266,12 @@ end:
 	return action_status;
 }
 
-enum lttng_error_code lttng_action_list_mi_serialize(
-		const struct lttng_trigger *trigger,
-		const struct lttng_action *action,
-		struct mi_writer *writer,
-		const struct mi_lttng_error_query_callbacks
-				*error_query_callbacks,
-		struct lttng_dynamic_array *action_path_indexes)
+enum lttng_error_code
+lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,
+			       const struct lttng_action *action,
+			       struct mi_writer *writer,
+			       const struct mi_lttng_error_query_callbacks *error_query_callbacks,
+			       struct lttng_dynamic_array *action_path_indexes)
 {
 	int ret;
 	struct lttng_action_list *action_list;
@@ -296,8 +283,7 @@ enum lttng_error_code lttng_action_list_mi_serialize(
 	LTTNG_ASSERT(writer);
 
 	/* Open action list. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_action_list);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_list);
 	if (ret) {
 		goto mi_error;
 	}
@@ -306,8 +292,7 @@ enum lttng_error_code lttng_action_list_mi_serialize(
 	action_list = action_list_from_action(action);
 	count = lttng_dynamic_pointer_array_get_count(&action_list->actions);
 	for (i = 0; i < count; i++) {
-		const struct lttng_action *child =
-				lttng_action_list_get_at_index(action, i);
+		const struct lttng_action *child = lttng_action_list_get_at_index(action, i);
 		const uint64_t index = (uint64_t) i;
 
 		LTTNG_ASSERT(child);
@@ -319,23 +304,21 @@ enum lttng_error_code lttng_action_list_mi_serialize(
 		 * tree in-order and to re-use the dynamic array instead of
 		 * copying it at every level.
 		 */
-		ret = lttng_dynamic_array_add_element(
-				action_path_indexes, &index);
+		ret = lttng_dynamic_array_add_element(action_path_indexes, &index);
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
 		}
 
-		ret_code = lttng_action_mi_serialize(trigger, child, writer,
-				error_query_callbacks, action_path_indexes);
+		ret_code = lttng_action_mi_serialize(
+			trigger, child, writer, error_query_callbacks, action_path_indexes);
 		if (ret_code != LTTNG_OK) {
 			goto end;
 		}
 
-		ret = lttng_dynamic_array_remove_element(action_path_indexes,
-				lttng_dynamic_array_get_count(
-						action_path_indexes) -
-						1);
+		ret = lttng_dynamic_array_remove_element(
+			action_path_indexes,
+			lttng_dynamic_array_get_count(action_path_indexes) - 1);
 		if (ret) {
 			ret_code = LTTNG_ERR_UNK;
 			goto end;
@@ -374,20 +357,24 @@ struct lttng_action *lttng_action_list_create(void)
 	 * The mi for the list is handled at the lttng_action_mi level to ease
 	 * action path management for error query.
 	 */
-	lttng_action_init(action, LTTNG_ACTION_TYPE_LIST,
-			lttng_action_list_validate, lttng_action_list_serialize,
-			lttng_action_list_is_equal, lttng_action_list_destroy,
-			NULL, lttng_action_list_add_error_query_results, NULL);
+	lttng_action_init(action,
+			  LTTNG_ACTION_TYPE_LIST,
+			  lttng_action_list_validate,
+			  lttng_action_list_serialize,
+			  lttng_action_list_is_equal,
+			  lttng_action_list_destroy,
+			  NULL,
+			  lttng_action_list_add_error_query_results,
+			  NULL);
 
-	lttng_dynamic_pointer_array_init(&action_list->actions,
-			destroy_lttng_action_list_element);
+	lttng_dynamic_pointer_array_init(&action_list->actions, destroy_lttng_action_list_element);
 
 end:
 	return action;
 }
 
-enum lttng_action_status lttng_action_list_add_action(
-		struct lttng_action *list, struct lttng_action *action)
+enum lttng_action_status lttng_action_list_add_action(struct lttng_action *list,
+						      struct lttng_action *action)
 {
 	struct lttng_action_list *action_list;
 	enum lttng_action_status status;
@@ -409,8 +396,7 @@ enum lttng_action_status lttng_action_list_add_action(
 
 	action_list = action_list_from_action(list);
 
-	ret = lttng_dynamic_pointer_array_add_pointer(&action_list->actions,
-			action);
+	ret = lttng_dynamic_pointer_array_add_pointer(&action_list->actions, action);
 	if (ret < 0) {
 		status = LTTNG_ACTION_STATUS_ERROR;
 		goto end;
@@ -423,8 +409,8 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_list_get_count(
-		const struct lttng_action *list, unsigned int *count)
+enum lttng_action_status lttng_action_list_get_count(const struct lttng_action *list,
+						     unsigned int *count)
 {
 	const struct lttng_action_list *action_list;
 	enum lttng_action_status status = LTTNG_ACTION_STATUS_OK;
@@ -441,21 +427,20 @@ end:
 	return status;
 }
 
-const struct lttng_action *lttng_action_list_get_at_index(
-		const struct lttng_action *list, unsigned int index)
+const struct lttng_action *lttng_action_list_get_at_index(const struct lttng_action *list,
+							  unsigned int index)
 {
 	return lttng_action_list_borrow_mutable_at_index(list, index);
 }
 
-struct lttng_action *lttng_action_list_borrow_mutable_at_index(
-		const struct lttng_action *list, unsigned int index)
+struct lttng_action *lttng_action_list_borrow_mutable_at_index(const struct lttng_action *list,
+							       unsigned int index)
 {
 	unsigned int count;
 	const struct lttng_action_list *action_list;
 	struct lttng_action *action = NULL;
 
-	if (lttng_action_list_get_count(list, &count) !=
-			LTTNG_ACTION_STATUS_OK) {
+	if (lttng_action_list_get_count(list, &count) != LTTNG_ACTION_STATUS_OK) {
 		goto end;
 	}
 
@@ -465,7 +450,7 @@ struct lttng_action *lttng_action_list_borrow_mutable_at_index(
 
 	action_list = action_list_from_action_const(list);
 	action = (lttng_action *) lttng_dynamic_pointer_array_get_pointer(&action_list->actions,
-			index);
+									  index);
 end:
 	return action;
 }

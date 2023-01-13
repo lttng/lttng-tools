@@ -6,6 +6,22 @@
  */
 
 #define _LGPL_SOURCE
+#include "cmd.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "session.hpp"
+#include "timer.hpp"
+#include "trace-ust.hpp"
+#include "utils.hpp"
+
+#include <common/common.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/urcu.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/location-internal.hpp>
+
 #include <dirent.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -16,22 +32,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <urcu.h>
-
-#include <common/common.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/trace-chunk.hpp>
-#include <common/urcu.hpp>
-#include <common/utils.hpp>
-
-#include "lttng-sessiond.hpp"
-#include <lttng/location-internal.hpp>
-
-#include "cmd.hpp"
-#include "kernel.hpp"
-#include "session.hpp"
-#include "timer.hpp"
-#include "trace-ust.hpp"
-#include "utils.hpp"
 
 namespace {
 struct ltt_session_destroy_notifier_element {
@@ -150,8 +150,7 @@ void session_list_wait_empty(void)
 {
 	pthread_mutex_lock(&the_session_list.lock);
 	while (!cds_list_empty(&the_session_list.head)) {
-		pthread_cond_wait(&the_session_list.removal_cond,
-				&the_session_list.lock);
+		pthread_cond_wait(&the_session_list.removal_cond, &the_session_list.lock);
 	}
 	pthread_mutex_unlock(&the_session_list.lock);
 }
@@ -185,17 +184,15 @@ void session_unlock_list(void)
  *
  * The caller must hold the session lock.
  */
-enum consumer_dst_type session_get_consumer_destination_type(
-		const struct ltt_session *session)
+enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session)
 {
 	/*
 	 * The output information is duplicated in both of those session types.
 	 * Hence, it doesn't matter from which it is retrieved. However, it is
 	 * possible for only one of them to be set.
 	 */
-	return session->kernel_session ?
-			session->kernel_session->consumer->type :
-			session->ust_session->consumer->type;
+	return session->kernel_session ? session->kernel_session->consumer->type :
+					 session->ust_session->consumer->type;
 }
 
 /*
@@ -209,9 +206,8 @@ const char *session_get_net_consumer_hostname(const struct ltt_session *session)
 	const char *hostname = NULL;
 	const struct consumer_output *output;
 
-	output = session->kernel_session ?
-			session->kernel_session->consumer :
-			session->ust_session->consumer;
+	output = session->kernel_session ? session->kernel_session->consumer :
+					   session->ust_session->consumer;
 
 	/*
 	 * hostname is assumed to be the same for both control and data
@@ -237,13 +233,13 @@ const char *session_get_net_consumer_hostname(const struct ltt_session *session)
  * The caller must hold the session lock.
  */
 void session_get_net_consumer_ports(const struct ltt_session *session,
-		uint16_t *control_port, uint16_t *data_port)
+				    uint16_t *control_port,
+				    uint16_t *data_port)
 {
 	const struct consumer_output *output;
 
-	output = session->kernel_session ?
-			session->kernel_session->consumer :
-			session->ust_session->consumer;
+	output = session->kernel_session ? session->kernel_session->consumer :
+					   session->ust_session->consumer;
 	*control_port = output->dst.net.control.port;
 	*data_port = output->dst.net.data.port;
 }
@@ -253,29 +249,28 @@ void session_get_net_consumer_ports(const struct ltt_session *session,
  *
  * The caller must hold the session lock.
  */
-struct lttng_trace_archive_location *session_get_trace_archive_location(
-		const struct ltt_session *session)
+struct lttng_trace_archive_location *
+session_get_trace_archive_location(const struct ltt_session *session)
 {
 	int ret;
 	struct lttng_trace_archive_location *location = NULL;
 	char *chunk_path = NULL;
 
 	if (session->rotation_state != LTTNG_ROTATION_STATE_COMPLETED ||
-			!session->last_archived_chunk_name) {
+	    !session->last_archived_chunk_name) {
 		goto end;
 	}
 
 	switch (session_get_consumer_destination_type(session)) {
 	case CONSUMER_DST_LOCAL:
 		ret = asprintf(&chunk_path,
-				"%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
-				session_get_base_path(session),
-				session->last_archived_chunk_name);
+			       "%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
+			       session_get_base_path(session),
+			       session->last_archived_chunk_name);
 		if (ret == -1) {
 			goto end;
 		}
-		location = lttng_trace_archive_location_local_create(
-				chunk_path);
+		location = lttng_trace_archive_location_local_create(chunk_path);
 		break;
 	case CONSUMER_DST_NET:
 	{
@@ -283,13 +278,13 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 		uint16_t control_port, data_port;
 
 		hostname = session_get_net_consumer_hostname(session);
-		session_get_net_consumer_ports(session,
-				&control_port,
-				&data_port);
+		session_get_net_consumer_ports(session, &control_port, &data_port);
 		location = lttng_trace_archive_location_relay_create(
-				hostname,
-				LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP,
-				control_port, data_port, session->last_chunk_path);
+			hostname,
+			LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP,
+			control_port,
+			data_port,
+			session->last_chunk_path);
 		break;
 	}
 	default:
@@ -468,10 +463,9 @@ void session_unlock(struct ltt_session *session)
 	pthread_mutex_unlock(&session->lock);
 }
 
-static
-int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
-		struct lttng_trace_chunk *new_trace_chunk,
-		struct lttng_trace_chunk **_current_trace_chunk)
+static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
+						  struct lttng_trace_chunk *new_trace_chunk,
+						  struct lttng_trace_chunk **_current_trace_chunk)
 {
 	int ret = 0;
 	unsigned int i, refs_to_acquire = 0, refs_acquired = 0, refs_to_release = 0;
@@ -489,13 +483,11 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	current_trace_chunk = session->current_trace_chunk;
 	session->current_trace_chunk = NULL;
 	if (session->ust_session) {
-		lttng_trace_chunk_put(
-				session->ust_session->current_trace_chunk);
+		lttng_trace_chunk_put(session->ust_session->current_trace_chunk);
 		session->ust_session->current_trace_chunk = NULL;
 	}
 	if (session->kernel_session) {
-		lttng_trace_chunk_put(
-				session->kernel_session->current_trace_chunk);
+		lttng_trace_chunk_put(session->kernel_session->current_trace_chunk);
 		session->kernel_session->current_trace_chunk = NULL;
 	}
 	if (!new_trace_chunk) {
@@ -509,40 +501,37 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	refs_to_acquire += !!session->ust_session;
 	refs_to_acquire += !!session->kernel_session;
 
-	for (refs_acquired = 0; refs_acquired < refs_to_acquire;
-			refs_acquired++) {
+	for (refs_acquired = 0; refs_acquired < refs_to_acquire; refs_acquired++) {
 		if (!lttng_trace_chunk_get(new_trace_chunk)) {
 			ERR("Failed to acquire reference to new trace chunk of session \"%s\"",
-					session->name);
+			    session->name);
 			goto error;
 		}
 	}
 
 	if (session->ust_session) {
-		const uint64_t relayd_id =
-				session->ust_session->consumer->net_seq_index;
-		const bool is_local_trace =
-				session->ust_session->consumer->type ==
-				CONSUMER_DST_LOCAL;
+		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
+		const bool is_local_trace = session->ust_session->consumer->type ==
+			CONSUMER_DST_LOCAL;
 
 		session->ust_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
 
-			ret_error_code = ust_app_create_channel_subdirectories(
-					session->ust_session);
+			ret_error_code =
+				ust_app_create_channel_subdirectories(session->ust_session);
 			if (ret_error_code != LTTNG_OK) {
 				goto error;
 			}
 		}
-		cds_lfht_for_each_entry(
-				session->ust_session->consumer->socks->ht,
-				&iter, socket, node.node) {
+		cds_lfht_for_each_entry (
+			session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
-					relayd_id,
-					session->id, new_trace_chunk,
-					DEFAULT_UST_TRACE_DIR);
+							  relayd_id,
+							  session->id,
+							  new_trace_chunk,
+							  DEFAULT_UST_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				goto error;
@@ -550,30 +539,28 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 		}
 	}
 	if (session->kernel_session) {
-		const uint64_t relayd_id =
-				session->kernel_session->consumer->net_seq_index;
-		const bool is_local_trace =
-				session->kernel_session->consumer->type ==
-				CONSUMER_DST_LOCAL;
+		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
+		const bool is_local_trace = session->kernel_session->consumer->type ==
+			CONSUMER_DST_LOCAL;
 
 		session->kernel_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
 
-			ret_error_code = kernel_create_channel_subdirectories(
-					session->kernel_session);
+			ret_error_code =
+				kernel_create_channel_subdirectories(session->kernel_session);
 			if (ret_error_code != LTTNG_OK) {
 				goto error;
 			}
 		}
-		cds_lfht_for_each_entry(
-				session->kernel_session->consumer->socks->ht,
-				&iter, socket, node.node) {
+		cds_lfht_for_each_entry (
+			session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
-					relayd_id,
-					session->id, new_trace_chunk,
-					DEFAULT_KERNEL_TRACE_DIR);
+							  relayd_id,
+							  session->id,
+							  new_trace_chunk,
+							  DEFAULT_KERNEL_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				goto error;
@@ -615,11 +602,11 @@ error:
 	goto end_no_move;
 }
 
-struct lttng_trace_chunk *session_create_new_trace_chunk(
-		const struct ltt_session *session,
-		const struct consumer_output *consumer_output_override,
-		const char *session_base_path_override,
-		const char *chunk_name_override)
+struct lttng_trace_chunk *
+session_create_new_trace_chunk(const struct ltt_session *session,
+			       const struct consumer_output *consumer_output_override,
+			       const char *session_base_path_override,
+			       const char *chunk_name_override)
 {
 	int ret;
 	struct lttng_trace_chunk *trace_chunk = NULL;
@@ -640,28 +627,26 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 		output = consumer_output_override;
 	} else {
 		LTTNG_ASSERT(session->ust_session || session->kernel_session);
-		output = session->ust_session ?
-					 session->ust_session->consumer :
-					 session->kernel_session->consumer;
+		output = session->ust_session ? session->ust_session->consumer :
+						session->kernel_session->consumer;
 	}
 
 	is_local_trace = output->type == CONSUMER_DST_LOCAL;
-	base_path = session_base_path_override ? :
-			consumer_output_get_base_path(output);
+	base_path = session_base_path_override ?: consumer_output_get_base_path(output);
 
 	if (chunk_creation_ts == (time_t) -1) {
 		PERROR("Failed to sample time while creation session \"%s\" trace chunk",
-				session->name);
+		       session->name);
 		goto error;
 	}
 
-	next_chunk_id = session->most_recent_chunk_id.is_set ?
-			session->most_recent_chunk_id.value + 1 : 0;
+	next_chunk_id =
+		session->most_recent_chunk_id.is_set ? session->most_recent_chunk_id.value + 1 : 0;
 
 	if (session->current_trace_chunk &&
-			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+	    !lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
 		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
-					DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
+							     DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			goto error;
 		}
@@ -676,15 +661,13 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 		new_path = DEFAULT_CHUNK_TMP_NEW_DIRECTORY;
 	}
 
-	trace_chunk = lttng_trace_chunk_create(next_chunk_id,
-			chunk_creation_ts, new_path);
+	trace_chunk = lttng_trace_chunk_create(next_chunk_id, chunk_creation_ts, new_path);
 	if (!trace_chunk) {
 		goto error;
 	}
 
 	if (chunk_name_override) {
-		chunk_status = lttng_trace_chunk_override_name(trace_chunk,
-				chunk_name_override);
+		chunk_status = lttng_trace_chunk_override_name(trace_chunk, chunk_name_override);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			goto error;
 		}
@@ -698,16 +681,13 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 		goto end;
 	}
 
-	chunk_status = lttng_trace_chunk_set_credentials(trace_chunk,
-			&session_credentials);
+	chunk_status = lttng_trace_chunk_set_credentials(trace_chunk, &session_credentials);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto error;
 	}
 
-	DBG("Creating base output directory of session \"%s\" at %s",
-			session->name, base_path);
-	ret = utils_mkdir_recursive(base_path, S_IRWXU | S_IRWXG,
-			session->uid, session->gid);
+	DBG("Creating base output directory of session \"%s\" at %s", session->name, base_path);
+	ret = utils_mkdir_recursive(base_path, S_IRWXU | S_IRWXG, session->uid, session->gid);
 	if (ret) {
 		goto error;
 	}
@@ -715,8 +695,7 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	if (!session_output_directory) {
 		goto error;
 	}
-	chunk_status = lttng_trace_chunk_set_as_owner(trace_chunk,
-			session_output_directory);
+	chunk_status = lttng_trace_chunk_set_as_owner(trace_chunk, session_output_directory);
 	lttng_directory_handle_put(session_output_directory);
 	session_output_directory = NULL;
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -732,9 +711,9 @@ error:
 }
 
 int session_close_trace_chunk(struct ltt_session *session,
-		struct lttng_trace_chunk *trace_chunk,
-		enum lttng_trace_chunk_command_type close_command,
-		char *closed_trace_chunk_path)
+			      struct lttng_trace_chunk *trace_chunk,
+			      enum lttng_trace_chunk_command_type close_command,
+			      char *closed_trace_chunk_path)
 {
 	int ret = 0;
 	bool error_occurred = false;
@@ -744,8 +723,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 	const time_t chunk_close_timestamp = time(NULL);
 	const char *new_path;
 
-	chunk_status = lttng_trace_chunk_set_close_command(
-			trace_chunk, close_command);
+	chunk_status = lttng_trace_chunk_set_close_command(trace_chunk, close_command);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -753,7 +731,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 
 	if (chunk_close_timestamp == (time_t) -1) {
 		ERR("Failed to sample the close timestamp of the current trace chunk of session \"%s\"",
-				session->name);
+		    session->name);
 		ret = -1;
 		goto end;
 	}
@@ -766,17 +744,17 @@ int session_close_trace_chunk(struct ltt_session *session,
 		new_path = NULL;
 	}
 	if (session->current_trace_chunk &&
-			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+	    !lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
 		/* Rename new chunk path. */
-		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
-					new_path);
+		chunk_status =
+			lttng_trace_chunk_rename_path(session->current_trace_chunk, new_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 	}
 	if (!lttng_trace_chunk_get_name_overridden(trace_chunk) &&
-			close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION) {
+	    close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION) {
 		const char *old_path;
 
 		if (!session->rotated) {
@@ -785,8 +763,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 			old_path = NULL;
 		}
 		/* We need to move back the .tmp_old_chunk to its rightful place. */
-		chunk_status = lttng_trace_chunk_rename_path(trace_chunk,
-					old_path);
+		chunk_status = lttng_trace_chunk_rename_path(trace_chunk, old_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
 			goto end;
@@ -795,27 +772,25 @@ int session_close_trace_chunk(struct ltt_session *session,
 	if (close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED) {
 		session->rotated = true;
 	}
-	chunk_status = lttng_trace_chunk_set_close_timestamp(trace_chunk,
-			chunk_close_timestamp);
+	chunk_status = lttng_trace_chunk_set_close_timestamp(trace_chunk, chunk_close_timestamp);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to set the close timestamp of the current trace chunk of session \"%s\"",
-				session->name);
+		    session->name);
 		ret = -1;
 		goto end;
 	}
 
 	if (session->ust_session) {
-		const uint64_t relayd_id =
-				session->ust_session->consumer->net_seq_index;
+		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
 
-		cds_lfht_for_each_entry(
-				session->ust_session->consumer->socks->ht,
-				&iter, socket, node.node) {
+		cds_lfht_for_each_entry (
+			session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
-					relayd_id,
-					session->id,
-					trace_chunk, closed_trace_chunk_path);
+							 relayd_id,
+							 session->id,
+							 trace_chunk,
+							 closed_trace_chunk_path);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				ERR("Failed to close trace chunk on user space consumer");
@@ -824,17 +799,16 @@ int session_close_trace_chunk(struct ltt_session *session,
 		}
 	}
 	if (session->kernel_session) {
-		const uint64_t relayd_id =
-				session->kernel_session->consumer->net_seq_index;
+		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
 
-		cds_lfht_for_each_entry(
-				session->kernel_session->consumer->socks->ht,
-				&iter, socket, node.node) {
+		cds_lfht_for_each_entry (
+			session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
-					relayd_id,
-					session->id,
-					trace_chunk, closed_trace_chunk_path);
+							 relayd_id,
+							 session->id,
+							 trace_chunk,
+							 closed_trace_chunk_path);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				ERR("Failed to close trace chunk on kernel consumer");
@@ -863,8 +837,7 @@ end:
  * daemon as the same "offset" in a metadata stream will no longer point
  * to the same content.
  */
-static
-enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
+static enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	struct consumer_socket *socket;
@@ -878,13 +851,14 @@ enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
 	node = cds_lfht_iter_get_node(&iter.iter);
 	socket = caa_container_of(node, typeof(*socket), node.node);
 
-	cds_list_for_each_entry(chan,
-			&session->kernel_session->channel_list.head, list) {
+	cds_list_for_each_entry (chan, &session->kernel_session->channel_list.head, list) {
 		int open_ret;
 
 		DBG("Open packet of kernel channel: channel key = %" PRIu64
-				", session name = %s, session_id = %" PRIu64,
-				chan->key, session->name, session->id);
+		    ", session name = %s, session_id = %" PRIu64,
+		    chan->key,
+		    session->name,
+		    session->id);
 
 		open_ret = consumer_open_channel_packets(socket, chan->key);
 		if (open_ret < 0) {
@@ -904,7 +878,8 @@ enum lttng_error_code session_open_packets(struct ltt_session *session)
 	enum lttng_error_code ret = LTTNG_OK;
 
 	DBG("Opening packets of session channels: session name = %s, session id = %" PRIu64,
-			session->name, session->id);
+	    session->name,
+	    session->id);
 
 	if (session->ust_session) {
 		ret = ust_app_open_packets(session);
@@ -930,25 +905,23 @@ end:
  * Must be called with the session lock held.
  */
 int session_set_trace_chunk(struct ltt_session *session,
-		struct lttng_trace_chunk *new_trace_chunk,
-		struct lttng_trace_chunk **current_trace_chunk)
+			    struct lttng_trace_chunk *new_trace_chunk,
+			    struct lttng_trace_chunk **current_trace_chunk)
 {
 	ASSERT_LOCKED(session->lock);
-	return _session_set_trace_chunk_no_lock_check(session, new_trace_chunk,
-			current_trace_chunk);
+	return _session_set_trace_chunk_no_lock_check(
+		session, new_trace_chunk, current_trace_chunk);
 }
 
-static
-void session_notify_destruction(const struct ltt_session *session)
+static void session_notify_destruction(const struct ltt_session *session)
 {
 	size_t i;
-	const size_t count = lttng_dynamic_array_get_count(
-			&session->destroy_notifiers);
+	const size_t count = lttng_dynamic_array_get_count(&session->destroy_notifiers);
 
 	for (i = 0; i < count; i++) {
 		const struct ltt_session_destroy_notifier_element *element =
 			(ltt_session_destroy_notifier_element *) lttng_dynamic_array_get_element(
-					&session->destroy_notifiers, i);
+				&session->destroy_notifiers, i);
 
 		element->notifier(session, element->user_data);
 	}
@@ -960,21 +933,19 @@ void session_notify_destruction(const struct ltt_session *session)
 void session_notify_clear(struct ltt_session *session)
 {
 	size_t i;
-	const size_t count = lttng_dynamic_array_get_count(
-			&session->clear_notifiers);
+	const size_t count = lttng_dynamic_array_get_count(&session->clear_notifiers);
 
 	for (i = 0; i < count; i++) {
 		const struct ltt_session_clear_notifier_element *element =
 			(ltt_session_clear_notifier_element *) lttng_dynamic_array_get_element(
-					&session->clear_notifiers, i);
+				&session->clear_notifiers, i);
 
 		element->notifier(session, element->user_data);
 	}
 	lttng_dynamic_array_clear(&session->clear_notifiers);
 }
 
-static
-void session_release(struct urcu_ref *ref)
+static void session_release(struct urcu_ref *ref)
 {
 	int ret;
 	struct ltt_ust_session *usess;
@@ -1110,27 +1081,23 @@ void session_destroy(struct ltt_session *session)
 }
 
 int session_add_destroy_notifier(struct ltt_session *session,
-		ltt_session_destroy_notifier notifier, void *user_data)
+				 ltt_session_destroy_notifier notifier,
+				 void *user_data)
 {
-	const struct ltt_session_destroy_notifier_element element = {
-		.notifier = notifier,
-		.user_data = user_data
-	};
+	const struct ltt_session_destroy_notifier_element element = { .notifier = notifier,
+								      .user_data = user_data };
 
-	return lttng_dynamic_array_add_element(&session->destroy_notifiers,
-			&element);
+	return lttng_dynamic_array_add_element(&session->destroy_notifiers, &element);
 }
 
 int session_add_clear_notifier(struct ltt_session *session,
-		ltt_session_clear_notifier notifier, void *user_data)
+			       ltt_session_clear_notifier notifier,
+			       void *user_data)
 {
-	const struct ltt_session_clear_notifier_element element = {
-		.notifier = notifier,
-		.user_data = user_data
-	};
+	const struct ltt_session_clear_notifier_element element = { .notifier = notifier,
+								    .user_data = user_data };
 
-	return lttng_dynamic_array_add_element(&session->clear_notifiers,
-			&element);
+	return lttng_dynamic_array_add_element(&session->clear_notifiers, &element);
 }
 
 /*
@@ -1148,9 +1115,8 @@ struct ltt_session *session_find_by_name(const char *name)
 
 	DBG2("Trying to find session by name %s", name);
 
-	cds_list_for_each_entry(iter, &the_session_list.head, list) {
-		if (!strncmp(iter->name, name, NAME_MAX) &&
-				!iter->destroyed) {
+	cds_list_for_each_entry (iter, &the_session_list.head, list) {
+		if (!strncmp(iter->name, name, NAME_MAX) && !iter->destroyed) {
 			goto found;
 		}
 	}
@@ -1197,8 +1163,8 @@ end:
  * Create a new session and add it to the session list.
  * Session list lock must be held by the caller.
  */
-enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
-		struct ltt_session **out_session)
+enum lttng_error_code
+session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_session)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -1223,11 +1189,11 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 	}
 
 	lttng_dynamic_array_init(&new_session->destroy_notifiers,
-			sizeof(struct ltt_session_destroy_notifier_element),
-			NULL);
+				 sizeof(struct ltt_session_destroy_notifier_element),
+				 NULL);
 	lttng_dynamic_array_init(&new_session->clear_notifiers,
-			sizeof(struct ltt_session_clear_notifier_element),
-			NULL);
+				 sizeof(struct ltt_session_clear_notifier_element),
+				 NULL);
 	urcu_ref_init(&new_session->ref);
 	pthread_mutex_init(&new_session->lock, NULL);
 
@@ -1273,16 +1239,17 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 
 			if (i == 0) {
 				ret = snprintf(new_session->name,
-						sizeof(new_session->name),
-						"%s-%s",
-						DEFAULT_SESSION_NAME,
-						datetime);
+					       sizeof(new_session->name),
+					       "%s-%s",
+					       DEFAULT_SESSION_NAME,
+					       datetime);
 			} else {
 				ret = snprintf(new_session->name,
-						sizeof(new_session->name),
-						"%s%d-%s",
-						DEFAULT_SESSION_NAME, i,
-						datetime);
+					       sizeof(new_session->name),
+					       "%s%d-%s",
+					       DEFAULT_SESSION_NAME,
+					       i,
+					       datetime);
 			}
 			new_session->name_contains_creation_time = true;
 			if (ret == -1 || ret >= sizeof(new_session->name)) {
@@ -1295,8 +1262,7 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 				goto error;
 			}
 
-			clashing_session =
-					session_find_by_name(new_session->name);
+			clashing_session = session_find_by_name(new_session->name);
 			session_put(clashing_session);
 			if (!clashing_session) {
 				found_name = true;
@@ -1318,7 +1284,7 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 		if (errno == ENAMETOOLONG) {
 			new_session->hostname[sizeof(new_session->hostname) - 1] = '\0';
 			ERR("Hostname exceeds the maximal permitted length and has been truncated to %s",
-					new_session->hostname);
+			    new_session->hostname);
 		} else {
 			ret_code = LTTNG_ERR_SESSION_FAIL;
 			goto error;
@@ -1353,8 +1319,10 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 	 * set it up and, if valid, assign it to the session.
 	 */
 	DBG("Tracing session %s created with ID %" PRIu64 " by uid = %d, gid = %d",
-			new_session->name, new_session->id, new_session->uid,
-			new_session->gid);
+	    new_session->name,
+	    new_session->id,
+	    new_session->uid,
+	    new_session->gid);
 	ret_code = LTTNG_OK;
 end:
 	if (new_session) {
@@ -1393,8 +1361,7 @@ bool session_access_ok(struct ltt_session *session, uid_t uid)
  *
  * Must be called with the session and session_list locks held.
  */
-int session_reset_rotation_state(struct ltt_session *session,
-		enum lttng_rotation_state result)
+int session_reset_rotation_state(struct ltt_session *session, enum lttng_rotation_state result)
 {
 	int ret = 0;
 
@@ -1409,12 +1376,9 @@ int session_reset_rotation_state(struct ltt_session *session,
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
 
-		chunk_status = lttng_trace_chunk_get_id(
-				session->chunk_being_archived,
-				&chunk_id);
+		chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived, &chunk_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id,
-				chunk_id);
+		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id, chunk_id);
 		lttng_trace_chunk_put(session->chunk_being_archived);
 		session->chunk_being_archived = NULL;
 		/*
@@ -1498,5 +1462,5 @@ ltt_session::sptr ls::find_session_by_id(ltt_session::id_t id)
 		return nullptr;
 	}
 
-	return {session, session_put};
+	return { session, session_put };
 }

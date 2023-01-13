@@ -6,23 +6,27 @@
  */
 
 #define _LGPL_SOURCE
-#include <arpa/inet.h>
-#include <common/compat/netdb.hpp>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
+#include "uri.hpp"
 
 #include <common/common.hpp>
+#include <common/compat/netdb.hpp>
 #include <common/defaults.hpp>
 #include <common/utils.hpp>
 
-#include "uri.hpp"
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 
 #define LOOPBACK_ADDR_IPV4 "127.0.0.1"
 #define LOOPBACK_ADDR_IPV6 "::1"
 
 enum uri_proto_code {
-	P_NET, P_NET6, P_FILE, P_TCP, P_TCP6,
+	P_NET,
+	P_NET6,
+	P_FILE,
+	P_TCP,
+	P_TCP6,
 };
 
 namespace {
@@ -35,17 +39,43 @@ struct uri_proto {
 };
 
 /* Supported protocols */
-const struct uri_proto proto_uri[] = {
-	{ .name = "file", .leading_string = "file://", .code = P_FILE, .type = LTTNG_PROTO_TYPE_NONE, .dtype = LTTNG_DST_PATH },
-	{ .name = "net", .leading_string = "net://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "net4", .leading_string = "net4://", .code = P_NET, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "net6", .leading_string = "net6://", .code = P_NET6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
-	{ .name = "tcp", .leading_string = "tcp://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "tcp4", .leading_string = "tcp4://", .code = P_TCP, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV4 },
-	{ .name = "tcp6", .leading_string = "tcp6://", .code = P_TCP6, .type = LTTNG_TCP, .dtype = LTTNG_DST_IPV6 },
-	/* Invalid proto marking the end of the array. */
-	{}
-};
+const struct uri_proto proto_uri[] = { { .name = "file",
+					 .leading_string = "file://",
+					 .code = P_FILE,
+					 .type = LTTNG_PROTO_TYPE_NONE,
+					 .dtype = LTTNG_DST_PATH },
+				       { .name = "net",
+					 .leading_string = "net://",
+					 .code = P_NET,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV4 },
+				       { .name = "net4",
+					 .leading_string = "net4://",
+					 .code = P_NET,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV4 },
+				       { .name = "net6",
+					 .leading_string = "net6://",
+					 .code = P_NET6,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV6 },
+				       { .name = "tcp",
+					 .leading_string = "tcp://",
+					 .code = P_TCP,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV4 },
+				       { .name = "tcp4",
+					 .leading_string = "tcp4://",
+					 .code = P_TCP,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV4 },
+				       { .name = "tcp6",
+					 .leading_string = "tcp6://",
+					 .code = P_TCP6,
+					 .type = LTTNG_TCP,
+					 .dtype = LTTNG_DST_IPV6 },
+				       /* Invalid proto marking the end of the array. */
+				       {} };
 } /* namespace */
 
 /*
@@ -74,10 +104,10 @@ static const struct uri_proto *get_uri_proto(const char *uri_str)
 		goto end;
 	}
 
-	for (supported = &proto_uri[0];
-			supported->leading_string != NULL; ++supported) {
-		if (strncasecmp(uri_str, supported->leading_string,
-					strlen(supported->leading_string)) == 0) {
+	for (supported = &proto_uri[0]; supported->leading_string != NULL; ++supported) {
+		if (strncasecmp(uri_str,
+				supported->leading_string,
+				strlen(supported->leading_string)) == 0) {
 			goto end;
 		}
 	}
@@ -115,8 +145,7 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 				PERROR("inet_ntop");
 				goto error;
 			}
-		} else if (!strcmp(addr, "localhost") &&
-				(af == AF_INET || af == AF_INET6)) {
+		} else if (!strcmp(addr, "localhost") && (af == AF_INET || af == AF_INET6)) {
 			/*
 			 * Some systems may not have "localhost" defined in
 			 * accordance with IETF RFC 6761. According to this RFC,
@@ -130,11 +159,11 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 			 * done to accommodates systems which may want to start
 			 * tracing before their network configured.
 			 */
-			const char *loopback_addr = af == AF_INET ?
-					LOOPBACK_ADDR_IPV4 : LOOPBACK_ADDR_IPV6;
+			const char *loopback_addr = af == AF_INET ? LOOPBACK_ADDR_IPV4 :
+								    LOOPBACK_ADDR_IPV6;
 			const size_t loopback_addr_len = af == AF_INET ?
-					sizeof(LOOPBACK_ADDR_IPV4) :
-					sizeof(LOOPBACK_ADDR_IPV6);
+				sizeof(LOOPBACK_ADDR_IPV4) :
+				sizeof(LOOPBACK_ADDR_IPV6);
 
 			DBG2("Could not resolve localhost address, using fallback");
 			if (loopback_addr_len > size) {
@@ -165,13 +194,12 @@ error:
  * Set default URI attribute which is basically the given stream type and the
  * default port if none is set in the URI.
  */
-static void set_default_uri_attr(struct lttng_uri *uri,
-		enum lttng_stream_type stype)
+static void set_default_uri_attr(struct lttng_uri *uri, enum lttng_stream_type stype)
 {
 	uri->stype = stype;
 	if (uri->dtype != LTTNG_DST_PATH && uri->port == 0) {
-		uri->port = (stype == LTTNG_STREAM_CONTROL) ?
-			DEFAULT_NETWORK_CONTROL_PORT : DEFAULT_NETWORK_DATA_PORT;
+		uri->port = (stype == LTTNG_STREAM_CONTROL) ? DEFAULT_NETWORK_CONTROL_PORT :
+							      DEFAULT_NETWORK_DATA_PORT;
 	}
 }
 
@@ -221,14 +249,20 @@ int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size)
 		(void) snprintf(port, sizeof(port), "%s", "");
 	} else {
 		ipver = (uri->dtype == LTTNG_DST_IPV4) ? 4 : 6;
-		addr = (ipver == 4) ?  uri->dst.ipv4 : uri->dst.ipv6;
+		addr = (ipver == 4) ? uri->dst.ipv4 : uri->dst.ipv6;
 		(void) snprintf(proto, sizeof(proto), "tcp%d", ipver);
 		(void) snprintf(port, sizeof(port), ":%d", uri->port);
 	}
 
-	ret = snprintf(dst, size, "%s://%s%s%s%s/%s", proto,
-			(ipver == 6) ? "[" : "", addr, (ipver == 6) ? "]" : "",
-			port, uri->subdir);
+	ret = snprintf(dst,
+		       size,
+		       "%s://%s%s%s%s/%s",
+		       proto,
+		       (ipver == 6) ? "[" : "",
+		       addr,
+		       (ipver == 6) ? "]" : "",
+		       port,
+		       uri->subdir);
 	if (ret < 0) {
 		PERROR("snprintf uri to url");
 	}
@@ -394,8 +428,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		 * Maximum of two ports is possible if P_NET/NET6. Bigger than that,
 		 * two much stuff.
 		 */
-		if ((i == 2 && (proto->code != P_NET && proto->code != P_NET6))
-				|| i > 2) {
+		if ((i == 2 && (proto->code != P_NET && proto->code != P_NET6)) || i > 2) {
 			break;
 		}
 
@@ -460,8 +493,8 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 
 	switch (proto->code) {
 	case P_NET:
-		ret = set_ip_address(addr_f, AF_INET, tmp_uris[0].dst.ipv4,
-				sizeof(tmp_uris[0].dst.ipv4));
+		ret = set_ip_address(
+			addr_f, AF_INET, tmp_uris[0].dst.ipv4, sizeof(tmp_uris[0].dst.ipv4));
 		if (ret < 0) {
 			goto free_error;
 		}
@@ -473,8 +506,8 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		tmp_uris[1].port = data_port;
 		break;
 	case P_NET6:
-		ret = set_ip_address(addr_f, AF_INET6, tmp_uris[0].dst.ipv6,
-				sizeof(tmp_uris[0].dst.ipv6));
+		ret = set_ip_address(
+			addr_f, AF_INET6, tmp_uris[0].dst.ipv6, sizeof(tmp_uris[0].dst.ipv6));
 		if (ret < 0) {
 			goto free_error;
 		}
@@ -486,15 +519,15 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 		tmp_uris[1].port = data_port;
 		break;
 	case P_TCP:
-		ret = set_ip_address(addr_f, AF_INET, tmp_uris[0].dst.ipv4,
-				sizeof(tmp_uris[0].dst.ipv4));
+		ret = set_ip_address(
+			addr_f, AF_INET, tmp_uris[0].dst.ipv4, sizeof(tmp_uris[0].dst.ipv4));
 		if (ret < 0) {
 			goto free_error;
 		}
 		break;
 	case P_TCP6:
-		ret = set_ip_address(addr_f, AF_INET6, tmp_uris[0].dst.ipv6,
-				sizeof(tmp_uris[0].dst.ipv6));
+		ret = set_ip_address(
+			addr_f, AF_INET6, tmp_uris[0].dst.ipv6, sizeof(tmp_uris[0].dst.ipv6));
 		if (ret < 0) {
 			goto free_error;
 		}
@@ -505,8 +538,12 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 
 end:
 	DBG3("URI dtype: %d, proto: %d, host: %s, subdir: %s, ctrl: %d, data: %d",
-			proto->dtype, proto->type, (addr_f == NULL) ? "" : addr_f,
-			(subdir_b == NULL) ? "" : subdir_b, ctrl_port, data_port);
+	     proto->dtype,
+	     proto->type,
+	     (addr_f == NULL) ? "" : addr_f,
+	     (subdir_b == NULL) ? "" : subdir_b,
+	     ctrl_port,
+	     data_port);
 
 	free(addr_f);
 
@@ -525,8 +562,7 @@ error:
  * Parse a string URL and creates URI(s) returning the size of the populated
  * array.
  */
-ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
-		struct lttng_uri **uris)
+ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lttng_uri **uris)
 {
 	unsigned int equal = 1, idx = 0;
 	/* Add the "file://" size to the URL maximum size */
@@ -561,7 +597,6 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		} else if (ret >= sizeof(url)) {
 			PERROR("snprintf file url is too long");
 			goto parse_error;
-
 		}
 		ctrl_url = url;
 	}
@@ -580,8 +615,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		/* At this point, we know there is at least one URI in the array */
 		set_default_uri_attr(&ctrl_uris[0], LTTNG_STREAM_CONTROL);
 
-		if (ctrl_uris[0].dtype == LTTNG_DST_PATH &&
-				(data_url && *data_url != '\0')) {
+		if (ctrl_uris[0].dtype == LTTNG_DST_PATH && (data_url && *data_url != '\0')) {
 			ERR("Cannot have a data URL when destination is file://");
 			goto error;
 		}
@@ -590,7 +624,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		if (ctrl_uri_count == 2) {
 			if (!equal) {
 				ERR("Control URL uses the net:// protocol and the data URL is "
-						"different. Not allowed.");
+				    "different. Not allowed.");
 				goto error;
 			} else {
 				set_default_uri_attr(&ctrl_uris[1], LTTNG_STREAM_DATA);

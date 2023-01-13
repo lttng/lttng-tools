@@ -7,22 +7,22 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdlib.h>
-#include <stdbool.h>
+#include "poll.hpp"
 
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/utils.hpp>
 
-#include "poll.hpp"
+#include <stdbool.h>
+#include <stdlib.h>
 
 #ifdef HAVE_EPOLL
 
 #include <fcntl.h>
 #include <limits.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /*
@@ -42,8 +42,7 @@ static unsigned int poll_max_size;
  *
  * Return 0 on success or else -1 with the current events pointer untouched.
  */
-static int resize_poll_event(struct lttng_poll_event *events,
-		uint32_t new_size)
+static int resize_poll_event(struct lttng_poll_event *events, uint32_t new_size)
 {
 	struct epoll_event *ptr;
 
@@ -56,8 +55,7 @@ static int resize_poll_event(struct lttng_poll_event *events,
 	}
 	if (new_size > events->alloc_size) {
 		/* Zero newly allocated memory */
-		memset(ptr + events->alloc_size, 0,
-			(new_size - events->alloc_size) * sizeof(*ptr));
+		memset(ptr + events->alloc_size, 0, (new_size - events->alloc_size) * sizeof(*ptr));
 	}
 	events->events = ptr;
 	events->alloc_size = new_size;
@@ -245,8 +243,7 @@ error:
 /*
  * Wait on epoll set. This is a blocking call of timeout value.
  */
-int compat_epoll_wait(struct lttng_poll_event *events, int timeout,
-		bool interruptible)
+int compat_epoll_wait(struct lttng_poll_event *events, int timeout, bool interruptible)
 {
 	int ret;
 	uint32_t new_size;
@@ -362,8 +359,7 @@ static unsigned int poll_max_size;
  *
  * Return 0 on success or else -1 with the current events pointer untouched.
  */
-static int resize_poll_event(struct compat_poll_event_array *array,
-		uint32_t new_size)
+static int resize_poll_event(struct compat_poll_event_array *array, uint32_t new_size)
 {
 	struct pollfd *ptr;
 
@@ -381,8 +377,7 @@ static int resize_poll_event(struct compat_poll_event_array *array,
 	}
 	if (new_size > array->alloc_size) {
 		/* Zero newly allocated memory */
-		memset(ptr + array->alloc_size, 0,
-			(new_size - array->alloc_size) * sizeof(*ptr));
+		memset(ptr + array->alloc_size, 0, (new_size - array->alloc_size) * sizeof(*ptr));
 	}
 	array->events = ptr;
 	array->alloc_size = new_size;
@@ -413,8 +408,7 @@ static int update_current_events(struct lttng_poll_event *events)
 			goto error;
 		}
 	}
-	memcpy(wait->events, current->events,
-			current->nb_fd * sizeof(*current->events));
+	memcpy(wait->events, current->events, current->nb_fd * sizeof(*current->events));
 
 	/* Update is done. */
 	events->need_update = 0;
@@ -480,8 +474,7 @@ error:
 /*
  * Add fd to pollfd data structure with requested events.
  */
-int compat_poll_add(struct lttng_poll_event *events, int fd,
-		uint32_t req_events)
+int compat_poll_add(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int new_size, ret, i;
 	struct compat_poll_event_array *current;
@@ -526,14 +519,13 @@ error:
 /*
  * Modify an fd's events..
  */
-int compat_poll_mod(struct lttng_poll_event *events, int fd,
-		uint32_t req_events)
+int compat_poll_mod(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int i;
 	struct compat_poll_event_array *current;
 
-	if (events == NULL || events->current.nb_fd == 0 ||
-			events->current.events == NULL || fd < 0) {
+	if (events == NULL || events->current.nb_fd == 0 || events->current.events == NULL ||
+	    fd < 0) {
 		ERR("Bad compat poll mod arguments");
 		goto error;
 	}
@@ -568,8 +560,8 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 	uint32_t new_size;
 	struct compat_poll_event_array *current;
 
-	if (events == NULL || events->current.nb_fd == 0 ||
-			events->current.events == NULL || fd < 0) {
+	if (events == NULL || events->current.nb_fd == 0 || events->current.events == NULL ||
+	    fd < 0) {
 		goto error;
 	}
 
@@ -596,8 +588,8 @@ int compat_poll_del(struct lttng_poll_event *events, int fd)
 
 	/* Resize array if needed. */
 	new_size = 1U << utils_get_count_order_u32(current->nb_fd);
-	if (new_size != current->alloc_size && new_size >= current->init_size
-			&& current->nb_fd != 0) {
+	if (new_size != current->alloc_size && new_size >= current->init_size &&
+	    current->nb_fd != 0) {
 		ret = resize_poll_event(current, new_size);
 		if (ret < 0) {
 			goto error;
@@ -616,8 +608,7 @@ error:
 /*
  * Wait on poll() with timeout. Blocking call.
  */
-int compat_poll_wait(struct lttng_poll_event *events, int timeout,
-		bool interruptible)
+int compat_poll_wait(struct lttng_poll_event *events, int timeout, bool interruptible)
 {
 	int ret, active_fd_count;
 	size_t pos = 0, consecutive_entries = 0, non_idle_pos;
@@ -675,7 +666,8 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 		non_idle_pos = pos;
 
 		/* Look for next non-idle entry. */
-		while (events->wait.events[++non_idle_pos].revents == 0);
+		while (events->wait.events[++non_idle_pos].revents == 0)
+			;
 
 		/* Swap idle and non-idle entries. */
 		idle_entry = *current;

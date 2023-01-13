@@ -6,22 +6,22 @@
  */
 
 #define _LGPL_SOURCE
-#include <string.h>
+#include "lttng-ctl-helper.hpp"
 
 #include <common/sessiond-comm/sessiond-comm.hpp>
-#include <lttng/lttng-error.h>
-#include <lttng/snapshot.h>
-#include <lttng/snapshot-internal.hpp>
 
-#include "lttng-ctl-helper.hpp"
+#include <lttng/lttng-error.h>
+#include <lttng/snapshot-internal.hpp>
+#include <lttng/snapshot.h>
+
+#include <string.h>
 
 /*
  * Add an output object to a session identified by name.
  *
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
-int lttng_snapshot_add_output(const char *session_name,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_add_output(const char *session_name, struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -35,15 +35,13 @@ int lttng_snapshot_add_output(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_ADD_OUTPUT;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	memcpy(&lsm.u.snapshot_output.output, output,
-			sizeof(lsm.u.snapshot_output.output));
+	memcpy(&lsm.u.snapshot_output.output, output, sizeof(lsm.u.snapshot_output.output));
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &reply);
 	if (ret < 0) {
@@ -62,8 +60,7 @@ end:
  *
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
-int lttng_snapshot_del_output(const char *session_name,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_del_output(const char *session_name, struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -76,15 +73,13 @@ int lttng_snapshot_del_output(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	memcpy(&lsm.u.snapshot_output.output, output,
-			sizeof(lsm.u.snapshot_output.output));
+	memcpy(&lsm.u.snapshot_output.output, output, sizeof(lsm.u.snapshot_output.output));
 
 	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 end:
@@ -98,8 +93,7 @@ end:
  * Return 0 on success or else a negative LTTNG_ERR code and the list pointer
  * is untouched.
  */
-int lttng_snapshot_list_output(const char *session_name,
-		struct lttng_snapshot_output_list **list)
+int lttng_snapshot_list_output(const char *session_name, struct lttng_snapshot_output_list **list)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -113,8 +107,7 @@ int lttng_snapshot_list_output(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -148,8 +141,8 @@ error:
  * Return the next object on success or else NULL indicating the end of the
  * list.
  */
-struct lttng_snapshot_output *lttng_snapshot_output_list_get_next(
-		struct lttng_snapshot_output_list *list)
+struct lttng_snapshot_output *
+lttng_snapshot_output_list_get_next(struct lttng_snapshot_output_list *list)
 {
 	struct lttng_snapshot_output *output = NULL;
 
@@ -196,8 +189,8 @@ void lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list)
  * Return 0 on success or else a negative LTTNG_ERR value.
  */
 int lttng_snapshot_record(const char *session_name,
-		struct lttng_snapshot_output *output,
-		int wait __attribute__((unused)))
+			  struct lttng_snapshot_output *output,
+			  int wait __attribute__((unused)))
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -210,8 +203,7 @@ int lttng_snapshot_record(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -223,8 +215,7 @@ int lttng_snapshot_record(const char *session_name,
 	 * record.
 	 */
 	if (output) {
-		memcpy(&lsm.u.snapshot_record.output, output,
-				sizeof(lsm.u.snapshot_record.output));
+		memcpy(&lsm.u.snapshot_record.output, output, sizeof(lsm.u.snapshot_record.output));
 	}
 
 	/* The wait param is ignored. */
@@ -270,8 +261,7 @@ uint32_t lttng_snapshot_output_get_id(const struct lttng_snapshot_output *output
 	return output->id;
 }
 
-const char *lttng_snapshot_output_get_name(
-		const struct lttng_snapshot_output *output)
+const char *lttng_snapshot_output_get_name(const struct lttng_snapshot_output *output)
 {
 	return output->name;
 }
@@ -286,8 +276,7 @@ const char *lttng_snapshot_output_get_ctrl_url(const struct lttng_snapshot_outpu
 	return output->ctrl_url;
 }
 
-uint64_t lttng_snapshot_output_get_maxsize(
-		const struct lttng_snapshot_output *output)
+uint64_t lttng_snapshot_output_get_maxsize(const struct lttng_snapshot_output *output)
 {
 	return output->max_size;
 }
@@ -296,8 +285,7 @@ uint64_t lttng_snapshot_output_get_maxsize(
  * Setter family functions for snapshot output.
  */
 
-int lttng_snapshot_output_set_id(uint32_t id,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_id(uint32_t id, struct lttng_snapshot_output *output)
 {
 	if (!output || id == 0) {
 		return -LTTNG_ERR_INVALID;
@@ -307,8 +295,7 @@ int lttng_snapshot_output_set_id(uint32_t id,
 	return 0;
 }
 
-int lttng_snapshot_output_set_size(uint64_t size,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_size(uint64_t size, struct lttng_snapshot_output *output)
 {
 	if (!output) {
 		return -LTTNG_ERR_INVALID;
@@ -318,8 +305,7 @@ int lttng_snapshot_output_set_size(uint64_t size,
 	return 0;
 }
 
-int lttng_snapshot_output_set_name(const char *name,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_name(const char *name, struct lttng_snapshot_output *output)
 {
 	int ret;
 
@@ -338,8 +324,7 @@ end:
 	return ret;
 }
 
-int lttng_snapshot_output_set_ctrl_url(const char *url,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_ctrl_url(const char *url, struct lttng_snapshot_output *output)
 {
 	int ret;
 
@@ -358,8 +343,7 @@ end:
 	return ret;
 }
 
-int lttng_snapshot_output_set_data_url(const char *url,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_data_url(const char *url, struct lttng_snapshot_output *output)
 {
 	int ret;
 
@@ -378,8 +362,7 @@ end:
 	return ret;
 }
 
-int lttng_snapshot_output_set_local_path(const char *path,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_local_path(const char *path, struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct lttng_uri *uris = NULL;
@@ -412,8 +395,7 @@ end:
 	return ret;
 }
 
-int lttng_snapshot_output_set_network_url(const char *url,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_network_url(const char *url, struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct lttng_uri *uris = NULL;
@@ -430,14 +412,12 @@ int lttng_snapshot_output_set_network_url(const char *url,
 		goto end;
 	}
 
-	if (uris[0].dtype != LTTNG_DST_IPV4 &&
-			uris[0].dtype != LTTNG_DST_IPV6) {
+	if (uris[0].dtype != LTTNG_DST_IPV4 && uris[0].dtype != LTTNG_DST_IPV6) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (uris[1].dtype != LTTNG_DST_IPV4 &&
-			uris[1].dtype != LTTNG_DST_IPV6) {
+	if (uris[1].dtype != LTTNG_DST_IPV4 && uris[1].dtype != LTTNG_DST_IPV6) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -453,9 +433,9 @@ end:
 	return ret;
 }
 
-int lttng_snapshot_output_set_network_urls(
-		const char *ctrl_url, const char *data_url,
-		struct lttng_snapshot_output *output)
+int lttng_snapshot_output_set_network_urls(const char *ctrl_url,
+					   const char *data_url,
+					   struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct lttng_uri *uris = NULL;
@@ -472,14 +452,12 @@ int lttng_snapshot_output_set_network_urls(
 		goto end;
 	}
 
-	if (uris[0].dtype != LTTNG_DST_IPV4 &&
-			uris[0].dtype != LTTNG_DST_IPV6) {
+	if (uris[0].dtype != LTTNG_DST_IPV4 && uris[0].dtype != LTTNG_DST_IPV6) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (uris[1].dtype != LTTNG_DST_IPV4 &&
-			uris[1].dtype != LTTNG_DST_IPV6) {
+	if (uris[1].dtype != LTTNG_DST_IPV4 && uris[1].dtype != LTTNG_DST_IPV6) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}

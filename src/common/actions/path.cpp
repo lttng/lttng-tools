@@ -14,8 +14,7 @@ struct lttng_action_path_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-struct lttng_action_path *lttng_action_path_create(
-		const uint64_t *indexes, size_t index_count)
+struct lttng_action_path *lttng_action_path_create(const uint64_t *indexes, size_t index_count)
 {
 	int ret;
 	size_t i;
@@ -33,8 +32,7 @@ struct lttng_action_path *lttng_action_path_create(
 	lttng_dynamic_array_init(&path->indexes, sizeof(uint64_t), NULL);
 
 	for (i = 0; i < index_count; i++) {
-		ret = lttng_dynamic_array_add_element(
-				&path->indexes, &indexes[i]);
+		ret = lttng_dynamic_array_add_element(&path->indexes, &indexes[i]);
 		if (ret) {
 			goto error;
 		}
@@ -48,8 +46,8 @@ end:
 	return path;
 }
 
-enum lttng_action_path_status lttng_action_path_get_index_count(
-		const struct lttng_action_path *path, size_t *index_count)
+enum lttng_action_path_status
+lttng_action_path_get_index_count(const struct lttng_action_path *path, size_t *index_count)
 {
 	enum lttng_action_path_status status;
 
@@ -65,21 +63,17 @@ end:
 }
 
 enum lttng_action_path_status lttng_action_path_get_index_at_index(
-		const struct lttng_action_path *path,
-		size_t path_index,
-		uint64_t *out_index)
+	const struct lttng_action_path *path, size_t path_index, uint64_t *out_index)
 {
 	enum lttng_action_path_status status;
 
-	if (!path || !out_index ||
-			path_index >= lttng_dynamic_array_get_count(
-				&path->indexes)) {
+	if (!path || !out_index || path_index >= lttng_dynamic_array_get_count(&path->indexes)) {
 		status = LTTNG_ACTION_PATH_STATUS_INVALID;
 		goto end;
 	}
 
-	*out_index = *((typeof(out_index)) lttng_dynamic_array_get_element(
-			&path->indexes, path_index));
+	*out_index =
+		*((typeof(out_index)) lttng_dynamic_array_get_element(&path->indexes, path_index));
 	status = LTTNG_ACTION_PATH_STATUS_OK;
 end:
 	return status;
@@ -97,8 +91,7 @@ end:
 	return;
 }
 
-int lttng_action_path_copy(const struct lttng_action_path *src,
-		struct lttng_action_path **dst)
+int lttng_action_path_copy(const struct lttng_action_path *src, struct lttng_action_path **dst)
 {
 	int ret;
 	struct lttng_action_path *new_path;
@@ -107,9 +100,8 @@ int lttng_action_path_copy(const struct lttng_action_path *src,
 	LTTNG_ASSERT(dst);
 
 	new_path = lttng_action_path_create(
-			(uint64_t *) lttng_dynamic_array_get_element(
-				&src->indexes, 0), 
-			lttng_dynamic_array_get_count(&src->indexes));
+		(uint64_t *) lttng_dynamic_array_get_element(&src->indexes, 0),
+		lttng_dynamic_array_get_count(&src->indexes));
 	if (!new_path) {
 		ret = -1;
 	} else {
@@ -120,15 +112,14 @@ int lttng_action_path_copy(const struct lttng_action_path *src,
 	return ret;
 }
 
-ssize_t lttng_action_path_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_action_path **_action_path)
+ssize_t lttng_action_path_create_from_payload(struct lttng_payload_view *view,
+					      struct lttng_action_path **_action_path)
 {
 	ssize_t consumed_size = 0, ret = -1;
 	const struct lttng_action_path_comm *header;
 	struct lttng_action_path *action_path = NULL;
 	const struct lttng_payload_view header_view =
-			lttng_payload_view_from_view(view, 0, sizeof(*header));
+		lttng_payload_view_from_view(view, 0, sizeof(*header));
 
 	if (!lttng_payload_view_is_valid(&header_view)) {
 		goto end;
@@ -142,22 +133,17 @@ ssize_t lttng_action_path_create_from_payload(
 	 * single non-list action. Handle it differently since a payload view of
 	 * size 0 is considered invalid.
 	 */
-	if (header->index_count != 0)
-	{
-		const struct lttng_payload_view indexes_view =
-				lttng_payload_view_from_view(view,
-						consumed_size,
-						header->index_count *
-								sizeof(uint64_t));
+	if (header->index_count != 0) {
+		const struct lttng_payload_view indexes_view = lttng_payload_view_from_view(
+			view, consumed_size, header->index_count * sizeof(uint64_t));
 
 		if (!lttng_payload_view_is_valid(&indexes_view)) {
 			goto end;
 		}
 
 		consumed_size += indexes_view.buffer.size;
-		action_path = lttng_action_path_create(
-				(const uint64_t *) indexes_view.buffer.data,
-				header->index_count);
+		action_path = lttng_action_path_create((const uint64_t *) indexes_view.buffer.data,
+						       header->index_count);
 		if (!action_path) {
 			goto end;
 		}
@@ -175,7 +161,7 @@ end:
 }
 
 int lttng_action_path_serialize(const struct lttng_action_path *action_path,
-		struct lttng_payload *payload)
+				struct lttng_payload *payload)
 {
 	int ret;
 	size_t index_count, i;
@@ -189,22 +175,20 @@ int lttng_action_path_serialize(const struct lttng_action_path *action_path,
 	}
 
 	comm.index_count = (uint32_t) index_count;
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			&comm,
-			sizeof(struct lttng_action_path_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &comm, sizeof(struct lttng_action_path_comm));
 
 	for (i = 0; i < index_count; i++) {
 		uint64_t path_index;
 
-		status = lttng_action_path_get_index_at_index(
-				action_path, i, &path_index);
+		status = lttng_action_path_get_index_at_index(action_path, i, &path_index);
 		if (status != LTTNG_ACTION_PATH_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
-		ret = lttng_dynamic_buffer_append(&payload->buffer, &path_index,
-				sizeof(path_index));
+		ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &path_index, sizeof(path_index));
 		if (ret) {
 			goto end;
 		}

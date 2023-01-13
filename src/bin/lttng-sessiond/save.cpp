@@ -6,99 +6,95 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-#include <string.h>
-#include <urcu/uatomic.h>
-#include <unistd.h>
-
-#include <common/defaults.hpp>
-#include <common/error.hpp>
-#include <common/config/session-config.hpp>
-#include <common/utils.hpp>
-#include <common/runas.hpp>
-#include <lttng/save-internal.hpp>
-
+#include "agent.hpp"
 #include "kernel.hpp"
+#include "lttng-syscall.hpp"
 #include "save.hpp"
 #include "session.hpp"
-#include "lttng-syscall.hpp"
 #include "trace-ust.hpp"
-#include "agent.hpp"
+
+#include <common/config/session-config.hpp>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/runas.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/save-internal.hpp>
+
+#include <inttypes.h>
+#include <string.h>
+#include <unistd.h>
+#include <urcu/uatomic.h>
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_channel_attributes(struct config_writer *writer,
-	struct lttng_channel_attr *attr)
+static int save_kernel_channel_attributes(struct config_writer *writer,
+					  struct lttng_channel_attr *attr)
 {
 	int ret;
 
 	ret = config_writer_write_element_string(writer,
-		config_element_overwrite_mode,
-		attr->overwrite ? config_overwrite_mode_overwrite :
-			config_overwrite_mode_discard);
+						 config_element_overwrite_mode,
+						 attr->overwrite ? config_overwrite_mode_overwrite :
+								   config_overwrite_mode_discard);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_subbuf_size, attr->subbuf_size);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_subbuf_size, attr->subbuf_size);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_num_subbuf,
-		attr->num_subbuf);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_num_subbuf, attr->num_subbuf);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_switch_timer_interval,
-		attr->switch_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_switch_timer_interval, attr->switch_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_read_timer_interval,
-		attr->read_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_read_timer_interval, attr->read_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	ret = config_writer_write_element_string(writer,
-		config_element_output_type,
-		attr->output == LTTNG_EVENT_SPLICE ?
-		config_output_type_splice : config_output_type_mmap);
+						 config_element_output_type,
+						 attr->output == LTTNG_EVENT_SPLICE ?
+							 config_output_type_splice :
+							 config_output_type_mmap);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_tracefile_size, attr->tracefile_size);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_tracefile_size, attr->tracefile_size);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_tracefile_count,
-		attr->tracefile_count);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_tracefile_count, attr->tracefile_count);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_live_timer_interval,
-		attr->live_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_live_timer_interval, attr->live_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -108,17 +104,15 @@ int save_kernel_channel_attributes(struct config_writer *writer,
 		struct lttng_channel_extended *ext = NULL;
 
 		ext = (struct lttng_channel_extended *) attr->extended.ptr;
-		ret = config_writer_write_element_unsigned_int(writer,
-				config_element_monitor_timer_interval,
-				ext->monitor_timer_interval);
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_monitor_timer_interval, ext->monitor_timer_interval);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = config_writer_write_element_signed_int(writer,
-				config_element_blocking_timeout,
-				ext->blocking_timeout);
+		ret = config_writer_write_element_signed_int(
+			writer, config_element_blocking_timeout, ext->blocking_timeout);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -131,65 +125,61 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_channel_attributes(struct config_writer *writer,
-	struct lttng_ust_abi_channel_attr *attr)
+static int save_ust_channel_attributes(struct config_writer *writer,
+				       struct lttng_ust_abi_channel_attr *attr)
 {
 	int ret;
 	struct ltt_ust_channel *channel = NULL;
 
 	ret = config_writer_write_element_string(writer,
-		config_element_overwrite_mode,
-		attr->overwrite ? config_overwrite_mode_overwrite :
-			config_overwrite_mode_discard);
+						 config_element_overwrite_mode,
+						 attr->overwrite ? config_overwrite_mode_overwrite :
+								   config_overwrite_mode_discard);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_subbuf_size, attr->subbuf_size);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_subbuf_size, attr->subbuf_size);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_num_subbuf,
-		attr->num_subbuf);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_num_subbuf, attr->num_subbuf);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_switch_timer_interval,
-		attr->switch_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_switch_timer_interval, attr->switch_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_read_timer_interval,
-		attr->read_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_read_timer_interval, attr->read_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	ret = config_writer_write_element_string(writer,
-		config_element_output_type,
-		attr->output == LTTNG_UST_ABI_MMAP ?
-		config_output_type_mmap : config_output_type_splice);
+						 config_element_output_type,
+						 attr->output == LTTNG_UST_ABI_MMAP ?
+							 config_output_type_mmap :
+							 config_output_type_splice);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_signed_int(writer,
-			config_element_blocking_timeout,
-			attr->u.s.blocking_timeout);
+	ret = config_writer_write_element_signed_int(
+		writer, config_element_blocking_timeout, attr->u.s.blocking_timeout);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -200,9 +190,8 @@ int save_ust_channel_attributes(struct config_writer *writer,
 	 * lttng_ust_channel_attr
 	 */
 	channel = lttng::utils::container_of(attr, &ltt_ust_channel::attr);
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_monitor_timer_interval,
-		channel->monitor_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_monitor_timer_interval, channel->monitor_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -213,9 +202,8 @@ end:
 	return ret;
 }
 
-static
-const char *get_kernel_instrumentation_string(
-	enum lttng_kernel_abi_instrumentation instrumentation)
+static const char *
+get_kernel_instrumentation_string(enum lttng_kernel_abi_instrumentation instrumentation)
 {
 	const char *instrumentation_string;
 
@@ -251,9 +239,7 @@ const char *get_kernel_instrumentation_string(
 	return instrumentation_string;
 }
 
-static
-const char *get_kernel_context_type_string(
-	enum lttng_kernel_abi_context_type context_type)
+static const char *get_kernel_context_type_string(enum lttng_kernel_abi_context_type context_type)
 {
 	const char *context_type_string;
 
@@ -373,9 +359,7 @@ const char *get_kernel_context_type_string(
 	return context_type_string;
 }
 
-static
-const char *get_ust_context_type_string(
-	enum lttng_ust_abi_context_type context_type)
+static const char *get_ust_context_type_string(enum lttng_ust_abi_context_type context_type)
 {
 	const char *context_type_string;
 
@@ -453,9 +437,7 @@ const char *get_ust_context_type_string(
 	return context_type_string;
 }
 
-static
-const char *get_buffer_type_string(
-	enum lttng_buffer_type buffer_type)
+static const char *get_buffer_type_string(enum lttng_buffer_type buffer_type)
 {
 	const char *buffer_type_string;
 
@@ -476,9 +458,7 @@ const char *get_buffer_type_string(
 	return buffer_type_string;
 }
 
-static
-const char *get_loglevel_type_string(
-	enum lttng_ust_abi_loglevel_type loglevel_type)
+static const char *get_loglevel_type_string(enum lttng_ust_abi_loglevel_type loglevel_type)
 {
 	const char *loglevel_type_string;
 
@@ -500,9 +480,7 @@ const char *get_loglevel_type_string(
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_function_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_function_event(struct config_writer *writer, struct ltt_kernel_event *event)
 {
 	int ret;
 
@@ -512,8 +490,8 @@ int save_kernel_function_event(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_name,
-			event->event->u.ftrace.symbol_name);
+	ret = config_writer_write_element_string(
+		writer, config_element_name, event->event->u.ftrace.symbol_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -529,9 +507,7 @@ end:
 	return ret;
 }
 
-static
-int save_kernel_kprobe_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_kprobe_event(struct config_writer *writer, struct ltt_kernel_event *event)
 {
 	int ret;
 	const char *symbol_name;
@@ -567,23 +543,23 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 	}
 
 	if (addr) {
-		ret = config_writer_write_element_unsigned_int( writer,
-				config_element_address, addr);
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_address, addr);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 	} else if (symbol_name) {
-		ret = config_writer_write_element_string(writer,
-				 config_element_symbol_name, symbol_name);
+		ret = config_writer_write_element_string(
+			writer, config_element_symbol_name, symbol_name);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 		/* If the offset is non-zero, write it.*/
 		if (offset) {
-			ret = config_writer_write_element_unsigned_int(writer,
-				config_element_offset, offset);
+			ret = config_writer_write_element_unsigned_int(
+				writer, config_element_offset, offset);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
@@ -599,7 +575,6 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 		goto end;
 	}
 
-
 	ret = config_writer_close_element(writer);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -613,9 +588,8 @@ end:
  * Save the userspace probe tracepoint event associated with the event to the
  * config writer.
  */
-static
-int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
+							struct ltt_kernel_event *event)
 {
 	int ret = 0;
 	const char *probe_name, *provider_name, *binary_path;
@@ -641,31 +615,29 @@ int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
 
 	/* Get the binary path, probe name and provider name. */
 	binary_path =
-		lttng_userspace_probe_location_tracepoint_get_binary_path(
-				userspace_probe_location);
+		lttng_userspace_probe_location_tracepoint_get_binary_path(userspace_probe_location);
 	if (!binary_path) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	probe_name =
-		lttng_userspace_probe_location_tracepoint_get_probe_name(
-				userspace_probe_location);
+		lttng_userspace_probe_location_tracepoint_get_probe_name(userspace_probe_location);
 	if (!probe_name) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	provider_name =
-		lttng_userspace_probe_location_tracepoint_get_provider_name(
-				userspace_probe_location);
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
+		userspace_probe_location);
 	if (!provider_name) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	/* Open a userspace probe tracepoint attribute. */
-	ret = config_writer_open_element(writer, config_element_userspace_probe_tracepoint_attributes);
+	ret = config_writer_open_element(writer,
+					 config_element_userspace_probe_tracepoint_attributes);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -673,9 +645,10 @@ int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
 
 	switch (lookup_type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		ret = config_writer_write_element_string(writer,
-				config_element_userspace_probe_lookup,
-				config_element_userspace_probe_lookup_tracepoint_sdt);
+		ret = config_writer_write_element_string(
+			writer,
+			config_element_userspace_probe_lookup,
+			config_element_userspace_probe_lookup_tracepoint_sdt);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -688,25 +661,24 @@ int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
 	}
 
 	/* Write the binary path, provider name and the probe name. */
-	ret = config_writer_write_element_string(writer,
-			config_element_userspace_probe_location_binary_path,
-			binary_path);
+	ret = config_writer_write_element_string(
+		writer, config_element_userspace_probe_location_binary_path, binary_path);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_userspace_probe_tracepoint_location_provider_name,
-			provider_name);
+	ret = config_writer_write_element_string(
+		writer,
+		config_element_userspace_probe_tracepoint_location_provider_name,
+		provider_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_userspace_probe_tracepoint_location_probe_name,
-			probe_name);
+	ret = config_writer_write_element_string(
+		writer, config_element_userspace_probe_tracepoint_location_probe_name, probe_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -727,9 +699,8 @@ end:
  * Save the userspace probe function event associated with the event to the
  * config writer.
  */
-static
-int save_kernel_userspace_probe_function_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_userspace_probe_function_event(struct config_writer *writer,
+						      struct ltt_kernel_event *event)
 {
 	int ret = 0;
 	const char *function_name, *binary_path;
@@ -745,8 +716,7 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 	}
 
 	/* Get lookup method and lookup method type. */
-	lookup_method = lttng_userspace_probe_location_get_lookup_method(
-			userspace_probe_location);
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(userspace_probe_location);
 	if (!lookup_method) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -754,16 +724,14 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 
 	/* Get the binary path and the function name. */
 	binary_path =
-		lttng_userspace_probe_location_function_get_binary_path(
-				userspace_probe_location);
+		lttng_userspace_probe_location_function_get_binary_path(userspace_probe_location);
 	if (!binary_path) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	function_name =
-		lttng_userspace_probe_location_function_get_function_name(
-				userspace_probe_location);
+		lttng_userspace_probe_location_function_get_function_name(userspace_probe_location);
 	if (!function_name) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -771,7 +739,7 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 
 	/* Open a userspace probe function attribute. */
 	ret = config_writer_open_element(writer,
-			config_element_userspace_probe_function_attributes);
+					 config_element_userspace_probe_function_attributes);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -780,18 +748,20 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
 	switch (lookup_type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		ret = config_writer_write_element_string(writer,
-				config_element_userspace_probe_lookup,
-				config_element_userspace_probe_lookup_function_elf);
+		ret = config_writer_write_element_string(
+			writer,
+			config_element_userspace_probe_lookup,
+			config_element_userspace_probe_lookup_function_elf);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
-		ret = config_writer_write_element_string(writer,
-				config_element_userspace_probe_lookup,
-				config_element_userspace_probe_lookup_function_default);
+		ret = config_writer_write_element_string(
+			writer,
+			config_element_userspace_probe_lookup,
+			config_element_userspace_probe_lookup_function_default);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -804,17 +774,17 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 	}
 
 	/* Write the binary path and the function name. */
-	ret = config_writer_write_element_string(writer,
-			config_element_userspace_probe_location_binary_path,
-			binary_path);
+	ret = config_writer_write_element_string(
+		writer, config_element_userspace_probe_location_binary_path, binary_path);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_userspace_probe_function_location_function_name,
-			function_name);
+	ret = config_writer_write_element_string(
+		writer,
+		config_element_userspace_probe_function_location_function_name,
+		function_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -831,9 +801,8 @@ end:
 	return ret;
 }
 
-static
-int save_kernel_userspace_probe_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_userspace_probe_event(struct config_writer *writer,
+					     struct ltt_kernel_event *event)
 {
 	int ret;
 	struct lttng_userspace_probe_location *userspace_probe_location;
@@ -845,7 +814,7 @@ int save_kernel_userspace_probe_event(struct config_writer *writer,
 		goto end;
 	}
 
-	switch(lttng_userspace_probe_location_get_type(userspace_probe_location)) {
+	switch (lttng_userspace_probe_location_get_type(userspace_probe_location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
 		ret = save_kernel_userspace_probe_function_event(writer, event);
@@ -875,9 +844,7 @@ end:
 	return ret;
 }
 
-static
-int save_kernel_event(struct config_writer *writer,
-		struct ltt_kernel_event *event)
+static int save_kernel_event(struct config_writer *writer, struct ltt_kernel_event *event)
 {
 	int ret;
 	const char *instrumentation_type;
@@ -889,39 +856,35 @@ int save_kernel_event(struct config_writer *writer,
 	}
 
 	if (event->event->name[0]) {
-		ret = config_writer_write_element_string(writer,
-			config_element_name, event->event->name);
+		ret = config_writer_write_element_string(
+			writer, config_element_name, event->event->name);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_enabled,
-		event->enabled);
+	ret = config_writer_write_element_bool(writer, config_element_enabled, event->enabled);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	instrumentation_type = get_kernel_instrumentation_string(
-		event->event->instrumentation);
+	instrumentation_type = get_kernel_instrumentation_string(event->event->instrumentation);
 	if (!instrumentation_type) {
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_type,
-		instrumentation_type);
+	ret = config_writer_write_element_string(writer, config_element_type, instrumentation_type);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	if (event->filter_expression) {
-		ret = config_writer_write_element_string(writer,
-				config_element_filter,
-				event->filter_expression);
+		ret = config_writer_write_element_string(
+			writer, config_element_filter, event->filter_expression);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -929,12 +892,10 @@ int save_kernel_event(struct config_writer *writer,
 	}
 
 	if (event->event->instrumentation == LTTNG_KERNEL_ABI_FUNCTION ||
-		event->event->instrumentation == LTTNG_KERNEL_ABI_KPROBE ||
-		event->event->instrumentation == LTTNG_KERNEL_ABI_UPROBE ||
-		event->event->instrumentation == LTTNG_KERNEL_ABI_KRETPROBE) {
-
-		ret = config_writer_open_element(writer,
-			config_element_attributes);
+	    event->event->instrumentation == LTTNG_KERNEL_ABI_KPROBE ||
+	    event->event->instrumentation == LTTNG_KERNEL_ABI_UPROBE ||
+	    event->event->instrumentation == LTTNG_KERNEL_ABI_KRETPROBE) {
+		ret = config_writer_open_element(writer, config_element_attributes);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -988,9 +949,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_events(struct config_writer *writer,
-	struct ltt_kernel_channel *kchan)
+static int save_kernel_events(struct config_writer *writer, struct ltt_kernel_channel *kchan)
 {
 	int ret;
 	struct ltt_kernel_event *event;
@@ -1001,7 +960,7 @@ int save_kernel_events(struct config_writer *writer,
 		goto end;
 	}
 
-	cds_list_for_each_entry(event, &kchan->events_list.head, list) {
+	cds_list_for_each_entry (event, &kchan->events_list.head, list) {
 		ret = save_kernel_event(writer, event);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -1021,9 +980,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_event(struct config_writer *writer,
-	struct ltt_ust_event *event)
+static int save_ust_event(struct config_writer *writer, struct ltt_ust_event *event)
 {
 	int ret;
 	const char *loglevel_type_string;
@@ -1035,16 +992,15 @@ int save_ust_event(struct config_writer *writer,
 	}
 
 	if (event->attr.name[0]) {
-		ret = config_writer_write_element_string(writer,
-			config_element_name, event->attr.name);
+		ret = config_writer_write_element_string(
+			writer, config_element_name, event->attr.name);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_enabled,
-		event->enabled);
+	ret = config_writer_write_element_bool(writer, config_element_enabled, event->enabled);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1055,23 +1011,23 @@ int save_ust_event(struct config_writer *writer,
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
-	ret = config_writer_write_element_string(writer, config_element_type,
-		config_event_type_tracepoint);
+	ret = config_writer_write_element_string(
+		writer, config_element_type, config_event_type_tracepoint);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	loglevel_type_string = get_loglevel_type_string(
-		(lttng_ust_abi_loglevel_type) event->attr.loglevel_type);
+	loglevel_type_string =
+		get_loglevel_type_string((lttng_ust_abi_loglevel_type) event->attr.loglevel_type);
 	if (!loglevel_type_string) {
 		ERR("Unsupported UST loglevel type.");
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-		config_element_loglevel_type, loglevel_type_string);
+	ret = config_writer_write_element_string(
+		writer, config_element_loglevel_type, loglevel_type_string);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1079,8 +1035,8 @@ int save_ust_event(struct config_writer *writer,
 
 	/* The log level is irrelevant if no "filtering" is enabled */
 	if (event->attr.loglevel_type != LTTNG_UST_ABI_LOGLEVEL_ALL) {
-		ret = config_writer_write_element_signed_int(writer,
-				config_element_loglevel, event->attr.loglevel);
+		ret = config_writer_write_element_signed_int(
+			writer, config_element_loglevel, event->attr.loglevel);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1088,8 +1044,8 @@ int save_ust_event(struct config_writer *writer,
 	}
 
 	if (event->filter_expression) {
-		ret = config_writer_write_element_string(writer,
-			config_element_filter, event->filter_expression);
+		ret = config_writer_write_element_string(
+			writer, config_element_filter, event->filter_expression);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1099,18 +1055,17 @@ int save_ust_event(struct config_writer *writer,
 	if (event->exclusion && event->exclusion->count) {
 		uint32_t i;
 
-		ret = config_writer_open_element(writer,
-			config_element_exclusions);
+		ret = config_writer_open_element(writer, config_element_exclusions);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
 		for (i = 0; i < event->exclusion->count; i++) {
-			ret = config_writer_write_element_string(writer,
+			ret = config_writer_write_element_string(
+				writer,
 				config_element_exclusion,
-				LTTNG_EVENT_EXCLUSION_NAME_AT(
-					event->exclusion, i));
+				LTTNG_EVENT_EXCLUSION_NAME_AT(event->exclusion, i));
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
@@ -1138,9 +1093,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_events(struct config_writer *writer,
-	struct lttng_ht *events)
+static int save_ust_events(struct config_writer *writer, struct lttng_ht *events)
 {
 	int ret;
 	struct ltt_ust_event *event;
@@ -1154,7 +1107,7 @@ int save_ust_events(struct config_writer *writer,
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
 		event = lttng::utils::container_of(node, &ltt_ust_event::node);
 
 		if (event->internal) {
@@ -1182,17 +1135,15 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
-		struct agent_event *agent_event)
+static int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
+					   struct agent_event *agent_event)
 {
 	int ret;
 	enum lttng_ust_abi_loglevel_type ust_loglevel_type;
 
 	ust_event->enabled = AGENT_EVENT_IS_ENABLED(agent_event);
 	ust_event->attr.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
-	if (lttng_strncpy(ust_event->attr.name, agent_event->name,
-			LTTNG_SYMBOL_NAME_LEN)) {
+	if (lttng_strncpy(ust_event->attr.name, agent_event->name, LTTNG_SYMBOL_NAME_LEN)) {
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1223,9 +1174,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_agent_events(struct config_writer *writer,
-		struct agent *agent)
+static int save_agent_events(struct config_writer *writer, struct agent *agent)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -1238,7 +1187,7 @@ int save_agent_events(struct config_writer *writer,
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(agent->events->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry (agent->events->ht, &iter.iter, node, node) {
 		struct agent_event *agent_event;
 		struct ltt_ust_event fake_event;
 
@@ -1277,9 +1226,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_context(struct config_writer *writer,
-	struct lttng_kernel_abi_context *ctx)
+static int save_kernel_context(struct config_writer *writer, struct lttng_kernel_abi_context *ctx)
 {
 	int ret = LTTNG_OK;
 
@@ -1294,29 +1241,28 @@ int save_kernel_context(struct config_writer *writer,
 	}
 
 	if (ctx->ctx == LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER) {
-		ret = config_writer_open_element(writer,
-				config_element_context_perf);
+		ret = config_writer_open_element(writer, config_element_context_perf);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = config_writer_write_element_unsigned_int(writer,
-			config_element_type, ctx->u.perf_counter.type);
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_type, ctx->u.perf_counter.type);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = config_writer_write_element_unsigned_int(writer,
-			config_element_config, ctx->u.perf_counter.config);
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_config, ctx->u.perf_counter.config);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = config_writer_write_element_string(writer,
-			config_element_name, ctx->u.perf_counter.name);
+		ret = config_writer_write_element_string(
+			writer, config_element_name, ctx->u.perf_counter.name);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1329,8 +1275,7 @@ int save_kernel_context(struct config_writer *writer,
 			goto end;
 		}
 	} else {
-		const char *context_type_string =
-			get_kernel_context_type_string(ctx->ctx);
+		const char *context_type_string = get_kernel_context_type_string(ctx->ctx);
 
 		if (!context_type_string) {
 			ERR("Unsupported kernel context type.");
@@ -1338,8 +1283,8 @@ int save_kernel_context(struct config_writer *writer,
 			goto end;
 		}
 
-		ret = config_writer_write_element_string(writer,
-			config_element_type, context_type_string);
+		ret = config_writer_write_element_string(
+			writer, config_element_type, context_type_string);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1359,9 +1304,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_contexts(struct config_writer *writer,
-		struct ltt_kernel_channel *kchan)
+static int save_kernel_contexts(struct config_writer *writer, struct ltt_kernel_channel *kchan)
 {
 	int ret;
 	struct ltt_kernel_context *ctx;
@@ -1377,7 +1320,7 @@ int save_kernel_contexts(struct config_writer *writer,
 		goto end;
 	}
 
-	cds_list_for_each_entry(ctx, &kchan->ctx_list, list) {
+	cds_list_for_each_entry (ctx, &kchan->ctx_list, list) {
 		ret = save_kernel_context(writer, &ctx->ctx);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -1397,9 +1340,8 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_context_perf_thread_counter(struct config_writer *writer,
-		struct ltt_ust_context *ctx)
+static int save_ust_context_perf_thread_counter(struct config_writer *writer,
+						struct ltt_ust_context *ctx)
 {
 	int ret;
 
@@ -1413,22 +1355,22 @@ int save_ust_context_perf_thread_counter(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-			config_element_type, ctx->ctx.u.perf_counter.type);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_type, ctx->ctx.u.perf_counter.type);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-			config_element_config, ctx->ctx.u.perf_counter.config);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_config, ctx->ctx.u.perf_counter.config);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_name,
-			ctx->ctx.u.perf_counter.name);
+	ret = config_writer_write_element_string(
+		writer, config_element_name, ctx->ctx.u.perf_counter.name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1447,9 +1389,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_context_app_ctx(struct config_writer *writer,
-		struct ltt_ust_context *ctx)
+static int save_ust_context_app_ctx(struct config_writer *writer, struct ltt_ust_context *ctx)
 {
 	int ret;
 
@@ -1463,17 +1403,15 @@ int save_ust_context_app_ctx(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_context_app_provider_name,
-			ctx->ctx.u.app_ctx.provider_name);
+	ret = config_writer_write_element_string(
+		writer, config_element_context_app_provider_name, ctx->ctx.u.app_ctx.provider_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_context_app_ctx_name,
-			ctx->ctx.u.app_ctx.ctx_name);
+	ret = config_writer_write_element_string(
+		writer, config_element_context_app_ctx_name, ctx->ctx.u.app_ctx.ctx_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1492,9 +1430,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_context_generic(struct config_writer *writer,
-		struct ltt_ust_context *ctx)
+static int save_ust_context_generic(struct config_writer *writer, struct ltt_ust_context *ctx)
 {
 	int ret;
 	const char *context_type_string;
@@ -1503,16 +1439,14 @@ int save_ust_context_generic(struct config_writer *writer,
 	LTTNG_ASSERT(ctx);
 
 	/* Save context as event_context_type_type */
-	context_type_string = get_ust_context_type_string(
-			ctx->ctx.ctx);
+	context_type_string = get_ust_context_type_string(ctx->ctx.ctx);
 	if (!context_type_string) {
 		ERR("Unsupported UST context type.");
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_type, context_type_string);
+	ret = config_writer_write_element_string(writer, config_element_type, context_type_string);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1524,9 +1458,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_context(struct config_writer *writer,
-	struct cds_list_head *ctx_list)
+static int save_ust_context(struct config_writer *writer, struct cds_list_head *ctx_list)
 {
 	int ret;
 	struct ltt_ust_context *ctx;
@@ -1540,9 +1472,8 @@ int save_ust_context(struct config_writer *writer,
 		goto end;
 	}
 
-	cds_list_for_each_entry(ctx, ctx_list, list) {
-		ret = config_writer_open_element(writer,
-			config_element_context);
+	cds_list_for_each_entry (ctx, ctx_list, list) {
+		ret = config_writer_open_element(writer, config_element_context);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -1584,9 +1515,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_channel(struct config_writer *writer,
-	struct ltt_kernel_channel *kchan)
+static int save_kernel_channel(struct config_writer *writer, struct ltt_kernel_channel *kchan)
 {
 	int ret;
 
@@ -1599,15 +1528,14 @@ int save_kernel_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_name,
-		kchan->channel->name);
+	ret = config_writer_write_element_string(writer, config_element_name, kchan->channel->name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_enabled,
-		kchan->channel->enabled);
+	ret = config_writer_write_element_bool(
+		writer, config_element_enabled, kchan->channel->enabled);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1641,10 +1569,9 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_channel(struct config_writer *writer,
-	struct ltt_ust_channel *ust_chan,
-	struct ltt_ust_session *session)
+static int save_ust_channel(struct config_writer *writer,
+			    struct ltt_ust_channel *ust_chan,
+			    struct ltt_ust_session *session)
 {
 	int ret;
 
@@ -1658,15 +1585,13 @@ int save_ust_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_name,
-		ust_chan->name);
+	ret = config_writer_write_element_string(writer, config_element_name, ust_chan->name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_enabled,
-		ust_chan->enabled);
+	ret = config_writer_write_element_bool(writer, config_element_enabled, ust_chan->enabled);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1677,23 +1602,22 @@ int save_ust_channel(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_tracefile_size, ust_chan->tracefile_size);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_tracefile_size, ust_chan->tracefile_size);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_tracefile_count, ust_chan->tracefile_count);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_tracefile_count, ust_chan->tracefile_count);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-		config_element_live_timer_interval,
-		session->live_timer_interval);
+	ret = config_writer_write_element_unsigned_int(
+		writer, config_element_live_timer_interval, session->live_timer_interval);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1744,9 +1668,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_kernel_session(struct config_writer *writer,
-	struct ltt_session *session)
+static int save_kernel_session(struct config_writer *writer, struct ltt_session *session)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -1754,29 +1676,27 @@ int save_kernel_session(struct config_writer *writer,
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(session);
 
-	ret = config_writer_write_element_string(writer, config_element_type,
-		config_domain_type_kernel);
+	ret = config_writer_write_element_string(
+		writer, config_element_type, config_domain_type_kernel);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-		config_element_buffer_type, config_buffer_type_global);
+	ret = config_writer_write_element_string(
+		writer, config_element_buffer_type, config_buffer_type_global);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	ret = config_writer_open_element(writer,
-		config_element_channels);
+	ret = config_writer_open_element(writer, config_element_channels);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	cds_list_for_each_entry(kchan, &session->kernel_session->channel_list.head,
-			list) {
+	cds_list_for_each_entry (kchan, &session->kernel_session->channel_list.head, list) {
 		ret = save_kernel_channel(writer, kchan);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -1795,8 +1715,7 @@ end:
 	return ret;
 }
 
-static
-const char *get_config_domain_str(enum lttng_domain_type domain)
+static const char *get_config_domain_str(enum lttng_domain_type domain)
 {
 	const char *str_dom;
 
@@ -1825,9 +1744,9 @@ const char *get_config_domain_str(enum lttng_domain_type domain)
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_process_attr_tracker(struct config_writer *writer,
-		struct ltt_session *sess,
-		int domain,
-		enum lttng_process_attr process_attr)
+				     struct ltt_session *sess,
+				     int domain,
+				     enum lttng_process_attr process_attr)
 {
 	int ret = LTTNG_OK;
 	const char *element_id_tracker, *element_target_id, *element_id;
@@ -1874,15 +1793,13 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		tracker = kernel_get_process_attr_tracker(
-				sess->kernel_session, process_attr);
+		tracker = kernel_get_process_attr_tracker(sess->kernel_session, process_attr);
 		LTTNG_ASSERT(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		tracker = trace_ust_get_process_attr_tracker(
-				sess->ust_session, process_attr);
+		tracker = trace_ust_get_process_attr_tracker(sess->ust_session, process_attr);
 		LTTNG_ASSERT(tracker);
 		break;
 	}
@@ -1907,8 +1824,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_open_element(
-			writer, config_element_process_attr_values);
+	ret = config_writer_open_element(writer, config_element_process_attr_values);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -1917,8 +1833,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	if (tracking_policy == LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		unsigned int i, count;
 		enum process_attr_tracker_status status =
-				process_attr_tracker_get_inclusion_set(
-						tracker, &values);
+			process_attr_tracker_get_inclusion_set(tracker, &values);
 
 		if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
 			ret = LTTNG_ERR_NOMEM;
@@ -1931,12 +1846,10 @@ static int save_process_attr_tracker(struct config_writer *writer,
 			unsigned int integral_value = UINT_MAX;
 			const char *name = NULL;
 			const struct process_attr_value *value =
-					lttng_process_attr_tracker_values_get_at_index(
-							values, i);
+				lttng_process_attr_tracker_values_get_at_index(values, i);
 
 			LTTNG_ASSERT(value);
-			ret = config_writer_open_element(
-					writer, element_target_id);
+			ret = config_writer_open_element(writer, element_target_id);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
@@ -1944,16 +1857,13 @@ static int save_process_attr_tracker(struct config_writer *writer,
 
 			switch (value->type) {
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
-				integral_value =
-						(unsigned int) value->value.pid;
+				integral_value = (unsigned int) value->value.pid;
 				break;
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
-				integral_value =
-						(unsigned int) value->value.uid;
+				integral_value = (unsigned int) value->value.uid;
 				break;
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
-				integral_value =
-						(unsigned int) value->value.gid;
+				integral_value = (unsigned int) value->value.gid;
 				break;
 			case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 				name = value->value.user_name;
@@ -1968,12 +1878,11 @@ static int save_process_attr_tracker(struct config_writer *writer,
 			}
 
 			if (name) {
-				ret = config_writer_write_element_string(writer,
-						config_element_name, name);
+				ret = config_writer_write_element_string(
+					writer, config_element_name, name);
 			} else {
 				ret = config_writer_write_element_unsigned_int(
-						writer, element_id,
-						integral_value);
+					writer, element_id, integral_value);
 			}
 
 			if (ret) {
@@ -2011,58 +1920,55 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_process_attr_trackers(struct config_writer *writer,
-		struct ltt_session *sess,
-		int domain)
+static int
+save_process_attr_trackers(struct config_writer *writer, struct ltt_session *sess, int domain)
 {
 	int ret;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_PROCESS_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_USER_ID);
+		ret = save_process_attr_tracker(writer, sess, domain, LTTNG_PROCESS_ATTR_USER_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_GROUP_ID);
+		ret = save_process_attr_tracker(writer, sess, domain, LTTNG_PROCESS_ATTR_GROUP_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
-		ret = save_process_attr_tracker(writer, sess, domain,
-				LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+		ret = save_process_attr_tracker(
+			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -2077,9 +1983,9 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_ust_domain(struct config_writer *writer,
-	struct ltt_session *session, enum lttng_domain_type domain)
+static int save_ust_domain(struct config_writer *writer,
+			   struct ltt_session *session,
+			   enum lttng_domain_type domain)
 {
 	int ret;
 	struct ltt_ust_channel *ust_chan;
@@ -2091,8 +1997,7 @@ int save_ust_domain(struct config_writer *writer,
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(session);
 
-	ret = config_writer_open_element(writer,
-			config_element_domain);
+	ret = config_writer_open_element(writer, config_element_domain);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -2104,23 +2009,21 @@ int save_ust_domain(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_type, config_domain_name);
+	ret = config_writer_write_element_string(writer, config_element_type, config_domain_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	buffer_type_string = get_buffer_type_string(
-			session->ust_session->buffer_type);
+	buffer_type_string = get_buffer_type_string(session->ust_session->buffer_type);
 	if (!buffer_type_string) {
 		ERR("Unsupported buffer type.");
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer,
-			config_element_buffer_type, buffer_type_string);
+	ret = config_writer_write_element_string(
+		writer, config_element_buffer_type, buffer_type_string);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -2133,8 +2036,8 @@ int save_ust_domain(struct config_writer *writer,
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
-			&iter.iter, node, node) {
+	cds_lfht_for_each_entry (
+		session->ust_session->domain_global.channels->ht, &iter.iter, node, node) {
 		ust_chan = lttng::utils::container_of(node, &ltt_ust_channel::node);
 		if (domain == ust_chan->domain) {
 			ret = save_ust_channel(writer, ust_chan, session->ust_session);
@@ -2154,15 +2057,13 @@ int save_ust_domain(struct config_writer *writer,
 	}
 
 	if (domain == LTTNG_DOMAIN_UST) {
-		ret = config_writer_open_element(
-				writer, config_element_process_attr_trackers);
+		ret = config_writer_open_element(writer, config_element_process_attr_trackers);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = save_process_attr_trackers(
-				writer, session, LTTNG_DOMAIN_UST);
+		ret = save_process_attr_trackers(writer, session, LTTNG_DOMAIN_UST);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -2188,8 +2089,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_domains(struct config_writer *writer, struct ltt_session *session)
+static int save_domains(struct config_writer *writer, struct ltt_session *session)
 {
 	int ret = LTTNG_OK;
 
@@ -2207,8 +2107,7 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 	}
 
 	if (session->kernel_session) {
-		ret = config_writer_open_element(writer,
-			config_element_domain);
+		ret = config_writer_open_element(writer, config_element_domain);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -2219,15 +2118,13 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 			goto end;
 		}
 
-		ret = config_writer_open_element(
-				writer, config_element_process_attr_trackers);
+		ret = config_writer_open_element(writer, config_element_process_attr_trackers);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = save_process_attr_trackers(
-				writer, session, LTTNG_DOMAIN_KERNEL);
+		ret = save_process_attr_trackers(writer, session, LTTNG_DOMAIN_KERNEL);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -2281,9 +2178,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_consumer_output(struct config_writer *writer,
-	struct consumer_output *output)
+static int save_consumer_output(struct config_writer *writer, struct consumer_output *output)
 {
 	int ret;
 
@@ -2296,8 +2191,7 @@ int save_consumer_output(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_enabled,
-			output->enabled);
+	ret = config_writer_write_element_bool(writer, config_element_enabled, output->enabled);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -2311,8 +2205,8 @@ int save_consumer_output(struct config_writer *writer,
 
 	switch (output->type) {
 	case CONSUMER_DST_LOCAL:
-		ret = config_writer_write_element_string(writer,
-			config_element_path, output->dst.session_root_path);
+		ret = config_writer_write_element_string(
+			writer, config_element_path, output->dst.session_root_path);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -2334,16 +2228,15 @@ int save_consumer_output(struct config_writer *writer,
 			goto end_net_output;
 		}
 
-		if (output->dst.net.control_isset &&
-			output->dst.net.data_isset) {
+		if (output->dst.net.control_isset && output->dst.net.data_isset) {
 			ret = uri_to_str_url(&output->dst.net.control, uri, PATH_MAX);
 			if (ret < 0) {
 				ret = LTTNG_ERR_INVALID;
 				goto end_net_output;
 			}
 
-			ret = config_writer_write_element_string(writer,
-					config_element_control_uri, uri);
+			ret = config_writer_write_element_string(
+				writer, config_element_control_uri, uri);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end_net_output;
@@ -2355,22 +2248,21 @@ int save_consumer_output(struct config_writer *writer,
 				goto end_net_output;
 			}
 
-			ret = config_writer_write_element_string(writer,
-					config_element_data_uri, uri);
+			ret = config_writer_write_element_string(
+				writer, config_element_data_uri, uri);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end_net_output;
 			}
 			ret = LTTNG_OK;
-end_net_output:
+		end_net_output:
 			free(uri);
 			if (ret != LTTNG_OK) {
 				goto end;
 			}
 		} else {
-			ret = !output->dst.net.control_isset ?
-				LTTNG_ERR_URL_CTRL_MISS :
-				LTTNG_ERR_URL_DATA_MISS;
+			ret = !output->dst.net.control_isset ? LTTNG_ERR_URL_CTRL_MISS :
+							       LTTNG_ERR_URL_DATA_MISS;
 			free(uri);
 			goto end;
 		}
@@ -2408,9 +2300,7 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_snapshot_outputs(struct config_writer *writer,
-	struct snapshot *snapshot)
+static int save_snapshot_outputs(struct config_writer *writer, struct snapshot *snapshot)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -2426,24 +2316,21 @@ int save_snapshot_outputs(struct config_writer *writer,
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(snapshot->output_ht->ht, &iter.iter, output,
-			node.node) {
-		ret = config_writer_open_element(writer,
-			config_element_output);
+	cds_lfht_for_each_entry (snapshot->output_ht->ht, &iter.iter, output, node.node) {
+		ret = config_writer_open_element(writer, config_element_output);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end_unlock;
 		}
 
-		ret = config_writer_write_element_string(writer,
-			config_element_name, output->name);
+		ret = config_writer_write_element_string(writer, config_element_name, output->name);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end_unlock;
 		}
 
-		ret = config_writer_write_element_unsigned_int(writer,
-			config_element_max_size, output->max_size);
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_max_size, output->max_size);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end_unlock;
@@ -2479,9 +2366,7 @@ end_unlock:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static
-int save_session_output(struct config_writer *writer,
-	struct ltt_session *session)
+static int save_session_output(struct config_writer *writer, struct ltt_session *session)
 {
 	int ret;
 
@@ -2489,7 +2374,7 @@ int save_session_output(struct config_writer *writer,
 	LTTNG_ASSERT(session);
 
 	if ((session->snapshot_mode && session->snapshot.nb_output == 0) ||
-		(!session->snapshot_mode && !session->consumer)) {
+	    (!session->snapshot_mode && !session->consumer)) {
 		/* Session is in no output mode */
 		ret = LTTNG_OK;
 		goto end;
@@ -2526,9 +2411,9 @@ end:
 	return ret;
 }
 
-static
-int save_session_rotation_schedule(struct config_writer *writer,
-		enum lttng_rotation_schedule_type type, uint64_t value)
+static int save_session_rotation_schedule(struct config_writer *writer,
+					  enum lttng_rotation_schedule_type type,
+					  uint64_t value)
 {
 	int ret = 0;
 	const char *element_name;
@@ -2537,11 +2422,11 @@ int save_session_rotation_schedule(struct config_writer *writer,
 	switch (type) {
 	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
 		element_name = config_element_rotation_schedule_periodic;
-	        value_name = config_element_rotation_schedule_periodic_time_us;
+		value_name = config_element_rotation_schedule_periodic_time_us;
 		break;
 	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
 		element_name = config_element_rotation_schedule_size_threshold;
-	        value_name = config_element_rotation_schedule_size_threshold_bytes;
+		value_name = config_element_rotation_schedule_size_threshold_bytes;
 		break;
 	default:
 		ret = -1;
@@ -2553,8 +2438,7 @@ int save_session_rotation_schedule(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_write_element_unsigned_int(writer,
-			value_name, value);
+	ret = config_writer_write_element_unsigned_int(writer, value_name, value);
 	if (ret) {
 		goto end;
 	}
@@ -2568,29 +2452,26 @@ end:
 	return ret;
 }
 
-static
-int save_session_rotation_schedules(struct config_writer *writer,
-	struct ltt_session *session)
+static int save_session_rotation_schedules(struct config_writer *writer,
+					   struct ltt_session *session)
 {
 	int ret;
 
-	ret = config_writer_open_element(writer,
-			config_element_rotation_schedules);
+	ret = config_writer_open_element(writer, config_element_rotation_schedules);
 	if (ret) {
 		goto end;
 	}
 	if (session->rotate_timer_period) {
 		ret = save_session_rotation_schedule(writer,
-				LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
-				session->rotate_timer_period);
+						     LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
+						     session->rotate_timer_period);
 		if (ret) {
 			goto close_schedules;
 		}
 	}
 	if (session->rotate_size) {
-		ret = save_session_rotation_schedule(writer,
-				LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD,
-				session->rotate_size);
+		ret = save_session_rotation_schedule(
+			writer, LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD, session->rotate_size);
 		if (ret) {
 			goto close_schedules;
 		}
@@ -2611,9 +2492,9 @@ end:
  *
  * Return LTTNG_OK on success else a LTTNG_ERR* code.
  */
-static
-int save_session(struct ltt_session *session,
-	struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
+static int save_session(struct ltt_session *session,
+			struct lttng_save_session_attr *attr,
+			lttng_sock_cred *creds)
 {
 	int ret, fd = -1;
 	char config_file_path[LTTNG_PATH_MAX];
@@ -2630,8 +2511,7 @@ int save_session(struct ltt_session *session,
 	session_name_len = strlen(session->name);
 	memset(config_file_path, 0, sizeof(config_file_path));
 
-	if (!session_access_ok(session,
-		LTTNG_SOCK_GET_UID_CRED(creds)) || session->destroyed) {
+	if (!session_access_ok(session, LTTNG_SOCK_GET_UID_CRED(creds)) || session->destroyed) {
 		ret = LTTNG_ERR_EPERM;
 		goto end;
 	}
@@ -2647,15 +2527,16 @@ int save_session(struct ltt_session *session,
 		strncpy(config_file_path, provided_path, sizeof(config_file_path));
 	} else {
 		ssize_t ret_len;
-		char *home_dir = utils_get_user_home_dir(
-			LTTNG_SOCK_GET_UID_CRED(creds));
+		char *home_dir = utils_get_user_home_dir(LTTNG_SOCK_GET_UID_CRED(creds));
 		if (!home_dir) {
 			ret = LTTNG_ERR_SET_URL;
 			goto end;
 		}
 
-		ret_len = snprintf(config_file_path, sizeof(config_file_path),
-				DEFAULT_SESSION_HOME_CONFIGPATH, home_dir);
+		ret_len = snprintf(config_file_path,
+				   sizeof(config_file_path),
+				   DEFAULT_SESSION_HOME_CONFIGPATH,
+				   home_dir);
 		free(home_dir);
 		if (ret_len < 0) {
 			PERROR("snprintf save session");
@@ -2669,15 +2550,16 @@ int save_session(struct ltt_session *session,
 	 * Check the path fits in the config file path dst including the '/'
 	 * followed by trailing .lttng extension and the NULL terminated string.
 	 */
-	if ((len + session_name_len + 2 +
-			sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION))
-			> sizeof(config_file_path)) {
+	if ((len + session_name_len + 2 + sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION)) >
+	    sizeof(config_file_path)) {
 		ret = LTTNG_ERR_SET_URL;
 		goto end;
 	}
 
-	ret = run_as_mkdir_recursive(config_file_path, S_IRWXU | S_IRWXG,
-			LTTNG_SOCK_GET_UID_CRED(creds), LTTNG_SOCK_GET_GID_CRED(creds));
+	ret = run_as_mkdir_recursive(config_file_path,
+				     S_IRWXU | S_IRWXG,
+				     LTTNG_SOCK_GET_UID_CRED(creds),
+				     LTTNG_SOCK_GET_GID_CRED(creds));
 	if (ret) {
 		ret = LTTNG_ERR_SET_URL;
 		goto end;
@@ -2698,9 +2580,11 @@ int save_session(struct ltt_session *session,
 		file_open_flags |= O_EXCL;
 	}
 
-	fd = run_as_open(config_file_path, file_open_flags,
-		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
-		LTTNG_SOCK_GET_UID_CRED(creds), LTTNG_SOCK_GET_GID_CRED(creds));
+	fd = run_as_open(config_file_path,
+			 file_open_flags,
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
+			 LTTNG_SOCK_GET_UID_CRED(creds),
+			 LTTNG_SOCK_GET_GID_CRED(creds));
 	if (fd < 0) {
 		PERROR("Could not create configuration file");
 		switch (errno) {
@@ -2735,17 +2619,15 @@ int save_session(struct ltt_session *session,
 		goto end;
 	}
 
-	ret = config_writer_write_element_string(writer, config_element_name,
-			session->name);
+	ret = config_writer_write_element_string(writer, config_element_name, session->name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
 	if (session->shm_path[0] != '\0') {
-		ret = config_writer_write_element_string(writer,
-				config_element_shared_memory_path,
-				session->shm_path);
+		ret = config_writer_write_element_string(
+			writer, config_element_shared_memory_path, session->shm_path);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
@@ -2757,15 +2639,14 @@ int save_session(struct ltt_session *session,
 		goto end;
 	}
 
-	ret = config_writer_write_element_bool(writer, config_element_started,
-			session->active);
+	ret = config_writer_write_element_bool(writer, config_element_started, session->active);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	if (session->snapshot_mode || session->live_timer ||
-			session->rotate_timer_period || session->rotate_size) {
+	if (session->snapshot_mode || session->live_timer || session->rotate_timer_period ||
+	    session->rotate_size) {
 		ret = config_writer_open_element(writer, config_element_attributes);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -2773,23 +2654,22 @@ int save_session(struct ltt_session *session,
 		}
 
 		if (session->snapshot_mode) {
-			ret = config_writer_write_element_bool(writer,
-					config_element_snapshot_mode, 1);
+			ret = config_writer_write_element_bool(
+				writer, config_element_snapshot_mode, 1);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 		} else if (session->live_timer) {
-			ret = config_writer_write_element_unsigned_int(writer,
-					config_element_live_timer_interval, session->live_timer);
+			ret = config_writer_write_element_unsigned_int(
+				writer, config_element_live_timer_interval, session->live_timer);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 		}
 		if (session->rotate_timer_period || session->rotate_size) {
-			ret = save_session_rotation_schedules(writer,
-					session);
+			ret = save_session_rotation_schedules(writer, session);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
@@ -2848,8 +2728,7 @@ end:
 	return ret;
 }
 
-int cmd_save_sessions(struct lttng_save_session_attr *attr,
-	lttng_sock_cred *creds)
+int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
 {
 	int ret;
 	const char *session_name;
@@ -2875,7 +2754,7 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr,
 	} else {
 		struct ltt_session_list *list = session_get_list();
 
-		cds_list_for_each_entry(session, &list->head, list) {
+		cds_list_for_each_entry (session, &list->head, list) {
 			if (!session_get(session)) {
 				continue;
 			}

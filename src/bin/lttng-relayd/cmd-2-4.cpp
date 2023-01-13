@@ -9,19 +9,21 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.hpp>
-#include <common/sessiond-comm/relayd.hpp>
-
-#include <common/compat/endian.hpp>
-#include <common/compat/string.hpp>
-#include <lttng/constant.h>
-
 #include "cmd-2-4.hpp"
 #include "lttng-relayd.hpp"
 
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/compat/string.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+
+#include <lttng/constant.h>
+
 int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
-		char *session_name, char *hostname,
-		uint32_t *live_timer, bool *snapshot)
+			   char *session_name,
+			   char *hostname,
+			   uint32_t *live_timer,
+			   bool *snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 session_info;
@@ -29,7 +31,8 @@ int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 
 	if (payload->size < sizeof(session_info)) {
 		ERR("Unexpected payload size in \"cmd_create_session_2_4\": expected >= %zu bytes, got %zu bytes",
-				sizeof(session_info), payload->size);
+		    sizeof(session_info),
+		    payload->size);
 		ret = -1;
 		goto error;
 	}

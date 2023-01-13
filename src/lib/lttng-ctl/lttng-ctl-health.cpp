@@ -11,21 +11,22 @@
  */
 
 #define _LGPL_SOURCE
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdint.h>
-#include <limits.h>
-#include <string.h>
-#include <lttng/health-internal.hpp>
+#include "lttng-ctl-helper.hpp"
 
-#include <bin/lttng-sessiond/health-sessiond.hpp>
-#include <bin/lttng-consumerd/health-consumerd.hpp>
-#include <bin/lttng-relayd/health-relayd.hpp>
+#include <common/compat/errno.hpp>
 #include <common/defaults.hpp>
 #include <common/utils.hpp>
-#include <common/compat/errno.hpp>
 
-#include "lttng-ctl-helper.hpp"
+#include <lttng/health-internal.hpp>
+
+#include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <bin/lttng-relayd/health-relayd.hpp>
+#include <bin/lttng-sessiond/health-sessiond.hpp>
+#include <limits.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 enum health_component {
 	HEALTH_COMPONENT_SESSIOND,
@@ -50,10 +51,9 @@ struct lttng_health {
 	struct lttng_health_thread thread[];
 };
 
-static
-const char *get_sessiond_thread_name(health_type_sessiond type) {
-	switch (type)
-	{
+static const char *get_sessiond_thread_name(health_type_sessiond type)
+{
+	switch (type) {
 	case HEALTH_SESSIOND_TYPE_CMD:
 		return "Session daemon command";
 	case HEALTH_SESSIOND_TYPE_APP_MANAGE:
@@ -83,8 +83,8 @@ const char *get_sessiond_thread_name(health_type_sessiond type) {
 	abort();
 };
 
-static
-const char *get_consumerd_thread_name(health_type_consumerd type) {
+static const char *get_consumerd_thread_name(health_type_consumerd type)
+{
 	switch (type) {
 	case HEALTH_CONSUMERD_TYPE_CHANNEL:
 		return "Consumer daemon channel";
@@ -103,8 +103,7 @@ const char *get_consumerd_thread_name(health_type_consumerd type) {
 	abort();
 };
 
-static
-const char *get_relayd_thread_name(health_type_relayd type)
+static const char *get_relayd_thread_name(health_type_relayd type)
 {
 	switch (type) {
 	case HEALTH_RELAYD_TYPE_DISPATCHER:
@@ -126,8 +125,7 @@ const char *get_relayd_thread_name(health_type_relayd type)
 	abort();
 }
 
-static
-const char *get_thread_name(int comp, int nr)
+static const char *get_thread_name(int comp, int nr)
 {
 	switch (comp) {
 	case HEALTH_COMPONENT_SESSIOND:
@@ -148,9 +146,7 @@ const char *get_thread_name(int comp, int nr)
  *
  * Returns 0 on success or a negative errno.
  */
-static
-int set_health_socket_path(struct lttng_health *lh,
-		int tracing_group)
+static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 {
 	uid_t uid;
 	const char *home;
@@ -187,7 +183,7 @@ int set_health_socket_path(struct lttng_health *lh,
 		} else {
 			return 0;
 		}
-		break;	/* Unreached */
+		break; /* Unreached */
 	default:
 		return -EINVAL;
 	}
@@ -195,9 +191,7 @@ int set_health_socket_path(struct lttng_health *lh,
 	uid = getuid();
 
 	if (uid == 0 || tracing_group) {
-		ret = lttng_strncpy(lh->health_sock_path,
-				global_str,
-				sizeof(lh->health_sock_path));
+		ret = lttng_strncpy(lh->health_sock_path, global_str, sizeof(lh->health_sock_path));
 		return ret == 0 ? 0 : -EINVAL;
 	}
 
@@ -214,8 +208,7 @@ int set_health_socket_path(struct lttng_health *lh,
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
-	ret = snprintf(lh->health_sock_path, sizeof(lh->health_sock_path),
-			home_str, home);
+	ret = snprintf(lh->health_sock_path, sizeof(lh->health_sock_path), home_str, home);
 	DIAGNOSTIC_POP
 	if ((ret < 0) || (ret >= sizeof(lh->health_sock_path))) {
 		return -ENOMEM;
@@ -224,9 +217,7 @@ int set_health_socket_path(struct lttng_health *lh,
 	return 0;
 }
 
-static
-struct lttng_health *lttng_health_create(enum health_component hc,
-		unsigned int nr_threads)
+static struct lttng_health *lttng_health_create(enum health_component hc, unsigned int nr_threads)
 {
 	struct lttng_health *lh;
 	int i;
@@ -237,7 +228,7 @@ struct lttng_health *lttng_health_create(enum health_component hc,
 	}
 
 	lh->component = hc;
-	lh->state = UINT64_MAX;		/* All bits in error initially */
+	lh->state = UINT64_MAX; /* All bits in error initially */
 	lh->nr_threads = nr_threads;
 	for (i = 0; i < nr_threads; i++) {
 		lh->thread[i].p = lh;
@@ -249,21 +240,18 @@ struct lttng_health *lttng_health_create_sessiond(void)
 {
 	struct lttng_health *lh;
 
-	lh = lttng_health_create(HEALTH_COMPONENT_SESSIOND,
-			NR_HEALTH_SESSIOND_TYPES);
+	lh = lttng_health_create(HEALTH_COMPONENT_SESSIOND, NR_HEALTH_SESSIOND_TYPES);
 	if (!lh) {
 		return NULL;
 	}
 	return lh;
 }
 
-struct lttng_health *
-	lttng_health_create_consumerd(enum lttng_health_consumerd consumerd)
+struct lttng_health *lttng_health_create_consumerd(enum lttng_health_consumerd consumerd)
 {
 	struct lttng_health *lh;
 
-	lh = lttng_health_create(HEALTH_COMPONENT_CONSUMERD,
-			NR_HEALTH_CONSUMERD_TYPES);
+	lh = lttng_health_create(HEALTH_COMPONENT_CONSUMERD, NR_HEALTH_CONSUMERD_TYPES);
 	if (!lh) {
 		return NULL;
 	}
@@ -280,14 +268,12 @@ struct lttng_health *lttng_health_create_relayd(const char *path)
 		goto error;
 	}
 
-	lh = lttng_health_create(HEALTH_COMPONENT_RELAYD,
-			NR_HEALTH_RELAYD_TYPES);
+	lh = lttng_health_create(HEALTH_COMPONENT_RELAYD, NR_HEALTH_RELAYD_TYPES);
 	if (!lh) {
 		goto error;
 	}
 
-	ret = lttng_strncpy(lh->health_sock_path, path,
-			sizeof(lh->health_sock_path));
+	ret = lttng_strncpy(lh->health_sock_path, path, sizeof(lh->health_sock_path));
 	if (ret) {
 		goto error;
 	}
@@ -335,13 +321,13 @@ retry:
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd = HEALTH_CMD_CHECK;
 
-	ret = lttcomm_send_unix_sock(sock, (void *)&msg, sizeof(msg));
+	ret = lttcomm_send_unix_sock(sock, (void *) &msg, sizeof(msg));
 	if (ret < 0) {
 		ret = -1;
 		goto close_error;
 	}
 
-	ret = lttcomm_recv_unix_sock(sock, (void *)&reply, sizeof(reply));
+	ret = lttcomm_recv_unix_sock(sock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		ret = -1;
 		goto close_error;
@@ -357,12 +343,12 @@ retry:
 	}
 
 close_error:
-	{
-		int closeret;
+{
+	int closeret;
 
-		closeret = close(sock);
-		LTTNG_ASSERT(!closeret);
-	}
+	closeret = close(sock);
+	LTTNG_ASSERT(!closeret);
+}
 
 error:
 	if (ret >= 0)
@@ -391,9 +377,8 @@ int lttng_health_get_nr_threads(const struct lttng_health *health)
 	return health->nr_threads;
 }
 
-const struct lttng_health_thread *
-	lttng_health_get_thread(const struct lttng_health *health,
-		unsigned int nth_thread)
+const struct lttng_health_thread *lttng_health_get_thread(const struct lttng_health *health,
+							  unsigned int nth_thread)
 {
 	if (!health || nth_thread >= health->nr_threads) {
 		return NULL;
@@ -417,5 +402,5 @@ const char *lttng_health_thread_name(const struct lttng_health_thread *thread)
 		return NULL;
 	}
 	nr = thread - &thread->p->thread[0];
-	return get_thread_name (thread->p->component, nr);
+	return get_thread_name(thread->p->component, nr);
 }

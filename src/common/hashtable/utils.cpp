@@ -40,41 +40,40 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdint.h>     /* defines uint32_t etc */
-#include <stdio.h>      /* defines printf for tests */
-#include <string.h>
-#include <sys/param.h>  /* attempt to define endianness */
-#include <time.h>       /* defines time_t for timings in the test */
-#include <urcu/compiler.h>
-
 #include "utils.hpp"
-#include <common/compat/endian.hpp>    /* attempt to define endianness */
+
 #include <common/common.hpp>
+#include <common/compat/endian.hpp> /* attempt to define endianness */
 #include <common/hashtable/hashtable.hpp>
+
+#include <stdint.h> /* defines uint32_t etc */
+#include <stdio.h> /* defines printf for tests */
+#include <string.h>
+#include <sys/param.h> /* attempt to define endianness */
+#include <time.h> /* defines time_t for timings in the test */
+#include <urcu/compiler.h>
 
 /*
  * My best guess at if you are big-endian or little-endian.  This may
  * need adjustment.
  */
-#if (defined(BYTE_ORDER) && defined(LITTLE_ENDIAN) && \
-     BYTE_ORDER == LITTLE_ENDIAN) || \
-    (defined(i386) || defined(__i386__) || defined(__i486__) || \
-     defined(__i586__) || defined(__i686__) || defined(vax) || defined(MIPSEL))
-# define HASH_LITTLE_ENDIAN 1
-# define HASH_BIG_ENDIAN 0
-#elif (defined(BYTE_ORDER) && defined(BIG_ENDIAN) && \
-       BYTE_ORDER == BIG_ENDIAN) || \
-      (defined(sparc) || defined(POWERPC) || defined(mc68000) || defined(sel))
-# define HASH_LITTLE_ENDIAN 0
-# define HASH_BIG_ENDIAN 1
+#if (defined(BYTE_ORDER) && defined(LITTLE_ENDIAN) && BYTE_ORDER == LITTLE_ENDIAN) ||    \
+	(defined(i386) || defined(__i386__) || defined(__i486__) || defined(__i586__) || \
+	 defined(__i686__) || defined(vax) || defined(MIPSEL))
+#define HASH_LITTLE_ENDIAN 1
+#define HASH_BIG_ENDIAN	   0
+#elif (defined(BYTE_ORDER) && defined(BIG_ENDIAN) && BYTE_ORDER == BIG_ENDIAN) || \
+	(defined(sparc) || defined(POWERPC) || defined(mc68000) || defined(sel))
+#define HASH_LITTLE_ENDIAN 0
+#define HASH_BIG_ENDIAN	   1
 #else
-# define HASH_LITTLE_ENDIAN 0
-# define HASH_BIG_ENDIAN 0
+#define HASH_LITTLE_ENDIAN 0
+#define HASH_BIG_ENDIAN	   0
 #endif
 
-#define hashsize(n) ((uint32_t)1<<(n))
-#define hashmask(n) (hashsize(n)-1)
-#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
+#define hashsize(n) ((uint32_t) 1 << (n))
+#define hashmask(n) (hashsize(n) - 1)
+#define rot(x, k)   (((x) << (k)) | ((x) >> (32 - (k))))
 
 /*
  * mix -- mix 3 32-bit values reversibly.
@@ -118,15 +117,27 @@
  * on, and rotates are much kinder to the top and bottom bits, so I used
  * rotates.
  */
-#define mix(a,b,c) \
-{ \
-  a -= c;  a ^= rot(c, 4);  c += b; \
-  b -= a;  b ^= rot(a, 6);  a += c; \
-  c -= b;  c ^= rot(b, 8);  b += a; \
-  a -= c;  a ^= rot(c,16);  c += b; \
-  b -= a;  b ^= rot(a,19);  a += c; \
-  c -= b;  c ^= rot(b, 4);  b += a; \
-}
+#define mix(a, b, c)             \
+	{                        \
+		a -= c;          \
+		a ^= rot(c, 4);  \
+		c += b;          \
+		b -= a;          \
+		b ^= rot(a, 6);  \
+		a += c;          \
+		c -= b;          \
+		c ^= rot(b, 8);  \
+		b += a;          \
+		a -= c;          \
+		a ^= rot(c, 16); \
+		c += b;          \
+		b -= a;          \
+		b ^= rot(a, 19); \
+		a += c;          \
+		c -= b;          \
+		c ^= rot(b, 4);  \
+		b += a;          \
+	}
 
 /*
  * final -- final mixing of 3 32-bit values (a,b,c) into c
@@ -151,24 +162,30 @@
  *  10  8 15 26 3 22 24
  *  11  8 15 26 3 22 24
  */
-#define final(a,b,c) \
-{ \
-  c ^= b; c -= rot(b,14); \
-  a ^= c; a -= rot(c,11); \
-  b ^= a; b -= rot(a,25); \
-  c ^= b; c -= rot(b,16); \
-  a ^= c; a -= rot(c,4);  \
-  b ^= a; b -= rot(a,14); \
-  c ^= b; c -= rot(b,24); \
-}
+#define final(a, b, c)           \
+	{                        \
+		c ^= b;          \
+		c -= rot(b, 14); \
+		a ^= c;          \
+		a -= rot(c, 11); \
+		b ^= a;          \
+		b -= rot(a, 25); \
+		c ^= b;          \
+		c -= rot(b, 16); \
+		a ^= c;          \
+		a -= rot(c, 4);  \
+		b ^= a;          \
+		b -= rot(a, 14); \
+		c ^= b;          \
+		c -= rot(b, 24); \
+	}
 
 /*
  * k - the key, an array of uint32_t values
  * length - the length of the key, in uint32_ts
  * initval - the previous hash, or an arbitrary value
  */
-static uint32_t __attribute__((unused)) hashword(const uint32_t *k,
-		size_t length, uint32_t initval)
+static uint32_t __attribute__((unused)) hashword(const uint32_t *k, size_t length, uint32_t initval)
 {
 	uint32_t a, b, c;
 
@@ -186,18 +203,20 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k,
 	}
 
 	/*----------------------------------- handle the last 3 uint32_t's */
-	switch (length) {	/* all the case statements fall through */
-	case 3: c += k[2]; /* fall through */
-	case 2: b += k[1]; /* fall through */
-	case 1: a += k[0];
+	switch (length) { /* all the case statements fall through */
+	case 3:
+		c += k[2]; /* fall through */
+	case 2:
+		b += k[1]; /* fall through */
+	case 1:
+		a += k[0];
 		final(a, b, c);
-	case 0:			/* case 0: nothing left to add */
+	case 0: /* case 0: nothing left to add */
 		break;
 	}
 	/*---------------------------------------------- report the result */
 	return c;
 }
-
 
 /*
  * hashword2() -- same as hashword(), but take two seeds and return two 32-bit
@@ -205,8 +224,8 @@ static uint32_t __attribute__((unused)) hashword(const uint32_t *k,
  * initialized with seeds.  If you pass in (*pb)==0, the output (*pc) will be
  * the same as the return value from hashword().
  */
-static void __attribute__((unused)) hashword2(const uint32_t *k, size_t length,
-		uint32_t *pc, uint32_t *pb)
+static void __attribute__((unused))
+hashword2(const uint32_t *k, size_t length, uint32_t *pc, uint32_t *pb)
 {
 	uint32_t a, b, c;
 
@@ -224,17 +243,17 @@ static void __attribute__((unused)) hashword2(const uint32_t *k, size_t length,
 	}
 
 	switch (length) {
-	case 3 :
+	case 3:
 		c += k[2];
 		/* fall through */
-	case 2 :
+	case 2:
 		b += k[1];
 		/* fall through */
-	case 1 :
+	case 1:
 		a += k[0];
 		final(a, b, c);
 		/* fall through */
-	case 0:     /* case 0: nothing left to add */
+	case 0: /* case 0: nothing left to add */
 		break;
 	}
 
@@ -267,29 +286,27 @@ static void __attribute__((unused)) hashword2(const uint32_t *k, size_t length,
  * acceptable.  Do NOT use for cryptographic purposes.
  */
 LTTNG_NO_SANITIZE_ADDRESS
-__attribute__((unused))
-static uint32_t hashlittle(const void *key,
-		size_t length, uint32_t initval)
+__attribute__((unused)) static uint32_t hashlittle(const void *key, size_t length, uint32_t initval)
 {
-	uint32_t a,b,c;
+	uint32_t a, b, c;
 	union {
 		const void *ptr;
 		size_t i;
-	} u;     /* needed for Mac Powerbook G4 */
+	} u; /* needed for Mac Powerbook G4 */
 
 	/* Set up the internal state */
-	a = b = c = 0xdeadbeef + ((uint32_t)length) + initval;
+	a = b = c = 0xdeadbeef + ((uint32_t) length) + initval;
 
 	u.ptr = key;
 	if (HASH_LITTLE_ENDIAN && ((u.i & 0x3) == 0)) {
-		const uint32_t *k = (const uint32_t *)key;         /* read 32-bit chunks */
+		const uint32_t *k = (const uint32_t *) key; /* read 32-bit chunks */
 
 		/*------ all but last block: aligned reads and affect 32 bits of (a,b,c) */
 		while (length > 12) {
 			a += k[0];
 			b += k[1];
 			c += k[2];
-			mix(a,b,c);
+			mix(a, b, c);
 			length -= 12;
 			k += 3;
 		}
@@ -306,139 +323,207 @@ static uint32_t hashlittle(const void *key,
 #ifndef VALGRIND
 
 		switch (length) {
-		case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
-		case 11: c+=k[2]&0xffffff; b+=k[1]; a+=k[0]; break;
-		case 10: c+=k[2]&0xffff; b+=k[1]; a+=k[0]; break;
-		case 9 : c+=k[2]&0xff; b+=k[1]; a+=k[0]; break;
-		case 8 : b+=k[1]; a+=k[0]; break;
-		case 7 : b+=k[1]&0xffffff; a+=k[0]; break;
-		case 6 : b+=k[1]&0xffff; a+=k[0]; break;
-		case 5 : b+=k[1]&0xff; a+=k[0]; break;
-		case 4 : a+=k[0]; break;
-		case 3 : a+=k[0]&0xffffff; break;
-		case 2 : a+=k[0]&0xffff; break;
-		case 1 : a+=k[0]&0xff; break;
-		case 0 : return c;              /* zero length strings require no mixing */
+		case 12:
+			c += k[2];
+			b += k[1];
+			a += k[0];
+			break;
+		case 11:
+			c += k[2] & 0xffffff;
+			b += k[1];
+			a += k[0];
+			break;
+		case 10:
+			c += k[2] & 0xffff;
+			b += k[1];
+			a += k[0];
+			break;
+		case 9:
+			c += k[2] & 0xff;
+			b += k[1];
+			a += k[0];
+			break;
+		case 8:
+			b += k[1];
+			a += k[0];
+			break;
+		case 7:
+			b += k[1] & 0xffffff;
+			a += k[0];
+			break;
+		case 6:
+			b += k[1] & 0xffff;
+			a += k[0];
+			break;
+		case 5:
+			b += k[1] & 0xff;
+			a += k[0];
+			break;
+		case 4:
+			a += k[0];
+			break;
+		case 3:
+			a += k[0] & 0xffffff;
+			break;
+		case 2:
+			a += k[0] & 0xffff;
+			break;
+		case 1:
+			a += k[0] & 0xff;
+			break;
+		case 0:
+			return c; /* zero length strings require no mixing */
 		}
 #else /* make valgrind happy */
 		const uint8_t *k8;
 
-		k8 = (const uint8_t *)k;
+		k8 = (const uint8_t *) k;
 		switch (length) {
-		case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
-		case 11: c+=((uint32_t)k8[10])<<16;  /* fall through */
-		case 10: c+=((uint32_t)k8[9])<<8;    /* fall through */
-		case 9 : c+=k8[8];                   /* fall through */
-		case 8 : b+=k[1]; a+=k[0]; break;
-		case 7 : b+=((uint32_t)k8[6])<<16;   /* fall through */
-		case 6 : b+=((uint32_t)k8[5])<<8;    /* fall through */
-		case 5 : b+=k8[4];                   /* fall through */
-		case 4 : a+=k[0]; break;
-		case 3 : a+=((uint32_t)k8[2])<<16;   /* fall through */
-		case 2 : a+=((uint32_t)k8[1])<<8;    /* fall through */
-		case 1 : a+=k8[0]; break;
-		case 0 : return c;
+		case 12:
+			c += k[2];
+			b += k[1];
+			a += k[0];
+			break;
+		case 11:
+			c += ((uint32_t) k8[10]) << 16; /* fall through */
+		case 10:
+			c += ((uint32_t) k8[9]) << 8; /* fall through */
+		case 9:
+			c += k8[8]; /* fall through */
+		case 8:
+			b += k[1];
+			a += k[0];
+			break;
+		case 7:
+			b += ((uint32_t) k8[6]) << 16; /* fall through */
+		case 6:
+			b += ((uint32_t) k8[5]) << 8; /* fall through */
+		case 5:
+			b += k8[4]; /* fall through */
+		case 4:
+			a += k[0];
+			break;
+		case 3:
+			a += ((uint32_t) k8[2]) << 16; /* fall through */
+		case 2:
+			a += ((uint32_t) k8[1]) << 8; /* fall through */
+		case 1:
+			a += k8[0];
+			break;
+		case 0:
+			return c;
 		}
 #endif /* !valgrind */
 	} else if (HASH_LITTLE_ENDIAN && ((u.i & 0x1) == 0)) {
-		const uint16_t *k = (const uint16_t *)key;         /* read 16-bit chunks */
+		const uint16_t *k = (const uint16_t *) key; /* read 16-bit chunks */
 		const uint8_t *k8;
 
 		/*--------------- all but last block: aligned reads and different mixing */
 		while (length > 12) {
-			a += k[0] + (((uint32_t)k[1])<<16);
-			b += k[2] + (((uint32_t)k[3])<<16);
-			c += k[4] + (((uint32_t)k[5])<<16);
-			mix(a,b,c);
+			a += k[0] + (((uint32_t) k[1]) << 16);
+			b += k[2] + (((uint32_t) k[3]) << 16);
+			c += k[4] + (((uint32_t) k[5]) << 16);
+			mix(a, b, c);
 			length -= 12;
 			k += 6;
 		}
 
-		k8 = (const uint8_t *)k;
+		k8 = (const uint8_t *) k;
 		switch (length) {
 		case 12:
-			c+=k[4]+(((uint32_t)k[5])<<16);
-			b+=k[2]+(((uint32_t)k[3])<<16);
-			a+=k[0]+(((uint32_t)k[1])<<16);
+			c += k[4] + (((uint32_t) k[5]) << 16);
+			b += k[2] + (((uint32_t) k[3]) << 16);
+			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 11:
-			c+=((uint32_t)k8[10])<<16;     /* fall through */
+			c += ((uint32_t) k8[10]) << 16; /* fall through */
 		case 10:
-			c+=k[4];
-			b+=k[2]+(((uint32_t)k[3])<<16);
-			a+=k[0]+(((uint32_t)k[1])<<16);
+			c += k[4];
+			b += k[2] + (((uint32_t) k[3]) << 16);
+			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 9:
-			c+=k8[8];                      /* fall through */
+			c += k8[8]; /* fall through */
 		case 8:
-			b+=k[2]+(((uint32_t)k[3])<<16);
-			a+=k[0]+(((uint32_t)k[1])<<16);
+			b += k[2] + (((uint32_t) k[3]) << 16);
+			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 7:
-			b+=((uint32_t)k8[6])<<16;      /* fall through */
+			b += ((uint32_t) k8[6]) << 16; /* fall through */
 		case 6:
-			b+=k[2];
-			a+=k[0]+(((uint32_t)k[1])<<16);
+			b += k[2];
+			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 5:
-			b+=k8[4];                      /* fall through */
+			b += k8[4]; /* fall through */
 		case 4:
-			a+=k[0]+(((uint32_t)k[1])<<16);
+			a += k[0] + (((uint32_t) k[1]) << 16);
 			break;
 		case 3:
-			a+=((uint32_t)k8[2])<<16;      /* fall through */
+			a += ((uint32_t) k8[2]) << 16; /* fall through */
 		case 2:
-			a+=k[0];
+			a += k[0];
 			break;
 		case 1:
-			a+=k8[0];
+			a += k8[0];
 			break;
 		case 0:
-			return c;   /* zero length requires no mixing */
+			return c; /* zero length requires no mixing */
 		}
 
-	} else {    /* need to read the key one byte at a time */
-		const uint8_t *k = (const uint8_t *)key;
+	} else { /* need to read the key one byte at a time */
+		const uint8_t *k = (const uint8_t *) key;
 
 		while (length > 12) {
 			a += k[0];
-			a += ((uint32_t)k[1])<<8;
-			a += ((uint32_t)k[2])<<16;
-			a += ((uint32_t)k[3])<<24;
+			a += ((uint32_t) k[1]) << 8;
+			a += ((uint32_t) k[2]) << 16;
+			a += ((uint32_t) k[3]) << 24;
 			b += k[4];
-			b += ((uint32_t)k[5])<<8;
-			b += ((uint32_t)k[6])<<16;
-			b += ((uint32_t)k[7])<<24;
+			b += ((uint32_t) k[5]) << 8;
+			b += ((uint32_t) k[6]) << 16;
+			b += ((uint32_t) k[7]) << 24;
 			c += k[8];
-			c += ((uint32_t)k[9])<<8;
-			c += ((uint32_t)k[10])<<16;
-			c += ((uint32_t)k[11])<<24;
-			mix(a,b,c);
+			c += ((uint32_t) k[9]) << 8;
+			c += ((uint32_t) k[10]) << 16;
+			c += ((uint32_t) k[11]) << 24;
+			mix(a, b, c);
 			length -= 12;
 			k += 12;
 		}
 
-		switch(length) {                  /* all the case statements fall through */
-		case 12: c+=((uint32_t)k[11])<<24; /* fall through */
-		case 11: c+=((uint32_t)k[10])<<16; /* fall through */
-		case 10: c+=((uint32_t)k[9])<<8; /* fall through */
-		case 9: c+=k[8]; /* fall through */
-		case 8: b+=((uint32_t)k[7])<<24; /* fall through */
-		case 7: b+=((uint32_t)k[6])<<16; /* fall through */
-		case 6: b+=((uint32_t)k[5])<<8; /* fall through */
-		case 5: b+=k[4]; /* fall through */
-		case 4: a+=((uint32_t)k[3])<<24; /* fall through */
-		case 3: a+=((uint32_t)k[2])<<16; /* fall through */
-		case 2: a+=((uint32_t)k[1])<<8; /* fall through */
+		switch (length) { /* all the case statements fall through */
+		case 12:
+			c += ((uint32_t) k[11]) << 24; /* fall through */
+		case 11:
+			c += ((uint32_t) k[10]) << 16; /* fall through */
+		case 10:
+			c += ((uint32_t) k[9]) << 8; /* fall through */
+		case 9:
+			c += k[8]; /* fall through */
+		case 8:
+			b += ((uint32_t) k[7]) << 24; /* fall through */
+		case 7:
+			b += ((uint32_t) k[6]) << 16; /* fall through */
+		case 6:
+			b += ((uint32_t) k[5]) << 8; /* fall through */
+		case 5:
+			b += k[4]; /* fall through */
+		case 4:
+			a += ((uint32_t) k[3]) << 24; /* fall through */
+		case 3:
+			a += ((uint32_t) k[2]) << 16; /* fall through */
+		case 2:
+			a += ((uint32_t) k[1]) << 8; /* fall through */
 		case 1:
-			a+=k[0];
+			a += k[0];
 			break;
 		case 0:
 			return c;
 		}
 	}
 
-	final(a,b,c);
+	final(a, b, c);
 	return c;
 }
 
@@ -495,8 +580,7 @@ unsigned long hash_key_str(const void *key, unsigned long seed)
  */
 unsigned long hash_key_two_u64(const void *key, unsigned long seed)
 {
-	const struct lttng_ht_two_u64 *k =
-		(const struct lttng_ht_two_u64 *) key;
+	const struct lttng_ht_two_u64 *k = (const struct lttng_ht_two_u64 *) key;
 
 	return hash_key_u64(&k->key1, seed) ^ hash_key_u64(&k->key2, seed);
 }
@@ -542,13 +626,10 @@ int hash_match_key_str(const void *key1, const void *key2)
  */
 int hash_match_key_two_u64(const void *key1, const void *key2)
 {
-	const struct lttng_ht_two_u64 *k1 =
-		(const struct lttng_ht_two_u64 *) key1;
-	const struct lttng_ht_two_u64 *k2 =
-		(const struct lttng_ht_two_u64 *) key2;
+	const struct lttng_ht_two_u64 *k1 = (const struct lttng_ht_two_u64 *) key1;
+	const struct lttng_ht_two_u64 *k2 = (const struct lttng_ht_two_u64 *) key2;
 
-	if (hash_match_key_u64(&k1->key1, &k2->key1) &&
-			hash_match_key_u64(&k1->key2, &k2->key2)) {
+	if (hash_match_key_u64(&k1->key1, &k2->key1) && hash_match_key_u64(&k1->key2, &k2->key2)) {
 		return 1;
 	}
 

@@ -5,11 +5,10 @@
  *
  */
 
-#include <string.h>
-
-#include <tap/tap.h>
-
 #include <common/uri.hpp>
+
+#include <string.h>
+#include <tap/tap.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -29,19 +28,11 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 2 &&
-	   uri[0].dtype == LTTNG_DST_IPV4 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 0 &&
-	   strlen(uri[0].subdir) == 0 &&
-	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
-	   uri[1].dtype == LTTNG_DST_IPV4 &&
-	   uri[1].utype == LTTNG_URI_DST &&
-	   uri[1].stype == 0 &&
-	   uri[1].port == 0 &&
-	   strlen(uri[1].subdir) == 0 &&
-	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	ok(size == 2 && uri[0].dtype == LTTNG_DST_IPV4 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 0 && strlen(uri[0].subdir) == 0 &&
+		   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 && uri[1].dtype == LTTNG_DST_IPV4 &&
+		   uri[1].utype == LTTNG_URI_DST && uri[1].stype == 0 && uri[1].port == 0 &&
+		   strlen(uri[1].subdir) == 0 && strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
 	   "URI set to net://localhost");
 
 	if (uri) {
@@ -53,19 +44,12 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 2 &&
-	   uri[0].dtype == LTTNG_DST_IPV4 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 8989 &&
-	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
-	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
-	   uri[1].dtype == LTTNG_DST_IPV4 &&
-	   uri[1].utype == LTTNG_URI_DST &&
-	   uri[1].stype == 0 &&
-	   uri[1].port == 4242 &&
-	   strlen(uri[1].subdir) == 0 &&
-	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	ok(size == 2 && uri[0].dtype == LTTNG_DST_IPV4 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 8989 &&
+		   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+		   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 && uri[1].dtype == LTTNG_DST_IPV4 &&
+		   uri[1].utype == LTTNG_URI_DST && uri[1].stype == 0 && uri[1].port == 4242 &&
+		   strlen(uri[1].subdir) == 0 && strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
 	   "URI set to net://localhost:8989:4242/my/test/path");
 
 	if (uri) {
@@ -77,19 +61,11 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 2 &&
-	   uri[0].dtype == LTTNG_DST_IPV4 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 8989 &&
-	   strlen(uri[0].subdir) == 0 &&
-	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
-	   uri[1].dtype == LTTNG_DST_IPV4 &&
-	   uri[1].utype == LTTNG_URI_DST &&
-	   uri[1].stype == 0 &&
-	   uri[1].port == 4242 &&
-	   strlen(uri[1].subdir) == 0 &&
-	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
+	ok(size == 2 && uri[0].dtype == LTTNG_DST_IPV4 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 8989 && strlen(uri[0].subdir) == 0 &&
+		   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 && uri[1].dtype == LTTNG_DST_IPV4 &&
+		   uri[1].utype == LTTNG_URI_DST && uri[1].stype == 0 && uri[1].port == 4242 &&
+		   strlen(uri[1].subdir) == 0 && strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
 	   "URI set to net://localhost:8989:4242");
 
 	if (uri) {
@@ -101,19 +77,11 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 2 &&
-	   uri[0].dtype == LTTNG_DST_IPV6 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 8989 &&
-	   strlen(uri[0].subdir) == 0 &&
-	   strcmp(uri[0].dst.ipv6, "::1") == 0 &&
-	   uri[1].dtype == LTTNG_DST_IPV6 &&
-	   uri[1].utype == LTTNG_URI_DST &&
-	   uri[1].stype == 0 &&
-	   uri[1].port == 0 &&
-	   strlen(uri[1].subdir) == 0 &&
-	   strcmp(uri[1].dst.ipv6, "::1") == 0,
+	ok(size == 2 && uri[0].dtype == LTTNG_DST_IPV6 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 8989 && strlen(uri[0].subdir) == 0 &&
+		   strcmp(uri[0].dst.ipv6, "::1") == 0 && uri[1].dtype == LTTNG_DST_IPV6 &&
+		   uri[1].utype == LTTNG_URI_DST && uri[1].stype == 0 && uri[1].port == 0 &&
+		   strlen(uri[1].subdir) == 0 && strcmp(uri[1].dst.ipv6, "::1") == 0,
 	   "URI set to net6://[::1]:8989");
 
 	if (uri) {
@@ -125,13 +93,10 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 1 &&
-	   uri[0].dtype == LTTNG_DST_IPV4 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 0 &&
-	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
-	   strcmp(uri[0].dst.ipv4, "42.42.42.42") == 0,
+	ok(size == 1 && uri[0].dtype == LTTNG_DST_IPV4 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 0 &&
+		   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+		   strcmp(uri[0].dst.ipv4, "42.42.42.42") == 0,
 	   "URI set to tcp://42.42.42.42/my/test/path");
 
 	if (uri) {
@@ -143,13 +108,10 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 1 &&
-	   uri[0].dtype == LTTNG_DST_IPV6 &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 0 &&
-	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
-	   strcmp(uri[0].dst.ipv6, "fe80::f66d:4ff:fe53:d220") == 0,
+	ok(size == 1 && uri[0].dtype == LTTNG_DST_IPV6 && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 0 &&
+		   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+		   strcmp(uri[0].dst.ipv6, "fe80::f66d:4ff:fe53:d220") == 0,
 	   "URI set to tcp6://[fe80::f66d:4ff:fe53:d220]/my/test/path");
 
 	if (uri) {
@@ -161,13 +123,9 @@ static void test_uri_parsing(void)
 
 	size = uri_parse(s_uri1, &uri);
 
-	ok(size == 1 &&
-	   uri[0].dtype == LTTNG_DST_PATH &&
-	   uri[0].utype == LTTNG_URI_DST &&
-	   uri[0].stype == 0 &&
-	   uri[0].port == 0 &&
-	   strlen(uri[0].subdir) == 0 &&
-	   strcmp(uri[0].dst.path, "/my/test/path") == 0,
+	ok(size == 1 && uri[0].dtype == LTTNG_DST_PATH && uri[0].utype == LTTNG_URI_DST &&
+		   uri[0].stype == 0 && uri[0].port == 0 && strlen(uri[0].subdir) == 0 &&
+		   strcmp(uri[0].dst.path, "/my/test/path") == 0,
 	   "URI set to file:///my/test/path");
 
 	if (uri) {
@@ -230,13 +188,11 @@ static void test_uri_cmp(void)
 
 	res = uri_compare(uri1, uri1);
 
-	ok(res == 0,
-	   "URI compare net://localhost == net://localhost");
+	ok(res == 0, "URI compare net://localhost == net://localhost");
 
 	res = uri_compare(uri1, uri2);
 
-	ok(res != 0,
-	   "URI compare net://localhost != net://localhost:8989:4242");
+	ok(res != 0, "URI compare net://localhost != net://localhost:8989:4242");
 
 	uri_free(uri1);
 	uri_free(uri2);

@@ -9,24 +9,23 @@
  *
  */
 
+#include <common/macros.hpp>
+
+#include <lttng/lttng.h>
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
 #include <tap/tap.h>
-
-#include <common/macros.hpp>
-#include <lttng/lttng.h>
+#include <unistd.h>
 
 #define TEST_COUNT 1
 
 #define TEST_SESSION_NAME "test_session"
 #define TEST_CHANNEL_NAME "test_channel"
 
-static
-int get_registered_triggers_count(void)
+static int get_registered_triggers_count(void)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -55,24 +54,21 @@ end:
 	return ret;
 }
 
-static
-int setup_session_with_size_rotation_schedule(const char *session_output_path)
+static int setup_session_with_size_rotation_schedule(const char *session_output_path)
 {
 	int ret;
 	struct lttng_session_descriptor *session_desriptor = NULL;
 	enum lttng_error_code ret_code;
-	struct lttng_handle ust_channel_handle = {
-		TEST_SESSION_NAME,
-		{
-			.type = LTTNG_DOMAIN_UST,
-			.buf_type = LTTNG_BUFFER_PER_UID,
-			.padding = {},
-			.attr = {},
-		},
-		{}
-	};
+	struct lttng_handle ust_channel_handle = { TEST_SESSION_NAME,
+						   {
+							   .type = LTTNG_DOMAIN_UST,
+							   .buf_type = LTTNG_BUFFER_PER_UID,
+							   .padding = {},
+							   .attr = {},
+						   },
+						   {} };
 
-	lttng_channel channel_cfg {};
+	lttng_channel channel_cfg{};
 	strcpy(channel_cfg.name, TEST_CHANNEL_NAME);
 	channel_cfg.enabled = 1;
 	channel_cfg.attr.overwrite = -1;
@@ -83,35 +79,33 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 	enum lttng_rotation_status rotation_status;
 	struct lttng_rotation_schedule *rotation_schedule = NULL;
 
-	session_desriptor = lttng_session_descriptor_local_create(
-			TEST_SESSION_NAME, session_output_path);
+	session_desriptor =
+		lttng_session_descriptor_local_create(TEST_SESSION_NAME, session_output_path);
 	if (!session_desriptor) {
-		fail("Failed to create session descriptor for session `%s`",
-				TEST_SESSION_NAME);
+		fail("Failed to create session descriptor for session `%s`", TEST_SESSION_NAME);
 		ret = -1;
 		goto end;
 	}
 
 	ret_code = lttng_create_session_ext(session_desriptor);
 	if (ret_code != LTTNG_OK) {
-		fail("Failed to create session `%s`: %s", TEST_SESSION_NAME,
-				lttng_strerror(-ret_code));
+		fail("Failed to create session `%s`: %s",
+		     TEST_SESSION_NAME,
+		     lttng_strerror(-ret_code));
 		ret = -1;
 		goto end;
 	}
 
 	ret = lttng_enable_channel(&ust_channel_handle, &channel_cfg);
 	if (ret) {
-		fail("Failed to enable channel `%s`: %s", TEST_CHANNEL_NAME,
-				lttng_strerror(ret));
+		fail("Failed to enable channel `%s`: %s", TEST_CHANNEL_NAME, lttng_strerror(ret));
 		ret = -1;
 		goto end;
 	}
 
 	ret = lttng_start_tracing(TEST_SESSION_NAME);
 	if (ret) {
-		fail("Failed to start session `%s`: %s", TEST_SESSION_NAME,
-				lttng_strerror(ret));
+		fail("Failed to start session `%s`: %s", TEST_SESSION_NAME, lttng_strerror(ret));
 		ret = -1;
 		goto end;
 	}
@@ -129,18 +123,17 @@ int setup_session_with_size_rotation_schedule(const char *session_output_path)
 	 * time.
 	 */
 	rotation_status = lttng_rotation_schedule_size_threshold_set_threshold(
-			rotation_schedule, sysconf(_SC_PAGE_SIZE) * 4096);
+		rotation_schedule, sysconf(_SC_PAGE_SIZE) * 4096);
 	if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 		fail("Failed to set size threshold of session rotation schedule");
 		ret = -1;
 		goto end;
 	}
 
-	rotation_status = lttng_session_add_rotation_schedule(
-			TEST_SESSION_NAME, rotation_schedule);
+	rotation_status = lttng_session_add_rotation_schedule(TEST_SESSION_NAME, rotation_schedule);
 	if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 		fail("Failed to set size-based rotation schedule on session `%s`",
-				TEST_SESSION_NAME);
+		     TEST_SESSION_NAME);
 		ret = -1;
 		goto end;
 	}
@@ -174,7 +167,7 @@ int main(int argc, const char **argv)
 	}
 
 	ok(get_registered_triggers_count() == 0,
-			"No triggers visible while session has an enabled size-based rotation schedule");
+	   "No triggers visible while session has an enabled size-based rotation schedule");
 
 	ret = lttng_destroy_session(TEST_SESSION_NAME);
 	if (ret) {

@@ -6,13 +6,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <urcu/uatomic.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <stdio.h>
 #include "fd-limit.hpp"
-#include <common/error.hpp>
+
 #include <common/compat/errno.hpp>
+#include <common/error.hpp>
+
+#include <stdio.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <urcu/uatomic.h>
 
 /* total count of fd. */
 static long fd_count;
@@ -35,16 +37,14 @@ int lttng_fd_get(enum lttng_fd_type type, unsigned int nr)
 	}
 
 	newval = uatomic_add_return(&fd_count, (long) nr);
-	if ((long) (newval * 100)
-			- (long) (max_nr_fd * fd_threshold[type]) > 0) {
+	if ((long) (newval * 100) - (long) (max_nr_fd * fd_threshold[type]) > 0) {
 		uatomic_sub(&fd_count, (long) nr);
 		return -EPERM;
 	}
 	return 0;
 }
 
-void lttng_fd_put(enum lttng_fd_type type __attribute__((unused)),
-		unsigned int nr)
+void lttng_fd_put(enum lttng_fd_type type __attribute__((unused)), unsigned int nr)
 {
 	uatomic_sub(&fd_count, (long) nr);
 }

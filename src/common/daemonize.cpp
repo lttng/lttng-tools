@@ -7,19 +7,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <unistd.h>
 #include <common/compat/paths.hpp>
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <stdlib.h>
-
-#include <urcu/system.h>
-
 #include <common/daemonize.hpp>
 #include <common/error.hpp>
 
-int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
-		int close_fds)
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <urcu/system.h>
+
+int lttng_daemonize(pid_t *child_ppid, int *completion_flag, int close_fds)
 {
 	pid_t pid;
 

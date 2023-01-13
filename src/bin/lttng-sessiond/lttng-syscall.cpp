@@ -6,15 +6,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdbool.h>
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "lttng-syscall.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 
-#include "lttng-sessiond.hpp"
-#include "kernel.hpp"
-#include "lttng-syscall.hpp"
-#include "utils.hpp"
+#include <stdbool.h>
 
 /* Global syscall table. */
 struct syscall *syscall_table;
@@ -40,7 +40,7 @@ int syscall_init_table(int tracer_fd)
 	char name[SYSCALL_NAME_LEN];
 
 #if (SYSCALL_NAME_LEN == 255)
-#define SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API	"254"
+#define SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API "254"
 #endif
 
 	DBG3("Syscall init system call table");
@@ -68,10 +68,12 @@ int syscall_init_table(int tracer_fd)
 	}
 
 	while (fscanf(fp,
-				"syscall { index = %zu; \
+		      "syscall { index = %zu; \
 				name = %" SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API "[^;]; \
 				bitness = %u; };\n",
-				&index, name, &bitness) == 3) {
+		      &index,
+		      name,
+		      &bitness) == 3) {
 		at_least_one_syscall = true;
 		if (index >= nbmem) {
 			struct syscall *new_list;
@@ -88,9 +90,9 @@ int syscall_init_table(int tracer_fd)
 				goto error;
 			}
 
-			DBG("Reallocating syscall table from %zu to %zu entries", nbmem,
-					new_nbmem);
-			new_list = (struct syscall *) realloc(syscall_table, new_nbmem * sizeof(*new_list));
+			DBG("Reallocating syscall table from %zu to %zu entries", nbmem, new_nbmem);
+			new_list = (struct syscall *) realloc(syscall_table,
+							      new_nbmem * sizeof(*new_list));
 			if (!new_list) {
 				ret = -errno;
 				PERROR("syscall list realloc");
@@ -98,15 +100,14 @@ int syscall_init_table(int tracer_fd)
 			}
 
 			/* Zero out the new memory. */
-			memset(new_list + nbmem, 0,
-					(new_nbmem - nbmem) * sizeof(*new_list));
+			memset(new_list + nbmem, 0, (new_nbmem - nbmem) * sizeof(*new_list));
 			nbmem = new_nbmem;
 			syscall_table = new_list;
 		}
 		syscall_table[index].index = index;
 		syscall_table[index].bitness = bitness;
-		if (lttng_strncpy(syscall_table[index].name, name,
-				sizeof(syscall_table[index].name))) {
+		if (lttng_strncpy(
+			    syscall_table[index].name, name, sizeof(syscall_table[index].name))) {
 			ret = -EINVAL;
 			free(syscall_table);
 			syscall_table = NULL;
@@ -164,7 +165,7 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 		return;
 	}
 
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, ksyscall, node.node) {
+	cds_lfht_for_each_entry (ht->ht, &iter.iter, ksyscall, node.node) {
 		int ret;
 
 		ret = lttng_ht_del(ht, &iter);
@@ -221,14 +222,17 @@ static struct syscall *lookup_syscall(struct lttng_ht *ht, const char *name)
  * syscall at index in the syscall table.
  */
 static void update_event_syscall_bitness(struct lttng_event *events,
-		unsigned int index, unsigned int syscall_index)
+					 unsigned int index,
+					 unsigned int syscall_index)
 {
 	LTTNG_ASSERT(events);
 
 	if (syscall_table[index].bitness == 32) {
-		events[syscall_index].flags = (lttng_event_flag) (events[syscall_index].flags | LTTNG_EVENT_FLAG_SYSCALL_32);
+		events[syscall_index].flags = (lttng_event_flag) (events[syscall_index].flags |
+								  LTTNG_EVENT_FLAG_SYSCALL_32);
 	} else {
-		events[syscall_index].flags = (lttng_event_flag) (events[syscall_index].flags | LTTNG_EVENT_FLAG_SYSCALL_64);
+		events[syscall_index].flags = (lttng_event_flag) (events[syscall_index].flags |
+								  LTTNG_EVENT_FLAG_SYSCALL_64);
 	}
 }
 
@@ -237,8 +241,7 @@ static void update_event_syscall_bitness(struct lttng_event *events,
  *
  * Return 0 on success else -LTTNG_ERR_NOMEM.
  */
-static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index,
-		unsigned int syscall_index)
+static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index, unsigned int syscall_index)
 {
 	int ret;
 	struct syscall *ksyscall;
@@ -251,8 +254,7 @@ static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index,
 		goto error;
 	}
 
-	strncpy(ksyscall->name, syscall_table[index].name,
-			sizeof(ksyscall->name));
+	strncpy(ksyscall->name, syscall_table[index].name, sizeof(ksyscall->name));
 	ksyscall->bitness = syscall_table[index].bitness;
 	ksyscall->index = syscall_index;
 	lttng_ht_node_init_str(&ksyscall->node, ksyscall->name);
@@ -320,8 +322,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 		}
 
 		/* Copy the event information in the event's array. */
-		strncpy(events[index].name, syscall_table[i].name,
-				sizeof(events[index].name));
+		strncpy(events[index].name, syscall_table[i].name, sizeof(events[index].name));
 		update_event_syscall_bitness(events, i, index);
 		events[index].type = LTTNG_EVENT_SYSCALL;
 		/* This makes the command line not print the enabled/disabled field. */

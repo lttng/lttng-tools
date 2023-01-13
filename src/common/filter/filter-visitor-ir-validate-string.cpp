@@ -9,18 +9,18 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
-
-#include <common/macros.hpp>
-#include <common/compat/errno.hpp>
-
 #include "filter-ast.hpp"
-#include "filter-parser.hpp"
 #include "filter-ir.hpp"
+#include "filter-parser.hpp"
+
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
+
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 enum parse_char_result {
 	PARSE_CHAR_UNKNOWN = -2,
@@ -28,8 +28,7 @@ enum parse_char_result {
 	PARSE_CHAR_NORMAL = 0,
 };
 
-static
-enum parse_char_result parse_char(const char **p)
+static enum parse_char_result parse_char(const char **p)
 {
 	switch (**p) {
 	case '\\':
@@ -48,8 +47,7 @@ enum parse_char_result parse_char(const char **p)
 	}
 }
 
-static
-int validate_string(struct ir_op *node)
+static int validate_string(struct ir_op *node)
 {
 	switch (node->op) {
 	case IR_OP_UNKNOWN:
@@ -82,8 +80,7 @@ int validate_string(struct ir_op *node)
 				switch (res) {
 				case PARSE_CHAR_UNKNOWN:
 					ret = -EINVAL;
-					fprintf(stderr,
-						"Unsupported escape character detected.\n");
+					fprintf(stderr, "Unsupported escape character detected.\n");
 					goto end_load;
 				case PARSE_CHAR_NORMAL:
 				default:
@@ -91,7 +88,7 @@ int validate_string(struct ir_op *node)
 				}
 			}
 		}
-end_load:
+	end_load:
 		return ret;
 	}
 	case IR_OP_UNARY:

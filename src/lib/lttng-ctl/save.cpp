@@ -6,14 +6,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <string.h>
+#include "lttng-ctl-helper.hpp"
 
-#include <lttng/lttng-error.h>
-#include <lttng/save.h>
-#include <lttng/save-internal.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "lttng-ctl-helper.hpp"
+#include <lttng/lttng-error.h>
+#include <lttng/save-internal.hpp>
+#include <lttng/save.h>
+
+#include <string.h>
 
 struct lttng_save_session_attr *lttng_save_session_attr_create(void)
 {
@@ -27,8 +28,7 @@ void lttng_save_session_attr_destroy(struct lttng_save_session_attr *output)
 	}
 }
 
-const char *lttng_save_session_attr_get_session_name(
-	struct lttng_save_session_attr *attr)
+const char *lttng_save_session_attr_get_session_name(struct lttng_save_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -39,8 +39,7 @@ const char *lttng_save_session_attr_get_session_name(
 	return ret;
 }
 
-const char *lttng_save_session_attr_get_output_url(
-	struct lttng_save_session_attr *attr)
+const char *lttng_save_session_attr_get_output_url(struct lttng_save_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -51,26 +50,23 @@ const char *lttng_save_session_attr_get_output_url(
 	return ret;
 }
 
-int lttng_save_session_attr_get_overwrite(
-	struct lttng_save_session_attr *attr)
+int lttng_save_session_attr_get_overwrite(struct lttng_save_session_attr *attr)
 {
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
 }
 
-int lttng_save_session_attr_get_omit_name(
-	struct lttng_save_session_attr *attr)
+int lttng_save_session_attr_get_omit_name(struct lttng_save_session_attr *attr)
 {
 	return attr ? attr->omit_name : -LTTNG_ERR_INVALID;
 }
 
-int lttng_save_session_attr_get_omit_output(
-	struct lttng_save_session_attr *attr)
+int lttng_save_session_attr_get_omit_output(struct lttng_save_session_attr *attr)
 {
 	return attr ? attr->omit_output : -LTTNG_ERR_INVALID;
 }
 
-int lttng_save_session_attr_set_session_name(
-	struct lttng_save_session_attr *attr, const char *session_name)
+int lttng_save_session_attr_set_session_name(struct lttng_save_session_attr *attr,
+					     const char *session_name)
 {
 	int ret = 0;
 
@@ -88,8 +84,7 @@ int lttng_save_session_attr_set_session_name(
 			goto error;
 		}
 
-		ret = lttng_strncpy(attr->session_name, session_name,
-				sizeof(attr->session_name));
+		ret = lttng_strncpy(attr->session_name, session_name, sizeof(attr->session_name));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
@@ -101,8 +96,7 @@ error:
 	return ret;
 }
 
-int lttng_save_session_attr_set_output_url(
-	struct lttng_save_session_attr *attr, const char *url)
+int lttng_save_session_attr_set_output_url(struct lttng_save_session_attr *attr, const char *url)
 {
 	int ret = 0;
 	size_t len;
@@ -133,8 +127,8 @@ int lttng_save_session_attr_set_output_url(
 	}
 
 	/* Copy string plus the NULL terminated byte. */
-	ret = lttng_strncpy(attr->configuration_url, uris[0].dst.path,
-			    sizeof(attr->configuration_url));
+	ret = lttng_strncpy(
+		attr->configuration_url, uris[0].dst.path, sizeof(attr->configuration_url));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -146,8 +140,7 @@ error:
 	return ret;
 }
 
-int lttng_save_session_attr_set_overwrite(
-	struct lttng_save_session_attr *attr, int overwrite)
+int lttng_save_session_attr_set_overwrite(struct lttng_save_session_attr *attr, int overwrite)
 {
 	int ret = 0;
 
@@ -161,8 +154,7 @@ end:
 	return ret;
 }
 
-int lttng_save_session_attr_set_omit_name(
-	struct lttng_save_session_attr *attr, int omit_name)
+int lttng_save_session_attr_set_omit_name(struct lttng_save_session_attr *attr, int omit_name)
 {
 	int ret = 0;
 
@@ -176,8 +168,7 @@ end:
 	return ret;
 }
 
-int lttng_save_session_attr_set_omit_output(
-	struct lttng_save_session_attr *attr, int omit_output)
+int lttng_save_session_attr_set_omit_output(struct lttng_save_session_attr *attr, int omit_output)
 {
 	int ret = 0;
 
@@ -209,8 +200,7 @@ int lttng_save_session(struct lttng_save_session_attr *attr)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION;
 
-	memcpy(&lsm.u.save_session.attr, attr,
-		sizeof(struct lttng_save_session_attr));
+	memcpy(&lsm.u.save_session.attr, attr, sizeof(struct lttng_save_session_attr));
 	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 end:
 	return ret;

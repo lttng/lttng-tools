@@ -7,6 +7,10 @@
  *
  */
 
+#include "agent-thread.hpp"
+#include "clear.hpp"
+#include "client.hpp"
+#include "cmd.hpp"
 #include "common/buffer-view.hpp"
 #include "common/compat/socket.hpp"
 #include "common/dynamic-array.hpp"
@@ -15,35 +19,33 @@
 #include "common/payload-view.hpp"
 #include "common/payload.hpp"
 #include "common/sessiond-comm/sessiond-comm.hpp"
+#include "health-sessiond.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
+#include "manage-consumer.hpp"
+#include "save.hpp"
+#include "testpoint.hpp"
+#include "utils.hpp"
+
 #include <common/compat/getenv.hpp>
 #include <common/tracker.hpp>
 #include <common/unix.hpp>
 #include <common/utils.hpp>
+
 #include <lttng/error-query-internal.hpp>
 #include <lttng/event-internal.hpp>
 #include <lttng/session-descriptor-internal.hpp>
 #include <lttng/session-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
+
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include "agent-thread.hpp"
-#include "clear.hpp"
-#include "client.hpp"
-#include "cmd.hpp"
-#include "health-sessiond.hpp"
-#include "kernel.hpp"
-#include "lttng-sessiond.hpp"
-#include "manage-consumer.hpp"
-#include "save.hpp"
-#include "testpoint.hpp"
-#include "utils.hpp"
 
 namespace {
 bool is_root;
@@ -83,13 +85,15 @@ static bool wait_thread_status(void)
  * Return 0 on success, negative value on error.
  */
 static int setup_lttng_msg(struct command_ctx *cmd_ctx,
-	const void *payload_buf, size_t payload_len,
-	const void *cmd_header_buf, size_t cmd_header_len)
+			   const void *payload_buf,
+			   size_t payload_len,
+			   const void *cmd_header_buf,
+			   size_t cmd_header_len)
 {
 	int ret = 0;
 	const size_t header_len = sizeof(struct lttcomm_lttng_msg);
 	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
-	lttcomm_lttng_msg llm {};
+	lttcomm_lttng_msg llm{};
 
 	llm.cmd_type = cmd_ctx->lsm.cmd_type;
 	llm.pid = (uint32_t) cmd_ctx->lsm.domain.attr.pid;
@@ -106,8 +110,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	cmd_ctx->lttng_msg_size = total_msg_size;
 
 	/* Append reply header. */
-	ret = lttng_dynamic_buffer_append(
-			&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm));
+	ret = lttng_dynamic_buffer_append(&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm));
 	if (ret) {
 		goto end;
 	}
@@ -115,8 +118,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	/* Append command header. */
 	if (cmd_header_len) {
 		ret = lttng_dynamic_buffer_append(
-				&cmd_ctx->reply_payload.buffer, cmd_header_buf,
-				cmd_header_len);
+			&cmd_ctx->reply_payload.buffer, cmd_header_buf, cmd_header_len);
 		if (ret) {
 			goto end;
 		}
@@ -125,8 +127,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	/* Append payload. */
 	if (payload_len) {
 		ret = lttng_dynamic_buffer_append(
-				&cmd_ctx->reply_payload.buffer, payload_buf,
-				payload_len);
+			&cmd_ctx->reply_payload.buffer, payload_buf, payload_len);
 		if (ret) {
 			goto end;
 		}
@@ -147,8 +148,7 @@ static int setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
 	}
 
 	/* Append place-holder reply header. */
-	ret = lttng_dynamic_buffer_append(
-			&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm));
+	ret = lttng_dynamic_buffer_append(&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm));
 	if (ret) {
 		goto end;
 	}
@@ -158,13 +158,12 @@ end:
 	return ret;
 }
 
-static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len,
-		size_t payload_len)
+static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len, size_t payload_len)
 {
 	const size_t header_len = sizeof(struct lttcomm_lttng_msg);
 	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
 	struct lttcomm_lttng_msg *p_llm;
-	lttcomm_lttng_msg llm {};
+	lttcomm_lttng_msg llm{};
 
 	llm.cmd_type = cmd_ctx->lsm.cmd_type;
 	llm.pid = (uint32_t) cmd_ctx->lsm.domain.attr.pid;
@@ -226,9 +225,9 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * fallback on the 32-bit one,
 			 */
 			DBG3("Looking for a kernel consumer at these locations:");
-			DBG3("	1) %s", the_config.consumerd64_bin_path.value ? : "NULL");
+			DBG3("	1) %s", the_config.consumerd64_bin_path.value ?: "NULL");
 			DBG3("	2) %s/%s", INSTALL_BIN_PATH, DEFAULT_CONSUMERD_FILE);
-			DBG3("	3) %s", the_config.consumerd32_bin_path.value ? : "NULL");
+			DBG3("	3) %s", the_config.consumerd32_bin_path.value ?: "NULL");
 			if (stat(the_config.consumerd64_bin_path.value, &st) == 0) {
 				DBG3("Found location #1");
 				consumer_to_use = the_config.consumerd64_bin_path.value;
@@ -236,7 +235,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				DBG3("Found location #2");
 				consumer_to_use = INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE;
 			} else if (the_config.consumerd32_bin_path.value &&
-					stat(the_config.consumerd32_bin_path.value, &st) == 0) {
+				   stat(the_config.consumerd32_bin_path.value, &st) == 0) {
 				DBG3("Found location #3");
 				consumer_to_use = the_config.consumerd32_bin_path.value;
 			} else {
@@ -244,15 +243,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				ret = -EINVAL;
 				goto error;
 			}
-			DBG("Using kernel consumer at: %s",  consumer_to_use);
-			(void) execl(consumer_to_use, "lttng-consumerd",
-					verbosity, "-k", "--consumerd-cmd-sock",
-					consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock",
-					consumer_data->err_unix_sock_path,
-					"--group",
-					the_config.tracing_group_name.value,
-					NULL);
+			DBG("Using kernel consumer at: %s", consumer_to_use);
+			(void) execl(consumer_to_use,
+				     "lttng-consumerd",
+				     verbosity,
+				     "-k",
+				     "--consumerd-cmd-sock",
+				     consumer_data->cmd_unix_sock_path,
+				     "--consumerd-err-sock",
+				     consumer_data->err_unix_sock_path,
+				     "--group",
+				     the_config.tracing_group_name.value,
+				     NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
@@ -265,7 +267,8 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen(the_config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(the_config.consumerd64_lib_dir.value) + 1 /* : */ +
+					strlen(tmp);
 				tmpnew = zmalloc<char>(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
@@ -284,16 +287,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 64-bit UST consumer at: %s",
-					the_config.consumerd64_bin_path.value);
+			    the_config.consumerd64_bin_path.value);
 			(void) execl(the_config.consumerd64_bin_path.value,
-					"lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock",
-					consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock",
-					consumer_data->err_unix_sock_path,
-					"--group",
-					the_config.tracing_group_name.value,
-					NULL);
+				     "lttng-consumerd",
+				     verbosity,
+				     "-u",
+				     "--consumerd-cmd-sock",
+				     consumer_data->cmd_unix_sock_path,
+				     "--consumerd-err-sock",
+				     consumer_data->err_unix_sock_path,
+				     "--group",
+				     the_config.tracing_group_name.value,
+				     NULL);
 			break;
 		}
 		case LTTNG_CONSUMER32_UST:
@@ -307,7 +312,8 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen(the_config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(the_config.consumerd32_lib_dir.value) + 1 /* : */ +
+					strlen(tmp);
 				tmpnew = zmalloc<char>(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
@@ -326,16 +332,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 32-bit UST consumer at: %s",
-					the_config.consumerd32_bin_path.value);
+			    the_config.consumerd32_bin_path.value);
 			(void) execl(the_config.consumerd32_bin_path.value,
-					"lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock",
-					consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock",
-					consumer_data->err_unix_sock_path,
-					"--group",
-					the_config.tracing_group_name.value,
-					NULL);
+				     "lttng-consumerd",
+				     verbosity,
+				     "-u",
+				     "--consumerd-cmd-sock",
+				     consumer_data->cmd_unix_sock_path,
+				     "--consumerd-err-sock",
+				     consumer_data->err_unix_sock_path,
+				     "--group",
+				     the_config.tracing_group_name.value,
+				     NULL);
 			break;
 		}
 		default:
@@ -441,8 +449,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		if (session->kernel_session->consumer) {
 			consumer_output_put(session->kernel_session->consumer);
 		}
-		session->kernel_session->consumer =
-			consumer_copy_output(session->consumer);
+		session->kernel_session->consumer = consumer_copy_output(session->consumer);
 		/* Ease our life a bit for the next part */
 		consumer = session->kernel_session->consumer;
 		dir_name = DEFAULT_KERNEL_TRACE_DIR;
@@ -455,8 +462,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 		if (session->ust_session->consumer) {
 			consumer_output_put(session->ust_session->consumer);
 		}
-		session->ust_session->consumer =
-			consumer_copy_output(session->consumer);
+		session->ust_session->consumer = consumer_copy_output(session->consumer);
 		/* Ease our life a bit for the next part */
 		consumer = session->ust_session->consumer;
 		dir_name = DEFAULT_UST_TRACE_DIR;
@@ -467,8 +473,7 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	}
 
 	/* Append correct directory to subdir */
-	ret = lttng_strncpy(consumer->domain_subdir, dir_name,
-			sizeof(consumer->domain_subdir));
+	ret = lttng_strncpy(consumer->domain_subdir, dir_name, sizeof(consumer->domain_subdir));
 	if (ret) {
 		ret = LTTNG_ERR_UNK;
 		goto error;
@@ -483,8 +488,7 @@ error:
 /*
  * Create an UST session and add it to the session ust list.
  */
-static int create_ust_session(struct ltt_session *session,
-		const struct lttng_domain *domain)
+static int create_ust_session(struct ltt_session *session, const struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus = NULL;
@@ -520,14 +524,11 @@ static int create_ust_session(struct ltt_session *session,
 	lus->live_timer_interval = session->live_timer;
 	session->ust_session = lus;
 	if (session->shm_path[0]) {
-		strncpy(lus->root_shm_path, session->shm_path,
-			sizeof(lus->root_shm_path));
+		strncpy(lus->root_shm_path, session->shm_path, sizeof(lus->root_shm_path));
 		lus->root_shm_path[sizeof(lus->root_shm_path) - 1] = '\0';
-		strncpy(lus->shm_path, session->shm_path,
-			sizeof(lus->shm_path));
+		strncpy(lus->shm_path, session->shm_path, sizeof(lus->shm_path));
 		lus->shm_path[sizeof(lus->shm_path) - 1] = '\0';
-		strncat(lus->shm_path, "/ust",
-			sizeof(lus->shm_path) - strlen(lus->shm_path) - 1);
+		strncat(lus->shm_path, "/ust", sizeof(lus->shm_path) - strlen(lus->shm_path) - 1);
 	}
 	/* Copy session output to the newly created UST session */
 	ret = copy_session_consumer(domain->type, session);
@@ -585,22 +586,20 @@ error_create:
 /*
  * Count number of session permitted by uid/gid.
  */
-static unsigned int lttng_sessions_count(uid_t uid,
-		gid_t gid __attribute__((unused)))
+static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
 {
 	unsigned int i = 0;
 	struct ltt_session *session;
 	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Counting number of available session for UID %d", uid);
-	cds_list_for_each_entry(session, &session_list->head, list) {
+	cds_list_for_each_entry (session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
 		}
 		session_lock(session);
 		/* Only count the sessions the user can control. */
-		if (session_access_ok(session, uid) &&
-				!session->destroyed) {
+		if (session_access_ok(session, uid) && !session->destroyed) {
 			i++;
 		}
 		session_unlock(session);
@@ -610,9 +609,9 @@ static unsigned int lttng_sessions_count(uid_t uid,
 }
 
 static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
-		int sock,
-		int *sock_error,
-		struct lttng_trigger **_trigger)
+						   int sock,
+						   int *sock_error,
+						   struct lttng_trigger **_trigger)
 {
 	int ret;
 	size_t trigger_len;
@@ -623,15 +622,13 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 
 	lttng_payload_init(&trigger_payload);
 	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
-	ret = lttng_dynamic_buffer_set_size(
-			&trigger_payload.buffer, trigger_len);
+	ret = lttng_dynamic_buffer_set_size(&trigger_payload.buffer, trigger_len);
 	if (ret) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, trigger_payload.buffer.data, trigger_len);
+	sock_recv_len = lttcomm_recv_unix_sock(sock, trigger_payload.buffer.data, trigger_len);
 	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
 		ERR("Failed to receive trigger in command payload");
 		*sock_error = 1;
@@ -642,17 +639,18 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 	/* Receive fds, if any. */
 	if (cmd_ctx->lsm.fd_count > 0) {
 		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
-				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
-		if (sock_recv_len > 0 &&
-				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			sock, cmd_ctx->lsm.fd_count, &trigger_payload);
+		if (sock_recv_len > 0 && sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
 			ERR("Failed to receive all file descriptors for trigger in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			*sock_error = 1;
 			goto end;
 		} else if (sock_recv_len <= 0) {
 			ERR("Failed to receive file descriptors for trigger in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_FATAL;
 			*sock_error = 1;
 			goto end;
@@ -662,11 +660,9 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 	/* Deserialize trigger. */
 	{
 		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&trigger_payload, 0, -1);
+			lttng_payload_view_from_payload(&trigger_payload, 0, -1);
 
-		if (lttng_trigger_create_from_payload(&view, &trigger) !=
-				trigger_len) {
+		if (lttng_trigger_create_from_payload(&view, &trigger) != trigger_len) {
 			ERR("Invalid trigger received as part of command payload");
 			ret_code = LTTNG_ERR_INVALID_TRIGGER;
 			lttng_trigger_put(trigger);
@@ -683,9 +679,9 @@ end:
 }
 
 static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_ctx,
-		int sock,
-		int *sock_error,
-		struct lttng_error_query **_query)
+						       int sock,
+						       int *sock_error,
+						       struct lttng_error_query **_query)
 {
 	int ret;
 	size_t query_len;
@@ -702,8 +698,7 @@ static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_c
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, query_payload.buffer.data, query_len);
+	sock_recv_len = lttcomm_recv_unix_sock(sock, query_payload.buffer.data, query_len);
 	if (sock_recv_len < 0 || sock_recv_len != query_len) {
 		ERR("Failed to receive error query in command payload");
 		*sock_error = 1;
@@ -714,17 +709,18 @@ static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_c
 	/* Receive fds, if any. */
 	if (cmd_ctx->lsm.fd_count > 0) {
 		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
-				sock, cmd_ctx->lsm.fd_count, &query_payload);
-		if (sock_recv_len > 0 &&
-				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			sock, cmd_ctx->lsm.fd_count, &query_payload);
+		if (sock_recv_len > 0 && sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
 			ERR("Failed to receive all file descriptors for error query in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			*sock_error = 1;
 			goto end;
 		} else if (sock_recv_len <= 0) {
 			ERR("Failed to receive file descriptors for error query in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_FATAL;
 			*sock_error = 1;
 			goto end;
@@ -734,11 +730,9 @@ static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_c
 	/* Deserialize error query. */
 	{
 		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&query_payload, 0, -1);
+			lttng_payload_view_from_payload(&query_payload, 0, -1);
 
-		if (lttng_error_query_create_from_payload(&view, &query) !=
-				query_len) {
+		if (lttng_error_query_create_from_payload(&view, &query) != query_len) {
 			ERR("Invalid error query received as part of command payload");
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
@@ -754,12 +748,12 @@ end:
 }
 
 static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
-		int sock,
-		int *sock_error,
-		struct lttng_event **out_event,
-		char **out_filter_expression,
-		struct lttng_bytecode **out_bytecode,
-		struct lttng_event_exclusion **out_exclusion)
+						 int sock,
+						 int *sock_error,
+						 struct lttng_event **out_event,
+						 char **out_filter_expression,
+						 struct lttng_bytecode **out_bytecode,
+						 struct lttng_event_exclusion **out_exclusion)
 {
 	int ret;
 	size_t event_len;
@@ -786,8 +780,7 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, event_payload.buffer.data, event_len);
+	sock_recv_len = lttcomm_recv_unix_sock(sock, event_payload.buffer.data, event_len);
 	if (sock_recv_len < 0 || sock_recv_len != event_len) {
 		ERR("Failed to receive event in command payload");
 		*sock_error = 1;
@@ -798,17 +791,18 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	/* Receive fds, if any. */
 	if (cmd_ctx->lsm.fd_count > 0) {
 		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
-				sock, cmd_ctx->lsm.fd_count, &event_payload);
-		if (sock_recv_len > 0 &&
-				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			sock, cmd_ctx->lsm.fd_count, &event_payload);
+		if (sock_recv_len > 0 && sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
 			ERR("Failed to receive all file descriptors for event in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			*sock_error = 1;
 			goto end;
 		} else if (sock_recv_len <= 0) {
 			ERR("Failed to receive file descriptors for event in command payload: expected fd count = %u, ret = %d",
-					cmd_ctx->lsm.fd_count, (int) ret);
+			    cmd_ctx->lsm.fd_count,
+			    (int) ret);
 			ret_code = LTTNG_ERR_FATAL;
 			*sock_error = 1;
 			goto end;
@@ -819,12 +813,13 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	{
 		ssize_t len;
 		struct lttng_payload_view event_view =
-				lttng_payload_view_from_payload(
-						&event_payload, 0, -1);
+			lttng_payload_view_from_payload(&event_payload, 0, -1);
 
-		len = lttng_event_create_from_payload(&event_view, &local_event,
-				    &local_exclusion, &local_filter_expression,
-				    &local_bytecode);
+		len = lttng_event_create_from_payload(&event_view,
+						      &local_event,
+						      &local_exclusion,
+						      &local_filter_expression,
+						      &local_bytecode);
 
 		if (len < 0) {
 			ERR("Failed to create an event from the received buffer");
@@ -833,7 +828,10 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 		}
 
 		if (len != event_len) {
-			ERR("Userspace probe location from the received buffer is not the advertised length: header length = %zu" PRIu32 ", payload length = %zd", event_len, len);
+			ERR("Userspace probe location from the received buffer is not the advertised length: header length = %zu" PRIu32
+			    ", payload length = %zd",
+			    event_len,
+			    len);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
 		}
@@ -859,15 +857,14 @@ end:
 	return ret_code;
 }
 
-static enum lttng_error_code receive_lttng_event_context(
-		const struct command_ctx *cmd_ctx,
-		int sock,
-		int *sock_error,
-		struct lttng_event_context **out_event_context)
+static enum lttng_error_code
+receive_lttng_event_context(const struct command_ctx *cmd_ctx,
+			    int sock,
+			    int *sock_error,
+			    struct lttng_event_context **out_event_context)
 {
 	int ret;
-	const size_t event_context_len =
-			(size_t) cmd_ctx->lsm.u.context.length;
+	const size_t event_context_len = (size_t) cmd_ctx->lsm.u.context.length;
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload event_context_payload;
@@ -875,16 +872,14 @@ static enum lttng_error_code receive_lttng_event_context(
 
 	lttng_payload_init(&event_context_payload);
 
-	ret = lttng_dynamic_buffer_set_size(&event_context_payload.buffer,
-			event_context_len);
+	ret = lttng_dynamic_buffer_set_size(&event_context_payload.buffer, event_context_len);
 	if (ret) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, event_context_payload.buffer.data,
-			event_context_len);
+	sock_recv_len =
+		lttcomm_recv_unix_sock(sock, event_context_payload.buffer.data, event_context_len);
 	if (sock_recv_len < 0 || sock_recv_len != event_context_len) {
 		ERR("Failed to receive event context in command payload");
 		*sock_error = 1;
@@ -896,11 +891,9 @@ static enum lttng_error_code receive_lttng_event_context(
 	{
 		ssize_t len;
 		struct lttng_payload_view event_context_view =
-				lttng_payload_view_from_payload(
-						&event_context_payload, 0, -1);
+			lttng_payload_view_from_payload(&event_context_payload, 0, -1);
 
-		len = lttng_event_context_create_from_payload(
-				&event_context_view, &context);
+		len = lttng_event_context_create_from_payload(&event_context_view, &context);
 
 		if (len < 0) {
 			ERR("Failed to create a event context from the received buffer");
@@ -909,7 +902,9 @@ static enum lttng_error_code receive_lttng_event_context(
 		}
 
 		if (len != event_context_len) {
-			ERR("Event context from the received buffer is not the advertised length: expected length = %zu, payload length = %zd", event_context_len, len);
+			ERR("Event context from the received buffer is not the advertised length: expected length = %zu, payload length = %zd",
+			    event_context_len,
+			    len);
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
 		}
@@ -928,8 +923,8 @@ end:
 /*
  * Version of setup_lttng_msg() without command header.
  */
-static int setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
-	void *payload_buf, size_t payload_len)
+static int
+setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx, void *payload_buf, size_t payload_len)
 {
 	return setup_lttng_msg(cmd_ctx, payload_buf, payload_len, NULL, 0);
 }
@@ -942,8 +937,7 @@ static int check_rotate_compatible(void)
 {
 	int ret = 1;
 
-	if (the_kernel_tracer_version.major != 2 ||
-			the_kernel_tracer_version.minor < 11) {
+	if (the_kernel_tracer_version.major != 2 || the_kernel_tracer_version.minor < 11) {
 		DBG("Kernel tracer version is not compatible with the rotation feature");
 		ret = 0;
 	}
@@ -967,8 +961,7 @@ static int send_unix_sock(int sock, struct lttng_payload_view *view)
 		goto end;
 	}
 
-	ret = lttcomm_send_unix_sock(
-			sock, view->buffer.data, view->buffer.size);
+	ret = lttcomm_send_unix_sock(sock, view->buffer.data, view->buffer.size);
 	if (ret < 0) {
 		goto end;
 	}
@@ -995,8 +988,7 @@ end:
  * A command may assume the ownership of the socket, in which case its value
  * should be set to -1.
  */
-static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
-		int *sock_error)
+static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_error)
 {
 	int ret = LTTNG_OK;
 	bool need_tracing_session = true;
@@ -1005,14 +997,14 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 
 	if (!lttcomm_sessiond_command_is_valid((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type)) {
 		ERR("Unknown client command received: command id = %" PRIu32,
-				cmd_ctx->lsm.cmd_type);
+		    cmd_ctx->lsm.cmd_type);
 		ret = LTTNG_ERR_UND;
 		goto error;
 	}
 
 	DBG("Processing client command '%s\' (%d)",
-		lttcomm_sessiond_command_str((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type),
-		cmd_ctx->lsm.cmd_type);
+	    lttcomm_sessiond_command_str((lttcomm_sessiond_command) cmd_ctx->lsm.cmd_type),
+	    cmd_ctx->lsm.cmd_type);
 
 	*sock_error = 0;
 
@@ -1058,7 +1050,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	}
 
 	if (the_config.no_kernel && need_domain &&
-			cmd_ctx->lsm.domain.type == LTTNG_DOMAIN_KERNEL) {
+	    cmd_ctx->lsm.domain.type == LTTNG_DOMAIN_KERNEL) {
 		if (!is_root) {
 			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
 		} else {
@@ -1083,7 +1075,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	 * this here so we don't have to make the call for no payload at each
 	 * command.
 	 */
-	switch(cmd_ctx->lsm.cmd_type) {
+	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTCOMM_SESSIOND_COMMAND_LIST_SESSIONS:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINT_FIELDS:
@@ -1200,8 +1192,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */
-		if (need_consumerd && uatomic_read(&the_kernel_consumerd_state) ==
-						CONSUMER_ERROR) {
+		if (need_consumerd && uatomic_read(&the_kernel_consumerd_state) == CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_KERNCONSUMERD;
 			goto error;
 		}
@@ -1219,7 +1210,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			/* Start the kernel consumer daemon */
 			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
 			if (the_kconsumer_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 				ret = start_consumerd(&the_kconsumer_data);
 				if (ret < 0) {
@@ -1236,7 +1227,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			 * the consumer output of the session if exist.
 			 */
 			ret = consumer_create_socket(&the_kconsumer_data,
-					cmd_ctx->session->kernel_session->consumer);
+						     cmd_ctx->session->kernel_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1259,9 +1250,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */
-		if (need_consumerd &&
-				uatomic_read(&the_ust_consumerd_state) ==
-						CONSUMER_ERROR) {
+		if (need_consumerd && uatomic_read(&the_ust_consumerd_state) == CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_USTCONSUMERD;
 			goto error;
 		}
@@ -1280,8 +1269,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			/* 64-bit */
 			pthread_mutex_lock(&the_ustconsumer64_data.pid_mutex);
 			if (the_config.consumerd64_bin_path.value &&
-					the_ustconsumer64_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			    the_ustconsumer64_data.pid == 0 &&
+			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer64_data);
 				if (ret < 0) {
@@ -1290,7 +1279,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 					goto error;
 				}
 
-				uatomic_set(&the_ust_consumerd64_fd, the_ustconsumer64_data.cmd_sock);
+				uatomic_set(&the_ust_consumerd64_fd,
+					    the_ustconsumer64_data.cmd_sock);
 				uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
 			} else {
 				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
@@ -1301,7 +1291,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			 * since it was set above and can ONLY be set in this thread.
 			 */
 			ret = consumer_create_socket(&the_ustconsumer64_data,
-					cmd_ctx->session->ust_session->consumer);
+						     cmd_ctx->session->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1309,8 +1299,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			/* 32-bit */
 			pthread_mutex_lock(&the_ustconsumer32_data.pid_mutex);
 			if (the_config.consumerd32_bin_path.value &&
-					the_ustconsumer32_data.pid == 0 &&
-					cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
+			    the_ustconsumer32_data.pid == 0 &&
+			    cmd_ctx->lsm.cmd_type != LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 				ret = start_consumerd(&the_ustconsumer32_data);
 				if (ret < 0) {
@@ -1319,7 +1309,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 					goto error;
 				}
 
-				uatomic_set(&the_ust_consumerd32_fd, the_ustconsumer32_data.cmd_sock);
+				uatomic_set(&the_ust_consumerd32_fd,
+					    the_ustconsumer32_data.cmd_sock);
 				uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
 			} else {
 				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
@@ -1330,7 +1321,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			 * since it was set above and can ONLY be set in this thread.
 			 */
 			ret = consumer_create_socket(&the_ustconsumer32_data,
-					cmd_ctx->session->ust_session->consumer);
+						     cmd_ctx->session->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1344,7 +1335,7 @@ skip_domain:
 
 	/* Validate consumer daemon state when start/stop trace command */
 	if (cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_START_TRACE ||
-			cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_STOP_TRACE) {
+	    cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_STOP_TRACE) {
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_NONE:
 			break;
@@ -1375,8 +1366,8 @@ skip_domain:
 	 */
 	if (need_tracing_session) {
 		if (!session_access_ok(cmd_ctx->session,
-				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds)) ||
-				cmd_ctx->session->destroyed) {
+				       LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds)) ||
+		    cmd_ctx->session->destroyed) {
 			ret = LTTNG_ERR_EPERM;
 			goto error;
 		}
@@ -1403,8 +1394,7 @@ skip_domain:
 	{
 		struct lttng_event_context *event_context = NULL;
 		const enum lttng_error_code ret_code =
-			receive_lttng_event_context(
-				cmd_ctx, *sock, sock_error, &event_context);
+			receive_lttng_event_context(cmd_ctx, *sock, sock_error, &event_context);
 
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
@@ -1417,14 +1407,14 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:
 	{
-		ret = cmd_disable_channel(cmd_ctx->session, cmd_ctx->lsm.domain.type,
-				cmd_ctx->lsm.u.disable.channel_name);
+		ret = cmd_disable_channel(cmd_ctx->session,
+					  cmd_ctx->lsm.domain.type,
+					  cmd_ctx->lsm.u.disable.channel_name);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(
-				cmd_ctx, *sock, the_kernel_poll_pipe[1]);
+		ret = cmd_enable_channel(cmd_ctx, *sock, the_kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1432,24 +1422,18 @@ skip_domain:
 	{
 		struct lttng_dynamic_buffer payload;
 		struct lttng_buffer_view payload_view;
-		const bool add_value =
-				cmd_ctx->lsm.cmd_type ==
-				LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE;
+		const bool add_value = cmd_ctx->lsm.cmd_type ==
+			LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE;
 		const size_t name_len =
-				cmd_ctx->lsm.u.process_attr_tracker_add_remove_include_value
-						.name_len;
+			cmd_ctx->lsm.u.process_attr_tracker_add_remove_include_value.name_len;
 		const enum lttng_domain_type domain_type =
-				(enum lttng_domain_type)
-						cmd_ctx->lsm.domain.type;
+			(enum lttng_domain_type) cmd_ctx->lsm.domain.type;
 		const enum lttng_process_attr process_attr =
-				(enum lttng_process_attr) cmd_ctx->lsm.u
-						.process_attr_tracker_add_remove_include_value
-						.process_attr;
+			(enum lttng_process_attr) cmd_ctx->lsm.u
+				.process_attr_tracker_add_remove_include_value.process_attr;
 		const enum lttng_process_attr_value_type value_type =
-				(enum lttng_process_attr_value_type) cmd_ctx
-						->lsm.u
-						.process_attr_tracker_add_remove_include_value
-						.value_type;
+			(enum lttng_process_attr_value_type) cmd_ctx->lsm.u
+				.process_attr_tracker_add_remove_include_value.value_type;
 		struct process_attr_value *value;
 		enum lttng_error_code ret_code;
 		long login_name_max;
@@ -1471,8 +1455,9 @@ skip_domain:
 			 * LOGIN_NAME_MAX is defined to 256.
 			 */
 			ERR("Rejecting process attribute tracker value %s as the provided exceeds the maximal allowed length: argument length = %zu, maximal length = %ld",
-					add_value ? "addition" : "removal",
-					name_len, login_name_max);
+			    add_value ? "addition" : "removal",
+			    name_len,
+			    login_name_max);
 			ret = LTTNG_ERR_INVALID;
 			goto error;
 		}
@@ -1486,24 +1471,22 @@ skip_domain:
 			ret = lttng_dynamic_buffer_set_size(&payload, name_len);
 			if (ret) {
 				ERR("Failed to allocate buffer to receive payload of %s process attribute tracker value argument",
-						add_value ? "add" : "remove");
+				    add_value ? "add" : "remove");
 				ret = LTTNG_ERR_NOMEM;
 				goto error_add_remove_tracker_value;
 			}
 
-			ret = lttcomm_recv_unix_sock(
-					*sock, payload.data, name_len);
+			ret = lttcomm_recv_unix_sock(*sock, payload.data, name_len);
 			if (ret <= 0) {
 				ERR("Failed to receive payload of %s process attribute tracker value argument",
-						add_value ? "add" : "remove");
+				    add_value ? "add" : "remove");
 				*sock_error = 1;
 				ret = LTTNG_ERR_INVALID_PROTOCOL;
 				goto error_add_remove_tracker_value;
 			}
 		}
 
-		payload_view = lttng_buffer_view_from_dynamic_buffer(
-				&payload, 0, name_len);
+		payload_view = lttng_buffer_view_from_dynamic_buffer(&payload, 0, name_len);
 		if (name_len > 0 && !lttng_buffer_view_is_valid(&payload_view)) {
 			ret = LTTNG_ERR_INVALID_PROTOCOL;
 			goto error_add_remove_tracker_value;
@@ -1514,11 +1497,13 @@ skip_domain:
 		 * attribute tracker that is specified and convert the value to
 		 * add/remove to the internal sessiond representation.
 		 */
-		ret_code = process_attr_value_from_comm(domain_type,
-				process_attr, value_type,
-				&cmd_ctx->lsm.u.process_attr_tracker_add_remove_include_value
-						 .integral_value,
-				&payload_view, &value);
+		ret_code = process_attr_value_from_comm(
+			domain_type,
+			process_attr,
+			value_type,
+			&cmd_ctx->lsm.u.process_attr_tracker_add_remove_include_value.integral_value,
+			&payload_view,
+			&value);
 		if (ret_code != LTTNG_OK) {
 			ret = ret_code;
 			goto error_add_remove_tracker_value;
@@ -1526,12 +1511,10 @@ skip_domain:
 
 		if (add_value) {
 			ret = cmd_process_attr_tracker_inclusion_set_add_value(
-					cmd_ctx->session, domain_type,
-					process_attr, value);
+				cmd_ctx->session, domain_type, process_attr, value);
 		} else {
 			ret = cmd_process_attr_tracker_inclusion_set_remove_value(
-					cmd_ctx->session, domain_type,
-					process_attr, value);
+				cmd_ctx->session, domain_type, process_attr, value);
 		}
 		process_attr_value_destroy(value);
 	error_add_remove_tracker_value:
@@ -1542,23 +1525,20 @@ skip_domain:
 	{
 		enum lttng_tracking_policy tracking_policy;
 		const enum lttng_domain_type domain_type =
-				(enum lttng_domain_type)
-						cmd_ctx->lsm.domain.type;
+			(enum lttng_domain_type) cmd_ctx->lsm.domain.type;
 		const enum lttng_process_attr process_attr =
-				(enum lttng_process_attr) cmd_ctx->lsm.u
-						.process_attr_tracker_get_tracking_policy
-						.process_attr;
+			(enum lttng_process_attr) cmd_ctx->lsm.u
+				.process_attr_tracker_get_tracking_policy.process_attr;
 
 		ret = cmd_process_attr_tracker_get_tracking_policy(
-				cmd_ctx->session, domain_type, process_attr,
-				&tracking_policy);
+			cmd_ctx->session, domain_type, process_attr, &tracking_policy);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
 		uint32_t tracking_policy_u32 = tracking_policy;
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx,
-				&tracking_policy_u32, sizeof(uint32_t));
+		ret = setup_lttng_msg_no_cmd_header(
+			cmd_ctx, &tracking_policy_u32, sizeof(uint32_t));
 		if (ret < 0) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
@@ -1569,20 +1549,16 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_SET_POLICY:
 	{
 		const enum lttng_tracking_policy tracking_policy =
-				(enum lttng_tracking_policy) cmd_ctx->lsm.u
-						.process_attr_tracker_set_tracking_policy
-						.tracking_policy;
+			(enum lttng_tracking_policy) cmd_ctx->lsm.u
+				.process_attr_tracker_set_tracking_policy.tracking_policy;
 		const enum lttng_domain_type domain_type =
-				(enum lttng_domain_type)
-						cmd_ctx->lsm.domain.type;
+			(enum lttng_domain_type) cmd_ctx->lsm.domain.type;
 		const enum lttng_process_attr process_attr =
-				(enum lttng_process_attr) cmd_ctx->lsm.u
-						.process_attr_tracker_set_tracking_policy
-						.process_attr;
+			(enum lttng_process_attr) cmd_ctx->lsm.u
+				.process_attr_tracker_set_tracking_policy.process_attr;
 
 		ret = cmd_process_attr_tracker_set_tracking_policy(
-				cmd_ctx->session, domain_type, process_attr,
-				tracking_policy);
+			cmd_ctx->session, domain_type, process_attr, tracking_policy);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1593,16 +1569,13 @@ skip_domain:
 		struct lttng_process_attr_values *values;
 		struct lttng_dynamic_buffer reply;
 		const enum lttng_domain_type domain_type =
-				(enum lttng_domain_type)
-						cmd_ctx->lsm.domain.type;
+			(enum lttng_domain_type) cmd_ctx->lsm.domain.type;
 		const enum lttng_process_attr process_attr =
-				(enum lttng_process_attr) cmd_ctx->lsm.u
-						.process_attr_tracker_get_inclusion_set
-						.process_attr;
+			(enum lttng_process_attr)
+				cmd_ctx->lsm.u.process_attr_tracker_get_inclusion_set.process_attr;
 
 		ret = cmd_process_attr_tracker_get_inclusion_set(
-				cmd_ctx->session, domain_type, process_attr,
-				&values);
+			cmd_ctx->session, domain_type, process_attr, &values);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1613,8 +1586,7 @@ skip_domain:
 			goto error_tracker_get_inclusion_set;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(
-				cmd_ctx, reply.data, reply.size);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, reply.data, reply.size);
 		if (ret < 0) {
 			ret = LTTNG_ERR_NOMEM;
 			goto error_tracker_get_inclusion_set;
@@ -1633,9 +1605,13 @@ skip_domain:
 		char *filter_expression;
 		struct lttng_event_exclusion *exclusions;
 		struct lttng_bytecode *bytecode;
-		const enum lttng_error_code ret_code = receive_lttng_event(
-				cmd_ctx, *sock, sock_error, &event,
-				&filter_expression, &bytecode, &exclusions);
+		const enum lttng_error_code ret_code = receive_lttng_event(cmd_ctx,
+									   *sock,
+									   sock_error,
+									   &event,
+									   &filter_expression,
+									   &bytecode,
+									   &exclusions);
 
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
@@ -1647,13 +1623,13 @@ skip_domain:
 		 * always transferred.
 		 */
 		ret = cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT ?
-				cmd_enable_event(cmd_ctx, event,
-						filter_expression, exclusions,
-						bytecode,
-						the_kernel_poll_pipe[1]) :
-				cmd_disable_event(cmd_ctx, event,
-						filter_expression, bytecode,
-						exclusions);
+			cmd_enable_event(cmd_ctx,
+					 event,
+					 filter_expression,
+					 exclusions,
+					 bytecode,
+					 the_kernel_poll_pipe[1]) :
+			cmd_disable_event(cmd_ctx, event, filter_expression, bytecode, exclusions);
 		lttng_event_destroy(event);
 		break;
 	}
@@ -1673,16 +1649,15 @@ skip_domain:
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		session_lock_list();
-		ret_code = cmd_list_tracepoints(cmd_ctx->lsm.domain.type,
-				&cmd_ctx->reply_payload);
+		ret_code = cmd_list_tracepoints(cmd_ctx->lsm.domain.type, &cmd_ctx->reply_payload);
 		session_unlock_list();
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-				command_header_size - original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - command_header_size -
+			original_payload_size;
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
@@ -1704,16 +1679,16 @@ skip_domain:
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		session_lock_list();
-		ret_code = cmd_list_tracepoint_fields(
-				cmd_ctx->lsm.domain.type, &cmd_ctx->reply_payload);
+		ret_code = cmd_list_tracepoint_fields(cmd_ctx->lsm.domain.type,
+						      &cmd_ctx->reply_payload);
 		session_unlock_list();
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-				command_header_size - original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - command_header_size -
+			original_payload_size;
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
@@ -1740,8 +1715,8 @@ skip_domain:
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-				command_header_size - original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - command_header_size -
+			original_payload_size;
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
@@ -1783,7 +1758,6 @@ skip_domain:
 			goto error;
 		}
 
-
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_START_TRACE:
@@ -1793,11 +1767,9 @@ skip_domain:
 		 * enabled time or size-based rotations, we have to make sure
 		 * the kernel tracer supports it.
 		 */
-		if (!cmd_ctx->session->has_been_started && \
-				cmd_ctx->session->kernel_session && \
-				(cmd_ctx->session->rotate_timer_period || \
-					cmd_ctx->session->rotate_size) && \
-				!check_rotate_compatible()) {
+		if (!cmd_ctx->session->has_been_started && cmd_ctx->session->kernel_session &&
+		    (cmd_ctx->session->rotate_timer_period || cmd_ctx->session->rotate_size) &&
+		    !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
@@ -1812,8 +1784,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION:
 	{
-		ret = cmd_destroy_session(cmd_ctx->session,
-				the_notification_thread_handle, sock);
+		ret = cmd_destroy_session(cmd_ctx->session, the_notification_thread_handle, sock);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
@@ -1828,8 +1799,8 @@ skip_domain:
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, domains,
-			nb_dom * sizeof(struct lttng_domain));
+		ret = setup_lttng_msg_no_cmd_header(
+			cmd_ctx, domains, nb_dom * sizeof(struct lttng_domain));
 		free(domains);
 
 		if (ret < 0) {
@@ -1854,15 +1825,15 @@ skip_domain:
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		ret_code = cmd_list_channels(cmd_ctx->lsm.domain.type,
-				cmd_ctx->session, &cmd_ctx->reply_payload);
+		ret_code = cmd_list_channels(
+			cmd_ctx->lsm.domain.type, cmd_ctx->session, &cmd_ctx->reply_payload);
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-				command_header_size - original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - command_header_size -
+			original_payload_size;
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
@@ -1884,15 +1855,16 @@ skip_domain:
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		ret_code = cmd_list_events(cmd_ctx->lsm.domain.type,
-				cmd_ctx->session,
-				cmd_ctx->lsm.u.list.channel_name, &cmd_ctx->reply_payload);
+					   cmd_ctx->session,
+					   cmd_ctx->lsm.u.list.channel_name,
+					   &cmd_ctx->reply_payload);
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-				command_header_size - original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - command_header_size -
+			original_payload_size;
 		update_lttng_msg(cmd_ctx, command_header_size, payload_size);
 
 		ret = LTTNG_OK;
@@ -1905,15 +1877,12 @@ skip_domain:
 		size_t payload_len = 0;
 
 		session_lock_list();
-		nr_sessions = lttng_sessions_count(
-				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
-				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
+		nr_sessions = lttng_sessions_count(LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+						   LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 
 		if (nr_sessions > 0) {
-			payload_len = (sizeof(struct lttng_session) *
-						      nr_sessions) +
-					(sizeof(struct lttng_session_extended) *
-							nr_sessions);
+			payload_len = (sizeof(struct lttng_session) * nr_sessions) +
+				(sizeof(struct lttng_session_extended) * nr_sessions);
 			sessions_payload = zmalloc<lttng_session>(payload_len);
 			if (!sessions_payload) {
 				session_unlock_list();
@@ -1921,15 +1890,15 @@ skip_domain:
 				goto setup_error;
 			}
 
-			cmd_list_lttng_sessions(sessions_payload, nr_sessions,
-					LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
-					LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
+			cmd_list_lttng_sessions(sessions_payload,
+						nr_sessions,
+						LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
+						LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 		}
 
 		session_unlock_list();
 
-		ret = setup_lttng_msg_no_cmd_header(
-				cmd_ctx, sessions_payload, payload_len);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, sessions_payload, payload_len);
 		free(sessions_payload);
 
 		if (ret < 0) {
@@ -1952,8 +1921,8 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_register_consumer(cmd_ctx->session, cmd_ctx->lsm.domain.type,
-				cmd_ctx->lsm.u.reg.path, cdata);
+		ret = cmd_register_consumer(
+			cmd_ctx->session, cmd_ctx->lsm.domain.type, cmd_ctx->lsm.u.reg.path, cdata);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DATA_PENDING:
@@ -1988,8 +1957,7 @@ skip_domain:
 		pending_ret_byte = (uint8_t) pending_ret;
 
 		/* 1 byte to return whether or not data is pending */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx,
-			&pending_ret_byte, 1);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &pending_ret_byte, 1);
 
 		if (ret < 0) {
 			goto setup_error;
@@ -2004,16 +1972,13 @@ skip_domain:
 		struct lttcomm_lttng_output_id reply;
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
 
-		ret = cmd_snapshot_add_output(cmd_ctx->session,
-				&output,
-				&snapshot_id);
+		ret = cmd_snapshot_add_output(cmd_ctx->session, &output, &snapshot_id);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 		reply.id = snapshot_id;
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &reply,
-			sizeof(reply));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &reply, sizeof(reply));
 		if (ret < 0) {
 			goto setup_error;
 		}
@@ -2040,8 +2005,8 @@ skip_domain:
 		}
 
 		LTTNG_ASSERT((nb_output > 0 && outputs) || nb_output == 0);
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, outputs,
-				nb_output * sizeof(struct lttng_snapshot_output));
+		ret = setup_lttng_msg_no_cmd_header(
+			cmd_ctx, outputs, nb_output * sizeof(struct lttng_snapshot_output));
 		free(outputs);
 
 		if (ret < 0) {
@@ -2054,8 +2019,9 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
-		ret = cmd_snapshot_record(cmd_ctx->session,
-				&output, 0); // RFC: set to zero since it's ignored by cmd_snapshot_record
+		ret = cmd_snapshot_record(cmd_ctx->session, &output, 0); // RFC: set to zero since
+									 // it's ignored by
+									 // cmd_snapshot_record
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
@@ -2069,16 +2035,14 @@ skip_domain:
 			goto error;
 		}
 
-		ret = lttng_session_descriptor_serialize(return_descriptor,
-				&payload);
+		ret = lttng_session_descriptor_serialize(return_descriptor, &payload);
 		if (ret) {
 			ERR("Failed to serialize session descriptor in reply to \"create session\" command");
 			lttng_session_descriptor_destroy(return_descriptor);
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, payload.data,
-				payload.size);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, payload.data, payload.size);
 		if (ret) {
 			lttng_session_descriptor_destroy(return_descriptor);
 			ret = LTTNG_ERR_NOMEM;
@@ -2091,14 +2055,13 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SAVE_SESSION:
 	{
-		ret = cmd_save_sessions(&cmd_ctx->lsm.u.save_session.attr,
-			&cmd_ctx->creds);
+		ret = cmd_save_sessions(&cmd_ctx->lsm.u.save_session.attr, &cmd_ctx->creds);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH:
 	{
 		ret = cmd_set_session_shm_path(cmd_ctx->session,
-				cmd_ctx->lsm.u.set_shm_path.shm_path);
+					       cmd_ctx->lsm.u.set_shm_path.shm_path);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA:
@@ -2128,18 +2091,18 @@ skip_domain:
 			goto setup_error;
 		}
 
-		ret = receive_lttng_trigger(
-				cmd_ctx, *sock, sock_error, &payload_trigger);
+		ret = receive_lttng_trigger(cmd_ctx, *sock, sock_error, &payload_trigger);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
 		original_reply_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		ret = cmd_register_trigger(&cmd_creds, payload_trigger,
-				cmd_ctx->lsm.u.trigger.is_trigger_anonymous,
-				the_notification_thread_handle,
-				&return_trigger);
+		ret = cmd_register_trigger(&cmd_creds,
+					   payload_trigger,
+					   cmd_ctx->lsm.u.trigger.is_trigger_anonymous,
+					   the_notification_thread_handle,
+					   &return_trigger);
 		if (ret != LTTNG_OK) {
 			lttng_trigger_put(payload_trigger);
 			goto error;
@@ -2154,8 +2117,8 @@ skip_domain:
 			goto error;
 		}
 
-		reply_payload_size = cmd_ctx->reply_payload.buffer.size -
-			original_reply_payload_size;
+		reply_payload_size =
+			cmd_ctx->reply_payload.buffer.size - original_reply_payload_size;
 
 		update_lttng_msg(cmd_ctx, 0, reply_payload_size);
 
@@ -2170,14 +2133,13 @@ skip_domain:
 			.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
 		};
 
-		ret = receive_lttng_trigger(
-				cmd_ctx, *sock, sock_error, &payload_trigger);
+		ret = receive_lttng_trigger(cmd_ctx, *sock, sock_error, &payload_trigger);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
-		ret = cmd_unregister_trigger(&cmd_creds, payload_trigger,
-				the_notification_thread_handle);
+		ret = cmd_unregister_trigger(
+			&cmd_creds, payload_trigger, the_notification_thread_handle);
 		lttng_trigger_put(payload_trigger);
 		break;
 	}
@@ -2194,16 +2156,16 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_rotate_session(cmd_ctx->session, &rotate_return,
-			false,
-			LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		ret = cmd_rotate_session(cmd_ctx->session,
+					 &rotate_return,
+					 false,
+					 LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &rotate_return,
-				sizeof(rotate_return));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &rotate_return, sizeof(rotate_return));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
@@ -2217,15 +2179,16 @@ skip_domain:
 		struct lttng_rotation_get_info_return get_info_return;
 
 		memset(&get_info_return, 0, sizeof(get_info_return));
-		ret = cmd_rotate_get_info(cmd_ctx->session, &get_info_return,
-				cmd_ctx->lsm.u.get_rotation_info.rotation_id);
+		ret = cmd_rotate_get_info(cmd_ctx->session,
+					  &get_info_return,
+					  cmd_ctx->lsm.u.get_rotation_info.rotation_id);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &get_info_return,
-				sizeof(get_info_return));
+		ret = setup_lttng_msg_no_cmd_header(
+			cmd_ctx, &get_info_return, sizeof(get_info_return));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
@@ -2247,12 +2210,15 @@ skip_domain:
 		}
 
 		set_schedule = cmd_ctx->lsm.u.rotation_set_schedule.set == 1;
-		schedule_type = (enum lttng_rotation_schedule_type) cmd_ctx->lsm.u.rotation_set_schedule.type;
+		schedule_type = (enum lttng_rotation_schedule_type)
+					cmd_ctx->lsm.u.rotation_set_schedule.type;
 		value = cmd_ctx->lsm.u.rotation_set_schedule.value;
 
-		ret = cmd_rotation_set_schedule(cmd_ctx->session, set_schedule,
-				schedule_type, value,
-				the_notification_thread_handle);
+		ret = cmd_rotation_set_schedule(cmd_ctx->session,
+						set_schedule,
+						schedule_type,
+						value,
+						the_notification_thread_handle);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2268,8 +2234,7 @@ skip_domain:
 		schedules.size.set = !!cmd_ctx->session->rotate_size;
 		schedules.size.value = cmd_ctx->session->rotate_size;
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &schedules,
-				sizeof(schedules));
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &schedules, sizeof(schedules));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
@@ -2297,15 +2262,13 @@ skip_domain:
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		ret = cmd_list_triggers(cmd_ctx, the_notification_thread_handle,
-				&return_triggers);
+		ret = cmd_list_triggers(cmd_ctx, the_notification_thread_handle, &return_triggers);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
 		LTTNG_ASSERT(return_triggers);
-		ret = lttng_triggers_serialize(
-				return_triggers, &cmd_ctx->reply_payload);
+		ret = lttng_triggers_serialize(return_triggers, &cmd_ctx->reply_payload);
 		lttng_triggers_destroy(return_triggers);
 		if (ret) {
 			ERR("Failed to serialize triggers in reply to `list triggers` command");
@@ -2313,8 +2276,7 @@ skip_domain:
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-			original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - original_payload_size;
 
 		update_lttng_msg(cmd_ctx, 0, payload_size);
 
@@ -2340,22 +2302,20 @@ skip_domain:
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		ret = receive_lttng_error_query(
-				cmd_ctx, *sock, sock_error, &query);
+		ret = receive_lttng_error_query(cmd_ctx, *sock, sock_error, &query);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
-		ret = cmd_execute_error_query(&cmd_creds, query, &results,
-				the_notification_thread_handle);
+		ret = cmd_execute_error_query(
+			&cmd_creds, query, &results, the_notification_thread_handle);
 		lttng_error_query_destroy(query);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
 		LTTNG_ASSERT(results);
-		ret = lttng_error_query_results_serialize(
-				results, &cmd_ctx->reply_payload);
+		ret = lttng_error_query_results_serialize(results, &cmd_ctx->reply_payload);
 		lttng_error_query_results_destroy(results);
 		if (ret) {
 			ERR("Failed to serialize error query result set in reply to `execute error query` command");
@@ -2363,8 +2323,7 @@ skip_domain:
 			goto error;
 		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-			original_payload_size;
+		payload_size = cmd_ctx->reply_payload.buffer.size - original_payload_size;
 
 		update_lttng_msg(cmd_ctx, 0, payload_size);
 
@@ -2405,11 +2364,9 @@ static int create_client_sock(void)
 	int ret, client_sock;
 
 	/* Create client tool unix socket */
-	client_sock = lttcomm_create_unix_sock(
-			the_config.client_unix_sock_path.value);
+	client_sock = lttcomm_create_unix_sock(the_config.client_unix_sock_path.value);
 	if (client_sock < 0) {
-		ERR("Create unix sock failed: %s",
-				the_config.client_unix_sock_path.value);
+		ERR("Create unix sock failed: %s", the_config.client_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -2418,16 +2375,15 @@ static int create_client_sock(void)
 	ret = utils_set_fd_cloexec(client_sock);
 	if (ret < 0) {
 		ERR("Unable to set CLOEXEC flag to the client Unix socket (fd: %d). "
-				"Continuing but note that the consumer daemon will have a "
-				"reference to this socket on exec()", client_sock);
+		    "Continuing but note that the consumer daemon will have a "
+		    "reference to this socket on exec()",
+		    client_sock);
 	}
 
 	/* File permission MUST be 660 */
-	ret = chmod(the_config.client_unix_sock_path.value,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	ret = chmod(the_config.client_unix_sock_path.value, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
-		ERR("Set file permissions failed: %s",
-				the_config.client_unix_sock_path.value);
+		ERR("Set file permissions failed: %s", the_config.client_unix_sock_path.value);
 		PERROR("chmod");
 		(void) lttcomm_close_unix_sock(client_sock);
 		ret = -1;
@@ -2605,8 +2561,8 @@ static void *thread_manage_clients(void *data)
 		 * the client.
 		 */
 		DBG("Receiving data from client ...");
-		ret = lttcomm_recv_creds_unix_sock(sock, &cmd_ctx.lsm,
-				sizeof(struct lttcomm_session_msg), &cmd_ctx.creds);
+		ret = lttcomm_recv_creds_unix_sock(
+			sock, &cmd_ctx.lsm, sizeof(struct lttcomm_session_msg), &cmd_ctx.creds);
 		if (ret != sizeof(struct lttcomm_session_msg)) {
 			DBG("Incomplete recv() from client... continuing");
 			ret = close(sock);
@@ -2651,9 +2607,11 @@ static void *thread_manage_clients(void *data)
 
 		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
 			WARN("Command returned an invalid status code, returning unknown error: "
-					"command type = %s (%d), ret = %d",
-					lttcomm_sessiond_command_str((lttcomm_sessiond_command) cmd_ctx.lsm.cmd_type),
-					cmd_ctx.lsm.cmd_type, ret);
+			     "command type = %s (%d), ret = %d",
+			     lttcomm_sessiond_command_str(
+				     (lttcomm_sessiond_command) cmd_ctx.lsm.cmd_type),
+			     cmd_ctx.lsm.cmd_type,
+			     ret);
 			ret = LTTNG_ERR_UNK;
 		}
 
@@ -2661,8 +2619,7 @@ static void *thread_manage_clients(void *data)
 		if (cmd_completion_handler) {
 			enum lttng_error_code completion_code;
 
-			completion_code = cmd_completion_handler->run(
-					cmd_completion_handler->data);
+			completion_code = cmd_completion_handler->run(cmd_completion_handler->data);
 			if (completion_code != LTTNG_OK) {
 				continue;
 			}
@@ -2672,11 +2629,9 @@ static void *thread_manage_clients(void *data)
 
 		if (sock >= 0) {
 			struct lttng_payload_view view =
-					lttng_payload_view_from_payload(
-							&cmd_ctx.reply_payload,
-							0, -1);
-			struct lttcomm_lttng_msg *llm = (typeof(
-					llm)) cmd_ctx.reply_payload.buffer.data;
+				lttng_payload_view_from_payload(&cmd_ctx.reply_payload, 0, -1);
+			struct lttcomm_lttng_msg *llm =
+				(typeof(llm)) cmd_ctx.reply_payload.buffer.data;
 
 			LTTNG_ASSERT(cmd_ctx.reply_payload.buffer.size >= sizeof(*llm));
 			LTTNG_ASSERT(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
@@ -2684,9 +2639,9 @@ static void *thread_manage_clients(void *data)
 			llm->fd_count = lttng_payload_view_get_fd_handle_count(&view);
 
 			DBG("Sending response (size: %d, retcode: %s (%d))",
-					cmd_ctx.lttng_msg_size,
-					lttng_strerror(-llm->ret_code),
-					llm->ret_code);
+			    cmd_ctx.lttng_msg_size,
+			    lttng_strerror(-llm->ret_code),
+			    llm->ret_code);
 			ret = send_unix_sock(sock, &view);
 			if (ret < 0) {
 				ERR("Failed to send data back to client");
@@ -2735,8 +2690,7 @@ error_create_poll:
 	return NULL;
 }
 
-static
-bool shutdown_client_thread(void *thread_data)
+static bool shutdown_client_thread(void *thread_data)
 {
 	struct lttng_pipe *client_quit_pipe = (lttng_pipe *) thread_data;
 	const int write_fd = lttng_pipe_get_writefd(client_quit_pipe);
@@ -2764,10 +2718,10 @@ struct lttng_thread *launch_client_thread(void)
 
 	thread_state.client_sock = client_sock_fd;
 	thread = lttng_thread_create("Client management",
-			thread_manage_clients,
-			shutdown_client_thread,
-			cleanup_client_thread,
-			client_quit_pipe);
+				     thread_manage_clients,
+				     shutdown_client_thread,
+				     cleanup_client_thread,
+				     client_quit_pipe);
 	if (!thread) {
 		goto error;
 	}

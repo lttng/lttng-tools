@@ -7,16 +7,16 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.hpp>
-#include <common/utils.hpp>
-
 #include "fd-limit.hpp"
+#include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
 #include "notify-apps.hpp"
-#include "health-sessiond.hpp"
 #include "testpoint.hpp"
-#include "utils.hpp"
 #include "thread.hpp"
+#include "utils.hpp"
+
+#include <common/common.hpp>
+#include <common/utils.hpp>
 
 namespace {
 struct thread_notifiers {
@@ -42,8 +42,7 @@ static void *thread_application_notification(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(the_health_sessiond,
-			HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY);
 
 	if (testpoint(sessiond_thread_app_manage_notify)) {
 		goto error_testpoint;
@@ -57,8 +56,8 @@ static void *thread_application_notification(void *data)
 	}
 
 	/* Add notify pipe to the pollset. */
-	ret = lttng_poll_add(&events, notifiers->apps_cmd_notify_pipe_read_fd,
-			LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(
+		&events, notifiers->apps_cmd_notify_pipe_read_fd, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -74,11 +73,11 @@ static void *thread_application_notification(void *data)
 		DBG3("[ust-thread] Manage notify polling");
 
 		/* Inifinite blocking call, waiting for transmission */
-restart:
+	restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
 		DBG3("[ust-thread] Manage notify return from poll on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		     LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
@@ -112,8 +111,10 @@ restart:
 
 				if (revents & LPOLLIN) {
 					/* Get socket from dispatch thread. */
-					size_ret = lttng_read(notifiers->apps_cmd_notify_pipe_read_fd,
-							&sock, sizeof(sock));
+					size_ret =
+						lttng_read(notifiers->apps_cmd_notify_pipe_read_fd,
+							   &sock,
+							   sizeof(sock));
 					if (size_ret < sizeof(sock)) {
 						PERROR("read apps notify pipe");
 						goto error;
@@ -123,8 +124,9 @@ restart:
 					ret = lttng_poll_add(&events, sock, LPOLLIN | LPOLLRDHUP);
 					if (ret < 0) {
 						/*
-						 * It's possible we've reached the max poll fd allowed.
-						 * Let's close the socket but continue normal execution.
+						 * It's possible we've reached the max poll fd
+						 * allowed. Let's close the socket but continue
+						 * normal execution.
 						 */
 						ret = close(sock);
 						if (ret) {
@@ -138,7 +140,9 @@ restart:
 					ERR("Apps notify command pipe error");
 					goto error;
 				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					ERR("Unexpected poll events %u for sock %d",
+					    revents,
+					    pollfd);
 					goto error;
 				}
 			} else {
@@ -155,7 +159,8 @@ restart:
 							goto error;
 						}
 
-						/* The socket is closed after a grace period here. */
+						/* The socket is closed after a grace period here.
+						 */
 						ust_app_notify_sock_unregister(pollfd);
 					}
 				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
@@ -168,7 +173,9 @@ restart:
 					/* The socket is closed after a grace period here. */
 					ust_app_notify_sock_unregister(pollfd);
 				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					ERR("Unexpected poll events %u for sock %d",
+					    revents,
+					    pollfd);
 					goto error;
 				}
 				health_code_update();
@@ -228,10 +235,10 @@ bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 	notifiers->quit_pipe = quit_pipe;
 
 	thread = lttng_thread_create("Application notification",
-			thread_application_notification,
-			shutdown_application_notification_thread,
-			cleanup_application_notification_thread,
-			notifiers);
+				     thread_application_notification,
+				     shutdown_application_notification_thread,
+				     cleanup_application_notification_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

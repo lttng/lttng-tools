@@ -6,14 +6,15 @@
  */
 
 #include <common/bytecode/bytecode.hpp>
+
 #include <lttng/event-expr-internal.hpp>
 #include <lttng/event-expr.h>
+
 #include <tap/tap.h>
 
 #define NR_TESTS 4
 
-static
-void test_event_payload_field(void)
+static void test_event_payload_field(void)
 {
 	struct lttng_event_expr *event_expr;
 	struct lttng_bytecode *bytecode = NULL;
@@ -28,8 +29,7 @@ void test_event_payload_field(void)
 	free(bytecode);
 }
 
-static
-void test_channel_context_field(void)
+static void test_channel_context_field(void)
 {
 	struct lttng_event_expr *event_expr;
 	struct lttng_bytecode *bytecode = NULL;
@@ -44,8 +44,7 @@ void test_channel_context_field(void)
 	free(bytecode);
 }
 
-static
-void test_app_specific_context_field(void)
+static void test_app_specific_context_field(void)
 {
 	struct lttng_event_expr *event_expr;
 	struct lttng_bytecode *bytecode = NULL;
@@ -60,8 +59,7 @@ void test_app_specific_context_field(void)
 	free(bytecode);
 }
 
-static
-void test_array_field_element(void)
+static void test_array_field_element(void)
 {
 	struct lttng_event_expr *event_expr;
 	struct lttng_bytecode *bytecode = NULL;

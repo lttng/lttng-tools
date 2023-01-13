@@ -7,18 +7,18 @@
  */
 
 #define _LGPL_SOURCE
-#include <algorithm>
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/sessiond-comm/inet.hpp>
 
 #include <lttng/health-internal.hpp>
+
+#include <algorithm>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 /*
  * An application-specific error state for unregistered thread keeps
@@ -49,18 +49,15 @@ DEFINE_URCU_TLS(struct health_state, health_state);
 /*
  * Initialize health check subsytem.
  */
-static
-void health_init(struct health_app *ha)
+static void health_init(struct health_app *ha)
 {
 	/*
 	 * Get the maximum value between the default delta value and the TCP
 	 * timeout with a safety net of the default health check delta.
 	 */
 	ha->time_delta.tv_sec = std::max<unsigned long>(
-			lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S,
-			ha->time_delta.tv_sec);
-	DBG("Health check time delta in seconds set to %lu",
-			ha->time_delta.tv_sec);
+		lttcomm_inet_tcp_timeout + DEFAULT_HEALTH_CHECK_DELTA_S, ha->time_delta.tv_sec);
+	DBG("Health check time delta in seconds set to %lu", ha->time_delta.tv_sec);
 }
 
 struct health_app *health_app_create(int nr_types)
@@ -113,8 +110,8 @@ static void state_unlock(struct health_app *ha)
 /*
  * Set time difference in res from time_a and time_b.
  */
-static void time_diff(const struct timespec *time_a,
-		const struct timespec *time_b, struct timespec *res)
+static void
+time_diff(const struct timespec *time_a, const struct timespec *time_b, struct timespec *res)
 {
 	if (time_a->tv_nsec - time_b->tv_nsec < 0) {
 		res->tv_sec = time_a->tv_sec - time_b->tv_sec - 1;
@@ -129,7 +126,8 @@ static void time_diff(const struct timespec *time_a,
  * Return true if time_a - time_b > diff, else false.
  */
 static int time_diff_gt(const struct timespec *time_a,
-		const struct timespec *time_b, const struct timespec *diff)
+			const struct timespec *time_b,
+			const struct timespec *diff)
 {
 	struct timespec res;
 
@@ -189,8 +187,7 @@ static int validate_state(struct health_app *ha, struct health_state *state)
 		state->last = current;
 		memcpy(&state->last_time, &current_time, sizeof(current_time));
 	} else {
-		if (time_diff_gt(&current_time, &state->last_time,
-				&ha->time_delta)) {
+		if (time_diff_gt(&current_time, &state->last_time, &ha->time_delta)) {
 			if (current == last && !HEALTH_IS_IN_POLL(current)) {
 				/* error */
 				retval = 0;
@@ -207,8 +204,7 @@ static int validate_state(struct health_app *ha, struct health_state *state)
 	}
 
 end:
-	DBG("Health state current %lu, last %lu, ret %d",
-			current, last, ret);
+	DBG("Health state current %lu, last %lu, ret %d", current, last, ret);
 	return retval;
 }
 
@@ -228,7 +224,7 @@ int health_check_state(struct health_app *ha, int type)
 
 	state_lock(ha);
 
-	cds_list_for_each_entry(state, &ha->list, node) {
+	cds_list_for_each_entry (state, &ha->list, node) {
 		int ret;
 
 		if (state->type != type) {
@@ -250,8 +246,7 @@ int health_check_state(struct health_app *ha, int type)
 end:
 	state_unlock(ha);
 
-	DBG("Health check for type %d is %s", (int) type,
-			(retval == 0) ? "BAD" : "GOOD");
+	DBG("Health check for type %d is %s", (int) type, (retval == 0) ? "BAD" : "GOOD");
 	return retval;
 }
 
@@ -287,8 +282,7 @@ void health_unregister(struct health_app *ha)
 	 * the node from the global list.
 	 */
 	if (uatomic_read(&URCU_TLS(health_state).flags) & HEALTH_ERROR) {
-		uatomic_set(&ha->flags[URCU_TLS(health_state).type],
-				HEALTH_ERROR);
+		uatomic_set(&ha->flags[URCU_TLS(health_state).type], HEALTH_ERROR);
 	}
 	cds_list_del(&URCU_TLS(health_state).node);
 	state_unlock(ha);

@@ -7,19 +7,20 @@
  *
  */
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <urcu.h>
-#include <common/futex.hpp>
-#include <common/macros.hpp>
-
 #include "dispatch.hpp"
-#include "ust-app.hpp"
-#include "testpoint.hpp"
 #include "fd-limit.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
+#include "testpoint.hpp"
 #include "thread.hpp"
+#include "ust-app.hpp"
+
+#include <common/futex.hpp>
+#include <common/macros.hpp>
+
+#include <stddef.h>
+#include <stdlib.h>
+#include <urcu.h>
 
 namespace {
 struct thread_notifiers {
@@ -55,8 +56,7 @@ static void update_ust_app(int app_sock)
 		 * this is possible hence simply stopping the
 		 * update.
 		 */
-		DBG3("UST app update failed to find app sock %d",
-			app_sock);
+		DBG3("UST app update failed to find app sock %d", app_sock);
 		goto unlock_rcu;
 	}
 
@@ -64,13 +64,12 @@ static void update_ust_app(int app_sock)
 	ust_app_global_update_event_notifier_rules(app);
 
 	/* For all tracing session(s) */
-	cds_list_for_each_entry_safe(sess, stmp, &session_list->head, list) {
+	cds_list_for_each_entry_safe (sess, stmp, &session_list->head, list) {
 		if (!session_get(sess)) {
 			continue;
 		}
 		session_lock(sess);
-		if (!sess->active || !sess->ust_session ||
-				!sess->ust_session->active) {
+		if (!sess->active || !sess->ust_session || !sess->ust_session->active) {
 			goto unlock_session;
 		}
 
@@ -110,8 +109,7 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		goto error_create;
 	}
 
-	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-			&wait_queue->head, head) {
+	cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue->head, head) {
 		LTTNG_ASSERT(wait_node->app);
 		ret = lttng_poll_add(&events, wait_node->app->sock, LPOLLIN);
 		if (ret < 0) {
@@ -140,10 +138,8 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 		int pollfd = LTTNG_POLL_GETFD(&events, i);
 
-		cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-				&wait_queue->head, head) {
-			if (pollfd == wait_node->app->sock &&
-					(revents & (LPOLLHUP | LPOLLERR))) {
+		cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue->head, head) {
+			if (pollfd == wait_node->app->sock && (revents & (LPOLLHUP | LPOLLERR))) {
 				cds_list_del(&wait_node->head);
 				wait_queue->count--;
 				ust_app_destroy(wait_node->app);
@@ -238,8 +234,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 	rcu_register_thread();
 
-	health_register(the_health_sessiond,
-			HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
 	if (testpoint(sessiond_thread_app_reg_dispatch)) {
 		goto error_testpoint;
@@ -274,9 +269,8 @@ static void *thread_dispatch_ust_registration(void *data)
 
 			health_code_update();
 			/* Dequeue command for registration */
-			node = cds_wfcq_dequeue_blocking(
-					&notifiers->ust_cmd_queue->head,
-					&notifiers->ust_cmd_queue->tail);
+			node = cds_wfcq_dequeue_blocking(&notifiers->ust_cmd_queue->head,
+							 &notifiers->ust_cmd_queue->tail);
 			if (node == NULL) {
 				DBG("Woken up but nothing in the UST command queue");
 				/* Continue thread execution */
@@ -286,11 +280,15 @@ static void *thread_dispatch_ust_registration(void *data)
 			ust_cmd = lttng::utils::container_of(node, &ust_command::node);
 
 			DBG("Dispatching UST registration pid:%d ppid:%d uid:%d"
-					" gid:%d sock:%d name:%s (version %d.%d)",
-					ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
-					ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
-					ust_cmd->sock, ust_cmd->reg_msg.name,
-					ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
+			    " gid:%d sock:%d name:%s (version %d.%d)",
+			    ust_cmd->reg_msg.pid,
+			    ust_cmd->reg_msg.ppid,
+			    ust_cmd->reg_msg.uid,
+			    ust_cmd->reg_msg.gid,
+			    ust_cmd->sock,
+			    ust_cmd->reg_msg.name,
+			    ust_cmd->reg_msg.major,
+			    ust_cmd->reg_msg.minor);
 
 			if (ust_cmd->reg_msg.type == LTTNG_UST_CTL_SOCKET_CMD) {
 				wait_node = zmalloc<ust_reg_wait_node>();
@@ -308,8 +306,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				CDS_INIT_LIST_HEAD(&wait_node->head);
 
 				/* Create application object if socket is CMD. */
-				wait_node->app = ust_app_create(&ust_cmd->reg_msg,
-						ust_cmd->sock);
+				wait_node->app = ust_app_create(&ust_cmd->reg_msg, ust_cmd->sock);
 				if (!wait_node->app) {
 					ret = close(ust_cmd->sock);
 					if (ret < 0) {
@@ -342,8 +339,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Look for the application in the local wait queue and set the
 				 * notify socket if found.
 				 */
-				cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-						&wait_queue.head, head) {
+				cds_list_for_each_entry_safe (
+					wait_node, tmp_wait_node, &wait_queue.head, head) {
 					health_code_update();
 					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
 						wait_node->app->notify_sock = ust_cmd->sock;
@@ -352,7 +349,8 @@ static void *thread_dispatch_ust_registration(void *data)
 						app = wait_node->app;
 						free(wait_node);
 						wait_node = NULL;
-						DBG3("UST app notify socket %d is set", ust_cmd->sock);
+						DBG3("UST app notify socket %d is set",
+						     ust_cmd->sock);
 						break;
 					}
 				}
@@ -398,8 +396,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 				/* Send notify socket through the notify pipe. */
 				ret = send_socket_to_thread(
-						notifiers->apps_cmd_notify_pipe_write_fd,
-						app->notify_sock);
+					notifiers->apps_cmd_notify_pipe_write_fd, app->notify_sock);
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
@@ -429,9 +426,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * to the thread and unregistration will take place at that
 				 * place.
 				 */
-				ret = send_socket_to_thread(
-						notifiers->apps_cmd_pipe_write_fd,
-						app->sock);
+				ret = send_socket_to_thread(notifiers->apps_cmd_pipe_write_fd,
+							    app->sock);
 				if (ret < 0) {
 					rcu_read_unlock();
 					session_unlock_list();
@@ -459,8 +455,7 @@ static void *thread_dispatch_ust_registration(void *data)
 
 error:
 	/* Clean up wait queue. */
-	cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
-			&wait_queue.head, head) {
+	cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue.head, head) {
 		cds_list_del(&wait_node->head);
 		wait_queue.count--;
 		free(wait_node);
@@ -469,9 +464,8 @@ error:
 	/* Empty command queue. */
 	for (;;) {
 		/* Dequeue command for registration */
-		node = cds_wfcq_dequeue_blocking(
-				&notifiers->ust_cmd_queue->head,
-				&notifiers->ust_cmd_queue->tail);
+		node = cds_wfcq_dequeue_blocking(&notifiers->ust_cmd_queue->head,
+						 &notifiers->ust_cmd_queue->tail);
 		if (node == NULL) {
 			break;
 		}
@@ -505,8 +499,8 @@ static bool shutdown_ust_dispatch_thread(void *data)
 }
 
 bool launch_ust_dispatch_thread(struct ust_cmd_queue *cmd_queue,
-		int apps_cmd_pipe_write_fd,
-		int apps_cmd_notify_pipe_write_fd)
+				int apps_cmd_pipe_write_fd,
+				int apps_cmd_notify_pipe_write_fd)
 {
 	struct lttng_thread *thread;
 	struct thread_notifiers *notifiers;
@@ -520,10 +514,10 @@ bool launch_ust_dispatch_thread(struct ust_cmd_queue *cmd_queue,
 	notifiers->apps_cmd_notify_pipe_write_fd = apps_cmd_notify_pipe_write_fd;
 
 	thread = lttng_thread_create("UST registration dispatch",
-			thread_dispatch_ust_registration,
-			shutdown_ust_dispatch_thread,
-			cleanup_ust_dispatch_thread,
-			notifiers);
+				     thread_dispatch_ust_registration,
+				     shutdown_ust_dispatch_thread,
+				     cleanup_ust_dispatch_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

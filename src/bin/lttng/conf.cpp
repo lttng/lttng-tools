@@ -6,6 +6,12 @@
  */
 
 #define _LGPL_SOURCE
+#include "conf.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/utils.hpp>
+
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,12 +19,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <common/compat/errno.hpp>
-#include <common/common.hpp>
-#include <common/utils.hpp>
-
-#include "conf.hpp"
 
 /*
  * Returns the path with '/CONFIG_FILENAME' added to it;
@@ -167,15 +167,14 @@ int config_exists(const char *path)
 	return S_ISREG(info.st_mode) || S_ISDIR(info.st_mode);
 }
 
-static
-int _config_read_session_name(const char *path, char **name)
+static int _config_read_session_name(const char *path, char **name)
 {
 	int ret = 0;
 	FILE *fp;
 	char var[NAME_MAX], *session_name;
 
 #if (NAME_MAX == 255)
-#define NAME_MAX_SCANF_IS_A_BROKEN_API	"254"
+#define NAME_MAX_SCANF_IS_A_BROKEN_API "254"
 #endif
 
 	session_name = calloc<char>(NAME_MAX);
@@ -192,9 +191,11 @@ int _config_read_session_name(const char *path, char **name)
 	}
 
 	while (!feof(fp)) {
-		if ((ret = fscanf(fp, "%" NAME_MAX_SCANF_IS_A_BROKEN_API
-				"[^'=']=%" NAME_MAX_SCANF_IS_A_BROKEN_API "s\n",
-				var, session_name)) != 2) {
+		if ((ret = fscanf(fp,
+				  "%" NAME_MAX_SCANF_IS_A_BROKEN_API
+				  "[^'=']=%" NAME_MAX_SCANF_IS_A_BROKEN_API "s\n",
+				  var,
+				  session_name)) != 2) {
 			if (ret == -1) {
 				ERR("Missing session=NAME in config file.");
 				goto error_close;

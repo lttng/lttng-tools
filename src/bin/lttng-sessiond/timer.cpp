@@ -7,23 +7,23 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-#include <signal.h>
-
-#include "timer.hpp"
 #include "health-sessiond.hpp"
 #include "rotation-thread.hpp"
 #include "thread.hpp"
+#include "timer.hpp"
 
-#define LTTNG_SESSIOND_SIG_QS				SIGRTMIN + 10
-#define LTTNG_SESSIOND_SIG_EXIT				SIGRTMIN + 11
-#define LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK	SIGRTMIN + 12
-#define LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION		SIGRTMIN + 13
+#include <inttypes.h>
+#include <signal.h>
 
-#define UINT_TO_PTR(value)				\
-	({						\
-		LTTNG_ASSERT(value <= UINTPTR_MAX);		\
-		(void *) (uintptr_t) value;		\
+#define LTTNG_SESSIOND_SIG_QS			  SIGRTMIN + 10
+#define LTTNG_SESSIOND_SIG_EXIT			  SIGRTMIN + 11
+#define LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK SIGRTMIN + 12
+#define LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION	  SIGRTMIN + 13
+
+#define UINT_TO_PTR(value)                          \
+	({                                          \
+		LTTNG_ASSERT(value <= UINTPTR_MAX); \
+		(void *) (uintptr_t) value;         \
 	})
 #define PTR_TO_UINT(ptr) ((uintptr_t) ptr)
 
@@ -49,8 +49,7 @@ struct timer_signal_data {
 /*
  * Set custom signal mask to current thread.
  */
-static
-void setmask(sigset_t *mask)
+static void setmask(sigset_t *mask)
 {
 	int ret;
 
@@ -81,8 +80,7 @@ void setmask(sigset_t *mask)
  * returns, it means that no timer signr is currently pending or being handled
  * by the timer thread. This cannot be called from the timer thread.
  */
-static
-void timer_signal_thread_qs(unsigned int signr)
+static void timer_signal_thread_qs(unsigned int signr)
 {
 	sigset_t pending_set;
 	int ret;
@@ -139,9 +137,11 @@ void timer_signal_thread_qs(unsigned int signr)
  * Returns a negative value on error, 0 if a timer was created, and
  * a positive value if no timer was created (not an error).
  */
-static
-int timer_start(timer_t *timer_id, struct ltt_session *session,
-		unsigned int timer_interval_us, int signal, bool one_shot)
+static int timer_start(timer_t *timer_id,
+		       struct ltt_session *session,
+		       unsigned int timer_interval_us,
+		       int signal,
+		       bool one_shot)
 {
 	int ret = 0, delete_ret;
 	struct sigevent sev = {};
@@ -183,8 +183,7 @@ end:
 	return ret;
 }
 
-static
-int timer_stop(timer_t *timer_id, int signal)
+static int timer_stop(timer_t *timer_id, int signal)
 {
 	int ret = 0;
 
@@ -201,7 +200,7 @@ end:
 }
 
 int timer_session_rotation_pending_check_start(struct ltt_session *session,
-		unsigned int interval_us)
+					       unsigned int interval_us)
 {
 	int ret;
 
@@ -209,8 +208,7 @@ int timer_session_rotation_pending_check_start(struct ltt_session *session,
 		ret = -1;
 		goto end;
 	}
-	DBG("Enabling session rotation pending check timer on session %" PRIu64,
-			session->id);
+	DBG("Enabling session rotation pending check timer on session %" PRIu64, session->id);
 	/*
 	 * We arm this timer in a one-shot mode so we don't have to disable it
 	 * explicitly (which could deadlock if the timer thread is blocked
@@ -221,9 +219,10 @@ int timer_session_rotation_pending_check_start(struct ltt_session *session,
 	 * no need to go through the whole signal teardown scheme everytime.
 	 */
 	ret = timer_start(&session->rotation_pending_check_timer,
-			session, interval_us,
-			LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK,
-			/* one-shot */ true);
+			  session,
+			  interval_us,
+			  LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK,
+			  /* one-shot */ true);
 	if (ret == 0) {
 		session->rotation_pending_check_timer_enabled = true;
 	}
@@ -241,10 +240,9 @@ int timer_session_rotation_pending_check_stop(struct ltt_session *session)
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(session->rotation_pending_check_timer_enabled);
 
-	DBG("Disabling session rotation pending check timer on session %" PRIu64,
-			session->id);
+	DBG("Disabling session rotation pending check timer on session %" PRIu64, session->id);
 	ret = timer_stop(&session->rotation_pending_check_timer,
-			LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK);
+			 LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK);
 	if (ret == -1) {
 		ERR("Failed to stop rotate_pending_check timer");
 	} else {
@@ -261,7 +259,7 @@ int timer_session_rotation_pending_check_stop(struct ltt_session *session)
  * Call with session and session_list locks held.
  */
 int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
-		unsigned int interval_us)
+						unsigned int interval_us)
 {
 	int ret;
 
@@ -269,11 +267,15 @@ int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 		ret = -1;
 		goto end;
 	}
-	DBG("Enabling scheduled rotation timer on session \"%s\" (%ui %s)", session->name,
-			interval_us, USEC_UNIT);
-	ret = timer_start(&session->rotation_schedule_timer, session,
-			interval_us, LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION,
-			/* one-shot */ false);
+	DBG("Enabling scheduled rotation timer on session \"%s\" (%ui %s)",
+	    session->name,
+	    interval_us,
+	    USEC_UNIT);
+	ret = timer_start(&session->rotation_schedule_timer,
+			  session,
+			  interval_us,
+			  LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION,
+			  /* one-shot */ false);
 	if (ret < 0) {
 		goto end;
 	}
@@ -296,11 +298,9 @@ int timer_session_rotation_schedule_timer_stop(struct ltt_session *session)
 	}
 
 	DBG("Disabling scheduled rotation timer on session %s", session->name);
-	ret = timer_stop(&session->rotation_schedule_timer,
-			LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION);
+	ret = timer_stop(&session->rotation_schedule_timer, LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION);
 	if (ret < 0) {
-		ERR("Failed to stop scheduled rotation timer of session \"%s\"",
-				session->name);
+		ERR("Failed to stop scheduled rotation timer of session \"%s\"", session->name);
 		goto end;
 	}
 
@@ -335,8 +335,7 @@ int timer_signal_init(void)
 /*
  * This thread is the sighandler for the timer signals.
  */
-static
-void *thread_timer(void *data)
+static void *thread_timer(void *data)
 {
 	int signr;
 	sigset_t mask;
@@ -378,15 +377,15 @@ void *thread_timer(void *data)
 			goto end;
 		} else if (signr == LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK) {
 			struct ltt_session *session =
-					(struct ltt_session *) info.si_value.sival_ptr;
+				(struct ltt_session *) info.si_value.sival_ptr;
 
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
-					ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION,
-					session);
+						    ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION,
+						    session);
 		} else if (signr == LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION) {
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
-					ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,
-					(struct ltt_session *) info.si_value.sival_ptr);
+						    ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,
+						    (struct ltt_session *) info.si_value.sival_ptr);
 			/*
 			 * The scheduled periodic rotation timer is not in
 			 * "one-shot" mode. The reference to the session is not
@@ -406,22 +405,17 @@ end:
 	return NULL;
 }
 
-static
-bool shutdown_timer_thread(void *data __attribute__((unused)))
+static bool shutdown_timer_thread(void *data __attribute__((unused)))
 {
 	return kill(getpid(), LTTNG_SESSIOND_SIG_EXIT) == 0;
 }
 
-bool launch_timer_thread(
-		struct timer_thread_parameters *timer_thread_parameters)
+bool launch_timer_thread(struct timer_thread_parameters *timer_thread_parameters)
 {
 	struct lttng_thread *thread;
 
-	thread = lttng_thread_create("Timer",
-			thread_timer,
-			shutdown_timer_thread,
-			NULL,
-			timer_thread_parameters);
+	thread = lttng_thread_create(
+		"Timer", thread_timer, shutdown_timer_thread, NULL, timer_thread_parameters);
 	if (!thread) {
 		goto error;
 	}

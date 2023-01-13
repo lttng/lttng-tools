@@ -5,8 +5,9 @@
  *
  */
 
-#include <stdbool.h>
 #include "credentials.hpp"
+
+#include <stdbool.h>
 
 uid_t lttng_credentials_get_uid(const struct lttng_credentials *creds)
 {
@@ -19,7 +20,7 @@ gid_t lttng_credentials_get_gid(const struct lttng_credentials *creds)
 }
 
 bool lttng_credentials_is_equal_uid(const struct lttng_credentials *a,
-		const struct lttng_credentials *b)
+				    const struct lttng_credentials *b)
 {
 	LTTNG_ASSERT(a);
 	LTTNG_ASSERT(b);
@@ -38,7 +39,7 @@ bool lttng_credentials_is_equal_uid(const struct lttng_credentials *a,
 }
 
 bool lttng_credentials_is_equal_gid(const struct lttng_credentials *a,
-		const struct lttng_credentials *b)
+				    const struct lttng_credentials *b)
 {
 	LTTNG_ASSERT(a);
 	LTTNG_ASSERT(b);
@@ -57,11 +58,10 @@ bool lttng_credentials_is_equal_gid(const struct lttng_credentials *a,
 }
 
 bool lttng_credentials_is_equal(const struct lttng_credentials *a,
-		const struct lttng_credentials *b)
+				const struct lttng_credentials *b)
 {
 	LTTNG_ASSERT(a);
 	LTTNG_ASSERT(b);
 
-	return lttng_credentials_is_equal_uid(a, b) &&
-			lttng_credentials_is_equal_gid(a, b);
+	return lttng_credentials_is_equal_uid(a, b) && lttng_credentials_is_equal_gid(a, b);
 }

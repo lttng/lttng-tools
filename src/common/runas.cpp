@@ -8,6 +8,24 @@
  */
 
 #define _LGPL_SOURCE
+#include "runas.hpp"
+
+#include <common/bytecode/bytecode.hpp>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/string.hpp>
+#include <common/defaults.hpp>
+#include <common/filter/filter-ast.hpp>
+#include <common/lttng-elf.hpp>
+#include <common/lttng-kernel.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/thread.hpp>
+#include <common/unix.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/constant.h>
+
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
@@ -21,25 +39,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-#include <common/bytecode/bytecode.hpp>
-#include <common/lttng-kernel.hpp>
-#include <common/common.hpp>
-#include <common/utils.hpp>
-#include <common/compat/errno.hpp>
-#include <common/compat/getenv.hpp>
-#include <common/compat/string.hpp>
-#include <common/unix.hpp>
-#include <common/defaults.hpp>
-#include <common/lttng-elf.hpp>
-#include <common/thread.hpp>
-
-#include <lttng/constant.h>
-
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/filter/filter-ast.hpp>
-
-#include "runas.hpp"
 
 #define GETPW_BUFFER_FALLBACK_SIZE 4096
 
@@ -178,29 +177,28 @@ struct run_as_ret {
 	bool _error;
 } LTTNG_PACKED;
 
-#define COMMAND_IN_FDS(data_ptr) ({					\
-	int *fds = NULL;						\
-	if (command_properties[data_ptr->cmd].in_fds_offset != -1) {	\
-		fds = (int *) ((char *) data_ptr + command_properties[data_ptr->cmd].in_fds_offset); \
-	}								\
-	fds;								\
-})
+#define COMMAND_IN_FDS(data_ptr)                                                         \
+	({                                                                               \
+		int *fds = NULL;                                                         \
+		if (command_properties[data_ptr->cmd].in_fds_offset != -1) {             \
+			fds = (int *) ((char *) data_ptr +                               \
+				       command_properties[data_ptr->cmd].in_fds_offset); \
+		}                                                                        \
+		fds;                                                                     \
+	})
 
-#define COMMAND_OUT_FDS(cmd, ret_ptr) ({				\
-	int *fds = NULL;						\
-	if (command_properties[cmd].out_fds_offset != -1) {		\
-		fds = (int *) ((char *) ret_ptr + command_properties[cmd].out_fds_offset); \
-	}								\
-	fds;								\
-})
+#define COMMAND_OUT_FDS(cmd, ret_ptr)                                                              \
+	({                                                                                         \
+		int *fds = NULL;                                                                   \
+		if (command_properties[cmd].out_fds_offset != -1) {                                \
+			fds = (int *) ((char *) ret_ptr + command_properties[cmd].out_fds_offset); \
+		}                                                                                  \
+		fds;                                                                               \
+	})
 
-#define COMMAND_IN_FD_COUNT(data_ptr) ({		\
-	command_properties[data_ptr->cmd].in_fd_count;	\
-})
+#define COMMAND_IN_FD_COUNT(data_ptr) ({ command_properties[data_ptr->cmd].in_fd_count; })
 
-#define COMMAND_OUT_FD_COUNT(cmd) ({		\
-	command_properties[cmd].out_fd_count;	\
-})
+#define COMMAND_OUT_FD_COUNT(cmd) ({ command_properties[cmd].out_fd_count; })
 
 #define COMMAND_USE_CWD_FD(data_ptr) command_properties[data_ptr->cmd].use_cwd_fd
 
@@ -311,16 +309,14 @@ const struct run_as_command_properties command_properties[] = {
 		.use_cwd_fd = false,
 	},
 	{
-		.in_fds_offset = offsetof(struct run_as_data,
-				u.extract_elf_symbol_offset.fd),
+		.in_fds_offset = offsetof(struct run_as_data, u.extract_elf_symbol_offset.fd),
 		.out_fds_offset = -1,
 		.in_fd_count = 1,
 		.out_fd_count = 0,
 		.use_cwd_fd = false,
 	},
 	{
-		.in_fds_offset = offsetof(struct run_as_data,
-				u.extract_sdt_probe_offsets.fd),
+		.in_fds_offset = offsetof(struct run_as_data, u.extract_sdt_probe_offsets.fd),
 		.out_fds_offset = -1,
 		.in_fd_count = 1,
 		.out_fd_count = 0,
@@ -336,7 +332,7 @@ const struct run_as_command_properties command_properties[] = {
 };
 
 struct run_as_worker_data {
-	pid_t pid;	/* Worker PID. */
+	pid_t pid; /* Worker PID. */
 	int sockpair[2];
 	char *procname;
 };
@@ -348,14 +344,12 @@ pthread_mutex_t worker_lock = PTHREAD_MUTEX_INITIALIZER;
 } /* namespace */
 
 #ifdef VALGRIND
-static
-int use_clone(void)
+static int use_clone(void)
 {
 	return 0;
 }
 #else
-static
-int use_clone(void)
+static int use_clone(void)
 {
 	return !lttng_secure_getenv("LTTNG_DEBUG_NOCLONE");
 }
@@ -364,8 +358,7 @@ int use_clone(void)
 /*
  * Create recursively directory using the FULL path.
  */
-static
-int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -384,8 +377,7 @@ int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret = lttng_directory_handle_create_subdirectory_recursive(
-			handle, path, mode);
+	ret_value->u.ret = lttng_directory_handle_create_subdirectory_recursive(handle, path, mode);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_put(handle);
@@ -393,8 +385,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -413,8 +404,7 @@ int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret = lttng_directory_handle_create_subdirectory(
-			handle, path, mode);
+	ret_value->u.ret = lttng_directory_handle_create_subdirectory(handle, path, mode);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_put(handle);
@@ -422,8 +412,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _open(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int fd;
 	struct lttng_directory_handle *handle;
@@ -438,9 +427,8 @@ int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.open.dirfd = -1;
 
-	fd = lttng_directory_handle_open_file(handle,
-			data->u.open.path, data->u.open.flags,
-			data->u.open.mode);
+	fd = lttng_directory_handle_open_file(
+		handle, data->u.open.path, data->u.open.flags, data->u.open.mode);
 	if (fd < 0) {
 		ret_value->u.ret = -1;
 		ret_value->u.open.fd = -1;
@@ -456,8 +444,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -472,8 +459,7 @@ int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.unlink.dirfd = -1;
 
-	ret_value->u.ret = lttng_directory_handle_unlink_file(handle,
-			data->u.unlink.path);
+	ret_value->u.ret = lttng_directory_handle_unlink_file(handle, data->u.unlink.path);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_put(handle);
@@ -481,8 +467,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -497,8 +482,7 @@ int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.rmdir.dirfd = -1;
 
-	ret_value->u.ret = lttng_directory_handle_remove_subdirectory(
-			handle, data->u.rmdir.path);
+	ret_value->u.ret = lttng_directory_handle_remove_subdirectory(handle, data->u.rmdir.path);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_put(handle);
@@ -506,8 +490,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	struct lttng_directory_handle *handle;
 
@@ -523,7 +506,7 @@ int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	data->u.rmdir.dirfd = -1;
 
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory_recursive(
-			handle, data->u.rmdir.path, data->u.rmdir.flags);
+		handle, data->u.rmdir.path, data->u.rmdir.flags);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_put(handle);
@@ -531,8 +514,7 @@ end:
 	return ret_value->u.ret;
 }
 
-static
-int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
+static int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *old_path, *new_path;
 	struct lttng_directory_handle *old_handle = NULL, *new_handle = NULL;
@@ -540,14 +522,12 @@ int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 	old_path = data->u.rename.old_path;
 	new_path = data->u.rename.new_path;
 
-	old_handle = lttng_directory_handle_create_from_dirfd(
-			data->u.rename.dirfds[0]);
+	old_handle = lttng_directory_handle_create_from_dirfd(data->u.rename.dirfds[0]);
 	if (!old_handle) {
 		ret_value->u.ret = -1;
 		goto end;
 	}
-	new_handle = lttng_directory_handle_create_from_dirfd(
-			data->u.rename.dirfds[1]);
+	new_handle = lttng_directory_handle_create_from_dirfd(data->u.rename.dirfds[1]);
 	if (!new_handle) {
 		ret_value->u.ret = -1;
 		goto end;
@@ -557,8 +537,8 @@ int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 	data->u.rename.dirfds[0] = data->u.rename.dirfds[1] = -1;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret = lttng_directory_handle_rename(
-			old_handle, old_path, new_handle, new_path);
+	ret_value->u.ret =
+		lttng_directory_handle_rename(old_handle, old_path, new_handle, new_path);
 end:
 	lttng_directory_handle_put(old_handle);
 	lttng_directory_handle_put(new_handle);
@@ -568,17 +548,15 @@ end:
 }
 
 #ifdef HAVE_ELF_H
-static
-int _extract_elf_symbol_offset(struct run_as_data *data,
-		struct run_as_ret *ret_value)
+static int _extract_elf_symbol_offset(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	uint64_t offset;
 
 	ret_value->_error = false;
 	ret = lttng_elf_get_symbol_offset(data->u.extract_elf_symbol_offset.fd,
-			 data->u.extract_elf_symbol_offset.function,
-			 &offset);
+					  data->u.extract_elf_symbol_offset.function,
+					  &offset);
 	if (ret) {
 		DBG("Failed to extract ELF function offset");
 		ret_value->_error = true;
@@ -588,9 +566,7 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 	return ret;
 }
 
-static
-int _extract_sdt_probe_offsets(struct run_as_data *data,
-		struct run_as_ret *ret_value)
+static int _extract_sdt_probe_offsets(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	uint64_t *offsets = NULL;
@@ -599,11 +575,11 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 	ret_value->_error = false;
 
 	/* On success, this call allocates the offsets paramater. */
-	ret = lttng_elf_get_sdt_probe_offsets(
-			data->u.extract_sdt_probe_offsets.fd,
-			data->u.extract_sdt_probe_offsets.provider_name,
-			data->u.extract_sdt_probe_offsets.probe_name,
-			&offsets, &num_offset);
+	ret = lttng_elf_get_sdt_probe_offsets(data->u.extract_sdt_probe_offsets.fd,
+					      data->u.extract_sdt_probe_offsets.provider_name,
+					      data->u.extract_sdt_probe_offsets.probe_name,
+					      &offsets,
+					      &num_offset);
 
 	if (ret) {
 		DBG("Failed to extract SDT probe offsets");
@@ -620,7 +596,8 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 
 	/* Copy the content of the offsets array to the ret struct. */
 	memcpy(ret_value->u.extract_sdt_probe_offsets.offsets,
-			offsets, num_offset * sizeof(uint64_t));
+	       offsets,
+	       num_offset * sizeof(uint64_t));
 
 	ret_value->u.extract_sdt_probe_offsets.num_offset = num_offset;
 
@@ -630,28 +607,23 @@ end:
 	return ret;
 }
 #else
-static
-int _extract_elf_symbol_offset(
-		struct run_as_data *data __attribute__((unused)),
-		struct run_as_ret *ret_value __attribute__((unused)))
+static int _extract_elf_symbol_offset(struct run_as_data *data __attribute__((unused)),
+				      struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET");
 	return -1;
 }
 
-static
-int _extract_sdt_probe_offsets(
-		struct run_as_data *data __attribute__((unused)),
-		struct run_as_ret *ret_value __attribute__((unused)))
+static int _extract_sdt_probe_offsets(struct run_as_data *data __attribute__((unused)),
+				      struct run_as_ret *ret_value __attribute__((unused)))
 {
 	ERR("Unimplemented runas command RUN_AS_EXTRACT_SDT_PROBE_OFFSETS");
 	return -1;
 }
 #endif
 
-static
-int _generate_filter_bytecode(struct run_as_data *data,
-		struct run_as_ret *ret_value) {
+static int _generate_filter_bytecode(struct run_as_data *data, struct run_as_ret *ret_value)
+{
 	int ret = 0;
 	const char *filter_expression = NULL;
 	struct filter_parser_ctx *ctx = NULL;
@@ -660,7 +632,8 @@ int _generate_filter_bytecode(struct run_as_data *data,
 
 	filter_expression = data->u.generate_filter_bytecode.filter_expression;
 
-	if (lttng_strnlen(filter_expression, LTTNG_FILTER_MAX_LEN - 1) == LTTNG_FILTER_MAX_LEN - 1) {
+	if (lttng_strnlen(filter_expression, LTTNG_FILTER_MAX_LEN - 1) ==
+	    LTTNG_FILTER_MAX_LEN - 1) {
 		ret_value->_error = true;
 		ret = -1;
 		goto end;
@@ -673,14 +646,12 @@ int _generate_filter_bytecode(struct run_as_data *data,
 		goto end;
 	}
 
-	DBG("Size of bytecode generated: %u bytes.",
-			bytecode_get_len(&ctx->bytecode->b));
+	DBG("Size of bytecode generated: %u bytes.", bytecode_get_len(&ctx->bytecode->b));
 
 	/* Copy the lttng_bytecode_filter object to the return structure. */
 	memcpy(ret_value->u.generate_filter_bytecode.bytecode,
-			&ctx->bytecode->b,
-			sizeof(ctx->bytecode->b) +
-					bytecode_get_len(&ctx->bytecode->b));
+	       &ctx->bytecode->b,
+	       sizeof(ctx->bytecode->b) + bytecode_get_len(&ctx->bytecode->b));
 
 end:
 	if (ctx) {
@@ -691,8 +662,7 @@ end:
 
 	return ret;
 }
-static
-run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
+static run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
 	switch (cmd) {
 	case RUN_AS_MKDIR:
@@ -728,16 +698,14 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 	}
 }
 
-static
-int do_send_fds(int sock, const int *fds, unsigned int fd_count)
+static int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 {
 	ssize_t len;
 	unsigned int i;
 
 	for (i = 0; i < fd_count; i++) {
 		if (fds[i] < 0) {
-			DBG("Attempt to send invalid file descriptor (fd = %i)",
-					fds[i]);
+			DBG("Attempt to send invalid file descriptor (fd = %i)", fds[i]);
 			/* Return 0 as this is not a fatal error. */
 			return 0;
 		}
@@ -747,8 +715,7 @@ int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 	return len < 0 ? -1 : 0;
 }
 
-static
-int do_recv_fds(int sock, int *fds, unsigned int fd_count)
+static int do_recv_fds(int sock, int *fds, unsigned int fd_count)
 {
 	int ret = 0;
 	unsigned int i;
@@ -774,9 +741,7 @@ end:
 	return ret;
 }
 
-static
-int send_fds_to_worker(const run_as_worker_data *worker,
-		const struct run_as_data *data)
+static int send_fds_to_worker(const run_as_worker_data *worker, const struct run_as_data *data)
 {
 	int ret = 0;
 	unsigned int i;
@@ -788,14 +753,13 @@ int send_fds_to_worker(const run_as_worker_data *worker,
 	for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
 		if (COMMAND_IN_FDS(data)[i] < 0) {
 			ERR("Refusing to send invalid fd to worker (fd = %i)",
-					COMMAND_IN_FDS(data)[i]);
+			    COMMAND_IN_FDS(data)[i]);
 			ret = -1;
 			goto end;
 		}
 	}
 
-	ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data),
-			COMMAND_IN_FD_COUNT(data));
+	ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data), COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
 		PERROR("Failed to send file descriptor to run-as worker");
 		ret = -1;
@@ -805,9 +769,8 @@ end:
 	return ret;
 }
 
-static
-int send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd,
-		struct run_as_ret *run_as_ret)
+static int
+send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd, struct run_as_ret *run_as_ret)
 {
 	int ret = 0;
 	unsigned int i;
@@ -816,8 +779,8 @@ int send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd,
 		goto end;
 	}
 
-	ret = do_send_fds(worker->sockpair[1], COMMAND_OUT_FDS(cmd, run_as_ret),
-			COMMAND_OUT_FD_COUNT(cmd));
+	ret = do_send_fds(
+		worker->sockpair[1], COMMAND_OUT_FDS(cmd, run_as_ret), COMMAND_OUT_FD_COUNT(cmd));
 	if (ret < 0) {
 		PERROR("Failed to send file descriptor to master process");
 		goto end;
@@ -829,8 +792,7 @@ int send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd,
 			int ret_close = close(fd);
 
 			if (ret_close < 0) {
-				PERROR("Failed to close result file descriptor (fd = %i)",
-						fd);
+				PERROR("Failed to close result file descriptor (fd = %i)", fd);
 			}
 		}
 	}
@@ -838,9 +800,9 @@ end:
 	return ret;
 }
 
-static
-int recv_fds_from_worker(const run_as_worker_data *worker, enum run_as_cmd cmd,
-		struct run_as_ret *run_as_ret)
+static int recv_fds_from_worker(const run_as_worker_data *worker,
+				enum run_as_cmd cmd,
+				struct run_as_ret *run_as_ret)
 {
 	int ret = 0;
 
@@ -848,8 +810,8 @@ int recv_fds_from_worker(const run_as_worker_data *worker, enum run_as_cmd cmd,
 		goto end;
 	}
 
-	ret = do_recv_fds(worker->sockpair[0], COMMAND_OUT_FDS(cmd, run_as_ret),
-			COMMAND_OUT_FD_COUNT(cmd));
+	ret = do_recv_fds(
+		worker->sockpair[0], COMMAND_OUT_FDS(cmd, run_as_ret), COMMAND_OUT_FD_COUNT(cmd));
 	if (ret < 0) {
 		PERROR("Failed to receive file descriptor from run-as worker");
 		ret = -1;
@@ -858,8 +820,7 @@ end:
 	return ret;
 }
 
-static
-int recv_fds_from_master(run_as_worker_data *worker, struct run_as_data *data)
+static int recv_fds_from_master(run_as_worker_data *worker, struct run_as_data *data)
 {
 	int ret = 0;
 
@@ -876,8 +837,7 @@ int recv_fds_from_master(run_as_worker_data *worker, struct run_as_data *data)
 		goto end;
 	}
 
-	ret = do_recv_fds(worker->sockpair[1], COMMAND_IN_FDS(data),
-			COMMAND_IN_FD_COUNT(data));
+	ret = do_recv_fds(worker->sockpair[1], COMMAND_IN_FDS(data), COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
 		PERROR("Failed to receive file descriptors from master process");
 		ret = -1;
@@ -886,8 +846,7 @@ end:
 	return ret;
 }
 
-static
-int cleanup_received_fds(struct run_as_data *data)
+static int cleanup_received_fds(struct run_as_data *data)
 {
 	int ret = 0, i;
 
@@ -905,8 +864,7 @@ end:
 	return ret;
 }
 
-static int get_user_infos_from_uid(
-		uid_t uid, char **username, gid_t *primary_gid)
+static int get_user_infos_from_uid(uid_t uid, char **username, gid_t *primary_gid)
 {
 	int ret;
 	char *buf = NULL;
@@ -926,7 +884,7 @@ static int get_user_infos_from_uid(
 
 		/* Limit is indeterminate. */
 		WARN("Failed to query _SC_GETPW_R_SIZE_MAX as it is "
-			"indeterminate; falling back to default buffer size");
+		     "indeterminate; falling back to default buffer size");
 		raw_get_pw_buf_size = GETPW_BUFFER_FALLBACK_SIZE;
 	}
 
@@ -940,14 +898,12 @@ static int get_user_infos_from_uid(
 
 	ret = getpwuid_r(uid, &pwd, buf, get_pw_buf_size, &result);
 	if (ret < 0) {
-		PERROR("Failed to get user information for user:  uid = %d",
-				(int) uid);
+		PERROR("Failed to get user information for user:  uid = %d", (int) uid);
 		goto error;
 	}
 
 	if (result == NULL) {
-		ERR("Failed to find user information in password entries: uid = %d",
-				(int) uid);
+		ERR("Failed to find user information in password entries: uid = %d", (int) uid);
 		ret = -1;
 		goto error;
 	}
@@ -970,8 +926,7 @@ error:
 	goto end;
 }
 
-static int demote_creds(
-		uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+static int demote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
 {
 	int ret = 0;
 	gid_t primary_gid;
@@ -981,8 +936,7 @@ static int demote_creds(
 	if (prev_gid != new_gid) {
 		ret = setegid(new_gid);
 		if (ret < 0) {
-			PERROR("Failed to set effective group id: new_gid = %d",
-					(int) new_gid);
+			PERROR("Failed to set effective group id: new_gid = %d", (int) new_gid);
 			goto end;
 		}
 	}
@@ -1022,15 +976,15 @@ static int demote_creds(
 		ret = initgroups(username, primary_gid);
 		if (ret < 0) {
 			PERROR("Failed to init the supplementary group access list: "
-					"username = `%s`, primary gid = %d", username,
-					(int) primary_gid);
+			       "username = `%s`, primary gid = %d",
+			       username,
+			       (int) primary_gid);
 			goto end;
 		}
 
 		ret = seteuid(new_uid);
 		if (ret < 0) {
-			PERROR("Failed to set effective user id: new_uid = %d",
-					(int) new_uid);
+			PERROR("Failed to set effective user id: new_uid = %d", (int) new_uid);
 			goto end;
 		}
 	}
@@ -1039,8 +993,7 @@ end:
 	return ret;
 }
 
-static int promote_creds(
-		uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+static int promote_creds(uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
 {
 	int ret = 0;
 	gid_t primary_gid;
@@ -1050,8 +1003,7 @@ static int promote_creds(
 	if (prev_gid != new_gid) {
 		ret = setegid(new_gid);
 		if (ret < 0) {
-			PERROR("Failed to set effective group id: new_gid = %d",
-					(int) new_gid);
+			PERROR("Failed to set effective group id: new_gid = %d", (int) new_gid);
 			goto end;
 		}
 	}
@@ -1069,8 +1021,7 @@ static int promote_creds(
 		 */
 		ret = seteuid(new_uid);
 		if (ret < 0) {
-			PERROR("Failed to set effective user id: new_uid = %d",
-					(int) new_uid);
+			PERROR("Failed to set effective user id: new_uid = %d", (int) new_uid);
 			goto end;
 		}
 
@@ -1086,8 +1037,9 @@ static int promote_creds(
 		ret = initgroups(username, primary_gid);
 		if (ret < 0) {
 			PERROR("Failed to init the supplementary group access "
-					"list: username = `%s`, primary gid = %d",
-					username, (int) primary_gid)
+			       "list: username = `%s`, primary gid = %d",
+			       username,
+			       (int) primary_gid)
 			goto end;
 		}
 	}
@@ -1099,8 +1051,7 @@ end:
 /*
  * Return < 0 on error, 0 if OK, 1 on hangup.
  */
-static
-int handle_one_cmd(run_as_worker_data *worker)
+static int handle_one_cmd(run_as_worker_data *worker)
 {
 	int ret = 0, promote_ret;
 	struct run_as_data data = {};
@@ -1115,8 +1066,7 @@ int handle_one_cmd(run_as_worker_data *worker)
 	 * The structure contains the command type and all the parameters needed for
 	 * its execution
 	 */
-	readlen = lttcomm_recv_unix_sock(worker->sockpair[1], &data,
-			sizeof(data));
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[1], &data, sizeof(data));
 	if (readlen == 0) {
 		/* hang up */
 		ret = 1;
@@ -1175,8 +1125,7 @@ write_return:
 	 * Stage 4: Send run_as_ret structure to the master.
 	 * This structure contain the return value of the command and the errno.
 	 */
-	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
-			sizeof(sendret));
+	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret, sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
 		PERROR("lttcomm_send_unix_sock error");
 		ret = -1;
@@ -1204,8 +1153,7 @@ end:
 	return ret;
 }
 
-static
-int run_as_worker(run_as_worker_data *worker)
+static int run_as_worker(run_as_worker_data *worker)
 {
 	int ret;
 	ssize_t writelen;
@@ -1227,8 +1175,7 @@ int run_as_worker(run_as_worker_data *worker)
 
 	memset(&sendret, 0, sizeof(sendret));
 
-	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
-			sizeof(sendret));
+	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret, sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
 		PERROR("lttcomm_send_unix_sock error");
 		ret = EXIT_FAILURE;
@@ -1243,7 +1190,7 @@ int run_as_worker(run_as_worker_data *worker)
 		} else if (ret > 0) {
 			break;
 		} else {
-			continue;	/* Next command. */
+			continue; /* Next command. */
 		}
 	}
 	ret = EXIT_SUCCESS;
@@ -1251,12 +1198,12 @@ end:
 	return ret;
 }
 
-static
-int run_as_cmd(run_as_worker_data *worker,
-		enum run_as_cmd cmd,
-		struct run_as_data *data,
-		struct run_as_ret *ret_value,
-		uid_t uid, gid_t gid)
+static int run_as_cmd(run_as_worker_data *worker,
+		      enum run_as_cmd cmd,
+		      struct run_as_data *data,
+		      struct run_as_ret *ret_value,
+		      uid_t uid,
+		      gid_t gid)
 {
 	int ret = 0;
 	ssize_t readlen, writelen;
@@ -1269,7 +1216,8 @@ int run_as_cmd(run_as_worker_data *worker,
 			ret = -1;
 			ret_value->_errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
-				(int) uid, (int) geteuid());
+			    (int) uid,
+			    (int) geteuid());
 			goto end;
 		}
 	}
@@ -1281,8 +1229,7 @@ int run_as_cmd(run_as_worker_data *worker,
 	/*
 	 * Stage 1: Send the run_as_data struct to the worker process
 	 */
-	writelen = lttcomm_send_unix_sock(worker->sockpair[0], data,
-			sizeof(*data));
+	writelen = lttcomm_send_unix_sock(worker->sockpair[0], data, sizeof(*data));
 	if (writelen < sizeof(*data)) {
 		PERROR("Error writing message to run_as");
 		ret = -1;
@@ -1309,8 +1256,7 @@ int run_as_cmd(run_as_worker_data *worker,
 	 * Stage 4: Receive the run_as_ret struct containing the return value and
 	 * errno
 	 */
-	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], ret_value,
-			sizeof(*ret_value));
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], ret_value, sizeof(*ret_value));
 	if (!readlen) {
 		ERR("Run-as worker has hung-up during run_as_cmd");
 		ret = -1;
@@ -1345,10 +1291,11 @@ end:
 /*
  * This is for debugging ONLY and should not be considered secure.
  */
-static
-int run_as_noworker(enum run_as_cmd cmd,
-		struct run_as_data *data, struct run_as_ret *ret_value,
-		uid_t uid __attribute__((unused)), gid_t gid __attribute__((unused)))
+static int run_as_noworker(enum run_as_cmd cmd,
+			   struct run_as_data *data,
+			   struct run_as_ret *ret_value,
+			   uid_t uid __attribute__((unused)),
+			   gid_t gid __attribute__((unused)))
 {
 	int ret, saved_errno;
 	mode_t old_mask;
@@ -1369,8 +1316,7 @@ end:
 	return ret;
 }
 
-static
-int reset_sighandler(void)
+static int reset_sighandler(void)
 {
 	int sig;
 
@@ -1381,8 +1327,7 @@ int reset_sighandler(void)
 	return 0;
 }
 
-static
-void worker_sighandler(int sig)
+static void worker_sighandler(int sig)
 {
 	const char *signame;
 
@@ -1410,8 +1355,7 @@ void worker_sighandler(int sig)
 	}
 }
 
-static
-int set_worker_sighandlers(void)
+static int set_worker_sighandlers(void)
 {
 	int ret = 0;
 	sigset_t sigset;
@@ -1440,10 +1384,9 @@ end:
 	return ret;
 }
 
-static
-int run_as_create_worker_no_lock(const char *procname,
-		post_fork_cleanup_cb clean_up_func,
-		void *clean_up_user_data)
+static int run_as_create_worker_no_lock(const char *procname,
+					post_fork_cleanup_cb clean_up_func,
+					void *clean_up_user_data)
 {
 	pid_t pid;
 	int i, ret = 0;
@@ -1537,8 +1480,7 @@ int run_as_create_worker_no_lock(const char *procname,
 		worker->sockpair[1] = -1;
 		worker->pid = pid;
 		/* Wait for worker to become ready. */
-		readlen = lttcomm_recv_unix_sock(worker->sockpair[0],
-				&recvret, sizeof(recvret));
+		readlen = lttcomm_recv_unix_sock(worker->sockpair[0], &recvret, sizeof(recvret));
 		if (readlen < sizeof(recvret)) {
 			ERR("readlen: %zd", readlen);
 			PERROR("Error reading response from run_as at creation");
@@ -1568,8 +1510,7 @@ error_procname_alloc:
 	return ret;
 }
 
-static
-void run_as_destroy_worker_no_lock(void)
+static void run_as_destroy_worker_no_lock(void)
 {
 	run_as_worker_data *worker = global_worker;
 
@@ -1599,12 +1540,12 @@ void run_as_destroy_worker_no_lock(void)
 
 		if (WIFEXITED(status)) {
 			LOG(WEXITSTATUS(status) == 0 ? PRINT_DBG : PRINT_ERR,
-					DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
-					WEXITSTATUS(status));
+			    DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
+			    WEXITSTATUS(status));
 			break;
 		} else if (WIFSIGNALED(status)) {
 			ERR(DEFAULT_RUN_AS_WORKER_NAME " was killed by signal %d",
-					WTERMSIG(status));
+			    WTERMSIG(status));
 			break;
 		}
 	}
@@ -1613,8 +1554,7 @@ void run_as_destroy_worker_no_lock(void)
 	global_worker = NULL;
 }
 
-static
-int run_as_restart_worker(run_as_worker_data *worker)
+static int run_as_restart_worker(run_as_worker_data *worker)
 {
 	int ret = 0;
 	char *procname = NULL;
@@ -1626,7 +1566,7 @@ int run_as_restart_worker(run_as_worker_data *worker)
 
 	/* Create a new run_as worker process*/
 	ret = run_as_create_worker_no_lock(procname, NULL, NULL);
-	if (ret < 0 ) {
+	if (ret < 0) {
 		ERR("Restarting the worker process failed");
 		ret = -1;
 		goto err;
@@ -1635,9 +1575,11 @@ err:
 	return ret;
 }
 
-static
-int run_as(enum run_as_cmd cmd, struct run_as_data *data,
-		   struct run_as_ret *ret_value, uid_t uid, gid_t gid)
+static int run_as(enum run_as_cmd cmd,
+		  struct run_as_data *data,
+		  struct run_as_ret *ret_value,
+		  uid_t uid,
+		  gid_t gid)
 {
 	int ret, saved_errno;
 
@@ -1656,7 +1598,7 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 		 */
 		if (ret == -1 && saved_errno == EIO) {
 			DBG("Socket closed unexpectedly... "
-					"Restarting the worker process");
+			    "Restarting the worker process");
 			ret = run_as_restart_worker(global_worker);
 			if (ret == -1) {
 				ERR("Failed to restart worker process.");
@@ -1677,18 +1619,20 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	return run_as_mkdirat_recursive(AT_FDCWD, path, mode, uid, gid);
 }
 
-int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,
-		uid_t uid, gid_t gid)
+int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, (int) mode, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.mkdir.path, path,
-			sizeof(data.u.mkdir.path));
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     (int) mode,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.mkdir.path, path, sizeof(data.u.mkdir.path));
 	if (ret) {
 		ERR("Failed to copy path argument of mkdirat recursive command");
 		goto error;
@@ -1697,7 +1641,10 @@ int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,
 	data.u.mkdir.mode = mode;
 	data.u.mkdir.dirfd = dirfd;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR_RECURSIVE : RUN_AS_MKDIRAT_RECURSIVE,
-			&data, &run_as_ret, uid, gid);
+	       &data,
+	       &run_as_ret,
+	       uid,
+	       gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
@@ -1709,18 +1656,20 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	return run_as_mkdirat(AT_FDCWD, path, mode, uid, gid);
 }
 
-int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
-		uid_t uid, gid_t gid)
+int run_as_mkdirat(int dirfd, const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, (int) mode, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.mkdir.path, path,
-			sizeof(data.u.mkdir.path));
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     (int) mode,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.mkdir.path, path, sizeof(data.u.mkdir.path));
 	if (ret) {
 		ERR("Failed to copy path argument of mkdirat command");
 		goto error;
@@ -1728,30 +1677,32 @@ int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
 	data.u.mkdir.path[sizeof(data.u.mkdir.path) - 1] = '\0';
 	data.u.mkdir.mode = mode;
 	data.u.mkdir.dirfd = dirfd;
-	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR : RUN_AS_MKDIRAT,
-			&data, &run_as_ret, uid, gid);
+	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR : RUN_AS_MKDIRAT, &data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
 	return ret;
 }
 
-int run_as_open(const char *path, int flags, mode_t mode, uid_t uid,
-		gid_t gid)
+int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	return run_as_openat(AT_FDCWD, path, flags, mode, uid, gid);
 }
 
-int run_as_openat(int dirfd, const char *path, int flags, mode_t mode,
-		uid_t uid, gid_t gid)
+int run_as_openat(int dirfd, const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("openat() fd = %d%s, path = %s, flags = %X, mode = %d, uid %d, gid %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, flags, (int) mode, (int) uid, (int) gid);
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     flags,
+	     (int) mode,
+	     (int) uid,
+	     (int) gid);
 	ret = lttng_strncpy(data.u.open.path, path, sizeof(data.u.open.path));
 	if (ret) {
 		ERR("Failed to copy path argument of open command");
@@ -1760,11 +1711,9 @@ int run_as_openat(int dirfd, const char *path, int flags, mode_t mode,
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
 	data.u.open.dirfd = dirfd;
-	run_as(dirfd == AT_FDCWD ? RUN_AS_OPEN : RUN_AS_OPENAT,
-			&data, &run_as_ret, uid, gid);
+	run_as(dirfd == AT_FDCWD ? RUN_AS_OPEN : RUN_AS_OPENAT, &data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
-	ret = run_as_ret.u.ret < 0 ? run_as_ret.u.ret :
-			run_as_ret.u.open.fd;
+	ret = run_as_ret.u.ret < 0 ? run_as_ret.u.ret : run_as_ret.u.open.fd;
 error:
 	return ret;
 }
@@ -1781,16 +1730,17 @@ int run_as_unlinkat(int dirfd, const char *path, uid_t uid, gid_t gid)
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("unlinkat() fd = %d%s, path = %s, uid = %d, gid = %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.unlink.path, path,
-			sizeof(data.u.unlink.path));
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.unlink.path, path, sizeof(data.u.unlink.path));
 	if (ret) {
 		goto error;
 	}
 	data.u.unlink.dirfd = dirfd;
-	run_as(dirfd == AT_FDCWD ? RUN_AS_UNLINK : RUN_AS_UNLINKAT, &data,
-			&run_as_ret, uid, gid);
+	run_as(dirfd == AT_FDCWD ? RUN_AS_UNLINK : RUN_AS_UNLINKAT, &data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
@@ -1809,16 +1759,17 @@ int run_as_rmdirat(int dirfd, const char *path, uid_t uid, gid_t gid)
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("rmdirat() fd = %d%s, path = %s, uid = %d, gid = %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.rmdir.path, path,
-			sizeof(data.u.rmdir.path));
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.rmdir.path, path, sizeof(data.u.rmdir.path));
 	if (ret) {
 		goto error;
 	}
 	data.u.rmdir.dirfd = dirfd;
-	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR : RUN_AS_RMDIRAT, &data,
-			&run_as_ret, uid, gid);
+	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR : RUN_AS_RMDIRAT, &data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
@@ -1837,17 +1788,22 @@ int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid, 
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("rmdirat() recursive fd = %d%s, path = %s, uid = %d, gid = %d",
-			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			path, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.rmdir.path, path,
-			sizeof(data.u.rmdir.path));
+	     dirfd,
+	     dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     path,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.rmdir.path, path, sizeof(data.u.rmdir.path));
 	if (ret) {
 		goto error;
 	}
 	data.u.rmdir.dirfd = dirfd;
 	data.u.rmdir.flags = flags;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR_RECURSIVE : RUN_AS_RMDIRAT_RECURSIVE,
-			&data, &run_as_ret, uid, gid);
+	       &data,
+	       &run_as_ret,
+	       uid,
+	       gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
@@ -1859,58 +1815,69 @@ int run_as_rename(const char *old_name, const char *new_name, uid_t uid, gid_t g
 	return run_as_renameat(AT_FDCWD, old_name, AT_FDCWD, new_name, uid, gid);
 }
 
-int run_as_renameat(int old_dirfd, const char *old_name,
-		int new_dirfd, const char *new_name, uid_t uid, gid_t gid)
+int run_as_renameat(int old_dirfd,
+		    const char *old_name,
+		    int new_dirfd,
+		    const char *new_name,
+		    uid_t uid,
+		    gid_t gid)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("renameat() old_dirfd = %d%s, old_name = %s, new_dirfd = %d%s, new_name = %s, uid = %d, gid = %d",
-			old_dirfd, old_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			old_name,
-			new_dirfd, new_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
-			new_name, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.rename.old_path, old_name,
-			sizeof(data.u.rename.old_path));
+	     old_dirfd,
+	     old_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     old_name,
+	     new_dirfd,
+	     new_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+	     new_name,
+	     (int) uid,
+	     (int) gid);
+	ret = lttng_strncpy(data.u.rename.old_path, old_name, sizeof(data.u.rename.old_path));
 	if (ret) {
 		goto error;
 	}
-	ret = lttng_strncpy(data.u.rename.new_path, new_name,
-			sizeof(data.u.rename.new_path));
+	ret = lttng_strncpy(data.u.rename.new_path, new_name, sizeof(data.u.rename.new_path));
 	if (ret) {
 		goto error;
 	}
 
 	data.u.rename.dirfds[0] = old_dirfd;
 	data.u.rename.dirfds[1] = new_dirfd;
-	run_as(old_dirfd == AT_FDCWD && new_dirfd == AT_FDCWD ?
-			RUN_AS_RENAME : RUN_AS_RENAMEAT,
-			&data, &run_as_ret, uid, gid);
+	run_as(old_dirfd == AT_FDCWD && new_dirfd == AT_FDCWD ? RUN_AS_RENAME : RUN_AS_RENAMEAT,
+	       &data,
+	       &run_as_ret,
+	       uid,
+	       gid);
 	errno = run_as_ret._errno;
 	ret = run_as_ret.u.ret;
 error:
 	return ret;
 }
 
-int run_as_extract_elf_symbol_offset(int fd, const char* function,
-		uid_t uid, gid_t gid, uint64_t *offset)
+int run_as_extract_elf_symbol_offset(
+	int fd, const char *function, uid_t uid, gid_t gid, uint64_t *offset)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
-			"with for uid %d and gid %d", fd, function,
-			(int) uid, (int) gid);
+	     "with for uid %d and gid %d",
+	     fd,
+	     function,
+	     (int) uid,
+	     (int) gid);
 
 	data.u.extract_elf_symbol_offset.fd = fd;
 
 	strncpy(data.u.extract_elf_symbol_offset.function, function, LTTNG_SYMBOL_NAME_LEN - 1);
 	data.u.extract_elf_symbol_offset.function[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 	ret = lttng_strncpy(data.u.extract_elf_symbol_offset.function,
-			function,
-			sizeof(data.u.extract_elf_symbol_offset.function));
+			    function,
+			    sizeof(data.u.extract_elf_symbol_offset.function));
 	if (ret) {
 		goto error;
 	}
@@ -1927,28 +1894,37 @@ error:
 	return ret;
 }
 
-int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
-		const char* probe_name, uid_t uid, gid_t gid,
-		uint64_t **offsets, uint32_t *num_offset)
+int run_as_extract_sdt_probe_offsets(int fd,
+				     const char *provider_name,
+				     const char *probe_name,
+				     uid_t uid,
+				     gid_t gid,
+				     uint64_t **offsets,
+				     uint32_t *num_offset)
 {
 	int ret;
 	struct run_as_data data = {};
 	struct run_as_ret run_as_ret = {};
 
 	DBG3("extract_sdt_probe_offsets() on fd=%d, probe_name=%s and "
-			"provider_name=%s with for uid %d and gid %d", fd,
-			probe_name, provider_name, (int) uid, (int) gid);
+	     "provider_name=%s with for uid %d and gid %d",
+	     fd,
+	     probe_name,
+	     provider_name,
+	     (int) uid,
+	     (int) gid);
 
 	data.u.extract_sdt_probe_offsets.fd = fd;
 
-	ret = lttng_strncpy(data.u.extract_sdt_probe_offsets.probe_name, probe_name,
-			sizeof(data.u.extract_sdt_probe_offsets.probe_name));
+	ret = lttng_strncpy(data.u.extract_sdt_probe_offsets.probe_name,
+			    probe_name,
+			    sizeof(data.u.extract_sdt_probe_offsets.probe_name));
 	if (ret) {
 		goto error;
 	}
 	ret = lttng_strncpy(data.u.extract_sdt_probe_offsets.provider_name,
-			provider_name,
-			sizeof(data.u.extract_sdt_probe_offsets.provider_name));
+			    provider_name,
+			    sizeof(data.u.extract_sdt_probe_offsets.provider_name));
 	if (ret) {
 		goto error;
 	}
@@ -1967,15 +1943,16 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 		goto error;
 	}
 
-	memcpy(*offsets, run_as_ret.u.extract_sdt_probe_offsets.offsets,
-			*num_offset * sizeof(uint64_t));
+	memcpy(*offsets,
+	       run_as_ret.u.extract_sdt_probe_offsets.offsets,
+	       *num_offset * sizeof(uint64_t));
 error:
 	return ret;
 }
 
 int run_as_generate_filter_bytecode(const char *filter_expression,
-		const struct lttng_credentials *creds,
-		struct lttng_bytecode **bytecode)
+				    const struct lttng_credentials *creds,
+				    struct lttng_bytecode **bytecode)
 {
 	int ret;
 	struct run_as_data data = {};
@@ -1986,10 +1963,13 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 	const gid_t gid = lttng_credentials_get_gid(creds);
 
 	DBG3("generate_filter_bytecode() from expression=\"%s\" for uid %d and gid %d",
-			filter_expression, (int) uid, (int) gid);
+	     filter_expression,
+	     (int) uid,
+	     (int) gid);
 
-	ret = lttng_strncpy(data.u.generate_filter_bytecode.filter_expression, filter_expression,
-			sizeof(data.u.generate_filter_bytecode.filter_expression));
+	ret = lttng_strncpy(data.u.generate_filter_bytecode.filter_expression,
+			    filter_expression,
+			    sizeof(data.u.generate_filter_bytecode.filter_expression));
 	if (ret) {
 		goto error;
 	}
@@ -2001,7 +1981,8 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 		goto error;
 	}
 
-	view_bytecode = (const struct lttng_bytecode *) run_as_ret.u.generate_filter_bytecode.bytecode;
+	view_bytecode =
+		(const struct lttng_bytecode *) run_as_ret.u.generate_filter_bytecode.bytecode;
 
 	local_bytecode = calloc<lttng_bytecode>(view_bytecode->len);
 	if (!local_bytecode) {
@@ -2009,22 +1990,22 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 		goto error;
 	}
 
-	memcpy(local_bytecode, run_as_ret.u.generate_filter_bytecode.bytecode,
-			sizeof(*local_bytecode) + view_bytecode->len);
+	memcpy(local_bytecode,
+	       run_as_ret.u.generate_filter_bytecode.bytecode,
+	       sizeof(*local_bytecode) + view_bytecode->len);
 	*bytecode = local_bytecode;
 error:
 	return ret;
 }
 
 int run_as_create_worker(const char *procname,
-		post_fork_cleanup_cb clean_up_func,
-		void *clean_up_user_data)
+			 post_fork_cleanup_cb clean_up_func,
+			 void *clean_up_user_data)
 {
 	int ret;
 
 	pthread_mutex_lock(&worker_lock);
-	ret = run_as_create_worker_no_lock(procname, clean_up_func,
-			clean_up_user_data);
+	ret = run_as_create_worker_no_lock(procname, clean_up_func, clean_up_user_data);
 	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }

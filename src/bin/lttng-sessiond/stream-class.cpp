@@ -10,12 +10,13 @@
 
 namespace lst = lttng::sessiond::trace;
 
-lttng::sessiond::trace::stream_class::stream_class(unsigned int in_id,
-		enum header_type in_header_type,
-		nonstd::optional<std::string> in_default_clock_class_name) :
-	id{in_id},
-	header_type_{in_header_type},
-	default_clock_class_name{std::move(in_default_clock_class_name)}
+lttng::sessiond::trace::stream_class::stream_class(
+	unsigned int in_id,
+	enum header_type in_header_type,
+	nonstd::optional<std::string> in_default_clock_class_name) :
+	id{ in_id },
+	header_type_{ in_header_type },
+	default_clock_class_name{ std::move(in_default_clock_class_name) }
 {
 }
 

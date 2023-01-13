@@ -5,18 +5,18 @@
  *
  */
 
-#include <lttng/notification/notification-internal.hpp>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/condition/evaluation-internal.hpp>
-#include <lttng/condition/condition.h>
-#include <lttng/condition/evaluation.h>
-#include <lttng/trigger/trigger-internal.hpp>
-#include <common/payload.hpp>
 #include <common/payload-view.hpp>
+#include <common/payload.hpp>
 
-struct lttng_notification *lttng_notification_create(
-		struct lttng_trigger *trigger,
-		struct lttng_evaluation *evaluation)
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/evaluation-internal.hpp>
+#include <lttng/condition/evaluation.h>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
+
+struct lttng_notification *lttng_notification_create(struct lttng_trigger *trigger,
+						     struct lttng_evaluation *evaluation)
 {
 	struct lttng_notification *notification = NULL;
 
@@ -36,7 +36,7 @@ end:
 }
 
 int lttng_notification_serialize(const struct lttng_notification *notification,
-		struct lttng_payload *payload)
+				 struct lttng_payload *payload)
 {
 	int ret;
 	size_t header_offset, size_before_payload;
@@ -46,15 +46,14 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 	notification_comm.length = 0;
 
 	header_offset = payload->buffer.size;
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &notification_comm,
-			sizeof(notification_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &notification_comm, sizeof(notification_comm));
 	if (ret) {
 		goto end;
 	}
 
 	size_before_payload = payload->buffer.size;
-	ret = lttng_trigger_serialize(notification->trigger,
-			payload);
+	ret = lttng_trigger_serialize(notification->trigger, payload);
 	if (ret) {
 		goto end;
 	}
@@ -69,20 +68,17 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 	header->length = (uint32_t) (payload->buffer.size - size_before_payload);
 end:
 	return ret;
-
 }
 
-ssize_t lttng_notification_create_from_payload(
-		struct lttng_payload_view *src_view,
-		struct lttng_notification **notification)
+ssize_t lttng_notification_create_from_payload(struct lttng_payload_view *src_view,
+					       struct lttng_notification **notification)
 {
 	ssize_t ret, notification_size = 0, trigger_size, evaluation_size;
 	struct lttng_trigger *trigger = NULL;
 	struct lttng_evaluation *evaluation = NULL;
 	const struct lttng_notification_comm *notification_comm;
 	const struct lttng_payload_view notification_comm_view =
-			lttng_payload_view_from_view(
-					src_view, 0, sizeof(*notification_comm));
+		lttng_payload_view_from_view(src_view, 0, sizeof(*notification_comm));
 
 	if (!src_view || !notification) {
 		ret = -1;
@@ -100,11 +96,9 @@ ssize_t lttng_notification_create_from_payload(
 	{
 		/* struct lttng_condition */
 		struct lttng_payload_view condition_view =
-				lttng_payload_view_from_view(src_view,
-						notification_size, -1);
+			lttng_payload_view_from_view(src_view, notification_size, -1);
 
-		trigger_size = lttng_trigger_create_from_payload(
-				&condition_view, &trigger);
+		trigger_size = lttng_trigger_create_from_payload(&condition_view, &trigger);
 	}
 
 	if (trigger_size < 0) {
@@ -117,12 +111,10 @@ ssize_t lttng_notification_create_from_payload(
 	{
 		/* struct lttng_evaluation */
 		struct lttng_payload_view evaluation_view =
-				lttng_payload_view_from_view(src_view,
-						notification_size, -1);
+			lttng_payload_view_from_view(src_view, notification_size, -1);
 
 		evaluation_size = lttng_evaluation_create_from_payload(
-				lttng_trigger_get_const_condition(trigger),
-				&evaluation_view, &evaluation);
+			lttng_trigger_get_const_condition(trigger), &evaluation_view, &evaluation);
 	}
 
 	if (evaluation_size < 0) {
@@ -133,8 +125,7 @@ ssize_t lttng_notification_create_from_payload(
 	notification_size += evaluation_size;
 
 	/* Unexpected size of inner-elements; the buffer is corrupted. */
-	if ((ssize_t) notification_comm->length !=
-			trigger_size + evaluation_size) {
+	if ((ssize_t) notification_comm->length != trigger_size + evaluation_size) {
 		ret = -1;
 		goto error;
 	}
@@ -165,38 +156,37 @@ void lttng_notification_destroy(struct lttng_notification *notification)
 	free(notification);
 }
 
-const struct lttng_condition *lttng_notification_get_condition(
-		struct lttng_notification *notification)
+const struct lttng_condition *
+lttng_notification_get_condition(struct lttng_notification *notification)
 {
 	return notification ? lttng_trigger_get_const_condition(notification->trigger) : NULL;
 }
 
-const struct lttng_evaluation *lttng_notification_get_evaluation(
-		struct lttng_notification *notification)
+const struct lttng_evaluation *
+lttng_notification_get_evaluation(struct lttng_notification *notification)
 {
 	return notification ? notification->evaluation : NULL;
 }
 
-const struct lttng_condition *lttng_notification_get_const_condition(
-		const struct lttng_notification *notification)
+const struct lttng_condition *
+lttng_notification_get_const_condition(const struct lttng_notification *notification)
 {
 	return notification ? lttng_trigger_get_const_condition(notification->trigger) : NULL;
 }
 
-const struct lttng_evaluation *lttng_notification_get_const_evaluation(
-		const struct lttng_notification *notification)
+const struct lttng_evaluation *
+lttng_notification_get_const_evaluation(const struct lttng_notification *notification)
 {
 	return notification ? notification->evaluation : NULL;
 }
 
-const struct lttng_trigger *lttng_notification_get_const_trigger(
-		const struct lttng_notification *notification)
+const struct lttng_trigger *
+lttng_notification_get_const_trigger(const struct lttng_notification *notification)
 {
 	return notification ? notification->trigger : NULL;
 }
 
-const struct lttng_trigger *lttng_notification_get_trigger(
-		struct lttng_notification *notification)
+const struct lttng_trigger *lttng_notification_get_trigger(struct lttng_notification *notification)
 {
 	return notification ? notification->trigger : NULL;
 }

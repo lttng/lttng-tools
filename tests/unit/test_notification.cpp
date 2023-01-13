@@ -9,12 +9,7 @@
  *
  */
 
-#include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <tap/tap.h>
+#include <common/macros.hpp>
 
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
@@ -24,7 +19,11 @@
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
 
-#include <common/macros.hpp>
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
+#include <tap/tap.h>
+#include <unistd.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -33,8 +32,7 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 180
 
-static void test_condition_buffer_usage(
-		struct lttng_condition *buffer_usage_condition)
+static void test_condition_buffer_usage(struct lttng_condition *buffer_usage_condition)
 {
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 	const char *session_name = NULL;
@@ -47,17 +45,21 @@ static void test_condition_buffer_usage(
 	LTTNG_ASSERT(buffer_usage_condition);
 
 	diag("Validating initialization");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold ratio is unset");
 
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold byte is unset");
 
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Session name is unset");
 	ok(!session_name, "Session name is null");
 
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Channel name is unset");
 	ok(!session_name, "Channel name is null");
 
@@ -70,25 +72,30 @@ static void test_condition_buffer_usage(
 	status = lttng_condition_buffer_usage_get_session_name(NULL, &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get session name with null condition");
 	ok(!session_name, "Session name is null");
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Session name is unset");
 	ok(!session_name, "Session name is null");
 
 	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, NULL);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null session name");
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Session name is unset");
 	ok(!session_name, "Session name is null");
 
 	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, "");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set empty session name");
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Session name is unset");
 	ok(!session_name, "Session name is null");
 
-	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, "session420");
+	status =
+		lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, "session420");
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set session name session420");
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Session name is set");
 	ok(session_name, "Session name has a value");
 	ok(strcmp("session420", session_name) == 0, "Session name is %s", "session420");
@@ -100,7 +107,8 @@ static void test_condition_buffer_usage(
 
 	status = lttng_condition_buffer_usage_set_session_name(buffer_usage_condition, "");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set session name to empty");
-	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition, &session_name);
+	status = lttng_condition_buffer_usage_get_session_name(buffer_usage_condition,
+							       &session_name);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Session name is still set");
 	ok(session_name, "Session name has a value");
 	ok(strcmp("session420", session_name) == 0, "Session is still name is %s", "session420");
@@ -110,25 +118,30 @@ static void test_condition_buffer_usage(
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null condition on set channel name");
 	status = lttng_condition_buffer_usage_get_channel_name(NULL, &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get channel name with null condition");
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Channel name is unset");
 	ok(!channel_name, "Channel name is null");
 
 	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, NULL);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set null channel name");
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Channel name is unset");
 	ok(!channel_name, "Channel name is null");
 
 	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, "");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set empty channel name");
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Channel name is unset");
 	ok(!channel_name, "Channel name is null");
 
-	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, "channel420");
+	status =
+		lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, "channel420");
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set channel name channel420");
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Channel name is set");
 	ok(channel_name, "Channel name has a value");
 	ok(strcmp("channel420", channel_name) == 0, "Channel name is %s", "channel420");
@@ -140,7 +153,8 @@ static void test_condition_buffer_usage(
 
 	status = lttng_condition_buffer_usage_set_channel_name(buffer_usage_condition, "");
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set channel name to empty");
-	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition, &channel_name);
+	status = lttng_condition_buffer_usage_get_channel_name(buffer_usage_condition,
+							       &channel_name);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Channel name is still set");
 	ok(channel_name, "Channel name has a value");
 	ok(strcmp("channel420", channel_name) == 0, "Channel is still name is %s", "channel420");
@@ -150,34 +164,40 @@ static void test_condition_buffer_usage(
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set threshold ratio with null condition");
 	status = lttng_condition_buffer_usage_get_threshold_ratio(NULL, &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get threshold ratio with null condition");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold ratio is unset");
 
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, -100.0);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set threshold ratio < 0");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold ratio is unset");
 
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, 200.0);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set Threshold ratio > 1");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold ratio is unset");
 
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, 1.0);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold ratio == 1.0");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold ratio is set");
 	ok(threshold_ratio == 1.0, "Threshold ratio is 1.0");
 
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, 0.0);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold ratio == 0.0");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold ratio is set");
 	ok(threshold_ratio == 0.0, "Threshold ratio is 0.0");
 
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, 0.420);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold ratio == 0.420");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold ratio is set");
 	ok(threshold_ratio == 0.420, "Threshold ratio is 0.420");
 
@@ -186,24 +206,28 @@ static void test_condition_buffer_usage(
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set threshold with null condition");
 	status = lttng_condition_buffer_usage_get_threshold(NULL, &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get threshold value with null condition ");
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold is unset");
 
 	status = lttng_condition_buffer_usage_set_threshold(buffer_usage_condition, 100000);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold > 0");
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold is set");
 	ok(threshold_bytes == 100000, "Threshold is 100000");
 
 	status = lttng_condition_buffer_usage_set_threshold(buffer_usage_condition, UINT64_MAX);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold UINT64_MAX");
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold is set");
 	ok(threshold_bytes == UINT64_MAX, "Threshold is UINT64_MAX");
 
 	status = lttng_condition_buffer_usage_set_threshold(buffer_usage_condition, 0);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold  == 0");
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold is set");
 	ok(threshold_bytes == 0, "Threshold is %d", 0);
 
@@ -214,19 +238,22 @@ static void test_condition_buffer_usage(
 	diag("Testing interaction between byte and ratio thresholds");
 
 	threshold_ratio = -1.0;
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold ratio is unset");
 	ok(threshold_ratio == -1.0, "Threshold ratio is untouched");
 
 	/* Set a ratio to validate that the byte threshold is now unset */
 	status = lttng_condition_buffer_usage_set_threshold_ratio(buffer_usage_condition, 0.420);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set threshold ratio == 0.420");
-	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition, &threshold_ratio);
+	status = lttng_condition_buffer_usage_get_threshold_ratio(buffer_usage_condition,
+								  &threshold_ratio);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Threshold ratio is set");
 	ok(threshold_ratio == 0.420, "Threshold ratio is 0.420");
 
 	threshold_bytes = 420;
-	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition, &threshold_bytes);
+	status = lttng_condition_buffer_usage_get_threshold(buffer_usage_condition,
+							    &threshold_bytes);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Threshold is unset");
 	ok(threshold_bytes == 420, "Threshold is untouched");
 
@@ -236,12 +263,14 @@ static void test_condition_buffer_usage(
 	status = lttng_condition_buffer_usage_get_domain_type(NULL, &domain_type);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Get domain type with null condition");
 
-	status = lttng_condition_buffer_usage_set_domain_type(buffer_usage_condition, LTTNG_DOMAIN_NONE);
+	status = lttng_condition_buffer_usage_set_domain_type(buffer_usage_condition,
+							      LTTNG_DOMAIN_NONE);
 	ok(status == LTTNG_CONDITION_STATUS_INVALID, "Set domain type as LTTNG_DOMAIN_NONE");
 	status = lttng_condition_buffer_usage_get_domain_type(buffer_usage_condition, &domain_type);
 	ok(status == LTTNG_CONDITION_STATUS_UNSET, "Domain type is unset");
 
-	status = lttng_condition_buffer_usage_set_domain_type(buffer_usage_condition, LTTNG_DOMAIN_UST);
+	status = lttng_condition_buffer_usage_set_domain_type(buffer_usage_condition,
+							      LTTNG_DOMAIN_UST);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Set domain type as LTTNG_DOMAIN_UST");
 	status = lttng_condition_buffer_usage_get_domain_type(buffer_usage_condition, &domain_type);
 	ok(status == LTTNG_CONDITION_STATUS_OK, "Domain type is set");
@@ -256,7 +285,8 @@ static void test_condition_buffer_usage_low(void)
 	buffer_usage_low = lttng_condition_buffer_usage_low_create();
 	ok(buffer_usage_low, "Condition allocated");
 
-	ok(lttng_condition_get_type(buffer_usage_low) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW, "Condition is of type \"low buffer usage\"");
+	ok(lttng_condition_get_type(buffer_usage_low) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+	   "Condition is of type \"low buffer usage\"");
 
 	test_condition_buffer_usage(buffer_usage_low);
 
@@ -271,7 +301,8 @@ static void test_condition_buffer_usage_high(void)
 	buffer_usage_high = lttng_condition_buffer_usage_high_create();
 	ok(buffer_usage_high, "High buffer usage condition allocated");
 
-	ok(lttng_condition_get_type(buffer_usage_high) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH, "Condition is of type \"high buffer usage\"");
+	ok(lttng_condition_get_type(buffer_usage_high) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+	   "Condition is of type \"high buffer usage\"");
 
 	test_condition_buffer_usage(buffer_usage_high);
 
@@ -301,7 +332,6 @@ static void test_trigger(void)
 	lttng_condition_destroy(buffer_usage_high);
 	lttng_trigger_destroy(trigger);
 }
-
 
 int main(void)
 {

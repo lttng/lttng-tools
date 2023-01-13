@@ -6,19 +6,19 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-#include <string.h>
-#include <unistd.h>
+#include "clear.hpp"
+#include "cmd.hpp"
+#include "kernel.hpp"
+#include "session.hpp"
+#include "ust-app.hpp"
 
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/utils.hpp>
 
-#include "clear.hpp"
-#include "session.hpp"
-#include "ust-app.hpp"
-#include "kernel.hpp"
-#include "cmd.hpp"
+#include <inttypes.h>
+#include <string.h>
+#include <unistd.h>
 
 namespace {
 struct cmd_clear_session_reply_context {
@@ -26,14 +26,12 @@ struct cmd_clear_session_reply_context {
 };
 } /* namespace */
 
-static
-void cmd_clear_session_reply(const struct ltt_session *session,
-		void *_reply_context)
+static void cmd_clear_session_reply(const struct ltt_session *session, void *_reply_context)
 {
 	int ret;
 	ssize_t comm_ret;
 	const struct cmd_clear_session_reply_context *reply_context =
-			(cmd_clear_session_reply_context *) _reply_context;
+		(cmd_clear_session_reply_context *) _reply_context;
 	struct lttcomm_lttng_msg llm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION,
 		.ret_code = LTTNG_OK,
@@ -44,11 +42,9 @@ void cmd_clear_session_reply(const struct ltt_session *session,
 	};
 
 	DBG("End of clear command: replying to client");
-	comm_ret = lttcomm_send_unix_sock(reply_context->reply_sock_fd,
-			&llm, sizeof(llm));
+	comm_ret = lttcomm_send_unix_sock(reply_context->reply_sock_fd, &llm, sizeof(llm));
 	if (comm_ret != (ssize_t) sizeof(llm)) {
-		ERR("Failed to send result of session \"%s\" clear to client",
-				session->name);
+		ERR("Failed to send result of session \"%s\" clear to client", session->name);
 	}
 	ret = close(reply_context->reply_sock_fd);
 	if (ret) {
@@ -78,23 +74,22 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 	}
 
 	if (!session->has_been_started) {
-		 /*
-		  * Nothing to be cleared, this is not an error: there is
-		  * indeed nothing to do, and there is no reason why we
-		  * should return an error to the user.
-		  */
-		 goto end;
+		/*
+		 * Nothing to be cleared, this is not an error: there is
+		 * indeed nothing to do, and there is no reason why we
+		 * should return an error to the user.
+		 */
+		goto end;
 	}
 
 	/* Unsupported feature in lttng-relayd before 2.11. */
 	if (session->consumer->type == CONSUMER_DST_NET &&
-			(session->consumer->relay_major_version == 2 &&
-			session->consumer->relay_minor_version < 12)) {
+	    (session->consumer->relay_major_version == 2 &&
+	     session->consumer->relay_minor_version < 12)) {
 		ret = LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY;
 		goto end;
 	}
-	if (session->consumer->type == CONSUMER_DST_NET &&
-			!session->consumer->relay_allows_clear) {
+	if (session->consumer->type == CONSUMER_DST_NET && !session->consumer->relay_allows_clear) {
 		ret = LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY;
 		goto end;
 	}
@@ -153,9 +148,8 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 		 * Use rotation to delete local and remote stream files.
 		 */
 		if (reply_context) {
-			ret = session_add_clear_notifier(session,
-					cmd_clear_session_reply,
-					(void *) reply_context);
+			ret = session_add_clear_notifier(
+				session, cmd_clear_session_reply, (void *) reply_context);
 			if (ret) {
 				ret = LTTNG_ERR_FATAL;
 				goto end;
@@ -167,8 +161,8 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 			reply_context = NULL;
 			*sock_fd = -1;
 		}
-		ret = cmd_rotate_session(session, NULL, true,
-			LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE);
+		ret = cmd_rotate_session(
+			session, NULL, true, LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -179,8 +173,7 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 	if (session_was_active) {
 		/* Kernel tracing */
 		if (ksession != NULL) {
-			DBG("Start kernel tracing session \"%s\"",
-					session->name);
+			DBG("Start kernel tracing session \"%s\"", session->name);
 			ret = start_kernel_session(ksession);
 			if (ret != LTTNG_OK) {
 				goto end;

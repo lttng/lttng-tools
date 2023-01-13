@@ -10,14 +10,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <stddef.h>
-
 #include <common/error.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <lttng/event-internal.hpp>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 #include <lttng/userspace-probe-internal.hpp>
+
+#include <stddef.h>
 
 struct lttng_event *lttng_event_create(void)
 {
@@ -56,16 +57,14 @@ void lttng_event_destroy(struct lttng_event *event)
 
 	if (event_extended) {
 		if (event_extended->probe_location) {
-			lttng_userspace_probe_location_destroy(
-				event_extended->probe_location);
+			lttng_userspace_probe_location_destroy(event_extended->probe_location);
 		}
 		free(event_extended);
 	}
 	free(event);
 }
 
-int lttng_event_get_filter_expression(struct lttng_event *event,
-	const char **filter_expression)
+int lttng_event_get_filter_expression(struct lttng_event *event, const char **filter_expression)
 {
 	int ret = 0;
 	struct lttng_event_extended *event_extended;
@@ -119,7 +118,8 @@ end:
 }
 
 int lttng_event_get_exclusion_name(struct lttng_event *event,
-		size_t index, const char **exclusion_name)
+				   size_t index,
+				   const char **exclusion_name)
 {
 	int ret = 0;
 	struct lttng_event_extended *event_extended;
@@ -149,8 +149,7 @@ int lttng_event_get_exclusion_name(struct lttng_event *event,
 		goto end;
 	}
 
-	*exclusion_name = event_extended->exclusions.strings +
-		(index * LTTNG_SYMBOL_NAME_LEN);
+	*exclusion_name = event_extended->exclusions.strings + (index * LTTNG_SYMBOL_NAME_LEN);
 end:
 	return ret;
 }
@@ -175,7 +174,7 @@ end:
 }
 
 int lttng_event_set_userspace_probe_location(struct lttng_event *event,
-		struct lttng_userspace_probe_location *probe_location)
+					     struct lttng_userspace_probe_location *probe_location)
 {
 	int ret = 0;
 	struct lttng_event_extended *event_extended;
@@ -188,8 +187,7 @@ int lttng_event_set_userspace_probe_location(struct lttng_event *event,
 	event_extended = (struct lttng_event_extended *) event->extended.ptr;
 	LTTNG_ASSERT(event_extended);
 	if (event_extended->probe_location) {
-		lttng_userspace_probe_location_destroy(
-			event_extended->probe_location);
+		lttng_userspace_probe_location_destroy(event_extended->probe_location);
 	}
 	event_extended->probe_location = probe_location;
 end:

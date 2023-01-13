@@ -6,16 +6,18 @@
  */
 
 #include "../command.hpp"
-#include "common/argpar/argpar.h"
 #include "common/argpar-utils/argpar-utils.hpp"
+#include "common/argpar/argpar.h"
 #include "common/mi-lttng.hpp"
+
 #include <lttng/lttng.h>
+
 #include <stdio.h>
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-remove-trigger.1.h>
-;
+	;
 #endif
 
 enum {
@@ -24,16 +26,14 @@ enum {
 	OPT_OWNER_UID,
 };
 
-static const
-struct argpar_opt_descr remove_trigger_options[] = {
+static const struct argpar_opt_descr remove_trigger_options[] = {
 	{ OPT_HELP, 'h', "help", false },
 	{ OPT_LIST_OPTIONS, '\0', "list-options", false },
 	{ OPT_OWNER_UID, '\0', "owner-uid", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static
-bool assign_string(char **dest, const char *src, const char *opt_name)
+static bool assign_string(char **dest, const char *src, const char *opt_name)
 {
 	bool ret;
 
@@ -75,8 +75,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	struct mi_writer *mi_writer = NULL;
 
 	if (lttng_opt_mi) {
-		mi_writer = mi_lttng_writer_create(
-				fileno(stdout), lttng_opt_mi);
+		mi_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!mi_writer) {
 			ret = CMD_ERROR;
 			goto error;
@@ -84,15 +83,14 @@ int cmd_remove_trigger(int argc, const char **argv)
 
 		/* Open command element. */
 		ret = mi_lttng_writer_command_open(mi_writer,
-				mi_lttng_element_command_remove_trigger);
+						   mi_lttng_element_command_remove_trigger);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
 		}
 
 		/* Open output element. */
-		ret = mi_lttng_writer_open_element(
-				mi_writer, mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(mi_writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -111,10 +109,9 @@ int cmd_remove_trigger(int argc, const char **argv)
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, 1, argv,
-			true, NULL, NULL);
+		status = parse_next_item(argpar_iter, &argpar_item, 1, argv, true, NULL, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
-				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -123,8 +120,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 		assert(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_opt_descr *descr =
-				argpar_item_opt_descr(argpar_item);
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
 			const char *arg = argpar_item_opt_arg(argpar_item);
 
 			switch (descr->id) {
@@ -133,14 +129,12 @@ int cmd_remove_trigger(int argc, const char **argv)
 				ret = 0;
 				goto end;
 			case OPT_LIST_OPTIONS:
-				list_cmd_options_argpar(stdout,
-					remove_trigger_options);
+				list_cmd_options_argpar(stdout, remove_trigger_options);
 				ret = 0;
 				goto end;
 			case OPT_OWNER_UID:
 			{
-				if (!assign_string(&owner_uid, arg,
-						"--owner-uid")) {
+				if (!assign_string(&owner_uid, arg, "--owner-uid")) {
 					goto error;
 				}
 				break;
@@ -203,8 +197,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 			abort();
 		}
 
-		trigger_status = lttng_trigger_get_owner_uid(
-				trigger, &trigger_uid);
+		trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
 		LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		if (trigger_uid == uid && strcmp(trigger_name, name) == 0) {
@@ -225,8 +218,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	}
 
 	if (lttng_opt_mi) {
-		ret_code = lttng_trigger_mi_serialize(
-				trigger_to_remove, mi_writer, NULL);
+		ret_code = lttng_trigger_mi_serialize(trigger_to_remove, mi_writer, NULL);
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}
@@ -249,8 +241,8 @@ end:
 			goto cleanup;
 		}
 
-		mi_ret = mi_lttng_writer_write_element_bool(mi_writer,
-				mi_lttng_element_command_success, ret ? 0 : 1);
+		mi_ret = mi_lttng_writer_write_element_bool(
+			mi_writer, mi_lttng_element_command_success, ret ? 0 : 1);
 		if (mi_ret) {
 			ret = 1;
 			goto cleanup;

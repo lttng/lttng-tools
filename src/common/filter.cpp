@@ -6,6 +6,7 @@
  */
 
 #include "filter.hpp"
+
 #include <stddef.h>
 
 struct bytecode_symbol_iterator {
@@ -14,8 +15,7 @@ struct bytecode_symbol_iterator {
 	size_t offset, len;
 };
 
-struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
-		struct lttng_bytecode *bytecode)
+struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(struct lttng_bytecode *bytecode)
 {
 	struct bytecode_symbol_iterator *it = NULL;
 
@@ -64,10 +64,9 @@ int bytecode_symbol_iterator_get_type(struct bytecode_symbol_iterator *it)
 	ret = *((uint16_t *) (it->bytecode + it->offset));
 end:
 	return ret;
- }
+}
 
-const char *bytecode_symbol_iterator_get_name(
-		struct bytecode_symbol_iterator *it)
+const char *bytecode_symbol_iterator_get_name(struct bytecode_symbol_iterator *it)
 {
 	const char *ret = NULL;
 

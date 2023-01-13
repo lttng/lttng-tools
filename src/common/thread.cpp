@@ -5,11 +5,11 @@
  *
  */
 
-#include <string.h>
-
-#include <common/compat/pthread.hpp>
 #include "thread.hpp"
 
+#include <common/compat/pthread.hpp>
+
+#include <string.h>
 
 int lttng_thread_setname(const char *name)
 {
@@ -27,4 +27,3 @@ int lttng_thread_setname(const char *name)
 
 	return ret;
 }
-

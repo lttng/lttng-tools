@@ -9,21 +9,21 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.hpp>
-#include <common/utils.hpp>
-#include <urcu/rculist.h>
-
 #include "ctf-trace.hpp"
 #include "lttng-relayd.hpp"
 #include "stream.hpp"
+
+#include <common/common.hpp>
+#include <common/utils.hpp>
+
+#include <urcu/rculist.h>
 
 static uint64_t last_relay_ctf_trace_id;
 static pthread_mutex_t last_relay_ctf_trace_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
 {
-	struct ctf_trace *trace =
-		lttng::utils::container_of(rcu_head, &ctf_trace::rcu_node);
+	struct ctf_trace *trace = lttng::utils::container_of(rcu_head, &ctf_trace::rcu_node);
 
 	free(trace);
 }
@@ -52,8 +52,7 @@ static void ctf_trace_destroy(struct ctf_trace *trace)
 
 static void ctf_trace_release(struct urcu_ref *ref)
 {
-	struct ctf_trace *trace =
-		lttng::utils::container_of(ref, &ctf_trace::ref);
+	struct ctf_trace *trace = lttng::utils::container_of(ref, &ctf_trace::ref);
 	int ret;
 	struct lttng_ht_iter iter;
 
@@ -92,8 +91,7 @@ bool ctf_trace_get(struct ctf_trace *trace)
  * create and refcounting. Whenever all the streams belonging to a trace
  * put their reference, its refcount drops to 0.
  */
-static struct ctf_trace *ctf_trace_create(struct relay_session *session,
-		const char *subpath)
+static struct ctf_trace *ctf_trace_create(struct relay_session *session, const char *subpath)
 {
 	struct ctf_trace *trace;
 
@@ -127,8 +125,10 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session,
 	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
 
 	DBG("Created ctf_trace %" PRIu64 " of session \"%s\" from host \"%s\" with path: %s",
-			trace->id, session->session_name, session->hostname,
-			subpath);
+	    trace->id,
+	    session->session_name,
+	    session->hostname,
+	    subpath);
 
 end:
 	return trace;
@@ -143,7 +143,7 @@ error:
  * ctf_trace_put().
  */
 struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
-		const char *subpath)
+						  const char *subpath)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -181,8 +181,8 @@ int ctf_trace_close(struct ctf_trace *trace)
 	struct relay_stream *stream;
 
 	rcu_read_lock();
-	cds_list_for_each_entry_rcu(stream, &trace->stream_list,
-			stream_node) {
+	cds_list_for_each_entry_rcu(stream, &trace->stream_list, stream_node)
+	{
 		/*
 		 * Close stream since the connection owning the trace is being
 		 * torn down.

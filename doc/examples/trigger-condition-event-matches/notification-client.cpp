@@ -5,6 +5,8 @@
  *
  */
 
+#include <common/macros.hpp>
+
 #include <lttng/lttng.h>
 
 #include <inttypes.h>
@@ -16,14 +18,12 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <common/macros.hpp>
-
 static int print_capture(const struct lttng_condition *condition,
-		const struct lttng_event_field_value *capture,
-		unsigned int indent_level);
+			 const struct lttng_event_field_value *capture,
+			 unsigned int indent_level);
 static int print_array(const struct lttng_condition *condition,
-		const struct lttng_event_field_value *array,
-		unsigned int indent_level);
+		       const struct lttng_event_field_value *array,
+		       unsigned int indent_level);
 
 static void indent(unsigned int indentation_level)
 {
@@ -44,8 +44,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 	{
 		const char *name;
 
-		name = lttng_event_expr_event_payload_field_get_name(
-				event_expr);
+		name = lttng_event_expr_event_payload_field_get_name(event_expr);
 		printf("%s", name);
 
 		break;
@@ -55,8 +54,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 	{
 		const char *name;
 
-		name = lttng_event_expr_channel_context_field_get_name(
-				event_expr);
+		name = lttng_event_expr_channel_context_field_get_name(event_expr);
 		printf("$ctx.%s", name);
 
 		break;
@@ -67,10 +65,9 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 		const char *provider_name;
 		const char *type_name;
 
-		provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
-				event_expr);
-		type_name = lttng_event_expr_app_specific_context_field_get_type_name(
-				event_expr);
+		provider_name =
+			lttng_event_expr_app_specific_context_field_get_provider_name(event_expr);
+		type_name = lttng_event_expr_app_specific_context_field_get_type_name(event_expr);
 
 		printf("$app.%s:%s", provider_name, type_name);
 
@@ -83,14 +80,12 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 		const struct lttng_event_expr *parent_expr;
 		enum lttng_event_expr_status status;
 
-		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
-				event_expr);
+		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(event_expr);
 		LTTNG_ASSERT(parent_expr != NULL);
 
 		print_one_event_expr(parent_expr);
 
-		status = lttng_event_expr_array_field_element_get_index(
-				event_expr, &index);
+		status = lttng_event_expr_array_field_element_get_index(event_expr, &index);
 		LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
 		printf("[%u]", index);
@@ -103,12 +98,10 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 	}
 }
 
-static bool action_group_contains_notify(
-		const struct lttng_action *action_group)
+static bool action_group_contains_notify(const struct lttng_action *action_group)
 {
 	unsigned int i, count;
-	enum lttng_action_status status =
-			lttng_action_list_get_count(action_group, &count);
+	enum lttng_action_status status = lttng_action_list_get_count(action_group, &count);
 
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		printf("Failed to get action count from action group\n");
@@ -116,10 +109,8 @@ static bool action_group_contains_notify(
 	}
 
 	for (i = 0; i < count; i++) {
-		const struct lttng_action *action =
-				lttng_action_list_get_at_index(action_group, i);
-		const enum lttng_action_type action_type =
-				lttng_action_get_type(action);
+		const struct lttng_action *action = lttng_action_list_get_at_index(action_group, i);
+		const enum lttng_action_type action_type = lttng_action_get_type(action);
 
 		if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 			return true;
@@ -129,8 +120,8 @@ static bool action_group_contains_notify(
 }
 
 static int print_capture(const struct lttng_condition *condition,
-		const struct lttng_event_field_value *capture,
-		unsigned int indent_level)
+			 const struct lttng_event_field_value *capture,
+			 unsigned int indent_level)
 {
 	int ret = 0;
 	enum lttng_event_field_value_status event_field_status;
@@ -143,8 +134,7 @@ static int print_capture(const struct lttng_condition *condition,
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT:
 	{
 		event_field_status =
-				lttng_event_field_value_unsigned_int_get_value(
-						capture, &u_val);
+			lttng_event_field_value_unsigned_int_get_value(capture, &u_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -155,9 +145,7 @@ static int print_capture(const struct lttng_condition *condition,
 	}
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT:
 	{
-		event_field_status =
-				lttng_event_field_value_signed_int_get_value(
-						capture, &s_val);
+		event_field_status = lttng_event_field_value_signed_int_get_value(capture, &s_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -169,8 +157,7 @@ static int print_capture(const struct lttng_condition *condition,
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM:
 	{
 		event_field_status =
-				lttng_event_field_value_unsigned_int_get_value(
-						capture, &u_val);
+			lttng_event_field_value_unsigned_int_get_value(capture, &u_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -181,9 +168,7 @@ static int print_capture(const struct lttng_condition *condition,
 	}
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM:
 	{
-		event_field_status =
-				lttng_event_field_value_signed_int_get_value(
-						capture, &s_val);
+		event_field_status = lttng_event_field_value_signed_int_get_value(capture, &s_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -194,8 +179,7 @@ static int print_capture(const struct lttng_condition *condition,
 	}
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_REAL:
 	{
-		event_field_status = lttng_event_field_value_real_get_value(
-				capture, &d_val);
+		event_field_status = lttng_event_field_value_real_get_value(capture, &d_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -206,8 +190,7 @@ static int print_capture(const struct lttng_condition *condition,
 	}
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_STRING:
 	{
-		event_field_status = lttng_event_field_value_string_get_value(
-				capture, &string_val);
+		event_field_status = lttng_event_field_value_string_get_value(capture, &string_val);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			ret = 1;
 			goto end;
@@ -239,15 +222,14 @@ static void print_unavailabe(void)
 }
 
 static int print_array(const struct lttng_condition *condition,
-		const struct lttng_event_field_value *array,
-		unsigned int indent_level)
+		       const struct lttng_event_field_value *array,
+		       unsigned int indent_level)
 {
 	int ret = 0;
 	enum lttng_event_field_value_status event_field_status;
 	unsigned int captured_field_count;
 
-	event_field_status = lttng_event_field_value_array_get_length(
-			array, &captured_field_count);
+	event_field_status = lttng_event_field_value_array_get_length(array, &captured_field_count);
 	if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		ret = 1;
 		goto end;
@@ -256,8 +238,8 @@ static int print_array(const struct lttng_condition *condition,
 	for (unsigned int i = 0; i < captured_field_count; i++) {
 		const struct lttng_event_field_value *captured_field = NULL;
 		const struct lttng_event_expr *expr =
-				lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
-						condition, i);
+			lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
+				condition, i);
 		LTTNG_ASSERT(expr);
 
 		indent(indent_level + 1);
@@ -266,20 +248,17 @@ static int print_array(const struct lttng_condition *condition,
 		print_one_event_expr(expr);
 		printf(" Value: ");
 
-		event_field_status =
-				lttng_event_field_value_array_get_element_at_index(
-						array, i, &captured_field);
+		event_field_status = lttng_event_field_value_array_get_element_at_index(
+			array, i, &captured_field);
 		if (event_field_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
-			if (event_field_status ==
-					LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
+			if (event_field_status == LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
 				print_unavailabe();
 			} else {
 				ret = 1;
 				goto end;
 			}
 		} else {
-			print_capture(condition, captured_field,
-					indent_level + 1);
+			print_capture(condition, captured_field, indent_level + 1);
 		}
 
 		if (i + 1 < captured_field_count) {
@@ -297,10 +276,8 @@ end:
 static int print_captures(struct lttng_notification *notification)
 {
 	int ret = 0;
-	const struct lttng_evaluation *evaluation =
-			lttng_notification_get_evaluation(notification);
-	const struct lttng_condition *condition =
-			lttng_notification_get_condition(notification);
+	const struct lttng_evaluation *evaluation = lttng_notification_get_evaluation(notification);
+	const struct lttng_condition *condition = lttng_notification_get_condition(notification);
 
 	/* Status */
 	enum lttng_condition_status condition_status;
@@ -310,12 +287,10 @@ static int print_captures(struct lttng_notification *notification)
 	unsigned int expected_capture_field_count;
 
 	LTTNG_ASSERT(lttng_evaluation_get_type(evaluation) ==
-			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+		     LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
-	condition_status =
-			lttng_condition_event_rule_matches_get_capture_descriptor_count(
-					condition,
-					&expected_capture_field_count);
+	condition_status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
+		condition, &expected_capture_field_count);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ret = 1;
 		goto end;
@@ -326,9 +301,8 @@ static int print_captures(struct lttng_notification *notification)
 		goto end;
 	}
 
-	evaluation_status =
-			lttng_evaluation_event_rule_matches_get_captured_values(
-					evaluation, &captured_field_array);
+	evaluation_status = lttng_evaluation_event_rule_matches_get_captured_values(
+		evaluation, &captured_field_array);
 	if (evaluation_status != LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK) {
 		ret = 1;
 		goto end;
@@ -343,10 +317,8 @@ end:
 static int print_notification(struct lttng_notification *notification)
 {
 	int ret = 0;
-	const struct lttng_evaluation *evaluation =
-			lttng_notification_get_evaluation(notification);
-	const enum lttng_condition_type type =
-			lttng_evaluation_get_type(evaluation);
+	const struct lttng_evaluation *evaluation = lttng_notification_get_evaluation(notification);
+	const enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
 	switch (type) {
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
@@ -374,8 +346,7 @@ static int print_notification(struct lttng_notification *notification)
 		gettimeofday(&tv, NULL);
 		the_time = tv.tv_sec;
 
-		strftime(time_str, sizeof(time_str), "[%m-%d-%Y] %T",
-				localtime(&the_time));
+		strftime(time_str, sizeof(time_str), "[%m-%d-%Y] %T", localtime(&the_time));
 		printf("%s.%ld - ", time_str, tv.tv_usec);
 
 		trigger = lttng_notification_get_trigger(notification);
@@ -391,7 +362,7 @@ static int print_notification(struct lttng_notification *notification)
 		}
 
 		printf("Received notification of event rule matches trigger \"%s\"\n",
-				trigger_name);
+		       trigger_name);
 		ret = print_captures(notification);
 		break;
 	}
@@ -420,8 +391,8 @@ int main(int argc, char **argv)
 
 	trigger_count = argc - 1;
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	if (!notification_channel) {
 		fprintf(stderr, "Failed to create notification channel\n");
 		ret = -1;
@@ -442,14 +413,11 @@ int main(int argc, char **argv)
 	}
 
 	for (i = 0; i < count; i++) {
-		const struct lttng_trigger *trigger =
-				lttng_triggers_get_at_index(triggers, i);
+		const struct lttng_trigger *trigger = lttng_triggers_get_at_index(triggers, i);
 		const struct lttng_condition *condition =
-				lttng_trigger_get_const_condition(trigger);
-		const struct lttng_action *action =
-				lttng_trigger_get_const_action(trigger);
-		const enum lttng_action_type action_type =
-				lttng_action_get_type(action);
+			lttng_trigger_get_const_condition(trigger);
+		const struct lttng_action *action = lttng_trigger_get_const_action(trigger);
+		const enum lttng_action_type action_type = lttng_action_get_type(action);
 		enum lttng_notification_channel_status channel_status;
 		const char *trigger_name = NULL;
 		bool subscribe = false;
@@ -467,28 +435,27 @@ int main(int argc, char **argv)
 		}
 
 		if (!((action_type == LTTNG_ACTION_TYPE_LIST &&
-				      action_group_contains_notify(action)) ||
-				    action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
+		       action_group_contains_notify(action)) ||
+		      action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
 			printf("The action of trigger \"%s\" is not \"notify\", skipping.\n",
-					trigger_name);
+			       trigger_name);
 			continue;
 		}
 
-		channel_status = lttng_notification_channel_subscribe(
-				notification_channel, condition);
-		if (channel_status ==
-				LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED) {
+		channel_status =
+			lttng_notification_channel_subscribe(notification_channel, condition);
+		if (channel_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED) {
 			continue;
 		}
 		if (channel_status) {
-			fprintf(stderr, "Failed to subscribe to notifications of trigger \"%s\"\n",
-					trigger_name);
+			fprintf(stderr,
+				"Failed to subscribe to notifications of trigger \"%s\"\n",
+				trigger_name);
 			ret = -1;
 			goto end;
 		}
 
-		printf("Subscribed to notifications of trigger \"%s\"\n",
-				trigger_name);
+		printf("Subscribed to notifications of trigger \"%s\"\n", trigger_name);
 		subcription_count++;
 	}
 
@@ -502,10 +469,8 @@ int main(int argc, char **argv)
 		struct lttng_notification *notification;
 		enum lttng_notification_channel_status channel_status;
 
-		channel_status =
-				lttng_notification_channel_get_next_notification(
-						notification_channel,
-						&notification);
+		channel_status = lttng_notification_channel_get_next_notification(
+			notification_channel, &notification);
 		switch (channel_status) {
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
 			printf("Dropped notification\n");
@@ -524,7 +489,8 @@ int main(int argc, char **argv)
 			printf("Notification channel was closed by peer.\n");
 			break;
 		default:
-			fprintf(stderr, "A communication error occurred on the notification channel.\n");
+			fprintf(stderr,
+				"A communication error occurred on the notification channel.\n");
 			ret = -1;
 			goto end;
 		}

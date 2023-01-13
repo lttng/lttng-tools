@@ -6,14 +6,14 @@
  */
 
 #define _LGPL_SOURCE
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include "pipe.hpp"
 
 #include <common/common.hpp>
 
-#include "pipe.hpp"
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /*
  * Lock read side of a pipe.
@@ -213,8 +213,7 @@ error:
  *
  * Return a newly allocated lttng pipe on success or else NULL.
  */
-struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode,
-		int flags)
+struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode, int flags)
 {
 	int ret, fd_r, fd_w;
 	struct lttng_pipe *pipe;
@@ -383,8 +382,7 @@ error:
  * Return "count" on success. Return < count on error. errno can be used
  * to check the actual error.
  */
-ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
-		size_t count)
+ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf, size_t count)
 {
 	ssize_t ret;
 

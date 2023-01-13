@@ -9,23 +9,25 @@
 
 #define _LGPL_SOURCE
 
-#include <common/common.hpp>
-#include <common/sessiond-comm/relayd.hpp>
+#include "cmd-2-1.hpp"
+#include "cmd-2-2.hpp"
+#include "utils.hpp"
 
+#include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/compat/string.hpp>
-#include <lttng/constant.h>
+#include <common/sessiond-comm/relayd.hpp>
 
-#include "cmd-2-2.hpp"
-#include "cmd-2-1.hpp"
-#include "utils.hpp"
+#include <lttng/constant.h>
 
 /*
  * cmd_recv_stream_2_2 allocates path_name and channel_name.
  */
 int cmd_recv_stream_2_2(const struct lttng_buffer_view *payload,
-		char **ret_path_name, char **ret_channel_name,
-		uint64_t *tracefile_size, uint64_t *tracefile_count)
+			char **ret_path_name,
+			char **ret_channel_name,
+			uint64_t *tracefile_size,
+			uint64_t *tracefile_count)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_2 stream_info;
@@ -35,7 +37,8 @@ int cmd_recv_stream_2_2(const struct lttng_buffer_view *payload,
 
 	if (payload->size < sizeof(stream_info)) {
 		ERR("Unexpected payload size in \"cmd_recv_stream_2_2\": expected >= %zu bytes, got %zu bytes",
-				sizeof(stream_info), payload->size);
+		    sizeof(stream_info),
+		    payload->size);
 		ret = -1;
 		goto error;
 	}

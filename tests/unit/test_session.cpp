@@ -5,38 +5,36 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-#include <urcu.h>
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
 #include <bin/lttng-sessiond/health-sessiond.hpp>
 #include <bin/lttng-sessiond/session.hpp>
 #include <bin/lttng-sessiond/thread.hpp>
 #include <bin/lttng-sessiond/ust-app.hpp>
-#include <common/common.hpp>
-#include <common/compat/errno.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 #include <tap/tap.h>
+#include <time.h>
+#include <unistd.h>
+#include <urcu.h>
 
 #define SESSION1 "test1"
 
-#define MAX_SESSIONS 10000
-#define RANDOM_STRING_LEN	11
+#define MAX_SESSIONS	  10000
+#define RANDOM_STRING_LEN 11
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
 static struct ltt_session_list *session_list;
 
-static const char alphanum[] =
-	"0123456789"
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	"abcdefghijklmnopqrstuvwxyz";
+static const char alphanum[] = "0123456789"
+			       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			       "abcdefghijklmnopqrstuvwxyz";
 static char random_string[RANDOM_STRING_LEN];
 
 /*
@@ -63,7 +61,7 @@ static int find_session_name(const char *name)
 {
 	struct ltt_session *iter;
 
-	cds_list_for_each_entry(iter, &session_list->head, list) {
+	cds_list_for_each_entry (iter, &session_list->head, list) {
 		if (strcmp(iter->name, name) == 0) {
 			return 0;
 		}
@@ -77,7 +75,7 @@ static int session_list_count(void)
 	int count = 0;
 	struct ltt_session *iter;
 
-	cds_list_for_each_entry(iter, &session_list->head, list) {
+	cds_list_for_each_entry (iter, &session_list->head, list) {
 		count++;
 	}
 	return count;
@@ -91,7 +89,7 @@ static void empty_session_list(void)
 	struct ltt_session *iter, *tmp;
 
 	session_lock_list();
-	cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
+	cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
 		session_destroy(iter);
 	}
 	session_unlock_list();
@@ -202,9 +200,7 @@ static void test_session_list(void)
 
 static void test_create_one_session(void)
 {
-	ok(create_one_session(SESSION1) == 0,
-	   "Create session: %s",
-	   SESSION1);
+	ok(create_one_session(SESSION1) == 0, "Create session: %s", SESSION1);
 }
 
 static void test_validate_session(void)
@@ -214,12 +210,10 @@ static void test_validate_session(void)
 	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
-	ok(tmp != NULL,
-	   "Validating session: session found");
+	ok(tmp != NULL, "Validating session: session found");
 
 	if (tmp) {
-		ok(tmp->kernel_session == NULL &&
-		   strlen(tmp->name),
+		ok(tmp->kernel_session == NULL && strlen(tmp->name),
 		   "Validating session: basic sanity check");
 	} else {
 		skip(1, "Skipping session validation check as session was not found");
@@ -240,13 +234,10 @@ static void test_destroy_session(void)
 	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
-	ok(tmp != NULL,
-	   "Destroying session: session found");
+	ok(tmp != NULL, "Destroying session: session found");
 
 	if (tmp) {
-		ok(destroy_one_session(tmp) == 0,
-		   "Destroying session: %s destroyed",
-		   SESSION1);
+		ok(destroy_one_session(tmp) == 0, "Destroying session: %s destroyed", SESSION1);
 	} else {
 		skip(1, "Skipping session destruction as it was not found");
 	}
@@ -255,8 +246,7 @@ static void test_destroy_session(void)
 
 static void test_duplicate_session(void)
 {
-	ok(two_session_same_name() == 0,
-	   "Duplicate session creation");
+	ok(two_session_same_name() == 0, "Duplicate session creation");
 }
 
 static void test_session_name_generation(void)
@@ -267,18 +257,18 @@ static void test_session_name_generation(void)
 
 	session_lock_list();
 	ret_code = session_create(NULL, geteuid(), getegid(), &session);
-	ok(ret_code == LTTNG_OK,
-		"Create session with a NULL name (auto-generate a name)");
+	ok(ret_code == LTTNG_OK, "Create session with a NULL name (auto-generate a name)");
 	if (!session) {
 		skip(1, "Skipping session name generation tests as session_create() failed.");
 		goto end;
 	}
-	diag("Automatically-generated session name: %s", *session->name ?
-		session->name : "ERROR");
-	ok(*session->name && !strncmp(expected_session_name_prefix, session->name,
-			sizeof(DEFAULT_SESSION_NAME) - 1),
-			"Auto-generated session name starts with %s",
-			DEFAULT_SESSION_NAME);
+	diag("Automatically-generated session name: %s", *session->name ? session->name : "ERROR");
+	ok(*session->name &&
+		   !strncmp(expected_session_name_prefix,
+			    session->name,
+			    sizeof(DEFAULT_SESSION_NAME) - 1),
+	   "Auto-generated session name starts with %s",
+	   DEFAULT_SESSION_NAME);
 end:
 	session_put(session);
 	session_unlock_list();
@@ -298,15 +288,13 @@ static void test_large_session_number(void)
 		}
 	}
 
-	ok(failed == 0,
-	   "Large sessions number: created %u sessions",
-	   MAX_SESSIONS);
+	ok(failed == 0, "Large sessions number: created %u sessions", MAX_SESSIONS);
 
 	failed = 0;
 
 	session_lock_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
-		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
+		cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
 			LTTNG_ASSERT(session_get(iter));
 			ret = destroy_one_session(iter);
 			if (ret < 0) {
@@ -324,7 +312,6 @@ static void test_large_session_number(void)
 
 int main(void)
 {
-
 	plan_tests(NUM_TESTS);
 
 	the_health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);

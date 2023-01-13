@@ -5,27 +5,27 @@
  *
  */
 
- /*
-  * This script validate and xml from an xsd.
-  * argv[1] Path of the xsd
-  * argv[2] Path to the XML to be validated
-  */
+/*
+ * This script validate and xml from an xsd.
+ * argv[1] Path of the xsd
+ * argv[2] Path to the XML to be validated
+ */
+
+#include <common/macros.hpp>
+
+#include <lttng/lttng-error.h>
 
 #include <ctype.h>
+#include <dirent.h>
+#include <inttypes.h>
+#include <libxml/parser.h>
+#include <libxml/xmlschemas.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-
-#include <libxml/xmlschemas.h>
-#include <libxml/parser.h>
-
-#include <lttng/lttng-error.h>
-#include <common/macros.hpp>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace {
 struct validation_ctx {
@@ -35,14 +35,11 @@ struct validation_ctx {
 };
 } /* namespace */
 
-enum command_err_code {
-	CMD_SUCCESS = 0,
-	CMD_ERROR
-};
+enum command_err_code { CMD_SUCCESS = 0, CMD_ERROR };
 
-static ATTR_FORMAT_PRINTF(2, 3)
-void xml_error_handler(void *ctx __attribute__((unused)),
-		const char *format, ...)
+static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler(void *ctx __attribute__((unused)),
+						       const char *format,
+						       ...)
 {
 	char *err_msg;
 	va_list args;
@@ -52,8 +49,7 @@ void xml_error_handler(void *ctx __attribute__((unused)),
 	ret = vasprintf(&err_msg, format, args);
 	va_end(args);
 	if (ret == -1) {
-		fprintf(stderr, "ERR: %s\n",
-				"String allocation failed in xml error handle");
+		fprintf(stderr, "ERR: %s\n", "String allocation failed in xml error handle");
 		return;
 	}
 
@@ -61,9 +57,7 @@ void xml_error_handler(void *ctx __attribute__((unused)),
 	free(err_msg);
 }
 
-static
-void fini_validation_ctx(
-	struct validation_ctx *ctx)
+static void fini_validation_ctx(struct validation_ctx *ctx)
 {
 	if (ctx->parser_ctx) {
 		xmlSchemaFreeParserCtxt(ctx->parser_ctx);
@@ -80,9 +74,7 @@ void fini_validation_ctx(
 	memset(ctx, 0, sizeof(struct validation_ctx));
 }
 
-static
-int init_validation_ctx(
-	struct validation_ctx *ctx, char *xsd_path)
+static int init_validation_ctx(struct validation_ctx *ctx, char *xsd_path)
 {
 	int ret;
 
@@ -96,8 +88,7 @@ int init_validation_ctx(
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		goto end;
 	}
-	xmlSchemaSetParserErrors(ctx->parser_ctx, xml_error_handler,
-		xml_error_handler, NULL);
+	xmlSchemaSetParserErrors(ctx->parser_ctx, xml_error_handler, xml_error_handler, NULL);
 
 	ctx->schema = xmlSchemaParse(ctx->parser_ctx);
 	if (!ctx->schema) {
@@ -111,8 +102,8 @@ int init_validation_ctx(
 		goto end;
 	}
 
-	xmlSchemaSetValidErrors(ctx->schema_validation_ctx, xml_error_handler,
-			xml_error_handler, NULL);
+	xmlSchemaSetValidErrors(
+		ctx->schema_validation_ctx, xml_error_handler, xml_error_handler, NULL);
 	ret = 0;
 
 end:

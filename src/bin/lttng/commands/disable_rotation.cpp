@@ -6,6 +6,15 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
+#include <lttng/lttng.h>
+
+#include <ctype.h>
+#include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,14 +22,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <ctype.h>
-
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-#include <lttng/lttng.h>
 
 static char *opt_session_name;
 static struct mi_writer *writer;
@@ -28,7 +29,7 @@ static struct mi_writer *writer;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-disable-rotation.1.h>
-;
+	;
 #endif
 
 enum {
@@ -40,12 +41,12 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",        'h',  POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options", 0,   POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"session",     's',  POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{"timer",        0,   POPT_ARG_NONE, 0, OPT_TIMER, 0, 0},
-	{"size",         0,   POPT_ARG_NONE, 0, OPT_SIZE, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "timer", 0, POPT_ARG_NONE, 0, OPT_TIMER, 0, 0 },
+	{ "size", 0, POPT_ARG_NONE, 0, OPT_SIZE, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static const char *schedule_type_str[] = {
@@ -53,10 +54,10 @@ static const char *schedule_type_str[] = {
 	"size-based",
 };
 
-static const struct lttng_rotation_schedule *get_schedule(
-		const char *session_name,
-		const struct lttng_rotation_schedules *schedules,
-		enum lttng_rotation_schedule_type schedule_type)
+static const struct lttng_rotation_schedule *
+get_schedule(const char *session_name,
+	     const struct lttng_rotation_schedules *schedules,
+	     enum lttng_rotation_schedule_type schedule_type)
 {
 	unsigned int count, i;
 	enum lttng_rotation_status status;
@@ -65,7 +66,7 @@ static const struct lttng_rotation_schedule *get_schedule(
 	status = lttng_rotation_schedules_get_count(schedules, &count);
 	if (status != LTTNG_ROTATION_STATUS_OK) {
 		ERR("Unable to determine the number of rotation schedules of session %s",
-				session_name);
+		    session_name);
 		goto end;
 	}
 
@@ -74,13 +75,11 @@ static const struct lttng_rotation_schedule *get_schedule(
 
 		schedule = lttng_rotation_schedules_get_at_index(schedules, i);
 		if (!schedule) {
-			ERR("Unable to retrieve rotation schedule at index %u",
-					i);
+			ERR("Unable to retrieve rotation schedule at index %u", i);
 			goto end;
 		}
 
-		if (lttng_rotation_schedule_get_type(schedule) ==
-				schedule_type) {
+		if (lttng_rotation_schedule_get_type(schedule) == schedule_type) {
 			ret = schedule;
 			break;
 		}
@@ -88,14 +87,14 @@ static const struct lttng_rotation_schedule *get_schedule(
 
 	if (!ret) {
 		ERR("No %s rotation schedule active on session %s",
-				schedule_type_str[schedule_type], session_name);
+		    schedule_type_str[schedule_type],
+		    session_name);
 	}
 end:
 	return ret;
 }
 
-static struct lttng_rotation_schedule *create_empty_schedule(
-		enum lttng_rotation_schedule_type type)
+static struct lttng_rotation_schedule *create_empty_schedule(enum lttng_rotation_schedule_type type)
 {
 	struct lttng_rotation_schedule *schedule = NULL;
 
@@ -113,7 +112,7 @@ static struct lttng_rotation_schedule *create_empty_schedule(
 }
 
 static enum cmd_error_code remove_schedule(const char *session_name,
-		enum lttng_rotation_schedule_type schedule_type)
+					   enum lttng_rotation_schedule_type schedule_type)
 {
 	enum cmd_error_code cmd_ret;
 	int ret;
@@ -136,8 +135,7 @@ static enum cmd_error_code remove_schedule(const char *session_name,
 
 	ret = lttng_session_list_rotation_schedules(session_name, &schedules);
 	if (ret != LTTNG_OK) {
-		ERR("Failed to list rotation schedules of session %s",
-				session_name);
+		ERR("Failed to list rotation schedules of session %s", session_name);
 		goto error;
 	}
 
@@ -160,30 +158,27 @@ static enum cmd_error_code remove_schedule(const char *session_name,
 	status = lttng_session_remove_rotation_schedule(session_name, schedule);
 	switch (status) {
 	case LTTNG_ROTATION_STATUS_OK:
-		MSG("Disabled %s rotation on session %s",
-				schedule_type_name, session_name);
+		MSG("Disabled %s rotation on session %s", schedule_type_name, session_name);
 		cmd_ret = CMD_SUCCESS;
 		break;
 	case LTTNG_ROTATION_STATUS_SCHEDULE_NOT_SET:
-		ERR("No %s rotation schedule set on session %s",
-				schedule_type_name,
-				session_name);
+		ERR("No %s rotation schedule set on session %s", schedule_type_name, session_name);
 		cmd_ret = CMD_ERROR;
 		break;
 	case LTTNG_ROTATION_STATUS_ERROR:
 	case LTTNG_ROTATION_STATUS_INVALID:
 	default:
 		ERR("Failed to disable %s rotation schedule on session %s",
-				schedule_type_name, session_name);
+		    schedule_type_name,
+		    session_name);
 		cmd_ret = CMD_ERROR;
 		break;
 	}
 
 skip_removal:
 	if (lttng_opt_mi) {
-		ret = mi_lttng_rotation_schedule_result(writer,
-				schedule ? schedule : empty_schedule,
-				cmd_ret == CMD_SUCCESS);
+		ret = mi_lttng_rotation_schedule_result(
+			writer, schedule ? schedule : empty_schedule, cmd_ret == CMD_SUCCESS);
 		if (ret < 0) {
 			goto error;
 		}
@@ -259,14 +254,13 @@ int cmd_disable_rotation(int argc, const char **argv)
 
 		/* Open command element */
 		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_disable_rotation);
+						   mi_lttng_element_command_disable_rotation);
 		if (ret) {
 			goto error;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			goto error;
 		}
@@ -280,14 +274,13 @@ int cmd_disable_rotation(int argc, const char **argv)
 
 	if (lttng_opt_mi) {
 		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_rotation_schedule_results);
+						   mi_lttng_element_rotation_schedule_results);
 		if (ret) {
 			goto error;
 		}
 
-		ret = mi_lttng_writer_write_element_string(writer,
-				mi_lttng_element_session_name,
-				session_name);
+		ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_session_name, session_name);
 		if (ret) {
 			goto error;
 		}
@@ -298,16 +291,15 @@ int cmd_disable_rotation(int argc, const char **argv)
 		 * Continue processing even on error as multiple schedules can
 		 * be specified at once.
 		 */
-		cmd_ret = remove_schedule(session_name,
-				LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC);
+		cmd_ret = remove_schedule(session_name, LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC);
 	}
 
 	if (size_rotation) {
 		enum cmd_error_code tmp_ret;
 
 		/* Don't overwrite cmd_ret if it already indicates an error. */
-		tmp_ret = remove_schedule(session_name,
-				LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD);
+		tmp_ret =
+			remove_schedule(session_name, LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD);
 		cmd_ret = cmd_ret ? cmd_ret : tmp_ret;
 	}
 
@@ -329,9 +321,8 @@ close_command:
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success,
-				cmd_ret == CMD_SUCCESS);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, cmd_ret == CMD_SUCCESS);
 		if (ret) {
 			goto error;
 		}

@@ -5,35 +5,36 @@
  *
  */
 
-#include "version.hpp"
-#include "sessiond-config.hpp"
 #include "lttng-ust-ctl.hpp"
-#include <common/defaults.hpp>
-#include <limits.h>
-#include <ctype.h>
-#include <common/error.hpp>
-#include <common/utils.hpp>
-#include <common/path.hpp>
+#include "sessiond-config.hpp"
+#include "version.hpp"
+
 #include <common/compat/errno.hpp>
 #include <common/compat/getenv.hpp>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/path.hpp>
+#include <common/utils.hpp>
 
-static
-struct sessiond_config sessiond_config_build_defaults = {
-	.verbose = 				0,
-	.verbose_consumer = 			0,
-	.agent_tcp_port = 			{ .begin = DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN, .end = DEFAULT_AGENT_TCP_PORT_RANGE_END },
+#include <ctype.h>
+#include <limits.h>
 
-	.event_notifier_buffer_size_kernel =	DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE,
-	.event_notifier_buffer_size_userspace =	DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE,
-	.app_socket_timeout = 			DEFAULT_APP_SOCKET_RW_TIMEOUT,
+static struct sessiond_config sessiond_config_build_defaults = {
+	.verbose = 0,
+	.verbose_consumer = 0,
+	.agent_tcp_port = { .begin = DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN,
+			    .end = DEFAULT_AGENT_TCP_PORT_RANGE_END },
 
-	.quiet =		        	false,
+	.event_notifier_buffer_size_kernel = DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE,
+	.event_notifier_buffer_size_userspace = DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE,
+	.app_socket_timeout = DEFAULT_APP_SOCKET_RW_TIMEOUT,
 
+	.quiet = false,
 
-	.no_kernel = 				false,
-	.background = 				false,
-	.daemonize = 				false,
-	.sig_parent = 				false,
+	.no_kernel = false,
+	.background = false,
+	.daemonize = false,
+	.sig_parent = false,
 
 	.tracing_group_name = { (char *) DEFAULT_TRACING_GROUP, false },
 
@@ -69,15 +70,12 @@ struct sessiond_config sessiond_config_build_defaults = {
 	.kconsumerd_cmd_unix_sock_path = { nullptr, false },
 };
 
-static
-void config_string_fini(struct config_string *str)
+static void config_string_fini(struct config_string *str)
 {
 	config_string_set(str, NULL);
 }
 
-static
-void config_string_set_static(struct config_string *config_str,
-		const char *value)
+static void config_string_set_static(struct config_string *config_str, const char *value)
 {
 	config_string_set(config_str, (char *) value);
 	config_str->should_free = false;
@@ -108,10 +106,10 @@ int sessiond_config_apply_env_config(struct sessiond_config *config)
 
 		errno = 0;
 		int_val = strtoul(env_value, &endptr, 0);
-		if (errno != 0 || int_val > INT_MAX ||
-				(int_val < 0 && int_val != -1)) {
+		if (errno != 0 || int_val > INT_MAX || (int_val < 0 && int_val != -1)) {
 			ERR("Invalid value \"%s\" used for \"%s\" environment variable",
-					env_value, DEFAULT_APP_SOCKET_TIMEOUT_ENV);
+			    env_value,
+			    DEFAULT_APP_SOCKET_TIMEOUT_ENV);
 			ret = -1;
 			goto end;
 		}
@@ -121,49 +119,41 @@ int sessiond_config_apply_env_config(struct sessiond_config *config)
 
 	env_value = lttng_secure_getenv("LTTNG_CONSUMERD32_BIN");
 	if (env_value) {
-		config_string_set_static(&config->consumerd32_bin_path,
-				env_value);
+		config_string_set_static(&config->consumerd32_bin_path, env_value);
 	}
 	env_value = lttng_secure_getenv("LTTNG_CONSUMERD64_BIN");
 	if (env_value) {
-		config_string_set_static(&config->consumerd64_bin_path,
-				env_value);
+		config_string_set_static(&config->consumerd64_bin_path, env_value);
 	}
 
 	env_value = lttng_secure_getenv("LTTNG_CONSUMERD32_LIBDIR");
 	if (env_value) {
-		config_string_set_static(&config->consumerd32_lib_dir,
-				env_value);
+		config_string_set_static(&config->consumerd32_lib_dir, env_value);
 	}
 	env_value = lttng_secure_getenv("LTTNG_CONSUMERD64_LIBDIR");
 	if (env_value) {
-		config_string_set_static(&config->consumerd64_lib_dir,
-				env_value);
+		config_string_set_static(&config->consumerd64_lib_dir, env_value);
 	}
 
 	env_value = lttng_secure_getenv("LTTNG_UST_CLOCK_PLUGIN");
 	if (env_value) {
-		config_string_set_static(&config->lttng_ust_clock_plugin,
-				env_value);
+		config_string_set_static(&config->lttng_ust_clock_plugin, env_value);
 	}
 
 	env_value = lttng_secure_getenv(DEFAULT_LTTNG_KMOD_PROBES);
 	if (env_value) {
-		config_string_set_static(&config->kmod_probes_list,
-				env_value);
+		config_string_set_static(&config->kmod_probes_list, env_value);
 	}
 
 	env_value = lttng_secure_getenv(DEFAULT_LTTNG_EXTRA_KMOD_PROBES);
 	if (env_value) {
-		config_string_set_static(&config->kmod_extra_probes_list,
-				env_value);
+		config_string_set_static(&config->kmod_extra_probes_list, env_value);
 	}
 end:
 	return ret;
 }
 
-static
-int config_set_paths_root(struct sessiond_config *config)
+static int config_set_paths_root(struct sessiond_config *config)
 {
 	int ret = 0;
 
@@ -174,20 +164,15 @@ int config_set_paths_root(struct sessiond_config *config)
 		goto end;
 	}
 
-	config_string_set_static(&config->apps_unix_sock_path,
-			DEFAULT_GLOBAL_APPS_UNIX_SOCK);
-	config_string_set_static(&config->client_unix_sock_path,
-			DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
-	config_string_set_static(&config->wait_shm_path,
-			DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
-	config_string_set_static(&config->health_unix_sock_path,
-			DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
+	config_string_set_static(&config->apps_unix_sock_path, DEFAULT_GLOBAL_APPS_UNIX_SOCK);
+	config_string_set_static(&config->client_unix_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
+	config_string_set_static(&config->wait_shm_path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
+	config_string_set_static(&config->health_unix_sock_path, DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
 end:
 	return ret;
 }
 
-static
-int config_set_paths_non_root(struct sessiond_config *config)
+static int config_set_paths_non_root(struct sessiond_config *config)
 {
 	int ret = 0;
 	const char *home_path = utils_get_home_dir();
@@ -267,8 +252,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	}
 
 	/* 32 bits consumerd path setup */
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer path");
 		goto error;
@@ -276,8 +260,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->consumerd32_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer error socket path");
 		goto error;
@@ -285,8 +268,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->consumerd32_err_unix_sock_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer command socket path");
 		goto error;
@@ -295,8 +277,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	str = NULL;
 
 	/* 64 bits consumerd path setup */
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer path");
 		goto error;
@@ -304,8 +285,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->consumerd64_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer error socket path");
 		goto error;
@@ -313,8 +293,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->consumerd64_err_unix_sock_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer command socket path");
 		goto error;
@@ -323,8 +302,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	str = NULL;
 
 	/* kconsumerd consumerd path setup */
-	ret = asprintf(&str, DEFAULT_KCONSUMERD_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_KCONSUMERD_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer path");
 		goto error;
@@ -332,8 +310,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->kconsumerd_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_KCONSUMERD_ERR_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer error socket path");
 		goto error;
@@ -341,8 +318,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->kconsumerd_err_unix_sock_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
-			config->rundir.value);
+	ret = asprintf(&str, DEFAULT_KCONSUMERD_CMD_SOCK_PATH, config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer command socket path");
 		goto error;
@@ -350,8 +326,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->kconsumerd_cmd_unix_sock_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, "%s/%s", config->rundir.value,
-			DEFAULT_LTTNG_SESSIOND_PIDFILE);
+	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_PIDFILE);
 	if (ret < 0) {
 		ERR("Failed to set PID file path");
 		goto error;
@@ -359,8 +334,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->pid_file_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, "%s/%s", config->rundir.value,
-			DEFAULT_LTTNG_SESSIOND_LOCKFILE);
+	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_LOCKFILE);
 	if (ret < 0) {
 		ERR("Failed to set lock file path");
 		goto error;
@@ -368,8 +342,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->lock_file_path, str);
 	str = NULL;
 
-	ret = asprintf(&str, "%s/%s", config->rundir.value,
-			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
+	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
 	if (ret < 0) {
 		ERR("Failed to set agent port file path");
 		goto error;
@@ -384,14 +357,12 @@ int sessiond_config_init(struct sessiond_config *config)
 	 */
 #if (CAA_BITS_PER_LONG == 32)
 	config_string_set_static(&config->consumerd32_bin_path,
-			INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE);
-	config_string_set_static(&config->consumerd32_lib_dir,
-			INSTALL_LIB_PATH);
+				 INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE);
+	config_string_set_static(&config->consumerd32_lib_dir, INSTALL_LIB_PATH);
 #elif (CAA_BITS_PER_LONG == 64)
 	config_string_set_static(&config->consumerd64_bin_path,
-			INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE);
-	config_string_set_static(&config->consumerd64_lib_dir,
-			INSTALL_LIB_PATH);
+				 INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE);
+	config_string_set_static(&config->consumerd64_lib_dir, INSTALL_LIB_PATH);
 #else
 #error "Unknown bitness"
 #endif
@@ -432,8 +403,7 @@ void sessiond_config_fini(struct sessiond_config *config)
 	config_string_fini(&config->kconsumerd_cmd_unix_sock_path);
 }
 
-static
-int resolve_path(struct config_string *path)
+static int resolve_path(struct config_string *path)
 {
 	int ret = 0;
 	char *absolute_path;
@@ -453,9 +423,9 @@ end:
 	return ret;
 }
 
-#define RESOLVE_CHECK(path_config_str)		\
-	if (resolve_path(path_config_str))	\
-		return -1
+#define RESOLVE_CHECK(path_config_str)     \
+	if (resolve_path(path_config_str)) \
+	return -1
 
 int sessiond_config_resolve_paths(struct sessiond_config *config)
 {
@@ -507,38 +477,60 @@ void sessiond_config_log(struct sessiond_config *config)
 		DBG_NO_LOC("\tagent_tcp_port:                %i", config->agent_tcp_port.begin);
 	} else {
 		DBG_NO_LOC("\tagent_tcp_port:                [%i, %i]",
-				config->agent_tcp_port.begin,
-				config->agent_tcp_port.end);
+			   config->agent_tcp_port.begin,
+			   config->agent_tcp_port.end);
 	}
 	DBG_NO_LOC("\tapplication socket timeout:    %i", config->app_socket_timeout);
 	DBG_NO_LOC("\tno-kernel:                     %s", config->no_kernel ? "True" : "False");
 	DBG_NO_LOC("\tbackground:                    %s", config->background ? "True" : "False");
 	DBG_NO_LOC("\tdaemonize:                     %s", config->daemonize ? "True" : "False");
 	DBG_NO_LOC("\tsignal parent on start:        %s", config->sig_parent ? "True" : "False");
-	DBG_NO_LOC("\ttracing group name:            %s", config->tracing_group_name.value ? : "Unknown");
-	DBG_NO_LOC("\tkmod_probe_list:               %s", config->kmod_probes_list.value ? : "None");
-	DBG_NO_LOC("\tkmod_extra_probe_list:         %s", config->kmod_extra_probes_list.value ? : "None");
-	DBG_NO_LOC("\trundir:                        %s", config->rundir.value ? : "Unknown");
-	DBG_NO_LOC("\tapplication socket path:       %s", config->apps_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tclient socket path:            %s", config->client_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\twait shm path:                 %s", config->wait_shm_path.value ? : "Unknown");
-	DBG_NO_LOC("\thealth socket path:            %s", config->health_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tLTTNG_UST_CLOCK_PLUGIN:        %s", config->lttng_ust_clock_plugin.value ? : "None");
-	DBG_NO_LOC("\tpid file path:                 %s", config->pid_file_path.value ? : "Unknown");
-	DBG_NO_LOC("\tlock file path:                %s", config->lock_file_path.value ? : "Unknown");
-	DBG_NO_LOC("\tsession load path:             %s", config->load_session_path.value ? : "None");
-	DBG_NO_LOC("\tagent port file path:          %s", config->agent_port_file_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd32 path:              %s", config->consumerd32_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd32 bin path:          %s", config->consumerd32_bin_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd32 lib dir:           %s", config->consumerd32_lib_dir.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd32 err unix sock path:%s", config->consumerd32_err_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd32 cmd unix sock path:%s", config->consumerd32_cmd_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd64 path:              %s", config->consumerd64_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd64 bin path:          %s", config->consumerd64_bin_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd64 lib dir:           %s", config->consumerd64_lib_dir.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd64 err unix sock path:%s", config->consumerd64_err_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tconsumerd64 cmd unix sock path:%s", config->consumerd64_cmd_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tkconsumerd path:               %s", config->kconsumerd_path.value ? : "Unknown");
-	DBG_NO_LOC("\tkconsumerd err unix sock path: %s", config->kconsumerd_err_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tkconsumerd cmd unix sock path: %s", config->kconsumerd_cmd_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\ttracing group name:            %s",
+		   config->tracing_group_name.value ?: "Unknown");
+	DBG_NO_LOC("\tkmod_probe_list:               %s", config->kmod_probes_list.value ?: "None");
+	DBG_NO_LOC("\tkmod_extra_probe_list:         %s",
+		   config->kmod_extra_probes_list.value ?: "None");
+	DBG_NO_LOC("\trundir:                        %s", config->rundir.value ?: "Unknown");
+	DBG_NO_LOC("\tapplication socket path:       %s",
+		   config->apps_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tclient socket path:            %s",
+		   config->client_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\twait shm path:                 %s", config->wait_shm_path.value ?: "Unknown");
+	DBG_NO_LOC("\thealth socket path:            %s",
+		   config->health_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tLTTNG_UST_CLOCK_PLUGIN:        %s",
+		   config->lttng_ust_clock_plugin.value ?: "None");
+	DBG_NO_LOC("\tpid file path:                 %s", config->pid_file_path.value ?: "Unknown");
+	DBG_NO_LOC("\tlock file path:                %s",
+		   config->lock_file_path.value ?: "Unknown");
+	DBG_NO_LOC("\tsession load path:             %s",
+		   config->load_session_path.value ?: "None");
+	DBG_NO_LOC("\tagent port file path:          %s",
+		   config->agent_port_file_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd32 path:              %s",
+		   config->consumerd32_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd32 bin path:          %s",
+		   config->consumerd32_bin_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd32 lib dir:           %s",
+		   config->consumerd32_lib_dir.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd32 err unix sock path:%s",
+		   config->consumerd32_err_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd32 cmd unix sock path:%s",
+		   config->consumerd32_cmd_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd64 path:              %s",
+		   config->consumerd64_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd64 bin path:          %s",
+		   config->consumerd64_bin_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd64 lib dir:           %s",
+		   config->consumerd64_lib_dir.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd64 err unix sock path:%s",
+		   config->consumerd64_err_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tconsumerd64 cmd unix sock path:%s",
+		   config->consumerd64_cmd_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tkconsumerd path:               %s",
+		   config->kconsumerd_path.value ?: "Unknown");
+	DBG_NO_LOC("\tkconsumerd err unix sock path: %s",
+		   config->kconsumerd_err_unix_sock_path.value ?: "Unknown");
+	DBG_NO_LOC("\tkconsumerd cmd unix sock path: %s",
+		   config->kconsumerd_cmd_unix_sock_path.value ?: "Unknown");
 }

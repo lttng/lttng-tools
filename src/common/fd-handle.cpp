@@ -5,11 +5,12 @@
  *
  */
 
+#include "fd-handle.hpp"
+
+#include <common/error.hpp>
+
 #include <unistd.h>
 #include <urcu/ref.h>
-
-#include "fd-handle.hpp"
-#include <common/error.hpp>
 
 struct fd_handle {
 	struct urcu_ref ref;
@@ -25,7 +26,7 @@ static void fd_handle_release(struct urcu_ref *ref)
 	ret = close(handle->fd);
 	if (ret == -1) {
 		PERROR("Failed to close file descriptor of fd_handle upon release: fd = %d",
-				handle->fd);
+		       handle->fd);
 	}
 
 	free(handle);
@@ -37,7 +38,7 @@ struct fd_handle *fd_handle_create(int fd)
 
 	if (fd < 0) {
 		ERR("Attempted to create an fd_handle from an invalid file descriptor: fd = %d",
-				fd);
+		    fd);
 		goto end;
 	}
 
@@ -84,7 +85,8 @@ struct fd_handle *fd_handle_copy(const struct fd_handle *handle)
 	const int new_fd = dup(handle->fd);
 
 	if (new_fd < 0) {
-		PERROR("Failed to duplicate file descriptor while copying fd_handle: fd = %d", handle->fd);
+		PERROR("Failed to duplicate file descriptor while copying fd_handle: fd = %d",
+		       handle->fd);
 		goto end;
 	}
 

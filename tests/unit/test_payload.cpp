@@ -5,12 +5,12 @@
  *
  */
 
-#include <unistd.h>
-
 #include <common/compat/fcntl.hpp>
-#include <common/payload.hpp>
 #include <common/payload-view.hpp>
+#include <common/payload.hpp>
+
 #include <tap/tap.h>
+#include <unistd.h>
 
 static const int TEST_COUNT = 5;
 
@@ -49,19 +49,17 @@ static void test_fd_push_pop_order(void)
 
 	{
 		bool fail_pop = false;
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-					&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
 		for (i = 0; i < 3; i++) {
-			struct fd_handle *handle =
-					lttng_payload_view_pop_fd_handle(&view);
+			struct fd_handle *handle = lttng_payload_view_pop_fd_handle(&view);
 
 			fail_pop |= fd_handle_get_fd(handle) != fds[i];
 			fd_handle_put(handle);
 		}
 
-		ok(!fail_pop, "File descriptors are popped from a payload view in the order of insertion");
+		ok(!fail_pop,
+		   "File descriptors are popped from a payload view in the order of insertion");
 	}
 
 	lttng_payload_reset(&payload);
@@ -71,7 +69,8 @@ static void test_fd_push_pop_imbalance(void)
 {
 	int ret, i;
 	struct lttng_payload payload;
-	const char * const test_description = "Error reported when popping more file descriptors than were pushed";
+	const char *const test_description =
+		"Error reported when popping more file descriptors than were pushed";
 
 	lttng_payload_init(&payload);
 
@@ -94,9 +93,7 @@ static void test_fd_push_pop_imbalance(void)
 
 	{
 		struct fd_handle *handle;
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-					&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
 		for (i = 0; i < 10; i++) {
 			handle = lttng_payload_view_pop_fd_handle(&view);
@@ -124,7 +121,8 @@ static void test_fd_pop_fd_root_views(void)
 	int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 	struct fd_handle *handle;
 	struct lttng_payload payload;
-	const char * const test_description = "Same file descriptor returned when popping from different top-level views";
+	const char *const test_description =
+		"Same file descriptor returned when popping from different top-level views";
 
 	LTTNG_ASSERT(fd >= 0);
 	handle = fd_handle_create(fd);
@@ -141,9 +139,7 @@ static void test_fd_pop_fd_root_views(void)
 	for (i = 0; i < 5; i++) {
 		int view_fd;
 		struct fd_handle *view_handle;
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-					&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 
 		view_handle = lttng_payload_view_pop_fd_handle(&view);
 		if (!view_handle) {
@@ -175,7 +171,8 @@ static void test_fd_pop_fd_descendant_views(void)
 	struct fd_handle *handle2 = fd_handle_create(fd2);
 	struct fd_handle *view_handle1 = NULL, *view_handle2 = NULL;
 	struct lttng_payload payload;
-	const char * const test_description = "Different file descriptors returned when popping from descendant views";
+	const char *const test_description =
+		"Different file descriptors returned when popping from descendant views";
 
 	lttng_payload_init(&payload);
 	LTTNG_ASSERT(handle1);
@@ -193,12 +190,8 @@ static void test_fd_pop_fd_descendant_views(void)
 	}
 
 	{
-		struct lttng_payload_view view1 =
-				lttng_payload_view_from_payload(
-					&payload, 0, -1);
-		struct lttng_payload_view view2 =
-			lttng_payload_view_from_view(
-				&view1, 0, -1);
+		struct lttng_payload_view view1 = lttng_payload_view_from_payload(&payload, 0, -1);
+		struct lttng_payload_view view2 = lttng_payload_view_from_view(&view1, 0, -1);
 
 		view_handle1 = lttng_payload_view_pop_fd_handle(&view1);
 		if (!view_handle1 || fd_handle_get_fd(view_handle1) != fd1) {

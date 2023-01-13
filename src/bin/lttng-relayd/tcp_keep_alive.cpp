@@ -5,34 +5,34 @@
  *
  */
 
-#include <sys/types.h>
+#include "tcp_keep_alive.hpp"
+
+#include <common/compat/getenv.hpp>
+#include <common/defaults.hpp>
+#include <common/ini-config/ini-config.hpp>
+#include <common/time.hpp>
+
+#include <limits.h>
 #include <netinet/tcp.h>
 #include <stdbool.h>
 #include <sys/socket.h>
-#include <limits.h>
+#include <sys/types.h>
 
-#include <common/compat/getenv.hpp>
-#include <common/time.hpp>
-#include <common/defaults.hpp>
-#include <common/ini-config/ini-config.hpp>
-
-#include "tcp_keep_alive.hpp"
-
-#define SOLARIS_IDLE_TIME_MIN_S 10
-#define SOLARIS_IDLE_TIME_MAX_S 864000 /* 10 days */
+#define SOLARIS_IDLE_TIME_MIN_S	      10
+#define SOLARIS_IDLE_TIME_MAX_S	      864000 /* 10 days */
 #define SOLARIS_ABORT_THRESHOLD_MIN_S 1
 #define SOLARIS_ABORT_THRESHOLD_MAX_S 480 /* 8 minutes */
 
 /* Per-platform definitions of TCP socket options. */
-#if defined (__linux__)
+#if defined(__linux__)
 
-#define COMPAT_TCP_LEVEL SOL_TCP
+#define COMPAT_TCP_LEVEL	   SOL_TCP
 #define COMPAT_TCP_ABORT_THRESHOLD 0 /* Does not exist on linux. */
-#define COMPAT_TCP_KEEPIDLE TCP_KEEPIDLE
-#define COMPAT_TCP_KEEPINTVL TCP_KEEPINTVL
-#define COMPAT_TCP_KEEPCNT TCP_KEEPCNT
+#define COMPAT_TCP_KEEPIDLE	   TCP_KEEPIDLE
+#define COMPAT_TCP_KEEPINTVL	   TCP_KEEPINTVL
+#define COMPAT_TCP_KEEPCNT	   TCP_KEEPCNT
 
-#elif defined (__sun__) /* ! defined (__linux__) */
+#elif defined(__sun__) /* ! defined (__linux__) */
 
 #define COMPAT_TCP_LEVEL IPPROTO_TCP
 
@@ -49,15 +49,15 @@
 #endif /* TCP_KEEPALIVE_ABORT_THRESHOLD */
 
 #define COMPAT_TCP_KEEPINTVL 0 /* Does not exist on Solaris. */
-#define COMPAT_TCP_KEEPCNT 0 /* Does not exist on Solaris. */
+#define COMPAT_TCP_KEEPCNT   0 /* Does not exist on Solaris. */
 
 #else /* ! defined (__linux__) && ! defined (__sun__) */
 
-#define COMPAT_TCP_LEVEL 0
+#define COMPAT_TCP_LEVEL	   0
 #define COMPAT_TCP_ABORT_THRESHOLD 0
-#define COMPAT_TCP_KEEPIDLE 0
-#define COMPAT_TCP_KEEPINTVL 0
-#define COMPAT_TCP_KEEPCNT 0
+#define COMPAT_TCP_KEEPIDLE	   0
+#define COMPAT_TCP_KEEPINTVL	   0
+#define COMPAT_TCP_KEEPCNT	   0
 
 #endif /* ! defined (__linux__) && ! defined (__sun__) */
 
@@ -106,17 +106,17 @@ struct tcp_keep_alive_config {
 	int abort_threshold;
 };
 
-struct tcp_keep_alive_config the_config = {.enabled = false,
-		.idle_time = -1,
-		.probe_interval = -1,
-		.max_probe_count = -1,
-		.abort_threshold = -1};
+struct tcp_keep_alive_config the_config = { .enabled = false,
+					    .idle_time = -1,
+					    .probe_interval = -1,
+					    .max_probe_count = -1,
+					    .abort_threshold = -1 };
 
-struct tcp_keep_alive_support the_support = {.supported = false,
-		.idle_time_supported = false,
-		.probe_interval_supported = false,
-		.max_probe_count_supported = false,
-		.abort_threshold_supported = false};
+struct tcp_keep_alive_support the_support = { .supported = false,
+					      .idle_time_supported = false,
+					      .probe_interval_supported = false,
+					      .max_probe_count_supported = false,
+					      .abort_threshold_supported = false };
 } /* namespace */
 
 /*
@@ -125,9 +125,7 @@ struct tcp_keep_alive_support the_support = {.supported = false,
  *
  * Returns -2 on invalid value.
  */
-static
-int get_env_int(const char *env_var,
-		const char *value)
+static int get_env_int(const char *env_var, const char *value)
 {
 	int ret;
 	long tmp;
@@ -143,9 +141,9 @@ int get_env_int(const char *env_var,
 	}
 
 	if (endptr == value || *endptr != '\0') {
-	    ERR("%s is not a valid number", env_var);
-	    ret = -1;
-	    goto end;
+		ERR("%s is not a valid number", env_var);
+		ret = -1;
+		goto end;
 	}
 
 	if (tmp < -1) {
@@ -153,7 +151,7 @@ int get_env_int(const char *env_var,
 		ret = -2;
 		goto end;
 	}
-	if (tmp > INT_MAX){
+	if (tmp > INT_MAX) {
 		ERR("%s is too big. Maximum value is %d", env_var, INT_MAX);
 		ret = -2;
 		goto end;
@@ -170,8 +168,7 @@ end:
  */
 #ifdef __sun__
 
-static
-int convert_idle_time(int value)
+static int convert_idle_time(int value)
 {
 	int ret;
 	unsigned int tmp_ms;
@@ -193,26 +190,24 @@ int convert_idle_time(int value)
 	 * Minimum 10s, maximum 10 days. Defined by
 	 * https://docs.oracle.com/cd/E23824_01/html/821-1475/tcp-7p.html#REFMAN7tcp-7p
 	 */
-	if ((value < SOLARIS_IDLE_TIME_MIN_S ||
-			value > SOLARIS_IDLE_TIME_MAX_S)) {
+	if ((value < SOLARIS_IDLE_TIME_MIN_S || value > SOLARIS_IDLE_TIME_MAX_S)) {
 		ERR("%s must be comprised between %d and %d inclusively on Solaris",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
-				SOLARIS_IDLE_TIME_MIN_S,
-				SOLARIS_IDLE_TIME_MAX_S);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
+		    SOLARIS_IDLE_TIME_MIN_S,
+		    SOLARIS_IDLE_TIME_MAX_S);
 		ret = -2;
 		goto end;
 	}
 
 	/* On Solaris idle time is given in milliseconds. */
 	tmp_ms = ((unsigned int) value) * MSEC_PER_SEC;
-	if ((value != 0 && (tmp_ms / ((unsigned int) value)) != MSEC_PER_SEC)
-			|| tmp_ms > INT_MAX) {
+	if ((value != 0 && (tmp_ms / ((unsigned int) value)) != MSEC_PER_SEC) || tmp_ms > INT_MAX) {
 		/* Overflow. */
 		const int max_value = INT_MAX / MSEC_PER_SEC;
 
 		ERR("%s is too big: maximum supported value is %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
-				max_value);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
+		    max_value);
 		ret = -2;
 		goto end;
 	}
@@ -225,8 +220,7 @@ end:
 
 #else /* ! defined(__sun__) */
 
-static
-int convert_idle_time(int value)
+static int convert_idle_time(int value)
 {
 	return value;
 }
@@ -234,10 +228,9 @@ int convert_idle_time(int value)
 #endif /* ! defined(__sun__) */
 
 /* Per-platform support of tcp_keep_alive functionality. */
-#if defined (__linux__)
+#if defined(__linux__)
 
-static
-void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
+static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 {
 	support->supported = true;
 	support->idle_time_supported = true;
@@ -249,14 +242,14 @@ void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 
 #elif defined(__sun__) /* ! defined (__linux__) */
 
-static
-void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
+static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 {
 	support->supported = true;
 #ifdef TCP_KEEPALIVE_THRESHOLD
 	support->idle_time_supported = true;
 #else
-	support->idle_time_supported = false;;
+	support->idle_time_supported = false;
+	;
 #endif /* TCP_KEEPALIVE_THRESHOLD */
 
 	/*
@@ -282,8 +275,7 @@ void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 #else /* ! defined(__sun__) && ! defined(__linux__) */
 
 /* Assume nothing is supported on other platforms. */
-static
-void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
+static void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
 {
 	support->supported = false;
 	support->idle_time_supported = false;
@@ -300,8 +292,7 @@ void tcp_keep_alive_init_support(struct tcp_keep_alive_support *support)
  * Solaris specific modifier for abort threshold.
  * Return -2 on error.
  */
-static
-int convert_abort_threshold(int value)
+static int convert_abort_threshold(int value)
 {
 	int ret;
 	unsigned int tmp_ms;
@@ -330,23 +321,22 @@ int convert_abort_threshold(int value)
 	 */
 	if ((value < SOLARIS_ABORT_THRESHOLD_MIN_S || value > SOLARIS_ABORT_THRESHOLD_MAX_S)) {
 		ERR("%s must be comprised between %d and %d inclusively on Solaris",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
-				SOLARIS_ABORT_THRESHOLD_MIN_S,
-				SOLARIS_ABORT_THRESHOLD_MAX_S);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
+		    SOLARIS_ABORT_THRESHOLD_MIN_S,
+		    SOLARIS_ABORT_THRESHOLD_MAX_S);
 		ret = -2;
 		goto end;
 	}
 
 	/* Abort threshold is given in milliseconds. */
 	tmp_ms = ((unsigned int) value) * MSEC_PER_SEC;
-	if ((value != 0 && (tmp_ms / ((unsigned int) value)) != MSEC_PER_SEC)
-			|| tmp_ms > INT_MAX) {
+	if ((value != 0 && (tmp_ms / ((unsigned int) value)) != MSEC_PER_SEC) || tmp_ms > INT_MAX) {
 		/* Overflow */
 		const int max_value = INT_MAX / MSEC_PER_SEC;
 
 		ERR("%s is too big: maximum supported value is %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
-				max_value);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
+		    max_value);
 		ret = -2;
 		goto end;
 	}
@@ -359,8 +349,7 @@ end:
 
 #else
 
-static
-int convert_abort_threshold(int value)
+static int convert_abort_threshold(int value)
 {
 	return value;
 }
@@ -371,9 +360,8 @@ int convert_abort_threshold(int value)
  * Retrieve settings from environment variables and warn for settings not
  * supported by the platform.
  */
-static
-int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
-		struct tcp_keep_alive_config *config)
+static int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
+				      struct tcp_keep_alive_config *config)
 {
 	int ret;
 	const char *value;
@@ -382,7 +370,7 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 	if (!support->supported) {
 		if (value) {
 			WARN("Using per-socket TCP keep-alive mechanism is not supported by this platform. Ignoring the %s environment variable.",
-					DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ENV);
+			     DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ENV);
 		}
 		config->enabled = false;
 	} else if (value) {
@@ -394,21 +382,20 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 		}
 		config->enabled = ret;
 	}
-	DBG("TCP keep-alive mechanism %s", config->enabled ? "enabled": "disabled");
+	DBG("TCP keep-alive mechanism %s", config->enabled ? "enabled" : "disabled");
 
 	/* Get value for tcp_keepalive_time in seconds. */
 	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV);
 	if (!support->idle_time_supported && value) {
 		WARN("Overriding the TCP keep-alive idle time threshold per-socket is not supported by this platform. Ignoring the %s environment variable.",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV);
+		     DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV);
 		config->idle_time = -1;
 	} else if (value) {
 		int idle_time_platform;
 		int idle_time_seconds;
 
-		idle_time_seconds = get_env_int(
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
-				value);
+		idle_time_seconds =
+			get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV, value);
 		if (idle_time_seconds < -1) {
 			ret = 1;
 			goto error;
@@ -422,22 +409,21 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 
 		config->idle_time = idle_time_platform;
 		DBG("Overriding %s to %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
-				idle_time_seconds);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME_ENV,
+		    idle_time_seconds);
 	}
 
 	/* Get value for tcp_keepalive_intvl in seconds. */
-	value = lttng_secure_getenv(
-			DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV);
+	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV);
 	if (!support->probe_interval_supported && value) {
 		WARN("Overriding the TCP keep-alive probe interval time per-socket is not supported by this platform. Ignoring the %s environment variable.",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV);
+		     DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV);
 		config->probe_interval = -1;
 	} else if (value) {
 		int probe_interval;
 
-		probe_interval = get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV,
-				value);
+		probe_interval =
+			get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV, value);
 		if (probe_interval < -1) {
 			ret = 1;
 			goto error;
@@ -445,21 +431,21 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 
 		config->probe_interval = probe_interval;
 		DBG("Overriding %s to %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV,
-				config->probe_interval);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV,
+		    config->probe_interval);
 	}
 
 	/* Get value for tcp_keepalive_probes. */
 	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV);
 	if (!support->max_probe_count_supported && value) {
 		WARN("Overriding the TCP keep-alive maximum probe count per-socket is not supported by this platform. Ignoring the %s environment variable.",
-				 DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV);
+		     DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV);
 		config->max_probe_count = -1;
 	} else if (value) {
 		int max_probe_count;
 
-		max_probe_count = get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV,
-				value);
+		max_probe_count =
+			get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV, value);
 		if (max_probe_count < -1) {
 			ret = 1;
 			goto error;
@@ -467,31 +453,28 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 
 		config->max_probe_count = max_probe_count;
 		DBG("Overriding %s to %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV,
-				config->max_probe_count);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV,
+		    config->max_probe_count);
 	}
 
 	/* Get value for tcp_keepalive_abort_interval. */
-	value = lttng_secure_getenv(
-			DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV);
+	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV);
 	if (!support->abort_threshold_supported && value) {
 		WARN("Overriding the TCP keep-alive abort threshold per-socket is not supported by this platform. Ignoring the %s environment variable.",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV);
+		     DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV);
 		config->abort_threshold = -1;
 	} else if (value) {
 		int abort_threshold_platform;
 		int abort_threshold_seconds;
 
-		abort_threshold_seconds = get_env_int(
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV,
-				value);
+		abort_threshold_seconds =
+			get_env_int(DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV, value);
 		if (abort_threshold_seconds < -1) {
 			ret = 1;
 			goto error;
 		}
 
-		abort_threshold_platform = convert_abort_threshold(
-				abort_threshold_seconds);
+		abort_threshold_platform = convert_abort_threshold(abort_threshold_seconds);
 		if (abort_threshold_platform < -1) {
 			ret = 1;
 			goto error;
@@ -499,8 +482,8 @@ int tcp_keep_alive_init_config(struct tcp_keep_alive_support *support,
 
 		config->abort_threshold = abort_threshold_platform;
 		DBG("Overriding %s to %d",
-				DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
-				config->abort_threshold);
+		    DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV,
+		    config->abort_threshold);
 	}
 
 	ret = 0;
@@ -510,8 +493,7 @@ error:
 }
 
 /* Initialize the TCP keep-alive configuration. */
-__attribute__((constructor)) static
-void tcp_keep_alive_init(void)
+__attribute__((constructor)) static void tcp_keep_alive_init(void)
 {
 	tcp_keep_alive_init_support(&the_support);
 	(void) tcp_keep_alive_init_config(&the_support, &the_config);
@@ -532,8 +514,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	DBG("TCP keep-alive enabled for socket %d", socket_fd);
-	ret = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &val,
-			sizeof(val));
+	ret = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
 	if (ret < 0) {
 		PERROR("setsockopt so_keepalive");
 		goto end;
@@ -542,24 +523,28 @@ int socket_apply_keep_alive_config(int socket_fd)
 	/* TCP keep-alive idle time */
 	if (the_support.idle_time_supported && the_config.idle_time > 0) {
 		DBG("TCP keep-alive keep idle: %d enabled for socket %d",
-				the_config.idle_time, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
-				COMPAT_TCP_KEEPIDLE, &the_config.idle_time,
-				sizeof(the_config.idle_time));
+		    the_config.idle_time,
+		    socket_fd);
+		ret = setsockopt(socket_fd,
+				 COMPAT_TCP_LEVEL,
+				 COMPAT_TCP_KEEPIDLE,
+				 &the_config.idle_time,
+				 sizeof(the_config.idle_time));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPIDLE");
 			goto end;
 		}
 	}
 	/* TCP keep-alive probe interval */
-	if (the_support.probe_interval_supported &&
-			the_config.probe_interval > 0) {
+	if (the_support.probe_interval_supported && the_config.probe_interval > 0) {
 		DBG("TCP keep-alive probe_interval: %d enabled for socket %d",
-				the_config.probe_interval, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
-				COMPAT_TCP_KEEPINTVL,
-				&the_config.probe_interval,
-				sizeof(the_config.probe_interval));
+		    the_config.probe_interval,
+		    socket_fd);
+		ret = setsockopt(socket_fd,
+				 COMPAT_TCP_LEVEL,
+				 COMPAT_TCP_KEEPINTVL,
+				 &the_config.probe_interval,
+				 sizeof(the_config.probe_interval));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPINTVL");
 			goto end;
@@ -567,13 +552,15 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	/* TCP keep-alive max probe count */
-	if (the_support.max_probe_count_supported &&
-			the_config.max_probe_count > 0) {
+	if (the_support.max_probe_count_supported && the_config.max_probe_count > 0) {
 		DBG("TCP keep-alive max_probe: %d enabled for socket %d",
-				the_config.max_probe_count, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
-				COMPAT_TCP_KEEPCNT, &the_config.max_probe_count,
-				sizeof(the_config.max_probe_count));
+		    the_config.max_probe_count,
+		    socket_fd);
+		ret = setsockopt(socket_fd,
+				 COMPAT_TCP_LEVEL,
+				 COMPAT_TCP_KEEPCNT,
+				 &the_config.max_probe_count,
+				 sizeof(the_config.max_probe_count));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPCNT");
 			goto end;
@@ -581,14 +568,15 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	/* TCP keep-alive abort threshold */
-	if (the_support.abort_threshold_supported &&
-			the_config.abort_threshold > 0) {
+	if (the_support.abort_threshold_supported && the_config.abort_threshold > 0) {
 		DBG("TCP keep-alive abort threshold: %d enabled for socket %d",
-				the_config.abort_threshold, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
-				COMPAT_TCP_ABORT_THRESHOLD,
-				&the_config.abort_threshold,
-				sizeof(the_config.max_probe_count));
+		    the_config.abort_threshold,
+		    socket_fd);
+		ret = setsockopt(socket_fd,
+				 COMPAT_TCP_LEVEL,
+				 COMPAT_TCP_ABORT_THRESHOLD,
+				 &the_config.abort_threshold,
+				 sizeof(the_config.max_probe_count));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPALIVE_ABORT_THRESHOLD");
 			goto end;

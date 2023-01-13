@@ -9,27 +9,27 @@
  *
  */
 
+#include <common/compat/poll.hpp>
+#include <common/dynamic-array.hpp>
+#include <common/pipe.hpp>
+#include <common/readwrite.hpp>
+
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
-#include <common/compat/poll.hpp>
-#include <common/readwrite.hpp>
-#include <common/pipe.hpp>
-#include <common/dynamic-array.hpp>
-
 #include <tap/tap.h>
+#include <unistd.h>
 
 /* Verification without trashing test order in the child process */
-#define childok(e, test, ...) do { \
-	if (!(e)) { \
-		diag(test, ## __VA_ARGS__); \
-		_exit(EXIT_FAILURE); \
-	} \
-} while(0)
+#define childok(e, test, ...)                      \
+	do {                                       \
+		if (!(e)) {                        \
+			diag(test, ##__VA_ARGS__); \
+			_exit(EXIT_FAILURE);       \
+		}                                  \
+	} while (0)
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -56,8 +56,7 @@ int lttng_opt_mi;
 #define CLOE_VALUE FD_CLOEXEC
 #endif
 
-static
-void test_epoll_compat(void)
+static void test_epoll_compat(void)
 {
 	/*
 	 * Type conversion present to disable warning of anonymous enum from
@@ -94,7 +93,8 @@ static void test_add_del(void)
 
 	lttng_poll_init(&poll_events);
 	ok(lttng_poll_add(NULL, 1, LPOLLIN) != 0, "Adding to NULL set fails");
-	ok(lttng_poll_add(&poll_events, 1, LPOLLIN) != 0, "Adding to uninitialized structure fails");
+	ok(lttng_poll_add(&poll_events, 1, LPOLLIN) != 0,
+	   "Adding to uninitialized structure fails");
 	ok(lttng_poll_add(&poll_events, -1, LPOLLIN) != 0, "Adding invalid FD fails");
 
 	ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create a poll set succeeds");
@@ -144,13 +144,20 @@ static void test_mod_wait(void)
 
 	cpid = fork();
 	if (cpid == 0) {
-		childok(lttng_poll_create(&cpoll_events, 1, 0) == 0, "Create valid poll set succeeds");
-		childok(lttng_poll_mod(NULL, infd[0], LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
-		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
-		childok(lttng_poll_add(&cpoll_events, infd[0], LPOLLIN) == 0, "Add valid FD succeeds");
-		childok(lttng_poll_mod(&cpoll_events, -1, LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
-		childok(lttng_poll_mod(&cpoll_events, hupfd[0], LPOLLIN) == 0, "lttng_poll_mod on unincluded FD goes on");
-		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == 0, "Modify event type succeeds");
+		childok(lttng_poll_create(&cpoll_events, 1, 0) == 0,
+			"Create valid poll set succeeds");
+		childok(lttng_poll_mod(NULL, infd[0], LPOLLIN) == -1,
+			"lttng_poll_mod with invalid input returns an error");
+		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == -1,
+			"lttng_poll_mod with invalid input returns an error");
+		childok(lttng_poll_add(&cpoll_events, infd[0], LPOLLIN) == 0,
+			"Add valid FD succeeds");
+		childok(lttng_poll_mod(&cpoll_events, -1, LPOLLIN) == -1,
+			"lttng_poll_mod with invalid input returns an error");
+		childok(lttng_poll_mod(&cpoll_events, hupfd[0], LPOLLIN) == 0,
+			"lttng_poll_mod on unincluded FD goes on");
+		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == 0,
+			"Modify event type succeeds");
 		childok(close(infd[1]) == 0, "Close valid FD succeeds");
 		childok(lttng_poll_wait(&cpoll_events, -1) == 1, "Wait on close times out");
 		childok(lttng_read(infd[0], &rbuf, 1) == 1, "Data is present in the pipe");
@@ -165,10 +172,12 @@ static void test_mod_wait(void)
 		ok(close(hupfd[1]) == 0, "Close valid FD succeeds");
 		ok(close(infd[0]) == 0, "Close valid FD succeeds");
 
-		ok(lttng_poll_wait(NULL, -1) == -1, "lttng_poll_wait call with invalid input returns error");
+		ok(lttng_poll_wait(NULL, -1) == -1,
+		   "lttng_poll_wait call with invalid input returns error");
 
 		ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create valid poll set succeeds");
-		ok(lttng_poll_wait(&poll_events, -1) == -1, "lttng_poll_wait call with invalid input returns error");
+		ok(lttng_poll_wait(&poll_events, -1) == -1,
+		   "lttng_poll_wait call with invalid input returns error");
 		ok(lttng_poll_add(&poll_events, hupfd[0], LPOLLIN) == 0, "Add valid FD succeeds");
 		ok(lttng_write(infd[1], &tbuf, 1) == 1, "Write to pipe succeeds");
 		ok(lttng_poll_wait(&poll_events, -1) == 1, "Wakes up on one event");
@@ -187,8 +196,7 @@ static void destroy_pipe(void *pipe)
 	lttng_pipe_destroy((lttng_pipe *) pipe);
 }
 
-static int run_active_set_combination(unsigned int fd_count,
-		unsigned int active_fds_mask)
+static int run_active_set_combination(unsigned int fd_count, unsigned int active_fds_mask)
 {
 	int ret = 0;
 	unsigned int i;
@@ -202,8 +210,7 @@ static int run_active_set_combination(unsigned int fd_count,
 
 	ret = lttng_poll_create(&poll_events, fd_count, 0);
 	if (ret) {
-		diag("Failed to create poll set for %u file descriptors",
-				fd_count);
+		diag("Failed to create poll set for %u file descriptors", fd_count);
 		goto end;
 	}
 
@@ -216,8 +223,7 @@ static int run_active_set_combination(unsigned int fd_count,
 			goto end;
 		}
 
-		ret = lttng_poll_add(&poll_events, lttng_pipe_get_readfd(pipe),
-				LPOLLIN);
+		ret = lttng_poll_add(&poll_events, lttng_pipe_get_readfd(pipe), LPOLLIN);
 		if (ret) {
 			diag("Failed to add file descriptor to poll set");
 			ret = -1;
@@ -244,13 +250,10 @@ static int run_active_set_combination(unsigned int fd_count,
 			continue;
 		}
 
-		borrowed_pipe =
-			(lttng_pipe *) lttng_dynamic_pointer_array_get_pointer(
-				&pipes, i);
+		borrowed_pipe = (lttng_pipe *) lttng_dynamic_pointer_array_get_pointer(&pipes, i);
 
 		char c = 'a';
-		ret = lttng_pipe_write(
-			borrowed_pipe, &c, sizeof(char));
+		ret = lttng_pipe_write(borrowed_pipe, &c, sizeof(char));
 		if (ret != sizeof(char)) {
 			diag("Failed to write to pipe");
 			ret = -1;
@@ -261,7 +264,8 @@ static int run_active_set_combination(unsigned int fd_count,
 	ret = lttng_poll_wait(&poll_events, 0);
 	if (ret != active_fds_count) {
 		diag("lttng_poll_wait returned %d, expected %u active file descriptors",
-				ret, active_fds_count);
+		     ret,
+		     active_fds_count);
 		ret = -1;
 		goto end;
 	} else {
@@ -328,7 +332,7 @@ static void test_func_def(void)
 #endif
 
 	ok(lttng_poll_reset == lttng_poll_reset, "lttng_poll_reset is defined");
-	ok(lttng_poll_init == lttng_poll_init , "lttng_poll_init is defined");
+	ok(lttng_poll_init == lttng_poll_init, "lttng_poll_init is defined");
 	ok(PASS_GETFD, "GETFD is defined");
 	ok(PASS_GETEV, "GETEV is defined");
 	ok(PASS_GETSZ, "GETSZ is defined");

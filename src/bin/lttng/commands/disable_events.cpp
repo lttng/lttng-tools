@@ -6,6 +6,12 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+
+#include <lttng/domain-internal.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,11 +19,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <common/mi-lttng.hpp>
-#include <lttng/domain-internal.hpp>
-
-#include "../command.hpp"
 
 static int opt_kernel;
 static char *opt_channel_name;
@@ -32,7 +33,7 @@ static int opt_event_type;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-disable-event.1.h>
-;
+	;
 #endif
 
 enum {
@@ -50,38 +51,35 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{"all-events",     'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0},
-	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
-	{"jul",            'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0},
-	{"log4j",          'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0},
-	{"python",         'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
-	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0},
-	{"syscall",          0, POPT_ARG_NONE, 0, OPT_TYPE_SYSCALL, 0, 0},
-	{"probe",            0, POPT_ARG_NONE, 0, OPT_TYPE_PROBE, 0, 0},
-	{"tracepoint",       0, POPT_ARG_NONE, 0, OPT_TYPE_TRACEPOINT, 0, 0},
-	{"function",         0, POPT_ARG_NONE, 0, OPT_TYPE_FUNCTION, 0, 0},
-	{"all",              0, POPT_ARG_NONE, 0, OPT_TYPE_ALL, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "all-events", 'a', POPT_ARG_VAL, &opt_disable_all, 1, 0, 0 },
+	{ "channel", 'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0 },
+	{ "jul", 'j', POPT_ARG_VAL, &opt_jul, 1, 0, 0 },
+	{ "log4j", 'l', POPT_ARG_VAL, &opt_log4j, 1, 0, 0 },
+	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, 0, 0 },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
+	{ "userspace", 'u', POPT_ARG_VAL, &opt_userspace, 1, 0, 0 },
+	{ "syscall", 0, POPT_ARG_NONE, 0, OPT_TYPE_SYSCALL, 0, 0 },
+	{ "probe", 0, POPT_ARG_NONE, 0, OPT_TYPE_PROBE, 0, 0 },
+	{ "tracepoint", 0, POPT_ARG_NONE, 0, OPT_TYPE_TRACEPOINT, 0, 0 },
+	{ "function", 0, POPT_ARG_NONE, 0, OPT_TYPE_FUNCTION, 0, 0 },
+	{ "all", 0, POPT_ARG_NONE, 0, OPT_TYPE_ALL, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
-static
-const char *print_channel_name(const char *name)
+static const char *print_channel_name(const char *name)
 {
-	return name ? : DEFAULT_CHANNEL_NAME;
+	return name ?: DEFAULT_CHANNEL_NAME;
 }
 
-static
-const char *print_raw_channel_name(const char *name)
+static const char *print_raw_channel_name(const char *name)
 {
-	return name ? : "<default>";
+	return name ?: "<default>";
 }
 
-static
-const char *print_event_type(const enum lttng_event_type ev_type)
+static const char *print_event_type(const enum lttng_event_type ev_type)
 {
 	switch (ev_type) {
 	case LTTNG_EVENT_ALL:
@@ -119,22 +117,19 @@ static int mi_print_event(const char *event_name, int enabled, int success)
 	}
 
 	/* Print the name of event */
-	ret = mi_lttng_writer_write_element_string(writer,
-			config_element_name, event_name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, event_name);
 	if (ret) {
 		goto end;
 	}
 
 	/* Print enabled ? */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			config_element_enabled, enabled);
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled, enabled);
 	if (ret) {
 		goto end;
 	}
 
 	/* Success ? */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			mi_lttng_element_command_success, success);
+	ret = mi_lttng_writer_write_element_bool(writer, mi_lttng_element_command_success, success);
 	if (ret) {
 		goto end;
 	}
@@ -192,8 +187,8 @@ static int disable_events(char *session_name, char *event_list)
 			goto end;
 		}
 
-		ret = mi_lttng_writer_write_element_string(writer,
-				config_element_name, print_channel_name(channel_name));
+		ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, print_channel_name(channel_name));
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -225,9 +220,9 @@ static int disable_events(char *session_name, char *event_list)
 			enabled = 0;
 			success = 1;
 			MSG("All %s events of type %s are disabled in channel %s",
-					lttng_domain_type_str(dom.type),
-					print_event_type((lttng_event_type) opt_event_type),
-					print_channel_name(channel_name));
+			    lttng_domain_type_str(dom.type),
+			    print_event_type((lttng_event_type) opt_event_type),
+			    print_channel_name(channel_name));
 		}
 
 		if (lttng_opt_mi) {
@@ -248,13 +243,13 @@ static int disable_events(char *session_name, char *event_list)
 			command_ret = lttng_disable_event_ext(handle, &event, channel_name, NULL);
 			if (command_ret < 0) {
 				ERR("%s of type %s : %s (channel %s, session %s)",
-						event_name,
-						print_event_type((lttng_event_type) opt_event_type),
-						lttng_strerror(command_ret),
-						command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME
-							? print_raw_channel_name(channel_name)
-							: print_channel_name(channel_name),
-						session_name);
+				    event_name,
+				    print_event_type((lttng_event_type) opt_event_type),
+				    lttng_strerror(command_ret),
+				    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
+					    print_raw_channel_name(channel_name) :
+					    print_channel_name(channel_name),
+				    session_name);
 				warn = 1;
 				success = 0;
 				/*
@@ -264,11 +259,11 @@ static int disable_events(char *session_name, char *event_list)
 				enabled = 1;
 			} else {
 				MSG("%s %s of type %s disabled in channel %s for session %s",
-						lttng_domain_type_str(dom.type),
-						event_name,
-						print_event_type((lttng_event_type) opt_event_type),
-						print_channel_name(channel_name),
-						session_name);
+				    lttng_domain_type_str(dom.type),
+				    event_name,
+				    print_event_type((lttng_event_type) opt_event_type),
+				    print_channel_name(channel_name),
+				    session_name);
 				success = 1;
 				enabled = 0;
 			}
@@ -369,17 +364,15 @@ int cmd_disable_events(int argc, const char **argv)
 	}
 
 	ret = print_missing_or_multiple_domains(
-			opt_kernel + opt_userspace + opt_jul + opt_log4j +
-					opt_python,
-			true);
+		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python, true);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	/* Ust and agent only support ALL event type */
-	if ((opt_userspace || opt_jul || opt_log4j || opt_python)
-			&& opt_event_type != LTTNG_EVENT_ALL) {
+	if ((opt_userspace || opt_jul || opt_log4j || opt_python) &&
+	    opt_event_type != LTTNG_EVENT_ALL) {
 		ERR("Disabling userspace and agent (-j | -l | -p) event(s) based on instrumentation type is not supported.\n");
 		ret = CMD_ERROR;
 		goto end;
@@ -427,16 +420,14 @@ int cmd_disable_events(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_disable_event);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_disable_event);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -457,8 +448,8 @@ int cmd_disable_events(int argc, const char **argv)
 			goto end;
 		}
 
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

@@ -5,12 +5,14 @@
  *
  */
 
-#include <tap/tap.h>
 #include <common/ini-config/ini-config.hpp>
-#include <common/utils.hpp>
 #include <common/path.hpp>
-#include <string.h>
+#include <common/utils.hpp>
+
 #include <lttng/constant.h>
+
+#include <string.h>
+#include <tap/tap.h>
 
 namespace {
 struct state {
@@ -38,8 +40,7 @@ static int entry_handler(const struct config_entry *entry, struct state *state)
 
 	if (!strcmp(entry->section, "section1")) {
 		state->section_1 = 1;
-		if (!strcmp(entry->name, "section1_entry") &&
-			!strcmp(entry->value, "42")) {
+		if (!strcmp(entry->name, "section1_entry") && !strcmp(entry->value, "42")) {
 			state->int_entry = 1;
 		}
 	}
@@ -51,7 +52,7 @@ static int entry_handler(const struct config_entry *entry, struct state *state)
 	if (!strcmp(entry->section, "section 3")) {
 		state->section_3 = 1;
 		if (!strcmp(entry->name, "name with a space") &&
-			!strcmp(entry->value, "another value")) {
+		    !strcmp(entry->value, "another value")) {
 			state->text_entry = 1;
 		}
 	}
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
 
 	if (strlen(argv[1]) >= LTTNG_PATH_MAX) {
 		diag("The provided path exceeds the maximal permitted length of %i bytes",
-				LTTNG_PATH_MAX);
+		     LTTNG_PATH_MAX);
 		goto end;
 	}
 	path = utils_expand_path(argv[1]);
@@ -85,27 +86,26 @@ int main(int argc, char **argv)
 	}
 
 	plan_no_plan();
-	ret = config_get_section_entries(path, NULL,
-		(config_entry_handler_cb)entry_handler, &state);
+	ret = config_get_section_entries(
+		path, NULL, (config_entry_handler_cb) entry_handler, &state);
 	ok(ret == 0, "Successfully opened a config file, registered to all sections");
-	ok(state.section_1 && state.section_2 && state.section_3 &&
-		state.section_global, "Processed entries from each sections");
+	ok(state.section_1 && state.section_2 && state.section_3 && state.section_global,
+	   "Processed entries from each sections");
 	ok(state.text_entry, "Text value parsed correctly");
 
 	memset(&state, 0, sizeof(struct state));
-	ret = config_get_section_entries(path, "section1",
-		(config_entry_handler_cb)entry_handler, &state);
+	ret = config_get_section_entries(
+		path, "section1", (config_entry_handler_cb) entry_handler, &state);
 	ok(ret == 0, "Successfully opened a config file, registered to one section");
-	ok(state.section_1 && !state.section_2 && !state.section_3 &&
-		!state.section_global, "Processed an entry from section1 only");
+	ok(state.section_1 && !state.section_2 && !state.section_3 && !state.section_global,
+	   "Processed an entry from section1 only");
 	ok(state.int_entry, "Int value parsed correctly");
 
 	memset(&state, 0, sizeof(struct state));
-	ret = config_get_section_entries(path, "",
-		(config_entry_handler_cb)entry_handler, &state);
+	ret = config_get_section_entries(path, "", (config_entry_handler_cb) entry_handler, &state);
 	ok(ret == 0, "Successfully opened a config file, registered to the global section");
-	ok(!state.section_1 && !state.section_2 && !state.section_3 &&
-		state.section_global, "Processed an entry from the global section only");
+	ok(!state.section_1 && !state.section_2 && !state.section_3 && state.section_global,
+	   "Processed an entry from the global section only");
 end:
 	free(path);
 	return exit_status();

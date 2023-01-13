@@ -6,17 +6,18 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/config/session-config.hpp>
+#include <common/mi-lttng.hpp>
+
+#include <lttng/lttng.h>
+
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <common/mi-lttng.hpp>
-#include <common/config/session-config.hpp>
-#include <lttng/lttng.h>
-
-#include "../command.hpp"
 
 static char *the_opt_input_path;
 static char *the_opt_override_url;
@@ -29,7 +30,7 @@ static const char *the_session_name;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-load.1.h>
-;
+	;
 #endif
 
 enum {
@@ -43,14 +44,14 @@ static struct mi_writer *the_writer;
 
 static struct poptOption the_load_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",          'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"all",           'a', POPT_ARG_NONE, 0, OPT_ALL, 0, 0},
-	{"input-path",    'i', POPT_ARG_STRING, &the_opt_input_path, 0, 0, 0},
-	{"force",         'f', POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
-	{"override-url",    0, POPT_ARG_STRING, &the_opt_override_url, 0, 0, 0},
-	{"override-name",   0, POPT_ARG_STRING, &the_opt_override_session_name, 0, 0, 0},
-	{"list-options",    0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "all", 'a', POPT_ARG_NONE, 0, OPT_ALL, 0, 0 },
+	{ "input-path", 'i', POPT_ARG_STRING, &the_opt_input_path, 0, 0, 0 },
+	{ "force", 'f', POPT_ARG_NONE, 0, OPT_FORCE, 0, 0 },
+	{ "override-url", 0, POPT_ARG_STRING, &the_opt_override_url, 0, 0, 0 },
+	{ "override-name", 0, POPT_ARG_STRING, &the_opt_override_session_name, 0, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static int mi_partial_session(const char *session_name)
@@ -65,8 +66,7 @@ static int mi_partial_session(const char *session_name)
 		goto end;
 	}
 
-	ret = mi_lttng_writer_write_element_string(the_writer, config_element_name,
-			session_name);
+	ret = mi_lttng_writer_write_element_string(the_writer, config_element_name, session_name);
 	if (ret) {
 		goto end;
 	}
@@ -104,8 +104,8 @@ static int mi_load_print(const char *session_name)
 
 	/* Path element */
 	if (the_opt_input_path) {
-		ret = mi_lttng_writer_write_element_string(the_writer, config_element_path,
-				the_opt_input_path);
+		ret = mi_lttng_writer_write_element_string(
+			the_writer, config_element_path, the_opt_input_path);
 		if (ret) {
 			goto end;
 		}
@@ -119,8 +119,8 @@ static int mi_load_print(const char *session_name)
 
 	/* Session name override element */
 	if (the_opt_override_session_name) {
-		ret = mi_lttng_writer_write_element_string(the_writer,
-				config_element_name, the_opt_override_session_name);
+		ret = mi_lttng_writer_write_element_string(
+			the_writer, config_element_name, the_opt_override_session_name);
 		if (ret) {
 			goto end;
 		}
@@ -128,9 +128,8 @@ static int mi_load_print(const char *session_name)
 
 	/* Session url override element */
 	if (the_opt_override_url) {
-		ret = mi_lttng_writer_write_element_string(the_writer,
-				mi_lttng_element_load_override_url,
-				the_opt_override_url);
+		ret = mi_lttng_writer_write_element_string(
+			the_writer, mi_lttng_element_load_override_url, the_opt_override_url);
 		if (ret) {
 			goto end;
 		}
@@ -212,16 +211,14 @@ int cmd_load(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(the_writer,
-				mi_lttng_element_command_load);
+		ret = mi_lttng_writer_command_open(the_writer, mi_lttng_element_command_load);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(the_writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(the_writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -252,8 +249,7 @@ int cmd_load(int argc, const char **argv)
 		input_path = NULL;
 	}
 
-	ret = lttng_load_session_attr_set_input_url(session_attr,
-			input_path);
+	ret = lttng_load_session_attr_set_input_url(session_attr, input_path);
 	if (ret) {
 		ERR("Invalid input path");
 		ret = CMD_ERROR;
@@ -261,8 +257,7 @@ int cmd_load(int argc, const char **argv)
 	}
 
 	/* Set the session name. NULL means all sessions should be loaded */
-	ret = lttng_load_session_attr_set_session_name(session_attr,
-			the_session_name);
+	ret = lttng_load_session_attr_set_session_name(session_attr, the_session_name);
 	if (ret) {
 		ERR("Invalid session name");
 		ret = CMD_ERROR;
@@ -279,8 +274,7 @@ int cmd_load(int argc, const char **argv)
 
 	/* Set the overrides attributes if any */
 	if (the_opt_override_url) {
-		ret = lttng_load_session_attr_set_override_url(session_attr,
-				the_opt_override_url);
+		ret = lttng_load_session_attr_set_override_url(session_attr, the_opt_override_url);
 		if (ret) {
 			ERR("Url override is invalid");
 			goto end;
@@ -293,8 +287,8 @@ int cmd_load(int argc, const char **argv)
 			ret = CMD_ERROR;
 			goto end;
 		}
-		ret = lttng_load_session_attr_set_override_session_name(session_attr,
-				the_opt_override_session_name);
+		ret = lttng_load_session_attr_set_override_session_name(
+			session_attr, the_opt_override_session_name);
 		if (ret) {
 			ERR("Failed to set session name override");
 			ret = CMD_ERROR;
@@ -313,8 +307,7 @@ int cmd_load(int argc, const char **argv)
 		} else if (the_session_name) {
 			ret = config_init((char *) the_session_name);
 			if (ret < 0) {
-				WARN("Could not set %s as the default session",
-						the_session_name);
+				WARN("Could not set %s as the default session", the_session_name);
 			}
 			MSG("Session %s has been loaded successfully", the_session_name);
 		} else {
@@ -322,8 +315,7 @@ int cmd_load(int argc, const char **argv)
 		}
 
 		if (the_opt_override_session_name) {
-			MSG("Session name overridden with %s",
-					the_opt_override_session_name);
+			MSG("Session name overridden with %s", the_opt_override_session_name);
 		}
 
 		if (the_opt_override_url) {
@@ -350,8 +342,8 @@ int cmd_load(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(the_writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			the_writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

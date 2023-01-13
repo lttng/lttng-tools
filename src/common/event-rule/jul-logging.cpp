@@ -16,6 +16,7 @@
 #include <common/payload.hpp>
 #include <common/runas.hpp>
 #include <common/string-utils/string-utils.hpp>
+
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/jul-logging-internal.hpp>
 #include <lttng/event.h>
@@ -32,8 +33,7 @@ static void lttng_event_rule_jul_logging_destroy(struct lttng_event_rule *rule)
 		return;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	lttng_log_level_rule_destroy(jul_logging->log_level_rule);
 	free(jul_logging->pattern);
@@ -43,8 +43,7 @@ static void lttng_event_rule_jul_logging_destroy(struct lttng_event_rule *rule)
 	free(jul_logging);
 }
 
-static bool lttng_event_rule_jul_logging_validate(
-		const struct lttng_event_rule *rule)
+static bool lttng_event_rule_jul_logging_validate(const struct lttng_event_rule *rule)
 {
 	bool valid = false;
 	struct lttng_event_rule_jul_logging *jul_logging;
@@ -53,8 +52,7 @@ static bool lttng_event_rule_jul_logging_validate(
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	/* Required field. */
 	if (!jul_logging->pattern) {
@@ -67,9 +65,8 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_jul_logging_serialize(
-		const struct lttng_event_rule *rule,
-		struct lttng_payload *payload)
+static int lttng_event_rule_jul_logging_serialize(const struct lttng_event_rule *rule,
+						  struct lttng_payload *payload)
 {
 	int ret;
 	size_t pattern_len, filter_expression_len, header_offset;
@@ -86,14 +83,12 @@ static int lttng_event_rule_jul_logging_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing jul_logging event rule.");
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	pattern_len = strlen(jul_logging->pattern) + 1;
 
 	if (jul_logging->filter_expression != NULL) {
-		filter_expression_len =
-				strlen(jul_logging->filter_expression) + 1;
+		filter_expression_len = strlen(jul_logging->filter_expression) + 1;
 	} else {
 		filter_expression_len = 0;
 	}
@@ -101,20 +96,19 @@ static int lttng_event_rule_jul_logging_serialize(
 	jul_logging_comm.pattern_len = pattern_len;
 	jul_logging_comm.filter_expression_len = filter_expression_len;
 
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &jul_logging_comm,
-			sizeof(jul_logging_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &jul_logging_comm, sizeof(jul_logging_comm));
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(&payload->buffer, jul_logging->pattern, pattern_len);
 	if (ret) {
 		goto end;
 	}
 
 	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, jul_logging->pattern, pattern_len);
-	if (ret) {
-		goto end;
-	}
-
-	ret = lttng_dynamic_buffer_append(&payload->buffer, jul_logging->filter_expression,
-			filter_expression_len);
+		&payload->buffer, jul_logging->filter_expression, filter_expression_len);
 	if (ret) {
 		goto end;
 	}
@@ -127,16 +121,14 @@ static int lttng_event_rule_jul_logging_serialize(
 	}
 
 	header = (typeof(header)) ((char *) payload->buffer.data + header_offset);
-	header->log_level_rule_len =
-			payload->buffer.size - size_before_log_level_rule;
+	header->log_level_rule_len = payload->buffer.size - size_before_log_level_rule;
 
 end:
 	return ret;
 }
 
-static bool lttng_event_rule_jul_logging_is_equal(
-		const struct lttng_event_rule *_a,
-		const struct lttng_event_rule *_b)
+static bool lttng_event_rule_jul_logging_is_equal(const struct lttng_event_rule *_a,
+						  const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
 	struct lttng_event_rule_jul_logging *a, *b;
@@ -166,8 +158,7 @@ static bool lttng_event_rule_jul_logging_is_equal(
 		goto end;
 	}
 
-	if (!lttng_log_level_rule_is_equal(
-				a->log_level_rule, b->log_level_rule)) {
+	if (!lttng_log_level_rule_is_equal(a->log_level_rule, b->log_level_rule)) {
 		goto end;
 	}
 
@@ -183,8 +174,7 @@ end:
  *
  * An event with NO loglevel and the name is * will return NULL.
  */
-static int generate_agent_filter(
-		const struct lttng_event_rule *rule, char **_agent_filter)
+static int generate_agent_filter(const struct lttng_event_rule *rule, char **_agent_filter)
 {
 	int err;
 	int ret = 0;
@@ -211,16 +201,13 @@ static int generate_agent_filter(
 		goto end;
 	}
 
-
 	/* Don't add filter for the '*' event. */
 	if (strcmp(pattern, "*") != 0) {
 		if (filter) {
-			err = asprintf(&agent_filter,
-					"(%s) && (logger_name == \"%s\")",
-					filter, pattern);
+			err = asprintf(
+				&agent_filter, "(%s) && (logger_name == \"%s\")", filter, pattern);
 		} else {
-			err = asprintf(&agent_filter, "logger_name == \"%s\"",
-					pattern);
+			err = asprintf(&agent_filter, "logger_name == \"%s\"", pattern);
 		}
 
 		if (err < 0) {
@@ -230,23 +217,20 @@ static int generate_agent_filter(
 		}
 	}
 
-	status = lttng_event_rule_jul_logging_get_log_level_rule(
-			rule, &log_level_rule);
+	status = lttng_event_rule_jul_logging_get_log_level_rule(rule, &log_level_rule);
 	if (status == LTTNG_EVENT_RULE_STATUS_OK) {
 		enum lttng_log_level_rule_status llr_status;
 		const char *op;
 		int level;
 
-		switch (lttng_log_level_rule_get_type(log_level_rule))
-		{
+		switch (lttng_log_level_rule_get_type(log_level_rule)) {
 		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
-			llr_status = lttng_log_level_rule_exactly_get_level(
-					log_level_rule, &level);
+			llr_status = lttng_log_level_rule_exactly_get_level(log_level_rule, &level);
 			op = "==";
 			break;
 		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
 			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
-					log_level_rule, &level);
+				log_level_rule, &level);
 			op = ">=";
 			break;
 		default:
@@ -262,16 +246,16 @@ static int generate_agent_filter(
 			char *new_filter;
 
 			err = asprintf(&new_filter,
-					"(%s) && (int_loglevel %s %d)",
-					agent_filter ? agent_filter : filter,
-					op, level);
+				       "(%s) && (int_loglevel %s %d)",
+				       agent_filter ? agent_filter : filter,
+				       op,
+				       level);
 			if (agent_filter) {
 				free(agent_filter);
 			}
 			agent_filter = new_filter;
 		} else {
-			err = asprintf(&agent_filter, "int_loglevel %s %d", op,
-					level);
+			err = asprintf(&agent_filter, "int_loglevel %s %d", op, level);
 		}
 
 		if (err < 0) {
@@ -290,9 +274,8 @@ end:
 }
 
 static enum lttng_error_code
-lttng_event_rule_jul_logging_generate_filter_bytecode(
-		struct lttng_event_rule *rule,
-		const struct lttng_credentials *creds)
+lttng_event_rule_jul_logging_generate_filter_bytecode(struct lttng_event_rule *rule,
+						      const struct lttng_credentials *creds)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -304,8 +287,7 @@ lttng_event_rule_jul_logging_generate_filter_bytecode(
 
 	LTTNG_ASSERT(rule);
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	status = lttng_event_rule_jul_logging_get_filter(rule, &filter);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
@@ -334,8 +316,7 @@ lttng_event_rule_jul_logging_generate_filter_bytecode(
 	}
 
 	ret = run_as_generate_filter_bytecode(
-			jul_logging->internal_filter.filter, creds,
-			&bytecode);
+		jul_logging->internal_filter.filter, creds, &bytecode);
 	if (ret) {
 		ret_code = LTTNG_ERR_FILTER_INVAL;
 		goto end;
@@ -351,48 +332,43 @@ end:
 	return ret_code;
 }
 
-static const char *lttng_event_rule_jul_logging_get_internal_filter(
-		const struct lttng_event_rule *rule)
+static const char *
+lttng_event_rule_jul_logging_get_internal_filter(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 
 	LTTNG_ASSERT(rule);
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	return jul_logging->internal_filter.filter;
 }
 
 static const struct lttng_bytecode *
-lttng_event_rule_jul_logging_get_internal_filter_bytecode(
-		const struct lttng_event_rule *rule)
+lttng_event_rule_jul_logging_get_internal_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 
 	LTTNG_ASSERT(rule);
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	return jul_logging->internal_filter.bytecode;
 }
 
 static enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_jul_logging_generate_exclusions(
-		const struct lttng_event_rule *rule __attribute__((unused)),
-		struct lttng_event_exclusion **_exclusions)
+lttng_event_rule_jul_logging_generate_exclusions(const struct lttng_event_rule *rule
+						 __attribute__((unused)),
+						 struct lttng_event_exclusion **_exclusions)
 {
 	/* Unsupported. */
 	*_exclusions = NULL;
 	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
-static unsigned long lttng_event_rule_jul_logging_hash(
-		const struct lttng_event_rule *rule)
+static unsigned long lttng_event_rule_jul_logging_hash(const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
 	struct lttng_event_rule_jul_logging *tp_rule =
-			lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
+		lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
-	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_JUL_LOGGING,
-			lttng_ht_seed);
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_JUL_LOGGING, lttng_ht_seed);
 	hash ^= hash_key_str(tp_rule->pattern, lttng_ht_seed);
 
 	if (tp_rule->filter_expression) {
@@ -406,8 +382,8 @@ static unsigned long lttng_event_rule_jul_logging_hash(
 	return hash;
 }
 
-static struct lttng_event *lttng_event_rule_jul_logging_generate_lttng_event(
-		const struct lttng_event_rule *rule)
+static struct lttng_event *
+lttng_event_rule_jul_logging_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	int ret;
 	const struct lttng_event_rule_jul_logging *jul_logging;
@@ -418,8 +394,7 @@ static struct lttng_event *lttng_event_rule_jul_logging_generate_lttng_event(
 	enum lttng_event_rule_status status;
 	const struct lttng_log_level_rule *log_level_rule;
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	local_event = zmalloc<lttng_event>();
 	if (!local_event) {
@@ -427,18 +402,15 @@ static struct lttng_event *lttng_event_rule_jul_logging_generate_lttng_event(
 	}
 
 	local_event->type = LTTNG_EVENT_TRACEPOINT;
-	ret = lttng_strncpy(local_event->name, jul_logging->pattern,
-			    sizeof(local_event->name));
+	ret = lttng_strncpy(local_event->name, jul_logging->pattern, sizeof(local_event->name));
 	if (ret) {
 		ERR("Truncation occurred when copying event rule pattern to `lttng_event` structure: pattern = '%s'",
-				jul_logging->pattern);
+		    jul_logging->pattern);
 		goto error;
 	}
 
-
 	/* Map the log level rule to an equivalent lttng_loglevel. */
-	status = lttng_event_rule_jul_logging_get_log_level_rule(
-			rule, &log_level_rule);
+	status = lttng_event_rule_jul_logging_get_log_level_rule(rule, &log_level_rule);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 		loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		loglevel_value = 0;
@@ -447,13 +419,13 @@ static struct lttng_event *lttng_event_rule_jul_logging_generate_lttng_event(
 
 		switch (lttng_log_level_rule_get_type(log_level_rule)) {
 		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
-			llr_status = lttng_log_level_rule_exactly_get_level(
-					log_level_rule, &loglevel_value);
+			llr_status = lttng_log_level_rule_exactly_get_level(log_level_rule,
+									    &loglevel_value);
 			loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			break;
 		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
 			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
-					log_level_rule, &loglevel_value);
+				log_level_rule, &loglevel_value);
 			loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
 			break;
 		default:
@@ -478,8 +450,9 @@ error:
 	return event;
 }
 
-static enum lttng_error_code lttng_event_rule_jul_logging_mi_serialize(
-		const struct lttng_event_rule *rule, struct mi_writer *writer)
+static enum lttng_error_code
+lttng_event_rule_jul_logging_mi_serialize(const struct lttng_event_rule *rule,
+					  struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -493,39 +466,35 @@ static enum lttng_error_code lttng_event_rule_jul_logging_mi_serialize(
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(IS_JUL_LOGGING_EVENT_RULE(rule));
 
-	status = lttng_event_rule_jul_logging_get_name_pattern(
-			rule, &name_pattern);
+	status = lttng_event_rule_jul_logging_get_name_pattern(rule, &name_pattern);
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 	LTTNG_ASSERT(name_pattern);
 
 	status = lttng_event_rule_jul_logging_get_filter(rule, &filter);
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
-			status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		     status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
-	status = lttng_event_rule_jul_logging_get_log_level_rule(
-			rule, &log_level_rule);
+	status = lttng_event_rule_jul_logging_get_log_level_rule(rule, &log_level_rule);
 	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK ||
-			status == LTTNG_EVENT_RULE_STATUS_UNSET);
+		     status == LTTNG_EVENT_RULE_STATUS_UNSET);
 
 	/* Open event rule jul logging element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_event_rule_jul_logging);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_rule_jul_logging);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Name pattern. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_event_rule_name_pattern, name_pattern);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_event_rule_name_pattern, name_pattern);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Filter expression. */
 	if (filter != NULL) {
-		ret = mi_lttng_writer_write_element_string(writer,
-				mi_lttng_element_event_rule_filter_expression,
-				filter);
+		ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_event_rule_filter_expression, filter);
 		if (ret) {
 			goto mi_error;
 		}
@@ -533,8 +502,7 @@ static enum lttng_error_code lttng_event_rule_jul_logging_mi_serialize(
 
 	/* Log level rule. */
 	if (log_level_rule) {
-		ret_code = lttng_log_level_rule_mi_serialize(
-				log_level_rule, writer);
+		ret_code = lttng_log_level_rule_mi_serialize(log_level_rule, writer);
 		if (ret_code != LTTNG_OK) {
 			goto end;
 		}
@@ -573,16 +541,13 @@ struct lttng_event_rule *lttng_event_rule_jul_logging_create(void)
 	tp_rule->parent.equal = lttng_event_rule_jul_logging_is_equal;
 	tp_rule->parent.destroy = lttng_event_rule_jul_logging_destroy;
 	tp_rule->parent.generate_filter_bytecode =
-			lttng_event_rule_jul_logging_generate_filter_bytecode;
-	tp_rule->parent.get_filter =
-			lttng_event_rule_jul_logging_get_internal_filter;
+		lttng_event_rule_jul_logging_generate_filter_bytecode;
+	tp_rule->parent.get_filter = lttng_event_rule_jul_logging_get_internal_filter;
 	tp_rule->parent.get_filter_bytecode =
-			lttng_event_rule_jul_logging_get_internal_filter_bytecode;
-	tp_rule->parent.generate_exclusions =
-			lttng_event_rule_jul_logging_generate_exclusions;
+		lttng_event_rule_jul_logging_get_internal_filter_bytecode;
+	tp_rule->parent.generate_exclusions = lttng_event_rule_jul_logging_generate_exclusions;
 	tp_rule->parent.hash = lttng_event_rule_jul_logging_hash;
-	tp_rule->parent.generate_lttng_event =
-			lttng_event_rule_jul_logging_generate_lttng_event;
+	tp_rule->parent.generate_lttng_event = lttng_event_rule_jul_logging_generate_lttng_event;
 	tp_rule->parent.mi_serialize = lttng_event_rule_jul_logging_mi_serialize;
 
 	tp_rule->log_level_rule = NULL;
@@ -598,9 +563,8 @@ end:
 	return rule;
 }
 
-ssize_t lttng_event_rule_jul_logging_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_rule **_event_rule)
+ssize_t lttng_event_rule_jul_logging_create_from_payload(struct lttng_payload_view *view,
+							 struct lttng_event_rule **_event_rule)
 {
 	ssize_t ret, offset = 0;
 	enum lttng_event_rule_status status;
@@ -616,8 +580,8 @@ ssize_t lttng_event_rule_jul_logging_create_from_payload(
 		goto end;
 	}
 
-	current_buffer_view = lttng_buffer_view_from_view(
-			&view->buffer, offset, sizeof(*jul_logging_comm));
+	current_buffer_view =
+		lttng_buffer_view_from_view(&view->buffer, offset, sizeof(*jul_logging_comm));
 	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ERR("Failed to initialize from malformed event rule jul_logging: buffer too short to contain header.");
 		ret = -1;
@@ -637,8 +601,8 @@ ssize_t lttng_event_rule_jul_logging_create_from_payload(
 	offset += current_buffer_view.size;
 
 	/* Map the pattern. */
-	current_buffer_view = lttng_buffer_view_from_view(
-			&view->buffer, offset, jul_logging_comm->pattern_len);
+	current_buffer_view =
+		lttng_buffer_view_from_view(&view->buffer, offset, jul_logging_comm->pattern_len);
 
 	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
@@ -646,8 +610,8 @@ ssize_t lttng_event_rule_jul_logging_create_from_payload(
 	}
 
 	pattern = current_buffer_view.data;
-	if (!lttng_buffer_view_contains_string(&current_buffer_view, pattern,
-			jul_logging_comm->pattern_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &current_buffer_view, pattern, jul_logging_comm->pattern_len)) {
 		ret = -1;
 		goto end;
 	}
@@ -660,8 +624,8 @@ ssize_t lttng_event_rule_jul_logging_create_from_payload(
 	}
 
 	/* Map the filter_expression. */
-	current_buffer_view = lttng_buffer_view_from_view(&view->buffer, offset,
-			jul_logging_comm->filter_expression_len);
+	current_buffer_view = lttng_buffer_view_from_view(
+		&view->buffer, offset, jul_logging_comm->filter_expression_len);
 	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
 		goto end;
@@ -669,8 +633,8 @@ ssize_t lttng_event_rule_jul_logging_create_from_payload(
 
 	filter_expression = current_buffer_view.data;
 	if (!lttng_buffer_view_contains_string(&current_buffer_view,
-			filter_expression,
-			jul_logging_comm->filter_expression_len)) {
+					       filter_expression,
+					       jul_logging_comm->filter_expression_len)) {
 		ret = -1;
 		goto end;
 	}
@@ -685,12 +649,11 @@ skip_filter_expression:
 
 	{
 		/* Map the log level rule. */
-		struct lttng_payload_view current_payload_view =
-				lttng_payload_view_from_view(view, offset,
-						jul_logging_comm->log_level_rule_len);
+		struct lttng_payload_view current_payload_view = lttng_payload_view_from_view(
+			view, offset, jul_logging_comm->log_level_rule_len);
 
-		ret = lttng_log_level_rule_create_from_payload(
-				&current_payload_view, &log_level_rule);
+		ret = lttng_log_level_rule_create_from_payload(&current_payload_view,
+							       &log_level_rule);
 		if (ret < 0) {
 			ret = -1;
 			goto end;
@@ -712,8 +675,7 @@ skip_log_level_rule:
 	}
 
 	if (filter_expression) {
-		status = lttng_event_rule_jul_logging_set_filter(
-				rule, filter_expression);
+		status = lttng_event_rule_jul_logging_set_filter(rule, filter_expression);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set event rule jul_logging pattern.");
 			ret = -1;
@@ -722,8 +684,7 @@ skip_log_level_rule:
 	}
 
 	if (log_level_rule) {
-		status = lttng_event_rule_jul_logging_set_log_level_rule(
-				rule, log_level_rule);
+		status = lttng_event_rule_jul_logging_set_log_level_rule(rule, log_level_rule);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set event rule jul_logging log level rule.");
 			ret = -1;
@@ -740,21 +701,19 @@ end:
 	return ret;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_set_name_pattern(
-		struct lttng_event_rule *rule, const char *pattern)
+enum lttng_event_rule_status
+lttng_event_rule_jul_logging_set_name_pattern(struct lttng_event_rule *rule, const char *pattern)
 {
 	char *pattern_copy = NULL;
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
-	if (!rule || !IS_JUL_LOGGING_EVENT_RULE(rule) || !pattern ||
-			strlen(pattern) == 0) {
+	if (!rule || !IS_JUL_LOGGING_EVENT_RULE(rule) || !pattern || strlen(pattern) == 0) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	pattern_copy = strdup(pattern);
 	if (!pattern_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -772,8 +731,9 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_get_name_pattern(
-		const struct lttng_event_rule *rule, const char **pattern)
+enum lttng_event_rule_status
+lttng_event_rule_jul_logging_get_name_pattern(const struct lttng_event_rule *rule,
+					      const char **pattern)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
@@ -783,8 +743,7 @@ enum lttng_event_rule_status lttng_event_rule_jul_logging_get_name_pattern(
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	if (!jul_logging->pattern) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -795,21 +754,19 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_set_filter(
-		struct lttng_event_rule *rule, const char *expression)
+enum lttng_event_rule_status lttng_event_rule_jul_logging_set_filter(struct lttng_event_rule *rule,
+								     const char *expression)
 {
 	char *expression_copy = NULL;
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
-	if (!rule || !IS_JUL_LOGGING_EVENT_RULE(rule) || !expression ||
-			strlen(expression) == 0) {
+	if (!rule || !IS_JUL_LOGGING_EVENT_RULE(rule) || !expression || strlen(expression) == 0) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	expression_copy = strdup(expression);
 	if (!expression_copy) {
 		PERROR("Failed to copy filter expression");
@@ -827,8 +784,9 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_get_filter(
-		const struct lttng_event_rule *rule, const char **expression)
+enum lttng_event_rule_status
+lttng_event_rule_jul_logging_get_filter(const struct lttng_event_rule *rule,
+					const char **expression)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
@@ -838,8 +796,7 @@ enum lttng_event_rule_status lttng_event_rule_jul_logging_get_filter(
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	if (!jul_logging->filter_expression) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -850,8 +807,7 @@ end:
 	return status;
 }
 
-static bool log_level_rule_valid(
-		const struct lttng_log_level_rule *rule __attribute__((unused)))
+static bool log_level_rule_valid(const struct lttng_log_level_rule *rule __attribute__((unused)))
 {
 	/*
 	 * For both JUL and LOG4J custom log level are possible and can
@@ -860,9 +816,9 @@ static bool log_level_rule_valid(
 	return true;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_set_log_level_rule(
-		struct lttng_event_rule *rule,
-		const struct lttng_log_level_rule *log_level_rule)
+enum lttng_event_rule_status
+lttng_event_rule_jul_logging_set_log_level_rule(struct lttng_event_rule *rule,
+						const struct lttng_log_level_rule *log_level_rule)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
@@ -873,8 +829,7 @@ enum lttng_event_rule_status lttng_event_rule_jul_logging_set_log_level_rule(
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 
 	if (!log_level_rule_valid(log_level_rule)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -897,10 +852,9 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_jul_logging_get_log_level_rule(
-		const struct lttng_event_rule *rule,
-		const struct lttng_log_level_rule **log_level_rule
-		)
+enum lttng_event_rule_status
+lttng_event_rule_jul_logging_get_log_level_rule(const struct lttng_event_rule *rule,
+						const struct lttng_log_level_rule **log_level_rule)
 {
 	struct lttng_event_rule_jul_logging *jul_logging;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
@@ -910,8 +864,7 @@ enum lttng_event_rule_status lttng_event_rule_jul_logging_get_log_level_rule(
 		goto end;
 	}
 
-	jul_logging = lttng::utils::container_of(
-			rule, &lttng_event_rule_jul_logging::parent);
+	jul_logging = lttng::utils::container_of(rule, &lttng_event_rule_jul_logging::parent);
 	if (jul_logging->log_level_rule == NULL) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;

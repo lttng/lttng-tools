@@ -6,14 +6,14 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
-#include <string.h>
-#include <urcu/uatomic.h>
+#include "snapshot.hpp"
+#include "utils.hpp"
 
 #include <common/defaults.hpp>
 
-#include "snapshot.hpp"
-#include "utils.hpp"
+#include <inttypes.h>
+#include <string.h>
+#include <urcu/uatomic.h>
 
 /*
  * Return the atomically incremented value of next_output_id.
@@ -29,10 +29,13 @@ static inline unsigned long get_next_output_id(struct snapshot *snapshot)
  * Return 0 on success or else a negative value.
  */
 static int output_init(const struct ltt_session *session,
-		uint64_t max_size, const char *name,
-		struct lttng_uri *uris, size_t nb_uri,
-		struct consumer_output *consumer, struct snapshot_output *output,
-		struct snapshot *snapshot)
+		       uint64_t max_size,
+		       const char *name,
+		       struct lttng_uri *uris,
+		       size_t nb_uri,
+		       struct consumer_output *consumer,
+		       struct snapshot_output *output,
+		       struct snapshot *snapshot)
 {
 	int ret = 0, i;
 
@@ -58,8 +61,11 @@ static int output_init(const struct ltt_session *session,
 		}
 	} else {
 		/* Set default name. */
-		ret = snprintf(output->name, sizeof(output->name), "%s-%" PRIu32,
-				DEFAULT_SNAPSHOT_NAME, output->id);
+		ret = snprintf(output->name,
+			       sizeof(output->name),
+			       "%s-%" PRIu32,
+			       DEFAULT_SNAPSHOT_NAME,
+			       output->id);
 		if (ret < 0) {
 			ret = -ENOMEM;
 			goto error;
@@ -84,11 +90,12 @@ static int output_init(const struct ltt_session *session,
 	}
 
 	if (uris[0].dtype == LTTNG_DST_PATH) {
-		memset(output->consumer->dst.session_root_path, 0,
-				sizeof(output->consumer->dst.session_root_path));
+		memset(output->consumer->dst.session_root_path,
+		       0,
+		       sizeof(output->consumer->dst.session_root_path));
 		if (lttng_strncpy(output->consumer->dst.session_root_path,
-				uris[0].dst.path,
-				sizeof(output->consumer->dst.session_root_path))) {
+				  uris[0].dst.path,
+				  sizeof(output->consumer->dst.session_root_path))) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
@@ -103,10 +110,9 @@ static int output_init(const struct ltt_session *session,
 		goto error;
 	}
 
-	for (i = 0; i < nb_uri; i ++) {
+	for (i = 0; i < nb_uri; i++) {
 		/* Network URIs */
-		ret = consumer_set_network_uri(session, output->consumer,
-				&uris[i]);
+		ret = consumer_set_network_uri(session, output->consumer, &uris[i]);
 		if (ret < 0) {
 			goto error;
 		}
@@ -124,13 +130,15 @@ end:
  * Return 0 on success or else a negative value.
  */
 int snapshot_output_init_with_uri(const struct ltt_session *session,
-		uint64_t max_size, const char *name,
-		struct lttng_uri *uris, size_t nb_uri,
-		struct consumer_output *consumer, struct snapshot_output *output,
-		struct snapshot *snapshot)
+				  uint64_t max_size,
+				  const char *name,
+				  struct lttng_uri *uris,
+				  size_t nb_uri,
+				  struct consumer_output *consumer,
+				  struct snapshot_output *output,
+				  struct snapshot *snapshot)
 {
-	return output_init(session, max_size, name, uris, nb_uri, consumer,
-			output, snapshot);
+	return output_init(session, max_size, name, uris, nb_uri, consumer, output, snapshot);
 }
 
 /*
@@ -140,10 +148,13 @@ int snapshot_output_init_with_uri(const struct ltt_session *session,
  * Return 0 on success or else a negative value.
  */
 int snapshot_output_init(const struct ltt_session *session,
-		uint64_t max_size, const char *name,
-		const char *ctrl_url, const char *data_url,
-		struct consumer_output *consumer, struct snapshot_output *output,
-		struct snapshot *snapshot)
+			 uint64_t max_size,
+			 const char *name,
+			 const char *ctrl_url,
+			 const char *data_url,
+			 struct consumer_output *consumer,
+			 struct snapshot_output *output,
+			 struct snapshot *snapshot)
 {
 	int ret = 0, nb_uri;
 	struct lttng_uri *uris = NULL;
@@ -155,8 +166,7 @@ int snapshot_output_init(const struct ltt_session *session,
 		goto error;
 	}
 
-	ret = output_init(session, max_size, name, uris, nb_uri, consumer,
-			output, snapshot);
+	ret = output_init(session, max_size, name, uris, nb_uri, consumer, output, snapshot);
 
 error:
 	free(uris);
@@ -171,8 +181,7 @@ struct snapshot_output *snapshot_output_alloc(void)
 /*
  * Delete output from the snapshot object.
  */
-void snapshot_delete_output(struct snapshot *snapshot,
-		struct snapshot_output *output)
+void snapshot_delete_output(struct snapshot *snapshot, struct snapshot_output *output)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -196,8 +205,7 @@ void snapshot_delete_output(struct snapshot *snapshot,
 /*
  * Add output object to the snapshot.
  */
-void snapshot_add_output(struct snapshot *snapshot,
-		struct snapshot_output *output)
+void snapshot_add_output(struct snapshot *snapshot, struct snapshot_output *output)
 {
 	LTTNG_ASSERT(snapshot);
 	LTTNG_ASSERT(snapshot->output_ht);
@@ -233,8 +241,7 @@ void snapshot_output_destroy(struct snapshot_output *obj)
  *
  * Return the reference on success or else NULL.
  */
-struct snapshot_output *snapshot_find_output_by_name(const char *name,
-		struct snapshot *snapshot)
+struct snapshot_output *snapshot_find_output_by_name(const char *name, struct snapshot *snapshot)
 {
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output = NULL;
@@ -243,8 +250,7 @@ struct snapshot_output *snapshot_find_output_by_name(const char *name,
 	LTTNG_ASSERT(name);
 	ASSERT_RCU_READ_LOCKED();
 
-	cds_lfht_for_each_entry(snapshot->output_ht->ht, &iter.iter, output,
-		node.node) {
+	cds_lfht_for_each_entry (snapshot->output_ht->ht, &iter.iter, output, node.node) {
 		if (!strncmp(output->name, name, strlen(name))) {
 			return output;
 		}
@@ -260,8 +266,7 @@ struct snapshot_output *snapshot_find_output_by_name(const char *name,
  *
  * Return the reference on success or else NULL.
  */
-struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
-		struct snapshot *snapshot)
+struct snapshot_output *snapshot_find_output_by_id(uint32_t id, struct snapshot *snapshot)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -270,7 +275,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
 	LTTNG_ASSERT(snapshot);
 	ASSERT_RCU_READ_LOCKED();
 
-	lttng_ht_lookup(snapshot->output_ht, (void *)((unsigned long) id), &iter);
+	lttng_ht_lookup(snapshot->output_ht, (void *) ((unsigned long) id), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (!node) {
 		DBG3("Snapshot output not found with id %" PRId32, id);
@@ -321,8 +326,7 @@ void snapshot_destroy(struct snapshot *obj)
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(obj->output_ht->ht, &iter.iter, output,
-			node.node) {
+	cds_lfht_for_each_entry (obj->output_ht->ht, &iter.iter, output, node.node) {
 		snapshot_delete_output(obj, output);
 		snapshot_output_destroy(output);
 	}

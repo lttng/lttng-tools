@@ -7,11 +7,11 @@
  *
  */
 
+#include "health-sessiond.hpp"
 #include "manage-apps.hpp"
 #include "testpoint.hpp"
-#include "health-sessiond.hpp"
-#include "utils.hpp"
 #include "thread.hpp"
+#include "utils.hpp"
 
 namespace {
 struct thread_notifiers {
@@ -48,8 +48,7 @@ static void *thread_application_management(void *data)
 	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
-			notifiers->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 
 	DBG("[thread] Manage application started");
 
@@ -69,8 +68,7 @@ static void *thread_application_management(void *data)
 		goto error_poll_create;
 	}
 
-	ret = lttng_poll_add(&events, notifiers->apps_cmd_pipe_read_fd,
-			LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(&events, notifiers->apps_cmd_pipe_read_fd, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -93,8 +91,7 @@ static void *thread_application_management(void *data)
 	restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		DBG("Apps thread return from poll on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		DBG("Apps thread return from poll on %d fds", LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
@@ -128,9 +125,9 @@ static void *thread_application_management(void *data)
 					int sock;
 
 					/* Empty pipe */
-					size_ret = lttng_read(
-							notifiers->apps_cmd_pipe_read_fd,
-							&sock, sizeof(sock));
+					size_ret = lttng_read(notifiers->apps_cmd_pipe_read_fd,
+							      &sock,
+							      sizeof(sock));
 					if (size_ret < sizeof(sock)) {
 						PERROR("read apps cmd pipe");
 						goto error;
@@ -170,7 +167,9 @@ static void *thread_application_management(void *data)
 					/* Socket closed on remote end. */
 					ust_app_unregister(pollfd);
 				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					ERR("Unexpected poll events %u for sock %d",
+					    revents,
+					    pollfd);
 					goto error;
 				}
 			}
@@ -228,10 +227,10 @@ bool launch_application_management_thread(int apps_cmd_pipe_read_fd)
 	notifiers->apps_cmd_pipe_read_fd = apps_cmd_pipe_read_fd;
 
 	thread = lttng_thread_create("UST application management",
-			thread_application_management,
-			shutdown_application_management_thread,
-			cleanup_application_management_thread,
-			notifiers);
+				     thread_application_management,
+				     shutdown_application_management_thread,
+				     cleanup_application_management_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

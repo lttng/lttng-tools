@@ -5,19 +5,18 @@
  *
  */
 
+#include <common/compat/errno.hpp>
+#include <common/defaults.hpp>
+
+#include <bin/lttng-sessiond/trace-kernel.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
-
-#include <common/compat/errno.hpp>
-#include <bin/lttng-sessiond/trace-kernel.hpp>
-#include <common/defaults.hpp>
-
 #include <tap/tap.h>
+#include <time.h>
+#include <unistd.h>
 
-#define RANDOM_STRING_LEN	11
+#define RANDOM_STRING_LEN 11
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
@@ -28,10 +27,9 @@
 LTTNG_EXPORT DEFINE_LTTNG_UST_SIGBUS_STATE();
 #endif
 
-static const char alphanum[] =
-	"0123456789"
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	"abcdefghijklmnopqrstuvwxyz";
+static const char alphanum[] = "0123456789"
+			       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			       "abcdefghijklmnopqrstuvwxyz";
 
 static struct ltt_kernel_session *kern;
 static char random_string[RANDOM_STRING_LEN];
@@ -62,12 +60,9 @@ static void test_create_one_kernel_session(void)
 		skip(1, "Kernel session is null");
 		return;
 	}
-	ok(kern->fd == -1 &&
-	   kern->metadata_stream_fd == -1 &&
-	   kern->consumer_fds_sent == 0 &&
-	   kern->channel_count == 0 &&
-	   kern->stream_count_global == 0 &&
-	   kern->metadata == NULL,
+	ok(kern->fd == -1 && kern->metadata_stream_fd == -1 && kern->consumer_fds_sent == 0 &&
+		   kern->channel_count == 0 && kern->stream_count_global == 0 &&
+		   kern->metadata == NULL,
 	   "Validate kernel session");
 }
 
@@ -78,20 +73,14 @@ static void test_create_kernel_metadata(void)
 	kern->metadata = trace_kernel_create_metadata();
 	ok(kern->metadata != NULL, "Create kernel metadata");
 
-	ok(kern->metadata->fd == -1 &&
-	   kern->metadata->conf != NULL &&
-	   kern->metadata->conf->attr.overwrite
-			== DEFAULT_METADATA_OVERWRITE &&
-	   kern->metadata->conf->attr.subbuf_size
-			== default_get_metadata_subbuf_size() &&
-	   kern->metadata->conf->attr.num_subbuf
-			== DEFAULT_METADATA_SUBBUF_NUM &&
-	   kern->metadata->conf->attr.switch_timer_interval
-			== DEFAULT_METADATA_SWITCH_TIMER &&
-	   kern->metadata->conf->attr.read_timer_interval
-			== DEFAULT_METADATA_READ_TIMER &&
-	   kern->metadata->conf->attr.output
-			== LTTNG_EVENT_MMAP,
+	ok(kern->metadata->fd == -1 && kern->metadata->conf != NULL &&
+		   kern->metadata->conf->attr.overwrite == DEFAULT_METADATA_OVERWRITE &&
+		   kern->metadata->conf->attr.subbuf_size == default_get_metadata_subbuf_size() &&
+		   kern->metadata->conf->attr.num_subbuf == DEFAULT_METADATA_SUBBUF_NUM &&
+		   kern->metadata->conf->attr.switch_timer_interval ==
+			   DEFAULT_METADATA_SWITCH_TIMER &&
+		   kern->metadata->conf->attr.read_timer_interval == DEFAULT_METADATA_READ_TIMER &&
+		   kern->metadata->conf->attr.output == LTTNG_EVENT_MMAP,
 	   "Validate kernel session metadata");
 
 	trace_kernel_destroy_metadata(kern->metadata);
@@ -115,10 +104,8 @@ static void test_create_kernel_channel(void)
 		return;
 	}
 
-	ok(chan->fd == -1 &&
-	   chan->enabled == 1 &&
-	   chan->stream_count == 0 &&
-	   chan->channel->attr.overwrite  == attr.attr.overwrite,
+	ok(chan->fd == -1 && chan->enabled == 1 && chan->stream_count == 0 &&
+		   chan->channel->attr.overwrite == attr.attr.overwrite,
 	   "Validate kernel channel");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
@@ -133,9 +120,8 @@ static void test_create_kernel_event(void)
 	struct lttng_event ev;
 
 	memset(&ev, 0, sizeof(ev));
-	ok(!lttng_strncpy(ev.name, get_random_string(),
-			RANDOM_STRING_LEN),
-		"Validate string length");
+	ok(!lttng_strncpy(ev.name, get_random_string(), RANDOM_STRING_LEN),
+	   "Validate string length");
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
@@ -147,10 +133,9 @@ static void test_create_kernel_event(void)
 		return;
 	}
 
-	ok(event->fd == -1 &&
-	   event->enabled == 1 &&
-	   event->event->instrumentation == LTTNG_KERNEL_ABI_TRACEPOINT &&
-	   strlen(event->event->name),
+	ok(event->fd == -1 && event->enabled == 1 &&
+		   event->event->instrumentation == LTTNG_KERNEL_ABI_TRACEPOINT &&
+		   strlen(event->event->name),
 	   "Validate kernel event");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
@@ -170,9 +155,7 @@ static void test_create_kernel_stream(void)
 		return;
 	}
 
-	ok(stream->fd == -1 &&
-	   stream->state == 0,
-	   "Validate kernel stream");
+	ok(stream->fd == -1 && stream->state == 0, "Validate kernel stream");
 
 	/* Init list in order to avoid sefaults from cds_list_del */
 	CDS_INIT_LIST_HEAD(&stream->list);

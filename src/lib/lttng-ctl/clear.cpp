@@ -7,20 +7,21 @@
  */
 
 #define _LGPL_SOURCE
-#include <algorithm>
-#include <string.h>
+#include "lttng-ctl-helper.hpp"
 
-#include <lttng/lttng-error.h>
-#include <lttng/clear.h>
-#include <lttng/clear-handle.h>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/macros.hpp>
+#include <common/buffer-view.hpp>
 #include <common/compat/poll.hpp>
 #include <common/dynamic-buffer.hpp>
-#include <common/buffer-view.hpp>
+#include <common/macros.hpp>
 #include <common/optional.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 
-#include "lttng-ctl-helper.hpp"
+#include <lttng/clear-handle.h>
+#include <lttng/clear.h>
+#include <lttng/lttng-error.h>
+
+#include <algorithm>
+#include <string.h>
 
 enum communication_state {
 	COMMUNICATION_STATE_RECEIVE_LTTNG_MSG,
@@ -60,8 +61,7 @@ void lttng_clear_handle_destroy(struct lttng_clear_handle *handle)
 	free(handle);
 }
 
-static
-struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
+static struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 {
 	int ret;
 	struct lttng_clear_handle *handle = zmalloc<lttng_clear_handle>();
@@ -76,14 +76,12 @@ struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&handle->communication.events, sessiond_socket,
-			LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(&handle->communication.events, sessiond_socket, LPOLLIN | LPOLLRDHUP);
 	if (ret) {
 		goto error;
 	}
 
-	handle->communication.bytes_left_to_receive =
-			sizeof(struct lttcomm_lttng_msg);
+	handle->communication.bytes_left_to_receive = sizeof(struct lttcomm_lttng_msg);
 	handle->communication.state = COMMUNICATION_STATE_RECEIVE_LTTNG_MSG;
 end:
 	return handle;
@@ -92,8 +90,7 @@ error:
 	return NULL;
 }
 
-static
-int handle_state_transition(struct lttng_clear_handle *handle)
+static int handle_state_transition(struct lttng_clear_handle *handle)
 {
 	int ret = 0;
 
@@ -103,10 +100,10 @@ int handle_state_transition(struct lttng_clear_handle *handle)
 	case COMMUNICATION_STATE_RECEIVE_LTTNG_MSG:
 	{
 		const struct lttcomm_lttng_msg *msg =
-				(typeof(msg)) handle->communication.buffer.data;
+			(typeof(msg)) handle->communication.buffer.data;
 
 		LTTNG_OPTIONAL_SET(&handle->clear_return_code,
-				(enum lttng_error_code) msg->ret_code);
+				   (enum lttng_error_code) msg->ret_code);
 		if (handle->clear_return_code.value != LTTNG_OK) {
 			handle->communication.state = COMMUNICATION_STATE_END;
 			break;
@@ -119,8 +116,7 @@ int handle_state_transition(struct lttng_clear_handle *handle)
 		handle->communication.state = COMMUNICATION_STATE_END;
 		handle->communication.bytes_left_to_receive = 0;
 		LTTNG_OPTIONAL_SET(&handle->communication.data_size, 0);
-		ret = lttng_dynamic_buffer_set_size(
-				&handle->communication.buffer, 0);
+		ret = lttng_dynamic_buffer_set_size(&handle->communication.buffer, 0);
 		LTTNG_ASSERT(!ret);
 		break;
 	}
@@ -135,8 +131,7 @@ int handle_state_transition(struct lttng_clear_handle *handle)
 	return ret;
 }
 
-static
-int handle_incoming_data(struct lttng_clear_handle *handle)
+static int handle_incoming_data(struct lttng_clear_handle *handle)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -144,14 +139,15 @@ int handle_incoming_data(struct lttng_clear_handle *handle)
 
 	/* Reserve space for reception. */
 	ret = lttng_dynamic_buffer_set_size(&handle->communication.buffer,
-			original_buffer_size + handle->communication.bytes_left_to_receive);
+					    original_buffer_size +
+						    handle->communication.bytes_left_to_receive);
 	if (ret) {
 		goto end;
 	}
 
 	comm_ret = lttcomm_recv_unix_sock(handle->communication.socket,
-			handle->communication.buffer.data + original_buffer_size,
-			handle->communication.bytes_left_to_receive);
+					  handle->communication.buffer.data + original_buffer_size,
+					  handle->communication.bytes_left_to_receive);
 	if (comm_ret <= 0) {
 		ret = -1;
 		goto end;
@@ -161,17 +157,15 @@ int handle_incoming_data(struct lttng_clear_handle *handle)
 	if (handle->communication.bytes_left_to_receive == 0) {
 		ret = handle_state_transition(handle);
 	} else {
-		ret = lttng_dynamic_buffer_set_size(
-				&handle->communication.buffer,
-				original_buffer_size + comm_ret);
+		ret = lttng_dynamic_buffer_set_size(&handle->communication.buffer,
+						    original_buffer_size + comm_ret);
 	}
 end:
 	return ret;
 }
 
 extern enum lttng_clear_handle_status
-	lttng_clear_handle_wait_for_completion(
-		struct lttng_clear_handle *handle, int timeout_ms)
+lttng_clear_handle_wait_for_completion(struct lttng_clear_handle *handle, int timeout_ms)
 {
 	enum lttng_clear_handle_status status;
 	unsigned long time_left_ms = 0;
@@ -195,14 +189,14 @@ extern enum lttng_clear_handle_status
 	}
 
 	while (handle->communication.state != COMMUNICATION_STATE_END &&
-			(time_left_ms || !has_timeout)) {
+	       (time_left_ms || !has_timeout)) {
 		int ret;
 		uint32_t revents;
 		struct timespec current_time, diff;
 		unsigned long diff_ms;
 
 		ret = lttng_poll_wait(&handle->communication.events,
-				has_timeout ? time_left_ms : -1);
+				      has_timeout ? time_left_ms : -1);
 		if (ret == 0) {
 			/* timeout */
 			break;
@@ -216,8 +210,7 @@ extern enum lttng_clear_handle_status
 		if (revents & LPOLLIN) {
 			ret = handle_incoming_data(handle);
 			if (ret) {
-				handle->communication.state =
-						COMMUNICATION_STATE_ERROR;
+				handle->communication.state = COMMUNICATION_STATE_ERROR;
 				status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 				goto end;
 			}
@@ -242,27 +235,24 @@ extern enum lttng_clear_handle_status
 			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
-		DBG("%lums elapsed while waiting for session clear completion",
-				diff_ms);
+		DBG("%lums elapsed while waiting for session clear completion", diff_ms);
 		diff_ms = std::max(diff_ms, 1UL);
 		diff_ms = std::min(diff_ms, time_left_ms);
 		time_left_ms -= diff_ms;
 	}
 
 	status = handle->communication.state == COMMUNICATION_STATE_END ?
-			LTTNG_CLEAR_HANDLE_STATUS_COMPLETED :
-			LTTNG_CLEAR_HANDLE_STATUS_TIMEOUT;
+		LTTNG_CLEAR_HANDLE_STATUS_COMPLETED :
+		LTTNG_CLEAR_HANDLE_STATUS_TIMEOUT;
 end:
 	return status;
 }
 
 extern enum lttng_clear_handle_status
-	lttng_clear_handle_get_result(
-		const struct lttng_clear_handle *handle,
-		enum lttng_error_code *result)
+lttng_clear_handle_get_result(const struct lttng_clear_handle *handle,
+			      enum lttng_error_code *result)
 {
-	enum lttng_clear_handle_status status =
-			LTTNG_CLEAR_HANDLE_STATUS_OK;
+	enum lttng_clear_handle_status status = LTTNG_CLEAR_HANDLE_STATUS_OK;
 
 	if (!handle->clear_return_code.is_set) {
 		status = LTTNG_CLEAR_HANDLE_STATUS_INVALID;
@@ -277,7 +267,7 @@ end:
  * Clear the session
  */
 enum lttng_error_code lttng_clear_session(const char *session_name,
-		struct lttng_clear_handle **_handle)
+					  struct lttng_clear_handle **_handle)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_clear_handle *handle = NULL;
@@ -296,8 +286,7 @@ enum lttng_error_code lttng_clear_session(const char *session_name,
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;

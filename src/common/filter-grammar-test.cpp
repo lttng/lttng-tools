@@ -9,16 +9,16 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
-
-#include <common/compat/errno.hpp>
 #include <common/bytecode/bytecode.hpp>
+#include <common/compat/errno.hpp>
 #include <common/filter/filter-ast.hpp>
 #include <common/filter/filter-parser.hpp>
+
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -29,8 +29,7 @@ int main(int argc, char **argv)
 {
 	struct filter_parser_ctx *ctx;
 	int ret;
-	int print_xml = 0, generate_ir = 0, generate_bytecode = 0,
-		print_bytecode = 0;
+	int print_xml = 0, generate_ir = 0, generate_bytecode = 0, print_bytecode = 0;
 	int argidx;
 
 	for (argidx = 1; argidx < argc; argidx++) {
@@ -108,7 +107,7 @@ int main(int argc, char **argv)
 		}
 		printf("done\n");
 		printf("Size of bytecode generated: %u bytes.\n",
-			bytecode_get_len(&ctx->bytecode->b));
+		       bytecode_get_len(&ctx->bytecode->b));
 	}
 
 	if (print_bytecode) {
@@ -118,14 +117,12 @@ int main(int argc, char **argv)
 		bytecode_len = ctx->bytecode->b.reloc_table_offset;
 		printf("Bytecode:\n");
 		for (i = 0; i < bytecode_len; i++) {
-			printf("0x%X ",
-				((uint8_t *) ctx->bytecode->b.data)[i]);
+			printf("0x%X ", ((uint8_t *) ctx->bytecode->b.data)[i]);
 		}
 		printf("\n");
 		printf("Reloc table:\n");
 		for (i = bytecode_len; i < len;) {
-			printf("{ 0x%X, ",
-				*(uint16_t *) &ctx->bytecode->b.data[i]);
+			printf("{ 0x%X, ", *(uint16_t *) &ctx->bytecode->b.data[i]);
 			i += sizeof(uint16_t);
 			printf("%s } ", &((char *) ctx->bytecode->b.data)[i]);
 			i += strlen(&((char *) ctx->bytecode->b.data)[i]) + 1;

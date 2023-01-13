@@ -6,16 +6,14 @@
  */
 
 #include "bytecode.hpp"
-
-#include <errno.h>
-#include <algorithm>
-
 #include "common/align.hpp"
+
+#include <algorithm>
+#include <errno.h>
 
 #define INIT_ALLOC_SIZE 4
 
-static inline
-int get_count_order(unsigned int count)
+static inline int get_count_order(unsigned int count)
 {
 	int order;
 
@@ -39,8 +37,7 @@ int bytecode_init(struct lttng_bytecode_alloc **fb)
 	}
 }
 
-static
-int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
+static int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;
 	uint32_t padding = lttng_offset_align((*fb)->b.len, align);
@@ -54,8 +51,7 @@ int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint3
 	if (new_alloc_len > old_alloc_len) {
 		struct lttng_bytecode_alloc *newptr;
 
-		new_alloc_len =
-			std::max(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
+		new_alloc_len = std::max(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
 		newptr = (lttng_bytecode_alloc *) realloc(*fb, new_alloc_len);
 		if (!newptr)
 			return -ENOMEM;
@@ -70,8 +66,7 @@ int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint3
 	return ret;
 }
 
-int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data,
-		uint32_t align, uint32_t len)
+int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data, uint32_t align, uint32_t len)
 {
 	int32_t offset;
 
@@ -83,9 +78,10 @@ int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data,
 }
 
 int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
-		struct logical_op *data,
-		uint32_t align, uint32_t len,
-		uint16_t *skip_offset)
+			  struct logical_op *data,
+			  uint32_t align,
+			  uint32_t len,
+			  uint16_t *skip_offset)
 {
 	int32_t offset;
 
@@ -93,9 +89,8 @@ int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
 	if (offset < 0)
 		return offset;
 	memcpy(&(*fb)->b.data[offset], data, len);
-	*skip_offset =
-		(char *) &((struct logical_op *) &(*fb)->b.data[offset])->skip_offset
-			- (char *) &(*fb)->b.data[0];
+	*skip_offset = (char *) &((struct logical_op *) &(*fb)->b.data[offset])->skip_offset -
+		(char *) &(*fb)->b.data[0];
 	return 0;
 }
 
@@ -156,14 +151,12 @@ end:
 	return ret;
 }
 
-int bytecode_push_get_index_u64(struct lttng_bytecode_alloc **bytecode,
-		uint64_t index)
+int bytecode_push_get_index_u64(struct lttng_bytecode_alloc **bytecode, uint64_t index)
 {
 	int ret;
 	struct load_op *insn;
 	struct get_index_u64 index_op_data;
-	const uint32_t insn_len =
-			sizeof(struct load_op) + sizeof(struct get_index_u64);
+	const uint32_t insn_len = sizeof(struct load_op) + sizeof(struct get_index_u64);
 
 	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
@@ -182,8 +175,8 @@ end:
 }
 
 int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
-		struct lttng_bytecode_alloc **bytecode_reloc,
-		const char *symbol)
+			     struct lttng_bytecode_alloc **bytecode_reloc,
+			     const char *symbol)
 {
 	int ret;
 	struct load_op *insn;
@@ -191,8 +184,7 @@ int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
 	uint32_t reloc_offset_u32;
 	uint16_t reloc_offset;
 	uint32_t bytecode_reloc_offset_u32;
-	const uint32_t insn_len =
-			sizeof(struct load_op) + sizeof(struct get_symbol);
+	const uint32_t insn_len = sizeof(struct load_op) + sizeof(struct get_symbol);
 
 	insn = (load_op *) calloc(insn_len, 1);
 	if (!insn) {
@@ -206,8 +198,7 @@ int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
 	 * Get offset in the reloc portion at which the symbol name
 	 * will end up at (GET_SYMBOL's operand points there).
 	 */
-	bytecode_reloc_offset_u32 = bytecode_get_len(&(*bytecode_reloc)->b) +
-			sizeof(reloc_offset);
+	bytecode_reloc_offset_u32 = bytecode_get_len(&(*bytecode_reloc)->b) + sizeof(reloc_offset);
 	symbol_offset.offset = (uint16_t) bytecode_reloc_offset_u32;
 	memcpy(insn->data, &symbol_offset, sizeof(symbol_offset));
 
@@ -229,8 +220,7 @@ int bytecode_push_get_symbol(struct lttng_bytecode_alloc **bytecode,
 	}
 
 	/* Append reloc offset. */
-	ret = bytecode_push(bytecode_reloc, &reloc_offset,
-			1, sizeof(reloc_offset));
+	ret = bytecode_push(bytecode_reloc, &reloc_offset, 1, sizeof(reloc_offset));
 	if (ret) {
 		goto end;
 	}
@@ -248,11 +238,9 @@ end:
  *
  * Return allocated bytecode or NULL on error.
  */
-struct lttng_bytecode *lttng_bytecode_copy(
-		const struct lttng_bytecode *orig_f)
+struct lttng_bytecode *lttng_bytecode_copy(const struct lttng_bytecode *orig_f)
 {
-	lttng_bytecode *bytecode
-		= zmalloc<lttng_bytecode>(sizeof(*bytecode) + orig_f->len);
+	lttng_bytecode *bytecode = zmalloc<lttng_bytecode>(sizeof(*bytecode) + orig_f->len);
 	if (!bytecode) {
 		goto error;
 	}

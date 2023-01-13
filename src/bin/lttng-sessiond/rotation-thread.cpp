@@ -7,38 +7,38 @@
  */
 
 #define _LGPL_SOURCE
-#include <lttng/trigger/trigger.h>
-#include <common/error.hpp>
+#include "cmd.hpp"
+#include "health-sessiond.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
+#include "rotate.hpp"
+#include "rotation-thread.hpp"
+#include "session.hpp"
+#include "thread.hpp"
+#include "timer.hpp"
+#include "utils.hpp"
+
+#include <common/align.hpp>
 #include <common/config/session-config.hpp>
 #include <common/defaults.hpp>
-#include <common/utils.hpp>
+#include <common/error.hpp>
 #include <common/futex.hpp>
-#include <common/align.hpp>
-#include <common/time.hpp>
 #include <common/hashtable/utils.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/time.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/location-internal.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/rotate-internal.hpp>
+#include <lttng/trigger/trigger.h>
+
+#include <inttypes.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <signal.h>
-#include <inttypes.h>
-
-#include <common/kernel-ctl/kernel-ctl.hpp>
-#include <lttng/notification/channel-internal.hpp>
-#include <lttng/rotate-internal.hpp>
-#include <lttng/location-internal.hpp>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/notification/notification-internal.hpp>
-
-#include "rotation-thread.hpp"
-#include "lttng-sessiond.hpp"
-#include "health-sessiond.hpp"
-#include "rotate.hpp"
-#include "cmd.hpp"
-#include "session.hpp"
-#include "timer.hpp"
-#include "notification-thread-commands.hpp"
-#include "utils.hpp"
-#include "thread.hpp"
-
 #include <urcu.h>
 #include <urcu/list.h>
 
@@ -75,8 +75,7 @@ struct rotation_thread_job {
 };
 } /* namespace */
 
-static
-const char *get_job_type_str(enum rotation_thread_job_type job_type)
+static const char *get_job_type_str(enum rotation_thread_job_type job_type)
 {
 	switch (job_type) {
 	case ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION:
@@ -105,8 +104,7 @@ end:
 	return queue;
 }
 
-void rotation_thread_timer_queue_destroy(
-		struct rotation_thread_timer_queue *queue)
+void rotation_thread_timer_queue_destroy(struct rotation_thread_timer_queue *queue)
 {
 	if (!queue) {
 		return;
@@ -124,16 +122,15 @@ void rotation_thread_timer_queue_destroy(
 /*
  * Destroy the thread data previously created by the init function.
  */
-void rotation_thread_handle_destroy(
-		struct rotation_thread_handle *handle)
+void rotation_thread_handle_destroy(struct rotation_thread_handle *handle)
 {
 	lttng_pipe_destroy(handle->quit_pipe);
 	free(handle);
 }
 
-struct rotation_thread_handle *rotation_thread_handle_create(
-		struct rotation_thread_timer_queue *rotation_timer_queue,
-		struct notification_thread_handle *notification_thread_handle)
+struct rotation_thread_handle *
+rotation_thread_handle_create(struct rotation_thread_timer_queue *rotation_timer_queue,
+			      struct notification_thread_handle *notification_thread_handle)
 {
 	struct rotation_thread_handle *handle;
 
@@ -160,15 +157,14 @@ error:
  * Called with the rotation_thread_timer_queue lock held.
  * Return true if the same timer job already exists in the queue, false if not.
  */
-static
-bool timer_job_exists(const struct rotation_thread_timer_queue *queue,
-		enum rotation_thread_job_type job_type,
-		struct ltt_session *session)
+static bool timer_job_exists(const struct rotation_thread_timer_queue *queue,
+			     enum rotation_thread_job_type job_type,
+			     struct ltt_session *session)
 {
 	bool exists = false;
 	struct rotation_thread_job *job;
 
-	cds_list_for_each_entry(job, &queue->list, head) {
+	cds_list_for_each_entry (job, &queue->list, head) {
 		if (job->session == session && job->type == job_type) {
 			exists = true;
 			goto end;
@@ -179,8 +175,8 @@ end:
 }
 
 void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
-		enum rotation_thread_job_type job_type,
-		struct ltt_session *session)
+				 enum rotation_thread_job_type job_type,
+				 struct ltt_session *session)
 {
 	int ret;
 	const char dummy = '!';
@@ -199,7 +195,8 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 	job = zmalloc<rotation_thread_job>();
 	if (!job) {
 		PERROR("Failed to allocate rotation thread job of type \"%s\" for session \"%s\"",
-				job_type_str, session->name);
+		       job_type_str,
+		       session->name);
 		goto end;
 	}
 	/* No reason for this to fail as the caller must hold a reference. */
@@ -209,8 +206,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 	job->type = job_type;
 	cds_list_add_tail(&job->head, &queue->list);
 
-	ret = lttng_write(lttng_pipe_get_writefd(queue->event_pipe), &dummy,
-			sizeof(dummy));
+	ret = lttng_write(lttng_pipe_get_writefd(queue->event_pipe), &dummy, sizeof(dummy));
 	if (ret < 0) {
 		/*
 		 * We do not want to block in the timer handler, the job has
@@ -221,7 +217,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_LOGICAL_OP
 		if (errno == EAGAIN || errno == EWOULDBLOCK) {
-		DIAGNOSTIC_POP
+			DIAGNOSTIC_POP
 			/*
 			 * Not an error, but would be surprising and indicate
 			 * that the rotation thread can't keep up with the
@@ -231,7 +227,8 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 			goto end;
 		}
 		PERROR("Failed to wake-up the rotation thread after pushing a job of type \"%s\" for session \"%s\"",
-				job_type_str, session->name);
+		       job_type_str,
+		       session->name);
 		goto end;
 	}
 
@@ -239,9 +236,7 @@ end:
 	pthread_mutex_unlock(&queue->lock);
 }
 
-static
-int init_poll_set(struct lttng_poll_event *poll_set,
-		struct rotation_thread_handle *handle)
+static int init_poll_set(struct lttng_poll_event *poll_set, struct rotation_thread_handle *handle)
 {
 	int ret;
 
@@ -256,16 +251,14 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 		goto error;
 	}
 
-	ret = lttng_poll_add(poll_set,
-			lttng_pipe_get_readfd(handle->quit_pipe), LPOLLIN);
+	ret = lttng_poll_add(poll_set, lttng_pipe_get_readfd(handle->quit_pipe), LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add quit pipe read fd to poll set");
 		goto error;
 	}
 
-	ret = lttng_poll_add(poll_set,
-			lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe),
-			LPOLLIN);
+	ret = lttng_poll_add(
+		poll_set, lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe), LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add rotate_pending fd to poll set");
 		goto error;
@@ -277,8 +270,7 @@ error:
 	return ret;
 }
 
-static
-void fini_thread_state(struct rotation_thread *state)
+static void fini_thread_state(struct rotation_thread *state)
 {
 	lttng_poll_clean(&state->events);
 	if (rotate_notification_channel) {
@@ -286,9 +278,7 @@ void fini_thread_state(struct rotation_thread *state)
 	}
 }
 
-static
-int init_thread_state(struct rotation_thread_handle *handle,
-		struct rotation_thread *state)
+static int init_thread_state(struct rotation_thread_handle *handle, struct rotation_thread *state)
 {
 	int ret;
 
@@ -301,15 +291,14 @@ int init_thread_state(struct rotation_thread_handle *handle,
 		goto end;
 	}
 
-	rotate_notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	rotate_notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	if (!rotate_notification_channel) {
 		ERR("Could not create notification channel");
 		ret = -1;
 		goto end;
 	}
-	ret = lttng_poll_add(&state->events, rotate_notification_channel->socket,
-			LPOLLIN);
+	ret = lttng_poll_add(&state->events, rotate_notification_channel->socket, LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add notification fd to pollset");
 		goto end;
@@ -319,9 +308,8 @@ end:
 	return ret;
 }
 
-static
-void check_session_rotation_pending_on_consumers(struct ltt_session *session,
-		bool *_rotation_completed)
+static void check_session_rotation_pending_on_consumers(struct ltt_session *session,
+							bool *_rotation_completed)
 {
 	int ret = 0;
 	struct consumer_socket *socket;
@@ -341,17 +329,18 @@ void check_session_rotation_pending_on_consumers(struct ltt_session *session,
 	if (!session->ust_session) {
 		goto skip_ust;
 	}
-	cds_lfht_for_each_entry(session->ust_session->consumer->socks->ht,
-			&iter, socket, node.node) {
+	cds_lfht_for_each_entry (
+		session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
 		relayd_id = session->ust_session->consumer->type == CONSUMER_DST_LOCAL ?
-				-1ULL :
-				session->ust_session->consumer->net_seq_index;
+			-1ULL :
+			session->ust_session->consumer->net_seq_index;
 
 		pthread_mutex_lock(socket->lock);
 		ret = consumer_trace_chunk_exists(socket,
-				relayd_id,
-				session->id, session->chunk_being_archived,
-				&exists_status);
+						  relayd_id,
+						  session->id,
+						  session->chunk_being_archived,
+						  &exists_status);
 		if (ret) {
 			pthread_mutex_unlock(socket->lock);
 			ERR("Error occurred while checking rotation status on consumer daemon");
@@ -370,17 +359,18 @@ skip_ust:
 	if (!session->kernel_session) {
 		goto skip_kernel;
 	}
-	cds_lfht_for_each_entry(session->kernel_session->consumer->socks->ht,
-				&iter, socket, node.node) {
+	cds_lfht_for_each_entry (
+		session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
 		pthread_mutex_lock(socket->lock);
 		relayd_id = session->kernel_session->consumer->type == CONSUMER_DST_LOCAL ?
-				-1ULL :
-				session->kernel_session->consumer->net_seq_index;
+			-1ULL :
+			session->kernel_session->consumer->net_seq_index;
 
 		ret = consumer_trace_chunk_exists(socket,
-				relayd_id,
-				session->id, session->chunk_being_archived,
-				&exists_status);
+						  relayd_id,
+						  session->id,
+						  session->chunk_being_archived,
+						  &exists_status);
 		if (ret) {
 			pthread_mutex_unlock(socket->lock);
 			ERR("Error occurred while checking rotation status on consumer daemon");
@@ -401,21 +391,19 @@ end:
 	if (!chunk_exists_on_peer) {
 		uint64_t chunk_being_archived_id;
 
-		chunk_status = lttng_trace_chunk_get_id(
-				session->chunk_being_archived,
-				&chunk_being_archived_id);
+		chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived,
+							&chunk_being_archived_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-		DBG("Rotation of trace archive %" PRIu64 " of session \"%s\" is complete on all consumers",
-				chunk_being_archived_id,
-				session->name);
+		DBG("Rotation of trace archive %" PRIu64
+		    " of session \"%s\" is complete on all consumers",
+		    chunk_being_archived_id,
+		    session->name);
 	}
 	*_rotation_completed = !chunk_exists_on_peer;
 	if (ret) {
-		ret = session_reset_rotation_state(session,
-				LTTNG_ROTATION_STATE_ERROR);
+		ret = session_reset_rotation_state(session, LTTNG_ROTATION_STATE_ERROR);
 		if (ret) {
-			ERR("Failed to reset rotation state of session \"%s\"",
-					session->name);
+			ERR("Failed to reset rotation state of session \"%s\"", session->name);
 		}
 	}
 }
@@ -425,9 +413,9 @@ end:
  * Should only return non-zero in the event of a fatal error. Doing so will
  * shutdown the thread.
  */
-static
-int check_session_rotation_pending(struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle)
+static int
+check_session_rotation_pending(struct ltt_session *session,
+			       struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
 	struct lttng_trace_archive_location *location;
@@ -441,12 +429,13 @@ int check_session_rotation_pending(struct ltt_session *session,
 		goto end;
 	}
 
-	chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived,
-			&chunk_being_archived_id);
+	chunk_status =
+		lttng_trace_chunk_get_id(session->chunk_being_archived, &chunk_being_archived_id);
 	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	DBG("Checking for pending rotation on session \"%s\", trace archive %" PRIu64,
-			session->name, chunk_being_archived_id);
+	    session->name,
+	    chunk_being_archived_id);
 
 	/*
 	 * The rotation-pending check timer of a session is launched in
@@ -461,10 +450,8 @@ int check_session_rotation_pending(struct ltt_session *session,
 		goto check_ongoing_rotation;
 	}
 
-	check_session_rotation_pending_on_consumers(session,
-			&rotation_completed);
-	if (!rotation_completed ||
-			session->rotation_state == LTTNG_ROTATION_STATE_ERROR) {
+	check_session_rotation_pending_on_consumers(session, &rotation_completed);
+	if (!rotation_completed || session->rotation_state == LTTNG_ROTATION_STATE_ERROR) {
 		goto check_ongoing_rotation;
 	}
 
@@ -472,8 +459,8 @@ int check_session_rotation_pending(struct ltt_session *session,
 	 * Now we can clear the "ONGOING" state in the session. New
 	 * rotations can start now.
 	 */
-	chunk_status = lttng_trace_chunk_get_name(session->chunk_being_archived,
-			&archived_chunk_name, NULL);
+	chunk_status = lttng_trace_chunk_get_name(
+		session->chunk_being_archived, &archived_chunk_name, NULL);
 	LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 	free(session->last_archived_chunk_name);
 	session->last_archived_chunk_name = strdup(archived_chunk_name);
@@ -485,29 +472,29 @@ int check_session_rotation_pending(struct ltt_session *session,
 	if (!session->quiet_rotation) {
 		location = session_get_trace_archive_location(session);
 		ret = notification_thread_command_session_rotation_completed(
-				notification_thread_handle,
-				session->id,
-				session->last_archived_chunk_id.value,
-				location);
+			notification_thread_handle,
+			session->id,
+			session->last_archived_chunk_id.value,
+			location);
 		lttng_trace_archive_location_put(location);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to notify notification thread of completed rotation for session %s",
-					session->name);
+			    session->name);
 		}
 	}
 
 	ret = 0;
 check_ongoing_rotation:
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
-		chunk_status = lttng_trace_chunk_get_id(
-				session->chunk_being_archived,
-				&chunk_being_archived_id);
+		chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived,
+							&chunk_being_archived_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 		DBG("Rotation of trace archive %" PRIu64 " is still pending for session %s",
-				chunk_being_archived_id, session->name);
+		    chunk_being_archived_id,
+		    session->name);
 		ret = timer_session_rotation_pending_check_start(session,
-				DEFAULT_ROTATE_PENDING_TIMER);
+								 DEFAULT_ROTATE_PENDING_TIMER);
 		if (ret) {
 			ERR("Failed to re-enable rotation pending timer");
 			ret = -1;
@@ -520,31 +507,30 @@ end:
 }
 
 /* Call with the session and session_list locks held. */
-static
-int launch_session_rotation(struct ltt_session *session)
+static int launch_session_rotation(struct ltt_session *session)
 {
 	int ret;
 	struct lttng_rotate_session_return rotation_return;
 
-	DBG("Launching scheduled time-based rotation on session \"%s\"",
-			session->name);
+	DBG("Launching scheduled time-based rotation on session \"%s\"", session->name);
 
-	ret = cmd_rotate_session(session, &rotation_return, false,
-		LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+	ret = cmd_rotate_session(
+		session, &rotation_return, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	if (ret == LTTNG_OK) {
 		DBG("Scheduled time-based rotation successfully launched on session \"%s\"",
-				session->name);
+		    session->name);
 	} else {
 		/* Don't consider errors as fatal. */
 		DBG("Scheduled time-based rotation aborted for session %s: %s",
-				session->name, lttng_strerror(ret));
+		    session->name,
+		    lttng_strerror(ret));
 	}
 	return 0;
 }
 
-static
-int run_job(struct rotation_thread_job *job, struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle)
+static int run_job(struct rotation_thread_job *job,
+		   struct ltt_session *session,
+		   struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
 
@@ -553,8 +539,7 @@ int run_job(struct rotation_thread_job *job, struct ltt_session *session,
 		ret = launch_session_rotation(session);
 		break;
 	case ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION:
-		ret = check_session_rotation_pending(session,
-				notification_thread_handle);
+		ret = check_session_rotation_pending(session, notification_thread_handle);
 		break;
 	default:
 		abort();
@@ -562,10 +547,9 @@ int run_job(struct rotation_thread_job *job, struct ltt_session *session,
 	return ret;
 }
 
-static
-int handle_job_queue(struct rotation_thread_handle *handle,
-		struct rotation_thread *state __attribute__((unused)),
-		struct rotation_thread_timer_queue *queue)
+static int handle_job_queue(struct rotation_thread_handle *handle,
+			    struct rotation_thread *state __attribute__((unused)),
+			    struct rotation_thread_timer_queue *queue)
 {
 	int ret = 0;
 
@@ -579,16 +563,14 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 			pthread_mutex_unlock(&queue->lock);
 			break;
 		}
-		job = cds_list_first_entry(&queue->list,
-				typeof(*job), head);
+		job = cds_list_first_entry(&queue->list, typeof(*job), head);
 		cds_list_del(&job->head);
 		pthread_mutex_unlock(&queue->lock);
 
 		session_lock_list();
 		session = job->session;
 		if (!session) {
-			DBG("Session \"%s\" not found",
-					session->name != NULL ? session->name : "");
+			DBG("Session \"%s\" not found", session->name != NULL ? session->name : "");
 			/*
 			 * This is a non-fatal error, and we cannot report it to
 			 * the user (timer), so just print the error and
@@ -623,9 +605,8 @@ end:
 	return ret;
 }
 
-static
-int handle_condition(const struct lttng_notification *notification,
-		struct notification_thread_handle *notification_thread_handle)
+static int handle_condition(const struct lttng_notification *notification,
+			    struct notification_thread_handle *notification_thread_handle)
 {
 	int ret = 0;
 	const char *condition_session_name = NULL;
@@ -635,9 +616,9 @@ int handle_condition(const struct lttng_notification *notification,
 	uint64_t consumed;
 	struct ltt_session *session;
 	const struct lttng_condition *condition =
-			lttng_notification_get_const_condition(notification);
+		lttng_notification_get_const_condition(notification);
 	const struct lttng_evaluation *evaluation =
-			lttng_notification_get_const_evaluation(notification);
+		lttng_notification_get_const_evaluation(notification);
 
 	condition_type = lttng_condition_get_type(condition);
 
@@ -649,14 +630,14 @@ int handle_condition(const struct lttng_notification *notification,
 
 	/* Fetch info to test */
 	condition_status = lttng_condition_session_consumed_size_get_session_name(
-			condition, &condition_session_name);
+		condition, &condition_session_name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Session name could not be fetched");
 		ret = -1;
 		goto end;
 	}
-	evaluation_status = lttng_evaluation_session_consumed_size_get_consumed_size(evaluation,
-			&consumed);
+	evaluation_status =
+		lttng_evaluation_session_consumed_size_get_consumed_size(evaluation, &consumed);
 	if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
 		ERR("Failed to get evaluation");
 		ret = -1;
@@ -667,8 +648,8 @@ int handle_condition(const struct lttng_notification *notification,
 	session = session_find_by_name(condition_session_name);
 	if (!session) {
 		DBG("Failed to find session while handling notification: notification type = %s, session name = `%s`",
-				lttng_condition_type_str(condition_type),
-				condition_session_name);
+		    lttng_condition_type_str(condition_type),
+		    condition_session_name);
 		/*
 		 * Not a fatal error: a session can be destroyed before we get
 		 * the chance to handle the notification.
@@ -680,20 +661,19 @@ int handle_condition(const struct lttng_notification *notification,
 	session_lock(session);
 
 	if (!lttng_trigger_is_equal(session->rotate_trigger,
-			lttng_notification_get_const_trigger(notification))) {
+				    lttng_notification_get_const_trigger(notification))) {
 		/* Notification does not originate from our rotation trigger. */
 		ret = 0;
 		goto end_unlock;
 	}
 
-	ret = unsubscribe_session_consumed_size_rotation(session,
-			notification_thread_handle);
+	ret = unsubscribe_session_consumed_size_rotation(session, notification_thread_handle);
 	if (ret) {
 		goto end_unlock;
 	}
 
 	ret = cmd_rotate_session(
-			session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	switch (ret) {
 	case LTTNG_OK:
 		break;
@@ -713,7 +693,7 @@ int handle_condition(const struct lttng_notification *notification,
 	}
 
 	ret = subscribe_session_consumed_size_rotation(
-			session, consumed + session->rotate_size, notification_thread_handle);
+		session, consumed + session->rotate_size, notification_thread_handle);
 	if (ret) {
 		ERR("Failed to subscribe to session consumed size condition");
 		goto end_unlock;
@@ -728,18 +708,17 @@ end:
 	return ret;
 }
 
-static
-int handle_notification_channel(int fd __attribute__((unused)),
-		struct rotation_thread_handle *handle,
-		struct rotation_thread *state __attribute__((unused)))
+static int handle_notification_channel(int fd __attribute__((unused)),
+				       struct rotation_thread_handle *handle,
+				       struct rotation_thread *state __attribute__((unused)))
 {
 	int ret;
 	bool notification_pending;
 	struct lttng_notification *notification = NULL;
 	enum lttng_notification_channel_status status;
 
-	status = lttng_notification_channel_has_pending_notification(
-			rotate_notification_channel, &notification_pending);
+	status = lttng_notification_channel_has_pending_notification(rotate_notification_channel,
+								     &notification_pending);
 	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Error occurred while checking for pending notification");
 		ret = -1;
@@ -752,9 +731,8 @@ int handle_notification_channel(int fd __attribute__((unused)),
 	}
 
 	/* Receive the next notification. */
-	status = lttng_notification_channel_get_next_notification(
-			rotate_notification_channel,
-			&notification);
+	status = lttng_notification_channel_get_next_notification(rotate_notification_channel,
+								  &notification);
 
 	switch (status) {
 	case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
@@ -762,7 +740,8 @@ int handle_notification_channel(int fd __attribute__((unused)),
 	case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
 		/* Not an error, we will wait for the next one */
 		ret = 0;
-		goto end;;
+		goto end;
+		;
 	case LTTNG_NOTIFICATION_CHANNEL_STATUS_CLOSED:
 		ERR("Notification channel was closed");
 		ret = -1;
@@ -774,16 +753,14 @@ int handle_notification_channel(int fd __attribute__((unused)),
 		goto end;
 	}
 
-	ret = handle_condition(notification,
-			handle->notification_thread_handle);
+	ret = handle_condition(notification, handle->notification_thread_handle);
 
 end:
 	lttng_notification_destroy(notification);
 	return ret;
 }
 
-static
-void *thread_rotation(void *data)
+static void *thread_rotation(void *data)
 {
 	int ret;
 	struct rotation_thread_handle *handle = (rotation_thread_handle *) data;
@@ -801,9 +778,7 @@ void *thread_rotation(void *data)
 		goto end;
 	}
 
-	queue_pipe_fd = lttng_pipe_get_readfd(
-			handle->rotation_timer_queue->event_pipe);
-
+	queue_pipe_fd = lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe);
 
 	ret = init_thread_state(handle, &thread);
 	if (ret) {
@@ -834,8 +809,7 @@ void *thread_rotation(void *data)
 			int fd = LTTNG_POLL_GETFD(&thread.events, i);
 			uint32_t revents = LTTNG_POLL_GETEV(&thread.events, i);
 
-			DBG("Handling fd (%i) activity (%u)",
-					fd, revents);
+			DBG("Handling fd (%i) activity (%u)", fd, revents);
 
 			if (revents & LPOLLERR) {
 				ERR("Polling returned an error on fd %i", fd);
@@ -843,8 +817,7 @@ void *thread_rotation(void *data)
 			}
 
 			if (fd == rotate_notification_channel->socket) {
-				ret = handle_notification_channel(fd, handle,
-						&thread);
+				ret = handle_notification_channel(fd, handle, &thread);
 				if (ret) {
 					ERR("Error occurred while handling activity on notification channel socket");
 					goto error;
@@ -858,8 +831,8 @@ void *thread_rotation(void *data)
 				 * flushed and all references held in the queue
 				 * are released.
 				 */
-				ret = handle_job_queue(handle, &thread,
-						handle->rotation_timer_queue);
+				ret = handle_job_queue(
+					handle, &thread, handle->rotation_timer_queue);
 				if (ret) {
 					ERR("Failed to handle rotation timer pipe event");
 					goto error;
@@ -870,7 +843,8 @@ void *thread_rotation(void *data)
 
 					ret = lttng_read(fd, &buf, 1);
 					if (ret != 1) {
-						ERR("Failed to read from wakeup pipe (fd = %i)", fd);
+						ERR("Failed to read from wakeup pipe (fd = %i)",
+						    fd);
 						goto error;
 					}
 				} else {
@@ -891,8 +865,7 @@ end:
 	return NULL;
 }
 
-static
-bool shutdown_rotation_thread(void *thread_data)
+static bool shutdown_rotation_thread(void *thread_data)
 {
 	struct rotation_thread_handle *handle = (rotation_thread_handle *) thread_data;
 	const int write_fd = lttng_pipe_get_writefd(handle->quit_pipe);
@@ -904,11 +877,8 @@ bool launch_rotation_thread(struct rotation_thread_handle *handle)
 {
 	struct lttng_thread *thread;
 
-	thread = lttng_thread_create("Rotation",
-			thread_rotation,
-			shutdown_rotation_thread,
-			NULL,
-			handle);
+	thread = lttng_thread_create(
+		"Rotation", thread_rotation, shutdown_rotation_thread, NULL, handle);
 	if (!thread) {
 		goto error;
 	}

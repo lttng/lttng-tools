@@ -7,10 +7,10 @@
 
 #include "argpar-utils.hpp"
 
-#include <stdio.h>
-
 #include <common/error.hpp>
 #include <common/string-utils/string-utils.hpp>
+
+#include <stdio.h>
 
 /*
  * Given argpar error status `status` and error `error`, return a formatted
@@ -25,9 +25,11 @@
  *
  * The returned string must be freed by the caller.
  */
-static ATTR_FORMAT_PRINTF(4, 0)
-char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
-		const char **argv, const char *context_fmt, va_list args)
+static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_error *error,
+							 int argc_offset,
+							 const char **argv,
+							 const char *context_fmt,
+							 va_list args)
 {
 	char *str = NULL;
 	char *str_ret = NULL;
@@ -50,16 +52,18 @@ char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
 		}
 	}
 
-	switch (argpar_error_type(error))
-	{
+	switch (argpar_error_type(error)) {
 	case ARGPAR_ERROR_TYPE_MISSING_OPT_ARG:
 	{
 		const int orig_index = argpar_error_orig_index(error);
 		const char *arg = argv[orig_index];
 
 		ret = strutils_appendf(&str,
-			WHILE_PARSING_ARG_N_ARG_FMT "Missing required argument for option `%s`",
-			orig_index + 1 + argc_offset, argv[orig_index], arg);
+				       WHILE_PARSING_ARG_N_ARG_FMT
+				       "Missing required argument for option `%s`",
+				       orig_index + 1 + argc_offset,
+				       argv[orig_index],
+				       arg);
 		if (ret < 0) {
 			goto end;
 		}
@@ -69,19 +73,24 @@ char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
 	case ARGPAR_ERROR_TYPE_UNEXPECTED_OPT_ARG:
 	{
 		bool is_short;
-		const struct argpar_opt_descr *descr =
-			argpar_error_opt_descr(error, &is_short);
+		const struct argpar_opt_descr *descr = argpar_error_opt_descr(error, &is_short);
 		int orig_index = argpar_error_orig_index(error);
 		const char *arg = argv[orig_index];
 
 		if (is_short) {
 			ret = strutils_appendf(&str,
-				WHILE_PARSING_ARG_N_ARG_FMT "Unexpected argument for option `-%c`",
-				orig_index + 1 + argc_offset, arg, descr->short_name);
+					       WHILE_PARSING_ARG_N_ARG_FMT
+					       "Unexpected argument for option `-%c`",
+					       orig_index + 1 + argc_offset,
+					       arg,
+					       descr->short_name);
 		} else {
 			ret = strutils_appendf(&str,
-				WHILE_PARSING_ARG_N_ARG_FMT "Unexpected argument for option `--%s`",
-				orig_index + 1 + argc_offset, arg, descr->long_name);
+					       WHILE_PARSING_ARG_N_ARG_FMT
+					       "Unexpected argument for option `--%s`",
+					       orig_index + 1 + argc_offset,
+					       arg,
+					       descr->long_name);
 		}
 
 		if (ret < 0) {
@@ -96,8 +105,10 @@ char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
 		const char *unknown_opt = argpar_error_unknown_opt_name(error);
 
 		ret = strutils_appendf(&str,
-			WHILE_PARSING_ARG_N_ARG_FMT "Unknown option `%s`",
-			orig_index + 1 + argc_offset, argv[orig_index], unknown_opt);
+				       WHILE_PARSING_ARG_N_ARG_FMT "Unknown option `%s`",
+				       orig_index + 1 + argc_offset,
+				       argv[orig_index],
+				       unknown_opt);
 
 		if (ret < 0) {
 			goto end;
@@ -106,7 +117,7 @@ char *format_arg_error_v(const struct argpar_error *error, int argc_offset,
 		break;
 	}
 	default:
-		abort ();
+		abort();
 	}
 
 	str_ret = str;
@@ -118,10 +129,13 @@ end:
 }
 
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
-		const struct argpar_item **item, int argc_offset,
-		const char **argv, bool unknown_opt_is_error,
-		const struct argpar_error **error_out,
-		const char *context_fmt, ...)
+					    const struct argpar_item **item,
+					    int argc_offset,
+					    const char **argv,
+					    bool unknown_opt_is_error,
+					    const struct argpar_error **error_out,
+					    const char *context_fmt,
+					    ...)
 {
 	enum argpar_iter_next_status status;
 	const struct argpar_error *error = NULL;
@@ -141,14 +155,13 @@ enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
 		char *err_str;
 
 		if (argpar_error_type(error) == ARGPAR_ERROR_TYPE_UNKNOWN_OPT &&
-				!unknown_opt_is_error) {
+		    !unknown_opt_is_error) {
 			ret = PARSE_NEXT_ITEM_STATUS_END;
 			break;
 		}
 
 		va_start(args, context_fmt);
-		err_str = format_arg_error_v(error, argc_offset, argv,
-			context_fmt, args);
+		err_str = format_arg_error_v(error, argc_offset, argv, context_fmt, args);
 		va_end(args);
 
 		if (err_str) {

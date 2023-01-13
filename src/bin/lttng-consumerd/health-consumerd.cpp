@@ -6,44 +6,44 @@
  */
 
 #define _LGPL_SOURCE
+#include "health-consumerd.hpp"
+#include "lttng-consumerd.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/poll.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/defaults.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
+
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <urcu/list.h>
-#include <poll.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <urcu/compiler.h>
 #include <ulimit.h>
-#include <inttypes.h>
-
-#include <common/defaults.hpp>
-#include <common/common.hpp>
-#include <common/consumer/consumer.hpp>
-#include <common/consumer/consumer-timer.hpp>
-#include <common/compat/poll.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/utils.hpp>
-
-#include "lttng-consumerd.hpp"
-#include "health-consumerd.hpp"
+#include <unistd.h>
+#include <urcu/compiler.h>
+#include <urcu/list.h>
 
 /* Global health check unix path */
 static char health_unix_sock_path[PATH_MAX];
 
-int health_quit_pipe[2] = {-1, -1};
+int health_quit_pipe[2] = { -1, -1 };
 
 /*
  * Send data on a unix socket using the liblttsessiondcomm API.
@@ -60,8 +60,7 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
-static
-int setup_health_path(void)
+static int setup_health_path(void)
 {
 	int is_root, ret = 0;
 	enum lttng_consumer_type type;
@@ -76,16 +75,19 @@ int setup_health_path(void)
 		}
 		switch (type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_GLOBAL_KCONSUMER_HEALTH_UNIX_SOCK);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_GLOBAL_KCONSUMER_HEALTH_UNIX_SOCK);
 			break;
 		case LTTNG_CONSUMER64_UST:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_GLOBAL_USTCONSUMER64_HEALTH_UNIX_SOCK);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_GLOBAL_USTCONSUMER64_HEALTH_UNIX_SOCK);
 			break;
 		case LTTNG_CONSUMER32_UST:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK);
 			break;
 		default:
 			ret = -EINVAL;
@@ -106,16 +108,22 @@ int setup_health_path(void)
 		}
 		switch (type) {
 		case LTTNG_CONSUMER_KERNEL:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK, home_path);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK,
+				 home_path);
 			break;
 		case LTTNG_CONSUMER64_UST:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK, home_path);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK,
+				 home_path);
 			break;
 		case LTTNG_CONSUMER32_UST:
-			snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-				DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK, home_path);
+			snprintf(health_unix_sock_path,
+				 sizeof(health_unix_sock_path),
+				 DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK,
+				 home_path);
 			break;
 		default:
 			ret = -EINVAL;
@@ -174,8 +182,7 @@ void *thread_manage_health_consumerd(void *data __attribute__((unused)))
 			goto error;
 		}
 
-		ret = chmod(health_unix_sock_path,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		ret = chmod(health_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (ret < 0) {
 			ERR("Unable to set permissions on %s", health_unix_sock_path);
 			PERROR("chmod");
@@ -221,7 +228,7 @@ void *thread_manage_health_consumerd(void *data __attribute__((unused)))
 		DBG("Health check ready");
 
 		/* Inifinite blocking call, waiting for transmission */
-restart:
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
 			/*
@@ -249,8 +256,8 @@ restart:
 
 			/* Event on the registration socket */
 			if (pollfd == sock) {
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)
-						&& !(revents & LPOLLIN)) {
+				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP) &&
+				    !(revents & LPOLLIN)) {
 					ERR("Health socket poll error");
 					goto error;
 				}
@@ -269,7 +276,7 @@ restart:
 		(void) utils_set_fd_cloexec(new_sock);
 
 		DBG("Receiving data from client for health...");
-		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
+		ret = lttcomm_recv_unix_sock(new_sock, (void *) &msg, sizeof(msg));
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
 			ret = close(new_sock);

@@ -5,30 +5,27 @@
  *
  */
 
-#include <common/hashtable/utils.hpp>
-#include <common/hashtable/hashtable.hpp>
-
-#include <lttng/condition/condition.h>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/condition/buffer-usage-internal.hpp>
-#include <lttng/condition/session-consumed-size-internal.hpp>
-#include <lttng/condition/session-rotation-internal.hpp>
-#include <lttng/condition/event-rule-matches-internal.hpp>
-#include <lttng/condition/event-rule-matches.h>
-#include <lttng/event-rule/event-rule-internal.hpp>
-#include <lttng/condition/event-rule-matches-internal.hpp>
 #include "condition-internal.hpp"
 
-static
-unsigned long lttng_condition_buffer_usage_hash(
-	const struct lttng_condition *_condition)
+#include <common/hashtable/hashtable.hpp>
+#include <common/hashtable/utils.hpp>
+
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include <lttng/condition/event-rule-matches.h>
+#include <lttng/condition/session-consumed-size-internal.hpp>
+#include <lttng/condition/session-rotation-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
+
+static unsigned long lttng_condition_buffer_usage_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash;
 	unsigned long condition_type;
 	struct lttng_condition_buffer_usage *condition;
 
-	condition = lttng::utils::container_of(_condition,
-			&lttng_condition_buffer_usage::parent);
+	condition = lttng::utils::container_of(_condition, &lttng_condition_buffer_usage::parent);
 
 	condition_type = (unsigned long) condition->parent.type;
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
@@ -39,9 +36,7 @@ unsigned long lttng_condition_buffer_usage_hash(
 		hash ^= hash_key_str(condition->channel_name, lttng_ht_seed);
 	}
 	if (condition->domain.set) {
-		hash ^= hash_key_ulong(
-				(void *) condition->domain.type,
-				lttng_ht_seed);
+		hash ^= hash_key_ulong((void *) condition->domain.type, lttng_ht_seed);
 	}
 	if (condition->threshold_ratio.set) {
 		hash ^= hash_key_u64(&condition->threshold_ratio.value, lttng_ht_seed);
@@ -54,18 +49,16 @@ unsigned long lttng_condition_buffer_usage_hash(
 	return hash;
 }
 
-static
-unsigned long lttng_condition_session_consumed_size_hash(
-	const struct lttng_condition *_condition)
+static unsigned long
+lttng_condition_session_consumed_size_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash;
-	unsigned long condition_type =
-			(unsigned long) LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE;
+	unsigned long condition_type = (unsigned long) LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE;
 	struct lttng_condition_session_consumed_size *condition;
 	uint64_t val;
 
 	condition = lttng::utils::container_of(_condition,
-			&lttng_condition_session_consumed_size::parent);
+					       &lttng_condition_session_consumed_size::parent);
 
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	if (condition->session_name) {
@@ -76,15 +69,13 @@ unsigned long lttng_condition_session_consumed_size_hash(
 	return hash;
 }
 
-static
-unsigned long lttng_condition_session_rotation_hash(
-	const struct lttng_condition *_condition)
+static unsigned long lttng_condition_session_rotation_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash, condition_type;
 	struct lttng_condition_session_rotation *condition;
 
-	condition = lttng::utils::container_of(_condition,
-			&lttng_condition_session_rotation::parent);
+	condition =
+		lttng::utils::container_of(_condition, &lttng_condition_session_rotation::parent);
 	condition_type = (unsigned long) condition->parent.type;
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	LTTNG_ASSERT(condition->session_name);
@@ -92,16 +83,15 @@ unsigned long lttng_condition_session_rotation_hash(
 	return hash;
 }
 
-static unsigned long lttng_condition_event_rule_matches_hash(
-		const struct lttng_condition *condition)
+static unsigned long
+lttng_condition_event_rule_matches_hash(const struct lttng_condition *condition)
 {
 	unsigned long hash, condition_type;
 	enum lttng_condition_status condition_status;
 	const struct lttng_event_rule *event_rule;
 
 	condition_type = (unsigned long) condition->type;
-	condition_status = lttng_condition_event_rule_matches_get_rule(
-			condition, &event_rule);
+	condition_status = lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
 	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
@@ -146,11 +136,9 @@ struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condi
 
 	{
 		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&copy_buffer, 0, -1);
+			lttng_payload_view_from_payload(&copy_buffer, 0, -1);
 
-		ret = lttng_condition_create_from_payload(
-				&view, &copy);
+		ret = lttng_condition_create_from_payload(&view, &copy);
 		if (ret < 0) {
 			copy = NULL;
 			goto end;

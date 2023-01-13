@@ -8,18 +8,18 @@
  */
 
 #define _LGPL_SOURCE
-#include <stddef.h>
-
 #include <common/bytecode/bytecode.hpp>
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+
 #include <lttng/event-expr-internal.hpp>
 #include <lttng/event-expr.h>
+
+#include <stddef.h>
 #include <stdio.h>
 
-enum lttng_event_expr_type lttng_event_expr_get_type(
-		const struct lttng_event_expr *expr)
+enum lttng_event_expr_type lttng_event_expr_get_type(const struct lttng_event_expr *expr)
 {
 	enum lttng_event_expr_type type;
 
@@ -34,9 +34,7 @@ end:
 	return type;
 }
 
-static
-struct lttng_event_expr *create_empty_expr(enum lttng_event_expr_type type,
-		size_t size)
+static struct lttng_event_expr *create_empty_expr(enum lttng_event_expr_type type, size_t size)
 {
 	struct lttng_event_expr *expr;
 
@@ -51,13 +49,11 @@ end:
 	return expr;
 }
 
-static
-struct lttng_event_expr_field *create_field_event_expr(
-		enum lttng_event_expr_type type,
-		const char *name)
+static struct lttng_event_expr_field *create_field_event_expr(enum lttng_event_expr_type type,
+							      const char *name)
 {
 	struct lttng_event_expr_field *expr = lttng::utils::container_of(
-			create_empty_expr(type, sizeof(*expr)), &lttng_event_expr_field::parent);
+		create_empty_expr(type, sizeof(*expr)), &lttng_event_expr_field::parent);
 
 	if (!expr) {
 		goto error;
@@ -81,8 +77,7 @@ end:
 	return expr;
 }
 
-struct lttng_event_expr *lttng_event_expr_event_payload_field_create(
-		const char *field_name)
+struct lttng_event_expr *lttng_event_expr_event_payload_field_create(const char *field_name)
 {
 	struct lttng_event_expr *expr = NULL;
 
@@ -90,16 +85,14 @@ struct lttng_event_expr *lttng_event_expr_event_payload_field_create(
 		goto end;
 	}
 
-	expr = &create_field_event_expr(
-			LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD,
-			field_name)->parent;
+	expr = &create_field_event_expr(LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD, field_name)
+			->parent;
 
 end:
 	return expr;
 }
 
-struct lttng_event_expr *lttng_event_expr_channel_context_field_create(
-		const char *field_name)
+struct lttng_event_expr *lttng_event_expr_channel_context_field_create(const char *field_name)
 {
 	struct lttng_event_expr *expr = NULL;
 
@@ -107,16 +100,15 @@ struct lttng_event_expr *lttng_event_expr_channel_context_field_create(
 		goto end;
 	}
 
-	expr = &create_field_event_expr(
-			LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD,
-			field_name)->parent;
+	expr = &create_field_event_expr(LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD, field_name)
+			->parent;
 
 end:
 	return expr;
 }
 
-struct lttng_event_expr *lttng_event_expr_app_specific_context_field_create(
-		const char *provider_name, const char *type_name)
+struct lttng_event_expr *
+lttng_event_expr_app_specific_context_field_create(const char *provider_name, const char *type_name)
 {
 	struct lttng_event_expr_app_specific_context_field *expr = NULL;
 	struct lttng_event_expr *ret_parent_expr;
@@ -125,10 +117,9 @@ struct lttng_event_expr *lttng_event_expr_app_specific_context_field_create(
 		goto error;
 	}
 
-	expr = lttng::utils::container_of(create_empty_expr(
-			LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD,
-			sizeof(*expr)),
-			&lttng_event_expr_app_specific_context_field::parent);
+	expr = lttng::utils::container_of(
+		create_empty_expr(LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD, sizeof(*expr)),
+		&lttng_event_expr_app_specific_context_field::parent);
 	if (!expr) {
 		goto error;
 	}
@@ -156,23 +147,21 @@ end:
 	return ret_parent_expr;
 }
 
-struct lttng_event_expr *lttng_event_expr_array_field_element_create(
-		struct lttng_event_expr *array_field_expr,
-		unsigned int index)
+struct lttng_event_expr *
+lttng_event_expr_array_field_element_create(struct lttng_event_expr *array_field_expr,
+					    unsigned int index)
 {
 	struct lttng_event_expr_array_field_element *expr = NULL;
 	struct lttng_event_expr *ret_parent_expr;
 
 	/* The parent array field expression must be an l-value */
-	if (!array_field_expr ||
-			!lttng_event_expr_is_lvalue(array_field_expr)) {
+	if (!array_field_expr || !lttng_event_expr_is_lvalue(array_field_expr)) {
 		goto error;
 	}
 
-	expr = lttng::utils::container_of(create_empty_expr(
-			LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT,
-			sizeof(*expr)),
-			&lttng_event_expr_array_field_element::parent);
+	expr = lttng::utils::container_of(
+		create_empty_expr(LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT, sizeof(*expr)),
+		&lttng_event_expr_array_field_element::parent);
 	if (!expr) {
 		goto error;
 	}
@@ -189,8 +178,7 @@ end:
 	return ret_parent_expr;
 }
 
-const char *lttng_event_expr_event_payload_field_get_name(
-		const struct lttng_event_expr *expr)
+const char *lttng_event_expr_event_payload_field_get_name(const struct lttng_event_expr *expr)
 {
 	const char *ret = NULL;
 
@@ -198,15 +186,13 @@ const char *lttng_event_expr_event_payload_field_get_name(
 		goto end;
 	}
 
-	ret = lttng::utils::container_of(expr,
-			&lttng_event_expr_field::parent)->name;
+	ret = lttng::utils::container_of(expr, &lttng_event_expr_field::parent)->name;
 
 end:
 	return ret;
 }
 
-const char *lttng_event_expr_channel_context_field_get_name(
-		const struct lttng_event_expr *expr)
+const char *lttng_event_expr_channel_context_field_get_name(const struct lttng_event_expr *expr)
 {
 	const char *ret = NULL;
 
@@ -214,15 +200,14 @@ const char *lttng_event_expr_channel_context_field_get_name(
 		goto end;
 	}
 
-	ret = lttng::utils::container_of(expr,
-			&lttng_event_expr_field::parent)->name;
+	ret = lttng::utils::container_of(expr, &lttng_event_expr_field::parent)->name;
 
 end:
 	return ret;
 }
 
-const char *lttng_event_expr_app_specific_context_field_get_provider_name(
-		const struct lttng_event_expr *expr)
+const char *
+lttng_event_expr_app_specific_context_field_get_provider_name(const struct lttng_event_expr *expr)
 {
 	const char *ret = NULL;
 
@@ -230,15 +215,15 @@ const char *lttng_event_expr_app_specific_context_field_get_provider_name(
 		goto end;
 	}
 
-	ret = lttng::utils::container_of(expr,
-			&lttng_event_expr_app_specific_context_field::parent)->provider_name;
+	ret = lttng::utils::container_of(expr, &lttng_event_expr_app_specific_context_field::parent)
+		      ->provider_name;
 
 end:
 	return ret;
 }
 
-const char *lttng_event_expr_app_specific_context_field_get_type_name(
-		const struct lttng_event_expr *expr)
+const char *
+lttng_event_expr_app_specific_context_field_get_type_name(const struct lttng_event_expr *expr)
 {
 	const char *ret = NULL;
 
@@ -246,16 +231,15 @@ const char *lttng_event_expr_app_specific_context_field_get_type_name(
 		goto end;
 	}
 
-	ret = lttng::utils::container_of(expr,
-			&lttng_event_expr_app_specific_context_field::parent)->type_name;
+	ret = lttng::utils::container_of(expr, &lttng_event_expr_app_specific_context_field::parent)
+		      ->type_name;
 
 end:
 	return ret;
 }
 
 const struct lttng_event_expr *
-lttng_event_expr_array_field_element_get_parent_expr(
-		const struct lttng_event_expr *expr)
+lttng_event_expr_array_field_element_get_parent_expr(const struct lttng_event_expr *expr)
 {
 	const struct lttng_event_expr *ret = NULL;
 
@@ -263,33 +247,33 @@ lttng_event_expr_array_field_element_get_parent_expr(
 		goto end;
 	}
 
-	ret = lttng::utils::container_of(expr,
-			&lttng_event_expr_array_field_element::parent)->array_field_expr;
+	ret = lttng::utils::container_of(expr, &lttng_event_expr_array_field_element::parent)
+		      ->array_field_expr;
 
 end:
 	return ret;
 }
 
-enum lttng_event_expr_status lttng_event_expr_array_field_element_get_index(
-		const struct lttng_event_expr *expr, unsigned int *index)
+enum lttng_event_expr_status
+lttng_event_expr_array_field_element_get_index(const struct lttng_event_expr *expr,
+					       unsigned int *index)
 {
 	enum lttng_event_expr_status ret = LTTNG_EVENT_EXPR_STATUS_OK;
 
-	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT ||
-			!index) {
+	if (!expr || expr->type != LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT || !index) {
 		ret = LTTNG_EVENT_EXPR_STATUS_INVALID;
 		goto end;
 	}
 
-	*index = lttng::utils::container_of(expr,
-			&lttng_event_expr_array_field_element::parent)->index;
+	*index = lttng::utils::container_of(expr, &lttng_event_expr_array_field_element::parent)
+			 ->index;
 
 end:
 	return ret;
 }
 
 bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
-		const struct lttng_event_expr *expr_b)
+			       const struct lttng_event_expr *expr_b)
 {
 	bool is_equal = true;
 
@@ -313,11 +297,9 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_field *field_expr_a =
-				lttng::utils::container_of(expr_a,
-					&lttng_event_expr_field::parent);
+			lttng::utils::container_of(expr_a, &lttng_event_expr_field::parent);
 		const struct lttng_event_expr_field *field_expr_b =
-				lttng::utils::container_of(expr_b,
-					&lttng_event_expr_field::parent);
+			lttng::utils::container_of(expr_b, &lttng_event_expr_field::parent);
 
 		if (strcmp(field_expr_a->name, field_expr_b->name) != 0) {
 			goto not_equal;
@@ -328,19 +310,17 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		const struct lttng_event_expr_app_specific_context_field *field_expr_a =
-				lttng::utils::container_of(expr_a,
-					&lttng_event_expr_app_specific_context_field::parent);
+			lttng::utils::container_of(
+				expr_a, &lttng_event_expr_app_specific_context_field::parent);
 		const struct lttng_event_expr_app_specific_context_field *field_expr_b =
-				lttng::utils::container_of(expr_b,
-					&lttng_event_expr_app_specific_context_field::parent);
+			lttng::utils::container_of(
+				expr_b, &lttng_event_expr_app_specific_context_field::parent);
 
-		if (strcmp(field_expr_a->provider_name,
-				field_expr_b->provider_name) != 0) {
+		if (strcmp(field_expr_a->provider_name, field_expr_b->provider_name) != 0) {
 			goto not_equal;
 		}
 
-		if (strcmp(field_expr_a->type_name,
-				field_expr_b->type_name) != 0) {
+		if (strcmp(field_expr_a->type_name, field_expr_b->type_name) != 0) {
 			goto not_equal;
 		}
 
@@ -349,14 +329,14 @@ bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
 	{
 		const struct lttng_event_expr_array_field_element *elem_expr_a =
-				lttng::utils::container_of(expr_a,
-					&lttng_event_expr_array_field_element::parent);
+			lttng::utils::container_of(expr_a,
+						   &lttng_event_expr_array_field_element::parent);
 		const struct lttng_event_expr_array_field_element *elem_expr_b =
-				lttng::utils::container_of(expr_b,
-					&lttng_event_expr_array_field_element::parent);
+			lttng::utils::container_of(expr_b,
+						   &lttng_event_expr_array_field_element::parent);
 
 		if (!lttng_event_expr_is_equal(elem_expr_a->array_field_expr,
-				elem_expr_b->array_field_expr)) {
+					       elem_expr_b->array_field_expr)) {
 			goto not_equal;
 		}
 
@@ -390,8 +370,7 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
 	{
 		struct lttng_event_expr_field *field_expr =
-				lttng::utils::container_of(expr,
-					&lttng_event_expr_field::parent);
+			lttng::utils::container_of(expr, &lttng_event_expr_field::parent);
 
 		free(field_expr->name);
 		break;
@@ -399,8 +378,8 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
 	{
 		struct lttng_event_expr_app_specific_context_field *field_expr =
-				lttng::utils::container_of(expr,
-					&lttng_event_expr_app_specific_context_field::parent);
+			lttng::utils::container_of(
+				expr, &lttng_event_expr_app_specific_context_field::parent);
 
 		free(field_expr->provider_name);
 		free(field_expr->type_name);
@@ -408,9 +387,8 @@ void lttng_event_expr_destroy(struct lttng_event_expr *expr)
 	}
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
 	{
-		struct lttng_event_expr_array_field_element *elem_expr =
-				lttng::utils::container_of(expr,
-					&lttng_event_expr_array_field_element::parent);
+		struct lttng_event_expr_array_field_element *elem_expr = lttng::utils::container_of(
+			expr, &lttng_event_expr_array_field_element::parent);
 
 		lttng_event_expr_destroy(elem_expr->array_field_expr);
 		break;
@@ -426,8 +404,8 @@ end:
 }
 
 static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
-		struct lttng_bytecode_alloc **bytecode,
-		struct lttng_bytecode_alloc **bytecode_reloc)
+					    struct lttng_bytecode_alloc **bytecode,
+					    struct lttng_bytecode_alloc **bytecode_reloc)
 {
 	int status;
 	enum lttng_event_expr_status event_expr_status;
@@ -450,8 +428,7 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 			goto end;
 		}
 
-		status = bytecode_push_get_symbol(
-				bytecode, bytecode_reloc, name);
+		status = bytecode_push_get_symbol(bytecode, bytecode_reloc, name);
 		if (status) {
 			ERR("Failed to push 'get symbol %s' in bytecode", name);
 			goto end;
@@ -476,8 +453,7 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 			goto end;
 		}
 
-		status = bytecode_push_get_symbol(
-				bytecode, bytecode_reloc, name);
+		status = bytecode_push_get_symbol(bytecode, bytecode_reloc, name);
 		if (status) {
 			ERR("Failed to push 'get symbol %s' in bytecode", name);
 			goto end;
@@ -497,16 +473,14 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 			goto end;
 		}
 
-		provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
-				expr);
+		provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(expr);
 		if (!provider_name) {
 			ERR("Failed to get application context provider name from event expression");
 			status = -1;
 			goto end;
 		}
 
-		type_name = lttng_event_expr_app_specific_context_field_get_type_name(
-				expr);
+		type_name = lttng_event_expr_app_specific_context_field_get_type_name(expr);
 		if (!type_name) {
 			ERR("Failed to get application context type name from event expression");
 			status = -1;
@@ -519,17 +493,18 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 		ret = asprintf(&name, "%s:%s", provider_name, type_name);
 		if (ret < 0) {
 			PERROR("Failed to format application specific context: provider_name = '%s', type_name = '%s'",
-					provider_name, type_name);
+			       provider_name,
+			       type_name);
 			status = -1;
 			goto end;
 		}
 
-		status = bytecode_push_get_symbol(
-				bytecode, bytecode_reloc, name);
+		status = bytecode_push_get_symbol(bytecode, bytecode_reloc, name);
 		free(name);
 		if (status) {
 			ERR("Failed to push 'get symbol %s:%s' in bytecode",
-					provider_name, type_name);
+			    provider_name,
+			    type_name);
 			goto end;
 		}
 
@@ -540,23 +515,19 @@ static int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 		unsigned int index;
 		const struct lttng_event_expr *parent;
 
-		parent = lttng_event_expr_array_field_element_get_parent_expr(
-				expr);
+		parent = lttng_event_expr_array_field_element_get_parent_expr(expr);
 		if (!parent) {
 			ERR("Failed to get parent expression from array event expression");
 			status = -1;
 			goto end;
 		}
 
-		status = event_expr_to_bytecode_recursive(
-				parent, bytecode, bytecode_reloc);
+		status = event_expr_to_bytecode_recursive(parent, bytecode, bytecode_reloc);
 		if (status) {
 			goto end;
 		}
 
-		event_expr_status =
-				lttng_event_expr_array_field_element_get_index(
-						expr, &index);
+		event_expr_status = lttng_event_expr_array_field_element_get_index(expr, &index);
 		if (event_expr_status != LTTNG_EVENT_EXPR_STATUS_OK) {
 			ERR("Failed to get array field element index from event expression");
 			status = -1;
@@ -581,7 +552,7 @@ end:
 }
 
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
-		struct lttng_bytecode **bytecode_out)
+				 struct lttng_bytecode **bytecode_out)
 {
 	int status;
 	struct return_op ret_insn;
@@ -600,8 +571,7 @@ int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 		goto end;
 	}
 
-	status = event_expr_to_bytecode_recursive(
-			expr, &bytecode, &bytecode_reloc);
+	status = event_expr_to_bytecode_recursive(expr, &bytecode, &bytecode_reloc);
 	if (status) {
 		/* Errors already logged. */
 		goto end;
@@ -612,8 +582,8 @@ int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 
 	/* Append symbol table to bytecode. */
 	bytecode->b.reloc_table_offset = bytecode_get_len(&bytecode->b);
-	status = bytecode_push(&bytecode, bytecode_reloc->b.data, 1,
-			bytecode_get_len(&bytecode_reloc->b));
+	status = bytecode_push(
+		&bytecode, bytecode_reloc->b.data, 1, bytecode_get_len(&bytecode_reloc->b));
 	if (status) {
 		ERR("Failed to push symbol table to bytecode");
 		goto end;
@@ -638,10 +608,9 @@ end:
 	return status;
 }
 
-static
-enum lttng_error_code lttng_event_expr_event_payload_field_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_event_expr_event_payload_field_mi_serialize(const struct lttng_event_expr *expression,
+						  struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -655,15 +624,13 @@ enum lttng_error_code lttng_event_expr_event_payload_field_mi_serialize(
 	LTTNG_ASSERT(name);
 
 	/* Open event expr payload field element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_event_expr_payload_field);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_expr_payload_field);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Name. */
-	ret = mi_lttng_writer_write_element_string(
-			writer, config_element_name, name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, name);
 	if (ret) {
 		goto mi_error;
 	}
@@ -683,10 +650,9 @@ end:
 	return ret_code;
 }
 
-static
-enum lttng_error_code lttng_event_expr_channel_context_field_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_event_expr_channel_context_field_mi_serialize(const struct lttng_event_expr *expression,
+						    struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -701,14 +667,13 @@ enum lttng_error_code lttng_event_expr_channel_context_field_mi_serialize(
 
 	/* Open event expr channel context field element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_event_expr_channel_context_field);
+					   mi_lttng_element_event_expr_channel_context_field);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Name. */
-	ret = mi_lttng_writer_write_element_string(
-			writer, config_element_name, name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, name);
 	if (ret) {
 		goto mi_error;
 	}
@@ -728,10 +693,9 @@ end:
 	return ret_code;
 }
 
-static
-enum lttng_error_code lttng_event_expr_app_specific_context_field_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_event_expr_app_specific_context_field_mi_serialize(const struct lttng_event_expr *expression,
+							 struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -740,35 +704,31 @@ enum lttng_error_code lttng_event_expr_app_specific_context_field_mi_serialize(
 
 	LTTNG_ASSERT(expression);
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(expression->type ==
-			LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD);
+	LTTNG_ASSERT(expression->type == LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD);
 
-	provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
-			expression);
+	provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(expression);
 	LTTNG_ASSERT(provider_name);
 
-	type_name = lttng_event_expr_app_specific_context_field_get_type_name(
-			expression);
+	type_name = lttng_event_expr_app_specific_context_field_get_type_name(expression);
 	LTTNG_ASSERT(provider_name);
 
 	/* Open event expr app specific context field element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_event_expr_app_specific_context_field);
+					   mi_lttng_element_event_expr_app_specific_context_field);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Provider name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_event_expr_provider_name,
-			provider_name);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_event_expr_provider_name, provider_name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Type name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_event_expr_type_name, type_name);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_event_expr_type_name, type_name);
 	if (ret) {
 		goto mi_error;
 	}
@@ -788,10 +748,9 @@ end:
 	return ret_code;
 }
 
-static
-enum lttng_error_code lttng_event_expr_array_field_element_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_event_expr_array_field_element_mi_serialize(const struct lttng_event_expr *expression,
+						  struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -803,24 +762,21 @@ enum lttng_error_code lttng_event_expr_array_field_element_mi_serialize(
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(expression->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT);
 
-	status = lttng_event_expr_array_field_element_get_index(
-			expression, &index);
+	status = lttng_event_expr_array_field_element_get_index(expression, &index);
 	LTTNG_ASSERT(status == LTTNG_EVENT_EXPR_STATUS_OK);
 
-	parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
-			expression);
+	parent_expr = lttng_event_expr_array_field_element_get_parent_expr(expression);
 	LTTNG_ASSERT(parent_expr != NULL);
 
 	/* Open event expr array field element. */
-	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_event_expr_array_field_element);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_expr_array_field_element);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Index. */
 	ret = mi_lttng_writer_write_element_unsigned_int(
-			writer, mi_lttng_element_event_expr_index, index);
+		writer, mi_lttng_element_event_expr_index, index);
 	if (ret) {
 		goto mi_error;
 	}
@@ -846,9 +802,8 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code lttng_event_expr_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer)
+enum lttng_error_code lttng_event_expr_mi_serialize(const struct lttng_event_expr *expression,
+						    struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -863,20 +818,17 @@ enum lttng_error_code lttng_event_expr_mi_serialize(
 
 	switch (expression->type) {
 	case LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD:
-		ret_code = lttng_event_expr_event_payload_field_mi_serialize(
-				expression, writer);
+		ret_code = lttng_event_expr_event_payload_field_mi_serialize(expression, writer);
 		break;
 	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
-		ret_code = lttng_event_expr_channel_context_field_mi_serialize(
-				expression, writer);
+		ret_code = lttng_event_expr_channel_context_field_mi_serialize(expression, writer);
 		break;
 	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
-		ret_code = lttng_event_expr_app_specific_context_field_mi_serialize(
-				expression, writer);
+		ret_code = lttng_event_expr_app_specific_context_field_mi_serialize(expression,
+										    writer);
 		break;
 	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
-		ret_code = lttng_event_expr_array_field_element_mi_serialize(
-				expression, writer);
+		ret_code = lttng_event_expr_array_field_element_mi_serialize(expression, writer);
 		break;
 	default:
 		abort();

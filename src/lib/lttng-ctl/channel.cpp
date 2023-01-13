@@ -5,30 +5,29 @@
  *
  */
 
-#include <lttng/notification/notification-internal.hpp>
-#include <lttng/notification/channel-internal.hpp>
+#include "lttng-ctl-helper.hpp"
+
+#include <common/compat/poll.hpp>
+#include <common/defaults.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/error.hpp>
+#include <common/payload-view.hpp>
+#include <common/payload.hpp>
+#include <common/unix.hpp>
+#include <common/utils.hpp>
+
 #include <lttng/condition/condition-internal.hpp>
 #include <lttng/endpoint.h>
-#include <common/defaults.hpp>
-#include <common/error.hpp>
-#include <common/dynamic-buffer.hpp>
-#include <common/utils.hpp>
-#include <common/defaults.hpp>
-#include <common/payload.hpp>
-#include <common/payload-view.hpp>
-#include <common/unix.hpp>
-#include "lttng-ctl-helper.hpp"
-#include <common/compat/poll.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/notification/notification-internal.hpp>
 
-static
-int handshake(struct lttng_notification_channel *channel);
+static int handshake(struct lttng_notification_channel *channel);
 
 /*
  * Populates the reception buffer with the next complete message.
  * The caller must acquire the channel's lock.
  */
-static
-int receive_message(struct lttng_notification_channel *channel)
+static int receive_message(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
 	struct lttng_notification_channel_message msg;
@@ -47,8 +46,7 @@ int receive_message(struct lttng_notification_channel *channel)
 	}
 
 	/* Add message header at buffer's start. */
-	ret = lttng_dynamic_buffer_append(&channel->reception_payload.buffer, &msg,
-			sizeof(msg));
+	ret = lttng_dynamic_buffer_append(&channel->reception_payload.buffer, &msg, sizeof(msg));
 	if (ret) {
 		goto error;
 	}
@@ -59,14 +57,14 @@ int receive_message(struct lttng_notification_channel *channel)
 
 	/* Reserve space for the payload. */
 	ret = lttng_dynamic_buffer_set_size(&channel->reception_payload.buffer,
-			channel->reception_payload.buffer.size + msg.size);
+					    channel->reception_payload.buffer.size + msg.size);
 	if (ret) {
 		goto error;
 	}
 
 	/* Receive message payload. */
-	ret = lttcomm_recv_unix_sock(channel->socket,
-			channel->reception_payload.buffer.data + sizeof(msg), msg.size);
+	ret = lttcomm_recv_unix_sock(
+		channel->socket, channel->reception_payload.buffer.data + sizeof(msg), msg.size);
 	if (ret < (ssize_t) msg.size) {
 		ret = -1;
 		goto error;
@@ -75,8 +73,8 @@ int receive_message(struct lttng_notification_channel *channel)
 skip_payload:
 	/* Receive message fds. */
 	if (msg.fds != 0) {
-		ret = lttcomm_recv_payload_fds_unix_sock(channel->socket,
-				msg.fds, &channel->reception_payload);
+		ret = lttcomm_recv_payload_fds_unix_sock(
+			channel->socket, msg.fds, &channel->reception_payload);
 		if (ret < sizeof(int) * msg.fds) {
 			ret = -1;
 			goto error;
@@ -90,43 +88,40 @@ error:
 	goto end;
 }
 
-static
-enum lttng_notification_channel_message_type get_current_message_type(
-		struct lttng_notification_channel *channel)
+static enum lttng_notification_channel_message_type
+get_current_message_type(struct lttng_notification_channel *channel)
 {
 	struct lttng_notification_channel_message *msg;
 
 	LTTNG_ASSERT(channel->reception_payload.buffer.size >= sizeof(*msg));
 
-	msg = (struct lttng_notification_channel_message *)
-			channel->reception_payload.buffer.data;
+	msg = (struct lttng_notification_channel_message *) channel->reception_payload.buffer.data;
 	return (enum lttng_notification_channel_message_type) msg->type;
 }
 
-static
-struct lttng_notification *create_notification_from_current_message(
-		struct lttng_notification_channel *channel)
+static struct lttng_notification *
+create_notification_from_current_message(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
 	struct lttng_notification *notification = NULL;
 
 	if (channel->reception_payload.buffer.size <=
-			sizeof(struct lttng_notification_channel_message)) {
+	    sizeof(struct lttng_notification_channel_message)) {
 		goto end;
 	}
 
 	{
 		struct lttng_payload_view view = lttng_payload_view_from_payload(
-				&channel->reception_payload,
-				sizeof(struct lttng_notification_channel_message),
-				-1);
+			&channel->reception_payload,
+			sizeof(struct lttng_notification_channel_message),
+			-1);
 
-		ret = lttng_notification_create_from_payload(
-				&view, &notification);
+		ret = lttng_notification_create_from_payload(&view, &notification);
 	}
 
-	if (ret != channel->reception_payload.buffer.size -
-			sizeof(struct lttng_notification_channel_message)) {
+	if (ret !=
+	    channel->reception_payload.buffer.size -
+		    sizeof(struct lttng_notification_channel_message)) {
 		lttng_notification_destroy(notification);
 		notification = NULL;
 		goto end;
@@ -135,16 +130,15 @@ end:
 	return notification;
 }
 
-struct lttng_notification_channel *lttng_notification_channel_create(
-		struct lttng_endpoint *endpoint)
+struct lttng_notification_channel *
+lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 {
 	int fd, ret;
 	bool is_in_tracing_group = false, is_root = false;
 	char *sock_path = NULL;
 	struct lttng_notification_channel *channel = NULL;
 
-	if (!endpoint ||
-			endpoint != lttng_session_daemon_notification_endpoint) {
+	if (!endpoint || endpoint != lttng_session_daemon_notification_endpoint) {
 		goto end;
 	}
 
@@ -168,9 +162,8 @@ struct lttng_notification_channel *lttng_notification_channel_create(
 	}
 
 	if (is_root || is_in_tracing_group) {
-		ret = lttng_strncpy(sock_path,
-				DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK,
-				LTTNG_PATH_MAX);
+		ret = lttng_strncpy(
+			sock_path, DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK, LTTNG_PATH_MAX);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
@@ -184,9 +177,10 @@ struct lttng_notification_channel *lttng_notification_channel_create(
 	}
 
 	/* Fallback to local session daemon. */
-	ret = snprintf(sock_path, LTTNG_PATH_MAX,
-			DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
-			utils_get_home_dir());
+	ret = snprintf(sock_path,
+		       LTTNG_PATH_MAX,
+		       DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
+		       utils_get_home_dir());
 	if (ret < 0 || ret >= LTTNG_PATH_MAX) {
 		goto error;
 	}
@@ -214,14 +208,12 @@ error:
 }
 
 enum lttng_notification_channel_status
-lttng_notification_channel_get_next_notification(
-		struct lttng_notification_channel *channel,
-		struct lttng_notification **_notification)
+lttng_notification_channel_get_next_notification(struct lttng_notification_channel *channel,
+						 struct lttng_notification **_notification)
 {
 	int ret;
 	struct lttng_notification *notification = NULL;
-	enum lttng_notification_channel_status status =
-			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_poll_event events;
 
 	if (!channel || !_notification) {
@@ -238,9 +230,7 @@ lttng_notification_channel_get_next_notification(
 
 		/* Deliver one of the pending notifications. */
 		pending_notification = cds_list_first_entry(
-				&channel->pending_notifications.list,
-				struct pending_notification,
-				node);
+			&channel->pending_notifications.list, struct pending_notification, node);
 		notification = pending_notification->notification;
 		if (!notification) {
 			status = LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED;
@@ -289,8 +279,7 @@ lttng_notification_channel_get_next_notification(
 
 	switch (get_current_message_type(channel)) {
 	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION:
-		notification = create_notification_from_current_message(
-				channel);
+		notification = create_notification_from_current_message(channel);
 		if (!notification) {
 			status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 			goto end_clean_poll;
@@ -315,17 +304,13 @@ end:
 	return status;
 }
 
-static
-int enqueue_dropped_notification(
-		struct lttng_notification_channel *channel)
+static int enqueue_dropped_notification(struct lttng_notification_channel *channel)
 {
 	int ret = 0;
 	struct pending_notification *pending_notification;
-	struct cds_list_head *last_element =
-			channel->pending_notifications.list.prev;
+	struct cds_list_head *last_element = channel->pending_notifications.list.prev;
 
-	pending_notification = caa_container_of(last_element,
-			struct pending_notification, node);
+	pending_notification = caa_container_of(last_element, struct pending_notification, node);
 	if (!pending_notification->notification) {
 		/*
 		 * The last enqueued notification indicates dropped
@@ -335,15 +320,13 @@ int enqueue_dropped_notification(
 		goto end;
 	}
 
-	if (channel->pending_notifications.count >=
-			DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT &&
-			pending_notification->notification) {
+	if (channel->pending_notifications.count >= DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT &&
+	    pending_notification->notification) {
 		/*
 		 * Discard the last enqueued notification to indicate
 		 * that notifications were dropped at this point.
 		 */
-		lttng_notification_destroy(
-				pending_notification->notification);
+		lttng_notification_destroy(pending_notification->notification);
 		pending_notification->notification = NULL;
 		goto end;
 	}
@@ -354,23 +337,19 @@ int enqueue_dropped_notification(
 		goto end;
 	}
 	CDS_INIT_LIST_HEAD(&pending_notification->node);
-	cds_list_add(&pending_notification->node,
-			&channel->pending_notifications.list);
+	cds_list_add(&pending_notification->node, &channel->pending_notifications.list);
 	channel->pending_notifications.count++;
 end:
 	return ret;
 }
 
-static
-int enqueue_notification_from_current_message(
-		struct lttng_notification_channel *channel)
+static int enqueue_notification_from_current_message(struct lttng_notification_channel *channel)
 {
 	int ret = 0;
 	struct lttng_notification *notification;
 	struct pending_notification *pending_notification;
 
-	if (channel->pending_notifications.count >=
-			DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT) {
+	if (channel->pending_notifications.count >= DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT) {
 		/* Drop the notification. */
 		ret = enqueue_dropped_notification(channel);
 		goto end;
@@ -390,8 +369,7 @@ int enqueue_notification_from_current_message(
 	}
 
 	pending_notification->notification = notification;
-	cds_list_add(&pending_notification->node,
-			&channel->pending_notifications.list);
+	cds_list_add(&pending_notification->node, &channel->pending_notifications.list);
 	channel->pending_notifications.count++;
 end:
 	return ret;
@@ -401,13 +379,11 @@ error:
 }
 
 enum lttng_notification_channel_status
-lttng_notification_channel_has_pending_notification(
-		struct lttng_notification_channel *channel,
-		bool *_notification_pending)
+lttng_notification_channel_has_pending_notification(struct lttng_notification_channel *channel,
+						    bool *_notification_pending)
 {
 	int ret;
-	enum lttng_notification_channel_status status =
-			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_poll_event events;
 
 	if (!channel || !_notification_pending) {
@@ -500,9 +476,8 @@ end:
 	return status;
 }
 
-static
-int receive_command_reply(struct lttng_notification_channel *channel,
-		enum lttng_notification_channel_status *status)
+static int receive_command_reply(struct lttng_notification_channel *channel,
+				 enum lttng_notification_channel_status *status)
 {
 	int ret;
 	struct lttng_notification_channel_command_reply *reply;
@@ -520,8 +495,7 @@ int receive_command_reply(struct lttng_notification_channel *channel,
 		case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_COMMAND_REPLY:
 			goto exit_loop;
 		case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION:
-			ret = enqueue_notification_from_current_message(
-					channel);
+			ret = enqueue_notification_from_current_message(channel);
 			if (ret) {
 				goto end;
 			}
@@ -536,9 +510,9 @@ int receive_command_reply(struct lttng_notification_channel *channel,
 		{
 			struct lttng_notification_channel_command_handshake *handshake;
 
-			handshake = (struct lttng_notification_channel_command_handshake *)
-					(channel->reception_payload.buffer.data +
-					sizeof(struct lttng_notification_channel_message));
+			handshake = (struct lttng_notification_channel_command_handshake
+					     *) (channel->reception_payload.buffer.data +
+						 sizeof(struct lttng_notification_channel_message));
 			channel->version.major = handshake->major;
 			channel->version.minor = handshake->minor;
 			channel->version.set = true;
@@ -552,27 +526,24 @@ int receive_command_reply(struct lttng_notification_channel *channel,
 
 exit_loop:
 	if (channel->reception_payload.buffer.size <
-			(sizeof(struct lttng_notification_channel_message) +
-			sizeof(*reply))) {
+	    (sizeof(struct lttng_notification_channel_message) + sizeof(*reply))) {
 		/* Invalid message received. */
 		ret = -1;
 		goto end;
 	}
 
-	reply = (struct lttng_notification_channel_command_reply *)
-			(channel->reception_payload.buffer.data +
-			sizeof(struct lttng_notification_channel_message));
+	reply = (struct lttng_notification_channel_command_reply
+			 *) (channel->reception_payload.buffer.data +
+			     sizeof(struct lttng_notification_channel_message));
 	*status = (enum lttng_notification_channel_status) reply->status;
 end:
 	return ret;
 }
 
-static
-int handshake(struct lttng_notification_channel *channel)
+static int handshake(struct lttng_notification_channel *channel)
 {
 	ssize_t ret;
-	enum lttng_notification_channel_status status =
-			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_notification_channel_command_handshake handshake = {
 		.major = LTTNG_NOTIFICATION_CHANNEL_VERSION_MAJOR,
 		.minor = LTTNG_NOTIFICATION_CHANNEL_VERSION_MINOR,
@@ -589,8 +560,7 @@ int handshake(struct lttng_notification_channel *channel)
 
 	pthread_mutex_lock(&channel->lock);
 
-	ret = lttcomm_send_creds_unix_sock(channel->socket, send_buffer,
-			sizeof(send_buffer));
+	ret = lttcomm_send_creds_unix_sock(channel->socket, send_buffer, sizeof(send_buffer));
 	if (ret < 0) {
 		goto end_unlock;
 	}
@@ -616,16 +586,14 @@ end_unlock:
 	return ret;
 }
 
-static
-enum lttng_notification_channel_status send_condition_command(
-		struct lttng_notification_channel *channel,
-		enum lttng_notification_channel_message_type type,
-		const struct lttng_condition *condition)
+static enum lttng_notification_channel_status
+send_condition_command(struct lttng_notification_channel *channel,
+		       enum lttng_notification_channel_message_type type,
+		       const struct lttng_condition *condition)
 {
 	int socket;
 	ssize_t ret;
-	enum lttng_notification_channel_status status =
-			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	enum lttng_notification_channel_status status = LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 	struct lttng_payload payload;
 	struct lttng_notification_channel_message cmd_header;
 
@@ -641,7 +609,7 @@ enum lttng_notification_channel_status send_condition_command(
 	}
 
 	LTTNG_ASSERT(type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE ||
-		type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNSUBSCRIBE);
+		     type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNSUBSCRIBE);
 
 	pthread_mutex_lock(&channel->lock);
 	socket = channel->socket;
@@ -651,8 +619,7 @@ enum lttng_notification_channel_status send_condition_command(
 		goto end_unlock;
 	}
 
-	ret = lttng_dynamic_buffer_append(&payload.buffer, &cmd_header,
-			sizeof(cmd_header));
+	ret = lttng_dynamic_buffer_append(&payload.buffer, &cmd_header, sizeof(cmd_header));
 	if (ret) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 		goto end_unlock;
@@ -666,21 +633,17 @@ enum lttng_notification_channel_status send_condition_command(
 
 	/* Update payload length. */
 	((struct lttng_notification_channel_message *) payload.buffer.data)->size =
-			(uint32_t) (payload.buffer.size - sizeof(cmd_header));
+		(uint32_t) (payload.buffer.size - sizeof(cmd_header));
 
 	{
-		struct lttng_payload_view pv =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
-		const int fd_count =
-				lttng_payload_view_get_fd_handle_count(&pv);
+		struct lttng_payload_view pv = lttng_payload_view_from_payload(&payload, 0, -1);
+		const int fd_count = lttng_payload_view_get_fd_handle_count(&pv);
 
 		/* Update fd count. */
 		((struct lttng_notification_channel_message *) payload.buffer.data)->fds =
 			(uint32_t) fd_count;
 
-		ret = lttcomm_send_unix_sock(
-			socket, pv.buffer.data, pv.buffer.size);
+		ret = lttcomm_send_unix_sock(socket, pv.buffer.data, pv.buffer.size);
 		if (ret < 0) {
 			status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 			goto end_unlock;
@@ -688,8 +651,7 @@ enum lttng_notification_channel_status send_condition_command(
 
 		/* Pass fds if present. */
 		if (fd_count > 0) {
-			ret = lttcomm_send_payload_view_fds_unix_sock(socket,
-					&pv);
+			ret = lttcomm_send_payload_view_fds_unix_sock(socket, &pv);
 			if (ret < 0) {
 				status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 				goto end_unlock;
@@ -709,26 +671,23 @@ end:
 	return status;
 }
 
-enum lttng_notification_channel_status lttng_notification_channel_subscribe(
-		struct lttng_notification_channel *channel,
-		const struct lttng_condition *condition)
+enum lttng_notification_channel_status
+lttng_notification_channel_subscribe(struct lttng_notification_channel *channel,
+				     const struct lttng_condition *condition)
 {
-	return send_condition_command(channel,
-			LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE,
-			condition);
+	return send_condition_command(
+		channel, LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE, condition);
 }
 
-enum lttng_notification_channel_status lttng_notification_channel_unsubscribe(
-		struct lttng_notification_channel *channel,
-		const struct lttng_condition *condition)
+enum lttng_notification_channel_status
+lttng_notification_channel_unsubscribe(struct lttng_notification_channel *channel,
+				       const struct lttng_condition *condition)
 {
-	return send_condition_command(channel,
-			LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNSUBSCRIBE,
-			condition);
+	return send_condition_command(
+		channel, LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNSUBSCRIBE, condition);
 }
 
-void lttng_notification_channel_destroy(
-		struct lttng_notification_channel *channel)
+void lttng_notification_channel_destroy(struct lttng_notification_channel *channel)
 {
 	if (!channel) {
 		return;

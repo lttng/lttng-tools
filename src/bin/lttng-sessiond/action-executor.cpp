@@ -12,9 +12,11 @@
 #include "notification-thread-internal.hpp"
 #include "session.hpp"
 #include "thread.hpp"
+
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
+
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/list-internal.hpp>
 #include <lttng/action/list.h>
@@ -28,12 +30,13 @@
 #include <lttng/condition/event-rule-matches-internal.hpp>
 #include <lttng/lttng-error.h>
 #include <lttng/trigger/trigger-internal.hpp>
+
 #include <pthread.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <urcu/list.h>
 
-#define THREAD_NAME "Action Executor"
+#define THREAD_NAME	      "Action Executor"
 #define MAX_QUEUED_WORK_COUNT 8192
 
 struct action_executor {
@@ -109,56 +112,48 @@ struct action_work_subitem {
 };
 } /* namespace */
 
-
 /*
  * Only return non-zero on a fatal error that should shut down the action
  * executor.
  */
 typedef int (*action_executor_handler)(struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *item);
+				       const struct action_work_item *,
+				       struct action_work_subitem *item);
 
 static int action_executor_notify_handler(struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
-static int action_executor_start_session_handler(
-		struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
-static int action_executor_stop_session_handler(
-		struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
-static int action_executor_rotate_session_handler(
-		struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
-static int action_executor_snapshot_session_handler(
-		struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
+					  const struct action_work_item *,
+					  struct action_work_subitem *);
+static int action_executor_start_session_handler(struct action_executor *executor,
+						 const struct action_work_item *,
+						 struct action_work_subitem *);
+static int action_executor_stop_session_handler(struct action_executor *executor,
+						const struct action_work_item *,
+						struct action_work_subitem *);
+static int action_executor_rotate_session_handler(struct action_executor *executor,
+						  const struct action_work_item *,
+						  struct action_work_subitem *);
+static int action_executor_snapshot_session_handler(struct action_executor *executor,
+						    const struct action_work_item *,
+						    struct action_work_subitem *);
 static int action_executor_list_handler(struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
+					const struct action_work_item *,
+					struct action_work_subitem *);
 static int action_executor_generic_handler(struct action_executor *executor,
-		const struct action_work_item *,
-		struct action_work_subitem *);
+					   const struct action_work_item *,
+					   struct action_work_subitem *);
 
 static const action_executor_handler action_executors[] = {
-	action_executor_notify_handler,
-	action_executor_start_session_handler,
-	action_executor_stop_session_handler,
-	action_executor_rotate_session_handler,
-	action_executor_snapshot_session_handler,
-	action_executor_list_handler,
+	action_executor_notify_handler,		  action_executor_start_session_handler,
+	action_executor_stop_session_handler,	  action_executor_rotate_session_handler,
+	action_executor_snapshot_session_handler, action_executor_list_handler,
 };
 
 /* Forward declaration */
 static int add_action_to_subitem_array(struct lttng_action *action,
-		struct lttng_dynamic_array *subitems);
+				       struct lttng_dynamic_array *subitems);
 
 static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
-		struct lttng_dynamic_array *subitems);
+					       struct lttng_dynamic_array *subitems);
 
 static void action_work_subitem_destructor(void *element)
 {
@@ -178,7 +173,7 @@ static const char *get_action_name(const struct lttng_action *action)
 
 /* Check if this trigger allowed to interect with a given session. */
 static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
-		struct ltt_session *session)
+					   struct ltt_session *session)
 {
 	bool is_allowed = false;
 	const struct lttng_credentials session_creds = {
@@ -186,17 +181,16 @@ static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
 		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
 	};
 	/* Can never be NULL. */
-	const struct lttng_credentials *trigger_creds =
-			lttng_trigger_get_credentials(trigger);
+	const struct lttng_credentials *trigger_creds = lttng_trigger_get_credentials(trigger);
 
 	is_allowed = (lttng_credentials_is_equal_uid(trigger_creds, &session_creds)) ||
-			(lttng_credentials_get_uid(trigger_creds) == 0);
+		(lttng_credentials_get_uid(trigger_creds) == 0);
 	if (!is_allowed) {
 		WARN("Trigger is not allowed to interact with session `%s`: session uid = %ld, session gid = %ld, trigger uid = %ld",
-				session->name,
-				(long int) session->uid,
-				(long int) session->gid,
-				(long int) lttng_credentials_get_uid(trigger_creds));
+		     session->name,
+		     (long int) session->uid,
+		     (long int) session->gid,
+		     (long int) lttng_credentials_get_uid(trigger_creds));
 	}
 
 	return is_allowed;
@@ -222,10 +216,9 @@ static const char *get_trigger_name(const struct lttng_trigger *trigger)
 	return trigger_name;
 }
 
-static int client_handle_transmission_status(
-		struct notification_client *client,
-		enum client_transmission_status status,
-		void *user_data)
+static int client_handle_transmission_status(struct notification_client *client,
+					     enum client_transmission_status status,
+					     void *user_data)
 {
 	int ret = 0;
 	struct action_executor *executor = (action_executor *) user_data;
@@ -234,7 +227,7 @@ static int client_handle_transmission_status(
 	switch (status) {
 	case CLIENT_TRANSMISSION_STATUS_COMPLETE:
 		DBG("Successfully sent full notification to client, client_id = %" PRIu64,
-				client->id);
+		    client->id);
 		/*
 		 * There is no need to wake the (e)poll thread. If it was waiting for
 		 * "out" events on the client's socket, it will see that no payload
@@ -248,15 +241,15 @@ static int client_handle_transmission_status(
 		break;
 	case CLIENT_TRANSMISSION_STATUS_QUEUED:
 		DBG("Queued notification in client outgoing buffer, client_id = %" PRIu64,
-				client->id);
+		    client->id);
 		break;
 	case CLIENT_TRANSMISSION_STATUS_FAIL:
 		DBG("Communication error occurred while sending notification to client, client_id = %" PRIu64,
-				client->id);
+		    client->id);
 		break;
 	default:
 		ERR("Fatal error encoutered while sending notification to client, client_id = %" PRIu64,
-				client->id);
+		    client->id);
 		ret = -1;
 		goto end;
 	}
@@ -267,29 +260,28 @@ static int client_handle_transmission_status(
 
 	/* Safe to read client's id without locking as it is immutable. */
 	ret = notification_thread_client_communication_update(
-			executor->notification_thread_handle, client->id,
-			status);
+		executor->notification_thread_handle, client->id, status);
 end:
 	return ret;
 }
 
 static int action_executor_notify_handler(struct action_executor *executor,
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item __attribute__((unused)))
+					  const struct action_work_item *work_item,
+					  struct action_work_subitem *item __attribute__((unused)))
 {
-	return notification_client_list_send_evaluation(work_item->client_list,
-			work_item->trigger,
-			work_item->evaluation,
-			work_item->object_creds.is_set ?
-					&(work_item->object_creds.value) :
-					NULL,
-			client_handle_transmission_status, executor);
+	return notification_client_list_send_evaluation(
+		work_item->client_list,
+		work_item->trigger,
+		work_item->evaluation,
+		work_item->object_creds.is_set ? &(work_item->object_creds.value) : NULL,
+		client_handle_transmission_status,
+		executor);
 }
 
-static int action_executor_start_session_handler(
-		struct action_executor *executor __attribute__((unused)),
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+static int action_executor_start_session_handler(struct action_executor *executor
+						 __attribute__((unused)),
+						 const struct action_work_item *work_item,
+						 struct action_work_subitem *item)
 {
 	int ret = 0;
 	const char *session_name;
@@ -298,11 +290,9 @@ static int action_executor_start_session_handler(
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	action_status = lttng_action_start_session_get_session_name(
-			action, &session_name);
+	action_status = lttng_action_start_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
-		ERR("Failed to get session name from `%s` action",
-				get_action_name(action));
+		ERR("Failed to get session name from `%s` action", get_action_name(action));
 		ret = -1;
 		goto end;
 	}
@@ -313,8 +303,9 @@ static int action_executor_start_session_handler(
 	 */
 	if (!item->context.session_id.is_set) {
 		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto end;
 	}
@@ -324,18 +315,21 @@ static int action_executor_start_session_handler(
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
 	session_lock(session);
 	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64 " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-				session->name, session->id,
-				get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		DBG("Session `%s` with id = %" PRIu64
+		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+		    session->name,
+		    session->id,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		goto error_unlock_session;
 	}
 
@@ -347,16 +341,19 @@ static int action_executor_start_session_handler(
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully started session `%s` on behalf of trigger `%s`",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	case LTTNG_ERR_TRACE_ALREADY_STARTED:
 		DBG("Attempted to start session `%s` on behalf of trigger `%s` but it was already started",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	default:
 		WARN("Failed to start session `%s` on behalf of trigger `%s`: %s",
-				session_name, get_trigger_name(work_item->trigger),
-				lttng_strerror(-cmd_ret));
+		     session_name,
+		     get_trigger_name(work_item->trigger),
+		     lttng_strerror(-cmd_ret));
 		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
@@ -371,10 +368,10 @@ end:
 	return ret;
 }
 
-static int action_executor_stop_session_handler(
-		struct action_executor *executor __attribute__((unused)),
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+static int action_executor_stop_session_handler(struct action_executor *executor
+						__attribute__((unused)),
+						const struct action_work_item *work_item,
+						struct action_work_subitem *item)
 {
 	int ret = 0;
 	const char *session_name;
@@ -383,11 +380,9 @@ static int action_executor_stop_session_handler(
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	action_status = lttng_action_stop_session_get_session_name(
-			action, &session_name);
+	action_status = lttng_action_stop_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
-		ERR("Failed to get session name from `%s` action",
-				get_action_name(action));
+		ERR("Failed to get session name from `%s` action", get_action_name(action));
 		ret = -1;
 		goto end;
 	}
@@ -398,8 +393,9 @@ static int action_executor_stop_session_handler(
 	 */
 	if (!item->context.session_id.is_set) {
 		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto end;
 	}
@@ -409,18 +405,21 @@ static int action_executor_stop_session_handler(
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
 	session_lock(session);
 	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64 " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-				session->name, session->id,
-				get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		DBG("Session `%s` with id = %" PRIu64
+		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+		    session->name,
+		    session->id,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		goto error_unlock_session;
 	}
 
@@ -432,16 +431,19 @@ static int action_executor_stop_session_handler(
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully stopped session `%s` on behalf of trigger `%s`",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	case LTTNG_ERR_TRACE_ALREADY_STOPPED:
 		DBG("Attempted to stop session `%s` on behalf of trigger `%s` but it was already stopped",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	default:
 		WARN("Failed to stop session `%s` on behalf of trigger `%s`: %s",
-				session_name, get_trigger_name(work_item->trigger),
-				lttng_strerror(-cmd_ret));
+		     session_name,
+		     get_trigger_name(work_item->trigger),
+		     lttng_strerror(-cmd_ret));
 		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
@@ -456,10 +458,10 @@ end:
 	return ret;
 }
 
-static int action_executor_rotate_session_handler(
-		struct action_executor *executor __attribute__((unused)),
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+static int action_executor_rotate_session_handler(struct action_executor *executor
+						  __attribute__((unused)),
+						  const struct action_work_item *work_item,
+						  struct action_work_subitem *item)
 {
 	int ret = 0;
 	const char *session_name;
@@ -468,11 +470,9 @@ static int action_executor_rotate_session_handler(
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	action_status = lttng_action_rotate_session_get_session_name(
-			action, &session_name);
+	action_status = lttng_action_rotate_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
-		ERR("Failed to get session name from `%s` action",
-				get_action_name(action));
+		ERR("Failed to get session name from `%s` action", get_action_name(action));
 		ret = -1;
 		goto end;
 	}
@@ -483,8 +483,9 @@ static int action_executor_rotate_session_handler(
 	 */
 	if (!item->context.session_id.is_set) {
 		DBG("Session `%s` was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto end;
 	}
@@ -494,18 +495,21 @@ static int action_executor_rotate_session_handler(
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
 	session_lock(session);
 	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64 " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-				session->name, session->id,
-				get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		DBG("Session `%s` with id = %" PRIu64
+		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+		    session->name,
+		    session->id,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		goto error_unlock_session;
 	}
 
@@ -513,27 +517,31 @@ static int action_executor_rotate_session_handler(
 		goto error_unlock_session;
 	}
 
-	cmd_ret = (lttng_error_code) cmd_rotate_session(session, NULL, false,
-			LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+	cmd_ret = (lttng_error_code) cmd_rotate_session(
+		session, NULL, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully started rotation of session `%s` on behalf of trigger `%s`",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	case LTTNG_ERR_ROTATION_PENDING:
 		DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation is already ongoing",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		break;
 	case LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP:
 	case LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR:
 		DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation has already been completed since the last stop or clear",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	default:
 		WARN("Failed to start a rotation of session `%s` on behalf of trigger `%s`: %s",
-				session_name, get_trigger_name(work_item->trigger),
-				lttng_strerror(-cmd_ret));
+		     session_name,
+		     get_trigger_name(work_item->trigger),
+		     lttng_strerror(-cmd_ret));
 		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
@@ -548,18 +556,17 @@ end:
 	return ret;
 }
 
-static int action_executor_snapshot_session_handler(
-		struct action_executor *executor __attribute__((unused)),
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+static int action_executor_snapshot_session_handler(struct action_executor *executor
+						    __attribute__((unused)),
+						    const struct action_work_item *work_item,
+						    struct action_work_subitem *item)
 {
 	int ret = 0;
 	const char *session_name;
 	enum lttng_action_status action_status;
 	struct ltt_session *session;
 	lttng_snapshot_output default_snapshot_output;
-	const struct lttng_snapshot_output *snapshot_output =
-			&default_snapshot_output;
+	const struct lttng_snapshot_output *snapshot_output = &default_snapshot_output;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
@@ -571,27 +578,22 @@ static int action_executor_snapshot_session_handler(
 	 */
 	if (!item->context.session_id.is_set) {
 		DBG("Session was not present at the moment the work item was enqueued for `%s` action of trigger `%s`",
-				get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto end;
 	}
 
-	action_status = lttng_action_snapshot_session_get_session_name(
-			action, &session_name);
+	action_status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
-		ERR("Failed to get session name from `%s` action",
-				get_action_name(action));
+		ERR("Failed to get session name from `%s` action", get_action_name(action));
 		ret = -1;
 		goto end;
 	}
 
-	action_status = lttng_action_snapshot_session_get_output(
-			action, &snapshot_output);
-	if (action_status != LTTNG_ACTION_STATUS_OK &&
-			action_status != LTTNG_ACTION_STATUS_UNSET) {
-		ERR("Failed to get output from `%s` action",
-				get_action_name(action));
+	action_status = lttng_action_snapshot_session_get_output(action, &snapshot_output);
+	if (action_status != LTTNG_ACTION_STATUS_OK && action_status != LTTNG_ACTION_STATUS_UNSET) {
+		ERR("Failed to get output from `%s` action", get_action_name(action));
 		ret = -1;
 		goto end;
 	}
@@ -601,18 +603,21 @@ static int action_executor_snapshot_session_handler(
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-				session_name, get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
 	session_lock(session);
 	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64 " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-				session->name, session->id,
-				get_action_name(action),
-				get_trigger_name(work_item->trigger));
+		DBG("Session `%s` with id = %" PRIu64
+		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+		    session->name,
+		    session->id,
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger));
 		goto error_unlock_session;
 	}
 
@@ -624,12 +629,14 @@ static int action_executor_snapshot_session_handler(
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully recorded snapshot of session `%s` on behalf of trigger `%s`",
-				session_name, get_trigger_name(work_item->trigger));
+		    session_name,
+		    get_trigger_name(work_item->trigger));
 		break;
 	default:
 		WARN("Failed to record snapshot of session `%s` on behalf of trigger `%s`: %s",
-				session_name, get_trigger_name(work_item->trigger),
-				lttng_strerror(-cmd_ret));
+		     session_name,
+		     get_trigger_name(work_item->trigger),
+		     lttng_strerror(-cmd_ret));
 		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
@@ -644,18 +651,18 @@ end:
 	return ret;
 }
 
-static int action_executor_list_handler(
-		struct action_executor *executor __attribute__((unused)),
-		const struct action_work_item *work_item __attribute__((unused)),
-		struct action_work_subitem *item __attribute__((unused)))
+static int action_executor_list_handler(struct action_executor *executor __attribute__((unused)),
+					const struct action_work_item *work_item
+					__attribute__((unused)),
+					struct action_work_subitem *item __attribute__((unused)))
 {
 	ERR("Execution of a list action by the action executor should never occur");
 	abort();
 }
 
 static int action_executor_generic_handler(struct action_executor *executor,
-		const struct action_work_item *work_item,
-		struct action_work_subitem *item)
+					   const struct action_work_item *work_item,
+					   struct action_work_subitem *item)
 {
 	int ret;
 	struct lttng_action *action = item->action;
@@ -666,46 +673,48 @@ static int action_executor_generic_handler(struct action_executor *executor,
 	lttng_action_increase_execution_request_count(action);
 	if (!lttng_action_should_execute(action)) {
 		DBG("Policy prevented execution of action `%s` of trigger `%s` action work item %" PRIu64,
-				get_action_name(action),
-				get_trigger_name(work_item->trigger),
-				work_item->id);
+		    get_action_name(action),
+		    get_trigger_name(work_item->trigger),
+		    work_item->id);
 		ret = 0;
 		goto end;
 	}
 
 	lttng_action_increase_execution_count(action);
 	DBG("Executing action `%s` of trigger `%s` action work item %" PRIu64,
-			get_action_name(action),
-			get_trigger_name(work_item->trigger),
-			work_item->id);
+	    get_action_name(action),
+	    get_trigger_name(work_item->trigger),
+	    work_item->id);
 	ret = action_executors[action_type](executor, work_item, item);
 end:
 	return ret;
 }
 
 static int action_work_item_execute(struct action_executor *executor,
-		struct action_work_item *work_item)
+				    struct action_work_item *work_item)
 {
 	int ret;
 	size_t count, i;
 
 	DBG("Starting execution of action work item %" PRIu64 " of trigger `%s`",
-			work_item->id, get_trigger_name(work_item->trigger));
+	    work_item->id,
+	    get_trigger_name(work_item->trigger));
 
 	count = lttng_dynamic_array_get_count(&work_item->subitems);
 	for (i = 0; i < count; i++) {
 		struct action_work_subitem *item;
 
-		item = (action_work_subitem *) lttng_dynamic_array_get_element(&work_item->subitems, i);
-		ret = action_executor_generic_handler(
-				executor, work_item, item);
+		item = (action_work_subitem *) lttng_dynamic_array_get_element(&work_item->subitems,
+									       i);
+		ret = action_executor_generic_handler(executor, work_item, item);
 		if (ret) {
 			goto end;
 		}
 	}
 end:
 	DBG("Completed execution of action work item %" PRIu64 " of trigger `%s`",
-			work_item->id, get_trigger_name(work_item->trigger));
+	    work_item->id,
+	    get_trigger_name(work_item->trigger));
 	return ret;
 }
 
@@ -724,8 +733,7 @@ static void *action_executor_thread(void *_data)
 
 	LTTNG_ASSERT(executor);
 
-	health_register(the_health_sessiond,
-			HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR);
 
 	rcu_register_thread();
 	rcu_thread_online();
@@ -740,16 +748,15 @@ static void *action_executor_thread(void *_data)
 		if (executor->work.pending_count == 0) {
 			health_poll_entry();
 			DBG("No work items enqueued, entering wait");
-			pthread_cond_wait(&executor->work.cond,
-					&executor->work.lock);
+			pthread_cond_wait(&executor->work.cond, &executor->work.lock);
 			DBG("Woke-up from wait");
 			health_poll_exit();
 			continue;
 		}
 
 		/* Pop item from front of the list with work lock held. */
-		work_item = cds_list_first_entry(&executor->work.list,
-				struct action_work_item, list_node);
+		work_item = cds_list_first_entry(
+			&executor->work.list, struct action_work_item, list_node);
 		cds_list_del(&work_item->list_node);
 		executor->work.pending_count--;
 
@@ -768,13 +775,15 @@ static void *action_executor_thread(void *_data)
 
 			trigger_name = get_trigger_name(work_item->trigger);
 
-			trigger_status = lttng_trigger_get_owner_uid(
-					work_item->trigger, &trigger_owner_uid);
+			trigger_status =
+				lttng_trigger_get_owner_uid(work_item->trigger, &trigger_owner_uid);
 			LTTNG_ASSERT(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
-			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64 ", trigger name = `%s`, trigger owner uid = %d",
-					work_item->id, trigger_name,
-					(int) trigger_owner_uid);
+			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64
+			    ", trigger name = `%s`, trigger owner uid = %d",
+			    work_item->id,
+			    trigger_name,
+			    (int) trigger_owner_uid);
 			ret = 0;
 			goto skip_execute;
 		}
@@ -829,8 +838,7 @@ static void clean_up_action_executor_thread(void *_data)
 	free(executor);
 }
 
-struct action_executor *action_executor_create(
-		struct notification_thread_handle *handle)
+struct action_executor *action_executor_create(struct notification_thread_handle *handle)
 {
 	struct action_executor *executor = zmalloc<action_executor>();
 
@@ -844,8 +852,10 @@ struct action_executor *action_executor_create(
 	executor->notification_thread_handle = handle;
 
 	executor->thread = lttng_thread_create(THREAD_NAME,
-			action_executor_thread, shutdown_action_executor_thread,
-			clean_up_action_executor_thread, executor);
+					       action_executor_thread,
+					       shutdown_action_executor_thread,
+					       clean_up_action_executor_thread,
+					       executor);
 end:
 	return executor;
 }
@@ -859,17 +869,15 @@ void action_executor_destroy(struct action_executor *executor)
 	pthread_mutex_lock(&executor->work.lock);
 	if (executor->work.pending_count != 0) {
 		WARN("%" PRIu64
-			" trigger action%s still queued for execution and will be discarded",
-				executor->work.pending_count,
-				executor->work.pending_count == 1 ? " is" :
-								    "s are");
+		     " trigger action%s still queued for execution and will be discarded",
+		     executor->work.pending_count,
+		     executor->work.pending_count == 1 ? " is" : "s are");
 	}
 
-	cds_list_for_each_entry_safe (
-			work_item, tmp, &executor->work.list, list_node) {
-		WARN("Discarding action work item %" PRIu64
-				" associated to trigger `%s`",
-				work_item->id, get_trigger_name(work_item->trigger));
+	cds_list_for_each_entry_safe (work_item, tmp, &executor->work.list, list_node) {
+		WARN("Discarding action work item %" PRIu64 " associated to trigger `%s`",
+		     work_item->id,
+		     get_trigger_name(work_item->trigger));
 		cds_list_del(&work_item->list_node);
 		action_work_item_destroy(work_item);
 	}
@@ -878,12 +886,12 @@ void action_executor_destroy(struct action_executor *executor)
 }
 
 /* RCU read-lock must be held by the caller. */
-enum action_executor_status action_executor_enqueue_trigger(
-		struct action_executor *executor,
-		struct lttng_trigger *trigger,
-		struct lttng_evaluation *evaluation,
-		const struct lttng_credentials *object_creds,
-		struct notification_client_list *client_list)
+enum action_executor_status
+action_executor_enqueue_trigger(struct action_executor *executor,
+				struct lttng_trigger *trigger,
+				struct lttng_evaluation *evaluation,
+				const struct lttng_credentials *object_creds,
+				struct notification_client_list *client_list)
 {
 	int ret;
 	enum action_executor_status executor_status = ACTION_EXECUTOR_STATUS_OK;
@@ -899,7 +907,8 @@ enum action_executor_status action_executor_enqueue_trigger(
 	if (executor->work.pending_count >= MAX_QUEUED_WORK_COUNT) {
 		/* Most likely spammy, remove if it is the case. */
 		DBG("Refusing to enqueue action for trigger (overflow): trigger name = `%s`, work item id = %" PRIu64,
-				get_trigger_name(trigger), work_item_id);
+		    get_trigger_name(trigger),
+		    work_item_id);
 		executor_status = ACTION_EXECUTOR_STATUS_OVERFLOW;
 		goto error_unlock;
 	}
@@ -907,15 +916,14 @@ enum action_executor_status action_executor_enqueue_trigger(
 	work_item = zmalloc<action_work_item>();
 	if (!work_item) {
 		PERROR("Failed to allocate action executor work item: trigger name = `%s`",
-				get_trigger_name(trigger));
+		       get_trigger_name(trigger));
 		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
 		goto error_unlock;
 	}
 
 	lttng_trigger_get(trigger);
 	if (client_list) {
-		const bool reference_acquired =
-				notification_client_list_get(client_list);
+		const bool reference_acquired = notification_client_list_get(client_list);
 
 		LTTNG_ASSERT(reference_acquired);
 	}
@@ -937,14 +945,13 @@ enum action_executor_status action_executor_enqueue_trigger(
 
 	/* Build the array of action work subitems for the passed trigger. */
 	lttng_dynamic_array_init(&work_item->subitems,
-			sizeof(struct action_work_subitem),
-			action_work_subitem_destructor);
+				 sizeof(struct action_work_subitem),
+				 action_work_subitem_destructor);
 
-	ret = populate_subitem_array_from_trigger(
-			trigger, &work_item->subitems);
+	ret = populate_subitem_array_from_trigger(trigger, &work_item->subitems);
 	if (ret) {
 		ERR("Failed to populate work item sub items on behalf of trigger: trigger name = `%s`",
-				get_trigger_name(trigger));
+		    get_trigger_name(trigger));
 		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
 		goto error_unlock;
 	}
@@ -952,7 +959,8 @@ enum action_executor_status action_executor_enqueue_trigger(
 	cds_list_add_tail(&work_item->list_node, &executor->work.list);
 	executor->work.pending_count++;
 	DBG("Enqueued action for trigger: trigger name = `%s`, work item id = %" PRIu64,
-			get_trigger_name(trigger), work_item_id);
+	    get_trigger_name(trigger),
+	    work_item_id);
 	signal = true;
 
 error_unlock:
@@ -966,7 +974,7 @@ error_unlock:
 }
 
 static int add_action_to_subitem_array(struct lttng_action *action,
-		struct lttng_dynamic_array *subitems)
+				       struct lttng_dynamic_array *subitems)
 {
 	int ret = 0;
 	enum lttng_action_type type = lttng_action_get_type(action);
@@ -991,11 +999,9 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 		for (i = 0; i < count; i++) {
 			struct lttng_action *inner_action = NULL;
 
-			inner_action = lttng_action_list_borrow_mutable_at_index(
-					action, i);
+			inner_action = lttng_action_list_borrow_mutable_at_index(action, i);
 			LTTNG_ASSERT(inner_action);
-			ret = add_action_to_subitem_array(
-					inner_action, subitems);
+			ret = add_action_to_subitem_array(inner_action, subitems);
 			if (ret) {
 				goto end;
 			}
@@ -1013,23 +1019,19 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		break;
 	case LTTNG_ACTION_TYPE_START_SESSION:
-		status = lttng_action_start_session_get_session_name(
-				action, &session_name);
+		status = lttng_action_start_session_get_session_name(action, &session_name);
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
-		status = lttng_action_stop_session_get_session_name(
-				action, &session_name);
+		status = lttng_action_stop_session_get_session_name(action, &session_name);
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
-		status = lttng_action_rotate_session_get_session_name(
-				action, &session_name);
+		status = lttng_action_rotate_session_get_session_name(action, &session_name);
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
-		status = lttng_action_snapshot_session_get_session_name(
-				action, &session_name);
+		status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 		LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 		break;
 	case LTTNG_ACTION_TYPE_LIST:
@@ -1065,8 +1067,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 		 * execution time.
 		 */
 		if (sample_session_id_by_name(session_name, &session_id)) {
-			LTTNG_OPTIONAL_SET(&subitem.context.session_id,
-					session_id);
+			LTTNG_OPTIONAL_SET(&subitem.context.session_id, session_id);
 		}
 	}
 
@@ -1087,7 +1088,7 @@ end:
 }
 
 static int populate_subitem_array_from_trigger(struct lttng_trigger *trigger,
-		struct lttng_dynamic_array *subitems)
+					       struct lttng_dynamic_array *subitems)
 {
 	struct lttng_action *action;
 

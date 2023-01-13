@@ -6,6 +6,9 @@
  */
 
 #define _LGPL_SOURCE
+#include "signal-helper.hpp"
+#include "utils.h"
+
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <stdarg.h>
@@ -16,20 +19,17 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "utils.h"
-#include "signal-helper.hpp"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-static struct option long_options[] =
-{
+static struct option long_options[] = {
 	/* These options set a flag. */
-	{"iter", required_argument, 0, 'i'},
-	{"wait", required_argument, 0, 'w'},
-	{"create-in-main", required_argument, 0, 'm'},
-	{"wait-before-first-event", required_argument, 0, 'b'},
-	{0, 0, 0, 0}
+	{ "iter", required_argument, 0, 'i' },
+	{ "wait", required_argument, 0, 'w' },
+	{ "create-in-main", required_argument, 0, 'm' },
+	{ "wait-before-first-event", required_argument, 0, 'b' },
+	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char **argv)
@@ -44,8 +44,7 @@ int main(int argc, char **argv)
 	char *wait_before_first_event_file_path = NULL;
 	char *create_in_main_file_path = NULL;
 
-	while ((option = getopt_long(argc, argv, "i:w:b:m:",
-			long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "i:w:b:m:", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'b':
 			wait_before_first_event_file_path = strdup(optarg);
@@ -92,18 +91,13 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
-		tracepoint(tp, tptest1, i, netint, values, text, strlen(text),
-			   dbl, flt);
-		tracepoint(tp, tptest2, i, netint, values, text, strlen(text),
-				dbl, flt);
-		tracepoint(tp, tptest3, i, netint, values, text, strlen(text),
-				dbl, flt);
-		tracepoint(tp, tptest4, i, netint, values, text, strlen(text),
-				dbl, flt);
-		tracepoint(tp, tptest5, i, netint, values, text, strlen(text),
-				dbl, flt);
+		tracepoint(tp, tptest1, i, netint, values, text, strlen(text), dbl, flt);
+		tracepoint(tp, tptest2, i, netint, values, text, strlen(text), dbl, flt);
+		tracepoint(tp, tptest3, i, netint, values, text, strlen(text), dbl, flt);
+		tracepoint(tp, tptest4, i, netint, values, text, strlen(text), dbl, flt);
+		tracepoint(tp, tptest5, i, netint, values, text, strlen(text), dbl, flt);
 		if (nr_usec) {
-		        if (usleep_safe(nr_usec)) {
+			if (usleep_safe(nr_usec)) {
 				ret = -1;
 				goto end;
 			}

@@ -6,6 +6,11 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+#include "version.hpp"
+
+#include <common/mi-lttng.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,15 +19,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-#include "version.hpp"
-
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-version.1.h>
-;
+	;
 #endif
 
 enum {
@@ -34,9 +34,9 @@ static const char *lttng_license = "lttng is free software and under the GPL lic
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /*
@@ -71,24 +71,21 @@ static int print_mi(void)
 	}
 
 	/* Open the command element */
-	ret = mi_lttng_writer_command_open(writer,
-			mi_lttng_element_command_version);
+	ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_version);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto error;
 	}
 
 	/* Beginning of output */
-	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_command_output);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto error;
 	}
 
 	/* Print the machine interface of version */
-	ret = mi_lttng_version(writer, &version,
-			VERSION_DESCRIPTION, lttng_license);
+	ret = mi_lttng_version(writer, &version, VERSION_DESCRIPTION, lttng_license);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto error;
@@ -147,7 +144,7 @@ int cmd_version(int argc, const char **argv)
 		ret = print_mi();
 	} else {
 		MSG("lttng version " VERSION " - " VERSION_NAME "%s",
-			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
+		    GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
 		MSG("\n" VERSION_DESCRIPTION "\n");
 		MSG("Web site: https://lttng.org");
 		MSG("\n%s", lttng_license);

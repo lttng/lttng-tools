@@ -6,16 +6,16 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+
 #include <ctype.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
 
 static char *opt_session_name;
 static char *session_name = NULL;
@@ -26,7 +26,7 @@ static int regenerate_statedump(int argc, const char **argv);
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-regenerate.1.h>
-;
+	;
 #endif
 
 enum {
@@ -39,17 +39,41 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* { longName, shortName, argInfo, argPtr, value, descrip, argDesc, } */
-	{ "help",		'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0, },
-	{ "session",		's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{ "list-options",	0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, 0, 0, },
-	{ "list-commands",  	0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL},
-	{ 0, 0, 0, 0, 0, 0, 0, },
+	{
+		"help",
+		'h',
+		POPT_ARG_NONE,
+		0,
+		OPT_HELP,
+		0,
+		0,
+	},
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{
+		"list-options",
+		0,
+		POPT_ARG_NONE,
+		NULL,
+		OPT_LIST_OPTIONS,
+		0,
+		0,
+	},
+	{ "list-commands", 0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL },
+	{
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	},
 };
 
 static struct cmd_struct actions[] = {
 	{ "metadata", regenerate_metadata },
 	{ "statedump", regenerate_statedump },
-	{ NULL, NULL }	/* Array closure */
+	{ NULL, NULL } /* Array closure */
 };
 
 /*
@@ -68,8 +92,7 @@ static int count_arguments(const char **argv)
 	return i;
 }
 
-static int regenerate_metadata(int argc,
-		const char **argv __attribute__((unused)))
+static int regenerate_metadata(int argc, const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -88,8 +111,7 @@ end:
 	return ret;
 }
 
-static int regenerate_statedump(int argc,
-		const char **argv __attribute__((unused)))
+static int regenerate_statedump(int argc, const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -126,16 +148,16 @@ static int handle_command(const char **argv)
 		if (strcmp(argv[0], cmd->name) == 0) {
 			if (lttng_opt_mi) {
 				/* Action element */
-				ret = mi_lttng_writer_open_element(writer,
-						mi_lttng_element_command_regenerate_action);
+				ret = mi_lttng_writer_open_element(
+					writer, mi_lttng_element_command_regenerate_action);
 				if (ret) {
 					ret = CMD_ERROR;
 					goto end;
 				}
 
 				/* Name of the action */
-				ret = mi_lttng_writer_write_element_string(writer,
-						config_element_name, argv[0]);
+				ret = mi_lttng_writer_write_element_string(
+					writer, config_element_name, argv[0]);
 				if (ret) {
 					ret = CMD_ERROR;
 					goto end;
@@ -188,16 +210,14 @@ int cmd_regenerate(int argc, const char **argv)
 			goto end;
 		}
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_regenerate);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_regenerate);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -246,8 +266,8 @@ int cmd_regenerate(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

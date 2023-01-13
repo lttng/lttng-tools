@@ -6,6 +6,13 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/lttng.h>
+
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
@@ -14,12 +21,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <common/utils.hpp>
-#include <common/mi-lttng.hpp>
-#include <lttng/lttng.h>
-
-#include "../command.hpp"
 
 static const char *opt_session_name;
 static const char *opt_output_name;
@@ -39,7 +40,7 @@ static const char *indent4 = "    ";
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-snapshot.1.h>
-;
+	;
 #endif
 
 enum {
@@ -53,15 +54,15 @@ static struct mi_writer *writer;
 
 static struct poptOption snapshot_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"session",      's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{"ctrl-url",     'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
-	{"data-url",     'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
-	{"name",         'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0},
-	{"max-size",     'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0},
-	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"list-commands",  0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0 },
+	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0 },
+	{ "name", 'n', POPT_ARG_STRING, &opt_output_name, 0, 0, 0 },
+	{ "max-size", 'm', POPT_ARG_STRING, 0, OPT_MAX_SIZE, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "list-commands", 0, POPT_ARG_NONE, NULL, OPT_LIST_COMMANDS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static struct cmd_struct actions[] = {
@@ -69,7 +70,7 @@ static struct cmd_struct actions[] = {
 	{ "del-output", cmd_del_output },
 	{ "list-output", cmd_list_output },
 	{ "record", cmd_record },
-	{ NULL, NULL }	/* Array closure */
+	{ NULL, NULL } /* Array closure */
 };
 
 /*
@@ -158,8 +159,7 @@ static int list_output(void)
 	MSG("Snapshot output list for session %s", current_session_name);
 
 	if (lttng_opt_mi) {
-		ret = mi_lttng_snapshot_output_session_name(writer,
-				current_session_name);
+		ret = mi_lttng_snapshot_output_session_name(writer, current_session_name);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -168,16 +168,18 @@ static int list_output(void)
 
 	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
 		if (lttng_snapshot_output_get_maxsize(s_iter)) {
-			MSG("%s[%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)", indent4,
-					lttng_snapshot_output_get_id(s_iter),
-					lttng_snapshot_output_get_name(s_iter),
-					lttng_snapshot_output_get_ctrl_url(s_iter),
-					lttng_snapshot_output_get_maxsize(s_iter));
+			MSG("%s[%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)",
+			    indent4,
+			    lttng_snapshot_output_get_id(s_iter),
+			    lttng_snapshot_output_get_name(s_iter),
+			    lttng_snapshot_output_get_ctrl_url(s_iter),
+			    lttng_snapshot_output_get_maxsize(s_iter));
 		} else {
-			MSG("%s[%" PRIu32 "] %s: %s", indent4,
-					lttng_snapshot_output_get_id(s_iter),
-					lttng_snapshot_output_get_name(s_iter),
-					lttng_snapshot_output_get_ctrl_url(s_iter));
+			MSG("%s[%" PRIu32 "] %s: %s",
+			    indent4,
+			    lttng_snapshot_output_get_id(s_iter),
+			    lttng_snapshot_output_get_name(s_iter),
+			    lttng_snapshot_output_get_ctrl_url(s_iter));
 		}
 		output_seen = 1;
 		if (lttng_opt_mi) {
@@ -248,15 +250,16 @@ static int del_output(uint32_t id, const char *name)
 
 	if (id != UINT32_MAX) {
 		MSG("Snapshot output id %" PRIu32 " successfully deleted for session %s",
-				id, current_session_name);
+		    id,
+		    current_session_name);
 	} else {
 		MSG("Snapshot output %s successfully deleted for session %s",
-				name, current_session_name);
+		    name,
+		    current_session_name);
 	}
 
 	if (lttng_opt_mi) {
-		ret = mi_lttng_snapshot_del_output(writer, id, name,
-				current_session_name);
+		ret = mi_lttng_snapshot_del_output(writer, id, name, current_session_name);
 		if (ret) {
 			ret = CMD_ERROR;
 		}
@@ -297,7 +300,9 @@ static int add_output(const char *url)
 	n_ptr = lttng_snapshot_output_get_name(output);
 	if (*n_ptr == '\0') {
 		int pret;
-		pret = snprintf(name, sizeof(name), DEFAULT_SNAPSHOT_NAME "-%" PRIu32,
+		pret = snprintf(name,
+				sizeof(name),
+				DEFAULT_SNAPSHOT_NAME "-%" PRIu32,
 				lttng_snapshot_output_get_id(output));
 		if (pret < 0) {
 			PERROR("snprintf add output name");
@@ -305,21 +310,21 @@ static int add_output(const char *url)
 		n_ptr = name;
 	}
 
-	MSG("Snapshot output successfully added for session %s",
-			current_session_name);
+	MSG("Snapshot output successfully added for session %s", current_session_name);
 	if (opt_max_size) {
 		MSG("  [%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)",
-				lttng_snapshot_output_get_id(output), n_ptr,
-				lttng_snapshot_output_get_ctrl_url(output),
-				lttng_snapshot_output_get_maxsize(output));
+		    lttng_snapshot_output_get_id(output),
+		    n_ptr,
+		    lttng_snapshot_output_get_ctrl_url(output),
+		    lttng_snapshot_output_get_maxsize(output));
 	} else {
 		MSG("  [%" PRIu32 "] %s: %s",
-				lttng_snapshot_output_get_id(output), n_ptr,
-				lttng_snapshot_output_get_ctrl_url(output));
+		    lttng_snapshot_output_get_id(output),
+		    n_ptr,
+		    lttng_snapshot_output_get_ctrl_url(output));
 	}
 	if (lttng_opt_mi) {
-		ret = mi_lttng_snapshot_add_output(writer, current_session_name,
-				n_ptr, output);
+		ret = mi_lttng_snapshot_add_output(writer, current_session_name, n_ptr, output);
 		if (ret) {
 			ret = CMD_ERROR;
 		}
@@ -344,7 +349,7 @@ static int cmd_add_output(int argc, const char **argv)
 		switch (-ret) {
 		case LTTNG_ERR_SNAPSHOT_UNSUPPORTED:
 			ERR("Session \"%s\" contains a channel that is incompatible with the snapshot functionality.\nMake sure all channels are configured in 'mmap' output mode.",
-					current_session_name);
+			    current_session_name);
 			ret = CMD_ERROR;
 			break;
 		default:
@@ -385,7 +390,7 @@ end:
 }
 
 static int cmd_list_output(int argc __attribute__((unused)),
-		const char **argv __attribute__((unused)))
+			   const char **argv __attribute__((unused)))
 {
 	int ret;
 
@@ -421,13 +426,11 @@ static int record(const char *url)
 	if (url) {
 		MSG("Snapshot written at: %s", url);
 	} else if (opt_ctrl_url) {
-		MSG("Snapshot written to ctrl: %s, data: %s", opt_ctrl_url,
-				opt_data_url);
+		MSG("Snapshot written to ctrl: %s, data: %s", opt_ctrl_url, opt_data_url);
 	}
 
 	if (lttng_opt_mi) {
-		ret = mi_lttng_snapshot_record(writer, url, opt_ctrl_url,
-				opt_data_url);
+		ret = mi_lttng_snapshot_record(writer, url, opt_ctrl_url, opt_data_url);
 		if (ret) {
 			ret = CMD_ERROR;
 		}
@@ -463,8 +466,7 @@ static enum cmd_error_code handle_command(const char **argv)
 		goto end;
 	}
 
-	if ((!opt_ctrl_url && opt_data_url) ||
-			(opt_ctrl_url && !opt_data_url)) {
+	if ((!opt_ctrl_url && opt_data_url) || (opt_ctrl_url && !opt_data_url)) {
 		ERR("URLs must be specified for both data and control");
 		cmd_ret = CMD_ERROR;
 		goto end;
@@ -482,24 +484,24 @@ static enum cmd_error_code handle_command(const char **argv)
 
 			if (lttng_opt_mi) {
 				/* Action element */
-				mi_ret = mi_lttng_writer_open_element(writer,
-						mi_lttng_element_command_action);
+				mi_ret = mi_lttng_writer_open_element(
+					writer, mi_lttng_element_command_action);
 				if (mi_ret) {
 					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 
 				/* Name of the action */
-				mi_ret = mi_lttng_writer_write_element_string(writer,
-						config_element_name, argv[0]);
+				mi_ret = mi_lttng_writer_write_element_string(
+					writer, config_element_name, argv[0]);
 				if (mi_ret) {
 					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 
 				/* Open output element */
-				mi_ret = mi_lttng_writer_open_element(writer,
-						mi_lttng_element_command_output);
+				mi_ret = mi_lttng_writer_open_element(
+					writer, mi_lttng_element_command_output);
 				if (mi_ret) {
 					cmd_ret = CMD_ERROR;
 					goto end;
@@ -544,7 +546,6 @@ static enum cmd_error_code handle_command(const char **argv)
 				cmd_ret = CMD_SUCCESS;
 			}
 
-
 			if (lttng_opt_mi) {
 				/* Close output and action element */
 				mi_ret = mi_lttng_close_multi_element(writer, 2);
@@ -587,16 +588,14 @@ int cmd_snapshot(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		mi_ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_snapshot);
+		mi_ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_snapshot);
 		if (mi_ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		mi_ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		mi_ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (mi_ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;
@@ -624,12 +623,10 @@ int cmd_snapshot(int argc, const char **argv)
 		{
 			uint64_t val;
 			char *max_size_arg = poptGetOptArg(pc);
-			const int parse_ret = utils_parse_size_suffix(
-					(char *) max_size_arg, &val);
+			const int parse_ret = utils_parse_size_suffix((char *) max_size_arg, &val);
 
 			if (parse_ret < 0) {
-				ERR("Unable to handle max-size value %s",
-						max_size_arg);
+				ERR("Unable to handle max-size value %s", max_size_arg);
 				cmd_ret = CMD_ERROR;
 				free(max_size_arg);
 				goto end;
@@ -667,9 +664,8 @@ int cmd_snapshot(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		mi_ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success,
-				cmd_ret == CMD_SUCCESS);
+		mi_ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, cmd_ret == CMD_SUCCESS);
 		if (mi_ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;

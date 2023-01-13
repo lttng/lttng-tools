@@ -6,28 +6,29 @@
  */
 
 #define _LGPL_SOURCE
-#include <popt.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <lttng/lttng.h>
-
 #include "../command.hpp"
 
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
 
+#include <lttng/lttng.h>
+
+#include <popt.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 static int opt_clear_all;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-clear.1.h>
-;
+	;
 #endif
 
 /* Mi writer */
@@ -40,10 +41,10 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"all",       'a', POPT_ARG_VAL, &opt_clear_all, 1, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "all", 'a', POPT_ARG_VAL, &opt_clear_all, 1, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /*
@@ -51,8 +52,7 @@ static struct poptOption long_options[] = {
  */
 static int clear_session(struct lttng_session *session)
 {
-	enum lttng_clear_handle_status status =
-			LTTNG_CLEAR_HANDLE_STATUS_OK;
+	enum lttng_clear_handle_status status = LTTNG_CLEAR_HANDLE_STATUS_OK;
 	struct lttng_clear_handle *handle = NULL;
 	enum lttng_error_code ret_code;
 	bool printed_wait_msg = false;
@@ -65,13 +65,12 @@ static int clear_session(struct lttng_session *session)
 	}
 
 	do {
-		status = lttng_clear_handle_wait_for_completion(handle,
-				DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US / USEC_PER_MSEC);
+		status = lttng_clear_handle_wait_for_completion(
+			handle, DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US / USEC_PER_MSEC);
 		switch (status) {
 		case LTTNG_CLEAR_HANDLE_STATUS_TIMEOUT:
 			if (!printed_wait_msg) {
-				_MSG("Waiting for clear of session \"%s\"",
-						session->name);
+				_MSG("Waiting for clear of session \"%s\"", session->name);
 				printed_wait_msg = true;
 			}
 			_MSG(".");
@@ -81,7 +80,7 @@ static int clear_session(struct lttng_session *session)
 			break;
 		default:
 			ERR("Failed to wait for the completion of clear for session \"%s\"",
-					session->name);
+			    session->name);
 			ret = -1;
 			goto error;
 		}
@@ -98,8 +97,7 @@ static int clear_session(struct lttng_session *session)
 		goto error;
 	}
 
-	MSG("%sSession \"%s\" cleared", printed_wait_msg ? "\n" : "",
-			session->name);
+	MSG("%sSession \"%s\" cleared", printed_wait_msg ? "\n" : "", session->name);
 	printed_wait_msg = false;
 
 	if (lttng_opt_mi) {
@@ -151,7 +149,7 @@ error:
 int cmd_clear(int argc, const char **argv)
 {
 	int opt;
-	int ret = CMD_SUCCESS , i, command_ret = CMD_SUCCESS, success = 1;
+	int ret = CMD_SUCCESS, i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
 	const char *arg_session_name = NULL;
@@ -187,16 +185,14 @@ int cmd_clear(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_clear);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_clear);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -286,8 +282,8 @@ mi_closing:
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

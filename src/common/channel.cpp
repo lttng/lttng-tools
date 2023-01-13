@@ -11,19 +11,19 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <lttng/channel-internal.hpp>
 #include <lttng/channel.h>
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.hpp>
 
-static enum lttng_error_code flatten_lttng_channels(
-		struct lttng_dynamic_pointer_array *channels,
-		struct lttng_channel **flattened_channels);
+static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
+						    struct lttng_channel **flattened_channels);
 
-static enum lttng_error_code channel_list_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
-		uint32_t count,
-		struct lttng_dynamic_pointer_array *channel_list);
+static enum lttng_error_code
+channel_list_create_from_buffer(const struct lttng_buffer_view *buffer,
+				uint32_t count,
+				struct lttng_dynamic_pointer_array *channel_list);
 
 static void channel_list_destructor(void *ptr)
 {
@@ -93,7 +93,7 @@ end:
 }
 
 ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
-		struct lttng_channel **channel)
+					 struct lttng_channel **channel)
 {
 	ssize_t ret, offset = 0;
 	struct lttng_channel *local_channel = nullptr;
@@ -122,34 +122,29 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 	/* lttng_trigger_comm header */
 	{
 		const struct lttng_buffer_view comm_view =
-				lttng_buffer_view_from_view(view, offset,
-						sizeof(*channel_comm));
+			lttng_buffer_view_from_view(view, offset, sizeof(*channel_comm));
 
 		if (!lttng_buffer_view_is_valid(&comm_view)) {
 			ret = -1;
 			goto end;
 		}
 
-		channel_comm = (const struct lttng_channel_comm *)
-					       comm_view.data;
+		channel_comm = (const struct lttng_channel_comm *) comm_view.data;
 		offset += sizeof(*channel_comm);
 	}
 
 	{
 		const char *name;
 		const struct lttng_buffer_view name_view =
-				lttng_buffer_view_from_view(view, offset,
-						channel_comm->name_len);
+			lttng_buffer_view_from_view(view, offset, channel_comm->name_len);
 
 		name = name_view.data;
-		if (!lttng_buffer_view_contains_string(
-				    &name_view, name, channel_comm->name_len)) {
+		if (!lttng_buffer_view_contains_string(&name_view, name, channel_comm->name_len)) {
 			ret = -1;
 			goto end;
 		}
 
-		ret = lttng_strncpy(local_channel->name, name,
-				sizeof(local_channel->name));
+		ret = lttng_strncpy(local_channel->name, name, sizeof(local_channel->name));
 		if (ret) {
 			goto end;
 		}
@@ -164,15 +159,12 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 	local_channel->attr.overwrite = channel_comm->overwrite;
 	local_channel->attr.subbuf_size = channel_comm->subbuf_size;
 	local_channel->attr.num_subbuf = channel_comm->num_subbuf;
-	local_channel->attr.switch_timer_interval =
-			channel_comm->switch_timer_interval;
-	local_channel->attr.read_timer_interval =
-			channel_comm->read_timer_interval;
+	local_channel->attr.switch_timer_interval = channel_comm->switch_timer_interval;
+	local_channel->attr.read_timer_interval = channel_comm->read_timer_interval;
 	local_channel->attr.output = (enum lttng_event_output) channel_comm->output;
 	local_channel->attr.tracefile_size = channel_comm->tracefile_size;
 	local_channel->attr.tracefile_count = channel_comm->tracefile_count;
-	local_channel->attr.live_timer_interval =
-			channel_comm->live_timer_interval;
+	local_channel->attr.live_timer_interval = channel_comm->live_timer_interval;
 
 	extended->discarded_events = channel_comm->discarded_events;
 	extended->lost_packets = channel_comm->lost_packets;
@@ -188,8 +180,7 @@ end:
 	return ret;
 }
 
-int lttng_channel_serialize(
-		struct lttng_channel *channel, struct lttng_dynamic_buffer *buf)
+int lttng_channel_serialize(struct lttng_channel *channel, struct lttng_dynamic_buffer *buf)
 {
 	int ret;
 	size_t name_len;
@@ -219,8 +210,7 @@ int lttng_channel_serialize(
 	channel_comm.overwrite = channel->attr.overwrite;
 	channel_comm.subbuf_size = channel->attr.subbuf_size;
 	channel_comm.num_subbuf = channel->attr.num_subbuf;
-	channel_comm.switch_timer_interval =
-			channel->attr.switch_timer_interval;
+	channel_comm.switch_timer_interval = channel->attr.switch_timer_interval;
 	channel_comm.read_timer_interval = channel->attr.read_timer_interval;
 	channel_comm.output = channel->attr.output;
 	channel_comm.tracefile_size = channel->attr.tracefile_size;
@@ -234,8 +224,7 @@ int lttng_channel_serialize(
 	channel_comm.blocking_timeout = extended->blocking_timeout;
 
 	/* Header */
-	ret = lttng_dynamic_buffer_append(
-			buf, &channel_comm, sizeof(channel_comm));
+	ret = lttng_dynamic_buffer_append(buf, &channel_comm, sizeof(channel_comm));
 	if (ret) {
 		goto end;
 	}
@@ -250,7 +239,7 @@ end:
 }
 
 void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
-		struct lttng_channel_extended *extended_attr)
+					     struct lttng_channel_extended *extended_attr)
 {
 	assert(domain);
 	assert(extended_attr);
@@ -259,26 +248,23 @@ void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
-		extended_attr->monitor_timer_interval =
-				DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
-		extended_attr->blocking_timeout =
-				DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
+		extended_attr->monitor_timer_interval = DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
+		extended_attr->blocking_timeout = DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
 		break;
 	case LTTNG_DOMAIN_UST:
 		switch (domain->buf_type) {
 		case LTTNG_BUFFER_PER_UID:
 			extended_attr->monitor_timer_interval =
-					DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
-			extended_attr->blocking_timeout =
-					DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
+				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
 			if (extended_attr) {
 				extended_attr->monitor_timer_interval =
-						DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
+					DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
 				extended_attr->blocking_timeout =
-						DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
+					DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
 			}
 			break;
 		}
@@ -288,10 +274,10 @@ void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
 	}
 }
 
-static enum lttng_error_code channel_list_create_from_buffer(
-		const struct lttng_buffer_view *view,
-		unsigned int count,
-		struct lttng_dynamic_pointer_array *channel_list)
+static enum lttng_error_code
+channel_list_create_from_buffer(const struct lttng_buffer_view *view,
+				unsigned int count,
+				struct lttng_dynamic_pointer_array *channel_list)
 {
 	enum lttng_error_code ret_code;
 	int ret, i;
@@ -304,10 +290,9 @@ static enum lttng_error_code channel_list_create_from_buffer(
 		ssize_t channel_size;
 		struct lttng_channel *channel = nullptr;
 		const struct lttng_buffer_view channel_view =
-				lttng_buffer_view_from_view(view, offset, -1);
+			lttng_buffer_view_from_view(view, offset, -1);
 
-		channel_size = lttng_channel_create_from_buffer(
-				&channel_view, &channel);
+		channel_size = lttng_channel_create_from_buffer(&channel_view, &channel);
 		if (channel_size < 0) {
 			ret_code = LTTNG_ERR_INVALID;
 			goto end;
@@ -335,7 +320,7 @@ end:
 }
 
 static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer_array *channels,
-		struct lttng_channel **flattened_channels)
+						    struct lttng_channel **flattened_channels)
 {
 	enum lttng_error_code ret_code;
 	int ret, i;
@@ -356,8 +341,7 @@ static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer
 	 * We must ensure that "local_flattened_channels" is never resized so as
 	 * to preserve the validity of the flattened objects.
 	 */
-	ret = lttng_dynamic_buffer_set_capacity(
-			&local_flattened_channels, storage_req);
+	ret = lttng_dynamic_buffer_set_capacity(&local_flattened_channels, storage_req);
 	if (ret) {
 		ret_code = LTTNG_ERR_NOMEM;
 		goto end;
@@ -365,17 +349,17 @@ static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer
 
 	/* Start by laying the struct lttng_channel */
 	for (i = 0; i < nb_channels; i++) {
-		const auto *element = (const struct lttng_channel *)
-				lttng_dynamic_pointer_array_get_pointer(
-						channels, i);
+		const auto *element =
+			(const struct lttng_channel *) lttng_dynamic_pointer_array_get_pointer(
+				channels, i);
 
 		if (!element) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto end;
 		}
 
-		ret = lttng_dynamic_buffer_append(&local_flattened_channels,
-				element, sizeof(struct lttng_channel));
+		ret = lttng_dynamic_buffer_append(
+			&local_flattened_channels, element, sizeof(struct lttng_channel));
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
@@ -384,21 +368,22 @@ static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer
 
 	/* Flatten the extended data */
 	for (i = 0; i < nb_channels; i++) {
-		const auto *element = (const struct lttng_channel *)
-				lttng_dynamic_pointer_array_get_pointer(
-						channels, i);
+		const auto *element =
+			(const struct lttng_channel *) lttng_dynamic_pointer_array_get_pointer(
+				channels, i);
 		/*
 		 * Sample the location of the flattened channel we are about
 		 * to modify.
 		 */
-		auto *channel = (struct lttng_channel *)
-				(local_flattened_channels.data + (sizeof(struct lttng_channel) * i));
+		auto *channel = (struct lttng_channel *) (local_flattened_channels.data +
+							  (sizeof(struct lttng_channel) * i));
 		/*
 		 * Sample the location of the extended attributes we are about
 		 * to add.
 		 */
-		const auto *channel_extended = (struct lttng_channel_extended *)
-				(local_flattened_channels.data + local_flattened_channels.size);
+		const auto *channel_extended =
+			(struct lttng_channel_extended *) (local_flattened_channels.data +
+							   local_flattened_channels.size);
 
 		if (!element) {
 			ret_code = LTTNG_ERR_FATAL;
@@ -406,8 +391,8 @@ static enum lttng_error_code flatten_lttng_channels(struct lttng_dynamic_pointer
 		}
 
 		ret = lttng_dynamic_buffer_append(&local_flattened_channels,
-				element->attr.extended.ptr,
-				sizeof(struct lttng_channel_extended));
+						  element->attr.extended.ptr,
+						  sizeof(struct lttng_channel_extended));
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
@@ -430,9 +415,7 @@ end:
 }
 
 enum lttng_error_code lttng_channels_create_and_flatten_from_buffer(
-		const struct lttng_buffer_view *view,
-		uint32_t count,
-		struct lttng_channel **channels)
+	const struct lttng_buffer_view *view, uint32_t count, struct lttng_channel **channels)
 {
 	enum lttng_error_code ret_code;
 	struct lttng_dynamic_pointer_array local_channels;
@@ -442,10 +425,9 @@ enum lttng_error_code lttng_channels_create_and_flatten_from_buffer(
 	/* Deserialize the channels */
 	{
 		const struct lttng_buffer_view channels_view =
-				lttng_buffer_view_from_view(view, 0, -1);
+			lttng_buffer_view_from_view(view, 0, -1);
 
-		ret_code = channel_list_create_from_buffer(
-				&channels_view, count, &local_channels);
+		ret_code = channel_list_create_from_buffer(&channels_view, count, &local_channels);
 		if (ret_code != LTTNG_OK) {
 			goto end;
 		}

@@ -10,6 +10,7 @@
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/snapshot.hpp>
+
 #include <lttng/snapshot-internal.hpp>
 #include <lttng/snapshot.h>
 
@@ -46,9 +47,8 @@ end:
 	return valid;
 }
 
-bool lttng_snapshot_output_is_equal(
-		const struct lttng_snapshot_output *a,
-		const struct lttng_snapshot_output *b)
+bool lttng_snapshot_output_is_equal(const struct lttng_snapshot_output *a,
+				    const struct lttng_snapshot_output *b)
 {
 	bool equal = false;
 
@@ -90,9 +90,8 @@ struct lttng_snapshot_output_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-int lttng_snapshot_output_serialize(
-		const struct lttng_snapshot_output *output,
-		struct lttng_payload *payload)
+int lttng_snapshot_output_serialize(const struct lttng_snapshot_output *output,
+				    struct lttng_payload *payload)
 {
 	struct lttng_snapshot_output_comm comm;
 	int ret;
@@ -105,20 +104,17 @@ int lttng_snapshot_output_serialize(
 		goto end;
 	}
 
-	ret = lttng_strncpy(
-			comm.ctrl_url, output->ctrl_url, sizeof(comm.ctrl_url));
+	ret = lttng_strncpy(comm.ctrl_url, output->ctrl_url, sizeof(comm.ctrl_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_strncpy(
-			comm.data_url, output->data_url, sizeof(comm.data_url));
+	ret = lttng_strncpy(comm.data_url, output->data_url, sizeof(comm.data_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		goto end;
 	}
@@ -127,9 +123,8 @@ end:
 	return ret;
 }
 
-ssize_t lttng_snapshot_output_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_snapshot_output **output_p)
+ssize_t lttng_snapshot_output_create_from_payload(struct lttng_payload_view *view,
+						  struct lttng_snapshot_output **output_p)
 {
 	const struct lttng_snapshot_output_comm *comm;
 	struct lttng_snapshot_output *output = NULL;
@@ -156,14 +151,12 @@ ssize_t lttng_snapshot_output_create_from_payload(
 		goto end;
 	}
 
-	ret = lttng_strncpy(output->ctrl_url, comm->ctrl_url,
-			sizeof(output->ctrl_url));
+	ret = lttng_strncpy(output->ctrl_url, comm->ctrl_url, sizeof(output->ctrl_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_strncpy(output->data_url, comm->data_url,
-			sizeof(output->data_url));
+	ret = lttng_strncpy(output->data_url, comm->data_url, sizeof(output->data_url));
 	if (ret) {
 		goto end;
 	}
@@ -177,9 +170,8 @@ end:
 	return ret;
 }
 
-enum lttng_error_code lttng_snapshot_output_mi_serialize(
-		const struct lttng_snapshot_output *output,
-		struct mi_writer *writer)
+enum lttng_error_code lttng_snapshot_output_mi_serialize(const struct lttng_snapshot_output *output,
+							 struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -188,8 +180,7 @@ enum lttng_error_code lttng_snapshot_output_mi_serialize(
 	LTTNG_ASSERT(writer);
 
 	/* Open output element. */
-	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_action_snapshot_session_output);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_snapshot_session_output);
 	if (ret) {
 		goto mi_error;
 	}
@@ -197,24 +188,23 @@ enum lttng_error_code lttng_snapshot_output_mi_serialize(
 	/* Name. */
 	if (strnlen(output->name, LTTNG_NAME_MAX) != 0) {
 		ret = mi_lttng_writer_write_element_string(
-				writer, config_element_name, output->name);
+			writer, config_element_name, output->name);
 		if (ret) {
 			goto mi_error;
 		}
 	}
 
 	/* Control url (always present). */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Data url (optional). */
 	if (strnlen(output->data_url, PATH_MAX) != 0) {
-		ret = mi_lttng_writer_write_element_string(writer,
-				mi_lttng_element_snapshot_data_url,
-				output->data_url);
+		ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_snapshot_data_url, output->data_url);
 		if (ret) {
 			goto mi_error;
 		}
@@ -230,9 +220,8 @@ enum lttng_error_code lttng_snapshot_output_mi_serialize(
 	 */
 	if (output->max_size > 0 && output->max_size != UINT64_MAX) {
 		/* Total size of all stream combined. */
-		ret = mi_lttng_writer_write_element_unsigned_int(writer,
-				mi_lttng_element_snapshot_max_size,
-				output->max_size);
+		ret = mi_lttng_writer_write_element_unsigned_int(
+			writer, mi_lttng_element_snapshot_max_size, output->max_size);
 		if (ret) {
 			goto mi_error;
 		}

@@ -9,12 +9,6 @@
  *
  */
 
-#include <stdlib.h>
-#include <string.h>
-#include <common/align.hpp>
-#include <common/compat/errno.hpp>
-#include <common/compat/string.hpp>
-
 #include "common/align.hpp"
 #include "common/bytecode/bytecode.hpp"
 #include "common/compat/string.hpp"
@@ -23,15 +17,17 @@
 #include "filter-ast.hpp"
 #include "filter-ir.hpp"
 
-static
-int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
-		struct ir_op *node);
+#include <common/align.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/string.hpp>
 
-static
-int bytecode_patch(struct lttng_bytecode_alloc **fb,
-		const void *data,
-		uint16_t offset,
-		uint32_t len)
+#include <stdlib.h>
+#include <string.h>
+
+static int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx, struct ir_op *node);
+
+static int
+bytecode_patch(struct lttng_bytecode_alloc **fb, const void *data, uint16_t offset, uint32_t len)
 {
 	if (offset >= (*fb)->b.len) {
 		return -EINVAL;
@@ -40,8 +36,7 @@ int bytecode_patch(struct lttng_bytecode_alloc **fb,
 	return 0;
 }
 
-static
-int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
+static int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
 	struct return_op insn;
@@ -61,10 +56,9 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
  * 0: no match
  * < 0: error
  */
-static
-int load_expression_legacy_match(const struct ir_load_expression *exp,
-		enum bytecode_op *op_type,
-		char **symbol)
+static int load_expression_legacy_match(const struct ir_load_expression *exp,
+					enum bytecode_op *op_type,
+					char **symbol)
 {
 	const struct ir_load_expression_op *op;
 	bool need_dot = false;
@@ -94,13 +88,13 @@ int load_expression_legacy_match(const struct ir_load_expression *exp,
 	case IR_LOAD_EXPRESSION_GET_INDEX:
 	case IR_LOAD_EXPRESSION_LOAD_FIELD:
 	default:
-		return 0;	/* no match */
+		return 0; /* no match */
 	}
 
 	for (;;) {
 		op = op->next;
 		if (!op) {
-			return 0;	/* no match */
+			return 0; /* no match */
 		}
 		switch (op->type) {
 		case IR_LOAD_EXPRESSION_LOAD_FIELD:
@@ -114,12 +108,12 @@ int load_expression_legacy_match(const struct ir_load_expression *exp,
 			}
 			break;
 		default:
-			return 0;	 /* no match */
+			return 0; /* no match */
 		}
 		need_dot = true;
 	}
 end:
-	return 1;	/* Legacy match */
+	return 1; /* Legacy match */
 }
 
 /*
@@ -127,14 +121,12 @@ end:
  * 0: no legacy match
  * < 0: error
  */
-static
-int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
-		const struct ir_load_expression *exp,
-		const struct ir_load_expression_op *op)
+static int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
+					     const struct ir_load_expression *exp,
+					     const struct ir_load_expression_op *op)
 {
 	struct load_op *insn = NULL;
-	uint32_t insn_len = sizeof(struct load_op)
-		+ sizeof(struct field_ref);
+	uint32_t insn_len = sizeof(struct load_op) + sizeof(struct field_ref);
 	struct field_ref ref_offset;
 	uint32_t reloc_offset_u32;
 	uint16_t reloc_offset;
@@ -166,26 +158,22 @@ int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
 		goto end;
 	}
 	/* append reloc */
-	ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
-				1, sizeof(reloc_offset));
+	ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset, 1, sizeof(reloc_offset));
 	if (ret) {
 		goto end;
 	}
-	ret = bytecode_push(&ctx->bytecode_reloc, symbol,
-				1, strlen(symbol) + 1);
+	ret = bytecode_push(&ctx->bytecode_reloc, symbol, 1, strlen(symbol) + 1);
 	if (ret) {
 		goto end;
 	}
-	ret = 1;	/* legacy */
+	ret = 1; /* legacy */
 end:
 	free(insn);
 	free(symbol);
 	return ret;
 }
 
-static
-int visit_node_load_expression(struct filter_parser_ctx *ctx,
-		const struct ir_op *node)
+static int visit_node_load_expression(struct filter_parser_ctx *ctx, const struct ir_op *node)
 {
 	struct ir_load_expression *exp;
 	struct ir_load_expression_op *op;
@@ -209,7 +197,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		return ret;
 	}
 	if (ret > 0) {
-		return 0;	/* legacy */
+		return 0; /* legacy */
 	}
 
 	for (; op != NULL; op = op->next) {
@@ -226,8 +214,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
 		{
-			ret = bytecode_push_get_app_context_root(
-					&ctx->bytecode);
+			ret = bytecode_push_get_app_context_root(&ctx->bytecode);
 
 			if (ret) {
 				return ret;
@@ -247,8 +234,8 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_SYMBOL:
 		{
-			ret = bytecode_push_get_symbol(&ctx->bytecode,
-					&ctx->bytecode_reloc, op->u.symbol);
+			ret = bytecode_push_get_symbol(
+				&ctx->bytecode, &ctx->bytecode_reloc, op->u.symbol);
 
 			if (ret) {
 				return ret;
@@ -258,8 +245,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_INDEX:
 		{
-			ret = bytecode_push_get_index_u64(
-					&ctx->bytecode, op->u.index);
+			ret = bytecode_push_get_index_u64(&ctx->bytecode, op->u.index);
 
 			if (ret) {
 				return ret;
@@ -288,23 +274,21 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 	return 0;
 }
 
-static
-int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
+static int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
 
 	switch (node->data_type) {
 	case IR_DATA_UNKNOWN:
 	default:
-		fprintf(stderr, "[error] Unknown data type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown data type in %s\n", __func__);
 		return -EINVAL;
 
 	case IR_DATA_STRING:
 	{
 		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op)
-			+ strlen(node->u.load.u.string.value) + 1;
+		uint32_t insn_len =
+			sizeof(struct load_op) + strlen(node->u.load.u.string.value) + 1;
 
 		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
@@ -343,8 +327,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case IR_DATA_NUMERIC:
 	{
 		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op)
-			+ sizeof(struct literal_numeric);
+		uint32_t insn_len = sizeof(struct load_op) + sizeof(struct literal_numeric);
 
 		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
@@ -358,8 +341,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case IR_DATA_FLOAT:
 	{
 		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op)
-			+ sizeof(struct literal_double);
+		uint32_t insn_len = sizeof(struct load_op) + sizeof(struct literal_double);
 
 		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
@@ -375,8 +357,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	}
 }
 
-static
-int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
+static int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
 	struct unary_op insn;
@@ -390,8 +371,7 @@ int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	switch (node->u.unary.type) {
 	case AST_UNARY_UNKNOWN:
 	default:
-		fprintf(stderr, "[error] Unknown unary node type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown unary node type in %s\n", __func__);
 		return -EINVAL;
 	case AST_UNARY_PLUS:
 		/* Nothing to do. */
@@ -412,8 +392,7 @@ int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
  * Binary comparator nesting is disallowed. This allows fitting into
  * only 2 registers.
  */
-static
-int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
+static int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
 	struct binary_op insn;
@@ -429,14 +408,12 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	switch (node->u.binary.type) {
 	case AST_OP_UNKNOWN:
 	default:
-		fprintf(stderr, "[error] Unknown unary node type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown unary node type in %s\n", __func__);
 		return -EINVAL;
 
 	case AST_OP_AND:
 	case AST_OP_OR:
-		fprintf(stderr, "[error] Unexpected logical node type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unexpected logical node type in %s\n", __func__);
 		return -EINVAL;
 
 	case AST_OP_MUL:
@@ -495,8 +472,7 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 /*
  * A logical op always return a s64 (1 or 0).
  */
-static
-int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
+static int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
 	struct logical_op insn;
@@ -508,28 +484,26 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	if (ret)
 		return ret;
 	/* Cast to s64 if float or field ref */
-	if ((node->u.binary.left->data_type == IR_DATA_FIELD_REF
-				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.left->data_type == IR_DATA_EXPRESSION)
-			|| node->u.binary.left->data_type == IR_DATA_FLOAT) {
+	if ((node->u.binary.left->data_type == IR_DATA_FIELD_REF ||
+	     node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF ||
+	     node->u.binary.left->data_type == IR_DATA_EXPRESSION) ||
+	    node->u.binary.left->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
-				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.left->data_type == IR_DATA_EXPRESSION) {
+		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF ||
+		    node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF ||
+		    node->u.binary.left->data_type == IR_DATA_EXPRESSION) {
 			cast_insn.op = BYTECODE_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = BYTECODE_OP_CAST_DOUBLE_TO_S64;
 		}
-		ret = bytecode_push(&ctx->bytecode, &cast_insn,
-					1, sizeof(cast_insn));
+		ret = bytecode_push(&ctx->bytecode, &cast_insn, 1, sizeof(cast_insn));
 		if (ret)
 			return ret;
 	}
 	switch (node->u.logical.type) {
 	default:
-		fprintf(stderr, "[error] Unknown node type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown node type in %s\n", __func__);
 		return -EINVAL;
 
 	case AST_OP_AND:
@@ -539,9 +513,8 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		insn.op = BYTECODE_OP_OR;
 		break;
 	}
-	insn.skip_offset = (uint16_t) -1UL;	/* Temporary */
-	ret = bytecode_push_logical(&ctx->bytecode, &insn, 1, sizeof(insn),
-			&skip_offset_loc);
+	insn.skip_offset = (uint16_t) -1UL; /* Temporary */
+	ret = bytecode_push_logical(&ctx->bytecode, &insn, 1, sizeof(insn), &skip_offset_loc);
 	if (ret)
 		return ret;
 	/* Visit right child */
@@ -549,30 +522,29 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	if (ret)
 		return ret;
 	/* Cast to s64 if float or field ref */
-	if ((node->u.binary.right->data_type == IR_DATA_FIELD_REF
-				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.right->data_type == IR_DATA_EXPRESSION)
-			|| node->u.binary.right->data_type == IR_DATA_FLOAT) {
+	if ((node->u.binary.right->data_type == IR_DATA_FIELD_REF ||
+	     node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF ||
+	     node->u.binary.right->data_type == IR_DATA_EXPRESSION) ||
+	    node->u.binary.right->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
-		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
-				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.right->data_type == IR_DATA_EXPRESSION) {
+		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF ||
+		    node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF ||
+		    node->u.binary.right->data_type == IR_DATA_EXPRESSION) {
 			cast_insn.op = BYTECODE_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = BYTECODE_OP_CAST_DOUBLE_TO_S64;
 		}
-		ret = bytecode_push(&ctx->bytecode, &cast_insn,
-					1, sizeof(cast_insn));
+		ret = bytecode_push(&ctx->bytecode, &cast_insn, 1, sizeof(cast_insn));
 		if (ret)
 			return ret;
 	}
 	/* We now know where the logical op can skip. */
 	target_loc = (uint16_t) bytecode_get_len(&ctx->bytecode->b);
 	ret = bytecode_patch(&ctx->bytecode,
-			&target_loc,			/* Offset to jump to */
-			skip_offset_loc,		/* Where to patch */
-			sizeof(uint16_t));
+			     &target_loc, /* Offset to jump to */
+			     skip_offset_loc, /* Where to patch */
+			     sizeof(uint16_t));
 	return ret;
 }
 
@@ -580,15 +552,12 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
  * Postorder traversal of the tree. We need the children result before
  * we can evaluate the parent.
  */
-static
-int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
-		struct ir_op *node)
+static int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	switch (node->op) {
 	case IR_OP_UNKNOWN:
 	default:
-		fprintf(stderr, "[error] Unknown node type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown node type in %s\n", __func__);
 		return -EINVAL;
 
 	case IR_OP_ROOT:
@@ -637,8 +606,10 @@ int filter_visitor_bytecode_generate(struct filter_parser_ctx *ctx)
 
 	/* Finally, append symbol table to bytecode */
 	ctx->bytecode->b.reloc_table_offset = bytecode_get_len(&ctx->bytecode->b);
-	return bytecode_push(&ctx->bytecode, ctx->bytecode_reloc->b.data,
-			1, bytecode_get_len(&ctx->bytecode_reloc->b));
+	return bytecode_push(&ctx->bytecode,
+			     ctx->bytecode_reloc->b.data,
+			     1,
+			     bytecode_get_len(&ctx->bytecode_reloc->b));
 
 error:
 	filter_bytecode_free(ctx);

@@ -6,6 +6,16 @@
  */
 
 #define _LGPL_SOURCE
+#include "command.hpp"
+#include "version.hpp"
+
+#include <common/compat/getenv.hpp>
+#include <common/error.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/lttng.h>
+
+#include <ctype.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
@@ -14,23 +24,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <ctype.h>
-
-#include <lttng/lttng.h>
-#include <common/error.hpp>
-#include <common/compat/getenv.hpp>
-#include <common/utils.hpp>
-
-#include "command.hpp"
-#include "version.hpp"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng.1.h>
 #else
-NULL
+	NULL
 #endif
-;
+	;
 
 /* Variables */
 static const char *progname;
@@ -47,61 +48,60 @@ enum {
 };
 
 /* Getopt options. No first level command. */
-static struct option long_options[] = {
-	{"version",          0, NULL, 'V'},
-	{"help",             0, NULL, 'h'},
-	{"group",            1, NULL, 'g'},
-	{"verbose",          0, NULL, 'v'},
-	{"quiet",            0, NULL, 'q'},
-	{"mi",               1, NULL, 'm'},
-	{"no-sessiond",      0, NULL, 'n'},
-	{"sessiond-path",    1, NULL, OPT_SESSION_PATH},
-	{"relayd-path",      1, NULL, OPT_RELAYD_PATH},
-	{"list-options",     0, NULL, OPT_DUMP_OPTIONS},
-	{"list-commands",    0, NULL, OPT_DUMP_COMMANDS},
-	{NULL, 0, NULL, 0}
-};
+static struct option long_options[] = { { "version", 0, NULL, 'V' },
+					{ "help", 0, NULL, 'h' },
+					{ "group", 1, NULL, 'g' },
+					{ "verbose", 0, NULL, 'v' },
+					{ "quiet", 0, NULL, 'q' },
+					{ "mi", 1, NULL, 'm' },
+					{ "no-sessiond", 0, NULL, 'n' },
+					{ "sessiond-path", 1, NULL, OPT_SESSION_PATH },
+					{ "relayd-path", 1, NULL, OPT_RELAYD_PATH },
+					{ "list-options", 0, NULL, OPT_DUMP_OPTIONS },
+					{ "list-commands", 0, NULL, OPT_DUMP_COMMANDS },
+					{ NULL, 0, NULL, 0 } };
 
 /* First level command */
-static struct cmd_struct commands[] =  {
-	{ "add-context", cmd_add_context},
-	{ "add-trigger", cmd_add_trigger},
-	{ "create", cmd_create},
-	{ "clear", cmd_clear},
-	{ "destroy", cmd_destroy},
-	{ "disable-channel", cmd_disable_channels},
-	{ "disable-event", cmd_disable_events},
-	{ "enable-channel", cmd_enable_channels},
-	{ "enable-event", cmd_enable_events},
-	{ "help", NULL},
-	{ "list", cmd_list},
-	{ "list-triggers", cmd_list_triggers},
-	{ "load", cmd_load},
-	{ "metadata", cmd_metadata},
-	{ "regenerate", cmd_regenerate},
-	{ "remove-trigger", cmd_remove_trigger},
-	{ "rotate", cmd_rotate},
-	{ "enable-rotation", cmd_enable_rotation},
-	{ "disable-rotation", cmd_disable_rotation},
-	{ "save", cmd_save},
-	{ "set-session", cmd_set_session},
-	{ "snapshot", cmd_snapshot},
-	{ "start", cmd_start},
-	{ "status", cmd_status},
-	{ "stop", cmd_stop},
-	{ "track", cmd_track},
-	{ "untrack", cmd_untrack},
-	{ "version", cmd_version},
-	{ "view", cmd_view},
-	{ NULL, NULL}	/* Array closure */
+static struct cmd_struct commands[] = {
+	{ "add-context", cmd_add_context },
+	{ "add-trigger", cmd_add_trigger },
+	{ "create", cmd_create },
+	{ "clear", cmd_clear },
+	{ "destroy", cmd_destroy },
+	{ "disable-channel", cmd_disable_channels },
+	{ "disable-event", cmd_disable_events },
+	{ "enable-channel", cmd_enable_channels },
+	{ "enable-event", cmd_enable_events },
+	{ "help", NULL },
+	{ "list", cmd_list },
+	{ "list-triggers", cmd_list_triggers },
+	{ "load", cmd_load },
+	{ "metadata", cmd_metadata },
+	{ "regenerate", cmd_regenerate },
+	{ "remove-trigger", cmd_remove_trigger },
+	{ "rotate", cmd_rotate },
+	{ "enable-rotation", cmd_enable_rotation },
+	{ "disable-rotation", cmd_disable_rotation },
+	{ "save", cmd_save },
+	{ "set-session", cmd_set_session },
+	{ "snapshot", cmd_snapshot },
+	{ "start", cmd_start },
+	{ "status", cmd_status },
+	{ "stop", cmd_stop },
+	{ "track", cmd_track },
+	{ "untrack", cmd_untrack },
+	{ "version", cmd_version },
+	{ "view", cmd_view },
+	{ NULL, NULL } /* Array closure */
 };
 
 static void version(FILE *ofp)
 {
-	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME "%s%s\n",
-			progname,
-			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
-			EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
+	fprintf(ofp,
+		"%s (LTTng Trace Control) " VERSION " - " VERSION_NAME "%s%s\n",
+		progname,
+		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+		EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 
 /*
@@ -150,8 +150,7 @@ static void list_options(FILE *ofp)
 /*
  * clean_exit
  */
-__attribute__((noreturn))
-static void clean_exit(int code)
+__attribute__((noreturn)) static void clean_exit(int code)
 {
 	DBG("Clean exit");
 	exit(code);
@@ -165,13 +164,13 @@ static void clean_exit(int code)
 static void sighandler(int sig)
 {
 	switch (sig) {
-		case SIGTERM:
-			DBG("SIGTERM caught");
-			clean_exit(EXIT_FAILURE);
-			break;
-		default:
-			DBG("Unknown signal %d caught", sig);
-			break;
+	case SIGTERM:
+		DBG("SIGTERM caught");
+		clean_exit(EXIT_FAILURE);
+		break;
+	default:
+		DBG("Unknown signal %d caught", sig);
+		break;
 	}
 
 	return;
@@ -227,7 +226,7 @@ static int handle_command(int argc, char **argv)
 
 	/* Special case for help command which needs the commands array */
 	if (strcmp(argv[0], "help") == 0) {
-		ret = cmd_help(argc, (const char**) argv, commands);
+		ret = cmd_help(argc, (const char **) argv, commands);
 		goto end;
 	}
 
@@ -235,7 +234,7 @@ static int handle_command(int argc, char **argv)
 	while (cmd->name != NULL) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
-			ret = cmd->func(argc, (const char**) argv);
+			ret = cmd->func(argc, (const char **) argv);
 			goto end;
 		}
 		i++;
@@ -335,7 +334,8 @@ static int parse_args(int argc, char **argv)
 	int opt, ret;
 
 	if (lttng_is_setuid_setgid()) {
-		ERR("'%s' is not allowed to be executed as a setuid/setgid binary for security reasons. Aborting.", argv[0]);
+		ERR("'%s' is not allowed to be executed as a setuid/setgid binary for security reasons. Aborting.",
+		    argv[0]);
 		clean_exit(EXIT_FAILURE);
 	}
 
@@ -432,10 +432,9 @@ static int parse_args(int argc, char **argv)
 	case CMD_UNDEFINED:
 		if (!command_exists(*(argv + optind))) {
 			MSG("lttng: %s is not an lttng command. See 'lttng --help'.",
-					*(argv + optind));
+			    *(argv + optind));
 		} else {
-			ERR("Unrecognized argument used with \'%s\' command",
-					*(argv + optind));
+			ERR("Unrecognized argument used with \'%s\' command", *(argv + optind));
 		}
 		break;
 	case CMD_FATAL:
@@ -457,7 +456,6 @@ end:
 error:
 	return ret;
 }
-
 
 /*
  *  main

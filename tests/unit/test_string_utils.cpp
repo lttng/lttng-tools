@@ -5,11 +5,12 @@
  *
  */
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdarg.h>
 #include <common/string-utils/string-utils.hpp>
+
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tap/tap.h>
 
 /* Number of TAP tests in this file */
@@ -20,8 +21,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-static void test_one_split(const char *input, char delim, int escape_delim,
-		...)
+static void test_one_split(const char *input, char delim, int escape_delim, ...)
 {
 	va_list vl;
 	bool all_ok = true;
@@ -38,8 +38,7 @@ static void test_one_split(const char *input, char delim, int escape_delim,
 	for (i = 0; i < string_count; i++) {
 		const char *expected_substring = va_arg(vl, const char *);
 		const char *substring =
-			(const char *) lttng_dynamic_pointer_array_get_pointer(
-				&strings, i);
+			(const char *) lttng_dynamic_pointer_array_get_pointer(&strings, i);
 
 		diag("  got `%s`, expecting `%s`", substring, expected_substring);
 
@@ -56,8 +55,11 @@ static void test_one_split(const char *input, char delim, int escape_delim,
 
 	lttng_dynamic_pointer_array_reset(&strings);
 	va_end(vl);
-	ok(all_ok, "strutils_split() produces the expected substrings: `%s` (delim. `%c`, escape `%d`)",
-			input, delim, escape_delim);
+	ok(all_ok,
+	   "strutils_split() produces the expected substrings: `%s` (delim. `%c`, escape `%d`)",
+	   input,
+	   delim,
+	   escape_delim);
 }
 
 static void test_split(void)
@@ -84,8 +86,9 @@ static void test_split(void)
 static void test_one_is_star_at_the_end_only_glob_pattern(const char *pattern, bool expected)
 {
 	ok(strutils_is_star_at_the_end_only_glob_pattern(pattern) == expected,
-		"strutils_is_star_at_the_end_only_glob_pattern() returns the expected result: `%s` -> %d",
-		pattern, expected);
+	   "strutils_is_star_at_the_end_only_glob_pattern() returns the expected result: `%s` -> %d",
+	   pattern,
+	   expected);
 }
 
 static void test_is_star_at_the_end_only_glob_pattern(void)
@@ -105,8 +108,9 @@ static void test_is_star_at_the_end_only_glob_pattern(void)
 static void test_one_is_star_glob_pattern(const char *pattern, bool expected)
 {
 	ok(strutils_is_star_glob_pattern(pattern) == expected,
-		"strutils_is_star_glob_pattern() returns the expected result: `%s` -> %d",
-		pattern, expected);
+	   "strutils_is_star_glob_pattern() returns the expected result: `%s` -> %d",
+	   pattern,
+	   expected);
 }
 
 static void test_is_star_glob_pattern(void)
@@ -128,16 +132,16 @@ static void test_is_star_glob_pattern(void)
 	test_one_is_star_glob_pattern("allo\\", false);
 }
 
-static void test_one_normalize_star_glob_pattern(const char *pattern,
-		const char *expected)
+static void test_one_normalize_star_glob_pattern(const char *pattern, const char *expected)
 {
 	char *rw_pattern = strdup(pattern);
 
 	LTTNG_ASSERT(rw_pattern);
 	strutils_normalize_star_glob_pattern(rw_pattern);
 	ok(strcmp(rw_pattern, expected) == 0,
-		"strutils_normalize_star_glob_pattern() produces the expected result: `%s` -> `%s`",
-		pattern, expected);
+	   "strutils_normalize_star_glob_pattern() produces the expected result: `%s` -> `%s`",
+	   pattern,
+	   expected);
 	free(rw_pattern);
 }
 

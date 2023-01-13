@@ -7,22 +7,22 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <inttypes.h>
+#include "agent.hpp"
+#include "buffer-registry.hpp"
+#include "trace-ust.hpp"
+#include "ust-app.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/trace-chunk.hpp>
 #include <common/utils.hpp>
 
-#include "buffer-registry.hpp"
-#include "trace-ust.hpp"
-#include "utils.hpp"
-#include "ust-app.hpp"
-#include "agent.hpp"
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 namespace lsu = lttng::sessiond::ust;
 
@@ -31,8 +31,7 @@ namespace lsu = lttng::sessiond::ust;
  *
  * Matches by name only. Used by the disable command.
  */
-int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
-		const void *_key)
+int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
 {
 	struct ltt_ust_event *event;
 	const char *name;
@@ -84,8 +83,10 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 
 	/* Event loglevel value and type. */
 	ll_match = loglevels_match(event->attr.loglevel_type,
-		ev_loglevel_value, key->loglevel_type,
-		key->loglevel_value, LTTNG_UST_ABI_LOGLEVEL_ALL);
+				   ev_loglevel_value,
+				   key->loglevel_type,
+				   key->loglevel_value,
+				   LTTNG_UST_ABI_LOGLEVEL_ALL);
 
 	if (!ll_match) {
 		goto no_match;
@@ -99,8 +100,7 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	if (key->filter && event->filter) {
 		/* Both filters exists, check length followed by the bytecode. */
 		if (event->filter->len != key->filter->len ||
-				memcmp(event->filter->data, key->filter->data,
-					event->filter->len) != 0) {
+		    memcmp(event->filter->data, key->filter->data, event->filter->len) != 0) {
 			goto no_match;
 		}
 	}
@@ -121,10 +121,8 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 		/* Compare names individually. */
 		for (i = 0; i < event->exclusion->count; ++i) {
 			size_t j;
-		        bool found = false;
-			const char *name_ev =
-				LTTNG_EVENT_EXCLUSION_NAME_AT(
-					event->exclusion, i);
+			bool found = false;
+			const char *name_ev = LTTNG_EVENT_EXCLUSION_NAME_AT(event->exclusion, i);
 
 			/*
 			 * Compare this exclusion name to all the key's
@@ -132,11 +130,9 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 			 */
 			for (j = 0; j < key->exclusion->count; ++j) {
 				const char *name_key =
-					LTTNG_EVENT_EXCLUSION_NAME_AT(
-						key->exclusion, j);
+					LTTNG_EVENT_EXCLUSION_NAME_AT(key->exclusion, j);
 
-				if (!strncmp(name_ev, name_key,
-						LTTNG_SYMBOL_NAME_LEN)) {
+				if (!strncmp(name_ev, name_key, LTTNG_SYMBOL_NAME_LEN)) {
 					/* Names match! */
 					found = true;
 					break;
@@ -163,8 +159,7 @@ no_match:
  * Find the channel in the hashtable and return channel pointer. RCU read side
  * lock MUST be acquired before calling this.
  */
-struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
-		const char *name)
+struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, const char *name)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -177,7 +172,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 	if (name[0] == '\0')
 		name = DEFAULT_CHANNEL_NAME;
 
-	lttng_ht_lookup(ht, (void *)name, &iter);
+	lttng_ht_lookup(ht, (void *) name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		goto error;
@@ -197,9 +192,11 @@ error:
  * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_bytecode *filter,
-		enum lttng_ust_abi_loglevel_type loglevel_type, int loglevel_value,
-		struct lttng_event_exclusion *exclusion)
+					   char *name,
+					   struct lttng_bytecode *filter,
+					   enum lttng_ust_abi_loglevel_type loglevel_type,
+					   int loglevel_value,
+					   struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -215,8 +212,11 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 	key.loglevel_value = loglevel_value;
 	key.exclusion = exclusion;
 
-	cds_lfht_lookup(ht->ht, ht->hash_fct((void *) name, lttng_ht_seed),
-			trace_ust_ht_match_event, &key, &iter.iter);
+	cds_lfht_lookup(ht->ht,
+			ht->hash_fct((void *) name, lttng_ht_seed),
+			trace_ust_ht_match_event,
+			&key,
+			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (node == NULL) {
 		goto error;
@@ -239,7 +239,7 @@ error:
  * once the agent is no longer in scope or being used.
  */
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
-		enum lttng_domain_type domain_type)
+				   enum lttng_domain_type domain_type)
 {
 	struct agent *agt = NULL;
 	struct lttng_ht_node_u64 *node;
@@ -346,7 +346,7 @@ error_alloc:
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
-		enum lttng_domain_type domain)
+						 enum lttng_domain_type domain)
 {
 	struct ltt_ust_channel *luc;
 
@@ -367,10 +367,10 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
-	luc->monitor_timer_interval = ((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->monitor_timer_interval;
-	luc->attr.u.s.blocking_timeout = ((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->blocking_timeout;
+	luc->monitor_timer_interval =
+		((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval;
+	luc->attr.u.s.blocking_timeout =
+		((struct lttng_channel_extended *) chan->attr.extended.ptr)->blocking_timeout;
 
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
@@ -423,12 +423,10 @@ static int validate_exclusion(struct lttng_event_exclusion *exclusion)
 
 	for (i = 0; i < exclusion->count; ++i) {
 		size_t j;
-		const char *name_a =
-			LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, i);
+		const char *name_a = LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, i);
 
 		for (j = 0; j < i; ++j) {
-			const char *name_b =
-				LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, j);
+			const char *name_b = LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, j);
 
 			if (!strncmp(name_a, name_b, LTTNG_SYMBOL_NAME_LEN)) {
 				/* Match! */
@@ -449,11 +447,11 @@ end:
  * Return an lttng_error_code
  */
 enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
-		char *filter_expression,
-		struct lttng_bytecode *filter,
-		struct lttng_event_exclusion *exclusion,
-		bool internal_event,
-		struct ltt_ust_event **ust_event)
+					     char *filter_expression,
+					     struct lttng_bytecode *filter,
+					     struct lttng_event_exclusion *exclusion,
+					     bool internal_event,
+					     struct ltt_ust_event **ust_event)
 {
 	struct ltt_ust_event *local_ust_event;
 	enum lttng_error_code ret = LTTNG_OK;
@@ -500,7 +498,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	switch (ev->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
 		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
-		local_ust_event->attr.loglevel = -1;	/* Force to -1 */
+		local_ust_event->attr.loglevel = -1; /* Force to -1 */
 		break;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
 		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
@@ -525,8 +523,9 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	lttng_ht_node_init_str(&local_ust_event->node, local_ust_event->attr.name);
 
 	DBG2("Trace UST event %s, loglevel (%d,%d) created",
-		local_ust_event->attr.name, local_ust_event->attr.loglevel_type,
-		local_ust_event->attr.loglevel);
+	     local_ust_event->attr.name,
+	     local_ust_event->attr.loglevel_type,
+	     local_ust_event->attr.loglevel);
 
 	*ust_event = local_ust_event;
 
@@ -541,9 +540,7 @@ error:
 	return ret;
 }
 
-static
-int trace_ust_context_type_event_to_ust(
-		enum lttng_event_context_type type)
+static int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
 {
 	int utype;
 
@@ -627,7 +624,7 @@ int trace_ust_context_type_event_to_ust(
  * Return 1 if contexts match, 0 otherwise.
  */
 int trace_ust_match_context(const struct ltt_ust_context *uctx,
-		const struct lttng_event_context *ctx)
+			    const struct lttng_event_context *ctx)
 {
 	int utype;
 
@@ -640,32 +637,27 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 	}
 	switch (utype) {
 	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
-		if (uctx->ctx.u.perf_counter.type
-				!= ctx->u.perf_counter.type) {
+		if (uctx->ctx.u.perf_counter.type != ctx->u.perf_counter.type) {
 			return 0;
 		}
-		if (uctx->ctx.u.perf_counter.config
-				!= ctx->u.perf_counter.config) {
+		if (uctx->ctx.u.perf_counter.config != ctx->u.perf_counter.config) {
 			return 0;
 		}
 		if (strncmp(uctx->ctx.u.perf_counter.name,
-				ctx->u.perf_counter.name,
-				LTTNG_UST_ABI_SYM_NAME_LEN)) {
+			    ctx->u.perf_counter.name,
+			    LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			return 0;
 		}
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 		LTTNG_ASSERT(uctx->ctx.u.app_ctx.provider_name);
 		LTTNG_ASSERT(uctx->ctx.u.app_ctx.ctx_name);
-		if (strcmp(uctx->ctx.u.app_ctx.provider_name,
-				ctx->u.app_ctx.provider_name) ||
-				strcmp(uctx->ctx.u.app_ctx.ctx_name,
-				ctx->u.app_ctx.ctx_name)) {
+		if (strcmp(uctx->ctx.u.app_ctx.provider_name, ctx->u.app_ctx.provider_name) ||
+		    strcmp(uctx->ctx.u.app_ctx.ctx_name, ctx->u.app_ctx.ctx_name)) {
 			return 0;
 		}
 	default:
 		break;
-
 	}
 	return 1;
 }
@@ -675,8 +667,7 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_ust_context *trace_ust_create_context(
-		const struct lttng_event_context *ctx)
+struct ltt_ust_context *trace_ust_create_context(const struct lttng_event_context *ctx)
 {
 	struct ltt_ust_context *uctx = NULL;
 	int utype;
@@ -700,8 +691,9 @@ struct ltt_ust_context *trace_ust_create_context(
 	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		uctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
 		uctx->ctx.u.perf_counter.config = ctx->u.perf_counter.config;
-		strncpy(uctx->ctx.u.perf_counter.name, ctx->u.perf_counter.name,
-				LTTNG_UST_ABI_SYM_NAME_LEN);
+		strncpy(uctx->ctx.u.perf_counter.name,
+			ctx->u.perf_counter.name,
+			LTTNG_UST_ABI_SYM_NAME_LEN);
 		uctx->ctx.u.perf_counter.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
@@ -734,8 +726,8 @@ error:
 
 static void destroy_id_tracker_node_rcu(struct rcu_head *head)
 {
-	struct ust_id_tracker_node *tracker_node = caa_container_of(
-			head, struct ust_id_tracker_node, node.head);
+	struct ust_id_tracker_node *tracker_node =
+		caa_container_of(head, struct ust_id_tracker_node, node.head);
 	free(tracker_node);
 }
 
@@ -770,8 +762,7 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 		return;
 	}
 	rcu_read_lock();
-	cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node,
-			node.node) {
+	cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node, node.node) {
 		int ret = lttng_ht_del(id_tracker->ht, &iter);
 
 		LTTNG_ASSERT(!ret);
@@ -782,10 +773,8 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 	id_tracker->ht = NULL;
 }
 
-static struct ust_id_tracker_node *id_tracker_lookup(
-		struct ust_id_tracker *id_tracker,
-		int id,
-		struct lttng_ht_iter *iter)
+static struct ust_id_tracker_node *
+id_tracker_lookup(struct ust_id_tracker *id_tracker, int id, struct lttng_ht_iter *iter)
 {
 	unsigned long _id = (unsigned long) id;
 	struct lttng_ht_node_ulong *node;
@@ -851,7 +840,7 @@ end:
 }
 
 static struct ust_id_tracker *get_id_tracker(struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr)
+					     enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
@@ -865,9 +854,9 @@ static struct ust_id_tracker *get_id_tracker(struct ltt_ust_session *session,
 	}
 }
 
-static struct process_attr_tracker *_trace_ust_get_process_attr_tracker(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr)
+static struct process_attr_tracker *
+_trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
+				    enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
@@ -881,21 +870,20 @@ static struct process_attr_tracker *_trace_ust_get_process_attr_tracker(
 	}
 }
 
-const struct process_attr_tracker *trace_ust_get_process_attr_tracker(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr)
+const struct process_attr_tracker *
+trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
+				   enum lttng_process_attr process_attr)
 {
-	return (const struct process_attr_tracker *)
-			_trace_ust_get_process_attr_tracker(
-					session, process_attr);
+	return (const struct process_attr_tracker *) _trace_ust_get_process_attr_tracker(
+		session, process_attr);
 }
 
 /*
  * The session lock is held when calling this function.
  */
 int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr,
-		struct ltt_ust_session *session,
-		int id)
+				struct ltt_ust_session *session,
+				int id)
 {
 	struct lttng_ht_iter iter;
 	struct ust_id_tracker *id_tracker;
@@ -916,18 +904,16 @@ int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr,
 /*
  * Called with the session lock held.
  */
-enum lttng_error_code trace_ust_process_attr_tracker_set_tracking_policy(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		enum lttng_tracking_policy policy)
+enum lttng_error_code
+trace_ust_process_attr_tracker_set_tracking_policy(struct ltt_ust_session *session,
+						   enum lttng_process_attr process_attr,
+						   enum lttng_tracking_policy policy)
 {
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
-	struct ust_id_tracker *id_tracker =
-			get_id_tracker(session, process_attr);
+	struct ust_id_tracker *id_tracker = get_id_tracker(session, process_attr);
 	struct process_attr_tracker *tracker =
-			_trace_ust_get_process_attr_tracker(
-					session, process_attr);
+		_trace_ust_get_process_attr_tracker(session, process_attr);
 	bool should_update_apps = false;
 	enum lttng_tracking_policy previous_policy;
 
@@ -979,15 +965,14 @@ end:
 }
 
 /* Called with the session lock held. */
-enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+enum lttng_error_code
+trace_ust_process_attr_tracker_inclusion_set_add_value(struct ltt_ust_session *session,
+						       enum lttng_process_attr process_attr,
+						       const struct process_attr_value *value)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	bool should_update_apps = false;
-	struct ust_id_tracker *id_tracker =
-			get_id_tracker(session, process_attr);
+	struct ust_id_tracker *id_tracker = get_id_tracker(session, process_attr);
 	struct process_attr_tracker *tracker;
 	int integral_value;
 	enum process_attr_tracker_status status;
@@ -1007,8 +992,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			uid_t uid;
 
-			ret_code = utils_user_id_from_name(
-					value->value.user_name, &uid);
+			ret_code = utils_user_id_from_name(value->value.user_name, &uid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1022,8 +1006,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			gid_t gid;
 
-			ret_code = utils_group_id_from_name(
-					value->value.group_name, &gid);
+			ret_code = utils_group_id_from_name(value->value.group_name, &gid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1061,8 +1044,9 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
 	}
 
 	DBG("User space track %s %d for session id %" PRIu64,
-			lttng_process_attr_to_string(process_attr),
-			integral_value, session->id);
+	    lttng_process_attr_to_string(process_attr),
+	    integral_value,
+	    session->id);
 
 	ret_code = (lttng_error_code) id_tracker_add_id(id_tracker, integral_value);
 	if (ret_code != LTTNG_OK) {
@@ -1088,15 +1072,14 @@ end:
 }
 
 /* Called with the session lock held. */
-enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
-		struct ltt_ust_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+enum lttng_error_code
+trace_ust_process_attr_tracker_inclusion_set_remove_value(struct ltt_ust_session *session,
+							  enum lttng_process_attr process_attr,
+							  const struct process_attr_value *value)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 	bool should_update_apps = false;
-	struct ust_id_tracker *id_tracker =
-			get_id_tracker(session, process_attr);
+	struct ust_id_tracker *id_tracker = get_id_tracker(session, process_attr);
 	struct process_attr_tracker *tracker;
 	int integral_value;
 	enum process_attr_tracker_status status;
@@ -1116,8 +1099,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			uid_t uid;
 
-			ret_code = utils_user_id_from_name(
-					value->value.user_name, &uid);
+			ret_code = utils_user_id_from_name(value->value.user_name, &uid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1131,8 +1113,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			gid_t gid;
 
-			ret_code = utils_group_id_from_name(
-					value->value.group_name, &gid);
+			ret_code = utils_group_id_from_name(value->value.group_name, &gid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1152,8 +1133,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 		goto end;
 	}
 
-	status = process_attr_tracker_inclusion_set_remove_value(
-			tracker, value);
+	status = process_attr_tracker_inclusion_set_remove_value(tracker, value);
 	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
 		switch (status) {
 		case PROCESS_ATTR_TRACKER_STATUS_MISSING:
@@ -1171,8 +1151,9 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 	}
 
 	DBG("User space untrack %s %d for session id %" PRIu64,
-			lttng_process_attr_to_string(process_attr),
-			integral_value, session->id);
+	    lttng_process_attr_to_string(process_attr),
+	    integral_value,
+	    session->id);
 
 	ret_code = (lttng_error_code) id_tracker_del_id(id_tracker, integral_value);
 	if (ret_code != LTTNG_OK) {
@@ -1204,8 +1185,7 @@ static void destroy_context_rcu(struct rcu_head *head)
 {
 	struct lttng_ht_node_ulong *node =
 		lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
-	struct ltt_ust_context *ctx =
-		lttng::utils::container_of(node, &ltt_ust_context::node);
+	struct ltt_ust_context *ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
 
 	trace_ust_destroy_context(ctx);
 }
@@ -1223,7 +1203,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	LTTNG_ASSERT(ht);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(ht->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry (ht->ht, &iter.iter, node, node) {
 		/* Remove from ordered list. */
 		ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
 		cds_list_del(&ctx->list);
@@ -1271,10 +1251,8 @@ void trace_ust_destroy_context(struct ltt_ust_context *ctx)
  */
 static void destroy_event_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_str *node =
-		lttng::utils::container_of(head, &lttng_ht_node_str::head);
-	struct ltt_ust_event *event =
-		lttng::utils::container_of(node, &ltt_ust_event::node);
+	struct lttng_ht_node_str *node = lttng::utils::container_of(head, &lttng_ht_node_str::head);
+	struct ltt_ust_event *event = lttng::utils::container_of(node, &ltt_ust_event::node);
 
 	trace_ust_destroy_event(event);
 }
@@ -1291,7 +1269,7 @@ static void destroy_events(struct lttng_ht *events)
 	LTTNG_ASSERT(events);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(events->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
 		ret = lttng_ht_del(events, &iter);
 		LTTNG_ASSERT(!ret);
 		call_rcu(&node->head, destroy_event_rcu);
@@ -1320,10 +1298,8 @@ static void _trace_ust_destroy_channel(struct ltt_ust_channel *channel)
  */
 static void destroy_channel_rcu(struct rcu_head *head)
 {
-	struct lttng_ht_node_str *node =
-		lttng::utils::container_of(head, &lttng_ht_node_str::head);
-	struct ltt_ust_channel *channel =
-		lttng::utils::container_of(node, &ltt_ust_channel::node);
+	struct lttng_ht_node_str *node = lttng::utils::container_of(head, &lttng_ht_node_str::head);
+	struct ltt_ust_channel *channel = lttng::utils::container_of(node, &ltt_ust_channel::node);
 
 	_trace_ust_destroy_channel(channel);
 }
@@ -1341,8 +1317,7 @@ void trace_ust_destroy_channel(struct ltt_ust_channel *channel)
 /*
  * Remove an UST channel from a channel HT.
  */
-void trace_ust_delete_channel(struct lttng_ht *ht,
-		struct ltt_ust_channel *channel)
+void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *channel)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -1362,7 +1337,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 	struct buffer_reg_session *session_reg = NULL;
 
 	rcu_read_lock();
-	cds_list_for_each_entry(uid_reg, &usess->buffer_reg_uid_list, lnode) {
+	cds_list_for_each_entry (uid_reg, &usess->buffer_reg_uid_list, lnode) {
 		lsu::registry_session *registry;
 
 		session_reg = uid_reg->registry;
@@ -1393,7 +1368,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	LTTNG_ASSERT(channels);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(channels->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry (channels->ht, &iter.iter, node, node) {
 		struct ltt_ust_channel *chan =
 			lttng::utils::container_of(node, &ltt_ust_channel::node);
 
@@ -1433,7 +1408,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	destroy_domain_global(&session->domain_global);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(session->agents->ht, &iter.iter, agt, node.node) {
+	cds_lfht_for_each_entry (session->agents->ht, &iter.iter, agt, node.node) {
 		int ret = lttng_ht_del(session->agents, &iter);
 
 		LTTNG_ASSERT(!ret);
@@ -1444,8 +1419,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	lttng_ht_destroy(session->agents);
 
 	/* Cleanup UID buffer registry object(s). */
-	cds_list_for_each_entry_safe(reg, sreg, &session->buffer_reg_uid_list,
-			lnode) {
+	cds_list_for_each_entry_safe (reg, sreg, &session->buffer_reg_uid_list, lnode) {
 		cds_list_del(&reg->lnode);
 		buffer_reg_uid_remove(reg);
 		buffer_reg_uid_destroy(reg, session->consumer);

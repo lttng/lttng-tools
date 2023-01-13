@@ -7,6 +7,12 @@
  */
 
 #define _LGPL_SOURCE
+#include "signal-helper.hpp"
+
+#include <common/macros.hpp>
+
+#include <lttng/tracef.h>
+
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -17,14 +23,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/macros.hpp>
-#include <lttng/tracef.h>
-#include "signal-helper.hpp"
-
 const char *str = "test string";
 
-static
-void create_file(const char *path)
+static void create_file(const char *path)
 {
 	int ret;
 

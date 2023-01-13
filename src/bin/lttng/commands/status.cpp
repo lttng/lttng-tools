@@ -6,6 +6,10 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+#include "../utils.hpp"
+
+#include <config.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,14 +18,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../command.hpp"
-#include "../utils.hpp"
-#include <config.h>
-
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-status.1.h>
-;
+	;
 #endif
 
 enum {
@@ -31,9 +31,9 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",        'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
-	{"list-options", 0,  POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static int status(void)

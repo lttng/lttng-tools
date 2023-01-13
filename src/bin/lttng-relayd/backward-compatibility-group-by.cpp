@@ -5,20 +5,19 @@
  *
  */
 
+#include "backward-compatibility-group-by.hpp"
 #include "common/time.hpp"
-#include <regex.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/utils.hpp>
 
-#include "backward-compatibility-group-by.hpp"
+#include <regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#define DATETIME_REGEX \
-	".*-[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]-[0-2][0-9][0-5][0-9][0-5][0-9]$"
+#define DATETIME_REGEX ".*-[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]-[0-2][0-9][0-5][0-9][0-5][0-9]$"
 
 /*
  * Provide support for --group-output-by-session for producer >= 2.4 and < 2.11.
@@ -28,8 +27,8 @@
  * Return the allocated string containing the new stream path or else NULL.
  */
 char *backward_compat_group_by_session(const char *path,
-		const char *local_session_name,
-		time_t relay_session_creation_time)
+				       const char *local_session_name,
+				       time_t relay_session_creation_time)
 {
 	int ret;
 	size_t len;
@@ -48,7 +47,8 @@ char *backward_compat_group_by_session(const char *path,
 	LTTNG_ASSERT(local_session_name[0] != '\0');
 
 	DBG("Parsing path \"%s\" of session \"%s\" to create a new path that is grouped by session",
-			path, local_session_name);
+	    path,
+	    local_session_name);
 
 	/* Get a local copy for strtok */
 	local_copy = strdup(path);
@@ -74,15 +74,13 @@ char *backward_compat_group_by_session(const char *path,
 	 */
 	hostname_ptr = strtok_r(local_copy, "/", &leftover_ptr);
 	if (!hostname_ptr) {
-		ERR("Failed to parse session path \"%s\": couldn't identify hostname",
-				path);
+		ERR("Failed to parse session path \"%s\": couldn't identify hostname", path);
 		goto error;
 	}
 
 	second_token_ptr = strtok_r(NULL, "/", &leftover_ptr);
 	if (!second_token_ptr) {
-		ERR("Failed to parse session path \"%s\": couldn't identify session name",
-				path);
+		ERR("Failed to parse session path \"%s\": couldn't identify session name", path);
 		goto error;
 	}
 
@@ -100,8 +98,7 @@ char *backward_compat_group_by_session(const char *path,
 	 *            <session_name>-<date>-<time>
 	 *            <auto>-<date>-<time>
 	 */
-	if (strncmp(second_token_ptr, local_session_name,
-			    strlen(local_session_name)) != 0) {
+	if (strncmp(second_token_ptr, local_session_name, strlen(local_session_name)) != 0) {
 		/*
 		 * Token does not start with session name.
 		 * This mean this is an extra path scenario.
@@ -150,8 +147,7 @@ char *backward_compat_group_by_session(const char *path,
 		goto error;
 	}
 
-	leftover_second_token_ptr =
-			second_token_ptr + strlen(local_session_name);
+	leftover_second_token_ptr = second_token_ptr + strlen(local_session_name);
 	len = strlen(leftover_second_token_ptr);
 	if (len == 0) {
 		/*
@@ -162,11 +158,10 @@ char *backward_compat_group_by_session(const char *path,
 		ret = regexec(&regex, local_session_name, 0, NULL, 0);
 		if (ret == 0) {
 			const ssize_t local_session_name_offset =
-					strlen(local_session_name) - DATETIME_STR_LEN + 1;
+				strlen(local_session_name) - DATETIME_STR_LEN + 1;
 
 			LTTNG_ASSERT(local_session_name_offset >= 0);
-			datetime = strdup(local_session_name +
-					local_session_name_offset);
+			datetime = strdup(local_session_name + local_session_name_offset);
 			if (!datetime) {
 				PERROR("Failed to parse session path: couldn't copy datetime on regex match");
 				goto error_regex;
@@ -178,16 +173,15 @@ char *backward_compat_group_by_session(const char *path,
 				goto error;
 			}
 
-			ret = time_to_datetime_str(relay_session_creation_time,
-					datetime, DATETIME_STR_LEN);
+			ret = time_to_datetime_str(
+				relay_session_creation_time, datetime, DATETIME_STR_LEN);
 			if (ret) {
 				/* time_to_datetime_str already logs errors. */
 				goto error;
 			}
 		}
 	} else if (len == DATETIME_STR_LEN &&
-			!regexec(&regex, leftover_second_token_ptr, 0, NULL,
-					0)) {
+		   !regexec(&regex, leftover_second_token_ptr, 0, NULL, 0)) {
 		/*
 		 * The leftover from the second token is of format
 		 * "-<datetime>", use it as the creation time.
@@ -216,11 +210,15 @@ char *backward_compat_group_by_session(const char *path,
 		}
 	}
 
-	ret = asprintf(&filepath_per_session, "%s/%s%s%s/%s%s%s",
-			local_session_name, hostname_ptr, datetime ? "-" : "",
-			datetime ? datetime : "",
-			partial_base_path ? partial_base_path : "",
-			partial_base_path ? "/" : "", leftover_ptr);
+	ret = asprintf(&filepath_per_session,
+		       "%s/%s%s%s/%s%s%s",
+		       local_session_name,
+		       hostname_ptr,
+		       datetime ? "-" : "",
+		       datetime ? datetime : "",
+		       partial_base_path ? partial_base_path : "",
+		       partial_base_path ? "/" : "",
+		       leftover_ptr);
 	if (ret < 0) {
 		filepath_per_session = NULL;
 		goto error;

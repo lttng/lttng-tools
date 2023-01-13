@@ -6,16 +6,18 @@
  *
  */
 
-#include "lttng-sessiond.hpp"
 #include "health-sessiond.hpp"
-#include <common/macros.hpp>
+#include "lttng-sessiond.hpp"
+#include "thread.hpp"
+#include "utils.hpp"
+
 #include <common/error.hpp>
-#include <common/utils.hpp>
+#include <common/macros.hpp>
 #include <common/pipe.hpp>
+#include <common/utils.hpp>
+
 #include <inttypes.h>
 #include <sys/stat.h>
-#include "utils.hpp"
-#include "thread.hpp"
 
 namespace {
 struct thread_notifiers {
@@ -24,15 +26,13 @@ struct thread_notifiers {
 };
 } /* namespace */
 
-static
-void mark_thread_as_ready(struct thread_notifiers *notifiers)
+static void mark_thread_as_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Marking health management thread as ready");
 	sem_post(&notifiers->ready);
 }
 
-static
-void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for health management thread to be ready");
 	sem_wait(&notifiers->ready);
@@ -61,8 +61,7 @@ static void *thread_manage_health(void *data)
 	struct health_comm_reply reply;
 	/* Thread-specific quit pipe. */
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
-			notifiers->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 
 	DBG("[thread] Manage health check started");
 
@@ -103,9 +102,10 @@ static void *thread_manage_health(void *data)
 		}
 
 		ret = chmod(the_config.health_unix_sock_path.value,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+			    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (ret < 0) {
-			ERR("Unable to set permissions on %s", the_config.health_unix_sock_path.value);
+			ERR("Unable to set permissions on %s",
+			    the_config.health_unix_sock_path.value);
 			PERROR("chmod");
 			goto error;
 		}
@@ -138,7 +138,7 @@ static void *thread_manage_health(void *data)
 		DBG("Health check ready");
 
 		/* Infinite blocking call, waiting for transmission */
-restart:
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
 			/*
@@ -188,7 +188,7 @@ restart:
 		(void) utils_set_fd_cloexec(new_sock);
 
 		DBG("Receiving data from client for health...");
-		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
+		ret = lttcomm_recv_unix_sock(new_sock, (void *) &msg, sizeof(msg));
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
 			ret = close(new_sock);
@@ -213,8 +213,7 @@ restart:
 
 		DBG2("Health check return value %" PRIx64, reply.ret_code);
 
-		ret = lttcomm_send_unix_sock(new_sock, (void *) &reply,
-				sizeof(reply));
+		ret = lttcomm_send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
 		if (ret < 0) {
 			ERR("Failed to send health data back to client");
 		}
@@ -247,7 +246,7 @@ error:
 
 static bool shutdown_health_management_thread(void *data)
 {
-	struct thread_notifiers *notifiers = ( thread_notifiers *) data;
+	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
@@ -269,10 +268,10 @@ bool launch_health_management_thread(void)
 		goto error;
 	}
 	thread = lttng_thread_create("Health management",
-			thread_manage_health,
-			shutdown_health_management_thread,
-			cleanup_health_management_thread,
-			notifiers);
+				     thread_manage_health,
+				     shutdown_health_management_thread,
+				     cleanup_health_management_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

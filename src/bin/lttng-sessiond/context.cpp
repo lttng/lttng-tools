@@ -7,20 +7,20 @@
  */
 
 #define _LGPL_SOURCE
+#include "agent.hpp"
+#include "context.hpp"
+#include "kernel.hpp"
+#include "trace-ust.hpp"
+#include "ust-app.hpp"
+
+#include <common/error.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <urcu/list.h>
-
-#include <common/error.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-
-#include "context.hpp"
-#include "kernel.hpp"
-#include "ust-app.hpp"
-#include "trace-ust.hpp"
-#include "agent.hpp"
 
 /*
  * Add kernel context to all channel.
@@ -28,7 +28,7 @@
  * Assumes the ownership of kctx.
  */
 static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
-		struct ltt_kernel_context *kctx)
+				 struct ltt_kernel_context *kctx)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -39,7 +39,7 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	DBG("Adding kernel context to all channels");
 
 	/* Go over all channels */
-	cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
+	cds_list_for_each_entry (kchan, &ksession->channel_list.head, list) {
 		struct ltt_kernel_context *kctx_copy;
 
 		kctx_copy = trace_kernel_copy_context(kctx);
@@ -69,8 +69,7 @@ error:
  *
  * Assumes the ownership of kctx.
  */
-static int add_kctx_to_channel(struct ltt_kernel_context *kctx,
-		struct ltt_kernel_channel *kchan)
+static int add_kctx_to_channel(struct ltt_kernel_context *kctx, struct ltt_kernel_channel *kchan)
 {
 	int ret;
 
@@ -96,9 +95,9 @@ error:
  * Add UST context to channel.
  */
 static int add_uctx_to_channel(struct ltt_ust_session *usess,
-		enum lttng_domain_type domain,
-		struct ltt_ust_channel *uchan,
-		const struct lttng_event_context *ctx)
+			       enum lttng_domain_type domain,
+			       struct ltt_ust_channel *uchan,
+			       const struct lttng_event_context *ctx)
 {
 	int ret;
 	struct ltt_ust_context *uctx = NULL;
@@ -108,7 +107,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(ctx);
 
 	/* Check if context is duplicate */
-	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
+	cds_list_for_each_entry (uctx, &uchan->ctx_list, list) {
 		if (trace_ust_match_context(uctx, ctx)) {
 			ret = LTTNG_ERR_UST_CONTEXT_EXIST;
 			goto duplicate;
@@ -187,8 +186,8 @@ duplicate:
  * Add kernel context to tracer.
  */
 int context_kernel_add(struct ltt_kernel_session *ksession,
-		const struct lttng_event_context *ctx,
-		const char *channel_name)
+		       const struct lttng_event_context *ctx,
+		       const char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -325,8 +324,7 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 
 	kctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
 	kctx->ctx.u.perf_counter.config = ctx->u.perf_counter.config;
-	strncpy(kctx->ctx.u.perf_counter.name, ctx->u.perf_counter.name,
-			LTTNG_SYMBOL_NAME_LEN);
+	strncpy(kctx->ctx.u.perf_counter.name, ctx->u.perf_counter.name, LTTNG_SYMBOL_NAME_LEN);
 	kctx->ctx.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 
 	if (*channel_name == '\0') {
@@ -365,9 +363,9 @@ error:
  * Add UST context to tracer.
  */
 int context_ust_add(struct ltt_ust_session *usess,
-		enum lttng_domain_type domain,
-		const struct lttng_event_context *ctx,
-		const char *channel_name)
+		    enum lttng_domain_type domain,
+		    const struct lttng_event_context *ctx,
+		    const char *channel_name)
 {
 	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
@@ -397,11 +395,10 @@ int context_ust_add(struct ltt_ust_session *usess,
 	} else {
 		rcu_read_lock();
 		/* Add ctx all events, all channels */
-		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
+		cds_lfht_for_each_entry (chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret) {
-				ERR("Failed to add context to channel %s",
-						uchan->name);
+				ERR("Failed to add context to channel %s", uchan->name);
 				continue;
 			}
 		}

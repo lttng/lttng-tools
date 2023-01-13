@@ -6,11 +6,11 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.hpp>
-#include <common/utils.hpp>
-#include <common/defaults.hpp>
-
 #include "tracefile-array.hpp"
+
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+#include <common/utils.hpp>
 
 struct tracefile_array *tracefile_array_create(size_t count)
 {
@@ -67,8 +67,7 @@ void tracefile_array_reset(struct tracefile_array *tfa)
 	tfa->file_tail = 0;
 }
 
-void tracefile_array_file_rotate(struct tracefile_array *tfa,
-		enum tracefile_rotate_type type)
+void tracefile_array_file_rotate(struct tracefile_array *tfa, enum tracefile_rotate_type type)
 {
 	uint64_t *headp, *tailp;
 
@@ -109,8 +108,7 @@ void tracefile_array_file_rotate(struct tracefile_array *tfa,
 	}
 }
 
-void tracefile_array_commit_seq(struct tracefile_array *tfa,
-		uint64_t new_seq_head)
+void tracefile_array_commit_seq(struct tracefile_array *tfa, uint64_t new_seq_head)
 {
 	uint64_t *headp, *tailp;
 
@@ -157,8 +155,7 @@ uint64_t tracefile_array_get_seq_tail(struct tracefile_array *tfa)
 	return tfa->seq_tail;
 }
 
-bool tracefile_array_seq_in_file(struct tracefile_array *tfa,
-		uint64_t file_index, uint64_t seq)
+bool tracefile_array_seq_in_file(struct tracefile_array *tfa, uint64_t file_index, uint64_t seq)
 {
 	if (!tfa->count) {
 		/*
@@ -171,8 +168,7 @@ bool tracefile_array_seq_in_file(struct tracefile_array *tfa,
 	if (seq == -1ULL) {
 		return false;
 	}
-	if (seq >= tfa->tf[file_index].seq_tail
-			&& seq <= tfa->tf[file_index].seq_head) {
+	if (seq >= tfa->tf[file_index].seq_tail && seq <= tfa->tf[file_index].seq_head) {
 		return true;
 	} else {
 		return false;

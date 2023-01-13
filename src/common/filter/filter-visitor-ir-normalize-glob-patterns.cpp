@@ -9,22 +9,21 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
+#include "filter-ast.hpp"
+#include "filter-ir.hpp"
+#include "filter-parser.hpp"
 
 #include <common/compat/errno.hpp>
 #include <common/macros.hpp>
 #include <common/string-utils/string-utils.hpp>
 
-#include "filter-ast.hpp"
-#include "filter-parser.hpp"
-#include "filter-ir.hpp"
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-static
-int normalize_glob_patterns(struct ir_op *node)
+static int normalize_glob_patterns(struct ir_op *node)
 {
 	switch (node->op) {
 	case IR_OP_UNKNOWN:
@@ -37,13 +36,11 @@ int normalize_glob_patterns(struct ir_op *node)
 	case IR_OP_LOAD:
 	{
 		if (node->data_type == IR_DATA_STRING) {
-			enum ir_load_string_type type =
-				node->u.load.u.string.type;
+			enum ir_load_string_type type = node->u.load.u.string.type;
 			if (type == IR_LOAD_STRING_TYPE_GLOB_STAR_END ||
-					type == IR_LOAD_STRING_TYPE_GLOB_STAR) {
+			    type == IR_LOAD_STRING_TYPE_GLOB_STAR) {
 				LTTNG_ASSERT(node->u.load.u.string.value);
-				strutils_normalize_star_glob_pattern(
-					node->u.load.u.string.value);
+				strutils_normalize_star_glob_pattern(node->u.load.u.string.value);
 			}
 		}
 

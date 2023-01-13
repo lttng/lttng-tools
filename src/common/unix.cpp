@@ -7,6 +7,13 @@
  */
 
 #define _LGPL_SOURCE
+#include "unix.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/fd-handle.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,13 +21,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <common/common.hpp>
-#include <common/compat/errno.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/fd-handle.hpp>
-
-#include "unix.hpp"
 
 /*
  * Connect to unix socket using the path name.
@@ -32,8 +32,9 @@ int lttcomm_connect_unix_sock(const char *pathname)
 
 	if (strlen(pathname) >= sizeof(s_un.sun_path)) {
 		ERR("unix socket address (\"%s\") is longer than the platform's limit (%zu > %zu).",
-				pathname, strlen(pathname) + 1,
-				sizeof(s_un.sun_path));
+		    pathname,
+		    strlen(pathname) + 1,
+		    sizeof(s_un.sun_path));
 		ret = -ENAMETOOLONG;
 		goto error;
 	}
@@ -110,8 +111,9 @@ int lttcomm_create_unix_sock(const char *pathname)
 
 	if (strlen(pathname) >= sizeof(s_un.sun_path)) {
 		ERR("unix socket address (\"%s\") is longer than the platform's limit (%zu > %zu).",
-				pathname, strlen(pathname) + 1,
-				sizeof(s_un.sun_path));
+		    pathname,
+		    strlen(pathname) + 1,
+		    sizeof(s_un.sun_path));
 		ret = -ENAMETOOLONG;
 		goto error;
 	}
@@ -241,9 +243,8 @@ retry:
 			 */
 			DIAGNOSTIC_PUSH
 			DIAGNOSTIC_IGNORE_LOGICAL_OP
-			if (errno == EAGAIN || errno == EWOULDBLOCK ||
-					errno == EPIPE) {
-			DIAGNOSTIC_POP
+			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EPIPE) {
+				DIAGNOSTIC_POP
 				/*
 				 * Nothing was recv.
 				 */
@@ -348,9 +349,8 @@ retry:
 			 */
 			DIAGNOSTIC_PUSH
 			DIAGNOSTIC_IGNORE_LOGICAL_OP
-			if (errno == EAGAIN || errno == EWOULDBLOCK ||
-					errno == EPIPE) {
-			DIAGNOSTIC_POP
+			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EPIPE) {
+				DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was sent.
@@ -424,7 +424,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
 
-	msg.msg_control = (caddr_t)tmp;
+	msg.msg_control = (caddr_t) tmp;
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
@@ -464,10 +464,8 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
  *
  * Returns the size of data sent, or negative error value.
  */
-static
-ssize_t _lttcomm_send_payload_view_fds_unix_sock(int sock,
-		struct lttng_payload_view *view,
-		bool blocking)
+static ssize_t
+_lttcomm_send_payload_view_fds_unix_sock(int sock, struct lttng_payload_view *view, bool blocking)
 {
 	int i;
 	ssize_t ret;
@@ -491,11 +489,9 @@ ssize_t _lttcomm_send_payload_view_fds_unix_sock(int sock,
 	 * owns a reference to the fd_handles.
 	 */
 	for (i = 0; i < fd_count; i++) {
-		struct fd_handle *handle =
-				lttng_payload_view_pop_fd_handle(view);
+		struct fd_handle *handle = lttng_payload_view_pop_fd_handle(view);
 		const int raw_fd = fd_handle_get_fd(handle);
-		const int add_ret = lttng_dynamic_array_add_element(
-				&raw_fds, &raw_fd);
+		const int add_ret = lttng_dynamic_array_add_element(&raw_fds, &raw_fd);
 
 		fd_handle_put(handle);
 		if (add_ret) {
@@ -505,11 +501,10 @@ ssize_t _lttcomm_send_payload_view_fds_unix_sock(int sock,
 	}
 
 	if (blocking) {
-		ret = lttcomm_send_fds_unix_sock(sock,
-				(const int *) raw_fds.buffer.data, fd_count);
+		ret = lttcomm_send_fds_unix_sock(sock, (const int *) raw_fds.buffer.data, fd_count);
 	} else {
-		ret = lttcomm_send_fds_unix_sock_non_block(sock,
-				(const int *) raw_fds.buffer.data, fd_count);
+		ret = lttcomm_send_fds_unix_sock_non_block(
+			sock, (const int *) raw_fds.buffer.data, fd_count);
 	}
 
 end:
@@ -517,14 +512,12 @@ end:
 	return ret;
 }
 
-ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock,
-		struct lttng_payload_view *view)
+ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock, struct lttng_payload_view *view)
 {
 	return _lttcomm_send_payload_view_fds_unix_sock(sock, view, true);
 }
 
-ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock,
-		struct lttng_payload_view *view)
+ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock, struct lttng_payload_view *view)
 {
 	return _lttcomm_send_payload_view_fds_unix_sock(sock, view, false);
 }
@@ -555,7 +548,7 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
 		return -EINVAL;
 
-	msg.msg_control = (caddr_t)tmp;
+	msg.msg_control = (caddr_t) tmp;
 	msg.msg_controllen = CMSG_LEN(sizeof_fds);
 
 	cmptr = CMSG_FIRSTHDR(&msg);
@@ -587,7 +580,7 @@ retry:
 			DIAGNOSTIC_PUSH
 			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			DIAGNOSTIC_POP
+				DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was sent.
@@ -668,8 +661,7 @@ retry:
 			goto retry;
 		} else {
 			/* We consider EPIPE and EAGAIN as expected. */
-			if (!lttng_opt_quiet &&
-					(errno != EPIPE && errno != EAGAIN)) {
+			if (!lttng_opt_quiet && (errno != EPIPE && errno != EAGAIN)) {
 				PERROR("recvmsg");
 			}
 			goto end;
@@ -677,8 +669,7 @@ retry:
 	}
 
 	if (ret != 1) {
-		fprintf(stderr, "Error: Received %zd bytes, expected %d\n",
-				ret, 1);
+		fprintf(stderr, "Error: Received %zd bytes, expected %d\n", ret, 1);
 		goto end;
 	}
 
@@ -706,7 +697,8 @@ retry:
 			 * now copy the fds to the fds ptr and return success.
 			 */
 			if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
-				fprintf(stderr, "Error: Received %zu bytes of"
+				fprintf(stderr,
+					"Error: Received %zu bytes of"
 					"ancillary data for FDs, expected %zu\n",
 					(size_t) cmsg->cmsg_len,
 					(size_t) CMSG_LEN(sizeof_fds));
@@ -732,8 +724,7 @@ end:
 	return ret;
 }
 
-static
-void close_raw_fd(void *ptr)
+static void close_raw_fd(void *ptr)
 {
 	const int raw_fd = *((const int *) ptr);
 
@@ -746,9 +737,8 @@ void close_raw_fd(void *ptr)
 	}
 }
 
-static
-enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
-		struct lttng_payload *payload)
+static enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
+						struct lttng_payload *payload)
 {
 	int i;
 	enum lttng_error_code ret_code = LTTNG_OK;
@@ -757,8 +747,7 @@ enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
 	for (i = 0; i < fd_count; i++) {
 		int ret;
 		struct fd_handle *handle;
-		int *raw_fd = (int *) lttng_dynamic_array_get_element(
-			raw_fds, i);
+		int *raw_fd = (int *) lttng_dynamic_array_get_element(raw_fds, i);
 
 		LTTNG_ASSERT(*raw_fd != -1);
 
@@ -783,9 +772,10 @@ end:
 	return ret_code;
 }
 
-static
-ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
-		struct lttng_payload *payload, bool blocking)
+static ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock,
+						   size_t nb_fd,
+						   struct lttng_payload *payload,
+						   bool blocking)
 {
 	int i = 0;
 	enum lttng_error_code add_ret;
@@ -807,11 +797,10 @@ ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 	}
 
 	if (blocking) {
-		ret = lttcomm_recv_fds_unix_sock(
-				sock, (int *) raw_fds.buffer.data, nb_fd);
+		ret = lttcomm_recv_fds_unix_sock(sock, (int *) raw_fds.buffer.data, nb_fd);
 	} else {
 		ret = lttcomm_recv_fds_unix_sock_non_block(
-				sock, (int *) raw_fds.buffer.data, nb_fd);
+			sock, (int *) raw_fds.buffer.data, nb_fd);
 	}
 
 	if (ret <= 0) {
@@ -820,7 +809,7 @@ ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 
 	add_ret = add_fds_to_payload(&raw_fds, payload);
 	if (add_ret != LTTNG_OK) {
-		ret = - (int) add_ret;
+		ret = -(int) add_ret;
 		goto end;
 	}
 
@@ -829,14 +818,13 @@ end:
 	return ret;
 }
 
-ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
-			   struct lttng_payload *payload)
+ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd, struct lttng_payload *payload)
 {
 	return _lttcomm_recv_payload_fds_unix_sock(sock, nb_fd, payload, true);
 }
 
-ssize_t lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd,
-			   struct lttng_payload *payload)
+ssize_t
+lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd, struct lttng_payload *payload)
 {
 	return _lttcomm_recv_payload_fds_unix_sock(sock, nb_fd, payload, false);
 }
@@ -904,7 +892,7 @@ retry:
 			DIAGNOSTIC_PUSH
 			DIAGNOSTIC_IGNORE_LOGICAL_OP
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			DIAGNOSTIC_POP
+				DIAGNOSTIC_POP
 				/*
 				 * This can happen in non blocking mode.
 				 * Nothing was recv.
@@ -928,8 +916,7 @@ retry:
 	}
 
 	if (ret != 1) {
-		fprintf(stderr, "Error: Received %zd bytes, expected %d\n",
-				ret, 1);
+		fprintf(stderr, "Error: Received %zd bytes, expected %d\n", ret, 1);
 		goto end;
 	}
 
@@ -957,7 +944,8 @@ retry:
 			 * now copy the fds to the fds ptr and return success.
 			 */
 			if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
-				fprintf(stderr, "Error: Received %zu bytes of"
+				fprintf(stderr,
+					"Error: Received %zu bytes of"
 					"ancillary data for FDs, expected %zu\n",
 					(size_t) cmsg->cmsg_len,
 					(size_t) CMSG_LEN(sizeof_fds));
@@ -1025,7 +1013,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 	cmptr->cmsg_type = LTTNG_SOCK_CREDS;
 	cmptr->cmsg_len = CMSG_LEN(sizeof_cred);
 
-	creds = (lttng_sock_cred*) CMSG_DATA(cmptr);
+	creds = (lttng_sock_cred *) CMSG_DATA(cmptr);
 
 	LTTNG_SOCK_SET_UID_CRED(creds, geteuid());
 	LTTNG_SOCK_SET_GID_CRED(creds, getegid());
@@ -1052,8 +1040,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
  *
  * Returns the size of received data, or negative error value.
  */
-ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
-		lttng_sock_cred *creds)
+ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len, lttng_sock_cred *creds)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
@@ -1063,7 +1050,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
-#endif	/* __linux__, __CYGWIN__ */
+#endif /* __linux__, __CYGWIN__ */
 
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(buf);
@@ -1114,16 +1101,17 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 		goto end;
 	}
 
-	if (cmptr->cmsg_level != SOL_SOCKET ||
-			cmptr->cmsg_type != LTTNG_SOCK_CREDS) {
+	if (cmptr->cmsg_level != SOL_SOCKET || cmptr->cmsg_type != LTTNG_SOCK_CREDS) {
 		fprintf(stderr, "Didn't received any credentials\n");
 		ret = -1;
 		goto end;
 	}
 
 	if (cmptr->cmsg_len != CMSG_LEN(sizeof_cred)) {
-		fprintf(stderr, "Error: Received %zu bytes of ancillary data, expected %zu\n",
-				(size_t) cmptr->cmsg_len, (size_t) CMSG_LEN(sizeof_cred));
+		fprintf(stderr,
+			"Error: Received %zu bytes of ancillary data, expected %zu\n",
+			(size_t) cmptr->cmsg_len,
+			(size_t) CMSG_LEN(sizeof_cred));
 		ret = -1;
 		goto end;
 	}
@@ -1137,7 +1125,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 #else
 #error "Please implement credential support for your OS."
-#endif	/* __linux__, __CYGWIN__ */
+#endif /* __linux__, __CYGWIN__ */
 
 end:
 	return ret;

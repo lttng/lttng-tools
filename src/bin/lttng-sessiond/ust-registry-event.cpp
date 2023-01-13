@@ -15,24 +15,24 @@ namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
 lsu::registry_event::registry_event(unsigned int in_id,
-		unsigned int in_stream_class_id,
-		int in_session_objd,
-		int in_channel_objd,
-		std::string in_name,
-		std::string in_signature,
-		std::vector<lttng::sessiond::trace::field::cuptr> in_fields,
-		int in_loglevel_value,
-		nonstd::optional<std::string> in_model_emf_uri) :
+				    unsigned int in_stream_class_id,
+				    int in_session_objd,
+				    int in_channel_objd,
+				    std::string in_name,
+				    std::string in_signature,
+				    std::vector<lttng::sessiond::trace::field::cuptr> in_fields,
+				    int in_loglevel_value,
+				    nonstd::optional<std::string> in_model_emf_uri) :
 	lst::event_class(in_id,
-			in_stream_class_id,
-			in_loglevel_value,
-			std::move(in_name),
-			std::move(in_model_emf_uri),
-			lttng::make_unique<lst::structure_type>(0, std::move(in_fields))),
-	session_objd{in_session_objd},
-	channel_objd{in_channel_objd},
-	signature{std::move(in_signature)},
-	_metadata_dumped{false}
+			 in_stream_class_id,
+			 in_loglevel_value,
+			 std::move(in_name),
+			 std::move(in_model_emf_uri),
+			 lttng::make_unique<lst::structure_type>(0, std::move(in_fields))),
+	session_objd{ in_session_objd },
+	channel_objd{ in_channel_objd },
+	signature{ std::move(in_signature) },
+	_metadata_dumped{ false }
 {
 	cds_lfht_node_init(&_node);
 	_head = {};

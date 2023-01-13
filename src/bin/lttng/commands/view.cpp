@@ -6,6 +6,10 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/spawn-viewer.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,16 +18,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/spawn-viewer.hpp>
-#include "../command.hpp"
-
 static char *opt_viewer;
 static char *opt_trace_path;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-view.1.h>
-;
+	;
 #endif
 
 enum {
@@ -33,11 +34,11 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",        'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options", 0,  POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"viewer",      'e', POPT_ARG_STRING, &opt_viewer, 0, 0, 0},
-	{"trace-path",  't', POPT_ARG_STRING, &opt_trace_path, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "viewer", 'e', POPT_ARG_STRING, &opt_viewer, 0, 0, 0 },
+	{ "trace-path", 't', POPT_ARG_STRING, &opt_trace_path, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /* Is the session we are trying to view is in live mode. */
@@ -58,8 +59,7 @@ static char *build_live_path(char *session_name)
 		goto error;
 	}
 
-	ret = asprintf(&path, "net://localhost/host/%s/%s", hostname,
-			session_name);
+	ret = asprintf(&path, "net://localhost/host/%s/%s", hostname, session_name);
 	if (ret < 0) {
 		PERROR("asprintf live path");
 		goto error;
@@ -122,8 +122,7 @@ static int view_trace(const char *arg_session_name)
 		/* Getting all sessions */
 		count = lttng_list_sessions(&sessions);
 		if (count < 0) {
-			ERR("Unable to list sessions. Session name %s not found.",
-					session_name);
+			ERR("Unable to list sessions. Session name %s not found.", session_name);
 			MSG("Is there a session daemon running?");
 			ret = CMD_ERROR;
 			goto free_error;
@@ -149,7 +148,7 @@ static int view_trace(const char *arg_session_name)
 
 		if (sessions[i].enabled && !session_live_mode) {
 			WARN("Session %s is running. Please stop it before reading it.",
-					session_name);
+			     session_name);
 			ret = CMD_ERROR;
 			goto free_sessions;
 		}

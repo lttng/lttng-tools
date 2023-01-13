@@ -5,16 +5,15 @@
  *
  */
 
-#include <common/dynamic-buffer.hpp>
 #include <common/buffer-view.hpp>
+#include <common/dynamic-buffer.hpp>
 #include <common/utils.hpp>
 
 /*
  * Round to (upper) power of two, val is returned if it already is a power of
  * two.
  */
-static
-size_t round_to_power_of_2(size_t val)
+static size_t round_to_power_of_2(size_t val)
 {
 	size_t rounded;
 	const int order = utils_get_count_order_u64(val);
@@ -32,8 +31,7 @@ void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer)
 	memset(buffer, 0, sizeof(*buffer));
 }
 
-int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
-		const void *buf, size_t len)
+int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer, const void *buf, size_t len)
 {
 	int ret = 0;
 
@@ -49,9 +47,8 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 
 	LTTNG_ASSERT(buffer->_capacity >= buffer->size);
 	if (buffer->_capacity < (len + buffer->size)) {
-		ret = lttng_dynamic_buffer_set_capacity(buffer,
-				buffer->_capacity +
-				(len - (buffer->_capacity - buffer->size)));
+		ret = lttng_dynamic_buffer_set_capacity(
+			buffer, buffer->_capacity + (len - (buffer->_capacity - buffer->size)));
 		if (ret) {
 			goto end;
 		}
@@ -64,7 +61,7 @@ end:
 }
 
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
-		const struct lttng_dynamic_buffer *src_buffer)
+				       const struct lttng_dynamic_buffer *src_buffer)
 {
 	int ret;
 
@@ -73,14 +70,13 @@ int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(dst_buffer, src_buffer->data,
-			src_buffer->size);
+	ret = lttng_dynamic_buffer_append(dst_buffer, src_buffer->data, src_buffer->size);
 end:
 	return ret;
 }
 
 int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
-		const struct lttng_buffer_view *src)
+				     const struct lttng_buffer_view *src)
 {
 	int ret;
 
@@ -89,14 +85,12 @@ int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(buffer, src->data,
-			src->size);
+	ret = lttng_dynamic_buffer_append(buffer, src->data, src->size);
 end:
 	return ret;
 }
 
-int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
-		size_t new_size)
+int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer, size_t new_size)
 {
 	int ret = 0;
 
@@ -134,13 +128,11 @@ end:
 	return ret;
 }
 
-int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
-		size_t demanded_capacity)
+int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer, size_t demanded_capacity)
 {
 	int ret = 0;
 	void *new_buf;
-	size_t new_capacity = demanded_capacity ?
-			round_to_power_of_2(demanded_capacity) : 0;
+	size_t new_capacity = demanded_capacity ? round_to_power_of_2(demanded_capacity) : 0;
 
 	if (!buffer || demanded_capacity < buffer->size) {
 		/*
@@ -181,8 +173,7 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 	buffer->data = NULL;
 }
 
-size_t lttng_dynamic_buffer_get_capacity_left(
-		struct lttng_dynamic_buffer *buffer)
+size_t lttng_dynamic_buffer_get_capacity_left(struct lttng_dynamic_buffer *buffer)
 {
 	if (!buffer) {
 		return 0;

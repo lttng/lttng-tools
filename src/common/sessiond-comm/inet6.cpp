@@ -6,24 +6,24 @@
  */
 
 #define _LGPL_SOURCE
+#include "inet6.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+#include <common/compat/time.hpp>
+#include <common/time.hpp>
+
+#include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <common/compat/time.hpp>
-#include <poll.h>
 
-#include <common/common.hpp>
-#include <common/time.hpp>
-#include <common/compat/errno.hpp>
-
-#include "inet6.hpp"
-
-#define RECONNECT_DELAY	200	/* ms */
+#define RECONNECT_DELAY 200 /* ms */
 
 /*
  * INET protocol operations.
@@ -89,15 +89,13 @@ int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 	return bind(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
-static
-int connect_no_timeout(struct lttcomm_sock *sock)
+static int connect_no_timeout(struct lttcomm_sock *sock)
 {
 	struct sockaddr_in6 sockaddr = sock->sockaddr.addr.sin6;
 	return connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
 }
 
-static
-int connect_with_timeout(struct lttcomm_sock *sock)
+static int connect_with_timeout(struct lttcomm_sock *sock)
 {
 	unsigned long timeout = lttcomm_get_network_timeout();
 	int ret, flags, connect_ret;
@@ -127,8 +125,7 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 
 	sockaddr = sock->sockaddr.addr.sin6;
 	connect_ret = connect(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
-	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK &&
-			errno != EINPROGRESS) {
+	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINPROGRESS) {
 		goto error;
 	} else if (!connect_ret) {
 		/* Connect succeeded */
@@ -136,7 +133,9 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 	}
 
 	DBG("Asynchronous connect for sock %d, performing polling with"
-			" timeout: %lums", sock->fd, timeout);
+	    " timeout: %lums",
+	    sock->fd,
+	    timeout);
 
 	/*
 	 * Perform poll loop following EINPROGRESS recommendation from
@@ -161,8 +160,7 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 				goto error;
 			}
 			/* got something */
-			ret = getsockopt(sock->fd, SOL_SOCKET,
-				SO_ERROR, &optval, &optval_len);
+			ret = getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &optval, &optval_len);
 			if (ret) {
 				PERROR("getsockopt");
 				goto error;
@@ -310,8 +308,7 @@ end:
  *
  * Return the size of received data.
  */
-ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
-		size_t len, int flags)
+ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf, size_t len, int flags)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
@@ -356,8 +353,8 @@ end:
  *
  * Return the size of sent data.
  */
-ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
-		size_t len, int flags)
+ssize_t
+lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf, size_t len, int flags)
 {
 	struct msghdr msg;
 	struct iovec iov[1];

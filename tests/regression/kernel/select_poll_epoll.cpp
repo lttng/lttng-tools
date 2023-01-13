@@ -13,6 +13,9 @@
 #undef _FORTIFY_SOURCE
 #endif
 
+#include <common/compat/time.hpp>
+#include <common/error.hpp>
+
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>
@@ -33,15 +36,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/compat/time.hpp>
-#include <common/error.hpp>
-
 #define BUF_SIZE 256
-#define NB_FD 1
-#define MAX_FDS 2047
-#define NR_ITER 1000 /* for stress-tests */
+#define NB_FD	 1
+#define MAX_FDS	 2047
+#define NR_ITER	 1000 /* for stress-tests */
 
-#define MIN_NR_FDS 5 /* the minimum number of open FDs required for the test to run */
+#define MIN_NR_FDS    5 /* the minimum number of open FDs required for the test to run */
 #define BIG_SELECT_FD 1022
 
 #define MSEC_PER_USEC 1000
@@ -72,8 +72,7 @@ const struct test_case {
 	test_case_cb run;
 	bool produces_validation_info;
 	int timeout;
-} test_cases [] =
-{
+} test_cases[] = {
 	{ .run = run_working_cases, .produces_validation_info = true, .timeout = -1 },
 	{ .run = run_working_cases, .produces_validation_info = true, .timeout = 1 },
 	{ .run = pselect_invalid_fd, .produces_validation_info = false, .timeout = 0 },
@@ -93,8 +92,7 @@ struct ppoll_thread_data {
 };
 } /* namespace */
 
-static
-void test_select_big(void)
+static void test_select_big(void)
 {
 	fd_set rfds, wfds, exfds;
 	struct timeval tv;
@@ -140,8 +138,7 @@ end:
 	return;
 }
 
-static
-void test_pselect(void)
+static void test_pselect(void)
 {
 	fd_set rfds;
 	struct timespec tv;
@@ -170,8 +167,7 @@ void test_pselect(void)
 	}
 }
 
-static
-void test_select(void)
+static void test_select(void)
 {
 	fd_set rfds;
 	struct timeval tv;
@@ -200,15 +196,14 @@ void test_select(void)
 	}
 }
 
-static
-void test_poll(void)
+static void test_poll(void)
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
 	int ret;
 
 	ufds[0].fd = wait_fd;
-	ufds[0].events = POLLIN|POLLPRI;
+	ufds[0].events = POLLIN | POLLPRI;
 
 	ret = poll(ufds, 1, timeout);
 
@@ -222,8 +217,7 @@ void test_poll(void)
 	}
 }
 
-static
-void test_ppoll(void)
+static void test_ppoll(void)
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -231,7 +225,7 @@ void test_ppoll(void)
 	struct timespec ts;
 
 	ufds[0].fd = wait_fd;
-	ufds[0].events = POLLIN|POLLPRI;
+	ufds[0].events = POLLIN | POLLPRI;
 
 	if (timeout > 0) {
 		ts.tv_sec = 0;
@@ -240,7 +234,6 @@ void test_ppoll(void)
 	} else {
 		ret = ppoll(ufds, 1, NULL, NULL);
 	}
-
 
 	if (ret < 0) {
 		PERROR("ppoll");
@@ -252,8 +245,7 @@ void test_ppoll(void)
 	}
 }
 
-static
-void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
+static void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -265,7 +257,7 @@ void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
 			PERROR("dup");
 		}
 		ufds[i].fd = fds[i];
-		ufds[i].events = POLLIN|POLLPRI;
+		ufds[i].events = POLLIN | POLLPRI;
 	}
 
 	ret = ppoll(ufds, MAX_FDS, NULL, NULL);
@@ -289,8 +281,7 @@ void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
 	return;
 }
 
-static
-void test_epoll(FILE *validation_output_file)
+static void test_epoll(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -302,8 +293,7 @@ void test_epoll(FILE *validation_output_file)
 		goto end;
 	}
 
-	ret = fprintf(validation_output_file,
-			", \"epoll_wait_fd\": %i", epollfd);
+	ret = fprintf(validation_output_file, ", \"epoll_wait_fd\": %i", epollfd);
 	if (ret < 0) {
 		PERROR("[epoll] Failed to write test validation output");
 		goto error;
@@ -341,8 +331,7 @@ end:
 	return;
 }
 
-static
-void test_epoll_pwait(FILE *validation_output_file)
+static void test_epoll_pwait(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -354,8 +343,7 @@ void test_epoll_pwait(FILE *validation_output_file)
 		goto end;
 	}
 
-	ret = fprintf(validation_output_file,
-			", \"epoll_pwait_fd\": %i", epollfd);
+	ret = fprintf(validation_output_file, ", \"epoll_pwait_fd\": %i", epollfd);
 	if (ret < 0) {
 		PERROR("[epoll_pwait] Failed to write test validation output");
 		goto error;
@@ -393,8 +381,7 @@ end:
 	return;
 }
 
-static
-void run_working_cases(FILE *validation_output_file)
+static void run_working_cases(FILE *validation_output_file)
 {
 	int ret;
 	int pipe_fds[2];
@@ -453,16 +440,14 @@ end:
  * segfault (eventually with a "*** stack smashing detected ***" message).
  * The event should contain an array of 100 FDs filled with garbage.
  */
-static
-void ppoll_fds_buffer_overflow(
-		FILE *validation_output_file __attribute__((unused)))
+static void ppoll_fds_buffer_overflow(FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
 	int ret;
 
 	ufds[0].fd = wait_fd;
-	ufds[0].events = POLLIN|POLLPRI;
+	ufds[0].events = POLLIN | POLLPRI;
 
 	ret = syscall(SYS_ppoll, ufds, 100, NULL, NULL);
 
@@ -481,15 +466,14 @@ void ppoll_fds_buffer_overflow(
  * cleanly fail with a "Invalid argument".
  * The event should contain an empty array of FDs and overflow = 1.
  */
-static
-void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unused)))
+static void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unused)))
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
 	int ret;
 
 	ufds[0].fd = wait_fd;
-	ufds[0].events = POLLIN|POLLPRI;
+	ufds[0].events = POLLIN | POLLPRI;
 
 	ret = syscall(SYS_ppoll, ufds, ULONG_MAX, NULL, NULL);
 	if (ret < 0) {
@@ -506,8 +490,7 @@ void ppoll_fds_ulong_max(FILE *validation_output_file __attribute__((unused)))
  * Pass an invalid file descriptor to pselect6(). The syscall should return
  * -EBADF. The recorded event should contain a "ret = -EBADF (-9)".
  */
-static
-void pselect_invalid_fd(FILE *validation_output_file __attribute__((unused)))
+static void pselect_invalid_fd(FILE *validation_output_file __attribute__((unused)))
 {
 	fd_set rfds;
 	int ret;
@@ -549,9 +532,7 @@ error:
  * Invalid pointer as writefds, should output a ppoll event
  * with 0 FDs.
  */
-static
-void pselect_invalid_pointer(
-		FILE *validation_output_file __attribute__((unused)))
+static void pselect_invalid_pointer(FILE *validation_output_file __attribute__((unused)))
 {
 	fd_set rfds;
 	int ret;
@@ -561,8 +542,7 @@ void pselect_invalid_pointer(
 	FD_ZERO(&rfds);
 	FD_SET(wait_fd, &rfds);
 
-	ret = syscall(SYS_pselect6, 1, &rfds, (fd_set *) invalid, NULL, NULL,
-			NULL);
+	ret = syscall(SYS_pselect6, 1, &rfds, (fd_set *) invalid, NULL, NULL, NULL);
 	if (ret == -1) {
 		/* Expected error. */
 	} else if (ret) {
@@ -577,8 +557,7 @@ void pselect_invalid_pointer(
  * Pass an invalid pointer to epoll_pwait, should fail with
  * "Bad address", the event returns 0 FDs.
  */
-static
-void epoll_pwait_invalid_pointer(FILE *validation_output_file)
+static void epoll_pwait_invalid_pointer(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -591,9 +570,8 @@ void epoll_pwait_invalid_pointer(FILE *validation_output_file)
 		goto end;
 	}
 
-	ret = fprintf(validation_output_file,
-			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
-			getpid());
+	ret = fprintf(
+		validation_output_file, "{ \"epollfd\": %i, \"pid\": %i }", epollfd, getpid());
 	if (ret < 0) {
 		PERROR("[epoll_pwait] Failed to write test validation output");
 		goto error;
@@ -607,8 +585,7 @@ void epoll_pwait_invalid_pointer(FILE *validation_output_file)
 		goto error;
 	}
 
-	ret = syscall(SYS_epoll_pwait, epollfd,
-			(struct epoll_event *) invalid, 1, -1, NULL);
+	ret = syscall(SYS_epoll_pwait, epollfd, (struct epoll_event *) invalid, 1, -1, NULL);
 
 	if (ret == 1) {
 		ret = read(wait_fd, buf, BUF_SIZE);
@@ -632,8 +609,7 @@ end:
  * Set maxevents to INT_MAX, should output "Invalid argument"
  * The event should return an empty array.
  */
-static
-void epoll_pwait_int_max(FILE *validation_output_file)
+static void epoll_pwait_int_max(FILE *validation_output_file)
 {
 	int ret, epollfd;
 	char buf[BUF_SIZE];
@@ -645,9 +621,8 @@ void epoll_pwait_int_max(FILE *validation_output_file)
 		goto end;
 	}
 
-	ret = fprintf(validation_output_file,
-			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
-			getpid());
+	ret = fprintf(
+		validation_output_file, "{ \"epollfd\": %i, \"pid\": %i }", epollfd, getpid());
 	if (ret < 0) {
 		PERROR("[epoll_pwait] Failed to write test validation output");
 		goto error;
@@ -661,8 +636,7 @@ void epoll_pwait_int_max(FILE *validation_output_file)
 		goto error;
 	}
 
-	ret = syscall(SYS_epoll_pwait, epollfd, &epoll_event, INT_MAX, -1,
-			NULL);
+	ret = syscall(SYS_epoll_pwait, epollfd, &epoll_event, INT_MAX, -1, NULL);
 
 	if (ret == 1) {
 		ret = read(wait_fd, buf, BUF_SIZE);
@@ -682,22 +656,19 @@ end:
 	return;
 }
 
-static
-void *ppoll_writer(void *arg)
+static void *ppoll_writer(void *arg)
 {
 	struct ppoll_thread_data *data = (struct ppoll_thread_data *) arg;
 
 	while (!stop_thread) {
-		memset(data->ufds, data->value,
-				MAX_FDS * sizeof(struct pollfd));
+		memset(data->ufds, data->value, MAX_FDS * sizeof(struct pollfd));
 		usleep(100);
 	}
 
 	return NULL;
 }
 
-static
-void do_ppoll(int *fds, struct pollfd *ufds)
+static void do_ppoll(int *fds, struct pollfd *ufds)
 {
 	int i, ret;
 	struct timespec ts;
@@ -708,7 +679,7 @@ void do_ppoll(int *fds, struct pollfd *ufds)
 
 	for (i = 0; i < MAX_FDS; i++) {
 		ufds[i].fd = fds[i];
-		ufds[i].events = POLLIN|POLLPRI;
+		ufds[i].events = POLLIN | POLLPRI;
 	}
 
 	ret = ppoll(ufds, MAX_FDS, &ts, NULL);
@@ -723,8 +694,7 @@ void do_ppoll(int *fds, struct pollfd *ufds)
 	}
 }
 
-static
-void stress_ppoll(int *fds, int value)
+static void stress_ppoll(int *fds, int value)
 {
 	pthread_t writer;
 	int iter, ret;
@@ -765,9 +735,7 @@ end:
  *
  * ppoll should work as expected and the trace should be readable at the end.
  */
-static
-void ppoll_concurrent_write(
-		FILE *validation_output_file __attribute__((unused)))
+static void ppoll_concurrent_write(FILE *validation_output_file __attribute__((unused)))
 {
 	int i, ret, fds[MAX_FDS];
 
@@ -792,8 +760,7 @@ void ppoll_concurrent_write(
 	return;
 }
 
-static
-void *epoll_pwait_writer(void *addr)
+static void *epoll_pwait_writer(void *addr)
 {
 	srand(time(NULL));
 
@@ -810,8 +777,7 @@ void *epoll_pwait_writer(void *addr)
  * buffer allocated for the returned data. This should randomly segfault.
  * The trace should be readable and no kernel OOPS should occur.
  */
-static
-void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
+static void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 {
 	int ret, epollfd, i, fds[MAX_FDS];
 	char buf[BUF_SIZE];
@@ -827,18 +793,19 @@ void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 		goto end;
 	}
 
-	ret = fprintf(validation_output_file,
-			"{ \"epollfd\": %i, \"pid\": %i }", epollfd,
-			getpid());
+	ret = fprintf(
+		validation_output_file, "{ \"epollfd\": %i, \"pid\": %i }", epollfd, getpid());
 	if (ret < 0) {
 		PERROR("[epoll_pwait] Failed to write test validation output");
 		goto error;
 	}
 
 	epoll_event = (struct epoll_event *) mmap(NULL,
-			MAX_FDS * sizeof(struct epoll_event),
-			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1,
-			0);
+						  MAX_FDS * sizeof(struct epoll_event),
+						  PROT_READ | PROT_WRITE,
+						  MAP_PRIVATE | MAP_ANONYMOUS,
+						  -1,
+						  0);
 	if (epoll_event == MAP_FAILED) {
 		PERROR("mmap");
 		goto error;
@@ -858,8 +825,7 @@ void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 		}
 	}
 	stop_thread = 0;
-	ret = pthread_create(&writer, NULL, &epoll_pwait_writer,
-			(void *) epoll_event);
+	ret = pthread_create(&writer, NULL, &epoll_pwait_writer, (void *) epoll_event);
 	if (ret != 0) {
 		fprintf(stderr, "[error] pthread_create\n");
 		goto error_unmap;
@@ -904,31 +870,38 @@ end:
 	return;
 }
 
-static
-void print_list(void)
+static void print_list(void)
 {
 	fprintf(stderr, "Test list (-t X):\n");
-	fprintf(stderr, "\t1: Working cases for select, pselect6, poll, ppoll "
-			"and epoll, waiting for input\n");
-	fprintf(stderr, "\t2: Timeout cases (1ms) for select, pselect6, poll, "
-			"ppoll and epoll\n");
+	fprintf(stderr,
+		"\t1: Working cases for select, pselect6, poll, ppoll "
+		"and epoll, waiting for input\n");
+	fprintf(stderr,
+		"\t2: Timeout cases (1ms) for select, pselect6, poll, "
+		"ppoll and epoll\n");
 	fprintf(stderr, "\t3: pselect with an invalid fd\n");
 	fprintf(stderr, "\t4: ppoll with %d FDs\n", MAX_FDS);
-	fprintf(stderr, "\t5: ppoll buffer overflow, should segfault, waits "
-			"for input\n");
-	fprintf(stderr, "\t6: pselect with an invalid pointer, waits for "
-			"input\n");
+	fprintf(stderr,
+		"\t5: ppoll buffer overflow, should segfault, waits "
+		"for input\n");
+	fprintf(stderr,
+		"\t6: pselect with an invalid pointer, waits for "
+		"input\n");
 	fprintf(stderr, "\t7: ppoll with ulong_max fds, waits for input\n");
-	fprintf(stderr, "\t8: epoll_pwait with an invalid pointer, waits for "
-			"input\n");
-	fprintf(stderr, "\t9: epoll_pwait with maxevents set to INT_MAX, "
-			"waits for input\n");
-	fprintf(stderr, "\t10: ppoll with concurrent updates of the structure "
-			"from user-space, stress test (3000 iterations), "
-			"waits for input + timeout 1ms\n");
-	fprintf(stderr, "\t11: epoll_pwait with concurrent munmap of the buffer "
-			"from user-space, should randomly segfault, run "
-			"multiple times, waits for input + timeout 1ms\n");
+	fprintf(stderr,
+		"\t8: epoll_pwait with an invalid pointer, waits for "
+		"input\n");
+	fprintf(stderr,
+		"\t9: epoll_pwait with maxevents set to INT_MAX, "
+		"waits for input\n");
+	fprintf(stderr,
+		"\t10: ppoll with concurrent updates of the structure "
+		"from user-space, stress test (3000 iterations), "
+		"waits for input + timeout 1ms\n");
+	fprintf(stderr,
+		"\t11: epoll_pwait with concurrent munmap of the buffer "
+		"from user-space, should randomly segfault, run "
+		"multiple times, waits for input + timeout 1ms\n");
 }
 
 int main(int argc, const char **argv)
@@ -939,14 +912,16 @@ int main(int argc, const char **argv)
 	FILE *test_validation_output_file = NULL;
 	const char *test_validation_output_file_path = NULL;
 	struct poptOption optionsTable[] = {
-		{ "test", 't', POPT_ARG_INT, &test, 0,
-			"Test to run", NULL },
-		{ "list", 'l', 0, 0, 'l',
-			"List of tests (-t X)", NULL },
-		{ "validation-file", 'o', POPT_ARG_STRING, &test_validation_output_file_path, 0,
-			"Test case output", NULL },
-		POPT_AUTOHELP
-		{ NULL, 0, 0, NULL, 0, NULL, NULL }
+		{ "test", 't', POPT_ARG_INT, &test, 0, "Test to run", NULL },
+		{ "list", 'l', 0, 0, 'l', "List of tests (-t X)", NULL },
+		{ "validation-file",
+		  'o',
+		  POPT_ARG_STRING,
+		  &test_validation_output_file_path,
+		  0,
+		  "Test case output",
+		  NULL },
+		POPT_AUTOHELP{ NULL, 0, 0, NULL, 0, NULL, NULL }
 	};
 	const struct test_case *test_case;
 
@@ -977,7 +952,7 @@ int main(int argc, const char **argv)
 	test_validation_output_file = fopen(test_validation_output_file_path, "w+");
 	if (!test_validation_output_file) {
 		PERROR("Failed to create test validation output file at '%s'",
-				test_validation_output_file_path);
+		       test_validation_output_file_path);
 		ret = -1;
 		goto end;
 	}

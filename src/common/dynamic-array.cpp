@@ -8,8 +8,8 @@
 #include <common/dynamic-array.hpp>
 
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
-		size_t element_size,
-		lttng_dynamic_array_element_destructor destructor)
+			      size_t element_size,
+			      lttng_dynamic_array_element_destructor destructor)
 {
 	lttng_dynamic_buffer_init(&array->buffer);
 	array->element_size = element_size;
@@ -17,8 +17,7 @@ void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 	array->destructor = destructor;
 }
 
-int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
-		size_t new_element_count)
+int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array, size_t new_element_count)
 {
 	int ret;
 
@@ -31,8 +30,7 @@ int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
 		size_t i;
 
 		for (i = new_element_count; i < array->size; i++) {
-			void *element = lttng_dynamic_array_get_element(
-					array, i);
+			void *element = lttng_dynamic_array_get_element(array, i);
 
 			array->destructor(element);
 		}
@@ -40,13 +38,12 @@ int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
 
 	array->size = new_element_count;
 	ret = lttng_dynamic_buffer_set_size(&array->buffer,
-			new_element_count * array->element_size);
+					    new_element_count * array->element_size);
 end:
 	return ret;
 }
 
-int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
-		const void *element)
+int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array, const void *element)
 {
 	int ret;
 
@@ -55,8 +52,7 @@ int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(&array->buffer, element,
-			array->element_size);
+	ret = lttng_dynamic_buffer_append(&array->buffer, element, array->element_size);
 	if (ret) {
 		goto end;
 	}
@@ -65,25 +61,23 @@ end:
 	return ret;
 }
 
-int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
-		size_t element_index)
+int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array, size_t element_index)
 {
-	void *element = lttng_dynamic_array_get_element(array,
-			element_index);
+	void *element = lttng_dynamic_array_get_element(array, element_index);
 
 	if (array->destructor) {
 		array->destructor(element);
 	}
 	if (element_index != lttng_dynamic_array_get_count(array) - 1) {
-		void *next_element = lttng_dynamic_array_get_element(array,
-				element_index + 1);
+		void *next_element = lttng_dynamic_array_get_element(array, element_index + 1);
 
-		memmove(element, next_element,
-				(array->size - element_index - 1) * array->element_size);
+		memmove(element,
+			next_element,
+			(array->size - element_index - 1) * array->element_size);
 	}
 	array->size--;
 	return lttng_dynamic_buffer_set_size(&array->buffer,
-			array->buffer.size - array->element_size);
+					     array->buffer.size - array->element_size);
 }
 
 void lttng_dynamic_array_reset(struct lttng_dynamic_array *array)
@@ -92,8 +86,7 @@ void lttng_dynamic_array_reset(struct lttng_dynamic_array *array)
 		size_t i;
 
 		for (i = 0; i < lttng_dynamic_array_get_count(array); i++) {
-			array->destructor(lttng_dynamic_array_get_element(array,
-					i));
+			array->destructor(lttng_dynamic_array_get_element(array, i));
 		}
 	}
 
@@ -107,8 +100,7 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array)
 		size_t i;
 
 		for (i = 0; i < lttng_dynamic_array_get_count(array); i++) {
-			array->destructor(lttng_dynamic_array_get_element(array,
-					i));
+			array->destructor(lttng_dynamic_array_get_element(array, i));
 		}
 	}
 
@@ -116,19 +108,17 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array)
 	array->size = 0;
 }
 
-void lttng_dynamic_pointer_array_init(
-		struct lttng_dynamic_pointer_array *array,
-		lttng_dynamic_pointer_array_destructor destructor)
+void lttng_dynamic_pointer_array_init(struct lttng_dynamic_pointer_array *array,
+				      lttng_dynamic_pointer_array_destructor destructor)
 {
 	lttng_dynamic_array_init(&array->array, sizeof(void *), destructor);
-}	
+}
 
-int lttng_dynamic_pointer_array_remove_pointer(
-		struct lttng_dynamic_pointer_array *array, size_t index)
+int lttng_dynamic_pointer_array_remove_pointer(struct lttng_dynamic_pointer_array *array,
+					       size_t index)
 {
 	int ret;
-	const lttng_dynamic_array_element_destructor destructor =
-			array->array.destructor;
+	const lttng_dynamic_array_element_destructor destructor = array->array.destructor;
 
 	/*
 	 * Prevent the destructor from being used by the underlying
@@ -136,8 +126,7 @@ int lttng_dynamic_pointer_array_remove_pointer(
 	 */
 	array->array.destructor = NULL;
 	if (destructor) {
-		destructor(lttng_dynamic_pointer_array_get_pointer(array,
-				index));
+		destructor(lttng_dynamic_pointer_array_get_pointer(array, index));
 	}
 	ret = lttng_dynamic_array_remove_element(&array->array, index);
 	array->array.destructor = destructor;
@@ -145,15 +134,13 @@ int lttng_dynamic_pointer_array_remove_pointer(
 }
 
 /* Release any memory used by the dynamic array. */
-void lttng_dynamic_pointer_array_reset(
-		struct lttng_dynamic_pointer_array *array)
+void lttng_dynamic_pointer_array_reset(struct lttng_dynamic_pointer_array *array)
 {
 	if (array->array.destructor) {
 		size_t i, count = lttng_dynamic_pointer_array_get_count(array);
 
 		for (i = 0; i < count; i++) {
-			void *ptr = lttng_dynamic_pointer_array_get_pointer(
-					array, i);
+			void *ptr = lttng_dynamic_pointer_array_get_pointer(array, i);
 			array->array.destructor(ptr);
 		}
 		/*
@@ -165,11 +152,9 @@ void lttng_dynamic_pointer_array_reset(
 	lttng_dynamic_array_reset(&array->array);
 }
 
-void lttng_dynamic_pointer_array_clear(
-		struct lttng_dynamic_pointer_array *array)
+void lttng_dynamic_pointer_array_clear(struct lttng_dynamic_pointer_array *array)
 {
-	const lttng_dynamic_array_element_destructor destructor =
-			array->array.destructor;
+	const lttng_dynamic_array_element_destructor destructor = array->array.destructor;
 
 	/*
 	 * Prevent the destructor from being used by the underlying
@@ -180,8 +165,7 @@ void lttng_dynamic_pointer_array_clear(
 		size_t i, count = lttng_dynamic_pointer_array_get_count(array);
 
 		for (i = 0; i < count; i++) {
-			void *ptr = lttng_dynamic_pointer_array_get_pointer(
-					array, i);
+			void *ptr = lttng_dynamic_pointer_array_get_pointer(array, i);
 			destructor(ptr);
 		}
 	}

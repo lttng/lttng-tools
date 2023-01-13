@@ -42,7 +42,7 @@ static int notify_thread_pipe(int wpipe)
 int relayd_init_thread_quit_pipe(void)
 {
 	return fd_tracker_util_pipe_open_cloexec(
-			the_fd_tracker, "Thread quit pipe", thread_quit_pipe);
+		the_fd_tracker, "Thread quit pipe", thread_quit_pipe);
 }
 
 /*
@@ -61,8 +61,7 @@ int relayd_notify_thread_quit_pipe(void)
 void relayd_close_thread_quit_pipe(void)
 {
 	if (thread_quit_pipe[0] != -1) {
-		(void) fd_tracker_util_pipe_close(
-				the_fd_tracker, thread_quit_pipe);
+		(void) fd_tracker_util_pipe_close(the_fd_tracker, thread_quit_pipe);
 	}
 }
 
@@ -77,15 +76,14 @@ bool relayd_is_thread_quit_pipe(const int fd)
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
-int create_named_thread_poll_set(struct lttng_poll_event *events,
-		int size, const char *name)
+int create_named_thread_poll_set(struct lttng_poll_event *events, int size, const char *name)
 {
 	if (events == NULL || size == 0) {
 		return -1;
 	}
 
-	const auto create_ret = fd_tracker_util_poll_create(the_fd_tracker,
-			name, events, 1, LTTNG_CLOEXEC);
+	const auto create_ret =
+		fd_tracker_util_poll_create(the_fd_tracker, name, events, 1, LTTNG_CLOEXEC);
 	if (create_ret) {
 		PERROR("Failed to create \"%s\" poll file descriptor", name);
 		return -1;

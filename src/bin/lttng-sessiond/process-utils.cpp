@@ -7,8 +7,9 @@
  *
  */
 
-#include <signal.h>
 #include "lttng-sessiond.hpp"
+
+#include <signal.h>
 
 /* Notify parents that we are ready for cmd and health check */
 void sessiond_signal_parents(void)

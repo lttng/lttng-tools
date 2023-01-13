@@ -6,8 +6,8 @@
  *
  */
 
-#include "ctf2-trace-class-visitor.hpp"
 #include "clock-class.hpp"
+#include "ctf2-trace-class-visitor.hpp"
 
 #include <common/exception.hpp>
 #include <common/format.hpp>
@@ -27,10 +27,10 @@ const std::string record_separator = "\x1e";
 
 json::json make_json_fragment(const char *type)
 {
-	return {{"type", type}};
+	return { { "type", type } };
 }
 
-json::json to_json(const lst::field_location &location)
+json::json to_json(const lst::field_location& location)
 {
 	json::json location_array;
 
@@ -55,8 +55,9 @@ json::json to_json(const lst::field_location &location)
 		break;
 	}
 
-	std::copy(location.elements_.begin(), location.elements_.end(),
-			std::back_inserter(location_array));
+	std::copy(location.elements_.begin(),
+		  location.elements_.end(),
+		  std::back_inserter(location_array));
 	return location_array;
 }
 
@@ -157,12 +158,12 @@ private:
 	virtual void visit(const lst::integer_type& type) override final
 	{
 		_fragment["type"] = type.signedness_ == lst::integer_type::signedness::SIGNED ?
-				"fixed-length-signed-integer" :
-				"fixed-length-unsigned-integer";
+			"fixed-length-signed-integer" :
+			"fixed-length-unsigned-integer";
 		_fragment["length"] = type.size;
 		_fragment["byte-order"] = type.byte_order == lst::byte_order::BIG_ENDIAN_ ?
-				"big-endian" :
-				"little-endian";
+			"big-endian" :
+			"little-endian";
 		_fragment["alignment"] = type.alignment;
 		_fragment["preferred-display-base"] = (unsigned int) type.base_;
 
@@ -182,30 +183,32 @@ private:
 		_fragment["type"] = "fixed-length-floating-point-number";
 		_fragment["length"] = type.exponent_digits + type.mantissa_digits;
 		_fragment["byte-order"] = type.byte_order == lst::byte_order::BIG_ENDIAN_ ?
-				"big-endian" :
-				"little-endian";
+			"big-endian" :
+			"little-endian";
 		_fragment["alignment"] = type.alignment;
 	}
 
 	template <class EnumerationType>
 	void visit_enumeration(const EnumerationType& type)
 	{
-		_fragment["type"] = std::is_signed<typename EnumerationType::mapping::range_t::range_integer_t>::value ?
-				"fixed-length-signed-enumeration" :
-				"fixed-length-unsigned-enumeration";
+		_fragment["type"] =
+			std::is_signed<
+				typename EnumerationType::mapping::range_t::range_integer_t>::value ?
+			"fixed-length-signed-enumeration" :
+			"fixed-length-unsigned-enumeration";
 		_fragment["length"] = type.size;
 		_fragment["byte-order"] = type.byte_order == lst::byte_order::BIG_ENDIAN_ ?
-				"big-endian" :
-				"little-endian";
+			"big-endian" :
+			"little-endian";
 		_fragment["alignment"] = type.alignment;
 		_fragment["preferred-display-base"] = (unsigned int) type.base_;
 
 		if (type.roles_.size() > 0) {
 			if (std::is_signed<typename EnumerationType::mapping::range_t::
-							    range_integer_t>::value) {
-				LTTNG_THROW_ERROR(fmt::format(
-						"Failed to serialize {}: unexpected role",
-						_fragment["type"]));
+						   range_integer_t>::value) {
+				LTTNG_THROW_ERROR(
+					fmt::format("Failed to serialize {}: unexpected role",
+						    _fragment["type"]));
 			}
 
 			auto role_array = json::json::array();
@@ -219,13 +222,14 @@ private:
 
 		if (type.mappings_->size() < 1) {
 			LTTNG_THROW_ERROR(fmt::format(
-					"Failed to serialize {}: enumeration must have at least one mapping",
-					_fragment["type"]));
+				"Failed to serialize {}: enumeration must have at least one mapping",
+				_fragment["type"]));
 		}
 
 		json::json mappings_value;
-		for (const auto &mapping : *type.mappings_) {
-			mappings_value[mapping.name] = {{mapping.range.begin, mapping.range.end}};
+		for (const auto& mapping : *type.mappings_) {
+			mappings_value[mapping.name] = { { mapping.range.begin,
+							   mapping.range.end } };
 		}
 
 		_fragment["mappings"] = std::move(mappings_value);
@@ -294,7 +298,7 @@ private:
 	}
 
 	virtual void visit(const lst::null_terminated_string_type& type
-			__attribute__((unused))) override final
+			   __attribute__((unused))) override final
 	{
 		_fragment["type"] = "null-terminated-string";
 	}
@@ -308,7 +312,7 @@ private:
 		}
 
 		auto member_classes_value = json::json::array();
-		for (const auto &field : type.fields_) {
+		for (const auto& field : type.fields_) {
 			::ctf2::field_visitor member_visitor;
 			json::json member_class;
 
@@ -331,7 +335,8 @@ private:
 			json::json member_class;
 
 			/* TODO missing selector-field-range. */
-			member_class["selector-field-ranges"] = {{option.first.range.begin, option.first.range.end}};
+			member_class["selector-field-ranges"] = { { option.first.range.begin,
+								    option.first.range.end } };
 			option.second->accept(option_visitor);
 			member_class["field-class"] = option_visitor.move_fragment();
 			options_value.emplace_back(std::move(member_class));
@@ -369,7 +374,7 @@ private:
 }; /* namespace */
 
 lsc::trace_class_visitor::trace_class_visitor(
-		lsc::append_metadata_fragment_function append_metadata_fragment) :
+	lsc::append_metadata_fragment_function append_metadata_fragment) :
 	_append_metadata_fragment(append_metadata_fragment)
 {
 }
@@ -403,17 +408,16 @@ void lsc::trace_class_visitor::visit(const lst::trace_class& trace_class)
 
 void lsc::trace_class_visitor::visit(const lst::clock_class& clock_class)
 {
-        auto clock_class_fragment = make_json_fragment("clock-class");
+	auto clock_class_fragment = make_json_fragment("clock-class");
 
 	json::json offset;
-	offset.update({{"seconds", clock_class.offset / clock_class.frequency},
-			{"cycles", clock_class.offset % clock_class.frequency}});
+	offset.update({ { "seconds", clock_class.offset / clock_class.frequency },
+			{ "cycles", clock_class.offset % clock_class.frequency } });
 
-	clock_class_fragment.update({
-		{"name", clock_class.name},
-		{"description", clock_class.description},
-		{"frequency", clock_class.frequency},
-		{"offset", std::move(offset)}});
+	clock_class_fragment.update({ { "name", clock_class.name },
+				      { "description", clock_class.description },
+				      { "frequency", clock_class.frequency },
+				      { "offset", std::move(offset) } });
 
 	if (clock_class.uuid) {
 		clock_class_fragment["uuid"] = *clock_class.uuid;
@@ -429,7 +433,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 	stream_class_fragment["id"] = stream_class.id;
 	if (stream_class.default_clock_class_name) {
 		stream_class_fragment["default-clock-class-name"] =
-				*stream_class.default_clock_class_name;
+			*stream_class.default_clock_class_name;
 	}
 
 	const auto packet_context = stream_class.packet_context();
@@ -445,8 +449,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 		::ctf2::field_visitor visitor;
 
 		event_header->accept(visitor);
-		stream_class_fragment["event-record-header-field-class"] =
-				visitor.move_fragment();
+		stream_class_fragment["event-record-header-field-class"] = visitor.move_fragment();
 	}
 
 	const auto event_context = stream_class.event_context();
@@ -455,7 +458,7 @@ void lsc::trace_class_visitor::visit(const lst::stream_class& stream_class)
 
 		event_context->accept(visitor);
 		stream_class_fragment["event-record-common-context-field-class"] =
-				visitor.move_fragment();
+			visitor.move_fragment();
 	}
 
 	append_metadata_fragment(stream_class_fragment);

@@ -5,8 +5,13 @@
  *
  */
 
+#include "utils.h"
+
+#include <common/compat/errno.hpp>
 #include <common/compat/time.hpp>
+#include <common/macros.hpp>
 #include <common/time.hpp>
+
 #include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -17,21 +22,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/compat/errno.hpp>
-#include <common/macros.hpp>
-
-#include "utils.h"
-
-static inline
-int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
+static inline int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
 {
 	struct timespec delta;
 
 	LTTNG_ASSERT(t1 && t2);
 	delta.tv_sec = t2->tv_sec - t1->tv_sec;
 	delta.tv_nsec = t2->tv_nsec - t1->tv_nsec;
-	return ((int64_t) NSEC_PER_SEC * (int64_t) delta.tv_sec) +
-			(int64_t) delta.tv_nsec;
+	return ((int64_t) NSEC_PER_SEC * (int64_t) delta.tv_sec) + (int64_t) delta.tv_nsec;
 }
 
 int usleep_safe(useconds_t usec)
@@ -101,24 +99,23 @@ int wait_on_file(const char *path)
 	for (;;) {
 		ret = stat(path, &buf);
 		if (ret == -1 && errno == ENOENT) {
-			ret = poll(NULL, 0, 10);	/* 10 ms delay */
+			ret = poll(NULL, 0, 10); /* 10 ms delay */
 			/* Should return 0 everytime */
 			if (ret) {
 				if (ret < 0) {
 					perror("perror");
 				} else {
-					fprintf(stderr,
-						"poll return value is larger than zero\n");
+					fprintf(stderr, "poll return value is larger than zero\n");
 				}
 				return -1;
 			}
-			continue;			/* retry */
+			continue; /* retry */
 		}
 		if (ret) {
 			perror("stat");
 			return -1;
 		}
-		break;	/* found */
+		break; /* found */
 	}
 
 	return 0;

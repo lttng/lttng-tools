@@ -6,16 +6,17 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+
+#include <lttng/lttng.h>
+
 #include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-#include <lttng/lttng.h>
 
 static char *opt_output_path;
 static bool opt_force;
@@ -25,7 +26,7 @@ static struct mi_writer *writer;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-save.1.h>
-;
+	;
 #endif
 
 enum {
@@ -37,12 +38,12 @@ enum {
 
 static struct poptOption save_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",        'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
-	{"all",         'a', POPT_ARG_NONE, NULL, OPT_ALL, NULL, NULL},
-	{"output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL},
-	{"force",       'f', POPT_ARG_NONE, NULL, OPT_FORCE, NULL, NULL},
-	{"list-options",  0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
+	{ "all", 'a', POPT_ARG_NONE, NULL, OPT_ALL, NULL, NULL },
+	{ "output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL },
+	{ "force", 'f', POPT_ARG_NONE, NULL, OPT_FORCE, NULL, NULL },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static int mi_partial_session(const char *session_name)
@@ -57,8 +58,7 @@ static int mi_partial_session(const char *session_name)
 		goto end;
 	}
 
-	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
-			session_name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, session_name);
 	if (ret) {
 		goto end;
 	}
@@ -96,8 +96,8 @@ static int mi_save_print(const char *session_name)
 
 	/* Path element */
 	if (opt_output_path) {
-		ret = mi_lttng_writer_write_element_string(writer, config_element_path,
-				opt_output_path);
+		ret = mi_lttng_writer_write_element_string(
+			writer, config_element_path, opt_output_path);
 		if (ret) {
 			goto end;
 		}
@@ -190,16 +190,14 @@ int cmd_save(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_save);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_save);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end_destroy;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end_destroy;
@@ -213,13 +211,13 @@ int cmd_save(int argc, const char **argv)
 	} else {
 		/* Inform the user of what just happened on success. */
 		if (arg_session_name && opt_output_path) {
-			MSG("Session %s saved successfully in %s.", arg_session_name,
-					opt_output_path);
+			MSG("Session %s saved successfully in %s.",
+			    arg_session_name,
+			    opt_output_path);
 		} else if (arg_session_name && !opt_output_path) {
 			MSG("Session %s saved successfully.", arg_session_name);
 		} else if (!arg_session_name && opt_output_path) {
-			MSG("All sessions have been saved successfully in %s.",
-					opt_output_path);
+			MSG("All sessions have been saved successfully in %s.", opt_output_path);
 		} else {
 			MSG("All sessions have been saved successfully.");
 		}
@@ -243,8 +241,8 @@ int cmd_save(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end_destroy;

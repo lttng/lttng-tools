@@ -7,16 +7,16 @@
  *
  */
 
-#include <common/pipe.hpp>
-#include <common/utils.hpp>
-
+#include "health-sessiond.hpp"
+#include "kernel-consumer.hpp"
+#include "kernel.hpp"
 #include "manage-kernel.hpp"
 #include "testpoint.hpp"
-#include "health-sessiond.hpp"
-#include "utils.hpp"
 #include "thread.hpp"
-#include "kernel.hpp"
-#include "kernel-consumer.hpp"
+#include "utils.hpp"
+
+#include <common/pipe.hpp>
+#include <common/utils.hpp>
 
 namespace {
 struct thread_notifiers {
@@ -39,7 +39,7 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 	DBG("Updating kernel poll set");
 
 	session_lock_list();
-	cds_list_for_each_entry(session, &session_list->head, list) {
+	cds_list_for_each_entry (session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
 		}
@@ -50,8 +50,8 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			continue;
 		}
 
-		cds_list_for_each_entry(channel,
-				&session->kernel_session->channel_list.head, list) {
+		cds_list_for_each_entry (
+			channel, &session->kernel_session->channel_list.head, list) {
 			/* Add channel fd to the kernel poll set */
 			ret = lttng_poll_add(events, channel->fd, LPOLLIN | LPOLLRDNORM);
 			if (ret < 0) {
@@ -90,7 +90,7 @@ static int update_kernel_stream(int fd)
 	DBG("Updating kernel streams for channel fd %d", fd);
 
 	session_lock_list();
-	cds_list_for_each_entry(session, &session_list->head, list) {
+	cds_list_for_each_entry (session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
 		}
@@ -102,8 +102,7 @@ static int update_kernel_stream(int fd)
 		}
 		ksess = session->kernel_session;
 
-		cds_list_for_each_entry(channel,
-				&ksess->channel_list.head, list) {
+		cds_list_for_each_entry (channel, &ksess->channel_list.head, list) {
 			struct lttng_ht_iter iter;
 			struct consumer_socket *socket;
 
@@ -123,19 +122,17 @@ static int update_kernel_stream(int fd)
 			 * means that tracing is started so it is safe to send
 			 * our updated stream fds.
 			 */
-			if (ksess->consumer_fds_sent != 1
-					|| ksess->consumer == NULL) {
+			if (ksess->consumer_fds_sent != 1 || ksess->consumer == NULL) {
 				ret = -1;
 				goto error;
 			}
 
 			rcu_read_lock();
-			cds_lfht_for_each_entry(ksess->consumer->socks->ht,
-					&iter.iter, socket, node.node) {
+			cds_lfht_for_each_entry (
+				ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 				pthread_mutex_lock(socket->lock);
-				ret = kernel_consumer_send_channel_streams(socket,
-						channel, ksess,
-						session->output_traces ? 1 : 0);
+				ret = kernel_consumer_send_channel_streams(
+					socket, channel, ksess, session->output_traces ? 1 : 0);
 				pthread_mutex_unlock(socket->lock);
 				if (ret < 0) {
 					rcu_read_unlock();
@@ -204,16 +201,12 @@ static void *thread_kernel_management(void *data)
 				goto error_poll_create;
 			}
 
-			ret = lttng_poll_add(&events,
-					notifiers->kernel_poll_pipe_read_fd,
-					LPOLLIN);
+			ret = lttng_poll_add(&events, notifiers->kernel_poll_pipe_read_fd, LPOLLIN);
 			if (ret < 0) {
 				goto error;
 			}
 
-			ret = lttng_poll_add(&events,
-					thread_quit_pipe_fd,
-					LPOLLIN);
+			ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 			if (ret < 0) {
 				goto error;
 			}
@@ -232,8 +225,7 @@ static void *thread_kernel_management(void *data)
 	restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		DBG("Thread kernel return from poll on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		DBG("Thread kernel return from poll on %d fds", LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
 			/*
@@ -246,7 +238,7 @@ static void *thread_kernel_management(void *data)
 		} else if (ret == 0) {
 			/* Should not happen since timeout is infinite */
 			ERR("Return value of poll is 0 with an infinite timeout.\n"
-				"This should not have happened! Continuing...");
+			    "This should not have happened! Continuing...");
 			continue;
 		}
 
@@ -269,11 +261,11 @@ static void *thread_kernel_management(void *data)
 			/* Check for data on kernel pipe */
 			if (revents & LPOLLIN) {
 				if (pollfd == notifiers->kernel_poll_pipe_read_fd) {
-					(void) lttng_read(notifiers->kernel_poll_pipe_read_fd,
-						&tmp, 1);
+					(void) lttng_read(
+						notifiers->kernel_poll_pipe_read_fd, &tmp, 1);
 					/*
-					 * Ret value is useless here, if this pipe gets any actions an
-					 * update is required anyway.
+					 * Ret value is useless here, if this pipe gets any actions
+					 * an update is required anyway.
 					 */
 					update_poll_flag = 1;
 					continue;
@@ -307,7 +299,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 		WARN("Kernel thread died unexpectedly. "
-				"Kernel tracing can continue but CPU hotplug is disabled.");
+		     "Kernel tracing can continue but CPU hotplug is disabled.");
 	}
 	health_unregister(the_health_sessiond);
 	DBG("Kernel thread dying");
@@ -348,10 +340,10 @@ bool launch_kernel_management_thread(int kernel_poll_pipe_read_fd)
 	notifiers->kernel_poll_pipe_read_fd = kernel_poll_pipe_read_fd;
 
 	thread = lttng_thread_create("Kernel management",
-			thread_kernel_management,
-			shutdown_kernel_management_thread,
-			cleanup_kernel_management_thread,
-			notifiers);
+				     thread_kernel_management,
+				     shutdown_kernel_management_thread,
+				     cleanup_kernel_management_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

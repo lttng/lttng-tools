@@ -7,24 +7,22 @@
  */
 
 #define _LGPL_SOURCE
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/consumer/consumer-stream.hpp>
+#include <common/consumer/consumer-testpoint.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/kernel-consumer/kernel-consumer.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
+
+#include <bin/lttng-consumerd/health-consumerd.hpp>
 #include <inttypes.h>
 #include <signal.h>
 
-#include <bin/lttng-consumerd/health-consumerd.hpp>
-#include <common/common.hpp>
-#include <common/compat/endian.hpp>
-#include <common/kernel-ctl/kernel-ctl.hpp>
-#include <common/kernel-consumer/kernel-consumer.hpp>
-#include <common/consumer/consumer-stream.hpp>
-#include <common/consumer/consumer-timer.hpp>
-#include <common/consumer/consumer-testpoint.hpp>
-#include <common/ust-consumer/ust-consumer.hpp>
-
 typedef int (*sample_positions_cb)(struct lttng_consumer_stream *stream);
-typedef int (*get_consumed_cb)(struct lttng_consumer_stream *stream,
-		unsigned long *consumed);
-typedef int (*get_produced_cb)(struct lttng_consumer_stream *stream,
-		unsigned long *produced);
+typedef int (*get_consumed_cb)(struct lttng_consumer_stream *stream, unsigned long *consumed);
+typedef int (*get_produced_cb)(struct lttng_consumer_stream *stream, unsigned long *produced);
 typedef int (*flush_index_cb)(struct lttng_consumer_stream *stream);
 
 static struct timer_signal_data timer_signal = {
@@ -76,8 +74,7 @@ static int the_channel_monitor_pipe = -1;
  * while consumer_timer_switch_stop() is called. It would result in
  * deadlocks.
  */
-static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
-		siginfo_t *si)
+static void metadata_switch_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 {
 	int ret;
 	struct lttng_consumer_channel *channel;
@@ -119,8 +116,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 	}
 }
 
-static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts,
-		uint64_t stream_id)
+static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts, uint64_t stream_id)
 {
 	int ret;
 	struct ctf_packet_index index;
@@ -175,8 +171,7 @@ end:
 	return ret;
 }
 
-static int check_stream(struct lttng_consumer_stream *stream,
-		flush_index_cb flush_index)
+static int check_stream(struct lttng_consumer_stream *stream, flush_index_cb flush_index)
 {
 	int ret;
 
@@ -195,14 +190,14 @@ static int check_stream(struct lttng_consumer_stream *stream,
 		ret = pthread_mutex_trylock(&stream->lock);
 		switch (ret) {
 		case 0:
-			break;	/* We have the lock. */
+			break; /* We have the lock. */
 		case EBUSY:
 			pthread_mutex_lock(&stream->metadata_timer_lock);
 			if (stream->waiting_on_metadata) {
 				ret = 0;
 				stream->missed_metadata_flush = true;
 				pthread_mutex_unlock(&stream->metadata_timer_lock);
-				goto end;	/* Bail out. */
+				goto end; /* Bail out. */
 			}
 			pthread_mutex_unlock(&stream->metadata_timer_lock);
 			/* Try again. */
@@ -267,18 +262,16 @@ end:
 /*
  * Execute action on a live timer
  */
-static void live_timer(struct lttng_consumer_local_data *ctx,
-		siginfo_t *si)
+static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 {
 	int ret;
 	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
 	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
-	const flush_index_cb flush_index =
-			ctx->type == LTTNG_CONSUMER_KERNEL ?
-					consumer_flush_kernel_index :
-					consumer_flush_ust_index;
+	const flush_index_cb flush_index = ctx->type == LTTNG_CONSUMER_KERNEL ?
+		consumer_flush_kernel_index :
+		consumer_flush_ust_index;
 
 	channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
@@ -291,9 +284,13 @@ static void live_timer(struct lttng_consumer_local_data *ctx,
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry_duplicate(ht->ht,
-			ht->hash_fct(&channel->key, lttng_ht_seed),
-			ht->match_fct, &channel->key, &iter.iter,
-			stream, node_channel_id.node) {
+					  ht->hash_fct(&channel->key, lttng_ht_seed),
+					  ht->match_fct,
+					  &channel->key,
+					  &iter.iter,
+					  stream,
+					  node_channel_id.node)
+	{
 		ret = check_stream(stream, flush_index);
 		if (ret < 0) {
 			goto error_unlock;
@@ -307,8 +304,7 @@ error:
 	return;
 }
 
-static
-void consumer_timer_signal_thread_qs(unsigned int signr)
+static void consumer_timer_signal_thread_qs(unsigned int signr)
 {
 	sigset_t pending_set;
 	int ret;
@@ -365,10 +361,10 @@ void consumer_timer_signal_thread_qs(unsigned int signr)
  * Returns a negative value on error, 0 if a timer was created, and
  * a positive value if no timer was created (not an error).
  */
-static
-int consumer_channel_timer_start(timer_t *timer_id,
-		struct lttng_consumer_channel *channel,
-		unsigned int timer_interval_us, int signal)
+static int consumer_channel_timer_start(timer_t *timer_id,
+					struct lttng_consumer_channel *channel,
+					unsigned int timer_interval_us,
+					int signal)
 {
 	int ret = 0, delete_ret;
 	struct sigevent sev = {};
@@ -412,8 +408,7 @@ error_destroy_timer:
 	goto end;
 }
 
-static
-int consumer_channel_timer_stop(timer_t *timer_id, int signal)
+static int consumer_channel_timer_stop(timer_t *timer_id, int signal)
 {
 	int ret = 0;
 
@@ -433,15 +428,17 @@ end:
  * Set the channel's switch timer.
  */
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
-		unsigned int switch_timer_interval_us)
+				 unsigned int switch_timer_interval_us)
 {
 	int ret;
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
 
-	ret = consumer_channel_timer_start(&channel->switch_timer, channel,
-			switch_timer_interval_us, LTTNG_CONSUMER_SIG_SWITCH);
+	ret = consumer_channel_timer_start(&channel->switch_timer,
+					   channel,
+					   switch_timer_interval_us,
+					   LTTNG_CONSUMER_SIG_SWITCH);
 
 	channel->switch_timer_enabled = !!(ret == 0);
 }
@@ -455,8 +452,7 @@ void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 
 	LTTNG_ASSERT(channel);
 
-	ret = consumer_channel_timer_stop(&channel->switch_timer,
-			LTTNG_CONSUMER_SIG_SWITCH);
+	ret = consumer_channel_timer_stop(&channel->switch_timer, LTTNG_CONSUMER_SIG_SWITCH);
 	if (ret == -1) {
 		ERR("Failed to stop switch timer");
 	}
@@ -468,15 +464,15 @@ void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
  * Set the channel's live timer.
  */
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
-		unsigned int live_timer_interval_us)
+			       unsigned int live_timer_interval_us)
 {
 	int ret;
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
 
-	ret = consumer_channel_timer_start(&channel->live_timer, channel,
-			live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
+	ret = consumer_channel_timer_start(
+		&channel->live_timer, channel, live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
 
 	channel->live_timer_enabled = !!(ret == 0);
 }
@@ -490,8 +486,7 @@ void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
 
 	LTTNG_ASSERT(channel);
 
-	ret = consumer_channel_timer_stop(&channel->live_timer,
-			LTTNG_CONSUMER_SIG_LIVE);
+	ret = consumer_channel_timer_stop(&channel->live_timer, LTTNG_CONSUMER_SIG_LIVE);
 	if (ret == -1) {
 		ERR("Failed to stop live timer");
 	}
@@ -506,7 +501,7 @@ void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
  * a positive value if no timer was created (not an error).
  */
 int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
-		unsigned int monitor_timer_interval_us)
+				 unsigned int monitor_timer_interval_us)
 {
 	int ret;
 
@@ -514,8 +509,10 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(channel->key);
 	LTTNG_ASSERT(!channel->monitor_timer_enabled);
 
-	ret = consumer_channel_timer_start(&channel->monitor_timer, channel,
-			monitor_timer_interval_us, LTTNG_CONSUMER_SIG_MONITOR);
+	ret = consumer_channel_timer_start(&channel->monitor_timer,
+					   channel,
+					   monitor_timer_interval_us,
+					   LTTNG_CONSUMER_SIG_MONITOR);
 	channel->monitor_timer_enabled = !!(ret == 0);
 	return ret;
 }
@@ -530,8 +527,7 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->monitor_timer_enabled);
 
-	ret = consumer_channel_timer_stop(&channel->monitor_timer,
-			LTTNG_CONSUMER_SIG_MONITOR);
+	ret = consumer_channel_timer_stop(&channel->monitor_timer, LTTNG_CONSUMER_SIG_MONITOR);
 	if (ret == -1) {
 		ERR("Failed to stop live timer");
 		goto end;
@@ -562,11 +558,13 @@ int consumer_signal_init(void)
 	return 0;
 }
 
-static
-int sample_channel_positions(struct lttng_consumer_channel *channel,
-		uint64_t *_highest_use, uint64_t *_lowest_use, uint64_t *_total_consumed,
-		sample_positions_cb sample, get_consumed_cb get_consumed,
-		get_produced_cb get_produced)
+static int sample_channel_positions(struct lttng_consumer_channel *channel,
+				    uint64_t *_highest_use,
+				    uint64_t *_lowest_use,
+				    uint64_t *_total_consumed,
+				    sample_positions_cb sample,
+				    get_consumed_cb get_consumed,
+				    get_produced_cb get_produced)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -580,9 +578,13 @@ int sample_channel_positions(struct lttng_consumer_channel *channel,
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
-			ht->hash_fct(&channel->key, lttng_ht_seed),
-			ht->match_fct, &channel->key,
-			&iter.iter, stream, node_channel_id.node) {
+					  ht->hash_fct(&channel->key, lttng_ht_seed),
+					  ht->match_fct,
+					  &channel->key,
+					  &iter.iter,
+					  stream,
+					  node_channel_id.node)
+	{
 		unsigned long produced, consumed, usage;
 
 		empty_channel = false;
@@ -594,7 +596,8 @@ int sample_channel_positions(struct lttng_consumer_channel *channel,
 
 		ret = sample(stream);
 		if (ret) {
-			ERR("Failed to take buffer position snapshot in monitor timer (ret = %d)", ret);
+			ERR("Failed to take buffer position snapshot in monitor timer (ret = %d)",
+			    ret);
 			pthread_mutex_unlock(&stream->lock);
 			goto end;
 		}
@@ -641,8 +644,7 @@ end:
 void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel)
 {
 	int ret;
-	int channel_monitor_pipe =
-			consumer_timer_thread_get_channel_monitor_pipe();
+	int channel_monitor_pipe = consumer_timer_thread_get_channel_monitor_pipe();
 	struct lttcomm_consumer_channel_monitor_msg msg = {
 		.key = channel->key,
 		.session_id = channel->session_id,
@@ -677,8 +679,8 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 		abort();
 	}
 
-	ret = sample_channel_positions(channel, &highest, &lowest,
-			&total_consumed, sample, get_consumed, get_produced);
+	ret = sample_channel_positions(
+		channel, &highest, &lowest, &total_consumed, sample, get_consumed, get_produced);
 	if (ret) {
 		return;
 	}
@@ -700,14 +702,16 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 		if (errno == EAGAIN) {
 			/* Not an error, the sample is merely dropped. */
 			DBG("Channel monitor pipe is full; dropping sample for channel key = %" PRIu64,
-					channel->key);
+			    channel->key);
 		} else {
 			PERROR("write to the channel monitor pipe");
 		}
 	} else {
 		DBG("Sent channel monitoring sample for channel key %" PRIu64
-				", (highest = %" PRIu64 ", lowest = %" PRIu64 ")",
-				channel->key, msg.highest, msg.lowest);
+		    ", (highest = %" PRIu64 ", lowest = %" PRIu64 ")",
+		    channel->key,
+		    msg.highest,
+		    msg.lowest);
 		channel->last_consumed_size_sample_sent = msg.consumed_since_last_sample;
 	}
 }

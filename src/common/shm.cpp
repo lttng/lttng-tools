@@ -7,6 +7,10 @@
  */
 
 #define _LGPL_SOURCE
+#include "shm.hpp"
+
+#include <common/error.hpp>
+
 #include <fcntl.h>
 #include <limits.h>
 #include <sys/mman.h>
@@ -15,10 +19,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <urcu.h>
-
-#include <common/error.hpp>
-
-#include "shm.hpp"
 
 /*
  * We deal with the shm_open vs ftruncate race (happening when the sessiond owns
@@ -84,13 +84,15 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		if (errno == EACCES) {
 			/* Work around sysctl fs.protected_regular. */
 			DBG("shm_open of %s returned EACCES, this may be caused "
-					"by the fs.protected_regular sysctl. "
-					"Attempting to open the shm without "
-					"creating it.", shm_path);
+			    "by the fs.protected_regular sysctl. "
+			    "Attempting to open the shm without "
+			    "creating it.",
+			    shm_path);
 			wait_shm_fd = shm_open(shm_path, O_RDWR, mode);
 		}
 		if (wait_shm_fd < 0) {
-			PERROR("Failed to open \"wait\" shared memory object: path = '%s'", shm_path);
+			PERROR("Failed to open \"wait\" shared memory object: path = '%s'",
+			       shm_path);
 			goto error;
 		}
 	}
@@ -98,7 +100,8 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	ret = ftruncate(wait_shm_fd, mmap_size);
 	if (ret < 0) {
 		PERROR("Failed to truncate \"wait\" shared memory object: fd = %d, size = %zu",
-				wait_shm_fd, mmap_size);
+		       wait_shm_fd,
+		       mmap_size);
 		goto error;
 	}
 
@@ -106,7 +109,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = fchown(wait_shm_fd, 0, 0);
 		if (ret < 0) {
 			PERROR("Failed to set ownership of \"wait\" shared memory object: fd = %d, owner = 0, group = 0",
-					wait_shm_fd);
+			       wait_shm_fd);
 			goto error;
 		}
 		/*
@@ -118,21 +121,26 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		ret = fchmod(wait_shm_fd, mode);
 		if (ret < 0) {
 			PERROR("Failed to set the mode of the \"wait\" shared memory object: fd = %d, mode = %d",
-					wait_shm_fd, mode);
+			       wait_shm_fd,
+			       mode);
 			goto error;
 		}
 	} else {
 		ret = fchown(wait_shm_fd, getuid(), getgid());
 		if (ret < 0) {
 			PERROR("Failed to set ownership of \"wait\" shared memory object: fd = %d, owner = %d, group = %d",
-					wait_shm_fd, getuid(), getgid());
+			       wait_shm_fd,
+			       getuid(),
+			       getgid());
 			goto error;
 		}
 	}
 
 	DBG("Wait shared memory file descriptor created successfully: path = '%s', mmap_size = %zu, global = %s, fd = %d",
-			shm_path, mmap_size, global ? "true" : "false",
-			wait_shm_fd);
+	    shm_path,
+	    mmap_size,
+	    global ? "true" : "false",
+	    wait_shm_fd);
 
 end:
 	(void) umask(old_mode);
@@ -179,19 +187,20 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 		goto error;
 	}
 
-	wait_shm_mmap = (char *) mmap(NULL, mmap_size, PROT_WRITE | PROT_READ,
-			MAP_SHARED, wait_shm_fd, 0);
+	wait_shm_mmap =
+		(char *) mmap(NULL, mmap_size, PROT_WRITE | PROT_READ, MAP_SHARED, wait_shm_fd, 0);
 
 	/* close shm fd immediately after taking the mmap reference */
 	ret = close(wait_shm_fd);
 	if (ret) {
 		PERROR("Failed to close \"wait\" shared memory object file descriptor: fd = %d",
-				wait_shm_fd);
+		       wait_shm_fd);
 	}
 
 	if (wait_shm_mmap == MAP_FAILED) {
 		DBG("Failed to mmap the \"wait\" shareed memory object (can be caused by race with ust): path = '%s', global = %s",
-				shm_path, global ? "true" : "false");
+		    shm_path,
+		    global ? "true" : "false");
 		goto error;
 	}
 
@@ -212,7 +221,8 @@ int shm_create_anonymous(const char *owner_name)
 	ret = snprintf(tmp_name, NAME_MAX, "/shm-%s-%d", owner_name, getpid());
 	if (ret < 0) {
 		PERROR("Failed to format shm path: owner_name = '%s', pid = %d",
-				owner_name, getpid());
+		       owner_name,
+		       getpid());
 		return -1;
 	}
 
@@ -228,8 +238,7 @@ int shm_create_anonymous(const char *owner_name)
 
 	ret = shm_unlink(tmp_name);
 	if (ret < 0 && errno != ENOENT) {
-		PERROR("Failed to unlink shared memory object: path = '%s'",
-				tmp_name);
+		PERROR("Failed to unlink shared memory object: path = '%s'", tmp_name);
 		goto error_shm_release;
 	}
 
@@ -239,7 +248,8 @@ error_shm_release:
 	ret = close(shmfd);
 	if (ret) {
 		PERROR("Failed to close shared memory object file descriptor: fd = %d, path = '%s'",
-				shmfd, tmp_name);
+		       shmfd,
+		       tmp_name);
 	}
 error_shm_open:
 	return -1;

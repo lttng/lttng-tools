@@ -6,18 +6,17 @@
  *
  */
 
-#include <lttng/domain.h>
-#include <lttng/lttng-error.h>
-#include <lttng/tracker.h>
-
 #include <common/dynamic-array.hpp>
 #include <common/error.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/tracker.hpp>
 
-#include <stdbool.h>
+#include <lttng/domain.h>
+#include <lttng/lttng-error.h>
+#include <lttng/tracker.h>
 
+#include <stdbool.h>
 #include <type_traits>
 
 namespace {
@@ -36,40 +35,37 @@ struct process_attr_tracker_value_comm {
 } LTTNG_PACKED;
 } /* namespace */
 
-#define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)              \
-	((as_type)(std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
-					(value_ptr)->u._unsigned))
+#define GET_INTEGRAL_COMM_VALUE(value_ptr, as_type)                           \
+	((as_type) (std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
+						     (value_ptr)->u._unsigned))
 
-#define SET_INTEGRAL_COMM_VALUE(comm_value, val)                         \
+#define SET_INTEGRAL_COMM_VALUE(comm_value, val)                                     \
 	if (std::is_signed<typeof(val)>::value) {                                    \
-		(comm_value)->u._signed =                                  \
-				(typeof((comm_value)->u._signed)) val;   \
-	} else {                                                           \
-		(comm_value)->u._unsigned =                                \
-				(typeof((comm_value)->u._unsigned)) val; \
+		(comm_value)->u._signed = (typeof((comm_value)->u._signed)) val;     \
+	} else {                                                                     \
+		(comm_value)->u._unsigned = (typeof((comm_value)->u._unsigned)) val; \
 	}
 
 static inline bool is_virtual_process_attr(enum lttng_process_attr process_attr)
 {
 	return process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID ||
-	       process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID ||
-	       process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID;
+		process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID ||
+		process_attr == LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID;
 }
 
-static inline bool is_value_type_name(
-		enum lttng_process_attr_value_type value_type)
+static inline bool is_value_type_name(enum lttng_process_attr_value_type value_type)
 {
 	return value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ||
-	       value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME;
+		value_type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME;
 }
 
-enum lttng_error_code process_attr_value_from_comm(
-		enum lttng_domain_type domain,
-		enum lttng_process_attr process_attr,
-		enum lttng_process_attr_value_type value_type,
-		const struct process_attr_integral_value_comm *integral_value,
-		const struct lttng_buffer_view *value_view,
-		struct process_attr_value **_value)
+enum lttng_error_code
+process_attr_value_from_comm(enum lttng_domain_type domain,
+			     enum lttng_process_attr process_attr,
+			     enum lttng_process_attr_value_type value_type,
+			     const struct process_attr_integral_value_comm *integral_value,
+			     const struct lttng_buffer_view *value_view,
+			     struct process_attr_value **_value)
 {
 	char *name = NULL;
 	enum lttng_error_code ret = LTTNG_OK;
@@ -98,20 +94,17 @@ enum lttng_error_code process_attr_value_from_comm(
 		goto error;
 	}
 
-	if (!is_virtual_process_attr(process_attr) &&
-			domain != LTTNG_DOMAIN_KERNEL) {
+	if (!is_virtual_process_attr(process_attr) && domain != LTTNG_DOMAIN_KERNEL) {
 		ERR("Non-virtual process attributes can only be used in the kernel domain");
 		ret = LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		goto error;
 	}
 
 	/* Only expect a payload for name value types. */
-	if (is_value_type_name(value_type) &&
-			(!value_view || value_view->size == 0)) {
+	if (is_value_type_name(value_type) && (!value_view || value_view->size == 0)) {
 		ret = LTTNG_ERR_INVALID_PROTOCOL;
 		goto error;
-	} else if (!is_value_type_name(value_type) && value_view &&
-			value_view->size != 0) {
+	} else if (!is_value_type_name(value_type) && value_view && value_view->size != 0) {
 		ret = LTTNG_ERR_INVALID_PROTOCOL;
 		goto error;
 	}
@@ -125,15 +118,13 @@ enum lttng_error_code process_attr_value_from_comm(
 			ret = LTTNG_ERR_INVALID;
 			goto error;
 		}
-		value->value.pid =
-				GET_INTEGRAL_COMM_VALUE(integral_value, pid_t);
+		value->value.pid = GET_INTEGRAL_COMM_VALUE(integral_value, pid_t);
 		break;
 	case LTTNG_PROCESS_ATTR_USER_ID:
 	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
 		switch (value_type) {
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
-			value->value.uid = GET_INTEGRAL_COMM_VALUE(
-					integral_value, uid_t);
+			value->value.uid = GET_INTEGRAL_COMM_VALUE(integral_value, uid_t);
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 			if (!name) {
@@ -154,8 +145,7 @@ enum lttng_error_code process_attr_value_from_comm(
 	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		switch (value_type) {
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
-			value->value.gid = GET_INTEGRAL_COMM_VALUE(
-					integral_value, gid_t);
+			value->value.gid = GET_INTEGRAL_COMM_VALUE(integral_value, gid_t);
 			break;
 		case LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME:
 			if (!name) {
@@ -222,49 +212,43 @@ struct lttng_process_attr_values *lttng_process_attr_values_create(void)
 		goto end;
 	}
 
-	lttng_dynamic_pointer_array_init(
-			&values->array, process_attr_tracker_value_destructor);
+	lttng_dynamic_pointer_array_init(&values->array, process_attr_tracker_value_destructor);
 end:
 	return values;
 }
 
-unsigned int _lttng_process_attr_values_get_count(
-		const struct lttng_process_attr_values *values)
+unsigned int _lttng_process_attr_values_get_count(const struct lttng_process_attr_values *values)
 {
-	return (unsigned int) lttng_dynamic_pointer_array_get_count(
-			&values->array);
+	return (unsigned int) lttng_dynamic_pointer_array_get_count(&values->array);
 }
 
-const struct process_attr_value *lttng_process_attr_tracker_values_get_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index)
+const struct process_attr_value *
+lttng_process_attr_tracker_values_get_at_index(const struct lttng_process_attr_values *values,
+					       unsigned int index)
 {
-	return (process_attr_value *) lttng_dynamic_pointer_array_get_pointer(&values->array, index);
+	return (process_attr_value *) lttng_dynamic_pointer_array_get_pointer(&values->array,
+									      index);
 }
 
-static
-int process_attr_tracker_value_serialize(const struct process_attr_value *value,
-		struct lttng_dynamic_buffer *buffer)
+static int process_attr_tracker_value_serialize(const struct process_attr_value *value,
+						struct lttng_dynamic_buffer *buffer)
 {
 	int ret;
 	struct process_attr_tracker_value_comm value_comm = {
-			.type = (int32_t) value->type,
-			.value = {},
+		.type = (int32_t) value->type,
+		.value = {},
 	};
 	const char *name = NULL;
 
 	switch (value->type) {
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
-		SET_INTEGRAL_COMM_VALUE(
-				&value_comm.value.integral, value->value.pid);
+		SET_INTEGRAL_COMM_VALUE(&value_comm.value.integral, value->value.pid);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
-		SET_INTEGRAL_COMM_VALUE(
-				&value_comm.value.integral, value->value.uid);
+		SET_INTEGRAL_COMM_VALUE(&value_comm.value.integral, value->value.uid);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
-		SET_INTEGRAL_COMM_VALUE(
-				&value_comm.value.integral, value->value.gid);
+		SET_INTEGRAL_COMM_VALUE(&value_comm.value.integral, value->value.gid);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 		name = value->value.user_name;
@@ -280,23 +264,20 @@ int process_attr_tracker_value_serialize(const struct process_attr_value *value,
 		value_comm.value.name_len = strlen(name) + 1;
 	}
 
-	ret = lttng_dynamic_buffer_append(
-			buffer, &value_comm, sizeof(value_comm));
+	ret = lttng_dynamic_buffer_append(buffer, &value_comm, sizeof(value_comm));
 	if (ret) {
 		goto end;
 	}
 
 	if (name) {
-		ret = lttng_dynamic_buffer_append(
-				buffer, name, value_comm.value.name_len);
+		ret = lttng_dynamic_buffer_append(buffer, name, value_comm.value.name_len);
 	}
 end:
 	return ret;
 }
 
-int lttng_process_attr_values_serialize(
-		const struct lttng_process_attr_values *values,
-		struct lttng_dynamic_buffer *buffer)
+int lttng_process_attr_values_serialize(const struct lttng_process_attr_values *values,
+					struct lttng_dynamic_buffer *buffer)
 {
 	int ret;
 	unsigned int count, i;
@@ -312,8 +293,7 @@ int lttng_process_attr_values_serialize(
 
 	for (i = 0; i < count; i++) {
 		const struct process_attr_value *value =
-				lttng_process_attr_tracker_values_get_at_index(
-						values, i);
+			lttng_process_attr_tracker_values_get_at_index(values, i);
 
 		ret = process_attr_tracker_value_serialize(value, buffer);
 		if (ret) {
@@ -324,11 +304,10 @@ end:
 	return ret;
 }
 
-ssize_t lttng_process_attr_values_create_from_buffer(
-		enum lttng_domain_type domain,
-		enum lttng_process_attr process_attr,
-		const struct lttng_buffer_view *buffer_view,
-		struct lttng_process_attr_values **_values)
+ssize_t lttng_process_attr_values_create_from_buffer(enum lttng_domain_type domain,
+						     enum lttng_process_attr process_attr,
+						     const struct lttng_buffer_view *buffer_view,
+						     struct lttng_process_attr_values **_values)
 {
 	ssize_t offset;
 	unsigned int i;
@@ -341,8 +320,7 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 		goto error;
 	}
 
-	header_view = lttng_buffer_view_from_view(
-			buffer_view, 0, sizeof(*header));
+	header_view = lttng_buffer_view_from_view(buffer_view, 0, sizeof(*header));
 	if (!lttng_buffer_view_is_valid(&header_view)) {
 		goto error;
 	}
@@ -354,8 +332,7 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 	 * Check that the number of values is not absurdly large with respect to
 	 * the received buffer's size.
 	 */
-	if (buffer_view->size <
-			header->count * sizeof(struct process_attr_tracker_value_comm)) {
+	if (buffer_view->size < header->count * sizeof(struct process_attr_tracker_value_comm)) {
 		goto error;
 	}
 	for (i = 0; i < (unsigned int) header->count; i++) {
@@ -367,8 +344,7 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 		struct lttng_buffer_view value_view;
 		struct lttng_buffer_view value_name_view = {};
 
-		value_view = lttng_buffer_view_from_view(
-				buffer_view, offset, sizeof(*value_comm));
+		value_view = lttng_buffer_view_from_view(buffer_view, offset, sizeof(*value_comm));
 		if (!lttng_buffer_view_is_valid(&value_view)) {
 			goto error;
 		}
@@ -379,8 +355,7 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 
 		if (is_value_type_name(type)) {
 			value_name_view = lttng_buffer_view_from_view(
-					buffer_view, offset,
-					value_comm->value.name_len);
+				buffer_view, offset, value_comm->value.name_len);
 			if (!lttng_buffer_view_is_valid(&value_name_view)) {
 				goto error;
 			}
@@ -388,15 +363,17 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 			offset += value_name_view.size;
 		}
 
-		ret_code = process_attr_value_from_comm(domain, process_attr,
-				type, &value_comm->value.integral,
-				&value_name_view, &value);
+		ret_code = process_attr_value_from_comm(domain,
+							process_attr,
+							type,
+							&value_comm->value.integral,
+							&value_name_view,
+							&value);
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}
 
-		ret = lttng_dynamic_pointer_array_add_pointer(
-				&values->array, value);
+		ret = lttng_dynamic_pointer_array_add_pointer(&values->array, value);
 		if (ret) {
 			process_attr_value_destroy(value);
 			goto error;
@@ -419,8 +396,7 @@ void lttng_process_attr_values_destroy(struct lttng_process_attr_values *values)
 	free(values);
 }
 
-struct process_attr_value *process_attr_value_copy(
-		const struct process_attr_value *value)
+struct process_attr_value *process_attr_value_copy(const struct process_attr_value *value)
 {
 	struct process_attr_value *new_value = NULL;
 
@@ -433,13 +409,12 @@ struct process_attr_value *process_attr_value_copy(
 		goto end;
 	}
 	if (is_value_type_name(value->type)) {
-		const char *src =
-				value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
-						value->value.user_name :
-						value->value.group_name;
+		const char *src = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
+			value->value.user_name :
+			value->value.group_name;
 		char **dst = value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
-					     &new_value->value.user_name :
-					     &new_value->value.group_name;
+			&new_value->value.user_name :
+			&new_value->value.group_name;
 
 		new_value->type = value->type;
 		*dst = strdup(src);
@@ -462,16 +437,13 @@ unsigned long process_attr_value_hash(const struct process_attr_value *a)
 
 	switch (a->type) {
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
-		hash ^= hash_key_ulong((void *) (unsigned long) a->value.pid,
-				lttng_ht_seed);
+		hash ^= hash_key_ulong((void *) (unsigned long) a->value.pid, lttng_ht_seed);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
-		hash ^= hash_key_ulong((void *) (unsigned long) a->value.uid,
-				lttng_ht_seed);
+		hash ^= hash_key_ulong((void *) (unsigned long) a->value.uid, lttng_ht_seed);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
-		hash ^= hash_key_ulong((void *) (unsigned long) a->value.gid,
-				lttng_ht_seed);
+		hash ^= hash_key_ulong((void *) (unsigned long) a->value.gid, lttng_ht_seed);
 		break;
 	case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
 		hash ^= hash_key_str(a->value.user_name, lttng_ht_seed);
@@ -487,7 +459,7 @@ unsigned long process_attr_value_hash(const struct process_attr_value *a)
 }
 
 bool process_attr_tracker_value_equal(const struct process_attr_value *a,
-		const struct process_attr_value *b)
+				      const struct process_attr_value *b)
 {
 	if (a->type != b->type) {
 		return false;
@@ -515,8 +487,8 @@ void process_attr_value_destroy(struct process_attr_value *value)
 	}
 	if (is_value_type_name(value->type)) {
 		free(value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME ?
-						value->value.user_name :
-						value->value.group_name);
+			     value->value.user_name :
+			     value->value.group_name);
 	}
 	free(value);
 }

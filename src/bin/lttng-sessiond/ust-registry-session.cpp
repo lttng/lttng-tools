@@ -5,13 +5,13 @@
  *
  */
 
+#include "ctf2-trace-class-visitor.hpp"
 #include "field.hpp"
 #include "lttng-sessiond.hpp"
 #include "notification-thread-commands.hpp"
 #include "session.hpp"
 #include "trace-class.hpp"
 #include "tsdl-trace-class-visitor.hpp"
-#include "ctf2-trace-class-visitor.hpp"
 #include "ust-app.hpp"
 #include "ust-field-convert.hpp"
 #include "ust-registry.hpp"
@@ -68,7 +68,9 @@ void clear_metadata_file(int fd)
 {
 	const auto lseek_ret = lseek(fd, 0, SEEK_SET);
 	if (lseek_ret < 0) {
-		LTTNG_THROW_POSIX("Failed to seek to the beginning of the metadata file while clearing it", errno);
+		LTTNG_THROW_POSIX(
+			"Failed to seek to the beginning of the metadata file while clearing it",
+			errno);
 	}
 
 	const auto ret = ftruncate(fd, 0);
@@ -113,8 +115,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 
 	if (notify) {
 		cmd_ret = notification_thread_command_remove_channel(
-				the_notification_thread_handle,
-				chan->_consumer_key, LTTNG_DOMAIN_UST);
+			the_notification_thread_handle, chan->_consumer_key, LTTNG_DOMAIN_UST);
 		if (cmd_ret != LTTNG_OK) {
 			ERR("Failed to remove channel from notification thread");
 		}
@@ -126,8 +127,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 		/* Destroy all event associated with this registry. */
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry(
-				chan->_events->ht, &iter.iter, event, _node) {
+		cds_lfht_for_each_entry (chan->_events->ht, &iter.iter, event, _node) {
 			/* Delete the node from the ht and free it. */
 			ust_registry_channel_destroy_event(chan, event);
 		}
@@ -172,8 +172,7 @@ int ht_match_enum(struct cds_lfht_node *node, const void *_key)
 
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	_enum = caa_container_of(node, lsu::registry_enum,
-			node.node);
+	_enum = caa_container_of(node, lsu::registry_enum, node.node);
 	DIAGNOSTIC_POP
 
 	LTTNG_ASSERT(_enum);
@@ -231,28 +230,27 @@ void lsu::details::locked_registry_session_release(lsu::registry_session *sessio
 }
 
 lsu::registry_session::registry_session(const struct lst::abi& in_abi,
-		uint32_t major,
-		uint32_t minor,
-		const char *root_shm_path,
-		const char *shm_path,
-		uid_t euid,
-		gid_t egid,
-		uint64_t tracing_id) :
+					uint32_t major,
+					uint32_t minor,
+					const char *root_shm_path,
+					const char *shm_path,
+					uid_t euid,
+					gid_t egid,
+					uint64_t tracing_id) :
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
-	_root_shm_path{root_shm_path ? root_shm_path : ""},
-	_shm_path{shm_path ? shm_path : ""},
-	_metadata_path{_shm_path.size() > 0 ? fmt::format("{}/metadata", _shm_path) :
-						    std::string("")},
-	_uid{euid},
-	_gid{egid},
-	_app_tracer_version{.major = major, .minor = minor},
-	_tracing_id{tracing_id},
-	_clock{lttng::make_unique<lsu::clock_class>()},
-	_metadata_generating_visitor{lttng::make_unique<ls::tsdl::trace_class_visitor>(
-			abi, [this](const std::string& fragment) {
-				_append_metadata_fragment(fragment);
-			})},
-	_packet_header{_create_packet_header()}
+	_root_shm_path{ root_shm_path ? root_shm_path : "" },
+	_shm_path{ shm_path ? shm_path : "" },
+	_metadata_path{ _shm_path.size() > 0 ? fmt::format("{}/metadata", _shm_path) :
+					       std::string("") },
+	_uid{ euid },
+	_gid{ egid },
+	_app_tracer_version{ .major = major, .minor = minor },
+	_tracing_id{ tracing_id },
+	_clock{ lttng::make_unique<lsu::clock_class>() },
+	_metadata_generating_visitor{ lttng::make_unique<ls::tsdl::trace_class_visitor>(
+		abi,
+		[this](const std::string& fragment) { _append_metadata_fragment(fragment); }) },
+	_packet_header{ _create_packet_header() }
 {
 	pthread_mutex_init(&_lock, NULL);
 	if (_shm_path.size() > 0) {
@@ -263,11 +261,17 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 
 	if (_metadata_path.size() > 0) {
 		/* Create metadata file. */
-		const int ret = run_as_open(_metadata_path.c_str(), O_WRONLY | O_CREAT | O_EXCL,
-				S_IRUSR | S_IWUSR, euid, egid);
+		const int ret = run_as_open(_metadata_path.c_str(),
+					    O_WRONLY | O_CREAT | O_EXCL,
+					    S_IRUSR | S_IWUSR,
+					    euid,
+					    egid);
 		if (ret < 0) {
-			LTTNG_THROW_POSIX(fmt::format("Failed to open metadata file during registry session creation: path = {}",
-					_metadata_path), errno);
+			LTTNG_THROW_POSIX(
+				fmt::format(
+					"Failed to open metadata file during registry session creation: path = {}",
+					_metadata_path),
+				errno);
 		}
 
 		_metadata_fd = ret;
@@ -293,30 +297,49 @@ lst::type::cuptr lsu::registry_session::_create_packet_header() const
 	lst::structure_type::fields packet_header_fields;
 
 	/* uint32_t magic */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("magic",
-			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
-					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::HEXADECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::PACKET_MAGIC_NUMBER}))));
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+		"magic",
+		lttng::make_unique<lst::integer_type>(
+			abi.uint32_t_alignment,
+			abi.byte_order,
+			32,
+			lst::integer_type::signedness::UNSIGNED,
+			lst::integer_type::base::HEXADECIMAL,
+			std::initializer_list<lst::integer_type::role>(
+				{ lst::integer_type::role::PACKET_MAGIC_NUMBER }))));
 
 	/* uuid */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("uuid",
-			lttng::make_unique<lst::static_length_blob_type>(0, 16,
-					std::initializer_list<lst::static_length_blob_type::role>({lst::static_length_blob_type::role::METADATA_STREAM_UUID}))));
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+		"uuid",
+		lttng::make_unique<lst::static_length_blob_type>(
+			0,
+			16,
+			std::initializer_list<lst::static_length_blob_type::role>(
+				{ lst::static_length_blob_type::role::METADATA_STREAM_UUID }))));
 
 	/* uint32_t stream_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_id",
-			lttng::make_unique<lst::integer_type>(abi.uint32_t_alignment,
-					abi.byte_order, 32, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::DECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_CLASS_ID}))));
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+		"stream_id",
+		lttng::make_unique<lst::integer_type>(
+			abi.uint32_t_alignment,
+			abi.byte_order,
+			32,
+			lst::integer_type::signedness::UNSIGNED,
+			lst::integer_type::base::DECIMAL,
+			std::initializer_list<lst::integer_type::role>(
+				{ lst::integer_type::role::DATA_STREAM_CLASS_ID }))));
 
 	/* uint64_t stream_instance_id */
-	packet_header_fields.emplace_back(lttng::make_unique<lst::field>("stream_instance_id",
-			lttng::make_unique<lst::integer_type>(abi.uint64_t_alignment,
-					abi.byte_order, 64, lst::integer_type::signedness::UNSIGNED,
-					lst::integer_type::base::DECIMAL,
-					std::initializer_list<lst::integer_type::role>({lst::integer_type::role::DATA_STREAM_ID}))));
+	packet_header_fields.emplace_back(lttng::make_unique<lst::field>(
+		"stream_instance_id",
+		lttng::make_unique<lst::integer_type>(
+			abi.uint64_t_alignment,
+			abi.byte_order,
+			64,
+			lst::integer_type::signedness::UNSIGNED,
+			lst::integer_type::base::DECIMAL,
+			std::initializer_list<lst::integer_type::role>(
+				{ lst::integer_type::role::DATA_STREAM_ID }))));
 
 	return lttng::make_unique<lst::structure_type>(0, std::move(packet_header_fields));
 }
@@ -365,7 +388,7 @@ lsu::registry_session::~registry_session()
 		/* Destroy all event associated with this registry. */
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry(_channels->ht, &iter.iter, chan, _node.node) {
+		cds_lfht_for_each_entry (_channels->ht, &iter.iter, chan, _node.node) {
 			/* Delete the node from the ht and free it. */
 			ret = lttng_ht_del(_channels.get(), &iter);
 			LTTNG_ASSERT(!ret);
@@ -389,8 +412,10 @@ lsu::registry_session::~registry_session()
 
 	if (_root_shm_path[0]) {
 		/* Try to delete the directory hierarchy. */
-		(void) run_as_rmdir_recursive(_root_shm_path.c_str(), _uid, _gid,
-				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
+		(void) run_as_rmdir_recursive(_root_shm_path.c_str(),
+					      _uid,
+					      _gid,
+					      LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 
 	/* Destroy the enum hash table */
@@ -426,39 +451,41 @@ void lsu::registry_session::add_channel(uint64_t key)
 	 * the metadata can be dumped for that event.
 	 */
 	if (is_max_channel_id(_used_channel_id)) {
-		LTTNG_THROW_ERROR(fmt::format("Failed to allocate unique id for channel under session while adding channel"));
+		LTTNG_THROW_ERROR(fmt::format(
+			"Failed to allocate unique id for channel under session while adding channel"));
 	}
 
 	auto chan = new lsu::registry_channel(
-			_get_next_channel_id(), abi, _clock->name,
-			/* Registered channel listener. */
-			[this](const lsu::registry_channel& registered_channel) {
-				/*
-				 * Channel registration completed, serialize it's layout's
-				 * description.
-				 */
-				registered_channel.accept(*_metadata_generating_visitor);
-			},
-			/* Added event listener. */
-			[this](const lsu::registry_channel& channel,
-					const lsu::registry_event& added_event) {
-				/*
-				 * The channel and its event classes will be dumped at once when
-				 * it is registered. This check prevents event classes from being
-				 * declared before their stream class.
-				 */
-				if (channel.is_registered()) {
-					added_event.accept(*_metadata_generating_visitor);
-				}
-			});
+		_get_next_channel_id(),
+		abi,
+		_clock->name,
+		/* Registered channel listener. */
+		[this](const lsu::registry_channel& registered_channel) {
+			/*
+			 * Channel registration completed, serialize it's layout's
+			 * description.
+			 */
+			registered_channel.accept(*_metadata_generating_visitor);
+		},
+		/* Added event listener. */
+		[this](const lsu::registry_channel& channel,
+		       const lsu::registry_event& added_event) {
+			/*
+			 * The channel and its event classes will be dumped at once when
+			 * it is registered. This check prevents event classes from being
+			 * declared before their stream class.
+			 */
+			if (channel.is_registered()) {
+				added_event.accept(*_metadata_generating_visitor);
+			}
+		});
 
 	lttng::urcu::read_lock_guard rcu_read_lock_guard;
 	lttng_ht_node_init_u64(&chan->_node, key);
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
-lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(
-		uint64_t channel_key) const
+lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t channel_key) const
 {
 	lttng::urcu::read_lock_guard read_lock_guard;
 	struct lttng_ht_node_u64 *node;
@@ -469,8 +496,8 @@ lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(
 	lttng_ht_lookup(_channels.get(), &channel_key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-				"Invalid channel key provided: channel key = {}", channel_key));
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			fmt::format("Invalid channel key provided: channel key = {}", channel_key));
 	}
 
 	DIAGNOSTIC_PUSH
@@ -496,7 +523,7 @@ void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 }
 
 void lsu::registry_session::accept(
-		lttng::sessiond::trace::trace_class_environment_visitor& visitor) const
+	lttng::sessiond::trace::trace_class_environment_visitor& visitor) const
 {
 	ASSERT_LOCKED(_lock);
 
@@ -504,8 +531,9 @@ void lsu::registry_session::accept(
 	visitor.visit(lst::environment_field<const char *>("tracer_name", "lttng-ust"));
 	visitor.visit(lst::environment_field<int64_t>("tracer_major", _app_tracer_version.major));
 	visitor.visit(lst::environment_field<int64_t>("tracer_minor", _app_tracer_version.minor));
-	visitor.visit(lst::environment_field<const char *>("tracer_buffering_scheme",
-			buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
+	visitor.visit(lst::environment_field<const char *>(
+		"tracer_buffering_scheme",
+		buffering_scheme() == LTTNG_BUFFER_PER_PID ? "pid" : "uid"));
 	visitor.visit(lst::environment_field<int64_t>("architecture_bit_width", abi.bits_per_long));
 
 	{
@@ -516,11 +544,12 @@ void lsu::registry_session::accept(
 		LTTNG_ASSERT(session);
 		ASSERT_LOCKED(session->lock);
 
-		visitor.visit(lst::environment_field<const char *>("trace_name",
-				session->has_auto_generated_name ? DEFAULT_SESSION_NAME :
-									 session->name));
-		visitor.visit(lst::environment_field<std::string>("trace_creation_datetime",
-				lttng::utils::time_to_iso8601_str(session->creation_time)));
+		visitor.visit(lst::environment_field<const char *>(
+			"trace_name",
+			session->has_auto_generated_name ? DEFAULT_SESSION_NAME : session->name));
+		visitor.visit(lst::environment_field<std::string>(
+			"trace_creation_datetime",
+			lttng::utils::time_to_iso8601_str(session->creation_time)));
 		visitor.visit(lst::environment_field<const char *>("hostname", session->hostname));
 	}
 }
@@ -544,17 +573,16 @@ void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& 
 
 		DIAGNOSTIC_PUSH
 		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry(_channels->ht, &channel_it.iter, channel, _node.node) {
+		cds_lfht_for_each_entry (_channels->ht, &channel_it.iter, channel, _node.node) {
 			sorted_stream_classes.emplace_back(channel);
 		}
 		DIAGNOSTIC_POP
 	}
 
-	std::sort(sorted_stream_classes.begin(), sorted_stream_classes.end(),
-			[](const lttng::sessiond::ust::registry_channel *a,
-					const lttng::sessiond::ust::registry_channel *b) {
-				return a->id < b->id;
-			});
+	std::sort(sorted_stream_classes.begin(),
+		  sorted_stream_classes.end(),
+		  [](const lttng::sessiond::ust::registry_channel *a,
+		     const lttng::sessiond::ust::registry_channel *b) { return a->id < b->id; });
 
 	for (const auto stream_class : sorted_stream_classes) {
 		stream_class->accept(visitor);
@@ -588,17 +616,19 @@ void lsu::registry_session::_increase_metadata_size(size_t reservation_length)
 
 	/* Rounding the new allocation length to the next power of 2 would overflow. */
 	if (new_alloc_len > (UINT32_MAX >> 1)) {
-		LTTNG_THROW_ERROR("Failed to reserve trace metadata storage as the new size would overflow");
+		LTTNG_THROW_ERROR(
+			"Failed to reserve trace metadata storage as the new size would overflow");
 	}
 
 	/* The current allocation length is already the largest we can afford. */
 	if ((old_alloc_len << 1) > (UINT32_MAX >> 1)) {
-		LTTNG_THROW_ERROR("Failed to reserve trace metadata storage as the max size was already reached");
+		LTTNG_THROW_ERROR(
+			"Failed to reserve trace metadata storage as the max size was already reached");
 	}
 
 	if (new_alloc_len > old_alloc_len) {
-		new_alloc_len = std::max<size_t>(
-				1U << get_count_order(new_alloc_len), old_alloc_len << 1);
+		new_alloc_len =
+			std::max<size_t>(1U << get_count_order(new_alloc_len), old_alloc_len << 1);
 
 		auto newptr = (char *) realloc(_metadata, new_alloc_len);
 		if (!newptr) {
@@ -624,11 +654,10 @@ void lsu::registry_session::_append_metadata_fragment(const std::string& fragmen
 
 	if (_metadata_fd >= 0) {
 		const auto bytes_written =
-				lttng_write(_metadata_fd, fragment.c_str(), fragment.size());
+			lttng_write(_metadata_fd, fragment.c_str(), fragment.size());
 
 		if (bytes_written != fragment.size()) {
-			LTTNG_THROW_POSIX("Failed to write trace metadata fragment to file",
-					errno);
+			LTTNG_THROW_POSIX("Failed to write trace metadata fragment to file", errno);
 		}
 	}
 }
@@ -688,12 +717,15 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
 	reg_enum_lookup.id = enum_id;
 	cds_lfht_lookup(_enums->ht,
 			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
-			ht_match_enum_id, &reg_enum_lookup, &iter.iter);
+			ht_match_enum_id,
+			&reg_enum_lookup,
+			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
 		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
-				"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
-				enum_name, enum_id));
+			"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
+			enum_name,
+			enum_id));
 	}
 
 	DIAGNOSTIC_PUSH
@@ -701,15 +733,15 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
 	reg_enum = lttng::utils::container_of(node, &lsu::registry_enum::node);
 	DIAGNOSTIC_POP
 
-	return lsu::registry_enum::const_rcu_protected_reference{*reg_enum, std::move(rcu_lock)};
+	return lsu::registry_enum::const_rcu_protected_reference{ *reg_enum, std::move(rcu_lock) };
 }
 
 /*
  * Lookup enumeration by name and comparing enumeration entries.
  * Needs to be called from RCU read-side critical section.
  */
-lsu::registry_enum *lsu::registry_session::_lookup_enum(
-		const lsu::registry_enum *reg_enum_lookup) const
+lsu::registry_enum *
+lsu::registry_session::_lookup_enum(const lsu::registry_enum *reg_enum_lookup) const
 {
 	lsu::registry_enum *reg_enum = NULL;
 	struct lttng_ht_node_str *node;
@@ -717,8 +749,11 @@ lsu::registry_enum *lsu::registry_session::_lookup_enum(
 
 	ASSERT_RCU_READ_LOCKED();
 
-	cds_lfht_lookup(_enums->ht, ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
-			ht_match_enum, reg_enum_lookup, &iter.iter);
+	cds_lfht_lookup(_enums->ht,
+			ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum,
+			reg_enum_lookup,
+			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
 		goto end;
@@ -741,15 +776,17 @@ end:
  *
  * We receive ownership of entries.
  */
-void lsu::registry_session::create_or_find_enum(
-		int session_objd, const char *enum_name,
-		struct lttng_ust_ctl_enum_entry *raw_entries, size_t nr_entries,
-		uint64_t *enum_id)
+void lsu::registry_session::create_or_find_enum(int session_objd,
+						const char *enum_name,
+						struct lttng_ust_ctl_enum_entry *raw_entries,
+						size_t nr_entries,
+						uint64_t *enum_id)
 {
 	struct cds_lfht_node *nodep;
 	lsu::registry_enum *reg_enum = NULL, *old_reg_enum;
 	lttng::urcu::read_lock_guard read_lock_guard;
-	auto entries = lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);
+	auto entries =
+		lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);
 
 	LTTNG_ASSERT(enum_name);
 
@@ -759,26 +796,23 @@ void lsu::registry_session::create_or_find_enum(
 	 */
 	if (session_objd < 0) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-				"Invalid parameters used to create or look-up enumeration from registry session: session_objd = {}",
-				session_objd));
+			"Invalid parameters used to create or look-up enumeration from registry session: session_objd = {}",
+			session_objd));
 	}
 	if (nr_entries == 0) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
-				"Invalid parameters used to create or look-up enumeration from registry session: nr_entries = {}",
-				nr_entries));
+			"Invalid parameters used to create or look-up enumeration from registry session: nr_entries = {}",
+			nr_entries));
 	}
-	if (lttng_strnlen(enum_name, LTTNG_UST_ABI_SYM_NAME_LEN) ==
-					LTTNG_UST_ABI_SYM_NAME_LEN) {
+	if (lttng_strnlen(enum_name, LTTNG_UST_ABI_SYM_NAME_LEN) == LTTNG_UST_ABI_SYM_NAME_LEN) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-				"Invalid parameters used to create or look-up enumeration from registry session: enumeration name is not null terminated");
+			"Invalid parameters used to create or look-up enumeration from registry session: enumeration name is not null terminated");
 	}
 
 	if (entries->start.signedness) {
-		reg_enum = new lsu::registry_signed_enum(
-				enum_name, entries.get(), nr_entries);
+		reg_enum = new lsu::registry_signed_enum(enum_name, entries.get(), nr_entries);
 	} else {
-		reg_enum = new lsu::registry_unsigned_enum(
-				enum_name, entries.get(), nr_entries);
+		reg_enum = new lsu::registry_unsigned_enum(enum_name, entries.get(), nr_entries);
 	}
 
 	old_reg_enum = _lookup_enum(reg_enum);
@@ -788,22 +822,25 @@ void lsu::registry_session::create_or_find_enum(
 		destroy_enum(reg_enum);
 		reg_enum = old_reg_enum;
 	} else {
-		DBG("UST registry creating enum: %s, sess_objd: %u",
-				enum_name, session_objd);
+		DBG("UST registry creating enum: %s, sess_objd: %u", enum_name, session_objd);
 		if (_next_enum_id == -1ULL) {
 			destroy_enum(reg_enum);
-			LTTNG_THROW_ERROR("Failed to allocate unique enumeration ID as it would overflow");
+			LTTNG_THROW_ERROR(
+				"Failed to allocate unique enumeration ID as it would overflow");
 		}
 
 		reg_enum->id = _next_enum_id++;
 		nodep = cds_lfht_add_unique(_enums->ht,
-				ht_hash_enum(reg_enum, lttng_ht_seed),
-				ht_match_enum_id, reg_enum,
-				&reg_enum->node.node);
+					    ht_hash_enum(reg_enum, lttng_ht_seed),
+					    ht_match_enum_id,
+					    reg_enum,
+					    &reg_enum->node.node);
 		LTTNG_ASSERT(nodep == &reg_enum->node.node);
 	}
 
 	DBG("UST registry reply with enum %s with id %" PRIu64 " in sess_objd: %u",
-			enum_name, reg_enum->id, session_objd);
+	    enum_name,
+	    reg_enum->id,
+	    session_objd);
 	*enum_id = reg_enum->id;
 }

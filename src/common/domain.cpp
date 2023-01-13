@@ -5,8 +5,8 @@
  *
  */
 
-#include "lttng/domain-internal.hpp"
 #include "common/macros.hpp"
+#include "lttng/domain-internal.hpp"
 
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type)
 {

@@ -7,15 +7,17 @@
 
 #include <common/compat/getenv.hpp>
 #include <common/consumer/consumer.hpp>
-#include <common/pipe.hpp>
 #include <common/error.hpp>
-#include <unistd.h>
-#include <stdbool.h>
+#include <common/pipe.hpp>
+
 #include <lttng/constant.h>
 #include <lttng/lttng-export.h>
-#include <fcntl.h>
+
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>
 
 static char *pause_pipe_path;
 static struct lttng_pipe *pause_pipe;
@@ -27,8 +29,7 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
-static
-void __attribute__((destructor)) pause_pipe_fini(void)
+static void __attribute__((destructor)) pause_pipe_fini(void)
 {
 	int ret;
 
@@ -54,8 +55,7 @@ int __testpoint_consumerd_thread_data(void)
 	int ret = 0;
 	const char *pause_pipe_path_prefix, *domain;
 
-	pause_pipe_path_prefix = lttng_secure_getenv(
-			"CONSUMER_PAUSE_PIPE_PATH");
+	pause_pipe_path_prefix = lttng_secure_getenv("CONSUMER_PAUSE_PIPE_PATH");
 	if (!pause_pipe_path_prefix) {
 		ret = -1;
 		goto end;
@@ -69,7 +69,7 @@ int __testpoint_consumerd_thread_data(void)
 	 */
 	data_consumption_state = (int *) dlsym(NULL, "data_consumption_paused");
 	LTTNG_ASSERT(data_consumption_state);
-	lttng_consumer_get_type = (lttng_consumer_type (*)()) dlsym(NULL, "lttng_consumer_get_type");
+	lttng_consumer_get_type = (lttng_consumer_type(*)()) dlsym(NULL, "lttng_consumer_get_type");
 	LTTNG_ASSERT(lttng_consumer_get_type);
 
 	switch (lttng_consumer_get_type()) {
@@ -86,16 +86,15 @@ int __testpoint_consumerd_thread_data(void)
 		abort();
 	}
 
-	ret = asprintf(&pause_pipe_path, "%s-%s", pause_pipe_path_prefix,
-			domain);
+	ret = asprintf(&pause_pipe_path, "%s-%s", pause_pipe_path_prefix, domain);
 	if (ret < 1) {
 		ERR("Failed to allocate pause pipe path");
 		goto end;
 	}
 
 	DBG("Creating pause pipe at %s", pause_pipe_path);
-	pause_pipe = lttng_pipe_named_open(pause_pipe_path,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, O_NONBLOCK);
+	pause_pipe = lttng_pipe_named_open(
+		pause_pipe_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, O_NONBLOCK);
 	if (!pause_pipe) {
 		ERR("Failed to create pause pipe at %s", pause_pipe_path);
 		ret = -1;
@@ -133,7 +132,7 @@ int __testpoint_consumerd_thread_data_poll(void)
 	if (value_read) {
 		*data_consumption_state = !!value;
 		DBG("Message received on pause pipe: %s data consumption",
-				*data_consumption_state ? "paused" : "resumed");
+		    *data_consumption_state ? "paused" : "resumed");
 	}
 end:
 	return ret;

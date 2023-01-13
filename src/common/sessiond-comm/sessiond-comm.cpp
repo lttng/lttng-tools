@@ -8,6 +8,12 @@
 
 #include <sys/socket.h>
 #define _LGPL_SOURCE
+#include "sessiond-comm.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/errno.hpp>
+
+#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,12 +21,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-
-#include <common/common.hpp>
-#include <common/compat/errno.hpp>
-
-#include "sessiond-comm.hpp"
 
 /* For Unix socket */
 #include <common/unix.hpp>
@@ -29,7 +29,7 @@
 /* For Inet6 socket */
 #include "inet6.hpp"
 
-#define NETWORK_TIMEOUT_ENV	"LTTNG_NETWORK_SOCKET_TIMEOUT"
+#define NETWORK_TIMEOUT_ENV "LTTNG_NETWORK_SOCKET_TIMEOUT"
 
 static struct lttcomm_net_family net_families[] = {
 	{ LTTCOMM_INET, lttcomm_create_inet_sock },
@@ -39,8 +39,8 @@ static struct lttcomm_net_family net_families[] = {
 /*
  * Human readable error message.
  */
-static
-const char *lttcomm_return_code_str(lttcomm_return_code code) {
+static const char *lttcomm_return_code_str(lttcomm_return_code code)
+{
 	switch (code) {
 	case LTTCOMM_CONSUMERD_SUCCESS:
 		return "consumerd success";
@@ -126,7 +126,7 @@ const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 	code = (lttcomm_return_code) -code;
 
 	if (code != LTTCOMM_CONSUMERD_SUCCESS &&
-			!(code >= LTTCOMM_CONSUMERD_COMMAND_SOCK_READY && code < LTTCOMM_NR)) {
+	    !(code >= LTTCOMM_CONSUMERD_COMMAND_SOCK_READY && code < LTTCOMM_NR)) {
 		code = LTTCOMM_CONSUMERD_UNKNOWN_ERROR;
 	}
 
@@ -239,8 +239,7 @@ void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src)
 /*
  * Init IPv4 sockaddr structure.
  */
-int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
-		const char *ip, unsigned int port)
+int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr, const char *ip, unsigned int port)
 {
 	int ret;
 
@@ -253,8 +252,7 @@ int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 	sockaddr->type = LTTCOMM_INET;
 	sockaddr->addr.sin.sin_family = AF_INET;
 	sockaddr->addr.sin.sin_port = htons(port);
-	ret = inet_pton(sockaddr->addr.sin.sin_family, ip,
-			&sockaddr->addr.sin.sin_addr);
+	ret = inet_pton(sockaddr->addr.sin.sin_family, ip, &sockaddr->addr.sin.sin_addr);
 	if (ret < 1) {
 		ret = -1;
 		ERR("%s with port %d: unrecognized IPv4 address", ip, port);
@@ -270,7 +268,8 @@ error:
  * Init IPv6 sockaddr structure.
  */
 int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
-		const char *ip, unsigned int port)
+				const char *ip,
+				unsigned int port)
 {
 	int ret;
 
@@ -283,8 +282,7 @@ int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 	sockaddr->type = LTTCOMM_INET6;
 	sockaddr->addr.sin6.sin6_family = AF_INET6;
 	sockaddr->addr.sin6.sin6_port = htons(port);
-	ret = inet_pton(sockaddr->addr.sin6.sin6_family, ip,
-			&sockaddr->addr.sin6.sin6_addr);
+	ret = inet_pton(sockaddr->addr.sin6.sin6_family, ip, &sockaddr->addr.sin6.sin6_addr);
 	if (ret < 1) {
 		ret = -1;
 		goto error;
@@ -321,14 +319,12 @@ struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri)
 
 	/* Check destination type */
 	if (uri->dtype == LTTNG_DST_IPV4) {
-		ret = lttcomm_init_inet_sockaddr(&sock->sockaddr, uri->dst.ipv4,
-				uri->port);
+		ret = lttcomm_init_inet_sockaddr(&sock->sockaddr, uri->dst.ipv4, uri->port);
 		if (ret < 0) {
 			goto error;
 		}
 	} else if (uri->dtype == LTTNG_DST_IPV6) {
-		ret = lttcomm_init_inet6_sockaddr(&sock->sockaddr, uri->dst.ipv6,
-				uri->port);
+		ret = lttcomm_init_inet6_sockaddr(&sock->sockaddr, uri->dst.ipv6, uri->port);
 		if (ret < 0) {
 			goto error;
 		}
@@ -360,8 +356,8 @@ void lttcomm_destroy_sock(struct lttcomm_sock *sock)
  *
  * On error, NULL is returned.
  */
-struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(struct lttng_uri *uri,
-		uint32_t major, uint32_t minor)
+struct lttcomm_relayd_sock *
+lttcomm_alloc_relayd_sock(struct lttng_uri *uri, uint32_t major, uint32_t minor)
 {
 	int ret;
 	struct lttcomm_sock *tmp_sock = NULL;
@@ -445,10 +441,8 @@ int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 {
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(port);
-	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET ||
-			sock->sockaddr.type == LTTCOMM_INET6);
-	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP ||
-			sock->proto == LTTCOMM_SOCK_UDP);
+	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET || sock->sockaddr.type == LTTCOMM_INET6);
+	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP || sock->proto == LTTCOMM_SOCK_UDP);
 
 	switch (sock->sockaddr.type) {
 	case LTTCOMM_INET:
@@ -467,10 +461,8 @@ int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
 int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
 {
 	LTTNG_ASSERT(sock);
-	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET ||
-			sock->sockaddr.type == LTTCOMM_INET6);
-	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP ||
-			sock->proto == LTTCOMM_SOCK_UDP);
+	LTTNG_ASSERT(sock->sockaddr.type == LTTCOMM_INET || sock->sockaddr.type == LTTCOMM_INET6);
+	LTTNG_ASSERT(sock->proto == LTTCOMM_SOCK_TCP || sock->proto == LTTCOMM_SOCK_UDP);
 
 	switch (sock->sockaddr.type) {
 	case LTTCOMM_INET:
@@ -515,10 +507,9 @@ unsigned long lttcomm_get_network_timeout(void)
  * Only valid for an ipv4 and ipv6 bound socket that is already connected to its
  * peer.
  */
-int lttcomm_populate_sock_from_open_socket(
-		struct lttcomm_sock *sock,
-		int fd,
-		enum lttcomm_sock_proto protocol)
+int lttcomm_populate_sock_from_open_socket(struct lttcomm_sock *sock,
+					   int fd,
+					   enum lttcomm_sock_proto protocol)
 {
 	int ret = 0;
 	socklen_t storage_len;
@@ -530,11 +521,9 @@ int lttcomm_populate_sock_from_open_socket(
 	sock->proto = protocol;
 
 	storage_len = sizeof(storage);
-	ret = getpeername(fd, (struct sockaddr *) &storage,
-			&storage_len);
+	ret = getpeername(fd, (struct sockaddr *) &storage, &storage_len);
 	if (ret) {
-		ERR("Failed to get peer info for socket %d (errno: %d)", fd,
-				errno);
+		ERR("Failed to get peer info for socket %d (errno: %d)", fd, errno);
 		ret = -1;
 		goto end;
 	}
@@ -548,13 +537,11 @@ int lttcomm_populate_sock_from_open_socket(
 	switch (storage.ss_family) {
 	case AF_INET:
 		sock->sockaddr.type = LTTCOMM_INET;
-		memcpy(&sock->sockaddr.addr, &storage,
-				sizeof(struct sockaddr_in));
+		memcpy(&sock->sockaddr.addr, &storage, sizeof(struct sockaddr_in));
 		break;
 	case AF_INET6:
 		sock->sockaddr.type = LTTCOMM_INET6;
-		memcpy(&sock->sockaddr.addr, &storage,
-				sizeof(struct sockaddr_in6));
+		memcpy(&sock->sockaddr.addr, &storage, sizeof(struct sockaddr_in6));
 		break;
 	default:
 		abort();

@@ -6,6 +6,10 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,14 +18,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-set-session.1.h>
-;
+	;
 #endif
 
 enum {
@@ -33,9 +33,9 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /*
@@ -64,8 +64,7 @@ static int mi_print(const char *session_name)
 	}
 
 	/* Session name */
-	ret = mi_lttng_writer_write_element_string(writer , config_element_name,
-			session_name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, session_name);
 	if (ret) {
 		goto end;
 	}
@@ -90,8 +89,7 @@ static int set_session(const char *session_name)
 	struct lttng_session *sessions;
 
 	if (session_name && strlen(session_name) > NAME_MAX) {
-		ERR("Session name too long. Length must be lower or equal to %d",
-			NAME_MAX);
+		ERR("Session name too long. Length must be lower or equal to %d", NAME_MAX);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -182,16 +180,14 @@ int cmd_set_session(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_set_session);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_set_session);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -213,8 +209,8 @@ int cmd_set_session(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

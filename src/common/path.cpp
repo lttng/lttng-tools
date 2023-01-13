@@ -8,8 +8,8 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/macros.hpp>
 #include <common/common.hpp>
+#include <common/macros.hpp>
 #include <common/path.hpp>
 
 /*
@@ -21,8 +21,7 @@
  *
  * Return a newly-allocated string.
  */
-static
-char *utils_partial_realpath(const char *path)
+static char *utils_partial_realpath(const char *path)
 {
 	char *cut_path = NULL, *try_path = NULL, *try_path_prev = NULL;
 	const char *next, *prev, *end;
@@ -40,7 +39,7 @@ char *utils_partial_realpath(const char *path)
 	 * the path given as argument
 	 */
 	end = path + strlen(path);
-	if (*(end-1) == '/') {
+	if (*(end - 1) == '/') {
 		end--;
 	}
 
@@ -48,7 +47,7 @@ char *utils_partial_realpath(const char *path)
 	next = path;
 	prev = next;
 	/* Only to ensure try_path is not NULL to enter the while */
-	try_path = (char *)next;
+	try_path = (char *) next;
 
 	/* Resolve the canonical path of the first part of the path */
 	while (try_path != NULL && next != end) {
@@ -135,18 +134,17 @@ char *utils_partial_realpath(const char *path)
 		}
 
 		/* Concatenate the strings */
-		snprintf(resolved_path, LTTNG_PATH_MAX, "%s%s",
-				try_path_prev, cut_path);
+		snprintf(resolved_path, LTTNG_PATH_MAX, "%s%s", try_path_prev, cut_path);
 
 		/* Free the allocated memory */
 		free(cut_path);
 		free(try_path_prev);
 		cut_path = NULL;
 		try_path_prev = NULL;
-	/*
-	 * Else, we just copy the path in our resolved_path to
-	 * return it as is
-	 */
+		/*
+		 * Else, we just copy the path in our resolved_path to
+		 * return it as is
+		 */
 	} else {
 		strncpy(resolved_path, path, LTTNG_PATH_MAX);
 	}
@@ -164,8 +162,7 @@ error:
 	return NULL;
 }
 
-static
-int expand_double_slashes_dot_and_dotdot(char *path)
+static int expand_double_slashes_dot_and_dotdot(char *path)
 {
 	size_t expanded_path_len, path_len;
 	const char *curr_char, *path_last_char, *next_slash, *prev_slash;
@@ -197,7 +194,7 @@ int expand_double_slashes_dot_and_dotdot(char *path)
 
 		/* Compute how long is the previous token. */
 		curr_token_len = next_slash - curr_char;
-		switch(curr_token_len) {
+		switch (curr_token_len) {
 		case 0:
 			/*
 			 * The pointer has not move meaning that curr_char is
@@ -230,7 +227,8 @@ int expand_double_slashes_dot_and_dotdot(char *path)
 				 * previous forward slash and substract that
 				 * len to the resulting path.
 				 */
-				prev_slash = (const char *) lttng_memrchr(path, '/', expanded_path_len);
+				prev_slash =
+					(const char *) lttng_memrchr(path, '/', expanded_path_len);
 				/*
 				 * If prev_slash is NULL, we reached the
 				 * beginning of the path. We can't go back any
@@ -274,8 +272,7 @@ error:
  * The returned string was allocated in the function, it is thus of
  * the responsibility of the caller to free this memory.
  */
-static
-char *_utils_expand_path(const char *path, bool keep_symlink)
+static char *_utils_expand_path(const char *path, bool keep_symlink)
 {
 	int ret;
 	char *absolute_path = NULL;
@@ -316,11 +313,12 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 		 * Get the number of character in the CWD and allocate an array
 		 * to can hold it and the path provided by the caller.
 		 */
-		ret = snprintf(absolute_path, LTTNG_PATH_MAX, "%s/%s",
-				current_working_dir, path);
+		ret = snprintf(absolute_path, LTTNG_PATH_MAX, "%s/%s", current_working_dir, path);
 		if (ret >= LTTNG_PATH_MAX) {
 			ERR("Concatenating current working directory %s and path %s exceeds maximal size of %i bytes",
-					current_working_dir, path, LTTNG_PATH_MAX);
+			    current_working_dir,
+			    path,
+			    LTTNG_PATH_MAX);
 			goto error;
 		}
 	}

@@ -7,14 +7,14 @@
  */
 
 #define _LGPL_SOURCE
+#include "futex.hpp"
+
+#include <common/common.hpp>
+
 #include <limits.h>
 #include <unistd.h>
 #include <urcu.h>
 #include <urcu/futex.h>
-
-#include <common/common.hpp>
-
-#include "futex.hpp"
 
 /*
  * This futex wait/wake scheme only works for N wakers / 1 waiters. Hence the
@@ -42,8 +42,7 @@ void futex_wait_update(int32_t *futex, int active)
 {
 	if (active) {
 		uatomic_set(futex, 1);
-		if (futex_async(futex, FUTEX_WAKE,
-				INT_MAX, NULL, NULL, 0) < 0) {
+		if (futex_async(futex, FUTEX_WAKE, INT_MAX, NULL, NULL, 0) < 0) {
 			PERROR("futex_async");
 			abort();
 		}
@@ -90,7 +89,7 @@ void futex_nto1_wait(int32_t *futex)
 			goto end;
 		case EINTR:
 			/* Retry if interrupted by signal. */
-			break;	/* Get out of switch. Check again. */
+			break; /* Get out of switch. Check again. */
 		default:
 			/* Unexpected error. */
 			PERROR("futex_async");

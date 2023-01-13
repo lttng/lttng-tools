@@ -6,12 +6,12 @@
  */
 
 #define _LGPL_SOURCE
-#include <limits.h>
-#include <unistd.h>
+#include "readwrite.hpp"
 
 #include <common/compat/errno.hpp>
 
-#include "readwrite.hpp"
+#include <limits.h>
+#include <unistd.h>
 
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.
@@ -40,7 +40,7 @@ ssize_t lttng_read(int fd, void *buf, size_t count)
 		ret = read(fd, (char *) buf + i, count - i);
 		if (ret < 0) {
 			if (errno == EINTR) {
-				continue;	/* retry operation */
+				continue; /* retry operation */
 			} else {
 				goto error;
 			}
@@ -77,7 +77,7 @@ ssize_t lttng_write(int fd, const void *buf, size_t count)
 		ret = write(fd, (char *) buf + i, count - i);
 		if (ret < 0) {
 			if (errno == EINTR) {
-				continue;	/* retry operation */
+				continue; /* retry operation */
 			} else {
 				goto error;
 			}

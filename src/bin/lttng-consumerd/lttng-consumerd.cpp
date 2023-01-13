@@ -7,53 +7,53 @@
  */
 
 #define _LGPL_SOURCE
+#include "health-consumerd.hpp"
+#include "lttng-consumerd.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/poll.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/defaults.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
+
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <urcu/list.h>
-#include <poll.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <urcu/compiler.h>
 #include <ulimit.h>
-
-#include <common/defaults.hpp>
-#include <common/common.hpp>
-#include <common/consumer/consumer.hpp>
-#include <common/consumer/consumer-timer.hpp>
-#include <common/compat/poll.hpp>
-#include <common/compat/getenv.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/utils.hpp>
-
-#include "lttng-consumerd.hpp"
-#include "health-consumerd.hpp"
+#include <unistd.h>
+#include <urcu/compiler.h>
+#include <urcu/list.h>
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
-static pthread_t channel_thread, data_thread, metadata_thread,
-		sessiond_thread, metadata_timer_thread, health_thread;
+static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread,
+	metadata_timer_thread, health_thread;
 static bool metadata_timer_thread_online;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
 
 /* Argument variables */
-int lttng_opt_quiet;    /* not static in error.h */
-int lttng_opt_verbose;  /* not static in error.h */
-int lttng_opt_mi;       /* not static in error.h */
+int lttng_opt_quiet; /* not static in error.h */
+int lttng_opt_verbose; /* not static in error.h */
+int lttng_opt_mi; /* not static in error.h */
 
 static int opt_daemon;
 static const char *progname;
@@ -82,8 +82,7 @@ enum lttng_consumer_type lttng_consumer_get_type(void)
 /*
  * Signal handler for the daemon
  */
-static void sighandler(int sig, siginfo_t *siginfo,
-		void *arg __attribute__((unused)))
+static void sighandler(int sig, siginfo_t *siginfo, void *arg __attribute__((unused)))
 {
 	if (sig == SIGINT && sigintcount++ == 0) {
 		DBG("ignoring first SIGINT");
@@ -162,32 +161,42 @@ static int set_signal_handler(void)
 static void usage(FILE *fp)
 {
 	fprintf(fp, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(fp, "  -h, --help                         "
-			"Display this usage.\n");
-	fprintf(fp, "  -c, --consumerd-cmd-sock PATH      "
-			"Specify path for the command socket\n");
-	fprintf(fp, "  -e, --consumerd-err-sock PATH      "
-			"Specify path for the error socket\n");
-	fprintf(fp, "  -d, --daemonize                    "
-			"Start as a daemon.\n");
-	fprintf(fp, "  -q, --quiet                        "
-			"No output at all.\n");
-	fprintf(fp, "  -v, --verbose                      "
-			"Verbose mode. Activate DBG() macro.\n");
-	fprintf(fp, "  -V, --version                      "
-			"Show version number.\n");
-	fprintf(fp, "  -g, --group NAME                   "
-			"Specify the tracing group name. (default: tracing)\n");
-	fprintf(fp, "  -k, --kernel                       "
-			"Consumer kernel buffers (default).\n");
-	fprintf(fp, "  -u, --ust                          "
-			"Consumer UST buffers.%s\n",
+	fprintf(fp,
+		"  -h, --help                         "
+		"Display this usage.\n");
+	fprintf(fp,
+		"  -c, --consumerd-cmd-sock PATH      "
+		"Specify path for the command socket\n");
+	fprintf(fp,
+		"  -e, --consumerd-err-sock PATH      "
+		"Specify path for the error socket\n");
+	fprintf(fp,
+		"  -d, --daemonize                    "
+		"Start as a daemon.\n");
+	fprintf(fp,
+		"  -q, --quiet                        "
+		"No output at all.\n");
+	fprintf(fp,
+		"  -v, --verbose                      "
+		"Verbose mode. Activate DBG() macro.\n");
+	fprintf(fp,
+		"  -V, --version                      "
+		"Show version number.\n");
+	fprintf(fp,
+		"  -g, --group NAME                   "
+		"Specify the tracing group name. (default: tracing)\n");
+	fprintf(fp,
+		"  -k, --kernel                       "
+		"Consumer kernel buffers (default).\n");
+	fprintf(fp,
+		"  -u, --ust                          "
+		"Consumer UST buffers.%s\n",
 #ifdef HAVE_LIBLTTNG_UST_CTL
-			""
+		""
 #else
-			" (support not compiled in)"
+		" (support not compiled in)"
 #endif
-			);
+	);
 }
 
 /*
@@ -197,34 +206,35 @@ static int parse_args(int argc, char **argv)
 {
 	int c, ret = 0;
 
-	static struct option long_options[] = {
-		{ "consumerd-cmd-sock", 1, 0, 'c' },
-		{ "consumerd-err-sock", 1, 0, 'e' },
-		{ "daemonize", 0, 0, 'd' },
-		{ "group", 1, 0, 'g' },
-		{ "help", 0, 0, 'h' },
-		{ "quiet", 0, 0, 'q' },
-		{ "verbose", 0, 0, 'v' },
-		{ "version", 0, 0, 'V' },
-		{ "kernel", 0, 0, 'k' },
+	static struct option long_options[] = { { "consumerd-cmd-sock", 1, 0, 'c' },
+						{ "consumerd-err-sock", 1, 0, 'e' },
+						{ "daemonize", 0, 0, 'd' },
+						{ "group", 1, 0, 'g' },
+						{ "help", 0, 0, 'h' },
+						{ "quiet", 0, 0, 'q' },
+						{ "verbose", 0, 0, 'v' },
+						{ "version", 0, 0, 'V' },
+						{ "kernel", 0, 0, 'k' },
 #ifdef HAVE_LIBLTTNG_UST_CTL
-		{ "ust", 0, 0, 'u' },
+						{ "ust", 0, 0, 'u' },
 #endif
-		{ NULL, 0, 0, 0 }
-	};
+						{ NULL, 0, 0, 0 } };
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "dhqvVku" "c:e:g:",
-				long_options, &option_index);
+		c = getopt_long(argc,
+				argv,
+				"dhqvVku"
+				"c:e:g:",
+				long_options,
+				&option_index);
 		if (c == -1) {
 			break;
 		}
 
 		switch (c) {
 		case 0:
-			fprintf(stderr, "option %s",
-				long_options[option_index].name);
+			fprintf(stderr, "option %s", long_options[option_index].name);
 			if (optarg) {
 				fprintf(stderr, " with arg %s\n", optarg);
 				ret = -1;
@@ -234,7 +244,7 @@ static int parse_args(int argc, char **argv)
 		case 'c':
 			if (lttng_is_setuid_setgid()) {
 				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
-					"-c, --consumerd-cmd-sock");
+				     "-c, --consumerd-cmd-sock");
 			} else {
 				snprintf(command_sock_path, PATH_MAX, "%s", optarg);
 			}
@@ -242,7 +252,7 @@ static int parse_args(int argc, char **argv)
 		case 'e':
 			if (lttng_is_setuid_setgid()) {
 				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
-					"-e, --consumerd-err-sock");
+				     "-e, --consumerd-err-sock");
 			} else {
 				snprintf(error_sock_path, PATH_MAX, "%s", optarg);
 			}
@@ -253,7 +263,7 @@ static int parse_args(int argc, char **argv)
 		case 'g':
 			if (lttng_is_setuid_setgid()) {
 				WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
-					"-g, --group");
+				     "-g, --group");
 			} else {
 				tracing_group_name = optarg;
 			}
@@ -275,13 +285,13 @@ static int parse_args(int argc, char **argv)
 			break;
 #ifdef HAVE_LIBLTTNG_UST_CTL
 		case 'u':
-# if (CAA_BITS_PER_LONG == 64)
+#if (CAA_BITS_PER_LONG == 64)
 			opt_type = LTTNG_CONSUMER64_UST;
-# elif (CAA_BITS_PER_LONG == 32)
+#elif (CAA_BITS_PER_LONG == 32)
 			opt_type = LTTNG_CONSUMER32_UST;
-# else
-#  error "Unknown bitness"
-# endif
+#else
+#error "Unknown bitness"
+#endif
 			break;
 #endif
 		default:
@@ -379,27 +389,30 @@ int main(int argc, char **argv)
 	if (*command_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			ret = snprintf(command_sock_path, PATH_MAX,
-					DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(command_sock_path,
+				       PATH_MAX,
+				       DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
 			}
 			break;
 		case LTTNG_CONSUMER64_UST:
-			ret = snprintf(command_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(command_sock_path,
+				       PATH_MAX,
+				       DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
 			}
 			break;
 		case LTTNG_CONSUMER32_UST:
-			ret = snprintf(command_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(command_sock_path,
+				       PATH_MAX,
+				       DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
@@ -429,8 +442,8 @@ int main(int argc, char **argv)
 	}
 
 	/* create the consumer instance with and assign the callbacks */
-	the_consumer_context = lttng_consumer_create(opt_type, lttng_consumer_read_subbuffer,
-		NULL, lttng_consumer_on_recv_stream, NULL);
+	the_consumer_context = lttng_consumer_create(
+		opt_type, lttng_consumer_read_subbuffer, NULL, lttng_consumer_on_recv_stream, NULL);
 	if (!the_consumer_context) {
 		retval = -1;
 		goto exit_init_data;
@@ -440,27 +453,30 @@ int main(int argc, char **argv)
 	if (*error_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:
-			ret = snprintf(error_sock_path, PATH_MAX,
-					DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(error_sock_path,
+				       PATH_MAX,
+				       DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
 			}
 			break;
 		case LTTNG_CONSUMER64_UST:
-			ret = snprintf(error_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(error_sock_path,
+				       PATH_MAX,
+				       DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
 			}
 			break;
 		case LTTNG_CONSUMER32_UST:
-			ret = snprintf(error_sock_path, PATH_MAX,
-					DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
-					DEFAULT_LTTNG_RUNDIR);
+			ret = snprintf(error_sock_path,
+				       PATH_MAX,
+				       DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
+				       DEFAULT_LTTNG_RUNDIR);
 			if (ret < 0) {
 				retval = -1;
 				goto exit_init_data;
@@ -502,8 +518,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(&health_thread, default_pthread_attr(),
-			thread_manage_health_consumerd, (void *) NULL);
+	ret = pthread_create(&health_thread,
+			     default_pthread_attr(),
+			     thread_manage_health_consumerd,
+			     (void *) NULL);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create health");
@@ -518,14 +536,14 @@ int main(int argc, char **argv)
 	while (uatomic_read(&lttng_consumer_ready)) {
 		usleep(100000);
 	}
-	cmm_smp_mb();	/* Read ready before following operations */
+	cmm_smp_mb(); /* Read ready before following operations */
 
 	/*
 	 * Create the thread to manage the UST metadata periodic timer and
 	 * live timer.
 	 */
-	ret = pthread_create(&metadata_timer_thread, NULL,
-			consumer_timer_thread, (void *) the_consumer_context);
+	ret = pthread_create(
+		&metadata_timer_thread, NULL, consumer_timer_thread, (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -535,9 +553,10 @@ int main(int argc, char **argv)
 	metadata_timer_thread_online = true;
 
 	/* Create thread to manage channels */
-	ret = pthread_create(&channel_thread, default_pthread_attr(),
-			consumer_thread_channel_poll,
-			(void *) the_consumer_context);
+	ret = pthread_create(&channel_thread,
+			     default_pthread_attr(),
+			     consumer_thread_channel_poll,
+			     (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -546,9 +565,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of trace metadata */
-	ret = pthread_create(&metadata_thread, default_pthread_attr(),
-			consumer_thread_metadata_poll,
-			(void *) the_consumer_context);
+	ret = pthread_create(&metadata_thread,
+			     default_pthread_attr(),
+			     consumer_thread_metadata_poll,
+			     (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -557,8 +577,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of trace data */
-	ret = pthread_create(&data_thread, default_pthread_attr(),
-			consumer_thread_data_poll, (void *) the_consumer_context);
+	ret = pthread_create(&data_thread,
+			     default_pthread_attr(),
+			     consumer_thread_data_poll,
+			     (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -567,16 +589,16 @@ int main(int argc, char **argv)
 	}
 
 	/* Create the thread to manage the reception of fds */
-	ret = pthread_create(&sessiond_thread, default_pthread_attr(),
-			consumer_thread_sessiond_poll,
-			(void *) the_consumer_context);
+	ret = pthread_create(&sessiond_thread,
+			     default_pthread_attr(),
+			     consumer_thread_sessiond_poll,
+			     (void *) the_consumer_context);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
 		retval = -1;
 		goto exit_sessiond_thread;
 	}
-
 
 	/*
 	 * This is where we start awaiting program completion (e.g. through
@@ -666,7 +688,7 @@ exit_init_data:
 	}
 	tmp_ctx = the_consumer_context;
 	the_consumer_context = NULL;
-	cmm_barrier();	/* Clear ctx for signal handler. */
+	cmm_barrier(); /* Clear ctx for signal handler. */
 	lttng_consumer_destroy(tmp_ctx);
 
 	if (health_consumerd) {

@@ -6,6 +6,8 @@
  *
  */
 
+#include "uuid.hpp"
+
 #include <common/compat/string.hpp>
 #include <common/error.hpp>
 #include <common/format.hpp>
@@ -17,8 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include "uuid.hpp"
 
 namespace {
 const lttng_uuid nil_uuid = {};
@@ -58,8 +58,7 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out)
 	}
 
 	/* Scan to a temporary location in case of a partial match. */
-	if (sscanf(str_in, LTTNG_UUID_FMT, LTTNG_UUID_SCAN_VALUES(uuid_scan)) !=
-			LTTNG_UUID_LEN) {
+	if (sscanf(str_in, LTTNG_UUID_FMT, LTTNG_UUID_SCAN_VALUES(uuid_scan)) != LTTNG_UUID_LEN) {
 		ret = -1;
 		goto end;
 	}
@@ -86,7 +85,7 @@ int lttng_uuid_generate(lttng_uuid& uuid_out)
 			srand(lttng::random::produce_best_effort_random_seed());
 		} catch (std::exception& e) {
 			ERR("Failed to initialize random seed during generation of UUID: %s",
-					e.what());
+			    e.what());
 			ret = -1;
 			goto end;
 		}

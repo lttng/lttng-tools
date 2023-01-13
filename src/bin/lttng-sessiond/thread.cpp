@@ -6,12 +6,14 @@
  */
 
 #include "thread.hpp"
+
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/macros.hpp>
+
+#include <pthread.h>
 #include <urcu/list.h>
 #include <urcu/ref.h>
-#include <pthread.h>
-#include <common/macros.hpp>
-#include <common/error.hpp>
-#include <common/defaults.hpp>
 
 namespace {
 struct thread_list {
@@ -42,8 +44,7 @@ struct lttng_thread {
 	void *data;
 };
 
-static
-void lttng_thread_destroy(struct lttng_thread *thread)
+static void lttng_thread_destroy(struct lttng_thread *thread)
 {
 	if (thread->cleanup) {
 		thread->cleanup(thread->data);
@@ -51,14 +52,12 @@ void lttng_thread_destroy(struct lttng_thread *thread)
 	free(thread);
 }
 
-static
-void lttng_thread_release(struct urcu_ref *ref)
+static void lttng_thread_release(struct urcu_ref *ref)
 {
 	lttng_thread_destroy(lttng::utils::container_of(ref, &lttng_thread::ref));
 }
 
-static
-void *launch_thread(void *data)
+static void *launch_thread(void *data)
 {
 	void *ret;
 	struct lttng_thread *thread = (struct lttng_thread *) data;
@@ -71,10 +70,10 @@ void *launch_thread(void *data)
 }
 
 struct lttng_thread *lttng_thread_create(const char *name,
-		lttng_thread_entry_point entry,
-		lttng_thread_shutdown_cb shutdown,
-		lttng_thread_cleanup_cb cleanup,
-		void *thread_data)
+					 lttng_thread_entry_point entry,
+					 lttng_thread_shutdown_cb shutdown,
+					 lttng_thread_cleanup_cb cleanup,
+					 void *thread_data)
 {
 	int ret;
 	struct lttng_thread *thread;
@@ -105,8 +104,7 @@ struct lttng_thread *lttng_thread_create(const char *name,
 	cds_list_add(&thread->node, &thread_list.head);
 	(void) lttng_thread_get(thread);
 
-	ret = pthread_create(&thread->thread, default_pthread_attr(),
-			launch_thread, thread);
+	ret = pthread_create(&thread->thread, default_pthread_attr(), launch_thread, thread);
 	if (ret) {
 		PERROR("Failed to create \"%s\" thread", thread->name);
 		goto error_pthread_create;
@@ -145,8 +143,7 @@ const char *lttng_thread_get_name(const struct lttng_thread *thread)
 	return thread->name;
 }
 
-static
-bool _lttng_thread_shutdown(struct lttng_thread *thread)
+static bool _lttng_thread_shutdown(struct lttng_thread *thread)
 {
 	int ret;
 	void *status;
@@ -191,7 +188,7 @@ void lttng_thread_list_shutdown_orphans(void)
 	struct lttng_thread *thread, *tmp;
 
 	pthread_mutex_lock(&thread_list.lock);
-	cds_list_for_each_entry_safe(thread, tmp, &thread_list.head, node) {
+	cds_list_for_each_entry_safe (thread, tmp, &thread_list.head, node) {
 		bool result;
 		const long ref = uatomic_read(&thread->ref.refcount);
 

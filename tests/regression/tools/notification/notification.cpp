@@ -9,24 +9,24 @@
  *
  */
 
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
+
+#include <lttng/lttng.h>
+
+#include <fcntl.h>
+#include <inttypes.h>
 #include <math.h>
+#include <poll.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <inttypes.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <poll.h>
-
-#include <common/compat/errno.hpp>
-#include <common/macros.hpp>
-#include <lttng/lttng.h>
-
+#include <sys/types.h>
 #include <tap/tap.h>
+#include <unistd.h>
 
 #define FIELD_NAME_MAX_LEN 256
 
@@ -61,8 +61,7 @@ struct capture_base_field_tuple {
 };
 } /* namespace */
 
-static
-const char *field_value_type_to_str(enum lttng_event_field_value_type type)
+static const char *field_value_type_to_str(enum lttng_event_field_value_type type)
 {
 	switch (type) {
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNKNOWN:
@@ -89,7 +88,7 @@ const char *field_value_type_to_str(enum lttng_event_field_value_type type)
 }
 
 static int validate_type(const struct lttng_event_field_value *event_field,
-		enum lttng_event_field_value_type expect)
+			 enum lttng_event_field_value_type expect)
 {
 	int ret;
 	enum lttng_event_field_value_type value;
@@ -100,9 +99,10 @@ static int validate_type(const struct lttng_event_field_value *event_field,
 		goto end;
 	}
 
-	ok(expect == value, "Expected field type %s, got %s",
-			field_value_type_to_str(expect),
-			field_value_type_to_str(value));
+	ok(expect == value,
+	   "Expected field type %s, got %s",
+	   field_value_type_to_str(expect),
+	   field_value_type_to_str(value));
 
 	ret = expect != value;
 
@@ -113,32 +113,30 @@ end:
 /*
  * Validate unsigned captured field against the iteration number.
  */
-static int validate_unsigned_int_field(
-		const struct lttng_event_field_value *event_field,
-		unsigned int expected_value)
+static int validate_unsigned_int_field(const struct lttng_event_field_value *event_field,
+				       unsigned int expected_value)
 {
 	int ret;
 	uint64_t value;
 	enum lttng_event_field_value_status status;
 
-	ret = validate_type(
-			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_event_field_value_unsigned_int_get_value(
-			event_field, &value);
+	status = lttng_event_field_value_unsigned_int_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
 	ok(value == (uint64_t) expected_value,
-			"Expected unsigned integer value %u, got %" PRIu64,
-			expected_value, value);
+	   "Expected unsigned integer value %u, got %" PRIu64,
+	   expected_value,
+	   value);
 
 	ret = value != (uint64_t) expected_value;
 
@@ -149,9 +147,8 @@ end:
 /*
  * Validate signed captured field.
  */
-static int validate_signed_int_field(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_signed_int_field(const struct lttng_event_field_value *event_field,
+				     unsigned int iteration)
 {
 	int ret;
 	const int64_t expected = -1;
@@ -161,25 +158,23 @@ static int validate_signed_int_field(
 	/* Unused. */
 	(void) iteration;
 
-	ret = validate_type(
-			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT);
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_event_field_value_signed_int_get_value(
-			event_field, &value);
+	status = lttng_event_field_value_signed_int_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_signed_int_get_value returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
 	ok(value == expected,
-			"Expected signed integer value %" PRId64
-			", got %" PRId64,
-			expected, value);
+	   "Expected signed integer value %" PRId64 ", got %" PRId64,
+	   expected,
+	   value);
 
 	ret = value != expected;
 
@@ -191,9 +186,8 @@ end:
 /*
  * Validate array of unsigned int.
  */
-static int validate_array_unsigned_int_field(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_array_unsigned_int_field(const struct lttng_event_field_value *event_field,
+					     unsigned int iteration)
 {
 	int ret;
 	enum lttng_event_field_value_status status;
@@ -215,8 +209,7 @@ static int validate_array_unsigned_int_field(
 		goto end;
 	}
 
-	ok(count == expected, "Expected %d subelements, got %d", expected,
-			count);
+	ok(count == expected, "Expected %d subelements, got %d", expected, count);
 	if (count != expected) {
 		ret = 1;
 		goto end;
@@ -226,10 +219,10 @@ static int validate_array_unsigned_int_field(
 		const struct lttng_event_field_value *value;
 
 		status = lttng_event_field_value_array_get_element_at_index(
-				event_field, i - 1, &value);
+			event_field, i - 1, &value);
 		if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
-					(int) status);
+			     (int) status);
 			ret = 1;
 			goto end;
 		}
@@ -246,9 +239,9 @@ end:
 	return ret;
 }
 
-static int validate_array_unsigned_int_field_at_index(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int
+validate_array_unsigned_int_field_at_index(const struct lttng_event_field_value *event_field,
+					   unsigned int iteration)
 {
 	int ret;
 	const uint64_t expected_value = 2;
@@ -258,24 +251,23 @@ static int validate_array_unsigned_int_field_at_index(
 	/* Unused. */
 	(void) iteration;
 
-	ret = validate_type(
-			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_event_field_value_unsigned_int_get_value(
-			event_field, &value);
+	status = lttng_event_field_value_unsigned_int_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
 	ok(value == expected_value,
-			"Expected unsigned integer value %" PRIu64 ", got %" PRIu64,
-			expected_value, value);
+	   "Expected unsigned integer value %" PRIu64 ", got %" PRIu64,
+	   expected_value,
+	   value);
 
 	ret = 0;
 end:
@@ -288,12 +280,12 @@ end:
  * Value: "test" encoded in UTF-8: [116, 101, 115, 116]
  */
 static int validate_seqfield1(const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+			      unsigned int iteration)
 {
 	int ret;
 	enum lttng_event_field_value_status status;
 	unsigned int i, count;
-	const unsigned int expect[] = {116, 101, 115, 116};
+	const unsigned int expect[] = { 116, 101, 115, 116 };
 	const size_t array_count = sizeof(expect) / sizeof(*expect);
 
 	/* Unused. */
@@ -307,13 +299,12 @@ static int validate_seqfield1(const struct lttng_event_field_value *event_field,
 	status = lttng_event_field_value_array_get_length(event_field, &count);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_array_get_length returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
-	ok(count == array_count, "Expected %zu array sub-elements, got %d",
-			array_count, count);
+	ok(count == array_count, "Expected %zu array sub-elements, got %d", array_count, count);
 	if (count != array_count) {
 		ret = 1;
 		goto end;
@@ -322,11 +313,10 @@ static int validate_seqfield1(const struct lttng_event_field_value *event_field,
 	for (i = 0; i < count; i++) {
 		const struct lttng_event_field_value *value;
 
-		status = lttng_event_field_value_array_get_element_at_index(
-				event_field, i, &value);
+		status = lttng_event_field_value_array_get_element_at_index(event_field, i, &value);
 		if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
-					(int) status);
+			     (int) status);
 			ret = 1;
 			goto end;
 		}
@@ -342,9 +332,7 @@ end:
 	return ret;
 }
 
-static int validate_string(
-		const struct lttng_event_field_value *event_field,
-		const char *expect)
+static int validate_string(const struct lttng_event_field_value *event_field, const char *expect)
 {
 	int ret;
 	const char *value = NULL;
@@ -358,13 +346,12 @@ static int validate_string(
 	status = lttng_event_field_value_string_get_value(event_field, &value);
 	if (!value) {
 		fail("lttng_event_field_value_array_get_length returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
-	ok(!strcmp(value, expect), "Expected string value \"%s\", got \"%s\"",
-			expect, value);
+	ok(!strcmp(value, expect), "Expected string value \"%s\", got \"%s\"", expect, value);
 
 	ret = 0;
 end:
@@ -375,11 +362,10 @@ end:
 /*
  * Validate string. Expected value is "test".
  */
-static int validate_string_test(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_string_test(const struct lttng_event_field_value *event_field,
+				unsigned int iteration)
 {
-	const char * const expect = "test";
+	const char *const expect = "test";
 
 	/* Unused. */
 	(void) iteration;
@@ -390,11 +376,10 @@ static int validate_string_test(
 /*
  * Validate escaped string. Expected value is "\*".
  */
-static int validate_string_escaped(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_string_escaped(const struct lttng_event_field_value *event_field,
+				   unsigned int iteration)
 {
-	const char * const expect = "\\*";
+	const char *const expect = "\\*";
 
 	/* Unused. */
 	(void) iteration;
@@ -405,9 +390,7 @@ static int validate_string_escaped(
 /*
  * Validate real field.
  */
-static int validate_real(
-		const struct lttng_event_field_value *event_field,
-		double expect)
+static int validate_real(const struct lttng_event_field_value *event_field, double expect)
 {
 	int ret;
 	double value;
@@ -421,7 +404,7 @@ static int validate_real(
 	status = lttng_event_field_value_real_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_real_get_value returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
@@ -435,9 +418,8 @@ end:
 /*
  * Validate floatfield.
  */
-static int validate_floatfield(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_floatfield(const struct lttng_event_field_value *event_field,
+			       unsigned int iteration)
 {
 	const double expect = 2222.0;
 
@@ -450,9 +432,8 @@ static int validate_floatfield(
 /*
  * Validate doublefield.
  */
-static int validate_doublefield(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_doublefield(const struct lttng_event_field_value *event_field,
+				unsigned int iteration)
 {
 	const double expect = 2.0;
 
@@ -465,8 +446,7 @@ static int validate_doublefield(
 /*
  * Validate enum0: enum0 = ( "AUTO: EXPECT 0" : container = 0 )
  */
-static int validate_enum0(const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_enum0(const struct lttng_event_field_value *event_field, unsigned int iteration)
 {
 	int ret;
 	enum lttng_event_field_value_status status;
@@ -476,24 +456,23 @@ static int validate_enum0(const struct lttng_event_field_value *event_field,
 	/* Unused. */
 	(void) iteration;
 
-	ret = validate_type(event_field,
-			LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM);
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_event_field_value_unsigned_int_get_value(
-			event_field, &value);
+	status = lttng_event_field_value_unsigned_int_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
-				(int) status);
+		     (int) status);
 		ret = 1;
 		goto end;
 	}
 
 	ok(value == expected_value,
-			"Expected enum value %" PRIu64 ", got %" PRIu64,
-			expected_value, value);
+	   "Expected enum value %" PRIu64 ", got %" PRIu64,
+	   expected_value,
+	   value);
 
 end:
 	return ret;
@@ -504,9 +483,8 @@ end:
  *
  * We expect 2 labels here.
  */
-static int validate_enumnegative(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_enumnegative(const struct lttng_event_field_value *event_field,
+				 unsigned int iteration)
 {
 	int ret;
 	enum lttng_event_field_value_status status;
@@ -516,14 +494,12 @@ static int validate_enumnegative(
 	/* Unused. */
 	(void) iteration;
 
-	ret = validate_type(event_field,
-			LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM);
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_event_field_value_signed_int_get_value(
-			event_field, &value);
+	status = lttng_event_field_value_signed_int_get_value(event_field, &value);
 	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("lttng_event_field_value_unsigned_int_get_value");
 		ret = 1;
@@ -531,25 +507,24 @@ static int validate_enumnegative(
 	}
 
 	ok(value == expected_value,
-			"Expected enum value %" PRId64 ", got %" PRId64,
-			expected_value, value);
+	   "Expected enum value %" PRId64 ", got %" PRId64,
+	   expected_value,
+	   value);
 
 end:
 	return ret;
 }
 
-static int validate_context_procname_ust(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_context_procname_ust(const struct lttng_event_field_value *event_field,
+					 unsigned int iteration)
 {
 	/* Unused. */
 	(void) iteration;
 	return validate_string(event_field, "gen-ust-events");
 }
 
-static int validate_context_procname_kernel(
-		const struct lttng_event_field_value *event_field,
-		unsigned int iteration)
+static int validate_context_procname_kernel(const struct lttng_event_field_value *event_field,
+					    unsigned int iteration)
 {
 	/* Unused. */
 	(void) iteration;
@@ -558,28 +533,87 @@ static int validate_context_procname_kernel(
 
 struct capture_base_field_tuple test_capture_base_fields[] = {
 	{ "DOESNOTEXIST", FIELD_TYPE_PAYLOAD, false, false, NULL, NULL },
-	{ "intfield", FIELD_TYPE_PAYLOAD, true, true, validate_unsigned_int_field, validate_unsigned_int_field },
-	{ "longfield", FIELD_TYPE_PAYLOAD, true, true, validate_unsigned_int_field, validate_unsigned_int_field },
-	{ "signedfield", FIELD_TYPE_PAYLOAD, true, true, validate_signed_int_field, validate_signed_int_field },
-	{ "arrfield1", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "intfield",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_unsigned_int_field,
+	  validate_unsigned_int_field },
+	{ "longfield",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_unsigned_int_field,
+	  validate_unsigned_int_field },
+	{ "signedfield",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_signed_int_field,
+	  validate_signed_int_field },
+	{ "arrfield1",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_array_unsigned_int_field,
+	  validate_array_unsigned_int_field },
 	{ "arrfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
-	{ "arrfield3", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "arrfield3",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_array_unsigned_int_field,
+	  validate_array_unsigned_int_field },
 	{ "seqfield1", FIELD_TYPE_PAYLOAD, true, true, validate_seqfield1, validate_seqfield1 },
 	{ "seqfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
-	{ "seqfield3", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
-	{ "seqfield4", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
-	{ "arrfield1[1]", FIELD_TYPE_ARRAY_FIELD, true, true, validate_array_unsigned_int_field_at_index, validate_array_unsigned_int_field_at_index },
+	{ "seqfield3",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_array_unsigned_int_field,
+	  validate_array_unsigned_int_field },
+	{ "seqfield4",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_array_unsigned_int_field,
+	  validate_array_unsigned_int_field },
+	{ "arrfield1[1]",
+	  FIELD_TYPE_ARRAY_FIELD,
+	  true,
+	  true,
+	  validate_array_unsigned_int_field_at_index,
+	  validate_array_unsigned_int_field_at_index },
 	{ "stringfield", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
-	{ "stringfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_escaped, validate_string_escaped },
+	{ "stringfield2",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_string_escaped,
+	  validate_string_escaped },
 	{ "floatfield", FIELD_TYPE_PAYLOAD, true, false, validate_floatfield, validate_floatfield },
-	{ "doublefield", FIELD_TYPE_PAYLOAD, true, false, validate_doublefield, validate_doublefield },
+	{ "doublefield",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  false,
+	  validate_doublefield,
+	  validate_doublefield },
 	{ "enum0", FIELD_TYPE_PAYLOAD, true, true, validate_enum0, validate_enum0 },
-	{ "enumnegative", FIELD_TYPE_PAYLOAD, true, true, validate_enumnegative, validate_enumnegative },
-	{ "$ctx.procname", FIELD_TYPE_CONTEXT, true, true, validate_context_procname_ust, validate_context_procname_kernel },
+	{ "enumnegative",
+	  FIELD_TYPE_PAYLOAD,
+	  true,
+	  true,
+	  validate_enumnegative,
+	  validate_enumnegative },
+	{ "$ctx.procname",
+	  FIELD_TYPE_CONTEXT,
+	  true,
+	  true,
+	  validate_context_procname_ust,
+	  validate_context_procname_kernel },
 };
 
-static const char *get_notification_trigger_name(
-		struct lttng_notification *notification)
+static const char *get_notification_trigger_name(struct lttng_notification *notification)
 {
 	const char *trigger_name = NULL;
 	enum lttng_trigger_status trigger_status;
@@ -607,9 +641,8 @@ end:
 	return trigger_name;
 }
 
-static int validator_notification_trigger_name(
-		struct lttng_notification *notification,
-		const char *trigger_name)
+static int validator_notification_trigger_name(struct lttng_notification *notification,
+					       const char *trigger_name)
 {
 	int ret;
 	bool name_is_equal;
@@ -625,8 +658,7 @@ static int validator_notification_trigger_name(
 	}
 
 	name_is_equal = (strcmp(trigger_name, name) == 0);
-	ok(name_is_equal, "Expected trigger name: %s got %s", trigger_name,
-			name);
+	ok(name_is_equal, "Expected trigger name: %s got %s", trigger_name, name);
 
 	ret = !name_is_equal;
 
@@ -634,8 +666,7 @@ end:
 	return ret;
 }
 
-static
-void wait_on_file(const char *path, bool file_exist)
+static void wait_on_file(const char *path, bool file_exist)
 {
 	if (!path) {
 		return;
@@ -675,8 +706,7 @@ void wait_on_file(const char *path, bool file_exist)
 	}
 }
 
-static
-int write_pipe(const char *path, uint8_t data)
+static int write_pipe(const char *path, uint8_t data)
 {
 	int ret = 0;
 	int fd = 0;
@@ -687,7 +717,7 @@ int write_pipe(const char *path, uint8_t data)
 		goto end;
 	}
 
-	ret = write(fd, &data , sizeof(data));
+	ret = write(fd, &data, sizeof(data));
 	if (ret < 1) {
 		perror("Named pipe write failed");
 		if (close(fd)) {
@@ -707,8 +737,7 @@ end:
 	return ret;
 }
 
-static
-int stop_consumer(const char **argv)
+static int stop_consumer(const char **argv)
 {
 	int ret = 0, i;
 
@@ -718,8 +747,7 @@ int stop_consumer(const char **argv)
 	return ret;
 }
 
-static
-int resume_consumer(const char **argv)
+static int resume_consumer(const char **argv)
 {
 	int ret = 0, i;
 
@@ -729,8 +757,7 @@ int resume_consumer(const char **argv)
 	return ret;
 }
 
-static
-int suspend_application(void)
+static int suspend_application(void)
 {
 	int ret;
 	struct stat buf;
@@ -757,11 +784,9 @@ int suspend_application(void)
 
 error:
 	return ret;
-
 }
 
-static
-int resume_application(void)
+static int resume_application(void)
 {
 	int ret;
 	struct stat buf;
@@ -789,14 +814,11 @@ int resume_application(void)
 
 error:
 	return ret;
-
 }
 
-
-static
-void test_triggers_buffer_usage_condition(const char *session_name,
-		const char *channel_name,
-		enum lttng_condition_type condition_type)
+static void test_triggers_buffer_usage_condition(const char *session_name,
+						 const char *channel_name,
+						 enum lttng_condition_type condition_type)
 {
 	unsigned int test_vector_size = 5, i;
 	enum lttng_condition_status condition_status;
@@ -810,11 +832,12 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 	}
 
 	/* Test lttng_register_trigger with null value */
-	ok(lttng_register_trigger(NULL) == -LTTNG_ERR_INVALID, "Registering a NULL trigger fails as expected");
+	ok(lttng_register_trigger(NULL) == -LTTNG_ERR_INVALID,
+	   "Registering a NULL trigger fails as expected");
 
 	/* Test: register a trigger */
 
-	for (i = 0; i < pow(2,test_vector_size); i++) {
+	for (i = 0; i < pow(2, test_vector_size); i++) {
 		int loop_ret = 0;
 		char *test_tuple_string = NULL;
 		unsigned int mask_position = 0;
@@ -843,7 +866,6 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		if (!condition) {
 			loop_ret = 1;
 			goto loop_end;
-
 		}
 
 		/* Prepare the condition for trigger registration test */
@@ -851,7 +873,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		/* Set session name */
 		if ((1 << mask_position) & i) {
 			condition_status = lttng_condition_buffer_usage_set_session_name(
-					condition, session_name);
+				condition, session_name);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -863,7 +885,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		/* Set channel name */
 		if ((1 << mask_position) & i) {
 			condition_status = lttng_condition_buffer_usage_set_channel_name(
-					condition, channel_name);
+				condition, channel_name);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -874,8 +896,8 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 		/* Set threshold ratio */
 		if ((1 << mask_position) & i) {
-			condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-					condition, 0.0);
+			condition_status =
+				lttng_condition_buffer_usage_set_threshold_ratio(condition, 0.0);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -886,8 +908,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 		/* Set threshold byte */
 		if ((1 << mask_position) & i) {
-			condition_status = lttng_condition_buffer_usage_set_threshold(
-					condition, 0);
+			condition_status = lttng_condition_buffer_usage_set_threshold(condition, 0);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -899,7 +920,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		/* Set domain type */
 		if ((1 << mask_position) & i) {
 			condition_status = lttng_condition_buffer_usage_set_domain_type(
-					condition, LTTNG_DOMAIN_UST);
+				condition, LTTNG_DOMAIN_UST);
 			if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 				loop_ret = 1;
 				goto loop_end;
@@ -908,16 +929,18 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		}
 
 		/* Safety check */
-		if (mask_position != test_vector_size -1) {
+		if (mask_position != test_vector_size - 1) {
 			LTTNG_ASSERT("Logic error for test vector generation");
 		}
 
-		loop_ret = asprintf(&test_tuple_string, "session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
-				session_name_set ? "set" : "unset",
-				channel_name_set ? "set" : "unset",
-				threshold_ratio_set ? "set" : "unset",
-				threshold_byte_set ? "set" : "unset",
-				domain_type_set? "set" : "unset");
+		loop_ret = asprintf(
+			&test_tuple_string,
+			"session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
+			session_name_set ? "set" : "unset",
+			channel_name_set ? "set" : "unset",
+			threshold_ratio_set ? "set" : "unset",
+			threshold_byte_set ? "set" : "unset",
+			domain_type_set ? "set" : "unset");
 		if (!test_tuple_string || loop_ret < 0) {
 			loop_ret = 1;
 			goto loop_end;
@@ -932,16 +955,15 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 
 		loop_ret = lttng_register_trigger(trigger);
 
-loop_end:
+	loop_end:
 		if (loop_ret == 1) {
 			fail("Setup error occurred for tuple: %s", test_tuple_string);
 			goto loop_cleanup;
 		}
 
 		/* This combination happens three times */
-		if (session_name_set && channel_name_set
-				&& (threshold_ratio_set || threshold_byte_set)
-				&& domain_type_set) {
+		if (session_name_set && channel_name_set &&
+		    (threshold_ratio_set || threshold_byte_set) && domain_type_set) {
 			ok(loop_ret == 0, "Trigger is registered: %s", test_tuple_string);
 
 			/*
@@ -949,7 +971,9 @@ loop_end:
 			 * multiple time.
 			 */
 			loop_ret = lttng_register_trigger(trigger);
-			ok(loop_ret == -LTTNG_ERR_TRIGGER_EXISTS, "Re-register trigger fails as expected: %s", test_tuple_string);
+			ok(loop_ret == -LTTNG_ERR_TRIGGER_EXISTS,
+			   "Re-register trigger fails as expected: %s",
+			   test_tuple_string);
 
 			/* Test that a trigger can be unregistered */
 			loop_ret = lttng_unregister_trigger(trigger);
@@ -960,12 +984,16 @@ loop_end:
 			 * registered trigger fail.
 			 */
 			loop_ret = lttng_unregister_trigger(trigger);
-			ok(loop_ret == -LTTNG_ERR_TRIGGER_NOT_FOUND, "Unregister of a non-registered trigger fails as expected: %s", test_tuple_string);
+			ok(loop_ret == -LTTNG_ERR_TRIGGER_NOT_FOUND,
+			   "Unregister of a non-registered trigger fails as expected: %s",
+			   test_tuple_string);
 		} else {
-			ok(loop_ret == -LTTNG_ERR_INVALID_TRIGGER, "Trigger is invalid as expected and cannot be registered: %s", test_tuple_string);
+			ok(loop_ret == -LTTNG_ERR_INVALID_TRIGGER,
+			   "Trigger is invalid as expected and cannot be registered: %s",
+			   test_tuple_string);
 		}
 
-loop_cleanup:
+	loop_cleanup:
 		free(test_tuple_string);
 		lttng_trigger_destroy(trigger);
 		lttng_condition_destroy(condition);
@@ -975,8 +1003,7 @@ end:
 	lttng_action_destroy(action);
 }
 
-static
-void wait_data_pending(const char *session_name)
+static void wait_data_pending(const char *session_name)
 {
 	int ret;
 
@@ -986,39 +1013,32 @@ void wait_data_pending(const char *session_name)
 	} while (ret != 0);
 }
 
-static
-int setup_buffer_usage_condition(struct lttng_condition *condition,
-		const char *condition_name,
-		const char *session_name,
-		const char *channel_name,
-		const enum lttng_domain_type domain_type)
+static int setup_buffer_usage_condition(struct lttng_condition *condition,
+					const char *condition_name,
+					const char *session_name,
+					const char *channel_name,
+					const enum lttng_domain_type domain_type)
 {
 	enum lttng_condition_status condition_status;
 	int ret = 0;
 
-	condition_status = lttng_condition_buffer_usage_set_session_name(
-			condition, session_name);
+	condition_status = lttng_condition_buffer_usage_set_session_name(condition, session_name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Failed to set session name on creation of condition `%s`",
-				condition_name);
+		fail("Failed to set session name on creation of condition `%s`", condition_name);
 		ret = -1;
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_channel_name(
-			condition, channel_name);
+	condition_status = lttng_condition_buffer_usage_set_channel_name(condition, channel_name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Failed to set channel name on creation of condition `%s`",
-				condition_name);
+		fail("Failed to set channel name on creation of condition `%s`", condition_name);
 		ret = -1;
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			condition, domain_type);
+	condition_status = lttng_condition_buffer_usage_set_domain_type(condition, domain_type);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Failed to set domain type on creation of condition `%s`",
-				condition_name);
+		fail("Failed to set domain type on creation of condition `%s`", condition_name);
 		ret = -1;
 		goto end;
 	}
@@ -1027,9 +1047,7 @@ end:
 	return ret;
 }
 
-static
-void test_invalid_channel_subscription(
-		const enum lttng_domain_type domain_type)
+static void test_invalid_channel_subscription(const enum lttng_domain_type domain_type)
 {
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
@@ -1038,8 +1056,8 @@ void test_invalid_channel_subscription(
 	struct lttng_notification_channel *notification_channel = NULL;
 	int ret = 0;
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 	if (!notification_channel) {
 		goto end;
@@ -1058,15 +1076,15 @@ void test_invalid_channel_subscription(
 	 * Test subscription and unsubscription of an invalid condition to/from
 	 * a channel.
 	 */
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, dummy_invalid_condition);
+	nc_status =
+		lttng_notification_channel_subscribe(notification_channel, dummy_invalid_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Subscribing to an invalid condition");
+	   "Subscribing to an invalid condition");
 
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, dummy_invalid_condition);
+	nc_status = lttng_notification_channel_unsubscribe(notification_channel,
+							   dummy_invalid_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Unsubscribing from an invalid condition");
+	   "Unsubscribing from an invalid condition");
 
 	/* Create a valid dummy condition with a ratio of 0.5 */
 	dummy_condition = lttng_condition_buffer_usage_low_create();
@@ -1075,15 +1093,14 @@ void test_invalid_channel_subscription(
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-			dummy_condition, 0.5);
+	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(dummy_condition, 0.5);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		fail("Setup error on condition creation");
 		goto end;
 	}
 
-	ret = setup_buffer_usage_condition(dummy_condition, "dummy_condition",
-			"dummy_session", "dummy_channel", domain_type);
+	ret = setup_buffer_usage_condition(
+		dummy_condition, "dummy_condition", "dummy_session", "dummy_channel", domain_type);
 	if (ret) {
 		fail("Setup error on dummy condition creation");
 		goto end;
@@ -1095,21 +1112,19 @@ void test_invalid_channel_subscription(
 	 */
 	nc_status = lttng_notification_channel_subscribe(NULL, NULL);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NULL, NULL");
+	   "Notification channel subscription is invalid: NULL, NULL");
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, NULL);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, NULL);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NON-NULL, NULL");
+	   "Notification channel subscription is invalid: NON-NULL, NULL");
 
 	nc_status = lttng_notification_channel_subscribe(NULL, dummy_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NULL, NON-NULL");
+	   "Notification channel subscription is invalid: NULL, NON-NULL");
 
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, dummy_condition);
+	nc_status = lttng_notification_channel_unsubscribe(notification_channel, dummy_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION,
-			"Unsubscribing from a valid unknown condition");
+	   "Unsubscribing from a valid unknown condition");
 
 end:
 	lttng_notification_channel_destroy(notification_channel);
@@ -1124,13 +1139,13 @@ enum buffer_usage_type {
 };
 
 static int register_buffer_usage_notify_trigger(const char *session_name,
-		const char *channel_name,
-		const enum lttng_domain_type domain_type,
-		enum buffer_usage_type buffer_usage_type,
-		double ratio,
-		struct lttng_condition **condition,
-		struct lttng_action **action,
-		struct lttng_trigger **trigger)
+						const char *channel_name,
+						const enum lttng_domain_type domain_type,
+						enum buffer_usage_type buffer_usage_type,
+						double ratio,
+						struct lttng_condition **condition,
+						struct lttng_action **action,
+						struct lttng_trigger **trigger)
 {
 	enum lttng_condition_status condition_status;
 	struct lttng_action *tmp_action = NULL;
@@ -1159,16 +1174,15 @@ static int register_buffer_usage_notify_trigger(const char *session_name,
 	}
 
 	/* Set the buffer usage threashold */
-	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-			tmp_condition, ratio);
+	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(tmp_condition, ratio);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		fail("Setup error on condition creation");
 		ret = -1;
 		goto error;
 	}
 
-	ret = setup_buffer_usage_condition(tmp_condition, "condition_name",
-			session_name, channel_name, domain_type);
+	ret = setup_buffer_usage_condition(
+		tmp_condition, "condition_name", session_name, channel_name, domain_type);
 	if (ret) {
 		fail("Setup error on condition creation");
 		ret = -1;
@@ -1205,8 +1219,8 @@ end:
 }
 
 static void test_subscription_twice(const char *session_name,
-		const char *channel_name,
-		const enum lttng_domain_type domain_type)
+				    const char *channel_name,
+				    const enum lttng_domain_type domain_type)
 {
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
@@ -1217,34 +1231,35 @@ static void test_subscription_twice(const char *session_name,
 
 	struct lttng_condition *condition = NULL;
 
-	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
-			domain_type, BUFFER_USAGE_TYPE_LOW, 0.99, &condition,
-			&action, &trigger);
+	ret = register_buffer_usage_notify_trigger(session_name,
+						   channel_name,
+						   domain_type,
+						   BUFFER_USAGE_TYPE_LOW,
+						   0.99,
+						   &condition,
+						   &action,
+						   &trigger);
 	if (ret) {
-		fail("Setup error on trigger registration in %s()",
-				__FUNCTION__);
+		fail("Setup error on trigger registration in %s()", __FUNCTION__);
 		goto end;
 	}
 
 	/* Begin testing. */
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 	if (!notification_channel) {
 		goto end;
 	}
 
 	/* Subscribe a valid condition. */
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to condition");
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to condition");
 
 	/* Subscribing again should fail. */
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
-			"Subscribe to a condition for which subscription was already done");
+	   "Subscribe to a condition for which subscription was already done");
 
 end:
 	ret = lttng_unregister_trigger(trigger);
@@ -1259,9 +1274,9 @@ end:
 }
 
 static void test_buffer_usage_notification_channel(const char *session_name,
-		const char *channel_name,
-		const enum lttng_domain_type domain_type,
-		const char **argv)
+						   const char *channel_name,
+						   const enum lttng_domain_type domain_type,
+						   const char **argv)
 {
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
@@ -1279,41 +1294,47 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	const double low_ratio = 0.0;
 	const double high_ratio = 0.90;
 
-	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
-			domain_type, BUFFER_USAGE_TYPE_LOW, low_ratio,
-			&low_condition, &low_action, &low_trigger);
+	ret = register_buffer_usage_notify_trigger(session_name,
+						   channel_name,
+						   domain_type,
+						   BUFFER_USAGE_TYPE_LOW,
+						   low_ratio,
+						   &low_condition,
+						   &low_action,
+						   &low_trigger);
 	if (ret) {
 		fail("Setup error on low trigger registration");
 		goto end;
 	}
 
-	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
-			domain_type, BUFFER_USAGE_TYPE_HIGH, high_ratio,
-			&high_condition, &high_action, &high_trigger);
+	ret = register_buffer_usage_notify_trigger(session_name,
+						   channel_name,
+						   domain_type,
+						   BUFFER_USAGE_TYPE_HIGH,
+						   high_ratio,
+						   &high_condition,
+						   &high_action,
+						   &high_trigger);
 	if (ret) {
 		fail("Setup error on high trigger registration");
 		goto end;
 	}
 
 	/* Begin testing */
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 	if (!notification_channel) {
 		goto end;
 	}
 
 	/* Subscribe a valid low condition */
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to low condition");
+	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to low condition");
 
 	/* Subscribe a valid high condition */
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to high condition");
+	nc_status = lttng_notification_channel_subscribe(notification_channel, high_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to high condition");
 
 	resume_application();
 
@@ -1323,14 +1344,13 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 
 	/* Wait for high notification */
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(
-				notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
+									     &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-					lttng_condition_get_type(lttng_notification_get_condition(
-							notification)) ==
-							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-			"High notification received after intermediary communication");
+		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+	   "High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
@@ -1344,25 +1364,22 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	 * waiting for consumption.
 	 */
 
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, low_condition);
+	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Unsubscribe with pending notification");
+	   "Unsubscribe with pending notification");
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, low_condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe with pending notification");
+	   "Subscribe with pending notification");
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(
-				notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
+									     &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-					lttng_condition_get_type(lttng_notification_get_condition(
-							notification)) ==
-							LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
-			"Low notification received after intermediary communication");
+		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+	   "Low notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
@@ -1372,14 +1389,13 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	lttng_start_tracing(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(
-				notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
+									     &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-					lttng_condition_get_type(lttng_notification_get_condition(
-							notification)) ==
-							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-			"High notification received after intermediary communication");
+		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+	   "High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
@@ -1389,14 +1405,13 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	wait_data_pending(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(
-				notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
+									     &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-					lttng_condition_get_type(lttng_notification_get_condition(
-							notification)) ==
-							LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
-			"Low notification received after re-subscription");
+		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+	   "Low notification received after re-subscription");
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
@@ -1406,14 +1421,13 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	lttng_start_tracing(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(
-				notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
+									     &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-					lttng_condition_get_type(lttng_notification_get_condition(
-							notification)) ==
-							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
-			"High notification");
+		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+	   "High notification");
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
@@ -1424,15 +1438,13 @@ static void test_buffer_usage_notification_channel(const char *session_name,
 	resume_consumer(argv);
 	wait_data_pending(session_name);
 
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, low_condition);
+	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Unsubscribe low condition with pending notification");
+	   "Unsubscribe low condition with pending notification");
 
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, high_condition);
+	nc_status = lttng_notification_channel_unsubscribe(notification_channel, high_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Unsubscribe high condition with pending notification");
+	   "Unsubscribe high condition with pending notification");
 
 end:
 	lttng_notification_channel_destroy(notification_channel);
@@ -1445,26 +1457,22 @@ end:
 }
 
 static void create_tracepoint_event_rule_trigger(const char *event_pattern,
-		const char *trigger_name,
-		const char *filter,
-		unsigned int exclusion_count,
-		const char * const *exclusions,
-		enum lttng_domain_type domain_type,
-		condition_capture_desc_cb capture_desc_cb,
-		struct lttng_condition **condition,
-		struct lttng_trigger **trigger)
+						 const char *trigger_name,
+						 const char *filter,
+						 unsigned int exclusion_count,
+						 const char *const *exclusions,
+						 enum lttng_domain_type domain_type,
+						 condition_capture_desc_cb capture_desc_cb,
+						 struct lttng_condition **condition,
+						 struct lttng_trigger **trigger)
 {
 	typedef struct lttng_event_rule *(*event_rule_create)(void);
 	typedef enum lttng_event_rule_status (
-			*event_rule_set_name_pattern)(
-			struct lttng_event_rule *rule,
-			const char *pattern);
-	typedef enum lttng_event_rule_status (*event_rule_set_filter)(
-			struct lttng_event_rule *rule,
-			const char *expression);
+		*event_rule_set_name_pattern)(struct lttng_event_rule * rule, const char *pattern);
 	typedef enum lttng_event_rule_status (
-			*event_rule_add_name_pattern_exclusion)(
-			struct lttng_event_rule * rule, const char *exclusion);
+		*event_rule_set_filter)(struct lttng_event_rule * rule, const char *expression);
+	typedef enum lttng_event_rule_status (*event_rule_add_name_pattern_exclusion)(
+		struct lttng_event_rule * rule, const char *exclusion);
 
 	enum lttng_event_rule_status event_rule_status;
 	struct lttng_action *tmp_action = NULL;
@@ -1489,7 +1497,8 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		create = lttng_event_rule_user_tracepoint_create;
 		set_name_pattern = lttng_event_rule_user_tracepoint_set_name_pattern;
 		set_filter = lttng_event_rule_user_tracepoint_set_filter;
-		add_name_pattern_exclusion = lttng_event_rule_user_tracepoint_add_name_pattern_exclusion;
+		add_name_pattern_exclusion =
+			lttng_event_rule_user_tracepoint_add_name_pattern_exclusion;
 		break;
 	case LTTNG_DOMAIN_KERNEL:
 		create = lttng_event_rule_kernel_tracepoint_create;
@@ -1507,14 +1516,14 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 
 	event_rule_status = set_name_pattern(event_rule, event_pattern);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting tracepoint event rule pattern: '%s'",
-			event_pattern);
+	   "Setting tracepoint event rule pattern: '%s'",
+	   event_pattern);
 
 	if (filter) {
 		event_rule_status = set_filter(event_rule, filter);
 		ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Setting tracepoint event rule filter: '%s'",
-				filter);
+		   "Setting tracepoint event rule filter: '%s'",
+		   filter);
 	}
 
 	if (exclusions) {
@@ -1526,11 +1535,10 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		LTTNG_ASSERT(exclusion_count > 0);
 
 		for (i = 0; i < exclusion_count; i++) {
-			event_rule_status = add_name_pattern_exclusion(
-					event_rule, exclusions[i]);
+			event_rule_status = add_name_pattern_exclusion(event_rule, exclusions[i]);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				fail("Setting tracepoint event rule exclusion '%s'.",
-						exclusions[i]);
+				     exclusions[i]);
 				success = false;
 			}
 		}
@@ -1566,15 +1574,15 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 	return;
 }
 
-static struct lttng_notification *get_next_notification(
-		struct lttng_notification_channel *notification_channel)
+static struct lttng_notification *
+get_next_notification(struct lttng_notification_channel *notification_channel)
 {
 	struct lttng_notification *local_notification = NULL;
 	enum lttng_notification_channel_status status;
 
 	/* Receive the next notification. */
-	status = lttng_notification_channel_get_next_notification(
-			notification_channel, &local_notification);
+	status = lttng_notification_channel_get_next_notification(notification_channel,
+								  &local_notification);
 
 	switch (status) {
 	case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
@@ -1586,7 +1594,7 @@ static struct lttng_notification *get_next_notification(
 	default:
 		/* Unhandled conditions / errors. */
 		fail("Failed to get next notification (unknown notification channel status): status = %d",
-				(int) status);
+		     (int) status);
 		local_notification = NULL;
 		break;
 	}
@@ -1594,8 +1602,7 @@ static struct lttng_notification *get_next_notification(
 	return local_notification;
 }
 
-static void test_tracepoint_event_rule_notification(
-		enum lttng_domain_type domain_type)
+static void test_tracepoint_event_rule_notification(enum lttng_domain_type domain_type)
 {
 	int i;
 	int ret;
@@ -1605,7 +1612,7 @@ static void test_tracepoint_event_rule_notification(
 	struct lttng_condition *condition = NULL;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_trigger *trigger = NULL;
-	const char * const trigger_name = "my_precious";
+	const char *const trigger_name = "my_precious";
 	const char *pattern;
 
 	if (domain_type == LTTNG_DOMAIN_UST) {
@@ -1614,27 +1621,25 @@ static void test_tracepoint_event_rule_notification(
 		pattern = "lttng_test_filter_event";
 	}
 
-	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 0,
-			NULL, domain_type, NULL, &condition, &trigger);
+	create_tracepoint_event_rule_trigger(
+		pattern, trigger_name, NULL, 0, NULL, domain_type, NULL, &condition, &trigger);
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	/* Get notifications. */
 	for (i = 0; i < notification_count; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -1658,8 +1663,7 @@ end:
 	return;
 }
 
-static void test_tracepoint_event_rule_notification_filter(
-		enum lttng_domain_type domain_type)
+static void test_tracepoint_event_rule_notification_filter(enum lttng_domain_type domain_type)
 {
 	int i;
 	const int notification_count = 3;
@@ -1667,8 +1671,8 @@ static void test_tracepoint_event_rule_notification_filter(
 	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
-	const char * const ctrl_trigger_name = "control_trigger";
-	const char * const trigger_name = "trigger";
+	const char *const ctrl_trigger_name = "control_trigger";
+	const char *const trigger_name = "trigger";
 	const char *pattern;
 	int ctrl_count = 0, count = 0;
 
@@ -1678,30 +1682,41 @@ static void test_tracepoint_event_rule_notification_filter(
 		pattern = "lttng_test_filter_event";
 	}
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
-			0, NULL, domain_type, NULL, &ctrl_condition, &ctrl_trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     ctrl_trigger_name,
+					     NULL,
+					     0,
+					     NULL,
+					     domain_type,
+					     NULL,
+					     &ctrl_condition,
+					     &ctrl_trigger);
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, ctrl_condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, ctrl_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	/*
 	 * Attach a filter expression to get notification only if the
 	 * `intfield` is even.
 	 */
-	create_tracepoint_event_rule_trigger(pattern, trigger_name,
-			"(intfield & 1) == 0", 0, NULL, domain_type, NULL, &condition,
-			&trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     trigger_name,
+					     "(intfield & 1) == 0",
+					     0,
+					     NULL,
+					     domain_type,
+					     NULL,
+					     &condition,
+					     &trigger);
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	/*
 	 * We registered 2 notifications triggers, one with a filter and one
@@ -1718,11 +1733,10 @@ static void test_tracepoint_event_rule_notification_filter(
 	 */
 	for (i = 0; i < notification_count; i++) {
 		const char *name;
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -1744,8 +1758,7 @@ static void test_tracepoint_event_rule_notification_filter(
 		lttng_notification_destroy(notification);
 	}
 
-	ok(ctrl_count / 2 == count,
-			"Get twice as many control notif as of regular notif");
+	ok(ctrl_count / 2 == count, "Get twice as many control notif as of regular notif");
 
 end:
 	suspend_application();
@@ -1759,8 +1772,7 @@ end:
 	lttng_condition_destroy(ctrl_condition);
 }
 
-static void test_tracepoint_event_rule_notification_exclusion(
-		enum lttng_domain_type domain_type)
+static void test_tracepoint_event_rule_notification_exclusion(enum lttng_domain_type domain_type)
 {
 	enum lttng_notification_channel_status nc_status;
 	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
@@ -1768,37 +1780,35 @@ static void test_tracepoint_event_rule_notification_exclusion(
 	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
 	int ctrl_count = 0, count = 0, i;
 	const int notification_count = 6;
-	const char * const ctrl_trigger_name = "control_exclusion_trigger";
-	const char * const trigger_name = "exclusion_trigger";
-	const char * const pattern = "tp:tptest*";
-	const char * const exclusions[] = {
-		"tp:tptest2",
-		"tp:tptest3",
-		"tp:tptest4",
-		"tp:tptest5"
-	};
+	const char *const ctrl_trigger_name = "control_exclusion_trigger";
+	const char *const trigger_name = "exclusion_trigger";
+	const char *const pattern = "tp:tptest*";
+	const char *const exclusions[] = { "tp:tptest2", "tp:tptest3", "tp:tptest4", "tp:tptest5" };
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
-			0, NULL, domain_type, NULL, &ctrl_condition,
-			&ctrl_trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     ctrl_trigger_name,
+					     NULL,
+					     0,
+					     NULL,
+					     domain_type,
+					     NULL,
+					     &ctrl_condition,
+					     &ctrl_trigger);
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, ctrl_condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, ctrl_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
-	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 4,
-			exclusions, domain_type, NULL, &condition,
-			&trigger);
+	create_tracepoint_event_rule_trigger(
+		pattern, trigger_name, NULL, 4, exclusions, domain_type, NULL, &condition, &trigger);
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	/*
 	 * We registered 2 notifications triggers, one with an exclusion and
@@ -1819,11 +1829,10 @@ static void test_tracepoint_event_rule_notification_exclusion(
 	 */
 	for (i = 0; i < notification_count; i++) {
 		const char *name;
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -1845,8 +1854,7 @@ static void test_tracepoint_event_rule_notification_exclusion(
 		lttng_notification_destroy(notification);
 	}
 
-	ok(ctrl_count / 5 == count,
-			"Got 5 times as many control notif as of regular notif");
+	ok(ctrl_count / 5 == count, "Got 5 times as many control notif as of regular notif");
 
 end:
 	suspend_application();
@@ -1874,8 +1882,8 @@ static void test_kprobe_event_rule_notification(void)
 	struct lttng_event_rule *event_rule = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
-	const char * const trigger_name = "kprobe_trigger";
-	const char * const symbol_name = "lttng_test_filter_event_write";
+	const char *const trigger_name = "kprobe_trigger";
+	const char *const symbol_name = "lttng_test_filter_event_write";
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -1889,17 +1897,17 @@ static void test_kprobe_event_rule_notification(void)
 		goto end;
 	}
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
 	event_rule = lttng_event_rule_kernel_kprobe_create(location);
 	ok(event_rule, "kprobe event rule object creation");
 
-	event_rule_status = lttng_event_rule_kernel_kprobe_set_event_name(
-			event_rule, trigger_name);
+	event_rule_status = lttng_event_rule_kernel_kprobe_set_event_name(event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting kprobe event rule name: '%s'", trigger_name);
+	   "Setting kprobe event rule name: '%s'",
+	   trigger_name);
 
 	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
@@ -1917,19 +1925,17 @@ static void test_kprobe_event_rule_notification(void)
 		goto end;
 	}
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	for (i = 0; i < notification_count; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -1955,9 +1961,8 @@ end:
 	return;
 }
 
-static void test_uprobe_event_rule_notification(
-		const char *testapp_path,
-		const char *test_symbol_name)
+static void test_uprobe_event_rule_notification(const char *testapp_path,
+						const char *test_symbol_name)
 {
 	int i, ret;
 	enum lttng_error_code ret_code;
@@ -1966,13 +1971,12 @@ static void test_uprobe_event_rule_notification(
 	enum lttng_event_rule_status event_rule_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_userspace_probe_location *probe_location = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method =
-			NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	struct lttng_condition *condition = NULL;
 	struct lttng_event_rule *event_rule = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
-	const char * const trigger_name = "uprobe_trigger";
+	const char *const trigger_name = "uprobe_trigger";
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -1987,23 +1991,23 @@ static void test_uprobe_event_rule_notification(
 	}
 
 	probe_location = lttng_userspace_probe_location_function_create(
-			testapp_path, test_symbol_name, lookup_method);
+		testapp_path, test_symbol_name, lookup_method);
 	if (!probe_location) {
 		fail("Failed to create userspace probe location");
 		goto end;
 	}
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
 	event_rule = lttng_event_rule_kernel_uprobe_create(probe_location);
 	ok(event_rule, "uprobe event rule object creation");
 
-	event_rule_status = lttng_event_rule_kernel_uprobe_set_event_name(
-			event_rule, trigger_name);
+	event_rule_status = lttng_event_rule_kernel_uprobe_set_event_name(event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting uprobe event rule name: '%s'", trigger_name);
+	   "Setting uprobe event rule name: '%s'",
+	   trigger_name);
 
 	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
@@ -2021,19 +2025,17 @@ static void test_uprobe_event_rule_notification(
 		goto end;
 	}
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	for (i = 0; i < 3; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -2071,8 +2073,8 @@ static void test_syscall_event_rule_notification(void)
 	struct lttng_event_rule *event_rule = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
-	const char * const trigger_name = "syscall_trigger";
-	const char * const syscall_name = "openat";
+	const char *const trigger_name = "syscall_trigger";
+	const char *const syscall_name = "openat";
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -2080,17 +2082,19 @@ static void test_syscall_event_rule_notification(void)
 		goto end;
 	}
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
+	event_rule = lttng_event_rule_kernel_syscall_create(
+		LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(event_rule, "syscall event rule object creation");
 
-	event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
-			event_rule, syscall_name);
+	event_rule_status =
+		lttng_event_rule_kernel_syscall_set_name_pattern(event_rule, syscall_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting syscall event rule pattern: '%s'", syscall_name);
+	   "Setting syscall event rule pattern: '%s'",
+	   syscall_name);
 
 	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition syscall event rule object creation");
@@ -2108,19 +2112,17 @@ static void test_syscall_event_rule_notification(void)
 		goto end;
 	}
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	for (i = 0; i < notification_count; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -2155,9 +2157,9 @@ static void test_syscall_event_rule_notification_filter(void)
 	struct lttng_event_rule *event_rule = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
-	const char * const trigger_name = "syscall_trigger";
-	const char * const syscall_name = "openat";
-	const char * const filter_pattern = "filename == \"/proc/cpuinfo\"";
+	const char *const trigger_name = "syscall_trigger";
+	const char *const syscall_name = "openat";
+	const char *const filter_pattern = "filename == \"/proc/cpuinfo\"";
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -2165,22 +2167,22 @@ static void test_syscall_event_rule_notification_filter(void)
 		goto end;
 	}
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
+	event_rule = lttng_event_rule_kernel_syscall_create(
+		LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(event_rule, "syscall event rule object creation");
 
-	event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
-			event_rule, syscall_name);
+	event_rule_status =
+		lttng_event_rule_kernel_syscall_set_name_pattern(event_rule, syscall_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting syscall event rule pattern: '%s'", syscall_name);
+	   "Setting syscall event rule pattern: '%s'",
+	   syscall_name);
 
-	event_rule_status = lttng_event_rule_kernel_syscall_set_filter(
-			event_rule, filter_pattern);
-	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting filter: '%s'", filter_pattern);
+	event_rule_status = lttng_event_rule_kernel_syscall_set_filter(event_rule, filter_pattern);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK, "Setting filter: '%s'", filter_pattern);
 
 	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
@@ -2198,19 +2200,17 @@ static void test_syscall_event_rule_notification_filter(void)
 		goto end;
 	}
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	for (i = 0; i < notification_count; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 
-		ok(notification, "Received notification (%d/%d)", i + 1,
-				notification_count);
+		ok(notification, "Received notification (%d/%d)", i + 1, notification_count);
 
 		/* Error. */
 		if (notification == NULL) {
@@ -2239,22 +2239,21 @@ static int generate_capture_descr(struct lttng_condition *condition)
 {
 	int ret, i;
 	struct lttng_event_expr *expr = NULL;
-	const unsigned int basic_field_count = sizeof(test_capture_base_fields) /
-			sizeof(*test_capture_base_fields);
+	const unsigned int basic_field_count =
+		sizeof(test_capture_base_fields) / sizeof(*test_capture_base_fields);
 	enum lttng_condition_status cond_status;
 
 	for (i = 0; i < basic_field_count; i++) {
-		diag("Adding capture descriptor '%s'",
-				test_capture_base_fields[i].field_name);
+		diag("Adding capture descriptor '%s'", test_capture_base_fields[i].field_name);
 
 		switch (test_capture_base_fields[i].field_type) {
 		case FIELD_TYPE_PAYLOAD:
 			expr = lttng_event_expr_event_payload_field_create(
-					test_capture_base_fields[i].field_name);
+				test_capture_base_fields[i].field_name);
 			break;
 		case FIELD_TYPE_CONTEXT:
 			expr = lttng_event_expr_channel_context_field_create(
-					test_capture_base_fields[i].field_name);
+				test_capture_base_fields[i].field_name);
 			break;
 		case FIELD_TYPE_ARRAY_FIELD:
 		{
@@ -2264,19 +2263,19 @@ static int generate_capture_descr(struct lttng_condition *condition)
 			struct lttng_event_expr *array_expr = NULL;
 
 			nb_matches = sscanf(test_capture_base_fields[i].field_name,
-					"%[^[][%u]", field_name, &index);
+					    "%[^[][%u]",
+					    field_name,
+					    &index);
 			if (nb_matches != 2) {
 				fail("Unexpected array field name format: field name = '%s'",
-						test_capture_base_fields[i].field_name);
+				     test_capture_base_fields[i].field_name);
 				ret = 1;
 				goto end;
 			}
 
-			array_expr = lttng_event_expr_event_payload_field_create(
-				field_name);
+			array_expr = lttng_event_expr_event_payload_field_create(field_name);
 
-			expr = lttng_event_expr_array_field_element_create(
-				array_expr, index);
+			expr = lttng_event_expr_array_field_element_create(array_expr, index);
 			break;
 		}
 		case FIELD_TYPE_APP_CONTEXT:
@@ -2294,7 +2293,7 @@ static int generate_capture_descr(struct lttng_condition *condition)
 		}
 
 		cond_status = lttng_condition_event_rule_matches_append_capture_descriptor(
-				condition, expr);
+			condition, expr);
 		if (cond_status != LTTNG_CONDITION_STATUS_OK) {
 			fail("Failed to append capture descriptor");
 			ret = -1;
@@ -2309,15 +2308,13 @@ end:
 	return ret;
 }
 
-static int validator_notification_trigger_capture(
-		enum lttng_domain_type domain,
-		struct lttng_notification *notification,
-		const int iteration)
+static int validator_notification_trigger_capture(enum lttng_domain_type domain,
+						  struct lttng_notification *notification,
+						  const int iteration)
 {
 	int ret;
 	unsigned int capture_count, i;
-	enum lttng_evaluation_event_rule_matches_status
-			event_rule_matches_evaluation_status;
+	enum lttng_evaluation_event_rule_matches_status event_rule_matches_evaluation_status;
 	enum lttng_event_field_value_status event_field_value_status;
 	const struct lttng_evaluation *evaluation;
 	const struct lttng_event_field_value *captured_fields;
@@ -2331,19 +2328,17 @@ static int validator_notification_trigger_capture(
 	}
 
 	event_rule_matches_evaluation_status =
-			lttng_evaluation_event_rule_matches_get_captured_values(
-					evaluation, &captured_fields);
-	if (event_rule_matches_evaluation_status !=
-			LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK) {
+		lttng_evaluation_event_rule_matches_get_captured_values(evaluation,
+									&captured_fields);
+	if (event_rule_matches_evaluation_status != LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK) {
 		diag("Failed to get event rule evaluation captured values: status = %d",
-				(int) event_rule_matches_evaluation_status);
+		     (int) event_rule_matches_evaluation_status);
 		ret = 1;
 		goto end;
 	}
 
 	event_field_value_status =
-		lttng_event_field_value_array_get_length(captured_fields,
-				&capture_count);
+		lttng_event_field_value_array_get_length(captured_fields, &capture_count);
 	if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 		fail("Failed to get count of captured value field array");
 		ret = 1;
@@ -2355,14 +2350,11 @@ static int validator_notification_trigger_capture(
 		validate_cb validate;
 		bool expected;
 
-		diag("Validating capture of field '%s'",
-				test_capture_base_fields[i].field_name);
-		event_field_value_status =
-				lttng_event_field_value_array_get_element_at_index(
-						captured_fields, i,
-						&captured_field);
+		diag("Validating capture of field '%s'", test_capture_base_fields[i].field_name);
+		event_field_value_status = lttng_event_field_value_array_get_element_at_index(
+			captured_fields, i, &captured_field);
 
-		switch(domain) {
+		switch (domain) {
 		case LTTNG_DOMAIN_UST:
 			expected = test_capture_base_fields[i].expected_ust;
 			break;
@@ -2370,8 +2362,7 @@ static int validator_notification_trigger_capture(
 			expected = test_capture_base_fields[i].expected_kernel;
 			break;
 		default:
-			fail("Unexpected domain encountered: domain = %d",
-					(int) domain);
+			fail("Unexpected domain encountered: domain = %d", (int) domain);
 			ret = 1;
 			goto end;
 		}
@@ -2384,17 +2375,17 @@ static int validator_notification_trigger_capture(
 
 		if (!expected) {
 			ok(event_field_value_status == LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE,
-					"No payload captured");
+			   "No payload captured");
 			continue;
 		}
 
 		if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
 			if (event_field_value_status ==
-					LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
+			    LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
 				fail("Expected a capture but it is unavailable");
 			} else {
 				fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
-						(int) event_field_value_status);
+				     (int) event_field_value_status);
 			}
 
 			ret = 1;
@@ -2402,8 +2393,7 @@ static int validator_notification_trigger_capture(
 		}
 
 		diag("Captured field of type %s",
-				field_value_type_to_str(
-					lttng_event_field_value_get_type(captured_field)));
+		     field_value_type_to_str(lttng_event_field_value_get_type(captured_field)));
 
 		LTTNG_ASSERT(validate);
 		ret = validate(captured_field, iteration);
@@ -2418,8 +2408,7 @@ end:
 	return ret;
 }
 
-static void test_tracepoint_event_rule_notification_capture(
-		enum lttng_domain_type domain_type)
+static void test_tracepoint_event_rule_notification_capture(enum lttng_domain_type domain_type)
 {
 	enum lttng_notification_channel_status nc_status;
 
@@ -2436,25 +2425,30 @@ static void test_tracepoint_event_rule_notification_capture(
 		pattern = "lttng_test_filter_event";
 	}
 
-	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 0,
-			NULL, domain_type, generate_capture_descr, &condition,
-			&trigger);
+	create_tracepoint_event_rule_trigger(pattern,
+					     trigger_name,
+					     NULL,
+					     0,
+					     NULL,
+					     domain_type,
+					     generate_capture_descr,
+					     &condition,
+					     &trigger);
 
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, condition);
+	nc_status = lttng_notification_channel_subscribe(notification_channel, condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to tracepoint event rule condition");
+	   "Subscribe to tracepoint event rule condition");
 
 	resume_application();
 
 	/* Get 3 notifications */
 	for (i = 0; i < 3; i++) {
-		struct lttng_notification *notification = get_next_notification(
-				notification_channel);
+		struct lttng_notification *notification =
+			get_next_notification(notification_channel);
 		ok(notification, "Received notification");
 
 		/* Error */
@@ -2525,16 +2519,14 @@ int main(int argc, const char *argv[])
 		plan_tests(41);
 
 		/* Test cases that need gen-ust-event testapp. */
-		diag("Test basic notification error paths for %s domain",
-				domain_type_string);
+		diag("Test basic notification error paths for %s domain", domain_type_string);
 		test_invalid_channel_subscription(domain_type);
 
-		diag("Test tracepoint event rule notifications for domain %s",
-				domain_type_string);
+		diag("Test tracepoint event rule notifications for domain %s", domain_type_string);
 		test_tracepoint_event_rule_notification(domain_type);
 
 		diag("Test tracepoint event rule notifications with filter for domain %s",
-				domain_type_string);
+		     domain_type_string);
 		test_tracepoint_event_rule_notification_filter(domain_type);
 		break;
 	}
@@ -2561,23 +2553,22 @@ int main(int argc, const char *argv[])
 		session_name = argv[5];
 		channel_name = argv[6];
 
-		test_subscription_twice(session_name, channel_name,
-				domain_type);
+		test_subscription_twice(session_name, channel_name, domain_type);
 
 		diag("Test trigger for domain %s with buffer_usage_low condition",
-				domain_type_string);
-		test_triggers_buffer_usage_condition(session_name, channel_name,
-				LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
+		     domain_type_string);
+		test_triggers_buffer_usage_condition(
+			session_name, channel_name, LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 
 		diag("Test trigger for domain %s with buffer_usage_high condition",
-				domain_type_string);
-		test_triggers_buffer_usage_condition(session_name, channel_name,
-				LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+		     domain_type_string);
+		test_triggers_buffer_usage_condition(
+			session_name, channel_name, LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
 
 		diag("Test buffer usage notification channel api for domain %s",
-				domain_type_string);
-		test_buffer_usage_notification_channel(session_name, channel_name,
-				domain_type, argv);
+		     domain_type_string);
+		test_buffer_usage_notification_channel(
+			session_name, channel_name, domain_type, argv);
 		break;
 	}
 	case 3:
@@ -2594,7 +2585,7 @@ int main(int argc, const char *argv[])
 		 */
 		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_UST);
 		diag("Test tracepoint event rule notifications with exclusion for domain %s",
-				domain_type_string);
+		     domain_type_string);
 		test_tracepoint_event_rule_notification_exclusion(domain_type);
 
 		break;
@@ -2605,8 +2596,7 @@ int main(int argc, const char *argv[])
 		/* Test cases that need the kernel tracer. */
 		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
-		diag("Test kprobe event rule notifications for domain %s",
-				domain_type_string);
+		diag("Test kprobe event rule notifications for domain %s", domain_type_string);
 
 		test_kprobe_event_rule_notification();
 
@@ -2618,13 +2608,12 @@ int main(int argc, const char *argv[])
 		/* Test cases that need the kernel tracer. */
 		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
-		diag("Test syscall event rule notifications for domain %s",
-				domain_type_string);
+		diag("Test syscall event rule notifications for domain %s", domain_type_string);
 
 		test_syscall_event_rule_notification();
 
 		diag("Test syscall filtering event rule notifications for domain %s",
-				domain_type_string);
+		     domain_type_string);
 
 		test_syscall_event_rule_notification_filter();
 
@@ -2647,16 +2636,15 @@ int main(int argc, const char *argv[])
 		LTTNG_ASSERT(domain_type == LTTNG_DOMAIN_KERNEL);
 
 		diag("Test userspace-probe event rule notifications for domain %s",
-				domain_type_string);
+		     domain_type_string);
 
-		test_uprobe_event_rule_notification(
-				testapp_path, test_symbol_name);
+		test_uprobe_event_rule_notification(testapp_path, test_symbol_name);
 
 		break;
 	}
 	case 7:
 	{
-		switch(domain_type) {
+		switch (domain_type) {
 		case LTTNG_DOMAIN_UST:
 			plan_tests(221);
 			break;
@@ -2668,7 +2656,7 @@ int main(int argc, const char *argv[])
 		}
 
 		diag("Test tracepoint event rule notification captures for domain %s",
-				domain_type_string);
+		     domain_type_string);
 		test_tracepoint_event_rule_notification_capture(domain_type);
 
 		break;
@@ -2681,4 +2669,3 @@ int main(int argc, const char *argv[])
 error:
 	return exit_status();
 }
-

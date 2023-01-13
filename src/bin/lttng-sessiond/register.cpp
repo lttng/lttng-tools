@@ -7,22 +7,23 @@
  *
  */
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <urcu.h>
+#include "fd-limit.hpp"
+#include "health-sessiond.hpp"
+#include "lttng-sessiond.hpp"
+#include "register.hpp"
+#include "testpoint.hpp"
+#include "thread.hpp"
+#include "utils.hpp"
+
 #include <common/futex.hpp>
 #include <common/macros.hpp>
 #include <common/shm.hpp>
 #include <common/utils.hpp>
-#include <sys/stat.h>
 
-#include "register.hpp"
-#include "lttng-sessiond.hpp"
-#include "testpoint.hpp"
-#include "health-sessiond.hpp"
-#include "fd-limit.hpp"
-#include "utils.hpp"
-#include "thread.hpp"
+#include <stddef.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <urcu.h>
 
 namespace {
 struct thread_state {
@@ -43,11 +44,9 @@ static int create_application_socket(void)
 	int apps_sock;
 
 	/* Create the application unix socket */
-	apps_sock = lttcomm_create_unix_sock(
-			the_config.apps_unix_sock_path.value);
+	apps_sock = lttcomm_create_unix_sock(the_config.apps_unix_sock_path.value);
 	if (apps_sock < 0) {
-		ERR("Create unix sock failed: %s",
-				the_config.apps_unix_sock_path.value);
+		ERR("Create unix sock failed: %s", the_config.apps_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -56,17 +55,16 @@ static int create_application_socket(void)
 	ret = utils_set_fd_cloexec(apps_sock);
 	if (ret < 0) {
 		ERR("Unable to set CLOEXEC flag to the app Unix socket (fd: %d). "
-				"Continuing but note that the consumer daemon will have a "
-				"reference to this socket on exec()", apps_sock);
+		    "Continuing but note that the consumer daemon will have a "
+		    "reference to this socket on exec()",
+		    apps_sock);
 	}
 
 	/* File permission MUST be 666 */
 	ret = chmod(the_config.apps_unix_sock_path.value,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH |
-					S_IWOTH);
+		    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (ret < 0) {
-		PERROR("Set file permissions failed on %s",
-				the_config.apps_unix_sock_path.value);
+		PERROR("Set file permissions failed on %s", the_config.apps_unix_sock_path.value);
 		goto error_close_socket;
 	}
 
@@ -93,8 +91,7 @@ static int notify_ust_apps(int active, bool is_root)
 	DBG("Notifying applications of session daemon state: %d", active);
 
 	/* See shm.c for this call implying mmap, shm and futex calls */
-	wait_shm_mmap = shm_ust_get_mmap(
-			the_config.wait_shm_path.value, is_root);
+	wait_shm_mmap = shm_ust_get_mmap(the_config.wait_shm_path.value, is_root);
 	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
@@ -164,8 +161,7 @@ static void *thread_application_registration(void *data)
 	const bool is_root = (getuid() == 0);
 	struct thread_state *thread_state = (struct thread_state *) data;
 	const int application_socket = thread_state->application_socket;
-	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
-			thread_state->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(thread_state->quit_pipe);
 
 	DBG("[thread] Manage application registration started");
 
@@ -253,10 +249,10 @@ static void *thread_application_registration(void *data)
 				 * parameter.
 				 */
 				if (the_config.app_socket_timeout >= 0) {
-					(void) lttcomm_setsockopt_rcv_timeout(sock,
-							the_config.app_socket_timeout * 1000);
-					(void) lttcomm_setsockopt_snd_timeout(sock,
-							the_config.app_socket_timeout * 1000);
+					(void) lttcomm_setsockopt_rcv_timeout(
+						sock, the_config.app_socket_timeout * 1000);
+					(void) lttcomm_setsockopt_snd_timeout(
+						sock, the_config.app_socket_timeout * 1000);
 				}
 
 				/*
@@ -312,11 +308,15 @@ static void *thread_application_registration(void *data)
 				sock = -1;
 
 				DBG("UST registration received with pid:%d ppid:%d uid:%d"
-						" gid:%d sock:%d name:%s (version %d.%d)",
-						ust_cmd->reg_msg.pid, ust_cmd->reg_msg.ppid,
-						ust_cmd->reg_msg.uid, ust_cmd->reg_msg.gid,
-						ust_cmd->sock, ust_cmd->reg_msg.name,
-						ust_cmd->reg_msg.major, ust_cmd->reg_msg.minor);
+				    " gid:%d sock:%d name:%s (version %d.%d)",
+				    ust_cmd->reg_msg.pid,
+				    ust_cmd->reg_msg.ppid,
+				    ust_cmd->reg_msg.uid,
+				    ust_cmd->reg_msg.gid,
+				    ust_cmd->sock,
+				    ust_cmd->reg_msg.name,
+				    ust_cmd->reg_msg.major,
+				    ust_cmd->reg_msg.minor);
 
 				/*
 				 * Lock free enqueue the registration request. The red pill
@@ -324,9 +324,8 @@ static void *thread_application_registration(void *data)
 				 */
 				cds_wfcq_head_ptr_t head;
 				head.h = &thread_state->ust_cmd_queue->head;
-				cds_wfcq_enqueue(head,
-						&thread_state->ust_cmd_queue->tail,
-						&ust_cmd->node);
+				cds_wfcq_enqueue(
+					head, &thread_state->ust_cmd_queue->tail, &ust_cmd->node);
 
 				/*
 				 * Wake the registration queue futex. Implicit memory
@@ -382,8 +381,7 @@ static bool shutdown_application_registration_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-struct lttng_thread *launch_application_registration_thread(
-		struct ust_cmd_queue *cmd_queue)
+struct lttng_thread *launch_application_registration_thread(struct ust_cmd_queue *cmd_queue)
 {
 	int ret;
 	struct lttng_pipe *quit_pipe;
@@ -410,10 +408,10 @@ struct lttng_thread *launch_application_registration_thread(
 	sem_init(&thread_state->ready, 0, 0);
 
 	thread = lttng_thread_create("UST application registration",
-			thread_application_registration,
-			shutdown_application_registration_thread,
-			cleanup_application_registration_thread,
-			thread_state);
+				     thread_application_registration,
+				     shutdown_application_registration_thread,
+				     cleanup_application_registration_thread,
+				     thread_state);
 	if (!thread) {
 		goto error;
 	}
@@ -432,8 +430,8 @@ struct lttng_thread *launch_application_registration_thread(
 	ret = notify_ust_apps(1, is_root);
 	if (ret < 0) {
 		ERR("Failed to notify applications or create the wait shared memory.\n"
-			"Execution continues but there might be problems for already\n"
-			"running applications that wishes to register.");
+		    "Execution continues but there might be problems for already\n"
+		    "running applications that wishes to register.");
 	}
 
 	return thread;

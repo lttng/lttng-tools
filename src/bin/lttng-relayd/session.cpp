@@ -8,23 +8,23 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.hpp>
-#include <common/compat/path.hpp>
-#include <common/fd-tracker/utils.hpp>
-#include <common/time.hpp>
-#include <common/utils.hpp>
-#include <common/uuid.hpp>
-#include <urcu/rculist.h>
-
-#include <sys/stat.h>
-
 #include "ctf-trace.hpp"
 #include "lttng-relayd.hpp"
 #include "session.hpp"
 #include "sessiond-trace-chunks.hpp"
 #include "stream.hpp"
-#include <common/defaults.hpp>
 #include "utils.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/path.hpp>
+#include <common/defaults.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/time.hpp>
+#include <common/utils.hpp>
+#include <common/uuid.hpp>
+
+#include <sys/stat.h>
+#include <urcu/rculist.h>
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;
@@ -58,27 +58,27 @@ static int init_session_output_path_group_by_host(struct relay_session *session)
 	 * Otherwise, generate the path with session_name-<timestamp>.
 	 */
 	if (session->base_path[0] != '\0') {
-		ret = asprintf(&session_directory, "%s/%s", session->hostname,
-				session->base_path);
+		ret = asprintf(&session_directory, "%s/%s", session->hostname, session->base_path);
 	} else if (session->session_name_contains_creation_time) {
-		ret = asprintf(&session_directory, "%s/%s", session->hostname,
-				session->session_name);
+		ret = asprintf(
+			&session_directory, "%s/%s", session->hostname, session->session_name);
 	} else {
 		char session_creation_datetime[DATETIME_STR_LEN];
 
-		ret = time_to_datetime_str(
-				LTTNG_OPTIONAL_GET(session->creation_time),
-				session_creation_datetime,
-				sizeof(session_creation_datetime));
+		ret = time_to_datetime_str(LTTNG_OPTIONAL_GET(session->creation_time),
+					   session_creation_datetime,
+					   sizeof(session_creation_datetime));
 		if (ret) {
 			ERR("Failed to format session creation timestamp while initializing session output directory handle");
 			ret = -1;
 			goto end;
 		}
 
-		ret = asprintf(&session_directory, "%s/%s-%s",
-				session->hostname, session->session_name,
-				session_creation_datetime);
+		ret = asprintf(&session_directory,
+			       "%s/%s-%s",
+			       session->hostname,
+			       session->session_name,
+			       session_creation_datetime);
 	}
 	if (ret < 0) {
 		PERROR("Failed to format session directory name");
@@ -98,8 +98,7 @@ end:
 	return ret;
 }
 
-static int init_session_output_path_group_by_session(
-		struct relay_session *session)
+static int init_session_output_path_group_by_session(struct relay_session *session)
 {
 	/*
 	 * session_directory:
@@ -120,18 +119,21 @@ static int init_session_output_path_group_by_session(
 	}
 
 	ret = time_to_datetime_str(LTTNG_OPTIONAL_GET(session->creation_time),
-			creation_datetime, sizeof(creation_datetime));
+				   creation_datetime,
+				   sizeof(creation_datetime));
 	if (ret) {
 		ERR("Failed to format session creation timestamp while initializing session output directory handle");
 		ret = -1;
 		goto end;
 	}
 
-	ret = asprintf(&session_directory, "%s/%s-%s%s%s",
-			session->session_name, session->hostname,
-			creation_datetime,
-			session->base_path[0] != '\0' ? "/" : "",
-			session->base_path);
+	ret = asprintf(&session_directory,
+		       "%s/%s-%s%s%s",
+		       session->session_name,
+		       session->hostname,
+		       creation_datetime,
+		       session->base_path[0] != '\0' ? "/" : "",
+		       session->base_path);
 	if (ret < 0) {
 		PERROR("Failed to format session directory name");
 		goto end;
@@ -171,8 +173,8 @@ static int init_session_output_path(struct relay_session *session)
 	return ret;
 }
 
-static struct lttng_directory_handle *session_create_output_directory_handle(
-		struct relay_session *session)
+static struct lttng_directory_handle *
+session_create_output_directory_handle(struct relay_session *session)
 {
 	int ret;
 	/*
@@ -188,11 +190,9 @@ static struct lttng_directory_handle *session_create_output_directory_handle(
 		goto end;
 	}
 
-	ret = utils_mkdir_recursive(
-			full_session_path, S_IRWXU | S_IRWXG, -1, -1);
+	ret = utils_mkdir_recursive(full_session_path, S_IRWXU | S_IRWXG, -1, -1);
 	if (ret) {
-		ERR("Failed to create session output path \"%s\"",
-				full_session_path);
+		ERR("Failed to create session output path \"%s\"", full_session_path);
 		goto end;
 	}
 
@@ -260,12 +260,14 @@ static bool is_name_path_safe(const char *name)
 	}
 	/* Does not start with '.'. */
 	if (name[0] == '.') {
-		WARN("Name \"%s\" is not allowed to be used in a path since it starts with '.'", name);
+		WARN("Name \"%s\" is not allowed to be used in a path since it starts with '.'",
+		     name);
 		return false;
 	}
 	/* Does not contain a path-separator. */
 	if (strchr(name, LTTNG_PATH_SEPARATOR)) {
-		WARN("Name \"%s\" is not allowed to be used in a path since it contains a path separator", name);
+		WARN("Name \"%s\" is not allowed to be used in a path since it contains a path separator",
+		     name);
 		return false;
 	}
 
@@ -278,16 +280,17 @@ static bool is_name_path_safe(const char *name)
  * Return allocated session or else NULL.
  */
 struct relay_session *session_create(const char *session_name,
-		const char *hostname, const char *base_path,
-		uint32_t live_timer,
-		bool snapshot,
-		const lttng_uuid& sessiond_uuid,
-		const uint64_t *id_sessiond,
-		const uint64_t *current_chunk_id,
-		const time_t *creation_time,
-		uint32_t major,
-		uint32_t minor,
-		bool session_name_contains_creation_time)
+				     const char *hostname,
+				     const char *base_path,
+				     uint32_t live_timer,
+				     bool snapshot,
+				     const lttng_uuid& sessiond_uuid,
+				     const uint64_t *id_sessiond,
+				     const uint64_t *current_chunk_id,
+				     const time_t *creation_time,
+				     uint32_t major,
+				     uint32_t minor,
+				     bool session_name_contains_creation_time)
 {
 	int ret;
 	struct relay_session *session = NULL;
@@ -305,8 +308,7 @@ struct relay_session *session_create(const char *session_name,
 		goto error;
 	}
 	if (strstr(base_path, "../")) {
-		ERR("Invalid session base path walks up the path hierarchy: \"%s\"",
-				base_path);
+		ERR("Invalid session base path walks up the path hierarchy: \"%s\"", base_path);
 		goto error;
 	}
 
@@ -326,18 +328,15 @@ struct relay_session *session_create(const char *session_name,
 	pthread_mutex_init(&session->lock, NULL);
 	pthread_mutex_init(&session->recv_list_lock, NULL);
 
-	if (lttng_strncpy(session->session_name, session_name,
-			sizeof(session->session_name))) {
+	if (lttng_strncpy(session->session_name, session_name, sizeof(session->session_name))) {
 		WARN("Session name exceeds maximal allowed length");
 		goto error;
 	}
-	if (lttng_strncpy(session->hostname, hostname,
-			sizeof(session->hostname))) {
+	if (lttng_strncpy(session->hostname, hostname, sizeof(session->hostname))) {
 		WARN("Hostname exceeds maximal allowed length");
 		goto error;
 	}
-	if (lttng_strncpy(session->base_path, base_path,
-			sizeof(session->base_path))) {
+	if (lttng_strncpy(session->base_path, base_path, sizeof(session->base_path))) {
 		WARN("Base path exceeds maximal allowed length");
 		goto error;
 	}
@@ -350,8 +349,7 @@ struct relay_session *session_create(const char *session_name,
 			goto error;
 		}
 	}
-	session->session_name_contains_creation_time =
-			session_name_contains_creation_time;
+	session->session_name_contains_creation_time = session_name_contains_creation_time;
 
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->ctf_traces_ht) {
@@ -377,8 +375,8 @@ struct relay_session *session_create(const char *session_name,
 		}
 	}
 
-	ret = sessiond_trace_chunk_registry_session_created(
-			sessiond_trace_chunk_registry, sessiond_uuid);
+	ret = sessiond_trace_chunk_registry_session_created(sessiond_trace_chunk_registry,
+							    sessiond_uuid);
 	if (ret) {
 		goto error;
 	}
@@ -388,24 +386,24 @@ struct relay_session *session_create(const char *session_name,
 		struct lttng_directory_handle *session_output_directory;
 
 		session->current_trace_chunk =
-				sessiond_trace_chunk_registry_get_chunk(
-					sessiond_trace_chunk_registry,
-					session->sessiond_uuid,
-					session->id_sessiond.value,
-					*current_chunk_id);
+			sessiond_trace_chunk_registry_get_chunk(sessiond_trace_chunk_registry,
+								session->sessiond_uuid,
+								session->id_sessiond.value,
+								*current_chunk_id);
 		if (!session->current_trace_chunk) {
 			char uuid_str[LTTNG_UUID_STR_LEN];
 
 			lttng_uuid_to_str(sessiond_uuid, uuid_str);
-			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64 ", trace chunk id = %" PRIu64,
-					uuid_str, *id_sessiond,
-					*current_chunk_id);
+			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64
+			    ", trace chunk id = %" PRIu64,
+			    uuid_str,
+			    *id_sessiond,
+			    *current_chunk_id);
 			goto error;
 		}
 
 		chunk_status = lttng_trace_chunk_get_session_output_directory_handle(
-				session->current_trace_chunk,
-				&session_output_directory);
+			session->current_trace_chunk, &session_output_directory);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			goto error;
 		}
@@ -423,8 +421,7 @@ struct relay_session *session_create(const char *session_name,
 			goto error;
 		}
 	} else {
-		session->output_directory =
-				session_create_output_directory_handle(session);
+		session->output_directory = session_create_output_directory_handle(session);
 		if (!session->output_directory) {
 			goto error;
 		}
@@ -506,8 +503,7 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 	 * Sample the 'ongoing_rotation' status of all relay sessions that
 	 * originate from the same session daemon session.
 	 */
-	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, iterated_session,
-			session_n.node) {
+	cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, iterated_session, session_n.node) {
 		if (!session_get(iterated_session)) {
 			continue;
 		}
@@ -533,7 +529,7 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 		}
 
 		if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
-				LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
+		    LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
 			/*
 			 * Sessions do not originate from the same sessiond
 			 * session.
@@ -543,9 +539,9 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 
 		ongoing_rotation = iterated_session->ongoing_rotation;
 
-next_session:
+	next_session:
 		pthread_mutex_unlock(&iterated_session->lock);
-next_session_no_unlock:
+	next_session_no_unlock:
 		session_put(iterated_session);
 
 		if (ongoing_rotation) {
@@ -560,9 +556,7 @@ end:
 
 static void rcu_destroy_session(struct rcu_head *rcu_head)
 {
-	struct relay_session *session =
-			caa_container_of(rcu_head, struct relay_session,
-				rcu_node);
+	struct relay_session *session = caa_container_of(rcu_head, struct relay_session, rcu_node);
 	/*
 	 * Since each trace has a reference on the session, it means
 	 * that if we are at the point where we teardown the session, no
@@ -587,7 +581,6 @@ static int session_delete(struct relay_session *session)
 	return lttng_ht_del(sessions_ht, &iter);
 }
 
-
 static void destroy_session(struct relay_session *session)
 {
 	int ret;
@@ -598,8 +591,8 @@ static void destroy_session(struct relay_session *session)
 	session->current_trace_chunk = NULL;
 	lttng_trace_chunk_put(session->pending_closure_trace_chunk);
 	session->pending_closure_trace_chunk = NULL;
-	ret = sessiond_trace_chunk_registry_session_destroyed(
-			sessiond_trace_chunk_registry, session->sessiond_uuid);
+	ret = sessiond_trace_chunk_registry_session_destroyed(sessiond_trace_chunk_registry,
+							      session->sessiond_uuid);
 	LTTNG_ASSERT(!ret);
 	lttng_directory_handle_put(session->output_directory);
 	session->output_directory = NULL;
@@ -608,8 +601,7 @@ static void destroy_session(struct relay_session *session)
 
 static void session_release(struct urcu_ref *ref)
 {
-	struct relay_session *session =
-			lttng::utils::container_of(ref, &relay_session::ref);
+	struct relay_session *session = lttng::utils::container_of(ref, &relay_session::ref);
 
 	destroy_session(session);
 }
@@ -633,20 +625,20 @@ int session_close(struct relay_session *session)
 
 	pthread_mutex_lock(&session->lock);
 	DBG("closing session %" PRIu64 ": is conn already closed %d",
-			session->id, session->connection_closed);
+	    session->id,
+	    session->connection_closed);
 	session->connection_closed = true;
 	pthread_mutex_unlock(&session->lock);
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(session->ctf_traces_ht->ht,
-			&iter.iter, trace, node.node) {
+	cds_lfht_for_each_entry (session->ctf_traces_ht->ht, &iter.iter, trace, node.node) {
 		ret = ctf_trace_close(trace);
 		if (ret) {
 			goto rcu_unlock;
 		}
 	}
-	cds_list_for_each_entry_rcu(stream, &session->recv_list,
-			recv_node) {
+	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
+	{
 		/* Close streams which have not been published yet. */
 		try_stream_close(stream);
 	}
@@ -685,15 +677,14 @@ void print_sessions(void)
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(sessions_ht->ht, &iter.iter, session,
-			session_n.node) {
+	cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
 		if (!session_get(session)) {
 			continue;
 		}
 		DBG("session %p refcount %ld session %" PRIu64,
-			session,
-			session->ref.refcount,
-			session->id);
+		    session,
+		    session->ref.refcount,
+		    session->id);
 		session_put(session);
 	}
 	rcu_read_unlock();

@@ -6,16 +6,16 @@
  */
 
 #define _LGPL_SOURCE
-#include <stddef.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <sys/resource.h>
-#include <pthread.h>
-#include <algorithm>
-
 #include "defaults.hpp"
-#include "macros.hpp"
 #include "error.hpp"
+#include "macros.hpp"
+
+#include <algorithm>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 static int pthread_attr_init_done;
 static pthread_attr_t tattr;
@@ -90,16 +90,15 @@ static void __attribute__((constructor)) init_default_pthread_attr(void)
 		goto error_destroy;
 	}
 	DBG("Stack size limits: soft %lld, hard %lld bytes",
-			(long long) rlim.rlim_cur,
-			(long long) rlim.rlim_max);
+	    (long long) rlim.rlim_cur,
+	    (long long) rlim.rlim_max);
 
 	/*
 	 * getrlimit() may return a stack size of "-1", meaning "unlimited".
 	 * In this case, we impose a known-good default minimum value which will
 	 * override the libc's default stack size if it is smaller.
 	 */
-	system_ss = rlim.rlim_cur != -1 ? rlim.rlim_cur :
-			DEFAULT_LTTNG_THREAD_STACK_SIZE;
+	system_ss = rlim.rlim_cur != -1 ? rlim.rlim_cur : DEFAULT_LTTNG_THREAD_STACK_SIZE;
 
 	/* Get pthread default thread stack size. */
 	ret = pthread_attr_getstacksize(&tattr, &pthread_ss);
@@ -112,13 +111,14 @@ static void __attribute__((constructor)) init_default_pthread_attr(void)
 	selected_ss = std::max(pthread_ss, system_ss);
 	if (selected_ss < DEFAULT_LTTNG_THREAD_STACK_SIZE) {
 		DBG("Default stack size is too small, setting it to %zu bytes",
-			(size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
+		    (size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
 		selected_ss = DEFAULT_LTTNG_THREAD_STACK_SIZE;
 	}
 
 	if (rlim.rlim_max > 0 && selected_ss > rlim.rlim_max) {
 		WARN("Your system's stack size restrictions (%zu bytes) may be too low for the LTTng daemons to function properly, please set the stack size limit to at least %zu bytes to ensure reliable operation",
-			(size_t) rlim.rlim_max, (size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
+		     (size_t) rlim.rlim_max,
+		     (size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
 		selected_ss = (size_t) rlim.rlim_max;
 	}
 

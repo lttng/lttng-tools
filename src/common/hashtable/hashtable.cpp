@@ -6,15 +6,15 @@
  */
 
 #define _LGPL_SOURCE
-#include <string.h>
-#include <urcu.h>
-#include <urcu/compiler.h>
+#include "hashtable.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 
-#include "hashtable.hpp"
-#include "utils.hpp"
+#include <string.h>
+#include <urcu.h>
+#include <urcu/compiler.h>
 
 /* seed_lock protects both seed_init and lttng_ht_seed. */
 static pthread_mutex_t seed_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -74,8 +74,7 @@ static int match_two_u64(struct cds_lfht_node *node, const void *key)
 	return hash_match_key_two_u64((void *) &match_node->key, (void *) key);
 }
 
-static inline
-const char *lttng_ht_type_str(enum lttng_ht_type type)
+static inline const char *lttng_ht_type_str(enum lttng_ht_type type)
 {
 	switch (type) {
 	case LTTNG_HT_TYPE_STRING:
@@ -116,8 +115,11 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 		goto error;
 	}
 
-	ht->ht = cds_lfht_new(size, min_hash_alloc_size, max_hash_buckets_size,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	ht->ht = cds_lfht_new(size,
+			      min_hash_alloc_size,
+			      max_hash_buckets_size,
+			      CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING,
+			      NULL);
 	/*
 	 * There is already an assert in the RCU hashtable code so if the ht is
 	 * NULL here there is a *huge* problem.
@@ -147,8 +149,7 @@ struct lttng_ht *lttng_ht_new(unsigned long size, lttng_ht_type type)
 		goto error;
 	}
 
-	DBG3("Created hashtable size %lu at %p of type %s", size, ht->ht,
-			lttng_ht_type_str(type));
+	DBG3("Created hashtable size %lu at %p of type %s", size, ht->ht, lttng_ht_type_str(type));
 
 	return ht;
 
@@ -182,8 +183,7 @@ void lttng_ht_node_init_str(struct lttng_ht_node_str *node, char *key)
 /*
  * Init lttng ht node unsigned long.
  */
-void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
-		unsigned long key)
+void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node, unsigned long key)
 {
 	LTTNG_ASSERT(node);
 
@@ -194,8 +194,7 @@ void lttng_ht_node_init_ulong(struct lttng_ht_node_ulong *node,
 /*
  * Init lttng ht node uint64_t.
  */
-void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
-		uint64_t key)
+void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node, uint64_t key)
 {
 	LTTNG_ASSERT(node);
 
@@ -206,8 +205,7 @@ void lttng_ht_node_init_u64(struct lttng_ht_node_u64 *node,
 /*
  * Init lttng ht node with two uint64_t.
  */
-void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node,
-		uint64_t key1, uint64_t key2)
+void lttng_ht_node_init_two_u64(struct lttng_ht_node_two_u64 *node, uint64_t key1, uint64_t key2)
 {
 	LTTNG_ASSERT(node);
 
@@ -255,21 +253,18 @@ void lttng_ht_node_free_two_u64(struct lttng_ht_node_two_u64 *node)
 /*
  * Lookup function in hashtable.
  */
-void lttng_ht_lookup(struct lttng_ht *ht, const void *key,
-		struct lttng_ht_iter *iter)
+void lttng_ht_lookup(struct lttng_ht *ht, const void *key, struct lttng_ht_iter *iter)
 {
 	LTTNG_ASSERT(ht);
 	LTTNG_ASSERT(ht->ht);
 
-	cds_lfht_lookup(ht->ht, ht->hash_fct(key, lttng_ht_seed),
-			ht->match_fct, key, &iter->iter);
+	cds_lfht_lookup(ht->ht, ht->hash_fct(key, lttng_ht_seed), ht->match_fct, key, &iter->iter);
 }
 
 /*
  * Add unique string node to hashtable.
  */
-void lttng_ht_add_unique_str(struct lttng_ht *ht,
-		struct lttng_ht_node_str *node)
+void lttng_ht_add_unique_str(struct lttng_ht *ht, struct lttng_ht_node_str *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -278,8 +273,11 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
-	node_ptr = cds_lfht_add_unique(ht->ht, ht->hash_fct(node->key, lttng_ht_seed),
-			ht->match_fct, node->key, &node->node);
+	node_ptr = cds_lfht_add_unique(ht->ht,
+				       ht->hash_fct(node->key, lttng_ht_seed),
+				       ht->match_fct,
+				       node->key,
+				       &node->node);
 	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -287,8 +285,7 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht,
 /*
  * Add string node to hashtable.
  */
-void lttng_ht_add_str(struct lttng_ht *ht,
-		struct lttng_ht_node_str *node)
+void lttng_ht_add_str(struct lttng_ht *ht, struct lttng_ht_node_str *node)
 {
 	LTTNG_ASSERT(ht);
 	LTTNG_ASSERT(ht->ht);
@@ -296,8 +293,7 @@ void lttng_ht_add_str(struct lttng_ht *ht,
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
-	cds_lfht_add(ht->ht, ht->hash_fct(node->key, lttng_ht_seed),
-			&node->node);
+	cds_lfht_add(ht->ht, ht->hash_fct(node->key, lttng_ht_seed), &node->node);
 	rcu_read_unlock();
 }
 
@@ -312,8 +308,7 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
-	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, lttng_ht_seed),
-			&node->node);
+	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, lttng_ht_seed), &node->node);
 	rcu_read_unlock();
 }
 
@@ -328,16 +323,14 @@ void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
-	cds_lfht_add(ht->ht, ht->hash_fct(&node->key, lttng_ht_seed),
-			&node->node);
+	cds_lfht_add(ht->ht, ht->hash_fct(&node->key, lttng_ht_seed), &node->node);
 	rcu_read_unlock();
 }
 
 /*
  * Add unique unsigned long node to hashtable.
  */
-void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
-		struct lttng_ht_node_ulong *node)
+void lttng_ht_add_unique_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -347,8 +340,10 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_unique(ht->ht,
-			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
-			(void *) node->key, &node->node);
+				       ht->hash_fct((void *) node->key, lttng_ht_seed),
+				       ht->match_fct,
+				       (void *) node->key,
+				       &node->node);
 	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -356,8 +351,7 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht,
 /*
  * Add unique uint64_t node to hashtable.
  */
-void lttng_ht_add_unique_u64(struct lttng_ht *ht,
-		struct lttng_ht_node_u64 *node)
+void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -367,8 +361,10 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_unique(ht->ht,
-			ht->hash_fct(&node->key, lttng_ht_seed), ht->match_fct,
-			&node->key, &node->node);
+				       ht->hash_fct(&node->key, lttng_ht_seed),
+				       ht->match_fct,
+				       &node->key,
+				       &node->node);
 	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -376,8 +372,7 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht,
 /*
  * Add unique two uint64_t node to hashtable.
  */
-void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
-		struct lttng_ht_node_two_u64 *node)
+void lttng_ht_add_unique_two_u64(struct lttng_ht *ht, struct lttng_ht_node_two_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -387,8 +382,10 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_unique(ht->ht,
-			ht->hash_fct((void *) &node->key, lttng_ht_seed), ht->match_fct,
-			(void *) &node->key, &node->node);
+				       ht->hash_fct((void *) &node->key, lttng_ht_seed),
+				       ht->match_fct,
+				       (void *) &node->key,
+				       &node->node);
 	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
@@ -397,7 +394,7 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht,
  * Add replace unsigned long node to hashtable.
  */
 struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
-		struct lttng_ht_node_ulong *node)
+						       struct lttng_ht_node_ulong *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -407,8 +404,10 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_replace(ht->ht,
-			ht->hash_fct((void *) node->key, lttng_ht_seed), ht->match_fct,
-			(void *) node->key, &node->node);
+					ht->hash_fct((void *) node->key, lttng_ht_seed),
+					ht->match_fct,
+					(void *) node->key,
+					&node->node);
 	rcu_read_unlock();
 	if (!node_ptr) {
 		return NULL;
@@ -422,7 +421,7 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
  * Add replace unsigned long node to hashtable.
  */
 struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
-		struct lttng_ht_node_u64 *node)
+						   struct lttng_ht_node_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -432,8 +431,10 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 	/* RCU read lock protects from ABA. */
 	rcu_read_lock();
 	node_ptr = cds_lfht_add_replace(ht->ht,
-			ht->hash_fct(&node->key, lttng_ht_seed), ht->match_fct,
-			&node->key, &node->node);
+					ht->hash_fct(&node->key, lttng_ht_seed),
+					ht->match_fct,
+					&node->key,
+					&node->node);
 	rcu_read_unlock();
 	if (!node_ptr) {
 		return NULL;
@@ -507,8 +508,7 @@ unsigned long lttng_ht_get_count(struct lttng_ht *ht)
 /*
  * Return lttng ht string node from iterator.
  */
-struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
-		struct lttng_ht_iter *iter)
+struct lttng_ht_node_str *lttng_ht_iter_get_node_str(struct lttng_ht_iter *iter)
 {
 	struct cds_lfht_node *node;
 
@@ -523,8 +523,7 @@ struct lttng_ht_node_str *lttng_ht_iter_get_node_str(
 /*
  * Return lttng ht unsigned long node from iterator.
  */
-struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
-		struct lttng_ht_iter *iter)
+struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(struct lttng_ht_iter *iter)
 {
 	struct cds_lfht_node *node;
 
@@ -539,8 +538,7 @@ struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(
 /*
  * Return lttng ht unsigned long node from iterator.
  */
-struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
-		struct lttng_ht_iter *iter)
+struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(struct lttng_ht_iter *iter)
 {
 	struct cds_lfht_node *node;
 
@@ -555,8 +553,7 @@ struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(
 /*
  * Return lttng ht stream and index id node from iterator.
  */
-struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(
-		struct lttng_ht_iter *iter)
+struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(struct lttng_ht_iter *iter)
 {
 	struct cds_lfht_node *node;
 

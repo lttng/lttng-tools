@@ -6,34 +6,34 @@
  *
  */
 
-#include <getopt.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <common/compat/endian.hpp>
-#include <inttypes.h>
-#include <stdbool.h>
-
-#include <version.hpp>
-#include <lttng/lttng.h>
 #include <common/common.hpp>
+#include <common/compat/endian.hpp>
 #include <common/spawn-viewer.hpp>
 #include <common/utils.hpp>
 
-#define COPY_BUFLEN		4096
-#define RB_CRASH_DUMP_ABI_LEN	32
+#include <lttng/lttng.h>
 
-#define RB_CRASH_DUMP_ABI_MAGIC_LEN	16
+#include <ctype.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <version.hpp>
+
+#define COPY_BUFLEN	      4096
+#define RB_CRASH_DUMP_ABI_LEN 32
+
+#define RB_CRASH_DUMP_ABI_MAGIC_LEN 16
 
 /*
  * The 128-bit magic number is xor'd in the process data so it does not
@@ -42,29 +42,28 @@
  *   0x17, 0x7B, 0xF1, 0x77, 0xBF, 0x17, 0x7B, 0xF1,
  *   0x77, 0xBF, 0x17, 0x7B, 0xF1, 0x77, 0xBF, 0x17,
  */
-#define RB_CRASH_DUMP_ABI_MAGIC_XOR					\
-	{								\
-		0x17 ^ 0xFF, 0x7B ^ 0xFF, 0xF1 ^ 0xFF, 0x77 ^ 0xFF,	\
-		0xBF ^ 0xFF, 0x17 ^ 0xFF, 0x7B ^ 0xFF, 0xF1 ^ 0xFF,	\
-		0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF, 0x7B ^ 0xFF,	\
-		0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF,	\
+#define RB_CRASH_DUMP_ABI_MAGIC_XOR                                                           \
+	{                                                                                     \
+		0x17 ^ 0xFF, 0x7B ^ 0xFF, 0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF, \
+			0x7B ^ 0xFF, 0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF,      \
+			0x7B ^ 0xFF, 0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF,      \
 	}
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-crash.1.h>
 #else
-NULL
+	NULL
 #endif
-;
+	;
 
 /*
  * Non-static to ensure the compiler does not optimize away the xor.
  */
 uint8_t lttng_crash_expected_magic_xor[] = RB_CRASH_DUMP_ABI_MAGIC_XOR;
 
-#define RB_CRASH_ENDIAN			0x1234
-#define RB_CRASH_ENDIAN_REVERSE		0x3412
+#define RB_CRASH_ENDIAN		0x1234
+#define RB_CRASH_ENDIAN_REVERSE 0x3412
 
 enum lttng_crash_type {
 	LTTNG_CRASH_TYPE_UST = 0,
@@ -73,43 +72,43 @@ enum lttng_crash_type {
 
 /* LTTng ring buffer defines (copied) */
 
-#define HALF_ULONG_BITS(wl)	(((wl) * CHAR_BIT) >> 1)
+#define HALF_ULONG_BITS(wl) (((wl) *CHAR_BIT) >> 1)
 
-#define SB_ID_OFFSET_SHIFT(wl)	(HALF_ULONG_BITS(wl) + 1)
-#define SB_ID_OFFSET_COUNT(wl)	(1UL << SB_ID_OFFSET_SHIFT(wl))
-#define SB_ID_OFFSET_MASK(wl)	(~(SB_ID_OFFSET_COUNT(wl) - 1))
+#define SB_ID_OFFSET_SHIFT(wl) (HALF_ULONG_BITS(wl) + 1)
+#define SB_ID_OFFSET_COUNT(wl) (1UL << SB_ID_OFFSET_SHIFT(wl))
+#define SB_ID_OFFSET_MASK(wl)  (~(SB_ID_OFFSET_COUNT(wl) - 1))
 /*
  * Lowest bit of top word half belongs to noref. Used only for overwrite mode.
  */
-#define SB_ID_NOREF_SHIFT(wl)	(SB_ID_OFFSET_SHIFT(wl) - 1)
-#define SB_ID_NOREF_COUNT(wl)	(1UL << SB_ID_NOREF_SHIFT(wl))
-#define SB_ID_NOREF_MASK(wl)	SB_ID_NOREF_COUNT(wl)
+#define SB_ID_NOREF_SHIFT(wl) (SB_ID_OFFSET_SHIFT(wl) - 1)
+#define SB_ID_NOREF_COUNT(wl) (1UL << SB_ID_NOREF_SHIFT(wl))
+#define SB_ID_NOREF_MASK(wl)  SB_ID_NOREF_COUNT(wl)
 /*
  * In overwrite mode: lowest half of word is used for index.
  * Limit of 2^16 subbuffers per buffer on 32-bit, 2^32 on 64-bit.
  * In producer-consumer mode: whole word used for index.
  */
-#define SB_ID_INDEX_SHIFT(wl)	0
-#define SB_ID_INDEX_COUNT(wl)	(1UL << SB_ID_INDEX_SHIFT(wl))
-#define SB_ID_INDEX_MASK(wl)	(SB_ID_NOREF_COUNT(wl) - 1)
+#define SB_ID_INDEX_SHIFT(wl) 0
+#define SB_ID_INDEX_COUNT(wl) (1UL << SB_ID_INDEX_SHIFT(wl))
+#define SB_ID_INDEX_MASK(wl)  (SB_ID_NOREF_COUNT(wl) - 1)
 
 enum rb_modes {
-	RING_BUFFER_OVERWRITE = 0,      /* Overwrite when buffer full */
-	RING_BUFFER_DISCARD = 1,        /* Discard when buffer full */
+	RING_BUFFER_OVERWRITE = 0, /* Overwrite when buffer full */
+	RING_BUFFER_DISCARD = 1, /* Discard when buffer full */
 };
 
 namespace {
 struct crash_abi_unknown {
 	uint8_t magic[RB_CRASH_DUMP_ABI_MAGIC_LEN];
-	uint64_t mmap_length;	/* Overall length of crash record */
-	uint16_t endian;	/*
-				 * { 0x12, 0x34 }: big endian
-				 * { 0x34, 0x12 }: little endian
-				 */
-	uint16_t major;		/* Major number. */
-	uint16_t minor;		/* Minor number. */
-	uint8_t word_size;	/* Word size (bytes). */
-	uint8_t layout_type;	/* enum lttng_crash_layout */
+	uint64_t mmap_length; /* Overall length of crash record */
+	uint16_t endian; /*
+			  * { 0x12, 0x34 }: big endian
+			  * { 0x34, 0x12 }: little endian
+			  */
+	uint16_t major; /* Major number. */
+	uint16_t minor; /* Minor number. */
+	uint8_t word_size; /* Word size (bytes). */
+	uint8_t layout_type; /* enum lttng_crash_layout */
 } __attribute__((packed));
 
 struct crash_abi_0_0 {
@@ -144,26 +143,21 @@ struct crash_abi_0_0 {
 		uint32_t sb_array;
 	} __attribute__((packed)) stride;
 
-	uint64_t buf_size;	/* Size of the buffer */
-	uint64_t subbuf_size;	/* Sub-buffer size */
-	uint64_t num_subbuf;	/* Number of sub-buffers for writer */
-	uint32_t mode;		/* Buffer mode: 0: overwrite, 1: discard */
+	uint64_t buf_size; /* Size of the buffer */
+	uint64_t subbuf_size; /* Sub-buffer size */
+	uint64_t num_subbuf; /* Number of sub-buffers for writer */
+	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
 } __attribute__((packed));
 
 struct lttng_crash_layout {
 	struct {
-		int prod_offset, consumed_offset,
-			commit_hot_array, commit_hot_seq,
-			buf_wsb_array, buf_wsb_id,
-			sb_array, sb_array_shmp_offset,
-			sb_backend_p_offset, content_size,
-			packet_size;
+		int prod_offset, consumed_offset, commit_hot_array, commit_hot_seq, buf_wsb_array,
+			buf_wsb_id, sb_array, sb_array_shmp_offset, sb_backend_p_offset,
+			content_size, packet_size;
 	} offset;
 	struct {
-		int prod_offset, consumed_offset,
-			commit_hot_seq, buf_wsb_id,
-			sb_array_shmp_offset, sb_backend_p_offset,
-			content_size, packet_size;
+		int prod_offset, consumed_offset, commit_hot_seq, buf_wsb_id, sb_array_shmp_offset,
+			sb_backend_p_offset, content_size, packet_size;
 	} length;
 	struct {
 		int commit_hot_array, buf_wsb_array, sb_array;
@@ -172,11 +166,11 @@ struct lttng_crash_layout {
 	int reverse_byte_order;
 	int word_size;
 
-	uint64_t mmap_length;	/* Length of crash record */
-	uint64_t buf_size;	/* Size of the buffer */
-	uint64_t subbuf_size;	/* Sub-buffer size */
-	uint64_t num_subbuf;	/* Number of sub-buffers for writer */
-	uint32_t mode;		/* Buffer mode: 0: overwrite, 1: discard */
+	uint64_t mmap_length; /* Length of crash record */
+	uint64_t buf_size; /* Size of the buffer */
+	uint64_t subbuf_size; /* Sub-buffer size */
+	uint64_t num_subbuf; /* Number of sub-buffers for writer */
+	uint32_t mode; /* Buffer mode: 0: overwrite, 1: discard */
 };
 } /* namespace */
 
@@ -195,12 +189,9 @@ enum {
 
 /* Getopt options. No first level command. */
 static struct option long_options[] = {
-	{ "version",		0, NULL, 'V' },
-	{ "help",		0, NULL, 'h' },
-	{ "verbose",		0, NULL, 'v' },
-	{ "viewer",		1, NULL, 'e' },
-	{ "extract",		1, NULL, 'x' },
-	{ "list-options",	0, NULL, OPT_DUMP_OPTIONS },
+	{ "version", 0, NULL, 'V' }, { "help", 0, NULL, 'h' },
+	{ "verbose", 0, NULL, 'v' }, { "viewer", 1, NULL, 'e' },
+	{ "extract", 1, NULL, 'x' }, { "list-options", 0, NULL, OPT_DUMP_OPTIONS },
 	{ NULL, 0, NULL, 0 },
 };
 
@@ -217,11 +208,11 @@ static void usage(void)
 
 static void version(FILE *ofp)
 {
-	fprintf(ofp, "%s (LTTng Crash Trace Viewer) " VERSION " - " VERSION_NAME
-			"%s%s\n",
-			progname,
-			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
-			EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
+	fprintf(ofp,
+		"%s (LTTng Crash Trace Viewer) " VERSION " - " VERSION_NAME "%s%s\n",
+		progname,
+		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+		EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 
 /*
@@ -310,8 +301,7 @@ error:
 	return -1;
 }
 
-static
-int copy_file(const char *file_dest, const char *file_src)
+static int copy_file(const char *file_dest, const char *file_src)
 {
 	int fd_src = -1, fd_dest = -1;
 	ssize_t readlen, writelen;
@@ -326,8 +316,7 @@ int copy_file(const char *file_dest, const char *file_src)
 		ret = -errno;
 		goto error;
 	}
-	fd_dest = open(file_dest, O_RDWR | O_CREAT | O_EXCL,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	fd_dest = open(file_dest, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd_dest < 0) {
 		PERROR("Error opening %s for writing", file_dest);
 		ret = -errno;
@@ -368,25 +357,26 @@ error:
 	return ret;
 }
 
-static
-uint64_t _crash_get_field(const struct lttng_crash_layout *layout,
-		const char *ptr, size_t size)
+static uint64_t
+_crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_t size)
 {
 	switch (size) {
-	case 1:	return *(uint8_t *) ptr;
-	case 2:	if (layout->reverse_byte_order) {
+	case 1:
+		return *(uint8_t *) ptr;
+	case 2:
+		if (layout->reverse_byte_order) {
 			return bswap_16(*(uint16_t *) ptr);
 		} else {
 			return *(uint16_t *) ptr;
-
 		}
-	case 4:	if (layout->reverse_byte_order) {
+	case 4:
+		if (layout->reverse_byte_order) {
 			return bswap_32(*(uint32_t *) ptr);
 		} else {
 			return *(uint32_t *) ptr;
-
 		}
-	case 8:	if (layout->reverse_byte_order) {
+	case 8:
+		if (layout->reverse_byte_order) {
 			return bswap_64(*(uint64_t *) ptr);
 		} else {
 			return *(uint64_t *) ptr;
@@ -395,37 +385,30 @@ uint64_t _crash_get_field(const struct lttng_crash_layout *layout,
 		abort();
 		return -1;
 	}
-
 }
 
-#define crash_get_field(layout, map, name)				\
-	_crash_get_field(layout, (map) + (layout)->offset.name,		\
-		layout->length.name)
+#define crash_get_field(layout, map, name) \
+	_crash_get_field(layout, (map) + (layout)->offset.name, layout->length.name)
 
-#define crash_get_array_field(layout, map, array_name, idx, field_name)	\
-	_crash_get_field(layout,					\
-		(map) + (layout)->offset.array_name			\
-			+ (idx * (layout)->stride.array_name)		\
-			+ (layout)->offset.field_name,			\
-		(layout)->length.field_name)
+#define crash_get_array_field(layout, map, array_name, idx, field_name) \
+	_crash_get_field(layout,                                        \
+			 (map) + (layout)->offset.array_name +          \
+				 (idx * (layout)->stride.array_name) +  \
+				 (layout)->offset.field_name,           \
+			 (layout)->length.field_name)
 
-#define crash_get_hdr_raw_field(layout, hdr, name)	((hdr)->name)
+#define crash_get_hdr_raw_field(layout, hdr, name) ((hdr)->name)
 
-#define crash_get_hdr_field(layout, hdr, name)				\
-	_crash_get_field(layout, (const char *) &(hdr)->name,		\
-		sizeof((hdr)->name))
+#define crash_get_hdr_field(layout, hdr, name) \
+	_crash_get_field(layout, (const char *) &(hdr)->name, sizeof((hdr)->name))
 
-#define crash_get_layout(layout, hdr, name)				\
-	do {								\
-		(layout)->name = crash_get_hdr_field(layout, hdr,	\
-					name);				\
-		DBG("layout.%s = %" PRIu64, #name,			\
-			(uint64_t) (layout)->name);			\
+#define crash_get_layout(layout, hdr, name)                                    \
+	do {                                                                   \
+		(layout)->name = crash_get_hdr_field(layout, hdr, name);       \
+		DBG("layout.%s = %" PRIu64, #name, (uint64_t) (layout)->name); \
 	} while (0)
 
-static
-int get_crash_layout_0_0(struct lttng_crash_layout *layout,
-		char *map)
+static int get_crash_layout_0_0(struct lttng_crash_layout *layout, char *map)
 {
 	const struct crash_abi_0_0 *abi = (const struct crash_abi_0_0 *) map;
 
@@ -462,18 +445,28 @@ int get_crash_layout_0_0(struct lttng_crash_layout *layout,
 	return 0;
 }
 
-static
-void print_dbg_magic(const uint8_t *magic)
+static void print_dbg_magic(const uint8_t *magic)
 {
 	DBG("magic: 0x%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X%X",
-		magic[0], magic[1], magic[2], magic[3],
-		magic[4], magic[5], magic[6], magic[7],
-		magic[8], magic[9], magic[10], magic[11],
-		magic[12], magic[13], magic[14], magic[15]);
+	    magic[0],
+	    magic[1],
+	    magic[2],
+	    magic[3],
+	    magic[4],
+	    magic[5],
+	    magic[6],
+	    magic[7],
+	    magic[8],
+	    magic[9],
+	    magic[10],
+	    magic[11],
+	    magic[12],
+	    magic[13],
+	    magic[14],
+	    magic[15]);
 }
 
-static
-int check_magic(const uint8_t *magic)
+static int check_magic(const uint8_t *magic)
 {
 	int i;
 
@@ -485,9 +478,7 @@ int check_magic(const uint8_t *magic)
 	return 0;
 }
 
-static
-int get_crash_layout(struct lttng_crash_layout *layout, int fd,
-		const char *input_file)
+static int get_crash_layout(struct lttng_crash_layout *layout, int fd, const char *input_file)
 {
 	char *map;
 	int ret = 0, unmapret;
@@ -507,14 +498,14 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd,
 	}
 	if (stat.st_size < RB_CRASH_DUMP_ABI_LEN) {
 		ERR("File '%s' truncated: file length of %" PRIi64
-				" bytes does not meet the minimal expected "
-				"length of %d bytes",
-				input_file, (int64_t) stat.st_size,
-				RB_CRASH_DUMP_ABI_LEN);
+		    " bytes does not meet the minimal expected "
+		    "length of %d bytes",
+		    input_file,
+		    (int64_t) stat.st_size,
+		    RB_CRASH_DUMP_ABI_LEN);
 		return -1;
 	}
-	map = (char *) mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE,
-		fd, 0);
+	map = (char *) mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED) {
 		PERROR("Mapping file");
 		return -1;
@@ -524,7 +515,7 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd,
 	print_dbg_magic(magic);
 	if (check_magic(magic)) {
 		DBG("Unknown magic number");
-		ret = 1;	/* positive return value, skip */
+		ret = 1; /* positive return value, skip */
 		goto end;
 	}
 	endian = crash_get_hdr_field(layout, abi, endian);
@@ -536,7 +527,7 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd,
 		break;
 	default:
 		DBG("Unknown endianness value: 0x%X", (unsigned int) endian);
-		ret = 1;	/* positive return value, skip */
+		ret = 1; /* positive return value, skip */
 		goto end;
 	}
 	layout_type = (enum lttng_crash_type) crash_get_hdr_field(layout, abi, layout_type);
@@ -545,11 +536,11 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd,
 		break;
 	case LTTNG_CRASH_TYPE_KERNEL:
 		ERR("lttng-modules buffer layout support not implemented");
-		ret = 1;	/* positive return value, skip */
+		ret = 1; /* positive return value, skip */
 		goto end;
 	default:
 		ERR("Unknown layout type %u", (unsigned int) layout_type);
-		ret = 1;	/* positive return value, skip */
+		ret = 1; /* positive return value, skip */
 		goto end;
 	}
 	mmap_length = crash_get_hdr_field(layout, abi, mmap_length);
@@ -590,43 +581,36 @@ end:
 }
 
 /* buf_trunc mask selects only the buffer number. */
-static inline
-uint64_t buf_trunc(uint64_t offset, uint64_t buf_size)
+static inline uint64_t buf_trunc(uint64_t offset, uint64_t buf_size)
 {
 	return offset & ~(buf_size - 1);
 }
 
 /* subbuf_trunc mask selects the subbuffer number. */
-static inline
-uint64_t subbuf_trunc(uint64_t offset, uint64_t subbuf_size)
+static inline uint64_t subbuf_trunc(uint64_t offset, uint64_t subbuf_size)
 {
 	return offset & ~(subbuf_size - 1);
 }
 
 /* buf_offset mask selects only the offset within the current buffer. */
-static inline
-uint64_t buf_offset(uint64_t offset, uint64_t buf_size)
+static inline uint64_t buf_offset(uint64_t offset, uint64_t buf_size)
 {
 	return offset & (buf_size - 1);
 }
 
 /* subbuf_offset mask selects the offset within the current subbuffer. */
-static inline
-uint64_t subbuf_offset(uint64_t offset, uint64_t subbuf_size)
+static inline uint64_t subbuf_offset(uint64_t offset, uint64_t subbuf_size)
 {
 	return offset & (subbuf_size - 1);
 }
 
 /* subbuf_index returns the index of the current subbuffer within the buffer. */
-static inline
-uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t subbuf_size)
+static inline uint64_t subbuf_index(uint64_t offset, uint64_t buf_size, uint64_t subbuf_size)
 {
 	return buf_offset(offset, buf_size) / subbuf_size;
 }
 
-static inline
-uint64_t subbuffer_id_get_index(uint32_t mode, uint64_t id,
-		unsigned int wl)
+static inline uint64_t subbuffer_id_get_index(uint32_t mode, uint64_t id, unsigned int wl)
 {
 	if (mode == RING_BUFFER_OVERWRITE)
 		return id & SB_ID_INDEX_MASK(wl);
@@ -634,14 +618,11 @@ uint64_t subbuffer_id_get_index(uint32_t mode, uint64_t id,
 		return id;
 }
 
-static
-int copy_crash_subbuf(const struct lttng_crash_layout *layout,
-		int fd_dest, char *buf, uint64_t offset)
+static int
+copy_crash_subbuf(const struct lttng_crash_layout *layout, int fd_dest, char *buf, uint64_t offset)
 {
-	uint64_t buf_size, subbuf_size, num_subbuf, sbidx, id,
-		sb_bindex, rpages_offset, p_offset, seq_cc,
-		committed, commit_count_mask, consumed_cur,
-		packet_size;
+	uint64_t buf_size, subbuf_size, num_subbuf, sbidx, id, sb_bindex, rpages_offset, p_offset,
+		seq_cc, committed, commit_count_mask, consumed_cur, packet_size;
 	char *subbuf_ptr;
 	ssize_t writelen;
 
@@ -656,13 +637,14 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	num_subbuf = layout->num_subbuf;
 
 	switch (layout->word_size) {
-	case 4:	commit_count_mask = 0xFFFFFFFFULL / num_subbuf;
+	case 4:
+		commit_count_mask = 0xFFFFFFFFULL / num_subbuf;
 		break;
-	case 8:	commit_count_mask = 0xFFFFFFFFFFFFFFFFULL / num_subbuf;
+	case 8:
+		commit_count_mask = 0xFFFFFFFFFFFFFFFFULL / num_subbuf;
 		break;
 	default:
-		ERR("Unsupported word size: %u",
-			(unsigned int) layout->word_size);
+		ERR("Unsupported word size: %u", (unsigned int) layout->word_size);
 		return -EINVAL;
 	}
 
@@ -673,16 +655,16 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	 * Find where the seq cc is located. Compute length of data to
 	 * copy.
 	 */
-	seq_cc = crash_get_array_field(layout, buf, commit_hot_array,
-		sbidx, commit_hot_seq);
+	seq_cc = crash_get_array_field(layout, buf, commit_hot_array, sbidx, commit_hot_seq);
 	consumed_cur = crash_get_field(layout, buf, consumed_offset);
 
 	/*
 	 * Check that the buffer we are getting is after or at
 	 * consumed_cur position.
 	 */
-	if ((long) subbuf_trunc(offset, subbuf_size)
-			- (long) subbuf_trunc(consumed_cur, subbuf_size) < 0) {
+	if ((long) subbuf_trunc(offset, subbuf_size) -
+		    (long) subbuf_trunc(consumed_cur, subbuf_size) <
+	    0) {
 		DBG("No data: position is before consumed_cur");
 		goto nodata;
 	}
@@ -690,9 +672,9 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	/*
 	 * Check if subbuffer has been fully committed.
 	 */
-	if (((seq_cc - subbuf_size) & commit_count_mask)
-			- (buf_trunc(offset, buf_size) / num_subbuf)
-			== 0) {
+	if (((seq_cc - subbuf_size) & commit_count_mask) -
+		    (buf_trunc(offset, buf_size) / num_subbuf) ==
+	    0) {
 		committed = subbuf_size;
 	} else {
 		committed = subbuf_offset(seq_cc, subbuf_size);
@@ -703,14 +685,11 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 	}
 
 	/* Find actual physical offset in subbuffer table */
-	id = crash_get_array_field(layout, buf, buf_wsb_array,
-		sbidx, buf_wsb_id);
-	sb_bindex = subbuffer_id_get_index(layout->mode, id,
-		layout->word_size);
-	rpages_offset = crash_get_array_field(layout, buf, sb_array,
-		sb_bindex, sb_array_shmp_offset);
-	p_offset = crash_get_field(layout, buf + rpages_offset,
-		sb_backend_p_offset);
+	id = crash_get_array_field(layout, buf, buf_wsb_array, sbidx, buf_wsb_id);
+	sb_bindex = subbuffer_id_get_index(layout->mode, id, layout->word_size);
+	rpages_offset =
+		crash_get_array_field(layout, buf, sb_array, sb_bindex, sb_array_shmp_offset);
+	p_offset = crash_get_field(layout, buf + rpages_offset, sb_backend_p_offset);
 	subbuf_ptr = buf + p_offset;
 
 	if (committed == subbuf_size) {
@@ -719,8 +698,8 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		 */
 		if (layout->length.packet_size) {
 			memcpy(&packet_size,
-				subbuf_ptr + layout->offset.packet_size,
-				layout->length.packet_size);
+			       subbuf_ptr + layout->offset.packet_size,
+			       layout->length.packet_size);
 			if (layout->reverse_byte_order) {
 				packet_size = bswap_64(packet_size);
 			}
@@ -742,11 +721,13 @@ int copy_crash_subbuf(const struct lttng_crash_layout *layout,
 		}
 		if (layout->length.content_size) {
 			memcpy(subbuf_ptr + layout->offset.content_size,
-				&patch_size, layout->length.content_size);
+			       &patch_size,
+			       layout->length.content_size);
 		}
 		if (layout->length.packet_size) {
 			memcpy(subbuf_ptr + layout->offset.packet_size,
-				&patch_size, layout->length.packet_size);
+			       &patch_size,
+			       layout->length.packet_size);
 		}
 		packet_size = committed;
 	}
@@ -766,9 +747,7 @@ nodata:
 	return -ENODATA;
 }
 
-static
-int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest,
-		int fd_src)
+static int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest, int fd_src)
 {
 	char *buf;
 	int ret = 0, has_data = 0;
@@ -800,8 +779,7 @@ int copy_crash_data(const struct lttng_crash_layout *layout, int fd_dest,
 	DBG("consumed_offset: 0x%" PRIx64, consumed_offset);
 	subbuf_size = layout->subbuf_size;
 
-	for (offset = consumed_offset; offset < prod_offset;
-			offset += subbuf_size) {
+	for (offset = consumed_offset; offset < prod_offset; offset += subbuf_size) {
 		ret = copy_crash_subbuf(layout, fd_dest, buf, offset);
 		if (!ret) {
 			has_data = 1;
@@ -822,20 +800,18 @@ end:
 	}
 }
 
-static
-int extract_file(int output_dir_fd, const char *output_file,
-		int input_dir_fd, const char *input_file)
+static int
+extract_file(int output_dir_fd, const char *output_file, int input_dir_fd, const char *input_file)
 {
 	int fd_dest, fd_src, ret = 0, closeret;
 	struct lttng_crash_layout layout;
 
-	layout.reverse_byte_order = 0;	/* For reading magic number */
+	layout.reverse_byte_order = 0; /* For reading magic number */
 
 	DBG("Extract file '%s'", input_file);
 	fd_src = openat(input_dir_fd, input_file, O_RDONLY);
 	if (fd_src < 0) {
-		PERROR("Error opening '%s' for reading",
-			input_file);
+		PERROR("Error opening '%s' for reading", input_file);
 		ret = -1;
 		goto end;
 	}
@@ -846,12 +822,12 @@ int extract_file(int output_dir_fd, const char *output_file,
 		goto close_src;
 	}
 
-	fd_dest = openat(output_dir_fd, output_file,
-			O_RDWR | O_CREAT | O_EXCL,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	fd_dest = openat(output_dir_fd,
+			 output_file,
+			 O_RDWR | O_CREAT | O_EXCL,
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd_dest < 0) {
-		PERROR("Error opening '%s' for writing",
-			output_file);
+		PERROR("Error opening '%s' for writing", output_file);
 		ret = -1;
 		goto close_src;
 	}
@@ -881,13 +857,11 @@ end:
 	return ret;
 }
 
-static
-int extract_all_files(const char *output_path,
-		const char *input_path)
+static int extract_all_files(const char *output_path, const char *input_path)
 {
 	DIR *input_dir, *output_dir;
 	int input_dir_fd, output_dir_fd, ret = 0, closeret;
-	struct dirent *entry;	/* input */
+	struct dirent *entry; /* input */
 
 	/* Open input directory */
 	input_dir = opendir(input_path);
@@ -914,11 +888,9 @@ int extract_all_files(const char *output_path,
 	}
 
 	while ((entry = readdir(input_dir))) {
-		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, ".."))
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
 			continue;
-		ret = extract_file(output_dir_fd, entry->d_name,
-			input_dir_fd, entry->d_name);
+		ret = extract_file(output_dir_fd, entry->d_name, input_dir_fd, entry->d_name);
 		if (ret == -ENODATA) {
 			DBG("No data in file '%s', skipping", entry->d_name);
 			ret = 0;
@@ -942,9 +914,7 @@ int extract_all_files(const char *output_path,
 	return ret;
 }
 
-static
-int extract_one_trace(const char *output_path,
-		const char *input_path)
+static int extract_one_trace(const char *output_path, const char *input_path)
 {
 	char dest[PATH_MAX], src[PATH_MAX];
 	int ret;
@@ -969,9 +939,7 @@ int extract_one_trace(const char *output_path,
 	return extract_all_files(output_path, input_path);
 }
 
-static
-int extract_trace_recursive(const char *output_path,
-		const char *input_path)
+static int extract_trace_recursive(const char *output_path, const char *input_path)
 {
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
@@ -999,20 +967,19 @@ int extract_trace_recursive(const char *output_path,
 		size_t name_len;
 		char filename[PATH_MAX];
 
-		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, "..")) {
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
 			continue;
 		}
 
 		name_len = strlen(entry->d_name);
 		if (path_len + name_len + 2 > sizeof(filename)) {
 			ERR("Failed to remove file: path name too long (%s/%s)",
-				input_path, entry->d_name);
+			    input_path,
+			    entry->d_name);
 			continue;
 		}
 
-		if (snprintf(filename, sizeof(filename), "%s/%s",
-				input_path, entry->d_name) < 0) {
+		if (snprintf(filename, sizeof(filename), "%s/%s", input_path, entry->d_name) < 0) {
 			ERR("Failed to format path.");
 			continue;
 		}
@@ -1026,12 +993,13 @@ int extract_trace_recursive(const char *output_path,
 			char output_subpath[PATH_MAX];
 			char input_subpath[PATH_MAX];
 
-			strncpy(output_subpath, output_path,
-				sizeof(output_subpath));
+			strncpy(output_subpath, output_path, sizeof(output_subpath));
 			output_subpath[sizeof(output_subpath) - 1] = '\0';
-			strncat(output_subpath, "/",
+			strncat(output_subpath,
+				"/",
 				sizeof(output_subpath) - strlen(output_subpath) - 1);
-			strncat(output_subpath, entry->d_name,
+			strncat(output_subpath,
+				entry->d_name,
 				sizeof(output_subpath) - strlen(output_subpath) - 1);
 
 			ret = mkdir(output_subpath, S_IRWXU | S_IRWXG);
@@ -1041,26 +1009,25 @@ int extract_trace_recursive(const char *output_path,
 				goto end;
 			}
 
-			strncpy(input_subpath, input_path,
-				sizeof(input_subpath));
+			strncpy(input_subpath, input_path, sizeof(input_subpath));
 			input_subpath[sizeof(input_subpath) - 1] = '\0';
-			strncat(input_subpath, "/",
+			strncat(input_subpath,
+				"/",
 				sizeof(input_subpath) - strlen(input_subpath) - 1);
-			strncat(input_subpath, entry->d_name,
+			strncat(input_subpath,
+				entry->d_name,
 				sizeof(input_subpath) - strlen(input_subpath) - 1);
 
-			ret = extract_trace_recursive(output_subpath,
-				input_subpath);
+			ret = extract_trace_recursive(output_subpath, input_subpath);
 			if (ret) {
 				has_warning = 1;
 			}
 		} else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
 			if (!strcmp(entry->d_name, "metadata")) {
-				ret = extract_one_trace(output_path,
-					input_path);
+				ret = extract_one_trace(output_path, input_path);
 				if (ret) {
 					WARN("Error extracting trace '%s', continuing anyway.",
-						input_path);
+					     input_path);
 					has_warning = 1;
 				}
 			}
@@ -1077,8 +1044,7 @@ end:
 	return has_warning;
 }
 
-static
-int delete_dir_recursive(const char *path)
+static int delete_dir_recursive(const char *path)
 {
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
@@ -1090,7 +1056,7 @@ int delete_dir_recursive(const char *path)
 	if (!dir) {
 		PERROR("Cannot open '%s' path", path);
 		ret = -errno;
-	        goto end_no_closedir;
+		goto end_no_closedir;
 	}
 
 	path_len = strlen(path);
@@ -1107,20 +1073,19 @@ int delete_dir_recursive(const char *path)
 		size_t name_len;
 		char filename[PATH_MAX];
 
-		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, "..")) {
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
 			continue;
 		}
 
 		name_len = strlen(entry->d_name);
 		if (path_len + name_len + 2 > sizeof(filename)) {
 			ERR("Failed to remove file: path name too long (%s/%s)",
-				path, entry->d_name);
+			    path,
+			    entry->d_name);
 			continue;
 		}
 
-		if (snprintf(filename, sizeof(filename), "%s/%s",
-				path, entry->d_name) < 0) {
+		if (snprintf(filename, sizeof(filename), "%s/%s", path, entry->d_name) < 0) {
 			ERR("Failed to format path.");
 			continue;
 		}
@@ -1140,10 +1105,8 @@ int delete_dir_recursive(const char *path)
 			}
 			strncpy(subpath, path, PATH_MAX);
 			subpath[PATH_MAX - 1] = '\0';
-			strncat(subpath, "/",
-				        PATH_MAX - strlen(subpath) - 1);
-			strncat(subpath, entry->d_name,
-				        PATH_MAX - strlen(subpath) - 1);
+			strncat(subpath, "/", PATH_MAX - strlen(subpath) - 1);
+			strncat(subpath, entry->d_name, PATH_MAX - strlen(subpath) - 1);
 
 			ret = delete_dir_recursive(subpath);
 			free(subpath);
@@ -1177,8 +1140,7 @@ end_no_closedir:
 	return ret;
 }
 
-static
-int view_trace(const char *trace_path, char *viewer_path)
+static int view_trace(const char *trace_path, char *viewer_path)
 {
 	pid_t pid;
 

@@ -9,24 +9,24 @@
  */
 
 #define _LGPL_SOURCE
-#include <algorithm>
+#include "index.hpp"
+#include "lttng-relayd.hpp"
+#include "stream.hpp"
+#include "viewer-stream.hpp"
+
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/fs-handle.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/utils.hpp>
+
+#include <algorithm>
+#include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <urcu/rculist.h>
 
-#include "lttng-relayd.hpp"
-#include "index.hpp"
-#include "stream.hpp"
-#include "viewer-stream.hpp"
-
-#include <sys/types.h>
-#include <fcntl.h>
-
-#define FILE_IO_STACK_BUFFER_SIZE		65536
+#define FILE_IO_STACK_BUFFER_SIZE 65536
 
 /* Should be called with RCU read-side lock held. */
 bool stream_get(struct relay_stream *stream)
@@ -68,8 +68,7 @@ static void stream_complete_rotation(struct relay_stream *stream)
 	DBG("Rotation completed for stream %" PRIu64, stream->stream_handle);
 	if (stream->ongoing_rotation.value.next_trace_chunk) {
 		tracefile_array_reset(stream->tfa);
-		tracefile_array_commit_seq(stream->tfa,
-				stream->index_received_seqcount);
+		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 	}
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = stream->ongoing_rotation.value.next_trace_chunk;
@@ -77,11 +76,10 @@ static void stream_complete_rotation(struct relay_stream *stream)
 	stream->completed_rotation_count++;
 }
 
-static int stream_create_data_output_file_from_trace_chunk(
-		struct relay_stream *stream,
-		struct lttng_trace_chunk *trace_chunk,
-		bool force_unlink,
-		struct fs_handle **out_file)
+static int stream_create_data_output_file_from_trace_chunk(struct relay_stream *stream,
+							   struct lttng_trace_chunk *trace_chunk,
+							   bool force_unlink,
+							   struct fs_handle **out_file)
 {
 	int ret;
 	char stream_path[LTTNG_PATH_MAX];
@@ -91,9 +89,13 @@ static int stream_create_data_output_file_from_trace_chunk(
 
 	ASSERT_LOCKED(stream->lock);
 
-	ret = utils_stream_file_path(stream->path_name, stream->channel_name,
-			stream->tracefile_size, stream->tracefile_current_index,
-			NULL, stream_path, sizeof(stream_path));
+	ret = utils_stream_file_path(stream->path_name,
+				     stream->channel_name,
+				     stream->tracefile_size,
+				     stream->tracefile_current_index,
+				     NULL,
+				     stream_path,
+				     sizeof(stream_path));
 	if (ret < 0) {
 		goto end;
 	}
@@ -107,10 +109,10 @@ static int stream_create_data_output_file_from_trace_chunk(
 		 * content.
 		 */
 		status = (lttng_trace_chunk_status) lttng_trace_chunk_unlink_file(trace_chunk,
-				stream_path);
+										  stream_path);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			PERROR("Failed to unlink stream file \"%s\" during trace file rotation",
-					stream_path);
+			       stream_path);
 			/*
 			 * Don't abort if the file doesn't exist, it is
 			 * unexpected, but should not be a fatal error.
@@ -122,8 +124,8 @@ static int stream_create_data_output_file_from_trace_chunk(
 		}
 	}
 
-	status = lttng_trace_chunk_open_fs_handle(trace_chunk, stream_path,
-			flags, mode, out_file, false);
+	status = lttng_trace_chunk_open_fs_handle(
+		trace_chunk, stream_path, flags, mode, out_file, false);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to open stream file \"%s\"", stream->channel_name);
 		ret = -1;
@@ -138,7 +140,8 @@ static int stream_rotate_data_file(struct relay_stream *stream)
 	int ret = 0;
 
 	DBG("Rotating stream %" PRIu64 " data file with size %" PRIu64,
-			stream->stream_handle, stream->tracefile_size_current);
+	    stream->stream_handle,
+	    stream->tracefile_size_current);
 
 	if (stream->file) {
 		fs_handle_close(stream->file);
@@ -152,24 +155,27 @@ static int stream_rotate_data_file(struct relay_stream *stream)
 		enum lttng_trace_chunk_status chunk_status;
 
 		chunk_status = lttng_trace_chunk_create_subdirectory(
-				stream->ongoing_rotation.value.next_trace_chunk,
-				stream->path_name);
+			stream->ongoing_rotation.value.next_trace_chunk, stream->path_name);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
 		/* Rotate the data file. */
-		ret = stream_create_data_output_file_from_trace_chunk(stream,
-				stream->ongoing_rotation.value.next_trace_chunk,
-				false, &stream->file);
+		ret = stream_create_data_output_file_from_trace_chunk(
+			stream,
+			stream->ongoing_rotation.value.next_trace_chunk,
+			false,
+			&stream->file);
 		if (ret < 0) {
 			ERR("Failed to rotate stream data file");
 			goto end;
 		}
 	}
 	DBG("%s: reset tracefile_size_current for stream %" PRIu64 " was %" PRIu64,
-			__func__, stream->stream_handle, stream->tracefile_size_current);
+	    __func__,
+	    stream->stream_handle,
+	    stream->tracefile_size_current);
 	stream->tracefile_size_current = 0;
 	stream->pos_after_last_complete_data_index = 0;
 	stream->ongoing_rotation.value.data_rotated = true;
@@ -202,10 +208,10 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 
 	if (!LTTNG_OPTIONAL_GET(stream->ongoing_rotation).next_trace_chunk) {
 		ERR("Protocol error encoutered in %s(): stream rotation "
-			"sequence number is before the current sequence number "
-			"and the next trace chunk is unset. Honoring this "
-			"rotation command would result in data loss",
-				__FUNCTION__);
+		    "sequence number is before the current sequence number "
+		    "and the next trace chunk is unset. Honoring this "
+		    "rotation command would result in data loss",
+		    __FUNCTION__);
 		ret = -1;
 		goto end;
 	}
@@ -233,10 +239,9 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	stream->file = NULL;
 
 	LTTNG_ASSERT(!stream->is_metadata);
-	LTTNG_ASSERT(stream->tracefile_size_current >
-			stream->pos_after_last_complete_data_index);
-	misplaced_data_size = stream->tracefile_size_current -
-			      stream->pos_after_last_complete_data_index;
+	LTTNG_ASSERT(stream->tracefile_size_current > stream->pos_after_last_complete_data_index);
+	misplaced_data_size =
+		stream->tracefile_size_current - stream->pos_after_last_complete_data_index;
 	copy_bytes_left = misplaced_data_size;
 	previous_stream_copy_origin = stream->pos_after_last_complete_data_index;
 
@@ -254,7 +259,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	if (lseek_ret < 0) {
 		PERROR("Failed to seek to offset %" PRIu64
 		       " while copying extra data received before a stream rotation",
-				(uint64_t) previous_stream_copy_origin);
+		       (uint64_t) previous_stream_copy_origin);
 		ret = -1;
 		goto end;
 	}
@@ -263,43 +268,46 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	while (copy_bytes_left) {
 		ssize_t io_ret;
 		char copy_buffer[FILE_IO_STACK_BUFFER_SIZE];
-		const off_t copy_size_this_pass = std::min<uint64_t>(copy_bytes_left, sizeof(copy_buffer));
+		const off_t copy_size_this_pass =
+			std::min<uint64_t>(copy_bytes_left, sizeof(copy_buffer));
 
-		io_ret = fs_handle_read(previous_stream_file, copy_buffer,
-				copy_size_this_pass);
+		io_ret = fs_handle_read(previous_stream_file, copy_buffer, copy_size_this_pass);
 		if (io_ret < (ssize_t) copy_size_this_pass) {
 			if (io_ret == -1) {
 				PERROR("Failed to read %" PRIu64
 				       " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
-						copy_size_this_pass,
-						__FUNCTION__, io_ret,
-						stream->stream_handle);
+				       copy_size_this_pass,
+				       __FUNCTION__,
+				       io_ret,
+				       stream->stream_handle);
 			} else {
 				ERR("Failed to read %" PRIu64
-				       " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
-						copy_size_this_pass,
-						__FUNCTION__, io_ret,
-						stream->stream_handle);
+				    " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
+				    copy_size_this_pass,
+				    __FUNCTION__,
+				    io_ret,
+				    stream->stream_handle);
 			}
 			ret = -1;
 			goto end;
 		}
 
-		io_ret = fs_handle_write(
-				stream->file, copy_buffer, copy_size_this_pass);
+		io_ret = fs_handle_write(stream->file, copy_buffer, copy_size_this_pass);
 		if (io_ret < (ssize_t) copy_size_this_pass) {
 			if (io_ret == -1) {
 				PERROR("Failed to write %" PRIu64
 				       " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
-						copy_size_this_pass,
-						__FUNCTION__, io_ret,
-						stream->stream_handle);
+				       copy_size_this_pass,
+				       __FUNCTION__,
+				       io_ret,
+				       stream->stream_handle);
 			} else {
 				ERR("Failed to write %" PRIu64
-				       " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
-						copy_size_this_pass,
-						__FUNCTION__, io_ret,
-						stream->stream_handle);
+				    " bytes from previous stream file in %s(), returned %zi: stream id = %" PRIu64,
+				    copy_size_this_pass,
+				    __FUNCTION__,
+				    io_ret,
+				    stream->stream_handle);
 			}
 			ret = -1;
 			goto end;
@@ -308,11 +316,10 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	}
 
 	/* Truncate the file to get rid of the excess data. */
-	ret = fs_handle_truncate(
-			previous_stream_file, previous_stream_copy_origin);
+	ret = fs_handle_truncate(previous_stream_file, previous_stream_copy_origin);
 	if (ret) {
 		PERROR("Failed to truncate current stream file to offset %" PRIu64,
-				previous_stream_copy_origin);
+		       previous_stream_copy_origin);
 		goto end;
 	}
 
@@ -356,31 +363,28 @@ static int try_rotate_stream_data(struct relay_stream *stream)
 		goto end;
 	}
 
-	DBG("%s: Stream %" PRIu64
-				" (rotate_at_index_packet_seq_num = %" PRIu64
-				", rotate_at_prev_data_net_seq = %" PRIu64
-				", prev_data_seq = %" PRIu64 ")",
-				__func__, stream->stream_handle,
-				stream->ongoing_rotation.value.packet_seq_num,
-				stream->ongoing_rotation.value.prev_data_net_seq,
-				stream->prev_data_seq);
+	DBG("%s: Stream %" PRIu64 " (rotate_at_index_packet_seq_num = %" PRIu64
+	    ", rotate_at_prev_data_net_seq = %" PRIu64 ", prev_data_seq = %" PRIu64 ")",
+	    __func__,
+	    stream->stream_handle,
+	    stream->ongoing_rotation.value.packet_seq_num,
+	    stream->ongoing_rotation.value.prev_data_net_seq,
+	    stream->prev_data_seq);
 
 	if (stream->prev_data_seq == -1ULL ||
-			stream->ongoing_rotation.value.prev_data_net_seq == -1ULL ||
-			stream->prev_data_seq <
-			stream->ongoing_rotation.value.prev_data_net_seq) {
+	    stream->ongoing_rotation.value.prev_data_net_seq == -1ULL ||
+	    stream->prev_data_seq < stream->ongoing_rotation.value.prev_data_net_seq) {
 		/*
 		 * The next packet that will be written is not part of the next
 		 * chunk yet.
 		 */
 		DBG("Stream %" PRIu64 " data not yet ready for rotation "
-				"(rotate_at_index_packet_seq_num = %" PRIu64
-				", rotate_at_prev_data_net_seq = %" PRIu64
-				", prev_data_seq = %" PRIu64 ")",
-				stream->stream_handle,
-				stream->ongoing_rotation.value.packet_seq_num,
-				stream->ongoing_rotation.value.prev_data_net_seq,
-				stream->prev_data_seq);
+		    "(rotate_at_index_packet_seq_num = %" PRIu64
+		    ", rotate_at_prev_data_net_seq = %" PRIu64 ", prev_data_seq = %" PRIu64 ")",
+		    stream->stream_handle,
+		    stream->ongoing_rotation.value.packet_seq_num,
+		    stream->ongoing_rotation.value.prev_data_net_seq,
+		    stream->prev_data_seq);
 		goto end;
 	} else if (stream->prev_data_seq > stream->ongoing_rotation.value.prev_data_net_seq) {
 		/*
@@ -388,8 +392,9 @@ static int try_rotate_stream_data(struct relay_stream *stream)
 		 * commands are serialized with respect to each other.
 		 */
 		DBG("Rotation after too much data has been written in tracefile "
-				"for stream %" PRIu64 ", need to truncate before "
-				"rotating", stream->stream_handle);
+		    "for stream %" PRIu64 ", need to truncate before "
+		    "rotating",
+		    stream->stream_handle);
 		ret = rotate_truncate_stream(stream);
 		if (ret) {
 			ERR("Failed to truncate stream");
@@ -408,8 +413,7 @@ end:
  *
  * Return 0 on success, -1 on error.
  */
-static int create_index_file(struct relay_stream *stream,
-		struct lttng_trace_chunk *chunk)
+static int create_index_file(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
 {
 	int ret;
 	uint32_t major, minor;
@@ -430,26 +434,26 @@ static int create_index_file(struct relay_stream *stream,
 		ret = 0;
 		goto end;
 	}
-	ret = asprintf(&index_subpath, "%s/%s", stream->path_name,
-			DEFAULT_INDEX_DIR);
+	ret = asprintf(&index_subpath, "%s/%s", stream->path_name, DEFAULT_INDEX_DIR);
 	if (ret < 0) {
 		goto end;
 	}
 
-	status = lttng_trace_chunk_create_subdirectory(chunk,
-			index_subpath);
+	status = lttng_trace_chunk_create_subdirectory(chunk, index_subpath);
 	free(index_subpath);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
 	}
-	status = lttng_index_file_create_from_trace_chunk(
-			chunk, stream->path_name,
-			stream->channel_name, stream->tracefile_size,
-			stream->tracefile_current_index,
-			lttng_to_index_major(major, minor),
-			lttng_to_index_minor(major, minor), true,
-			&stream->index_file);
+	status = lttng_index_file_create_from_trace_chunk(chunk,
+							  stream->path_name,
+							  stream->channel_name,
+							  stream->tracefile_size,
+							  stream->tracefile_current_index,
+							  lttng_to_index_major(major, minor),
+							  lttng_to_index_minor(major, minor),
+							  true,
+							  &stream->index_file);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -481,26 +485,25 @@ static int try_rotate_stream_index(struct relay_stream *stream)
 		goto end;
 	}
 
-	DBG("%s: Stream %" PRIu64
-			" (rotate_at_packet_seq_num = %" PRIu64
-			", received_packet_seq_num = "
-			"(value = %" PRIu64 ", is_set = %" PRIu8 "))",
-			__func__, stream->stream_handle,
-			stream->ongoing_rotation.value.packet_seq_num,
-			stream->received_packet_seq_num.value,
-			stream->received_packet_seq_num.is_set);
+	DBG("%s: Stream %" PRIu64 " (rotate_at_packet_seq_num = %" PRIu64
+	    ", received_packet_seq_num = "
+	    "(value = %" PRIu64 ", is_set = %" PRIu8 "))",
+	    __func__,
+	    stream->stream_handle,
+	    stream->ongoing_rotation.value.packet_seq_num,
+	    stream->received_packet_seq_num.value,
+	    stream->received_packet_seq_num.is_set);
 
 	if (!stream->received_packet_seq_num.is_set ||
-			LTTNG_OPTIONAL_GET(stream->received_packet_seq_num) + 1 <
-			stream->ongoing_rotation.value.packet_seq_num) {
+	    LTTNG_OPTIONAL_GET(stream->received_packet_seq_num) + 1 <
+		    stream->ongoing_rotation.value.packet_seq_num) {
 		DBG("Stream %" PRIu64 " index not yet ready for rotation "
-				"(rotate_at_packet_seq_num = %" PRIu64
-				", received_packet_seq_num = "
-				"(value = %" PRIu64 ", is_set = %" PRIu8 "))",
-				stream->stream_handle,
-				stream->ongoing_rotation.value.packet_seq_num,
-				stream->received_packet_seq_num.value,
-				stream->received_packet_seq_num.is_set);
+		    "(rotate_at_packet_seq_num = %" PRIu64 ", received_packet_seq_num = "
+		    "(value = %" PRIu64 ", is_set = %" PRIu8 "))",
+		    stream->stream_handle,
+		    stream->ongoing_rotation.value.packet_seq_num,
+		    stream->received_packet_seq_num.value,
+		    stream->received_packet_seq_num.is_set);
 		goto end;
 	} else {
 		/*
@@ -509,9 +512,8 @@ static int try_rotate_stream_index(struct relay_stream *stream)
 		 * rotation position.
 		 */
 		LTTNG_ASSERT(LTTNG_OPTIONAL_GET(stream->received_packet_seq_num) + 1 >=
-				stream->ongoing_rotation.value.packet_seq_num);
-		DBG("Rotating stream %" PRIu64 " index file",
-				stream->stream_handle);
+			     stream->ongoing_rotation.value.packet_seq_num);
+		DBG("Rotating stream %" PRIu64 " index file", stream->stream_handle);
 		if (stream->index_file) {
 			lttng_index_file_put(stream->index_file);
 			stream->index_file = NULL;
@@ -522,13 +524,11 @@ static int try_rotate_stream_index(struct relay_stream *stream)
 		 * Set the rotation pivot position for the data, now that we have the
 		 * net_seq_num matching the packet_seq_num index pivot position.
 		 */
-		stream->ongoing_rotation.value.prev_data_net_seq =
-			stream->prev_index_seq;
+		stream->ongoing_rotation.value.prev_data_net_seq = stream->prev_index_seq;
 		if (stream->ongoing_rotation.value.data_rotated &&
-				stream->ongoing_rotation.value.index_rotated) {
+		    stream->ongoing_rotation.value.index_rotated) {
 			/* Rotation completed; reset its state. */
-			DBG("Rotation completed for stream %" PRIu64,
-					stream->stream_handle);
+			DBG("Rotation completed for stream %" PRIu64, stream->stream_handle);
 			stream_complete_rotation(stream);
 		}
 	}
@@ -537,15 +537,13 @@ end:
 	return ret;
 }
 
-static int stream_set_trace_chunk(struct relay_stream *stream,
-		struct lttng_trace_chunk *chunk)
+static int stream_set_trace_chunk(struct relay_stream *stream, struct lttng_trace_chunk *chunk)
 {
 	int ret = 0;
 	enum lttng_trace_chunk_status status;
 	bool acquired_reference;
 
-	status = lttng_trace_chunk_create_subdirectory(chunk,
-			stream->path_name);
+	status = lttng_trace_chunk_create_subdirectory(chunk, stream->path_name);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -560,8 +558,7 @@ static int stream_set_trace_chunk(struct relay_stream *stream,
 		fs_handle_close(stream->file);
 		stream->file = NULL;
 	}
-	ret = stream_create_data_output_file_from_trace_chunk(stream, chunk,
-			false, &stream->file);
+	ret = stream_create_data_output_file_from_trace_chunk(stream, chunk, false, &stream->file);
 end:
 	return ret;
 }
@@ -570,9 +567,11 @@ end:
  * We keep ownership of path_name and channel_name.
  */
 struct relay_stream *stream_create(struct ctf_trace *trace,
-	uint64_t stream_handle, char *path_name,
-	char *channel_name, uint64_t tracefile_size,
-	uint64_t tracefile_count)
+				   uint64_t stream_handle,
+				   char *path_name,
+				   char *channel_name,
+				   uint64_t tracefile_size,
+				   uint64_t tracefile_count)
 {
 	int ret;
 	struct relay_stream *stream = NULL;
@@ -610,7 +609,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	pthread_mutex_unlock(&trace->session->lock);
 	if (!acquired_reference) {
 		ERR("Cannot create stream for channel \"%s\" as a reference to the session's current trace chunk could not be acquired",
-				channel_name);
+		    channel_name);
 		ret = -1;
 		goto end;
 	}
@@ -627,8 +626,8 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	pthread_mutex_unlock(&stream->lock);
 	if (ret) {
 		ERR("Failed to set the current trace chunk of session \"%s\" on newly created stream of channel \"%s\"",
-				trace->session->session_name,
-				stream->channel_name);
+		    trace->session->session_name,
+		    stream->channel_name);
 		ret = -1;
 		goto end;
 	}
@@ -638,8 +637,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 		goto end;
 	}
 
-	stream->is_metadata = !strcmp(stream->channel_name,
-			DEFAULT_METADATA_NAME);
+	stream->is_metadata = !strcmp(stream->channel_name, DEFAULT_METADATA_NAME);
 	stream->in_recv_list = true;
 
 	/*
@@ -658,14 +656,15 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	lttng_ht_add_unique_u64(relay_streams_ht, &stream->node);
 	stream->in_stream_ht = true;
 
-	DBG("Relay new stream added %s with ID %" PRIu64, stream->channel_name,
-			stream->stream_handle);
+	DBG("Relay new stream added %s with ID %" PRIu64,
+	    stream->channel_name,
+	    stream->stream_handle);
 	ret = 0;
 
 end:
 	if (ret) {
 		if (stream->file) {
-		        fs_handle_close(stream->file);
+			fs_handle_close(stream->file);
 			stream->file = NULL;
 		}
 		stream_put(stream);
@@ -759,8 +758,7 @@ static void stream_destroy(struct relay_stream *stream)
 
 static void stream_destroy_rcu(struct rcu_head *rcu_head)
 {
-	struct relay_stream *stream =
-		lttng::utils::container_of(rcu_head, &relay_stream::rcu_node);
+	struct relay_stream *stream = lttng::utils::container_of(rcu_head, &relay_stream::rcu_node);
 
 	stream_destroy(stream);
 }
@@ -771,8 +769,7 @@ static void stream_destroy_rcu(struct rcu_head *rcu_head)
  */
 static void stream_release(struct urcu_ref *ref)
 {
-	struct relay_stream *stream =
-		lttng::utils::container_of(ref, &relay_stream::ref);
+	struct relay_stream *stream = lttng::utils::container_of(ref, &relay_stream::ref);
 	struct relay_session *session;
 
 	session = stream->trace->session;
@@ -821,8 +818,8 @@ void stream_put(struct relay_stream *stream)
 }
 
 int stream_set_pending_rotation(struct relay_stream *stream,
-		struct lttng_trace_chunk *next_trace_chunk,
-		uint64_t rotation_sequence_number)
+				struct lttng_trace_chunk *next_trace_chunk,
+				uint64_t rotation_sequence_number)
 {
 	int ret = 0;
 	const struct relay_stream_rotation rotation = {
@@ -840,16 +837,16 @@ int stream_set_pending_rotation(struct relay_stream *stream,
 	}
 
 	if (next_trace_chunk) {
-		const bool reference_acquired =
-				lttng_trace_chunk_get(next_trace_chunk);
+		const bool reference_acquired = lttng_trace_chunk_get(next_trace_chunk);
 
 		LTTNG_ASSERT(reference_acquired);
 	}
 	LTTNG_OPTIONAL_SET(&stream->ongoing_rotation, rotation);
 
 	DBG("Setting pending rotation: stream_id = %" PRIu64
-			", rotate_at_packet_seq_num = %" PRIu64,
-			stream->stream_handle, rotation_sequence_number);
+	    ", rotate_at_packet_seq_num = %" PRIu64,
+	    stream->stream_handle,
+	    rotation_sequence_number);
 	if (stream->is_metadata) {
 		/*
 		 * A metadata stream has no index; consider it already rotated.
@@ -895,7 +892,8 @@ void try_stream_close(struct relay_stream *stream)
 	 */
 	if (stream->closed) {
 		pthread_mutex_unlock(&stream->lock);
-		DBG("closing stream %" PRIu64 " aborted since it is already marked as closed", stream->stream_handle);
+		DBG("closing stream %" PRIu64 " aborted since it is already marked as closed",
+		    stream->stream_handle);
 		return;
 	}
 
@@ -931,8 +929,8 @@ void try_stream_close(struct relay_stream *stream)
 	}
 
 	if (stream->last_net_seq_num != -1ULL &&
-			((int64_t) (stream->prev_data_seq - stream->last_net_seq_num)) < 0
-			&& !session_aborted) {
+	    ((int64_t) (stream->prev_data_seq - stream->last_net_seq_num)) < 0 &&
+	    !session_aborted) {
 		/*
 		 * Don't close since we still have data pending. This
 		 * handles cases where an explicit close command has
@@ -950,7 +948,8 @@ void try_stream_close(struct relay_stream *stream)
 		 * expected behavior.
 		 */
 		pthread_mutex_unlock(&stream->lock);
-		DBG("closing stream %" PRIu64 " aborted since it still has data pending", stream->stream_handle);
+		DBG("closing stream %" PRIu64 " aborted since it still has data pending",
+		    stream->stream_handle);
 		return;
 	}
 	/*
@@ -986,16 +985,17 @@ void try_stream_close(struct relay_stream *stream)
 	stream_put(stream);
 }
 
-int stream_init_packet(struct relay_stream *stream, size_t packet_size,
-		bool *file_rotated)
+int stream_init_packet(struct relay_stream *stream, size_t packet_size, bool *file_rotated)
 {
 	int ret = 0;
 
 	ASSERT_LOCKED(stream->lock);
 
 	if (!stream->file || !stream->trace_chunk) {
-		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64 ", channel_name = %s",
-				stream->stream_handle, stream->channel_name);
+		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64
+		    ", channel_name = %s",
+		    stream->stream_handle,
+		    stream->channel_name);
 		ret = -1;
 		goto end;
 	}
@@ -1008,34 +1008,34 @@ int stream_init_packet(struct relay_stream *stream, size_t packet_size,
 	/*
 	 * Check if writing the new packet would exceed the maximal file size.
 	 */
-	if (caa_unlikely((stream->tracefile_size_current + packet_size) >
-			stream->tracefile_size)) {
+	if (caa_unlikely((stream->tracefile_size_current + packet_size) > stream->tracefile_size)) {
 		const uint64_t new_file_index =
-				(stream->tracefile_current_index + 1) %
-				stream->tracefile_count;
+			(stream->tracefile_current_index + 1) % stream->tracefile_count;
 
 		if (new_file_index < stream->tracefile_current_index) {
 			stream->tracefile_wrapped_around = true;
 		}
 		DBG("New stream packet causes stream file rotation: stream_id = %" PRIu64
-				", current_file_size = %" PRIu64
-				", packet_size = %zu, current_file_index = %" PRIu64
-				" new_file_index = %" PRIu64,
-				stream->stream_handle,
-				stream->tracefile_size_current, packet_size,
-				stream->tracefile_current_index, new_file_index);
+		    ", current_file_size = %" PRIu64
+		    ", packet_size = %zu, current_file_index = %" PRIu64
+		    " new_file_index = %" PRIu64,
+		    stream->stream_handle,
+		    stream->tracefile_size_current,
+		    packet_size,
+		    stream->tracefile_current_index,
+		    new_file_index);
 		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_WRITE);
 		stream->tracefile_current_index = new_file_index;
 
 		if (stream->file) {
-		        fs_handle_close(stream->file);
+			fs_handle_close(stream->file);
 			stream->file = NULL;
 		}
-		ret = stream_create_data_output_file_from_trace_chunk(stream,
-				stream->trace_chunk, false, &stream->file);
+		ret = stream_create_data_output_file_from_trace_chunk(
+			stream, stream->trace_chunk, false, &stream->file);
 		if (ret) {
 			ERR("Failed to perform trace file rotation of stream %" PRIu64,
-					stream->stream_handle);
+			    stream->stream_handle);
 			goto end;
 		}
 
@@ -1044,7 +1044,9 @@ int stream_init_packet(struct relay_stream *stream, size_t packet_size,
 		 * rotation.
 		 */
 		DBG("%s: reset tracefile_size_current for stream %" PRIu64 " was %" PRIu64,
-			__func__, stream->stream_handle, stream->tracefile_size_current);
+		    __func__,
+		    stream->stream_handle,
+		    stream->tracefile_size_current);
 		stream->tracefile_size_current = 0;
 		*file_rotated = true;
 	} else {
@@ -1056,7 +1058,8 @@ end:
 
 /* Note that the packet is not necessarily complete. */
 int stream_write(struct relay_stream *stream,
-		const struct lttng_buffer_view *packet, size_t padding_len)
+		 const struct lttng_buffer_view *packet,
+		 size_t padding_len)
 {
 	int ret = 0;
 	ssize_t write_ret;
@@ -1064,22 +1067,22 @@ int stream_write(struct relay_stream *stream,
 	char padding_buffer[FILE_IO_STACK_BUFFER_SIZE];
 
 	ASSERT_LOCKED(stream->lock);
-	memset(padding_buffer, 0,
-			std::min(sizeof(padding_buffer), padding_to_write));
+	memset(padding_buffer, 0, std::min(sizeof(padding_buffer), padding_to_write));
 
 	if (!stream->file || !stream->trace_chunk) {
-		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64 ", channel_name = %s",
-				stream->stream_handle, stream->channel_name);
+		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64
+		    ", channel_name = %s",
+		    stream->stream_handle,
+		    stream->channel_name);
 		ret = -1;
 		goto end;
 	}
 	if (packet) {
-		write_ret = fs_handle_write(
-				stream->file, packet->data, packet->size);
+		write_ret = fs_handle_write(stream->file, packet->data, packet->size);
 		if (write_ret != packet->size) {
 			PERROR("Failed to write to stream file of %sstream %" PRIu64,
-					stream->is_metadata ? "metadata " : "",
-					stream->stream_handle);
+			       stream->is_metadata ? "metadata " : "",
+			       stream->stream_handle);
 			ret = -1;
 			goto end;
 		}
@@ -1087,14 +1090,14 @@ int stream_write(struct relay_stream *stream,
 
 	while (padding_to_write > 0) {
 		const size_t padding_to_write_this_pass =
-				std::min(padding_to_write, sizeof(padding_buffer));
+			std::min(padding_to_write, sizeof(padding_buffer));
 
-		write_ret = fs_handle_write(stream->file, padding_buffer,
-				padding_to_write_this_pass);
+		write_ret =
+			fs_handle_write(stream->file, padding_buffer, padding_to_write_this_pass);
 		if (write_ret != padding_to_write_this_pass) {
 			PERROR("Failed to write padding to file of %sstream %" PRIu64,
-					stream->is_metadata ? "metadata " : "",
-					stream->stream_handle);
+			       stream->is_metadata ? "metadata " : "",
+			       stream->stream_handle);
 			ret = -1;
 			goto end;
 		}
@@ -1113,9 +1116,10 @@ int stream_write(struct relay_stream *stream,
 	}
 
 	DBG("Wrote to %sstream %" PRIu64 ": data_length = %zu, padding_length = %zu",
-			stream->is_metadata ? "metadata " : "",
-			stream->stream_handle,
-			packet ? packet->size : (size_t) 0, padding_len);
+	    stream->is_metadata ? "metadata " : "",
+	    stream->stream_handle,
+	    packet ? packet->size : (size_t) 0,
+	    padding_len);
 end:
 	return ret;
 }
@@ -1127,8 +1131,11 @@ end:
  *
  * Return 0 on success else a negative value.
  */
-int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
-		bool rotate_index, bool *flushed, uint64_t total_size)
+int stream_update_index(struct relay_stream *stream,
+			uint64_t net_seq_num,
+			bool rotate_index,
+			bool *flushed,
+			uint64_t total_size)
 {
 	int ret = 0;
 	uint64_t data_offset;
@@ -1140,7 +1147,9 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 	data_offset = htobe64(stream->tracefile_size_current);
 
 	DBG("handle_index_data: stream %" PRIu64 " net_seq_num %" PRIu64 " data offset %" PRIu64,
-			stream->stream_handle, net_seq_num, stream->tracefile_size_current);
+	    stream->stream_handle,
+	    net_seq_num,
+	    stream->tracefile_size_current);
 
 	/*
 	 * Lookup for an existing index for that stream id/sequence
@@ -1157,7 +1166,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 		ret = create_index_file(stream, stream->trace_chunk);
 		if (ret) {
 			ERR("Failed to create index file for stream %" PRIu64,
-					stream->stream_handle);
+			    stream->stream_handle);
 			/* Put self-ref for this index due to error. */
 			relay_index_put(index);
 			index = NULL;
@@ -1179,7 +1188,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 		stream->index_received_seqcount++;
 		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num,
-			be64toh(index->index_data.packet_seq_num));
+				   be64toh(index->index_data.packet_seq_num));
 		*flushed = true;
 	} else if (ret > 0) {
 		index->total_size = total_size;
@@ -1199,8 +1208,10 @@ end:
 	return ret;
 }
 
-int stream_complete_packet(struct relay_stream *stream, size_t packet_total_size,
-		uint64_t sequence_number, bool index_flushed)
+int stream_complete_packet(struct relay_stream *stream,
+			   size_t packet_total_size,
+			   uint64_t sequence_number,
+			   bool index_flushed)
 {
 	int ret = 0;
 
@@ -1208,8 +1219,7 @@ int stream_complete_packet(struct relay_stream *stream, size_t packet_total_size
 
 	stream->tracefile_size_current += packet_total_size;
 	if (index_flushed) {
-		stream->pos_after_last_complete_data_index =
-				stream->tracefile_size_current;
+		stream->pos_after_last_complete_data_index = stream->tracefile_size_current;
 		stream->prev_index_seq = sequence_number;
 		ret = try_rotate_stream_index(stream);
 		if (ret < 0) {
@@ -1224,8 +1234,7 @@ end:
 	return ret;
 }
 
-int stream_add_index(struct relay_stream *stream,
-		const struct lttcomm_relayd_index *index_info)
+int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_index *index_info)
 {
 	int ret = 0;
 	struct relay_index *index;
@@ -1236,15 +1245,13 @@ int stream_add_index(struct relay_stream *stream,
 
 	/* Live beacon handling */
 	if (index_info->packet_size == 0) {
-		DBG("Received live beacon for stream %" PRIu64,
-				stream->stream_handle);
+		DBG("Received live beacon for stream %" PRIu64, stream->stream_handle);
 
 		/*
 		 * Only flag a stream inactive when it has already
 		 * received data and no indexes are in flight.
 		 */
-		if (stream->index_received_seqcount > 0
-				&& stream->indexes_in_flight == 0) {
+		if (stream->index_received_seqcount > 0 && stream->indexes_in_flight == 0) {
 			stream->beacon_ts_end = index_info->timestamp_end;
 		}
 		ret = 0;
@@ -1260,12 +1267,10 @@ int stream_add_index(struct relay_stream *stream,
 	index = relay_index_get_by_id_or_create(stream, index_info->net_seq_num);
 	if (!index) {
 		ret = -1;
-		ERR("Failed to get or create index %" PRIu64,
-				index_info->net_seq_num);
+		ERR("Failed to get or create index %" PRIu64, index_info->net_seq_num);
 		goto end;
 	}
-	if (relay_index_set_control_data(index, index_info,
-			stream->trace->session->minor)) {
+	if (relay_index_set_control_data(index, index_info, stream->trace->session->minor)) {
 		ERR("set_index_control_data error");
 		relay_index_put(index);
 		ret = -1;
@@ -1278,8 +1283,7 @@ int stream_add_index(struct relay_stream *stream,
 		stream->index_received_seqcount++;
 		stream->pos_after_last_complete_data_index += index->total_size;
 		stream->prev_index_seq = index_info->net_seq_num;
-		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num,
-				index_info->packet_seq_num);
+		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num, index_info->packet_seq_num);
 
 		ret = try_rotate_stream_index(stream);
 		if (ret < 0) {
@@ -1312,17 +1316,15 @@ static void print_stream_indexes(struct relay_stream *stream)
 	struct relay_index *index;
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter, index,
-			index_n.node) {
+	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		DBG("index %p net_seq_num %" PRIu64 " refcount %ld"
-				" stream %" PRIu64 " trace %" PRIu64
-				" session %" PRIu64,
-				index,
-				index->index_n.key,
-				stream->ref.refcount,
-				index->stream->stream_handle,
-				index->stream->trace->id,
-				index->stream->trace->session->id);
+		    " stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
+		    index,
+		    index->index_n.key,
+		    stream->ref.refcount,
+		    index->stream->stream_handle,
+		    index->stream->trace->id,
+		    index->stream->trace->session->id);
 	}
 	rcu_read_unlock();
 }
@@ -1337,14 +1339,16 @@ int stream_reset_file(struct relay_stream *stream)
 		ret = fs_handle_close(stream->file);
 		if (ret) {
 			ERR("Failed to close stream file handle: channel name = \"%s\", id = %" PRIu64,
-					stream->channel_name,
-					stream->stream_handle);
+			    stream->channel_name,
+			    stream->stream_handle);
 		}
 		stream->file = NULL;
 	}
 
 	DBG("%s: reset tracefile_size_current for stream %" PRIu64 " was %" PRIu64,
-			__func__, stream->stream_handle, stream->tracefile_size_current);
+	    __func__,
+	    stream->stream_handle,
+	    stream->tracefile_size_current);
 	stream->tracefile_size_current = 0;
 	stream->prev_data_seq = 0;
 	stream->prev_index_seq = 0;
@@ -1352,8 +1356,8 @@ int stream_reset_file(struct relay_stream *stream)
 	stream->tracefile_current_index = 0;
 	stream->pos_after_last_complete_data_index = 0;
 
-	return stream_create_data_output_file_from_trace_chunk(stream,
-			stream->trace_chunk, true, &stream->file);
+	return stream_create_data_output_file_from_trace_chunk(
+		stream, stream->trace_chunk, true, &stream->file);
 }
 
 void print_relay_streams(void)
@@ -1366,18 +1370,16 @@ void print_relay_streams(void)
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(relay_streams_ht->ht, &iter.iter, stream,
-			node.node) {
+	cds_lfht_for_each_entry (relay_streams_ht->ht, &iter.iter, stream, node.node) {
 		if (!stream_get(stream)) {
 			continue;
 		}
-		DBG("stream %p refcount %ld stream %" PRIu64 " trace %" PRIu64
-				" session %" PRIu64,
-				stream,
-				stream->ref.refcount,
-				stream->stream_handle,
-				stream->trace->id,
-				stream->trace->session->id);
+		DBG("stream %p refcount %ld stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
+		    stream,
+		    stream->ref.refcount,
+		    stream->stream_handle,
+		    stream->trace->id,
+		    stream->trace->session->id);
 		print_stream_indexes(stream);
 		stream_put(stream);
 	}

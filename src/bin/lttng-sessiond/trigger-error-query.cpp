@@ -6,20 +6,22 @@
  */
 
 #include "event-notifier-error-accounting.hpp"
+
+#include <lttng/action/action-internal.hpp>
 #include <lttng/error-query-internal.hpp>
 #include <lttng/trigger/trigger-internal.hpp>
-#include <lttng/action/action-internal.hpp>
 
-enum lttng_trigger_status lttng_trigger_add_error_results(
-		const struct lttng_trigger *trigger __attribute__((unused)),
-		struct lttng_error_query_results *results __attribute__((unused)))
+enum lttng_trigger_status lttng_trigger_add_error_results(const struct lttng_trigger *trigger
+							  __attribute__((unused)),
+							  struct lttng_error_query_results *results
+							  __attribute__((unused)))
 {
 	return LTTNG_TRIGGER_STATUS_OK;
 }
 
-enum lttng_trigger_status lttng_trigger_condition_add_error_results(
-		const struct lttng_trigger *trigger,
-		struct lttng_error_query_results *results)
+enum lttng_trigger_status
+lttng_trigger_condition_add_error_results(const struct lttng_trigger *trigger,
+					  struct lttng_error_query_results *results)
 {
 	enum lttng_trigger_status status;
 	uint64_t discarded_tracer_messages_count;
@@ -29,10 +31,8 @@ enum lttng_trigger_status lttng_trigger_condition_add_error_results(
 	uid_t trigger_owner;
 
 	status = lttng_trigger_get_name(trigger, &trigger_name);
-	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(anonymous)";
-	status = lttng_trigger_get_owner_uid(trigger,
-			&trigger_owner);
+	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
+	status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
 	LTTNG_ASSERT(status == LTTNG_TRIGGER_STATUS_OK);
 
 	/*
@@ -47,25 +47,25 @@ enum lttng_trigger_status lttng_trigger_condition_add_error_results(
 	}
 
 	error_accounting_status = event_notifier_error_accounting_get_count(
-			trigger, &discarded_tracer_messages_count);
+		trigger, &discarded_tracer_messages_count);
 	if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		ERR("Failed to retrieve tracer discarded messages count for trigger: trigger name = '%s', trigger owner uid = %d",
-				trigger_name, (int) trigger_owner);
+		    trigger_name,
+		    (int) trigger_owner);
 		status = LTTNG_TRIGGER_STATUS_ERROR;
 		goto end;
 	}
 
 	discarded_tracer_messages_counter = lttng_error_query_result_counter_create(
-			"discarded tracer messages",
-			"Count of messages discarded by the tracer due to a communication error with the session daemon",
-			discarded_tracer_messages_count);
+		"discarded tracer messages",
+		"Count of messages discarded by the tracer due to a communication error with the session daemon",
+		discarded_tracer_messages_count);
 	if (!discarded_tracer_messages_counter) {
 		status = LTTNG_TRIGGER_STATUS_ERROR;
 		goto end;
 	}
 
-	if (lttng_error_query_results_add_result(
-			    results, discarded_tracer_messages_counter)) {
+	if (lttng_error_query_results_add_result(results, discarded_tracer_messages_counter)) {
 		status = LTTNG_TRIGGER_STATUS_ERROR;
 		goto end;
 	}
@@ -79,9 +79,9 @@ end:
 	return status;
 }
 
-enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
-		struct lttng_trigger *trigger,
-		struct lttng_error_query_results *results)
+enum lttng_trigger_status
+lttng_trigger_add_action_error_query_results(struct lttng_trigger *trigger,
+					     struct lttng_error_query_results *results)
 {
 	enum lttng_trigger_status status;
 	const char *trigger_name;
@@ -89,14 +89,12 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 	enum lttng_action_status action_status;
 
 	status = lttng_trigger_get_name(trigger, &trigger_name);
-	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(anonymous)";
-	status = lttng_trigger_get_owner_uid(trigger,
-			&trigger_owner);
+	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
+	status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
 	LTTNG_ASSERT(status == LTTNG_TRIGGER_STATUS_OK);
 
-	action_status = lttng_action_add_error_query_results(
-			lttng_trigger_get_action(trigger), results);
+	action_status =
+		lttng_action_add_error_query_results(lttng_trigger_get_action(trigger), results);
 	switch (action_status) {
 	case LTTNG_ACTION_STATUS_OK:
 		break;

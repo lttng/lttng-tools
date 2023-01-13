@@ -6,6 +6,17 @@
  */
 
 #define _LGPL_SOURCE
+#include "tsdl-environment-visitor.hpp"
+#include "ust-app.hpp"
+#include "ust-clock-class.hpp"
+#include "ust-registry.hpp"
+
+#include <common/common.hpp>
+#include <common/exception.hpp>
+#include <common/format.hpp>
+#include <common/time.hpp>
+#include <common/uuid.hpp>
+
 #include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -14,17 +25,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector>
-
-#include <common/common.hpp>
-#include <common/exception.hpp>
-#include <common/format.hpp>
-#include <common/time.hpp>
-#include <common/uuid.hpp>
-
-#include "ust-app.hpp"
-#include "ust-clock-class.hpp"
-#include "ust-registry.hpp"
-#include "tsdl-environment-visitor.hpp"
 
 namespace ls = lttng::sessiond;
 namespace lsu = lttng::sessiond::ust;

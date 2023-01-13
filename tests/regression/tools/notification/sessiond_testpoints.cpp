@@ -8,34 +8,35 @@
 
 #include <common/compat/getenv.hpp>
 #include <common/consumer/consumer.hpp>
-#include <common/pipe.hpp>
 #include <common/error.hpp>
-#include <unistd.h>
-#include <stdbool.h>
+#include <common/pipe.hpp>
+
 #include <lttng/constant.h>
 #include <lttng/lttng-export.h>
-#include <fcntl.h>
+
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>
 
 static char *pause_pipe_path;
 static struct lttng_pipe *pause_pipe;
-static int *notifier_notif_consumption_state;;
+static int *notifier_notif_consumption_state;
+;
 
 int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
-static
-void __attribute__((destructor)) pause_pipe_fini(void)
+static void __attribute__((destructor)) pause_pipe_fini(void)
 {
 	int ret;
 
 	if (pause_pipe_path) {
 		ret = unlink(pause_pipe_path);
 		if (ret) {
-			PERROR("Failed to unlink pause pipe: path = %s",
-					pause_pipe_path);
+			PERROR("Failed to unlink pause pipe: path = %s", pause_pipe_path);
 		}
 	}
 
@@ -49,8 +50,7 @@ int __testpoint_sessiond_thread_notification(void)
 	int ret = 0;
 	const char *pause_pipe_path_prefix;
 
-	pause_pipe_path_prefix = lttng_secure_getenv(
-			"NOTIFIER_PAUSE_PIPE_PATH");
+	pause_pipe_path_prefix = lttng_secure_getenv("NOTIFIER_PAUSE_PIPE_PATH");
 	if (!pause_pipe_path_prefix) {
 		ret = -1;
 		goto end;
@@ -66,8 +66,8 @@ int __testpoint_sessiond_thread_notification(void)
 	}
 
 	DBG("Creating pause pipe at %s", pause_pipe_path);
-	pause_pipe = lttng_pipe_named_open(pause_pipe_path,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, O_NONBLOCK);
+	pause_pipe = lttng_pipe_named_open(
+		pause_pipe_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, O_NONBLOCK);
 	if (!pause_pipe) {
 		ERR("Failed to create pause pipe at %s", pause_pipe_path);
 		ret = -1;
@@ -105,7 +105,7 @@ int __testpoint_sessiond_handle_notifier_event_pipe(void)
 	if (value_read) {
 		*notifier_notif_consumption_state = !!value;
 		DBG("Message received on pause pipe: %s data consumption",
-				*notifier_notif_consumption_state ? "paused" : "resumed");
+		    *notifier_notif_consumption_state ? "paused" : "resumed");
 	}
 end:
 	return ret;

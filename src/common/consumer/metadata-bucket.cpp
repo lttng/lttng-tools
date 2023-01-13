@@ -10,8 +10,8 @@
 #include <common/buffer-view.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/dynamic-buffer.hpp>
-#include <common/macros.hpp>
 #include <common/error.hpp>
+#include <common/macros.hpp>
 
 struct metadata_bucket {
 	struct lttng_dynamic_buffer content;
@@ -22,8 +22,7 @@ struct metadata_bucket {
 	unsigned int buffer_count;
 };
 
-struct metadata_bucket *metadata_bucket_create(
-		metadata_bucket_flush_cb flush, void *data)
+struct metadata_bucket *metadata_bucket_create(metadata_bucket_flush_cb flush, void *data)
 {
 	metadata_bucket *bucket = zmalloc<metadata_bucket>();
 	if (!bucket) {
@@ -46,7 +45,8 @@ void metadata_bucket_destroy(struct metadata_bucket *bucket)
 
 	if (bucket->content.size > 0) {
 		WARN("Stream metadata bucket destroyed with remaining data: size = %zu, buffer count = %u",
-				bucket->content.size, bucket->buffer_count);
+		     bucket->content.size,
+		     bucket->buffer_count);
 	}
 
 	lttng_dynamic_buffer_reset(&bucket->content);
@@ -61,24 +61,22 @@ void metadata_bucket_reset(struct metadata_bucket *bucket)
 }
 
 enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
-		const struct stream_subbuffer *buffer)
+						 const struct stream_subbuffer *buffer)
 {
 	ssize_t ret;
 	struct lttng_buffer_view flushed_view;
 	struct stream_subbuffer flushed_subbuffer;
 	enum metadata_bucket_status status;
-	const bool should_flush =
-			LTTNG_OPTIONAL_GET(buffer->info.metadata.coherent);
+	const bool should_flush = LTTNG_OPTIONAL_GET(buffer->info.metadata.coherent);
 	const size_t padding_this_buffer =
-			buffer->info.metadata.padded_subbuf_size -
-			buffer->info.metadata.subbuf_size;
+		buffer->info.metadata.padded_subbuf_size - buffer->info.metadata.subbuf_size;
 	size_t flush_size;
 
 	DBG("Metadata bucket filled with %zu bytes buffer view, sub-buffer size: %lu, padded sub-buffer size: %lu, coherent: %s",
-			buffer->buffer.buffer.size,
-			buffer->info.metadata.subbuf_size,
-			buffer->info.metadata.padded_subbuf_size,
-			buffer->info.metadata.coherent.value ? "true" : "false");
+	    buffer->buffer.buffer.size,
+	    buffer->info.metadata.subbuf_size,
+	    buffer->info.metadata.padded_subbuf_size,
+	    buffer->info.metadata.coherent.value ? "true" : "false");
 	/*
 	 * If no metadata was accumulated and this buffer should be
 	 * flushed, don't copy it unecessarily; just flush it directly.
@@ -98,8 +96,7 @@ enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
 		 * the bucket is not sent, which is what really matters
 		 * from an efficiency point of view.
 		 */
-		ret = lttng_dynamic_buffer_append_view(
-			&bucket->content, &buffer->buffer.buffer);
+		ret = lttng_dynamic_buffer_append_view(&bucket->content, &buffer->buffer.buffer);
 		if (ret) {
 			status = METADATA_BUCKET_STATUS_ERROR;
 			goto end;
@@ -138,8 +135,9 @@ enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
 	};
 
 	DBG("Metadata bucket flushing %zu bytes (%u sub-buffer%s)",
-			flushed_view.size, bucket->buffer_count,
-			bucket->buffer_count > 1 ? "s" : "");
+	    flushed_view.size,
+	    bucket->buffer_count,
+	    bucket->buffer_count > 1 ? "s" : "");
 	ret = bucket->flush.fn(&flushed_subbuffer, bucket->flush.data);
 	if (ret >= 0) {
 		status = METADATA_BUCKET_STATUS_OK;

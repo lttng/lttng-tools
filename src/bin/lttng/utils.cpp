@@ -6,24 +6,24 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdlib.h>
-#include <ctype.h>
-#include <limits.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <signal.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <inttypes.h>
-#include <unistd.h>
-
-#include <common/error.hpp>
-#include <common/utils.hpp>
-#include <common/defaults.hpp>
-
+#include "command.hpp"
 #include "conf.hpp"
 #include "utils.hpp"
-#include "command.hpp"
+
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/utils.hpp>
+
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 static const char *str_all = "ALL";
 static const char *str_tracepoint = "Tracepoint";
@@ -32,8 +32,7 @@ static const char *str_probe = "Probe";
 static const char *str_userspace_probe = "Userspace Probe";
 static const char *str_function = "Function";
 
-static
-char *_get_session_name(int quiet)
+static char *_get_session_name(int quiet)
 {
 	const char *path;
 	char *session_name = NULL;
@@ -46,7 +45,7 @@ char *_get_session_name(int quiet)
 
 	/* Get session name from config */
 	session_name = quiet ? config_read_session_name_quiet(path) :
-		config_read_session_name(path);
+			       config_read_session_name(path);
 	if (session_name == NULL) {
 		goto error;
 	}
@@ -146,8 +145,7 @@ void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options)
  * significant bit (from 1 to 32 on 32-bit, from 1 to 64 on 64-bit).
  */
 #if defined(__i386) || defined(__x86_64)
-static inline
-unsigned int fls_u32(uint32_t x)
+static inline unsigned int fls_u32(uint32_t x)
 {
 	int r;
 
@@ -155,15 +153,15 @@ unsigned int fls_u32(uint32_t x)
 	    "jnz 1f\n\t"
 	    "movl $-1,%0\n\t"
 	    "1:\n\t"
-	    : "=r" (r) : "rm" (x));
+	    : "=r"(r)
+	    : "rm"(x));
 	return r + 1;
 }
 #define HAS_FLS_U32
 #endif
 
 #if defined(__x86_64) && defined(__LP64__)
-static inline
-unsigned int fls_u64(uint64_t x)
+static inline unsigned int fls_u64(uint64_t x)
 {
 	long r;
 
@@ -171,15 +169,15 @@ unsigned int fls_u64(uint64_t x)
 	    "jnz 1f\n\t"
 	    "movq $-1,%0\n\t"
 	    "1:\n\t"
-	    : "=r" (r) : "rm" (x));
+	    : "=r"(r)
+	    : "rm"(x));
 	return r + 1;
 }
 #define HAS_FLS_U64
 #endif
 
 #ifndef HAS_FLS_U64
-static __attribute__((unused))
-unsigned int fls_u64(uint64_t x)
+static __attribute__((unused)) unsigned int fls_u64(uint64_t x)
 {
 	unsigned int r = 64;
 
@@ -215,8 +213,7 @@ unsigned int fls_u64(uint64_t x)
 #endif
 
 #ifndef HAS_FLS_U32
-static __attribute__((unused))
-unsigned int fls_u32(uint32_t x)
+static __attribute__((unused)) unsigned int fls_u32(uint32_t x)
 {
 	unsigned int r = 32;
 
@@ -246,8 +243,7 @@ unsigned int fls_u32(uint32_t x)
 }
 #endif
 
-static
-unsigned int fls_ulong(unsigned long x)
+static unsigned int fls_ulong(unsigned long x)
 {
 #if (CAA_BITS_PER_LONG == 32)
 	return fls_u32(x);
@@ -355,7 +351,7 @@ int spawn_relayd(const char *pathname, int port)
 		} else {
 			PERROR("execlp");
 		}
-		kill(getppid(), SIGTERM);	/* wake parent */
+		kill(getppid(), SIGTERM); /* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		goto end;
@@ -416,16 +412,13 @@ error_socket:
 	return ret;
 }
 
-int print_missing_or_multiple_domains(unsigned int domain_count,
-		bool include_agent_domains)
+int print_missing_or_multiple_domains(unsigned int domain_count, bool include_agent_domains)
 {
 	int ret = 0;
 
 	if (domain_count == 0) {
 		ERR("Please specify a domain (--kernel/--userspace%s).",
-				include_agent_domains ?
-						"/--jul/--log4j/--python" :
-						"");
+		    include_agent_domains ? "/--jul/--log4j/--python" : "");
 		ret = -1;
 	} else if (domain_count > 1) {
 		ERR("Only one domain must be specified.");
@@ -475,7 +468,8 @@ int get_session_stats_str(const char *session_name, char **out_str)
 		}
 	}
 	if (!selected_session) {
-		ERR("Failed to retrieve session \"%s\" description while printing session statistics.", session_name);
+		ERR("Failed to retrieve session \"%s\" description while printing session statistics.",
+		    session_name);
 		ret = -1;
 		goto end;
 	}
@@ -486,8 +480,8 @@ int get_session_stats_str(const char *session_name, char **out_str)
 		goto end;
 	}
 	for (domain_idx = 0; domain_idx < nb_domains; domain_idx++) {
-		struct lttng_handle *handle = lttng_create_handle(session_name,
-				&domains[domain_idx]);
+		struct lttng_handle *handle =
+			lttng_create_handle(session_name, &domains[domain_idx]);
 
 		if (!handle) {
 			ERR("Failed to create session handle while printing session statistics.");
@@ -502,18 +496,16 @@ int get_session_stats_str(const char *session_name, char **out_str)
 			uint64_t discarded_events = 0, lost_packets = 0;
 			struct lttng_channel *channel = &channels[channel_idx];
 
-			ret = lttng_channel_get_discarded_event_count(channel,
-					&discarded_events);
+			ret = lttng_channel_get_discarded_event_count(channel, &discarded_events);
 			if (ret) {
 				ERR("Failed to retrieve discarded event count from channel %s",
-						channel->name);
+				    channel->name);
 			}
 
-			ret = lttng_channel_get_lost_packet_count(channel,
-					&lost_packets);
+			ret = lttng_channel_get_lost_packet_count(channel, &lost_packets);
 			if (ret) {
 				ERR("Failed to retrieve lost packet count from channel %s",
-						channel->name);
+				    channel->name);
 			}
 
 			discarded_events_total += discarded_events;
@@ -522,30 +514,26 @@ int get_session_stats_str(const char *session_name, char **out_str)
 		lttng_destroy_handle(handle);
 	}
 
-	print_discarded_events = discarded_events_total > 0 &&
-				 !selected_session->snapshot_mode;
-	print_lost_packets = lost_packets_total > 0 &&
-			     !selected_session->snapshot_mode;
+	print_discarded_events = discarded_events_total > 0 && !selected_session->snapshot_mode;
+	print_lost_packets = lost_packets_total > 0 && !selected_session->snapshot_mode;
 
 	if (print_discarded_events && print_lost_packets) {
 		ret = asprintf(&stats_str,
-				"Warning: %" PRIu64
-				" events were discarded and %" PRIu64
-				" packets were lost, please refer to "
-				"the documentation on channel configuration.",
-				discarded_events_total, lost_packets_total);
+			       "Warning: %" PRIu64 " events were discarded and %" PRIu64
+			       " packets were lost, please refer to "
+			       "the documentation on channel configuration.",
+			       discarded_events_total,
+			       lost_packets_total);
 	} else if (print_discarded_events) {
 		ret = asprintf(&stats_str,
-				"Warning: %" PRIu64
-				" events were discarded, please refer to "
-				"the documentation on channel configuration.",
-				discarded_events_total);
+			       "Warning: %" PRIu64 " events were discarded, please refer to "
+			       "the documentation on channel configuration.",
+			       discarded_events_total);
 	} else if (print_lost_packets) {
 		ret = asprintf(&stats_str,
-				"Warning: %" PRIu64
-				" packets were lost, please refer to "
-				"the documentation on channel configuration.",
-				lost_packets_total);
+			       "Warning: %" PRIu64 " packets were lost, please refer to "
+			       "the documentation on channel configuration.",
+			       lost_packets_total);
 	} else {
 		ret = 0;
 	}
@@ -579,9 +567,8 @@ int show_cmd_help(const char *cmd_name, const char *help_msg)
 	return ret;
 }
 
-int print_trace_archive_location(
-		const struct lttng_trace_archive_location *location,
-		const char *session_name)
+int print_trace_archive_location(const struct lttng_trace_archive_location *location,
+				 const char *session_name)
 {
 	int ret = 0;
 	enum lttng_trace_archive_location_type location_type;
@@ -590,15 +577,14 @@ int print_trace_archive_location(
 
 	location_type = lttng_trace_archive_location_get_type(location);
 
-	_MSG("Trace chunk archive for session %s is now readable",
-			session_name);
+	_MSG("Trace chunk archive for session %s is now readable", session_name);
 	switch (location_type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
 	{
 		const char *absolute_path;
 
-		status = lttng_trace_archive_location_local_get_absolute_path(
-				location, &absolute_path);
+		status = lttng_trace_archive_location_local_get_absolute_path(location,
+									      &absolute_path);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
@@ -614,36 +600,33 @@ int print_trace_archive_location(
 		enum lttng_trace_archive_location_relay_protocol_type protocol;
 
 		/* Fetch all relay location parameters. */
-		status = lttng_trace_archive_location_relay_get_protocol_type(
-				location, &protocol);
+		status = lttng_trace_archive_location_relay_get_protocol_type(location, &protocol);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
-		status = lttng_trace_archive_location_relay_get_host(
-				location, &host);
+		status = lttng_trace_archive_location_relay_get_host(location, &host);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
-		status = lttng_trace_archive_location_relay_get_control_port(
-				location, &control_port);
+		status = lttng_trace_archive_location_relay_get_control_port(location,
+									     &control_port);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
-		status = lttng_trace_archive_location_relay_get_data_port(
-				location, &data_port);
+		status = lttng_trace_archive_location_relay_get_data_port(location, &data_port);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}
 
-		status = lttng_trace_archive_location_relay_get_relative_path(
-				location, &relative_path);
+		status = lttng_trace_archive_location_relay_get_relative_path(location,
+									      &relative_path);
 		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			ret = -1;
 			goto end;
@@ -658,9 +641,12 @@ int print_trace_archive_location(
 			break;
 		}
 
-		MSG(" on relay %s://%s/%s [control port %" PRIu16 ", data port %"
-				PRIu16 "]", protocol_str, host,
-				relative_path, control_port, data_port);
+		MSG(" on relay %s://%s/%s [control port %" PRIu16 ", data port %" PRIu16 "]",
+		    protocol_str,
+		    host,
+		    relative_path,
+		    control_port,
+		    data_port);
 		printed_location = true;
 		break;
 	}

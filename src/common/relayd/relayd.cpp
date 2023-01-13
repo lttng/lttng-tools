@@ -6,25 +6,24 @@
  */
 
 #define _LGPL_SOURCE
+#include "relayd.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/compat/string.hpp>
+#include <common/defaults.hpp>
+#include <common/index/ctf-index.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/string-utils/format.hpp>
+#include <common/trace-chunk.hpp>
+
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <inttypes.h>
 
-#include <common/common.hpp>
-#include <common/defaults.hpp>
-#include <common/compat/endian.hpp>
-#include <common/compat/string.hpp>
-#include <common/sessiond-comm/relayd.hpp>
-#include <common/index/ctf-index.hpp>
-#include <common/trace-chunk.hpp>
-#include <common/string-utils/format.hpp>
-
-#include "relayd.hpp"
-
-static
-bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
+static bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 {
 	if (sock->major > 2) {
 		return true;
@@ -34,8 +33,7 @@ bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 	return false;
 }
 
-static
-bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
+static bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
 {
 	if (sock->major > 2) {
 		return true;
@@ -49,8 +47,10 @@ bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
  * Send command. Fill up the header and append the data.
  */
 static int send_command(struct lttcomm_relayd_sock *rsock,
-		enum lttcomm_relayd_command cmd, const void *data, size_t size,
-		int flags)
+			enum lttcomm_relayd_command cmd,
+			const void *data,
+			size_t size,
+			int flags)
 {
 	int ret;
 	struct lttcomm_relayd_hdr header;
@@ -87,12 +87,14 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 	}
 
 	DBG3("Relayd sending command %s of size %" PRIu64,
-			lttcomm_relayd_command_str(cmd), buf_size);
+	     lttcomm_relayd_command_str(cmd),
+	     buf_size);
 	ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
 	if (ret < 0) {
 		PERROR("Failed to send command %s of size %" PRIu64,
-				lttcomm_relayd_command_str(cmd), buf_size);
-	ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
+		       lttcomm_relayd_command_str(cmd),
+		       buf_size);
+		ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
 		ret = -errno;
 		goto error;
 	}
@@ -123,7 +125,9 @@ static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size
 			DBG("Socket %d has performed an orderly shutdown", rsock->sock.fd);
 		} else {
 			DBG("Receiving reply failed on sock %d for size %zu with ret %d",
-					rsock->sock.fd, size, ret);
+			    rsock->sock.fd,
+			    size,
+			    ret);
 		}
 		/* Always return -1 here and the caller can use errno. */
 		ret = -1;
@@ -141,13 +145,18 @@ error:
  * payload size is introduced.
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
-		const char *session_name, const char *hostname,
-		const char *base_path, int session_live_timer,
-		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid& sessiond_uuid, const uint64_t *current_chunk_id,
-		time_t creation_time, bool session_name_contains_creation_time,
-		struct lttcomm_relayd_create_session_reply_2_11 *reply,
-		char *output_path)
+				      const char *session_name,
+				      const char *hostname,
+				      const char *base_path,
+				      int session_live_timer,
+				      unsigned int snapshot,
+				      uint64_t sessiond_session_id,
+				      const lttng_uuid& sessiond_uuid,
+				      const uint64_t *current_chunk_id,
+				      time_t creation_time,
+				      bool session_name_contains_creation_time,
+				      struct lttcomm_relayd_create_session_reply_2_11 *reply,
+				      char *output_path)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -205,8 +214,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	msg->session_id = htobe64(sessiond_session_id);
 	msg->session_name_contains_creation_time = session_name_contains_creation_time;
 	if (current_chunk_id) {
-		LTTNG_OPTIONAL_SET(&msg->current_chunk_id,
-				htobe64(*current_chunk_id));
+		LTTNG_OPTIONAL_SET(&msg->current_chunk_id, htobe64(*current_chunk_id));
 	}
 
 	msg->creation_time = htobe64((uint64_t) creation_time);
@@ -225,8 +233,10 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	reply->generic.ret_code = be32toh(reply->generic.ret_code);
 	reply->output_path_length = be32toh(reply->output_path_length);
 	if (reply->output_path_length >= LTTNG_PATH_MAX) {
-		ERR("Invalid session output path length in reply (%" PRIu32 " bytes) exceeds maximal allowed length (%d bytes)",
-				reply->output_path_length, LTTNG_PATH_MAX);
+		ERR("Invalid session output path length in reply (%" PRIu32
+		    " bytes) exceeds maximal allowed length (%d bytes)",
+		    reply->output_path_length,
+		    LTTNG_PATH_MAX);
 		ret = -1;
 		goto error;
 	}
@@ -243,15 +253,16 @@ error:
  * support the live reading capability.
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
-		const char *session_name, const char *hostname,
-		int session_live_timer, unsigned int snapshot,
-		struct lttcomm_relayd_status_session *reply)
+				     const char *session_name,
+				     const char *hostname,
+				     int session_live_timer,
+				     unsigned int snapshot,
+				     struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
 
-	if (lttng_strncpy(msg.session_name, session_name,
-			sizeof(msg.session_name))) {
+	if (lttng_strncpy(msg.session_name, session_name, sizeof(msg.session_name))) {
 		ret = -1;
 		goto error;
 	}
@@ -283,7 +294,7 @@ error:
  * RELAYD_CREATE_SESSION from 2.1 to 2.3.
  */
 static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
-		struct lttcomm_relayd_status_session *reply)
+				     struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 
@@ -312,14 +323,18 @@ error:
  * a lttng error code from the relayd.
  */
 int relayd_create_session(struct lttcomm_relayd_sock *rsock,
-		uint64_t *relayd_session_id,
-		const char *session_name, const char *hostname,
-		const char *base_path, int session_live_timer,
-		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid& sessiond_uuid,
-		const uint64_t *current_chunk_id,
-		time_t creation_time, bool session_name_contains_creation_time,
-		char *output_path)
+			  uint64_t *relayd_session_id,
+			  const char *session_name,
+			  const char *hostname,
+			  const char *base_path,
+			  int session_live_timer,
+			  unsigned int snapshot,
+			  uint64_t sessiond_session_id,
+			  const lttng_uuid& sessiond_uuid,
+			  const uint64_t *current_chunk_id,
+			  time_t creation_time,
+			  bool session_name_contains_creation_time,
+			  char *output_path)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_reply_2_11 reply = {};
@@ -334,17 +349,23 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		ret = relayd_create_session_2_1(rsock, &reply.generic);
 	} else if (rsock->minor >= 4 && rsock->minor < 11) {
 		/* From 2.4 to 2.10 */
-		ret = relayd_create_session_2_4(rsock, session_name,
-				hostname, session_live_timer, snapshot,
-				&reply.generic);
+		ret = relayd_create_session_2_4(
+			rsock, session_name, hostname, session_live_timer, snapshot, &reply.generic);
 	} else {
 		/* From 2.11 to ... */
-		ret = relayd_create_session_2_11(rsock, session_name,
-				hostname, base_path, session_live_timer, snapshot,
-				sessiond_session_id, sessiond_uuid,
-				current_chunk_id, creation_time,
-				session_name_contains_creation_time,
-				&reply, output_path);
+		ret = relayd_create_session_2_11(rsock,
+						 session_name,
+						 hostname,
+						 base_path,
+						 session_live_timer,
+						 snapshot,
+						 sessiond_session_id,
+						 sessiond_uuid,
+						 current_chunk_id,
+						 creation_time,
+						 session_name_contains_creation_time,
+						 &reply,
+						 output_path);
 	}
 
 	if (ret < 0) {
@@ -354,8 +375,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 	/* Return session id or negative ret code. */
 	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd create session replied error %d",
-			reply.generic.ret_code);
+		ERR("Relayd create session replied error %d", reply.generic.ret_code);
 		goto error;
 	} else {
 		ret = 0;
@@ -369,20 +389,19 @@ error:
 }
 
 static int relayd_add_stream_2_1(struct lttcomm_relayd_sock *rsock,
-		const char *channel_name, const char *pathname)
+				 const char *channel_name,
+				 const char *pathname)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream msg;
 
 	memset(&msg, 0, sizeof(msg));
-	if (lttng_strncpy(msg.channel_name, channel_name,
-				sizeof(msg.channel_name))) {
+	if (lttng_strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name))) {
 		ret = -1;
 		goto error;
 	}
 
-	if (lttng_strncpy(msg.pathname, pathname,
-				sizeof(msg.pathname))) {
+	if (lttng_strncpy(msg.pathname, pathname, sizeof(msg.pathname))) {
 		ret = -1;
 		goto error;
 	}
@@ -399,21 +418,21 @@ error:
 }
 
 static int relayd_add_stream_2_2(struct lttcomm_relayd_sock *rsock,
-		const char *channel_name, const char *pathname,
-		uint64_t tracefile_size, uint64_t tracefile_count)
+				 const char *channel_name,
+				 const char *pathname,
+				 uint64_t tracefile_size,
+				 uint64_t tracefile_count)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_2 msg;
 
 	memset(&msg, 0, sizeof(msg));
 	/* Compat with relayd 2.2 to 2.10 */
-	if (lttng_strncpy(msg.channel_name, channel_name,
-				sizeof(msg.channel_name))) {
+	if (lttng_strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name))) {
 		ret = -1;
 		goto error;
 	}
-	if (lttng_strncpy(msg.pathname, pathname,
-				sizeof(msg.pathname))) {
+	if (lttng_strncpy(msg.pathname, pathname, sizeof(msg.pathname))) {
 		ret = -1;
 		goto error;
 	}
@@ -431,9 +450,11 @@ error:
 }
 
 static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
-		const char *channel_name, const char *pathname,
-		uint64_t tracefile_size, uint64_t tracefile_count,
-		uint64_t trace_archive_id)
+				  const char *channel_name,
+				  const char *pathname,
+				  uint64_t tracefile_size,
+				  uint64_t tracefile_count,
+				  uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_11 *msg = NULL;
@@ -492,10 +513,14 @@ error:
  *
  * On success return 0 else return ret_code negative value.
  */
-int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_name,
-		const char *domain_name, const char *_pathname, uint64_t *stream_id,
-		uint64_t tracefile_size, uint64_t tracefile_count,
-		struct lttng_trace_chunk *trace_chunk)
+int relayd_add_stream(struct lttcomm_relayd_sock *rsock,
+		      const char *channel_name,
+		      const char *domain_name,
+		      const char *_pathname,
+		      uint64_t *stream_id,
+		      uint64_t tracefile_size,
+		      uint64_t tracefile_count,
+		      struct lttng_trace_chunk *trace_chunk)
 {
 	int ret;
 	struct lttcomm_relayd_status_stream reply;
@@ -517,8 +542,8 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 
 	} else if (rsock->minor > 1 && rsock->minor < 11) {
 		/* From 2.2 to 2.10 */
-		ret = relayd_add_stream_2_2(rsock, channel_name, _pathname,
-				tracefile_size, tracefile_count);
+		ret = relayd_add_stream_2_2(
+			rsock, channel_name, _pathname, tracefile_size, tracefile_count);
 	} else {
 		const char *separator;
 		enum lttng_trace_chunk_status chunk_status;
@@ -530,24 +555,25 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 			separator = "/";
 		}
 
-		ret = snprintf(pathname, RELAYD_COMM_LTTNG_PATH_MAX, "%s%s%s",
-				domain_name, separator, _pathname);
+		ret = snprintf(pathname,
+			       RELAYD_COMM_LTTNG_PATH_MAX,
+			       "%s%s%s",
+			       domain_name,
+			       separator,
+			       _pathname);
 		if (ret <= 0 || ret >= RELAYD_COMM_LTTNG_PATH_MAX) {
 			ERR("Failed to format stream path: %s",
-					ret <= 0 ? "formatting error" :
-							"path exceeds maximal allowed length");
+			    ret <= 0 ? "formatting error" : "path exceeds maximal allowed length");
 			ret = -1;
 			goto error;
 		}
 
-		chunk_status = lttng_trace_chunk_get_id(trace_chunk,
-				&chunk_id);
+		chunk_status = lttng_trace_chunk_get_id(trace_chunk, &chunk_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 		/* From 2.11 to ...*/
-		ret = relayd_add_stream_2_11(rsock, channel_name, pathname,
-				tracefile_size, tracefile_count,
-				chunk_id);
+		ret = relayd_add_stream_2_11(
+			rsock, channel_name, pathname, tracefile_size, tracefile_count, chunk_id);
 	}
 
 	if (ret) {
@@ -575,8 +601,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 		*stream_id = reply.handle;
 	}
 
-	DBG("Relayd stream added successfully with handle %" PRIu64,
-			reply.handle);
+	DBG("Relayd stream added successfully with handle %" PRIu64, reply.handle);
 
 error:
 	return ret;
@@ -651,8 +676,7 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 	/* Code flow error. Safety net. */
 	LTTNG_ASSERT(rsock);
 
-	DBG("Relayd version check for major.minor %u.%u", rsock->major,
-			rsock->minor);
+	DBG("Relayd version check for major.minor %u.%u", rsock->major, rsock->minor);
 
 	memset(&msg, 0, sizeof(msg));
 	/* Prepare network byte order before transmission. */
@@ -685,7 +709,8 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 		/* Not compatible */
 		ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
 		DBG2("Relayd version is NOT compatible. Relayd version %u != %u (us)",
-				msg.major, rsock->major);
+		     msg.major,
+		     rsock->major);
 		goto error;
 	}
 
@@ -700,7 +725,8 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 
 	/* Version number compatible */
 	DBG2("Relayd version is compatible, using protocol version %u.%u",
-			rsock->major, rsock->minor);
+	     rsock->major,
+	     rsock->minor);
 	ret = 0;
 
 error:
@@ -806,7 +832,8 @@ end:
  * Send data header structure to the relayd.
  */
 int relayd_send_data_hdr(struct lttcomm_relayd_sock *rsock,
-		struct lttcomm_relayd_data_hdr *hdr, size_t size)
+			 struct lttcomm_relayd_data_hdr *hdr,
+			 size_t size)
 {
 	int ret;
 
@@ -844,8 +871,9 @@ error:
 /*
  * Send close stream command to the relayd.
  */
-int relayd_send_close_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
-		uint64_t last_net_seq_num)
+int relayd_send_close_stream(struct lttcomm_relayd_sock *rsock,
+			     uint64_t stream_id,
+			     uint64_t last_net_seq_num)
 {
 	int ret;
 	struct lttcomm_relayd_close_stream msg;
@@ -894,8 +922,9 @@ error:
  *
  * Return 0 if NOT pending, 1 if so and a negative value on error.
  */
-int relayd_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
-		uint64_t last_net_seq_num)
+int relayd_data_pending(struct lttcomm_relayd_sock *rsock,
+			uint64_t stream_id,
+			uint64_t last_net_seq_num)
 {
 	int ret;
 	struct lttcomm_relayd_data_pending msg;
@@ -911,8 +940,7 @@ int relayd_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_DATA_PENDING, (void *) &msg,
-			sizeof(msg), 0);
+	ret = send_command(rsock, RELAYD_DATA_PENDING, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -933,8 +961,7 @@ int relayd_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	/* At this point, the ret code is either 1 or 0 */
 	ret = reply.ret_code;
 
-	DBG("Relayd data is %s pending for stream id %" PRIu64,
-			ret == 1 ? "" : "NOT", stream_id);
+	DBG("Relayd data is %s pending for stream id %" PRIu64, ret == 1 ? "" : "NOT", stream_id);
 
 error:
 	return ret;
@@ -943,8 +970,7 @@ error:
 /*
  * Check on the relayd side for a quiescent state on the control socket.
  */
-int relayd_quiescent_control(struct lttcomm_relayd_sock *rsock,
-		uint64_t metadata_stream_id)
+int relayd_quiescent_control(struct lttcomm_relayd_sock *rsock, uint64_t metadata_stream_id)
 {
 	int ret;
 	struct lttcomm_relayd_quiescent_control msg;
@@ -1036,8 +1062,9 @@ error:
  * Return 0 on success and set is_data_inflight to 0 if no data is being
  * streamed or 1 if it is the case.
  */
-int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id,
-		unsigned int *is_data_inflight)
+int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock,
+			    uint64_t id,
+			    unsigned int *is_data_inflight)
 {
 	int ret, recv_ret;
 	struct lttcomm_relayd_end_data_pending msg;
@@ -1083,8 +1110,9 @@ error:
  * Send index to the relayd.
  */
 int relayd_send_index(struct lttcomm_relayd_sock *rsock,
-		struct ctf_packet_index *index, uint64_t relay_stream_id,
-		uint64_t net_seq_num)
+		      struct ctf_packet_index *index,
+		      uint64_t relay_stream_id,
+		      uint64_t net_seq_num)
 {
 	int ret;
 	struct lttcomm_relayd_index msg;
@@ -1119,11 +1147,13 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_SEND_INDEX, &msg,
-		lttcomm_relayd_index_len(lttng_to_index_major(rsock->major,
-								rsock->minor),
-				lttng_to_index_minor(rsock->major, rsock->minor)),
-				0);
+	ret = send_command(
+		rsock,
+		RELAYD_SEND_INDEX,
+		&msg,
+		lttcomm_relayd_index_len(lttng_to_index_major(rsock->major, rsock->minor),
+					 lttng_to_index_minor(rsock->major, rsock->minor)),
+		0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1152,8 +1182,7 @@ error:
 /*
  * Ask the relay to reset the metadata trace file (regeneration).
  */
-int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
-		uint64_t stream_id, uint64_t version)
+int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock, uint64_t stream_id, uint64_t version)
 {
 	int ret;
 	struct lttcomm_relayd_reset_metadata msg;
@@ -1205,8 +1234,9 @@ error:
 }
 
 int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
-		unsigned int stream_count, const uint64_t *new_chunk_id,
-		const struct relayd_stream_rotation_position *positions)
+			  unsigned int stream_count,
+			  const uint64_t *new_chunk_id,
+			  const struct relayd_stream_rotation_position *positions)
 {
 	int ret;
 	unsigned int i;
@@ -1233,8 +1263,8 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	LTTNG_ASSERT(sock);
 
 	if (new_chunk_id) {
-		ret = snprintf(new_chunk_id_buf, sizeof(new_chunk_id_buf),
-				"%" PRIu64, *new_chunk_id);
+		ret = snprintf(
+			new_chunk_id_buf, sizeof(new_chunk_id_buf), "%" PRIu64, *new_chunk_id);
 		if (ret == -1 || ret >= sizeof(new_chunk_id_buf)) {
 			new_chunk_id_str = "formatting error";
 		} else {
@@ -1245,7 +1275,8 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	}
 
 	DBG("Preparing \"rotate streams\" command payload: new_chunk_id = %s, stream_count = %u",
-			new_chunk_id_str, stream_count);
+	    new_chunk_id_str,
+	    stream_count);
 
 	ret = lttng_dynamic_buffer_append(&payload, &msg, sizeof(msg));
 	if (ret) {
@@ -1254,19 +1285,16 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	}
 
 	for (i = 0; i < stream_count; i++) {
-		const struct relayd_stream_rotation_position *position =
-				&positions[i];
+		const struct relayd_stream_rotation_position *position = &positions[i];
 		const struct lttcomm_relayd_stream_rotation_position comm_position = {
 			.stream_id = htobe64(position->stream_id),
-			.rotate_at_seq_num = htobe64(
-					position->rotate_at_seq_num),
+			.rotate_at_seq_num = htobe64(position->rotate_at_seq_num),
 		};
 
 		DBG("Rotate stream %" PRIu64 " at sequence number %" PRIu64,
-				position->stream_id,
-				position->rotate_at_seq_num);
-		ret = lttng_dynamic_buffer_append(&payload, &comm_position,
-				sizeof(comm_position));
+		    position->stream_id,
+		    position->rotate_at_seq_num);
+		ret = lttng_dynamic_buffer_append(&payload, &comm_position, sizeof(comm_position));
 		if (ret) {
 			ERR("Failed to allocate \"rotate streams\" command payload");
 			goto error;
@@ -1274,8 +1302,7 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	}
 
 	/* Send command. */
-	ret = send_command(sock, RELAYD_ROTATE_STREAMS, payload.data,
-			payload.size, 0);
+	ret = send_command(sock, RELAYD_ROTATE_STREAMS, payload.data, payload.size, 0);
 	if (ret < 0) {
 		ERR("Failed to send \"rotate stream\" command");
 		goto error;
@@ -1303,8 +1330,7 @@ error:
 	return ret;
 }
 
-int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
-		struct lttng_trace_chunk *chunk)
+int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock, struct lttng_trace_chunk *chunk)
 {
 	int ret = 0;
 	enum lttng_trace_chunk_status status;
@@ -1330,17 +1356,14 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	status = lttng_trace_chunk_get_creation_timestamp(
-			chunk, &creation_timestamp);
+	status = lttng_trace_chunk_get_creation_timestamp(chunk, &creation_timestamp);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
 	}
 
-	status = lttng_trace_chunk_get_name(
-			chunk, &chunk_name, &overridden_name);
-	if (status != LTTNG_TRACE_CHUNK_STATUS_OK &&
-			status != LTTNG_TRACE_CHUNK_STATUS_NONE) {
+	status = lttng_trace_chunk_get_name(chunk, &chunk_name, &overridden_name);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK && status != LTTNG_TRACE_CHUNK_STATUS_NONE) {
 		ret = -1;
 		goto end;
 	}
@@ -1355,15 +1378,13 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 	if (chunk_name_length) {
-		ret = lttng_dynamic_buffer_append(
-				&payload, chunk_name, chunk_name_length);
+		ret = lttng_dynamic_buffer_append(&payload, chunk_name, chunk_name_length);
 		if (ret) {
 			goto end;
 		}
 	}
 
-	ret = send_command(sock, RELAYD_CREATE_TRACE_CHUNK, payload.data,
-			payload.size, 0);
+	ret = send_command(sock, RELAYD_CREATE_TRACE_CHUNK, payload.data, payload.size, 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk creation command to relay daemon");
 		goto end;
@@ -1378,12 +1399,10 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 	reply.ret_code = be32toh(reply.ret_code);
 	if (reply.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd trace chunk create replied error %d",
-				reply.ret_code);
+		ERR("Relayd trace chunk create replied error %d", reply.ret_code);
 	} else {
 		ret = 0;
-		DBG("Relayd successfully created trace chunk: chunk_id = %" PRIu64,
-				chunk_id);
+		DBG("Relayd successfully created trace chunk: chunk_id = %" PRIu64, chunk_id);
 	}
 
 end:
@@ -1392,8 +1411,8 @@ end:
 }
 
 int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
-		struct lttng_trace_chunk *chunk,
-		char *path)
+			     struct lttng_trace_chunk *chunk,
+			     char *path)
 {
 	int ret = 0;
 	enum lttng_trace_chunk_status status;
@@ -1422,8 +1441,7 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	status = lttng_trace_chunk_get_close_command(chunk,
-			&close_command.value);
+	status = lttng_trace_chunk_get_close_command(chunk, &close_command.value);
 	switch (status) {
 	case LTTNG_TRACE_CHUNK_STATUS_OK:
 		close_command.is_set = 1;
@@ -1445,8 +1463,7 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		},
 	};
 
-	ret = send_command(sock, RELAYD_CLOSE_TRACE_CHUNK, &msg, sizeof(msg),
-			0);
+	ret = send_command(sock, RELAYD_CLOSE_TRACE_CHUNK, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk close command to relay daemon");
 		goto end;
@@ -1479,19 +1496,18 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 	reply.generic.ret_code = be32toh(reply.generic.ret_code);
 	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd trace chunk close replied error %d",
-				reply.generic.ret_code);
+		ERR("Relayd trace chunk close replied error %d", reply.generic.ret_code);
 	} else {
 		ret = 0;
-		DBG("Relayd successfully closed trace chunk: chunk_id = %" PRIu64,
-				chunk_id);
+		DBG("Relayd successfully closed trace chunk: chunk_id = %" PRIu64, chunk_id);
 	}
 end:
 	return ret;
 }
 
 int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
-		uint64_t chunk_id, bool *chunk_exists)
+			      uint64_t chunk_id,
+			      bool *chunk_exists)
 {
 	int ret = 0;
 	struct lttcomm_relayd_trace_chunk_exists msg = {};
@@ -1505,11 +1521,10 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 	}
 
 	msg = (typeof(msg)){
-			.chunk_id = htobe64(chunk_id),
+		.chunk_id = htobe64(chunk_id),
 	};
 
-	ret = send_command(sock, RELAYD_TRACE_CHUNK_EXISTS, &msg, sizeof(msg),
-			0);
+	ret = send_command(sock, RELAYD_TRACE_CHUNK_EXISTS, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk exists command to relay daemon");
 		goto end;
@@ -1524,13 +1539,13 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 	reply.generic.ret_code = be32toh(reply.generic.ret_code);
 	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd trace chunk close replied error %d",
-				reply.generic.ret_code);
+		ERR("Relayd trace chunk close replied error %d", reply.generic.ret_code);
 	} else {
 		ret = 0;
 		DBG("Relayd successfully checked trace chunk existence: chunk_id = %" PRIu64
-				", exists = %s", chunk_id,
-				reply.trace_chunk_exists ? "true" : "false");
+		    ", exists = %s",
+		    chunk_id,
+		    reply.trace_chunk_exists ? "true" : "false");
 		*chunk_exists = !!reply.trace_chunk_exists;
 	}
 end:
@@ -1538,11 +1553,11 @@ end:
 }
 
 int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
-		uint64_t query_flags,
-		uint64_t *result_flags)
+			     uint64_t query_flags,
+			     uint64_t *result_flags)
 {
 	int ret = 0;
-	struct lttcomm_relayd_get_configuration msg = (typeof(msg)) {
+	struct lttcomm_relayd_get_configuration msg = (typeof(msg)){
 		.query_flags = htobe64(query_flags),
 	};
 	struct lttcomm_relayd_get_configuration_reply reply = {};
@@ -1557,8 +1572,7 @@ int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	ret = send_command(sock, RELAYD_GET_CONFIGURATION, &msg, sizeof(msg),
-			0);
+	ret = send_command(sock, RELAYD_GET_CONFIGURATION, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send get configuration command to relay daemon");
 		goto end;
@@ -1573,15 +1587,14 @@ int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
 	reply.generic.ret_code = be32toh(reply.generic.ret_code);
 	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd get configuration replied error %d",
-				reply.generic.ret_code);
+		ERR("Relayd get configuration replied error %d", reply.generic.ret_code);
 	} else {
-		reply.relayd_configuration_flags =
-			be64toh(reply.relayd_configuration_flags);
+		reply.relayd_configuration_flags = be64toh(reply.relayd_configuration_flags);
 		ret = 0;
 		DBG("Relayd successfully got configuration: query_flags = %" PRIu64
-				", results_flags = %" PRIu64, query_flags,
-				reply.relayd_configuration_flags);
+		    ", results_flags = %" PRIu64,
+		    query_flags,
+		    reply.relayd_configuration_flags);
 		*result_flags = reply.relayd_configuration_flags;
 	}
 end:

@@ -6,6 +6,12 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+
+#include <lttng/domain-internal.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,11 +20,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/mi-lttng.hpp>
-#include <lttng/domain-internal.hpp>
-
-#include "../command.hpp"
-
 static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
@@ -26,7 +27,7 @@ static int opt_userspace;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-disable-channel.1.h>
-;
+	;
 #endif
 
 enum {
@@ -40,16 +41,15 @@ static struct mi_writer *writer;
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
+	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
-static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
-		int success)
+static int mi_partial_channel_print(char *channel_name, unsigned int enabled, int success)
 {
 	int ret;
 
@@ -63,22 +63,19 @@ static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
 	}
 
 	/* Name */
-	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
-			channel_name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, channel_name);
 	if (ret) {
 		goto end;
 	}
 
 	/* Enabled ? */
-	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled,
-			enabled);
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled, enabled);
 	if (ret) {
 		goto end;
 	}
 
 	/* Success ? */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			mi_lttng_element_success, success);
+	ret = mi_lttng_writer_write_element_bool(writer, mi_lttng_element_success, success);
 	if (ret) {
 		goto end;
 	}
@@ -128,7 +125,6 @@ static int disable_channels(char *session_name, char *channel_list)
 			ret = CMD_ERROR;
 			goto error;
 		}
-
 	}
 
 	/* Strip channel list */
@@ -138,8 +134,10 @@ static int disable_channels(char *session_name, char *channel_list)
 
 		ret = lttng_disable_channel(handle, channel_name);
 		if (ret < 0) {
-			ERR("Channel %s: %s (session %s)", channel_name,
-					lttng_strerror(ret), session_name);
+			ERR("Channel %s: %s (session %s)",
+			    channel_name,
+			    lttng_strerror(ret),
+			    session_name);
 			warn = 1;
 
 			/*
@@ -154,8 +152,9 @@ static int disable_channels(char *session_name, char *channel_list)
 
 		} else {
 			MSG("%s channel %s disabled for session %s",
-					lttng_domain_type_str(dom.type),
-					channel_name, session_name);
+			    lttng_domain_type_str(dom.type),
+			    channel_name,
+			    session_name);
 			enabled = 0;
 			success = 1;
 		}
@@ -230,8 +229,7 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 	}
 
-	ret = print_missing_or_multiple_domains(
-			opt_kernel + opt_userspace, false);
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace, false);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;
@@ -278,15 +276,14 @@ int cmd_disable_channels(int argc, const char **argv)
 
 		/* Open command element */
 		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_disable_channel);
+						   mi_lttng_element_command_disable_channel);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -308,8 +305,7 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_success, success);
+		ret = mi_lttng_writer_write_element_bool(writer, mi_lttng_element_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

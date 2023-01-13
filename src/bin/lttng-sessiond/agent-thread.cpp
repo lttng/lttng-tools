@@ -7,20 +7,19 @@
 
 #define _LGPL_SOURCE
 
+#include "agent-thread.hpp"
+#include "agent.hpp"
+#include "fd-limit.hpp"
+#include "lttng-sessiond.hpp"
+#include "session.hpp"
+#include "thread.hpp"
+#include "utils.hpp"
+
 #include <common/common.hpp>
+#include <common/compat/endian.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
-
-#include <common/compat/endian.hpp>
-
-#include "fd-limit.hpp"
-#include "agent-thread.hpp"
-#include "agent.hpp"
-#include "lttng-sessiond.hpp"
-#include "session.hpp"
-#include "utils.hpp"
-#include "thread.hpp"
 
 namespace {
 struct thread_notifiers {
@@ -65,7 +64,7 @@ static void update_agent_app(const struct agent_app *app)
 	list = session_get_list();
 	LTTNG_ASSERT(list);
 
-	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
+	cds_list_for_each_entry_safe (session, stmp, &list->head, list) {
 		if (!session_get(session)) {
 			continue;
 		}
@@ -90,8 +89,8 @@ static void update_agent_app(const struct agent_app *app)
 	 * We are protected against the addition of new events by the session
 	 * list lock being held.
 	 */
-	cds_lfht_for_each_entry(the_trigger_agents_ht_by_domain->ht,
-			&iter.iter, trigger_agent, node.node) {
+	cds_lfht_for_each_entry (
+		the_trigger_agents_ht_by_domain->ht, &iter.iter, trigger_agent, node.node) {
 		agent_update(trigger_agent, app);
 	}
 	rcu_read_unlock();
@@ -129,12 +128,11 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	for (port = the_config.agent_tcp_port.begin;
-			port <= the_config.agent_tcp_port.end; port++) {
+	for (port = the_config.agent_tcp_port.begin; port <= the_config.agent_tcp_port.end;
+	     port++) {
 		ret = lttcomm_sock_set_port(sock, (uint16_t) port);
 		if (ret) {
-			ERR("Failed to set port %u on socket",
-					port);
+			ERR("Failed to set port %u on socket", port);
 			goto error;
 		}
 		DBG3("Trying to bind on port %u", port);
@@ -145,8 +143,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		}
 
 		if (errno == EADDRINUSE) {
-			DBG("Failed to bind to port %u since it is already in use",
-					port);
+			DBG("Failed to bind to port %u since it is already in use", port);
 		} else {
 			PERROR("Failed to bind to port %u", port);
 			goto error;
@@ -154,17 +151,16 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	}
 
 	if (!bind_succeeded) {
-		if (the_config.agent_tcp_port.begin ==
-				the_config.agent_tcp_port.end) {
+		if (the_config.agent_tcp_port.begin == the_config.agent_tcp_port.end) {
 			WARN("Another process is already using the agent port %i. "
 			     "Agent support will be deactivated.",
-					the_config.agent_tcp_port.begin);
+			     the_config.agent_tcp_port.begin);
 			goto error;
 		} else {
 			WARN("All ports in the range [%i, %i] are already in use. "
 			     "Agent support will be deactivated.",
-					the_config.agent_tcp_port.begin,
-					the_config.agent_tcp_port.end);
+			     the_config.agent_tcp_port.begin,
+			     the_config.agent_tcp_port.end);
 			goto error;
 		}
 	}
@@ -174,8 +170,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	DBG("Listening on TCP port %u and socket %d",
-			port, sock->fd);
+	DBG("Listening on TCP port %u and socket %d", port, sock->fd);
 
 	return sock;
 
@@ -202,8 +197,7 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 		port = 0;
 	}
 
-	DBG3("Destroy TCP socket on port %" PRIu16,
-			port);
+	DBG3("Destroy TCP socket on port %" PRIu16, port);
 
 	/* This will return gracefully if fd is invalid. */
 	sock->ops->close(sock);
@@ -230,16 +224,17 @@ static const char *domain_type_str(enum lttng_domain_type domain_type)
 	}
 }
 
-static bool is_agent_protocol_version_supported(
-		const struct agent_protocol_version *version)
+static bool is_agent_protocol_version_supported(const struct agent_protocol_version *version)
 {
 	const bool is_supported = version->major == AGENT_MAJOR_VERSION &&
-			version->minor == AGENT_MINOR_VERSION;
+		version->minor == AGENT_MINOR_VERSION;
 
 	if (!is_supported) {
 		WARN("Refusing agent connection: unsupported protocol version %ui.%ui, expected %i.%i",
-				version->major, version->minor,
-				AGENT_MAJOR_VERSION, AGENT_MINOR_VERSION);
+		     version->major,
+		     version->minor,
+		     AGENT_MAJOR_VERSION,
+		     AGENT_MINOR_VERSION);
 	}
 
 	return is_supported;
@@ -252,10 +247,9 @@ static bool is_agent_protocol_version_supported(
  * On success, the resulting socket is returned through `agent_app_socket`
  * and the application's reported id is updated through `agent_app_id`.
  */
-static int accept_agent_connection(
-		struct lttcomm_sock *reg_sock,
-		struct agent_app_id *agent_app_id,
-		struct lttcomm_sock **agent_app_socket)
+static int accept_agent_connection(struct lttcomm_sock *reg_sock,
+				   struct agent_app_id *agent_app_id,
+				   struct lttcomm_sock **agent_app_socket)
 {
 	int ret;
 	struct agent_protocol_version agent_version;
@@ -277,7 +271,8 @@ static int accept_agent_connection(
 			PERROR("Failed to register new agent application");
 		} else if (size != 0) {
 			ERR("Failed to register new agent application: invalid registration message length: expected length = %zu, message length = %zd",
-					sizeof(msg), size);
+			    sizeof(msg),
+			    size);
 		} else {
 			DBG("Failed to register new agent application: connection closed");
 		}
@@ -285,7 +280,7 @@ static int accept_agent_connection(
 		goto error_close_socket;
 	}
 
-	agent_version = (struct agent_protocol_version) {
+	agent_version = (struct agent_protocol_version){
 		be32toh(msg.major_version),
 		be32toh(msg.minor_version),
 	};
@@ -296,14 +291,15 @@ static int accept_agent_connection(
 		goto error_close_socket;
 	}
 
-	*agent_app_id = (struct agent_app_id) {
+	*agent_app_id = (struct agent_app_id){
 		.pid = (pid_t) be32toh(msg.pid),
 		.domain = (lttng_domain_type) be32toh(msg.domain),
 	};
 
 	DBG2("New registration for agent application: pid = %ld, domain = %s, socket fd = %d",
-			(long) agent_app_id->pid,
-			domain_type_str(agent_app_id->domain), new_sock->fd);
+	     (long) agent_app_id->pid,
+	     domain_type_str(agent_app_id->domain),
+	     new_sock->fd);
 
 	*agent_app_socket = new_sock;
 	new_sock = NULL;
@@ -331,19 +327,16 @@ bool agent_tracing_is_enabled(void)
  */
 static int write_agent_port(uint16_t port)
 {
-	return utils_create_pid_file(
-			(pid_t) port, the_config.agent_port_file_path.value);
+	return utils_create_pid_file((pid_t) port, the_config.agent_port_file_path.value);
 }
 
-static
-void mark_thread_as_ready(struct thread_notifiers *notifiers)
+static void mark_thread_as_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Marking agent management thread as ready");
 	sem_post(&notifiers->ready);
 }
 
-static
-void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for agent management thread to be ready");
 	sem_wait(&notifiers->ready);
@@ -360,8 +353,7 @@ static void *thread_agent_management(void *data)
 	struct lttng_poll_event events;
 	struct lttcomm_sock *reg_sock;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
-			notifiers->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 
 	DBG("Manage agent application registration.");
 
@@ -419,10 +411,9 @@ static void *thread_agent_management(void *data)
 		DBG3("Manage agent polling");
 
 		/* Inifinite blocking call, waiting for transmission */
-restart:
+	restart:
 		ret = lttng_poll_wait(&events, -1);
-		DBG3("Manage agent return from poll on %d fds",
-				LTTNG_POLL_GETNB(&events));
+		DBG3("Manage agent return from poll on %d fds", LTTNG_POLL_GETNB(&events));
 		if (ret < 0) {
 			/*
 			 * Restart interrupted system call.
@@ -466,12 +457,10 @@ restart:
 				 * new_app_socket's ownership has been
 				 * transferred to the new agent app.
 				 */
-				new_app = agent_create_app(new_app_id.pid,
-						new_app_id.domain,
-						new_app_socket);
+				new_app = agent_create_app(
+					new_app_id.pid, new_app_id.domain, new_app_socket);
 				if (!new_app) {
-					new_app_socket->ops->close(
-							new_app_socket);
+					new_app_socket->ops->close(new_app_socket);
 					continue;
 				}
 				new_app_socket_fd = new_app_socket->fd;
@@ -505,8 +494,7 @@ restart:
 				if (ret < 0) {
 					agent_destroy_app(new_app);
 					/* Removing from the poll set. */
-					ret = lttng_poll_del(&events,
-							new_app_socket_fd);
+					ret = lttng_poll_del(&events, new_app_socket_fd);
 					if (ret < 0) {
 						session_unlock_list();
 						goto error;
@@ -580,10 +568,10 @@ bool launch_agent_management_thread(void)
 		goto error;
 	}
 	thread = lttng_thread_create("Agent management",
-			thread_agent_management,
-			shutdown_agent_management_thread,
-			cleanup_agent_management_thread,
-			notifiers);
+				     thread_agent_management,
+				     shutdown_agent_management_thread,
+				     cleanup_agent_management_thread,
+				     notifiers);
 	if (!thread) {
 		goto error;
 	}

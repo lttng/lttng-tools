@@ -5,19 +5,17 @@
  *
  */
 
-#include "uprobe.hpp"
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
+#include "command.hpp"
 #include "common/compat/getenv.hpp"
+#include "common/path.hpp"
 #include "common/string-utils/string-utils.hpp"
 #include "common/utils.hpp"
-#include "common/path.hpp"
 #include "lttng/constant.h"
+#include "uprobe.hpp"
 
-#include "command.hpp"
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /*
  * Walk the directories in the PATH environment variable to find the target
@@ -28,8 +26,7 @@
  * LTTNG_PATH_MAX bytes long.
  * On failure, returns -1;
  */
-static
-int walk_command_search_path(const char *binary, char *binary_full_path)
+static int walk_command_search_path(const char *binary, char *binary_full_path)
 {
 	char *tentative_binary_path = NULL;
 	char *command_search_path = NULL;
@@ -86,14 +83,14 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 		 * Build the tentative path to the binary using the current
 		 * search directory and the name of the binary.
 		 */
-		ret = snprintf(tentative_binary_path, LTTNG_PATH_MAX, "%s/%s",
-				curr_search_dir, binary);
+		ret = snprintf(
+			tentative_binary_path, LTTNG_PATH_MAX, "%s/%s", curr_search_dir, binary);
 		if (ret < 0) {
 			goto free_binary_path;
 		}
 		if (ret < LTTNG_PATH_MAX) {
-			 /*
-			  * Use STAT(2) to see if the file exists.
+			/*
+			 * Use STAT(2) to see if the file exists.
 			 */
 			ret = stat(tentative_binary_path, &stat_output);
 			if (ret == 0) {
@@ -102,18 +99,17 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 				 * symlink and not a special file (e.g.
 				 * device).
 				 */
-				if (S_ISREG(stat_output.st_mode)
-						|| S_ISLNK(stat_output.st_mode)) {
+				if (S_ISREG(stat_output.st_mode) || S_ISLNK(stat_output.st_mode)) {
 					/*
 					 * Found a match, set the out parameter
 					 * and return success.
 					 */
 					ret = lttng_strncpy(binary_full_path,
-							tentative_binary_path,
-							LTTNG_PATH_MAX);
+							    tentative_binary_path,
+							    LTTNG_PATH_MAX);
 					if (ret == -1) {
 						ERR("Source path does not fit "
-							"in destination buffer.");
+						    "in destination buffer.");
 					}
 					goto free_binary_path;
 				}
@@ -144,8 +140,7 @@ end:
  * elf:/path/to/binary:my_symbol+0x323
  * elf:/path/to/binary:my_symbol+43
  */
-static
-int warn_userspace_probe_syntax(const char *symbol)
+static int warn_userspace_probe_syntax(const char *symbol)
 {
 	int ret;
 
@@ -197,7 +192,7 @@ error:
  * target_path to the path to the binary.
  */
 int parse_userspace_probe_opts(const char *opt,
-		struct lttng_userspace_probe_location **probe_location)
+			       struct lttng_userspace_probe_location **probe_location)
 {
 	int ret = CMD_SUCCESS;
 	size_t num_token = 0;
@@ -239,7 +234,9 @@ int parse_userspace_probe_opts(const char *opt,
 	case 2:
 		/* When the probe type is omitted we assume ELF for now. */
 	case 3:
-		if (num_token == 3 && strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "elf") == 0) {
+		if (num_token == 3 &&
+		    strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0),
+			   "elf") == 0) {
 			target_path = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
 			symbol_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
 		} else if (num_token == 2) {
@@ -249,8 +246,7 @@ int parse_userspace_probe_opts(const char *opt,
 			ret = CMD_ERROR;
 			goto end;
 		}
-		lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_elf_create();
+		lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
 		if (!lookup_method) {
 			WARN("Failed to create ELF lookup method");
 			ret = CMD_ERROR;
@@ -258,9 +254,11 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 		break;
 	case 4:
-		if (strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "sdt") == 0) {
+		if (strcmp((const char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 0),
+			   "sdt") == 0) {
 			target_path = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
-			provider_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
+			provider_name =
+				(char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
 			probe_name = (char *) lttng_dynamic_pointer_array_get_pointer(&tokens, 3);
 		} else {
 			ret = CMD_ERROR;
@@ -340,7 +338,7 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 
 		probe_location_local = lttng_userspace_probe_location_function_create(
-				real_target_path, symbol_name, lookup_method);
+			real_target_path, symbol_name, lookup_method);
 		if (!probe_location_local) {
 			WARN("Failed to create function probe location");
 			ret = CMD_ERROR;
@@ -352,7 +350,7 @@ int parse_userspace_probe_opts(const char *opt,
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 		probe_location_local = lttng_userspace_probe_location_tracepoint_create(
-				real_target_path, provider_name, probe_name, lookup_method);
+			real_target_path, provider_name, probe_name, lookup_method);
 		if (!probe_location_local) {
 			WARN("Failed to create function probe location");
 			ret = CMD_ERROR;

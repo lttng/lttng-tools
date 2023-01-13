@@ -9,7 +9,7 @@
 
 volatile int not_a_function = 0;
 
-void test_cxx_function() __attribute__ ((noinline));
+void test_cxx_function() __attribute__((noinline));
 void test_cxx_function()
 {
 	not_a_function += 1;

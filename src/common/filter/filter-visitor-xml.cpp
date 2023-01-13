@@ -9,24 +9,23 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
 #include "filter-ast.hpp"
 #include "filter-parser.hpp"
 
 #include <common/compat/errno.hpp>
 #include <common/macros.hpp>
 
-#define fprintf_dbg(fd, fmt, args...)	fprintf(fd, "%s: " fmt, __func__, ## args)
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-static
-int recursive_visit_print(struct filter_node *node, FILE *stream, int indent);
+#define fprintf_dbg(fd, fmt, args...) fprintf(fd, "%s: " fmt, __func__, ##args)
 
-static
-void print_tabs(FILE *fd, int depth)
+static int recursive_visit_print(struct filter_node *node, FILE *stream, int indent);
+
+static void print_tabs(FILE *fd, int depth)
 {
 	int i;
 
@@ -34,9 +33,7 @@ void print_tabs(FILE *fd, int depth)
 		fprintf(fd, "\t");
 }
 
-static
-int recursive_visit_print_expression(struct filter_node *node,
-		FILE *stream, int indent)
+static int recursive_visit_print_expression(struct filter_node *node, FILE *stream, int indent)
 {
 	struct filter_node *iter_node;
 
@@ -51,50 +48,47 @@ int recursive_visit_print_expression(struct filter_node *node,
 		return -EINVAL;
 	case AST_EXP_STRING:
 		print_tabs(stream, indent);
-		fprintf(stream, "<string value=\"%s\"/>\n",
-			node->u.expression.u.string);
+		fprintf(stream, "<string value=\"%s\"/>\n", node->u.expression.u.string);
 		break;
 	case AST_EXP_CONSTANT:
 		print_tabs(stream, indent);
-		fprintf(stream, "<constant value=\"%" PRIu64 "\"/>\n",
+		fprintf(stream,
+			"<constant value=\"%" PRIu64 "\"/>\n",
 			node->u.expression.u.constant);
 		break;
 	case AST_EXP_FLOAT_CONSTANT:
 		print_tabs(stream, indent);
-		fprintf(stream, "<float_constant value=\"%lg\"/>\n",
+		fprintf(stream,
+			"<float_constant value=\"%lg\"/>\n",
 			node->u.expression.u.float_constant);
 		break;
-	case AST_EXP_IDENTIFIER:		/* fall-through */
+	case AST_EXP_IDENTIFIER: /* fall-through */
 	case AST_EXP_GLOBAL_IDENTIFIER:
 		print_tabs(stream, indent);
-		fprintf(stream, "<%s value=\"%s\"/>\n",
-			node->u.expression.type == AST_EXP_IDENTIFIER ?
-				"identifier" : "global_identifier",
+		fprintf(stream,
+			"<%s value=\"%s\"/>\n",
+			node->u.expression.type == AST_EXP_IDENTIFIER ? "identifier" :
+									"global_identifier",
 			node->u.expression.u.identifier);
 		iter_node = node->u.expression.next;
 		while (iter_node) {
 			print_tabs(stream, indent);
 			fprintf(stream, "<bracket>\n");
-			if (recursive_visit_print_expression(iter_node,
-					stream, indent + 1)) {
+			if (recursive_visit_print_expression(iter_node, stream, indent + 1)) {
 				return -EINVAL;
 			}
 			print_tabs(stream, indent);
 			fprintf(stream, "</bracket>\n");
 			iter_node = iter_node->u.expression.next;
-
 		}
 		break;
 	case AST_EXP_NESTED:
-		return recursive_visit_print(node->u.expression.u.child,
-				stream, indent + 1);
+		return recursive_visit_print(node->u.expression.u.child, stream, indent + 1);
 	}
 	return 0;
 }
 
-
-static
-int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
+static int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 {
 	int ret;
 
@@ -110,16 +104,14 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 	case NODE_ROOT:
 		print_tabs(stream, indent);
 		fprintf(stream, "<root>\n");
-		ret = recursive_visit_print(node->u.root.child, stream,
-					indent + 1);
+		ret = recursive_visit_print(node->u.root.child, stream, indent + 1);
 		print_tabs(stream, indent);
 		fprintf(stream, "</root>\n");
 		return ret;
 	case NODE_EXPRESSION:
 		print_tabs(stream, indent);
 		fprintf(stream, "<expression>\n");
-		ret = recursive_visit_print_expression(node, stream,
-					indent + 1);
+		ret = recursive_visit_print_expression(node, stream, indent + 1);
 		print_tabs(stream, indent);
 		fprintf(stream, "</expression>\n");
 		return ret;
@@ -188,12 +180,10 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 			break;
 		}
 		fprintf(stream, ">\n");
-		ret = recursive_visit_print(node->u.op.lchild,
-					stream, indent + 1);
+		ret = recursive_visit_print(node->u.op.lchild, stream, indent + 1);
 		if (ret)
 			return ret;
-		ret = recursive_visit_print(node->u.op.rchild,
-					stream, indent + 1);
+		ret = recursive_visit_print(node->u.op.rchild, stream, indent + 1);
 		if (ret)
 			return ret;
 		print_tabs(stream, indent);
@@ -221,8 +211,7 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 			break;
 		}
 		fprintf(stream, ">\n");
-		ret = recursive_visit_print(node->u.unary_op.child,
-					stream, indent + 1);
+		ret = recursive_visit_print(node->u.unary_op.child, stream, indent + 1);
 		print_tabs(stream, indent);
 		fprintf(stream, "</unary_op>\n");
 		return ret;
@@ -230,8 +219,7 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 	return 0;
 }
 
-int filter_visitor_print_xml(struct filter_parser_ctx *ctx, FILE *stream,
-			int indent)
+int filter_visitor_print_xml(struct filter_parser_ctx *ctx, FILE *stream, int indent)
 {
 	return recursive_visit_print(&ctx->ast->root, stream, indent);
 }

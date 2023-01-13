@@ -6,10 +6,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <getopt.h>
+#include "signal-helper.hpp"
+#include "utils.h"
+
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
+#include <poll.h>
+#include <signal.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,28 +24,21 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <signal.h>
-#include <poll.h>
-#include <errno.h>
-#include "utils.h"
-#include "signal-helper.hpp"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-static struct option long_options[] =
-{
+static struct option long_options[] = {
 	/* These options set a flag. */
-	{"iter", required_argument, 0, 'i'},
-	{"wait", required_argument, 0, 'w'},
-	{"sync-after-first-event", required_argument, 0, 'a'},
-	{"sync-before-last-event", required_argument, 0, 'b'},
-	{"sync-before-last-event-touch", required_argument, 0, 'c'},
-	{"sync-before-exit", required_argument, 0, 'd'},
-	{"sync-before-exit-touch", required_argument, 0, 'e'},
-	{"emit-end-event", no_argument, 0, 'f'},
-	{0, 0, 0, 0}
+	{ "iter", required_argument, 0, 'i' },
+	{ "wait", required_argument, 0, 'w' },
+	{ "sync-after-first-event", required_argument, 0, 'a' },
+	{ "sync-before-last-event", required_argument, 0, 'b' },
+	{ "sync-before-last-event-touch", required_argument, 0, 'c' },
+	{ "sync-before-exit", required_argument, 0, 'd' },
+	{ "sync-before-exit-touch", required_argument, 0, 'e' },
+	{ "emit-end-event", no_argument, 0, 'f' },
+	{ 0, 0, 0, 0 }
 };
 
 int main(int argc, char **argv)
@@ -72,8 +72,8 @@ int main(int argc, char **argv)
 		net_values[i] = htonl(net_values[i]);
 	}
 
-	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f",
-				long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f", long_options, &option_index)) !=
+	       -1) {
 		switch (option) {
 		case 'a':
 			after_first_event_file_path = strdup(optarg);
@@ -124,7 +124,6 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-
 	if (set_signal_handler()) {
 		ret = -1;
 		goto end;
@@ -151,8 +150,17 @@ int main(int argc, char **argv)
 			}
 		}
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text,
-			strlen(text), escape, net_values, dbl, flt);
+		tracepoint(tp,
+			   tptest,
+			   i,
+			   netint,
+			   values,
+			   text,
+			   strlen(text),
+			   escape,
+			   net_values,
+			   dbl,
+			   flt);
 
 		/*
 		 * First loop we create the file if asked to indicate
@@ -169,7 +177,7 @@ int main(int argc, char **argv)
 		}
 
 		if (nr_usec) {
-		        if (usleep_safe(nr_usec)) {
+			if (usleep_safe(nr_usec)) {
 				ret = -1;
 				goto end;
 			}

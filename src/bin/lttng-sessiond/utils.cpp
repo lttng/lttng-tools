@@ -7,14 +7,14 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdlib.h>
-#include <unistd.h>
+#include "lttng-sessiond.hpp"
+#include "snapshot.hpp"
+#include "utils.hpp"
 
 #include <common/error.hpp>
 
-#include "utils.hpp"
-#include "snapshot.hpp"
-#include "lttng-sessiond.hpp"
+#include <stdlib.h>
+#include <unistd.h>
 
 /*
  * Write to writable pipe used to notify a thread.
@@ -37,8 +37,11 @@ int notify_thread_pipe(int wpipe)
 	return (int) ret;
 }
 
-int loglevels_match(int a_loglevel_type, int a_loglevel_value,
-	int b_loglevel_type, int b_loglevel_value, int loglevel_all_type)
+int loglevels_match(int a_loglevel_type,
+		    int a_loglevel_value,
+		    int b_loglevel_type,
+		    int b_loglevel_value,
+		    int loglevel_all_type)
 {
 	int match = 1;
 
@@ -68,7 +71,6 @@ const char *session_get_base_path(const struct ltt_session *session)
 
 const char *consumer_output_get_base_path(const struct consumer_output *output)
 {
-	return output->type == CONSUMER_DST_LOCAL ?
-			output->dst.session_root_path :
-			output->dst.net.base_dir;
+	return output->type == CONSUMER_DST_LOCAL ? output->dst.session_root_path :
+						    output->dst.net.base_dir;
 }

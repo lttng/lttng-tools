@@ -7,42 +7,44 @@
  */
 
 #define _LGPL_SOURCE
-#include <lttng/trigger/trigger.h>
-#include <common/error.hpp>
-#include <common/config/session-config.hpp>
-#include <common/defaults.hpp>
-#include <common/utils.hpp>
-#include <common/futex.hpp>
-#include <common/align.hpp>
-#include <common/time.hpp>
-#include <common/hashtable/utils.hpp>
-#include <common/kernel-ctl/kernel-ctl.hpp>
-#include <common/credentials.hpp>
-#include <sys/stat.h>
-#include <time.h>
-#include <signal.h>
-#include <inttypes.h>
-
-#include <lttng/notification/channel-internal.hpp>
-#include <lttng/rotate-internal.hpp>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/action/action-internal.hpp>
-
-#include "session.hpp"
+#include "cmd.hpp"
+#include "health-sessiond.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
 #include "rotate.hpp"
 #include "rotation-thread.hpp"
-#include "lttng-sessiond.hpp"
-#include "health-sessiond.hpp"
-#include "cmd.hpp"
+#include "session.hpp"
 #include "utils.hpp"
-#include "notification-thread-commands.hpp"
 
+#include <common/align.hpp>
+#include <common/config/session-config.hpp>
+#include <common/credentials.hpp>
+#include <common/defaults.hpp>
+#include <common/error.hpp>
+#include <common/futex.hpp>
+#include <common/hashtable/utils.hpp>
+#include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/time.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/action/action-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/rotate-internal.hpp>
+#include <lttng/trigger/trigger.h>
+
+#include <inttypes.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
-int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64_t size,
-		struct notification_thread_handle *notification_thread_handle)
+int subscribe_session_consumed_size_rotation(
+	struct ltt_session *session,
+	uint64_t size,
+	struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
 	enum lttng_condition_status condition_status;
@@ -61,21 +63,20 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 		goto end;
 	}
 
-	condition_status = lttng_condition_session_consumed_size_set_threshold(
-			rotate_condition, size);
+	condition_status =
+		lttng_condition_session_consumed_size_set_threshold(rotate_condition, size);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Could not set session consumed size condition threshold (size = %" PRIu64 ")",
-				size);
+		    size);
 		ret = -1;
 		goto end;
 	}
 
-	condition_status =
-			lttng_condition_session_consumed_size_set_session_name(
-				rotate_condition, session->name);
+	condition_status = lttng_condition_session_consumed_size_set_session_name(rotate_condition,
+										  session->name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Could not set session consumed size condition session name (name = %s)",
-				session->name);
+		    session->name);
 		ret = -1;
 		goto end;
 	}
@@ -88,8 +89,7 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	}
 
 	LTTNG_ASSERT(!session->rotate_trigger);
-	session->rotate_trigger = lttng_trigger_create(rotate_condition,
-			notify_action);
+	session->rotate_trigger = lttng_trigger_create(rotate_condition, notify_action);
 	if (!session->rotate_trigger) {
 		ERR("Could not create size-based rotation trigger");
 		ret = -1;
@@ -98,11 +98,10 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 
 	/* Ensure this trigger is not visible to external users. */
 	lttng_trigger_set_hidden(session->rotate_trigger);
-	lttng_trigger_set_credentials(
-			session->rotate_trigger, &session_creds);
+	lttng_trigger_set_credentials(session->rotate_trigger, &session_creds);
 
-	nc_status = lttng_notification_channel_subscribe(
-			rotate_notification_channel, rotate_condition);
+	nc_status =
+		lttng_notification_channel_subscribe(rotate_notification_channel, rotate_condition);
 	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Could not subscribe to session consumed size notification");
 		ret = -1;
@@ -110,8 +109,7 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	}
 
 	ret = notification_thread_command_register_trigger(
-			notification_thread_handle, session->rotate_trigger,
-			true);
+		notification_thread_handle, session->rotate_trigger, true);
 	if (ret < 0 && ret != -LTTNG_ERR_TRIGGER_EXISTS) {
 		ERR("Register trigger, %s", lttng_strerror(ret));
 		ret = -1;
@@ -129,24 +127,24 @@ end:
 	return ret;
 }
 
-int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle)
+int unsubscribe_session_consumed_size_rotation(
+	struct ltt_session *session, struct notification_thread_handle *notification_thread_handle)
 {
 	int ret = 0;
 	enum lttng_notification_channel_status status;
 
 	LTTNG_ASSERT(session->rotate_trigger);
 	status = lttng_notification_channel_unsubscribe(
-			rotate_notification_channel,
-			lttng_trigger_get_const_condition(session->rotate_trigger));
+		rotate_notification_channel,
+		lttng_trigger_get_const_condition(session->rotate_trigger));
 	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Session unsubscribe error: %d", (int) status);
 		ret = -1;
 		goto end;
 	}
 
-	ret = notification_thread_command_unregister_trigger(
-			notification_thread_handle, session->rotate_trigger);
+	ret = notification_thread_command_unregister_trigger(notification_thread_handle,
+							     session->rotate_trigger);
 	if (ret != LTTNG_OK) {
 		ERR("Session unregister trigger error: %d", ret);
 		goto end;

@@ -12,6 +12,7 @@
 #include <common/ini-config/ini.hpp>
 #include <common/macros.hpp>
 #include <common/utils.hpp>
+
 #include <ctype.h>
 
 LTTNG_EXPORT const char *config_str_yes = "yes";
@@ -23,14 +24,16 @@ LTTNG_EXPORT const char *config_str_off = "off";
 
 namespace {
 struct handler_filter_args {
-	const char* section;
+	const char *section;
 	config_entry_handler_cb handler;
 	void *user_data;
 };
 } /* namespace */
 
 static int config_entry_handler_filter(struct handler_filter_args *args,
-		const char *section, const char *name, const char *value)
+				       const char *section,
+				       const char *name,
+				       const char *value)
 {
 	int ret = 0;
 	struct config_entry entry = { section, name, value };
@@ -53,8 +56,10 @@ end:
 	return ret;
 }
 
-int config_get_section_entries(const char *override_path, const char *section,
-		config_entry_handler_cb handler, void *user_data)
+int config_get_section_entries(const char *override_path,
+			       const char *section,
+			       config_entry_handler_cb handler,
+			       void *user_data)
 {
 	int ret = 0;
 	const char *path;
@@ -72,8 +77,8 @@ int config_get_section_entries(const char *override_path, const char *section,
 		 * continue and try the next possible conf. file.
 		 */
 		(void) ini_parse_file(config_file,
-				(ini_entry_handler) config_entry_handler_filter,
-				(void *) &filter);
+				      (ini_entry_handler) config_entry_handler_filter,
+				      (void *) &filter);
 		fclose(config_file);
 	}
 
@@ -82,8 +87,7 @@ int config_get_section_entries(const char *override_path, const char *section,
 	if (path) {
 		char fullpath[PATH_MAX];
 
-		ret = snprintf(fullpath, sizeof(fullpath),
-				DEFAULT_DAEMON_HOME_CONFIGPATH, path);
+		ret = snprintf(fullpath, sizeof(fullpath), DEFAULT_DAEMON_HOME_CONFIGPATH, path);
 		if (ret < 0) {
 			PERROR("snprintf user conf. path");
 			goto error;
@@ -97,8 +101,8 @@ int config_get_section_entries(const char *override_path, const char *section,
 			 * continue and try the next possible conf. file.
 			 */
 			(void) ini_parse_file(config_file,
-					(ini_entry_handler) config_entry_handler_filter,
-					(void *) &filter);
+					      (ini_entry_handler) config_entry_handler_filter,
+					      (void *) &filter);
 			fclose(config_file);
 		}
 	}
@@ -109,12 +113,11 @@ int config_get_section_entries(const char *override_path, const char *section,
 		if (config_file) {
 			DBG("Loading daemon command line conf file at %s", override_path);
 			(void) ini_parse_file(config_file,
-					(ini_entry_handler) config_entry_handler_filter,
-					(void *) &filter);
+					      (ini_entry_handler) config_entry_handler_filter,
+					      (void *) &filter);
 			fclose(config_file);
 		} else {
-			ERR("Failed to open daemon configuration file at %s",
-				override_path);
+			ERR("Failed to open daemon configuration file at %s", override_path);
 			ret = -ENOENT;
 			goto error;
 		}
@@ -157,13 +160,11 @@ int config_parse_value(const char *value)
 		lower_str[i] = tolower(value[i]);
 	}
 
-	if (!strcmp(lower_str, config_str_yes) ||
-		!strcmp(lower_str, config_str_true) ||
-		!strcmp(lower_str, config_str_on)) {
+	if (!strcmp(lower_str, config_str_yes) || !strcmp(lower_str, config_str_true) ||
+	    !strcmp(lower_str, config_str_on)) {
 		ret = 1;
-	} else if (!strcmp(lower_str, config_str_no) ||
-		!strcmp(lower_str, config_str_false) ||
-		!strcmp(lower_str, config_str_off)) {
+	} else if (!strcmp(lower_str, config_str_no) || !strcmp(lower_str, config_str_false) ||
+		   !strcmp(lower_str, config_str_off)) {
 		ret = 0;
 	} else {
 		ret = -1;

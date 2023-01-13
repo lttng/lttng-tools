@@ -9,12 +9,12 @@
 
 #include "ust-clock-class.hpp"
 
-#include <common/time.hpp>
 #include <common/exception.hpp>
+#include <common/time.hpp>
 
 #include <lttng/ust-clock.h>
 
-#define CLOCK_OFFSET_SAMPLE_COUNT		10
+#define CLOCK_OFFSET_SAMPLE_COUNT 10
 
 namespace lst = lttng::sessiond::trace;
 
@@ -66,7 +66,7 @@ nonstd::optional<lttng_uuid> sample_clock_uuid()
 		LTTNG_THROW_ERROR("Failed to parse UUID from string");
 	}
 
-	return nonstd::optional<lttng_uuid>{uuid};
+	return nonstd::optional<lttng_uuid>{ uuid };
 }
 
 const char *sample_clock_name()
@@ -79,7 +79,8 @@ const char *sample_clock_name()
 
 	const auto name = get_name_cb();
 	if (!name) {
-		LTTNG_THROW_ERROR("Invalid clock name returned by LTTng-UST `lttng_ust_clock_name_function`");
+		LTTNG_THROW_ERROR(
+			"Invalid clock name returned by LTTng-UST `lttng_ust_clock_name_function`");
 	}
 
 	return name;
@@ -95,7 +96,8 @@ const char *sample_clock_description()
 
 	const auto description = get_description_cb();
 	if (!description) {
-		LTTNG_THROW_ERROR("Invalid clock description returned by LTTng-UST `lttng_ust_clock_description_function`");
+		LTTNG_THROW_ERROR(
+			"Invalid clock description returned by LTTng-UST `lttng_ust_clock_description_function`");
 	}
 
 	return description;
@@ -107,8 +109,7 @@ const char *sample_clock_description()
  */
 void measure_single_clock_offset(struct offset_sample *sample)
 {
-	lst::clock_class::cycles_t monotonic_avg, monotonic[2], measure_delta,
-			realtime;
+	lst::clock_class::cycles_t monotonic_avg, monotonic[2], measure_delta, realtime;
 	const auto tcf = sample_clock_frequency();
 	struct timespec rts = { 0, 0 };
 
@@ -132,8 +133,7 @@ void measure_single_clock_offset(struct offset_sample *sample)
 	if (tcf == NSEC_PER_SEC) {
 		realtime += rts.tv_nsec;
 	} else {
-		realtime += (lst::clock_class::cycles_t) rts.tv_nsec * tcf /
-				NSEC_PER_SEC;
+		realtime += (lst::clock_class::cycles_t) rts.tv_nsec * tcf / NSEC_PER_SEC;
 	}
 
 	sample->offset = (lst::clock_class::scycles_t) realtime - monotonic_avg;
@@ -163,9 +163,9 @@ lst::clock_class::scycles_t measure_clock_offset(void)
 
 lttng::sessiond::ust::clock_class::clock_class() :
 	lst::clock_class(sample_clock_name(),
-			sample_clock_description(),
-			sample_clock_uuid(),
-			measure_clock_offset(),
-			sample_clock_frequency())
+			 sample_clock_description(),
+			 sample_clock_uuid(),
+			 measure_clock_offset(),
+			 sample_clock_frequency())
 {
 }

@@ -9,25 +9,24 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <inttypes.h>
 #include "filter-ast.hpp"
-#include "filter-parser.hpp"
 #include "filter-ir.hpp"
+#include "filter-parser.hpp"
 
 #include <common/compat/errno.hpp>
 #include <common/macros.hpp>
 #include <common/string-utils/string-utils.hpp>
 
-static
-struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
-		struct filter_node *node, enum ir_side side);
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-static
-struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
+static struct ir_op *
+generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side);
+
+static struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -59,8 +58,7 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 	return op;
 }
 
-static
-enum ir_load_string_type get_literal_string_type(const char *string)
+static enum ir_load_string_type get_literal_string_type(const char *string)
 {
 	LTTNG_ASSERT(string);
 
@@ -75,8 +73,7 @@ enum ir_load_string_type get_literal_string_type(const char *string)
 	return IR_LOAD_STRING_TYPE_PLAIN;
 }
 
-static
-struct ir_op *make_op_load_string(const char *string, enum ir_side side)
+static struct ir_op *make_op_load_string(const char *string, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -96,8 +93,7 @@ struct ir_op *make_op_load_string(const char *string, enum ir_side side)
 	return op;
 }
 
-static
-struct ir_op *make_op_load_numeric(int64_t v, enum ir_side side)
+static struct ir_op *make_op_load_numeric(int64_t v, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -113,8 +109,7 @@ struct ir_op *make_op_load_numeric(int64_t v, enum ir_side side)
 	return op;
 }
 
-static
-struct ir_op *make_op_load_float(double v, enum ir_side side)
+static struct ir_op *make_op_load_float(double v, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -129,8 +124,7 @@ struct ir_op *make_op_load_float(double v, enum ir_side side)
 	return op;
 }
 
-static
-void free_load_expression(struct ir_load_expression *load_expression)
+static void free_load_expression(struct ir_load_expression *load_expression)
 {
 	struct ir_load_expression_op *exp_op;
 
@@ -164,8 +158,7 @@ void free_load_expression(struct ir_load_expression *load_expression)
  * Returns the first node of the chain, after initializing the next
  * pointers.
  */
-static
-struct filter_node *load_expression_get_forward_chain(struct filter_node *node)
+static struct filter_node *load_expression_get_forward_chain(struct filter_node *node)
 {
 	struct filter_node *prev_node;
 
@@ -181,8 +174,7 @@ struct filter_node *load_expression_get_forward_chain(struct filter_node *node)
 	return prev_node;
 }
 
-static
-struct ir_load_expression *create_load_expression(struct filter_node *node)
+static struct ir_load_expression *create_load_expression(struct filter_node *node)
 {
 	struct ir_load_expression *load_exp;
 	struct ir_load_expression_op *load_exp_op, *prev_op;
@@ -239,15 +231,15 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 			goto error;
 
 		/* Explore brackets from current node. */
-		for (bracket_node = node->u.expression.next_bracket;
-				bracket_node != NULL;
-				bracket_node = bracket_node->u.expression.next_bracket) {
+		for (bracket_node = node->u.expression.next_bracket; bracket_node != NULL;
+		     bracket_node = bracket_node->u.expression.next_bracket) {
 			prev_op = load_exp_op;
 			if (bracket_node->type != NODE_EXPRESSION ||
-				bracket_node->u.expression.type != AST_EXP_CONSTANT) {
-					fprintf(stderr, "[error] Expecting constant index in array expression\n");
-					goto error;
-				}
+			    bracket_node->u.expression.type != AST_EXP_CONSTANT) {
+				fprintf(stderr,
+					"[error] Expecting constant index in array expression\n");
+				goto error;
+			}
 			load_exp_op = zmalloc<ir_load_expression_op>();
 			if (!load_exp_op)
 				goto error;
@@ -275,9 +267,7 @@ error:
 	return NULL;
 }
 
-static
-struct ir_op *make_op_load_expression(struct filter_node *node,
-		enum ir_side side)
+static struct ir_op *make_op_load_expression(struct filter_node *node, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -300,15 +290,18 @@ error:
 	return NULL;
 }
 
-static
-struct ir_op *make_op_unary(enum unary_op_type unary_op_type,
-			const char *op_str, enum ir_op_signedness signedness,
-			struct ir_op *child, enum ir_side side)
+static struct ir_op *make_op_unary(enum unary_op_type unary_op_type,
+				   const char *op_str,
+				   enum ir_op_signedness signedness,
+				   struct ir_op *child,
+				   enum ir_side side)
 {
 	struct ir_op *op = NULL;
 
 	if (child->data_type == IR_DATA_STRING) {
-		fprintf(stderr, "[error] unary operation '%s' not allowed on string literal\n", op_str);
+		fprintf(stderr,
+			"[error] unary operation '%s' not allowed on string literal\n",
+			op_str);
 		goto error;
 	}
 
@@ -331,51 +324,42 @@ error:
 /*
  * unary + is pretty much useless.
  */
-static
-struct ir_op *make_op_unary_plus(struct ir_op *child, enum ir_side side)
+static struct ir_op *make_op_unary_plus(struct ir_op *child, enum ir_side side)
 {
-	return make_op_unary(AST_UNARY_PLUS, "+", child->signedness,
-			child, side);
+	return make_op_unary(AST_UNARY_PLUS, "+", child->signedness, child, side);
 }
 
-static
-struct ir_op *make_op_unary_minus(struct ir_op *child, enum ir_side side)
+static struct ir_op *make_op_unary_minus(struct ir_op *child, enum ir_side side)
 {
-	return make_op_unary(AST_UNARY_MINUS, "-", child->signedness,
-			child, side);
+	return make_op_unary(AST_UNARY_MINUS, "-", child->signedness, child, side);
 }
 
-static
-struct ir_op *make_op_unary_not(struct ir_op *child, enum ir_side side)
+static struct ir_op *make_op_unary_not(struct ir_op *child, enum ir_side side)
 {
-	return make_op_unary(AST_UNARY_NOT, "!", child->signedness,
-			child, side);
+	return make_op_unary(AST_UNARY_NOT, "!", child->signedness, child, side);
 }
 
-static
-struct ir_op *make_op_unary_bit_not(struct ir_op *child, enum ir_side side)
+static struct ir_op *make_op_unary_bit_not(struct ir_op *child, enum ir_side side)
 {
-	return make_op_unary(AST_UNARY_BIT_NOT, "~", child->signedness,
-			child, side);
+	return make_op_unary(AST_UNARY_BIT_NOT, "~", child->signedness, child, side);
 }
 
-static
-struct ir_op *make_op_binary_compare(enum op_type bin_op_type,
-		const char *op_str, struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_compare(enum op_type bin_op_type,
+					    const char *op_str,
+					    struct ir_op *left,
+					    struct ir_op *right,
+					    enum ir_side side)
 {
 	struct ir_op *op = NULL;
 
-	if (left->data_type == IR_DATA_UNKNOWN
-		|| right->data_type == IR_DATA_UNKNOWN) {
+	if (left->data_type == IR_DATA_UNKNOWN || right->data_type == IR_DATA_UNKNOWN) {
 		fprintf(stderr, "[error] binary operation '%s' has unknown operand type\n", op_str);
 		goto error;
-
 	}
-	if ((left->data_type == IR_DATA_STRING
-		&& (right->data_type == IR_DATA_NUMERIC || right->data_type == IR_DATA_FLOAT))
-		|| ((left->data_type == IR_DATA_NUMERIC || left->data_type == IR_DATA_FLOAT) &&
-			right->data_type == IR_DATA_STRING)) {
+	if ((left->data_type == IR_DATA_STRING &&
+	     (right->data_type == IR_DATA_NUMERIC || right->data_type == IR_DATA_FLOAT)) ||
+	    ((left->data_type == IR_DATA_NUMERIC || left->data_type == IR_DATA_FLOAT) &&
+	     right->data_type == IR_DATA_STRING)) {
 		fprintf(stderr, "[error] binary operation '%s' operand type mismatch\n", op_str);
 		goto error;
 	}
@@ -400,64 +384,52 @@ error:
 	return NULL;
 }
 
-static
-struct ir_op *make_op_binary_eq(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_eq(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_EQ, "==", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_ne(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_ne(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_NE, "!=", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_gt(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_gt(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_GT, ">", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_lt(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_lt(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_LT, "<", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_ge(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_ge(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_GE, ">=", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_le(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_le(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_compare(AST_OP_LE, "<=", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_logical(enum op_type bin_op_type,
-		const char *op_str, struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_logical(enum op_type bin_op_type,
+					    const char *op_str,
+					    struct ir_op *left,
+					    struct ir_op *right,
+					    enum ir_side side)
 {
 	struct ir_op *op = NULL;
 
-	if (left->data_type == IR_DATA_UNKNOWN
-		|| right->data_type == IR_DATA_UNKNOWN) {
+	if (left->data_type == IR_DATA_UNKNOWN || right->data_type == IR_DATA_UNKNOWN) {
 		fprintf(stderr, "[error] binary operation '%s' has unknown operand type\n", op_str);
 		goto error;
-
 	}
-	if (left->data_type == IR_DATA_STRING
-		|| right->data_type == IR_DATA_STRING) {
-		fprintf(stderr, "[error] logical binary operation '%s' cannot have string operand\n", op_str);
+	if (left->data_type == IR_DATA_STRING || right->data_type == IR_DATA_STRING) {
+		fprintf(stderr,
+			"[error] logical binary operation '%s' cannot have string operand\n",
+			op_str);
 		goto error;
 	}
 
@@ -481,27 +453,30 @@ error:
 	return NULL;
 }
 
-static
-struct ir_op *make_op_binary_bitwise(enum op_type bin_op_type,
-		const char *op_str, struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *make_op_binary_bitwise(enum op_type bin_op_type,
+					    const char *op_str,
+					    struct ir_op *left,
+					    struct ir_op *right,
+					    enum ir_side side)
 {
 	struct ir_op *op = NULL;
 
-	if (left->data_type == IR_DATA_UNKNOWN
-		|| right->data_type == IR_DATA_UNKNOWN) {
-		fprintf(stderr, "[error] bitwise binary operation '%s' has unknown operand type\n", op_str);
-		goto error;
-
-	}
-	if (left->data_type == IR_DATA_STRING
-		|| right->data_type == IR_DATA_STRING) {
-		fprintf(stderr, "[error] bitwise binary operation '%s' cannot have string operand\n", op_str);
+	if (left->data_type == IR_DATA_UNKNOWN || right->data_type == IR_DATA_UNKNOWN) {
+		fprintf(stderr,
+			"[error] bitwise binary operation '%s' has unknown operand type\n",
+			op_str);
 		goto error;
 	}
-	if (left->data_type == IR_DATA_FLOAT
-		|| right->data_type == IR_DATA_FLOAT) {
-		fprintf(stderr, "[error] bitwise binary operation '%s' cannot have floating point operand\n", op_str);
+	if (left->data_type == IR_DATA_STRING || right->data_type == IR_DATA_STRING) {
+		fprintf(stderr,
+			"[error] bitwise binary operation '%s' cannot have string operand\n",
+			op_str);
+		goto error;
+	}
+	if (left->data_type == IR_DATA_FLOAT || right->data_type == IR_DATA_FLOAT) {
+		fprintf(stderr,
+			"[error] bitwise binary operation '%s' cannot have floating point operand\n",
+			op_str);
 		goto error;
 	}
 
@@ -525,65 +500,56 @@ error:
 	return NULL;
 }
 
-static
-struct ir_op *make_op_binary_logical_and(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_logical_and(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_logical(AST_OP_AND, "&&", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_logical_or(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_logical_or(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_logical(AST_OP_OR, "||", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_bitwise_rshift(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_bitwise_rshift(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_bitwise(AST_OP_BIT_RSHIFT, ">>", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_bitwise_lshift(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_bitwise_lshift(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_bitwise(AST_OP_BIT_LSHIFT, "<<", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_bitwise_and(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_bitwise_and(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_bitwise(AST_OP_BIT_AND, "&", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_bitwise_or(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_bitwise_or(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_bitwise(AST_OP_BIT_OR, "|", left, right, side);
 }
 
-static
-struct ir_op *make_op_binary_bitwise_xor(struct ir_op *left, struct ir_op *right,
-		enum ir_side side)
+static struct ir_op *
+make_op_binary_bitwise_xor(struct ir_op *left, struct ir_op *right, enum ir_side side)
 {
 	return make_op_binary_bitwise(AST_OP_BIT_XOR, "^", left, right, side);
 }
 
-static
-void filter_free_ir_recursive(struct ir_op *op)
+static void filter_free_ir_recursive(struct ir_op *op)
 {
 	if (!op)
 		return;
 	switch (op->op) {
 	case IR_OP_UNKNOWN:
 	default:
-		fprintf(stderr, "[error] Unknown op type in %s\n",
-			__func__);
+		fprintf(stderr, "[error] Unknown op type in %s\n", __func__);
 		break;
 	case IR_OP_ROOT:
 		filter_free_ir_recursive(op->u.root.child);
@@ -593,7 +559,7 @@ void filter_free_ir_recursive(struct ir_op *op)
 		case IR_DATA_STRING:
 			free(op->u.load.u.string.value);
 			break;
-		case IR_DATA_FIELD_REF:		/* fall-through */
+		case IR_DATA_FIELD_REF: /* fall-through */
 		case IR_DATA_GET_CONTEXT_REF:
 			free(op->u.load.u.ref);
 			break;
@@ -618,9 +584,8 @@ void filter_free_ir_recursive(struct ir_op *op)
 	free(op);
 }
 
-static
-struct ir_op *make_expression(struct filter_parser_ctx *ctx,
-		struct filter_node *node, enum ir_side side)
+static struct ir_op *
+make_expression(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
 {
 	switch (node->u.expression.type) {
 	case AST_EXP_UNKNOWN:
@@ -631,23 +596,19 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 	case AST_EXP_STRING:
 		return make_op_load_string(node->u.expression.u.string, side);
 	case AST_EXP_CONSTANT:
-		return make_op_load_numeric(node->u.expression.u.constant,
-					side);
+		return make_op_load_numeric(node->u.expression.u.constant, side);
 	case AST_EXP_FLOAT_CONSTANT:
-		return make_op_load_float(node->u.expression.u.float_constant,
-					side);
+		return make_op_load_float(node->u.expression.u.float_constant, side);
 	case AST_EXP_IDENTIFIER:
 	case AST_EXP_GLOBAL_IDENTIFIER:
 		return make_op_load_expression(node, side);
 	case AST_EXP_NESTED:
-		return generate_ir_recursive(ctx, node->u.expression.u.child,
-					side);
+		return generate_ir_recursive(ctx, node->u.expression.u.child, side);
 	}
 }
 
-static
-struct ir_op *make_op(struct filter_parser_ctx *ctx,
-		struct filter_node *node, enum ir_side side)
+static struct ir_op *
+make_op(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
 {
 	struct ir_op *op = NULL, *lchild, *rchild;
 	const char *op_str = "?";
@@ -777,14 +738,12 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 	return op;
 
 error_not_supported:
-	fprintf(stderr, "[error] %s: binary operation '%s' not supported\n",
-		__func__, op_str);
+	fprintf(stderr, "[error] %s: binary operation '%s' not supported\n", __func__, op_str);
 	return NULL;
 }
 
-static
-struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
-		struct filter_node *node, enum ir_side side)
+static struct ir_op *
+make_unary_op(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
 {
 	switch (node->u.unary_op.type) {
 	case AST_UNARY_UNKNOWN:
@@ -796,8 +755,7 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	{
 		struct ir_op *op, *child;
 
-		child = generate_ir_recursive(ctx, node->u.unary_op.child,
-					side);
+		child = generate_ir_recursive(ctx, node->u.unary_op.child, side);
 		if (!child)
 			return NULL;
 		op = make_op_unary_plus(child, side);
@@ -811,8 +769,7 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	{
 		struct ir_op *op, *child;
 
-		child = generate_ir_recursive(ctx, node->u.unary_op.child,
-					side);
+		child = generate_ir_recursive(ctx, node->u.unary_op.child, side);
 		if (!child)
 			return NULL;
 		op = make_op_unary_minus(child, side);
@@ -826,8 +783,7 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	{
 		struct ir_op *op, *child;
 
-		child = generate_ir_recursive(ctx, node->u.unary_op.child,
-					side);
+		child = generate_ir_recursive(ctx, node->u.unary_op.child, side);
 		if (!child)
 			return NULL;
 		op = make_op_unary_not(child, side);
@@ -841,8 +797,7 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	{
 		struct ir_op *op, *child;
 
-		child = generate_ir_recursive(ctx, node->u.unary_op.child,
-					side);
+		child = generate_ir_recursive(ctx, node->u.unary_op.child, side);
 		if (!child)
 			return NULL;
 		op = make_op_unary_bit_not(child, side);
@@ -857,9 +812,8 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	return NULL;
 }
 
-static
-struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
-		struct filter_node *node, enum ir_side side)
+static struct ir_op *
+generate_ir_recursive(struct filter_parser_ctx *ctx, struct filter_node *node, enum ir_side side)
 {
 	switch (node->type) {
 	case NODE_UNKNOWN:
@@ -871,8 +825,7 @@ struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
 	{
 		struct ir_op *op, *child;
 
-		child = generate_ir_recursive(ctx, node->u.root.child,
-					side);
+		child = generate_ir_recursive(ctx, node->u.root.child, side);
 		if (!child)
 			return NULL;
 		op = make_op_root(child, side);

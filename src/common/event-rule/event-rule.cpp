@@ -13,6 +13,7 @@
 #include <common/mi-lttng.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
+
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/jul-logging-internal.hpp>
 #include <lttng/event-rule/kernel-kprobe-internal.hpp>
@@ -22,16 +23,15 @@
 #include <lttng/event-rule/log4j-logging-internal.hpp>
 #include <lttng/event-rule/python-logging-internal.hpp>
 #include <lttng/event-rule/user-tracepoint-internal.hpp>
+
 #include <stdbool.h>
 
-enum lttng_event_rule_type lttng_event_rule_get_type(
-		const struct lttng_event_rule *event_rule)
+enum lttng_event_rule_type lttng_event_rule_get_type(const struct lttng_event_rule *event_rule)
 {
 	return event_rule ? event_rule->type : LTTNG_EVENT_RULE_TYPE_UNKNOWN;
 }
 
-enum lttng_domain_type lttng_event_rule_get_domain_type(
-		const struct lttng_event_rule *event_rule)
+enum lttng_domain_type lttng_event_rule_get_domain_type(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
@@ -65,7 +65,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 static void lttng_event_rule_release(struct urcu_ref *ref)
 {
 	struct lttng_event_rule *event_rule =
-			lttng::utils::container_of(ref, &lttng_event_rule::ref);
+		lttng::utils::container_of(ref, &lttng_event_rule::ref);
 
 	LTTNG_ASSERT(event_rule->destroy);
 	event_rule->destroy(event_rule);
@@ -97,7 +97,7 @@ end:
 }
 
 int lttng_event_rule_serialize(const struct lttng_event_rule *event_rule,
-		struct lttng_payload *payload)
+			       struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_event_rule_comm event_rule_comm = {};
@@ -110,7 +110,7 @@ int lttng_event_rule_serialize(const struct lttng_event_rule *event_rule,
 	event_rule_comm.event_rule_type = (int8_t) event_rule->type;
 
 	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &event_rule_comm, sizeof(event_rule_comm));
+		&payload->buffer, &event_rule_comm, sizeof(event_rule_comm));
 	if (ret) {
 		goto end;
 	}
@@ -123,8 +123,7 @@ end:
 	return ret;
 }
 
-bool lttng_event_rule_is_equal(const struct lttng_event_rule *a,
-		const struct lttng_event_rule *b)
+bool lttng_event_rule_is_equal(const struct lttng_event_rule *a, const struct lttng_event_rule *b)
 {
 	bool is_equal = false;
 
@@ -146,16 +145,14 @@ end:
 	return is_equal;
 }
 
-ssize_t lttng_event_rule_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_rule **event_rule)
+ssize_t lttng_event_rule_create_from_payload(struct lttng_payload_view *view,
+					     struct lttng_event_rule **event_rule)
 {
 	ssize_t ret, consumed = 0;
 	event_rule_create_from_payload_cb create_from_payload = NULL;
 	const struct lttng_event_rule_comm *event_rule_comm;
 	const struct lttng_payload_view event_rule_comm_view =
-			lttng_payload_view_from_view(
-					view, 0, sizeof(*event_rule_comm));
+		lttng_payload_view_from_view(view, 0, sizeof(*event_rule_comm));
 
 	if (!view || !event_rule) {
 		ret = -1;
@@ -179,32 +176,26 @@ ssize_t lttng_event_rule_create_from_payload(
 		create_from_payload = lttng_event_rule_kernel_uprobe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
-		create_from_payload =
-				lttng_event_rule_kernel_syscall_create_from_payload;
+		create_from_payload = lttng_event_rule_kernel_syscall_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
-		create_from_payload =
-				lttng_event_rule_kernel_tracepoint_create_from_payload;
+		create_from_payload = lttng_event_rule_kernel_tracepoint_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
-		create_from_payload =
-				lttng_event_rule_user_tracepoint_create_from_payload;
+		create_from_payload = lttng_event_rule_user_tracepoint_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
-		create_from_payload =
-				lttng_event_rule_jul_logging_create_from_payload;
+		create_from_payload = lttng_event_rule_jul_logging_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
-		create_from_payload =
-				lttng_event_rule_log4j_logging_create_from_payload;
+		create_from_payload = lttng_event_rule_log4j_logging_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
-		create_from_payload =
-				lttng_event_rule_python_logging_create_from_payload;
+		create_from_payload = lttng_event_rule_python_logging_create_from_payload;
 		break;
 	default:
 		ERR("Attempted to create event rule of unknown type (%i)",
-				(int) event_rule_comm->event_rule_type);
+		    (int) event_rule_comm->event_rule_type);
 		ret = -1;
 		goto end;
 	}
@@ -213,8 +204,7 @@ ssize_t lttng_event_rule_create_from_payload(
 
 	{
 		struct lttng_payload_view child_view =
-				lttng_payload_view_from_view(
-						view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
 		ret = create_from_payload(&child_view, event_rule);
 		if (ret < 0) {
@@ -234,8 +224,7 @@ end:
 	return ret;
 }
 
-void lttng_event_rule_init(struct lttng_event_rule *event_rule,
-		enum lttng_event_rule_type type)
+void lttng_event_rule_init(struct lttng_event_rule *event_rule, enum lttng_event_rule_type type)
 {
 	urcu_ref_init(&event_rule->ref);
 	event_rule->type = type;
@@ -256,9 +245,9 @@ void lttng_event_rule_put(struct lttng_event_rule *event_rule)
 	urcu_ref_put(&event_rule->ref, lttng_event_rule_release);
 }
 
-enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
-		struct lttng_event_rule *rule,
-		const struct lttng_credentials *creds)
+enum lttng_error_code
+lttng_event_rule_generate_filter_bytecode(struct lttng_event_rule *rule,
+					  const struct lttng_credentials *creds)
 {
 	LTTNG_ASSERT(rule->generate_filter_bytecode);
 	return rule->generate_filter_bytecode(rule, creds);
@@ -270,8 +259,8 @@ const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule)
 	return rule->get_filter(rule);
 }
 
-const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
-		const struct lttng_event_rule *rule)
+const struct lttng_bytecode *
+lttng_event_rule_get_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	LTTNG_ASSERT(rule->get_filter_bytecode);
 	return rule->get_filter_bytecode(rule);
@@ -279,14 +268,13 @@ const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 
 enum lttng_event_rule_generate_exclusions_status
 lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
-		struct lttng_event_exclusion **exclusions)
+				     struct lttng_event_exclusion **exclusions)
 {
 	LTTNG_ASSERT(rule->generate_exclusions);
 	return rule->generate_exclusions(rule, exclusions);
 }
 
-struct lttng_event *lttng_event_rule_generate_lttng_event(
-		const struct lttng_event_rule *rule)
+struct lttng_event *lttng_event_rule_generate_lttng_event(const struct lttng_event_rule *rule)
 {
 	LTTNG_ASSERT(rule->generate_lttng_event);
 	return rule->generate_lttng_event(rule);
@@ -347,8 +335,8 @@ unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule)
 	return rule->hash(rule);
 }
 
-enum lttng_error_code lttng_event_rule_mi_serialize(
-		const struct lttng_event_rule *rule, struct mi_writer *writer)
+enum lttng_error_code lttng_event_rule_mi_serialize(const struct lttng_event_rule *rule,
+						    struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;

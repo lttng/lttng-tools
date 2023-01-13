@@ -6,17 +6,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <inttypes.h>
+#include "buffer-registry.hpp"
+#include "fd-limit.hpp"
+#include "lttng-ust-ctl.hpp"
+#include "lttng-ust-error.hpp"
+#include "ust-consumer.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/hashtable/utils.hpp>
 
-#include "buffer-registry.hpp"
-#include "fd-limit.hpp"
-#include "ust-consumer.hpp"
-#include "lttng-ust-ctl.hpp"
-#include "lttng-ust-error.hpp"
-#include "utils.hpp"
+#include <inttypes.h>
 
 /*
  * Set in main.c during initialization process of the daemon. This contains
@@ -48,9 +48,8 @@ static int ht_match_reg_uid(struct cds_lfht_node *node, const void *_key)
 	LTTNG_ASSERT(reg);
 	key = (buffer_reg_uid *) _key;
 
-	if (key->session_id != reg->session_id ||
-			key->bits_per_long != reg->bits_per_long ||
-			key->uid != reg->uid) {
+	if (key->session_id != reg->session_id || key->bits_per_long != reg->bits_per_long ||
+	    key->uid != reg->uid) {
 		goto no_match;
 	}
 
@@ -71,7 +70,7 @@ static unsigned long ht_hash_reg_uid(const void *_key, unsigned long seed)
 
 	LTTNG_ASSERT(key);
 
-	xored_key = (uint64_t)(key->session_id ^ key->bits_per_long ^ key->uid);
+	xored_key = (uint64_t) (key->session_id ^ key->bits_per_long ^ key->uid);
 	return hash_key_u64(&xored_key, seed);
 }
 
@@ -95,9 +94,13 @@ void buffer_reg_init_uid_registry(void)
  *
  * Return 0 on success else a negative value and regp is untouched.
  */
-int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
-		enum lttng_domain_type domain, struct buffer_reg_uid **regp,
-		const char *root_shm_path, const char *shm_path)
+int buffer_reg_uid_create(uint64_t session_id,
+			  uint32_t bits_per_long,
+			  uid_t uid,
+			  enum lttng_domain_type domain,
+			  struct buffer_reg_uid **regp,
+			  const char *root_shm_path,
+			  const char *shm_path)
 {
 	int ret = 0;
 	struct buffer_reg_uid *reg = NULL;
@@ -128,7 +131,8 @@ int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid
 		strncpy(reg->shm_path, shm_path, sizeof(reg->shm_path));
 		reg->shm_path[sizeof(reg->shm_path) - 1] = '\0';
 		DBG3("shm path '%s' is assigned to uid buffer registry for session id %" PRIu64,
-			reg->shm_path, session_id);
+		     reg->shm_path,
+		     session_id);
 	}
 	reg->registry->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!reg->registry->channels) {
@@ -140,7 +144,10 @@ int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid
 	*regp = reg;
 
 	DBG3("Buffer registry per UID created id: %" PRIu64 ", ABI: %u, uid: %d, domain: %d",
-			session_id, bits_per_long, uid, domain);
+	     session_id,
+	     bits_per_long,
+	     uid,
+	     domain);
 
 	return 0;
 
@@ -161,12 +168,12 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 
 	LTTNG_ASSERT(reg);
 
-	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64 ,
-			reg->session_id);
+	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64,
+	     reg->session_id);
 
 	rcu_read_lock();
-	nodep = cds_lfht_add_unique(ht->ht, ht->hash_fct(reg, lttng_ht_seed),
-			ht->match_fct, reg, &reg->node.node);
+	nodep = cds_lfht_add_unique(
+		ht->ht, ht->hash_fct(reg, lttng_ht_seed), ht->match_fct, reg, &reg->node.node);
 	LTTNG_ASSERT(nodep == &reg->node.node);
 	rcu_read_unlock();
 }
@@ -177,8 +184,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
  *
  * Return the object pointer or NULL on error.
  */
-struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
-		uint32_t bits_per_long, uid_t uid)
+struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id, uint32_t bits_per_long, uid_t uid)
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
@@ -193,11 +199,12 @@ struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
 	key.uid = uid;
 
 	DBG3("Buffer registry per UID find id: %" PRIu64 ", ABI: %u, uid: %d",
-			session_id, bits_per_long, uid);
+	     session_id,
+	     bits_per_long,
+	     uid);
 
 	/* Custom lookup function since it's a different key. */
-	cds_lfht_lookup(ht->ht, ht->hash_fct(&key, lttng_ht_seed), ht->match_fct,
-			&key, &iter.iter);
+	cds_lfht_lookup(ht->ht, ht->hash_fct(&key, lttng_ht_seed), ht->match_fct, &key, &iter.iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;
@@ -226,8 +233,10 @@ void buffer_reg_init_pid_registry(void)
  *
  * Return 0 on success else a negative value and regp is untouched.
  */
-int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
-		const char *root_shm_path, const char *shm_path)
+int buffer_reg_pid_create(uint64_t session_id,
+			  struct buffer_reg_pid **regp,
+			  const char *root_shm_path,
+			  const char *shm_path)
 {
 	int ret = 0;
 	struct buffer_reg_pid *reg = NULL;
@@ -256,7 +265,8 @@ int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
 		strncpy(reg->shm_path, shm_path, sizeof(reg->shm_path));
 		reg->shm_path[sizeof(reg->shm_path) - 1] = '\0';
 		DBG3("shm path '%s' is assigned to pid buffer registry for session id %" PRIu64,
-				reg->shm_path, session_id);
+		     reg->shm_path,
+		     session_id);
 	}
 	reg->registry->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!reg->registry->channels) {
@@ -267,8 +277,7 @@ int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
 	lttng_ht_node_init_u64(&reg->node, reg->session_id);
 	*regp = reg;
 
-	DBG3("Buffer registry per PID created with session id: %" PRIu64,
-			session_id);
+	DBG3("Buffer registry per PID created with session id: %" PRIu64, session_id);
 
 	return 0;
 
@@ -287,7 +296,7 @@ void buffer_reg_pid_add(struct buffer_reg_pid *reg)
 	LTTNG_ASSERT(reg);
 
 	DBG3("Buffer registry per PID adding to global registry with id: %" PRIu64,
-			reg->session_id);
+	     reg->session_id);
 
 	rcu_read_lock();
 	lttng_ht_add_unique_u64(buffer_registry_pid, &reg->node);
@@ -325,9 +334,9 @@ end:
  *
  * Return the matching key or -1 if not found.
  */
-int buffer_reg_uid_consumer_channel_key(
-		struct cds_list_head *buffer_reg_uid_list,
-		uint64_t chan_key, uint64_t *consumer_chan_key)
+int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_list,
+					uint64_t chan_key,
+					uint64_t *consumer_chan_key)
 {
 	struct lttng_ht_iter iter;
 	struct buffer_reg_uid *uid_reg = NULL;
@@ -340,10 +349,10 @@ int buffer_reg_uid_consumer_channel_key(
 	 * For the per-uid registry, we have to iterate since we don't have the
 	 * uid and bitness key.
 	 */
-	cds_list_for_each_entry(uid_reg, buffer_reg_uid_list, lnode) {
+	cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
 		session_reg = uid_reg->registry;
-		cds_lfht_for_each_entry(session_reg->channels->ht,
-				&iter.iter, reg_chan, node.node) {
+		cds_lfht_for_each_entry (
+			session_reg->channels->ht, &iter.iter, reg_chan, node.node) {
 			if (reg_chan->key == chan_key) {
 				*consumer_chan_key = reg_chan->consumer_key;
 				ret = 0;
@@ -415,8 +424,7 @@ int buffer_reg_stream_create(struct buffer_reg_stream **regp)
 /*
  * Add stream to the list in the channel.
  */
-void buffer_reg_stream_add(struct buffer_reg_stream *stream,
-		struct buffer_reg_channel *channel)
+void buffer_reg_stream_add(struct buffer_reg_stream *stream, struct buffer_reg_channel *channel)
 {
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(channel);
@@ -430,8 +438,7 @@ void buffer_reg_stream_add(struct buffer_reg_stream *stream,
 /*
  * Add a buffer registry channel object to the given session.
  */
-void buffer_reg_channel_add(struct buffer_reg_session *session,
-		struct buffer_reg_channel *channel)
+void buffer_reg_channel_add(struct buffer_reg_session *session, struct buffer_reg_channel *channel)
 {
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(channel);
@@ -448,8 +455,7 @@ void buffer_reg_channel_add(struct buffer_reg_session *session,
  *
  * Return the object pointer or NULL on error.
  */
-struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key,
-		struct buffer_reg_uid *reg)
+struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key, struct buffer_reg_uid *reg)
 {
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
@@ -481,15 +487,13 @@ end:
 /*
  * Destroy a buffer registry stream with the given domain.
  */
-void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
-		enum lttng_domain_type domain)
+void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain_type domain)
 {
 	if (!regp) {
 		return;
 	}
 
-	DBG3("Buffer registry stream destroy with handle %d",
-			regp->obj.ust->handle);
+	DBG3("Buffer registry stream destroy with handle %d", regp->obj.ust->handle);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_UST:
@@ -499,7 +503,8 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
 		ret = ust_app_release_object(NULL, regp->obj.ust);
 		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 			ERR("Buffer reg stream release obj handle %d failed with ret %d",
-					regp->obj.ust->handle, ret);
+			    regp->obj.ust->handle,
+			    ret);
 		}
 		free(regp->obj.ust);
 		lttng_fd_put(LTTNG_FD_APPS, 2);
@@ -517,8 +522,7 @@ void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
  * Remove buffer registry channel object from the session hash table. RCU read
  * side lock MUST be acquired before calling this.
  */
-void buffer_reg_channel_remove(struct buffer_reg_session *session,
-		struct buffer_reg_channel *regp)
+void buffer_reg_channel_remove(struct buffer_reg_session *session, struct buffer_reg_channel *regp)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -534,8 +538,7 @@ void buffer_reg_channel_remove(struct buffer_reg_session *session,
 /*
  * Destroy a buffer registry channel with the given domain.
  */
-void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
-		enum lttng_domain_type domain)
+void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_domain_type domain)
 {
 	if (!regp) {
 		return;
@@ -549,7 +552,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 		int ret;
 		struct buffer_reg_stream *sreg, *stmp;
 		/* Wipe stream */
-		cds_list_for_each_entry_safe(sreg, stmp, &regp->streams, lnode) {
+		cds_list_for_each_entry_safe (sreg, stmp, &regp->streams, lnode) {
 			cds_list_del(&sreg->lnode);
 			regp->stream_count--;
 			buffer_reg_stream_destroy(sreg, domain);
@@ -559,7 +562,8 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 			ret = ust_app_release_object(NULL, regp->obj.ust);
 			if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
 				ERR("Buffer reg channel release obj handle %d failed with ret %d",
-						regp->obj.ust->handle, ret);
+				    regp->obj.ust->handle,
+				    ret);
 			}
 			free(regp->obj.ust);
 		}
@@ -578,7 +582,7 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
  * Destroy a buffer registry session with the given domain.
  */
 static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
-		enum lttng_domain_type domain)
+				       enum lttng_domain_type domain)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -588,8 +592,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 
 	/* Destroy all channels. */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(regp->channels->ht, &iter.iter, reg_chan,
-			node.node) {
+	cds_lfht_for_each_entry (regp->channels->ht, &iter.iter, reg_chan, node.node) {
 		ret = lttng_ht_del(regp->channels, &iter);
 		LTTNG_ASSERT(!ret);
 		buffer_reg_channel_destroy(reg_chan, domain);
@@ -629,10 +632,8 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 
 static void rcu_free_buffer_reg_uid(struct rcu_head *head)
 {
-	struct lttng_ht_node_u64 *node =
-		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
-	struct buffer_reg_uid *reg =
-		lttng::utils::container_of(node, &buffer_reg_uid::node);
+	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
+	struct buffer_reg_uid *reg = lttng::utils::container_of(node, &buffer_reg_uid::node);
 
 	buffer_reg_session_destroy(reg->registry, reg->domain);
 	free(reg);
@@ -640,10 +641,8 @@ static void rcu_free_buffer_reg_uid(struct rcu_head *head)
 
 static void rcu_free_buffer_reg_pid(struct rcu_head *head)
 {
-	struct lttng_ht_node_u64 *node =
-		lttng::utils::container_of(head, &lttng_ht_node_u64::head);
-	struct buffer_reg_pid *reg =
-		lttng::utils::container_of(node, &buffer_reg_pid::node);
+	struct lttng_ht_node_u64 *node = lttng::utils::container_of(head, &lttng_ht_node_u64::head);
+	struct buffer_reg_pid *reg = lttng::utils::container_of(node, &buffer_reg_pid::node);
 
 	buffer_reg_session_destroy(reg->registry, LTTNG_DOMAIN_UST);
 	free(reg);
@@ -654,8 +653,7 @@ static void rcu_free_buffer_reg_pid(struct rcu_head *head)
  * list or hash table. Use buffer_reg_pid_remove() before calling this function
  * for the case that the object is in the global hash table.
  */
-void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
-		struct consumer_output *consumer)
+void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output *consumer)
 {
 	struct consumer_socket *socket;
 
@@ -664,7 +662,9 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 	}
 
 	DBG3("Buffer registry per UID destroy with id: %" PRIu64 ", ABI: %u, uid: %d",
-			regp->session_id, regp->bits_per_long, regp->uid);
+	     regp->session_id,
+	     regp->bits_per_long,
+	     regp->uid);
 
 	if (!consumer) {
 		goto destroy;
@@ -672,8 +672,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 
 	rcu_read_lock();
 	/* Get the right socket from the consumer object. */
-	socket = consumer_find_socket_by_bitness(regp->bits_per_long,
-			consumer);
+	socket = consumer_find_socket_by_bitness(regp->bits_per_long, consumer);
 	if (!socket) {
 		goto unlock;
 	}
@@ -683,7 +682,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
 		if (regp->registry->reg.ust->_metadata_key) {
 			/* Return value does not matter. This call will print errors. */
 			(void) consumer_close_metadata(socket,
-					regp->registry->reg.ust->_metadata_key);
+						       regp->registry->reg.ust->_metadata_key);
 		}
 		break;
 	default:
@@ -725,8 +724,7 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 		return;
 	}
 
-	DBG3("Buffer registry per PID destroy with id: %" PRIu64,
-			regp->session_id);
+	DBG3("Buffer registry per PID destroy with id: %" PRIu64, regp->session_id);
 
 	/* This registry is only used by UST. */
 	call_rcu(&regp->node.head, rcu_free_buffer_reg_pid);

@@ -7,20 +7,20 @@
  */
 
 #define _LGPL_SOURCE
+#include "consumer-metadata-cache.hpp"
+
+#include <common/common.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
+#include <common/utils.hpp>
+
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-
-#include <common/common.hpp>
-#include <common/utils.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/ust-consumer/ust-consumer.hpp>
-#include <common/consumer/consumer.hpp>
-
-#include "consumer-metadata-cache.hpp"
 
 enum metadata_cache_update_version_status {
 	METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED,
@@ -32,8 +32,7 @@ extern struct lttng_consumer_global_data the_consumer_data;
 /*
  * Reset the metadata cache.
  */
-static
-void metadata_cache_reset(struct consumer_metadata_cache *cache)
+static void metadata_cache_reset(struct consumer_metadata_cache *cache)
 {
 	const int ret = lttng_dynamic_buffer_set_size(&cache->contents, 0);
 
@@ -45,8 +44,8 @@ void metadata_cache_reset(struct consumer_metadata_cache *cache)
  * If it did, reset the metadata cache.
  * The metadata cache lock MUST be held.
  */
-static enum metadata_cache_update_version_status metadata_cache_update_version(
-		struct consumer_metadata_cache *cache, uint64_t version)
+static enum metadata_cache_update_version_status
+metadata_cache_update_version(struct consumer_metadata_cache *cache, uint64_t version)
 {
 	enum metadata_cache_update_version_status status;
 
@@ -74,8 +73,10 @@ end:
  */
 enum consumer_metadata_cache_write_status
 consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
-		unsigned int offset, unsigned int len, uint64_t version,
-		const char *data)
+			      unsigned int offset,
+			      unsigned int len,
+			      uint64_t version,
+			      const char *data)
 {
 	int ret = 0;
 	enum consumer_metadata_cache_write_status status;
@@ -87,15 +88,14 @@ consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 	original_size = cache->contents.size;
 
 	if (metadata_cache_update_version(cache, version) ==
-			METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED) {
+	    METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED) {
 		metadata_cache_reset(cache);
 		cache_is_invalidated = true;
 	}
 
 	DBG("Writing %u bytes from offset %u in metadata cache", len, offset);
 	if (offset + len > cache->contents.size) {
-		ret = lttng_dynamic_buffer_set_size(
-				&cache->contents, offset + len);
+		ret = lttng_dynamic_buffer_set_size(&cache->contents, offset + len);
 		if (ret) {
 			ERR("Extending metadata cache");
 			status = CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR;
@@ -142,19 +142,17 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel)
 	}
 
 	lttng_dynamic_buffer_init(&channel->metadata_cache->contents);
-	ret = lttng_dynamic_buffer_set_capacity(
-			&channel->metadata_cache->contents,
-			DEFAULT_METADATA_CACHE_SIZE);
+	ret = lttng_dynamic_buffer_set_capacity(&channel->metadata_cache->contents,
+						DEFAULT_METADATA_CACHE_SIZE);
 	if (ret) {
 		PERROR("Failed to pre-allocate metadata cache storage of %d bytes on creation",
-				DEFAULT_METADATA_CACHE_SIZE);
+		       DEFAULT_METADATA_CACHE_SIZE);
 		ret = -1;
 		goto end_free_mutex;
 	}
 
 	DBG("Allocated metadata cache: current capacity = %zu",
-			lttng_dynamic_buffer_get_capacity_left(
-					&channel->metadata_cache->contents));
+	    lttng_dynamic_buffer_get_capacity_left(&channel->metadata_cache->contents));
 
 	ret = 0;
 	goto end;
@@ -189,7 +187,8 @@ void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel)
  * Return 0 if everything has been flushed, 1 if there is data not flushed.
  */
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
-		uint64_t offset, int timer)
+				    uint64_t offset,
+				    int timer)
 {
 	int ret = 0;
 	struct lttng_consumer_stream *metadata_stream;
@@ -223,8 +222,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 
 	if (metadata_stream->ust_metadata_pushed >= offset) {
 		ret = 0;
-	} else if (channel->metadata_stream->endpoint_status !=
-			CONSUMER_ENDPOINT_ACTIVE) {
+	} else if (channel->metadata_stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
 		/* An inactive endpoint means we don't have to flush anymore. */
 		ret = 0;
 	} else {

@@ -6,6 +6,7 @@
  */
 
 #include <lttng/lttng-export.h>
+
 #include <stddef.h>
 
 /*

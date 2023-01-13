@@ -6,12 +6,12 @@
  */
 
 #include "payload.hpp"
+
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 
-static
-void release_fd_handle_ref(void *ptr)
+static void release_fd_handle_ref(void *ptr)
 {
 	struct fd_handle *fd_handle = (struct fd_handle *) ptr;
 
@@ -22,29 +22,24 @@ void lttng_payload_init(struct lttng_payload *payload)
 {
 	LTTNG_ASSERT(payload);
 	lttng_dynamic_buffer_init(&payload->buffer);
-	lttng_dynamic_pointer_array_init(&payload->_fd_handles,
-			release_fd_handle_ref);
+	lttng_dynamic_pointer_array_init(&payload->_fd_handles, release_fd_handle_ref);
 }
 
-int lttng_payload_copy(const struct lttng_payload *src_payload,
-		       struct lttng_payload *dst_payload)
+int lttng_payload_copy(const struct lttng_payload *src_payload, struct lttng_payload *dst_payload)
 {
 	int ret;
 	size_t i;
 
-	ret = lttng_dynamic_buffer_append_buffer(
-			&dst_payload->buffer, &src_payload->buffer);
+	ret = lttng_dynamic_buffer_append_buffer(&dst_payload->buffer, &src_payload->buffer);
 	if (ret) {
 		goto end;
 	}
 
-	for (i = 0; i < lttng_dynamic_pointer_array_get_count(
-					&src_payload->_fd_handles);
-			i++) {
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&src_payload->_fd_handles); i++) {
 		struct fd_handle *new_fd_handle;
 		const struct fd_handle *src_fd_handle =
-				(fd_handle *) lttng_dynamic_pointer_array_get_pointer(
-						&src_payload->_fd_handles, i);
+			(fd_handle *) lttng_dynamic_pointer_array_get_pointer(
+				&src_payload->_fd_handles, i);
 
 		new_fd_handle = fd_handle_copy(src_fd_handle);
 		if (!new_fd_handle) {
@@ -80,8 +75,7 @@ void lttng_payload_clear(struct lttng_payload *payload)
 	lttng_dynamic_pointer_array_clear(&payload->_fd_handles);
 }
 
-int lttng_payload_push_fd_handle(struct lttng_payload *payload,
-		struct fd_handle *fd_handle)
+int lttng_payload_push_fd_handle(struct lttng_payload *payload, struct fd_handle *fd_handle)
 {
 	int ret;
 
@@ -90,8 +84,7 @@ int lttng_payload_push_fd_handle(struct lttng_payload *payload,
 		goto end;
 	}
 
-	ret = lttng_dynamic_pointer_array_add_pointer(
-			&payload->_fd_handles, fd_handle);
+	ret = lttng_dynamic_pointer_array_add_pointer(&payload->_fd_handles, fd_handle);
 	if (ret) {
 		goto end;
 	}

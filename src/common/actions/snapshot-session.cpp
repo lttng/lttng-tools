@@ -11,7 +11,7 @@
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/snapshot.hpp>
-#include <inttypes.h>
+
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
@@ -19,6 +19,8 @@
 #include <lttng/action/snapshot-session.h>
 #include <lttng/snapshot-internal.hpp>
 #include <lttng/snapshot.h>
+
+#include <inttypes.h>
 
 #define IS_SNAPSHOT_SESSION_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_SNAPSHOT_SESSION)
@@ -58,16 +60,14 @@ struct lttng_action_snapshot_session_comm {
 } /* namespace */
 
 static const struct lttng_rate_policy *
-lttng_action_snapshot_session_internal_get_rate_policy(
-		const struct lttng_action *action);
+lttng_action_snapshot_session_internal_get_rate_policy(const struct lttng_action *action);
 
 static struct lttng_action_snapshot_session *
 action_snapshot_session_from_action(struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return lttng::utils::container_of(
-			action, &lttng_action_snapshot_session::parent);
+	return lttng::utils::container_of(action, &lttng_action_snapshot_session::parent);
 }
 
 static const struct lttng_action_snapshot_session *
@@ -75,8 +75,7 @@ action_snapshot_session_from_action_const(const struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
-	return lttng::utils::container_of(
-			action, &lttng_action_snapshot_session::parent);
+	return lttng::utils::container_of(action, &lttng_action_snapshot_session::parent);
 }
 
 static bool lttng_action_snapshot_session_validate(struct lttng_action *action)
@@ -92,12 +91,12 @@ static bool lttng_action_snapshot_session_validate(struct lttng_action *action)
 
 	/* A non-empty session name is mandatory. */
 	if (!action_snapshot_session->session_name ||
-			strlen(action_snapshot_session->session_name) == 0) {
+	    strlen(action_snapshot_session->session_name) == 0) {
 		goto end;
 	}
 
 	if (action_snapshot_session->output &&
-			!lttng_snapshot_output_validate(action_snapshot_session->output)) {
+	    !lttng_snapshot_output_validate(action_snapshot_session->output)) {
 		goto end;
 	}
 
@@ -106,8 +105,8 @@ end:
 	return valid;
 }
 
-static bool lttng_action_snapshot_session_is_equal(
-		const struct lttng_action *_a, const struct lttng_action *_b)
+static bool lttng_action_snapshot_session_is_equal(const struct lttng_action *_a,
+						   const struct lttng_action *_b)
 {
 	bool is_equal = false;
 	const struct lttng_action_snapshot_session *a, *b;
@@ -122,8 +121,7 @@ static bool lttng_action_snapshot_session_is_equal(
 		goto end;
 	}
 
-	if (a->output && b->output &&
-			!lttng_snapshot_output_is_equal(a->output, b->output)) {
+	if (a->output && b->output && !lttng_snapshot_output_is_equal(a->output, b->output)) {
 		goto end;
 	} else if (!!a->output != !!b->output) {
 		goto end;
@@ -139,8 +137,8 @@ static size_t serialize_strlen(const char *str)
 	return str ? strlen(str) + 1 : 0;
 }
 
-static int lttng_action_snapshot_session_serialize(
-		struct lttng_action *action, struct lttng_payload *payload)
+static int lttng_action_snapshot_session_serialize(struct lttng_action *action,
+						   struct lttng_payload *payload)
 {
 	struct lttng_action_snapshot_session *action_snapshot_session;
 	struct lttng_action_snapshot_session_comm comm = {};
@@ -153,24 +151,21 @@ static int lttng_action_snapshot_session_serialize(
 	size_before_comm = payload->buffer.size;
 
 	action_snapshot_session = action_snapshot_session_from_action(action);
-	comm.session_name_len =
-		serialize_strlen(action_snapshot_session->session_name);
+	comm.session_name_len = serialize_strlen(action_snapshot_session->session_name);
 
 	/* Add header. */
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		goto end;
 	}
 
 	LTTNG_ASSERT(action_snapshot_session->session_name);
 	DBG("Serializing snapshot session action: session-name: %s",
-			action_snapshot_session->session_name);
+	    action_snapshot_session->session_name);
 
 	/* Add session name. */
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			action_snapshot_session->session_name,
-			comm.session_name_len);
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, action_snapshot_session->session_name, comm.session_name_len);
 	if (ret) {
 		goto end;
 	}
@@ -180,18 +175,15 @@ static int lttng_action_snapshot_session_serialize(
 		const size_t size_before_output = payload->buffer.size;
 		struct lttng_action_snapshot_session_comm *comm_in_payload;
 
-		ret = lttng_snapshot_output_serialize(
-				action_snapshot_session->output,
-				payload);
+		ret = lttng_snapshot_output_serialize(action_snapshot_session->output, payload);
 		if (ret) {
 			goto end;
 		}
 
-		comm_in_payload = (typeof(comm_in_payload))(
-				payload->buffer.data + size_before_comm);
+		comm_in_payload =
+			(typeof(comm_in_payload)) (payload->buffer.data + size_before_comm);
 		/* Adjust action length in header. */
-		comm_in_payload->snapshot_output_len =
-				payload->buffer.size - size_before_output;
+		comm_in_payload->snapshot_output_len = payload->buffer.size - size_before_output;
 	}
 
 	/* Serialize the rate policy. */
@@ -199,18 +191,16 @@ static int lttng_action_snapshot_session_serialize(
 		const size_t size_before_output = payload->buffer.size;
 		struct lttng_action_snapshot_session_comm *comm_in_payload;
 
-		ret = lttng_rate_policy_serialize(
-				action_snapshot_session->policy, payload);
+		ret = lttng_rate_policy_serialize(action_snapshot_session->policy, payload);
 		if (ret) {
 			ret = -1;
 			goto end;
 		}
 
-		comm_in_payload = (typeof(comm_in_payload))(
-				payload->buffer.data + size_before_comm);
+		comm_in_payload =
+			(typeof(comm_in_payload)) (payload->buffer.data + size_before_comm);
 		/* Adjust rate policy length in header. */
-		comm_in_payload->rate_policy_len =
-				payload->buffer.size - size_before_output;
+		comm_in_payload->rate_policy_len = payload->buffer.size - size_before_output;
 	}
 
 end:
@@ -236,9 +226,8 @@ end:
 	return;
 }
 
-ssize_t lttng_action_snapshot_session_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_action **p_action)
+ssize_t lttng_action_snapshot_session_create_from_payload(struct lttng_payload_view *view,
+							  struct lttng_action **p_action)
 {
 	ssize_t consumed_len;
 	const char *variable_data;
@@ -248,8 +237,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 	struct lttng_rate_policy *policy = NULL;
 	const struct lttng_action_snapshot_session_comm *comm;
 	const struct lttng_payload_view snapshot_session_comm_view =
-			lttng_payload_view_from_view(
-				view, 0, sizeof(*comm));
+		lttng_payload_view_from_view(view, 0, sizeof(*comm));
 
 	action = lttng_action_snapshot_session_create();
 	if (!action) {
@@ -267,12 +255,11 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 	consumed_len = sizeof(struct lttng_action_snapshot_session_comm);
 
 	if (!lttng_buffer_view_contains_string(
-			&view->buffer, variable_data, comm->session_name_len)) {
+		    &view->buffer, variable_data, comm->session_name_len)) {
 		goto error;
 	}
 
-	status = lttng_action_snapshot_session_set_session_name(
-			action, variable_data);
+	status = lttng_action_snapshot_session_set_session_name(action, variable_data);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		goto error;
 	}
@@ -285,28 +272,24 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 		ssize_t snapshot_output_consumed_len;
 		enum lttng_action_status action_status;
 		struct lttng_payload_view snapshot_output_buffer_view =
-			lttng_payload_view_from_view(view, consumed_len,
-				comm->snapshot_output_len);
+			lttng_payload_view_from_view(view, consumed_len, comm->snapshot_output_len);
 
 		if (!lttng_payload_view_is_valid(&snapshot_output_buffer_view)) {
 			ERR("Failed to create buffer view for snapshot output.");
 			goto error;
 		}
 
-		snapshot_output_consumed_len =
-				lttng_snapshot_output_create_from_payload(
-						&snapshot_output_buffer_view,
-						&snapshot_output);
+		snapshot_output_consumed_len = lttng_snapshot_output_create_from_payload(
+			&snapshot_output_buffer_view, &snapshot_output);
 		if (snapshot_output_consumed_len != comm->snapshot_output_len) {
 			ERR("Failed to deserialize snapshot output object: "
-					"consumed-len: %zd, expected-len: %" PRIu32,
-					snapshot_output_consumed_len,
-					comm->snapshot_output_len);
+			    "consumed-len: %zd, expected-len: %" PRIu32,
+			    snapshot_output_consumed_len,
+			    comm->snapshot_output_len);
 			goto error;
 		}
 
-		action_status = lttng_action_snapshot_session_set_output(
-			action, snapshot_output);
+		action_status = lttng_action_snapshot_session_set_output(action, snapshot_output);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
 			goto error;
 		}
@@ -326,8 +309,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 	{
 		ssize_t rate_policy_consumed_len;
 		struct lttng_payload_view policy_view =
-				lttng_payload_view_from_view(view, consumed_len,
-						comm->rate_policy_len);
+			lttng_payload_view_from_view(view, consumed_len, comm->rate_policy_len);
 
 		if (!lttng_payload_view_is_valid(&policy_view)) {
 			ERR("Failed to create buffer view for rate policy.");
@@ -335,8 +317,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 		}
 
 		rate_policy_consumed_len =
-				lttng_rate_policy_create_from_payload(
-						&policy_view, &policy);
+			lttng_rate_policy_create_from_payload(&policy_view, &policy);
 		if (rate_policy_consumed_len < 0) {
 			goto error;
 		}
@@ -344,13 +325,12 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 		if (rate_policy_consumed_len != comm->rate_policy_len) {
 			ERR("Failed to deserialize rate policy object: "
 			    "consumed-len: %zd, expected-len: %" PRIu32,
-					rate_policy_consumed_len,
-					comm->rate_policy_len);
+			    rate_policy_consumed_len,
+			    comm->rate_policy_len);
 			goto error;
 		}
 
-		status = lttng_action_snapshot_session_set_rate_policy(
-				action, policy);
+		status = lttng_action_snapshot_session_set_rate_policy(action, policy);
 		if (status != LTTNG_ACTION_STATUS_OK) {
 			goto error;
 		}
@@ -375,8 +355,9 @@ end:
 	return consumed_len;
 }
 
-static enum lttng_error_code lttng_action_snapshot_session_mi_serialize(
-		const struct lttng_action *action, struct mi_writer *writer)
+static enum lttng_error_code
+lttng_action_snapshot_session_mi_serialize(const struct lttng_action *action,
+					   struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -388,8 +369,7 @@ static enum lttng_error_code lttng_action_snapshot_session_mi_serialize(
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_SNAPSHOT_SESSION_ACTION(action));
 
-	status = lttng_action_snapshot_session_get_session_name(
-			action, &session_name);
+	status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 	LTTNG_ASSERT(session_name != NULL);
 
@@ -398,15 +378,14 @@ static enum lttng_error_code lttng_action_snapshot_session_mi_serialize(
 	LTTNG_ASSERT(policy != NULL);
 
 	/* Open action snapshot session element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_action_snapshot_session);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_snapshot_session);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Session name. */
 	ret = mi_lttng_writer_write_element_string(
-			writer, mi_lttng_element_session_name, session_name);
+		writer, mi_lttng_element_session_name, session_name);
 	if (ret) {
 		goto mi_error;
 	}
@@ -463,17 +442,16 @@ struct lttng_action *lttng_action_snapshot_session_create(void)
 	}
 
 	lttng_action_init(&action_snapshot->parent,
-			LTTNG_ACTION_TYPE_SNAPSHOT_SESSION,
-			lttng_action_snapshot_session_validate,
-			lttng_action_snapshot_session_serialize,
-			lttng_action_snapshot_session_is_equal,
-			lttng_action_snapshot_session_destroy,
-			lttng_action_snapshot_session_internal_get_rate_policy,
-			lttng_action_generic_add_error_query_results,
-			lttng_action_snapshot_session_mi_serialize);
+			  LTTNG_ACTION_TYPE_SNAPSHOT_SESSION,
+			  lttng_action_snapshot_session_validate,
+			  lttng_action_snapshot_session_serialize,
+			  lttng_action_snapshot_session_is_equal,
+			  lttng_action_snapshot_session_destroy,
+			  lttng_action_snapshot_session_internal_get_rate_policy,
+			  lttng_action_generic_add_error_query_results,
+			  lttng_action_snapshot_session_mi_serialize);
 
-	status = lttng_action_snapshot_session_set_rate_policy(
-			&action_snapshot->parent, policy);
+	status = lttng_action_snapshot_session_set_rate_policy(&action_snapshot->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		lttng_action_destroy(&action_snapshot->parent);
 		action_snapshot = NULL;
@@ -485,14 +463,14 @@ end:
 	return action_snapshot ? &action_snapshot->parent : nullptr;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_set_session_name(
-		struct lttng_action *action, const char *session_name)
+enum lttng_action_status lttng_action_snapshot_session_set_session_name(struct lttng_action *action,
+									const char *session_name)
 {
 	struct lttng_action_snapshot_session *action_snapshot_session;
 	enum lttng_action_status status;
 
 	if (!action || !IS_SNAPSHOT_SESSION_ACTION(action) || !session_name ||
-			strlen(session_name) == 0) {
+	    strlen(session_name) == 0) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
@@ -512,8 +490,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_get_session_name(
-		const struct lttng_action *action, const char **session_name)
+enum lttng_action_status
+lttng_action_snapshot_session_get_session_name(const struct lttng_action *action,
+					       const char **session_name)
 {
 	const struct lttng_action_snapshot_session *action_snapshot_session;
 	enum lttng_action_status status;
@@ -537,9 +516,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_set_output(
-		struct lttng_action *action,
-		struct lttng_snapshot_output *output)
+enum lttng_action_status
+lttng_action_snapshot_session_set_output(struct lttng_action *action,
+					 struct lttng_snapshot_output *output)
 {
 	struct lttng_action_snapshot_session *action_snapshot_session;
 	enum lttng_action_status status;
@@ -560,14 +539,14 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_get_output(
-		const struct lttng_action *action,
-		const struct lttng_snapshot_output **output)
+enum lttng_action_status
+lttng_action_snapshot_session_get_output(const struct lttng_action *action,
+					 const struct lttng_snapshot_output **output)
 {
 	const struct lttng_action_snapshot_session *action_snapshot_session;
 	enum lttng_action_status status;
 
-	if (!action || !IS_SNAPSHOT_SESSION_ACTION(action)|| !output) {
+	if (!action || !IS_SNAPSHOT_SESSION_ACTION(action) || !output) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
@@ -585,9 +564,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_set_rate_policy(
-		struct lttng_action *action,
-		const struct lttng_rate_policy *policy)
+enum lttng_action_status
+lttng_action_snapshot_session_set_rate_policy(struct lttng_action *action,
+					      const struct lttng_rate_policy *policy)
 {
 	enum lttng_action_status status;
 	struct lttng_action_snapshot_session *snapshot_session_action;
@@ -619,9 +598,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_snapshot_session_get_rate_policy(
-		const struct lttng_action *action,
-		const struct lttng_rate_policy **policy)
+enum lttng_action_status
+lttng_action_snapshot_session_get_rate_policy(const struct lttng_action *action,
+					      const struct lttng_rate_policy **policy)
 {
 	enum lttng_action_status status;
 	const struct lttng_action_snapshot_session *snapshot_session_action;
@@ -631,8 +610,7 @@ enum lttng_action_status lttng_action_snapshot_session_get_rate_policy(
 		goto end;
 	}
 
-	snapshot_session_action =
-			action_snapshot_session_from_action_const(action);
+	snapshot_session_action = action_snapshot_session_from_action_const(action);
 
 	*policy = snapshot_session_action->policy;
 	status = LTTNG_ACTION_STATUS_OK;
@@ -641,8 +619,7 @@ end:
 }
 
 static const struct lttng_rate_policy *
-lttng_action_snapshot_session_internal_get_rate_policy(
-		const struct lttng_action *action)
+lttng_action_snapshot_session_internal_get_rate_policy(const struct lttng_action *action)
 {
 	const struct lttng_action_snapshot_session *_action;
 	_action = action_snapshot_session_from_action_const(action);

@@ -5,14 +5,15 @@
  *
  */
 
-#include <lttng/location-internal.hpp>
-#include <common/macros.hpp>
-#include <stdlib.h>
 #include <common/error.hpp>
+#include <common/macros.hpp>
 
-static
-struct lttng_trace_archive_location *lttng_trace_archive_location_create(
-		enum lttng_trace_archive_location_type type)
+#include <lttng/location-internal.hpp>
+
+#include <stdlib.h>
+
+static struct lttng_trace_archive_location *
+lttng_trace_archive_location_create(enum lttng_trace_archive_location_type type)
 {
 	struct lttng_trace_archive_location *location;
 
@@ -27,11 +28,10 @@ end:
 	return location;
 }
 
-static
-void trace_archive_location_destroy_ref(struct urcu_ref *ref)
+static void trace_archive_location_destroy_ref(struct urcu_ref *ref)
 {
 	struct lttng_trace_archive_location *location =
-			lttng::utils::container_of(ref, &lttng_trace_archive_location::ref);
+		lttng::utils::container_of(ref, &lttng_trace_archive_location::ref);
 
 	switch (location->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
@@ -62,8 +62,8 @@ void lttng_trace_archive_location_put(struct lttng_trace_archive_location *locat
 	urcu_ref_put(&location->ref, trace_archive_location_destroy_ref);
 }
 
-struct lttng_trace_archive_location *lttng_trace_archive_location_local_create(
-		const char *absolute_path)
+struct lttng_trace_archive_location *
+lttng_trace_archive_location_local_create(const char *absolute_path)
 {
 	struct lttng_trace_archive_location *location = NULL;
 
@@ -71,8 +71,7 @@ struct lttng_trace_archive_location *lttng_trace_archive_location_local_create(
 		goto end;
 	}
 
-	location = lttng_trace_archive_location_create(
-			LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL);
+	location = lttng_trace_archive_location_create(LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL);
 	if (!location) {
 		goto end;
 	}
@@ -90,10 +89,11 @@ error:
 }
 
 struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
-		const char *host,
-		enum lttng_trace_archive_location_relay_protocol_type protocol,
-		uint16_t control_port, uint16_t data_port,
-		const char *relative_path)
+	const char *host,
+	enum lttng_trace_archive_location_relay_protocol_type protocol,
+	uint16_t control_port,
+	uint16_t data_port,
+	const char *relative_path)
 {
 	struct lttng_trace_archive_location *location = NULL;
 
@@ -101,8 +101,7 @@ struct lttng_trace_archive_location *lttng_trace_archive_location_relay_create(
 		goto end;
 	}
 
-	location = lttng_trace_archive_location_create(
-			LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY);
+	location = lttng_trace_archive_location_create(LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY);
 	if (!location) {
 		goto end;
 	}
@@ -126,16 +125,15 @@ error:
 	return NULL;
 }
 
-ssize_t lttng_trace_archive_location_create_from_buffer(
-		const struct lttng_buffer_view *view,
-		struct lttng_trace_archive_location **location)
+ssize_t
+lttng_trace_archive_location_create_from_buffer(const struct lttng_buffer_view *view,
+						struct lttng_trace_archive_location **location)
 {
 	size_t offset = 0;
 	const struct lttng_trace_archive_location_comm *location_comm;
 	struct lttng_buffer_view location_comm_view;
 
-	location_comm_view = lttng_buffer_view_from_view(view, 0,
-			sizeof(*location_comm));
+	location_comm_view = lttng_buffer_view_from_view(view, 0, sizeof(*location_comm));
 	if (!lttng_buffer_view_is_valid(&location_comm_view)) {
 		goto error;
 	}
@@ -146,9 +144,8 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 	switch ((enum lttng_trace_archive_location_type) location_comm->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
 	{
-		const struct lttng_buffer_view absolute_path_view =
-				lttng_buffer_view_from_view(view, offset,
-				location_comm->types.local.absolute_path_len);
+		const struct lttng_buffer_view absolute_path_view = lttng_buffer_view_from_view(
+			view, offset, location_comm->types.local.absolute_path_len);
 
 		if (!lttng_buffer_view_is_valid(&absolute_path_view)) {
 			goto error;
@@ -159,8 +156,7 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 		}
 		offset += absolute_path_view.size;
 
-		*location = lttng_trace_archive_location_local_create(
-				absolute_path_view.data);
+		*location = lttng_trace_archive_location_local_create(absolute_path_view.data);
 		if (!*location) {
 			goto error;
 		}
@@ -168,17 +164,15 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 	}
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
 	{
-		const struct lttng_buffer_view hostname_view =
-				lttng_buffer_view_from_view(view, offset,
-				location_comm->types.relay.hostname_len);
+		const struct lttng_buffer_view hostname_view = lttng_buffer_view_from_view(
+			view, offset, location_comm->types.relay.hostname_len);
 		const struct lttng_buffer_view relative_path_view =
-				lttng_buffer_view_from_view(view,
-				offset + hostname_view.size,
-				location_comm->types.relay.relative_path_len);
+			lttng_buffer_view_from_view(view,
+						    offset + hostname_view.size,
+						    location_comm->types.relay.relative_path_len);
 
 		if (!lttng_buffer_view_is_valid(&hostname_view) ||
-				!lttng_buffer_view_is_valid(
-						&relative_path_view)) {
+		    !lttng_buffer_view_is_valid(&relative_path_view)) {
 			goto error;
 		}
 
@@ -191,11 +185,12 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 		offset += hostname_view.size + relative_path_view.size;
 
 		*location = lttng_trace_archive_location_relay_create(
-				hostname_view.data,
-				(enum lttng_trace_archive_location_relay_protocol_type) location_comm->types.relay.protocol,
-				location_comm->types.relay.ports.control,
-				location_comm->types.relay.ports.data,
-				relative_path_view.data);
+			hostname_view.data,
+			(enum lttng_trace_archive_location_relay_protocol_type)
+				location_comm->types.relay.protocol,
+			location_comm->types.relay.ports.control,
+			location_comm->types.relay.ports.data,
+			relative_path_view.data);
 		if (!*location) {
 			goto error;
 		}
@@ -210,9 +205,8 @@ error:
 	return -1;
 }
 
-ssize_t lttng_trace_archive_location_serialize(
-		const struct lttng_trace_archive_location *location,
-		struct lttng_dynamic_buffer *buffer)
+ssize_t lttng_trace_archive_location_serialize(const struct lttng_trace_archive_location *location,
+					       struct lttng_dynamic_buffer *buffer)
 {
 	int ret;
 	struct lttng_trace_archive_location_comm location_comm;
@@ -222,26 +216,21 @@ ssize_t lttng_trace_archive_location_serialize(
 	switch (location->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
 		location_comm.types.local.absolute_path_len =
-				strlen(location->types.local.absolute_path) + 1;
+			strlen(location->types.local.absolute_path) + 1;
 		break;
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
-		location_comm.types.relay.hostname_len =
-				strlen(location->types.relay.host) + 1;
-		location_comm.types.relay.protocol =
-				(int8_t) location->types.relay.protocol;
-		location_comm.types.relay.ports.control =
-				location->types.relay.ports.control;
-		location_comm.types.relay.ports.data =
-				location->types.relay.ports.data;
+		location_comm.types.relay.hostname_len = strlen(location->types.relay.host) + 1;
+		location_comm.types.relay.protocol = (int8_t) location->types.relay.protocol;
+		location_comm.types.relay.ports.control = location->types.relay.ports.control;
+		location_comm.types.relay.ports.data = location->types.relay.ports.data;
 		location_comm.types.relay.relative_path_len =
-				strlen(location->types.relay.relative_path) + 1;
+			strlen(location->types.relay.relative_path) + 1;
 		break;
 	default:
 		abort();
 	}
 
-	ret = lttng_dynamic_buffer_append(buffer, &location_comm,
-			sizeof(location_comm));
+	ret = lttng_dynamic_buffer_append(buffer, &location_comm, sizeof(location_comm));
 	if (ret) {
 		goto error;
 	}
@@ -249,22 +238,21 @@ ssize_t lttng_trace_archive_location_serialize(
 	switch (location->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
 		ret = lttng_dynamic_buffer_append(buffer,
-				location->types.local.absolute_path,
-				location_comm.types.local.absolute_path_len);
+						  location->types.local.absolute_path,
+						  location_comm.types.local.absolute_path_len);
 		if (ret) {
 			goto error;
 		}
 		break;
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
-		ret = lttng_dynamic_buffer_append(buffer,
-				location->types.relay.host,
-				location_comm.types.relay.hostname_len);
+		ret = lttng_dynamic_buffer_append(
+			buffer, location->types.relay.host, location_comm.types.relay.hostname_len);
 		if (ret) {
 			goto error;
 		}
 		ret = lttng_dynamic_buffer_append(buffer,
-				location->types.relay.relative_path,
-				location_comm.types.relay.relative_path_len);
+						  location->types.relay.relative_path,
+						  location_comm.types.relay.relative_path_len);
 		if (ret) {
 			goto error;
 		}
@@ -278,8 +266,8 @@ error:
 	return -1;
 }
 
-enum lttng_trace_archive_location_type lttng_trace_archive_location_get_type(
-		const struct lttng_trace_archive_location *location)
+enum lttng_trace_archive_location_type
+lttng_trace_archive_location_get_type(const struct lttng_trace_archive_location *location)
 {
 	enum lttng_trace_archive_location_type type;
 
@@ -293,16 +281,13 @@ end:
 	return type;
 }
 
-enum lttng_trace_archive_location_status
-lttng_trace_archive_location_local_get_absolute_path(
-		const struct lttng_trace_archive_location *location,
-		const char **absolute_path)
+enum lttng_trace_archive_location_status lttng_trace_archive_location_local_get_absolute_path(
+	const struct lttng_trace_archive_location *location, const char **absolute_path)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
 	if (!location || !absolute_path ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL) {
+	    location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -313,15 +298,12 @@ end:
 }
 
 enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_host(
-		const struct lttng_trace_archive_location *location,
-		const char **relay_host)
+lttng_trace_archive_location_relay_get_host(const struct lttng_trace_archive_location *location,
+					    const char **relay_host)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
-	if (!location || !relay_host ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
+	if (!location || !relay_host || location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -331,16 +313,13 @@ end:
 	return status;
 }
 
-enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_relative_path(
-		const struct lttng_trace_archive_location *location,
-		const char **relative_path)
+enum lttng_trace_archive_location_status lttng_trace_archive_location_relay_get_relative_path(
+	const struct lttng_trace_archive_location *location, const char **relative_path)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
 	if (!location || !relative_path ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
+	    location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -350,16 +329,13 @@ end:
 	return status;
 }
 
-enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_control_port(
-		const struct lttng_trace_archive_location *location,
-		uint16_t *control_port)
+enum lttng_trace_archive_location_status lttng_trace_archive_location_relay_get_control_port(
+	const struct lttng_trace_archive_location *location, uint16_t *control_port)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
 	if (!location || !control_port ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
+	    location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -369,16 +345,12 @@ end:
 	return status;
 }
 
-enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_data_port(
-		const struct lttng_trace_archive_location *location,
-		uint16_t *data_port)
+enum lttng_trace_archive_location_status lttng_trace_archive_location_relay_get_data_port(
+	const struct lttng_trace_archive_location *location, uint16_t *data_port)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
-	if (!location || !data_port ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
+	if (!location || !data_port || location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -388,16 +360,13 @@ end:
 	return status;
 }
 
-enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_protocol_type(
-		const struct lttng_trace_archive_location *location,
-		enum lttng_trace_archive_location_relay_protocol_type *protocol)
+enum lttng_trace_archive_location_status lttng_trace_archive_location_relay_get_protocol_type(
+	const struct lttng_trace_archive_location *location,
+	enum lttng_trace_archive_location_relay_protocol_type *protocol)
 {
-	enum lttng_trace_archive_location_status status =
-			LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
+	enum lttng_trace_archive_location_status status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK;
 
-	if (!location || !protocol ||
-			location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
+	if (!location || !protocol || location->type != LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY) {
 		status = LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_INVALID;
 		goto end;
 	}

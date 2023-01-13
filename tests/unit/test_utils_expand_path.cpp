@@ -5,18 +5,16 @@
  *
  */
 
-#include <string.h>
+#include <common/common.hpp>
+#include <common/path.hpp>
+#include <common/utils.hpp>
+
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
-
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <common/utils.hpp>
-#include <common/path.hpp>
-#include <common/common.hpp>
-
 #include <tap/tap.h>
 
 /* For error.h */
@@ -43,83 +41,69 @@ struct symlink_test_input {
 
 /* Valid test cases */
 struct valid_test_input valid_tests_inputs[] = {
-	{ "/a/b/c/d/e",			"",		"/a/b/c/d/e"	},
-	{ "/a//b//c/d/e",		"",		"/a/b/c/d/e"	},
-	{ "./a/b/c/d/e",		".",		"/a/b/c/d/e"	},
-	{ "../a/b/c/d/../e",		"..",		"/a/b/c/e"	},
-	{ ".././a/b/c/d/./e",		"..",		"/a/b/c/d/e"	},
-	{ "../../a/b/c/d/e",		"../..",	"/a/b/c/d/e"	},
-	{ "./a/b/../c/d/../e",		".",		"/a/c/e"	},
-	{ "../a/b/../../c/./d/./e",	"..",		"/c/d/e"	},
-	{ "../../a/b/../c/d/../../e",	"../..",	"/a/e"		},
-	{ "./a/b/c/d/../../../../e",	".",		"/e"		},
-	{ ".././a/b/c/d/./e",		"..",		"/a/b/c/d/e"	},
-	{ "a/",				".",		"/a/"		},
-	{ "a",				".",		"/a"		},
-	{ "../../",			"../..",	"/"		},
-	{ "../..",			"../..",	""		},
-	{ "../",			"..",		"/"		},
-	{ "..",				"..",		""		},
-	{ "./",				".",		"/"		},
-	{ ".",				".",		""		},
-	{ "/../a/b/c/d/e",		"",		"/a/b/c/d/e"	},
-	{ "/a/b/c/d/../../../../../e",	"",		"/e"		},
-	{ "/..",			"",		"/"		},
-	{ "/a/..",			"",		"/"		},
+	{ "/a/b/c/d/e", "", "/a/b/c/d/e" },
+	{ "/a//b//c/d/e", "", "/a/b/c/d/e" },
+	{ "./a/b/c/d/e", ".", "/a/b/c/d/e" },
+	{ "../a/b/c/d/../e", "..", "/a/b/c/e" },
+	{ ".././a/b/c/d/./e", "..", "/a/b/c/d/e" },
+	{ "../../a/b/c/d/e", "../..", "/a/b/c/d/e" },
+	{ "./a/b/../c/d/../e", ".", "/a/c/e" },
+	{ "../a/b/../../c/./d/./e", "..", "/c/d/e" },
+	{ "../../a/b/../c/d/../../e", "../..", "/a/e" },
+	{ "./a/b/c/d/../../../../e", ".", "/e" },
+	{ ".././a/b/c/d/./e", "..", "/a/b/c/d/e" },
+	{ "a/", ".", "/a/" },
+	{ "a", ".", "/a" },
+	{ "../../", "../..", "/" },
+	{ "../..", "../..", "" },
+	{ "../", "..", "/" },
+	{ "..", "..", "" },
+	{ "./", ".", "/" },
+	{ ".", ".", "" },
+	{ "/../a/b/c/d/e", "", "/a/b/c/d/e" },
+	{ "/a/b/c/d/../../../../../e", "", "/e" },
+	{ "/..", "", "/" },
+	{ "/a/..", "", "/" },
 };
 char **valid_tests_expected_results;
-const int num_valid_tests =
-		sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
+const int num_valid_tests = sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
 /* Symlinks test cases */
 char tree_origin[] = "/tmp/test_utils_expand_path.XXXXXX";
 
-const char * const tree_dirs[] = {
+const char *const tree_dirs[] = {
 	"a",
 	"a/b",
 	"a/b/c",
 	"a/e",
 };
-const int num_tree_dirs =
-		sizeof(tree_dirs) / sizeof(tree_dirs[0]);
+const int num_tree_dirs = sizeof(tree_dirs) / sizeof(tree_dirs[0]);
 
 struct tree_symlink tree_symlinks[] = {
-	{ "a/d",			"b/c/"		},
-	{ "a/g",			"d/"		},
-	{ "a/b/f",			"../e/"		},
-	{ "a/b/h",			"../g/"		},
-	{ "a/b/k",			"c/g/"		},
-	{ "a/b/c/g",			"../../../"	},
+	{ "a/d", "b/c/" },    { "a/g", "d/" },	   { "a/b/f", "../e/" },
+	{ "a/b/h", "../g/" }, { "a/b/k", "c/g/" }, { "a/b/c/g", "../../../" },
 };
-const int num_tree_symlinks =
-		sizeof(tree_symlinks) / sizeof(tree_symlinks[0]);
+const int num_tree_symlinks = sizeof(tree_symlinks) / sizeof(tree_symlinks[0]);
 
 static struct symlink_test_input symlink_tests_inputs[] = {
-	{ "a/g/../l/.",			"a/b/l"		},
-	{ "a/g/../l/./",		"a/b/l/"	},
-	{ "a/g/../l/..",		"a/b"		},
-	{ "a/g/../l/../",		"a/b/"		},
-	{ "a/b/h/g/",			""		},
+	{ "a/g/../l/.", "a/b/l" },  { "a/g/../l/./", "a/b/l/" }, { "a/g/../l/..", "a/b" },
+	{ "a/g/../l/../", "a/b/" }, { "a/b/h/g/", "" },
 };
-const int num_symlink_tests =
-		sizeof(symlink_tests_inputs) / sizeof(symlink_tests_inputs[0]);
+const int num_symlink_tests = sizeof(symlink_tests_inputs) / sizeof(symlink_tests_inputs[0]);
 
 /* Invalid test cases */
 char *invalid_tests_inputs[] = {
 	NULL,
 };
-const int num_invalid_tests =
-		sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
+const int num_invalid_tests = sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
 } /* namespace */
 
-#define PRINT_ERR(fmt, args...)						\
-	fprintf(stderr, "test_utils_expand_path: error: " fmt "\n", ## args)
+#define PRINT_ERR(fmt, args...) fprintf(stderr, "test_utils_expand_path: error: " fmt "\n", ##args)
 
 static int prepare_valid_results(void)
 {
 	int i;
-	char *relative, *cur_path = NULL, *prev_path = NULL,
-			*pprev_path = NULL, *empty = NULL;
+	char *relative, *cur_path = NULL, *prev_path = NULL, *pprev_path = NULL, *empty = NULL;
 	int ret = 0;
 
 	/* Prepare the relative paths */
@@ -158,8 +142,11 @@ static int prepare_valid_results(void)
 			relative = empty;
 		}
 
-		snprintf(valid_tests_expected_results[i], PATH_MAX,
-				"%s%s", relative, valid_tests_inputs[i].absolute_part);
+		snprintf(valid_tests_expected_results[i],
+			 PATH_MAX,
+			 "%s%s",
+			 relative,
+			 valid_tests_inputs[i].absolute_part);
 	}
 
 end:
@@ -197,8 +184,7 @@ static int prepare_symlink_tree(void)
 
 	/* Create the directories of the test tree */
 	for (i = 0; i < num_tree_dirs; i++) {
-		snprintf(tmppath, sizeof(tmppath), "%s/%s", tree_origin,
-				tree_dirs[i]);
+		snprintf(tmppath, sizeof(tmppath), "%s/%s", tree_origin, tree_dirs[i]);
 
 		if (mkdir(tmppath, 0755) != 0) {
 			PRINT_ERR("mkdir failed with path \"%s\"", tmppath);
@@ -208,12 +194,12 @@ static int prepare_symlink_tree(void)
 
 	/* Create the symlinks of the test tree */
 	for (i = 0; i < num_tree_symlinks; i++) {
-		snprintf(tmppath, sizeof(tmppath), "%s/%s",
-				tree_origin, tree_symlinks[i].orig);
+		snprintf(tmppath, sizeof(tmppath), "%s/%s", tree_origin, tree_symlinks[i].orig);
 
 		if (symlink(tree_symlinks[i].dest, tmppath) != 0) {
-			PRINT_ERR("failed to symlink \"%s\" to \"%s\"", tmppath,
-					tree_symlinks[i].dest);
+			PRINT_ERR("failed to symlink \"%s\" to \"%s\"",
+				  tmppath,
+				  tree_symlinks[i].dest);
 			goto error;
 		}
 	}
@@ -230,9 +216,8 @@ static int free_symlink_tree(void)
 	char tmppath[PATH_MAX];
 
 	/* Remove the symlinks from the test tree */
-	for (i =  num_tree_symlinks - 1; i > -1; i--) {
-		snprintf(tmppath, PATH_MAX, "%s/%s",
-				tree_origin, tree_symlinks[i].orig);
+	for (i = num_tree_symlinks - 1; i > -1; i--) {
+		snprintf(tmppath, PATH_MAX, "%s/%s", tree_origin, tree_symlinks[i].orig);
 
 		if (unlink(tmppath) != 0) {
 			PRINT_ERR("failed to unlink \"%s\"", tmppath);
@@ -273,8 +258,9 @@ static void test_utils_expand_path(void)
 		sprintf(name, "valid test case: %s", valid_tests_inputs[i].input);
 
 		result = utils_expand_path(valid_tests_inputs[i].input);
-		ok(result != NULL &&
-			strcmp(result, valid_tests_expected_results[i]) == 0, "%s", name);
+		ok(result != NULL && strcmp(result, valid_tests_expected_results[i]) == 0,
+		   "%s",
+		   name);
 
 		free(result);
 	}
@@ -294,22 +280,27 @@ static void test_utils_expand_path(void)
 	for (i = 0; i < num_symlink_tests; i++) {
 		int ret;
 
-		sprintf(name, "symlink tree test case: [tmppath/]%s",
-				symlink_tests_inputs[i].input);
+		sprintf(name,
+			"symlink tree test case: [tmppath/]%s",
+			symlink_tests_inputs[i].input);
 
-		ret = snprintf(tmppath, PATH_MAX, "%s/%s",
-				real_tree_origin,
-				symlink_tests_inputs[i].input);
+		ret = snprintf(tmppath,
+			       PATH_MAX,
+			       "%s/%s",
+			       real_tree_origin,
+			       symlink_tests_inputs[i].input);
 		if (ret == -1 || ret >= PATH_MAX) {
 			PRINT_ERR("truncation occurred while concatenating paths \"%s\" and \"%s\"",
-					real_tree_origin,
-					symlink_tests_inputs[i].input);
+				  real_tree_origin,
+				  symlink_tests_inputs[i].input);
 			fail("%s", name);
 			continue;
 		}
 		result = utils_expand_path(tmppath);
-		ok(result != NULL && strcmp(result + treelen,
-			symlink_tests_inputs[i].expected_result) == 0, "%s", name);
+		ok(result != NULL &&
+			   strcmp(result + treelen, symlink_tests_inputs[i].expected_result) == 0,
+		   "%s",
+		   name);
 
 		free(result);
 	}
@@ -318,8 +309,7 @@ static void test_utils_expand_path(void)
 	for (i = 0; i < num_invalid_tests; i++) {
 		const char *test_input = invalid_tests_inputs[i];
 
-		sprintf(name, "invalid test case: %s", test_input ?
-				test_input : "NULL");
+		sprintf(name, "invalid test case: %s", test_input ? test_input : "NULL");
 
 		result = utils_expand_path(test_input);
 		if (result != NULL) {

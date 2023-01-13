@@ -6,33 +6,33 @@
  */
 
 #define _LGPL_SOURCE
-#include <lttng/trigger/trigger.h>
-#include <lttng/notification/channel-internal.hpp>
-#include <lttng/notification/notification-internal.hpp>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/condition/buffer-usage-internal.hpp>
-#include <common/error.hpp>
+#include "health-sessiond.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "notification-thread-commands.hpp"
+#include "notification-thread-events.hpp"
+#include "notification-thread.hpp"
+#include "testpoint.hpp"
+#include "thread.hpp"
+
+#include <common/align.hpp>
 #include <common/config/session-config.hpp>
 #include <common/defaults.hpp>
-#include <common/utils.hpp>
-#include <common/align.hpp>
-#include <common/time.hpp>
-#include <sys/stat.h>
-#include <sys/eventfd.h>
-#include <time.h>
-#include <signal.h>
-
-#include "notification-thread.hpp"
-#include "notification-thread-events.hpp"
-#include "notification-thread-commands.hpp"
-#include "lttng-sessiond.hpp"
-#include "health-sessiond.hpp"
-#include "thread.hpp"
-#include "testpoint.hpp"
-
-#include "kernel.hpp"
+#include <common/error.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/time.hpp>
+#include <common/utils.hpp>
 
+#include <lttng/condition/buffer-usage-internal.hpp>
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/notification/channel-internal.hpp>
+#include <lttng/notification/notification-internal.hpp>
+#include <lttng/trigger/trigger.h>
+
+#include <signal.h>
+#include <sys/eventfd.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
@@ -47,8 +47,7 @@ LTTNG_EXPORT int notifier_consumption_paused;
 /*
  * Destroy the thread data previously created by the init function.
  */
-void notification_thread_handle_destroy(
-		struct notification_thread_handle *handle)
+void notification_thread_handle_destroy(struct notification_thread_handle *handle)
 {
 	int ret;
 
@@ -89,10 +88,10 @@ end:
 	free(handle);
 }
 
-struct notification_thread_handle *notification_thread_handle_create(
-		struct lttng_pipe *ust32_channel_monitor_pipe,
-		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe)
+struct notification_thread_handle *
+notification_thread_handle_create(struct lttng_pipe *ust32_channel_monitor_pipe,
+				  struct lttng_pipe *ust64_channel_monitor_pipe,
+				  struct lttng_pipe *kernel_channel_monitor_pipe)
 {
 	int ret;
 	struct notification_thread_handle *handle;
@@ -105,7 +104,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 
 	sem_init(&handle->ready, 0, 0);
 
-	event_fd =  eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
+	event_fd = eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
 	if (event_fd < 0) {
 		PERROR("event_fd creation");
 		goto error;
@@ -121,8 +120,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 
 	if (ust32_channel_monitor_pipe) {
 		handle->channel_monitoring_pipes.ust32_consumer =
-				lttng_pipe_release_readfd(
-					ust32_channel_monitor_pipe);
+			lttng_pipe_release_readfd(ust32_channel_monitor_pipe);
 		if (handle->channel_monitoring_pipes.ust32_consumer < 0) {
 			goto error;
 		}
@@ -131,8 +129,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	}
 	if (ust64_channel_monitor_pipe) {
 		handle->channel_monitoring_pipes.ust64_consumer =
-				lttng_pipe_release_readfd(
-					ust64_channel_monitor_pipe);
+			lttng_pipe_release_readfd(ust64_channel_monitor_pipe);
 		if (handle->channel_monitoring_pipes.ust64_consumer < 0) {
 			goto error;
 		}
@@ -141,8 +138,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	}
 	if (kernel_channel_monitor_pipe) {
 		handle->channel_monitoring_pipes.kernel_consumer =
-				lttng_pipe_release_readfd(
-					kernel_channel_monitor_pipe);
+			lttng_pipe_release_readfd(kernel_channel_monitor_pipe);
 		if (handle->channel_monitoring_pipes.kernel_consumer < 0) {
 			goto error;
 		}
@@ -157,8 +153,7 @@ error:
 	return NULL;
 }
 
-static
-char *get_notification_channel_sock_path(void)
+static char *get_notification_channel_sock_path(void)
 {
 	int ret;
 	bool is_root = !getuid();
@@ -170,8 +165,8 @@ char *get_notification_channel_sock_path(void)
 	}
 
 	if (is_root) {
-		ret = snprintf(sock_path, LTTNG_PATH_MAX,
-				DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK);
+		ret = snprintf(
+			sock_path, LTTNG_PATH_MAX, DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK);
 		if (ret < 0) {
 			goto error;
 		}
@@ -183,9 +178,10 @@ char *get_notification_channel_sock_path(void)
 			goto error;
 		}
 
-		ret = snprintf(sock_path, LTTNG_PATH_MAX,
-				DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
-				home_path);
+		ret = snprintf(sock_path,
+			       LTTNG_PATH_MAX,
+			       DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
+			       home_path);
 		if (ret < 0) {
 			goto error;
 		}
@@ -197,8 +193,7 @@ error:
 	return NULL;
 }
 
-static
-void notification_channel_socket_destroy(int fd)
+static void notification_channel_socket_destroy(int fd)
 {
 	int ret;
 	char *sock_path = get_notification_channel_sock_path();
@@ -219,14 +214,12 @@ void notification_channel_socket_destroy(int fd)
 	}
 }
 
-static
-int notification_channel_socket_create(void)
+static int notification_channel_socket_create(void)
 {
 	int fd = -1, ret;
 	char *sock_path = get_notification_channel_sock_path();
 
-	DBG("Creating notification channel UNIX socket at %s",
-			sock_path);
+	DBG("Creating notification channel UNIX socket at %s", sock_path);
 
 	ret = lttcomm_create_unix_sock(sock_path);
 	if (ret < 0) {
@@ -245,8 +238,7 @@ int notification_channel_socket_create(void)
 	if (getuid() == 0) {
 		gid_t gid;
 
-		ret = utils_get_group_id(the_config.tracing_group_name.value,
-				true, &gid);
+		ret = utils_get_group_id(the_config.tracing_group_name.value, true, &gid);
 		if (ret) {
 			/* Default to root group. */
 			gid = 0;
@@ -260,8 +252,7 @@ int notification_channel_socket_create(void)
 		}
 	}
 
-	DBG("Notification channel UNIX socket created (fd = %i)",
-			fd);
+	DBG("Notification channel UNIX socket created (fd = %i)", fd);
 	free(sock_path);
 	return fd;
 error:
@@ -272,10 +263,9 @@ error:
 	return ret;
 }
 
-static
-int init_poll_set(struct lttng_poll_event *poll_set,
-		struct notification_thread_handle *handle,
-		int notification_channel_socket)
+static int init_poll_set(struct lttng_poll_event *poll_set,
+			 struct notification_thread_handle *handle,
+			 int notification_channel_socket)
 {
 	int ret;
 
@@ -302,14 +292,12 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 		ERR("Failed to add notification command queue event fd to pollset");
 		goto error;
 	}
-	ret = lttng_poll_add(poll_set,
-			handle->channel_monitoring_pipes.ust32_consumer, LPOLLIN);
+	ret = lttng_poll_add(poll_set, handle->channel_monitoring_pipes.ust32_consumer, LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add ust-32 channel monitoring pipe fd to pollset");
 		goto error;
 	}
-	ret = lttng_poll_add(poll_set,
-			handle->channel_monitoring_pipes.ust64_consumer, LPOLLIN);
+	ret = lttng_poll_add(poll_set, handle->channel_monitoring_pipes.ust64_consumer, LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add ust-64 channel monitoring pipe fd to pollset");
 		goto error;
@@ -317,8 +305,7 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 	if (handle->channel_monitoring_pipes.kernel_consumer < 0) {
 		goto end;
 	}
-	ret = lttng_poll_add(poll_set,
-			handle->channel_monitoring_pipes.kernel_consumer, LPOLLIN);
+	ret = lttng_poll_add(poll_set, handle->channel_monitoring_pipes.kernel_consumer, LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add kernel channel monitoring pipe fd to pollset");
 		goto error;
@@ -330,8 +317,7 @@ error:
 	return ret;
 }
 
-static
-void fini_thread_state(struct notification_thread_state *state)
+static void fini_thread_state(struct notification_thread_state *state)
 {
 	int ret;
 
@@ -360,8 +346,7 @@ void fini_thread_state(struct notification_thread_state *state)
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_trigger_clients_ht) {
-		ret = cds_lfht_destroy(state->notification_trigger_clients_ht,
-				NULL);
+		ret = cds_lfht_destroy(state->notification_trigger_clients_ht, NULL);
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->channels_ht) {
@@ -389,8 +374,7 @@ void fini_thread_state(struct notification_thread_state *state)
 		LTTNG_ASSERT(!ret);
 	}
 	if (state->notification_channel_socket >= 0) {
-		notification_channel_socket_destroy(
-				state->notification_channel_socket);
+		notification_channel_socket_destroy(state->notification_channel_socket);
 	}
 
 	LTTNG_ASSERT(cds_list_empty(&state->tracer_event_sources_list));
@@ -401,24 +385,21 @@ void fini_thread_state(struct notification_thread_state *state)
 	lttng_poll_clean(&state->events);
 }
 
-static
-void mark_thread_as_ready(struct notification_thread_handle *handle)
+static void mark_thread_as_ready(struct notification_thread_handle *handle)
 {
 	DBG("Marking notification thread as ready");
 	sem_post(&handle->ready);
 }
 
-static
-void wait_until_thread_is_ready(struct notification_thread_handle *handle)
+static void wait_until_thread_is_ready(struct notification_thread_handle *handle)
 {
 	DBG("Waiting for notification thread to be ready");
 	sem_wait(&handle->ready);
 	DBG("Notification thread is ready");
 }
 
-static
-int init_thread_state(struct notification_thread_handle *handle,
-		struct notification_thread_state *state)
+static int init_thread_state(struct notification_thread_handle *handle,
+			     struct notification_thread_state *state)
 {
 	int ret;
 
@@ -433,8 +414,7 @@ int init_thread_state(struct notification_thread_handle *handle,
 	}
 	state->notification_channel_socket = ret;
 
-	ret = init_poll_set(&state->events, handle,
-			state->notification_channel_socket);
+	ret = init_poll_set(&state->events, handle, state->notification_channel_socket);
 	if (ret) {
 		goto end;
 	}
@@ -446,65 +426,65 @@ int init_thread_state(struct notification_thread_handle *handle,
 		goto error;
 	}
 
-	state->client_socket_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->client_socket_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->client_socket_ht) {
 		goto error;
 	}
 
-	state->client_id_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->client_id_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->client_id_ht) {
 		goto error;
 	}
 
-	state->channel_triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->channel_triggers_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->channel_triggers_ht) {
 		goto error;
 	}
 
-	state->session_triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->session_triggers_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->session_triggers_ht) {
 		goto error;
 	}
 
-	state->channel_state_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
-			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->channel_state_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->channel_state_ht) {
 		goto error;
 	}
 
-	state->notification_trigger_clients_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->notification_trigger_clients_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->notification_trigger_clients_ht) {
 		goto error;
 	}
 
-	state->channels_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->channels_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->channels_ht) {
 		goto error;
 	}
-	state->sessions_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->sessions_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->sessions_ht) {
 		goto error;
 	}
-	state->triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->triggers_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->triggers_ht) {
 		goto error;
 	}
-	state->triggers_by_name_uid_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->triggers_by_name_uid_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->triggers_by_name_uid_ht) {
 		goto error;
 	}
 
-	state->trigger_tokens_ht = cds_lfht_new(DEFAULT_HT_SIZE,
-			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	state->trigger_tokens_ht = cds_lfht_new(
+		DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->trigger_tokens_ht) {
 		goto error;
 	}
@@ -526,16 +506,16 @@ error:
 	return -1;
 }
 
-static
-int handle_channel_monitoring_pipe(int fd, uint32_t revents,
-		struct notification_thread_handle *handle,
-		struct notification_thread_state *state)
+static int handle_channel_monitoring_pipe(int fd,
+					  uint32_t revents,
+					  struct notification_thread_handle *handle,
+					  struct notification_thread_state *state)
 {
 	int ret = 0;
 	enum lttng_domain_type domain;
 
 	if (fd == handle->channel_monitoring_pipes.ust32_consumer ||
-			fd == handle->channel_monitoring_pipes.ust64_consumer) {
+	    fd == handle->channel_monitoring_pipes.ust64_consumer) {
 		domain = LTTNG_DOMAIN_UST;
 	} else if (fd == handle->channel_monitoring_pipes.kernel_consumer) {
 		domain = LTTNG_DOMAIN_KERNEL;
@@ -551,8 +531,7 @@ int handle_channel_monitoring_pipe(int fd, uint32_t revents,
 		goto end;
 	}
 
-	ret = handle_notification_thread_channel_sample(
-			state, fd, domain);
+	ret = handle_notification_thread_channel_sample(state, fd, domain);
 	if (ret) {
 		ERR("Consumer sample handling error occurred");
 		ret = -1;
@@ -563,18 +542,17 @@ end:
 }
 
 static int handle_event_notification_pipe(int event_source_fd,
-		enum lttng_domain_type domain,
-		uint32_t revents,
-		struct notification_thread_state *state)
+					  enum lttng_domain_type domain,
+					  uint32_t revents,
+					  struct notification_thread_state *state)
 {
 	int ret = 0;
 
 	if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-		ret = handle_notification_thread_tracer_event_source_died(
-				state, event_source_fd);
+		ret = handle_notification_thread_tracer_event_source_died(state, event_source_fd);
 		if (ret) {
 			ERR("Failed to remove event notification pipe from poll set: fd = %d",
-					event_source_fd);
+			    event_source_fd);
 		}
 		goto end;
 	}
@@ -590,11 +568,9 @@ static int handle_event_notification_pipe(int event_source_fd,
 		goto end;
 	}
 
-	ret = handle_notification_thread_event_notification(
-			state, event_source_fd, domain);
+	ret = handle_notification_thread_event_notification(state, event_source_fd, domain);
 	if (ret) {
-		ERR("Event notification handling error occurred for fd: %d",
-				event_source_fd);
+		ERR("Event notification handling error occurred for fd: %d", event_source_fd);
 		ret = -1;
 		goto end;
 	}
@@ -607,15 +583,14 @@ end:
  * Return the event source domain type via parameter.
  */
 static bool fd_is_event_notification_source(const struct notification_thread_state *state,
-		int fd,
-		enum lttng_domain_type *domain)
+					    int fd,
+					    enum lttng_domain_type *domain)
 {
 	struct notification_event_tracer_event_source_element *source_element;
 
 	LTTNG_ASSERT(domain);
 
-	cds_list_for_each_entry(source_element,
-			&state->tracer_event_sources_list, node) {
+	cds_list_for_each_entry (source_element, &state->tracer_event_sources_list, node) {
 		if (source_element->fd != fd) {
 			continue;
 		}
@@ -631,8 +606,7 @@ static bool fd_is_event_notification_source(const struct notification_thread_sta
  * This thread services notification channel clients and commands received
  * from various lttng-sessiond components over a command queue.
  */
-static
-void *thread_notification(void *data)
+static void *thread_notification(void *data)
 {
 	int ret;
 	struct notification_thread_handle *handle = (notification_thread_handle *) data;
@@ -695,22 +669,21 @@ void *thread_notification(void *data)
 
 			if (fd == state.notification_channel_socket) {
 				if (revents & LPOLLIN) {
-					ret = handle_notification_thread_client_connect(
-							&state);
+					ret = handle_notification_thread_client_connect(&state);
 					if (ret < 0) {
 						goto error;
 					}
-				} else if (revents &
-						(LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Notification socket poll error");
 					goto error;
 				} else {
-					ERR("Unexpected poll events %u for notification socket %i", revents, fd);
+					ERR("Unexpected poll events %u for notification socket %i",
+					    revents,
+					    fd);
 					goto error;
 				}
 			} else if (fd == handle->cmd_queue.event_fd) {
-				ret = handle_notification_thread_command(handle,
-						&state);
+				ret = handle_notification_thread_command(handle, &state);
 				if (ret < 0) {
 					DBG("Error encountered while servicing command queue");
 					goto error;
@@ -718,10 +691,9 @@ void *thread_notification(void *data)
 					goto exit;
 				}
 			} else if (fd == handle->channel_monitoring_pipes.ust32_consumer ||
-					fd == handle->channel_monitoring_pipes.ust64_consumer ||
-					fd == handle->channel_monitoring_pipes.kernel_consumer) {
-				ret = handle_channel_monitoring_pipe(fd,
-						revents, handle, &state);
+				   fd == handle->channel_monitoring_pipes.ust64_consumer ||
+				   fd == handle->channel_monitoring_pipes.kernel_consumer) {
+				ret = handle_channel_monitoring_pipe(fd, revents, handle, &state);
 				if (ret) {
 					goto error;
 				}
@@ -740,23 +712,23 @@ void *thread_notification(void *data)
 					 * receive the notifications to which
 					 * it was subscribing or unsubscribing.
 					 */
-					ret = handle_notification_thread_client_disconnect(
-							fd, &state);
+					ret = handle_notification_thread_client_disconnect(fd,
+											   &state);
 					if (ret) {
 						goto error;
 					}
 				} else {
 					if (revents & LPOLLIN) {
-						ret = handle_notification_thread_client_in(
-							&state, fd);
+						ret = handle_notification_thread_client_in(&state,
+											   fd);
 						if (ret) {
 							goto error;
 						}
 					}
 
 					if (revents & LPOLLOUT) {
-						ret = handle_notification_thread_client_out(
-							&state, fd);
+						ret = handle_notification_thread_client_out(&state,
+											    fd);
 						if (ret) {
 							goto error;
 						}
@@ -784,8 +756,7 @@ end:
 	return NULL;
 }
 
-static
-bool shutdown_notification_thread(void *thread_data)
+static bool shutdown_notification_thread(void *thread_data)
 {
 	struct notification_thread_handle *handle = (notification_thread_handle *) thread_data;
 
@@ -793,16 +764,12 @@ bool shutdown_notification_thread(void *thread_data)
 	return true;
 }
 
-struct lttng_thread *launch_notification_thread(
-		struct notification_thread_handle *handle)
+struct lttng_thread *launch_notification_thread(struct notification_thread_handle *handle)
 {
 	struct lttng_thread *thread;
 
-	thread = lttng_thread_create("Notification",
-			thread_notification,
-			shutdown_notification_thread,
-			NULL,
-			handle);
+	thread = lttng_thread_create(
+		"Notification", thread_notification, shutdown_notification_thread, NULL, handle);
 	if (!thread) {
 		goto error;
 	}

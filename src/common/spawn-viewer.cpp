@@ -7,26 +7,27 @@
  *
  */
 
+#include "error.hpp"
+#include "macros.hpp"
+#include "spawn-viewer.hpp"
+
+#include <common/compat/errno.hpp>
+
+#include <lttng/constant.h>
+
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <lttng/constant.h>
-
-#include <common/compat/errno.hpp>
-#include "error.hpp"
-#include "macros.hpp"
-#include "spawn-viewer.hpp"
 
 /*
  * Type is also use as the index in the viewers array. So please, make sure
  * your enum value is in the right order in the array below.
  */
 enum viewer_type {
-	VIEWER_BABELTRACE    = 0,
-	VIEWER_BABELTRACE2   = 1,
-	VIEWER_USER_DEFINED  = 2,
+	VIEWER_BABELTRACE = 0,
+	VIEWER_BABELTRACE2 = 1,
+	VIEWER_USER_DEFINED = 2,
 };
 
 namespace {
@@ -123,8 +124,10 @@ error:
  *
  * The returning pointer is ready to be passed to execvp().
  */
-static char **alloc_argv_from_local_opts(const char **opts, size_t opts_len,
-		const char *trace_path, bool opt_live_mode)
+static char **alloc_argv_from_local_opts(const char **opts,
+					 size_t opts_len,
+					 const char *trace_path,
+					 bool opt_live_mode)
 {
 	char **argv;
 	size_t mem_len;
@@ -160,7 +163,6 @@ error:
 	return argv;
 }
 
-
 /*
  * Spawn viewer with the trace directory path.
  */
@@ -187,9 +189,8 @@ retry_viewer:
 		} else {
 			viewer_bin = viewer->exec_name;
 		}
-		argv = alloc_argv_from_local_opts(babeltrace2_opts,
-				ARRAY_SIZE(babeltrace2_opts), trace_path,
-				opt_live_mode);
+		argv = alloc_argv_from_local_opts(
+			babeltrace2_opts, ARRAY_SIZE(babeltrace2_opts), trace_path, opt_live_mode);
 		break;
 	case VIEWER_BABELTRACE:
 		if (stat(babeltrace_bin, &status) == 0) {
@@ -197,9 +198,8 @@ retry_viewer:
 		} else {
 			viewer_bin = viewer->exec_name;
 		}
-		argv = alloc_argv_from_local_opts(babeltrace_opts,
-				ARRAY_SIZE(babeltrace_opts), trace_path,
-				opt_live_mode);
+		argv = alloc_argv_from_local_opts(
+			babeltrace_opts, ARRAY_SIZE(babeltrace_opts), trace_path, opt_live_mode);
 		break;
 	case VIEWER_USER_DEFINED:
 		argv = alloc_argv_from_user_opts(opt_viewer, trace_path);
@@ -224,16 +224,16 @@ retry_viewer:
 			if (viewer->type == VIEWER_BABELTRACE2) {
 				/* Fallback to legacy babeltrace. */
 				DBG("Default viewer \"%s\" not installed on the system, falling back to \"%s\"",
-						viewers[VIEWER_BABELTRACE2].exec_name,
-						viewers[VIEWER_BABELTRACE].exec_name);
+				    viewers[VIEWER_BABELTRACE2].exec_name,
+				    viewers[VIEWER_BABELTRACE].exec_name);
 				viewer = &viewers[VIEWER_BABELTRACE];
 				free(argv);
 				argv = NULL;
 				goto retry_viewer;
 			} else {
 				ERR("Default viewer \"%s\" (and fallback \"%s\") not found on the system",
-						viewers[VIEWER_BABELTRACE2].exec_name,
-						viewers[VIEWER_BABELTRACE].exec_name);
+				    viewers[VIEWER_BABELTRACE2].exec_name,
+				    viewers[VIEWER_BABELTRACE].exec_name);
 			}
 		} else {
 			PERROR("Failed to launch \"%s\" viewer", viewer_bin);

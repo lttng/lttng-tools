@@ -6,6 +6,17 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+#include "../utils.hpp"
+
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/domain-internal.hpp>
+
+#include <ctype.h>
+#include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,18 +24,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <ctype.h>
-
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/utils.hpp>
-#include <common/mi-lttng.hpp>
-
-#include <lttng/domain-internal.hpp>
-
-#include "../command.hpp"
-#include "../utils.hpp"
-
 
 static struct lttng_channel chan_opts;
 static int opt_kernel;
@@ -48,7 +47,7 @@ static struct mi_writer *writer;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-enable-channel.1.h>
-;
+	;
 #endif
 
 enum {
@@ -74,26 +73,26 @@ const char *output_splice = "splice";
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",           'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"session",        's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
-	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
-	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
-	{"discard",        0,   POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0},
-	{"overwrite",      0,   POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0},
-	{"subbuf-size",    0,   POPT_ARG_STRING, 0, OPT_SUBBUF_SIZE, 0, 0},
-	{"num-subbuf",     0,   POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0},
-	{"switch-timer",   0,   POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0},
-	{"monitor-timer",  0,   POPT_ARG_INT, 0, OPT_MONITOR_TIMER, 0, 0},
-	{"read-timer",     0,   POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0},
-	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"output",         0,   POPT_ARG_STRING, &opt_output, 0, 0, 0},
-	{"buffers-uid",    0,	POPT_ARG_VAL, &opt_buffer_uid, 1, 0, 0},
-	{"buffers-pid",    0,	POPT_ARG_VAL, &opt_buffer_pid, 1, 0, 0},
-	{"buffers-global", 0,	POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0},
-	{"tracefile-size", 'C',   POPT_ARG_INT, 0, OPT_TRACEFILE_SIZE, 0, 0},
-	{"tracefile-count", 'W',   POPT_ARG_INT, 0, OPT_TRACEFILE_COUNT, 0, 0},
-	{"blocking-timeout",     0,   POPT_ARG_INT, 0, OPT_BLOCKING_TIMEOUT, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0 },
+	{ "kernel", 'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0 },
+	{ "userspace", 'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0 },
+	{ "discard", 0, POPT_ARG_NONE, 0, OPT_DISCARD, 0, 0 },
+	{ "overwrite", 0, POPT_ARG_NONE, 0, OPT_OVERWRITE, 0, 0 },
+	{ "subbuf-size", 0, POPT_ARG_STRING, 0, OPT_SUBBUF_SIZE, 0, 0 },
+	{ "num-subbuf", 0, POPT_ARG_INT, 0, OPT_NUM_SUBBUF, 0, 0 },
+	{ "switch-timer", 0, POPT_ARG_INT, 0, OPT_SWITCH_TIMER, 0, 0 },
+	{ "monitor-timer", 0, POPT_ARG_INT, 0, OPT_MONITOR_TIMER, 0, 0 },
+	{ "read-timer", 0, POPT_ARG_INT, 0, OPT_READ_TIMER, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, 0, 0 },
+	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_uid, 1, 0, 0 },
+	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_pid, 1, 0, 0 },
+	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0 },
+	{ "tracefile-size", 'C', POPT_ARG_INT, 0, OPT_TRACEFILE_SIZE, 0, 0 },
+	{ "tracefile-count", 'W', POPT_ARG_INT, 0, OPT_TRACEFILE_COUNT, 0, 0 },
+	{ "blocking-timeout", 0, POPT_ARG_INT, 0, OPT_BLOCKING_TIMEOUT, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /*
@@ -186,15 +185,16 @@ static int enable_channel(char *session_name, char *channel_list)
 
 	if (chan_opts.attr.tracefile_size == 0 && chan_opts.attr.tracefile_count) {
 		ERR("Missing option --tracefile-size. "
-				"A file count without a size won't do anything.");
+		    "A file count without a size won't do anything.");
 		ret = CMD_ERROR;
 		goto error;
 	}
 
 	if ((chan_opts.attr.tracefile_size > 0) &&
-			(chan_opts.attr.tracefile_size < chan_opts.attr.subbuf_size)) {
+	    (chan_opts.attr.tracefile_size < chan_opts.attr.subbuf_size)) {
 		WARN("Tracefile size rounded up from (%" PRIu64 ") to subbuffer size (%" PRIu64 ")",
-				chan_opts.attr.tracefile_size, chan_opts.attr.subbuf_size);
+		     chan_opts.attr.tracefile_size,
+		     chan_opts.attr.subbuf_size);
 		chan_opts.attr.tracefile_size = chan_opts.attr.subbuf_size;
 	}
 
@@ -206,7 +206,9 @@ static int enable_channel(char *session_name, char *channel_list)
 			chan_opts.attr.output = LTTNG_EVENT_SPLICE;
 		} else {
 			ERR("Unknown output type %s. Possible values are: %s, %s\n",
-					opt_output, output_mmap, output_splice);
+			    opt_output,
+			    output_mmap,
+			    output_splice);
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -236,7 +238,7 @@ static int enable_channel(char *session_name, char *channel_list)
 		/* Validate channel name's length */
 		if (strlen(channel_name) >= sizeof(chan_opts.name)) {
 			ERR("Channel name is too long (max. %zu characters)",
-					sizeof(chan_opts.name) - 1);
+			    sizeof(chan_opts.name) - 1);
 			error = 1;
 			goto skip_enable;
 		}
@@ -260,7 +262,7 @@ static int enable_channel(char *session_name, char *channel_list)
 		channel->attr.extended.ptr = extended_ptr;
 		if (opt_monitor_timer.set) {
 			ret = lttng_channel_set_monitor_timer_interval(channel,
-					opt_monitor_timer.interval);
+								       opt_monitor_timer.interval);
 			if (ret) {
 				ERR("Failed to set the channel's monitor timer interval");
 				error = 1;
@@ -269,7 +271,7 @@ static int enable_channel(char *session_name, char *channel_list)
 		}
 		if (opt_blocking_timeout.set) {
 			ret = lttng_channel_set_blocking_timeout(channel,
-					opt_blocking_timeout.value);
+								 opt_blocking_timeout.value);
 			if (ret) {
 				ERR("Failed to set the channel's blocking timeout");
 				error = 1;
@@ -286,30 +288,36 @@ static int enable_channel(char *session_name, char *channel_list)
 			case LTTNG_ERR_KERN_CHAN_EXIST:
 			case LTTNG_ERR_UST_CHAN_EXIST:
 			case LTTNG_ERR_CHAN_EXIST:
-				WARN("Channel %s: %s (session %s)", channel_name,
-						lttng_strerror(ret), session_name);
+				WARN("Channel %s: %s (session %s)",
+				     channel_name,
+				     lttng_strerror(ret),
+				     session_name);
 				warn = 1;
 				break;
 			case LTTNG_ERR_INVALID_CHANNEL_NAME:
 				ERR("Invalid channel name: \"%s\". "
 				    "Channel names may not start with '.', and "
-				    "may not contain '/'.", channel_name);
+				    "may not contain '/'.",
+				    channel_name);
 				error = 1;
 				break;
 			default:
-				ERR("Channel %s: %s (session %s)", channel_name,
-						lttng_strerror(ret), session_name);
+				ERR("Channel %s: %s (session %s)",
+				    channel_name,
+				    lttng_strerror(ret),
+				    session_name);
 				error = 1;
 				break;
 			}
 		} else {
 			MSG("%s channel %s enabled for session %s",
-					lttng_domain_type_str(dom.type),
-					channel_name, session_name);
+			    lttng_domain_type_str(dom.type),
+			    channel_name,
+			    session_name);
 			success = 1;
 		}
 
-skip_enable:
+	skip_enable:
 		if (lttng_opt_mi) {
 			/* Mi print the channel element and leave it open */
 			ret = mi_lttng_channel(writer, channel, 1);
@@ -319,8 +327,8 @@ skip_enable:
 			}
 
 			/* Individual Success ? */
-			ret = mi_lttng_writer_write_element_bool(writer,
-					mi_lttng_element_command_success, success);
+			ret = mi_lttng_writer_write_element_bool(
+				writer, mi_lttng_element_command_success, success);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -420,7 +428,8 @@ int cmd_enable_channels(int argc, const char **argv)
 
 			/* Parse the size */
 			opt_arg = poptGetOptArg(pc);
-			if (utils_parse_size_suffix(opt_arg, &chan_opts.attr.subbuf_size) < 0 || !chan_opts.attr.subbuf_size) {
+			if (utils_parse_size_suffix(opt_arg, &chan_opts.attr.subbuf_size) < 0 ||
+			    !chan_opts.attr.subbuf_size) {
 				ERR("Wrong value in --subbuf-size parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
@@ -431,19 +440,22 @@ int cmd_enable_channels(int argc, const char **argv)
 			rounded_size = 1ULL << order;
 			if (rounded_size < chan_opts.attr.subbuf_size) {
 				ERR("The subbuf size (%" PRIu64 ") is rounded and overflows!",
-						chan_opts.attr.subbuf_size);
+				    chan_opts.attr.subbuf_size);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
 			if (rounded_size != chan_opts.attr.subbuf_size) {
-				WARN("The subbuf size (%" PRIu64 ") is rounded to the next power of 2 (%" PRIu64 ")",
-						chan_opts.attr.subbuf_size, rounded_size);
+				WARN("The subbuf size (%" PRIu64
+				     ") is rounded to the next power of 2 (%" PRIu64 ")",
+				     chan_opts.attr.subbuf_size,
+				     rounded_size);
 				chan_opts.attr.subbuf_size = rounded_size;
 			}
 
 			/* Should now be power of 2 */
-			LTTNG_ASSERT(!((chan_opts.attr.subbuf_size - 1) & chan_opts.attr.subbuf_size));
+			LTTNG_ASSERT(
+				!((chan_opts.attr.subbuf_size - 1) & chan_opts.attr.subbuf_size));
 
 			DBG("Channel subbuf size set to %" PRIu64, chan_opts.attr.subbuf_size);
 			break;
@@ -466,20 +478,24 @@ int cmd_enable_channels(int argc, const char **argv)
 			LTTNG_ASSERT(order >= 0);
 			rounded_size = 1ULL << order;
 			if (rounded_size < chan_opts.attr.num_subbuf) {
-				ERR("The number of subbuffers (%" PRIu64 ") is rounded and overflows!",
-						chan_opts.attr.num_subbuf);
+				ERR("The number of subbuffers (%" PRIu64
+				    ") is rounded and overflows!",
+				    chan_opts.attr.num_subbuf);
 				ret = CMD_ERROR;
 				goto end;
 			}
 
 			if (rounded_size != chan_opts.attr.num_subbuf) {
-				WARN("The number of subbuffers (%" PRIu64 ") is rounded to the next power of 2 (%" PRIu64 ")",
-						chan_opts.attr.num_subbuf, rounded_size);
+				WARN("The number of subbuffers (%" PRIu64
+				     ") is rounded to the next power of 2 (%" PRIu64 ")",
+				     chan_opts.attr.num_subbuf,
+				     rounded_size);
 				chan_opts.attr.num_subbuf = rounded_size;
 			}
 
 			/* Should now be power of 2 */
-			LTTNG_ASSERT(!((chan_opts.attr.num_subbuf - 1) & chan_opts.attr.num_subbuf));
+			LTTNG_ASSERT(
+				!((chan_opts.attr.num_subbuf - 1) & chan_opts.attr.num_subbuf));
 
 			DBG("Channel subbuf num set to %" PRIu64, chan_opts.attr.num_subbuf);
 			break;
@@ -504,8 +520,8 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 			chan_opts.attr.switch_timer_interval = (uint32_t) v;
 			DBG("Channel switch timer interval set to %d %s",
-					chan_opts.attr.switch_timer_interval,
-					USEC_UNIT);
+			    chan_opts.attr.switch_timer_interval,
+			    USEC_UNIT);
 			break;
 		}
 		case OPT_READ_TIMER:
@@ -528,8 +544,8 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 			chan_opts.attr.read_timer_interval = (uint32_t) v;
 			DBG("Channel read timer interval set to %d %s",
-					chan_opts.attr.read_timer_interval,
-					USEC_UNIT);
+			    chan_opts.attr.read_timer_interval,
+			    USEC_UNIT);
 			break;
 		}
 		case OPT_MONITOR_TIMER:
@@ -547,8 +563,8 @@ int cmd_enable_channels(int argc, const char **argv)
 			opt_monitor_timer.interval = (uint64_t) v;
 			opt_monitor_timer.set = true;
 			DBG("Channel monitor timer interval set to %" PRIu64 " %s",
-					opt_monitor_timer.interval,
-					USEC_UNIT);
+			    opt_monitor_timer.interval,
+			    USEC_UNIT);
 			break;
 		}
 		case OPT_BLOCKING_TIMEOUT:
@@ -589,7 +605,8 @@ int cmd_enable_channels(int argc, const char **argv)
 			 */
 			v_msec = v / 1000;
 			if (v_msec != (int32_t) v_msec) {
-				ERR("32-bit milliseconds overflow in --blocking-timeout parameter: %s", opt_arg);
+				ERR("32-bit milliseconds overflow in --blocking-timeout parameter: %s",
+				    opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
@@ -597,10 +614,9 @@ int cmd_enable_channels(int argc, const char **argv)
 			opt_blocking_timeout.value = (int64_t) v;
 			opt_blocking_timeout.set = true;
 			DBG("Channel blocking timeout set to %" PRId64 " %s%s",
-					opt_blocking_timeout.value,
-					USEC_UNIT,
-					opt_blocking_timeout.value == 0 ?
-						" (non-blocking)" : "");
+			    opt_blocking_timeout.value,
+			    USEC_UNIT,
+			    opt_blocking_timeout.value == 0 ? " (non-blocking)" : "");
 			break;
 		}
 		case OPT_USERSPACE:
@@ -614,7 +630,7 @@ int cmd_enable_channels(int argc, const char **argv)
 				goto end;
 			}
 			DBG("Maximum tracefile size set to %" PRIu64,
-					chan_opts.attr.tracefile_size);
+			    chan_opts.attr.tracefile_size);
 			break;
 		case OPT_TRACEFILE_COUNT:
 		{
@@ -635,7 +651,7 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 			chan_opts.attr.tracefile_count = (uint32_t) v;
 			DBG("Maximum tracefile count set to %" PRIu64,
-					chan_opts.attr.tracefile_count);
+			    chan_opts.attr.tracefile_count);
 			break;
 		}
 		case OPT_LIST_OPTIONS:
@@ -652,17 +668,16 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 	}
 
-	ret = print_missing_or_multiple_domains(
-			opt_kernel + opt_userspace, false);
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace, false);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	if (chan_opts.attr.overwrite == 1 && opt_blocking_timeout.set &&
-			opt_blocking_timeout.value != 0) {
+	    opt_blocking_timeout.value != 0) {
 		ERR("You cannot specify --overwrite and --blocking-timeout=N, "
-			"where N is different than 0");
+		    "where N is different than 0");
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -677,15 +692,14 @@ int cmd_enable_channels(int argc, const char **argv)
 
 		/* Open command element */
 		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_enable_channels);
+						   mi_lttng_element_command_enable_channels);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -742,8 +756,8 @@ mi_closing:
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			goto end;
 		}

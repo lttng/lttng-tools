@@ -6,48 +6,48 @@
  */
 
 #define _LGPL_SOURCE
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <inttypes.h>
-#include <sys/types.h>
+#include "condition-internal.hpp"
+#include "consumer.hpp"
+#include "event-notifier-error-accounting.hpp"
+#include "kern-modules.hpp"
+#include "kernel-consumer.hpp"
+#include "kernel.hpp"
+#include "lttng-sessiond.hpp"
+#include "lttng-syscall.hpp"
+#include "modprobe.hpp"
+#include "notification-thread-commands.hpp"
+#include "rotate.hpp"
+#include "sessiond-config.hpp"
+#include "tracker.hpp"
+#include "utils.hpp"
 
 #include <common/common.hpp>
 #include <common/hashtable/utils.hpp>
-#include <common/trace-chunk.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/kernel-ctl/kernel-ioctl.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/trace-chunk.hpp>
 #include <common/tracker.hpp>
 #include <common/utils.hpp>
+
+#include <lttng/condition/event-rule-matches-internal.hpp>
+#include <lttng/condition/event-rule-matches.h>
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/kernel-uprobe-internal.hpp>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 #include <lttng/tracker.h>
-
-#include <lttng/userspace-probe.h>
 #include <lttng/userspace-probe-internal.hpp>
-#include <lttng/condition/event-rule-matches.h>
-#include <lttng/condition/event-rule-matches-internal.hpp>
-#include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.hpp>
-#include <lttng/event-rule/kernel-uprobe-internal.hpp>
+#include <lttng/userspace-probe.h>
 
-#include "event-notifier-error-accounting.hpp"
-#include "lttng-sessiond.hpp"
-#include "lttng-syscall.hpp"
-#include "condition-internal.hpp"
-#include "consumer.hpp"
-#include "kernel.hpp"
-#include "kernel-consumer.hpp"
-#include "kern-modules.hpp"
-#include "sessiond-config.hpp"
-#include "utils.hpp"
-#include "rotate.hpp"
-#include "modprobe.hpp"
-#include "tracker.hpp"
-#include "notification-thread-commands.hpp"
+#include <fcntl.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /*
  * Key used to reference a channel between the sessiond and the consumer. This
@@ -67,8 +67,7 @@ static struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
  *
  * Assumes the ownership of ctx.
  */
-int kernel_add_channel_context(struct ltt_kernel_channel *chan,
-		struct ltt_kernel_context *ctx)
+int kernel_add_channel_context(struct ltt_kernel_channel *chan, struct ltt_kernel_context *ctx)
 {
 	int ret;
 
@@ -155,13 +154,15 @@ int kernel_create_session(struct ltt_session *session)
 	}
 	if (ret) {
 		WARN("Could not set kernel session name for session %" PRIu64 " name: %s",
-			session->id, session->name);
+		     session->id,
+		     session->name);
 	}
 
 	ret = kernctl_session_set_creation_time(lks->fd, session->creation_time);
 	if (ret) {
 		WARN("Could not set kernel session creation time for session %" PRIu64 " name: %s",
-			session->id, session->name);
+		     session->id,
+		     session->name);
 	}
 
 	return 0;
@@ -178,8 +179,7 @@ error:
  * Create a kernel channel, register it to the kernel tracer and add it to the
  * kernel session.
  */
-int kernel_create_channel(struct ltt_kernel_session *session,
-		struct lttng_channel *chan)
+int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan)
 {
 	int ret;
 	struct ltt_kernel_channel *lkc;
@@ -194,10 +194,14 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	}
 
 	DBG3("Kernel create channel %s with attr: %d, %" PRIu64 ", %" PRIu64 ", %u, %u, %d, %d",
-			chan->name, lkc->channel->attr.overwrite,
-			lkc->channel->attr.subbuf_size, lkc->channel->attr.num_subbuf,
-			lkc->channel->attr.switch_timer_interval, lkc->channel->attr.read_timer_interval,
-			lkc->channel->attr.live_timer_interval, lkc->channel->attr.output);
+	     chan->name,
+	     lkc->channel->attr.overwrite,
+	     lkc->channel->attr.subbuf_size,
+	     lkc->channel->attr.num_subbuf,
+	     lkc->channel->attr.switch_timer_interval,
+	     lkc->channel->attr.read_timer_interval,
+	     lkc->channel->attr.live_timer_interval,
+	     lkc->channel->attr.output);
 
 	/* Kernel tracer channel creation */
 	ret = kernctl_create_channel(session->fd, &lkc->channel->attr);
@@ -221,7 +225,9 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	lkc->key = ++next_kernel_channel_key;
 
 	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
-			lkc->channel->name, lkc->fd, lkc->key);
+	    lkc->channel->name,
+	    lkc->fd,
+	    lkc->key);
 
 	return 0;
 
@@ -258,7 +264,7 @@ static int kernel_create_event_notifier_group(int *event_notifier_group_fd)
 	ret = fcntl(local_fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
 		PERROR("Failed to set FD_CLOEXEC on kernel event notifier group file descriptor: fd = %d",
-				local_fd);
+		       local_fd);
 		goto error;
 	}
 
@@ -271,7 +277,7 @@ error:
 		ret = close(local_fd);
 		if (ret) {
 			PERROR("Failed to close kernel event notifier group file descriptor: fd = %d",
-					local_fd);
+			       local_fd);
 		}
 	}
 
@@ -286,10 +292,11 @@ error:
  * elf symbol
  * Returns -1 on error
  */
-static
-int extract_userspace_probe_offset_function_elf(
-		const struct lttng_userspace_probe_location *probe_location,
-		uid_t uid, gid_t gid, uint64_t *offset)
+static int extract_userspace_probe_offset_function_elf(
+	const struct lttng_userspace_probe_location *probe_location,
+	uid_t uid,
+	gid_t gid,
+	uint64_t *offset)
 {
 	int fd;
 	int ret = 0;
@@ -298,23 +305,20 @@ int extract_userspace_probe_offset_function_elf(
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
 
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(probe_location) ==
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+		     LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	lookup = lttng_userspace_probe_location_get_lookup_method(
-			probe_location);
+	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
 	if (!lookup) {
 		ret = -1;
 		goto end;
 	}
 
-	lookup_method_type =
-			lttng_userspace_probe_location_lookup_method_get_type(lookup);
+	lookup_method_type = lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	LTTNG_ASSERT(lookup_method_type ==
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
+		     LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
-	symbol = lttng_userspace_probe_location_function_get_function_name(
-			probe_location);
+	symbol = lttng_userspace_probe_location_function_get_function_name(probe_location);
 	if (!symbol) {
 		ret = -1;
 		goto end;
@@ -329,11 +333,12 @@ int extract_userspace_probe_offset_function_elf(
 	ret = run_as_extract_elf_symbol_offset(fd, symbol, uid, gid, offset);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for "
-				"function %s", symbol);
+		    "function %s",
+		    symbol);
 		goto end;
 	}
 
-	DBG("userspace probe elf offset for %s is 0x%jd", symbol, (intmax_t)(*offset));
+	DBG("userspace probe elf offset for %s is 0x%jd", symbol, (intmax_t) (*offset));
 end:
 	return ret;
 }
@@ -347,11 +352,12 @@ end:
  * SDT tracepoint.
  * Returns -1 on error.
  */
-static
-int extract_userspace_probe_offset_tracepoint_sdt(
-		const struct lttng_userspace_probe_location *probe_location,
-		uid_t uid, gid_t gid, uint64_t **offsets,
-		uint32_t *offsets_count)
+static int extract_userspace_probe_offset_tracepoint_sdt(
+	const struct lttng_userspace_probe_location *probe_location,
+	uid_t uid,
+	gid_t gid,
+	uint64_t **offsets,
+	uint32_t *offsets_count)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
 	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
@@ -360,7 +366,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	int fd, i;
 
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(probe_location) ==
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+		     LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
 	if (!lookup) {
@@ -368,22 +374,18 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 		goto end;
 	}
 
-	lookup_method_type =
-			lttng_userspace_probe_location_lookup_method_get_type(lookup);
+	lookup_method_type = lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	LTTNG_ASSERT(lookup_method_type ==
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
+		     LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
-
-	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
-			probe_location);
+	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(probe_location);
 	if (!probe_name) {
 		ret = -1;
 		goto end;
 	}
 
-	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
-			probe_location);
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(probe_location);
 	if (!provider_name) {
 		ret = -1;
 		goto end;
@@ -395,11 +397,13 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 		goto end;
 	}
 
-	ret = run_as_extract_sdt_probe_offsets(fd, provider_name, probe_name,
-			uid, gid, offsets, offsets_count);
+	ret = run_as_extract_sdt_probe_offsets(
+		fd, provider_name, probe_name, uid, gid, offsets, offsets_count);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for sdt "
-				"probe %s:%s", provider_name, probe_name);
+		    "probe %s:%s",
+		    provider_name,
+		    probe_name);
 		goto end;
 	}
 
@@ -409,18 +413,20 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	}
 
 	DBG("%u userspace probe SDT offsets found for %s:%s at:",
-			*offsets_count, provider_name, probe_name);
+	    *offsets_count,
+	    provider_name,
+	    probe_name);
 	for (i = 0; i < *offsets_count; i++) {
-		DBG("\t0x%jd", (intmax_t)((*offsets)[i]));
+		DBG("\t0x%jd", (intmax_t) ((*offsets)[i]));
 	}
 end:
 	return ret;
 }
 
-static
-int userspace_probe_add_callsite(
-		const struct lttng_userspace_probe_location *location,
-		uid_t uid, gid_t gid, int fd)
+static int userspace_probe_add_callsite(const struct lttng_userspace_probe_location *location,
+					uid_t uid,
+					gid_t gid,
+					int fd)
 {
 	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type type;
@@ -439,8 +445,7 @@ int userspace_probe_add_callsite(
 		struct lttng_kernel_abi_event_callsite callsite;
 		uint64_t offset;
 
-		ret = extract_userspace_probe_offset_function_elf(location,
-				uid, gid, &offset);
+		ret = extract_userspace_probe_offset_function_elf(location, uid, gid, &offset);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
@@ -466,8 +471,8 @@ int userspace_probe_add_callsite(
 		 * This call allocates the offsets buffer. This buffer must be freed
 		 * by the caller
 		 */
-		ret = extract_userspace_probe_offset_tracepoint_sdt(location,
-				uid, gid, &offsets, &offsets_count);
+		ret = extract_userspace_probe_offset_tracepoint_sdt(
+			location, uid, gid, &offsets, &offsets_count);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
@@ -497,9 +502,9 @@ end:
  * Extract the offsets of the instrumentation point for the different lookup
  * methods.
  */
-static
-int userspace_probe_event_add_callsites(struct lttng_event *ev,
-			struct ltt_kernel_session *session, int fd)
+static int userspace_probe_event_add_callsites(struct lttng_event *ev,
+					       struct ltt_kernel_session *session,
+					       int fd)
 {
 	int ret;
 	const struct lttng_userspace_probe_location *location = NULL;
@@ -513,11 +518,9 @@ int userspace_probe_event_add_callsites(struct lttng_event *ev,
 		goto end;
 	}
 
-	ret = userspace_probe_add_callsite(location, session->uid, session->gid,
-		fd);
+	ret = userspace_probe_add_callsite(location, session->uid, session->gid, fd);
 	if (ret) {
-		WARN("Failed to add callsite to userspace probe event '%s'",
-				ev->name);
+		WARN("Failed to add callsite to userspace probe event '%s'", ev->name);
 	}
 
 end:
@@ -528,10 +531,9 @@ end:
  * Extract the offsets of the instrumentation point for the different look-up
  * methods.
  */
-static int userspace_probe_event_rule_add_callsites(
-		const struct lttng_event_rule *rule,
-		const struct lttng_credentials *creds,
-		int fd)
+static int userspace_probe_event_rule_add_callsites(const struct lttng_event_rule *rule,
+						    const struct lttng_credentials *creds,
+						    int fd)
 {
 	int ret;
 	enum lttng_event_rule_status status;
@@ -550,12 +552,10 @@ static int userspace_probe_event_rule_add_callsites(
 		goto end;
 	}
 
-	ret = userspace_probe_add_callsite(location,
-			lttng_credentials_get_uid(creds),
-			lttng_credentials_get_gid(creds), fd);
+	ret = userspace_probe_add_callsite(
+		location, lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds), fd);
 	if (ret) {
-		WARN("Failed to add callsite to user space probe object: fd = %d",
-				fd);
+		WARN("Failed to add callsite to user space probe object: fd = %d", fd);
 	}
 
 end:
@@ -568,9 +568,9 @@ end:
  * We own filter_expression and filter.
  */
 int kernel_create_event(struct lttng_event *ev,
-		struct ltt_kernel_channel *channel,
-		char *filter_expression,
-		struct lttng_bytecode *filter)
+			struct ltt_kernel_channel *channel,
+			char *filter_expression,
+			struct lttng_bytecode *filter)
 {
 	int err, fd;
 	enum lttng_error_code ret;
@@ -580,8 +580,7 @@ int kernel_create_event(struct lttng_event *ev,
 	LTTNG_ASSERT(channel);
 
 	/* We pass ownership of filter_expression and filter */
-	ret = trace_kernel_create_event(ev, filter_expression,
-			filter, &event);
+	ret = trace_kernel_create_event(ev, filter_expression, filter, &event);
 	if (ret != LTTNG_OK) {
 		goto error;
 	}
@@ -631,8 +630,8 @@ int kernel_create_event(struct lttng_event *ev,
 	}
 
 	if (ev->type == LTTNG_EVENT_USERSPACE_PROBE) {
-		ret = (lttng_error_code) userspace_probe_event_add_callsites(ev, channel->session,
-				event->fd);
+		ret = (lttng_error_code) userspace_probe_event_add_callsites(
+			ev, channel->session, event->fd);
 		if (ret) {
 			goto add_callsite_error;
 		}
@@ -663,14 +662,14 @@ int kernel_create_event(struct lttng_event *ev,
 add_callsite_error:
 enable_error:
 filter_error:
-	{
-		int closeret;
+{
+	int closeret;
 
-		closeret = close(event->fd);
-		if (closeret) {
-			PERROR("close event fd");
-		}
+	closeret = close(event->fd);
+	if (closeret) {
+		PERROR("close event fd");
 	}
+}
 free_event:
 	free(event);
 error:
@@ -694,7 +693,9 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 
 	chan->enabled = 0;
 	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
-			chan->channel->name, chan->fd, chan->key);
+	    chan->channel->name,
+	    chan->fd,
+	    chan->key);
 
 	return 0;
 
@@ -719,7 +720,9 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 
 	chan->enabled = 1;
 	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
-			chan->channel->name, chan->fd, chan->key);
+	    chan->channel->name,
+	    chan->fd,
+	    chan->key);
 
 	return 0;
 
@@ -770,7 +773,8 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
 		PERROR("Failed to disable kernel event: name = '%s', fd = %d",
-				event->event->name, event->fd);
+		       event->event->name,
+		       event->fd);
 		goto error;
 	}
 
@@ -786,8 +790,7 @@ error:
 /*
  * Disable a kernel event notifier.
  */
-static
-int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *event)
+static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *event)
 {
 	int ret;
 
@@ -800,22 +803,21 @@ int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *ev
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
 		PERROR("Failed to disable kernel event notifier: fd = %d, token = %" PRIu64,
-				event->fd, event->token);
+		       event->fd,
+		       event->token);
 		goto error;
 	}
 
 	event->enabled = 0;
-	DBG("Disabled kernel event notifier: fd = %d, token = %" PRIu64,
-			event->fd, event->token);
+	DBG("Disabled kernel event notifier: fd = %d, token = %" PRIu64, event->fd, event->token);
 
 error:
 	return ret;
 }
 
-static
-struct process_attr_tracker *_kernel_get_process_attr_tracker(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr)
+static struct process_attr_tracker *
+_kernel_get_process_attr_tracker(struct ltt_kernel_session *session,
+				 enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -835,23 +837,23 @@ struct process_attr_tracker *_kernel_get_process_attr_tracker(
 	}
 }
 
-const struct process_attr_tracker *kernel_get_process_attr_tracker(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr)
+const struct process_attr_tracker *
+kernel_get_process_attr_tracker(struct ltt_kernel_session *session,
+				enum lttng_process_attr process_attr)
 {
-	return (const struct process_attr_tracker *)
-			_kernel_get_process_attr_tracker(session, process_attr);
+	return (const struct process_attr_tracker *) _kernel_get_process_attr_tracker(session,
+										      process_attr);
 }
 
-enum lttng_error_code kernel_process_attr_tracker_set_tracking_policy(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		enum lttng_tracking_policy policy)
+enum lttng_error_code
+kernel_process_attr_tracker_set_tracking_policy(struct ltt_kernel_session *session,
+						enum lttng_process_attr process_attr,
+						enum lttng_tracking_policy policy)
 {
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
 	struct process_attr_tracker *tracker =
-			_kernel_get_process_attr_tracker(session, process_attr);
+		_kernel_get_process_attr_tracker(session, process_attr);
 	enum lttng_tracking_policy previous_policy;
 
 	if (!tracker) {
@@ -922,10 +924,10 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+enum lttng_error_code
+kernel_process_attr_tracker_inclusion_set_add_value(struct ltt_kernel_session *session,
+						    enum lttng_process_attr process_attr,
+						    const struct process_attr_value *value)
 {
 	int ret, integral_value;
 	enum lttng_error_code ret_code;
@@ -946,8 +948,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			uid_t uid;
 
-			ret_code = utils_user_id_from_name(
-					value->value.user_name, &uid);
+			ret_code = utils_user_id_from_name(value->value.user_name, &uid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -961,8 +962,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			gid_t gid;
 
-			ret_code = utils_group_id_from_name(
-					value->value.group_name, &gid);
+			ret_code = utils_group_id_from_name(value->value.group_name, &gid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1000,8 +1000,9 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
 	}
 
 	DBG("Kernel track %s %d for session id %" PRIu64,
-			lttng_process_attr_to_string(process_attr),
-			integral_value, session->id);
+	    lttng_process_attr_to_string(process_attr),
+	    integral_value,
+	    session->id);
 	if (process_attr == LTTNG_PROCESS_ATTR_PROCESS_ID) {
 		/*
 		 * Maintain a special case for the process ID process attribute
@@ -1009,8 +1010,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
 		 */
 		ret = kernctl_track_pid(session->fd, integral_value);
 	} else {
-		ret = kernctl_track_id(
-				session->fd, process_attr, integral_value);
+		ret = kernctl_track_id(session->fd, process_attr, integral_value);
 	}
 	if (ret == 0) {
 		ret_code = LTTNG_OK;
@@ -1039,21 +1039,20 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
 	}
 
 	/* Attempt to remove the value from the tracker. */
-	status = process_attr_tracker_inclusion_set_remove_value(
-			tracker, value);
+	status = process_attr_tracker_inclusion_set_remove_value(tracker, value);
 	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
 		ERR("Failed to roll-back the tracking of kernel %s process attribute %d while handling a kern-ctl error",
-				lttng_process_attr_to_string(process_attr),
-				integral_value);
+		    lttng_process_attr_to_string(process_attr),
+		    integral_value);
 	}
 end:
 	return ret_code;
 }
 
-enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value)
+enum lttng_error_code
+kernel_process_attr_tracker_inclusion_set_remove_value(struct ltt_kernel_session *session,
+						       enum lttng_process_attr process_attr,
+						       const struct process_attr_value *value)
 {
 	int ret, integral_value;
 	enum lttng_error_code ret_code;
@@ -1074,8 +1073,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
 			uid_t uid;
 
-			ret_code = utils_user_id_from_name(
-					value->value.user_name, &uid);
+			ret_code = utils_user_id_from_name(value->value.user_name, &uid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1089,8 +1087,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
 			gid_t gid;
 
-			ret_code = utils_group_id_from_name(
-					value->value.group_name, &gid);
+			ret_code = utils_group_id_from_name(value->value.group_name, &gid);
 			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
@@ -1110,8 +1107,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 		goto end;
 	}
 
-	status = process_attr_tracker_inclusion_set_remove_value(
-			tracker, value);
+	status = process_attr_tracker_inclusion_set_remove_value(tracker, value);
 	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
 		switch (status) {
 		case PROCESS_ATTR_TRACKER_STATUS_MISSING:
@@ -1129,8 +1125,9 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 	}
 
 	DBG("Kernel track %s %d for session id %" PRIu64,
-			lttng_process_attr_to_string(process_attr),
-			integral_value, session->id);
+	    lttng_process_attr_to_string(process_attr),
+	    integral_value,
+	    session->id);
 	if (process_attr == LTTNG_PROCESS_ATTR_PROCESS_ID) {
 		/*
 		 * Maintain a special case for the process ID process attribute
@@ -1138,8 +1135,7 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 		 */
 		ret = kernctl_untrack_pid(session->fd, integral_value);
 	} else {
-		ret = kernctl_untrack_id(
-				session->fd, process_attr, integral_value);
+		ret = kernctl_untrack_id(session->fd, process_attr, integral_value);
 	}
 	if (ret == 0) {
 		ret_code = LTTNG_OK;
@@ -1167,12 +1163,11 @@ enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
 	}
 
 	/* Attempt to add the value to the tracker. */
-	status = process_attr_tracker_inclusion_set_add_value(
-			tracker, value);
+	status = process_attr_tracker_inclusion_set_add_value(tracker, value);
 	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
 		ERR("Failed to roll-back the tracking of kernel %s process attribute %d while handling a kern-ctl error",
-				lttng_process_attr_to_string(process_attr),
-				integral_value);
+		    lttng_process_attr_to_string(process_attr),
+		    integral_value);
 	}
 end:
 	return ret_code;
@@ -1290,13 +1285,12 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel)
 
 	DBG("Flush buffer for channel %s", channel->channel->name);
 
-	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
+	cds_list_for_each_entry (stream, &channel->stream_list.head, list) {
 		DBG("Flushing channel stream %d", stream->fd);
 		ret = kernctl_buffer_flush(stream->fd);
 		if (ret < 0) {
 			PERROR("ioctl");
-			ERR("Fail to flush buffer for stream %d (ret: %d)",
-					stream->fd, ret);
+			ERR("Fail to flush buffer for stream %d (ret: %d)", stream->fd, ret);
 		}
 	}
 
@@ -1343,8 +1337,7 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 	LTTNG_ASSERT(channel);
 
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
-		lks = trace_kernel_create_stream(channel->channel->name,
-				channel->stream_count);
+		lks = trace_kernel_create_stream(channel->channel->name, channel->stream_count);
 		if (lks == NULL) {
 			ret = close(ret);
 			if (ret) {
@@ -1367,8 +1360,7 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 		cds_list_add(&lks->list, &channel->stream_list.head);
 		channel->stream_count++;
 
-		DBG("Kernel stream %s created (fd: %d, state: %d)", lks->name, lks->fd,
-				lks->state);
+		DBG("Kernel stream %s created (fd: %d, state: %d)", lks->name, lks->fd, lks->state);
 	}
 
 	return channel->stream_count;
@@ -1449,9 +1441,9 @@ ssize_t kernel_list_events(struct lttng_event **events)
 			size_t new_nbmem;
 
 			new_nbmem = nbmem << 1;
-			DBG("Reallocating event list from %zu to %zu bytes",
-					nbmem, new_nbmem);
-			new_elist = (lttng_event *) realloc(elist, new_nbmem * sizeof(struct lttng_event));
+			DBG("Reallocating event list from %zu to %zu bytes", nbmem, new_nbmem);
+			new_elist = (lttng_event *) realloc(elist,
+							    new_nbmem * sizeof(struct lttng_event));
 			if (new_elist == NULL) {
 				PERROR("realloc list events");
 				free(event);
@@ -1460,8 +1452,9 @@ ssize_t kernel_list_events(struct lttng_event **events)
 				goto end;
 			}
 			/* Zero the new memory */
-			memset(new_elist + nbmem, 0,
-				(new_nbmem - nbmem) * sizeof(struct lttng_event));
+			memset(new_elist + nbmem,
+			       0,
+			       (new_nbmem - nbmem) * sizeof(struct lttng_event));
 			nbmem = new_nbmem;
 			elist = new_elist;
 		}
@@ -1475,7 +1468,7 @@ ssize_t kernel_list_events(struct lttng_event **events)
 	*events = elist;
 	DBG("Kernel list events done (%zu events)", count);
 end:
-	ret = fclose(fp);	/* closes both fp and fd */
+	ret = fclose(fp); /* closes both fp and fd */
 	if (ret) {
 		PERROR("fclose");
 	}
@@ -1494,7 +1487,7 @@ error:
  * Get kernel version and validate it.
  */
 int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
-		struct lttng_kernel_abi_tracer_abi_version *abi_version)
+			    struct lttng_kernel_abi_tracer_abi_version *abi_version)
 {
 	int ret;
 
@@ -1507,7 +1500,8 @@ int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
 	/* Validate version */
 	if (version->major != VERSION_MAJOR) {
 		ERR("Kernel tracer major version (%d) is not compatible with lttng-tools major version (%d)",
-			version->major, VERSION_MAJOR);
+		    version->major,
+		    VERSION_MAJOR);
 		goto error_version;
 	}
 	ret = kernctl_tracer_abi_version(kernel_tracer_fd, abi_version);
@@ -1517,13 +1511,16 @@ int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
 	}
 	if (abi_version->major != LTTNG_KERNEL_ABI_MAJOR_VERSION) {
 		ERR("Kernel tracer ABI version (%d.%d) does not match the expected ABI major version (%d.*)",
-			abi_version->major, abi_version->minor,
-			LTTNG_KERNEL_ABI_MAJOR_VERSION);
+		    abi_version->major,
+		    abi_version->minor,
+		    LTTNG_KERNEL_ABI_MAJOR_VERSION);
 		goto error;
 	}
 	DBG2("Kernel tracer version validated (%d.%d, ABI %d.%d)",
-			version->major, version->minor,
-			abi_version->major, abi_version->minor);
+	     version->major,
+	     version->minor,
+	     abi_version->major,
+	     abi_version->minor);
 	return 0;
 
 error_version:
@@ -1594,12 +1591,12 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 
 		/* For each consumer socket. */
 		rcu_read_lock();
-		cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
-				socket, node.node) {
+		cds_lfht_for_each_entry (
+			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 			struct ltt_kernel_channel *chan;
 
 			/* For each channel, ask the consumer to destroy it. */
-			cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
 				ret = kernel_consumer_destroy_channel(socket, chan);
 				if (ret < 0) {
 					/* Consumer is probably dead. Use next socket. */
@@ -1661,10 +1658,9 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  *
  * Return LTTNG_OK on success or else return a LTTNG_ERR code.
  */
-enum lttng_error_code kernel_snapshot_record(
-		struct ltt_kernel_session *ksess,
-		const struct consumer_output *output,
-		uint64_t nb_packets_per_stream)
+enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
+					     const struct consumer_output *output,
+					     uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
 	enum lttng_error_code status = LTTNG_OK;
@@ -1698,15 +1694,13 @@ enum lttng_error_code kernel_snapshot_record(
 		goto error_open_stream;
 	}
 
-	trace_path = setup_channel_trace_path(ksess->consumer,
-			"", &consumer_path_offset);
+	trace_path = setup_channel_trace_path(ksess->consumer, "", &consumer_path_offset);
 	if (!trace_path) {
 		status = LTTNG_ERR_INVALID;
 		goto error;
 	}
 	/* Send metadata to consumer and snapshot everything. */
-	cds_lfht_for_each_entry(output->socks->ht, &iter.iter,
-			socket, node.node) {
+	cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
 		struct ltt_kernel_channel *chan;
 
 		pthread_mutex_lock(socket->lock);
@@ -1719,20 +1713,26 @@ enum lttng_error_code kernel_snapshot_record(
 		}
 
 		/* For each channel, ask the consumer to snapshot it. */
-		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			status = consumer_snapshot_channel(socket, chan->key, output, 0,
-					&trace_path[consumer_path_offset],
-					nb_packets_per_stream);
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+			status = consumer_snapshot_channel(socket,
+							   chan->key,
+							   output,
+							   0,
+							   &trace_path[consumer_path_offset],
+							   nb_packets_per_stream);
 			if (status != LTTNG_OK) {
-				(void) kernel_consumer_destroy_metadata(socket,
-						ksess->metadata);
+				(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
 				goto error_consumer;
 			}
 		}
 
 		/* Snapshot metadata, */
-		status = consumer_snapshot_channel(socket, ksess->metadata->key, output,
-				1, &trace_path[consumer_path_offset], 0);
+		status = consumer_snapshot_channel(socket,
+						   ksess->metadata->key,
+						   output,
+						   1,
+						   &trace_path[consumer_path_offset],
+						   0);
 		if (status != LTTNG_OK) {
 			goto error_consumer;
 		}
@@ -1776,8 +1776,7 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
 	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
 
-static
-int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
+static int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
 {
 	int ret;
 	struct lttng_kernel_abi_tracer_abi_version abi;
@@ -1853,8 +1852,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(ksess->consumer);
 
-	DBG("Rotate kernel session %s started (session %" PRIu64 ")",
-			session->name, session->id);
+	DBG("Rotate kernel session %s started (session %" PRIu64 ")", session->name, session->id);
 
 	rcu_read_lock();
 
@@ -1862,17 +1860,18 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 	 * Note that this loop will end after one iteration given that there is
 	 * only one kernel consumer.
 	 */
-	cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
-			socket, node.node) {
+	cds_lfht_for_each_entry (ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 		struct ltt_kernel_channel *chan;
 
 		/* For each channel, ask the consumer to rotate it. */
-		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
 			DBG("Rotate kernel channel %" PRIu64 ", session %s",
-					chan->key, session->name);
-			ret = consumer_rotate_channel(socket, chan->key,
-					ksess->consumer,
-					/* is_metadata_channel */ false);
+			    chan->key,
+			    session->name);
+			ret = consumer_rotate_channel(socket,
+						      chan->key,
+						      ksess->consumer,
+						      /* is_metadata_channel */ false);
 			if (ret < 0) {
 				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
@@ -1882,9 +1881,10 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 		/*
 		 * Rotate the metadata channel.
 		 */
-		ret = consumer_rotate_channel(socket, ksess->metadata->key,
-				ksess->consumer,
-				/* is_metadata_channel */ true);
+		ret = consumer_rotate_channel(socket,
+					      ksess->metadata->key,
+					      ksess->consumer,
+					      /* is_metadata_channel */ true);
 		if (ret < 0) {
 			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 			goto error;
@@ -1896,8 +1896,7 @@ error:
 	return status;
 }
 
-enum lttng_error_code kernel_create_channel_subdirectories(
-		const struct ltt_kernel_session *ksess)
+enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
@@ -1910,8 +1909,7 @@ enum lttng_error_code kernel_create_channel_subdirectories(
 	 * of implicitly creating the channel's path.
 	 */
 	chunk_status = lttng_trace_chunk_create_subdirectory(
-			ksess->current_trace_chunk,
-			DEFAULT_KERNEL_TRACE_DIR "/" DEFAULT_INDEX_DIR);
+		ksess->current_trace_chunk, DEFAULT_KERNEL_TRACE_DIR "/" DEFAULT_INDEX_DIR);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = LTTNG_ERR_CREATE_DIR_FAIL;
 		goto error;
@@ -1943,8 +1941,7 @@ int init_kernel_tracer(void)
 	}
 
 	/* Validate kernel version */
-	ret = kernel_validate_version(&the_kernel_tracer_version,
-			&the_kernel_tracer_abi_version);
+	ret = kernel_validate_version(&the_kernel_tracer_version, &the_kernel_tracer_abi_version);
 	if (ret < 0) {
 		goto error_version;
 	}
@@ -1960,8 +1957,8 @@ int init_kernel_tracer(void)
 	}
 	if (ret < 1) {
 		WARN("Kernel tracer does not support buffer monitoring. "
-			"The monitoring timer of channels in the kernel domain "
-			"will be set to 0 (disabled).");
+		     "The monitoring timer of channels in the kernel domain "
+		     "will be set to 0 (disabled).");
 	}
 
 	ret = kernel_supports_event_notifiers();
@@ -1977,15 +1974,15 @@ int init_kernel_tracer(void)
 	} else {
 		enum event_notifier_error_accounting_status error_accounting_status;
 		enum lttng_error_code error_code_ret =
-				kernel_create_event_notifier_group_notification_fd(
-						&kernel_tracer_event_notifier_group_notification_fd);
+			kernel_create_event_notifier_group_notification_fd(
+				&kernel_tracer_event_notifier_group_notification_fd);
 
 		if (error_code_ret != LTTNG_OK) {
 			goto error_modules;
 		}
 
 		error_accounting_status = event_notifier_error_accounting_register_kernel(
-				kernel_tracer_event_notifier_group_fd);
+			kernel_tracer_event_notifier_group_fd);
 		if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 			ERR("Failed to initialize event notifier error accounting for kernel tracer");
 			error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING;
@@ -1993,22 +1990,21 @@ int init_kernel_tracer(void)
 		}
 
 		kernel_token_to_event_notifier_rule_ht = cds_lfht_new(
-				DEFAULT_HT_SIZE, 1, 0,
-				CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING,
-				NULL);
+			DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 		if (!kernel_token_to_event_notifier_rule_ht) {
 			goto error_token_ht;
 		}
 	}
 
 	DBG("Kernel tracer initialized: kernel tracer fd = %d, event notifier group fd = %d, event notifier group notification fd = %d",
-			kernel_tracer_fd, kernel_tracer_event_notifier_group_fd,
-			kernel_tracer_event_notifier_group_notification_fd);
+	    kernel_tracer_fd,
+	    kernel_tracer_event_notifier_group_fd,
+	    kernel_tracer_event_notifier_group_notification_fd);
 
 	ret = syscall_init_table(kernel_tracer_fd);
 	if (ret < 0) {
 		ERR("Unable to populate syscall table. Syscall tracing won't "
-			"work for this session daemon.");
+		    "work for this session daemon.");
 	}
 
 	return 0;
@@ -2017,19 +2013,17 @@ error_version:
 	modprobe_remove_lttng_control();
 	ret = close(kernel_tracer_fd);
 	if (ret) {
-		PERROR("Failed to close kernel tracer file descriptor: fd = %d",
-				kernel_tracer_fd);
+		PERROR("Failed to close kernel tracer file descriptor: fd = %d", kernel_tracer_fd);
 	}
 
 	kernel_tracer_fd = -1;
 	return LTTNG_ERR_KERN_VERSION;
 
-
 error_token_ht:
 	ret = close(kernel_tracer_event_notifier_group_notification_fd);
 	if (ret) {
 		PERROR("Failed to close kernel tracer event notifier group notification file descriptor: fd = %d",
-				kernel_tracer_event_notifier_group_notification_fd);
+		       kernel_tracer_event_notifier_group_notification_fd);
 	}
 
 	kernel_tracer_event_notifier_group_notification_fd = -1;
@@ -2038,15 +2032,14 @@ error_modules:
 	ret = close(kernel_tracer_event_notifier_group_fd);
 	if (ret) {
 		PERROR("Failed to close kernel tracer event notifier group file descriptor: fd = %d",
-				kernel_tracer_event_notifier_group_fd);
+		       kernel_tracer_event_notifier_group_fd);
 	}
 
 	kernel_tracer_event_notifier_group_fd = -1;
 
 	ret = close(kernel_tracer_fd);
 	if (ret) {
-		PERROR("Failed to close kernel tracer file descriptor: fd = %d",
-				kernel_tracer_fd);
+		PERROR("Failed to close kernel tracer file descriptor: fd = %d", kernel_tracer_fd);
 	}
 
 	kernel_tracer_fd = -1;
@@ -2069,8 +2062,8 @@ void cleanup_kernel_tracer(void)
 	DBG2("Closing kernel event notifier group notification file descriptor");
 	if (kernel_tracer_event_notifier_group_notification_fd >= 0) {
 		int ret = notification_thread_command_remove_tracer_event_source(
-				the_notification_thread_handle,
-				kernel_tracer_event_notifier_group_notification_fd);
+			the_notification_thread_handle,
+			kernel_tracer_event_notifier_group_notification_fd);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to remove kernel event notifier notification from notification thread");
 		}
@@ -2078,15 +2071,14 @@ void cleanup_kernel_tracer(void)
 		ret = close(kernel_tracer_event_notifier_group_notification_fd);
 		if (ret) {
 			PERROR("Failed to close kernel event notifier group notification file descriptor: fd = %d",
-					kernel_tracer_event_notifier_group_notification_fd);
+			       kernel_tracer_event_notifier_group_notification_fd);
 		}
 
 		kernel_tracer_event_notifier_group_notification_fd = -1;
 	}
 
 	if (kernel_token_to_event_notifier_rule_ht) {
-		const int ret = cds_lfht_destroy(
-				kernel_token_to_event_notifier_rule_ht, NULL);
+		const int ret = cds_lfht_destroy(kernel_token_to_event_notifier_rule_ht, NULL);
 		LTTNG_ASSERT(ret == 0);
 	}
 
@@ -2096,7 +2088,7 @@ void cleanup_kernel_tracer(void)
 
 		if (ret) {
 			PERROR("Failed to close kernel event notifier group file descriptor: fd = %d",
-					kernel_tracer_event_notifier_group_fd);
+			       kernel_tracer_event_notifier_group_fd);
 		}
 
 		kernel_tracer_event_notifier_group_fd = -1;
@@ -2108,7 +2100,7 @@ void cleanup_kernel_tracer(void)
 
 		if (ret) {
 			PERROR("Failed to close kernel tracer file descriptor: fd = %d",
-					kernel_tracer_fd);
+			       kernel_tracer_fd);
 		}
 
 		kernel_tracer_fd = -1;
@@ -2138,8 +2130,7 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session)
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(ksess->consumer);
 
-	DBG("Clear kernel session %s (session %" PRIu64 ")",
-			session->name, session->id);
+	DBG("Clear kernel session %s (session %" PRIu64 ")", session->name, session->id);
 
 	rcu_read_lock();
 
@@ -2153,14 +2144,14 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session)
 	 * Note that this loop will end after one iteration given that there is
 	 * only one kernel consumer.
 	 */
-	cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
-			socket, node.node) {
+	cds_lfht_for_each_entry (ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 		struct ltt_kernel_channel *chan;
 
 		/* For each channel, ask the consumer to clear it. */
-		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
 			DBG("Clear kernel channel %" PRIu64 ", session %s",
-					chan->key, session->name);
+			    chan->key,
+			    session->name);
 			ret = consumer_clear_channel(socket, chan->key);
 			if (ret < 0) {
 				goto error;
@@ -2191,19 +2182,19 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session)
 error:
 	switch (-ret) {
 	case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
-	      status = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
-	      break;
+		status = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+		break;
 	default:
-	      status = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
-	      break;
+		status = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+		break;
 	}
 end:
 	rcu_read_unlock();
 	return status;
 }
 
-enum lttng_error_code kernel_create_event_notifier_group_notification_fd(
-		int *event_notifier_group_notification_fd)
+enum lttng_error_code
+kernel_create_event_notifier_group_notification_fd(int *event_notifier_group_notification_fd)
 {
 	int local_fd = -1, ret;
 	enum lttng_error_code error_code_ret;
@@ -2211,7 +2202,7 @@ enum lttng_error_code kernel_create_event_notifier_group_notification_fd(
 	LTTNG_ASSERT(event_notifier_group_notification_fd);
 
 	ret = kernctl_create_event_notifier_group_notification_fd(
-			kernel_tracer_event_notifier_group_fd);
+		kernel_tracer_event_notifier_group_fd);
 	if (ret < 0) {
 		PERROR("Failed to create kernel event notifier group notification file descriptor");
 		error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD;
@@ -2224,13 +2215,12 @@ enum lttng_error_code kernel_create_event_notifier_group_notification_fd(
 	ret = fcntl(local_fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
 		PERROR("Failed to set FD_CLOEXEC on kernel event notifier group notification file descriptor: fd = %d",
-				local_fd);
+		       local_fd);
 		error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD;
 		goto error;
 	}
 
-	DBG("Created kernel notifier group notification file descriptor: fd = %d",
-			local_fd);
+	DBG("Created kernel notifier group notification file descriptor: fd = %d", local_fd);
 	error_code_ret = LTTNG_OK;
 	*event_notifier_group_notification_fd = local_fd;
 	local_fd = -1;
@@ -2240,55 +2230,51 @@ error:
 		ret = close(local_fd);
 		if (ret) {
 			PERROR("Failed to close kernel event notifier group notification file descriptor: fd = %d",
-					local_fd);
+			       local_fd);
 		}
 	}
 
 	return error_code_ret;
 }
 
-enum lttng_error_code kernel_destroy_event_notifier_group_notification_fd(
-		int event_notifier_group_notification_fd)
+enum lttng_error_code
+kernel_destroy_event_notifier_group_notification_fd(int event_notifier_group_notification_fd)
 {
 	enum lttng_error_code ret_code = LTTNG_OK;
 
 	DBG("Closing event notifier group notification file descriptor: fd = %d",
-			event_notifier_group_notification_fd);
+	    event_notifier_group_notification_fd);
 	if (event_notifier_group_notification_fd >= 0) {
 		const int ret = close(event_notifier_group_notification_fd);
 		if (ret) {
 			PERROR("Failed to close event notifier group notification file descriptor: fd = %d",
-					event_notifier_group_notification_fd);
+			       event_notifier_group_notification_fd);
 		}
 	}
 
 	return ret_code;
 }
 
-static
-unsigned long hash_trigger(const struct lttng_trigger *trigger)
+static unsigned long hash_trigger(const struct lttng_trigger *trigger)
 {
-	const struct lttng_condition *condition =
-			lttng_trigger_get_const_condition(trigger);
+	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
 
 	return lttng_condition_hash(condition);
 }
 
-static
-int match_trigger(struct cds_lfht_node *node, const void *key)
+static int match_trigger(struct cds_lfht_node *node, const void *key)
 {
 	const struct ltt_kernel_event_notifier_rule *event_notifier_rule;
 	const struct lttng_trigger *trigger = (lttng_trigger *) key;
 
-	event_notifier_rule = caa_container_of(node,
-			const struct ltt_kernel_event_notifier_rule, ht_node);
+	event_notifier_rule =
+		caa_container_of(node, const struct ltt_kernel_event_notifier_rule, ht_node);
 
 	return lttng_trigger_is_equal(trigger, event_notifier_rule->trigger);
 }
 
 static enum lttng_error_code kernel_create_event_notifier_rule(
-		struct lttng_trigger *trigger,
-		const struct lttng_credentials *creds, uint64_t token)
+	struct lttng_trigger *trigger, const struct lttng_credentials *creds, uint64_t token)
 {
 	int err, fd, ret = 0;
 	enum lttng_error_code error_code_ret;
@@ -2311,36 +2297,34 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	LTTNG_ASSERT(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	/* Does not acquire a reference. */
-	condition_status = lttng_condition_event_rule_matches_get_rule(
-			condition, &event_rule);
+	condition_status = lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
 	LTTNG_ASSERT(condition_status == LTTNG_CONDITION_STATUS_OK);
 	LTTNG_ASSERT(event_rule);
 
 	event_rule_type = lttng_event_rule_get_type(event_rule);
 	LTTNG_ASSERT(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
-	error_code_ret = trace_kernel_create_event_notifier_rule(trigger, token,
-			lttng_condition_event_rule_matches_get_error_counter_index(
-					condition),
-			&event_notifier_rule);
+	error_code_ret = trace_kernel_create_event_notifier_rule(
+		trigger,
+		token,
+		lttng_condition_event_rule_matches_get_error_counter_index(condition),
+		&event_notifier_rule);
 	if (error_code_ret != LTTNG_OK) {
 		goto error;
 	}
 
-	error_code_ret = trace_kernel_init_event_notifier_from_event_rule(
-			event_rule, &kernel_event_notifier);
+	error_code_ret = trace_kernel_init_event_notifier_from_event_rule(event_rule,
+									  &kernel_event_notifier);
 	if (error_code_ret != LTTNG_OK) {
 		goto free_event;
 	}
 
 	kernel_event_notifier.event.token = event_notifier_rule->token;
 	kernel_event_notifier.error_counter_idx =
-			lttng_condition_event_rule_matches_get_error_counter_index(
-					condition);
+		lttng_condition_event_rule_matches_get_error_counter_index(condition);
 
-	fd = kernctl_create_event_notifier(
-			kernel_tracer_event_notifier_group_fd,
-			&kernel_event_notifier);
+	fd = kernctl_create_event_notifier(kernel_tracer_event_notifier_group_fd,
+					   &kernel_event_notifier);
 	if (fd < 0) {
 		switch (-fd) {
 		case EEXIST:
@@ -2352,12 +2336,13 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 			break;
 		case ENOENT:
 			WARN("Failed to create kernel event notifier: not found: name = '%s'",
-					kernel_event_notifier.event.name);
+			     kernel_event_notifier.event.name);
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			break;
 		default:
 			PERROR("Failed to create kernel event notifier: error code = %d, name = '%s'",
-					fd, kernel_event_notifier.event.name);
+			       fd,
+			       kernel_event_notifier.event.name);
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 		}
 		goto free_event;
@@ -2368,7 +2353,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	err = fcntl(event_notifier_rule->fd, F_SETFD, FD_CLOEXEC);
 	if (err < 0) {
 		PERROR("Failed to set FD_CLOEXEC on kernel event notifier file descriptor: fd = %d",
-				fd);
+		       fd);
 		error_code_ret = LTTNG_ERR_FATAL;
 		goto set_cloexec_error;
 	}
@@ -2388,10 +2373,9 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		}
 	}
 
-	if (lttng_event_rule_get_type(event_rule) ==
-			LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE) {
+	if (lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE) {
 		ret = userspace_probe_event_rule_add_callsites(
-				event_rule, creds, event_notifier_rule->fd);
+			event_rule, creds, event_notifier_rule->fd);
 		if (ret) {
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			goto add_callsite_error;
@@ -2400,13 +2384,13 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 
 	/* Set the capture bytecode if any. */
 	cond_status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
-			condition, &capture_bytecode_count);
+		condition, &capture_bytecode_count);
 	LTTNG_ASSERT(cond_status == LTTNG_CONDITION_STATUS_OK);
 
 	for (i = 0; i < capture_bytecode_count; i++) {
 		const struct lttng_bytecode *capture_bytecode =
-				lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
-						condition, i);
+			lttng_condition_event_rule_matches_get_capture_bytecode_at_index(condition,
+											 i);
 
 		if (capture_bytecode == NULL) {
 			ERR("Unexpected NULL capture bytecode on condition");
@@ -2417,7 +2401,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		ret = kernctl_capture(event_notifier_rule->fd, capture_bytecode);
 		if (ret < 0) {
 			ERR("Failed to set capture bytecode on event notifier rule fd: fd = %d",
-					event_notifier_rule->fd);
+			    event_notifier_rule->fd);
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			goto capture_error;
 		}
@@ -2439,13 +2423,14 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 
 	/* Add trigger to kernel token mapping in the hash table. */
 	rcu_read_lock();
-	cds_lfht_add(kernel_token_to_event_notifier_rule_ht, hash_trigger(trigger),
-			&event_notifier_rule->ht_node);
+	cds_lfht_add(kernel_token_to_event_notifier_rule_ht,
+		     hash_trigger(trigger),
+		     &event_notifier_rule->ht_node);
 	rcu_read_unlock();
 
 	DBG("Created kernel event notifier: name = '%s', fd = %d",
-			kernel_event_notifier.event.name,
-			event_notifier_rule->fd);
+	    kernel_event_notifier.event.name,
+	    event_notifier_rule->fd);
 
 	return LTTNG_OK;
 
@@ -2454,37 +2439,34 @@ add_callsite_error:
 enable_error:
 set_cloexec_error:
 filter_error:
-	{
-		const int close_ret = close(event_notifier_rule->fd);
+{
+	const int close_ret = close(event_notifier_rule->fd);
 
-		if (close_ret) {
-			PERROR("Failed to close kernel event notifier file descriptor: fd = %d",
-					event_notifier_rule->fd);
-		}
+	if (close_ret) {
+		PERROR("Failed to close kernel event notifier file descriptor: fd = %d",
+		       event_notifier_rule->fd);
 	}
+}
 free_event:
 	free(event_notifier_rule);
 error:
 	return error_code_ret;
 }
 
-enum lttng_error_code kernel_register_event_notifier(
-		struct lttng_trigger *trigger,
-		const struct lttng_credentials *cmd_creds)
+enum lttng_error_code kernel_register_event_notifier(struct lttng_trigger *trigger,
+						     const struct lttng_credentials *cmd_creds)
 {
 	enum lttng_error_code ret;
 	enum lttng_condition_status status;
 	enum lttng_domain_type domain_type;
 	const struct lttng_event_rule *event_rule;
-	const struct lttng_condition *const condition =
-			lttng_trigger_get_const_condition(trigger);
+	const struct lttng_condition *const condition = lttng_trigger_get_const_condition(trigger);
 	const uint64_t token = lttng_trigger_get_tracer_token(trigger);
 
 	LTTNG_ASSERT(condition);
 
 	/* Does not acquire a reference to the event rule. */
-	status = lttng_condition_event_rule_matches_get_rule(
-			condition, &event_rule);
+	status = lttng_condition_event_rule_matches_get_rule(condition, &event_rule);
 	LTTNG_ASSERT(status == LTTNG_CONDITION_STATUS_OK);
 
 	domain_type = lttng_event_rule_get_domain_type(event_rule);
@@ -2498,8 +2480,7 @@ enum lttng_error_code kernel_register_event_notifier(
 	return ret;
 }
 
-enum lttng_error_code kernel_unregister_event_notifier(
-		const struct lttng_trigger *trigger)
+enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigger *trigger)
 {
 	struct ltt_kernel_event_notifier_rule *token_event_rule_element;
 	struct cds_lfht_node *node;
@@ -2510,7 +2491,10 @@ enum lttng_error_code kernel_unregister_event_notifier(
 	rcu_read_lock();
 
 	cds_lfht_lookup(kernel_token_to_event_notifier_rule_ht,
-			hash_trigger(trigger), match_trigger, trigger, &iter);
+			hash_trigger(trigger),
+			match_trigger,
+			trigger,
+			&iter);
 
 	node = cds_lfht_iter_get_node(&iter);
 	if (!node) {
@@ -2518,8 +2502,8 @@ enum lttng_error_code kernel_unregister_event_notifier(
 		goto error;
 	}
 
-	token_event_rule_element = caa_container_of(node,
-			struct ltt_kernel_event_notifier_rule, ht_node);
+	token_event_rule_element =
+		caa_container_of(node, struct ltt_kernel_event_notifier_rule, ht_node);
 
 	ret = kernel_disable_event_notifier_rule(token_event_rule_element);
 	if (ret) {

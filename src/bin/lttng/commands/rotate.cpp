@@ -6,6 +6,15 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
+#include <lttng/lttng.h>
+
+#include <ctype.h>
+#include <inttypes.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,14 +22,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <ctype.h>
-
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-#include <lttng/lttng.h>
 
 static int opt_no_wait;
 static struct mi_writer *writer;
@@ -28,7 +29,7 @@ static struct mi_writer *writer;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-rotate.1.h>
-;
+	;
 #endif
 
 enum {
@@ -38,10 +39,10 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"no-wait",   'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static int rotate_tracing(char *session_name)
@@ -82,8 +83,7 @@ static int rotate_tracing(char *session_name)
 	}
 
 	do {
-		rotation_status = lttng_rotation_handle_get_state(handle,
-				&rotation_state);
+		rotation_status = lttng_rotation_handle_get_state(handle, &rotation_state);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 			MSG("");
 			ERR("Failed to query the state of the rotation.");
@@ -110,8 +110,7 @@ static int rotate_tracing(char *session_name)
 skip_wait:
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_COMPLETED:
-		rotation_status = lttng_rotation_handle_get_archive_location(
-				handle, &location);
+		rotation_status = lttng_rotation_handle_get_archive_location(handle, &location);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 			ERR("Failed to retrieve the rotation's completed chunk archive location.");
 			cmd_ret = CMD_ERROR;
@@ -132,11 +131,9 @@ skip_wait:
 	}
 
 	if (!lttng_opt_mi && print_location) {
-		ret = print_trace_archive_location(location,
-				session_name);
+		ret = print_trace_archive_location(location, session_name);
 	} else if (lttng_opt_mi) {
-		ret = mi_lttng_rotate(writer, session_name, rotation_state,
-				location);
+		ret = mi_lttng_rotate(writer, session_name, rotation_state, location);
 	}
 
 	if (ret < 0) {
@@ -211,16 +208,14 @@ int cmd_rotate(int argc, const char **argv)
 		}
 
 		/* Open rotate command */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_rotate);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_rotate);
 		if (ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;
@@ -238,9 +233,8 @@ int cmd_rotate(int argc, const char **argv)
 			goto end;
 		}
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success,
-				cmd_ret == CMD_SUCCESS);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, cmd_ret == CMD_SUCCESS);
 		if (ret) {
 			cmd_ret = CMD_ERROR;
 			goto end;

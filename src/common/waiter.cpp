@@ -6,11 +6,12 @@
  *
  */
 
-#include "waiter.hpp"
-#include <urcu/uatomic.h>
-#include <urcu/futex.h>
 #include "error.hpp"
+#include "waiter.hpp"
+
 #include <poll.h>
+#include <urcu/futex.h>
+#include <urcu/uatomic.h>
 
 /*
  * Number of busy-loop attempts before waiting on futex.
@@ -19,11 +20,11 @@
 
 enum waiter_state {
 	/* WAITER_WAITING is compared directly (futex compares it). */
-	WAITER_WAITING =	0,
+	WAITER_WAITING = 0,
 	/* non-zero are used as masks. */
-	WAITER_WOKEN_UP =	(1 << 0),
-	WAITER_RUNNING =	(1 << 1),
-	WAITER_TEARDOWN =	(1 << 2),
+	WAITER_WOKEN_UP = (1 << 0),
+	WAITER_RUNNING = (1 << 1),
+	WAITER_TEARDOWN = (1 << 2),
 };
 
 void lttng_waiter_init(struct lttng_waiter *waiter)
@@ -67,7 +68,7 @@ void lttng_waiter_wait(struct lttng_waiter *waiter)
 			goto skip_futex_wait;
 		case EINTR:
 			/* Retry if interrupted by signal. */
-			break;	/* Get out of switch. Check again. */
+			break; /* Get out of switch. Check again. */
 		default:
 			/* Unexpected error. */
 			PERROR("futex_noasync");
@@ -107,8 +108,7 @@ void lttng_waiter_wake_up(struct lttng_waiter *waiter)
 	LTTNG_ASSERT(uatomic_read(&waiter->state) == WAITER_WAITING);
 	uatomic_set(&waiter->state, WAITER_WOKEN_UP);
 	if (!(uatomic_read(&waiter->state) & WAITER_RUNNING)) {
-		if (futex_noasync(&waiter->state, FUTEX_WAKE, 1,
-				NULL, NULL, 0) < 0) {
+		if (futex_noasync(&waiter->state, FUTEX_WAKE, 1, NULL, NULL, 0) < 0) {
 			PERROR("futex_noasync");
 			abort();
 		}

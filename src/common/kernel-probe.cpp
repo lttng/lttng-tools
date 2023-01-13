@@ -6,6 +6,7 @@
  */
 
 #include "lttng/lttng-error.h"
+
 #include <common/error.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
@@ -13,77 +14,67 @@
 #include <common/mi-lttng.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
-#include <fcntl.h>
+
 #include <lttng/constant.h>
 #include <lttng/kernel-probe-internal.hpp>
 #include <lttng/kernel-probe.h>
+
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-static
-int lttng_kernel_probe_location_address_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct lttng_payload *payload);
+static int
+lttng_kernel_probe_location_address_serialize(const struct lttng_kernel_probe_location *location,
+					      struct lttng_payload *payload);
 
-static
-int lttng_kernel_probe_location_symbol_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct lttng_payload *payload);
+static int
+lttng_kernel_probe_location_symbol_serialize(const struct lttng_kernel_probe_location *location,
+					     struct lttng_payload *payload);
 
-static
-bool lttng_kernel_probe_location_address_is_equal(
-		const struct lttng_kernel_probe_location *a,
-		const struct lttng_kernel_probe_location *b);
+static bool
+lttng_kernel_probe_location_address_is_equal(const struct lttng_kernel_probe_location *a,
+					     const struct lttng_kernel_probe_location *b);
 
-static
-bool lttng_kernel_probe_location_symbol_is_equal(
-		const struct lttng_kernel_probe_location *a,
-		const struct lttng_kernel_probe_location *b);
+static bool
+lttng_kernel_probe_location_symbol_is_equal(const struct lttng_kernel_probe_location *a,
+					    const struct lttng_kernel_probe_location *b);
 
-static
-unsigned long lttng_kernel_probe_location_address_hash(
-		const struct lttng_kernel_probe_location *location);
+static unsigned long
+lttng_kernel_probe_location_address_hash(const struct lttng_kernel_probe_location *location);
 
-static
-unsigned long lttng_kernel_probe_location_symbol_hash(
-		const struct lttng_kernel_probe_location *location);
+static unsigned long
+lttng_kernel_probe_location_symbol_hash(const struct lttng_kernel_probe_location *location);
 
-static
-enum lttng_error_code lttng_kernel_probe_location_address_mi_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct mi_writer *writer);
+static enum lttng_error_code
+lttng_kernel_probe_location_address_mi_serialize(const struct lttng_kernel_probe_location *location,
+						 struct mi_writer *writer);
 
-static
-enum lttng_error_code lttng_kernel_probe_location_symbol_mi_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct mi_writer *writer);
+static enum lttng_error_code
+lttng_kernel_probe_location_symbol_mi_serialize(const struct lttng_kernel_probe_location *location,
+						struct mi_writer *writer);
 
-enum lttng_kernel_probe_location_type lttng_kernel_probe_location_get_type(
-		const struct lttng_kernel_probe_location *location)
+enum lttng_kernel_probe_location_type
+lttng_kernel_probe_location_get_type(const struct lttng_kernel_probe_location *location)
 {
-	return location ? location->type :
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_UNKNOWN;
+	return location ? location->type : LTTNG_KERNEL_PROBE_LOCATION_TYPE_UNKNOWN;
 }
 
-static
-void lttng_kernel_probe_location_address_destroy(
-		struct lttng_kernel_probe_location *location)
+static void
+lttng_kernel_probe_location_address_destroy(struct lttng_kernel_probe_location *location)
 {
 	LTTNG_ASSERT(location);
 	free(location);
 }
 
-static
-void lttng_kernel_probe_location_symbol_destroy(
-		struct lttng_kernel_probe_location *location)
+static void lttng_kernel_probe_location_symbol_destroy(struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location_symbol *location_symbol = NULL;
 
 	LTTNG_ASSERT(location);
 
-	location_symbol = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_symbol::parent);
+	location_symbol =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_symbol::parent);
 
 	LTTNG_ASSERT(location_symbol);
 
@@ -91,8 +82,7 @@ void lttng_kernel_probe_location_symbol_destroy(
 	free(location);
 }
 
-void lttng_kernel_probe_location_destroy(
-		struct lttng_kernel_probe_location *location)
+void lttng_kernel_probe_location_destroy(struct lttng_kernel_probe_location *location)
 {
 	if (!location) {
 		return;
@@ -110,8 +100,7 @@ void lttng_kernel_probe_location_destroy(
 	}
 }
 
-struct lttng_kernel_probe_location *
-lttng_kernel_probe_location_address_create(uint64_t address)
+struct lttng_kernel_probe_location *lttng_kernel_probe_location_address_create(uint64_t address)
 {
 	struct lttng_kernel_probe_location *ret = NULL;
 	struct lttng_kernel_probe_location_address *location;
@@ -136,8 +125,7 @@ end:
 }
 
 struct lttng_kernel_probe_location *
-lttng_kernel_probe_location_symbol_create(const char *symbol_name,
-		uint64_t offset)
+lttng_kernel_probe_location_symbol_create(const char *symbol_name, uint64_t offset)
 {
 	char *symbol_name_copy = NULL;
 	struct lttng_kernel_probe_location *ret = NULL;
@@ -177,78 +165,76 @@ end:
 }
 
 enum lttng_kernel_probe_location_status
-lttng_kernel_probe_location_address_get_address(
-		const struct lttng_kernel_probe_location *location,
-		uint64_t *offset)
+lttng_kernel_probe_location_address_get_address(const struct lttng_kernel_probe_location *location,
+						uint64_t *offset)
 {
-	enum lttng_kernel_probe_location_status ret =
-			LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
+	enum lttng_kernel_probe_location_status ret = LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
 	struct lttng_kernel_probe_location_address *address_location;
 
 	LTTNG_ASSERT(offset);
 
-	if (!location || lttng_kernel_probe_location_get_type(location) !=
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS) {
+	if (!location ||
+	    lttng_kernel_probe_location_get_type(location) !=
+		    LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		ret = LTTNG_KERNEL_PROBE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
 
-	address_location = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_address::parent);
+	address_location =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_address::parent);
 	*offset = address_location->address;
 end:
 	return ret;
 }
 
-const char *lttng_kernel_probe_location_symbol_get_name(
-		const struct lttng_kernel_probe_location *location)
+const char *
+lttng_kernel_probe_location_symbol_get_name(const struct lttng_kernel_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_kernel_probe_location_symbol *symbol_location;
 
-	if (!location || lttng_kernel_probe_location_get_type(location) !=
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
+	if (!location ||
+	    lttng_kernel_probe_location_get_type(location) !=
+		    LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	symbol_location = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_symbol::parent);
+	symbol_location =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_symbol::parent);
 	ret = symbol_location->symbol_name;
 end:
 	return ret;
 }
 
 enum lttng_kernel_probe_location_status
-lttng_kernel_probe_location_symbol_get_offset(
-		const struct lttng_kernel_probe_location *location,
-		uint64_t *offset)
+lttng_kernel_probe_location_symbol_get_offset(const struct lttng_kernel_probe_location *location,
+					      uint64_t *offset)
 {
-	enum lttng_kernel_probe_location_status ret =
-			LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
+	enum lttng_kernel_probe_location_status ret = LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK;
 	struct lttng_kernel_probe_location_symbol *symbol_location;
 
 	LTTNG_ASSERT(offset);
 
-	if (!location || lttng_kernel_probe_location_get_type(location) !=
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
+	if (!location ||
+	    lttng_kernel_probe_location_get_type(location) !=
+		    LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		ret = LTTNG_KERNEL_PROBE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
 
-	symbol_location = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_symbol::parent);
+	symbol_location =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_symbol::parent);
 	*offset = symbol_location->offset;
 end:
 	return ret;
 }
 
-static
-int lttng_kernel_probe_location_symbol_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct lttng_payload *payload)
+static int
+lttng_kernel_probe_location_symbol_serialize(const struct lttng_kernel_probe_location *location,
+					     struct lttng_payload *payload)
 {
 	int ret;
 	size_t symbol_name_len;
@@ -263,11 +249,11 @@ int lttng_kernel_probe_location_symbol_serialize(
 	}
 
 	LTTNG_ASSERT(lttng_kernel_probe_location_get_type(location) ==
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
+		     LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
 	original_payload_size = payload->buffer.size;
-	location_symbol = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_symbol::parent);
+	location_symbol =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_symbol::parent);
 
 	if (!location_symbol->symbol_name) {
 		ret = -LTTNG_ERR_INVALID;
@@ -283,16 +269,15 @@ int lttng_kernel_probe_location_symbol_serialize(
 	location_symbol_comm.symbol_len = symbol_name_len + 1;
 	location_symbol_comm.offset = location_symbol->offset;
 
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			&location_symbol_comm, sizeof(location_symbol_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &location_symbol_comm, sizeof(location_symbol_comm));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			location_symbol->symbol_name,
-			location_symbol_comm.symbol_len);
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, location_symbol->symbol_name, location_symbol_comm.symbol_len);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -303,10 +288,9 @@ end:
 	return ret;
 }
 
-static
-int lttng_kernel_probe_location_address_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct lttng_payload *payload)
+static int
+lttng_kernel_probe_location_address_serialize(const struct lttng_kernel_probe_location *location,
+					      struct lttng_payload *payload)
 {
 	int ret;
 	size_t original_payload_size;
@@ -315,17 +299,16 @@ int lttng_kernel_probe_location_address_serialize(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(lttng_kernel_probe_location_get_type(location) ==
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
+		     LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 
 	original_payload_size = payload->buffer.size;
-	location_address = lttng::utils::container_of(location,
-			&lttng_kernel_probe_location_address::parent);
+	location_address =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_address::parent);
 
 	location_address_comm.address = location_address->address;
 
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			&location_address_comm,
-			sizeof(location_address_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &location_address_comm, sizeof(location_address_comm));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -336,9 +319,8 @@ end:
 	return ret;
 }
 
-int lttng_kernel_probe_location_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct lttng_payload *payload)
+int lttng_kernel_probe_location_serialize(const struct lttng_kernel_probe_location *location,
+					  struct lttng_payload *payload)
 {
 	int ret;
 	size_t original_payload_size;
@@ -352,9 +334,8 @@ int lttng_kernel_probe_location_serialize(
 
 	original_payload_size = payload->buffer.size;
 	location_generic_comm.type = (int8_t) location->type;
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			&location_generic_comm,
-			sizeof(location_generic_comm));
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, &location_generic_comm, sizeof(location_generic_comm));
 	if (ret) {
 		goto end;
 	}
@@ -369,10 +350,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_kernel_probe_location_symbol_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_kernel_probe_location **location)
+static int lttng_kernel_probe_location_symbol_create_from_payload(
+	struct lttng_payload_view *view, struct lttng_kernel_probe_location **location)
 {
 	struct lttng_kernel_probe_location_symbol_comm *location_symbol_comm;
 	const char *symbol_name_src;
@@ -386,11 +365,9 @@ int lttng_kernel_probe_location_symbol_create_from_payload(
 		goto end;
 	}
 
-	location_symbol_comm =
-			(typeof(location_symbol_comm)) view->buffer.data;
+	location_symbol_comm = (typeof(location_symbol_comm)) view->buffer.data;
 
-	expected_size = sizeof(*location_symbol_comm) +
-			location_symbol_comm->symbol_len;
+	expected_size = sizeof(*location_symbol_comm) + location_symbol_comm->symbol_len;
 
 	if (view->buffer.size < expected_size) {
 		ret = -LTTNG_ERR_INVALID;
@@ -399,14 +376,14 @@ int lttng_kernel_probe_location_symbol_create_from_payload(
 
 	symbol_name_src = view->buffer.data + sizeof(*location_symbol_comm);
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, symbol_name_src,
-			location_symbol_comm->symbol_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, symbol_name_src, location_symbol_comm->symbol_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	*location = lttng_kernel_probe_location_symbol_create(
-			symbol_name_src, location_symbol_comm->offset);
+	*location = lttng_kernel_probe_location_symbol_create(symbol_name_src,
+							      location_symbol_comm->offset);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -417,10 +394,8 @@ end:
 	return ret;
 }
 
-static
-ssize_t lttng_kernel_probe_location_address_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_kernel_probe_location **location)
+static ssize_t lttng_kernel_probe_location_address_create_from_payload(
+	struct lttng_payload_view *view, struct lttng_kernel_probe_location **location)
 {
 	struct lttng_kernel_probe_location_address_comm *location_address_comm;
 	ssize_t ret = 0;
@@ -435,8 +410,7 @@ ssize_t lttng_kernel_probe_location_address_create_from_payload(
 		goto end;
 	}
 
-	location_address_comm =
-			(typeof(location_address_comm)) view->buffer.data;
+	location_address_comm = (typeof(location_address_comm)) view->buffer.data;
 
 	*location = lttng_kernel_probe_location_address_create(location_address_comm->address);
 	if (!(*location)) {
@@ -449,17 +423,16 @@ end:
 	return ret;
 }
 
-ssize_t lttng_kernel_probe_location_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_kernel_probe_location **location)
+ssize_t
+lttng_kernel_probe_location_create_from_payload(struct lttng_payload_view *view,
+						struct lttng_kernel_probe_location **location)
 {
 	enum lttng_kernel_probe_location_type type;
 	ssize_t consumed = 0;
 	ssize_t ret;
 	const struct lttng_kernel_probe_location_comm *probe_location_comm;
 	const struct lttng_payload_view probe_location_comm_view =
-			lttng_payload_view_from_view(
-					view, 0, sizeof(*probe_location_comm));
+		lttng_payload_view_from_view(view, 0, sizeof(*probe_location_comm));
 
 	LTTNG_ASSERT(view);
 	LTTNG_ASSERT(location);
@@ -477,20 +450,19 @@ ssize_t lttng_kernel_probe_location_create_from_payload(
 	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
 	{
 		struct lttng_payload_view location_view =
-				lttng_payload_view_from_view(
-						view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
-		ret = lttng_kernel_probe_location_symbol_create_from_payload(
-				&location_view, location);
+		ret = lttng_kernel_probe_location_symbol_create_from_payload(&location_view,
+									     location);
 		break;
 	}
 	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
 	{
 		struct lttng_payload_view location_view =
-				lttng_payload_view_from_view(view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
-		ret = lttng_kernel_probe_location_address_create_from_payload(
-				&location_view, location);
+		ret = lttng_kernel_probe_location_address_create_from_payload(&location_view,
+									      location);
 		break;
 	}
 	default:
@@ -509,25 +481,22 @@ end:
 	return ret;
 }
 
-static
-unsigned long lttng_kernel_probe_location_address_hash(
-		const struct lttng_kernel_probe_location *location)
+static unsigned long
+lttng_kernel_probe_location_address_hash(const struct lttng_kernel_probe_location *location)
 {
-	unsigned long hash = hash_key_ulong(
-			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS,
-			lttng_ht_seed);
-	struct lttng_kernel_probe_location_address *address_location = lttng::utils::container_of(
-			location, &lttng_kernel_probe_location_address::parent);
+	unsigned long hash =
+		hash_key_ulong((void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS, lttng_ht_seed);
+	struct lttng_kernel_probe_location_address *address_location =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_address::parent);
 
 	hash ^= hash_key_u64(&address_location->address, lttng_ht_seed);
 
 	return hash;
 }
 
-static
-bool lttng_kernel_probe_location_address_is_equal(
-		const struct lttng_kernel_probe_location *_a,
-		const struct lttng_kernel_probe_location *_b)
+static bool
+lttng_kernel_probe_location_address_is_equal(const struct lttng_kernel_probe_location *_a,
+					     const struct lttng_kernel_probe_location *_b)
 {
 	bool is_equal = false;
 	struct lttng_kernel_probe_location_address *a, *b;
@@ -545,14 +514,13 @@ end:
 	return is_equal;
 }
 
-static
-unsigned long lttng_kernel_probe_location_symbol_hash(
-		const struct lttng_kernel_probe_location *location)
+static unsigned long
+lttng_kernel_probe_location_symbol_hash(const struct lttng_kernel_probe_location *location)
 {
-	unsigned long hash = hash_key_ulong(
-			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET, lttng_ht_seed);
-	struct lttng_kernel_probe_location_symbol *symbol_location = lttng::utils::container_of(
-			location, &lttng_kernel_probe_location_symbol::parent);
+	unsigned long hash = hash_key_ulong((void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET,
+					    lttng_ht_seed);
+	struct lttng_kernel_probe_location_symbol *symbol_location =
+		lttng::utils::container_of(location, &lttng_kernel_probe_location_symbol::parent);
 
 	hash ^= hash_key_str(symbol_location->symbol_name, lttng_ht_seed);
 	hash ^= hash_key_u64(&symbol_location->offset, lttng_ht_seed);
@@ -560,18 +528,15 @@ unsigned long lttng_kernel_probe_location_symbol_hash(
 	return hash;
 }
 
-static
-bool lttng_kernel_probe_location_symbol_is_equal(
-		const struct lttng_kernel_probe_location *_a,
-		const struct lttng_kernel_probe_location *_b)
+static bool
+lttng_kernel_probe_location_symbol_is_equal(const struct lttng_kernel_probe_location *_a,
+					    const struct lttng_kernel_probe_location *_b)
 {
 	bool is_equal = false;
 	struct lttng_kernel_probe_location_symbol *a, *b;
 
-	a = lttng::utils::container_of(_a,
-			&lttng_kernel_probe_location_symbol::parent);
-	b = lttng::utils::container_of(_b,
-			&lttng_kernel_probe_location_symbol::parent);
+	a = lttng::utils::container_of(_a, &lttng_kernel_probe_location_symbol::parent);
+	b = lttng::utils::container_of(_b, &lttng_kernel_probe_location_symbol::parent);
 
 	LTTNG_ASSERT(a->symbol_name);
 	LTTNG_ASSERT(b->symbol_name);
@@ -589,9 +554,8 @@ end:
 	return is_equal;
 }
 
-bool lttng_kernel_probe_location_is_equal(
-		const struct lttng_kernel_probe_location *a,
-		const struct lttng_kernel_probe_location *b)
+bool lttng_kernel_probe_location_is_equal(const struct lttng_kernel_probe_location *a,
+					  const struct lttng_kernel_probe_location *b)
 {
 	bool is_equal = false;
 
@@ -614,8 +578,7 @@ end:
 }
 
 static struct lttng_kernel_probe_location *
-lttng_kernel_probe_location_symbol_copy(
-		const struct lttng_kernel_probe_location *location)
+lttng_kernel_probe_location_symbol_copy(const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *new_location = NULL;
 	enum lttng_kernel_probe_location_status status;
@@ -625,7 +588,7 @@ lttng_kernel_probe_location_symbol_copy(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
-	 /* Get probe location offset */
+	/* Get probe location offset */
 	status = lttng_kernel_probe_location_symbol_get_offset(location, &offset);
 	if (status != LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK) {
 		ERR("Get kernel probe location offset failed.");
@@ -639,8 +602,7 @@ lttng_kernel_probe_location_symbol_copy(
 	}
 
 	/* Create the probe_location */
-	new_location = lttng_kernel_probe_location_symbol_create(
-			symbol_name, offset);
+	new_location = lttng_kernel_probe_location_symbol_create(symbol_name, offset);
 
 	goto end;
 
@@ -650,8 +612,7 @@ end:
 	return new_location;
 }
 static struct lttng_kernel_probe_location *
-lttng_kernel_probe_location_address_copy(
-		const struct lttng_kernel_probe_location *location)
+lttng_kernel_probe_location_address_copy(const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *new_location = NULL;
 	enum lttng_kernel_probe_location_status status;
@@ -678,8 +639,8 @@ end:
 	return new_location;
 }
 
-struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
-		const struct lttng_kernel_probe_location *location)
+struct lttng_kernel_probe_location *
+lttng_kernel_probe_location_copy(const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *new_location = NULL;
 	enum lttng_kernel_probe_location_type type;
@@ -691,15 +652,13 @@ struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
 	type = lttng_kernel_probe_location_get_type(location);
 	switch (type) {
 	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
-		new_location =
-			lttng_kernel_probe_location_address_copy(location);
+		new_location = lttng_kernel_probe_location_address_copy(location);
 		if (!new_location) {
 			goto err;
 		}
 		break;
 	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
-		new_location =
-			lttng_kernel_probe_location_symbol_copy(location);
+		new_location = lttng_kernel_probe_location_symbol_copy(location);
 		if (!new_location) {
 			goto err;
 		}
@@ -712,16 +671,14 @@ err:
 	return new_location;
 }
 
-unsigned long lttng_kernel_probe_location_hash(
-	const struct lttng_kernel_probe_location *location)
+unsigned long lttng_kernel_probe_location_hash(const struct lttng_kernel_probe_location *location)
 {
 	return location->hash(location);
 }
 
-static
-enum lttng_error_code lttng_kernel_probe_location_address_mi_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_kernel_probe_location_address_mi_serialize(const struct lttng_kernel_probe_location *location,
+						 struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -732,20 +689,17 @@ enum lttng_error_code lttng_kernel_probe_location_address_mi_serialize(
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
 
-	status = lttng_kernel_probe_location_address_get_address(
-			location, &address);
+	status = lttng_kernel_probe_location_address_get_address(location, &address);
 	LTTNG_ASSERT(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 
 	/* Open kernel probe location address element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_kernel_probe_location_address);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_kernel_probe_location_address);
 	if (ret) {
 		goto mi_error;
 	}
 
-	ret = mi_lttng_writer_write_element_unsigned_int(writer,
-			mi_lttng_element_kernel_probe_location_address_address,
-			address);
+	ret = mi_lttng_writer_write_element_unsigned_int(
+		writer, mi_lttng_element_kernel_probe_location_address_address, address);
 	if (ret) {
 		goto mi_error;
 	}
@@ -765,10 +719,9 @@ end:
 	return ret_code;
 }
 
-static
-enum lttng_error_code lttng_kernel_probe_location_symbol_mi_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct mi_writer *writer)
+static enum lttng_error_code
+lttng_kernel_probe_location_symbol_mi_serialize(const struct lttng_kernel_probe_location *location,
+						struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -778,35 +731,31 @@ enum lttng_error_code lttng_kernel_probe_location_symbol_mi_serialize(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(location->type ==
-			LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
+	LTTNG_ASSERT(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
 
 	name = lttng_kernel_probe_location_symbol_get_name(location);
 	LTTNG_ASSERT(name);
 
-	status = lttng_kernel_probe_location_symbol_get_offset(
-			location, &offset);
+	status = lttng_kernel_probe_location_symbol_get_offset(location, &offset);
 	LTTNG_ASSERT(status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
 
 	/* Open kernel probe location symbol offset element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_kernel_probe_location_symbol_offset);
+					   mi_lttng_element_kernel_probe_location_symbol_offset);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_kernel_probe_location_symbol_offset_name,
-			name);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_kernel_probe_location_symbol_offset_name, name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Offset. */
-	ret = mi_lttng_writer_write_element_unsigned_int(writer,
-			mi_lttng_element_kernel_probe_location_symbol_offset_offset,
-			offset);
+	ret = mi_lttng_writer_write_element_unsigned_int(
+		writer, mi_lttng_element_kernel_probe_location_symbol_offset_offset, offset);
 	if (ret) {
 		goto mi_error;
 	}
@@ -826,9 +775,9 @@ end:
 	return ret_code;
 }
 
-enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
-		const struct lttng_kernel_probe_location *location,
-		struct mi_writer *writer)
+enum lttng_error_code
+lttng_kernel_probe_location_mi_serialize(const struct lttng_kernel_probe_location *location,
+					 struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -837,8 +786,7 @@ enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
 	LTTNG_ASSERT(writer);
 
 	/* Open kernel probe location element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_kernel_probe_location);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_kernel_probe_location);
 	if (ret) {
 		goto mi_error;
 	}

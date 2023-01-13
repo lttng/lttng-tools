@@ -8,20 +8,20 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.hpp>
-#include <urcu/rculist.h>
-
 #include "connection.hpp"
 #include "stream.hpp"
 #include "viewer-session.hpp"
+
+#include <common/common.hpp>
+
+#include <urcu/rculist.h>
 
 bool connection_get(struct relay_connection *conn)
 {
 	return urcu_ref_get_unless_zero(&conn->ref);
 }
 
-struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
-		int sock)
+struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht, int sock)
 {
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
@@ -30,8 +30,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 	LTTNG_ASSERT(sock >= 0);
 
 	rcu_read_lock();
-	lttng_ht_lookup(relay_connections_ht, (void *)((unsigned long) sock),
-			&iter);
+	lttng_ht_lookup(relay_connections_ht, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (!node) {
 		DBG2("Relay connection by sock %d not found", sock);
@@ -52,41 +51,37 @@ int connection_reset_protocol_state(struct relay_connection *connection)
 
 	switch (connection->type) {
 	case RELAY_DATA:
-		connection->protocol.data.state_id =
-				DATA_CONNECTION_STATE_RECEIVE_HEADER;
+		connection->protocol.data.state_id = DATA_CONNECTION_STATE_RECEIVE_HEADER;
 		memset(&connection->protocol.data.state.receive_header,
-				0,
-				sizeof(connection->protocol.data.state.receive_header));
+		       0,
+		       sizeof(connection->protocol.data.state.receive_header));
 		connection->protocol.data.state.receive_header.left_to_receive =
-				sizeof(struct lttcomm_relayd_data_hdr);
+			sizeof(struct lttcomm_relayd_data_hdr);
 		break;
 	case RELAY_CONTROL:
-		connection->protocol.ctrl.state_id =
-				CTRL_CONNECTION_STATE_RECEIVE_HEADER;
+		connection->protocol.ctrl.state_id = CTRL_CONNECTION_STATE_RECEIVE_HEADER;
 		memset(&connection->protocol.ctrl.state.receive_header,
-				0,
-				sizeof(connection->protocol.ctrl.state.receive_header));
+		       0,
+		       sizeof(connection->protocol.ctrl.state.receive_header));
 		connection->protocol.data.state.receive_header.left_to_receive =
-				sizeof(struct lttcomm_relayd_hdr);
-		ret = lttng_dynamic_buffer_set_size(
-				&connection->protocol.ctrl.reception_buffer,
-				sizeof(struct lttcomm_relayd_hdr));
+			sizeof(struct lttcomm_relayd_hdr);
+		ret = lttng_dynamic_buffer_set_size(&connection->protocol.ctrl.reception_buffer,
+						    sizeof(struct lttcomm_relayd_hdr));
 		if (ret) {
-			ERR("Failed to reinitialize control connection reception buffer size to %zu bytes.", sizeof(struct lttcomm_relayd_hdr));
+			ERR("Failed to reinitialize control connection reception buffer size to %zu bytes.",
+			    sizeof(struct lttcomm_relayd_hdr));
 			goto end;
 		}
 		break;
 	default:
 		goto end;
 	}
-	DBG("Reset communication state of relay connection (fd = %i)",
-			connection->sock->fd);
+	DBG("Reset communication state of relay connection (fd = %i)", connection->sock->fd);
 end:
 	return ret;
 }
 
-struct relay_connection *connection_create(struct lttcomm_sock *sock,
-		enum connection_type type)
+struct relay_connection *connection_create(struct lttcomm_sock *sock, enum connection_type type)
 {
 	struct relay_connection *conn;
 
@@ -118,8 +113,7 @@ static void rcu_free_connection(struct rcu_head *head)
 		conn->viewer_session = NULL;
 	}
 	if (conn->type == RELAY_CONTROL) {
-		lttng_dynamic_buffer_reset(
-				&conn->protocol.ctrl.reception_buffer);
+		lttng_dynamic_buffer_reset(&conn->protocol.ctrl.reception_buffer);
 	}
 	free(conn);
 }
@@ -131,8 +125,7 @@ static void destroy_connection(struct relay_connection *conn)
 
 static void connection_release(struct urcu_ref *ref)
 {
-	struct relay_connection *conn =
-		lttng::utils::container_of(ref, &relay_connection::ref);
+	struct relay_connection *conn = lttng::utils::container_of(ref, &relay_connection::ref);
 
 	if (conn->in_socket_ht) {
 		struct lttng_ht_iter iter;
@@ -162,8 +155,7 @@ void connection_put(struct relay_connection *conn)
 	rcu_read_unlock();
 }
 
-void connection_ht_add(struct lttng_ht *relay_connections_ht,
-		struct relay_connection *conn)
+void connection_ht_add(struct lttng_ht *relay_connections_ht, struct relay_connection *conn)
 {
 	LTTNG_ASSERT(!conn->in_socket_ht);
 	lttng_ht_add_unique_ulong(relay_connections_ht, &conn->sock_n);
@@ -171,8 +163,7 @@ void connection_ht_add(struct lttng_ht *relay_connections_ht,
 	conn->socket_ht = relay_connections_ht;
 }
 
-int connection_set_session(struct relay_connection *conn,
-		struct relay_session *session)
+int connection_set_session(struct relay_connection *conn, struct relay_session *session)
 {
 	int ret = 0;
 

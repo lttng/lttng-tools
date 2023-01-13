@@ -6,8 +6,9 @@
  */
 
 #include "lttng/lttng-error.h"
-#include <common/compat/string.hpp>
+
 #include <common/align.hpp>
+#include <common/compat/string.hpp>
 #include <common/error.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
@@ -15,51 +16,43 @@
 #include <common/mi-lttng.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
-#include <fcntl.h>
+
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.hpp>
+
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-static
-int lttng_userspace_probe_location_function_set_binary_fd_handle(
-		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd_handle);
+static int lttng_userspace_probe_location_function_set_binary_fd_handle(
+	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd_handle);
 
-static
-int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
-		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd_handle);
+static int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
+	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd_handle);
 
-static
-enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
-		const struct lttng_userspace_probe_location_lookup_method
-				*method,
-		struct mi_writer *writer);
+static enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
+	const struct lttng_userspace_probe_location_lookup_method *method,
+	struct mi_writer *writer);
 
-static
-enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct mi_writer *writer);
+static enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serialize(
+	const struct lttng_userspace_probe_location *location, struct mi_writer *writer);
 
-static
-enum lttng_error_code lttng_userspace_probe_location_function_mi_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct mi_writer *writer);
+static enum lttng_error_code lttng_userspace_probe_location_function_mi_serialize(
+	const struct lttng_userspace_probe_location *location, struct mi_writer *writer);
 
 enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
-		const struct lttng_userspace_probe_location_lookup_method *lookup_method)
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	return lookup_method ? lookup_method->type :
-		LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_UNKNOWN;
+			       LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_UNKNOWN;
 }
 
 void lttng_userspace_probe_location_lookup_method_destroy(
-		struct lttng_userspace_probe_location_lookup_method *lookup_method)
+	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	if (!lookup_method){
+	if (!lookup_method) {
 		return;
 	}
 
@@ -102,23 +95,21 @@ end:
 	return ret;
 }
 
-enum lttng_userspace_probe_location_type lttng_userspace_probe_location_get_type(
-		const struct lttng_userspace_probe_location *location)
+enum lttng_userspace_probe_location_type
+lttng_userspace_probe_location_get_type(const struct lttng_userspace_probe_location *location)
 {
-	return location ? location->type :
-		LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN;
+	return location ? location->type : LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN;
 }
 
-static
-void lttng_userspace_probe_location_function_destroy(
-		struct lttng_userspace_probe_location *location)
+static void
+lttng_userspace_probe_location_function_destroy(struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location_function *location_function = NULL;
 
 	LTTNG_ASSERT(location);
 
-	location_function = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_function::parent);
+	location_function = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 
 	LTTNG_ASSERT(location_function);
 
@@ -128,16 +119,15 @@ void lttng_userspace_probe_location_function_destroy(
 	free(location);
 }
 
-static
-void lttng_userspace_probe_location_tracepoint_destroy(
-		struct lttng_userspace_probe_location *location)
+static void
+lttng_userspace_probe_location_tracepoint_destroy(struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location_tracepoint *location_tracepoint = NULL;
 
 	LTTNG_ASSERT(location);
 
-	location_tracepoint = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_tracepoint::parent);
+	location_tracepoint = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 
 	LTTNG_ASSERT(location_tracepoint);
 
@@ -148,15 +138,13 @@ void lttng_userspace_probe_location_tracepoint_destroy(
 	free(location);
 }
 
-void lttng_userspace_probe_location_destroy(
-		struct lttng_userspace_probe_location *location)
+void lttng_userspace_probe_location_destroy(struct lttng_userspace_probe_location *location)
 {
 	if (!location) {
 		return;
 	}
 
-	lttng_userspace_probe_location_lookup_method_destroy(
-			location->lookup_method);
+	lttng_userspace_probe_location_lookup_method_destroy(location->lookup_method);
 
 	switch (location->type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
@@ -198,34 +186,30 @@ static bool fd_is_equal(int a, int b)
 	/* Both are valid file descriptors. */
 	ret = fstat(a, &a_stat);
 	if (ret) {
-		PERROR("Failed to fstat userspace probe location binary fd %d",
-				a);
+		PERROR("Failed to fstat userspace probe location binary fd %d", a);
 		goto end;
 	}
 
 	ret = fstat(b, &b_stat);
 	if (ret) {
-		PERROR("Failed to fstat userspace probe location binary fd %d",
-				b);
+		PERROR("Failed to fstat userspace probe location binary fd %d", b);
 		goto end;
 	}
 
-	is_equal = (a_stat.st_ino == b_stat.st_ino) &&
-			(a_stat.st_dev == b_stat.st_dev);
+	is_equal = (a_stat.st_ino == b_stat.st_ino) && (a_stat.st_dev == b_stat.st_dev);
 
 end:
 	return is_equal;
 }
 
-static unsigned long lttng_userspace_probe_location_function_hash(
-		const struct lttng_userspace_probe_location *location)
+static unsigned long
+lttng_userspace_probe_location_function_hash(const struct lttng_userspace_probe_location *location)
 {
-	unsigned long hash = hash_key_ulong(
-			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION,
-			lttng_ht_seed);
+	unsigned long hash = hash_key_ulong((void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION,
+					    lttng_ht_seed);
 	struct lttng_userspace_probe_location_function *function_location =
-			lttng::utils::container_of(
-					location, &lttng_userspace_probe_location_function::parent);
+		lttng::utils::container_of(location,
+					   &lttng_userspace_probe_location_function::parent);
 
 	hash ^= hash_key_str(function_location->function_name, lttng_ht_seed);
 	hash ^= hash_key_str(function_location->binary_path, lttng_ht_seed);
@@ -236,17 +220,15 @@ static unsigned long lttng_userspace_probe_location_function_hash(
 	return hash;
 }
 
-static bool lttng_userspace_probe_location_function_is_equal(
-		const struct lttng_userspace_probe_location *_a,
-		const struct lttng_userspace_probe_location *_b)
+static bool
+lttng_userspace_probe_location_function_is_equal(const struct lttng_userspace_probe_location *_a,
+						 const struct lttng_userspace_probe_location *_b)
 {
 	bool is_equal = false;
 	struct lttng_userspace_probe_location_function *a, *b;
 
-	a = lttng::utils::container_of(_a,
-			&lttng_userspace_probe_location_function::parent);
-	b = lttng::utils::container_of(_b,
-			&lttng_userspace_probe_location_function::parent);
+	a = lttng::utils::container_of(_a, &lttng_userspace_probe_location_function::parent);
+	b = lttng::utils::container_of(_b, &lttng_userspace_probe_location_function::parent);
 
 	if (a->instrumentation_type != b->instrumentation_type) {
 		goto end;
@@ -265,16 +247,17 @@ static bool lttng_userspace_probe_location_function_is_equal(
 	}
 
 	is_equal = fd_is_equal(a->binary_fd_handle ? fd_handle_get_fd(a->binary_fd_handle) : -1,
-			b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
+			       b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
 end:
 	return is_equal;
 }
 
 static struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
-		const char *function_name,
-		struct lttng_userspace_probe_location_lookup_method *lookup_method,
-		bool open_binary)
+lttng_userspace_probe_location_function_create_no_check(
+	const char *binary_path,
+	const char *function_name,
+	struct lttng_userspace_probe_location_lookup_method *lookup_method,
+	bool open_binary)
 {
 	int binary_fd = -1;
 	struct fd_handle *binary_fd_handle = NULL;
@@ -321,7 +304,7 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 	location->binary_fd_handle = binary_fd_handle;
 	binary_fd_handle = NULL;
 	location->instrumentation_type =
-			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY;
+		LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY;
 
 	ret = &location->parent;
 	ret->lookup_method = lookup_method;
@@ -344,13 +327,12 @@ end:
 }
 
 static unsigned long lttng_userspace_probe_location_tracepoint_hash(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
-	unsigned long hash = hash_key_ulong(
-			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT,
-			lttng_ht_seed);
+	unsigned long hash = hash_key_ulong((void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT,
+					    lttng_ht_seed);
 	struct lttng_userspace_probe_location_tracepoint *tp_location = lttng::utils::container_of(
-			location, &lttng_userspace_probe_location_tracepoint::parent);
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 
 	hash ^= hash_key_str(tp_location->probe_name, lttng_ht_seed);
 	hash ^= hash_key_str(tp_location->provider_name, lttng_ht_seed);
@@ -362,17 +344,15 @@ static unsigned long lttng_userspace_probe_location_tracepoint_hash(
 	return hash;
 }
 
-static bool lttng_userspace_probe_location_tracepoint_is_equal(
-		const struct lttng_userspace_probe_location *_a,
-		const struct lttng_userspace_probe_location *_b)
+static bool
+lttng_userspace_probe_location_tracepoint_is_equal(const struct lttng_userspace_probe_location *_a,
+						   const struct lttng_userspace_probe_location *_b)
 {
 	bool is_equal = false;
 	struct lttng_userspace_probe_location_tracepoint *a, *b;
 
-	a = lttng::utils::container_of(_a,
-			&lttng_userspace_probe_location_tracepoint::parent);
-	b = lttng::utils::container_of(_b,
-			&lttng_userspace_probe_location_tracepoint::parent);
+	a = lttng::utils::container_of(_a, &lttng_userspace_probe_location_tracepoint::parent);
+	b = lttng::utils::container_of(_b, &lttng_userspace_probe_location_tracepoint::parent);
 
 	LTTNG_ASSERT(a->probe_name);
 	LTTNG_ASSERT(b->probe_name);
@@ -393,17 +373,19 @@ static bool lttng_userspace_probe_location_tracepoint_is_equal(
 	}
 
 	is_equal = fd_is_equal(a->binary_fd_handle ? fd_handle_get_fd(a->binary_fd_handle) : -1,
-			b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
+			       b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
 
 end:
 	return is_equal;
 }
 
 static struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_path,
-		const char *provider_name, const char *probe_name,
-		struct lttng_userspace_probe_location_lookup_method *lookup_method,
-		bool open_binary)
+lttng_userspace_probe_location_tracepoint_create_no_check(
+	const char *binary_path,
+	const char *provider_name,
+	const char *probe_name,
+	struct lttng_userspace_probe_location_lookup_method *lookup_method,
+	bool open_binary)
 {
 	int binary_fd = -1;
 	struct fd_handle *binary_fd_handle = NULL;
@@ -480,10 +462,10 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_function_create(const char *binary_path,
-		const char *function_name,
-		struct lttng_userspace_probe_location_lookup_method *lookup_method)
+struct lttng_userspace_probe_location *lttng_userspace_probe_location_function_create(
+	const char *binary_path,
+	const char *function_name,
+	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	struct lttng_userspace_probe_location *ret = NULL;
 
@@ -492,8 +474,7 @@ lttng_userspace_probe_location_function_create(const char *binary_path,
 		goto end;
 	}
 
-	switch (lttng_userspace_probe_location_lookup_method_get_type(
-			lookup_method)) {
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup_method)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 		break;
@@ -503,15 +484,16 @@ lttng_userspace_probe_location_function_create(const char *binary_path,
 	}
 
 	ret = lttng_userspace_probe_location_function_create_no_check(
-			binary_path, function_name, lookup_method, true);
+		binary_path, function_name, lookup_method, true);
 end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
-		const char *provider_name, const char *probe_name,
-		struct lttng_userspace_probe_location_lookup_method *lookup_method)
+struct lttng_userspace_probe_location *lttng_userspace_probe_location_tracepoint_create(
+	const char *binary_path,
+	const char *provider_name,
+	const char *probe_name,
+	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	struct lttng_userspace_probe_location *ret = NULL;
 
@@ -520,8 +502,7 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 		goto end;
 	}
 
-	switch (lttng_userspace_probe_location_lookup_method_get_type(
-			lookup_method)) {
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup_method)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 		break;
 	default:
@@ -530,21 +511,21 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 	}
 
 	ret = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, provider_name, probe_name, lookup_method, true);
+		binary_path, provider_name, probe_name, lookup_method, true);
 end:
 	return ret;
 }
 
 static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_elf_copy(
-		const struct lttng_userspace_probe_location_lookup_method *lookup_method)
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 
 	LTTNG_ASSERT(lookup_method);
 	LTTNG_ASSERT(lookup_method->type ==
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
+		     LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
 	elf_method = zmalloc<lttng_userspace_probe_location_lookup_method_elf>();
 	if (!elf_method) {
@@ -564,14 +545,14 @@ end:
 
 static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
-		struct lttng_userspace_probe_location_lookup_method *lookup_method)
+	struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 
 	LTTNG_ASSERT(lookup_method);
 	LTTNG_ASSERT(lookup_method->type ==
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
+		     LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
 	sdt_method = zmalloc<lttng_userspace_probe_location_lookup_method_sdt>();
 	if (!sdt_method) {
@@ -591,8 +572,7 @@ end:
 }
 
 static struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_function_copy(
-		const struct lttng_userspace_probe_location *location)
+lttng_userspace_probe_location_function_copy(const struct lttng_userspace_probe_location *location)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 	struct lttng_userspace_probe_location *new_location = NULL;
@@ -604,7 +584,7 @@ lttng_userspace_probe_location_function_copy(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 	function_location = lttng::utils::container_of(
-			location, &lttng_userspace_probe_location_function::parent);
+		location, &lttng_userspace_probe_location_function::parent);
 
 	/* Get probe location fields */
 	binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
@@ -622,13 +602,12 @@ lttng_userspace_probe_location_function_copy(
 	/*
 	 * Duplicate probe location method fields
 	 */
-	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(
-			location->lookup_method);
+	lookup_type =
+		lttng_userspace_probe_location_lookup_method_get_type(location->lookup_method);
 	switch (lookup_type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_elf_copy(
-					location->lookup_method);
+		lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_copy(
+			location->lookup_method);
 		if (!lookup_method) {
 			goto error;
 		}
@@ -640,14 +619,14 @@ lttng_userspace_probe_location_function_copy(
 
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_function_create_no_check(
-			binary_path, function_name, lookup_method, false);
+		binary_path, function_name, lookup_method, false);
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_function_set_binary_fd_handle(new_location,
-			function_location->binary_fd_handle) < 0) {
+	if (lttng_userspace_probe_location_function_set_binary_fd_handle(
+		    new_location, function_location->binary_fd_handle) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -663,9 +642,8 @@ end:
 	return new_location;
 }
 
-static struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_tracepoint_copy(
-		const struct lttng_userspace_probe_location *location)
+static struct lttng_userspace_probe_location *lttng_userspace_probe_location_tracepoint_copy(
+	const struct lttng_userspace_probe_location *location)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 	struct lttng_userspace_probe_location *new_location = NULL;
@@ -678,7 +656,7 @@ lttng_userspace_probe_location_tracepoint_copy(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 	tracepoint_location = lttng::utils::container_of(
-			location, &lttng_userspace_probe_location_tracepoint::parent);
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 
 	/* Get probe location fields */
 	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
@@ -702,13 +680,12 @@ lttng_userspace_probe_location_tracepoint_copy(
 	/*
 	 * Duplicate probe location method fields
 	 */
-	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(
-			location->lookup_method);
+	lookup_type =
+		lttng_userspace_probe_location_lookup_method_get_type(location->lookup_method);
 	switch (lookup_type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		lookup_method =
-			lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
-					location->lookup_method);
+		lookup_method = lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
+			location->lookup_method);
 		if (!lookup_method) {
 			goto error;
 		}
@@ -720,14 +697,14 @@ lttng_userspace_probe_location_tracepoint_copy(
 
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, provider_name, probe_name, lookup_method, false);
+		binary_path, provider_name, probe_name, lookup_method, false);
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(new_location,
-			tracepoint_location->binary_fd_handle) < 0) {
+	if (lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
+		    new_location, tracepoint_location->binary_fd_handle) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -744,136 +721,144 @@ end:
 }
 
 const char *lttng_userspace_probe_location_function_get_binary_path(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	function_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	ret = function_location->binary_path;
 end:
 	return ret;
 }
 
 const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	tracepoint_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_tracepoint::parent);
+	tracepoint_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->binary_path;
 end:
 	return ret;
 }
 
 const char *lttng_userspace_probe_location_function_get_function_name(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	function_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	ret = function_location->function_name;
 end:
 	return ret;
 }
 
 const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	tracepoint_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_tracepoint::parent);
+	tracepoint_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->probe_name;
 end:
 	return ret;
 }
 
 const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	const char *ret = NULL;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	tracepoint_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_tracepoint::parent);
+	tracepoint_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->provider_name;
 end:
 	return ret;
 }
 
 int lttng_userspace_probe_location_function_get_binary_fd(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	int ret = -1;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	function_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	ret = function_location->binary_fd_handle ?
-			fd_handle_get_fd(function_location->binary_fd_handle) : -1;
+		fd_handle_get_fd(function_location->binary_fd_handle) :
+		-1;
 end:
 	return ret;
 }
 
 enum lttng_userspace_probe_location_function_instrumentation_type
 lttng_userspace_probe_location_function_get_instrumentation_type(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	enum lttng_userspace_probe_location_function_instrumentation_type type;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		type = LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_UNKNOWN;
 		goto end;
 	}
 
-	function_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	type = function_location->instrumentation_type;
 end:
 	return type;
@@ -881,57 +866,61 @@ end:
 
 enum lttng_userspace_probe_location_status
 lttng_userspace_probe_location_function_set_instrumentation_type(
-		const struct lttng_userspace_probe_location *location,
-		enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type)
+	const struct lttng_userspace_probe_location *location,
+	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type)
 {
 	enum lttng_userspace_probe_location_status status =
-			LTTNG_USERSPACE_PROBE_LOCATION_STATUS_OK;
+		LTTNG_USERSPACE_PROBE_LOCATION_STATUS_OK;
 	struct lttng_userspace_probe_location_function *function_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION ||
-			instrumentation_type !=
-			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION ||
+	    instrumentation_type !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		status = LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
 
-	function_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	function_location->instrumentation_type = instrumentation_type;
 end:
 	return status;
 }
 
 int lttng_userspace_probe_location_tracepoint_get_binary_fd(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	int ret = -1;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
-	tracepoint_location = lttng::utils::container_of(location,
-		&lttng_userspace_probe_location_tracepoint::parent);
+	tracepoint_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	ret = tracepoint_location->binary_fd_handle ?
-			fd_handle_get_fd(tracepoint_location->binary_fd_handle) : -1;
+		fd_handle_get_fd(tracepoint_location->binary_fd_handle) :
+		-1;
 end:
 	return ret;
 }
 
 static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
@@ -943,12 +932,13 @@ end:
 
 static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_tracepoint_get_lookup_method(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 
-	if (!location || lttng_userspace_probe_location_get_type(location) !=
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
+	if (!location ||
+	    lttng_userspace_probe_location_get_type(location) !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
 		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
@@ -960,19 +950,17 @@ end:
 
 const struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
-		const struct lttng_userspace_probe_location *location)
+	const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 
 	LTTNG_ASSERT(location);
 	switch (location->type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
-	ret = lttng_userspace_probe_location_function_get_lookup_method(
-			location);
+		ret = lttng_userspace_probe_location_function_get_lookup_method(location);
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
-	ret = lttng_userspace_probe_location_tracepoint_get_lookup_method(
-			location);
+		ret = lttng_userspace_probe_location_tracepoint_get_lookup_method(location);
 		break;
 	default:
 		ERR("Unknowned lookup method.");
@@ -981,20 +969,19 @@ lttng_userspace_probe_location_get_lookup_method(
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_lookup_method_serialize(
-		struct lttng_userspace_probe_location_lookup_method *method,
-		struct lttng_payload *payload)
+static int lttng_userspace_probe_location_lookup_method_serialize(
+	struct lttng_userspace_probe_location_lookup_method *method, struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_userspace_probe_location_lookup_method_comm
-			lookup_method_comm;
+	struct lttng_userspace_probe_location_lookup_method_comm lookup_method_comm;
 
-	lookup_method_comm.type = (int8_t) (method ? method->type :
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT);
+	lookup_method_comm.type =
+		(int8_t) (method ?
+				  method->type :
+				  LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT);
 	if (payload) {
-		ret = lttng_dynamic_buffer_append(&payload->buffer, &lookup_method_comm,
-				sizeof(lookup_method_comm));
+		ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &lookup_method_comm, sizeof(lookup_method_comm));
 		if (ret) {
 			goto end;
 		}
@@ -1004,10 +991,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_function_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_payload *payload)
+static int lttng_userspace_probe_location_function_serialize(
+	const struct lttng_userspace_probe_location *location, struct lttng_payload *payload)
 {
 	int ret;
 	size_t function_name_len, binary_path_len;
@@ -1016,10 +1001,10 @@ int lttng_userspace_probe_location_function_serialize(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+		     LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	location_function = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_function::parent);
+	location_function = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	if (!location_function->function_name || !location_function->binary_path) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1045,45 +1030,40 @@ int lttng_userspace_probe_location_function_serialize(
 	location_function_comm.binary_path_len = binary_path_len + 1;
 
 	if (payload) {
-		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				&location_function_comm,
-				sizeof(location_function_comm));
+		ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &location_function_comm, sizeof(location_function_comm));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				location_function->function_name,
-				location_function_comm.function_name_len);
+						  location_function->function_name,
+						  location_function_comm.function_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				location_function->binary_path,
-				location_function_comm.binary_path_len);
+						  location_function->binary_path,
+						  location_function_comm.binary_path_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_payload_push_fd_handle(
-				payload, location_function->binary_fd_handle);
+		ret = lttng_payload_push_fd_handle(payload, location_function->binary_fd_handle);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 	}
-	ret = sizeof(location_function_comm) +
-			location_function_comm.function_name_len +
-			location_function_comm.binary_path_len;
+	ret = sizeof(location_function_comm) + location_function_comm.function_name_len +
+		location_function_comm.binary_path_len;
 end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_tracepoint_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_payload *payload)
+static int lttng_userspace_probe_location_tracepoint_serialize(
+	const struct lttng_userspace_probe_location *location, struct lttng_payload *payload)
 {
 	int ret;
 	size_t probe_name_len, provider_name_len, binary_path_len;
@@ -1092,13 +1072,12 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(lttng_userspace_probe_location_get_type(location) ==
-			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+		     LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
-	location_tracepoint = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_tracepoint::parent);
-	if (!location_tracepoint->probe_name ||
-			!location_tracepoint->provider_name ||
-			!location_tracepoint->binary_path) {
+	location_tracepoint = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
+	if (!location_tracepoint->probe_name || !location_tracepoint->provider_name ||
+	    !location_tracepoint->binary_path) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1132,52 +1111,49 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 
 	if (payload) {
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				&location_tracepoint_comm,
-				sizeof(location_tracepoint_comm));
+						  &location_tracepoint_comm,
+						  sizeof(location_tracepoint_comm));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				location_tracepoint->probe_name,
-				location_tracepoint_comm.probe_name_len);
+						  location_tracepoint->probe_name,
+						  location_tracepoint_comm.probe_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				location_tracepoint->provider_name,
-				location_tracepoint_comm.provider_name_len);
+						  location_tracepoint->provider_name,
+						  location_tracepoint_comm.provider_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				location_tracepoint->binary_path,
-				location_tracepoint_comm.binary_path_len);
+						  location_tracepoint->binary_path,
+						  location_tracepoint_comm.binary_path_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_payload_push_fd_handle(
-				payload, location_tracepoint->binary_fd_handle);
+		ret = lttng_payload_push_fd_handle(payload, location_tracepoint->binary_fd_handle);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 	}
 
-	ret = sizeof(location_tracepoint_comm) +
-			location_tracepoint_comm.probe_name_len +
-			location_tracepoint_comm.provider_name_len +
-			location_tracepoint_comm.binary_path_len;
+	ret = sizeof(location_tracepoint_comm) + location_tracepoint_comm.probe_name_len +
+		location_tracepoint_comm.provider_name_len +
+		location_tracepoint_comm.binary_path_len;
 end:
 	return ret;
 }
 
-int lttng_userspace_probe_location_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_payload *payload)
+int lttng_userspace_probe_location_serialize(const struct lttng_userspace_probe_location *location,
+					     struct lttng_payload *payload)
 {
 	int ret, buffer_use = 0;
 	struct lttng_userspace_probe_location_comm location_generic_comm;
@@ -1192,9 +1168,8 @@ int lttng_userspace_probe_location_serialize(
 
 	location_generic_comm.type = (int8_t) location->type;
 	if (payload) {
-		ret = lttng_dynamic_buffer_append(&payload->buffer,
-				&location_generic_comm,
-				sizeof(location_generic_comm));
+		ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &location_generic_comm, sizeof(location_generic_comm));
 		if (ret) {
 			goto end;
 		}
@@ -1203,12 +1178,10 @@ int lttng_userspace_probe_location_serialize(
 
 	switch (lttng_userspace_probe_location_get_type(location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
-		ret = lttng_userspace_probe_location_function_serialize(
-				location, payload);
+		ret = lttng_userspace_probe_location_function_serialize(location, payload);
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
-		ret = lttng_userspace_probe_location_tracepoint_serialize(
-				location, payload);
+		ret = lttng_userspace_probe_location_tracepoint_serialize(location, payload);
 		break;
 	default:
 		ERR("Unsupported probe location type");
@@ -1220,8 +1193,8 @@ int lttng_userspace_probe_location_serialize(
 	}
 	buffer_use += ret;
 
-	ret = lttng_userspace_probe_location_lookup_method_serialize(
-			location->lookup_method, payload);
+	ret = lttng_userspace_probe_location_lookup_method_serialize(location->lookup_method,
+								     payload);
 	if (ret < 0) {
 		goto end;
 	}
@@ -1230,10 +1203,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_function_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_userspace_probe_location **location)
+static int lttng_userspace_probe_location_function_create_from_payload(
+	struct lttng_payload_view *view, struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_function_comm *location_function_comm;
 	const char *function_name_src, *binary_path_src;
@@ -1249,12 +1220,10 @@ int lttng_userspace_probe_location_function_create_from_payload(
 		goto end;
 	}
 
-	location_function_comm =
-			(typeof(location_function_comm)) view->buffer.data;
+	location_function_comm = (typeof(location_function_comm)) view->buffer.data;
 
 	expected_size = sizeof(*location_function_comm) +
-			location_function_comm->function_name_len +
-			location_function_comm->binary_path_len;
+		location_function_comm->function_name_len + location_function_comm->binary_path_len;
 
 	if (view->buffer.size < expected_size) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1262,17 +1231,16 @@ int lttng_userspace_probe_location_function_create_from_payload(
 	}
 
 	function_name_src = view->buffer.data + sizeof(*location_function_comm);
-	binary_path_src = function_name_src +
-			location_function_comm->function_name_len;
+	binary_path_src = function_name_src + location_function_comm->function_name_len;
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, function_name_src,
-			    location_function_comm->function_name_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, function_name_src, location_function_comm->function_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, binary_path_src,
-			    location_function_comm->binary_path_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, binary_path_src, location_function_comm->binary_path_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1292,14 +1260,14 @@ int lttng_userspace_probe_location_function_create_from_payload(
 	}
 
 	*location = lttng_userspace_probe_location_function_create_no_check(
-			binary_path, function_name, NULL, false);
+		binary_path, function_name, NULL, false);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_userspace_probe_location_function_set_binary_fd_handle(
-			*location, binary_fd_handle);
+	ret = lttng_userspace_probe_location_function_set_binary_fd_handle(*location,
+									   binary_fd_handle);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1313,10 +1281,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_tracepoint_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_userspace_probe_location **location)
+static int lttng_userspace_probe_location_tracepoint_create_from_payload(
+	struct lttng_payload_view *view, struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_tracepoint_comm *location_tracepoint_comm;
 	const char *probe_name_src, *provider_name_src, *binary_path_src;
@@ -1337,13 +1303,12 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 		goto end;
 	}
 
-	location_tracepoint_comm =
-			(typeof(location_tracepoint_comm)) view->buffer.data;
+	location_tracepoint_comm = (typeof(location_tracepoint_comm)) view->buffer.data;
 
 	expected_size = sizeof(*location_tracepoint_comm) +
-			location_tracepoint_comm->probe_name_len +
-			location_tracepoint_comm->provider_name_len +
-			location_tracepoint_comm->binary_path_len;
+		location_tracepoint_comm->probe_name_len +
+		location_tracepoint_comm->provider_name_len +
+		location_tracepoint_comm->binary_path_len;
 
 	if (view->buffer.size < expected_size) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1351,25 +1316,24 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	}
 
 	probe_name_src = view->buffer.data + sizeof(*location_tracepoint_comm);
-	provider_name_src = probe_name_src +
-			location_tracepoint_comm->probe_name_len;
-	binary_path_src = provider_name_src +
-			location_tracepoint_comm->provider_name_len;
+	provider_name_src = probe_name_src + location_tracepoint_comm->probe_name_len;
+	binary_path_src = provider_name_src + location_tracepoint_comm->provider_name_len;
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, probe_name_src,
-			    location_tracepoint_comm->probe_name_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, probe_name_src, location_tracepoint_comm->probe_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, provider_name_src,
-			    location_tracepoint_comm->provider_name_len)) {
+	if (!lttng_buffer_view_contains_string(&view->buffer,
+					       provider_name_src,
+					       location_tracepoint_comm->provider_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (!lttng_buffer_view_contains_string(&view->buffer, binary_path_src,
-			    location_tracepoint_comm->binary_path_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, binary_path_src, location_tracepoint_comm->binary_path_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1395,14 +1359,14 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	}
 
 	*location = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, provider_name, probe_name, NULL, false);
+		binary_path, provider_name, probe_name, NULL, false);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
-			*location, binary_fd_handle);
+	ret = lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(*location,
+									     binary_fd_handle);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1417,10 +1381,9 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_lookup_method_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_userspace_probe_location_lookup_method **lookup_method)
+static int lttng_userspace_probe_location_lookup_method_create_from_payload(
+	struct lttng_payload_view *view,
+	struct lttng_userspace_probe_location_lookup_method **lookup_method)
 {
 	int ret;
 	struct lttng_userspace_probe_location_lookup_method_comm *lookup_comm;
@@ -1435,15 +1398,13 @@ int lttng_userspace_probe_location_lookup_method_create_from_payload(
 	}
 
 	lookup_comm = (typeof(lookup_comm)) view->buffer.data;
-	type = (enum lttng_userspace_probe_location_lookup_method_type)
-			lookup_comm->type;
+	type = (enum lttng_userspace_probe_location_lookup_method_type) lookup_comm->type;
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
 		*lookup_method = NULL;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		*lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_elf_create();
+		*lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
 		if (!(*lookup_method)) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
@@ -1468,8 +1429,7 @@ end:
 }
 
 int lttng_userspace_probe_location_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_userspace_probe_location **location)
+	struct lttng_payload_view *view, struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	enum lttng_userspace_probe_location_type type;
@@ -1477,8 +1437,7 @@ int lttng_userspace_probe_location_create_from_payload(
 	int ret;
 	struct lttng_userspace_probe_location_comm *probe_location_comm;
 	struct lttng_payload_view probe_location_comm_view =
-			lttng_payload_view_from_view(
-					view, 0, sizeof(*probe_location_comm));
+		lttng_payload_view_from_view(view, 0, sizeof(*probe_location_comm));
 
 	LTTNG_ASSERT(view);
 	LTTNG_ASSERT(location);
@@ -1498,11 +1457,10 @@ int lttng_userspace_probe_location_create_from_payload(
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
 		struct lttng_payload_view location_view =
-				lttng_payload_view_from_view(
-						view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
-		ret = lttng_userspace_probe_location_function_create_from_payload(
-				&location_view, location);
+		ret = lttng_userspace_probe_location_function_create_from_payload(&location_view,
+										  location);
 		if (ret < 0) {
 			goto end;
 		}
@@ -1511,10 +1469,10 @@ int lttng_userspace_probe_location_create_from_payload(
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
 	{
 		struct lttng_payload_view location_view =
-				lttng_payload_view_from_view(view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
-		ret = lttng_userspace_probe_location_tracepoint_create_from_payload(
-				&location_view, location);
+		ret = lttng_userspace_probe_location_tracepoint_create_from_payload(&location_view,
+										    location);
 		if (ret < 0) {
 			goto end;
 		}
@@ -1533,11 +1491,10 @@ int lttng_userspace_probe_location_create_from_payload(
 
 	{
 		struct lttng_payload_view lookup_method_view =
-				lttng_payload_view_from_view(
-						view, consumed, -1);
+			lttng_payload_view_from_view(view, consumed, -1);
 
 		ret = lttng_userspace_probe_location_lookup_method_create_from_payload(
-				&lookup_method_view, &lookup_method);
+			&lookup_method_view, &lookup_method);
 	}
 	if (ret < 0) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1552,10 +1509,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_function_set_binary_fd_handle(
-		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd)
+static int lttng_userspace_probe_location_function_set_binary_fd_handle(
+	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd)
 {
 	int ret = 0;
 	struct lttng_userspace_probe_location_function *function_location;
@@ -1563,18 +1518,16 @@ int lttng_userspace_probe_location_function_set_binary_fd_handle(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	function_location = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_function::parent);
+	function_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	fd_handle_put(function_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
 	function_location->binary_fd_handle = binary_fd;
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
-		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd)
+static int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
+	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd)
 {
 	int ret = 0;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
@@ -1582,18 +1535,16 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
-	tracepoint_location = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_tracepoint::parent);
+	tracepoint_location = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	fd_handle_put(tracepoint_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
 	tracepoint_location->binary_fd_handle = binary_fd;
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_function_flatten(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer)
+static int lttng_userspace_probe_location_function_flatten(
+	const struct lttng_userspace_probe_location *location, struct lttng_dynamic_buffer *buffer)
 {
 	struct lttng_userspace_probe_location_lookup_method_elf flat_lookup_method;
 	struct lttng_userspace_probe_location_function *probe_function;
@@ -1606,19 +1557,19 @@ int lttng_userspace_probe_location_function_flatten(
 
 	LTTNG_ASSERT(location);
 
-	if (location->lookup_method && location->lookup_method->type !=
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF) {
+	if (location->lookup_method &&
+	    location->lookup_method->type !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	probe_function = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_function::parent);
+	probe_function = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_function::parent);
 	LTTNG_ASSERT(probe_function->function_name);
 	LTTNG_ASSERT(probe_function->binary_path);
 
-	storage_needed +=
-			sizeof(struct lttng_userspace_probe_location_function);
+	storage_needed += sizeof(struct lttng_userspace_probe_location_function);
 	function_name_len = strlen(probe_function->function_name) + 1;
 	binary_path_len = strlen(probe_function->binary_path) + 1;
 	storage_needed += function_name_len + binary_path_len;
@@ -1643,8 +1594,7 @@ int lttng_userspace_probe_location_function_flatten(
 	}
 
 	if (lttng_dynamic_buffer_get_capacity_left(buffer) < storage_needed) {
-		ret = lttng_dynamic_buffer_set_capacity(buffer,
-				buffer->size + storage_needed);
+		ret = lttng_dynamic_buffer_set_capacity(buffer, buffer->size + storage_needed);
 		if (ret) {
 			goto end;
 		}
@@ -1660,9 +1610,9 @@ int lttng_userspace_probe_location_function_flatten(
 	 */
 	if (location->lookup_method) {
 		flat_probe.parent.lookup_method =
-				(struct lttng_userspace_probe_location_lookup_method *)
-					(flat_probe_start + sizeof(flat_probe) +
-					function_name_len + binary_path_len + padding_needed);
+			(struct lttng_userspace_probe_location_lookup_method
+				 *) (flat_probe_start + sizeof(flat_probe) + function_name_len +
+				     binary_path_len + padding_needed);
 	} else {
 		flat_probe.parent.lookup_method = NULL;
 	}
@@ -1670,26 +1620,22 @@ int lttng_userspace_probe_location_function_flatten(
 	flat_probe.function_name = flat_probe_start + sizeof(flat_probe);
 	flat_probe.binary_path = flat_probe.function_name + function_name_len;
 	flat_probe.binary_fd_handle = NULL;
-	ret = lttng_dynamic_buffer_append(buffer, &flat_probe,
-			sizeof(flat_probe));
+	ret = lttng_dynamic_buffer_append(buffer, &flat_probe, sizeof(flat_probe));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(buffer,
-			probe_function->function_name, function_name_len);
+	ret = lttng_dynamic_buffer_append(buffer, probe_function->function_name, function_name_len);
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buffer,
-			probe_function->binary_path, binary_path_len);
+	ret = lttng_dynamic_buffer_append(buffer, probe_function->binary_path, binary_path_len);
 	if (ret) {
 		goto end;
 	}
 
 	/* Insert padding before the lookup method. */
-	ret = lttng_dynamic_buffer_set_size(buffer,
-			buffer->size + padding_needed);
+	ret = lttng_dynamic_buffer_set_size(buffer, buffer->size + padding_needed);
 	if (ret) {
 		goto end;
 	}
@@ -1702,9 +1648,8 @@ int lttng_userspace_probe_location_function_flatten(
 
 	memset(&flat_lookup_method, 0, sizeof(flat_lookup_method));
 	flat_lookup_method.parent.type =
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF;
-	ret = lttng_dynamic_buffer_append(buffer,
-			&flat_lookup_method, sizeof(flat_lookup_method));
+		LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF;
+	ret = lttng_dynamic_buffer_append(buffer, &flat_lookup_method, sizeof(flat_lookup_method));
 	if (ret) {
 		goto end;
 	}
@@ -1713,10 +1658,8 @@ end:
 	return ret;
 }
 
-static
-int lttng_userspace_probe_location_tracepoint_flatten(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer)
+static int lttng_userspace_probe_location_tracepoint_flatten(
+	const struct lttng_userspace_probe_location *location, struct lttng_dynamic_buffer *buffer)
 {
 	struct lttng_userspace_probe_location_lookup_method_sdt flat_lookup_method;
 	struct lttng_userspace_probe_location_tracepoint *probe_tracepoint;
@@ -1730,13 +1673,14 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	LTTNG_ASSERT(location);
 
 	/* Only SDT tracepoints are supported at the moment */
-	if (location->lookup_method && location->lookup_method->type !=
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT) {
+	if (location->lookup_method &&
+	    location->lookup_method->type !=
+		    LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-	probe_tracepoint = lttng::utils::container_of(location,
-			&lttng_userspace_probe_location_tracepoint::parent);
+	probe_tracepoint = lttng::utils::container_of(
+		location, &lttng_userspace_probe_location_tracepoint::parent);
 	LTTNG_ASSERT(probe_tracepoint->probe_name);
 	LTTNG_ASSERT(probe_tracepoint->provider_name);
 	LTTNG_ASSERT(probe_tracepoint->binary_path);
@@ -1761,8 +1705,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 
 	if (location->lookup_method) {
 		/* NOTE: elf look-up method is assumed here. */
-		storage_needed +=
-			sizeof(struct lttng_userspace_probe_location_lookup_method_elf);
+		storage_needed += sizeof(struct lttng_userspace_probe_location_lookup_method_elf);
 	}
 
 	/*
@@ -1774,8 +1717,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	}
 
 	if (lttng_dynamic_buffer_get_capacity_left(buffer) < storage_needed) {
-		ret = lttng_dynamic_buffer_set_capacity(buffer,
-				buffer->size + storage_needed);
+		ret = lttng_dynamic_buffer_set_capacity(buffer, buffer->size + storage_needed);
 		if (ret) {
 			goto end;
 		}
@@ -1792,10 +1734,9 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	 */
 	if (location->lookup_method) {
 		flat_probe.parent.lookup_method =
-				(struct lttng_userspace_probe_location_lookup_method *)
-					(flat_probe_start + sizeof(flat_probe) +
-					probe_name_len + provider_name_len +
-					binary_path_len + padding_needed);
+			(struct lttng_userspace_probe_location_lookup_method
+				 *) (flat_probe_start + sizeof(flat_probe) + probe_name_len +
+				     provider_name_len + binary_path_len + padding_needed);
 	} else {
 		flat_probe.parent.lookup_method = NULL;
 	}
@@ -1810,18 +1751,16 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	}
 
 	/* Append all the fields to the buffer */
-	ret = lttng_dynamic_buffer_append(buffer,
-			probe_tracepoint->probe_name, probe_name_len);
+	ret = lttng_dynamic_buffer_append(buffer, probe_tracepoint->probe_name, probe_name_len);
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buffer,
-			probe_tracepoint->provider_name, provider_name_len);
+	ret = lttng_dynamic_buffer_append(
+		buffer, probe_tracepoint->provider_name, provider_name_len);
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buffer,
-			probe_tracepoint->binary_path, binary_path_len);
+	ret = lttng_dynamic_buffer_append(buffer, probe_tracepoint->binary_path, binary_path_len);
 	if (ret) {
 		goto end;
 	}
@@ -1841,9 +1780,8 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	memset(&flat_lookup_method, 0, sizeof(flat_lookup_method));
 
 	flat_lookup_method.parent.type =
-			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT;
-	ret = lttng_dynamic_buffer_append(buffer,
-			&flat_lookup_method, sizeof(flat_lookup_method));
+		LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT;
+	ret = lttng_dynamic_buffer_append(buffer, &flat_lookup_method, sizeof(flat_lookup_method));
 	if (ret) {
 		goto end;
 	}
@@ -1852,9 +1790,8 @@ end:
 	return ret;
 }
 
-int lttng_userspace_probe_location_flatten(
-		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer)
+int lttng_userspace_probe_location_flatten(const struct lttng_userspace_probe_location *location,
+					   struct lttng_dynamic_buffer *buffer)
 {
 	int ret;
 	if (!location) {
@@ -1879,8 +1816,8 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
-		const struct lttng_userspace_probe_location *location)
+struct lttng_userspace_probe_location *
+lttng_userspace_probe_location_copy(const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_userspace_probe_location *new_location = NULL;
 	enum lttng_userspace_probe_location_type type;
@@ -1892,15 +1829,13 @@ struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
 	type = lttng_userspace_probe_location_get_type(location);
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
-		new_location =
-			lttng_userspace_probe_location_function_copy(location);
+		new_location = lttng_userspace_probe_location_function_copy(location);
 		if (!new_location) {
 			goto err;
 		}
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
-		new_location =
-			lttng_userspace_probe_location_tracepoint_copy(location);
+		new_location = lttng_userspace_probe_location_tracepoint_copy(location);
 		if (!new_location) {
 			goto err;
 		}
@@ -1914,8 +1849,8 @@ err:
 }
 
 bool lttng_userspace_probe_location_lookup_method_is_equal(
-		const struct lttng_userspace_probe_location_lookup_method *a,
-		const struct lttng_userspace_probe_location_lookup_method *b)
+	const struct lttng_userspace_probe_location_lookup_method *a,
+	const struct lttng_userspace_probe_location_lookup_method *b)
 {
 	bool is_equal = false;
 
@@ -1937,9 +1872,8 @@ end:
 	return is_equal;
 }
 
-bool lttng_userspace_probe_location_is_equal(
-		const struct lttng_userspace_probe_location *a,
-		const struct lttng_userspace_probe_location *b)
+bool lttng_userspace_probe_location_is_equal(const struct lttng_userspace_probe_location *a,
+					     const struct lttng_userspace_probe_location *b)
 {
 	bool is_equal = false;
 
@@ -1952,8 +1886,8 @@ bool lttng_userspace_probe_location_is_equal(
 		goto end;
 	}
 
-	if (!lttng_userspace_probe_location_lookup_method_is_equal(
-			    a->lookup_method, b->lookup_method)) {
+	if (!lttng_userspace_probe_location_lookup_method_is_equal(a->lookup_method,
+								   b->lookup_method)) {
 		goto end;
 	}
 
@@ -1966,19 +1900,18 @@ end:
 	return is_equal;
 }
 
-unsigned long lttng_userspace_probe_location_hash(
-		const struct lttng_userspace_probe_location *location)
+unsigned long
+lttng_userspace_probe_location_hash(const struct lttng_userspace_probe_location *location)
 {
 	return location->hash(location);
 }
 
-enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct mi_writer *writer)
+enum lttng_error_code
+lttng_userspace_probe_location_mi_serialize(const struct lttng_userspace_probe_location *location,
+					    struct mi_writer *writer)
 {
-	typedef enum lttng_error_code (*mi_fp)(
-			const struct lttng_userspace_probe_location *,
-			struct mi_writer *);
+	typedef enum lttng_error_code (*mi_fp)(const struct lttng_userspace_probe_location *,
+					       struct mi_writer *);
 
 	int ret;
 	enum lttng_error_code ret_code;
@@ -2000,8 +1933,7 @@ enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
 	}
 
 	/* Open userspace probe location element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_userspace_probe_location);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_userspace_probe_location);
 	if (ret) {
 		goto mi_error;
 	}
@@ -2028,9 +1960,7 @@ end:
 }
 
 enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
-		const struct lttng_userspace_probe_location_lookup_method
-				*method,
-		struct mi_writer *writer)
+	const struct lttng_userspace_probe_location_lookup_method *method, struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -2042,15 +1972,15 @@ enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
 	switch (lttng_userspace_probe_location_lookup_method_get_type(method)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
 		type_element_str =
-				mi_lttng_element_userspace_probe_location_lookup_method_function_default;
+			mi_lttng_element_userspace_probe_location_lookup_method_function_default;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 		type_element_str =
-				mi_lttng_element_userspace_probe_location_lookup_method_function_elf;
+			mi_lttng_element_userspace_probe_location_lookup_method_function_elf;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 		type_element_str =
-				mi_lttng_element_userspace_probe_location_lookup_method_tracepoint_sdt;
+			mi_lttng_element_userspace_probe_location_lookup_method_tracepoint_sdt;
 		break;
 	default:
 		abort();
@@ -2059,7 +1989,7 @@ enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
 
 	/* Open userspace probe location lookup method element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_userspace_probe_location_lookup_method);
+					   mi_lttng_element_userspace_probe_location_lookup_method);
 	if (ret) {
 		goto mi_error;
 	}
@@ -2086,63 +2016,57 @@ end:
 }
 
 static enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct mi_writer *writer)
+	const struct lttng_userspace_probe_location *location, struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
 	const char *probe_name = NULL;
 	const char *provider_name = NULL;
 	const char *binary_path = NULL;
-	const struct lttng_userspace_probe_location_lookup_method
-			*lookup_method = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);
 
-	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
-			location);
-	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
-			location);
-	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(
-			location);
-	lookup_method = lttng_userspace_probe_location_tracepoint_get_lookup_method(
-			location);
+	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
+	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
+	lookup_method = lttng_userspace_probe_location_tracepoint_get_lookup_method(location);
 
 	/* Open userspace probe location tracepoint element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_userspace_probe_location_tracepoint);
+					   mi_lttng_element_userspace_probe_location_tracepoint);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Probe name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_tracepoint_probe_name,
-			probe_name);
+	ret = mi_lttng_writer_write_element_string(
+		writer,
+		mi_lttng_element_userspace_probe_location_tracepoint_probe_name,
+		probe_name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Provider name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_tracepoint_provider_name,
-			provider_name);
+	ret = mi_lttng_writer_write_element_string(
+		writer,
+		mi_lttng_element_userspace_probe_location_tracepoint_provider_name,
+		provider_name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Binary path. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_binary_path,
-			binary_path);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_userspace_probe_location_binary_path, binary_path);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* The lookup method. */
-	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(
-			lookup_method, writer);
+	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(lookup_method, writer);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
@@ -2163,36 +2087,29 @@ end:
 }
 
 static enum lttng_error_code lttng_userspace_probe_location_function_mi_serialize(
-		const struct lttng_userspace_probe_location *location,
-		struct mi_writer *writer)
+	const struct lttng_userspace_probe_location *location, struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
 	const char *function_name = NULL;
 	const char *binary_path = NULL;
 	const char *instrumentation_type_str = NULL;
-	enum lttng_userspace_probe_location_function_instrumentation_type
-			instrumentation_type;
-	const struct lttng_userspace_probe_location_lookup_method
-			*lookup_method = NULL;
+	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 
 	LTTNG_ASSERT(location);
 	LTTNG_ASSERT(writer);
 
-	function_name = lttng_userspace_probe_location_function_get_function_name(
-			location);
-	binary_path = lttng_userspace_probe_location_function_get_binary_path(
-			location);
+	function_name = lttng_userspace_probe_location_function_get_function_name(location);
+	binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
 	instrumentation_type =
-			lttng_userspace_probe_location_function_get_instrumentation_type(
-					location);
-	lookup_method = lttng_userspace_probe_location_function_get_lookup_method(
-			location);
+		lttng_userspace_probe_location_function_get_instrumentation_type(location);
+	lookup_method = lttng_userspace_probe_location_function_get_lookup_method(location);
 
 	switch (instrumentation_type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY:
 		instrumentation_type_str =
-				mi_lttng_userspace_probe_location_function_instrumentation_type_entry;
+			mi_lttng_userspace_probe_location_function_instrumentation_type_entry;
 		break;
 	default:
 		abort();
@@ -2201,38 +2118,36 @@ static enum lttng_error_code lttng_userspace_probe_location_function_mi_serializ
 
 	/* Open userspace probe location function element. */
 	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_userspace_probe_location_function);
+					   mi_lttng_element_userspace_probe_location_function);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Function name. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_function_name,
-			function_name);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_userspace_probe_location_function_name, function_name);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Binary path. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_binary_path,
-			binary_path);
+	ret = mi_lttng_writer_write_element_string(
+		writer, mi_lttng_element_userspace_probe_location_binary_path, binary_path);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Instrumentation type. */
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_userspace_probe_location_function_instrumentation_type,
-			instrumentation_type_str);
+	ret = mi_lttng_writer_write_element_string(
+		writer,
+		mi_lttng_element_userspace_probe_location_function_instrumentation_type,
+		instrumentation_type_str);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* The lookup method. */
-	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(
-			lookup_method, writer);
+	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(lookup_method, writer);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}

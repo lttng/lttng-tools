@@ -24,17 +24,17 @@
  *     node;b;
  *     node;c;
  */
+#include <common/defaults.hpp>
+
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <libxml/tree.h>
-#include <libxml/parser.h>
-#include <libxml/xpath.h>
-#include <libxml/xpathInternals.h>
-#include <common/defaults.hpp>
 
 #if defined(LIBXML_XPATH_ENABLED)
 
@@ -65,8 +65,9 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 		LTTNG_ASSERT(nodes->nodeTab[i]);
 
 		if (nodes->nodeTab[i]->type == XML_NAMESPACE_DECL) {
-			fprintf(stderr, "ERR:%s\n",
-					"This executable does not support xml namespacing\n");
+			fprintf(stderr,
+				"ERR:%s\n",
+				"This executable does not support xml namespacing\n");
 			ret = -1;
 			goto end;
 		} else if (nodes->nodeTab[i]->type == XML_ELEMENT_NODE) {
@@ -74,16 +75,17 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 
 			if (xmlChildElementCount(cur) == 0) {
 				if (xmlNodeIsText(cur->children)) {
-					node_child_value_string = xmlNodeListGetString(doc,
-							cur->children, 1);
+					node_child_value_string =
+						xmlNodeListGetString(doc, cur->children, 1);
 					if (node_exist) {
 						result = true;
 					} else if (opt_verbose) {
-						fprintf(output, "%s;%s;\n", cur->name,
-								node_child_value_string);
+						fprintf(output,
+							"%s;%s;\n",
+							cur->name,
+							node_child_value_string);
 					} else {
-						fprintf(output, "%s\n",
-								node_child_value_string);
+						fprintf(output, "%s\n", node_child_value_string);
 					}
 					xmlFree(node_child_value_string);
 				} else {
@@ -91,8 +93,9 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 					if (node_exist) {
 						result = true;
 					} else {
-						fprintf(stderr, "ERR:%s\n",
-								"Xpath expression return non-final xml element");
+						fprintf(stderr,
+							"ERR:%s\n",
+							"Xpath expression return non-final xml element");
 						ret = -1;
 						goto end;
 					}
@@ -102,8 +105,9 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 					result = true;
 				} else {
 					/* We don't want to print non-final element */
-					fprintf(stderr, "ERR:%s\n",
-							"Xpath expression return non-final xml element");
+					fprintf(stderr,
+						"ERR:%s\n",
+						"Xpath expression return non-final xml element");
 					ret = -1;
 					goto end;
 				}
@@ -255,7 +259,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	/* Do the main job */
-	if (extract_xpath(argv[optind], (xmlChar *)argv[optind+1])) {
+	if (extract_xpath(argv[optind], (xmlChar *) argv[optind + 1])) {
 		return -1;
 	}
 

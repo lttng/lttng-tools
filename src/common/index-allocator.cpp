@@ -5,15 +5,13 @@
  *
  */
 
-#include <inttypes.h>
+#include "error.hpp"
+#include "index-allocator.hpp"
+#include "macros.hpp"
 
+#include <inttypes.h>
 #include <urcu.h>
 #include <urcu/list.h>
-
-#include "macros.hpp"
-#include "error.hpp"
-
-#include "index-allocator.hpp"
 
 struct lttng_index_allocator {
 	struct cds_list_head unused_list;
@@ -29,8 +27,7 @@ struct lttng_index {
 };
 } /* namespace */
 
-struct lttng_index_allocator *lttng_index_allocator_create(
-		uint64_t index_count)
+struct lttng_index_allocator *lttng_index_allocator_create(uint64_t index_count)
 {
 	struct lttng_index_allocator *allocator = NULL;
 
@@ -55,12 +52,10 @@ uint64_t lttng_index_allocator_get_index_count(struct lttng_index_allocator *all
 	return allocator->nb_allocated_indexes;
 }
 
-enum lttng_index_allocator_status lttng_index_allocator_alloc(
-		struct lttng_index_allocator *allocator,
-		uint64_t *allocated_index)
+enum lttng_index_allocator_status
+lttng_index_allocator_alloc(struct lttng_index_allocator *allocator, uint64_t *allocated_index)
 {
-	enum lttng_index_allocator_status status =
-			LTTNG_INDEX_ALLOCATOR_STATUS_OK;
+	enum lttng_index_allocator_status status = LTTNG_INDEX_ALLOCATOR_STATUS_OK;
 
 	if (cds_list_empty(&allocator->unused_list)) {
 		if (allocator->position >= allocator->size) {
@@ -73,8 +68,7 @@ enum lttng_index_allocator_status lttng_index_allocator_alloc(
 	} else {
 		struct lttng_index *index;
 
-		index = cds_list_first_entry(&allocator->unused_list,
-				typeof(*index), head);
+		index = cds_list_first_entry(&allocator->unused_list, typeof(*index), head);
 		cds_list_del(&index->head);
 		*allocated_index = index->index;
 		free(index);
@@ -85,12 +79,11 @@ end:
 	return status;
 }
 
-enum lttng_index_allocator_status lttng_index_allocator_release(
-		struct lttng_index_allocator *allocator, uint64_t idx)
+enum lttng_index_allocator_status
+lttng_index_allocator_release(struct lttng_index_allocator *allocator, uint64_t idx)
 {
 	struct lttng_index *index = NULL;
-	enum lttng_index_allocator_status status =
-			LTTNG_INDEX_ALLOCATOR_STATUS_OK;
+	enum lttng_index_allocator_status status = LTTNG_INDEX_ALLOCATOR_STATUS_OK;
 
 	LTTNG_ASSERT(idx < allocator->size);
 
@@ -118,13 +111,11 @@ void lttng_index_allocator_destroy(struct lttng_index_allocator *allocator)
 	}
 
 	if (lttng_index_allocator_get_index_count(allocator) > 0) {
-		WARN("Destroying index allocator with %" PRIu64
-				" slot indexes still in use",
-				lttng_index_allocator_get_index_count(allocator));
+		WARN("Destroying index allocator with %" PRIu64 " slot indexes still in use",
+		     lttng_index_allocator_get_index_count(allocator));
 	}
 
-	cds_list_for_each_entry_safe(index, tmp_index,
-			&allocator->unused_list, head) {
+	cds_list_for_each_entry_safe (index, tmp_index, &allocator->unused_list, head) {
 		cds_list_del(&index->head);
 		free(index);
 	}

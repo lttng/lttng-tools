@@ -6,17 +6,17 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <type_traits>
+#include "../macros.hpp"
+#include "string-utils.hpp"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
-
-#include "string-utils.hpp"
-#include "../macros.hpp"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <type_traits>
 
 enum star_glob_pattern_type_flags {
 	STAR_GLOB_PATTERN_TYPE_FLAG_NONE = 0,
@@ -24,13 +24,11 @@ enum star_glob_pattern_type_flags {
 	STAR_GLOB_PATTERN_TYPE_FLAG_END_ONLY = 2,
 };
 
-static
-star_glob_pattern_type_flags &operator|=(star_glob_pattern_type_flags &l,
-		star_glob_pattern_type_flags r)
+static star_glob_pattern_type_flags& operator|=(star_glob_pattern_type_flags& l,
+						star_glob_pattern_type_flags r)
 {
 	using T = std::underlying_type<star_glob_pattern_type_flags>::type;
-	l = static_cast<star_glob_pattern_type_flags> (
-		static_cast<T> (l) | static_cast<T> (r));
+	l = static_cast<star_glob_pattern_type_flags>(static_cast<T>(l) | static_cast<T>(r));
 	return l;
 }
 
@@ -81,11 +79,9 @@ end:
 	*np = '\0';
 }
 
-static
-enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *pattern)
+static enum star_glob_pattern_type_flags strutils_test_glob_pattern(const char *pattern)
 {
-	enum star_glob_pattern_type_flags ret =
-		STAR_GLOB_PATTERN_TYPE_FLAG_NONE;
+	enum star_glob_pattern_type_flags ret = STAR_GLOB_PATTERN_TYPE_FLAG_NONE;
 	const char *p;
 
 	LTTNG_ASSERT(pattern);
@@ -122,8 +118,7 @@ end:
  */
 bool strutils_is_star_glob_pattern(const char *pattern)
 {
-	return strutils_test_glob_pattern(pattern) &
-		STAR_GLOB_PATTERN_TYPE_FLAG_PATTERN;
+	return strutils_test_glob_pattern(pattern) & STAR_GLOB_PATTERN_TYPE_FLAG_PATTERN;
 }
 
 /*
@@ -132,8 +127,7 @@ bool strutils_is_star_glob_pattern(const char *pattern)
  */
 bool strutils_is_star_at_the_end_only_glob_pattern(const char *pattern)
 {
-	return strutils_test_glob_pattern(pattern) &
-		STAR_GLOB_PATTERN_TYPE_FLAG_END_ONLY;
+	return strutils_test_glob_pattern(pattern) & STAR_GLOB_PATTERN_TYPE_FLAG_END_ONLY;
 }
 
 /*
@@ -251,9 +245,9 @@ void strutils_free_null_terminated_array_of_strings(char **array)
  * Returns -1 if there's an error.
  */
 int strutils_split(const char *input,
-		char delim,
-		bool escape_delim,
-		struct lttng_dynamic_pointer_array *out_strings)
+		   char delim,
+		   bool escape_delim,
+		   struct lttng_dynamic_pointer_array *out_strings)
 {
 	int ret;
 	size_t at;
@@ -305,8 +299,7 @@ int strutils_split(const char *input,
 			goto error;
 		}
 
-		ret = lttng_dynamic_pointer_array_add_pointer(
-				out_strings, substring);
+		ret = lttng_dynamic_pointer_array_add_pointer(out_strings, substring);
 		if (ret) {
 			free(substring);
 			goto error;
@@ -364,9 +357,9 @@ end:
 	return ret;
 }
 
-size_t strutils_array_of_strings_len(char * const *array)
+size_t strutils_array_of_strings_len(char *const *array)
 {
-	char * const *item;
+	char *const *item;
 	size_t count = 0;
 
 	LTTNG_ASSERT(array);
@@ -428,7 +421,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 
 	/* Format new string in-place. */
 	va_start(args, fmt);
-	ret = vsprintf(&new_str[oldlen], fmt, args); 
+	ret = vsprintf(&new_str[oldlen], fmt, args);
 	va_end(args);
 
 	if (ret == -1) {

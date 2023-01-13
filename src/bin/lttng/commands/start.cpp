@@ -6,6 +6,11 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+
+#include <common/mi-lttng.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,18 +19,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-
-
 static struct mi_writer *writer;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-start.1.h>
-;
+	;
 #endif
 
 enum {
@@ -35,9 +34,9 @@ enum {
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",      'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0 },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 static int mi_print_session(char *session_name, int enabled)
@@ -51,14 +50,12 @@ static int mi_print_session(char *session_name, int enabled)
 	}
 
 	/* Print session name element */
-	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
-			session_name);
+	ret = mi_lttng_writer_write_element_string(writer, config_element_name, session_name);
 	if (ret) {
 		goto end;
 	}
 
-	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled,
-			enabled);
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled, enabled);
 	if (ret) {
 		goto end;
 	}
@@ -173,16 +170,14 @@ int cmd_start(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_start);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_start);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -192,8 +187,7 @@ int cmd_start(int argc, const char **argv)
 		 * Open sessions element
 		 * For validation purpose
 		 */
-		ret = mi_lttng_writer_open_element(writer,
-			config_element_sessions);
+		ret = mi_lttng_writer_open_element(writer, config_element_sessions);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -215,8 +209,8 @@ int cmd_start(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

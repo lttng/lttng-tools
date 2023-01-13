@@ -14,16 +14,16 @@
  */
 
 #define _LGPL_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/wait.h>
+#include "kern-modules.hpp"
+#include "lttng-sessiond.hpp"
+#include "modprobe.hpp"
 
 #include <common/common.hpp>
 #include <common/utils.hpp>
 
-#include "modprobe.hpp"
-#include "kern-modules.hpp"
-#include "lttng-sessiond.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {
@@ -299,13 +299,13 @@ static int probes_capacity;
 /**
  * @brief Logging function for libkmod integration.
  */
-static ATTR_FORMAT_PRINTF(6, 0)
-void log_kmod(void *data __attribute__((unused)),
-		int priority __attribute__((unused)),
-		const char *file __attribute__((unused)),
-		int line __attribute__((unused)),
-		const char *fn __attribute__((unused)),
-		const char *format, va_list args)
+static ATTR_FORMAT_PRINTF(6, 0) void log_kmod(void *data __attribute__((unused)),
+					      int priority __attribute__((unused)),
+					      const char *file __attribute__((unused)),
+					      int line __attribute__((unused)),
+					      const char *fn __attribute__((unused)),
+					      const char *format,
+					      va_list args)
 {
 	char *str;
 
@@ -368,8 +368,7 @@ error:
  * @returns		\c 0 on success
  * 			\c < 0 on error
  */
-static int modprobe_lttng(struct kern_modules_param *modules,
-		int entries)
+static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	struct kmod_ctx *ctx;
@@ -388,19 +387,17 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 			goto error;
 		}
 
-		ret = kmod_module_probe_insert_module(mod, 0,
-				NULL, NULL, NULL, NULL);
+		ret = kmod_module_probe_insert_module(mod, 0, NULL, NULL, NULL, NULL);
 		if (ret == -EEXIST) {
 			DBG("Module %s is already loaded", modules[i].name);
 			ret = 0;
 		} else if (ret < 0) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
-				ERR("Unable to load required module %s",
-						modules[i].name);
+				ERR("Unable to load required module %s", modules[i].name);
 				goto error;
 			} else {
 				DBG("Unable to load optional module %s; continuing",
-						modules[i].name);
+				    modules[i].name);
 				ret = 0;
 			}
 		} else {
@@ -430,7 +427,8 @@ error:
  * @returns		\c 0 on success
  * 			\c < 0 on error
  */
-static int rmmod_recurse(struct kmod_module *mod) {
+static int rmmod_recurse(struct kmod_module *mod)
+{
 	int ret = 0;
 	struct kmod_list *deps, *itr;
 
@@ -443,11 +441,11 @@ static int rmmod_recurse(struct kmod_module *mod) {
 
 	deps = kmod_module_get_dependencies(mod);
 	if (deps != NULL) {
-		kmod_list_foreach(itr, deps) {
+		kmod_list_foreach(itr, deps)
+		{
 			struct kmod_module *dep = kmod_module_get_module(itr);
 			if (kmod_module_get_refcnt(dep) == 0) {
-				DBG("Recursive remove module %s",
-						kmod_module_get_name(dep));
+				DBG("Recursive remove module %s", kmod_module_get_name(dep));
 				rmmod_recurse(dep);
 			}
 			kmod_module_unref(dep);
@@ -465,8 +463,7 @@ static int rmmod_recurse(struct kmod_module *mod) {
  * @param entries	Number of modules in the list
  *
  */
-static void modprobe_remove_lttng(const struct kern_modules_param *modules,
-		int entries)
+static void modprobe_remove_lttng(const struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	struct kmod_ctx *ctx;
@@ -492,11 +489,11 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		ret = rmmod_recurse(mod);
 		if (ret == -EEXIST) {
 			DBG("Module %s is not in kernel.", modules[i].name);
-		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED && ret < 0) {
+		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED &&
+			   ret < 0) {
 			ERR("Unable to remove module %s", modules[i].name);
 		} else {
-			DBG("Modprobe removal successful %s",
-				modules[i].name);
+			DBG("Modprobe removal successful %s", modules[i].name);
 		}
 
 		kmod_module_unref(mod);
@@ -510,17 +507,20 @@ error:
 
 #else /* HAVE_KMOD */
 
-static int modprobe_lttng(struct kern_modules_param *modules,
-		int entries)
+static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
 
 	for (i = 0; i < entries; i++) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe %s%s",
-				modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED ? "" : "-q ",
-				modules[i].name);
+		ret = snprintf(modprobe,
+			       sizeof(modprobe),
+			       "/sbin/modprobe %s%s",
+			       modules[i].load_policy ==
+					       KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED ?
+				       "" :
+				       "-q ",
+			       modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe");
 			goto error;
@@ -530,21 +530,20 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 		if (ret == -1) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to launch modprobe for required module %s",
-						modules[i].name);
+				    modules[i].name);
 				goto error;
 			} else {
 				DBG("Unable to launch modprobe for optional module %s; continuing",
-						modules[i].name);
+				    modules[i].name);
 				ret = 0;
 			}
 		} else if (WEXITSTATUS(ret) != 0) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
-				ERR("Unable to load required module %s",
-						modules[i].name);
+				ERR("Unable to load required module %s", modules[i].name);
 				goto error;
 			} else {
 				DBG("Unable to load optional module %s; continuing",
-						modules[i].name);
+				    modules[i].name);
 				ret = 0;
 			}
 		} else {
@@ -557,8 +556,7 @@ error:
 	return ret;
 }
 
-static void modprobe_remove_lttng(const struct kern_modules_param *modules,
-		int entries)
+static void modprobe_remove_lttng(const struct kern_modules_param *modules, int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -567,9 +565,8 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		if (!modules[i].loaded) {
 			continue;
 		}
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe -r -q %s",
-				modules[i].name);
+		ret = snprintf(
+			modprobe, sizeof(modprobe), "/sbin/modprobe -r -q %s", modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe -r");
 			return;
@@ -579,18 +576,16 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		if (ret == -1) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to launch modprobe -r for required module %s",
-						modules[i].name);
+				    modules[i].name);
 			} else {
 				DBG("Unable to launch modprobe -r for optional module %s",
-						modules[i].name);
+				    modules[i].name);
 			}
 		} else if (WEXITSTATUS(ret) != 0) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
-				ERR("Unable to remove required module %s",
-						modules[i].name);
+				ERR("Unable to remove required module %s", modules[i].name);
 			} else {
-				DBG("Unable to remove optional module %s",
-						modules[i].name);
+				DBG("Unable to remove optional module %s", modules[i].name);
 			}
 		} else {
 			DBG("Modprobe removal successful %s", modules[i].name);
@@ -605,8 +600,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
  */
 void modprobe_remove_lttng_control(void)
 {
-	modprobe_remove_lttng(kern_modules_control_core,
-			ARRAY_SIZE(kern_modules_control_core));
+	modprobe_remove_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
 
 static void free_probes(void)
@@ -651,8 +645,7 @@ void modprobe_remove_lttng_all(void)
  */
 int modprobe_lttng_control(void)
 {
-	return modprobe_lttng(kern_modules_control_core,
-			ARRAY_SIZE(kern_modules_control_core));
+	return modprobe_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
 
 /**
@@ -801,7 +794,7 @@ int modprobe_lttng_data(void)
 		nr_probes = probes_capacity = def_len;
 
 		for (i = 0; i < def_len; ++i) {
-			char* name = strdup(kern_modules_probes_default[i].name);
+			char *name = strdup(kern_modules_probes_default[i].name);
 
 			if (!name) {
 				PERROR("strdup probe item");

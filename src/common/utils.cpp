@@ -7,6 +7,22 @@
  */
 
 #define _LGPL_SOURCE
+#include "defaults.hpp"
+#include "time.hpp"
+#include "utils.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/directory-handle.hpp>
+#include <common/compat/dirent.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/string.hpp>
+#include <common/dynamic-buffer.hpp>
+#include <common/readwrite.hpp>
+#include <common/runas.hpp>
+#include <common/string-utils/format.hpp>
+
+#include <lttng/constant.h>
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -19,27 +35,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/common.hpp>
-#include <common/compat/directory-handle.hpp>
-#include <common/compat/dirent.hpp>
-#include <common/compat/getenv.hpp>
-#include <common/compat/string.hpp>
-#include <common/dynamic-buffer.hpp>
-#include <common/readwrite.hpp>
-#include <common/runas.hpp>
-#include <common/string-utils/format.hpp>
-#include <lttng/constant.h>
-
-#include "defaults.hpp"
-#include "time.hpp"
-#include "utils.hpp"
-
-#define PROC_MEMINFO_PATH               "/proc/meminfo"
-#define PROC_MEMINFO_MEMAVAILABLE_LINE  "MemAvailable:"
-#define PROC_MEMINFO_MEMTOTAL_LINE      "MemTotal:"
+#define PROC_MEMINFO_PATH	       "/proc/meminfo"
+#define PROC_MEMINFO_MEMAVAILABLE_LINE "MemAvailable:"
+#define PROC_MEMINFO_MEMTOTAL_LINE     "MemTotal:"
 
 /* The length of the longest field of `/proc/meminfo`. */
-#define PROC_MEMINFO_FIELD_MAX_NAME_LEN	20
+#define PROC_MEMINFO_FIELD_MAX_NAME_LEN 20
 
 #if (PROC_MEMINFO_FIELD_MAX_NAME_LEN == 20)
 #define MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "19"
@@ -47,7 +48,7 @@
 #error MAX_NAME_LEN_SCANF_IS_A_BROKEN_API must be updated to match (PROC_MEMINFO_FIELD_MAX_NAME_LEN - 1)
 #endif
 
-#define FALLBACK_USER_BUFLEN 16384
+#define FALLBACK_USER_BUFLEN  16384
 #define FALLBACK_GROUP_BUFLEN 16384
 
 /*
@@ -217,7 +218,7 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 
 	LTTNG_ASSERT(filepath);
 
-	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR |S_IWUSR | S_IRGRP | S_IROTH);
+	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0) {
 		PERROR("open file %s", filepath);
 		ret = -1;
@@ -229,7 +230,8 @@ int utils_create_pid_file(pid_t pid, const char *filepath)
 		PERROR("fdopen file %s", filepath);
 		ret = -1;
 		if (close(fd)) {
-			PERROR("Failed to close `%s` file descriptor while handling fdopen error", filepath);
+			PERROR("Failed to close `%s` file descriptor while handling fdopen error",
+			       filepath);
 		}
 
 		goto error;
@@ -265,8 +267,7 @@ int utils_create_lock_file(const char *filepath)
 	LTTNG_ASSERT(filepath);
 
 	memset(&lock, 0, sizeof(lock));
-	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR |
-		S_IRGRP | S_IWGRP);
+	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (fd < 0) {
 		PERROR("open lock file %s", filepath);
 		fd = -1;
@@ -284,8 +285,7 @@ int utils_create_lock_file(const char *filepath)
 	ret = fcntl(fd, F_SETLK, &lock);
 	if (ret == -1) {
 		PERROR("fcntl lock file");
-		ERR("Could not get lock file %s, another instance is running.",
-			filepath);
+		ERR("Could not get lock file %s, another instance is running.", filepath);
 		if (close(fd)) {
 			PERROR("close lock file");
 		}
@@ -317,8 +317,7 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_as_user(
-			handle, path, mode,
-			(uid >= 0 || gid >= 0) ? &creds : NULL);
+		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : NULL);
 end:
 	lttng_directory_handle_put(handle);
 	return ret;
@@ -345,8 +344,7 @@ int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_recursive_as_user(
-			handle, path, mode,
-			(uid >= 0 || gid >= 0) ? &creds : NULL);
+		handle, path, mode, (uid >= 0 || gid >= 0) ? &creds : NULL);
 end:
 	lttng_directory_handle_put(handle);
 	return ret;
@@ -357,32 +355,39 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-int utils_stream_file_path(const char *path_name, const char *file_name,
-		uint64_t size, uint64_t count, const char *suffix,
-		char *out_stream_path, size_t stream_path_len)
+int utils_stream_file_path(const char *path_name,
+			   const char *file_name,
+			   uint64_t size,
+			   uint64_t count,
+			   const char *suffix,
+			   char *out_stream_path,
+			   size_t stream_path_len)
 {
 	int ret;
 	char count_str[MAX_INT_DEC_LEN(count) + 1] = {};
 	const char *path_separator;
 
-	if (path_name && (path_name[0] == '\0' ||
-			path_name[strlen(path_name) - 1] == '/')) {
+	if (path_name && (path_name[0] == '\0' || path_name[strlen(path_name) - 1] == '/')) {
 		path_separator = "";
 	} else {
 		path_separator = "/";
 	}
 
-	path_name = path_name ? : "";
-	suffix = suffix ? : "";
+	path_name = path_name ?: "";
+	suffix = suffix ?: "";
 	if (size > 0) {
-		ret = snprintf(count_str, sizeof(count_str), "_%" PRIu64,
-				count);
+		ret = snprintf(count_str, sizeof(count_str), "_%" PRIu64, count);
 		LTTNG_ASSERT(ret > 0 && ret < sizeof(count_str));
 	}
 
-	ret = snprintf(out_stream_path, stream_path_len, "%s%s%s%s%s",
-			path_name, path_separator, file_name, count_str,
-			suffix);
+	ret = snprintf(out_stream_path,
+		       stream_path_len,
+		       "%s%s%s%s%s",
+		       path_name,
+		       path_separator,
+		       file_name,
+		       count_str,
+		       suffix);
 	if (ret < 0 || ret >= stream_path_len) {
 		ERR("Truncation occurred while formatting stream path");
 		ret = -1;
@@ -407,7 +412,7 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
  *
  * @return 0 on success, -1 on failure.
  */
-int utils_parse_size_suffix(const char * const str, uint64_t * const size)
+int utils_parse_size_suffix(const char *const str, uint64_t *const size)
 {
 	int ret;
 	uint64_t base_size;
@@ -513,7 +518,7 @@ end:
  *
  * @return 0 on success, -1 on failure.
  */
-int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
+int utils_parse_time_suffix(char const *const str, uint64_t *const time_us)
 {
 	int ret;
 	uint64_t base_time;
@@ -627,18 +632,18 @@ static inline unsigned int fls_u32(uint32_t x)
 	int r;
 
 	asm("bsrl %1,%0\n\t"
-		"jnz 1f\n\t"
-		"movl $-1,%0\n\t"
-		"1:\n\t"
-		: "=r" (r) : "rm" (x));
+	    "jnz 1f\n\t"
+	    "movl $-1,%0\n\t"
+	    "1:\n\t"
+	    : "=r"(r)
+	    : "rm"(x));
 	return r + 1;
 }
 #define HAS_FLS_U32
 #endif
 
 #if defined(__x86_64) && defined(__LP64__)
-static inline
-unsigned int fls_u64(uint64_t x)
+static inline unsigned int fls_u64(uint64_t x)
 {
 	long r;
 
@@ -646,15 +651,15 @@ unsigned int fls_u64(uint64_t x)
 	    "jnz 1f\n\t"
 	    "movq $-1,%0\n\t"
 	    "1:\n\t"
-	    : "=r" (r) : "rm" (x));
+	    : "=r"(r)
+	    : "rm"(x));
 	return r + 1;
 }
 #define HAS_FLS_U64
 #endif
 
 #ifndef HAS_FLS_U64
-static __attribute__((unused))
-unsigned int fls_u64(uint64_t x)
+static __attribute__((unused)) unsigned int fls_u64(uint64_t x)
 {
 	unsigned int r = 64;
 
@@ -839,8 +844,7 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	ret = strftime(dst, len, format, timeinfo);
 	DIAGNOSTIC_POP
 	if (ret == 0) {
-		ERR("Unable to strftime with format %s at dst %p of len %zu", format,
-				dst, len);
+		ERR("Unable to strftime with format %s at dst %p of len %zu", format, dst, len);
 	}
 
 	return ret;
@@ -888,19 +892,16 @@ int utils_get_group_id(const char *name, bool warn, gid_t *gid)
 
 		ret = lttng_dynamic_buffer_set_size(&buffer, new_len);
 		if (ret) {
-			ERR("Failed to grow group info buffer to %zu bytes",
-					new_len);
+			ERR("Failed to grow group info buffer to %zu bytes", new_len);
 			ret = -1;
 			goto error;
 		}
 	}
 	if (ret) {
 		if (ret == ESRCH) {
-			DBG("Could not find group file entry for group name '%s'",
-					name);
+			DBG("Could not find group file entry for group name '%s'", name);
 		} else {
-			PERROR("Failed to get group file entry for group name '%s'",
-					name);
+			PERROR("Failed to get group file entry for group name '%s'", name);
 		}
 
 		ret = -1;
@@ -931,8 +932,7 @@ error:
  * of elements in the long_options array. Returns NULL if the string's
  * allocation fails.
  */
-char *utils_generate_optstring(const struct option *long_options,
-		size_t opt_count)
+char *utils_generate_optstring(const struct option *long_options, size_t opt_count)
 {
 	int i;
 	size_t string_len = opt_count, str_pos = 0;
@@ -1020,8 +1020,7 @@ static const char *get_man_bin_path(void)
 	return DEFAULT_MAN_BIN_PATH;
 }
 
-int utils_show_help(int section, const char *page_name,
-		const char *help_msg)
+int utils_show_help(int section, const char *page_name, const char *help_msg)
 {
 	char section_string[8];
 	const char *man_bin_path = get_man_bin_path();
@@ -1043,15 +1042,13 @@ int utils_show_help(int section, const char *page_name,
 	 * be installed outside /usr, in which case its man pages are
 	 * not located in the default /usr/share/man directory.
 	 */
-	ret = execlp(man_bin_path, "man", "-M", MANPATH,
-		section_string, page_name, NULL);
+	ret = execlp(man_bin_path, "man", "-M", MANPATH, section_string, page_name, NULL);
 
 end:
 	return ret;
 }
 
-static
-int read_proc_meminfo_field(const char *field, uint64_t *value)
+static int read_proc_meminfo_field(const char *field, uint64_t *value)
 {
 	int ret;
 	FILE *proc_meminfo;
@@ -1062,7 +1059,7 @@ int read_proc_meminfo_field(const char *field, uint64_t *value)
 		PERROR("Failed to fopen() " PROC_MEMINFO_PATH);
 		ret = -1;
 		goto fopen_error;
-	 }
+	}
 
 	/*
 	 * Read the contents of /proc/meminfo line by line to find the right
@@ -1072,8 +1069,9 @@ int read_proc_meminfo_field(const char *field, uint64_t *value)
 		uint64_t value_kb;
 
 		ret = fscanf(proc_meminfo,
-				"%" MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "s %" SCNu64 " kB\n",
-				name, &value_kb);
+			     "%" MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "s %" SCNu64 " kB\n",
+			     name,
+			     &value_kb);
 		if (ret == EOF) {
 			/*
 			 * fscanf() returning EOF can indicate EOF or an error.
@@ -1149,8 +1147,7 @@ int utils_change_working_directory(const char *path)
 			 */
 			DBG("Working directory \"%s\" is not writable", path);
 		} else {
-			PERROR("Failed to check if working directory \"%s\" is writable",
-					path);
+			PERROR("Failed to check if working directory \"%s\" is writable", path);
 		}
 	}
 
@@ -1204,7 +1201,8 @@ end_loop:
 		} else {
 			*uid = p.pw_uid;
 			DBG("Lookup of tracker UID/VUID: name '%s' maps to uid %" PRId64,
-					user_name, (int64_t) *uid);
+			    user_name,
+			    (int64_t) *uid);
 			ret_val = LTTNG_OK;
 		}
 		break;
@@ -1222,8 +1220,7 @@ end:
 	return ret_val;
 }
 
-enum lttng_error_code utils_group_id_from_name(
-		const char *group_name, gid_t *gid)
+enum lttng_error_code utils_group_id_from_name(const char *group_name, gid_t *gid)
 {
 	struct group g, *gres;
 	int ret;
@@ -1269,7 +1266,8 @@ end_loop:
 		} else {
 			*gid = g.gr_gid;
 			DBG("Lookup of tracker GID/GUID: name '%s' maps to gid %" PRId64,
-					group_name, (int64_t) *gid);
+			    group_name,
+			    (int64_t) *gid);
 			ret_val = LTTNG_OK;
 		}
 		break;
@@ -1287,8 +1285,7 @@ end:
 	return ret_val;
 }
 
-int utils_parse_unsigned_long_long(const char *str,
-		unsigned long long *value)
+int utils_parse_unsigned_long_long(const char *str, unsigned long long *value)
 {
 	int ret;
 	char *endptr;
@@ -1303,15 +1300,15 @@ int utils_parse_unsigned_long_long(const char *str,
 	if (errno != 0) {
 		/* Don't print an error; allow the caller to log a better error. */
 		DBG("Failed to parse string as unsigned long long number: string = '%s', errno = %d",
-				str, errno);
+		    str,
+		    errno);
 		ret = -1;
 		goto end;
 	}
 
 	/* Not the end of the string or empty string. */
 	if (*endptr || endptr == str) {
-		DBG("Failed to parse string as unsigned long long number: string = '%s'",
-				str);
+		DBG("Failed to parse string as unsigned long long number: string = '%s'", str);
 		ret = -1;
 		goto end;
 	}

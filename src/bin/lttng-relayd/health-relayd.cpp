@@ -6,44 +6,43 @@
  */
 
 #define _LGPL_SOURCE
+#include "health-relayd.hpp"
+#include "lttng-relayd.hpp"
+
+#include <common/common.hpp>
+#include <common/compat/getenv.hpp>
+#include <common/compat/poll.hpp>
+#include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/consumer.hpp>
+#include <common/defaults.hpp>
+#include <common/fd-tracker/utils.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/utils.hpp>
+
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ipc.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/shm.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <urcu/list.h>
-#include <poll.h>
 #include <unistd.h>
-#include <sys/mman.h>
 #include <urcu/compiler.h>
-#include <inttypes.h>
-
-#include <common/defaults.hpp>
-#include <common/common.hpp>
-#include <common/consumer/consumer.hpp>
-#include <common/consumer/consumer-timer.hpp>
-#include <common/compat/poll.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/utils.hpp>
-#include <common/compat/getenv.hpp>
-#include <common/fd-tracker/utils.hpp>
-
-#include "lttng-relayd.hpp"
-#include "health-relayd.hpp"
+#include <urcu/list.h>
 
 /* Global health check unix path */
-static
-char health_unix_sock_path[PATH_MAX];
+static char health_unix_sock_path[PATH_MAX];
 
 int health_quit_pipe[2] = { -1, -1 };
 
@@ -97,7 +96,8 @@ static int create_lttng_rundir_with_perm(const char *rundir)
 			}
 
 			ret = chmod(rundir,
-					S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+				    S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
+					    S_IXOTH);
 			if (ret < 0) {
 				ERR("Unable to set permissions on %s", rundir);
 				PERROR("chmod");
@@ -111,23 +111,20 @@ error:
 	return ret;
 }
 
-static
-int parse_health_env(void)
+static int parse_health_env(void)
 {
 	const char *health_path;
 
 	health_path = lttng_secure_getenv(LTTNG_RELAYD_HEALTH_ENV);
 	if (health_path) {
-		strncpy(health_unix_sock_path, health_path,
-			PATH_MAX);
+		strncpy(health_unix_sock_path, health_path, PATH_MAX);
 		health_unix_sock_path[PATH_MAX - 1] = '\0';
 	}
 
 	return 0;
 }
 
-static
-int setup_health_path(void)
+static int setup_health_path(void)
 {
 	int is_root, ret = 0;
 	const char *home_path = NULL;
@@ -187,18 +184,21 @@ int setup_health_path(void)
 		if (strlen(health_unix_sock_path) != 0) {
 			goto end;
 		}
-		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-			DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK,
-			(int) getpid());
+		snprintf(health_unix_sock_path,
+			 sizeof(health_unix_sock_path),
+			 DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK,
+			 (int) getpid());
 	} else {
 		/* Set health check Unix path */
 		if (strlen(health_unix_sock_path) != 0) {
 			goto end;
 		}
 
-		snprintf(health_unix_sock_path, sizeof(health_unix_sock_path),
-			DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK,
-			home_path, (int) getpid());
+		snprintf(health_unix_sock_path,
+			 sizeof(health_unix_sock_path),
+			 DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK,
+			 home_path,
+			 (int) getpid());
 	}
 
 end:
@@ -207,8 +207,7 @@ end:
 	return ret;
 }
 
-static
-int accept_unix_socket(void *data, int *out_fd)
+static int accept_unix_socket(void *data, int *out_fd)
 {
 	int ret;
 	int accepting_sock = *((int *) data);
@@ -224,8 +223,7 @@ end:
 	return ret;
 }
 
-static
-int open_unix_socket(void *data, int *out_fd)
+static int open_unix_socket(void *data, int *out_fd)
 {
 	int ret;
 	const char *path = (const char *) data;
@@ -270,9 +268,12 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 		err = -1;
 		goto error;
 	}
-	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock,
-			(const char **) &sock_name, 1, open_unix_socket,
-			health_unix_sock_path);
+	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
+					       &sock,
+					       (const char **) &sock_name,
+					       1,
+					       open_unix_socket,
+					       health_unix_sock_path);
 	free(sock_name);
 	if (ret < 0) {
 		ERR("Unable to create health check Unix socket");
@@ -299,8 +300,7 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 			goto error;
 		}
 
-		ret = chmod(health_unix_sock_path,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+		ret = chmod(health_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (ret < 0) {
 			ERR("Unable to set permissions on %s", health_unix_sock_path);
 			PERROR("chmod");
@@ -321,9 +321,8 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 	}
 
 	/* Size is set to 2 for the unix socket and quit pipe. */
-	ret = fd_tracker_util_poll_create(the_fd_tracker,
-			"Health management thread epoll", &events, 2,
-			LTTNG_CLOEXEC);
+	ret = fd_tracker_util_poll_create(
+		the_fd_tracker, "Health management thread epoll", &events, 2, LTTNG_CLOEXEC);
 	if (ret < 0) {
 		ERR("Poll set creation failed");
 		goto error;
@@ -348,7 +347,7 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 		DBG("Health check ready");
 
 		/* Inifinite blocking call, waiting for transmission */
-restart:
+	restart:
 		ret = lttng_poll_wait(&events, -1);
 		if (ret < 0) {
 			/*
@@ -382,22 +381,28 @@ restart:
 					ERR("Health socket poll error");
 					goto error;
 				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+					ERR("Unexpected poll events %u for sock %d",
+					    revents,
+					    pollfd);
 					goto error;
 				}
 			}
 		}
 
-		ret = asprintf(&accepted_socket_name, "Socket accepted from unix socket @ %s",
-				health_unix_sock_path);
+		ret = asprintf(&accepted_socket_name,
+			       "Socket accepted from unix socket @ %s",
+			       health_unix_sock_path);
 		if (ret == -1) {
 			PERROR("Failed to allocate name of accepted socket from unix socket @ %s",
-					health_unix_sock_path);
+			       health_unix_sock_path);
 			goto error;
 		}
-		ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &new_sock,
-				(const char **) &accepted_socket_name, 1,
-				accept_unix_socket, &sock);
+		ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
+						       &new_sock,
+						       (const char **) &accepted_socket_name,
+						       1,
+						       accept_unix_socket,
+						       &sock);
 		free(accepted_socket_name);
 		if (ret < 0) {
 			goto error;
@@ -410,12 +415,11 @@ restart:
 		(void) utils_set_fd_cloexec(new_sock);
 
 		DBG("Receiving data from client for health...");
-		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
+		ret = lttcomm_recv_unix_sock(new_sock, (void *) &msg, sizeof(msg));
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
-			ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
-					&new_sock, 1, fd_tracker_util_close_fd,
-					NULL);
+			ret = fd_tracker_close_unsuspendable_fd(
+				the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, NULL);
 			if (ret) {
 				PERROR("close");
 			}
@@ -446,9 +450,8 @@ restart:
 		}
 
 		/* End of transmission */
-		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
-				&new_sock, 1, fd_tracker_util_close_fd,
-				NULL);
+		ret = fd_tracker_close_unsuspendable_fd(
+			the_fd_tracker, &new_sock, 1, fd_tracker_util_close_fd, NULL);
 		if (ret) {
 			PERROR("close");
 		}
@@ -464,8 +467,8 @@ exit:
 	DBG("Health check thread dying");
 	unlink(health_unix_sock_path);
 	if (sock >= 0) {
-		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &sock,
-				1, fd_tracker_util_close_fd, NULL);
+		ret = fd_tracker_close_unsuspendable_fd(
+			the_fd_tracker, &sock, 1, fd_tracker_util_close_fd, NULL);
 		if (ret) {
 			PERROR("close");
 		}

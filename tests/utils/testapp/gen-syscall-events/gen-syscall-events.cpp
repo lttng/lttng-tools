@@ -5,14 +5,15 @@
  *
  */
 
+#include "utils.h"
+
+#include <common/align.hpp>
+#include <common/error.hpp>
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <common/error.hpp>
-#include <common/align.hpp>
-
-#include "utils.h"
 
 #define MAX_LEN 16
 
@@ -26,10 +27,9 @@
  * This isn't a proper fix; it is simply the best we can do for now.
  * See bug #1261 for more context.
  */
-static
-void prefault_string(const char *p)
+static void prefault_string(const char *p)
 {
-	const char * const end = p + strlen(p) + 1;
+	const char *const end = p + strlen(p) + 1;
 
 	while (p < end) {
 		/*
@@ -41,8 +41,7 @@ void prefault_string(const char *p)
 	}
 }
 
-static
-int open_read_close(const char *path)
+static int open_read_close(const char *path)
 {
 	int fd, ret;
 	char buf[MAX_LEN];
@@ -63,7 +62,9 @@ int open_read_close(const char *path)
 	ret = syscall(SYS_read, fd, buf, MAX_LEN);
 	if (ret < 0) {
 		PERROR_NO_LOGGER("Failed to read file: path = '%s', fd = %d, length = %d",
-				path, fd, MAX_LEN);
+				 path,
+				 fd,
+				 MAX_LEN);
 		ret = -1;
 		goto error;
 	}

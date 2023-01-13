@@ -9,8 +9,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 
-struct lttng_buffer_view lttng_buffer_view_init(
-		const char *src, size_t offset, ptrdiff_t len)
+struct lttng_buffer_view lttng_buffer_view_init(const char *src, size_t offset, ptrdiff_t len)
 {
 	struct lttng_buffer_view view = { .data = src + offset, .size = (size_t) len };
 	return view;
@@ -21,9 +20,8 @@ bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view)
 	return view && view->data && view->size > 0;
 }
 
-struct lttng_buffer_view lttng_buffer_view_from_view(
-		const struct lttng_buffer_view *src, size_t offset,
-		ptrdiff_t len)
+struct lttng_buffer_view
+lttng_buffer_view_from_view(const struct lttng_buffer_view *src, size_t offset, ptrdiff_t len)
 {
 	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
 
@@ -31,13 +29,17 @@ struct lttng_buffer_view lttng_buffer_view_from_view(
 
 	if (offset > src->size) {
 		ERR("Attempt to create buffer view from another view with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",
-				src->size, offset, len);
+		    src->size,
+		    offset,
+		    len);
 		goto end;
 	}
 
 	if (len != -1 && len > (src->size - offset)) {
 		ERR("Attempt to create buffer view from another view with invalid length (length > space left after offset in source): source size = %zu, offset in source = %zu, length = %zd",
-				src->size, offset, len);
+		    src->size,
+		    offset,
+		    len);
 		goto end;
 	}
 
@@ -48,8 +50,7 @@ end:
 }
 
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
-		const struct lttng_dynamic_buffer *src, size_t offset,
-		ptrdiff_t len)
+	const struct lttng_dynamic_buffer *src, size_t offset, ptrdiff_t len)
 {
 	struct lttng_buffer_view view = { .data = NULL, .size = 0 };
 
@@ -57,13 +58,17 @@ struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 
 	if (offset > src->size) {
 		ERR("Attempt to create buffer view from a dynamic buffer with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",
-				src->size, offset, len);
+		    src->size,
+		    offset,
+		    len);
 		goto end;
 	}
 
 	if (len != -1 && len > (src->size - offset)) {
 		ERR("Attempt to create buffer view from a dynamic buffer with invalid length (length > space left after offset in source): source size = %zu, offset in source = %zu, length = %zd",
-				src->size, offset, len);
+		    src->size,
+		    offset,
+		    len);
 		goto end;
 	}
 
@@ -74,8 +79,8 @@ end:
 }
 
 bool lttng_buffer_view_contains_string(const struct lttng_buffer_view *buf,
-		const char *str,
-		size_t len_with_null_terminator)
+				       const char *str,
+				       size_t len_with_null_terminator)
 {
 	const char *past_buf_end;
 	size_t max_str_len_with_null_terminator;

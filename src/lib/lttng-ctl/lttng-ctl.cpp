@@ -11,21 +11,19 @@
  */
 
 #define _LGPL_SOURCE
-#include <grp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <unistd.h>
+#include "lttng-ctl-helper.hpp"
 
-#include <common/bytecode/bytecode.hpp>
 #include <common/align.hpp>
+#include <common/bytecode/bytecode.hpp>
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/compat/string.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/filter/filter-ast.hpp>
+#include <common/filter/filter-parser.hpp>
+#include <common/filter/memstream.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -33,6 +31,7 @@
 #include <common/unix.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
+
 #include <lttng/channel-internal.hpp>
 #include <lttng/destruction-handle.h>
 #include <lttng/endpoint.h>
@@ -46,18 +45,20 @@
 #include <lttng/trigger/trigger-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
 
-#include "lttng-ctl-helper.hpp"
-#include <common/filter/filter-ast.hpp>
-#include <common/filter/filter-parser.hpp>
-#include <common/filter/memstream.hpp>
+#include <grp.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#define COPY_DOMAIN_PACKED(dst, src)				\
-do {								\
-	struct lttng_domain _tmp_domain;			\
-								\
-	lttng_ctl_copy_lttng_domain(&_tmp_domain, &src);	\
-	dst = _tmp_domain;					\
-} while (0)
+#define COPY_DOMAIN_PACKED(dst, src)                             \
+	do {                                                     \
+		struct lttng_domain _tmp_domain;                 \
+                                                                 \
+		lttng_ctl_copy_lttng_domain(&_tmp_domain, &src); \
+		dst = _tmp_domain;                               \
+	} while (0)
 
 /* Socket to session daemon for communication */
 static int sessiond_socket = -1;
@@ -83,8 +84,7 @@ LTTNG_EXPORT int lttng_opt_mi;
  *
  * If domain is unknown, default domain will be the kernel.
  */
-void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
-		struct lttng_domain *src)
+void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst, struct lttng_domain *src)
 {
 	if (src && dst) {
 		switch (src->type) {
@@ -117,11 +117,12 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 		goto end;
 	}
 
-	DBG("LSM cmd type: '%s' (%d)", lttcomm_sessiond_command_str((lttcomm_sessiond_command) lsm->cmd_type),
-			lsm->cmd_type);
+	DBG("LSM cmd type: '%s' (%d)",
+	    lttcomm_sessiond_command_str((lttcomm_sessiond_command) lsm->cmd_type),
+	    lsm->cmd_type);
 
-	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
-			sizeof(struct lttcomm_session_msg));
+	ret = lttcomm_send_creds_unix_sock(
+		sessiond_socket, lsm, sizeof(struct lttcomm_session_msg));
 	if (ret < 0) {
 		ret = -LTTNG_ERR_FATAL;
 	}
@@ -227,15 +228,13 @@ static int recv_payload_sessiond(struct lttng_payload *payload, size_t len)
 	int ret;
 	const size_t original_payload_size = payload->buffer.size;
 
-	ret = lttng_dynamic_buffer_set_size(
-			&payload->buffer, payload->buffer.size + len);
+	ret = lttng_dynamic_buffer_set_size(&payload->buffer, payload->buffer.size + len);
 	if (ret) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	ret = recv_data_sessiond(
-			payload->buffer.data + original_payload_size, len);
+	ret = recv_data_sessiond(payload->buffer.data + original_payload_size, len);
 end:
 	return ret;
 }
@@ -291,8 +290,7 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code check_enough_available_memory(
-		uint64_t num_bytes_requested_per_cpu)
+static enum lttng_error_code check_enough_available_memory(uint64_t num_bytes_requested_per_cpu)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -316,8 +314,7 @@ static enum lttng_error_code check_enough_available_memory(
 		goto end;
 	}
 
-	num_bytes_requested_total =
-			num_bytes_requested_per_cpu * (uint64_t) num_cpu;
+	num_bytes_requested_total = num_bytes_requested_per_cpu * (uint64_t) num_cpu;
 
 	/*
 	 * Try to get the `MemAvail` field of `/proc/meminfo`. This is the most
@@ -395,7 +392,7 @@ error:
  */
 static int set_session_daemon_path(void)
 {
-	int in_tgroup = 0;	/* In tracing group. */
+	int in_tgroup = 0; /* In tracing group. */
 	uid_t uid;
 
 	uid = getuid();
@@ -407,8 +404,8 @@ static int set_session_daemon_path(void)
 
 	if ((uid == 0) || in_tgroup == 1) {
 		const int ret = lttng_strncpy(sessiond_sock_path,
-				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-				sizeof(sessiond_sock_path));
+					      DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
+					      sizeof(sessiond_sock_path));
 
 		if (ret) {
 			goto error;
@@ -434,8 +431,10 @@ static int set_session_daemon_path(void)
 		 * With GNU C >= 2.1, snprintf returns the required size
 		 * (excluding closing null)
 		 */
-		ret = snprintf(sessiond_sock_path, sizeof(sessiond_sock_path),
-				DEFAULT_HOME_CLIENT_UNIX_SOCK, utils_get_home_dir());
+		ret = snprintf(sessiond_sock_path,
+			       sizeof(sessiond_sock_path),
+			       DEFAULT_HOME_CLIENT_UNIX_SOCK,
+			       utils_get_home_dir());
 		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			goto error;
 		}
@@ -496,8 +495,7 @@ static int disconnect_sessiond(void)
 	return ret;
 }
 
-static int recv_sessiond_optional_data(size_t len, void **user_buf,
-	size_t *user_len)
+static int recv_sessiond_optional_data(size_t len, void **user_buf, size_t *user_len)
 {
 	int ret = 0;
 	char *buf = NULL;
@@ -552,9 +550,13 @@ end:
  * Return size of data (only payload, not header) or a negative error code.
  */
 int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
-		const int *fds, size_t nb_fd, const void *vardata,
-		size_t vardata_len, void **user_payload_buf,
-		void **user_cmd_header_buf, size_t *user_cmd_header_len)
+				      const int *fds,
+				      size_t nb_fd,
+				      const void *vardata,
+				      size_t vardata_len,
+				      void **user_payload_buf,
+				      void **user_cmd_header_buf,
+				      size_t *user_cmd_header_len)
 {
 	int ret;
 	size_t payload_len;
@@ -602,15 +604,14 @@ int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
 	}
 
 	/* Get command header from data transmission */
-	ret = recv_sessiond_optional_data(llm.cmd_header_size,
-		user_cmd_header_buf, user_cmd_header_len);
+	ret = recv_sessiond_optional_data(
+		llm.cmd_header_size, user_cmd_header_buf, user_cmd_header_len);
 	if (ret < 0) {
 		goto end;
 	}
 
 	/* Get payload from data transmission */
-	ret = recv_sessiond_optional_data(llm.data_size, user_payload_buf,
-		&payload_len);
+	ret = recv_sessiond_optional_data(llm.data_size, user_payload_buf, &payload_len);
 	if (ret < 0) {
 		goto end;
 	}
@@ -622,8 +623,7 @@ end:
 	return ret;
 }
 
-int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
-	struct lttng_payload *reply)
+int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message, struct lttng_payload *reply)
 {
 	int ret;
 	struct lttcomm_lttng_msg llm;
@@ -642,16 +642,15 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 	}
 
 	/* Send command to session daemon */
-	ret = lttcomm_send_creds_unix_sock(sessiond_socket, message->buffer.data,
-			message->buffer.size);
+	ret = lttcomm_send_creds_unix_sock(
+		sessiond_socket, message->buffer.data, message->buffer.size);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_FATAL;
 		goto end;
 	}
 
 	if (fd_count > 0) {
-		ret = lttcomm_send_payload_view_fds_unix_sock(sessiond_socket,
-				message);
+		ret = lttcomm_send_payload_view_fds_unix_sock(sessiond_socket, message);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_FATAL;
 			goto end;
@@ -694,18 +693,17 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 	}
 
 	if (llm.fd_count > 0) {
-		ret = lttcomm_recv_payload_fds_unix_sock(
-				sessiond_socket, llm.fd_count, reply);
+		ret = lttcomm_recv_payload_fds_unix_sock(sessiond_socket, llm.fd_count, reply);
 		if (ret < 0) {
 			goto end;
 		}
 	}
 
 	/* Don't return the llm header to the caller. */
-	memmove(reply->buffer.data, reply->buffer.data + sizeof(llm),
-			reply->buffer.size - sizeof(llm));
-	ret = lttng_dynamic_buffer_set_size(
-			&reply->buffer, reply->buffer.size - sizeof(llm));
+	memmove(reply->buffer.data,
+		reply->buffer.data + sizeof(llm),
+		reply->buffer.size - sizeof(llm));
+	ret = lttng_dynamic_buffer_set_size(&reply->buffer, reply->buffer.size - sizeof(llm));
 	if (ret) {
 		/* Can't happen as size is reduced. */
 		abort();
@@ -723,8 +721,7 @@ end:
  *
  * The returned pointer will be NULL in case of malloc() error.
  */
-struct lttng_handle *lttng_create_handle(const char *session_name,
-		struct lttng_domain *domain)
+struct lttng_handle *lttng_create_handle(const char *session_name, struct lttng_domain *domain)
 {
 	int ret;
 	struct lttng_handle *handle = NULL;
@@ -736,8 +733,7 @@ struct lttng_handle *lttng_create_handle(const char *session_name,
 	}
 
 	/* Copy session name */
-	ret = lttng_strncpy(handle->session_name, session_name ? : "",
-			    sizeof(handle->session_name));
+	ret = lttng_strncpy(handle->session_name, session_name ?: "", sizeof(handle->session_name));
 	if (ret) {
 		goto error;
 	}
@@ -767,8 +763,7 @@ void lttng_destroy_handle(struct lttng_handle *handle)
  *
  * Returns size of returned session payload data or a negative error code.
  */
-int lttng_register_consumer(struct lttng_handle *handle,
-		const char *socket_path)
+int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -780,8 +775,7 @@ int lttng_register_consumer(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGISTER_CONSUMER;
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -789,8 +783,7 @@ int lttng_register_consumer(struct lttng_handle *handle,
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_strncpy(lsm.u.reg.path, socket_path,
-			    sizeof(lsm.u.reg.path));
+	ret = lttng_strncpy(lsm.u.reg.path, socket_path, sizeof(lsm.u.reg.path));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -819,8 +812,7 @@ int lttng_start_tracing(const char *session_name)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_START_TRACE;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -847,8 +839,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_STOP_TRACE;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -911,9 +902,9 @@ int lttng_stop_tracing_no_wait(const char *session_name)
  * Returns the size of the returned payload data or a negative error code.
  */
 int lttng_add_context(struct lttng_handle *handle,
-		struct lttng_event_context *ctx,
-		const char *event_name __attribute__((unused)),
-		const char *channel_name)
+		      struct lttng_event_context *ctx,
+		      const char *event_name __attribute__((unused)),
+		      const char *channel_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
@@ -940,16 +931,15 @@ int lttng_add_context(struct lttng_handle *handle,
 	}
 
 	/* If no channel name, send empty string. */
-	ret = lttng_strncpy(lsm.u.context.channel_name, channel_name ?: "",
-			sizeof(lsm.u.context.channel_name));
+	ret = lttng_strncpy(
+		lsm.u.context.channel_name, channel_name ?: "", sizeof(lsm.u.context.channel_name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -969,8 +959,7 @@ int lttng_add_context(struct lttng_handle *handle,
 	{
 		struct lttng_payload reply;
 		struct lttng_payload_view payload_view =
-				lttng_payload_view_from_payload(&payload, 0,
-				-1);
+			lttng_payload_view_from_payload(&payload, 0, -1);
 
 		lttng_payload_init(&reply);
 		ret = lttng_ctl_ask_sessiond_payload(&payload_view, &reply);
@@ -994,10 +983,10 @@ end:
  * Returns size of returned session payload data or a negative error code.
  */
 int lttng_enable_event(struct lttng_handle *handle,
-		struct lttng_event *ev, const char *channel_name)
+		       struct lttng_event *ev,
+		       const char *channel_name)
 {
-	return lttng_enable_event_with_exclusions(handle, ev, channel_name,
-			NULL, 0, NULL);
+	return lttng_enable_event_with_exclusions(handle, ev, channel_name, NULL, 0, NULL);
 }
 
 /*
@@ -1007,11 +996,12 @@ int lttng_enable_event(struct lttng_handle *handle,
  * Return size of returned session payload data if OK.
  */
 int lttng_enable_event_with_filter(struct lttng_handle *handle,
-		struct lttng_event *event, const char *channel_name,
-		const char *filter_expression)
+				   struct lttng_event *event,
+				   const char *channel_name,
+				   const char *filter_expression)
 {
-	return lttng_enable_event_with_exclusions(handle, event, channel_name,
-			filter_expression, 0, NULL);
+	return lttng_enable_event_with_exclusions(
+		handle, event, channel_name, filter_expression, 0, NULL);
 }
 
 /*
@@ -1030,8 +1020,8 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 	/* Don't add filter for the '*' event. */
 	if (strcmp(ev->name, "*") != 0) {
 		if (filter) {
-			err = asprintf(&agent_filter, "(%s) && (logger_name == \"%s\")", filter,
-					ev->name);
+			err = asprintf(
+				&agent_filter, "(%s) && (logger_name == \"%s\")", filter, ev->name);
 		} else {
 			err = asprintf(&agent_filter, "logger_name == \"%s\"", ev->name);
 		}
@@ -1054,16 +1044,17 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 		if (filter || agent_filter) {
 			char *new_filter;
 
-			err = asprintf(&new_filter, "(%s) && (int_loglevel %s %d)",
-					agent_filter ? agent_filter : filter, op,
-					ev->loglevel);
+			err = asprintf(&new_filter,
+				       "(%s) && (int_loglevel %s %d)",
+				       agent_filter ? agent_filter : filter,
+				       op,
+				       ev->loglevel);
 			if (agent_filter) {
 				free(agent_filter);
 			}
 			agent_filter = new_filter;
 		} else {
-			err = asprintf(&agent_filter, "int_loglevel %s %d", op,
-					ev->loglevel);
+			err = asprintf(&agent_filter, "int_loglevel %s %d", op, ev->loglevel);
 		}
 		if (err < 0) {
 			PERROR("asprintf");
@@ -1086,9 +1077,11 @@ error:
  * Returns size of returned session payload data or a negative error code.
  */
 int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
-		struct lttng_event *ev, const char *channel_name,
-		const char *original_filter_expression,
-		int exclusion_count, char **exclusion_list)
+				       struct lttng_event *ev,
+				       const char *channel_name,
+				       const char *original_filter_expression,
+				       int exclusion_count,
+				       char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT,
@@ -1138,12 +1131,12 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 	/* Parse filter expression. */
-	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
-			|| handle->domain.type == LTTNG_DOMAIN_LOG4J
-			|| handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL ||
+	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-				handle->domain.type == LTTNG_DOMAIN_LOG4J ||
-				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
 			/* Setup agent filter if needed. */
@@ -1167,8 +1160,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			}
 		}
 
-		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) ==
-				LTTNG_FILTER_MAX_LEN) {
+		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) == LTTNG_FILTER_MAX_LEN) {
 			ret = -LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
@@ -1178,8 +1170,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			goto error;
 		}
 
-		bytecode_len = bytecode_get_len(&ctx->bytecode->b) +
-				sizeof(ctx->bytecode->b);
+		bytecode_len = bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b);
 		if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
 			ret = -LTTNG_ERR_FILTER_INVAL;
 			goto error;
@@ -1187,18 +1178,21 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	}
 
 serialize:
-	ret = lttng_event_serialize(ev, exclusion_count, exclusion_list,
-			filter_expression, bytecode_len,
-			(ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
-			&payload);
+	ret = lttng_event_serialize(ev,
+				    exclusion_count,
+				    exclusion_list,
+				    filter_expression,
+				    bytecode_len,
+				    (ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
+				    &payload);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	/* If no channel name, send empty string. */
-	ret = lttng_strncpy(lsm.u.enable.channel_name, channel_name ?: "",
-			sizeof(lsm.u.enable.channel_name));
+	ret = lttng_strncpy(
+		lsm.u.enable.channel_name, channel_name ?: "", sizeof(lsm.u.enable.channel_name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -1208,8 +1202,7 @@ serialize:
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	/* Session name */
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -1219,8 +1212,7 @@ serialize:
 	lsm.u.enable.length = (uint32_t) payload.buffer.size;
 
 	{
-		struct lttng_payload_view view = lttng_payload_view_from_payload(
-			&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 		int fd_count = lttng_payload_view_get_fd_handle_count(&view);
 		int fd_to_send;
 
@@ -1230,8 +1222,7 @@ serialize:
 
 		LTTNG_ASSERT(fd_count == 0 || fd_count == 1);
 		if (fd_count == 1) {
-			struct fd_handle *h =
-					lttng_payload_view_pop_fd_handle(&view);
+			struct fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
 
 			if (!h) {
 				goto error;
@@ -1244,9 +1235,13 @@ serialize:
 		lsm.fd_count = fd_count;
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-				fd_count ? &fd_to_send : NULL, fd_count,
-				view.buffer.size ? view.buffer.data : NULL,
-				view.buffer.size, NULL, NULL, 0);
+							fd_count ? &fd_to_send : NULL,
+							fd_count,
+							view.buffer.size ? view.buffer.data : NULL,
+							view.buffer.size,
+							NULL,
+							NULL,
+							0);
 	}
 
 error:
@@ -1272,8 +1267,9 @@ error:
 }
 
 int lttng_disable_event_ext(struct lttng_handle *handle,
-		struct lttng_event *ev, const char *channel_name,
-		const char *original_filter_expression)
+			    struct lttng_event *ev,
+			    const char *channel_name,
+			    const char *original_filter_expression)
 {
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT,
@@ -1317,12 +1313,12 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	}
 
 	/* Parse filter expression. */
-	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
-			|| handle->domain.type == LTTNG_DOMAIN_LOG4J
-			|| handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL ||
+	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-				handle->domain.type == LTTNG_DOMAIN_LOG4J ||
-				handle->domain.type == LTTNG_DOMAIN_PYTHON) {
+		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
 			char *agent_filter;
 
 			/* Setup agent filter if needed. */
@@ -1346,8 +1342,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			}
 		}
 
-		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) ==
-				LTTNG_FILTER_MAX_LEN) {
+		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) == LTTNG_FILTER_MAX_LEN) {
 			ret = -LTTNG_ERR_FILTER_INVAL;
 			goto error;
 		}
@@ -1357,8 +1352,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			goto error;
 		}
 
-		bytecode_len = bytecode_get_len(&ctx->bytecode->b) +
-				sizeof(ctx->bytecode->b);
+		bytecode_len = bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b);
 		if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
 			ret = -LTTNG_ERR_FILTER_INVAL;
 			goto error;
@@ -1366,18 +1360,21 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	}
 
 serialize:
-	ret = lttng_event_serialize(ev, 0, NULL,
-			filter_expression, bytecode_len,
-			(ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
-			&payload);
+	ret = lttng_event_serialize(ev,
+				    0,
+				    NULL,
+				    filter_expression,
+				    bytecode_len,
+				    (ctx && bytecode_len) ? &ctx->bytecode->b : NULL,
+				    &payload);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 	/* If no channel name, send empty string. */
-	ret = lttng_strncpy(lsm.u.disable.channel_name, channel_name ?: "",
-			sizeof(lsm.u.disable.channel_name));
+	ret = lttng_strncpy(
+		lsm.u.disable.channel_name, channel_name ?: "", sizeof(lsm.u.disable.channel_name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -1387,8 +1384,7 @@ serialize:
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	/* Session name */
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -1398,8 +1394,7 @@ serialize:
 	lsm.u.disable.length = (uint32_t) payload.buffer.size;
 
 	{
-		struct lttng_payload_view view = lttng_payload_view_from_payload(
-			&payload, 0, -1);
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
 		int fd_count = lttng_payload_view_get_fd_handle_count(&view);
 		int fd_to_send;
 
@@ -1409,8 +1404,7 @@ serialize:
 
 		LTTNG_ASSERT(fd_count == 0 || fd_count == 1);
 		if (fd_count == 1) {
-			struct fd_handle *h =
-					lttng_payload_view_pop_fd_handle(&view);
+			struct fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
 
 			if (!h) {
 				goto error;
@@ -1421,9 +1415,13 @@ serialize:
 		}
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-				fd_count ? &fd_to_send : NULL, fd_count,
-				view.buffer.size ? view.buffer.data : NULL,
-				view.buffer.size, NULL, NULL, 0);
+							fd_count ? &fd_to_send : NULL,
+							fd_count,
+							view.buffer.size ? view.buffer.data : NULL,
+							view.buffer.size,
+							NULL,
+							NULL,
+							0);
 	}
 
 error:
@@ -1454,8 +1452,7 @@ error:
  * If no channel name is specified, the default 'channel0' is used.
  * Returns size of returned session payload data or a negative error code.
  */
-int lttng_disable_event(struct lttng_handle *handle, const char *name,
-		const char *channel_name)
+int lttng_disable_event(struct lttng_handle *handle, const char *name, const char *channel_name)
 {
 	int ret;
 	struct lttng_event ev;
@@ -1528,8 +1525,7 @@ void lttng_channel_destroy(struct lttng_channel *channel)
  * Enable channel per domain
  * Returns size of returned session payload data or a negative error code.
  */
-int lttng_enable_channel(struct lttng_handle *handle,
-		struct lttng_channel *in_chan)
+int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *in_chan)
 {
 	enum lttng_error_code ret_code;
 	int ret;
@@ -1550,17 +1546,14 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	 * Verify that the amount of memory required to create the requested
 	 * buffer is available on the system at the moment.
 	 */
-	if (in_chan->attr.num_subbuf >
-			UINT64_MAX / in_chan->attr.subbuf_size) {
+	if (in_chan->attr.num_subbuf > UINT64_MAX / in_chan->attr.subbuf_size) {
 		/* Overflow */
 		ret = -LTTNG_ERR_OVERFLOW;
 		goto end;
 	}
 
-	total_buffer_size_needed_per_cpu =
-			in_chan->attr.num_subbuf * in_chan->attr.subbuf_size;
-	ret_code = check_enough_available_memory(
-			total_buffer_size_needed_per_cpu);
+	total_buffer_size_needed_per_cpu = in_chan->attr.num_subbuf * in_chan->attr.subbuf_size;
+	ret_code = check_enough_available_memory(total_buffer_size_needed_per_cpu);
 	if (ret_code != LTTNG_OK) {
 		ret = -ret_code;
 		goto end;
@@ -1575,16 +1568,14 @@ int lttng_enable_channel(struct lttng_handle *handle,
 
 	/* Populate the channel extended attribute if necessary. */
 	if (!channel->attr.extended.ptr) {
-		struct lttng_channel_extended *extended =
-				zmalloc<lttng_channel_extended>();
+		struct lttng_channel_extended *extended = zmalloc<lttng_channel_extended>();
 
 		if (!extended) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
 
-		lttng_channel_set_default_extended_attr(
-				&handle->domain, extended);
+		lttng_channel_set_default_extended_attr(&handle->domain, extended);
 		channel->attr.extended.ptr = extended;
 	}
 
@@ -1594,8 +1585,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL;
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-				    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1609,8 +1599,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 
 	lsm.u.channel.length = buffer.size;
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
-			&lsm, buffer.data, buffer.size, NULL);
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data, buffer.size, NULL);
 end:
 	lttng_channel_destroy(channel);
 	lttng_dynamic_buffer_reset(&buffer);
@@ -1635,8 +1624,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL;
 
-	ret = lttng_strncpy(lsm.u.disable.channel_name, name,
-			sizeof(lsm.u.disable.channel_name));
+	ret = lttng_strncpy(lsm.u.disable.channel_name, name, sizeof(lsm.u.disable.channel_name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1644,8 +1632,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			    sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1662,61 +1649,63 @@ end:
  * Returns the number of lttng_event entries in events;
  * on error, returns a negative value.
  */
-int lttng_list_tracepoints(struct lttng_handle *handle,
-		struct lttng_event **events)
+int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **events)
 {
-        enum lttng_error_code ret_code;
-        int ret, total_payload_received;
-        char *reception_buffer = NULL;
-        struct lttcomm_session_msg lsm = {
+	enum lttng_error_code ret_code;
+	int ret, total_payload_received;
+	char *reception_buffer = NULL;
+	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_TRACEPOINTS,
 		.session = {},
 		.domain = {},
 		.u = {},
 		.fd_count = 0,
 	};
-        struct lttcomm_list_command_header *cmd_header = NULL;
-        size_t cmd_header_len;
-        unsigned int nb_events = 0;
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	size_t cmd_header_len;
+	unsigned int nb_events = 0;
 
-        if (handle == NULL) {
-                ret = -LTTNG_ERR_INVALID;
-                goto end;
-        }
+	if (handle == NULL) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
 
-        COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-        ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
-                        (void **) &reception_buffer, (void **) &cmd_header,
-                        &cmd_header_len);
-        if (ret < 0) {
-                goto end;
-        }
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+						NULL,
+						0,
+						NULL,
+						0,
+						(void **) &reception_buffer,
+						(void **) &cmd_header,
+						&cmd_header_len);
+	if (ret < 0) {
+		goto end;
+	}
 
-        total_payload_received = ret;
+	total_payload_received = ret;
 
-        if (!cmd_header) {
-                ret = -LTTNG_ERR_UNK;
-                goto end;
-        }
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
 
-        if (cmd_header->count > INT_MAX) {
-                ret = -LTTNG_ERR_OVERFLOW;
-                goto end;
-        }
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
 
-        nb_events = (unsigned int) cmd_header->count;
+	nb_events = (unsigned int) cmd_header->count;
 
 	{
 		struct lttng_buffer_view events_view =
-				lttng_buffer_view_init(reception_buffer, 0,
-						total_payload_received);
+			lttng_buffer_view_init(reception_buffer, 0, total_payload_received);
 		struct lttng_payload_view events_payload_view =
-				lttng_payload_view_from_buffer_view(
-						&events_view, 0, -1);
+			lttng_payload_view_from_buffer_view(&events_view, 0, -1);
 
 		ret_code = lttng_events_create_and_flatten_from_payload(
-				&events_payload_view, nb_events, events);
+			&events_payload_view, nb_events, events);
 		if (ret_code != LTTNG_OK) {
 			ret = -ret_code;
 			goto end;
@@ -1726,9 +1715,9 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 	ret = (int) nb_events;
 
 end:
-        free(cmd_header);
-        free(reception_buffer);
-        return ret;
+	free(cmd_header);
+	free(reception_buffer);
+	return ret;
 }
 
 /*
@@ -1737,8 +1726,7 @@ end:
  * Returns the number of lttng_event_field entries in events;
  * on error, returns a negative value.
  */
-int lttng_list_tracepoint_fields(struct lttng_handle *handle,
-		struct lttng_event_field **fields)
+int lttng_list_tracepoint_fields(struct lttng_handle *handle, struct lttng_event_field **fields)
 {
 	enum lttng_error_code ret_code;
 	int ret;
@@ -1760,9 +1748,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 
 	{
 		lttng_payload_view message_view =
-				lttng_payload_view_init_from_buffer(
-					(const char *) &lsm, 0,
-					sizeof(lsm));
+			lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
 
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
@@ -1771,17 +1757,15 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 	}
 
 	{
-		const lttng_buffer_view cmd_header_view =
-				lttng_buffer_view_from_dynamic_buffer(
-					&reply.buffer, 0, sizeof(*cmd_header));
+		const lttng_buffer_view cmd_header_view = lttng_buffer_view_from_dynamic_buffer(
+			&reply.buffer, 0, sizeof(*cmd_header));
 
 		if (!lttng_buffer_view_is_valid(&cmd_header_view)) {
 			ret = -LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
 		}
 
-		cmd_header = (struct lttcomm_list_command_header *)
-				cmd_header_view.data;
+		cmd_header = (struct lttcomm_list_command_header *) cmd_header_view.data;
 	}
 
 	if (cmd_header->count > INT_MAX) {
@@ -1793,11 +1777,10 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 
 	{
 		lttng_payload_view reply_view =
-				lttng_payload_view_from_payload(&reply,
-				sizeof(*cmd_header), -1);
+			lttng_payload_view_from_payload(&reply, sizeof(*cmd_header), -1);
 
 		ret_code = lttng_event_fields_create_and_flatten_from_payload(
-				&reply_view, nb_event_fields, fields);
+			&reply_view, nb_event_fields, fields);
 		if (ret_code != LTTNG_OK) {
 			ret = -ret_code;
 			goto end;
@@ -1820,65 +1803,68 @@ end:
  */
 int lttng_list_syscalls(struct lttng_event **events)
 {
-        enum lttng_error_code ret_code;
-        int ret, total_payload_received;
-        char *reception_buffer = NULL;
-        struct lttcomm_session_msg lsm = {};
-        struct lttcomm_list_command_header *cmd_header = NULL;
-        size_t cmd_header_len;
-        uint32_t nb_events = 0;
+	enum lttng_error_code ret_code;
+	int ret, total_payload_received;
+	char *reception_buffer = NULL;
+	struct lttcomm_session_msg lsm = {};
+	struct lttcomm_list_command_header *cmd_header = NULL;
+	size_t cmd_header_len;
+	uint32_t nb_events = 0;
 
-        if (!events) {
-                ret = -LTTNG_ERR_INVALID;
-                goto end;
-        }
+	if (!events) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
 
-        lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS;
-        /* Force kernel domain for system calls. */
-        lsm.domain.type = LTTNG_DOMAIN_KERNEL;
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_SYSCALLS;
+	/* Force kernel domain for system calls. */
+	lsm.domain.type = LTTNG_DOMAIN_KERNEL;
 
-        ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
-                        (void **) &reception_buffer, (void **) &cmd_header,
-                        &cmd_header_len);
-        if (ret < 0) {
-                goto end;
-        }
-        total_payload_received = ret;
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+						NULL,
+						0,
+						NULL,
+						0,
+						(void **) &reception_buffer,
+						(void **) &cmd_header,
+						&cmd_header_len);
+	if (ret < 0) {
+		goto end;
+	}
+	total_payload_received = ret;
 
-        if (!cmd_header) {
-                ret = -LTTNG_ERR_UNK;
-                goto end;
-        }
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
 
-        if (cmd_header->count > INT_MAX) {
-                ret = -LTTNG_ERR_OVERFLOW;
-                goto end;
-        }
+	if (cmd_header->count > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
 
-        nb_events = (unsigned int) cmd_header->count;
+	nb_events = (unsigned int) cmd_header->count;
 
-        {
-                const struct lttng_buffer_view events_view =
-                                lttng_buffer_view_init(reception_buffer, 0,
-                                                total_payload_received);
+	{
+		const struct lttng_buffer_view events_view =
+			lttng_buffer_view_init(reception_buffer, 0, total_payload_received);
 		struct lttng_payload_view events_payload_view =
-				lttng_payload_view_from_buffer_view(
-						&events_view, 0, -1);
+			lttng_payload_view_from_buffer_view(&events_view, 0, -1);
 
-                ret_code = lttng_events_create_and_flatten_from_payload(
-                                &events_payload_view, nb_events, events);
-                if (ret_code != LTTNG_OK) {
-                        ret = -ret_code;
-                        goto end;
-                }
-        }
+		ret_code = lttng_events_create_and_flatten_from_payload(
+			&events_payload_view, nb_events, events);
+		if (ret_code != LTTNG_OK) {
+			ret = -ret_code;
+			goto end;
+		}
+	}
 
-        ret = (int) nb_events;
+	ret = (int) nb_events;
 
 end:
-        free(reception_buffer);
-        free(cmd_header);
-        return ret;
+	free(reception_buffer);
+	free(cmd_header);
+	return ret;
 }
 
 /*
@@ -1894,8 +1880,7 @@ const char *lttng_strerror(int code)
 	return error_get_str(code);
 }
 
-enum lttng_error_code lttng_create_session_ext(
-		struct lttng_session_descriptor *session_descriptor)
+enum lttng_error_code lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor)
 {
 	enum lttng_error_code ret_code;
 	struct lttcomm_session_msg lsm = {
@@ -1921,8 +1906,7 @@ enum lttng_error_code lttng_create_session_ext(
 	}
 
 	sessiond_must_generate_ouput =
-			!lttng_session_descriptor_is_output_destination_initialized(
-				session_descriptor);
+		!lttng_session_descriptor_is_output_destination_initialized(session_descriptor);
 	if (sessiond_must_generate_ouput) {
 		const char *home_dir = utils_get_home_dir();
 		size_t home_dir_len = home_dir ? strlen(home_dir) + 1 : 0;
@@ -1933,8 +1917,7 @@ enum lttng_error_code lttng_create_session_ext(
 		}
 
 		lsm.u.create_session.home_dir_size = (uint16_t) home_dir_len;
-		ret = lttng_dynamic_buffer_append(&payload, home_dir,
-				home_dir_len);
+		ret = lttng_dynamic_buffer_append(&payload, home_dir, home_dir_len);
 		if (ret) {
 			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
@@ -1942,8 +1925,7 @@ enum lttng_error_code lttng_create_session_ext(
 	}
 
 	descriptor_size = payload.size;
-	ret = lttng_session_descriptor_serialize(session_descriptor,
-			&payload);
+	ret = lttng_session_descriptor_serialize(session_descriptor, &payload);
 	if (ret) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto end;
@@ -1952,8 +1934,8 @@ enum lttng_error_code lttng_create_session_ext(
 	lsm.u.create_session.session_descriptor_size = descriptor_size;
 
 	/* Command returns a session descriptor on success. */
-	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, payload.data,
-			payload.size, &reply);
+	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+		&lsm, payload.data, payload.size, &reply);
 	if (reply_ret < 0) {
 		ret_code = (lttng_error_code) -reply_ret;
 		goto end;
@@ -1964,8 +1946,7 @@ enum lttng_error_code lttng_create_session_ext(
 	}
 
 	reply_view = lttng_buffer_view_init((const char *) reply, 0, reply_ret);
-	ret = lttng_session_descriptor_create_from_buffer(&reply_view,
-			&descriptor_reply);
+	ret = lttng_session_descriptor_create_from_buffer(&reply_view, &descriptor_reply);
 	if (ret < 0) {
 		ret_code = LTTNG_ERR_FATAL;
 		goto end;
@@ -2011,12 +1992,10 @@ int lttng_create_session(const char *name, const char *url)
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		descriptor = lttng_session_descriptor_local_create(name,
-				uris[0].dst.path);
+		descriptor = lttng_session_descriptor_local_create(name, uris[0].dst.path);
 		break;
 	case 2:
-		descriptor = lttng_session_descriptor_network_create(name, url,
-				NULL);
+		descriptor = lttng_session_descriptor_network_create(name, url, NULL);
 		break;
 	default:
 		ret = -LTTNG_ERR_INVALID;
@@ -2060,10 +2039,8 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 	/*
 	 * If the user does not specify a custom subdir, use the session name.
 	 */
-	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH &&
-			strlen(uris[0].subdir) == 0) {
-		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s",
-				name);
+	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
+		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s", name);
 		if (ret < 0) {
 			PERROR("Failed to set session name as network destination sub-directory");
 			ret = -LTTNG_ERR_FATAL;
@@ -2084,15 +2061,11 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		descriptor = lttng_session_descriptor_snapshot_local_create(
-				name,
-				uris[0].dst.path);
+		descriptor = lttng_session_descriptor_snapshot_local_create(name, uris[0].dst.path);
 		break;
 	case 2:
-		descriptor = lttng_session_descriptor_snapshot_network_create(
-				name,
-				snapshot_url,
-				NULL);
+		descriptor =
+			lttng_session_descriptor_snapshot_network_create(name, snapshot_url, NULL);
 		break;
 	default:
 		ret = -LTTNG_ERR_INVALID;
@@ -2115,8 +2088,7 @@ end:
  *
  * Return 0 on success else a negative LTTng error code.
  */
-int lttng_create_session_live(const char *name, const char *url,
-		unsigned int timer_interval)
+int lttng_create_session_live(const char *name, const char *url, unsigned int timer_interval)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -2129,10 +2101,9 @@ int lttng_create_session_live(const char *name, const char *url,
 
 	if (url) {
 		descriptor = lttng_session_descriptor_live_network_create(
-				name, url, NULL, timer_interval);
+			name, url, NULL, timer_interval);
 	} else {
-		descriptor = lttng_session_descriptor_live_create(
-				name, timer_interval);
+		descriptor = lttng_session_descriptor_live_create(name, timer_interval);
 	}
 	if (!descriptor) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2212,8 +2183,8 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	const size_t session_size = sizeof(struct lttng_session) +
-			sizeof(struct lttng_session_extended);
+	const size_t session_size =
+		sizeof(struct lttng_session) + sizeof(struct lttng_session_extended);
 	size_t session_count, i;
 	struct lttng_session_extended *sessions_extended_begin;
 	struct lttng_session *sessions = NULL;
@@ -2226,7 +2197,7 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 	 * be subsequently freed.
 	 */
 	*out_sessions = NULL;
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) &sessions);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &sessions);
 	if (ret <= 0) {
 		goto end;
 	}
@@ -2241,14 +2212,12 @@ int lttng_list_sessions(struct lttng_session **out_sessions)
 		goto end;
 	}
 	session_count = (size_t) ret / session_size;
-	sessions_extended_begin = (struct lttng_session_extended *)
-			(&sessions[session_count]);
+	sessions_extended_begin = (struct lttng_session_extended *) (&sessions[session_count]);
 
 	/* Set extended session info pointers. */
 	for (i = 0; i < session_count; i++) {
 		struct lttng_session *session = &sessions[i];
-		struct lttng_session_extended *extended =
-				&(sessions_extended_begin[i]);
+		struct lttng_session_extended *extended = &(sessions_extended_begin[i]);
 
 		session->extended.ptr = extended;
 	}
@@ -2259,8 +2228,8 @@ end:
 	return ret;
 }
 
-enum lttng_error_code lttng_session_get_creation_time(
-		const struct lttng_session *session, uint64_t *creation_time)
+enum lttng_error_code lttng_session_get_creation_time(const struct lttng_session *session,
+						      uint64_t *creation_time)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	struct lttng_session_extended *extended;
@@ -2281,8 +2250,7 @@ end:
 	return ret;
 }
 
-int lttng_set_session_shm_path(const char *session_name,
-		const char *shm_path)
+int lttng_set_session_shm_path(const char *session_name, const char *shm_path)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -2294,15 +2262,14 @@ int lttng_set_session_shm_path(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_strncpy(lsm.u.set_shm_path.shm_path, shm_path ?: "",
-			sizeof(lsm.u.set_shm_path.shm_path));
+	ret = lttng_strncpy(
+		lsm.u.set_shm_path.shm_path, shm_path ?: "", sizeof(lsm.u.set_shm_path.shm_path));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2319,8 +2286,7 @@ end:
  * Returns the number of lttng_domain entries in domains;
  * on error, returns a negative value.
  */
-int lttng_list_domains(const char *session_name,
-		struct lttng_domain **domains)
+int lttng_list_domains(const char *session_name, struct lttng_domain **domains)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -2333,14 +2299,13 @@ int lttng_list_domains(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) domains);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) domains);
 	if (ret < 0) {
 		goto error;
 	}
@@ -2356,8 +2321,7 @@ error:
  * Returns the number of lttng_channel entries in channels;
  * on error, returns a negative value.
  */
-int lttng_list_channels(struct lttng_handle *handle,
-		struct lttng_channel **channels)
+int lttng_list_channels(struct lttng_handle *handle, struct lttng_channel **channels)
 {
 	int ret, total_payload_received;
 	struct lttcomm_session_msg lsm;
@@ -2375,8 +2339,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_CHANNELS;
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2384,9 +2347,14 @@ int lttng_list_channels(struct lttng_handle *handle,
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
-	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
-			(void **) &reception_buffer, (void **) &cmd_header,
-			&cmd_header_len);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+						NULL,
+						0,
+						NULL,
+						0,
+						(void **) &reception_buffer,
+						(void **) &cmd_header,
+						&cmd_header_len);
 	if (ret < 0) {
 		goto end;
 	}
@@ -2411,11 +2379,10 @@ int lttng_list_channels(struct lttng_handle *handle,
 	{
 		enum lttng_error_code ret_code;
 		const struct lttng_buffer_view events_view =
-				lttng_buffer_view_init(reception_buffer, 0,
-						total_payload_received);
+			lttng_buffer_view_init(reception_buffer, 0, total_payload_received);
 
 		ret_code = lttng_channels_create_and_flatten_from_buffer(
-				&events_view, cmd_header->count, channels);
+			&events_view, cmd_header->count, channels);
 		if (ret_code != LTTNG_OK) {
 			ret = -ret_code;
 			goto end;
@@ -2436,14 +2403,14 @@ end:
  * on error, returns a negative value.
  */
 int lttng_list_events(struct lttng_handle *handle,
-		const char *channel_name, struct lttng_event **events)
+		      const char *channel_name,
+		      struct lttng_event **events)
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {};
 	struct lttng_payload reply;
 	struct lttng_payload_view lsm_view =
-			lttng_payload_view_init_from_buffer(
-				(const char *) &lsm, 0, sizeof(lsm));
+		lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
 	unsigned int nb_events = 0;
 
 	lttng_payload_init(&reply);
@@ -2456,15 +2423,13 @@ int lttng_list_events(struct lttng_handle *handle,
 
 	/* Initialize command parameters. */
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_LIST_EVENTS;
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_strncpy(lsm.u.list.channel_name, channel_name,
-			sizeof(lsm.u.list.channel_name));
+	ret = lttng_strncpy(lsm.u.list.channel_name, channel_name, sizeof(lsm.u.list.channel_name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2479,11 +2444,9 @@ int lttng_list_events(struct lttng_handle *handle,
 	}
 
 	{
-		const struct lttcomm_list_command_header *cmd_reply_header =
-				NULL;
+		const struct lttcomm_list_command_header *cmd_reply_header = NULL;
 		const lttng_payload_view cmd_reply_header_view =
-				lttng_payload_view_from_payload(&reply, 0,
-						sizeof(*cmd_reply_header));
+			lttng_payload_view_from_payload(&reply, 0, sizeof(*cmd_reply_header));
 
 		if (!lttng_payload_view_is_valid(&cmd_reply_header_view)) {
 			ret = -LTTNG_ERR_INVALID_PROTOCOL;
@@ -2491,8 +2454,7 @@ int lttng_list_events(struct lttng_handle *handle,
 		}
 
 		cmd_reply_header = (const struct lttcomm_list_command_header *)
-						   cmd_reply_header_view.buffer
-								   .data;
+					   cmd_reply_header_view.buffer.data;
 		if (cmd_reply_header->count > INT_MAX) {
 			ret = -LTTNG_ERR_OVERFLOW;
 			goto end;
@@ -2504,11 +2466,10 @@ int lttng_list_events(struct lttng_handle *handle,
 	{
 		enum lttng_error_code ret_code;
 		lttng_payload_view cmd_reply_payload = lttng_payload_view_from_payload(
-				&reply,
-				sizeof(struct lttcomm_list_command_header), -1);
+			&reply, sizeof(struct lttcomm_list_command_header), -1);
 
 		ret_code = lttng_events_create_and_flatten_from_payload(
-				&cmd_reply_payload, nb_events, events);
+			&cmd_reply_payload, nb_events, events);
 		if (ret_code != LTTNG_OK) {
 			ret = -((int) ret_code);
 			goto end;
@@ -2551,7 +2512,7 @@ end:
 }
 
 int lttng_calibrate(struct lttng_handle *handle __attribute__((unused)),
-		struct lttng_calibrate *calibrate __attribute__((unused)))
+		    struct lttng_calibrate *calibrate __attribute__((unused)))
 {
 	/*
 	 * This command was removed in LTTng 2.9.
@@ -2563,8 +2524,7 @@ int lttng_calibrate(struct lttng_handle *handle __attribute__((unused)),
  * Set default channel attributes.
  * If either or both of the arguments are null, attr content is zeroe'd.
  */
-void lttng_channel_set_default_attr(struct lttng_domain *domain,
-		struct lttng_channel_attr *attr)
+void lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_channel_attr *attr)
 {
 	struct lttng_channel_extended *extended;
 
@@ -2584,8 +2544,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
-		attr->switch_timer_interval =
-				DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
+		attr->switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		attr->read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
@@ -2597,20 +2556,16 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 			attr->subbuf_size = default_get_ust_uid_channel_subbuf_size();
 			attr->num_subbuf = DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM;
 			attr->output = DEFAULT_UST_UID_CHANNEL_OUTPUT;
-			attr->switch_timer_interval =
-					DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
-			attr->read_timer_interval =
-					DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			attr->switch_timer_interval = DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
+			attr->read_timer_interval = DEFAULT_UST_UID_CHANNEL_READ_TIMER;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
 			attr->subbuf_size = default_get_ust_pid_channel_subbuf_size();
 			attr->num_subbuf = DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM;
 			attr->output = DEFAULT_UST_PID_CHANNEL_OUTPUT;
-			attr->switch_timer_interval =
-					DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
-			attr->read_timer_interval =
-					DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			attr->switch_timer_interval = DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
+			attr->read_timer_interval = DEFAULT_UST_PID_CHANNEL_READ_TIMER;
 			break;
 		}
 	default:
@@ -2627,7 +2582,7 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 }
 
 int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
-		uint64_t *discarded_events)
+					    uint64_t *discarded_events)
 {
 	int ret = 0;
 	struct lttng_channel_extended *chan_ext;
@@ -2652,8 +2607,7 @@ end:
 	return ret;
 }
 
-int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
-		uint64_t *lost_packets)
+int lttng_channel_get_lost_packet_count(struct lttng_channel *channel, uint64_t *lost_packets)
 {
 	int ret = 0;
 	struct lttng_channel_extended *chan_ext;
@@ -2679,7 +2633,7 @@ end:
 }
 
 int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
-		uint64_t *monitor_timer_interval)
+					     uint64_t *monitor_timer_interval)
 {
 	int ret = 0;
 
@@ -2693,14 +2647,14 @@ int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
 		goto end;
 	}
 
-	*monitor_timer_interval = ((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->monitor_timer_interval;
+	*monitor_timer_interval =
+		((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval;
 end:
 	return ret;
 }
 
 int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
-		uint64_t monitor_timer_interval)
+					     uint64_t monitor_timer_interval)
 {
 	int ret = 0;
 
@@ -2709,15 +2663,13 @@ int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
 		goto end;
 	}
 
-	((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->monitor_timer_interval =
-			monitor_timer_interval;
+	((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval =
+		monitor_timer_interval;
 end:
 	return ret;
 }
 
-int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
-		int64_t *blocking_timeout)
+int lttng_channel_get_blocking_timeout(struct lttng_channel *chan, int64_t *blocking_timeout)
 {
 	int ret = 0;
 
@@ -2731,14 +2683,13 @@ int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
 		goto end;
 	}
 
-	*blocking_timeout = ((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->blocking_timeout;
+	*blocking_timeout =
+		((struct lttng_channel_extended *) chan->attr.extended.ptr)->blocking_timeout;
 end:
 	return ret;
 }
 
-int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
-		int64_t blocking_timeout)
+int lttng_channel_set_blocking_timeout(struct lttng_channel *chan, int64_t blocking_timeout)
 {
 	int ret = 0;
 	int64_t msec_timeout;
@@ -2764,9 +2715,8 @@ int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
 		goto end;
 	}
 
-	((struct lttng_channel_extended *)
-			chan->attr.extended.ptr)->blocking_timeout =
-			blocking_timeout;
+	((struct lttng_channel_extended *) chan->attr.extended.ptr)->blocking_timeout =
+		blocking_timeout;
 end:
 	return ret;
 }
@@ -2811,7 +2761,8 @@ int lttng_session_daemon_alive(void)
  * Return 0 on success, else a negative value.
  */
 int lttng_set_consumer_url(struct lttng_handle *handle,
-		const char *control_url, const char *data_url)
+			   const char *control_url,
+			   const char *data_url)
 {
 	int ret;
 	ssize_t size;
@@ -2827,8 +2778,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_SET_CONSUMER_URI;
 
-	ret = lttng_strncpy(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -2844,8 +2794,8 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lsm.u.uri.size = size;
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
-			sizeof(struct lttng_uri) * size, NULL);
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+		&lsm, uris, sizeof(struct lttng_uri) * size, NULL);
 
 	free(uris);
 error:
@@ -2855,8 +2805,7 @@ error:
 /*
  * [OBSOLETE]
  */
-extern "C"
-LTTNG_EXPORT int lttng_enable_consumer(struct lttng_handle *handle);
+extern "C" LTTNG_EXPORT int lttng_enable_consumer(struct lttng_handle *handle);
 int lttng_enable_consumer(struct lttng_handle *handle __attribute__((unused)))
 {
 	return -ENOSYS;
@@ -2865,8 +2814,7 @@ int lttng_enable_consumer(struct lttng_handle *handle __attribute__((unused)))
 /*
  * [OBSOLETE]
  */
-extern "C"
-LTTNG_EXPORT int lttng_disable_consumer(struct lttng_handle *handle);
+extern "C" LTTNG_EXPORT int lttng_disable_consumer(struct lttng_handle *handle);
 int lttng_disable_consumer(struct lttng_handle *handle __attribute__((unused)))
 {
 	return -ENOSYS;
@@ -2875,12 +2823,11 @@ int lttng_disable_consumer(struct lttng_handle *handle __attribute__((unused)))
 /*
  * [OBSOLETE]
  */
-extern "C"
-LTTNG_EXPORT int _lttng_create_session_ext(const char *name, const char *url,
-		const char *datetime);
+extern "C" LTTNG_EXPORT int
+_lttng_create_session_ext(const char *name, const char *url, const char *datetime);
 int _lttng_create_session_ext(const char *name __attribute__((unused)),
-		const char *url __attribute__((unused)),
-		const char *datetime __attribute__((unused)))
+			      const char *url __attribute__((unused)),
+			      const char *datetime __attribute__((unused)))
 {
 	return -ENOSYS;
 }
@@ -2903,8 +2850,7 @@ int lttng_data_pending(const char *session_name)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_DATA_PENDING;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2946,8 +2892,7 @@ int lttng_regenerate_metadata(const char *session_name)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2988,8 +2933,7 @@ int lttng_regenerate_statedump(const char *session_name)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP;
 
-	ret = lttng_strncpy(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name, sizeof(lsm.session.name));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -3005,9 +2949,8 @@ end:
 	return ret;
 }
 
-static
-int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
-		bool generate_name)
+static int
+_lttng_register_trigger(struct lttng_trigger *trigger, const char *name, bool generate_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
@@ -3068,7 +3011,7 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 		 * "safety" checks.
 		 */
 		const struct lttng_credentials *trigger_creds =
-				lttng_trigger_get_credentials(trigger);
+			lttng_trigger_get_credentials(trigger);
 
 		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
 			if (lttng_credentials_get_uid(&user_creds) != 0) {
@@ -3083,8 +3026,7 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 		goto end_unset_name;
 	}
 
-	domain_type = lttng_trigger_get_underlying_domain_type_restriction(
-			trigger);
+	domain_type = lttng_trigger_get_underlying_domain_type_restriction(trigger);
 
 	lsm.domain.type = domain_type;
 
@@ -3110,11 +3052,9 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 
 	{
 		struct lttng_payload_view message_view =
-				lttng_payload_view_from_payload(
-						&message, 0, -1);
+			lttng_payload_view_from_payload(&message, 0, -1);
 
-		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
-				&message_view);
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(&message_view);
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
 			goto end_unset_name;
@@ -3123,11 +3063,9 @@ int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
 
 	{
 		struct lttng_payload_view reply_view =
-				lttng_payload_view_from_payload(
-						&reply, 0, reply.buffer.size);
+			lttng_payload_view_from_payload(&reply, 0, reply.buffer.size);
 
-		ret = lttng_trigger_create_from_payload(
-				&reply_view, &reply_trigger);
+		ret = lttng_trigger_create_from_payload(&reply_view, &reply_trigger);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_INVALID_PROTOCOL;
 			goto end_unset_name;
@@ -3163,26 +3101,24 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	return _lttng_register_trigger(trigger, NULL, false);
 }
 
-enum lttng_error_code lttng_register_trigger_with_name(
-		struct lttng_trigger *trigger, const char *name)
+enum lttng_error_code lttng_register_trigger_with_name(struct lttng_trigger *trigger,
+						       const char *name)
 {
 	const int ret = _lttng_register_trigger(trigger, name, false);
 
-	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) -ret;
+	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) - ret;
 }
 
-enum lttng_error_code lttng_register_trigger_with_automatic_name(
-		struct lttng_trigger *trigger)
+enum lttng_error_code lttng_register_trigger_with_automatic_name(struct lttng_trigger *trigger)
 {
-	const int ret =  _lttng_register_trigger(trigger, nullptr, true);
+	const int ret = _lttng_register_trigger(trigger, nullptr, true);
 
-	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) -ret;
+	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) - ret;
 }
 
-enum lttng_error_code lttng_error_query_execute(
-		const struct lttng_error_query *query,
-		const struct lttng_endpoint *endpoint,
-		struct lttng_error_query_results **results)
+enum lttng_error_code lttng_error_query_execute(const struct lttng_error_query *query,
+						const struct lttng_endpoint *endpoint,
+						struct lttng_error_query_results **results)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -3223,19 +3159,16 @@ enum lttng_error_code lttng_error_query_execute(
 	}
 
 	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
-	message_lsm->u.error_query.length =
-			(uint32_t) message.buffer.size - sizeof(lsm);
+	message_lsm->u.error_query.length = (uint32_t) message.buffer.size - sizeof(lsm);
 
 	{
 		struct lttng_payload_view message_view =
-				lttng_payload_view_from_payload(
-						&message, 0, -1);
+			lttng_payload_view_from_payload(&message, 0, -1);
 
-		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
-				&message_view);
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(&message_view);
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
-			ret_code =(lttng_error_code) -ret;
+			ret_code = (lttng_error_code) -ret;
 			goto end;
 		}
 	}
@@ -3243,11 +3176,10 @@ enum lttng_error_code lttng_error_query_execute(
 	{
 		ssize_t reply_create_ret;
 		struct lttng_payload_view reply_view =
-				lttng_payload_view_from_payload(
-						&reply, 0, reply.buffer.size);
+			lttng_payload_view_from_payload(&reply, 0, reply.buffer.size);
 
-		reply_create_ret = lttng_error_query_results_create_from_payload(
-				&reply_view, results);
+		reply_create_ret =
+			lttng_error_query_results_create_from_payload(&reply_view, results);
 		if (reply_create_ret < 0) {
 			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
 			goto end;
@@ -3302,8 +3234,7 @@ int lttng_unregister_trigger(const struct lttng_trigger *trigger)
 		 * credentials passed on the socket. These check are all
 		 * "safety" checks.
 		 */
-		const struct lttng_credentials *trigger_creds =
-				lttng_trigger_get_credentials(copy);
+		const struct lttng_credentials *trigger_creds = lttng_trigger_get_credentials(copy);
 		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
 			if (lttng_credentials_get_uid(&user_creds) != 0) {
 				ret = -LTTNG_ERR_EPERM;
@@ -3335,22 +3266,20 @@ int lttng_unregister_trigger(const struct lttng_trigger *trigger)
 	/*
 	 * This is needed to populate the trigger object size for the command
 	 * header and number of fds sent.
-	*/
+	 */
 	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
 
 	message_lsm->u.trigger.length = (uint32_t) message.buffer.size - sizeof(lsm);
 
 	{
 		struct lttng_payload_view message_view =
-				lttng_payload_view_from_payload(
-						&message, 0, -1);
+			lttng_payload_view_from_payload(&message, 0, -1);
 
 		/*
 		 * Update the message header with the number of fd that will be
 		 * sent.
 		 */
-		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
-				&message_view);
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(&message_view);
 
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
@@ -3386,24 +3315,21 @@ enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
 	struct lttng_triggers *local_triggers = NULL;
 	struct lttng_payload reply;
 	struct lttng_payload_view lsm_view =
-			lttng_payload_view_init_from_buffer(
-				(const char *) &lsm, 0, sizeof(lsm));
+		lttng_payload_view_init_from_buffer((const char *) &lsm, 0, sizeof(lsm));
 
 	lttng_payload_init(&reply);
 
 	ret = lttng_ctl_ask_sessiond_payload(&lsm_view, &reply);
 	if (ret < 0) {
-		ret_code = (enum lttng_error_code) -ret;
+		ret_code = (enum lttng_error_code) - ret;
 		goto end;
 	}
 
 	{
 		struct lttng_payload_view reply_view =
-				lttng_payload_view_from_payload(
-						&reply, 0, reply.buffer.size);
+			lttng_payload_view_from_payload(&reply, 0, reply.buffer.size);
 
-		ret = lttng_triggers_create_from_payload(
-				&reply_view, &local_triggers);
+		ret = lttng_triggers_create_from_payload(&reply_view, &local_triggers);
 		if (ret < 0) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto end;

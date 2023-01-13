@@ -5,14 +5,14 @@
  *
  */
 
-#include <lttng/constant.h>
-
 #include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/random.hpp>
 #include <common/readwrite.hpp>
 #include <common/time.hpp>
+
+#include <lttng/constant.h>
 
 #include <fcntl.h>
 
@@ -66,16 +66,15 @@ void getrandom_nonblock(char *out_data, std::size_t size)
 
 	if (ret < 0) {
 		LTTNG_THROW_POSIX(
-				fmt::format("Failed to get true random data using getrandom(): size={}",
-						size),
-				errno);
+			fmt::format("Failed to get true random data using getrandom(): size={}",
+				    size),
+			errno);
 	}
 }
 #else /* defined(__linux__) && defined(SYS_getrandom) && defined(HAVE_SYS_RANDOM_H) */
 void getrandom_nonblock(char *out_data, std::size_t size)
 {
-	LTTNG_THROW_RANDOM_PRODUCTION_ERROR(
-			"getrandom() is not supported by this platform");
+	LTTNG_THROW_RANDOM_PRODUCTION_ERROR("getrandom() is not supported by this platform");
 }
 #endif /* defined(__linux__) && defined(SYS_getrandom) && defined(HAVE_SYS_RANDOM_H) */
 
@@ -91,25 +90,23 @@ lttng::random::seed_t produce_pseudo_random_seed()
 	ret = clock_gettime(CLOCK_REALTIME, &real_time);
 	if (ret) {
 		LTTNG_THROW_POSIX("Failed to read real time while generating pseudo-random seed",
-				errno);
+				  errno);
 	}
 
 	ret = clock_gettime(CLOCK_MONOTONIC, &monotonic_time);
 	if (ret) {
 		LTTNG_THROW_POSIX(
-				"Failed to read monotonic time while generating pseudo-random seed",
-				errno);
+			"Failed to read monotonic time while generating pseudo-random seed", errno);
 	}
 
 	ret = gethostname(hostname, sizeof(hostname));
 	if (ret) {
 		LTTNG_THROW_POSIX("Failed to get host name while generating pseudo-random seed",
-				errno);
+				  errno);
 	}
 
 	hash_seed = (unsigned long) real_time.tv_nsec ^ (unsigned long) real_time.tv_sec ^
-			(unsigned long) monotonic_time.tv_nsec ^
-			(unsigned long) monotonic_time.tv_sec;
+		(unsigned long) monotonic_time.tv_nsec ^ (unsigned long) monotonic_time.tv_sec;
 	seed = hash_key_ulong((void *) real_time.tv_sec, hash_seed);
 	seed ^= hash_key_ulong((void *) real_time.tv_nsec, hash_seed);
 	seed ^= hash_key_ulong((void *) monotonic_time.tv_sec, hash_seed);
@@ -128,7 +125,7 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 	 * Open /dev/urandom as a file_descriptor, or throw on error. The
 	 * lambda is used to reduce the scope of the raw fd as much as possible.
 	 */
-	lttng::file_descriptor urandom{[]() {
+	lttng::file_descriptor urandom{ []() {
 		const auto urandom_raw_fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 
 		if (urandom_raw_fd < 0) {
@@ -136,14 +133,14 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 		}
 
 		return urandom_raw_fd;
-	}()};
+	}() };
 
 	lttng::random::seed_t seed;
 	const auto read_ret = lttng_read(urandom.fd(), &seed, sizeof(seed));
 	if (read_ret != sizeof(seed)) {
 		LTTNG_THROW_POSIX(fmt::format("Failed to read from `/dev/urandom`: size={}",
-						  sizeof(seed)),
-				errno);
+					      sizeof(seed)),
+				  errno);
 	}
 
 	return seed;
@@ -152,9 +149,9 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 } /* namespace */
 
 lttng::random::production_error::production_error(const std::string& msg,
-		const char *file_name,
-		const char *function_name,
-		unsigned int line_number) :
+						  const char *file_name,
+						  const char *function_name,
+						  unsigned int line_number) :
 	lttng::runtime_error(msg, file_name, function_name, line_number)
 {
 }
@@ -173,9 +170,10 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 		return lttng::random::produce_true_random_seed();
 	} catch (std::exception& e) {
 		WARN("%s",
-				fmt::format("Failed to produce a random seed using getrandom(), falling back to pseudo-random device seed generation which will block until its pool is initialized: {}",
-						e.what())
-						.c_str());
+		     fmt::format(
+			     "Failed to produce a random seed using getrandom(), falling back to pseudo-random device seed generation which will block until its pool is initialized: {}",
+			     e.what())
+			     .c_str());
 	}
 
 	try {
@@ -186,9 +184,9 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 		produce_random_seed_from_urandom();
 	} catch (std::exception& e) {
 		WARN("%s",
-				fmt::format("Failed to produce a random seed from the urandom device: {}",
-						e.what())
-						.c_str());
+		     fmt::format("Failed to produce a random seed from the urandom device: {}",
+				 e.what())
+			     .c_str());
 	}
 
 	/* Fallback to time-based seed generation. */

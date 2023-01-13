@@ -8,15 +8,16 @@
  */
 
 #define _LGPL_SOURCE
-#include <common/common.hpp>
-#include <urcu/rculist.h>
-
-#include "lttng-relayd.hpp"
 #include "ctf-trace.hpp"
+#include "lttng-relayd.hpp"
 #include "session.hpp"
+#include "stream.hpp"
 #include "viewer-session.hpp"
 #include "viewer-stream.hpp"
-#include "stream.hpp"
+
+#include <common/common.hpp>
+
+#include <urcu/rculist.h>
 
 struct relay_viewer_session *viewer_session_create(void)
 {
@@ -32,7 +33,7 @@ end:
 }
 
 int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
-		struct lttng_trace_chunk *relay_session_trace_chunk)
+					struct lttng_trace_chunk *relay_session_trace_chunk)
 {
 	int ret = 0;
 	struct lttng_trace_chunk *viewer_chunk;
@@ -58,12 +59,10 @@ end:
 }
 
 /* The existence of session must be guaranteed by the caller. */
-enum lttng_viewer_attach_return_code viewer_session_attach(
-		struct relay_viewer_session *vsession,
-		struct relay_session *session)
+enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_session *vsession,
+							   struct relay_session *session)
 {
-	enum lttng_viewer_attach_return_code viewer_attach_status =
-			LTTNG_VIEWER_ATTACH_OK;
+	enum lttng_viewer_attach_return_code viewer_attach_status = LTTNG_VIEWER_ATTACH_OK;
 
 	ASSERT_LOCKED(session->lock);
 
@@ -79,8 +78,7 @@ enum lttng_viewer_attach_return_code viewer_session_attach(
 
 		session->viewer_attached = true;
 
-		ret = viewer_session_set_trace_chunk_copy(vsession,
-				session->current_trace_chunk);
+		ret = viewer_session_set_trace_chunk_copy(vsession, session->current_trace_chunk);
 		if (ret) {
 			/*
 			 * The live protocol does not define a generic error
@@ -89,7 +87,7 @@ enum lttng_viewer_attach_return_code viewer_session_attach(
 			 * failure as if the session didn't exist anymore.
 			 */
 			DBG("Failed to create a viewer trace chunk from the current trace chunk of session \"%s\", returning LTTNG_VIEWER_ATTACH_UNK",
-					session->session_name);
+			    session->session_name);
 			viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
 		}
 	}
@@ -97,8 +95,7 @@ enum lttng_viewer_attach_return_code viewer_session_attach(
 	if (viewer_attach_status == LTTNG_VIEWER_ATTACH_OK) {
 		pthread_mutex_lock(&vsession->session_list_lock);
 		/* Ownership is transfered to the list. */
-		cds_list_add_rcu(&session->viewer_session_node,
-				&vsession->session_list);
+		cds_list_add_rcu(&session->viewer_session_node, &vsession->session_list);
 		pthread_mutex_unlock(&vsession->session_list_lock);
 	} else {
 		/* Put our local ref. */
@@ -110,7 +107,7 @@ end:
 
 /* The existence of session must be guaranteed by the caller. */
 static int viewer_session_detach(struct relay_viewer_session *vsession,
-		struct relay_session *session)
+				 struct relay_session *session)
 {
 	int ret = 0;
 
@@ -143,7 +140,7 @@ void viewer_session_destroy(struct relay_viewer_session *vsession)
  * Release ownership of all the streams of one session and detach the viewer.
  */
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,
-		struct relay_session *session)
+				      struct relay_session *session)
 {
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream;
@@ -152,8 +149,7 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 	 * TODO: improvement: create more efficient list of
 	 * vstream per session.
 	 */
-	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter,
-			vstream, stream_n.node) {
+	cds_lfht_for_each_entry (viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
 		if (!viewer_stream_get(vstream)) {
 			continue;
 		}
@@ -180,8 +176,8 @@ void viewer_session_close(struct relay_viewer_session *vsession)
 	struct relay_session *session;
 
 	rcu_read_lock();
-	cds_list_for_each_entry_rcu(session,
-			&vsession->session_list, viewer_session_node) {
+	cds_list_for_each_entry_rcu(session, &vsession->session_list, viewer_session_node)
+	{
 		viewer_session_close_one_session(vsession, session);
 	}
 	rcu_read_unlock();
@@ -191,8 +187,7 @@ void viewer_session_close(struct relay_viewer_session *vsession)
  * Check if a connection is attached to a session.
  * Return 1 if attached, 0 if not attached, a negative value on error.
  */
-int viewer_session_is_attached(struct relay_viewer_session *vsession,
-		struct relay_session *session)
+int viewer_session_is_attached(struct relay_viewer_session *vsession, struct relay_session *session)
 {
 	struct relay_session *iter;
 	int found = 0;
@@ -205,9 +200,8 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession,
 		goto end;
 	}
 	rcu_read_lock();
-	cds_list_for_each_entry_rcu(iter,
-			&vsession->session_list,
-			viewer_session_node) {
+	cds_list_for_each_entry_rcu(iter, &vsession->session_list, viewer_session_node)
+	{
 		if (session == iter) {
 			found = 1;
 			goto end_rcu_unlock;

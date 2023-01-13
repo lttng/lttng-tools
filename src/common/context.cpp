@@ -6,13 +6,14 @@
  */
 
 #include "context.hpp"
-#include <stddef.h>
-#include <string.h>
+
 #include <common/error.hpp>
 #include <common/macros.hpp>
 
-int parse_application_context(const char *str, char **out_provider_name,
-		char **out_ctx_name)
+#include <stddef.h>
+#include <string.h>
+
+int parse_application_context(const char *str, char **out_provider_name, char **out_ctx_name)
 {
 	const char app_ctx_prefix[] = "$app.";
 	char *provider_name = NULL, *ctx_name = NULL;
@@ -46,8 +47,7 @@ int parse_application_context(const char *str, char **out_provider_name,
 	 * No colon found or no ctx name ("$app.provider:") or no provider name
 	 * given ("$app.:..."), which is invalid.
 	 */
-	if (!colon_pos || colon_pos == len ||
-			colon_pos == sizeof(app_ctx_prefix)) {
+	if (!colon_pos || colon_pos == len || colon_pos == sizeof(app_ctx_prefix)) {
 		goto not_found;
 	}
 
@@ -57,8 +57,7 @@ int parse_application_context(const char *str, char **out_provider_name,
 		PERROR("malloc provider_name");
 		goto not_found;
 	}
-	strncpy(provider_name, str + sizeof(app_ctx_prefix) - 1,
-			provider_name_len - 1);
+	strncpy(provider_name, str + sizeof(app_ctx_prefix) - 1, provider_name_len - 1);
 
 	ctx_name_len = len - colon_pos;
 	ctx_name = calloc<char>(ctx_name_len);
@@ -76,4 +75,3 @@ not_found:
 	free(ctx_name);
 	return -1;
 }
-

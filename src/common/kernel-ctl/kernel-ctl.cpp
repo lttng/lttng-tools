@@ -10,21 +10,22 @@
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #define __USE_LINUX_IOCTL_DEFS
-#include <sys/ioctl.h>
-#include <string.h>
-#include <common/align.hpp>
-#include <common/macros.hpp>
-#include <common/compat/errno.hpp>
-#include <stdarg.h>
-#include <common/time.hpp>
-
 #include "kernel-ctl.hpp"
 #include "kernel-ioctl.hpp"
+
+#include <common/align.hpp>
+#include <common/compat/errno.hpp>
+#include <common/macros.hpp>
+#include <common/time.hpp>
+
+#include <stdarg.h>
+#include <string.h>
+#include <sys/ioctl.h>
 
 #define LTTNG_IOCTL_CHECK(fildes, request, ...)                         \
 	({                                                              \
 		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
-		LTTNG_ASSERT(_ioctl_ret <= 0);                                \
+		LTTNG_ASSERT(_ioctl_ret <= 0);                          \
 		!_ioctl_ret ? 0 : -errno;                               \
 	})
 
@@ -51,8 +52,7 @@ static int lttng_kernel_abi_use_old_abi = -1;
  * and new request codes.
  * It returns the return value of the ioctl executed.
  */
-static inline int compat_ioctl_no_arg(int fd, unsigned long oldname,
-		unsigned long newname)
+static inline int compat_ioctl_no_arg(int fd, unsigned long oldname, unsigned long newname)
 {
 	int ret;
 
@@ -76,8 +76,7 @@ end:
 
 int kernctl_create_session(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_SESSION,
-			LTTNG_KERNEL_ABI_SESSION);
+	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_SESSION, LTTNG_KERNEL_ABI_SESSION);
 }
 
 /* open the metadata global channel */
@@ -103,8 +102,7 @@ int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 		 */
 		memcpy(old_channel.padding, chops->padding, sizeof(chops->padding));
 
-		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_METADATA,
-			        &old_channel);
+		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_METADATA, &old_channel);
 	}
 
 	memset(&channel, 0, sizeof(channel));
@@ -141,8 +139,7 @@ int kernctl_create_channel(int fd, struct lttng_channel_attr *chops)
 		 */
 		memcpy(old_channel.padding, chops->padding, sizeof(chops->padding));
 
-		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CHANNEL,
-			        &old_channel);
+		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CHANNEL, &old_channel);
 	}
 
 	channel.overwrite = chops->overwrite;
@@ -209,12 +206,10 @@ end:
 
 int kernctl_track_pid(int fd, int pid)
 {
-	int ret = LTTNG_IOCTL_CHECK(
-			fd, LTTNG_KERNEL_ABI_SESSION_TRACK_PID, pid);
+	int ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_PID, pid);
 
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_PID, pid);
+		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_PID, pid);
 	}
 
 	return ret;
@@ -222,12 +217,10 @@ int kernctl_track_pid(int fd, int pid)
 
 int kernctl_untrack_pid(int fd, int pid)
 {
-	int ret = LTTNG_IOCTL_CHECK(
-			fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_PID, pid);
+	int ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_PID, pid);
 
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_PID, pid);
+		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_PID, pid);
 	}
 
 	return ret;
@@ -238,8 +231,8 @@ int kernctl_list_tracker_pids(int fd)
 	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_PIDS);
 }
 
-static enum lttng_kernel_abi_tracker_type get_kernel_tracker_type(
-		enum lttng_process_attr process_attr)
+static enum lttng_kernel_abi_tracker_type
+get_kernel_tracker_type(enum lttng_process_attr process_attr)
 {
 	switch (process_attr) {
 	case LTTNG_PROCESS_ATTR_PROCESS_ID:
@@ -273,8 +266,7 @@ int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
 
 	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_ID, &args);
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_ID, &args);
+		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_ID, &args);
 	}
 
 	return ret;
@@ -294,8 +286,7 @@ int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
 
 	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_ID, &args);
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_ID, &args);
+		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_ID, &args);
 	}
 
 	return ret;
@@ -313,12 +304,10 @@ int kernctl_list_tracker_ids(int fd, enum lttng_process_attr process_attr)
 		return -1;
 	}
 
-	ret = LTTNG_IOCTL_NO_CHECK(
-			fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_IDS, &args);
+	ret = LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_IDS, &args);
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_NO_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_LIST_TRACKER_IDS,
-				&args);
+		ret = LTTNG_IOCTL_NO_CHECK(
+			fd, LTTNG_KERNEL_ABI_OLD_SESSION_LIST_TRACKER_IDS, &args);
 	}
 
 	return ret;
@@ -344,12 +333,9 @@ int kernctl_session_set_name(int fd, const char *name)
 		goto end;
 	}
 
-	ret = LTTNG_IOCTL_CHECK(
-			fd, LTTNG_KERNEL_ABI_SESSION_SET_NAME, &session_name);
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_SET_NAME, &session_name);
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_SET_NAME,
-				&session_name);
+		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_SESSION_SET_NAME, &session_name);
 	}
 
 end:
@@ -361,18 +347,15 @@ int kernctl_session_set_creation_time(int fd, time_t time)
 	int ret;
 	struct lttng_kernel_abi_session_creation_time creation_time;
 
-	ret = time_to_iso8601_str(time, creation_time.iso8601,
-			sizeof(creation_time.iso8601));
+	ret = time_to_iso8601_str(time, creation_time.iso8601, sizeof(creation_time.iso8601));
 	if (ret) {
 		goto end;
 	}
 
-	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_SET_CREATION_TIME,
-			&creation_time);
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_SET_CREATION_TIME, &creation_time);
 	if (ret == -ENOSYS) {
-		ret = LTTNG_IOCTL_CHECK(fd,
-				LTTNG_KERNEL_ABI_OLD_SESSION_SET_CREATION_TIME,
-				&creation_time);
+		ret = LTTNG_IOCTL_CHECK(
+			fd, LTTNG_KERNEL_ABI_OLD_SESSION_SET_CREATION_TIME, &creation_time);
 	}
 
 end:
@@ -381,8 +364,7 @@ end:
 
 int kernctl_create_stream(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_STREAM,
-			LTTNG_KERNEL_ABI_STREAM);
+	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_STREAM, LTTNG_KERNEL_ABI_STREAM);
 }
 
 int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev)
@@ -398,27 +380,26 @@ int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev)
 			old_event.u.kprobe.addr = ev->u.kprobe.addr;
 			old_event.u.kprobe.offset = ev->u.kprobe.offset;
 			memcpy(old_event.u.kprobe.symbol_name,
-				ev->u.kprobe.symbol_name,
-				sizeof(old_event.u.kprobe.symbol_name));
+			       ev->u.kprobe.symbol_name,
+			       sizeof(old_event.u.kprobe.symbol_name));
 			break;
 		case LTTNG_KERNEL_ABI_KRETPROBE:
 			old_event.u.kretprobe.addr = ev->u.kretprobe.addr;
 			old_event.u.kretprobe.offset = ev->u.kretprobe.offset;
 			memcpy(old_event.u.kretprobe.symbol_name,
-				ev->u.kretprobe.symbol_name,
-				sizeof(old_event.u.kretprobe.symbol_name));
+			       ev->u.kretprobe.symbol_name,
+			       sizeof(old_event.u.kretprobe.symbol_name));
 			break;
 		case LTTNG_KERNEL_ABI_FUNCTION:
 			memcpy(old_event.u.ftrace.symbol_name,
-					ev->u.ftrace.symbol_name,
-					sizeof(old_event.u.ftrace.symbol_name));
+			       ev->u.ftrace.symbol_name,
+			       sizeof(old_event.u.ftrace.symbol_name));
 			break;
 		default:
 			break;
 		}
 
-		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_EVENT,
-			        &old_event);
+		return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_OLD_EVENT, &old_event);
 	}
 	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_EVENT, ev);
 }
@@ -432,85 +413,74 @@ int kernctl_add_context(int fd, struct lttng_kernel_abi_context *ctx)
 		old_ctx.ctx = ctx->ctx;
 		/* only type that uses the union */
 		if (ctx->ctx == LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER) {
-			old_ctx.u.perf_counter.type =
-				ctx->u.perf_counter.type;
-			old_ctx.u.perf_counter.config =
-				ctx->u.perf_counter.config;
+			old_ctx.u.perf_counter.type = ctx->u.perf_counter.type;
+			old_ctx.u.perf_counter.config = ctx->u.perf_counter.config;
 			memcpy(old_ctx.u.perf_counter.name,
-				ctx->u.perf_counter.name,
-				sizeof(old_ctx.u.perf_counter.name));
+			       ctx->u.perf_counter.name,
+			       sizeof(old_ctx.u.perf_counter.name));
 		}
-		return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CONTEXT,
-				&old_ctx);
+		return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_OLD_CONTEXT, &old_ctx);
 	}
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_CONTEXT, ctx);
 }
 
-
 /* Enable event, channel and session LTTNG_IOCTL_CHECK */
 int kernctl_enable(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_ENABLE,
-			LTTNG_KERNEL_ABI_ENABLE);
+	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_ENABLE, LTTNG_KERNEL_ABI_ENABLE);
 }
 
 /* Disable event, channel and session LTTNG_IOCTL_CHECK */
 int kernctl_disable(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_DISABLE,
-			LTTNG_KERNEL_ABI_DISABLE);
+	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_DISABLE, LTTNG_KERNEL_ABI_DISABLE);
 }
 
 int kernctl_start_session(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_SESSION_START,
-			LTTNG_KERNEL_ABI_SESSION_START);
+	return compat_ioctl_no_arg(
+		fd, LTTNG_KERNEL_ABI_OLD_SESSION_START, LTTNG_KERNEL_ABI_SESSION_START);
 }
 
 int kernctl_stop_session(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_SESSION_STOP,
-			LTTNG_KERNEL_ABI_SESSION_STOP);
+	return compat_ioctl_no_arg(
+		fd, LTTNG_KERNEL_ABI_OLD_SESSION_STOP, LTTNG_KERNEL_ABI_SESSION_STOP);
 }
 
 int kernctl_create_event_notifier_group(int fd)
 {
-	return LTTNG_IOCTL_NO_CHECK(fd,
-			LTTNG_KERNEL_ABI_EVENT_NOTIFIER_GROUP_CREATE);
+	return LTTNG_IOCTL_NO_CHECK(fd, LTTNG_KERNEL_ABI_EVENT_NOTIFIER_GROUP_CREATE);
 }
 
 int kernctl_create_event_notifier_group_notification_fd(int group_fd)
 {
 	return LTTNG_IOCTL_NO_CHECK(group_fd,
-			LTTNG_KERNEL_ABI_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD);
+				    LTTNG_KERNEL_ABI_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD);
 }
 
-int kernctl_create_event_notifier_group_error_counter(int group_fd,
-		const struct lttng_kernel_abi_counter_conf *error_counter_conf)
+int kernctl_create_event_notifier_group_error_counter(
+	int group_fd, const struct lttng_kernel_abi_counter_conf *error_counter_conf)
 {
-	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER,
-			error_counter_conf);
+	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_ABI_COUNTER, error_counter_conf);
 }
 
 int kernctl_counter_get_aggregate_value(int counter_fd,
-		struct lttng_kernel_abi_counter_aggregate *value)
+					struct lttng_kernel_abi_counter_aggregate *value)
 {
-	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_AGGREGATE,
-			value);
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_AGGREGATE, value);
 }
 
-int kernctl_counter_clear(int counter_fd,
-		struct lttng_kernel_abi_counter_clear *clear)
+int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear)
 {
-	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_CLEAR,
-			clear);
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_ABI_COUNTER_CLEAR, clear);
 }
 
 int kernctl_create_event_notifier(int group_fd,
-		const struct lttng_kernel_abi_event_notifier *event_notifier)
+				  const struct lttng_kernel_abi_event_notifier *event_notifier)
 {
-	return LTTNG_IOCTL_NO_CHECK(group_fd,
-			LTTNG_KERNEL_ABI_EVENT_NOTIFIER_CREATE, event_notifier);
+	return LTTNG_IOCTL_NO_CHECK(
+		group_fd, LTTNG_KERNEL_ABI_EVENT_NOTIFIER_CREATE, event_notifier);
 }
 
 int kernctl_capture(int fd, const struct lttng_bytecode *capture)
@@ -561,8 +531,8 @@ int kernctl_add_callsite(int fd, struct lttng_kernel_abi_event_callsite *callsit
 
 int kernctl_tracepoint_list(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_TRACEPOINT_LIST,
-			LTTNG_KERNEL_ABI_TRACEPOINT_LIST);
+	return compat_ioctl_no_arg(
+		fd, LTTNG_KERNEL_ABI_OLD_TRACEPOINT_LIST, LTTNG_KERNEL_ABI_TRACEPOINT_LIST);
 }
 
 int kernctl_syscall_list(int fd)
@@ -600,16 +570,15 @@ end:
 	return ret;
 }
 
-int kernctl_tracer_abi_version(int fd,
-		struct lttng_kernel_abi_tracer_abi_version *v)
+int kernctl_tracer_abi_version(int fd, struct lttng_kernel_abi_tracer_abi_version *v)
 {
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_TRACER_ABI_VERSION, v);
 }
 
 int kernctl_wait_quiescent(int fd)
 {
-	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_WAIT_QUIESCENT,
-			LTTNG_KERNEL_ABI_WAIT_QUIESCENT);
+	return compat_ioctl_no_arg(
+		fd, LTTNG_KERNEL_ABI_OLD_WAIT_QUIESCENT, LTTNG_KERNEL_ABI_WAIT_QUIESCENT);
 }
 
 int kernctl_buffer_flush(int fd)
@@ -629,16 +598,14 @@ int kernctl_buffer_clear(int fd)
 
 int kernctl_get_next_subbuf_metadata_check(int fd, bool *consistent)
 {
-	return LTTNG_IOCTL_NO_CHECK(fd,
-			LTTNG_KERNEL_ABI_RING_BUFFER_GET_NEXT_SUBBUF_METADATA_CHECK,
-			consistent);
+	return LTTNG_IOCTL_NO_CHECK(
+		fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_NEXT_SUBBUF_METADATA_CHECK, consistent);
 }
 
 /* returns the version of the metadata. */
 int kernctl_get_metadata_version(int fd, uint64_t *version)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_METADATA_VERSION,
-			version);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_METADATA_VERSION, version);
 }
 
 int kernctl_metadata_cache_dump(int fd)
@@ -653,15 +620,13 @@ int kernctl_metadata_cache_dump(int fd)
 /* returns the length to mmap. */
 int kernctl_get_mmap_len(int fd, unsigned long *len)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MMAP_LEN,
-			len);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MMAP_LEN, len);
 }
 
 /* returns the maximum size for sub-buffers. */
 int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MAX_SUBBUF_SIZE,
-			len);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MAX_SUBBUF_SIZE, len);
 }
 
 /*
@@ -672,22 +637,19 @@ int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
 /* returns the offset of the subbuffer belonging to the mmap reader. */
 int kernctl_get_mmap_read_offset(int fd, unsigned long *off)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MMAP_READ_OFFSET,
-			off);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_MMAP_READ_OFFSET, off);
 }
 
 /* returns the size of the current sub-buffer, without padding (for mmap). */
 int kernctl_get_subbuf_size(int fd, unsigned long *len)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SUBBUF_SIZE,
-			len);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SUBBUF_SIZE, len);
 }
 
 /* returns the size of the current sub-buffer, without padding (for mmap). */
 int kernctl_get_padded_subbuf_size(int fd, unsigned long *len)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_PADDED_SUBBUF_SIZE,
-			len);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_PADDED_SUBBUF_SIZE, len);
 }
 
 /* Get exclusive read access to the next sub-buffer that can be read. */
@@ -695,7 +657,6 @@ int kernctl_get_next_subbuf(int fd)
 {
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_NEXT_SUBBUF);
 }
-
 
 /* Release exclusive sub-buffer access, move consumer forward. */
 int kernctl_put_next_subbuf(int fd)
@@ -724,22 +685,19 @@ int kernctl_snapshot_sample_positions(int fd)
 /* Get the consumer position (iteration start) */
 int kernctl_snapshot_get_consumed(int fd, unsigned long *pos)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT_GET_CONSUMED,
-			pos);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT_GET_CONSUMED, pos);
 }
 
 /* Get the producer position (iteration end) */
 int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT_GET_PRODUCED,
-			pos);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT_GET_PRODUCED, pos);
 }
 
 /* Get exclusive read access to the specified sub-buffer position */
 int kernctl_get_subbuf(int fd, unsigned long *len)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SUBBUF,
-			len);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SUBBUF, len);
 }
 
 /* Release exclusive sub-buffer access */
@@ -751,62 +709,55 @@ int kernctl_put_subbuf(int fd)
 /* Returns the timestamp begin of the current sub-buffer. */
 int kernctl_get_timestamp_begin(int fd, uint64_t *timestamp_begin)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_TIMESTAMP_BEGIN,
-			timestamp_begin);
+	return LTTNG_IOCTL_CHECK(
+		fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_TIMESTAMP_BEGIN, timestamp_begin);
 }
 
 /* Returns the timestamp end of the current sub-buffer. */
 int kernctl_get_timestamp_end(int fd, uint64_t *timestamp_end)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_TIMESTAMP_END,
-			timestamp_end);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_TIMESTAMP_END, timestamp_end);
 }
 
 /* Returns the number of discarded events in the current sub-buffer. */
 int kernctl_get_events_discarded(int fd, uint64_t *events_discarded)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_EVENTS_DISCARDED,
-			events_discarded);
+	return LTTNG_IOCTL_CHECK(
+		fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_EVENTS_DISCARDED, events_discarded);
 }
 
 /* Returns the content size in the current sub-buffer. */
 int kernctl_get_content_size(int fd, uint64_t *content_size)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_CONTENT_SIZE,
-			content_size);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_CONTENT_SIZE, content_size);
 }
 
 /* Returns the packet size in the current sub-buffer. */
 int kernctl_get_packet_size(int fd, uint64_t *packet_size)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_PACKET_SIZE,
-		        packet_size);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_PACKET_SIZE, packet_size);
 }
 
 /* Returns the stream id of the current sub-buffer. */
 int kernctl_get_stream_id(int fd, uint64_t *stream_id)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_STREAM_ID,
-		        stream_id);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_STREAM_ID, stream_id);
 }
 
 /* Returns the current timestamp. */
 int kernctl_get_current_timestamp(int fd, uint64_t *ts)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_CURRENT_TIMESTAMP,
-			ts);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
 }
 
 /* Returns the packet sequence number of the current sub-buffer. */
 int kernctl_get_sequence_number(int fd, uint64_t *seq)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SEQ_NUM,
-			seq);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_GET_SEQ_NUM, seq);
 }
 
 /* Returns the stream instance id. */
 int kernctl_get_instance_id(int fd, uint64_t *id)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_INSTANCE_ID,
-			id);
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_INSTANCE_ID, id);
 }

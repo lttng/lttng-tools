@@ -6,10 +6,12 @@
  */
 
 #include "test_class.hpp"
-test_class::test_class() {
+test_class::test_class()
+{
 	test_member = 1;
 }
 
-void test_class::test_method() {
+void test_class::test_method()
+{
 	test_member += 1;
 }

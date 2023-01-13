@@ -5,10 +5,10 @@
  *
  */
 
-#include <stdio.h>
-#include <string.h>
 #include "common/compat/pthread.hpp"
 
+#include <stdio.h>
+#include <string.h>
 #include <tap/tap.h>
 
 #define TEST_NAME_PROPER_LEN 16
@@ -44,8 +44,10 @@ int main(void)
 	/* Get the thread name again, should be the one we set */
 	ret = lttng_pthread_getname_np(name1, TEST_NAME_PROPER_LEN);
 	ok(ret == 0, "Get a short thread name: '%s'", name1);
-	ok(strcmp(short_name, name1) == 0, "Compare the short thread name: '%s' == '%s'", short_name, name1);
-
+	ok(strcmp(short_name, name1) == 0,
+	   "Compare the short thread name: '%s' == '%s'",
+	   short_name,
+	   name1);
 
 	/* Set a thread name of 16 bytes */
 	ret = lttng_pthread_setname_np(long_name);
@@ -54,7 +56,10 @@ int main(void)
 	/* Get the thread name again, should be the one we set */
 	ret = lttng_pthread_getname_np(name1, TEST_NAME_PROPER_LEN);
 	ok(ret == 0, "Get a long thread name: '%s'", name1);
-	ok(strncmp(long_name, name1, TEST_NAME_PROPER_LEN - 1) == 0, "Compare the long thread name: '%s' == '%s'", long_name, name1);
+	ok(strncmp(long_name, name1, TEST_NAME_PROPER_LEN - 1) == 0,
+	   "Compare the long thread name: '%s' == '%s'",
+	   long_name,
+	   name1);
 
 	return exit_status();
 }

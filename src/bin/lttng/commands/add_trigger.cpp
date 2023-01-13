@@ -5,28 +5,29 @@
  *
  */
 
-#include <ctype.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
-
 #include "../command.hpp"
 #include "../loglevel.hpp"
 #include "../uprobe.hpp"
-
-#include "common/argpar/argpar.h"
 #include "common/argpar-utils/argpar-utils.hpp"
+#include "common/argpar/argpar.h"
 #include "common/dynamic-array.hpp"
 #include "common/mi-lttng.hpp"
 #include "common/string-utils/string-utils.hpp"
 #include "common/utils.hpp"
+
 #include <lttng/domain-internal.hpp>
+
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 /* For lttng_event_rule_type_str(). */
-#include <lttng/event-rule/event-rule-internal.hpp>
-#include <lttng/lttng.h>
+#include "common/dynamic-array.hpp"
 #include "common/filter/filter-ast.hpp"
 #include "common/filter/filter-ir.hpp"
-#include "common/dynamic-array.hpp"
+
+#include <lttng/event-rule/event-rule-internal.hpp>
+#include <lttng/lttng.h>
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"
@@ -35,7 +36,7 @@
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-add-trigger.1.h>
-;
+	;
 #endif
 
 enum {
@@ -82,22 +83,20 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	ARGPAR_OPT_DESCR_SENTINEL
 };
 
-static
-bool has_syscall_prefix(const char *arg)
+static bool has_syscall_prefix(const char *arg)
 {
 	bool matches = false;
 	const char kernel_syscall_type_opt_prefix[] = "kernel:syscall";
 	const size_t kernel_syscall_type_opt_prefix_len =
-			sizeof(kernel_syscall_type_opt_prefix) - 1;
+		sizeof(kernel_syscall_type_opt_prefix) - 1;
 	const char syscall_type_opt_prefix[] = "syscall";
-	const size_t syscall_type_opt_prefix_len =
-			sizeof(syscall_type_opt_prefix) - 1;
+	const size_t syscall_type_opt_prefix_len = sizeof(syscall_type_opt_prefix) - 1;
 
-	if (strncmp(arg, syscall_type_opt_prefix,
-			    syscall_type_opt_prefix_len) == 0) {
+	if (strncmp(arg, syscall_type_opt_prefix, syscall_type_opt_prefix_len) == 0) {
 		matches = true;
-	} else if (strncmp(arg, kernel_syscall_type_opt_prefix,
-				   kernel_syscall_type_opt_prefix_len) == 0) {
+	} else if (strncmp(arg,
+			   kernel_syscall_type_opt_prefix,
+			   kernel_syscall_type_opt_prefix_len) == 0) {
 		matches = true;
 	} else {
 		matches = false;
@@ -106,8 +105,7 @@ bool has_syscall_prefix(const char *arg)
 	return matches;
 }
 
-static
-bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
+static bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 {
 	bool ret;
 
@@ -118,19 +116,15 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 
 	if (strcmp(arg, "user") == 0 || strcmp(arg, "user:tracepoint") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT;
-	} else if (strcmp(arg, "kernel") == 0 ||
-			strcmp(arg, "kernel:tracepoint") == 0) {
+	} else if (strcmp(arg, "kernel") == 0 || strcmp(arg, "kernel:tracepoint") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT;
 	} else if (strcmp(arg, "jul") == 0 || strcmp(arg, "jul:logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_JUL_LOGGING;
-	} else if (strcmp(arg, "log4j") == 0 ||
-			strcmp(arg, "log4j:logging") == 0) {
+	} else if (strcmp(arg, "log4j") == 0 || strcmp(arg, "log4j:logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING;
-	} else if (strcmp(arg, "python") == 0 ||
-			strcmp(arg, "python:logging") == 0) {
+	} else if (strcmp(arg, "python") == 0 || strcmp(arg, "python:logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING;
-	} else if (strcmp(arg, "kprobe") == 0 ||
-			strcmp(arg, "kernel:kprobe") == 0) {
+	} else if (strcmp(arg, "kprobe") == 0 || strcmp(arg, "kernel:kprobe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE;
 	} else if (strcmp(arg, "kernel:uprobe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE;
@@ -166,8 +160,7 @@ end:
 	return ret;
 }
 
-static
-bool assign_string(char **dest, const char *src, const char *opt_name)
+static bool assign_string(char **dest, const char *src, const char *opt_name)
 {
 	bool ret;
 
@@ -192,8 +185,9 @@ end:
 	return ret;
 }
 
-static bool parse_syscall_emission_site_from_type(const char *str,
-		enum lttng_event_rule_kernel_syscall_emission_site *type)
+static bool
+parse_syscall_emission_site_from_type(const char *str,
+				      enum lttng_event_rule_kernel_syscall_emission_site *type)
 {
 	bool ret = false;
 	const char kernel_prefix[] = "kernel:";
@@ -207,8 +201,7 @@ static bool parse_syscall_emission_site_from_type(const char *str,
 		str = &str[kernel_prefix_len];
 	}
 
-	if (strcmp(str, "syscall") == 0 ||
-			strcmp(str, "syscall:entry+exit") == 0) {
+	if (strcmp(str, "syscall") == 0 || strcmp(str, "syscall:entry+exit") == 0) {
 		*type = LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT;
 	} else if (strcmp(str, "syscall:entry") == 0) {
 		*type = LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY;
@@ -234,9 +227,9 @@ error:
  * Return true if the string was successfully parsed as a log level string.
  */
 static bool parse_log_level_string(const char *str,
-		enum lttng_event_rule_type event_rule_type,
-		int *log_level,
-		bool *log_level_only)
+				   enum lttng_event_rule_type event_rule_type,
+				   int *log_level,
+				   bool *log_level_only)
 {
 	bool ret;
 
@@ -244,14 +237,12 @@ static bool parse_log_level_string(const char *str,
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 	{
 		enum lttng_loglevel log_level_min, log_level_max;
-		if (!loglevel_parse_range_string(
-				    str, &log_level_min, &log_level_max)) {
+		if (!loglevel_parse_range_string(str, &log_level_min, &log_level_max)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max &&
-				log_level_max != LTTNG_LOGLEVEL_EMERG) {
+		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_EMERG) {
 			goto error;
 		}
 
@@ -262,14 +253,12 @@ static bool parse_log_level_string(const char *str,
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 	{
 		enum lttng_loglevel_log4j log_level_min, log_level_max;
-		if (!loglevel_log4j_parse_range_string(
-				    str, &log_level_min, &log_level_max)) {
+		if (!loglevel_log4j_parse_range_string(str, &log_level_min, &log_level_max)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max &&
-				log_level_max != LTTNG_LOGLEVEL_LOG4J_FATAL) {
+		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_LOG4J_FATAL) {
 			goto error;
 		}
 
@@ -280,14 +269,12 @@ static bool parse_log_level_string(const char *str,
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	{
 		enum lttng_loglevel_jul log_level_min, log_level_max;
-		if (!loglevel_jul_parse_range_string(
-				    str, &log_level_min, &log_level_max)) {
+		if (!loglevel_jul_parse_range_string(str, &log_level_min, &log_level_max)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max &&
-				log_level_max != LTTNG_LOGLEVEL_JUL_SEVERE) {
+		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_JUL_SEVERE) {
 			goto error;
 		}
 
@@ -298,15 +285,13 @@ static bool parse_log_level_string(const char *str,
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	{
 		enum lttng_loglevel_python log_level_min, log_level_max;
-		if (!loglevel_python_parse_range_string(
-				    str, &log_level_min, &log_level_max)) {
+		if (!loglevel_python_parse_range_string(str, &log_level_min, &log_level_max)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
 		if (log_level_min != log_level_max &&
-				log_level_max !=
-						LTTNG_LOGLEVEL_PYTHON_CRITICAL) {
+		    log_level_max != LTTNG_LOGLEVEL_PYTHON_CRITICAL) {
 			goto error;
 		}
 
@@ -330,7 +315,7 @@ end:
 }
 
 static int parse_kernel_probe_opts(const char *source,
-		struct lttng_kernel_probe_location **location)
+				   struct lttng_kernel_probe_location **location)
 {
 	int ret = 0;
 	int match;
@@ -340,10 +325,8 @@ static int parse_kernel_probe_opts(const char *source,
 	uint64_t offset;
 
 	/* Check for symbol+offset. */
-	match = sscanf(source,
-			"%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API
-			"[^'+']+%18s",
-			name, s_hex);
+	match = sscanf(
+		source, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "[^'+']+%18s", name, s_hex);
 	if (match == 2) {
 		if (*s_hex == '\0') {
 			ERR("Kernel probe symbol offset is missing.");
@@ -357,8 +340,7 @@ static int parse_kernel_probe_opts(const char *source,
 		}
 		offset = strtoull(s_hex, NULL, 0);
 
-		*location = lttng_kernel_probe_location_symbol_create(
-				symbol_name, offset);
+		*location = lttng_kernel_probe_location_symbol_create(symbol_name, offset);
 		if (!*location) {
 			ERR("Failed to create symbol kernel probe location.");
 			goto error;
@@ -369,10 +351,7 @@ static int parse_kernel_probe_opts(const char *source,
 
 	/* Check for symbol. */
 	if (isalpha(name[0]) || name[0] == '_') {
-		match = sscanf(source,
-				"%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API
-				"s",
-				name);
+		match = sscanf(source, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "s", name);
 		if (match == 1) {
 			symbol_name = strndup(name, LTTNG_SYMBOL_NAME_LEN);
 			if (!symbol_name) {
@@ -380,8 +359,7 @@ static int parse_kernel_probe_opts(const char *source,
 				goto error;
 			}
 
-			*location = lttng_kernel_probe_location_symbol_create(
-					symbol_name, 0);
+			*location = lttng_kernel_probe_location_symbol_create(symbol_name, 0);
 			if (!*location) {
 				ERR("Failed to create symbol kernel probe location.");
 				goto error;
@@ -421,16 +399,13 @@ end:
 	return ret;
 }
 
-static
-struct lttng_event_expr *ir_op_load_expr_to_event_expr(
-		const struct ir_load_expression *load_expr,
-		const char *capture_str)
+static struct lttng_event_expr *
+ir_op_load_expr_to_event_expr(const struct ir_load_expression *load_expr, const char *capture_str)
 {
 	char *provider_name = NULL;
 	struct lttng_event_expr *event_expr = NULL;
 	const struct ir_load_expression_op *load_expr_op = load_expr->child;
-	const enum ir_load_expression_type load_expr_child_type =
-			load_expr_op->type;
+	const enum ir_load_expression_type load_expr_child_type = load_expr_op->type;
 
 	switch (load_expr_child_type) {
 	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
@@ -445,13 +420,14 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		LTTNG_ASSERT(field_name);
 
 		event_expr = load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
-				lttng_event_expr_event_payload_field_create(field_name) :
-				lttng_event_expr_channel_context_field_create(field_name);
+			lttng_event_expr_event_payload_field_create(field_name) :
+			lttng_event_expr_channel_context_field_create(field_name);
 		if (!event_expr) {
 			ERR("Failed to create %s event expression: field name = `%s`.",
-					load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
-							"payload field" : "channel context",
-							field_name);
+			    load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
+				    "payload field" :
+				    "channel context",
+			    field_name);
 			goto error;
 		}
 
@@ -476,14 +452,14 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		colon = strchr(field_name, ':');
 		if (!colon) {
 			ERR("Invalid app-specific context field name: missing colon in `%s`.",
-					field_name);
+			    field_name);
 			goto error;
 		}
 
 		type_name = colon + 1;
 		if (*type_name == '\0') {
 			ERR("Invalid app-specific context field name: missing type name after colon in `%s`.",
-					field_name);
+			    field_name);
 			goto error;
 		}
 
@@ -493,19 +469,19 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 			goto error;
 		}
 
-		event_expr = lttng_event_expr_app_specific_context_field_create(
-				provider_name, type_name);
+		event_expr = lttng_event_expr_app_specific_context_field_create(provider_name,
+										type_name);
 		if (!event_expr) {
 			ERR("Failed to create app-specific context field event expression: provider name = `%s`, type name = `%s`",
-					provider_name, type_name);
+			    provider_name,
+			    type_name);
 			goto error;
 		}
 
 		break;
 	}
 	default:
-		ERR("%s: unexpected load expr type %d.", __func__,
-				load_expr_op->type);
+		ERR("%s: unexpected load expr type %d.", __func__, load_expr_op->type);
 		abort();
 	}
 
@@ -535,12 +511,13 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		break;
 	case IR_LOAD_EXPRESSION_GET_SYMBOL:
 		ERR("While parsing expression `%s`: Capturing subfields is not supported.",
-				capture_str);
+		    capture_str);
 		goto error;
 
 	default:
-		ERR("%s: unexpected load expression operator %s.", __func__,
-				ir_load_expression_type_str(load_expr_op->type));
+		ERR("%s: unexpected load expression operator %s.",
+		    __func__,
+		    ir_load_expression_type_str(load_expr_op->type));
 		abort();
 	}
 
@@ -556,9 +533,8 @@ end:
 	return event_expr;
 }
 
-static
-struct lttng_event_expr *ir_op_load_to_event_expr(
-		const struct ir_op *ir, const char *capture_str)
+static struct lttng_event_expr *ir_op_load_to_event_expr(const struct ir_op *ir,
+							 const char *capture_str)
 {
 	struct lttng_event_expr *event_expr = NULL;
 
@@ -567,24 +543,20 @@ struct lttng_event_expr *ir_op_load_to_event_expr(
 	switch (ir->data_type) {
 	case IR_DATA_EXPRESSION:
 	{
-		const struct ir_load_expression *ir_load_expr =
-				ir->u.load.u.expression;
+		const struct ir_load_expression *ir_load_expr = ir->u.load.u.expression;
 
-		event_expr = ir_op_load_expr_to_event_expr(
-				ir_load_expr, capture_str);
+		event_expr = ir_op_load_expr_to_event_expr(ir_load_expr, capture_str);
 		break;
 	}
 	default:
-		ERR("%s: unexpected data type: %s.", __func__,
-				ir_data_type_str(ir->data_type));
+		ERR("%s: unexpected data type: %s.", __func__, ir_data_type_str(ir->data_type));
 		abort();
 	}
 
 	return event_expr;
 }
 
-static
-const char *ir_operator_type_human_str(enum ir_op_type op)
+static const char *ir_operator_type_human_str(enum ir_op_type op)
 {
 	const char *name;
 
@@ -605,9 +577,8 @@ const char *ir_operator_type_human_str(enum ir_op_type op)
 	return name;
 }
 
-static
-struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
-		const char *capture_str)
+static struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
+							 const char *capture_str)
 {
 	struct lttng_event_expr *event_expr = NULL;
 
@@ -622,20 +593,18 @@ struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
 	case IR_OP_UNARY:
 	case IR_OP_LOGICAL:
 		ERR("While parsing expression `%s`: %s operators are not allowed in capture expressions.",
-				capture_str,
-				ir_operator_type_human_str(ir->op));
+		    capture_str,
+		    ir_operator_type_human_str(ir->op));
 		break;
 	default:
-		ERR("%s: unexpected IR op type: %s.", __func__,
-				ir_op_type_str(ir->op));
+		ERR("%s: unexpected IR op type: %s.", __func__, ir_op_type_str(ir->op));
 		abort();
 	}
 
 	return event_expr;
 }
 
-static
-void destroy_event_expr(void *ptr)
+static void destroy_event_expr(void *ptr)
 {
 	lttng_event_expr_destroy((lttng_event_expr *) ptr);
 }
@@ -650,12 +619,9 @@ struct parse_event_rule_res {
 };
 } /* namespace */
 
-static
-struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
-		int argc_offset)
+static struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv, int argc_offset)
 {
-	enum lttng_event_rule_type event_rule_type =
-			LTTNG_EVENT_RULE_TYPE_UNKNOWN;
+	enum lttng_event_rule_type event_rule_type = LTTNG_EVENT_RULE_TYPE_UNKNOWN;
 	struct argpar_iter *argpar_iter = NULL;
 	const struct argpar_item *argpar_item = NULL;
 	int consumed_args = -1;
@@ -684,8 +650,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	/* Log level. */
 	char *log_level_str = NULL;
 
-	lttng_dynamic_pointer_array_init(&res.capture_descriptors,
-				destroy_event_expr);
+	lttng_dynamic_pointer_array_init(&res.capture_descriptors, destroy_event_expr);
 
 	lttng_dynamic_pointer_array_init(&exclude_names, free);
 
@@ -698,10 +663,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item,
-			argc_offset, *argv, false, NULL, NULL);
+		status = parse_next_item(
+			argpar_iter, &argpar_item, argc_offset, *argv, false, NULL, NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
-				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -710,8 +675,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_opt_descr *descr =
-				argpar_item_opt_descr(argpar_item);
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
 			const char *arg = argpar_item_opt_arg(argpar_item);
 
 			switch (descr->id) {
@@ -721,36 +685,31 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 				}
 
 				/* Save the string for later use. */
-				if (!assign_string(&event_rule_type_str, arg,
-						"--type/-t")) {
+				if (!assign_string(&event_rule_type_str, arg, "--type/-t")) {
 					goto error;
 				}
 
 				break;
 			case OPT_LOCATION:
-				if (!assign_string(&location, arg,
-						"--location/-L")) {
+				if (!assign_string(&location, arg, "--location/-L")) {
 					goto error;
 				}
 
 				break;
 			case OPT_EVENT_NAME:
-				if (!assign_string(&event_name, arg,
-						"--event-name/-E")) {
+				if (!assign_string(&event_name, arg, "--event-name/-E")) {
 					goto error;
 				}
 
 				break;
 			case OPT_FILTER:
-				if (!assign_string(&filter, arg,
-						"--filter/-f")) {
+				if (!assign_string(&filter, arg, "--filter/-f")) {
 					goto error;
 				}
 
 				break;
 			case OPT_NAME:
-				if (!assign_string(&name, arg,
-						"--name/-n")) {
+				if (!assign_string(&name, arg, "--name/-n")) {
 					goto error;
 				}
 
@@ -759,9 +718,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 			{
 				int ret;
 
-				ret = lttng_dynamic_pointer_array_add_pointer(
-						&exclude_names,
-						strdup(arg));
+				ret = lttng_dynamic_pointer_array_add_pointer(&exclude_names,
+									      strdup(arg));
 				if (ret != 0) {
 					ERR("Failed to add pointer to dynamic pointer array.");
 					goto error;
@@ -770,8 +728,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 				break;
 			}
 			case OPT_LOG_LEVEL:
-				if (!assign_string(&log_level_str, arg,
-						"--log-level/-l")) {
+				if (!assign_string(&log_level_str, arg, "--log-level/-l")) {
 					goto error;
 				}
 
@@ -780,15 +737,14 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 			{
 				int ret;
 
-				ret = filter_parser_ctx_create_from_filter_expression(
-						arg, &parser_ctx);
+				ret = filter_parser_ctx_create_from_filter_expression(arg,
+										      &parser_ctx);
 				if (ret) {
 					ERR("Failed to parse capture expression `%s`.", arg);
 					goto error;
 				}
 
-				event_expr = ir_op_root_to_event_expr(
-						parser_ctx->ir_root, arg);
+				event_expr = ir_op_root_to_event_expr(parser_ctx->ir_root, arg);
 				filter_parser_ctx_free(parser_ctx);
 				parser_ctx = nullptr;
 				if (!event_expr) {
@@ -800,8 +756,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 				}
 
 				ret = lttng_dynamic_pointer_array_add_pointer(
-						&res.capture_descriptors,
-						event_expr);
+					&res.capture_descriptors, event_expr);
 				if (ret) {
 					goto error;
 				}
@@ -851,15 +806,13 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	default:
 		if (name) {
 			ERR("Can't use --name with %s event rules.",
-					lttng_event_rule_type_str(
-							event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 
 		if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 			ERR("Can't use --exclude-name/-x with %s event rules.",
-					lttng_event_rule_type_str(
-							event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 	}
@@ -876,7 +829,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		if (!location) {
 			ERR("Event rule of type %s requires a --location.",
-			lttng_event_rule_type_str(event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 
@@ -889,14 +842,13 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	default:
 		if (location) {
 			ERR("Can't use --location with %s event rules.",
-			lttng_event_rule_type_str(event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 
 		if (event_name) {
 			ERR("Can't use --event-name with %s event rules.",
-					lttng_event_rule_type_str(
-							event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 	}
@@ -925,7 +877,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 			break;
 		default:
 			ERR("Filter expressions are not supported for %s event rules.",
-					lttng_event_rule_type_str(event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 	}
@@ -938,7 +890,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 	if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 		if (event_rule_type != LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT) {
 			ERR("Event name exclusions are not yet implemented for %s event rules.",
-					lttng_event_rule_type_str(event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 
@@ -969,17 +921,17 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 				break;
 			}
 
-			if (!parse_log_level_string(log_level_str, event_rule_type,
-					    &log_level, &log_level_only)) {
-				ERR("Failed to parse log level string `%s`.",
-						log_level_str);
+			if (!parse_log_level_string(
+				    log_level_str, event_rule_type, &log_level, &log_level_only)) {
+				ERR("Failed to parse log level string `%s`.", log_level_str);
 				goto error;
 			}
 
 			if (log_level_only) {
 				log_level_rule = lttng_log_level_rule_exactly_create(log_level);
 			} else {
-				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(log_level);
+				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(
+					log_level);
 			}
 
 			if (log_level_rule == NULL) {
@@ -990,7 +942,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 		default:
 			ERR("Log levels are not supported for %s event rules.",
-					lttng_event_rule_type_str(event_rule_type));
+			    lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 	}
@@ -1008,21 +960,19 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_user_tracepoint_set_name_pattern(
-				res.er, name);
+		event_rule_status = lttng_event_rule_user_tracepoint_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set user_tracepoint event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set user_tracepoint event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_user_tracepoint_set_filter(
-					res.er, filter);
+			event_rule_status =
+				lttng_event_rule_user_tracepoint_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set user_tracepoint event rule's filter to '%s'.",
-						filter);
+				    filter);
 				goto error;
 			}
 		}
@@ -1030,32 +980,27 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		/* Set exclusion list. */
 		if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 			int n;
-			int count = lttng_dynamic_pointer_array_get_count(
-					&exclude_names);
+			int count = lttng_dynamic_pointer_array_get_count(&exclude_names);
 
 			for (n = 0; n < count; n++) {
 				const char *exclude_name =
-						(const char *) lttng_dynamic_pointer_array_get_pointer(
-								&exclude_names,
-								n);
+					(const char *) lttng_dynamic_pointer_array_get_pointer(
+						&exclude_names, n);
 
 				event_rule_status =
-						lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
-								res.er,
-								exclude_name);
-				if (event_rule_status !=
-						LTTNG_EVENT_RULE_STATUS_OK) {
+					lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
+						res.er, exclude_name);
+				if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 					ERR("Failed to set user_tracepoint exclusion list element '%s'",
-							exclude_name);
+					    exclude_name);
 					goto error;
 				}
 			}
 		}
 
 		if (log_level_rule) {
-			event_rule_status =
-					lttng_event_rule_user_tracepoint_set_log_level_rule(
-							res.er, log_level_rule);
+			event_rule_status = lttng_event_rule_user_tracepoint_set_log_level_rule(
+				res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set log level on event fule.");
@@ -1076,21 +1021,20 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_kernel_tracepoint_set_name_pattern(
-				res.er, name);
+		event_rule_status =
+			lttng_event_rule_kernel_tracepoint_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set kernel_tracepoint event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set kernel_tracepoint event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_kernel_tracepoint_set_filter(
-					res.er, filter);
+			event_rule_status =
+				lttng_event_rule_kernel_tracepoint_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set kernel_tracepoint event rule's filter to '%s'.",
-						filter);
+				    filter);
 				goto error;
 			}
 		}
@@ -1107,29 +1051,25 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_jul_logging_set_name_pattern(
-				res.er, name);
+		event_rule_status = lttng_event_rule_jul_logging_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_jul_logging_set_filter(
-					res.er, filter);
+			event_rule_status = lttng_event_rule_jul_logging_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set jul_logging event rule's filter to '%s'.",
-						filter);
+				    filter);
 				goto error;
 			}
 		}
 
 		if (log_level_rule) {
-			event_rule_status =
-					lttng_event_rule_jul_logging_set_log_level_rule(
-							res.er, log_level_rule);
+			event_rule_status = lttng_event_rule_jul_logging_set_log_level_rule(
+				res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set log level on event fule.");
@@ -1149,29 +1089,26 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_log4j_logging_set_name_pattern(
-				res.er, name);
+		event_rule_status = lttng_event_rule_log4j_logging_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_log4j_logging_set_filter(
-					res.er, filter);
+			event_rule_status =
+				lttng_event_rule_log4j_logging_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set jul_logging event rule's filter to '%s'.",
-						filter);
+				    filter);
 				goto error;
 			}
 		}
 
 		if (log_level_rule) {
-			event_rule_status =
-					lttng_event_rule_log4j_logging_set_log_level_rule(
-							res.er, log_level_rule);
+			event_rule_status = lttng_event_rule_log4j_logging_set_log_level_rule(
+				res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set log level on event fule.");
@@ -1191,29 +1128,26 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_python_logging_set_name_pattern(
-				res.er, name);
+		event_rule_status = lttng_event_rule_python_logging_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_python_logging_set_filter(
-					res.er, filter);
+			event_rule_status =
+				lttng_event_rule_python_logging_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set jul_logging event rule's filter to '%s'.",
-						filter);
+				    filter);
 				goto error;
 			}
 		}
 
 		if (log_level_rule) {
-			event_rule_status =
-					lttng_event_rule_python_logging_set_log_level_rule(
-							res.er, log_level_rule);
+			event_rule_status = lttng_event_rule_python_logging_set_log_level_rule(
+				res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set log level on event fule.");
@@ -1227,8 +1161,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-		ret = parse_kernel_probe_opts(
-				location, &kernel_probe_location);
+		ret = parse_kernel_probe_opts(location, &kernel_probe_location);
 		if (ret) {
 			ERR("Failed to parse kernel probe location.");
 			goto error;
@@ -1242,11 +1175,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		event_rule_status =
-				lttng_event_rule_kernel_kprobe_set_event_name(
-						res.er, event_name);
+			lttng_event_rule_kernel_kprobe_set_event_name(res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set kprobe event rule's name to '%s'.",
-					event_name);
+			ERR("Failed to set kprobe event rule's name to '%s'.", event_name);
 			goto error;
 		}
 
@@ -1257,8 +1188,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-		ret = parse_userspace_probe_opts(
-				location, &userspace_probe_location);
+		ret = parse_userspace_probe_opts(location, &userspace_probe_location);
 		if (ret) {
 			ERR("Failed to parse user space probe location.");
 			goto error;
@@ -1271,11 +1201,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		}
 
 		event_rule_status =
-				lttng_event_rule_kernel_uprobe_set_event_name(
-						res.er, event_name);
+			lttng_event_rule_kernel_uprobe_set_event_name(res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
-					event_name);
+			    event_name);
 			goto error;
 		}
 
@@ -1286,8 +1215,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 		enum lttng_event_rule_status event_rule_status;
 		enum lttng_event_rule_kernel_syscall_emission_site emission_site;
 
-		if (!parse_syscall_emission_site_from_type(
-				    event_rule_type_str, &emission_site)) {
+		if (!parse_syscall_emission_site_from_type(event_rule_type_str, &emission_site)) {
 			ERR("Failed to parse syscall type '%s'.", event_rule_type_str);
 			goto error;
 		}
@@ -1298,20 +1226,17 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv,
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
-				res.er, name);
+		event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set syscall event rule's pattern to '%s'.",
-					name);
+			ERR("Failed to set syscall event rule's pattern to '%s'.", name);
 			goto error;
 		}
 
 		if (filter) {
-			event_rule_status = lttng_event_rule_kernel_syscall_set_filter(
-					res.er, filter);
+			event_rule_status =
+				lttng_event_rule_kernel_syscall_set_filter(res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-				ERR("Failed to set syscall event rule's filter to '%s'.",
-						filter);
+				ERR("Failed to set syscall event rule's filter to '%s'.", filter);
 				goto error;
 			}
 		}
@@ -1352,9 +1277,8 @@ end:
 	return res;
 }
 
-static
-struct lttng_condition *handle_condition_event(int *argc, const char ***argv,
-		int argc_offset)
+static struct lttng_condition *
+handle_condition_event(int *argc, const char ***argv, int argc_offset)
 {
 	struct parse_event_rule_res res;
 	struct lttng_condition *c;
@@ -1373,17 +1297,15 @@ struct lttng_condition *handle_condition_event(int *argc, const char ***argv,
 		goto error;
 	}
 
-	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&res.capture_descriptors);
-			i++) {
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&res.capture_descriptors); i++) {
 		enum lttng_condition_status status;
 		struct lttng_event_expr **expr =
-				(lttng_event_expr **) lttng_dynamic_array_get_element(
-					&res.capture_descriptors.array, i);
+			(lttng_event_expr **) lttng_dynamic_array_get_element(
+				&res.capture_descriptors.array, i);
 
 		LTTNG_ASSERT(expr);
 		LTTNG_ASSERT(*expr);
-		status = lttng_condition_event_rule_matches_append_capture_descriptor(
-				c, *expr);
+		status = lttng_condition_event_rule_matches_append_capture_descriptor(c, *expr);
 		if (status != LTTNG_CONDITION_STATUS_OK) {
 			if (status == LTTNG_CONDITION_STATUS_UNSUPPORTED) {
 				ERR("The capture feature is unsupported by the event-rule condition type");
@@ -1411,18 +1333,15 @@ end:
 namespace {
 struct condition_descr {
 	const char *name;
-	struct lttng_condition *(*handler) (int *argc, const char ***argv,
-		int argc_offset);
+	struct lttng_condition *(*handler)(int *argc, const char ***argv, int argc_offset);
 };
 } /* namespace */
 
-static const
-struct condition_descr condition_descrs[] = {
+static const struct condition_descr condition_descrs[] = {
 	{ "event-rule-matches", handle_condition_event },
 };
 
-static
-void print_valid_condition_names(void)
+static void print_valid_condition_names(void)
 {
 	unsigned int i;
 
@@ -1433,10 +1352,12 @@ void print_valid_condition_names(void)
 	}
 }
 
-static
-struct lttng_condition *parse_condition(const char *condition_name, int *argc,
-		const char ***argv, int argc_offset, int orig_arg_index,
-		const char *orig_arg)
+static struct lttng_condition *parse_condition(const char *condition_name,
+					       int *argc,
+					       const char ***argv,
+					       int argc_offset,
+					       int orig_arg_index,
+					       const char *orig_arg)
 {
 	int i;
 	struct lttng_condition *cond;
@@ -1451,7 +1372,9 @@ struct lttng_condition *parse_condition(const char *condition_name, int *argc,
 
 	if (!descr) {
 		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown condition name '%s'",
-			orig_arg_index + 1, orig_arg, condition_name);
+		    orig_arg_index + 1,
+		    orig_arg,
+		    condition_name);
 		print_valid_condition_names();
 		goto error;
 	}
@@ -1513,8 +1436,7 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 
 	/* Parse the value. */
 	if (utils_parse_unsigned_long_long(policy_value_str, &value) != 0) {
-		ERR("Failed to parse rate policy value `%s` as an integer.",
-				policy_value_str);
+		ERR("Failed to parse rate policy value `%s` as an integer.", policy_value_str);
 		goto end;
 	}
 
@@ -1544,13 +1466,10 @@ end:
 }
 
 static const struct argpar_opt_descr notify_action_opt_descrs[] = {
-	{ OPT_RATE_POLICY, '\0', "rate-policy", true },
-	ARGPAR_OPT_DESCR_SENTINEL
+	{ OPT_RATE_POLICY, '\0', "rate-policy", true }, ARGPAR_OPT_DESCR_SENTINEL
 };
 
-static
-struct lttng_action *handle_action_notify(int *argc, const char ***argv,
-		int argc_offset)
+static struct lttng_action *handle_action_notify(int *argc, const char ***argv, int argc_offset)
 {
 	struct lttng_action *action = NULL;
 	struct argpar_iter *argpar_iter = NULL;
@@ -1566,11 +1485,15 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item,
-			argc_offset, *argv, false, NULL,
-			"While parsing `notify` action:");
+		status = parse_next_item(argpar_iter,
+					 &argpar_item,
+					 argc_offset,
+					 *argv,
+					 false,
+					 NULL,
+					 "While parsing `notify` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
-				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1579,8 +1502,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv,
 		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_opt_descr *descr =
-				argpar_item_opt_descr(argpar_item);
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
 			const char *arg = argpar_item_opt_arg(argpar_item);
 
 			switch (descr->id) {
@@ -1638,16 +1560,15 @@ end:
  * optional rate policy.
  */
 
-static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
-		const char ***argv,
-		int argc_offset,
-		struct lttng_action *(*create_action_cb)(void),
-		enum lttng_action_status (*set_session_name_cb)(
-				struct lttng_action *, const char *),
-		enum lttng_action_status (*set_rate_policy_cb)(
-				struct lttng_action *,
-				const struct lttng_rate_policy *),
-		const char *action_name)
+static struct lttng_action *handle_action_simple_session_with_policy(
+	int *argc,
+	const char ***argv,
+	int argc_offset,
+	struct lttng_action *(*create_action_cb)(void),
+	enum lttng_action_status (*set_session_name_cb)(struct lttng_action *, const char *),
+	enum lttng_action_status (*set_rate_policy_cb)(struct lttng_action *,
+						       const struct lttng_rate_policy *),
+	const char *action_name)
 {
 	struct lttng_action *action = NULL;
 	struct argpar_iter *argpar_iter = NULL;
@@ -1660,8 +1581,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	LTTNG_ASSERT(set_rate_policy_cb);
 
 	const struct argpar_opt_descr rate_policy_opt_descrs[] = {
-		{ OPT_RATE_POLICY, '\0', "rate-policy", true },
-		ARGPAR_OPT_DESCR_SENTINEL
+		{ OPT_RATE_POLICY, '\0', "rate-policy", true }, ARGPAR_OPT_DESCR_SENTINEL
 	};
 
 	argpar_iter = argpar_iter_create(*argc, *argv, rate_policy_opt_descrs);
@@ -1673,11 +1593,16 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
-			*argv, false, NULL,
-			"While parsing `%s` action:", action_name);
+		status = parse_next_item(argpar_iter,
+					 &argpar_item,
+					 argc_offset,
+					 *argv,
+					 false,
+					 NULL,
+					 "While parsing `%s` action:",
+					 action_name);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
-				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1686,8 +1611,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_opt_descr *descr =
-				argpar_item_opt_descr(argpar_item);
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
 			const char *arg = argpar_item_opt_arg(argpar_item);
 
 			switch (descr->id) {
@@ -1734,7 +1658,8 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	action_status = set_session_name_cb(action, session_name_arg);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to set action %s session's session name to '%s'.",
-				action_name, session_name_arg);
+		    action_name,
+		    session_name_arg);
 		goto error;
 	}
 
@@ -1759,33 +1684,36 @@ end:
 	return action;
 }
 
-static
-struct lttng_action *handle_action_start_session(int *argc,
-		const char ***argv, int argc_offset)
+static struct lttng_action *
+handle_action_start_session(int *argc, const char ***argv, int argc_offset)
 {
-	return handle_action_simple_session_with_policy(argc, argv,
-			argc_offset,
-			lttng_action_start_session_create,
-			lttng_action_start_session_set_session_name,
-			lttng_action_start_session_set_rate_policy, "start");
+	return handle_action_simple_session_with_policy(argc,
+							argv,
+							argc_offset,
+							lttng_action_start_session_create,
+							lttng_action_start_session_set_session_name,
+							lttng_action_start_session_set_rate_policy,
+							"start");
 }
 
-static
-struct lttng_action *handle_action_stop_session(int *argc,
-		const char ***argv, int argc_offset)
+static struct lttng_action *
+handle_action_stop_session(int *argc, const char ***argv, int argc_offset)
 {
-	return handle_action_simple_session_with_policy(argc, argv,
-			argc_offset,
-			lttng_action_stop_session_create,
-			lttng_action_stop_session_set_session_name,
-			lttng_action_stop_session_set_rate_policy, "stop");
+	return handle_action_simple_session_with_policy(argc,
+							argv,
+							argc_offset,
+							lttng_action_stop_session_create,
+							lttng_action_stop_session_set_session_name,
+							lttng_action_stop_session_set_rate_policy,
+							"stop");
 }
 
-static
-struct lttng_action *handle_action_rotate_session(int *argc,
-		const char ***argv, int argc_offset)
+static struct lttng_action *
+handle_action_rotate_session(int *argc, const char ***argv, int argc_offset)
 {
-	return handle_action_simple_session_with_policy(argc, argv,
+	return handle_action_simple_session_with_policy(
+		argc,
+		argv,
 		argc_offset,
 		lttng_action_rotate_session_create,
 		lttng_action_rotate_session_set_session_name,
@@ -1804,9 +1732,8 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 	ARGPAR_OPT_DESCR_SENTINEL
 };
 
-static
-struct lttng_action *handle_action_snapshot_session(int *argc,
-		const char ***argv, int argc_offset)
+static struct lttng_action *
+handle_action_snapshot_session(int *argc, const char ***argv, int argc_offset)
 {
 	struct lttng_action *action = NULL;
 	struct argpar_iter *argpar_iter = NULL;
@@ -1834,10 +1761,15 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	while (true) {
 		enum parse_next_item_status status;
 
-		status = parse_next_item(argpar_iter, &argpar_item, argc_offset,
-			*argv, false, NULL, "While parsing `snapshot` action:");
+		status = parse_next_item(argpar_iter,
+					 &argpar_item,
+					 argc_offset,
+					 *argv,
+					 false,
+					 NULL,
+					 "While parsing `snapshot` action:");
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
-				status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
+		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
 		} else if (status == PARSE_NEXT_ITEM_STATUS_END) {
 			break;
@@ -1846,8 +1778,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_opt_descr *descr =
-				argpar_item_opt_descr(argpar_item);
+			const struct argpar_opt_descr *descr = argpar_item_opt_descr(argpar_item);
 			const char *arg = argpar_item_opt_arg(argpar_item);
 
 			switch (descr->id) {
@@ -1960,11 +1891,10 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		goto error;
 	}
 
-	action_status = lttng_action_snapshot_session_set_session_name(
-			action, session_name_arg);
+	action_status = lttng_action_snapshot_session_set_session_name(action, session_name_arg);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to set action snapshot session's session name to '%s'.",
-				session_name_arg);
+		    session_name_arg);
 		goto error;
 	}
 
@@ -1974,8 +1904,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 			goto error;
 		}
 
-		ret = lttng_snapshot_output_set_name(
-				snapshot_name_arg, snapshot_output);
+		ret = lttng_snapshot_output_set_name(snapshot_name_arg, snapshot_output);
 		if (ret != 0) {
 			ERR("Failed to set name of snapshot output.");
 			goto error;
@@ -1999,7 +1928,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		ret = lttng_snapshot_output_set_size(max_size, snapshot_output);
 		if (ret != 0) {
 			ERR("Failed to set snapshot output's max size to %" PRIu64 " bytes.",
-					max_size);
+			    max_size);
 			goto error;
 		}
 	}
@@ -2020,29 +1949,25 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		}
 
 		if (uris[0].dtype == LTTNG_DST_PATH) {
-			ret = lttng_snapshot_output_set_local_path(
-					uris[0].dst.path, snapshot_output);
+			ret = lttng_snapshot_output_set_local_path(uris[0].dst.path,
+								   snapshot_output);
 			free(uris);
 			if (ret != 0) {
-				ERR("Failed to assign '%s' as a local destination.",
-						url_arg);
+				ERR("Failed to assign '%s' as a local destination.", url_arg);
 				goto error;
 			}
 		} else {
-			ret = lttng_snapshot_output_set_network_url(
-					url_arg, snapshot_output);
+			ret = lttng_snapshot_output_set_network_url(url_arg, snapshot_output);
 			free(uris);
 			if (ret != 0) {
-				ERR("Failed to assign '%s' as a network URL.",
-						url_arg);
+				ERR("Failed to assign '%s' as a network URL.", url_arg);
 				goto error;
 			}
 		}
 	}
 
 	if (path_arg) {
-		ret = lttng_snapshot_output_set_local_path(
-				path_arg, snapshot_output);
+		ret = lttng_snapshot_output_set_local_path(path_arg, snapshot_output);
 		if (ret != 0) {
 			ERR("Failed to parse '%s' as a local path.", path_arg);
 			goto error;
@@ -2055,17 +1980,17 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		 * data URLs.
 		 */
 		ret = lttng_snapshot_output_set_network_urls(
-				ctrl_url_arg, data_url_arg, snapshot_output);
+			ctrl_url_arg, data_url_arg, snapshot_output);
 		if (ret != 0) {
 			ERR("Failed to parse `%s` and `%s` as control and data URLs.",
-					ctrl_url_arg, data_url_arg);
+			    ctrl_url_arg,
+			    data_url_arg);
 			goto error;
 		}
 	}
 
 	if (snapshot_output) {
-		action_status = lttng_action_snapshot_session_set_output(
-				action, snapshot_output);
+		action_status = lttng_action_snapshot_session_set_output(action, snapshot_output);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
 			ERR("Failed to set snapshot session action's output.");
 			goto error;
@@ -2077,8 +2002,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 
 	if (policy) {
 		enum lttng_action_status status;
-		status = lttng_action_snapshot_session_set_rate_policy(
-				action, policy);
+		status = lttng_action_snapshot_session_set_rate_policy(action, policy);
 		if (status != LTTNG_ACTION_STATUS_OK) {
 			ERR("Failed to set rate policy");
 			goto error;
@@ -2108,13 +2032,11 @@ end:
 namespace {
 struct action_descr {
 	const char *name;
-	struct lttng_action *(*handler) (int *argc, const char ***argv,
-		int argc_offset);
+	struct lttng_action *(*handler)(int *argc, const char ***argv, int argc_offset);
 };
 } /* namespace */
 
-static const
-struct action_descr action_descrs[] = {
+static const struct action_descr action_descrs[] = {
 	{ "notify", handle_action_notify },
 	{ "start-session", handle_action_start_session },
 	{ "stop-session", handle_action_stop_session },
@@ -2122,8 +2044,7 @@ struct action_descr action_descrs[] = {
 	{ "snapshot-session", handle_action_snapshot_session },
 };
 
-static
-void print_valid_action_names(void)
+static void print_valid_action_names(void)
 {
 	unsigned int i;
 
@@ -2134,10 +2055,12 @@ void print_valid_action_names(void)
 	}
 }
 
-static
-struct lttng_action *parse_action(const char *action_name, int *argc,
-		const char ***argv, int argc_offset, int orig_arg_index,
-		const char *orig_arg)
+static struct lttng_action *parse_action(const char *action_name,
+					 int *argc,
+					 const char ***argv,
+					 int argc_offset,
+					 int orig_arg_index,
+					 const char *orig_arg)
 {
 	int i;
 	struct lttng_action *action;
@@ -2152,7 +2075,9 @@ struct lttng_action *parse_action(const char *action_name, int *argc,
 
 	if (!descr) {
 		ERR(WHILE_PARSING_ARG_N_ARG_FMT "Unknown action name '%s'",
-			orig_arg_index + 1, orig_arg, action_name);
+		    orig_arg_index + 1,
+		    orig_arg,
+		    action_name);
 		print_valid_action_names();
 		goto error;
 	}
@@ -2170,8 +2095,7 @@ end:
 	return action;
 }
 
-static const
-struct argpar_opt_descr add_trigger_options[] = {
+static const struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_HELP, 'h', "help", false },
 	{ OPT_LIST_OPTIONS, '\0', "list-options", false },
 	{ OPT_CONDITION, '\0', "condition", true },
@@ -2181,8 +2105,7 @@ struct argpar_opt_descr add_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
-static
-void lttng_actions_destructor(void *p)
+static void lttng_actions_destructor(void *p)
 {
 	struct lttng_action *action = (lttng_action *) p;
 
@@ -2211,24 +2134,21 @@ int cmd_add_trigger(int argc, const char **argv)
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
 
 	if (lttng_opt_mi) {
-		mi_writer = mi_lttng_writer_create(
-				fileno(stdout), lttng_opt_mi);
+		mi_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!mi_writer) {
 			ret = CMD_ERROR;
 			goto error;
 		}
 
 		/* Open command element. */
-		ret = mi_lttng_writer_command_open(mi_writer,
-				mi_lttng_element_command_add_trigger);
+		ret = mi_lttng_writer_command_open(mi_writer, mi_lttng_element_command_add_trigger);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
 		}
 
 		/* Open output element. */
-		ret = mi_lttng_writer_open_element(
-				mi_writer, mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(mi_writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -2242,19 +2162,21 @@ int cmd_add_trigger(int argc, const char **argv)
 		const char *arg;
 
 		argpar_iter_destroy(argpar_iter);
-		argpar_iter = argpar_iter_create(my_argc, my_argv,
-			add_trigger_options);
+		argpar_iter = argpar_iter_create(my_argc, my_argv, add_trigger_options);
 		if (!argpar_iter) {
 			ERR("Failed to create argpar iter.");
 			goto error;
 		}
 
-		status = parse_next_item(argpar_iter, &argpar_item,
-			argc - my_argc, my_argv, true, &argpar_error, NULL);
+		status = parse_next_item(argpar_iter,
+					 &argpar_item,
+					 argc - my_argc,
+					 my_argv,
+					 true,
+					 &argpar_error,
+					 NULL);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
-
-			if (argpar_error_type(argpar_error) ==
-					ARGPAR_ERROR_TYPE_MISSING_OPT_ARG) {
+			if (argpar_error_type(argpar_error) == ARGPAR_ERROR_TYPE_MISSING_OPT_ARG) {
 				int opt_id = argpar_error_opt_descr(argpar_error, NULL)->id;
 
 				if (opt_id == OPT_CONDITION) {
@@ -2274,8 +2196,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		LTTNG_ASSERT(status == PARSE_NEXT_ITEM_STATUS_OK);
 
 		if (argpar_item_type(argpar_item) == ARGPAR_ITEM_TYPE_NON_OPT) {
-			ERR("Unexpected argument `%s`.",
-				argpar_item_non_opt_arg(argpar_item));
+			ERR("Unexpected argument `%s`.", argpar_item_non_opt_arg(argpar_item));
 			goto error;
 		}
 
@@ -2303,9 +2224,12 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			condition = parse_condition(arg, &my_argc, &my_argv,
-				argc - my_argc, argc - my_argc - ingested_args,
-				my_argv[-ingested_args]);
+			condition = parse_condition(arg,
+						    &my_argc,
+						    &my_argv,
+						    argc - my_argc,
+						    argc - my_argc - ingested_args,
+						    my_argv[-ingested_args]);
 			if (!condition) {
 				/*
 				 * An error message was already printed by
@@ -2318,9 +2242,12 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_ACTION:
 		{
-			action = parse_action(arg, &my_argc, &my_argv,
-				argc - my_argc,  argc - my_argc - ingested_args,
-				my_argv[-ingested_args]);
+			action = parse_action(arg,
+					      &my_argc,
+					      &my_argv,
+					      argc - my_argc,
+					      argc - my_argc - ingested_args,
+					      my_argv[-ingested_args]);
 			if (!action) {
 				/*
 				 * An error message was already printed by
@@ -2329,8 +2256,7 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			ret = lttng_dynamic_pointer_array_add_pointer(
-					&actions, action);
+			ret = lttng_dynamic_pointer_array_add_pointer(&actions, action);
 			if (ret) {
 				ERR("Failed to add pointer to pointer array.");
 				goto error;
@@ -2351,8 +2277,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_OWNER_UID:
 		{
-			if (!assign_string(&owner_uid, arg,
-					"--owner-uid")) {
+			if (!assign_string(&owner_uid, arg, "--owner-uid")) {
 				goto error;
 			}
 
@@ -2427,8 +2352,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	}
 
 	if (ret_code != LTTNG_OK) {
-		ERR("Failed to register trigger: %s.",
-				lttng_strerror(-ret_code));
+		ERR("Failed to register trigger: %s.", lttng_strerror(-ret_code));
 		goto error;
 	}
 
@@ -2440,8 +2364,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	} else {
 		const char *returned_trigger_name;
 		const enum lttng_trigger_status trigger_status =
-				lttng_trigger_get_name(trigger,
-						&returned_trigger_name);
+			lttng_trigger_get_name(trigger, &returned_trigger_name);
 
 		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
 			WARN("Failed to retrieve the added trigger's name.");
@@ -2469,8 +2392,8 @@ end:
 			goto cleanup;
 		}
 
-		mi_ret = mi_lttng_writer_write_element_bool(mi_writer,
-				mi_lttng_element_command_success, ret ? 0 : 1);
+		mi_ret = mi_lttng_writer_write_element_bool(
+			mi_writer, mi_lttng_element_command_success, ret ? 0 : 1);
 		if (mi_ret) {
 			ret = 1;
 			goto cleanup;

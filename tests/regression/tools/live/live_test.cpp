@@ -5,35 +5,31 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <common/common.hpp>
+#include <common/compat/endian.hpp>
+#include <common/compat/errno.hpp>
 #include <common/compat/time.hpp>
-#include <sys/types.h>
-#include <inttypes.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include <common/index/ctf-index.hpp>
 
 #include <lttng/lttng.h>
 
-#include <urcu/list.h>
-#include <common/common.hpp>
-
 #include <bin/lttng-relayd/lttng-viewer-abi.hpp>
-#include <common/index/ctf-index.hpp>
-
-#include <common/compat/errno.hpp>
-#include <common/compat/endian.hpp>
-
+#include <fcntl.h>
+#include <inttypes.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <tap/tap.h>
+#include <unistd.h>
+#include <urcu/list.h>
 
-#define SESSION1 "test1"
+#define SESSION1   "test1"
 #define RELAYD_URL "net://localhost"
 #define LIVE_TIMER 2000000
 
@@ -72,8 +68,7 @@ struct live_session {
 };
 } /* namespace */
 
-static
-ssize_t lttng_live_recv(int fd, void *buf, size_t len)
+static ssize_t lttng_live_recv(int fd, void *buf, size_t len)
 {
 	ssize_t ret;
 	size_t copied = 0, to_copy = len;
@@ -85,16 +80,14 @@ ssize_t lttng_live_recv(int fd, void *buf, size_t len)
 			copied += ret;
 			to_copy -= ret;
 		}
-	} while ((ret > 0 && to_copy > 0)
-		|| (ret < 0 && errno == EINTR));
+	} while ((ret > 0 && to_copy > 0) || (ret < 0 && errno == EINTR));
 	if (ret > 0)
 		ret = copied;
 	/* ret = 0 means orderly shutdown, ret < 0 is error. */
 	return ret;
 }
 
-static
-ssize_t lttng_live_send(int fd, const void *buf, size_t len)
+static ssize_t lttng_live_send(int fd, const void *buf, size_t len)
 {
 	ssize_t ret;
 
@@ -104,8 +97,7 @@ ssize_t lttng_live_send(int fd, const void *buf, size_t len)
 	return ret;
 }
 
-static
-int connect_viewer(const char *hostname)
+static int connect_viewer(const char *hostname)
 {
 	struct hostent *host;
 	struct sockaddr_in server_addr;
@@ -128,8 +120,8 @@ int connect_viewer(const char *hostname)
 	server_addr.sin_addr = *((struct in_addr *) host->h_addr);
 	bzero(&(server_addr.sin_zero), 8);
 
-	if (connect(control_sock, (struct sockaddr *) &server_addr,
-				sizeof(struct sockaddr)) == -1) {
+	if (connect(control_sock, (struct sockaddr *) &server_addr, sizeof(struct sockaddr)) ==
+	    -1) {
 		PERROR("Connect");
 		ret = -1;
 		goto end;
@@ -146,8 +138,7 @@ end:
 	return ret;
 }
 
-static
-int establish_connection(void)
+static int establish_connection(void)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_connect connect;
@@ -191,8 +182,7 @@ error:
 /*
  * Returns the number of sessions, should be 1 during the unit test.
  */
-static
-int list_sessions(uint64_t *session_id)
+static int list_sessions(uint64_t *session_id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_list_sessions list;
@@ -239,8 +229,7 @@ error:
 	return -1;
 }
 
-static
-int create_viewer_session(void)
+static int create_viewer_session(void)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_create_session_response resp;
@@ -278,8 +267,7 @@ error:
 	return -1;
 }
 
-static
-int attach_session(uint64_t id)
+static int attach_session(uint64_t id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_attach_session_request rq;
@@ -349,9 +337,8 @@ int attach_session(uint64_t id)
 
 		session->streams[i].ctf_trace_id = be64toh(stream.ctf_trace_id);
 		session->streams[i].first_read = 1;
-		session->streams[i].mmap_base = mmap(NULL, mmap_size,
-				PROT_READ | PROT_WRITE,
-				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		session->streams[i].mmap_base = mmap(
+			NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (session->streams[i].mmap_base == MAP_FAILED) {
 			diag("mmap error");
 			goto error;
@@ -367,8 +354,7 @@ error:
 	return -1;
 }
 
-static
-int get_metadata(void)
+static int get_metadata(void)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_metadata rq;
@@ -463,8 +449,7 @@ error:
 	return -1;
 }
 
-static
-int get_next_index(void)
+static int get_next_index(void)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_next_index rq;
@@ -483,7 +468,7 @@ int get_next_index(void)
 		memset(&rq, 0, sizeof(rq));
 		rq.stream_id = htobe64(session->streams[id].id);
 
-retry:
+	retry:
 		ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 		if (ret_len < 0) {
 			diag("Error sending cmd");
@@ -525,7 +510,8 @@ retry:
 			diag("Got LTTNG_VIEWER_INDEX_ERR");
 			goto error;
 		default:
-			diag("Unknown reply status during LTTNG_VIEWER_GET_NEXT_INDEX (%d)", be32toh(rp.status));
+			diag("Unknown reply status during LTTNG_VIEWER_GET_NEXT_INDEX (%d)",
+			     be32toh(rp.status));
 			goto error;
 		}
 		if (first_packet_stream_id < 0) {
@@ -537,7 +523,8 @@ retry:
 			first_packet_len = be64toh(rp.packet_size) / CHAR_BIT;
 			first_packet_stream_id = id;
 			diag("Got first packet index with offset %d and len %d",
-					first_packet_offset, first_packet_len);
+			     first_packet_offset,
+			     first_packet_len);
 		}
 	}
 	return 0;
@@ -546,9 +533,7 @@ error:
 	return -1;
 }
 
-static
-int get_data_packet(int id, uint64_t offset,
-		uint64_t len)
+static int get_data_packet(int id, uint64_t offset, uint64_t len)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_get_packet rq;
@@ -629,8 +614,7 @@ error:
 	return -1;
 }
 
-static
-int detach_viewer_session(uint64_t id)
+static int detach_viewer_session(uint64_t id)
 {
 	struct lttng_viewer_cmd cmd;
 	struct lttng_viewer_detach_session_response resp;
@@ -690,8 +674,10 @@ int main(void)
 	ok(ret == 0, "Connect viewer to relayd");
 
 	ret = establish_connection();
-	ok(ret == 0, "Established connection and version check with %d.%d",
-			VERSION_MAJOR, VERSION_MINOR);
+	ok(ret == 0,
+	   "Established connection and version check with %d.%d",
+	   VERSION_MAJOR,
+	   VERSION_MINOR);
 
 	ret = list_sessions(&session_id);
 	ok(ret > 0, "List sessions : %d session(s)", ret);
@@ -711,12 +697,12 @@ int main(void)
 	ret = get_next_index();
 	ok(ret == 0, "Get one index per stream");
 
-	ret = get_data_packet(first_packet_stream_id, first_packet_offset,
-			first_packet_len);
+	ret = get_data_packet(first_packet_stream_id, first_packet_offset, first_packet_len);
 	ok(ret == 0,
-			"Get one data packet for stream %d, offset %d, len %d",
-			first_packet_stream_id, first_packet_offset,
-			first_packet_len);
+	   "Get one data packet for stream %d, offset %d, len %d",
+	   first_packet_stream_id,
+	   first_packet_offset,
+	   first_packet_len);
 
 	ret = detach_viewer_session(session_id);
 	ok(ret == 0, "Detach viewer session");

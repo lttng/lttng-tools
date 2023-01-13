@@ -8,6 +8,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/mi-lttng.hpp>
+
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
@@ -41,11 +42,10 @@ struct lttng_action_start_session_comm {
 } /* namespace */
 
 static const struct lttng_rate_policy *
-lttng_action_start_session_internal_get_rate_policy(
-		const struct lttng_action *action);
+lttng_action_start_session_internal_get_rate_policy(const struct lttng_action *action);
 
-static struct lttng_action_start_session *action_start_session_from_action(
-		struct lttng_action *action)
+static struct lttng_action_start_session *
+action_start_session_from_action(struct lttng_action *action)
 {
 	LTTNG_ASSERT(action);
 
@@ -74,7 +74,7 @@ static bool lttng_action_start_session_validate(struct lttng_action *action)
 
 	/* A non-empty session name is mandatory. */
 	if (!action_start_session->session_name ||
-			strlen(action_start_session->session_name) == 0) {
+	    strlen(action_start_session->session_name) == 0) {
 		valid = false;
 		goto end;
 	}
@@ -84,8 +84,8 @@ end:
 	return valid;
 }
 
-static bool lttng_action_start_session_is_equal(
-		const struct lttng_action *_a, const struct lttng_action *_b)
+static bool lttng_action_start_session_is_equal(const struct lttng_action *_a,
+						const struct lttng_action *_b)
 {
 	bool is_equal = false;
 	struct lttng_action_start_session *a, *b;
@@ -105,8 +105,8 @@ end:
 	return is_equal;
 }
 
-static int lttng_action_start_session_serialize(
-		struct lttng_action *action, struct lttng_payload *payload)
+static int lttng_action_start_session_serialize(struct lttng_action *action,
+						struct lttng_payload *payload)
 {
 	struct lttng_action_start_session *action_start_session;
 	struct lttng_action_start_session_comm comm;
@@ -121,7 +121,7 @@ static int lttng_action_start_session_serialize(
 	LTTNG_ASSERT(action_start_session->session_name);
 
 	DBG("Serializing start session action: session-name: %s",
-			action_start_session->session_name);
+	    action_start_session->session_name);
 
 	session_name_len = strlen(action_start_session->session_name) + 1;
 	comm.session_name_len = session_name_len;
@@ -132,15 +132,14 @@ static int lttng_action_start_session_serialize(
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(&payload->buffer,
-			action_start_session->session_name, session_name_len);
+	ret = lttng_dynamic_buffer_append(
+		&payload->buffer, action_start_session->session_name, session_name_len);
 	if (ret) {
 		ret = -1;
 		goto end;
 	}
 
-	ret = lttng_rate_policy_serialize(
-			action_start_session->policy, payload);
+	ret = lttng_rate_policy_serialize(action_start_session->policy, payload);
 	if (ret) {
 		ret = -1;
 		goto end;
@@ -169,9 +168,8 @@ end:
 	return;
 }
 
-ssize_t lttng_action_start_session_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_action **p_action)
+ssize_t lttng_action_start_session_create_from_payload(struct lttng_payload_view *view,
+						       struct lttng_action **p_action)
 {
 	ssize_t consumed_len, ret;
 	const struct lttng_action_start_session_comm *comm;
@@ -184,8 +182,8 @@ ssize_t lttng_action_start_session_create_from_payload(
 	session_name = (const char *) &comm->data;
 
 	/* Session name */
-	if (!lttng_buffer_view_contains_string(&view->buffer, session_name,
-			    comm->session_name_len)) {
+	if (!lttng_buffer_view_contains_string(
+		    &view->buffer, session_name, comm->session_name_len)) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -194,10 +192,8 @@ ssize_t lttng_action_start_session_create_from_payload(
 	/* Rate policy. */
 	{
 		struct lttng_payload_view policy_view =
-				lttng_payload_view_from_view(
-						view, consumed_len, -1);
-		ret = lttng_rate_policy_create_from_payload(
-				&policy_view, &policy);
+			lttng_payload_view_from_view(view, consumed_len, -1);
+		ret = lttng_rate_policy_create_from_payload(&policy_view, &policy);
 		if (ret < 0) {
 			consumed_len = -1;
 			goto end;
@@ -211,8 +207,7 @@ ssize_t lttng_action_start_session_create_from_payload(
 		goto end;
 	}
 
-	status = lttng_action_start_session_set_session_name(
-			action, session_name);
+	status = lttng_action_start_session_set_session_name(action, session_name);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		consumed_len = -1;
 		goto end;
@@ -235,8 +230,8 @@ end:
 	return consumed_len;
 }
 
-static enum lttng_error_code lttng_action_start_session_mi_serialize(
-		const struct lttng_action *action, struct mi_writer *writer)
+static enum lttng_error_code
+lttng_action_start_session_mi_serialize(const struct lttng_action *action, struct mi_writer *writer)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -247,8 +242,7 @@ static enum lttng_error_code lttng_action_start_session_mi_serialize(
 	LTTNG_ASSERT(action);
 	LTTNG_ASSERT(IS_START_SESSION_ACTION(action));
 
-	status = lttng_action_start_session_get_session_name(
-			action, &session_name);
+	status = lttng_action_start_session_get_session_name(action, &session_name);
 	LTTNG_ASSERT(status == LTTNG_ACTION_STATUS_OK);
 	LTTNG_ASSERT(session_name != NULL);
 
@@ -257,15 +251,14 @@ static enum lttng_error_code lttng_action_start_session_mi_serialize(
 	LTTNG_ASSERT(policy != NULL);
 
 	/* Open action start session element. */
-	ret = mi_lttng_writer_open_element(
-			writer, mi_lttng_element_action_start_session);
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_action_start_session);
 	if (ret) {
 		goto mi_error;
 	}
 
 	/* Session name. */
 	ret = mi_lttng_writer_write_element_string(
-			writer, mi_lttng_element_session_name, session_name);
+		writer, mi_lttng_element_session_name, session_name);
 	if (ret) {
 		goto mi_error;
 	}
@@ -309,17 +302,16 @@ struct lttng_action *lttng_action_start_session_create(void)
 	}
 
 	lttng_action_init(&action_start->parent,
-			LTTNG_ACTION_TYPE_START_SESSION,
-			lttng_action_start_session_validate,
-			lttng_action_start_session_serialize,
-			lttng_action_start_session_is_equal,
-			lttng_action_start_session_destroy,
-			lttng_action_start_session_internal_get_rate_policy,
-			lttng_action_generic_add_error_query_results,
-			lttng_action_start_session_mi_serialize);
+			  LTTNG_ACTION_TYPE_START_SESSION,
+			  lttng_action_start_session_validate,
+			  lttng_action_start_session_serialize,
+			  lttng_action_start_session_is_equal,
+			  lttng_action_start_session_destroy,
+			  lttng_action_start_session_internal_get_rate_policy,
+			  lttng_action_generic_add_error_query_results,
+			  lttng_action_start_session_mi_serialize);
 
-	status = lttng_action_start_session_set_rate_policy(
-			&action_start->parent, policy);
+	status = lttng_action_start_session_set_rate_policy(&action_start->parent, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		lttng_action_destroy(&action_start->parent);
 		action_start = NULL;
@@ -331,14 +323,14 @@ end:
 	return &action_start->parent;
 }
 
-enum lttng_action_status lttng_action_start_session_set_session_name(
-		struct lttng_action *action, const char *session_name)
+enum lttng_action_status lttng_action_start_session_set_session_name(struct lttng_action *action,
+								     const char *session_name)
 {
 	struct lttng_action_start_session *action_start_session;
 	enum lttng_action_status status;
 
 	if (!action || !IS_START_SESSION_ACTION(action) || !session_name ||
-			strlen(session_name) == 0) {
+	    strlen(session_name) == 0) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
@@ -358,8 +350,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_start_session_get_session_name(
-		const struct lttng_action *action, const char **session_name)
+enum lttng_action_status
+lttng_action_start_session_get_session_name(const struct lttng_action *action,
+					    const char **session_name)
 {
 	const struct lttng_action_start_session *action_start_session;
 	enum lttng_action_status status;
@@ -378,9 +371,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_start_session_set_rate_policy(
-		struct lttng_action *action,
-		const struct lttng_rate_policy *policy)
+enum lttng_action_status
+lttng_action_start_session_set_rate_policy(struct lttng_action *action,
+					   const struct lttng_rate_policy *policy)
 {
 	enum lttng_action_status status;
 	struct lttng_action_start_session *start_session_action;
@@ -412,9 +405,9 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_start_session_get_rate_policy(
-		const struct lttng_action *action,
-		const struct lttng_rate_policy **policy)
+enum lttng_action_status
+lttng_action_start_session_get_rate_policy(const struct lttng_action *action,
+					   const struct lttng_rate_policy **policy)
 {
 	enum lttng_action_status status;
 	const struct lttng_action_start_session *start_session_action;
@@ -433,8 +426,7 @@ end:
 }
 
 static const struct lttng_rate_policy *
-lttng_action_start_session_internal_get_rate_policy(
-		const struct lttng_action *action)
+lttng_action_start_session_internal_get_rate_policy(const struct lttng_action *action)
 {
 	const struct lttng_action_start_session *_action;
 	_action = action_start_session_from_action_const(action);

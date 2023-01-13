@@ -7,29 +7,29 @@
  */
 
 #define _LGPL_SOURCE
+#include "../command.hpp"
+#include "../utils.hpp"
+
+#include <common/compat/time.hpp>
+#include <common/defaults.hpp>
+#include <common/mi-lttng.hpp>
+#include <common/path.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/uri.hpp>
+#include <common/utils.hpp>
+
+#include <lttng/lttng.h>
+
 #include <ctype.h>
 #include <popt.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <common/compat/time.hpp>
-#include <unistd.h>
-#include <signal.h>
 #include <sys/wait.h>
-
-#include <common/mi-lttng.hpp>
-
-#include "../command.hpp"
-#include "../utils.hpp"
-
-#include <common/defaults.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/uri.hpp>
-#include <common/utils.hpp>
-#include <common/path.hpp>
-#include <lttng/lttng.h>
+#include <unistd.h>
 
 static char *opt_output_path;
 static char *opt_url;
@@ -44,7 +44,7 @@ static uint32_t opt_live_timer;
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-create.1.h>
-;
+	;
 #endif
 
 enum {
@@ -63,18 +63,18 @@ enum output_type {
 static struct mi_writer *writer;
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
-	{"output", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL},
-	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
-	{"set-url",        'U', POPT_ARG_STRING, &opt_url, 0, 0, 0},
-	{"ctrl-url",       'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0},
-	{"data-url",       'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0},
-	{"no-output",       0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0},
-	{"no-consumer",     0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0},
-	{"snapshot",        0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0},
-	{"live",            0, POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL, 0, OPT_LIVE_TIMER, 0, 0},
-	{"shm-path",        0, POPT_ARG_STRING, &opt_shm_path, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0}
+	{ "help", 'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL },
+	{ "output", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL },
+	{ "list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL },
+	{ "set-url", 'U', POPT_ARG_STRING, &opt_url, 0, 0, 0 },
+	{ "ctrl-url", 'C', POPT_ARG_STRING, &opt_ctrl_url, 0, 0, 0 },
+	{ "data-url", 'D', POPT_ARG_STRING, &opt_data_url, 0, 0, 0 },
+	{ "no-output", 0, POPT_ARG_VAL, &opt_no_output, 1, 0, 0 },
+	{ "no-consumer", 0, POPT_ARG_VAL, &opt_no_consumer, 1, 0, 0 },
+	{ "snapshot", 0, POPT_ARG_VAL, &opt_snapshot, 1, 0, 0 },
+	{ "live", 0, POPT_ARG_INT | POPT_ARGFLAG_OPTIONAL, 0, OPT_LIVE_TIMER, 0, 0 },
+	{ "shm-path", 0, POPT_ARG_STRING, &opt_shm_path, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /*
@@ -128,8 +128,7 @@ end:
 	return ret;
 }
 
-static
-struct lttng_session_descriptor *create_session_descriptor(const char *session_name)
+static struct lttng_session_descriptor *create_session_descriptor(const char *session_name)
 {
 	ssize_t uri_count;
 	enum output_type output_type;
@@ -150,12 +149,12 @@ struct lttng_session_descriptor *create_session_descriptor(const char *session_n
 			ERR("Failed to expand output path.");
 			goto end;
 		}
-		ret = lttng_strncpy(local_output_path, expanded_output_path,
-				sizeof(local_output_path));
+		ret = lttng_strncpy(
+			local_output_path, expanded_output_path, sizeof(local_output_path));
 		free(expanded_output_path);
 		if (ret) {
 			ERR("Output path exceeds the maximal supported length (%zu bytes)",
-					sizeof(local_output_path));
+			    sizeof(local_output_path));
 			goto end;
 		}
 	} else if (opt_url || opt_ctrl_url) {
@@ -177,11 +176,11 @@ struct lttng_session_descriptor *create_session_descriptor(const char *session_n
 				ERR("Unrecognized URL format.");
 				goto end;
 			}
-			ret = lttng_strncpy(local_output_path, uris[0].dst.path,
-					sizeof(local_output_path));
+			ret = lttng_strncpy(
+				local_output_path, uris[0].dst.path, sizeof(local_output_path));
 			if (ret) {
 				ERR("Output path exceeds the maximal supported length (%zu bytes)",
-						sizeof(local_output_path));
+				    sizeof(local_output_path));
 			}
 			break;
 		case 2:
@@ -201,48 +200,42 @@ struct lttng_session_descriptor *create_session_descriptor(const char *session_n
 		case OUTPUT_UNSPECIFIED:
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_snapshot_local_create(
-					session_name,
-					output_type == OUTPUT_LOCAL ?
-						local_output_path : NULL);
+				session_name,
+				output_type == OUTPUT_LOCAL ? local_output_path : NULL);
 			break;
 		case OUTPUT_NONE:
-			descriptor = lttng_session_descriptor_snapshot_create(
-					session_name);
+			descriptor = lttng_session_descriptor_snapshot_create(session_name);
 			break;
 		case OUTPUT_NETWORK:
 			descriptor = lttng_session_descriptor_snapshot_network_create(
-					session_name, uri_str1, uri_str2);
+				session_name, uri_str1, uri_str2);
 			break;
 		default:
 			abort();
 		}
 	} else if (opt_live_timer) {
 		/* Live session. */
-		if (output_type != OUTPUT_UNSPECIFIED &&
-				output_type != OUTPUT_NETWORK) {
+		if (output_type != OUTPUT_UNSPECIFIED && output_type != OUTPUT_NETWORK) {
 			ERR("Unsupported output type specified for live session.");
 			goto end;
 		}
 		descriptor = lttng_session_descriptor_live_network_create(
-				session_name, uri_str1, uri_str2,
-				opt_live_timer);
+			session_name, uri_str1, uri_str2, opt_live_timer);
 	} else {
 		/* Regular session. */
 		switch (output_type) {
 		case OUTPUT_UNSPECIFIED:
 		case OUTPUT_LOCAL:
 			descriptor = lttng_session_descriptor_local_create(
-					session_name,
-					output_type == OUTPUT_LOCAL ?
-						local_output_path : NULL);
+				session_name,
+				output_type == OUTPUT_LOCAL ? local_output_path : NULL);
 			break;
 		case OUTPUT_NONE:
-			descriptor = lttng_session_descriptor_create(
-					session_name);
+			descriptor = lttng_session_descriptor_create(session_name);
 			break;
 		case OUTPUT_NETWORK:
 			descriptor = lttng_session_descriptor_network_create(
-					session_name, uri_str1, uri_str2);
+				session_name, uri_str1, uri_str2);
 			break;
 		default:
 			abort();
@@ -255,11 +248,10 @@ struct lttng_session_descriptor *create_session_descriptor(const char *session_n
 		 * Auto-launch the relay daemon when a live session
 		 * is created using default URLs.
 		 */
-		if (!opt_url && !opt_ctrl_url && !opt_data_url &&
-				opt_live_timer && !check_relayd()) {
+		if (!opt_url && !opt_ctrl_url && !opt_data_url && opt_live_timer &&
+		    !check_relayd()) {
 			int ret;
-			const char *pathname = opt_relayd_path ? :
-					INSTALL_BIN_PATH "/lttng-relayd";
+			const char *pathname = opt_relayd_path ?: INSTALL_BIN_PATH "/lttng-relayd";
 
 			ret = spawn_relayd(pathname, 0);
 			if (ret < 0) {
@@ -293,8 +285,7 @@ static int create_session(const char *session_name)
 	/* Validate options. */
 	if (session_name) {
 		if (strlen(session_name) > NAME_MAX) {
-			ERR("Session name too long. Length must be lower or equal to %d",
-					NAME_MAX);
+			ERR("Session name too long. Length must be lower or equal to %d", NAME_MAX);
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -303,13 +294,14 @@ static int create_session(const char *session_name)
 		 * Both are reserved for the default session name. See bug #449 to
 		 * understand why we need to check both here.
 		 */
-		if ((strncmp(session_name, DEFAULT_SESSION_NAME "-",
-					strlen(DEFAULT_SESSION_NAME) + 1) == 0) ||
-				(strncmp(session_name, DEFAULT_SESSION_NAME,
-					strlen(DEFAULT_SESSION_NAME)) == 0 &&
-				strlen(session_name) == strlen(DEFAULT_SESSION_NAME))) {
+		if ((strncmp(session_name,
+			     DEFAULT_SESSION_NAME "-",
+			     strlen(DEFAULT_SESSION_NAME) + 1) == 0) ||
+		    (strncmp(session_name, DEFAULT_SESSION_NAME, strlen(DEFAULT_SESSION_NAME)) ==
+			     0 &&
+		     strlen(session_name) == strlen(DEFAULT_SESSION_NAME))) {
 			ERR("%s is a reserved keyword for default session(s)",
-					DEFAULT_SESSION_NAME);
+			    DEFAULT_SESSION_NAME);
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -339,8 +331,8 @@ static int create_session(const char *session_name)
 		goto error;
 	}
 
-	descriptor_status = lttng_session_descriptor_get_session_name(
-		session_descriptor, &created_session_name);
+	descriptor_status = lttng_session_descriptor_get_session_name(session_descriptor,
+								      &created_session_name);
 	if (descriptor_status != LTTNG_SESSION_DESCRIPTOR_STATUS_OK) {
 		ERR("Failed to obtain created session name");
 		ret = CMD_ERROR;
@@ -349,8 +341,7 @@ static int create_session(const char *session_name)
 
 	ret = lttng_list_sessions(&sessions);
 	if (ret < 0) {
-		ERR("Failed to fetch properties of created session: %s",
-				lttng_strerror(ret));
+		ERR("Failed to fetch properties of created session: %s", lttng_strerror(ret));
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -379,9 +370,7 @@ static int create_session(const char *session_name)
 			time_t creation_time_t;
 			size_t strftime_ret;
 
-			ret_code = lttng_session_get_creation_time(
-					created_session,
-					&creation_time);
+			ret_code = lttng_session_get_creation_time(created_session, &creation_time);
 			if (ret_code != LTTNG_OK) {
 				ERR("%s", lttng_strerror(-ret_code));
 				ret = CMD_ERROR;
@@ -395,8 +384,9 @@ static int create_session(const char *session_name)
 				goto error;
 			}
 			strftime_ret = strftime(datetime_suffix,
-					sizeof(datetime_suffix),
-					"-%Y%m%d-%H%M%S", timeinfo);
+						sizeof(datetime_suffix),
+						"-%Y%m%d-%H%M%S",
+						timeinfo);
 			if (strftime_ret == 0) {
 				ERR("Failed to format session creation time.");
 				ret = CMD_ERROR;
@@ -404,16 +394,18 @@ static int create_session(const char *session_name)
 			}
 		}
 
-		ret = snprintf(shm_path, sizeof(shm_path),
-				"%s/%s%s", opt_shm_path, created_session_name,
-				datetime_suffix);
+		ret = snprintf(shm_path,
+			       sizeof(shm_path),
+			       "%s/%s%s",
+			       opt_shm_path,
+			       created_session_name,
+			       datetime_suffix);
 		if (ret < 0 || ret >= sizeof(shm_path)) {
 			ERR("Failed to format the shared memory path.");
 			ret = CMD_ERROR;
 			goto error;
 		}
-		ret = lttng_set_session_shm_path(created_session_name,
-				shm_path);
+		ret = lttng_set_session_shm_path(created_session_name, shm_path);
 		if (ret < 0) {
 			lttng_destroy_session(created_session_name);
 			ret = CMD_ERROR;
@@ -433,8 +425,7 @@ static int create_session(const char *session_name)
 		MSG("Traces will be output to %s", created_session->path);
 
 		if (opt_live_timer) {
-			MSG("Live timer interval set to %u %s", opt_live_timer,
-					USEC_UNIT);
+			MSG("Live timer interval set to %u %s", opt_live_timer, USEC_UNIT);
 		}
 	} else if (opt_snapshot) {
 		struct lttng_snapshot_output_list *list;
@@ -451,10 +442,8 @@ static int create_session(const char *session_name)
 		while ((iter = lttng_snapshot_output_list_get_next(list))) {
 			const char *url = NULL;
 
-			url = lttng_snapshot_output_get_ctrl_url(
-					iter);
-			ret = lttng_strncpy(snapshot_url, url,
-					sizeof(snapshot_url));
+			url = lttng_snapshot_output_get_ctrl_url(iter);
+			ret = lttng_strncpy(snapshot_url, url, sizeof(snapshot_url));
 			if (ret) {
 				snapshot_url[0] = '\0';
 				ERR("Failed to retrieve snapshot output destination");
@@ -464,8 +453,7 @@ static int create_session(const char *session_name)
 		lttng_snapshot_output_list_destroy(list);
 
 		if (*snapshot_url) {
-			MSG("Default snapshot output set to %s",
-					snapshot_url);
+			MSG("Default snapshot output set to %s", snapshot_url);
 		}
 		MSG("Every channel enabled for this session will be set to mmap output and default to overwrite mode.");
 	}
@@ -512,15 +500,14 @@ static int spawn_sessiond(const char *pathname)
 		/*
 		 * Spawn session daemon in daemon mode.
 		 */
-		execlp(pathname, "lttng-sessiond",
-				"--daemonize", NULL);
+		execlp(pathname, "lttng-sessiond", "--daemonize", NULL);
 		/* execlp only returns if error happened */
 		if (errno == ENOENT) {
 			ERR("No session daemon found. Use --sessiond-path.");
 		} else {
 			PERROR("execlp");
 		}
-		kill(getppid(), SIGTERM);	/* wake parent */
+		kill(getppid(), SIGTERM); /* wake parent */
 		exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		/*
@@ -541,19 +528,18 @@ static int spawn_sessiond(const char *pathname)
 			}
 
 			if (WIFSIGNALED(status)) {
-				ERR("Session daemon was killed by signal %d",
-						WTERMSIG(status));
+				ERR("Session daemon was killed by signal %d", WTERMSIG(status));
 				ret = -1;
-			        goto end;
+				goto end;
 			} else if (WIFEXITED(status)) {
 				DBG("Session daemon terminated normally (exit status: %d)",
-						WEXITSTATUS(status));
+				    WEXITSTATUS(status));
 
 				if (WEXITSTATUS(status) != 0) {
 					ERR("Session daemon terminated with an error (exit status: %d)",
-							WEXITSTATUS(status));
+					    WEXITSTATUS(status));
 					ret = -1;
-				        goto end;
+					goto end;
 				}
 				break;
 			}
@@ -621,14 +607,12 @@ static int launch_sessiond(void)
 	ret = spawn_sessiond(pathname);
 end:
 	if (ret) {
-		ERR("Problem occurred while launching session daemon (%s)",
-				pathname);
+		ERR("Problem occurred while launching session daemon (%s)", pathname);
 	}
 	return ret;
 }
 
-static
-int validate_url_option_combination(void)
+static int validate_url_option_combination(void)
 {
 	int ret = 0;
 	int used_count = 0;
@@ -683,7 +667,7 @@ int cmd_create(int argc, const char **argv)
 				/* Set up default values. */
 				opt_live_timer = (uint32_t) DEFAULT_LTTNG_LIVE_TIMER;
 				DBG("Session live timer interval set to default value %d",
-						opt_live_timer);
+				    opt_live_timer);
 				break;
 			}
 
@@ -745,16 +729,14 @@ int cmd_create(int argc, const char **argv)
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_create);
+		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_create);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -785,8 +767,8 @@ int cmd_create(int argc, const char **argv)
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+		ret = mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;

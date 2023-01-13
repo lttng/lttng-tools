@@ -32,13 +32,13 @@ int timespec_to_ms(struct timespec ts, unsigned long *ms)
 
 	if (ts.tv_sec > ULONG_MAX / MSEC_PER_SEC) {
 		errno = EOVERFLOW;
-		return -1;	/* multiplication overflow */
+		return -1; /* multiplication overflow */
 	}
 	res = ts.tv_sec * MSEC_PER_SEC;
 	remain_ms = ULONG_MAX - res;
 	if (ts.tv_nsec / NSEC_PER_MSEC > remain_ms) {
 		errno = EOVERFLOW;
-		return -1;	/* addition overflow */
+		return -1; /* addition overflow */
 	}
 	res += ts.tv_nsec / NSEC_PER_MSEC;
 	*ms = res;
@@ -47,10 +47,8 @@ int timespec_to_ms(struct timespec ts, unsigned long *ms)
 
 struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 {
-	uint64_t ts1 = (uint64_t) t1.tv_sec * (uint64_t) NSEC_PER_SEC +
-			(uint64_t) t1.tv_nsec;
-	uint64_t ts2 = (uint64_t) t2.tv_sec * (uint64_t) NSEC_PER_SEC +
-			(uint64_t) t2.tv_nsec;
+	uint64_t ts1 = (uint64_t) t1.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t1.tv_nsec;
+	uint64_t ts2 = (uint64_t) t2.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t2.tv_nsec;
 	uint64_t diff = std::max(ts1, ts2) - std::min(ts1, ts2);
 	struct timespec res;
 
@@ -59,8 +57,7 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	return res;
 }
 
-static
-void __attribute__((constructor)) init_locale_utf8_support(void)
+static void __attribute__((constructor)) init_locale_utf8_support(void)
 {
 	const char *program_locale = setlocale(LC_ALL, NULL);
 	const char *lang = getenv("LANG");
@@ -81,7 +78,8 @@ int time_to_iso8601_str(time_t time, char *str, size_t len)
 
 	if (len < ISO8601_STR_LEN) {
 		ERR("Buffer too short to format ISO 8601 timestamp: %zu bytes provided when at least %zu are needed",
-				len, ISO8601_STR_LEN);
+		    len,
+		    ISO8601_STR_LEN);
 		ret = -1;
 		goto end;
 	}
@@ -112,7 +110,8 @@ int time_to_datetime_str(time_t time, char *str, size_t len)
 
 	if (len < DATETIME_STR_LEN) {
 		ERR("Buffer too short to format to datetime: %zu bytes provided when at least %zu are needed",
-				len, DATETIME_STR_LEN);
+		    len,
+		    DATETIME_STR_LEN);
 		ret = -1;
 		goto end;
 	}

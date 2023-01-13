@@ -6,27 +6,27 @@
  */
 
 #define _LGPL_SOURCE
-#include <string.h>
-#include <limits.h>
-
-#include <lttng/lttng-error.h>
-#include <lttng/load.h>
-#include <lttng/load-internal.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/config/session-config.hpp>
-#include <common/uri.hpp>
-#include <common/macros.hpp>
-#include <common/compat/string.hpp>
-
 #include "lttng-ctl-helper.hpp"
+
+#include <common/compat/string.hpp>
+#include <common/config/session-config.hpp>
+#include <common/macros.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/uri.hpp>
+
+#include <lttng/load-internal.hpp>
+#include <lttng/load.h>
+#include <lttng/lttng-error.h>
+
+#include <limits.h>
+#include <string.h>
 
 struct lttng_load_session_attr *lttng_load_session_attr_create(void)
 {
 	return zmalloc<lttng_load_session_attr>();
 }
 
-static
-void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
+static void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
 {
 	free(attr->raw_override_url);
 	free(attr->raw_override_path_url);
@@ -66,8 +66,7 @@ static int validate_attr(const struct lttng_load_session_attr *attr)
 	 * Refuse override name if the objective is to load multiple session
 	 * since this operation is ambiguous while loading multiple session.
 	 */
-	if (attr->override_attr->session_name
-			&& attr->session_name[0] == '\0') {
+	if (attr->override_attr->session_name && attr->session_name[0] == '\0') {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -75,8 +74,7 @@ end:
 	return ret;
 }
 
-const char *lttng_load_session_attr_get_session_name(
-	struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_session_name(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -87,8 +85,7 @@ const char *lttng_load_session_attr_get_session_name(
 	return ret;
 }
 
-const char *lttng_load_session_attr_get_input_url(
-	struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_input_url(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -99,14 +96,12 @@ const char *lttng_load_session_attr_get_input_url(
 	return ret;
 }
 
-int lttng_load_session_attr_get_overwrite(
-	struct lttng_load_session_attr *attr)
+int lttng_load_session_attr_get_overwrite(struct lttng_load_session_attr *attr)
 {
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
 }
 
-const char *lttng_load_session_attr_get_override_ctrl_url(
-	struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_override_ctrl_url(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -119,8 +114,7 @@ end:
 	return ret;
 }
 
-const char *lttng_load_session_attr_get_override_data_url(
-	struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_override_data_url(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -133,8 +127,7 @@ end:
 	return ret;
 }
 
-const char *lttng_load_session_attr_get_override_url(
-		struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_override_url(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -143,16 +136,14 @@ const char *lttng_load_session_attr_get_override_url(
 	}
 
 	if ((attr->override_attr->path_url ||
-		(attr->override_attr->ctrl_url &&
-		 attr->override_attr->data_url))) {
+	     (attr->override_attr->ctrl_url && attr->override_attr->data_url))) {
 		ret = attr->raw_override_url;
 	}
 end:
 	return ret;
 }
 
-const char *lttng_load_session_attr_get_override_session_name(
-		struct lttng_load_session_attr *attr)
+const char *lttng_load_session_attr_get_override_session_name(struct lttng_load_session_attr *attr)
 {
 	const char *ret = NULL;
 
@@ -165,8 +156,8 @@ end:
 	return ret;
 }
 
-int lttng_load_session_attr_set_session_name(
-	struct lttng_load_session_attr *attr, const char *session_name)
+int lttng_load_session_attr_set_session_name(struct lttng_load_session_attr *attr,
+					     const char *session_name)
 {
 	int ret = 0;
 
@@ -184,8 +175,7 @@ int lttng_load_session_attr_set_session_name(
 			goto error;
 		}
 
-		ret = lttng_strncpy(attr->session_name, session_name,
-				sizeof(attr->session_name));
+		ret = lttng_strncpy(attr->session_name, session_name, sizeof(attr->session_name));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
@@ -197,8 +187,7 @@ error:
 	return ret;
 }
 
-int lttng_load_session_attr_set_input_url(
-	struct lttng_load_session_attr *attr, const char *url)
+int lttng_load_session_attr_set_input_url(struct lttng_load_session_attr *attr, const char *url)
 {
 	int ret = 0;
 	size_t len;
@@ -229,8 +218,7 @@ int lttng_load_session_attr_set_input_url(
 	}
 
 	/* Copy string plus the NULL terminated byte. */
-	ret = lttng_strncpy(attr->input_url, uris[0].dst.path,
-			sizeof(attr->input_url));
+	ret = lttng_strncpy(attr->input_url, uris[0].dst.path, sizeof(attr->input_url));
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto error;
@@ -242,8 +230,7 @@ error:
 	return ret;
 }
 
-int lttng_load_session_attr_set_overwrite(
-	struct lttng_load_session_attr *attr, int overwrite)
+int lttng_load_session_attr_set_overwrite(struct lttng_load_session_attr *attr, int overwrite)
 {
 	int ret = 0;
 
@@ -257,8 +244,8 @@ end:
 	return ret;
 }
 
-int lttng_load_session_attr_set_override_ctrl_url(
-	struct lttng_load_session_attr *attr, const char *url)
+int lttng_load_session_attr_set_override_ctrl_url(struct lttng_load_session_attr *attr,
+						  const char *url)
 {
 	int ret = 0;
 	ssize_t ret_size;
@@ -341,8 +328,8 @@ end:
 	return ret;
 }
 
-int lttng_load_session_attr_set_override_data_url(
-	struct lttng_load_session_attr *attr, const char *url)
+int lttng_load_session_attr_set_override_data_url(struct lttng_load_session_attr *attr,
+						  const char *url)
 {
 	int ret = 0;
 	ssize_t ret_size;
@@ -423,8 +410,7 @@ end:
 	return ret;
 }
 
-int lttng_load_session_attr_set_override_url(
-		struct lttng_load_session_attr *attr, const char *url)
+int lttng_load_session_attr_set_override_url(struct lttng_load_session_attr *attr, const char *url)
 {
 	int ret = 0;
 	ssize_t ret_size;
@@ -568,13 +554,13 @@ end:
 	return ret;
 }
 
-int lttng_load_session_attr_set_override_session_name(
-	struct lttng_load_session_attr *attr, const char *session_name)
+int lttng_load_session_attr_set_override_session_name(struct lttng_load_session_attr *attr,
+						      const char *session_name)
 {
 	int ret = 0;
 	size_t len;
 
-	if (!attr ||!session_name) {
+	if (!attr || !session_name) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -593,8 +579,7 @@ int lttng_load_session_attr_set_override_session_name(
 		goto end;
 	}
 
-	attr->override_attr->session_name = lttng_strndup(session_name,
-		len);
+	attr->override_attr->session_name = lttng_strndup(session_name, len);
 	if (!attr->override_attr->session_name) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto end;
@@ -619,11 +604,9 @@ int lttng_load_session(struct lttng_load_session_attr *attr)
 	}
 
 	url = attr->input_url[0] != '\0' ? attr->input_url : NULL;
-	session_name = attr->session_name[0] != '\0' ?
-			attr->session_name : NULL;
+	session_name = attr->session_name[0] != '\0' ? attr->session_name : NULL;
 
-	ret = config_load_session(url, session_name, attr->overwrite, 0,
-			attr->override_attr);
+	ret = config_load_session(url, session_name, attr->overwrite, 0, attr->override_attr);
 
 end:
 	return ret;
