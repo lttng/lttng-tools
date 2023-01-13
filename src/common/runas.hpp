@@ -29,7 +29,7 @@
  * A negative return value will cause the run-as process to exit with a non-zero
  * value.
  */
-typedef int (*post_fork_cleanup_cb)(void *user_data);
+using post_fork_cleanup_cb = int (*)(void *);
 
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,

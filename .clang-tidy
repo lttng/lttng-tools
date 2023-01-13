@@ -1,0 +1,3 @@
+HeaderFilterRegex: '.*((include/.*-internal)|(src/common.*)|(src/bin.*)|(src/lib.*)|(tests.*))\.(h|hpp)$'
+Checks: '-*,modernize-use-using'
+FormatStyle: 'file'

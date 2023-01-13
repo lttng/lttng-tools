@@ -26,16 +26,15 @@
 #define IS_ONCE_AFTER_N_RATE_POLICY(policy) \
 	(lttng_rate_policy_get_type(policy) == LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N)
 
-typedef void (*rate_policy_destroy_cb)(struct lttng_rate_policy *rate_policy);
-typedef int (*rate_policy_serialize_cb)(struct lttng_rate_policy *rate_policy,
-					struct lttng_payload *payload);
-typedef bool (*rate_policy_equal_cb)(const struct lttng_rate_policy *a,
-				     const struct lttng_rate_policy *b);
-typedef ssize_t (*rate_policy_create_from_payload_cb)(struct lttng_payload_view *view,
-						      struct lttng_rate_policy **rate_policy);
-typedef struct lttng_rate_policy *(*rate_policy_copy_cb)(const struct lttng_rate_policy *source);
-typedef enum lttng_error_code (*rate_policy_mi_serialize_cb)(
-	const struct lttng_rate_policy *rate_policy, struct mi_writer *writer);
+using rate_policy_destroy_cb = void (*)(struct lttng_rate_policy *);
+using rate_policy_serialize_cb = int (*)(struct lttng_rate_policy *, struct lttng_payload *);
+using rate_policy_equal_cb = bool (*)(const struct lttng_rate_policy *,
+				      const struct lttng_rate_policy *);
+using rate_policy_create_from_payload_cb = ssize_t (*)(struct lttng_payload_view *,
+						       struct lttng_rate_policy **);
+using rate_policy_copy_cb = struct lttng_rate_policy *(*) (const struct lttng_rate_policy *);
+using rate_policy_mi_serialize_cb = enum lttng_error_code (*)(const struct lttng_rate_policy *,
+							      struct mi_writer *);
 
 struct lttng_rate_policy {
 	enum lttng_rate_policy_type type;

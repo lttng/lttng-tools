@@ -59,11 +59,11 @@ struct tracepoint_test {
 };
 } /* namespace */
 
-typedef const char *(*log_level_name_getter)(int log_level);
+using log_level_name_getter = const char *(*) (int);
 
-typedef struct lttng_event_rule *(*event_rule_create)(void);
-typedef enum lttng_event_rule_status (*event_rule_set_log_level)(
-	struct lttng_event_rule *rule, const struct lttng_log_level_rule *log_level_rule);
+using event_rule_create = struct lttng_event_rule *(*) ();
+using event_rule_set_log_level = enum lttng_event_rule_status (*)(
+	struct lttng_event_rule *, const struct lttng_log_level_rule *);
 
 static void test_event_rule_kernel_tracepoint(void)
 {

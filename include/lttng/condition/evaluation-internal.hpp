@@ -17,10 +17,8 @@
 struct lttng_payload;
 struct lttng_payload_view;
 
-typedef void (*evaluation_destroy_cb)(struct lttng_evaluation *evaluation);
-typedef int (*evaluation_serialize_cb)(
-		const struct lttng_evaluation *evaluation,
-		struct lttng_payload *payload);
+using evaluation_destroy_cb = void (*)(struct lttng_evaluation *);
+using evaluation_serialize_cb = int (*)(const struct lttng_evaluation *, struct lttng_payload *);
 
 struct lttng_evaluation_comm {
 	/* enum lttng_condition_type type */

@@ -32,7 +32,7 @@ int lttng_opt_mi;
  * Returns the number of tests that ran (irrespective of the result) or a
  * negative value on error (will abort all tests).
  */
-typedef int(test_func)(const char *test_base_path);
+using test_func = int(const char *);
 
 static test_func test_rmdir_fail_non_empty;
 static test_func test_rmdir_skip_non_empty;

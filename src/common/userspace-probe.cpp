@@ -1910,8 +1910,8 @@ enum lttng_error_code
 lttng_userspace_probe_location_mi_serialize(const struct lttng_userspace_probe_location *location,
 					    struct mi_writer *writer)
 {
-	typedef enum lttng_error_code (*mi_fp)(const struct lttng_userspace_probe_location *,
-					       struct mi_writer *);
+	using mi_fp = enum lttng_error_code (*)(const struct lttng_userspace_probe_location *,
+						struct mi_writer *);
 
 	int ret;
 	enum lttng_error_code ret_code;

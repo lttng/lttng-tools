@@ -18,8 +18,8 @@
 
 LTTNG_EXPORT extern unsigned long lttng_ht_seed;
 
-typedef unsigned long (*hash_fct_type)(const void *_key, unsigned long seed);
-typedef cds_lfht_match_fct hash_match_fct;
+using hash_fct_type = unsigned long (*)(const void *, unsigned long);
+using hash_match_fct = cds_lfht_match_fct;
 
 enum lttng_ht_type {
 	LTTNG_HT_TYPE_STRING,

@@ -12,8 +12,7 @@
 
 struct metadata_bucket;
 
-typedef ssize_t (*metadata_bucket_flush_cb)(
-		const struct stream_subbuffer *buffer, void *data);
+using metadata_bucket_flush_cb = ssize_t (*)(const struct stream_subbuffer *, void *);
 
 enum metadata_bucket_status {
 	METADATA_BUCKET_STATUS_OK,

@@ -24,22 +24,17 @@ struct mi_writer;
 struct mi_lttng_error_query_callbacks;
 struct lttng_trigger;
 
-typedef bool (*action_validate_cb)(struct lttng_action *action);
-typedef void (*action_destroy_cb)(struct lttng_action *action);
-typedef int (*action_serialize_cb)(struct lttng_action *action,
-		struct lttng_payload *payload);
-typedef bool (*action_equal_cb)(const struct lttng_action *a,
-		const struct lttng_action *b);
-typedef ssize_t (*action_create_from_payload_cb)(
-		struct lttng_payload_view *view,
-		struct lttng_action **action);
-typedef const struct lttng_rate_policy *(*action_get_rate_policy_cb)(
-		const struct lttng_action *action);
-typedef enum lttng_action_status (*action_add_error_query_results_cb)(
-		const struct lttng_action *action,
-		struct lttng_error_query_results *results);
-typedef enum lttng_error_code (*action_mi_serialize_cb)(
-		const struct lttng_action *condition, struct mi_writer *writer);
+using action_validate_cb = bool (*)(struct lttng_action *);
+using action_destroy_cb = void (*)(struct lttng_action *);
+using action_serialize_cb = int (*)(struct lttng_action *, struct lttng_payload *);
+using action_equal_cb = bool (*)(const struct lttng_action *, const struct lttng_action *);
+using action_create_from_payload_cb = ssize_t (*)(struct lttng_payload_view *,
+						  struct lttng_action **);
+using action_get_rate_policy_cb = const struct lttng_rate_policy *(*) (const struct lttng_action *);
+using action_add_error_query_results_cb = enum lttng_action_status (*)(
+	const struct lttng_action *, struct lttng_error_query_results *);
+using action_mi_serialize_cb = enum lttng_error_code (*)(const struct lttng_action *,
+							 struct mi_writer *);
 
 struct lttng_action {
 	struct urcu_ref ref;

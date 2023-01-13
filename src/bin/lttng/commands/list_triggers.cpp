@@ -32,12 +32,12 @@ static const char help_msg[] =
 
 #define INDENTATION_LEVEL_STR "  "
 
-typedef enum lttng_event_rule_status (*event_rule_logging_get_name_pattern)(
-	const struct lttng_event_rule *rule, const char **pattern);
-typedef enum lttng_event_rule_status (*event_rule_logging_get_filter)(
-	const struct lttng_event_rule *rule, const char **expression);
-typedef enum lttng_event_rule_status (*event_rule_logging_get_log_level_rule)(
-	const struct lttng_event_rule *rule, const struct lttng_log_level_rule **log_level_rule);
+using event_rule_logging_get_name_pattern =
+	enum lttng_event_rule_status (*)(const struct lttng_event_rule *, const char **);
+using event_rule_logging_get_filter =
+	enum lttng_event_rule_status (*)(const struct lttng_event_rule *, const char **);
+using event_rule_logging_get_log_level_rule = enum lttng_event_rule_status (*)(
+	const struct lttng_event_rule *, const struct lttng_log_level_rule **);
 
 enum {
 	OPT_HELP,

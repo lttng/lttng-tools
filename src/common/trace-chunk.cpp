@@ -50,7 +50,7 @@ enum trace_chunk_mode {
  * since only one thread may access a chunk during its destruction (the last
  * to release its reference to the chunk).
  */
-typedef int (*chunk_command)(struct lttng_trace_chunk *trace_chunk);
+using chunk_command = int (*)(struct lttng_trace_chunk *);
 
 /* Move a completed trace chunk to the 'completed' trace archive folder. */
 static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk);

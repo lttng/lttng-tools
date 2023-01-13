@@ -25,7 +25,7 @@ struct lttng_dynamic_buffer;
  * completed successfully. On failure, the handler's return code should
  * be the only reply sent to the client.
  */
-typedef enum lttng_error_code (*completion_handler_function)(void *);
+using completion_handler_function = enum lttng_error_code (*)(void *);
 struct cmd_completion_handler {
 	completion_handler_function run;
 	void *data;

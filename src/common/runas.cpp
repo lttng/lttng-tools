@@ -65,7 +65,7 @@ enum run_as_cmd {
 namespace {
 struct run_as_data;
 struct run_as_ret;
-typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
+using run_as_fct = int (*)(struct run_as_data *, struct run_as_ret *);
 
 struct run_as_mkdir_data {
 	int dirfd;

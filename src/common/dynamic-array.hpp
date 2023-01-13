@@ -10,8 +10,8 @@
 
 #include <common/dynamic-buffer.hpp>
 
-typedef void (*lttng_dynamic_array_element_destructor)(void *element);
-typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
+using lttng_dynamic_array_element_destructor = void (*)(void *);
+using lttng_dynamic_pointer_array_destructor = void (*)(void *);
 
 struct lttng_dynamic_array {
 	struct lttng_dynamic_buffer buffer;

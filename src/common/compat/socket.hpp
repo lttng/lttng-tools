@@ -153,7 +153,7 @@ end:
 
 #define LTTNG_SOCK_CREDS SCM_CREDENTIALS
 
-typedef struct ucred lttng_sock_cred;
+using lttng_sock_cred = struct ucred;
 
 #define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
 #define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g

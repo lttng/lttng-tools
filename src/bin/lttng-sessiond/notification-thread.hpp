@@ -21,7 +21,7 @@
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
-typedef uint64_t notification_client_id;
+using notification_client_id = uint64_t;
 
 /*
  * The notification thread holds no ownership of the tracer event source pipe

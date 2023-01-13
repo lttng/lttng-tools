@@ -25,7 +25,7 @@ struct config_entry {
  * config_entry_handler_cb may return negative value to indicate an error in
  * the configuration file.
  */
-typedef int (*config_entry_handler_cb)(const struct config_entry *, void *);
+using config_entry_handler_cb = int (*)(const struct config_entry *, void *);
 
 /*
  * Read a section's entries in an INI configuration file.

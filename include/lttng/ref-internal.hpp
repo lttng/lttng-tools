@@ -10,8 +10,7 @@
  *
  */
 
-
-typedef void (*lttng_release_func)(void *);
+using lttng_release_func = void (*)(void *);
 
 struct lttng_ref {
 	unsigned long count;

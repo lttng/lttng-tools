@@ -239,10 +239,9 @@ bool notification_client_list_get(struct notification_client_list *list);
 void notification_client_list_put(struct notification_client_list *list);
 
 /* Only returns a non-zero value if a fatal error occurred. */
-typedef int (*report_client_transmission_result_cb)(
-		struct notification_client *client,
-		enum client_transmission_status status,
-		void *user_data);
+using report_client_transmission_result_cb = int (*)(struct notification_client *,
+						     enum client_transmission_status,
+						     void *);
 
 int notification_client_list_send_evaluation(
 		struct notification_client_list *list,

@@ -39,8 +39,7 @@
 /* Make this header file easier to include in C++ code */
 #include <stdio.h>
 
-typedef int (*ini_entry_handler)(void *, const char *, const char *,
-		const char *);
+using ini_entry_handler = int (*)(void *, const char *, const char *, const char *);
 
 /*
  * Parse given INI-style file. May have [section]s, name=value pairs

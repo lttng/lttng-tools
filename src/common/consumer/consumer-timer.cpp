@@ -20,10 +20,10 @@
 #include <inttypes.h>
 #include <signal.h>
 
-typedef int (*sample_positions_cb)(struct lttng_consumer_stream *stream);
-typedef int (*get_consumed_cb)(struct lttng_consumer_stream *stream, unsigned long *consumed);
-typedef int (*get_produced_cb)(struct lttng_consumer_stream *stream, unsigned long *produced);
-typedef int (*flush_index_cb)(struct lttng_consumer_stream *stream);
+using sample_positions_cb = int (*)(struct lttng_consumer_stream *);
+using get_consumed_cb = int (*)(struct lttng_consumer_stream *, unsigned long *);
+using get_produced_cb = int (*)(struct lttng_consumer_stream *, unsigned long *);
+using flush_index_cb = int (*)(struct lttng_consumer_stream *);
 
 static struct timer_signal_data timer_signal = {
 	.tid = 0,

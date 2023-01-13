@@ -28,10 +28,8 @@
 
 struct ltt_ust_session;
 
-typedef void (*ltt_session_destroy_notifier)(const struct ltt_session *session,
-		void *user_data);
-typedef void (*ltt_session_clear_notifier)(const struct ltt_session *session,
-		void *user_data);
+using ltt_session_destroy_notifier = void (*)(const struct ltt_session *, void *);
+using ltt_session_clear_notifier = void (*)(const struct ltt_session *, void *);
 
 namespace lttng {
 namespace sessiond {

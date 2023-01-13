@@ -29,10 +29,10 @@
 #include <urcu/rculist.h>
 #include <urcu/uatomic.h>
 
-typedef enum lttng_event_rule_status (*event_rule_logging_get_name_pattern)(
-	const struct lttng_event_rule *rule, const char **pattern);
-typedef enum lttng_event_rule_status (*event_rule_logging_get_log_level_rule)(
-	const struct lttng_event_rule *rule, const struct lttng_log_level_rule **log_level_rule);
+using event_rule_logging_get_name_pattern =
+	enum lttng_event_rule_status (*)(const struct lttng_event_rule *, const char **);
+using event_rule_logging_get_log_level_rule = enum lttng_event_rule_status (*)(
+	const struct lttng_event_rule *, const struct lttng_log_level_rule **);
 
 /*
  * Agent application context representation.

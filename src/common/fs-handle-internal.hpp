@@ -18,10 +18,10 @@ struct fs_handle;
  * to use an fd-tracker.
  */
 
-typedef int (*fs_handle_get_fd_cb)(struct fs_handle *);
-typedef void (*fs_handle_put_fd_cb)(struct fs_handle *);
-typedef int (*fs_handle_unlink_cb)(struct fs_handle *);
-typedef int (*fs_handle_close_cb)(struct fs_handle *);
+using fs_handle_get_fd_cb = int (*)(struct fs_handle *);
+using fs_handle_put_fd_cb = void (*)(struct fs_handle *);
+using fs_handle_unlink_cb = int (*)(struct fs_handle *);
+using fs_handle_close_cb = int (*)(struct fs_handle *);
 
 struct fs_handle {
 	fs_handle_get_fd_cb get_fd;

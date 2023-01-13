@@ -29,8 +29,7 @@ enum lttng_directory_handle_rmdir_recursive_flags {
 
 struct lttng_directory_handle;
 
-typedef void (*lttng_directory_handle_destroy_cb)(
-		struct lttng_directory_handle *handle, void *data);
+using lttng_directory_handle_destroy_cb = void (*)(struct lttng_directory_handle *, void *);
 
 struct lttng_directory_handle {
 	struct urcu_ref ref;

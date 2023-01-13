@@ -65,7 +65,7 @@ static void epoll_pwait_int_max(FILE *validation_output_file);
 static void ppoll_concurrent_write(FILE *validation_output_file);
 static void epoll_pwait_concurrent_munmap(FILE *validation_output_file);
 
-typedef void (*test_case_cb)(FILE *output_file);
+using test_case_cb = void (*)(FILE *);
 
 namespace {
 const struct test_case {

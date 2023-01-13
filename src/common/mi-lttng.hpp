@@ -39,16 +39,14 @@ struct mi_lttng_version_data {
 };
 
 /* Error query callbacks. */
-typedef enum lttng_error_code (*mi_lttng_error_query_trigger_cb)(
-		const struct lttng_trigger *trigger,
-		struct lttng_error_query_results **results);
-typedef enum lttng_error_code (*mi_lttng_error_query_condition_cb)(
-		const struct lttng_trigger *trigger,
-		struct lttng_error_query_results **results);
-typedef enum lttng_error_code (*mi_lttng_error_query_action_cb)(
-		const struct lttng_trigger *trigger,
-		const struct lttng_action_path *action_path,
-		struct lttng_error_query_results **results);
+using mi_lttng_error_query_trigger_cb = enum lttng_error_code (*)(
+	const struct lttng_trigger *, struct lttng_error_query_results **);
+using mi_lttng_error_query_condition_cb = enum lttng_error_code (*)(
+	const struct lttng_trigger *, struct lttng_error_query_results **);
+using mi_lttng_error_query_action_cb =
+	enum lttng_error_code (*)(const struct lttng_trigger *,
+				  const struct lttng_action_path *,
+				  struct lttng_error_query_results **);
 
 struct mi_lttng_error_query_callbacks {
 	mi_lttng_error_query_trigger_cb trigger_cb;

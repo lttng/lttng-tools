@@ -13,10 +13,10 @@
 struct lttng_thread;
 
 /* Main function of the new thread. */
-typedef void *(*lttng_thread_entry_point)(void *);
+using lttng_thread_entry_point = void *(*) (void *);
 
 /* Callback invoked to initiate the shutdown a thread. */
-typedef bool (*lttng_thread_shutdown_cb)(void *);
+using lttng_thread_shutdown_cb = bool (*)(void *);
 
 /*
  * Callback invoked to clean-up the thread data.
@@ -24,7 +24,7 @@ typedef bool (*lttng_thread_shutdown_cb)(void *);
  * race between a use by the "thread shutdown callback" and
  * a use by the thread itself.
  */
-typedef void (*lttng_thread_cleanup_cb)(void *);
+using lttng_thread_cleanup_cb = void (*)(void *);
 
 /*
  * Returns a reference to the newly-created thread.

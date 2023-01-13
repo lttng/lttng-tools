@@ -26,7 +26,7 @@ struct fd_tracker;
  *
  * Must return zero on success. Negative values should map to a UNIX error code.
  */
-typedef int (*fd_open_cb)(void *, int *out_fds);
+using fd_open_cb = int (*)(void *, int *);
 
 /*
  * Callback to allow the user to close a now-untracked file descriptor. This
@@ -38,7 +38,7 @@ typedef int (*fd_open_cb)(void *, int *out_fds);
  *
  * Must return zero on success. Negative values should map to a UNIX error code.
  */
-typedef int (*fd_close_cb)(void *, int *in_fds);
+using fd_close_cb = int (*)(void *, int *);
 
 /*
  * Set the maximal number of fds that the process should be allowed to open at

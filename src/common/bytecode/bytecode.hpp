@@ -191,7 +191,7 @@ enum bytecode_op {
 	NR_BYTECODE_OPS,
 };
 
-typedef uint8_t bytecode_opcode_t;
+using bytecode_opcode_t = uint8_t;
 
 struct load_op {
 	bytecode_opcode_t op;

@@ -31,10 +31,10 @@
 #define FIELD_NAME_MAX_LEN 256
 
 /* A callback to populate the condition capture descriptor. */
-typedef int (*condition_capture_desc_cb)(struct lttng_condition *condition);
+using condition_capture_desc_cb = int (*)(struct lttng_condition *);
 
 /* A callback for captured field validation. */
-typedef int (*validate_cb)(const struct lttng_event_field_value *event_field, unsigned iteration);
+using validate_cb = int (*)(const struct lttng_event_field_value *, unsigned int);
 
 int nb_args = 0;
 int named_pipe_args_start = 0;
@@ -1466,13 +1466,13 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 						 struct lttng_condition **condition,
 						 struct lttng_trigger **trigger)
 {
-	typedef struct lttng_event_rule *(*event_rule_create)(void);
-	typedef enum lttng_event_rule_status (
-		*event_rule_set_name_pattern)(struct lttng_event_rule * rule, const char *pattern);
-	typedef enum lttng_event_rule_status (
-		*event_rule_set_filter)(struct lttng_event_rule * rule, const char *expression);
-	typedef enum lttng_event_rule_status (*event_rule_add_name_pattern_exclusion)(
-		struct lttng_event_rule * rule, const char *exclusion);
+	using event_rule_create = struct lttng_event_rule *(*) ();
+	using event_rule_set_name_pattern =
+		enum lttng_event_rule_status (*)(struct lttng_event_rule *, const char *);
+	using event_rule_set_filter =
+		enum lttng_event_rule_status (*)(struct lttng_event_rule *, const char *);
+	using event_rule_add_name_pattern_exclusion =
+		enum lttng_event_rule_status (*)(struct lttng_event_rule *, const char *);
 
 	enum lttng_event_rule_status event_rule_status;
 	struct lttng_action *tmp_action = NULL;

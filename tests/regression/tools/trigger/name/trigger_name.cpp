@@ -26,7 +26,7 @@ enum unregistration_trigger_instance {
 	UNREGISTRATION_TRIGGER_INSTANCE_FROM_LISTING,
 };
 
-typedef void (*test_function)(enum unregistration_trigger_instance);
+using test_function = void (*)(enum unregistration_trigger_instance);
 
 static const char *get_trigger_name(const struct lttng_trigger *trigger)
 {

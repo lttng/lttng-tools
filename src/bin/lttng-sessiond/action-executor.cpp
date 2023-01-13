@@ -116,9 +116,9 @@ struct action_work_subitem {
  * Only return non-zero on a fatal error that should shut down the action
  * executor.
  */
-typedef int (*action_executor_handler)(struct action_executor *executor,
-				       const struct action_work_item *,
-				       struct action_work_subitem *item);
+using action_executor_handler = int (*)(struct action_executor *,
+					const struct action_work_item *,
+					struct action_work_subitem *);
 
 static int action_executor_notify_handler(struct action_executor *executor,
 					  const struct action_work_item *,

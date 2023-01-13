@@ -23,19 +23,14 @@ struct mi_writer;
 struct mi_lttng_error_query_callbacks;
 struct lttng_trigger;
 
-typedef void (*condition_destroy_cb)(struct lttng_condition *condition);
-typedef bool (*condition_validate_cb)(const struct lttng_condition *condition);
-typedef int (*condition_serialize_cb)(
-		const struct lttng_condition *condition,
-		struct lttng_payload *payload);
-typedef bool (*condition_equal_cb)(const struct lttng_condition *a,
-		const struct lttng_condition *b);
-typedef ssize_t (*condition_create_from_payload_cb)(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
-typedef enum lttng_error_code (*condition_mi_serialize_cb)(
-		const struct lttng_condition *condition,
-		struct mi_writer *writer);
+using condition_destroy_cb = void (*)(struct lttng_condition *);
+using condition_validate_cb = bool (*)(const struct lttng_condition *);
+using condition_serialize_cb = int (*)(const struct lttng_condition *, struct lttng_payload *);
+using condition_equal_cb = bool (*)(const struct lttng_condition *, const struct lttng_condition *);
+using condition_create_from_payload_cb = ssize_t (*)(struct lttng_payload_view *,
+						     struct lttng_condition **);
+using condition_mi_serialize_cb = enum lttng_error_code (*)(const struct lttng_condition *,
+							    struct mi_writer *);
 
 struct lttng_condition {
 	/* Reference counting is only exposed to internal users. */
