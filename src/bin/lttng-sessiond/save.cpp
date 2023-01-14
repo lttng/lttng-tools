@@ -530,7 +530,6 @@ static int save_kernel_kprobe_event(struct config_writer *writer, struct ltt_ker
 		symbol_name = addr ? nullptr : event->event->u.kretprobe.symbol_name;
 		break;
 	default:
-		LTTNG_ASSERT(1);
 		ERR("Unsupported kernel instrumentation type.");
 		ret = LTTNG_ERR_INVALID;
 		goto end;
