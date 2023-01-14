@@ -15,17 +15,17 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#define LTTNG_SESSIOND_SIG_QS			  SIGRTMIN + 10
-#define LTTNG_SESSIOND_SIG_EXIT			  SIGRTMIN + 11
-#define LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK SIGRTMIN + 12
-#define LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION	  SIGRTMIN + 13
+#define LTTNG_SESSIOND_SIG_QS			  (SIGRTMIN + 10)
+#define LTTNG_SESSIOND_SIG_EXIT			  (SIGRTMIN + 11)
+#define LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK (SIGRTMIN + 12)
+#define LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION	  (SIGRTMIN + 13)
 
-#define UINT_TO_PTR(value)                          \
-	({                                          \
-		LTTNG_ASSERT(value <= UINTPTR_MAX); \
-		(void *) (uintptr_t) value;         \
+#define UINT_TO_PTR(value)                            \
+	({                                            \
+		LTTNG_ASSERT((value) <= UINTPTR_MAX); \
+		(void *) (uintptr_t) (value);         \
 	})
-#define PTR_TO_UINT(ptr) ((uintptr_t) ptr)
+#define PTR_TO_UINT(ptr) ((uintptr_t) (ptr))
 
 namespace {
 /*

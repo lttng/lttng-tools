@@ -904,7 +904,9 @@ static void *thread_dispatcher(void *data __attribute__((unused)))
 			 * the data will be read at some point in time
 			 * or wait to the end of the world :)
 			 */
-			ret = lttng_write(live_conn_pipe[1], &conn, sizeof(conn));
+			ret = lttng_write(live_conn_pipe[1], &conn, sizeof(conn)); /* NOLINT sizeof
+										      used on a
+										      pointer. */
 			if (ret < 0) {
 				PERROR("write conn pipe");
 				connection_put(conn);
@@ -2640,7 +2642,10 @@ restart:
 				if (revents & LPOLLIN) {
 					struct relay_connection *conn;
 
-					ret = lttng_read(live_conn_pipe[0], &conn, sizeof(conn));
+					ret = lttng_read(live_conn_pipe[0],
+							 &conn,
+							 sizeof(conn)); /* NOLINT sizeof used on a
+									   pointer. */
 					if (ret < 0) {
 						goto error;
 					}

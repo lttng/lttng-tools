@@ -88,7 +88,10 @@
 /*
  * Initialize an optional field as 'set' with a given value.
  */
-#define LTTNG_OPTIONAL_INIT_VALUE(val) { .is_set = 1, .value = val }
+#define LTTNG_OPTIONAL_INIT_VALUE(val)      \
+	{                                   \
+		.is_set = 1, .value = (val) \
+	}
 
 /* Set the value of an optional field. */
 #define LTTNG_OPTIONAL_SET(field_ptr, val)	\

@@ -1435,19 +1435,23 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 		 * adhered to.
 		 */
 		if (domain->type == LTTNG_DOMAIN_JUL) {
-			if (strncmp(attr->name, DEFAULT_JUL_CHANNEL_NAME, LTTNG_SYMBOL_NAME_LEN)) {
+			if (strncmp(attr->name,
+				    DEFAULT_JUL_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
 				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
-			if (strncmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME, LTTNG_SYMBOL_NAME_LEN)) {
+			if (strncmp(attr->name,
+				    DEFAULT_LOG4J_CHANNEL_NAME,
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
 				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
 			if (strncmp(attr->name,
 				    DEFAULT_PYTHON_CHANNEL_NAME,
-				    LTTNG_SYMBOL_NAME_LEN)) {
+				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
 				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
@@ -1935,11 +1939,11 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 		 * name, return an error.
 		 */
 		if (domain == LTTNG_DOMAIN_JUL && *channel_name &&
-		    strcmp(channel_name, DEFAULT_JUL_CHANNEL_NAME)) {
+		    strcmp(channel_name, DEFAULT_JUL_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		} else if (domain == LTTNG_DOMAIN_LOG4J && *channel_name &&
-			   strcmp(channel_name, DEFAULT_LOG4J_CHANNEL_NAME)) {
+			   strcmp(channel_name, DEFAULT_LOG4J_CHANNEL_NAME) != 0) {
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}

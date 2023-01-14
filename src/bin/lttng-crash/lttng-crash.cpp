@@ -388,13 +388,13 @@ _crash_get_field(const struct lttng_crash_layout *layout, const char *ptr, size_
 }
 
 #define crash_get_field(layout, map, name) \
-	_crash_get_field(layout, (map) + (layout)->offset.name, layout->length.name)
+	_crash_get_field(layout, (map) + (layout)->offset.name, (layout)->length.name)
 
-#define crash_get_array_field(layout, map, array_name, idx, field_name) \
-	_crash_get_field(layout,                                        \
-			 (map) + (layout)->offset.array_name +          \
-				 (idx * (layout)->stride.array_name) +  \
-				 (layout)->offset.field_name,           \
+#define crash_get_array_field(layout, map, array_name, idx, field_name)  \
+	_crash_get_field(layout,                                         \
+			 (map) + (layout)->offset.array_name +           \
+				 ((idx) * (layout)->stride.array_name) + \
+				 (layout)->offset.field_name,            \
 			 (layout)->length.field_name)
 
 #define crash_get_hdr_raw_field(layout, hdr, name) ((hdr)->name)

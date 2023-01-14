@@ -57,15 +57,13 @@ public:
  */
 class read_lock_guard {
 public:
-	read_lock_guard() : _guard(_lock)
-	{
-	}
+	read_lock_guard() = default;
 
 	read_lock_guard(const read_lock_guard &) = delete;
 
 private:
 	details::read_lock _lock;
-	std::lock_guard<details::read_lock> _guard;
+	std::lock_guard<details::read_lock> _guard{_lock};
 };
 
 using unique_read_lock = std::unique_lock<details::read_lock>;

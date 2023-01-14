@@ -52,12 +52,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#define COPY_DOMAIN_PACKED(dst, src)                             \
-	do {                                                     \
-		struct lttng_domain _tmp_domain;                 \
-                                                                 \
-		lttng_ctl_copy_lttng_domain(&_tmp_domain, &src); \
-		dst = _tmp_domain;                               \
+#define COPY_DOMAIN_PACKED(dst, src)                               \
+	do {                                                       \
+		struct lttng_domain _tmp_domain;                   \
+                                                                   \
+		lttng_ctl_copy_lttng_domain(&_tmp_domain, &(src)); \
+		(dst) = _tmp_domain;                               \
 	} while (0)
 
 /* Socket to session daemon for communication */

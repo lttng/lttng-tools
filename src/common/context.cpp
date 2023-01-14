@@ -29,7 +29,7 @@ int parse_application_context(const char *str, char **out_provider_name, char **
 	}
 
 	/* String starts with $app. */
-	if (strncmp(str, app_ctx_prefix, sizeof(app_ctx_prefix) - 1)) {
+	if (strncmp(str, app_ctx_prefix, sizeof(app_ctx_prefix) - 1) != 0) {
 		goto not_found;
 	}
 

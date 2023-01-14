@@ -465,35 +465,36 @@ end:
 	return type;
 }
 
-#define DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(value_type_name, value_type, expected_value_type) \
-	enum lttng_process_attr_values_status                                                     \
-		lttng_process_attr_values_get_##value_type_name##_at_index(                       \
-			const struct lttng_process_attr_values *values,                           \
-			unsigned int index,                                                       \
-			value_type *out_value)                                                    \
-	{                                                                                         \
-		enum lttng_process_attr_values_status status =                                    \
-			LTTNG_PROCESS_ATTR_VALUES_STATUS_OK;                                      \
-		const struct process_attr_value *value;                                           \
-                                                                                                  \
-		if (!values) {                                                                    \
-			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID;                        \
-			goto end;                                                                 \
-		}                                                                                 \
-                                                                                                  \
-		if (_lttng_process_attr_values_get_count(values) <= index) {                      \
-			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID;                        \
-			goto end;                                                                 \
-		}                                                                                 \
-                                                                                                  \
-		value = lttng_process_attr_tracker_values_get_at_index(values, index);            \
-		if (value->type != LTTNG_PROCESS_ATTR_VALUE_TYPE_##expected_value_type) {         \
-			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE;                   \
-			goto end;                                                                 \
-		}                                                                                 \
-		*out_value = value->value.value_type_name;                                        \
-	end:                                                                                      \
-		return status;                                                                    \
+#define DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(value_type_name, value_type, expected_value_type)  \
+	enum lttng_process_attr_values_status                                                      \
+		lttng_process_attr_values_get_##value_type_name##_at_index(                        \
+			const struct lttng_process_attr_values *values,                            \
+			unsigned int index,                                                        \
+			value_type *out_value) /* NOLINT clang-tidy sees value_type as a value and \
+						  adds parentheses */                              \
+	{                                                                                          \
+		enum lttng_process_attr_values_status status =                                     \
+			LTTNG_PROCESS_ATTR_VALUES_STATUS_OK;                                       \
+		const struct process_attr_value *value;                                            \
+                                                                                                   \
+		if (!values) {                                                                     \
+			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID;                         \
+			goto end;                                                                  \
+		}                                                                                  \
+                                                                                                   \
+		if (_lttng_process_attr_values_get_count(values) <= index) {                       \
+			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID;                         \
+			goto end;                                                                  \
+		}                                                                                  \
+                                                                                                   \
+		value = lttng_process_attr_tracker_values_get_at_index(values, index);             \
+		if (value->type != LTTNG_PROCESS_ATTR_VALUE_TYPE_##expected_value_type) {          \
+			status = LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID_TYPE;                    \
+			goto end;                                                                  \
+		}                                                                                  \
+		*out_value = value->value.value_type_name;                                         \
+	end:                                                                                       \
+		return status;                                                                     \
 	}
 
 DEFINE_LTTNG_PROCESS_ATTR_VALUES_GETTER(pid, pid_t, PID);

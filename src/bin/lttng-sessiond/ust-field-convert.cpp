@@ -539,7 +539,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 
 	lst::field_location::elements length_field_location_elements =
 		current_field_location_elements;
-	length_field_location_elements.emplace_back(std::move(length_field_name));
+	length_field_location_elements.emplace_back(length_field_name);
 
 	lst::field_location length_field_location{ lookup_root,
 						   std::move(length_field_location_elements) };

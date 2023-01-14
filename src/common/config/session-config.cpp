@@ -1260,7 +1260,7 @@ static int create_session(const char *name,
 		}
 
 		if (strcmp((const char *) consumer_output_node->name,
-			   config_element_consumer_output)) {
+			   config_element_consumer_output) != 0) {
 			WARN("Invalid output type, expected %s node",
 			     config_element_consumer_output);
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -3035,7 +3035,7 @@ static int process_session_rotation_schedules_node(xmlNodePtr schedules_node,
 			time_us_node = xmlFirstElementChild(child);
 			if (!time_us_node ||
 			    strcmp((const char *) time_us_node->name,
-				   config_element_rotation_schedule_periodic_time_us)) {
+				   config_element_rotation_schedule_periodic_time_us) != 0) {
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 				goto end;
 			}
@@ -3061,7 +3061,7 @@ static int process_session_rotation_schedules_node(xmlNodePtr schedules_node,
 			bytes_node = xmlFirstElementChild(child);
 			if (!bytes_node ||
 			    strcmp((const char *) bytes_node->name,
-				   config_element_rotation_schedule_size_threshold_bytes)) {
+				   config_element_rotation_schedule_size_threshold_bytes) != 0) {
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 				goto end;
 			}
@@ -3208,7 +3208,7 @@ static int process_session_node(xmlNodePtr session_node,
 		goto error;
 	}
 
-	if (session_name && strcmp((char *) name, session_name)) {
+	if (session_name && strcmp((char *) name, session_name) != 0) {
 		/* This is not the session we are looking for */
 		ret = -LTTNG_ERR_NO_SESSION;
 		goto error;
@@ -3573,7 +3573,8 @@ static int load_session_from_path(const char *path,
 			/* Does the file end with .lttng? */
 			if (strcmp(DEFAULT_SESSION_CONFIG_FILE_EXTENSION,
 				   result->d_name + file_name_len -
-					   sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION) + 1)) {
+					   sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION) + 1) !=
+			    0) {
 				continue;
 			}
 

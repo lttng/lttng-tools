@@ -33,7 +33,7 @@
 #define NOTE_STAPSDT_SECTION_NAME	".note.stapsdt"
 #define NOTE_STAPSDT_NAME		"stapsdt"
 #define NOTE_STAPSDT_TYPE		3
-#define MAX_SECTION_DATA_SIZE		512 * 1024 * 1024
+#define MAX_SECTION_DATA_SIZE		(512 * 1024 * 1024)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define NATIVE_ELF_ENDIANNESS ELFDATA2LSB
@@ -41,25 +41,25 @@
 #define NATIVE_ELF_ENDIANNESS ELFDATA2MSB
 #endif
 
-#define next_4bytes_boundary(x) (typeof(x)) ((((uint64_t) x) + 3) & ~0x03)
+#define next_4bytes_boundary(x) (typeof(x)) ((((uint64_t) (x)) + 3) & ~0x03)
 
-#define bswap(x)                                   \
-	do {                                       \
-		switch (sizeof(x)) {               \
-		case 8:                            \
-			x = be64toh((uint64_t) x); \
-			break;                     \
-		case 4:                            \
-			x = be32toh((uint32_t) x); \
-			break;                     \
-		case 2:                            \
-			x = be16toh((uint16_t) x); \
-			break;                     \
-		case 1:                            \
-			break;                     \
-		default:                           \
-			abort();                   \
-		}                                  \
+#define bswap(x)                                       \
+	do {                                           \
+		switch (sizeof(x)) {                   \
+		case 8:                                \
+			(x) = be64toh((uint64_t) (x)); \
+			break;                         \
+		case 4:                                \
+			(x) = be32toh((uint32_t) (x)); \
+			break;                         \
+		case 2:                                \
+			(x) = be16toh((uint16_t) (x)); \
+			break;                         \
+		case 1:                                \
+			break;                         \
+		default:                               \
+			abort();                       \
+		}                                      \
 	} while (0)
 
 #define bswap_shdr(shdr)                    \
@@ -124,14 +124,14 @@
 		(dst_ehdr).e_shstrndx = (src_ehdr).e_shstrndx;   \
 	} while (0)
 
-#define copy_sym(src_sym, dst_sym)                   \
-	do {                                         \
-		dst_sym.st_name = src_sym.st_name;   \
-		dst_sym.st_info = src_sym.st_info;   \
-		dst_sym.st_other = src_sym.st_other; \
-		dst_sym.st_shndx = src_sym.st_shndx; \
-		dst_sym.st_value = src_sym.st_value; \
-		dst_sym.st_size = src_sym.st_size;   \
+#define copy_sym(src_sym, dst_sym)                       \
+	do {                                             \
+		(dst_sym).st_name = (src_sym).st_name;   \
+		(dst_sym).st_info = (src_sym).st_info;   \
+		(dst_sym).st_other = (src_sym).st_other; \
+		(dst_sym).st_shndx = (src_sym).st_shndx; \
+		(dst_sym).st_value = (src_sym).st_value; \
+		(dst_sym).st_size = (src_sym).st_size;   \
 	} while (0)
 
 #ifndef ELFCLASSNUM

@@ -160,13 +160,13 @@ static bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *
 	/* Condition is not valid if this is not true. */
 	LTTNG_ASSERT(a->session_name);
 	LTTNG_ASSERT(b->session_name);
-	if (strcmp(a->session_name, b->session_name)) {
+	if (strcmp(a->session_name, b->session_name) != 0) {
 		goto end;
 	}
 
 	LTTNG_ASSERT(a->channel_name);
 	LTTNG_ASSERT(b->channel_name);
-	if (strcmp(a->channel_name, b->channel_name)) {
+	if (strcmp(a->channel_name, b->channel_name) != 0) {
 		goto end;
 	}
 

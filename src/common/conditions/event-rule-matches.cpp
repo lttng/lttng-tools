@@ -528,7 +528,7 @@ static uint64_t uint_from_buffer(const struct lttng_buffer_view *view, size_t si
 
 	switch (size) {
 	case 1:
-		ret = (uint64_t) *uint_view.data;
+		ret = (unsigned char) *uint_view.data;
 		break;
 	case sizeof(uint32_t):
 	{

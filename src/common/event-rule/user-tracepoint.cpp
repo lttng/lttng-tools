@@ -208,12 +208,12 @@ static bool lttng_event_rule_user_tracepoint_is_equal(const struct lttng_event_r
 	/* Long check. */
 	LTTNG_ASSERT(a->pattern);
 	LTTNG_ASSERT(b->pattern);
-	if (strcmp(a->pattern, b->pattern)) {
+	if (strcmp(a->pattern, b->pattern) != 0) {
 		goto end;
 	}
 
 	if (a->filter_expression && b->filter_expression) {
-		if (strcmp(a->filter_expression, b->filter_expression)) {
+		if (strcmp(a->filter_expression, b->filter_expression) != 0) {
 			goto end;
 		}
 	} else if (!!a->filter_expression != !!b->filter_expression) {
@@ -234,7 +234,7 @@ static bool lttng_event_rule_user_tracepoint_is_equal(const struct lttng_event_r
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 			_b, i, &exclusion_b);
 		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
-		if (strcmp(exclusion_a, exclusion_b)) {
+		if (strcmp(exclusion_a, exclusion_b) != 0) {
 			goto end;
 		}
 	}

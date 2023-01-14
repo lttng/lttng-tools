@@ -27,22 +27,22 @@
 #include <urcu/rculfhash.h>
 
 /* Tracker lock must be taken by the user. */
-#define TRACKED_COUNT(tracker)                                                      \
-	(tracker->count.suspendable.active + tracker->count.suspendable.suspended + \
-	 tracker->count.unsuspendable)
+#define TRACKED_COUNT(tracker)                                                          \
+	((tracker)->count.suspendable.active + (tracker)->count.suspendable.suspended + \
+	 (tracker)->count.unsuspendable)
 
 /* Tracker lock must be taken by the user. */
-#define ACTIVE_COUNT(tracker) (tracker->count.suspendable.active + tracker->count.unsuspendable)
+#define ACTIVE_COUNT(tracker) ((tracker)->count.suspendable.active + (tracker)->count.unsuspendable)
 
 /* Tracker lock must be taken by the user. */
-#define SUSPENDED_COUNT(tracker) (tracker->count.suspendable.suspended)
+#define SUSPENDED_COUNT(tracker) ((tracker)->count.suspendable.suspended)
 
 /* Tracker lock must be taken by the user. */
 #define SUSPENDABLE_COUNT(tracker) \
-	(tracker->count.suspendable.active + tracker->count.suspendable.suspended)
+	((tracker)->count.suspendable.active + (tracker)->count.suspendable.suspended)
 
 /* Tracker lock must be taken by the user. */
-#define UNSUSPENDABLE_COUNT(tracker) (tracker->count.unsuspendable)
+#define UNSUSPENDABLE_COUNT(tracker) ((tracker)->count.unsuspendable)
 
 struct fd_tracker {
 	pthread_mutex_t lock;

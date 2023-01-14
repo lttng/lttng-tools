@@ -704,7 +704,7 @@ skip_write:
 			break;
 		}
 
-		if (strcmp(file_contents, read_buf)) {
+		if (strcmp(file_contents, read_buf) != 0) {
 			content_ok = false;
 			diag("File content doesn't match the expectated string");
 			(void) close(fd);

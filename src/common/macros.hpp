@@ -39,7 +39,7 @@
  * memory using malloc(), we must use generic accessors for compat in order to
  * *not* use a function to access members and not the variable name.
  */
-#define LTTNG_REF(x) ((typeof(*x) *)(x))
+#define LTTNG_REF(x) ((typeof(*(x)) *) (x))
 
 #ifdef NDEBUG
 /*
@@ -88,7 +88,7 @@ template<typename T>
 T *zmalloc()
 {
 	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) zmalloc_internal(sizeof(T));
+	return (T *) zmalloc_internal(sizeof(T)); /* NOLINT sizeof potentially used on a pointer. */
 }
 
 /*
@@ -111,7 +111,7 @@ template<typename T>
 T *calloc(size_t nmemb)
 {
 	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) zmalloc_internal(nmemb * sizeof(T));
+	return (T *) zmalloc_internal(nmemb * sizeof(T)); /* NOLINT sizeof potentially used on a pointer. */
 }
 
 /*
@@ -243,7 +243,7 @@ void *memmove(T *d, const U *s, size_t n) = delete;
 
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
-#define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))
+#define ASSERT_LOCKED(lock)	     LTTNG_ASSERT(pthread_mutex_trylock(&(lock)))
 #define ASSERT_RCU_READ_LOCKED(lock) LTTNG_ASSERT(rcu_read_ongoing())
 
 /* Attribute suitable to tag functions as having printf()-like arguments. */

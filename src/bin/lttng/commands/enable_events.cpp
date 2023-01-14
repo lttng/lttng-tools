@@ -845,7 +845,7 @@ static int enable_events(char *session_name, char *event_list)
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL: /* Enable tracepoints and syscalls */
 				/* If event name differs from *, select tracepoint. */
-				if (strcmp(ev->name, "*")) {
+				if (strcmp(ev->name, "*") != 0) {
 					ev->type = LTTNG_EVENT_TRACEPOINT;
 				}
 				break;

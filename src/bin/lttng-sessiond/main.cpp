@@ -791,7 +791,7 @@ static int config_entry_handler(const struct config_entry *entry,
 
 	for (i = 0; i < (sizeof(long_options) / sizeof(struct option)) - 1; i++) {
 		/* Ignore if not fully matched. */
-		if (strcmp(entry->name, long_options[i].name)) {
+		if (strcmp(entry->name, long_options[i].name) != 0) {
 			continue;
 		}
 

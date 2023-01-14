@@ -1545,7 +1545,7 @@ static int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_c
 	 * the creation of the next chunk. This happens if a rotation is
 	 * performed while tracing is stopped.
 	 */
-	if (!trace_chunk->path || strcmp(trace_chunk->path, DEFAULT_CHUNK_TMP_OLD_DIRECTORY)) {
+	if (!trace_chunk->path || strcmp(trace_chunk->path, DEFAULT_CHUNK_TMP_OLD_DIRECTORY) != 0) {
 		status = lttng_trace_chunk_rename_path_no_lock(trace_chunk,
 							       DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {

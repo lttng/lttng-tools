@@ -27,7 +27,7 @@ struct lttng_kernel_abi_old_perf_counter_ctx {
 
 /* Event/Channel context */
 #define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING1  16
-#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING2  LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING2  ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_old_context {
 	enum lttng_kernel_abi_context_type ctx;
 	char padding[LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING1];
@@ -61,7 +61,7 @@ struct lttng_kernel_abi_old_function {
 };
 
 #define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING1    16
-#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING2    LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING2    ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_old_event {
 	char name[LTTNG_KERNEL_ABI_SYM_NAME_LEN];
 	enum lttng_kernel_abi_instrumentation instrumentation;
@@ -85,7 +85,7 @@ struct lttng_kernel_abi_old_tracer_version {
 /*
  * kernel channel
  */
-#define LTTNG_KERNEL_ABI_OLD_CHANNEL_PADDING1 LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_OLD_CHANNEL_PADDING1 ((LTTNG_SYMBOL_NAME_LEN + 32))
 struct lttng_kernel_abi_old_channel {
 	int overwrite;                      /* 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes */

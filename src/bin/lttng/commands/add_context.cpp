@@ -976,7 +976,7 @@ static struct ctx_type *get_context_type(const char *ctx)
 	}
 
 	/* String starts with $app. */
-	if (strncmp(ctx, app_ctx_prefix, sizeof(app_ctx_prefix) - 1)) {
+	if (strncmp(ctx, app_ctx_prefix, sizeof(app_ctx_prefix) - 1) != 0) {
 		goto not_found;
 	}
 

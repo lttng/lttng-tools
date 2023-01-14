@@ -80,7 +80,7 @@ int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
 	cds_list_for_each_entry (kevent, &kchan->events_list.head, list) {
 		if (type != LTTNG_EVENT_ALL && kevent->type != type)
 			continue;
-		if (event_name != nullptr && strcmp(event_name, kevent->event->name)) {
+		if (event_name != nullptr && strcmp(event_name, kevent->event->name) != 0) {
 			continue;
 		}
 		found++;

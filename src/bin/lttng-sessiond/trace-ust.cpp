@@ -645,15 +645,15 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 		}
 		if (strncmp(uctx->ctx.u.perf_counter.name,
 			    ctx->u.perf_counter.name,
-			    LTTNG_UST_ABI_SYM_NAME_LEN)) {
+			    LTTNG_UST_ABI_SYM_NAME_LEN) != 0) {
 			return 0;
 		}
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 		LTTNG_ASSERT(uctx->ctx.u.app_ctx.provider_name);
 		LTTNG_ASSERT(uctx->ctx.u.app_ctx.ctx_name);
-		if (strcmp(uctx->ctx.u.app_ctx.provider_name, ctx->u.app_ctx.provider_name) ||
-		    strcmp(uctx->ctx.u.app_ctx.ctx_name, ctx->u.app_ctx.ctx_name)) {
+		if (strcmp(uctx->ctx.u.app_ctx.provider_name, ctx->u.app_ctx.provider_name) != 0 ||
+		    strcmp(uctx->ctx.u.app_ctx.ctx_name, ctx->u.app_ctx.ctx_name) != 0) {
 			return 0;
 		}
 	default:

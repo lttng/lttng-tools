@@ -103,7 +103,8 @@ const char *get_role_name(lst::static_length_blob_type::role role)
 namespace ctf2 {
 class trace_environment_visitor : public lst::trace_class_environment_visitor {
 public:
-	trace_environment_visitor() = default;
+	trace_environment_visitor() = default; /* NOLINT clang-tidy 14 identifies this as a move
+						  constructor. */
 
 	void visit(const lst::environment_field<int64_t>& field) override
 	{
@@ -134,7 +135,7 @@ private:
 class field_visitor : public lttng::sessiond::trace::field_visitor,
 		      public lttng::sessiond::trace::type_visitor {
 public:
-	field_visitor() = default;
+	field_visitor() = default; /* NOLINT clang-tidy 14 identifies this as a move constructor. */
 
 	/* Only call once. */
 	json::json move_fragment()

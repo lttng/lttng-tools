@@ -133,7 +133,7 @@ static bool lttng_condition_session_rotation_is_equal(const struct lttng_conditi
 		goto end;
 	}
 
-	if (a->session_name && b->session_name && strcmp(a->session_name, b->session_name)) {
+	if (a->session_name && b->session_name && strcmp(a->session_name, b->session_name) != 0) {
 		goto end;
 	}
 

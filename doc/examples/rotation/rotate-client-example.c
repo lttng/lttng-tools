@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000 /* usec */
 
@@ -44,7 +45,10 @@ static volatile int quit = 0;
 
 static void sighandler(int signal __attribute__((unused)))
 {
-	printf("Signal caught, exiting\n");
+	const char msg[] = "Signal caught, exiting\n";
+	const int ret =  write(STDOUT_FILENO, msg, sizeof(msg));
+
+	assert(ret == 0); /* NOLINT assert is not async signal safe */
 	quit = 1;
 }
 

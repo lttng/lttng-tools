@@ -167,7 +167,8 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 	stream->globally_visible = 1;
 	cds_list_del_init(&stream->send_node);
 
-	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream));
+	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream)); /* NOLINT sizeof used on a
+									 pointer. */
 	if (ret < 0) {
 		ERR("Consumer write %s stream to pipe %d",
 		    stream->metadata_flag ? "metadata" : "data",

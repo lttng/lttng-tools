@@ -104,7 +104,8 @@ static void notify_thread_lttng_pipe(struct lttng_pipe *pipe)
 
 	LTTNG_ASSERT(pipe);
 
-	(void) lttng_pipe_write(pipe, &null_stream, sizeof(null_stream));
+	(void) lttng_pipe_write(pipe, &null_stream, sizeof(null_stream)); /* NOLINT sizeof used on a
+									     pointer. */
 }
 
 static void notify_health_quit_pipe(int *pipe)
@@ -2375,8 +2376,11 @@ void *consumer_thread_metadata_poll(void *data)
 
 					pipe_len = lttng_pipe_read(ctx->consumer_metadata_pipe,
 								   &stream,
-								   sizeof(stream));
-					if (pipe_len < sizeof(stream)) {
+								   sizeof(stream)); /* NOLINT sizeof
+										       used on a
+										       pointer. */
+					if (pipe_len < sizeof(stream)) { /* NOLINT sizeof used on a
+									    pointer. */
 						if (pipe_len < 0) {
 							PERROR("read metadata stream");
 						}
@@ -2643,9 +2647,12 @@ void *consumer_thread_data_poll(void *data)
 			ssize_t pipe_readlen;
 
 			DBG("consumer_data_pipe wake up");
-			pipe_readlen = lttng_pipe_read(
-				ctx->consumer_data_pipe, &new_stream, sizeof(new_stream));
-			if (pipe_readlen < sizeof(new_stream)) {
+			pipe_readlen = lttng_pipe_read(ctx->consumer_data_pipe,
+						       &new_stream,
+						       sizeof(new_stream)); /* NOLINT sizeof used on
+									       a pointer. */
+			if (pipe_readlen < sizeof(new_stream)) { /* NOLINT sizeof used on a pointer.
+								  */
 				PERROR("Consumer data pipe");
 				/* Continue so we can at least handle the current stream(s). */
 				continue;

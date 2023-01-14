@@ -449,7 +449,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 
 	/* Adding the channel to the channel hash table. */
 	rcu_read_lock();
-	if (strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name))) {
+	if (strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name)) != 0) {
 		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
 		chan_published = true;
 	} else {

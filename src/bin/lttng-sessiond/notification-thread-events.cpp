@@ -1416,10 +1416,10 @@ static bool buffer_usage_condition_applies_to_channel(const struct lttng_conditi
 	status = lttng_condition_buffer_usage_get_channel_name(condition, &condition_channel_name);
 	LTTNG_ASSERT((status == LTTNG_CONDITION_STATUS_OK) && condition_channel_name);
 
-	if (strcmp(channel_info->session_info->name, condition_session_name)) {
+	if (strcmp(channel_info->session_info->name, condition_session_name) != 0) {
 		goto fail;
 	}
-	if (strcmp(channel_info->name, condition_channel_name)) {
+	if (strcmp(channel_info->name, condition_channel_name) != 0) {
 		goto fail;
 	}
 

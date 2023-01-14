@@ -236,13 +236,13 @@ lttng_userspace_probe_location_function_is_equal(const struct lttng_userspace_pr
 
 	LTTNG_ASSERT(a->function_name);
 	LTTNG_ASSERT(b->function_name);
-	if (strcmp(a->function_name, b->function_name)) {
+	if (strcmp(a->function_name, b->function_name) != 0) {
 		goto end;
 	}
 
 	LTTNG_ASSERT(a->binary_path);
 	LTTNG_ASSERT(b->binary_path);
-	if (strcmp(a->binary_path, b->binary_path)) {
+	if (strcmp(a->binary_path, b->binary_path) != 0) {
 		goto end;
 	}
 
@@ -356,19 +356,19 @@ lttng_userspace_probe_location_tracepoint_is_equal(const struct lttng_userspace_
 
 	LTTNG_ASSERT(a->probe_name);
 	LTTNG_ASSERT(b->probe_name);
-	if (strcmp(a->probe_name, b->probe_name)) {
+	if (strcmp(a->probe_name, b->probe_name) != 0) {
 		goto end;
 	}
 
 	LTTNG_ASSERT(a->provider_name);
 	LTTNG_ASSERT(b->provider_name);
-	if (strcmp(a->provider_name, b->provider_name)) {
+	if (strcmp(a->provider_name, b->provider_name) != 0) {
 		goto end;
 	}
 
 	LTTNG_ASSERT(a->binary_path);
 	LTTNG_ASSERT(b->binary_path);
-	if (strcmp(a->binary_path, b->binary_path)) {
+	if (strcmp(a->binary_path, b->binary_path) != 0) {
 		goto end;
 	}
 

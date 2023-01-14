@@ -177,30 +177,31 @@ struct run_as_ret {
 	bool _error;
 } LTTNG_PACKED;
 
-#define COMMAND_IN_FDS(data_ptr)                                                         \
-	({                                                                               \
-		int *fds = NULL;                                                         \
-		if (command_properties[data_ptr->cmd].in_fds_offset != -1) {             \
-			fds = (int *) ((char *) data_ptr +                               \
-				       command_properties[data_ptr->cmd].in_fds_offset); \
-		}                                                                        \
-		fds;                                                                     \
+#define COMMAND_IN_FDS(data_ptr)                                                           \
+	({                                                                                 \
+		int *fds = NULL;                                                           \
+		if (command_properties[(data_ptr)->cmd].in_fds_offset != -1) {             \
+			fds = (int *) ((char *) (data_ptr) +                               \
+				       command_properties[(data_ptr)->cmd].in_fds_offset); \
+		}                                                                          \
+		fds;                                                                       \
 	})
 
-#define COMMAND_OUT_FDS(cmd, ret_ptr)                                                              \
-	({                                                                                         \
-		int *fds = NULL;                                                                   \
-		if (command_properties[cmd].out_fds_offset != -1) {                                \
-			fds = (int *) ((char *) ret_ptr + command_properties[cmd].out_fds_offset); \
-		}                                                                                  \
-		fds;                                                                               \
+#define COMMAND_OUT_FDS(cmd, ret_ptr)                                           \
+	({                                                                      \
+		int *fds = NULL;                                                \
+		if (command_properties[cmd].out_fds_offset != -1) {             \
+			fds = (int *) ((char *) (ret_ptr) +                     \
+				       command_properties[cmd].out_fds_offset); \
+		}                                                               \
+		fds;                                                            \
 	})
 
-#define COMMAND_IN_FD_COUNT(data_ptr) ({ command_properties[data_ptr->cmd].in_fd_count; })
+#define COMMAND_IN_FD_COUNT(data_ptr) ({ command_properties[(data_ptr)->cmd].in_fd_count; })
 
 #define COMMAND_OUT_FD_COUNT(cmd) ({ command_properties[cmd].out_fd_count; })
 
-#define COMMAND_USE_CWD_FD(data_ptr) command_properties[data_ptr->cmd].use_cwd_fd
+#define COMMAND_USE_CWD_FD(data_ptr) command_properties[(data_ptr)->cmd].use_cwd_fd
 
 struct run_as_command_properties {
 	/* Set to -1 when not applicable. */

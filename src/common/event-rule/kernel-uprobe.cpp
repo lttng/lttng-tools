@@ -123,7 +123,7 @@ static bool lttng_event_rule_kernel_uprobe_is_equal(const struct lttng_event_rul
 	/* uprobe is invalid if this is not true. */
 	LTTNG_ASSERT(a->name);
 	LTTNG_ASSERT(b->name);
-	if (strcmp(a->name, b->name)) {
+	if (strcmp(a->name, b->name) != 0) {
 		goto end;
 	}
 

@@ -86,7 +86,7 @@ struct lttng_kernel_abi_perf_counter_ctx {
 
 /* Event/Channel context */
 #define LTTNG_KERNEL_ABI_CONTEXT_PADDING1  16
-#define LTTNG_KERNEL_ABI_CONTEXT_PADDING2  LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_CONTEXT_PADDING2  ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_context {
 	enum lttng_kernel_abi_context_type ctx;
 	char padding[LTTNG_KERNEL_ABI_CONTEXT_PADDING1];
@@ -159,7 +159,7 @@ struct lttng_kernel_abi_function {
 } LTTNG_PACKED;
 
 #define LTTNG_KERNEL_ABI_EVENT_PADDING1    8
-#define LTTNG_KERNEL_ABI_EVENT_PADDING2    LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_EVENT_PADDING2    ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_event {
 	char name[LTTNG_KERNEL_ABI_SYM_NAME_LEN];
 	enum lttng_kernel_abi_instrumentation instrumentation;
@@ -281,7 +281,7 @@ struct lttng_kernel_abi_syscall_mask {
 /*
  * kernel channel
  */
-#define LTTNG_KERNEL_ABI_CHANNEL_PADDING1 LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_KERNEL_ABI_CHANNEL_PADDING1 ((LTTNG_SYMBOL_NAME_LEN + 32))
 struct lttng_kernel_abi_channel {
 	uint64_t subbuf_size;               /* bytes */
 	uint64_t num_subbuf;                /* power of 2 */

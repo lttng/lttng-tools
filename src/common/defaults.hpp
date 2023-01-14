@@ -177,7 +177,7 @@
  * than enough. We might end up with quantum computing in a cell phone when
  * reaching this limit.
  */
-#define DEFAULT_STREAM_NAME_LEN        LTTNG_SYMBOL_NAME_LEN + 8
+#define DEFAULT_STREAM_NAME_LEN (LTTNG_SYMBOL_NAME_LEN + 8)
 
 /* Default channel attributes */
 #define DEFAULT_CHANNEL_NAME            "channel0"
@@ -199,7 +199,7 @@
 #define DEFAULT_PYTHON_EVENT_COMPONENT    "lttng_python"
 #define DEFAULT_PYTHON_EVENT_NAME         DEFAULT_PYTHON_EVENT_COMPONENT ":*"
 
-#define DEFAULT_CHANNEL_OVERWRITE       -1
+#define DEFAULT_CHANNEL_OVERWRITE	(-1)
 #define DEFAULT_CHANNEL_TRACEFILE_SIZE  CONFIG_DEFAULT_CHANNEL_TRACEFILE_SIZE
 #define DEFAULT_CHANNEL_TRACEFILE_COUNT CONFIG_DEFAULT_CHANNEL_TRACEFILE_COUNT
 

@@ -46,7 +46,7 @@ static int config_entry_handler_filter(struct handler_filter_args *args,
 	}
 
 	if (args->section) {
-		if (strcmp(args->section, section)) {
+		if (strcmp(args->section, section) != 0) {
 			goto end;
 		}
 	}

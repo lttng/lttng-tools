@@ -39,11 +39,11 @@ struct process_attr_tracker_value_comm {
 	((as_type) (std::is_signed<as_type>::value ? (value_ptr)->u._signed : \
 						     (value_ptr)->u._unsigned))
 
-#define SET_INTEGRAL_COMM_VALUE(comm_value, val)                                     \
-	if (std::is_signed<typeof(val)>::value) {                                    \
-		(comm_value)->u._signed = (typeof((comm_value)->u._signed)) val;     \
-	} else {                                                                     \
-		(comm_value)->u._unsigned = (typeof((comm_value)->u._unsigned)) val; \
+#define SET_INTEGRAL_COMM_VALUE(comm_value, val)                                       \
+	if (std::is_signed<typeof(val)>::value) {                                      \
+		(comm_value)->u._signed = (typeof((comm_value)->u._signed)) (val);     \
+	} else {                                                                       \
+		(comm_value)->u._unsigned = (typeof((comm_value)->u._unsigned)) (val); \
 	}
 
 static inline bool is_virtual_process_attr(enum lttng_process_attr process_attr)

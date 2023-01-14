@@ -490,7 +490,7 @@ static int config_entry_handler(const struct config_entry *entry,
 
 	for (i = 0; i < (sizeof(long_options) / sizeof(struct option)) - 1; i++) {
 		/* Ignore if entry name is not fully matched. */
-		if (strcmp(entry->name, long_options[i].name)) {
+		if (strcmp(entry->name, long_options[i].name) != 0) {
 			continue;
 		}
 
@@ -1320,7 +1320,12 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 			 * the data will be read at some point in time
 			 * or wait to the end of the world :)
 			 */
-			ret = lttng_write(relay_conn_pipe[1], &new_conn, sizeof(new_conn));
+			ret = lttng_write(relay_conn_pipe[1], &new_conn, sizeof(new_conn)); /* NOLINT
+											       sizeof
+											       used
+											       on a
+											       pointer.
+											     */
 			if (ret < 0) {
 				PERROR("write connection pipe");
 				connection_put(new_conn);
@@ -3961,7 +3966,10 @@ restart:
 				if (revents & LPOLLIN) {
 					struct relay_connection *conn;
 
-					ret = lttng_read(relay_conn_pipe[0], &conn, sizeof(conn));
+					ret = lttng_read(relay_conn_pipe[0],
+							 &conn,
+							 sizeof(conn)); /* NOLINT sizeof used on a
+									   pointer. */
 					if (ret < 0) {
 						goto error;
 					}

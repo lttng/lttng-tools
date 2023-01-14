@@ -173,11 +173,11 @@ int main(int argc, char **argv)
 		const char *trigger_name = NULL;
 
 		lttng_trigger_get_name(trigger, &trigger_name);
-		if (strcmp(trigger_name, expected_trigger_name)) {
+		if (strcmp(trigger_name, expected_trigger_name) != 0) {
 			/* Might match the end event trigger */
 			if (end_trigger_name != NULL &&
 					strcmp(trigger_name,
-							end_trigger_name)) {
+							end_trigger_name) != 0) {
 				continue;
 			}
 		}

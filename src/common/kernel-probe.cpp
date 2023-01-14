@@ -540,7 +540,7 @@ lttng_kernel_probe_location_symbol_is_equal(const struct lttng_kernel_probe_loca
 
 	LTTNG_ASSERT(a->symbol_name);
 	LTTNG_ASSERT(b->symbol_name);
-	if (strcmp(a->symbol_name, b->symbol_name)) {
+	if (strcmp(a->symbol_name, b->symbol_name) != 0) {
 		goto end;
 	}
 

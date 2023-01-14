@@ -127,12 +127,12 @@ static bool lttng_event_rule_kernel_tracepoint_is_equal(const struct lttng_event
 	/* Long check. */
 	LTTNG_ASSERT(a->pattern);
 	LTTNG_ASSERT(b->pattern);
-	if (strcmp(a->pattern, b->pattern)) {
+	if (strcmp(a->pattern, b->pattern) != 0) {
 		goto end;
 	}
 
 	if (a->filter_expression && b->filter_expression) {
-		if (strcmp(a->filter_expression, b->filter_expression)) {
+		if (strcmp(a->filter_expression, b->filter_expression) != 0) {
 			goto end;
 		}
 	} else if (!!a->filter_expression != !!b->filter_expression) {

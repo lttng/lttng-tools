@@ -786,9 +786,7 @@ private:
 
 class tsdl_trace_environment_visitor : public lst::trace_class_environment_visitor {
 public:
-	tsdl_trace_environment_visitor() : _environment{ "env {\n" }
-	{
-	}
+	tsdl_trace_environment_visitor() = default;
 
 	void visit(const lst::environment_field<int64_t>& field) override
 	{
@@ -810,7 +808,7 @@ public:
 	}
 
 private:
-	std::string _environment;
+	std::string _environment{ "env {\n" };
 };
 } /* namespace */
 

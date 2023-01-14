@@ -85,7 +85,7 @@ struct ltt_kernel_event *trace_kernel_find_event(char *name,
 		if (type != LTTNG_EVENT_ALL && ev->type != type) {
 			continue;
 		}
-		if (strcmp(name, ev->event->name)) {
+		if (strcmp(name, ev->event->name) != 0) {
 			continue;
 		}
 		if ((ev->filter && !filter) || (!ev->filter && filter)) {
@@ -125,7 +125,7 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
 		if (type != LTTNG_EVENT_ALL && ev->type != type) {
 			continue;
 		}
-		if (strcmp(name, ev->event->name)) {
+		if (strcmp(name, ev->event->name) != 0) {
 			continue;
 		}
 		found = 1;

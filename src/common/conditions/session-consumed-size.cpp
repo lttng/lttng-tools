@@ -120,7 +120,7 @@ static bool lttng_condition_session_consumed_size_is_equal(const struct lttng_co
 
 	LTTNG_ASSERT(a->session_name);
 	LTTNG_ASSERT(b->session_name);
-	if (strcmp(a->session_name, b->session_name)) {
+	if (strcmp(a->session_name, b->session_name) != 0) {
 		goto end;
 	}
 

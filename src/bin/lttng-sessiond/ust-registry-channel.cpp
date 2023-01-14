@@ -447,7 +447,7 @@ void lsu::registry_channel::add_event(int session_objd,
 		const auto& event_ref = *event;
 
 		/* Ownership transferred to _events hash table. */
-		event.release();
+		(void) event.release();
 
 		/* Request next event id if the node was successfully added. */
 		event_id = event_ref.id;

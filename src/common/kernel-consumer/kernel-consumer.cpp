@@ -783,7 +783,12 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		ret_pipe_write = lttng_pipe_write(stream_pipe, &new_stream, sizeof(new_stream));
+		ret_pipe_write =
+			lttng_pipe_write(stream_pipe, &new_stream, sizeof(new_stream)); /* NOLINT
+											   sizeof
+											   used on a
+											   pointer.
+											 */
 		if (ret_pipe_write < 0) {
 			ERR("Consumer write %s stream to pipe %d",
 			    new_stream->metadata_flag ? "metadata" : "data",

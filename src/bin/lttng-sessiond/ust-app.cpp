@@ -2841,13 +2841,13 @@ static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		if (strncmp(key->u.perf_counter.name,
 			    ctx->ctx.u.perf_counter.name,
-			    sizeof(key->u.perf_counter.name))) {
+			    sizeof(key->u.perf_counter.name)) != 0) {
 			goto no_match;
 		}
 		break;
 	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
-		if (strcmp(key->u.app_ctx.provider_name, ctx->ctx.u.app_ctx.provider_name) ||
-		    strcmp(key->u.app_ctx.ctx_name, ctx->ctx.u.app_ctx.ctx_name)) {
+		if (strcmp(key->u.app_ctx.provider_name, ctx->ctx.u.app_ctx.provider_name) != 0 ||
+		    strcmp(key->u.app_ctx.ctx_name, ctx->ctx.u.app_ctx.ctx_name) != 0) {
 			goto no_match;
 		}
 		break;
