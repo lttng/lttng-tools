@@ -453,10 +453,7 @@ bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 	}
 	wait_until_thread_is_ready(notifiers);
 	lttng_thread_put(thread);
-	if (notifiers->initialization_result) {
-		return false;
-	}
-	return true;
+	return notifiers->initialization_result == 0;
 error:
 	cleanup_consumer_management_thread(notifiers);
 error_alloc:

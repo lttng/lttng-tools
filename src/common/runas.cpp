@@ -380,7 +380,7 @@ static int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_v
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.ret = lttng_directory_handle_create_subdirectory_recursive(handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	lttng_directory_handle_put(handle);
 end:
 	return ret_value->u.ret;
@@ -407,7 +407,7 @@ static int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.ret = lttng_directory_handle_create_subdirectory(handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	lttng_directory_handle_put(handle);
 end:
 	return ret_value->u.ret;
@@ -462,7 +462,7 @@ static int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 
 	ret_value->u.ret = lttng_directory_handle_unlink_file(handle, data->u.unlink.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	lttng_directory_handle_put(handle);
 end:
 	return ret_value->u.ret;
@@ -485,7 +485,7 @@ static int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
 
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory(handle, data->u.rmdir.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	lttng_directory_handle_put(handle);
 end:
 	return ret_value->u.ret;
@@ -509,7 +509,7 @@ static int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_val
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory_recursive(
 		handle, data->u.rmdir.path, data->u.rmdir.flags);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	lttng_directory_handle_put(handle);
 end:
 	return ret_value->u.ret;
@@ -544,7 +544,7 @@ end:
 	lttng_directory_handle_put(old_handle);
 	lttng_directory_handle_put(new_handle);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) != 0;
 	return ret_value->u.ret;
 }
 

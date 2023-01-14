@@ -201,7 +201,7 @@ int main()
 		if (!result && tests[i].is_valid) {
 			fprintf(stderr, "Failed to get result\n");
 			goto loop;
-		} else if (!result && tests[i].is_valid == false) {
+		} else if (!result && !tests[i].is_valid) {
 			pass("Returned null as expected");
 			goto loop;
 		}

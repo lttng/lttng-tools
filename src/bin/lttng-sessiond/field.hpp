@@ -500,8 +500,6 @@ private:
 			return false;
 		}
 
-		return true;
-
 		return std::equal(a.cbegin(), a.cend(), b.cbegin(),
 				[](const choice& choice_a, const choice& choice_b) {
 					return choice_a.first == choice_b.first &&

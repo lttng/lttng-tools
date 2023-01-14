@@ -78,7 +78,8 @@ Checks:          '-*,
                   modernize-use-using,
                   performance-*,
                   -performance-no-int-to-ptr,
-                  readability-redundant-member-init'
+                  readability-redundant-member-init.
+                  readability-simplify-boolean-expr'
 FormatStyle: 'file'
 CheckOptions:
   - key:          bugprone-assert-side-effect.AssertMacros

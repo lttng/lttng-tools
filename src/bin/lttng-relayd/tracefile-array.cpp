@@ -168,9 +168,5 @@ bool tracefile_array_seq_in_file(struct tracefile_array *tfa, uint64_t file_inde
 	if (seq == -1ULL) {
 		return false;
 	}
-	if (seq >= tfa->tf[file_index].seq_tail && seq <= tfa->tf[file_index].seq_head) {
-		return true;
-	} else {
-		return false;
-	}
+	return seq >= tfa->tf[file_index].seq_tail && seq <= tfa->tf[file_index].seq_head;
 }
