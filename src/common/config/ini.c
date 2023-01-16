@@ -182,6 +182,10 @@ int ini_parse_file(FILE* file, ini_entry_handler handler, void* user)
 				 * Valid name[=:]value pair found, call
 				 * handler
 				 */
+				if (strlen(name) >= sizeof(prev_name)) {
+					/* Truncation occurs, report an error. */
+					error = lineno;
+				}
 				strncpy0(prev_name, name, sizeof(prev_name));
 				if (handler(user, section, name, value) < 0 &&
 					!error) {
