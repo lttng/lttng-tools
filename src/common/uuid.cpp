@@ -45,7 +45,7 @@ std::string lttng::utils::uuid_to_str(const lttng_uuid& uuid)
 int lttng_uuid_from_str(const char *str_in, lttng_uuid& uuid_out)
 {
 	int ret = 0;
-	lttng_uuid uuid_scan;
+	lttng_uuid uuid_scan = {};
 
 	if (str_in == nullptr) {
 		ret = -1;
