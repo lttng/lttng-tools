@@ -62,9 +62,8 @@ void *zmalloc_internal(size_t size)
 	return calloc(1, size);
 }
 
-template <typename T>
-struct can_malloc
-{
+template <typename MallocableType>
+struct can_malloc {
 	/*
 	 * gcc versions before 5.0 lack some type traits defined in C++11.
 	 * Since in this instance we use the trait to prevent misuses
@@ -76,64 +75,69 @@ struct can_malloc
 #if __GNUG__ && __GNUC__ < 5
 	static constexpr bool value = true;
 #else
-	static constexpr bool value = std::is_trivially_constructible<T>::value;
+	static constexpr bool value = std::is_trivially_constructible<MallocableType>::value;
 #endif
 };
 
 /*
- * Malloc and zero-initialize an object of type T, asserting that T can be
+ * Malloc and zero-initialize an object of type T, asserting that MallocableType can be
  * safely malloc-ed (is trivially constructible).
  */
-template<typename T>
-T *zmalloc()
+template <typename MallocableType>
+MallocableType *zmalloc()
 {
-	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) zmalloc_internal(sizeof(T)); /* NOLINT sizeof potentially used on a pointer. */
+	static_assert(can_malloc<MallocableType>::value, "type can be malloc'ed");
+	return (MallocableType *) zmalloc_internal(sizeof(MallocableType)); /* NOLINT sizeof
+									       potentially used on a
+									       pointer. */
 }
 
 /*
- * Malloc and zero-initialize a buffer of size `size`, asserting that type T
+ * Malloc and zero-initialize a buffer of size `size`, asserting that type AllocatedType
  * can be safely malloc-ed (is trivially constructible).
  */
-template<typename T>
-T *zmalloc(size_t size)
+template <typename AllocatedType>
+AllocatedType *zmalloc(size_t size)
 {
-	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	LTTNG_ASSERT(size >= sizeof(T));
-	return (T *) zmalloc_internal(size);
+	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	LTTNG_ASSERT(size >= sizeof(AllocatedType));
+	return (AllocatedType *) zmalloc_internal(size);
 }
 
 /*
- * Malloc and zero-initialize an array of `nmemb` elements of type T,
- * asserting that T can be safely malloc-ed (is trivially constructible).
+ * Malloc and zero-initialize an array of `nmemb` elements of type AllocatedType,
+ * asserting that AllocatedType can be safely malloc-ed (is trivially constructible).
  */
-template<typename T>
-T *calloc(size_t nmemb)
+template <typename AllocatedType>
+AllocatedType *calloc(size_t nmemb)
 {
-	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) zmalloc_internal(nmemb * sizeof(T)); /* NOLINT sizeof potentially used on a pointer. */
+	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	return (AllocatedType *) zmalloc_internal(nmemb * sizeof(AllocatedType)); /* NOLINT sizeof
+										     potentially
+										     used on a
+										     pointer. */
 }
 
 /*
- * Malloc an object of type T, asserting that T can be safely malloc-ed (is
+ * Malloc an object of type AllocatedType, asserting that AllocatedType can be safely malloc-ed (is
  * trivially constructible).
  */
-template<typename T>
-T *malloc()
+template <typename AllocatedType>
+AllocatedType *malloc()
 {
-	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) malloc(sizeof(T));
+	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	return (AllocatedType *) malloc(sizeof(AllocatedType));
 }
 
 /*
- * Malloc a buffer of size `size`, asserting that type T can be safely
+ * Malloc a buffer of size `size`, asserting that AllocatedType can be safely
  * malloc-ed (is trivially constructible).
  */
-template<typename T>
-T *malloc(size_t size)
+template<typename AllocatedType>
+AllocatedType *malloc(size_t size)
 {
-	static_assert (can_malloc<T>::value, "type can be malloc'ed");
-	return (T *) malloc(size);
+	static_assert (can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	return (AllocatedType *) malloc(size);
 }
 
 /*
@@ -149,7 +153,7 @@ T *malloc(size_t size)
  * pointers to void, these will not be checked.
  */
 
-template<typename T>
+template<typename FreedType>
 struct can_free
 {
 	/*
@@ -163,21 +167,23 @@ struct can_free
 #if __GNUG__ && __GNUC__ < 5
 	static constexpr bool value = true;
 #else
-	static constexpr bool value = std::is_trivially_destructible<T>::value || std::is_void<T>::value;
+	static constexpr bool value = std::is_trivially_destructible<FreedType>::value ||
+		std::is_void<FreedType>::value;
 #endif
 };
 
-template<typename T, typename = typename std::enable_if<!can_free<T>::value>::type>
-void free(T *p) = delete;
+template <typename FreedType, typename = typename std::enable_if<!can_free<FreedType>::value>::type>
+void free(FreedType *p) = delete;
 
-template<typename T>
-struct can_memset
-{
-	static constexpr bool value = std::is_pod<T>::value || std::is_void<T>::value;
+template <typename InitializedType>
+struct can_memset {
+	static constexpr bool value = std::is_pod<InitializedType>::value ||
+		std::is_void<InitializedType>::value;
 };
 
-template <typename T, typename = typename std::enable_if<!can_memset<T>::value>::type>
-void *memset(T *s, int c, size_t n) = delete;
+template <typename InitializedType,
+	  typename = typename std::enable_if<!can_memset<InitializedType>::value>::type>
+void *memset(InitializedType *s, int c, size_t n) = delete;
 
 template<typename T>
 struct can_memcpy
@@ -197,14 +203,14 @@ struct can_memcpy
 #endif
 };
 
-template <typename T, typename U,
-		typename = typename std::enable_if<!can_memcpy<T>::value>::type,
-		typename = typename std::enable_if<!can_memcpy<U>::value>::type>
-void *memcpy(T *d, const U *s, size_t n) = delete;
+template <typename DestinationType,
+	  typename SourceType,
+	  typename = typename std::enable_if<!can_memcpy<DestinationType>::value>::type,
+	  typename = typename std::enable_if<!can_memcpy<SourceType>::value>::type>
+void *memcpy(DestinationType *d, const SourceType *s, size_t n) = delete;
 
-template<typename T>
-struct can_memmove
-{
+template <typename MovedType>
+struct can_memmove {
 	/*
 	 * gcc versions before 5.0 lack some type traits defined in C++11.
 	 * Since in this instance we use the trait to prevent misuses
@@ -216,14 +222,15 @@ struct can_memmove
 #if __GNUG__ && __GNUC__ < 5
 	static constexpr bool value = true;
 #else
-	static constexpr bool value = std::is_trivially_copyable<T>::value;
+	static constexpr bool value = std::is_trivially_copyable<MovedType>::value;
 #endif
 };
 
-template <typename T, typename U,
-		typename = typename std::enable_if<!can_memmove<T>::value>::type,
-		typename = typename std::enable_if<!can_memmove<U>::value>::type>
-void *memmove(T *d, const U *s, size_t n) = delete;
+template <typename DestinationType,
+	  typename SourceType,
+	  typename = typename std::enable_if<!can_memmove<DestinationType>::value>::type,
+	  typename = typename std::enable_if<!can_memmove<SourceType>::value>::type>
+void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
@@ -315,14 +322,14 @@ int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 
 namespace lttng {
 namespace utils {
-template <class Parent, class Member>
-Parent *container_of(const Member *member, const Member Parent::*ptr_to_member)
+template <class ParentType, class MemberType>
+ParentType *container_of(const MemberType *member, const MemberType ParentType::*ptr_to_member)
 {
-	const Parent *dummy_parent = nullptr;
+	const ParentType *dummy_parent = nullptr;
 	auto *offset_of_member = reinterpret_cast<const char *>(&(dummy_parent->*ptr_to_member));
 	auto address_of_parent = reinterpret_cast<const char *>(member) - offset_of_member;
 
-	return reinterpret_cast<Parent *>(address_of_parent);
+	return reinterpret_cast<ParentType *>(address_of_parent);
 }
 } /* namespace utils */
 } /* namespace lttng */

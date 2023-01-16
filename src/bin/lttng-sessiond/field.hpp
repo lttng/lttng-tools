@@ -560,9 +560,9 @@ protected:
 namespace fmt {
 template <>
 struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator format(
-			const lttng::sessiond::trace::field_location& location, FormatCtx& ctx)
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(
+			const lttng::sessiond::trace::field_location& location, FormatContextType& ctx)
 	{
 		std::string location_str{"["};
 
@@ -612,10 +612,10 @@ template <typename MappingIntegerType>
 template <>
 struct formatter<typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t>
 	: formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t range,
-			FormatCtx& ctx)
+			FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
 				details::format_mapping_range<
@@ -628,10 +628,10 @@ struct formatter<typename lttng::sessiond::trace::signed_enumeration_type::mappi
 template <>
 struct formatter<typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t>
 	: formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator
+	template <typename FormatContextType>
+	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t range,
-			FormatCtx& ctx)
+			FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
 				details::format_mapping_range<

@@ -26,8 +26,9 @@ DIAGNOSTIC_POP
 namespace fmt {
 template <>
 struct formatter<std::type_info> : formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator format(const std::type_info& type_info, FormatCtx& ctx)
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const std::type_info& type_info,
+						    FormatContextType& ctx)
 	{
 		int status;
 		auto demangled_name =

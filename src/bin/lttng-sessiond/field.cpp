@@ -15,8 +15,8 @@
 namespace lst = lttng::sessiond::trace;
 
 namespace {
-template <class FieldTypeSet>
-bool fields_are_equal(const FieldTypeSet& a, const FieldTypeSet& b)
+template <class FieldTypeContainerType>
+bool fields_are_equal(const FieldTypeContainerType& a, const FieldTypeContainerType& b)
 {
 	if (a.size() != b.size()) {
 		return false;
@@ -25,8 +25,8 @@ bool fields_are_equal(const FieldTypeSet& a, const FieldTypeSet& b)
 	return std::equal(a.cbegin(),
 			  a.cend(),
 			  b.cbegin(),
-			  [](typename FieldTypeSet::const_reference field_a,
-			     typename FieldTypeSet::const_reference field_b) {
+			  [](typename FieldTypeContainerType::const_reference field_a,
+			     typename FieldTypeContainerType::const_reference field_b) {
 				  return *field_a == *field_b;
 			  });
 }

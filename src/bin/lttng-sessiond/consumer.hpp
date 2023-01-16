@@ -27,8 +27,8 @@ struct ltt_session;
  * C++.
  */
 static_assert(__cplusplus == 201103L, "");
-template <typename T>
-constexpr T max_constexpr(T l, T r)
+template <typename NumericalType>
+constexpr NumericalType max_constexpr(NumericalType l, NumericalType r)
 {
 	return l > r ? l : r;
 }

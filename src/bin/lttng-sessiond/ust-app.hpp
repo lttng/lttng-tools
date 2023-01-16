@@ -336,8 +336,8 @@ struct ust_app {
 namespace fmt {
 template <>
 struct formatter<ust_app> : formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator format(const ust_app& app, FormatCtx& ctx)
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const ust_app& app, FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
 				"{{ procname = `{}`, ppid = {}, pid = {}, uid = {}, gid = {}, version = {}.{}, registration time = {} }}",

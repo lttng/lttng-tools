@@ -70,9 +70,9 @@ void registry_event_destroy(registry_event *event);
 namespace fmt {
 template <>
 struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {
-	template <typename FormatCtx>
-	typename FormatCtx::iterator format(
-			const lttng::sessiond::ust::registry_event& event, FormatCtx& ctx)
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(
+			const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
 				"{{ name = `{}`, signature = `{}`, id = {}, session objd = {}, channel objd = {} }}",
