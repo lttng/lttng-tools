@@ -26,13 +26,17 @@ namespace details {
  */
 class mutex {
 public:
-	explicit mutex(pthread_mutex_t& mutex_p) : _mutex{mutex_p}
+	explicit mutex(pthread_mutex_t& mutex_p) : _mutex{ mutex_p }
 	{
 	}
 
+	~mutex() = default;
+
 	/* "Not copyable" and "not moveable" Mutex requirements. */
-	mutex(mutex const &) = delete;
-	mutex &operator=(mutex const &) = delete;
+	mutex(mutex const&) = delete;
+	mutex(mutex&&) = delete;
+	mutex& operator=(mutex const&) = delete;
+	mutex& operator=(mutex&&) = delete;
 
 	void lock()
 	{
@@ -76,11 +80,16 @@ private:
  */
 class lock_guard {
 public:
-	explicit lock_guard(pthread_mutex_t& mutex) : _mutex{mutex}, _guard(_mutex)
+	explicit lock_guard(pthread_mutex_t& mutex) : _mutex{ mutex }, _guard(_mutex)
 	{
 	}
 
-	lock_guard(const lock_guard &) = delete;
+	~lock_guard() = default;
+
+	lock_guard(const lock_guard&) = delete;
+	lock_guard(lock_guard&&) = delete;
+	lock_guard& operator=(const lock_guard&) = delete;
+	lock_guard& operator=(lock_guard&&) = delete;
 
 private:
 	details::mutex _mutex;

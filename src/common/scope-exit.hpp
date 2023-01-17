@@ -58,6 +58,8 @@ public:
 	 * also propagate the scope_exit to another scope, should it be needed.
 	 */
 	scope_exit(const scope_exit&) = delete;
+	scope_exit& operator=(const scope_exit&) = delete;
+	scope_exit& operator=(scope_exit&&) = delete;
 	scope_exit() = delete;
 
 	void disarm() noexcept

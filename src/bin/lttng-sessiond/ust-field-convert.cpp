@@ -631,7 +631,7 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 			end,
 			session_attributes,
 			next_ust_ctl_field,
-			[&choices, typed_enumeration, &selector_field, quirks](
+			[&choices, &typed_enumeration, &selector_field, quirks](
 				lst::field::uptr field) {
 				/*
 				 * Find the enumeration mapping that matches the

@@ -30,6 +30,10 @@ public:
 	 */
 	void accept(trace_class_visitor& visitor) const;
 	virtual ~stream_class() = default;
+	stream_class(const stream_class&) = delete;
+	stream_class(stream_class&&) = delete;
+	stream_class& operator=(stream_class&&) = delete;
+	stream_class& operator=(const stream_class&) = delete;
 
 	virtual const type* packet_context() const;
 	virtual const type* event_header() const;

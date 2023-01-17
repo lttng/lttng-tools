@@ -37,6 +37,10 @@ public:
 			int loglevel_value,
 			nonstd::optional<std::string> model_emf_uri);
 	~registry_event() override = default;
+	registry_event(const registry_event&) = delete;
+	registry_event(registry_event&&) = delete;
+	registry_event& operator=(registry_event&&) = delete;
+	registry_event& operator=(const registry_event&) = delete;
 
 	/* Both objd are set by the tracer. */
 	const int session_objd;

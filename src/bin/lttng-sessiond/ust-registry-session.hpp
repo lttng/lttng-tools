@@ -60,7 +60,12 @@ public:
 			const char *enum_name, uint64_t enum_id) const;
 
 	void regenerate_metadata();
+
 	~registry_session() override;
+	registry_session(const registry_session&) = delete;
+	registry_session(registry_session&&) = delete;
+	registry_session& operator=(registry_session&&) = delete;
+	registry_session& operator=(const registry_session&) = delete;
 
 	const lttng::sessiond::trace::type *packet_header() const noexcept override;
 

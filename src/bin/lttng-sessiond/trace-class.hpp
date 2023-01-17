@@ -46,8 +46,11 @@ public:
 
 class trace_class {
 public:
-
 	virtual ~trace_class() = default;
+	trace_class(const trace_class&) = delete;
+	trace_class(trace_class&&) = delete;
+	trace_class& operator=(trace_class&&) = delete;
+	trace_class& operator=(const trace_class&) = delete;
 
 	/*
 	 * Derived classes must implement the _accept_on_*()
@@ -68,7 +71,12 @@ protected:
 
 class trace_class_environment_visitor {
 public:
+	trace_class_environment_visitor() = default;
 	virtual ~trace_class_environment_visitor() = default;
+	trace_class_environment_visitor(const trace_class_environment_visitor&) = delete;
+	trace_class_environment_visitor(trace_class_environment_visitor&&) = delete;
+	trace_class_environment_visitor& operator=(trace_class_environment_visitor&&) = delete;
+	trace_class_environment_visitor& operator=(const trace_class_environment_visitor&) = delete;
 
 	virtual void visit(const environment_field<int64_t>& field) = 0;
 	virtual void visit(const environment_field<const char *>& field) = 0;
@@ -79,7 +87,12 @@ class trace_class_visitor {
 public:
 	using cuptr = std::unique_ptr<trace_class_visitor>;
 
+	trace_class_visitor() = default;
 	virtual ~trace_class_visitor() = default;
+	trace_class_visitor(const trace_class_visitor&) = delete;
+	trace_class_visitor(trace_class_visitor&&) = delete;
+	trace_class_visitor& operator=(trace_class_visitor&&) = delete;
+	trace_class_visitor& operator=(const trace_class_visitor&) = delete;
 
 	virtual void visit(const lttng::sessiond::trace::trace_class& trace_class) = 0;
 	virtual void visit(const lttng::sessiond::trace::clock_class& clock_class) = 0;

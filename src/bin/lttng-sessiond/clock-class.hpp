@@ -32,21 +32,26 @@ public:
 	using scycles_t = int64_t;
 	using cuptr = std::unique_ptr<const clock_class>;
 
+	virtual ~clock_class() = default;
+	clock_class(const clock_class&) = delete;
+	clock_class(clock_class&&) = delete;
+	clock_class& operator=(clock_class&&) = delete;
+	clock_class& operator=(const clock_class&) = delete;
+
+	virtual void accept(trace_class_visitor& visitor) const;
+
 	const std::string name;
 	const std::string description;
 	const nonstd::optional<lttng_uuid> uuid;
 	const scycles_t offset;
 	const cycles_t frequency;
 
-	virtual void accept(trace_class_visitor& visitor) const;
-	virtual ~clock_class() = default;
-
 protected:
 	clock_class(std::string name,
-			std::string description,
-			nonstd::optional<lttng_uuid> uuid,
-			scycles_t offset,
-			cycles_t frequency);
+		    std::string description,
+		    nonstd::optional<lttng_uuid> uuid,
+		    scycles_t offset,
+		    cycles_t frequency);
 };
 
 } /* namespace trace */

@@ -23,8 +23,13 @@ class trace_class_visitor;
 
 class event_class {
 public:
-	virtual void accept(trace_class_visitor& visitor) const;
+	event_class(const event_class&) = delete;
+	event_class(event_class&&) = delete;
+	event_class& operator=(event_class&&) = delete;
+	event_class& operator=(const event_class&) = delete;
 	virtual ~event_class() = default;
+
+	virtual void accept(trace_class_visitor& visitor) const;
 
 	const unsigned int id;
 	const unsigned int stream_class_id;

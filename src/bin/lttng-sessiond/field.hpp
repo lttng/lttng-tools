@@ -65,7 +65,12 @@ public:
 
 	bool operator==(const type& other) const noexcept;
 	bool operator!=(const type& other) const noexcept;
+
 	virtual ~type();
+	type(const type&) = delete;
+	type(type&&) = delete;
+	type& operator=(type&&) = delete;
+	type& operator=(const type&) = delete;
 
 	/* Obtain an independent copy of `type`. */
 	virtual type::cuptr copy() const = 0;
@@ -177,13 +182,20 @@ private:
 };
 
 class enumeration_type : public integer_type {
+public:
+	~enumeration_type() override = default;
+	enumeration_type(const enumeration_type&) = delete;
+	enumeration_type(enumeration_type&&) = delete;
+	enumeration_type& operator=(enumeration_type&&) = delete;
+	enumeration_type& operator=(const enumeration_type&) = delete;
+
 protected:
 	enumeration_type(unsigned int alignment,
-			enum byte_order byte_order,
-			unsigned int size,
-			enum signedness signedness,
-			enum base base,
-			integer_type::roles roles = {});
+			 enum byte_order byte_order,
+			 unsigned int size,
+			 enum signedness signedness,
+			 enum base base,
+			 integer_type::roles roles = {});
 
 	void accept(type_visitor& visitor) const override = 0;
 };
@@ -214,19 +226,25 @@ class enumeration_mapping {
 public:
 	using range_t = enumeration_mapping_range<MappingIntegerType>;
 
+	enumeration_mapping(std::string in_name, MappingIntegerType value) :
+		name{ std::move(in_name) }, range{ value, value }
+	{
+	}
+
+	enumeration_mapping(std::string in_name, range_t in_range) :
+		name{ std::move(in_name) }, range{ in_range }
+	{
+	}
+
 	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = default;
-	enumeration_mapping(const enumeration_mapping<MappingIntegerType>&& other) noexcept :
+	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept :
 		name{ std::move(other.name) }, range{ other.range }
 	{
 	}
 
-	enumeration_mapping(std::string in_name, MappingIntegerType value) : name{std::move(in_name)}, range{value, value}
-	{
-	}
-
-	enumeration_mapping(std::string in_name, range_t in_range) : name{std::move(in_name)}, range{in_range}
-	{
-	}
+	enumeration_mapping& operator=(enumeration_mapping&&) = delete;
+	enumeration_mapping& operator=(const enumeration_mapping&) = delete;
+	~enumeration_mapping() = default;
 
 	const std::string name;
 	/*
@@ -519,6 +537,11 @@ private:
 class field_visitor {
 public:
 	virtual ~field_visitor() = default;
+	field_visitor(field_visitor&&) = delete;
+	field_visitor(const field_visitor&) = delete;
+	field_visitor& operator=(const field_visitor&) = delete;
+	field_visitor& operator=(field_visitor&&) = delete;
+
 	virtual void visit(const field& field) = 0;
 
 protected:
@@ -528,6 +551,11 @@ protected:
 class type_visitor {
 public:
 	virtual ~type_visitor() = default;
+	type_visitor(type_visitor&&) = delete;
+	type_visitor(const type_visitor&) = delete;
+	type_visitor& operator=(const type_visitor&) = delete;
+	type_visitor& operator=(type_visitor&&) = delete;
+
 	virtual void visit(const integer_type& type) = 0;
 	virtual void visit(const floating_point_type& type) = 0;
 	virtual void visit(const signed_enumeration_type& type) = 0;

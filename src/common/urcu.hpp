@@ -27,10 +27,13 @@ namespace details {
 class read_lock {
 public:
 	read_lock() = default;
+	~read_lock() = default;
 
 	/* "Not copyable" and "not moveable" Mutex requirements. */
-	read_lock(read_lock const &) = delete;
-	read_lock &operator=(read_lock const &) = delete;
+	read_lock(read_lock const&) = delete;
+	read_lock(read_lock&&) = delete;
+	read_lock& operator=(read_lock&&) = delete;
+	read_lock& operator=(const read_lock&) = delete;
 
 	void lock()
 	{
@@ -58,12 +61,16 @@ public:
 class read_lock_guard {
 public:
 	read_lock_guard() = default;
+	~read_lock_guard() = default;
 
-	read_lock_guard(const read_lock_guard &) = delete;
+	read_lock_guard(const read_lock_guard&) = delete;
+	read_lock_guard(read_lock_guard&&) = delete;
+	read_lock_guard& operator=(read_lock_guard&&) = delete;
+	read_lock_guard& operator=(const read_lock_guard&) = delete;
 
 private:
 	details::read_lock _lock;
-	std::lock_guard<details::read_lock> _guard{_lock};
+	std::lock_guard<details::read_lock> _guard{ _lock };
 };
 
 using unique_read_lock = std::unique_lock<details::read_lock>;

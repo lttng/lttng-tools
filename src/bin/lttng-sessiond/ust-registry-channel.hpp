@@ -47,6 +47,10 @@ public:
 			const ust_app& app,
 			uint32_t& out_event_id);
 	~registry_channel() override;
+	registry_channel(const registry_channel&) = delete;
+	registry_channel(registry_channel&&) = delete;
+	registry_channel& operator=(registry_channel&&) = delete;
+	registry_channel& operator=(const registry_channel&) = delete;
 
 	const lttng::sessiond::trace::type *event_context() const final;
 	void event_context(lttng::sessiond::trace::type::cuptr context);

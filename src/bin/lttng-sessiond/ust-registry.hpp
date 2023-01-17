@@ -82,6 +82,10 @@ public:
 
 	registry_enum(std::string name, enum lttng::sessiond::trace::integer_type::signedness signedness);
 	virtual ~registry_enum() = default;
+	registry_enum(const registry_enum&) = delete;
+	registry_enum(registry_enum&&) = delete;
+	registry_enum& operator=(registry_enum&&) = delete;
+	registry_enum& operator=(const registry_enum&) = delete;
 
 	std::string name;
 	enum lttng::sessiond::trace::integer_type::signedness signedness;

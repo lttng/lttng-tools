@@ -26,6 +26,8 @@ public:
 	}
 
 	file_descriptor(const file_descriptor&) = delete;
+	file_descriptor& operator=(const file_descriptor&) = delete;
+	file_descriptor& operator=(file_descriptor&&) = delete;
 
 	file_descriptor(file_descriptor&& other) noexcept {
 		LTTNG_ASSERT(_is_valid_fd(_raw_fd));
