@@ -13,16 +13,15 @@
 
 #include <common/compat/errno.hpp>
 
-#if (defined(__CYGWIN__))
-typedef long long off64_t;
-#endif
+static_assert(sizeof(off_t) == sizeof(int64_t),
+	      "Build system is misconfigured, off_t must be 64-bit wide");
 
 #if (defined(__FreeBSD__) || defined(__sun__))
 typedef off64_t loff_t;
 #endif
 
 #ifdef __linux__
-extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
+extern int compat_sync_file_range(int fd, off_t offset, off_t nbytes,
 		unsigned int flags);
 #define lttng_sync_file_range(fd, offset, nbytes, flags) \
 	compat_sync_file_range(fd, offset, nbytes, flags)
@@ -39,8 +38,8 @@ extern int compat_sync_file_range(int fd, off64_t offset, off64_t nbytes,
 
 static inline int lttng_sync_file_range(
 		int fd __attribute__((unused)),
-		off64_t offset __attribute__((unused)),
-		off64_t nbytes __attribute__((unused)),
+		off_t offset __attribute__((unused)),
+		off_t nbytes __attribute__((unused)),
 		unsigned int flags __attribute__((unused)))
 {
 	return -ENOSYS;
