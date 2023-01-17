@@ -4,5 +4,4 @@
 # Add a dummy check since we can't disable them all without
 # clang-tidy complaining. This ensures that generated code
 # is not flagged.
-
 Checks: '-*,llvm-twine-local'
