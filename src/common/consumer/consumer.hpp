@@ -12,7 +12,6 @@
 #define LIB_CONSUMER_H
 
 #include <common/buffer-view.hpp>
-#include <common/compat/fcntl.hpp>
 #include <common/credentials.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/hashtable/hashtable.hpp>

@@ -16,6 +16,7 @@
 #include <common/pipe.hpp>
 #include <common/utils.hpp>
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <sys/stat.h>
 

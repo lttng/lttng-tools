@@ -5,10 +5,10 @@
  *
  */
 
-#include <common/compat/fcntl.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 
+#include <fcntl.h>
 #include <tap/tap.h>
 #include <unistd.h>
 

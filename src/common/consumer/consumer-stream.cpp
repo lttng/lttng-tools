@@ -23,6 +23,7 @@
 #include <common/ust-consumer/ust-consumer.hpp>
 #include <common/utils.hpp>
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <unistd.h>

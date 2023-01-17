@@ -22,6 +22,7 @@
 
 #include <lttng/save-internal.hpp>
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <string.h>
 #include <unistd.h>

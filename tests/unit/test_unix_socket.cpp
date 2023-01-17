@@ -5,7 +5,6 @@
  *
  */
 
-#include <common/compat/fcntl.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/payload-view.hpp>
@@ -17,6 +16,7 @@
 #include <lttng/constant.h>
 
 #include <algorithm>
+#include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>

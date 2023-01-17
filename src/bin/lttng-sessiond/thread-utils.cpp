@@ -12,6 +12,7 @@
 
 #include <common/utils.hpp>
 
+#include <fcntl.h>
 #include <pthread.h>
 
 /*

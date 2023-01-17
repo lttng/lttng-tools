@@ -44,6 +44,7 @@
 #include <lttng/rotate-internal.hpp>
 #include <lttng/trigger/trigger.h>
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <memory>
 #include <signal.h>

@@ -18,6 +18,8 @@
 #include <common/common.hpp>
 #include <common/utils.hpp>
 
+#include <fcntl.h>
+
 namespace {
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;

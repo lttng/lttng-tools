@@ -20,6 +20,7 @@
 #include <common/shm.hpp>
 #include <common/utils.hpp>
 
+#include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/stat.h>

@@ -89,6 +89,8 @@ libcommon_lgpl_la_SOURCES = \
 	file-descriptor.hpp file-descriptor.cpp \
 	fd-handle.cpp fd-handle.hpp\
 	format.hpp \
+	io-hint.cpp \
+	io-hint.hpp \
 	kernel-probe.cpp \
 	location.cpp \
 	locked-reference.hpp \
@@ -169,13 +171,11 @@ libcommon_gpl_la_LIBADD = \
 # libcompat
 noinst_LTLIBRARIES += libcompat.la
 libcompat_la_SOURCES = \
-        compat/compat-fcntl.cpp \
         compat/directory-handle.cpp \
         compat/directory-handle.hpp \
         compat/dirent.hpp \
         compat/endian.hpp \
         compat/errno.hpp \
-        compat/fcntl.hpp \
         compat/getenv.hpp \
         compat/mman.hpp \
         compat/netdb.hpp \

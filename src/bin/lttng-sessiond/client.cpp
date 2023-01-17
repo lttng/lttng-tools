@@ -40,6 +40,7 @@
 #include <lttng/session-internal.hpp>
 #include <lttng/userspace-probe-internal.hpp>
 
+#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stddef.h>

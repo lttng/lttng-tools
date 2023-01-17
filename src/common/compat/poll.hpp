@@ -25,7 +25,6 @@ static inline void __lttng_poll_free(void *events)
  * epoll(7) implementation.
  */
 #ifdef HAVE_EPOLL
-#include <common/compat/fcntl.hpp>
 
 #include <features.h>
 #include <stdio.h>

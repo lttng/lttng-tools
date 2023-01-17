@@ -17,6 +17,7 @@
 #include <common/pipe.hpp>
 #include <common/utils.hpp>
 
+#include <fcntl.h>
 #include <signal.h>
 
 namespace {

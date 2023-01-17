@@ -13,7 +13,6 @@
 #include <common/buffer-view.hpp>
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
-#include <common/compat/fcntl.hpp>
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
@@ -29,6 +28,7 @@
 #include <common/utils.hpp>
 
 #include <bin/lttng-consumerd/health-consumerd.hpp>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <poll.h>
 #include <pthread.h>
