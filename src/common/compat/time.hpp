@@ -12,6 +12,8 @@
 
 #ifdef __APPLE__
 
+#include <cstdint>
+
 typedef uint64_t timer_t;
 
 #include <mach/mach.h>
