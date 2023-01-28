@@ -269,7 +269,7 @@ int cmd_destroy(int argc, const char **argv)
 
 	struct lttng_session *sessions = nullptr;
 	int count;
-	int found;
+	bool found;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -354,10 +354,10 @@ int cmd_destroy(int argc, const char **argv)
 		}
 
 		/* Find the corresponding lttng_session struct */
-		found = 0;
+		found = false;
 		for (i = 0; i < count; i++) {
 			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-				found = 1;
+				found = true;
 				command_ret = destroy_session(&sessions[i]);
 				if (command_ret) {
 					success = 0;

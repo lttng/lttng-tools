@@ -76,7 +76,7 @@ struct ltt_kernel_event *trace_kernel_find_event(char *name,
 						 struct lttng_bytecode *filter)
 {
 	struct ltt_kernel_event *ev;
-	int found = 0;
+	bool found = false;
 
 	LTTNG_ASSERT(name);
 	LTTNG_ASSERT(channel);
@@ -97,9 +97,11 @@ struct ltt_kernel_event *trace_kernel_find_event(char *name,
 				continue;
 			}
 		}
-		found = 1;
+
+		found = true;
 		break;
 	}
+
 	if (found) {
 		DBG("Found event %s for channel %s", name, channel->channel->name);
 		return ev;
@@ -116,7 +118,7 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
 							enum lttng_event_type type)
 {
 	struct ltt_kernel_event *ev;
-	int found = 0;
+	bool found = false;
 
 	LTTNG_ASSERT(name);
 	LTTNG_ASSERT(channel);
@@ -128,9 +130,11 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
 		if (strcmp(name, ev->event->name) != 0) {
 			continue;
 		}
-		found = 1;
+
+		found = true;
 		break;
 	}
+
 	if (found) {
 		DBG("Found event %s for channel %s", name, channel->channel->name);
 		return ev;

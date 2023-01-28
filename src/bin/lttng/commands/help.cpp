@@ -50,7 +50,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	const char *arg_cmd_name;
 	static poptContext pc;
 	const struct cmd_struct *cmd;
-	int found = 0;
+	bool found = false;
 	const char *cmd_argv[2];
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
@@ -95,7 +95,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 
 	while (cmd->name != nullptr) {
 		if (strcmp(cmd->name, arg_cmd_name) == 0) {
-			found = 1;
+			found = true;
 			break;
 		}
 
