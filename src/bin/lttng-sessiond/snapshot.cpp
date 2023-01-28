@@ -10,6 +10,7 @@
 #include "utils.hpp"
 
 #include <common/defaults.hpp>
+#include <common/urcu.hpp>
 
 #include <inttypes.h>
 #include <string.h>
@@ -191,9 +192,8 @@ void snapshot_delete_output(struct snapshot *snapshot, struct snapshot_output *o
 	LTTNG_ASSERT(output);
 
 	iter.iter.node = &output->node.node;
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	ret = lttng_ht_del(snapshot->output_ht, &iter);
-	rcu_read_unlock();
 	LTTNG_ASSERT(!ret);
 	/*
 	 * This is safe because the ownership of a snapshot object is in a session
@@ -211,9 +211,8 @@ void snapshot_add_output(struct snapshot *snapshot, struct snapshot_output *outp
 	LTTNG_ASSERT(snapshot->output_ht);
 	LTTNG_ASSERT(output);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_ulong(snapshot->output_ht, &output->node);
-	rcu_read_unlock();
 	/*
 	 * This is safe because the ownership of a snapshot object is in a session
 	 * for which the session lock need to be acquired to read and modify it.
@@ -325,11 +324,14 @@ void snapshot_destroy(struct snapshot *obj)
 		return;
 	}
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (obj->output_ht->ht, &iter.iter, output, node.node) {
-		snapshot_delete_output(obj, output);
-		snapshot_output_destroy(output);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (obj->output_ht->ht, &iter.iter, output, node.node) {
+			snapshot_delete_output(obj, output);
+			snapshot_output_destroy(output);
+		}
 	}
-	rcu_read_unlock();
+
 	lttng_ht_destroy(obj->output_ht);
 }

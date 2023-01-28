@@ -475,7 +475,7 @@ static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	uint64_t chunk_id;
 	enum lttng_trace_chunk_status chunk_status;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	/*
 	 * Ownership of current trace chunk is transferred to
 	 * `current_trace_chunk`.
@@ -580,7 +580,6 @@ end:
 		current_trace_chunk = nullptr;
 	}
 end_no_move:
-	rcu_read_unlock();
 	lttng_trace_chunk_put(current_trace_chunk);
 	return ret;
 error:
@@ -845,7 +844,7 @@ static enum lttng_error_code session_kernel_open_packets(struct ltt_session *ses
 	struct cds_lfht_node *node;
 	struct ltt_kernel_channel *chan;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
 	node = cds_lfht_iter_get_node(&iter.iter);
@@ -869,7 +868,6 @@ static enum lttng_error_code session_kernel_open_packets(struct ltt_session *ses
 	}
 
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1406,7 +1404,7 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 	struct lttng_ht_iter iter;
 	struct ltt_session *ls;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	if (!ltt_sessions_ht_by_name) {
 		found = false;
@@ -1426,7 +1424,6 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 
 	DBG3("Session id `%" PRIu64 "` sampled for session `%s", *id, name);
 end:
-	rcu_read_unlock();
 	return found;
 }
 

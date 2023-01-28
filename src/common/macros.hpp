@@ -251,7 +251,8 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
 #define ASSERT_LOCKED(lock)	     LTTNG_ASSERT(pthread_mutex_trylock(&(lock)))
-#define ASSERT_RCU_READ_LOCKED(lock) LTTNG_ASSERT(rcu_read_ongoing())
+#define ASSERT_RCU_READ_LOCKED() LTTNG_ASSERT(rcu_read_ongoing())
+#define ASSERT_RCU_READ_UNLOCKED() LTTNG_ASSERT(!rcu_read_ongoing())
 
 /* Attribute suitable to tag functions as having printf()-like arguments. */
 #define ATTR_FORMAT_PRINTF(_string_index, _first_to_check) \

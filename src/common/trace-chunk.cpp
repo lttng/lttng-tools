@@ -21,6 +21,7 @@
 #include <common/time.hpp>
 #include <common/trace-chunk-registry.hpp>
 #include <common/trace-chunk.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/constant.h>
@@ -1827,9 +1828,8 @@ static void lttng_trace_chunk_release(struct urcu_ref *ref)
 		element = lttng::utils::container_of(chunk,
 						     &lttng_trace_chunk_registry_element::chunk);
 		if (element->registry) {
-			rcu_read_lock();
+			lttng::urcu::read_lock_guard read_lock;
 			cds_lfht_del(element->registry->ht, &element->trace_chunk_registry_ht_node);
-			rcu_read_unlock();
 			call_rcu(&element->rcu_node, free_lttng_trace_chunk_registry_element);
 		} else {
 			/* Never published, can be free'd immediately. */
@@ -1943,6 +1943,8 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 	pthread_mutex_lock(&chunk->lock);
 	element = lttng_trace_chunk_registry_element_create_from_chunk(chunk, session_id);
 	pthread_mutex_unlock(&chunk->lock);
+
+	lttng::urcu::read_lock_guard read_lock;
 	if (!element) {
 		goto end;
 	}
@@ -1953,7 +1955,6 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 	chunk = nullptr;
 	element_hash = lttng_trace_chunk_registry_element_hash(element);
 
-	rcu_read_lock();
 	while (true) {
 		struct cds_lfht_node *published_node;
 		struct lttng_trace_chunk *published_chunk;
@@ -2005,7 +2006,6 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 		 * chunk.
 		 */
 	}
-	rcu_read_unlock();
 end:
 	return element ? &element->chunk : nullptr;
 }
@@ -2034,7 +2034,7 @@ static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 	struct lttng_trace_chunk *published_chunk = nullptr;
 	struct cds_lfht_iter iter;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(registry->ht,
 			element_hash,
 			lttng_trace_chunk_registry_element_match,
@@ -2051,7 +2051,6 @@ static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 		published_chunk = &published_element->chunk;
 	}
 end:
-	rcu_read_unlock();
 	return published_chunk;
 }
 
@@ -2077,7 +2076,7 @@ int lttng_trace_chunk_registry_chunk_exists(const struct lttng_trace_chunk_regis
 	struct cds_lfht_node *published_node;
 	struct cds_lfht_iter iter;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(registry->ht,
 			element_hash,
 			lttng_trace_chunk_registry_element_match,
@@ -2091,7 +2090,6 @@ int lttng_trace_chunk_registry_chunk_exists(const struct lttng_trace_chunk_regis
 
 	*chunk_exists = !cds_lfht_is_node_deleted(published_node);
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -2110,37 +2108,42 @@ lttng_trace_chunk_registry_put_each_chunk(const struct lttng_trace_chunk_registr
 	unsigned int trace_chunks_left = 0;
 
 	DBG("Releasing trace chunk registry to all trace chunks");
-	rcu_read_lock();
-	cds_lfht_for_each_entry (registry->ht, &iter, chunk_element, trace_chunk_registry_ht_node) {
-		const char *chunk_id_str = "none";
-		char chunk_id_buf[MAX_INT_DEC_LEN(uint64_t)];
 
-		pthread_mutex_lock(&chunk_element->chunk.lock);
-		if (chunk_element->chunk.id.is_set) {
-			int fmt_ret;
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-			fmt_ret = snprintf(chunk_id_buf,
-					   sizeof(chunk_id_buf),
-					   "%" PRIu64,
-					   chunk_element->chunk.id.value);
-			if (fmt_ret < 0 || fmt_ret >= sizeof(chunk_id_buf)) {
-				chunk_id_str = "formatting error";
-			} else {
-				chunk_id_str = chunk_id_buf;
+		cds_lfht_for_each_entry (
+			registry->ht, &iter, chunk_element, trace_chunk_registry_ht_node) {
+			const char *chunk_id_str = "none";
+			char chunk_id_buf[MAX_INT_DEC_LEN(uint64_t)];
+
+			pthread_mutex_lock(&chunk_element->chunk.lock);
+			if (chunk_element->chunk.id.is_set) {
+				int fmt_ret;
+
+				fmt_ret = snprintf(chunk_id_buf,
+						   sizeof(chunk_id_buf),
+						   "%" PRIu64,
+						   chunk_element->chunk.id.value);
+				if (fmt_ret < 0 || fmt_ret >= sizeof(chunk_id_buf)) {
+					chunk_id_str = "formatting error";
+				} else {
+					chunk_id_str = chunk_id_buf;
+				}
 			}
-		}
 
-		DBG("Releasing reference to trace chunk: session_id = %" PRIu64
-		    "chunk_id = %s, name = \"%s\", status = %s",
-		    chunk_element->session_id,
-		    chunk_id_str,
-		    chunk_element->chunk.name ?: "none",
-		    chunk_element->chunk.close_command.is_set ? "open" : "closed");
-		pthread_mutex_unlock(&chunk_element->chunk.lock);
-		lttng_trace_chunk_put(&chunk_element->chunk);
-		trace_chunks_left++;
+			DBG("Releasing reference to trace chunk: session_id = %" PRIu64
+			    "chunk_id = %s, name = \"%s\", status = %s",
+			    chunk_element->session_id,
+			    chunk_id_str,
+			    chunk_element->chunk.name ?: "none",
+			    chunk_element->chunk.close_command.is_set ? "open" : "closed");
+			pthread_mutex_unlock(&chunk_element->chunk.lock);
+			lttng_trace_chunk_put(&chunk_element->chunk);
+			trace_chunks_left++;
+		}
 	}
-	rcu_read_unlock();
+
 	DBG("Released reference to %u trace chunks in %s()", trace_chunks_left, __FUNCTION__);
 
 	return trace_chunks_left;

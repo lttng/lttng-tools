@@ -28,6 +28,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk.hpp>
 #include <common/tracker.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/condition/event-rule-matches-internal.hpp>
@@ -796,9 +797,8 @@ static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_r
 
 	LTTNG_ASSERT(event);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(kernel_token_to_event_notifier_rule_ht, &event->ht_node);
-	rcu_read_unlock();
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
@@ -1590,7 +1590,8 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 		struct lttng_ht_iter iter;
 
 		/* For each consumer socket. */
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 			struct ltt_kernel_channel *chan;
@@ -1604,7 +1605,6 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 				}
 			}
 		}
-		rcu_read_unlock();
 	}
 
 	/* Close any relayd session */
@@ -1680,8 +1680,6 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 	saved_metadata = ksess->metadata;
 	saved_metadata_fd = ksess->metadata_stream_fd;
 
-	rcu_read_lock();
-
 	ret = kernel_open_metadata(ksess);
 	if (ret < 0) {
 		status = LTTNG_ERR_KERN_META_FAIL;
@@ -1699,49 +1697,56 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		status = LTTNG_ERR_INVALID;
 		goto error;
 	}
-	/* Send metadata to consumer and snapshot everything. */
-	cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
-		struct ltt_kernel_channel *chan;
 
-		pthread_mutex_lock(socket->lock);
-		/* This stream must not be monitored by the consumer. */
-		ret = kernel_consumer_add_metadata(socket, ksess, 0);
-		pthread_mutex_unlock(socket->lock);
-		if (ret < 0) {
-			status = LTTNG_ERR_KERN_META_FAIL;
-			goto error_consumer;
-		}
+	{
+		/* Send metadata to consumer and snapshot everything. */
+		lttng::urcu::read_lock_guard read_lock;
 
-		/* For each channel, ask the consumer to snapshot it. */
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			status = consumer_snapshot_channel(socket,
-							   chan->key,
-							   output,
-							   0,
-							   &trace_path[consumer_path_offset],
-							   nb_packets_per_stream);
-			if (status != LTTNG_OK) {
-				(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
+		cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
+			struct ltt_kernel_channel *chan;
+
+			pthread_mutex_lock(socket->lock);
+			/* This stream must not be monitored by the consumer. */
+			ret = kernel_consumer_add_metadata(socket, ksess, 0);
+			pthread_mutex_unlock(socket->lock);
+			if (ret < 0) {
+				status = LTTNG_ERR_KERN_META_FAIL;
 				goto error_consumer;
 			}
-		}
 
-		/* Snapshot metadata, */
-		status = consumer_snapshot_channel(socket,
-						   ksess->metadata->key,
-						   output,
-						   1,
-						   &trace_path[consumer_path_offset],
-						   0);
-		if (status != LTTNG_OK) {
-			goto error_consumer;
-		}
+			/* For each channel, ask the consumer to snapshot it. */
+			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+				status =
+					consumer_snapshot_channel(socket,
+								  chan->key,
+								  output,
+								  0,
+								  &trace_path[consumer_path_offset],
+								  nb_packets_per_stream);
+				if (status != LTTNG_OK) {
+					(void) kernel_consumer_destroy_metadata(socket,
+										ksess->metadata);
+					goto error_consumer;
+				}
+			}
 
-		/*
-		 * The metadata snapshot is done, ask the consumer to destroy it since
-		 * it's not monitored on the consumer side.
-		 */
-		(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
+			/* Snapshot metadata, */
+			status = consumer_snapshot_channel(socket,
+							   ksess->metadata->key,
+							   output,
+							   1,
+							   &trace_path[consumer_path_offset],
+							   0);
+			if (status != LTTNG_OK) {
+				goto error_consumer;
+			}
+
+			/*
+			 * The metadata snapshot is done, ask the consumer to destroy it since
+			 * it's not monitored on the consumer side.
+			 */
+			(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
+		}
 	}
 
 error_consumer:
@@ -1757,7 +1762,6 @@ error:
 	/* Restore metadata state.*/
 	ksess->metadata = saved_metadata;
 	ksess->metadata_stream_fd = saved_metadata_fd;
-	rcu_read_unlock();
 	free(trace_path);
 	return status;
 }
@@ -1854,45 +1858,47 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 
 	DBG("Rotate kernel session %s started (session %" PRIu64 ")", session->name, session->id);
 
-	rcu_read_lock();
+	{
+		/*
+		 * Note that this loop will end after one iteration given that there is
+		 * only one kernel consumer.
+		 */
+		lttng::urcu::read_lock_guard read_lock;
 
-	/*
-	 * Note that this loop will end after one iteration given that there is
-	 * only one kernel consumer.
-	 */
-	cds_lfht_for_each_entry (ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-		struct ltt_kernel_channel *chan;
+		cds_lfht_for_each_entry (
+			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
+			struct ltt_kernel_channel *chan;
 
-		/* For each channel, ask the consumer to rotate it. */
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Rotate kernel channel %" PRIu64 ", session %s",
-			    chan->key,
-			    session->name);
+			/* For each channel, ask the consumer to rotate it. */
+			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+				DBG("Rotate kernel channel %" PRIu64 ", session %s",
+				    chan->key,
+				    session->name);
+				ret = consumer_rotate_channel(socket,
+							      chan->key,
+							      ksess->consumer,
+							      /* is_metadata_channel */ false);
+				if (ret < 0) {
+					status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+					goto error;
+				}
+			}
+
+			/*
+			 * Rotate the metadata channel.
+			 */
 			ret = consumer_rotate_channel(socket,
-						      chan->key,
+						      ksess->metadata->key,
 						      ksess->consumer,
-						      /* is_metadata_channel */ false);
+						      /* is_metadata_channel */ true);
 			if (ret < 0) {
 				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
 		}
-
-		/*
-		 * Rotate the metadata channel.
-		 */
-		ret = consumer_rotate_channel(socket,
-					      ksess->metadata->key,
-					      ksess->consumer,
-					      /* is_metadata_channel */ true);
-		if (ret < 0) {
-			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-			goto error;
-		}
 	}
 
 error:
-	rcu_read_unlock();
 	return status;
 }
 
@@ -1901,7 +1907,7 @@ enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kern
 	enum lttng_error_code ret = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(ksess->current_trace_chunk);
 
 	/*
@@ -1915,7 +1921,6 @@ enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kern
 		goto error;
 	}
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -2132,49 +2137,52 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session)
 
 	DBG("Clear kernel session %s (session %" PRIu64 ")", session->name, session->id);
 
-	rcu_read_lock();
-
 	if (ksess->active) {
 		ERR("Expecting inactive session %s (%" PRIu64 ")", session->name, session->id);
 		status = LTTNG_ERR_FATAL;
 		goto end;
 	}
 
-	/*
-	 * Note that this loop will end after one iteration given that there is
-	 * only one kernel consumer.
-	 */
-	cds_lfht_for_each_entry (ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-		struct ltt_kernel_channel *chan;
+	{
+		/*
+		 * Note that this loop will end after one iteration given that there is
+		 * only one kernel consumer.
+		 */
+		lttng::urcu::read_lock_guard read_lock;
 
-		/* For each channel, ask the consumer to clear it. */
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-			DBG("Clear kernel channel %" PRIu64 ", session %s",
-			    chan->key,
-			    session->name);
-			ret = consumer_clear_channel(socket, chan->key);
+		cds_lfht_for_each_entry (
+			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
+			struct ltt_kernel_channel *chan;
+
+			/* For each channel, ask the consumer to clear it. */
+			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+				DBG("Clear kernel channel %" PRIu64 ", session %s",
+				    chan->key,
+				    session->name);
+				ret = consumer_clear_channel(socket, chan->key);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			if (!ksess->metadata) {
+				/*
+				 * Nothing to do for the metadata.
+				 * This is a snapshot session.
+				 * The metadata is genererated on the fly.
+				 */
+				continue;
+			}
+
+			/*
+			 * Clear the metadata channel.
+			 * Metadata channel is not cleared per se but we still need to
+			 * perform a rotation operation on it behind the scene.
+			 */
+			ret = consumer_clear_channel(socket, ksess->metadata->key);
 			if (ret < 0) {
 				goto error;
 			}
-		}
-
-		if (!ksess->metadata) {
-			/*
-			 * Nothing to do for the metadata.
-			 * This is a snapshot session.
-			 * The metadata is genererated on the fly.
-			 */
-			continue;
-		}
-
-		/*
-		 * Clear the metadata channel.
-		 * Metadata channel is not cleared per se but we still need to
-		 * perform a rotation operation on it behind the scene.
-		 */
-		ret = consumer_clear_channel(socket, ksess->metadata->key);
-		if (ret < 0) {
-			goto error;
 		}
 	}
 
@@ -2189,7 +2197,6 @@ error:
 		break;
 	}
 end:
-	rcu_read_unlock();
 	return status;
 }
 
@@ -2422,11 +2429,12 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	}
 
 	/* Add trigger to kernel token mapping in the hash table. */
-	rcu_read_lock();
-	cds_lfht_add(kernel_token_to_event_notifier_rule_ht,
-		     hash_trigger(trigger),
-		     &event_notifier_rule->ht_node);
-	rcu_read_unlock();
+	{
+		lttng::urcu::read_lock_guard read_lock;
+		cds_lfht_add(kernel_token_to_event_notifier_rule_ht,
+			     hash_trigger(trigger),
+			     &event_notifier_rule->ht_node);
+	}
 
 	DBG("Created kernel event notifier: name = '%s', fd = %d",
 	    kernel_event_notifier.event.name,
@@ -2488,7 +2496,7 @@ enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigge
 	enum lttng_error_code error_code_ret;
 	int ret;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_lookup(kernel_token_to_event_notifier_rule_ht,
 			hash_trigger(trigger),
@@ -2515,7 +2523,6 @@ enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigge
 	error_code_ret = LTTNG_OK;
 
 error:
-	rcu_read_unlock();
 
 	return error_code_ret;
 }

@@ -20,6 +20,7 @@
 #include <common/defaults.hpp>
 #include <common/fd-tracker/utils.hpp>
 #include <common/time.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 #include <common/uuid.hpp>
 
@@ -454,7 +455,7 @@ struct relay_session *session_get_by_id(uint64_t id)
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(sessions_ht, &id, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
@@ -467,7 +468,6 @@ struct relay_session *session_get_by_id(uint64_t id)
 		session = nullptr;
 	}
 end:
-	rcu_read_unlock();
 	return session;
 }
 
@@ -498,57 +498,60 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 		goto end;
 	}
 
-	rcu_read_lock();
 	/*
 	 * Sample the 'ongoing_rotation' status of all relay sessions that
 	 * originate from the same session daemon session.
 	 */
-	cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, iterated_session, session_n.node) {
-		if (!session_get(iterated_session)) {
-			continue;
-		}
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		if (session == iterated_session) {
-			/* Skip this session. */
-			goto next_session_no_unlock;
-		}
+		cds_lfht_for_each_entry (
+			sessions_ht->ht, &iter.iter, iterated_session, session_n.node) {
+			if (!session_get(iterated_session)) {
+				continue;
+			}
 
-		pthread_mutex_lock(&iterated_session->lock);
+			if (session == iterated_session) {
+				/* Skip this session. */
+				goto next_session_no_unlock;
+			}
 
-		if (!iterated_session->id_sessiond.is_set) {
-			/*
-			 * Session belongs to a peer that doesn't support
-			 * rotations.
-			 */
-			goto next_session;
-		}
+			pthread_mutex_lock(&iterated_session->lock);
 
-		if (session->sessiond_uuid != iterated_session->sessiond_uuid) {
-			/* Sessions do not originate from the same sessiond. */
-			goto next_session;
-		}
+			if (!iterated_session->id_sessiond.is_set) {
+				/*
+				 * Session belongs to a peer that doesn't support
+				 * rotations.
+				 */
+				goto next_session;
+			}
 
-		if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
-		    LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
-			/*
-			 * Sessions do not originate from the same sessiond
-			 * session.
-			 */
-			goto next_session;
-		}
+			if (session->sessiond_uuid != iterated_session->sessiond_uuid) {
+				/* Sessions do not originate from the same sessiond. */
+				goto next_session;
+			}
 
-		ongoing_rotation = iterated_session->ongoing_rotation;
+			if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
+			    LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
+				/*
+				 * Sessions do not originate from the same sessiond
+				 * session.
+				 */
+				goto next_session;
+			}
 
-	next_session:
-		pthread_mutex_unlock(&iterated_session->lock);
-	next_session_no_unlock:
-		session_put(iterated_session);
+			ongoing_rotation = iterated_session->ongoing_rotation;
 
-		if (ongoing_rotation) {
-			break;
+		next_session:
+			pthread_mutex_unlock(&iterated_session->lock);
+		next_session_no_unlock:
+			session_put(iterated_session);
+
+			if (ongoing_rotation) {
+				break;
+			}
 		}
 	}
-	rcu_read_unlock();
 
 end:
 	return ongoing_rotation;
@@ -611,9 +614,8 @@ void session_put(struct relay_session *session)
 	if (!session) {
 		return;
 	}
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&session->ref, session_release);
-	rcu_read_unlock();
 }
 
 int session_close(struct relay_session *session)
@@ -630,23 +632,28 @@ int session_close(struct relay_session *session)
 	session->connection_closed = true;
 	pthread_mutex_unlock(&session->lock);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (session->ctf_traces_ht->ht, &iter.iter, trace, node.node) {
-		ret = ctf_trace_close(trace);
-		if (ret) {
-			goto rcu_unlock;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (session->ctf_traces_ht->ht, &iter.iter, trace, node.node) {
+			ret = ctf_trace_close(trace);
+			if (ret) {
+				goto end;
+			}
+		}
+
+		cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
+		{
+			/* Close streams which have not been published yet. */
+			try_stream_close(stream);
 		}
 	}
-	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
-	{
-		/* Close streams which have not been published yet. */
-		try_stream_close(stream);
-	}
-rcu_unlock:
-	rcu_read_unlock();
+
+end:
 	if (ret) {
 		return ret;
 	}
+
 	/* Put self-reference from create. */
 	session_put(session);
 	return ret;
@@ -676,16 +683,18 @@ void print_sessions()
 		return;
 	}
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
-		if (!session_get(session)) {
-			continue;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
+			if (!session_get(session)) {
+				continue;
+			}
+			DBG("session %p refcount %ld session %" PRIu64,
+			    session,
+			    session->ref.refcount,
+			    session->id);
+			session_put(session);
 		}
-		DBG("session %p refcount %ld session %" PRIu64,
-		    session,
-		    session->ref.refcount,
-		    session->id);
-		session_put(session);
 	}
-	rcu_read_unlock();
 }

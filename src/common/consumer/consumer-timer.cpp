@@ -14,6 +14,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 
 #include <bin/lttng-consumerd/health-consumerd.hpp>
@@ -282,23 +283,23 @@ static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 
 	DBG("Live timer for channel %" PRIu64, channel->key);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry_duplicate(ht->ht,
-					  ht->hash_fct(&channel->key, lttng_ht_seed),
-					  ht->match_fct,
-					  &channel->key,
-					  &iter.iter,
-					  stream,
-					  node_channel_id.node)
 	{
-		ret = check_stream(stream, flush_index);
-		if (ret < 0) {
-			goto error_unlock;
+		lttng::urcu::read_lock_guard read_lock;
+		cds_lfht_for_each_entry_duplicate(ht->ht,
+						  ht->hash_fct(&channel->key, lttng_ht_seed),
+						  ht->match_fct,
+						  &channel->key,
+						  &iter.iter,
+						  stream,
+						  node_channel_id.node)
+		{
+			ret = check_stream(stream, flush_index);
+			if (ret < 0) {
+				goto error_unlock;
+			}
 		}
 	}
-
 error_unlock:
-	rcu_read_unlock();
 
 error:
 	return;
@@ -575,7 +576,7 @@ static int sample_channel_positions(struct lttng_consumer_channel *channel,
 
 	*_total_consumed = 0;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 					  ht->hash_fct(&channel->key, lttng_ht_seed),
@@ -633,7 +634,6 @@ static int sample_channel_positions(struct lttng_consumer_channel *channel,
 	*_highest_use = high;
 	*_lowest_use = low;
 end:
-	rcu_read_unlock();
 	if (empty_channel) {
 		ret = -1;
 	}

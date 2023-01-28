@@ -25,6 +25,7 @@
 #include <common/relayd/relayd.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <bin/lttng-consumerd/health-consumerd.hpp>
@@ -151,7 +152,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 	/* Prevent channel modifications while we perform the snapshot.*/
 	pthread_mutex_lock(&channel->lock);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Splice is not supported yet for channel snapshot. */
 	if (channel->output != CONSUMER_CHANNEL_MMAP) {
@@ -328,7 +329,6 @@ error_close_stream_output:
 end_unlock:
 	pthread_mutex_unlock(&stream->lock);
 end:
-	rcu_read_unlock();
 	pthread_mutex_unlock(&channel->lock);
 	return ret;
 }
@@ -354,7 +354,7 @@ static int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *meta
 
 	DBG("Kernel consumer snapshot metadata with key %" PRIu64 " at path %s", key, path);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	metadata_stream = metadata_channel->metadata_stream;
 	LTTNG_ASSERT(metadata_stream);
@@ -415,7 +415,6 @@ error_snapshot:
 	metadata_stream->read_subbuffer_ops.unlock(metadata_stream);
 	consumer_stream_destroy(metadata_stream, nullptr);
 	metadata_channel->metadata_stream = nullptr;
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -455,7 +454,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* relayd needs RCU read-side protection */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
@@ -872,7 +871,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
-		rcu_read_unlock();
 		return -ENOSYS;
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
@@ -1388,7 +1386,6 @@ end_msg_sessiond:
 
 end:
 	health_code_update();
-	rcu_read_unlock();
 	return ret_func;
 }
 

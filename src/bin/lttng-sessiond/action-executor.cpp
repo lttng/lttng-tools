@@ -16,6 +16,7 @@
 #include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/list-internal.hpp>
@@ -290,6 +291,8 @@ static int action_executor_start_session_handler(struct action_executor *executo
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
+	lttng::urcu::read_lock_guard read_lock;
+
 	action_status = lttng_action_start_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get session name from `%s` action", get_action_name(action));
@@ -311,7 +314,6 @@ static int action_executor_start_session_handler(struct action_executor *executo
 	}
 
 	session_lock_list();
-	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -362,7 +364,6 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
-	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -379,6 +380,8 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 	struct ltt_session *session;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
+
+	lttng::urcu::read_lock_guard read_lock;
 
 	action_status = lttng_action_stop_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -401,7 +404,6 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 	}
 
 	session_lock_list();
-	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -452,7 +454,6 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
-	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -469,6 +470,8 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	struct ltt_session *session;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
+
+	lttng::urcu::read_lock_guard read_lock;
 
 	action_status = lttng_action_rotate_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -491,7 +494,6 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	}
 
 	session_lock_list();
-	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -550,7 +552,6 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
-	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;
@@ -571,6 +572,8 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 	struct lttng_action *action = item->action;
 
 	default_snapshot_output.max_size = UINT64_MAX;
+
+	lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Validate if, at the moment the action was queued, the target session
@@ -599,7 +602,6 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 	}
 
 	session_lock_list();
-	rcu_read_lock();
 	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
 	if (!session) {
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
@@ -645,7 +647,6 @@ error_unlock_session:
 	session_unlock(session);
 	session_put(session);
 error_unlock_list:
-	rcu_read_unlock();
 	session_unlock_list();
 end:
 	return ret;

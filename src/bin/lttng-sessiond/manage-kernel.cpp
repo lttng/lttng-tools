@@ -16,6 +16,7 @@
 #include "utils.hpp"
 
 #include <common/pipe.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 namespace {
@@ -94,12 +95,14 @@ static int update_kernel_stream(int fd)
 		if (!session_get(session)) {
 			continue;
 		}
+
 		session_lock(session);
 		if (session->kernel_session == nullptr) {
 			session_unlock(session);
 			session_put(session);
 			continue;
 		}
+
 		ksess = session->kernel_session;
 
 		cds_list_for_each_entry (channel, &ksess->channel_list.head, list) {
@@ -127,20 +130,25 @@ static int update_kernel_stream(int fd)
 				goto error;
 			}
 
-			rcu_read_lock();
-			cds_lfht_for_each_entry (
-				ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-				pthread_mutex_lock(socket->lock);
-				ret = kernel_consumer_send_channel_streams(
-					socket, channel, ksess, session->output_traces ? 1 : 0);
-				pthread_mutex_unlock(socket->lock);
-				if (ret < 0) {
-					rcu_read_unlock();
-					goto error;
+			{
+				lttng::urcu::read_lock_guard read_lock;
+
+				cds_lfht_for_each_entry (
+					ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
+					pthread_mutex_lock(socket->lock);
+					ret = kernel_consumer_send_channel_streams(
+						socket,
+						channel,
+						ksess,
+						session->output_traces ? 1 : 0);
+					pthread_mutex_unlock(socket->lock);
+					if (ret < 0) {
+						goto error;
+					}
 				}
 			}
-			rcu_read_unlock();
 		}
+
 		session_unlock(session);
 		session_put(session);
 	}

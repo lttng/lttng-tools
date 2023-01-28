@@ -325,6 +325,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	struct lttng_channel *defattr = nullptr;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 	bool chan_published = false;
+	lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(usess);
 
@@ -448,7 +449,6 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	}
 
 	/* Adding the channel to the channel hash table. */
-	rcu_read_lock();
 	if (strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name)) != 0) {
 		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
 		chan_published = true;
@@ -460,7 +460,6 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		 */
 		memcpy(&usess->metadata_attr, &uchan->attr, sizeof(usess->metadata_attr));
 	}
-	rcu_read_unlock();
 
 	DBG2("Channel %s created successfully", uchan->name);
 	if (domain != LTTNG_DOMAIN_UST) {

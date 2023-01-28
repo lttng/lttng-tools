@@ -13,6 +13,7 @@
 
 #include <common/common.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/urcu.hpp>
 
 #include <stdbool.h>
 
@@ -150,14 +151,12 @@ error_ioctl:
  * syscall hashtable used to track duplicate between 32 and 64 bit arch.
  *
  * This empty the hash table and destroys it after. After this, the pointer is
- * unsuable. RCU read side lock MUST be acquired before calling this.
+ * unsuable. RCU read side lock MUST NOT be acquired before calling this.
  */
 static void destroy_syscall_ht(struct lttng_ht *ht)
 {
 	struct lttng_ht_iter iter;
 	struct syscall *ksyscall;
-
-	ASSERT_RCU_READ_LOCKED();
 
 	DBG3("Destroying syscall hash table.");
 
@@ -165,13 +164,18 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 		return;
 	}
 
-	cds_lfht_for_each_entry (ht->ht, &iter.iter, ksyscall, node.node) {
-		int ret;
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		ret = lttng_ht_del(ht, &iter);
-		LTTNG_ASSERT(!ret);
-		free(ksyscall);
+		cds_lfht_for_each_entry (ht->ht, &iter.iter, ksyscall, node.node) {
+			int ret;
+
+			ret = lttng_ht_del(ht, &iter);
+			LTTNG_ASSERT(!ret);
+			free(ksyscall);
+		}
 	}
+
 	lttng_ht_destroy(ht);
 }
 
@@ -196,6 +200,8 @@ static int init_syscall_ht(struct lttng_ht **ht)
 
 /*
  * Lookup a syscall in the given hash table by name.
+ *
+ * RCU read lock MUST be acquired by the callers of this function.
  *
  * Return syscall object if found or else NULL.
  */
@@ -283,8 +289,6 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 
 	DBG("Syscall table listing.");
 
-	rcu_read_lock();
-
 	/*
 	 * Allocate at least the number of total syscall we have even if some of
 	 * them might not be valid. The count below will make sure to return the
@@ -303,17 +307,20 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 	}
 
 	for (i = 0; i < syscall_table_nb_entry; i++) {
-		struct syscall *ksyscall;
-
 		/* Skip empty syscalls. */
 		if (*syscall_table[i].name == '\0') {
 			continue;
 		}
 
-		ksyscall = lookup_syscall(syscalls_ht, syscall_table[i].name);
-		if (ksyscall) {
-			update_event_syscall_bitness(events, i, ksyscall->index);
-			continue;
+		{
+			lttng::urcu::read_lock_guard read_lock;
+			struct syscall *ksyscall;
+
+			ksyscall = lookup_syscall(syscalls_ht, syscall_table[i].name);
+			if (ksyscall) {
+				update_event_syscall_bitness(events, i, ksyscall->index);
+				continue;
+			}
 		}
 
 		ret = add_syscall_to_ht(syscalls_ht, i, index);
@@ -332,12 +339,10 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 
 	destroy_syscall_ht(syscalls_ht);
 	*_events = events;
-	rcu_read_unlock();
 	return index;
 
 error:
 	destroy_syscall_ht(syscalls_ht);
 	free(events);
-	rcu_read_unlock();
 	return ret;
 }

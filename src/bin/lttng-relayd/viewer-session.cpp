@@ -16,6 +16,7 @@
 #include "viewer-stream.hpp"
 
 #include <common/common.hpp>
+#include <common/urcu.hpp>
 
 #include <urcu/rculist.h>
 
@@ -149,23 +150,29 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 	 * TODO: improvement: create more efficient list of
 	 * vstream per session.
 	 */
-	cds_lfht_for_each_entry (viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
-		if (!viewer_stream_get(vstream)) {
-			continue;
-		}
-		if (vstream->stream->trace->session != session) {
+	{
+		lttng::urcu::read_lock_guard read_guard;
+
+		cds_lfht_for_each_entry (
+			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
+			if (!viewer_stream_get(vstream)) {
+				continue;
+			}
+			if (vstream->stream->trace->session != session) {
+				viewer_stream_put(vstream);
+				continue;
+			}
+			/* Put local reference. */
 			viewer_stream_put(vstream);
-			continue;
+			/*
+			 * We have reached one of the viewer stream's lifetime
+			 * end condition. This "put" will cause the proper
+			 * teardown of the viewer stream.
+			 */
+			viewer_stream_put(vstream);
 		}
-		/* Put local reference. */
-		viewer_stream_put(vstream);
-		/*
-		 * We have reached one of the viewer stream's lifetime
-		 * end condition. This "put" will cause the proper
-		 * teardown of the viewer stream.
-		 */
-		viewer_stream_put(vstream);
 	}
+
 	lttng_trace_chunk_put(vsession->current_trace_chunk);
 	vsession->current_trace_chunk = nullptr;
 	viewer_session_detach(vsession, session);
@@ -175,12 +182,14 @@ void viewer_session_close(struct relay_viewer_session *vsession)
 {
 	struct relay_session *session;
 
-	rcu_read_lock();
-	cds_list_for_each_entry_rcu(session, &vsession->session_list, viewer_session_node)
 	{
-		viewer_session_close_one_session(vsession, session);
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_list_for_each_entry_rcu(session, &vsession->session_list, viewer_session_node)
+		{
+			viewer_session_close_one_session(vsession, session);
+		}
 	}
-	rcu_read_unlock();
 }
 
 /*
@@ -199,16 +208,18 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession, struct rel
 	if (!session->viewer_attached) {
 		goto end;
 	}
-	rcu_read_lock();
-	cds_list_for_each_entry_rcu(iter, &vsession->session_list, viewer_session_node)
+
 	{
-		if (session == iter) {
-			found = 1;
-			goto end_rcu_unlock;
+		lttng::urcu::read_lock_guard read_lock;
+		cds_list_for_each_entry_rcu(iter, &vsession->session_list, viewer_session_node)
+		{
+			if (session == iter) {
+				found = 1;
+				break;
+			}
 		}
 	}
-end_rcu_unlock:
-	rcu_read_unlock();
+
 end:
 	pthread_mutex_unlock(&session->lock);
 	return found;

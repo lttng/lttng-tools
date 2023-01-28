@@ -14,6 +14,7 @@
 #include <common/macros.hpp>
 #include <common/string-utils/format.hpp>
 #include <common/trace-chunk-registry.hpp>
+#include <common/urcu.hpp>
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -112,9 +113,8 @@ static void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 	DBG("Destroying trace chunk registry associated to sessiond {%s}", uuid_str);
 	if (element->sessiond_trace_chunk_registry) {
 		/* Unpublish. */
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
 		cds_lfht_del(element->sessiond_trace_chunk_registry->ht, &element->ht_node);
-		rcu_read_unlock();
 		element->sessiond_trace_chunk_registry = nullptr;
 	}
 
@@ -146,7 +146,7 @@ trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessi
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(sessiond_registry->ht,
 			trace_chunk_registry_ht_key_hash(key),
 			trace_chunk_registry_ht_key_match,
@@ -164,7 +164,6 @@ trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessi
 			element = nullptr;
 		}
 	}
-	rcu_read_unlock();
 	return element;
 }
 
@@ -198,46 +197,51 @@ trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *ses
 	trace_chunk_registry = nullptr;
 
 	/* Attempt to publish the new element. */
-	rcu_read_lock();
-	while (true) {
-		struct cds_lfht_node *published_node;
-		struct trace_chunk_registry_ht_element *published_element;
-
-		published_node =
-			cds_lfht_add_unique(sessiond_registry->ht,
-					    trace_chunk_registry_ht_key_hash(&new_element->key),
-					    trace_chunk_registry_ht_key_match,
-					    &new_element->key,
-					    &new_element->ht_node);
-		if (published_node == &new_element->ht_node) {
-			/* New element published successfully. */
-			DBG("Created trace chunk registry for sessiond {%s}", uuid_str);
-			new_element->sessiond_trace_chunk_registry = sessiond_registry;
-			break;
-		}
-
+	{
 		/*
-		 * An equivalent element was published during the creation of
-		 * this element. Attempt to acquire a reference to the one that
-		 * was already published and release the reference to the copy
-		 * we created if successful.
+		 * Keep the rcu read lock is held accross all attempts
+		 * purely for efficiency reasons.
 		 */
-		published_element = lttng::utils::container_of(
-			published_node, &trace_chunk_registry_ht_element::ht_node);
-		if (trace_chunk_registry_ht_element_get(published_element)) {
-			DBG("Acquired reference to trace chunk registry of sessiond {%s}",
-			    uuid_str);
-			trace_chunk_registry_ht_element_put(new_element);
-			new_element = nullptr;
-			break;
+		lttng::urcu::read_lock_guard read_lock;
+		while (true) {
+			struct cds_lfht_node *published_node;
+			struct trace_chunk_registry_ht_element *published_element;
+
+			published_node = cds_lfht_add_unique(
+				sessiond_registry->ht,
+				trace_chunk_registry_ht_key_hash(&new_element->key),
+				trace_chunk_registry_ht_key_match,
+				&new_element->key,
+				&new_element->ht_node);
+			if (published_node == &new_element->ht_node) {
+				/* New element published successfully. */
+				DBG("Created trace chunk registry for sessiond {%s}", uuid_str);
+				new_element->sessiond_trace_chunk_registry = sessiond_registry;
+				break;
+			}
+
+			/*
+			 * An equivalent element was published during the creation of
+			 * this element. Attempt to acquire a reference to the one that
+			 * was already published and release the reference to the copy
+			 * we created if successful.
+			 */
+			published_element = lttng::utils::container_of(
+				published_node, &trace_chunk_registry_ht_element::ht_node);
+			if (trace_chunk_registry_ht_element_get(published_element)) {
+				DBG("Acquired reference to trace chunk registry of sessiond {%s}",
+				    uuid_str);
+				trace_chunk_registry_ht_element_put(new_element);
+				new_element = nullptr;
+				break;
+			}
+			/*
+			 * A reference to the previously published element could not
+			 * be acquired. Hence, retry to publish our copy of the
+			 * element.
+			 */
 		}
-		/*
-		 * A reference to the previously published element could not
-		 * be acquired. Hence, retry to publish our copy of the
-		 * element.
-		 */
 	}
-	rcu_read_unlock();
 end:
 	if (ret < 0) {
 		ERR("Failed to create trace chunk registry for session daemon {%s}", uuid_str);

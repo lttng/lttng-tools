@@ -13,6 +13,7 @@
 #include "viewer-session.hpp"
 
 #include <common/common.hpp>
+#include <common/urcu.hpp>
 
 #include <urcu/rculist.h>
 
@@ -29,7 +30,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 
 	LTTNG_ASSERT(sock >= 0);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(relay_connections_ht, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (!node) {
@@ -41,7 +42,6 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 		conn = nullptr;
 	}
 end:
-	rcu_read_unlock();
 	return conn;
 }
 
@@ -150,9 +150,8 @@ static void connection_release(struct urcu_ref *ref)
 
 void connection_put(struct relay_connection *conn)
 {
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&conn->ref, connection_release);
-	rcu_read_unlock();
 }
 
 void connection_ht_add(struct lttng_ht *relay_connections_ht, struct relay_connection *conn)

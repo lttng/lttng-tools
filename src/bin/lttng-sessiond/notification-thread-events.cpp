@@ -24,6 +24,7 @@
 #include <common/macros.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/unix.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/list-internal.hpp>
@@ -525,9 +526,8 @@ static void session_info_destroy(void *_data)
 	}
 	lttng_session_trigger_list_destroy(session_info->trigger_list);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(session_info->sessions_ht, &session_info->sessions_ht_node);
-	rcu_read_unlock();
 	free(session_info->name);
 	lttng_trace_archive_location_put(session_info->last_state_sample.rotation.location);
 	call_rcu(&session_info->rcu_node, free_session_info_rcu);
@@ -594,19 +594,17 @@ error:
 static void session_info_add_channel(struct session_info *session_info,
 				     struct channel_info *channel_info)
 {
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_add(session_info->channel_infos_ht,
 		     hash_channel_key(&channel_info->key),
 		     &channel_info->session_info_channels_ht_node);
-	rcu_read_unlock();
 }
 
 static void session_info_remove_channel(struct session_info *session_info,
 					struct channel_info *channel_info)
 {
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(session_info->channel_infos_ht, &channel_info->session_info_channels_ht_node);
-	rcu_read_unlock();
 }
 
 static struct channel_info *channel_info_create(const char *channel_name,
@@ -664,11 +662,10 @@ static void notification_client_list_release(struct urcu_ref *list_ref)
 	lttng_condition_put(list->condition);
 
 	if (list->notification_trigger_clients_ht) {
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_del(list->notification_trigger_clients_ht,
 			     &list->notification_trigger_clients_ht_node);
-		rcu_read_unlock();
 		list->notification_trigger_clients_ht = nullptr;
 	}
 	cds_list_for_each_entry_safe (client_list_element, tmp, &list->clients_list, node) {
@@ -728,36 +725,43 @@ notification_client_list_create(struct notification_thread_state *state,
 	 */
 	client_list->condition = lttng_condition_copy(condition);
 
-	/* Build a list of clients to which this new condition applies. */
-	cds_lfht_for_each_entry (state->client_socket_ht, &iter, client, client_socket_ht_node) {
-		struct notification_client_list_element *client_list_element;
+	{
+		/* Build a list of clients to which this new condition applies. */
+		lttng::urcu::read_lock_guard read_lock;
 
-		if (!condition_applies_to_client(condition, client)) {
-			continue;
+		cds_lfht_for_each_entry (
+			state->client_socket_ht, &iter, client, client_socket_ht_node) {
+			struct notification_client_list_element *client_list_element;
+
+			if (!condition_applies_to_client(condition, client)) {
+				continue;
+			}
+
+			client_list_element = zmalloc<notification_client_list_element>();
+			if (!client_list_element) {
+				goto error_put_client_list;
+			}
+
+			CDS_INIT_LIST_HEAD(&client_list_element->node);
+			client_list_element->client = client;
+			cds_list_add(&client_list_element->node, &client_list->clients_list);
 		}
-
-		client_list_element = zmalloc<notification_client_list_element>();
-		if (!client_list_element) {
-			goto error_put_client_list;
-		}
-
-		CDS_INIT_LIST_HEAD(&client_list_element->node);
-		client_list_element->client = client;
-		cds_list_add(&client_list_element->node, &client_list->clients_list);
 	}
 
 	client_list->notification_trigger_clients_ht = state->notification_trigger_clients_ht;
 
-	rcu_read_lock();
 	/*
 	 * Add the client list to the global list of client list.
 	 */
-	cds_lfht_add_unique(state->notification_trigger_clients_ht,
-			    lttng_condition_hash(client_list->condition),
-			    match_client_list_condition,
-			    client_list->condition,
-			    &client_list->notification_trigger_clients_ht_node);
-	rcu_read_unlock();
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_add_unique(state->notification_trigger_clients_ht,
+				    lttng_condition_hash(client_list->condition),
+				    match_client_list_condition,
+				    client_list->condition,
+				    &client_list->notification_trigger_clients_ht_node);
+	}
 	goto end;
 
 error_put_client_list:
@@ -785,7 +789,7 @@ get_client_list_from_condition(struct notification_thread_state *state,
 	struct cds_lfht_iter iter;
 	struct notification_client_list *list = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(state->notification_trigger_clients_ht,
 			lttng_condition_hash(condition),
 			match_client_list_condition,
@@ -798,7 +802,6 @@ get_client_list_from_condition(struct notification_thread_state *state,
 		list = notification_client_list_get(list) ? list : nullptr;
 	}
 
-	rcu_read_unlock();
 	return list;
 }
 
@@ -816,7 +819,7 @@ static int evaluate_channel_condition_for_client(const struct lttng_condition *c
 	struct channel_state_sample *last_sample = nullptr;
 	struct lttng_channel_trigger_list *channel_trigger_list = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Find the channel associated with the condition. */
 	cds_lfht_for_each_entry (
@@ -886,7 +889,6 @@ static int evaluate_channel_condition_for_client(const struct lttng_condition *c
 	*session_uid = channel_info->session_info->uid;
 	*session_gid = channel_info->session_info->gid;
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1511,12 +1513,13 @@ lttng_session_trigger_list_create(const char *session_name, struct cds_lfht *ses
 	cds_lfht_node_init(&list->session_triggers_ht_node);
 	list->session_triggers_ht = session_triggers_ht;
 
-	rcu_read_lock();
 	/* Publish the list through the session_triggers_ht. */
-	cds_lfht_add(session_triggers_ht,
-		     hash_key_str(session_name, lttng_ht_seed),
-		     &list->session_triggers_ht_node);
-	rcu_read_unlock();
+	{
+		lttng::urcu::read_lock_guard read_lock;
+		cds_lfht_add(session_triggers_ht,
+			     hash_key_str(session_name, lttng_ht_seed),
+			     &list->session_triggers_ht_node);
+	}
 end:
 	return list;
 }
@@ -1539,10 +1542,9 @@ static void lttng_session_trigger_list_destroy(struct lttng_session_trigger_list
 		cds_list_del(&trigger_list_element->node);
 		free(trigger_list_element);
 	}
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	/* Unpublish the list from the session_triggers_ht. */
 	cds_lfht_del(list->session_triggers_ht, &list->session_triggers_ht_node);
-	rcu_read_unlock();
 	call_rcu(&list->rcu_node, free_session_trigger_list_rcu);
 }
 
@@ -1605,21 +1607,26 @@ lttng_session_trigger_list_build(const struct notification_thread_state *state,
 	session_trigger_list =
 		lttng_session_trigger_list_create(session_name, state->session_triggers_ht);
 
-	/* Add all triggers applying to the session named 'session_name'. */
-	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
-		int ret;
+	{
+		/* Add all triggers applying to the session named 'session_name'. */
+		lttng::urcu::read_lock_guard read_lock;
 
-		if (!trigger_applies_to_session(trigger_ht_element->trigger, session_name)) {
-			continue;
+		cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
+			int ret;
+
+			if (!trigger_applies_to_session(trigger_ht_element->trigger,
+							session_name)) {
+				continue;
+			}
+
+			ret = lttng_session_trigger_list_add(session_trigger_list,
+							     trigger_ht_element->trigger);
+			if (ret) {
+				goto error;
+			}
+
+			trigger_count++;
 		}
-
-		ret = lttng_session_trigger_list_add(session_trigger_list,
-						     trigger_ht_element->trigger);
-		if (ret) {
-			goto error;
-		}
-
-		trigger_count++;
 	}
 
 	DBG("Found %i triggers that apply to newly created session", trigger_count);
@@ -1638,7 +1645,7 @@ static struct session_info *create_and_publish_session_info(struct notification_
 	struct session_info *session = nullptr;
 	struct lttng_session_trigger_list *trigger_list;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	trigger_list = lttng_session_trigger_list_build(state, name);
 	if (!trigger_list) {
 		goto error;
@@ -1666,10 +1673,8 @@ static struct session_info *create_and_publish_session_info(struct notification_
 		goto error;
 	}
 
-	rcu_read_unlock();
 	return session;
 error:
-	rcu_read_unlock();
 	session_info_put(session);
 	return nullptr;
 }
@@ -1693,6 +1698,7 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 	int trigger_count = 0;
 	struct cds_lfht_iter iter;
 	struct session_info *session_info = nullptr;
+	lttng::urcu::read_lock_guard read_lock;
 
 	DBG("Adding channel: channel name = `%s`, session id = %" PRIu64 ", channel key = %" PRIu64
 	    ", domain = %s",
@@ -1717,7 +1723,6 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 		goto error;
 	}
 
-	rcu_read_lock();
 	/* Build a list of all triggers applying to the new channel. */
 	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
 		struct lttng_trigger_list_element *new_element;
@@ -1728,7 +1733,6 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 
 		new_element = zmalloc<lttng_trigger_list_element>();
 		if (!new_element) {
-			rcu_read_unlock();
 			goto error;
 		}
 		CDS_INIT_LIST_HEAD(&new_element->node);
@@ -1736,7 +1740,6 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 		cds_list_add(&new_element->node, &trigger_list);
 		trigger_count++;
 	}
-	rcu_read_unlock();
 
 	DBG("Found %i triggers that apply to newly added channel", trigger_count);
 	channel_trigger_list = zmalloc<lttng_channel_trigger_list>();
@@ -1748,7 +1751,6 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 	cds_lfht_node_init(&channel_trigger_list->channel_triggers_ht_node);
 	cds_list_splice(&trigger_list, &channel_trigger_list->list);
 
-	rcu_read_lock();
 	/* Add channel to the channel_ht which owns the channel_infos. */
 	cds_lfht_add(state->channels_ht,
 		     hash_channel_key(&new_channel_info->key),
@@ -1760,7 +1762,6 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 	cds_lfht_add(state->channel_triggers_ht,
 		     hash_channel_key(&new_channel_info->key),
 		     &channel_trigger_list->channel_triggers_ht_node);
-	rcu_read_unlock();
 	session_info_put(session_info);
 	*cmd_result = LTTNG_OK;
 	return 0;
@@ -1865,7 +1866,7 @@ handle_notification_thread_command_remove_channel(struct notification_thread_sta
 	    channel_key,
 	    lttng_domain_type_str(domain));
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_lookup(state->channel_triggers_ht,
 			hash_channel_key(&key),
@@ -1920,7 +1921,6 @@ handle_notification_thread_command_remove_channel(struct notification_thread_sta
 	cds_lfht_del(state->channels_ht, node);
 	channel_info_destroy(channel_info);
 end:
-	rcu_read_unlock();
 	*cmd_result = LTTNG_OK;
 	return 0;
 }
@@ -1941,7 +1941,7 @@ handle_notification_thread_command_session_rotation(struct notification_thread_s
 	struct lttng_credentials session_creds;
 	struct session_state_sample new_session_state;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	session_info = get_session_info_by_id(state, session_id);
 	if (!session_info) {
@@ -2042,7 +2042,6 @@ end:
 
 	session_info_put(session_info);
 	*_cmd_result = cmd_result;
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -2269,7 +2268,7 @@ handle_notification_thread_command_list_triggers(struct notification_thread_hand
 	struct lttng_triggers *local_triggers = nullptr;
 	const struct lttng_credentials *creds;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	local_triggers = lttng_triggers_create();
 	if (!local_triggers) {
@@ -2302,7 +2301,6 @@ handle_notification_thread_command_list_triggers(struct notification_thread_hand
 	local_triggers = nullptr;
 
 end:
-	rcu_read_unlock();
 	lttng_triggers_destroy(local_triggers);
 	*_cmd_result = cmd_result;
 	return ret;
@@ -2341,16 +2339,18 @@ static int handle_notification_thread_command_get_trigger(struct notification_th
 	const char *trigger_name;
 	uid_t trigger_owner_uid;
 
-	rcu_read_lock();
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
-		if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
-			/* Take one reference on the return trigger. */
-			*registered_trigger = trigger_ht_element->trigger;
-			lttng_trigger_get(*registered_trigger);
-			ret = 0;
-			cmd_result = LTTNG_OK;
-			goto end;
+		cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
+			if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
+				/* Take one reference on the return trigger. */
+				*registered_trigger = trigger_ht_element->trigger;
+				lttng_trigger_get(*registered_trigger);
+				ret = 0;
+				cmd_result = LTTNG_OK;
+				goto end;
+			}
 		}
 	}
 
@@ -2363,7 +2363,6 @@ static int handle_notification_thread_command_get_trigger(struct notification_th
 	ret = 0;
 
 end:
-	rcu_read_unlock();
 	*_cmd_result = cmd_result;
 	return ret;
 }
@@ -2682,7 +2681,7 @@ handle_notification_thread_command_register_trigger(struct notification_thread_s
 	enum action_executor_status executor_status;
 	const uint64_t trigger_tracer_token = state->trigger_id.next_tracer_token++;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Set the trigger's tracer token. */
 	lttng_trigger_set_tracer_token(trigger, trigger_tracer_token);
@@ -2973,7 +2972,6 @@ error:
 		lttng_trigger_destroy(trigger);
 	}
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -2993,22 +2991,27 @@ static void teardown_tracer_notifier(struct notification_thread_state *state,
 	struct cds_lfht_iter iter;
 	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element;
 
-	cds_lfht_for_each_entry (state->trigger_tokens_ht, &iter, trigger_tokens_ht_element, node) {
-		if (!lttng_trigger_is_equal(trigger, trigger_tokens_ht_element->trigger)) {
-			continue;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			state->trigger_tokens_ht, &iter, trigger_tokens_ht_element, node) {
+			if (!lttng_trigger_is_equal(trigger, trigger_tokens_ht_element->trigger)) {
+				continue;
+			}
+
+			event_notifier_error_accounting_unregister_event_notifier(
+				trigger_tokens_ht_element->trigger);
+
+			/* TODO talk to all app and remove it */
+			DBG("Removed trigger from tokens_ht");
+			cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
+
+			call_rcu(&trigger_tokens_ht_element->rcu_node,
+				 free_notification_trigger_tokens_ht_element_rcu);
+
+			break;
 		}
-
-		event_notifier_error_accounting_unregister_event_notifier(
-			trigger_tokens_ht_element->trigger);
-
-		/* TODO talk to all app and remove it */
-		DBG("Removed trigger from tokens_ht");
-		cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
-
-		call_rcu(&trigger_tokens_ht_element->rcu_node,
-			 free_notification_trigger_tokens_ht_element_rcu);
-
-		break;
 	}
 }
 
@@ -3052,7 +3055,7 @@ handle_notification_thread_command_unregister_trigger(struct notification_thread
 	const struct lttng_condition *condition = lttng_trigger_get_const_condition(trigger);
 	enum lttng_error_code cmd_reply;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_lookup(
 		state->triggers_ht, lttng_condition_hash(condition), match_trigger, trigger, &iter);
@@ -3149,7 +3152,6 @@ handle_notification_thread_command_unregister_trigger(struct notification_thread
 	lttng_trigger_destroy(trigger_ht_element->trigger);
 	call_rcu(&trigger_ht_element->rcu_node, free_lttng_trigger_ht_element_rcu);
 end:
-	rcu_read_unlock();
 	if (_cmd_reply) {
 		*_cmd_reply = cmd_reply;
 	}
@@ -3292,7 +3294,7 @@ int handle_notification_thread_command(struct notification_thread_handle *handle
 			cmd->parameters.client_communication_update.id;
 		struct notification_client *client;
 
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
 		client = get_client_from_id(client_id, state);
 
 		if (!client) {
@@ -3307,7 +3309,6 @@ int handle_notification_thread_command(struct notification_thread_handle *handle
 		} else {
 			ret = client_handle_transmission_status(client, client_status, state);
 		}
-		rcu_read_unlock();
 		break;
 	}
 	default:
@@ -3434,12 +3435,16 @@ int handle_notification_thread_client_connect(struct notification_thread_state *
 	}
 	DBG("Added new notification channel client socket (%i) to poll set", client->socket);
 
-	rcu_read_lock();
-	cds_lfht_add(state->client_socket_ht,
-		     hash_client_socket(client->socket),
-		     &client->client_socket_ht_node);
-	cds_lfht_add(state->client_id_ht, hash_client_id(client->id), &client->client_id_ht_node);
-	rcu_read_unlock();
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_add(state->client_socket_ht,
+			     hash_client_socket(client->socket),
+			     &client->client_socket_ht_node);
+		cds_lfht_add(state->client_id_ht,
+			     hash_client_id(client->id),
+			     &client->client_id_ht_node);
+	}
 
 	return ret;
 
@@ -3492,7 +3497,8 @@ int handle_notification_thread_client_disconnect(int client_socket,
 	int ret = 0;
 	struct notification_client *client;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	DBG("Closing client connection (socket fd = %i)", client_socket);
 	client = get_client_from_socket(client_socket, state);
 	if (!client) {
@@ -3504,7 +3510,6 @@ int handle_notification_thread_client_disconnect(int client_socket,
 
 	ret = notification_thread_client_disconnect(client, state);
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -3514,17 +3519,22 @@ int handle_notification_thread_client_disconnect_all(struct notification_thread_
 	struct notification_client *client;
 	bool error_encoutered = false;
 
-	rcu_read_lock();
 	DBG("Closing all client connections");
-	cds_lfht_for_each_entry (state->client_socket_ht, &iter, client, client_socket_ht_node) {
-		int ret;
 
-		ret = notification_thread_client_disconnect(client, state);
-		if (ret) {
-			error_encoutered = true;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			state->client_socket_ht, &iter, client, client_socket_ht_node) {
+			int ret;
+
+			ret = notification_thread_client_disconnect(client, state);
+			if (ret) {
+				error_encoutered = true;
+			}
 		}
 	}
-	rcu_read_unlock();
+
 	return error_encoutered ? 1 : 0;
 }
 
@@ -3534,7 +3544,7 @@ int handle_notification_thread_trigger_unregister_all(struct notification_thread
 	struct cds_lfht_iter iter;
 	struct lttng_trigger_ht_element *trigger_ht_element;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
 		int ret = handle_notification_thread_command_unregister_trigger(
 			state, trigger_ht_element->trigger, nullptr);
@@ -3542,7 +3552,6 @@ int handle_notification_thread_trigger_unregister_all(struct notification_thread
 			error_occurred = true;
 		}
 	}
-	rcu_read_unlock();
 	return error_occurred ? -1 : 0;
 }
 
@@ -4016,7 +4025,7 @@ int handle_notification_thread_client_in(struct notification_thread_state *state
 	ssize_t recv_ret;
 	size_t offset;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	client = get_client_from_socket(socket, state);
 	if (!client) {
 		/* Internal error, abort. */
@@ -4101,7 +4110,6 @@ receive_fds:
 	}
 
 end:
-	rcu_read_unlock();
 	return ret;
 
 error_disconnect_client:
@@ -4116,7 +4124,7 @@ int handle_notification_thread_client_out(struct notification_thread_state *stat
 	struct notification_client *client;
 	enum client_transmission_status transmission_status;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	client = get_client_from_socket(socket, state);
 	if (!client) {
 		/* Internal error, abort. */
@@ -4173,7 +4181,6 @@ int handle_notification_thread_client_out(struct notification_thread_state *stat
 		goto end;
 	}
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -4647,7 +4654,7 @@ dispatch_one_event_notifier_notification(struct notification_thread_state *state
 	unsigned int capture_count = 0;
 
 	/* Find triggers associated with this token. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(state->trigger_tokens_ht,
 			hash_key_u64(&notification->tracer_token, lttng_ht_seed),
 			match_trigger_token,
@@ -4760,7 +4767,6 @@ dispatch_one_event_notifier_notification(struct notification_thread_state *state
 
 end_unlock:
 	notification_client_list_put(client_list);
-	rcu_read_unlock();
 end:
 	return ret;
 }
@@ -4819,6 +4825,7 @@ int handle_notification_thread_channel_sample(struct notification_thread_state *
 	struct lttng_credentials channel_creds = {};
 	struct lttng_credentials session_creds = {};
 	struct session_info *session;
+	lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * The monitoring pipe only holds messages smaller than PIPE_BUF,
@@ -4836,8 +4843,6 @@ int handle_notification_thread_channel_sample(struct notification_thread_state *
 	channel_new_sample.key.domain = domain;
 	channel_new_sample.highest_usage = sample_msg.highest;
 	channel_new_sample.lowest_usage = sample_msg.lowest;
-
-	rcu_read_lock();
 
 	session = get_session_info_by_id(state, sample_msg.session_id);
 	if (!session) {
@@ -5068,7 +5073,6 @@ end_unlock:
 		session->last_state_sample = session_new_sample;
 	}
 	session_info_put(session);
-	rcu_read_unlock();
 end:
 	return ret;
 }

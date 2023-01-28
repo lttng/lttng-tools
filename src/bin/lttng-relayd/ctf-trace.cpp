@@ -14,6 +14,7 @@
 #include "stream.hpp"
 
 #include <common/common.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <urcu/rculist.h>
@@ -149,7 +150,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 	struct lttng_ht_iter iter;
 	struct ctf_trace *trace = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(session->ctf_traces_ht, subpath, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
@@ -161,7 +162,6 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 		trace = nullptr;
 	}
 end:
-	rcu_read_unlock();
 	if (!trace) {
 		/* Try to create */
 		trace = ctf_trace_create(session, subpath);
@@ -171,16 +171,15 @@ end:
 
 void ctf_trace_put(struct ctf_trace *trace)
 {
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&trace->ref, ctf_trace_release);
-	rcu_read_unlock();
 }
 
 int ctf_trace_close(struct ctf_trace *trace)
 {
 	struct relay_stream *stream;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_list_for_each_entry_rcu(stream, &trace->stream_list, stream_node)
 	{
 		/*
@@ -189,7 +188,6 @@ int ctf_trace_close(struct ctf_trace *trace)
 		 */
 		try_stream_close(stream);
 	}
-	rcu_read_unlock();
 	/*
 	 * Since all references to the trace are held by its streams, we
 	 * don't need to do any self-ref put.
@@ -201,7 +199,7 @@ struct relay_viewer_stream *ctf_trace_get_viewer_metadata_stream(struct ctf_trac
 {
 	struct relay_viewer_stream *vstream;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	vstream = rcu_dereference(trace->viewer_metadata_stream);
 	if (!vstream) {
 		goto end;
@@ -210,6 +208,5 @@ struct relay_viewer_stream *ctf_trace_get_viewer_metadata_stream(struct ctf_trac
 		vstream = nullptr;
 	}
 end:
-	rcu_read_unlock();
 	return vstream;
 }

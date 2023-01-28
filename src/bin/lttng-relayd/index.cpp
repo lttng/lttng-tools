@@ -16,6 +16,7 @@
 
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 /*
@@ -119,7 +120,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 	     stream->stream_handle,
 	     net_seq_num);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(stream->indexes_ht, &net_seq_num, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
@@ -148,7 +149,6 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 		}
 	}
 end:
-	rcu_read_unlock();
 	DBG2("Index %sfound or created in HT for stream ID %" PRIu64 " and seqnum %" PRIu64,
 	     (index == NULL) ? "NOT " : "",
 	     stream->stream_handle,
@@ -249,14 +249,13 @@ void relay_index_put(struct relay_index *index)
 	/*
 	 * Ensure existence of index->lock for index unlock.
 	 */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	/*
 	 * Index lock ensures that concurrent test and update of stream
 	 * ref is atomic.
 	 */
 	LTTNG_ASSERT(index->ref.refcount != 0);
 	urcu_ref_put(&index->ref, index_release);
-	rcu_read_unlock();
 }
 
 /*
@@ -306,12 +305,12 @@ void relay_index_close_all(struct relay_stream *stream)
 	struct lttng_ht_iter iter;
 	struct relay_index *index;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		/* Put self-ref from index. */
 		relay_index_put(index);
 	}
-	rcu_read_unlock();
 }
 
 void relay_index_close_partial_fd(struct relay_stream *stream)
@@ -319,7 +318,8 @@ void relay_index_close_partial_fd(struct relay_stream *stream)
 	struct lttng_ht_iter iter;
 	struct relay_index *index;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		if (!index->index_file) {
 			continue;
@@ -331,7 +331,6 @@ void relay_index_close_partial_fd(struct relay_stream *stream)
 		 */
 		relay_index_put(index);
 	}
-	rcu_read_unlock();
 }
 
 uint64_t relay_index_find_last(struct relay_stream *stream)
@@ -340,13 +339,14 @@ uint64_t relay_index_find_last(struct relay_stream *stream)
 	struct relay_index *index;
 	uint64_t net_seq_num = -1ULL;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		if (net_seq_num == -1ULL || index->index_n.key > net_seq_num) {
 			net_seq_num = index->index_n.key;
 		}
 	}
-	rcu_read_unlock();
+
 	return net_seq_num;
 }
 
@@ -390,16 +390,16 @@ int relay_index_switch_all_files(struct relay_stream *stream)
 	struct relay_index *index;
 	int ret = 0;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		ret = relay_index_switch_file(
 			index, stream->index_file, stream->pos_after_last_complete_data_index);
 		if (ret) {
-			goto end;
+			return ret;
 		}
 	}
-end:
-	rcu_read_unlock();
+
 	return ret;
 }
 

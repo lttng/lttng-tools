@@ -16,6 +16,7 @@
 #include <common/common.hpp>
 #include <common/compat/string.hpp>
 #include <common/defaults.hpp>
+#include <common/urcu.hpp>
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -95,6 +96,7 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	struct lttng_channel_extended *channel_attr_extended;
 	bool is_local_trace;
 	size_t consumer_path_offset = 0;
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Safety net */
 	LTTNG_ASSERT(channel);
@@ -164,7 +166,6 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	}
 
 	health_code_update();
-	rcu_read_lock();
 	session = session_find_by_id(ksession->id);
 	LTTNG_ASSERT(session);
 	ASSERT_LOCKED(session->lock);
@@ -177,7 +178,6 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 							 LTTNG_DOMAIN_KERNEL,
 							 channel->channel->attr.subbuf_size *
 								 channel->channel->attr.num_subbuf);
-	rcu_read_unlock();
 	if (status != LTTNG_OK) {
 		ret = -1;
 		goto error;
@@ -206,7 +206,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Safety net */
 	LTTNG_ASSERT(ksession);
@@ -262,7 +262,6 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	health_code_update();
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -361,7 +360,7 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 	LTTNG_ASSERT(ksession->consumer);
 	LTTNG_ASSERT(sock);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Bail out if consumer is disabled */
 	if (!ksession->consumer->enabled) {
@@ -394,7 +393,6 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 	}
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 

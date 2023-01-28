@@ -11,6 +11,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/channel-internal.hpp>
 #include <lttng/channel.h>

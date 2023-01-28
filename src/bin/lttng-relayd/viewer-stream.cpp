@@ -14,6 +14,7 @@
 #include <common/common.hpp>
 #include <common/compat/string.hpp>
 #include <common/index/index.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <algorithm>
@@ -262,7 +263,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(viewer_streams_ht, &id, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
@@ -274,15 +275,13 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 		vstream = nullptr;
 	}
 end:
-	rcu_read_unlock();
 	return vstream;
 }
 
 void viewer_stream_put(struct relay_viewer_stream *vstream)
 {
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&vstream->ref, viewer_stream_release);
-	rcu_read_unlock();
 }
 
 void viewer_stream_close_files(struct relay_viewer_stream *vstream)
@@ -378,18 +377,22 @@ void print_viewer_streams()
 		return;
 	}
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
-		if (!viewer_stream_get(vstream)) {
-			continue;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
+			if (!viewer_stream_get(vstream)) {
+				continue;
+			}
+			DBG("vstream %p refcount %ld stream %" PRIu64 " trace %" PRIu64
+			    " session %" PRIu64,
+			    vstream,
+			    vstream->ref.refcount,
+			    vstream->stream->stream_handle,
+			    vstream->stream->trace->id,
+			    vstream->stream->trace->session->id);
+			viewer_stream_put(vstream);
 		}
-		DBG("vstream %p refcount %ld stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
-		    vstream,
-		    vstream->ref.refcount,
-		    vstream->stream->stream_handle,
-		    vstream->stream->trace->id,
-		    vstream->stream->trace->session->id);
-		viewer_stream_put(vstream);
 	}
-	rcu_read_unlock();
 }

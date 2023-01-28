@@ -15,6 +15,7 @@
 
 #include <common/common.hpp>
 #include <common/hashtable/utils.hpp>
+#include <common/urcu.hpp>
 
 #include <inttypes.h>
 
@@ -171,11 +172,10 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64,
 	     reg->session_id);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	nodep = cds_lfht_add_unique(
 		ht->ht, ht->hash_fct(reg, lttng_ht_seed), ht->match_fct, reg, &reg->node.node);
 	LTTNG_ASSERT(nodep == &reg->node.node);
-	rcu_read_unlock();
 }
 
 /*
@@ -298,9 +298,8 @@ void buffer_reg_pid_add(struct buffer_reg_pid *reg)
 	DBG3("Buffer registry per PID adding to global registry with id: %" PRIu64,
 	     reg->session_id);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_u64(buffer_registry_pid, &reg->node);
-	rcu_read_unlock();
 }
 
 /*
@@ -344,25 +343,26 @@ int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_lis
 	struct buffer_reg_channel *reg_chan;
 	int ret = -1;
 
-	rcu_read_lock();
-	/*
-	 * For the per-uid registry, we have to iterate since we don't have the
-	 * uid and bitness key.
-	 */
-	cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
-		session_reg = uid_reg->registry;
-		cds_lfht_for_each_entry (
-			session_reg->channels->ht, &iter.iter, reg_chan, node.node) {
-			if (reg_chan->key == chan_key) {
-				*consumer_chan_key = reg_chan->consumer_key;
-				ret = 0;
-				goto end;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		/*
+		 * For the per-uid registry, we have to iterate since we don't have the
+		 * uid and bitness key.
+		 */
+		cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
+			session_reg = uid_reg->registry;
+			cds_lfht_for_each_entry (
+				session_reg->channels->ht, &iter.iter, reg_chan, node.node) {
+				if (reg_chan->key == chan_key) {
+					*consumer_chan_key = reg_chan->consumer_key;
+					ret = 0;
+					goto end;
+				}
 			}
 		}
 	}
-
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -443,9 +443,8 @@ void buffer_reg_channel_add(struct buffer_reg_session *session, struct buffer_re
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(channel);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_u64(session->channels, &channel->node);
-	rcu_read_unlock();
 }
 
 /*
@@ -591,13 +590,15 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 	DBG3("Buffer registry session destroy");
 
 	/* Destroy all channels. */
-	rcu_read_lock();
-	cds_lfht_for_each_entry (regp->channels->ht, &iter.iter, reg_chan, node.node) {
-		ret = lttng_ht_del(regp->channels, &iter);
-		LTTNG_ASSERT(!ret);
-		buffer_reg_channel_destroy(reg_chan, domain);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (regp->channels->ht, &iter.iter, reg_chan, node.node) {
+			ret = lttng_ht_del(regp->channels, &iter);
+			LTTNG_ASSERT(!ret);
+			buffer_reg_channel_destroy(reg_chan, domain);
+		}
 	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(regp->channels);
 
@@ -623,11 +624,10 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 
 	LTTNG_ASSERT(regp);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(buffer_registry_uid, &iter);
 	LTTNG_ASSERT(!ret);
-	rcu_read_unlock();
 }
 
 static void rcu_free_buffer_reg_uid(struct rcu_head *head)
@@ -670,29 +670,28 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output 
 		goto destroy;
 	}
 
-	rcu_read_lock();
-	/* Get the right socket from the consumer object. */
-	socket = consumer_find_socket_by_bitness(regp->bits_per_long, consumer);
-	if (!socket) {
-		goto unlock;
-	}
-
-	switch (regp->domain) {
-	case LTTNG_DOMAIN_UST:
-		if (regp->registry->reg.ust->_metadata_key) {
-			/* Return value does not matter. This call will print errors. */
-			(void) consumer_close_metadata(socket,
-						       regp->registry->reg.ust->_metadata_key);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+		/* Get the right socket from the consumer object. */
+		socket = consumer_find_socket_by_bitness(regp->bits_per_long, consumer);
+		if (!socket) {
+			goto destroy;
 		}
-		break;
-	default:
-		abort();
-		rcu_read_unlock();
-		return;
+
+		switch (regp->domain) {
+		case LTTNG_DOMAIN_UST:
+			if (regp->registry->reg.ust->_metadata_key) {
+				/* Return value does not matter. This call will print errors. */
+				(void) consumer_close_metadata(
+					socket, regp->registry->reg.ust->_metadata_key);
+			}
+			break;
+		default:
+			abort();
+			return;
+		}
 	}
 
-unlock:
-	rcu_read_unlock();
 destroy:
 	call_rcu(&regp->node.head, rcu_free_buffer_reg_uid);
 }

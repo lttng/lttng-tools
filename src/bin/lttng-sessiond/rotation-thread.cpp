@@ -26,6 +26,7 @@
 #include <common/hashtable/utils.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/time.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/condition/condition-internal.hpp>
@@ -318,6 +319,7 @@ static void check_session_rotation_pending_on_consumers(struct ltt_session *sess
 	uint64_t relayd_id;
 	bool chunk_exists_on_peer = false;
 	enum lttng_trace_chunk_status chunk_status;
+	lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(session->chunk_being_archived);
 
@@ -325,10 +327,10 @@ static void check_session_rotation_pending_on_consumers(struct ltt_session *sess
 	 * Check for a local pending rotation on all consumers (32-bit
 	 * user space, 64-bit user space, and kernel).
 	 */
-	rcu_read_lock();
 	if (!session->ust_session) {
 		goto skip_ust;
 	}
+
 	cds_lfht_for_each_entry (
 		session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
 		relayd_id = session->ust_session->consumer->type == CONSUMER_DST_LOCAL ?
@@ -386,7 +388,6 @@ skip_ust:
 	}
 skip_kernel:
 end:
-	rcu_read_unlock();
 
 	if (!chunk_exists_on_peer) {
 		uint64_t chunk_being_archived_id;

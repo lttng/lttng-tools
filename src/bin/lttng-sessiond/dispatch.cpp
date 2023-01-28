@@ -17,6 +17,7 @@
 
 #include <common/futex.hpp>
 #include <common/macros.hpp>
+#include <common/urcu.hpp>
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@ static void update_ust_app(int app_sock)
 		return;
 	}
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(app_sock >= 0);
 	app = ust_app_find_by_sock(app_sock);
 	if (app == nullptr) {
@@ -57,7 +58,7 @@ static void update_ust_app(int app_sock)
 		 * update.
 		 */
 		DBG3("UST app update failed to find app sock %d", app_sock);
-		goto unlock_rcu;
+		return;
 	}
 
 	/* Update all event notifiers for the app. */
@@ -78,9 +79,6 @@ static void update_ust_app(int app_sock)
 		session_unlock(sess);
 		session_put(sess);
 	}
-
-unlock_rcu:
-	rcu_read_unlock();
 }
 
 /*
@@ -380,7 +378,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * and change its state.
 				 */
 				session_lock_list();
-				rcu_read_lock();
+				lttng::urcu::read_lock_guard read_lock;
 
 				/*
 				 * Add application to the global hash table. This needs to be
@@ -398,7 +396,6 @@ static void *thread_dispatch_ust_registration(void *data)
 				ret = send_socket_to_thread(
 					notifiers->apps_cmd_notify_pipe_write_fd, app->notify_sock);
 				if (ret < 0) {
-					rcu_read_unlock();
 					session_unlock_list();
 					/*
 					 * No notify thread, stop the UST tracing. However, this is
@@ -429,7 +426,6 @@ static void *thread_dispatch_ust_registration(void *data)
 				ret = send_socket_to_thread(notifiers->apps_cmd_pipe_write_fd,
 							    app->sock);
 				if (ret < 0) {
-					rcu_read_unlock();
 					session_unlock_list();
 					/*
 					 * No apps. thread, stop the UST tracing. However, this is
@@ -440,7 +436,6 @@ static void *thread_dispatch_ust_registration(void *data)
 					goto error;
 				}
 
-				rcu_read_unlock();
 				session_unlock_list();
 			}
 		} while (node != nullptr);

@@ -13,6 +13,7 @@
 #include <common/macros.hpp>
 #include <common/optional.hpp>
 #include <common/string-utils/format.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/constant.h>
@@ -211,9 +212,8 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 		return;
 	}
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(inode->registry_ht, &inode->registry_node);
-	rcu_read_unlock();
 
 	if (inode->unlink_pending) {
 		int ret;
@@ -496,6 +496,7 @@ lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
 	struct lttng_inode *inode = nullptr;
+	lttng::urcu::read_lock_guard read_lock;
 
 	ret = fstat(fd, &statbuf);
 	if (ret < 0) {
@@ -506,18 +507,17 @@ lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 	id.device = statbuf.st_dev;
 	id.inode = statbuf.st_ino;
 
-	rcu_read_lock();
 	cds_lfht_lookup(registry->inodes, lttng_inode_id_hash(&id), lttng_inode_match, &id, &iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
 		inode = lttng::utils::container_of(node, &lttng_inode::registry_node);
 		lttng_inode_get(inode);
-		goto end_unlock;
+		goto end;
 	}
 
 	inode = lttng_inode_create(&id, registry->inodes, unlinked_file_pool, handle, path);
 	if (!inode) {
-		goto end_unlock;
+		goto end;
 	}
 
 	node = cds_lfht_add_unique(registry->inodes,
@@ -526,8 +526,6 @@ lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 				   &inode->id,
 				   &inode->registry_node);
 	LTTNG_ASSERT(node == &inode->registry_node);
-end_unlock:
-	rcu_read_unlock();
 end:
 	return inode;
 }

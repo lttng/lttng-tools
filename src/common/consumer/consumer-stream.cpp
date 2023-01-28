@@ -19,6 +19,7 @@
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/macros.hpp>
 #include <common/relayd/relayd.hpp>
+#include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 #include <common/utils.hpp>
 
@@ -371,7 +372,7 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx, uint64_
 	/* Ease our life a bit. */
 	ht = the_consumer_data.stream_list_ht;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* Search the metadata associated with the session id of the given stream. */
 
@@ -400,7 +401,6 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx, uint64_
 	ret = 0;
 
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -642,6 +642,7 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
+	lttng::urcu::read_lock_guard read_lock;
 
 	stream = zmalloc<lttng_consumer_stream>();
 	if (stream == nullptr) {
@@ -649,8 +650,6 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 		ret = -ENOMEM;
 		goto end;
 	}
-
-	rcu_read_lock();
 
 	if (trace_chunk && !lttng_trace_chunk_get(trace_chunk)) {
 		ERR("Failed to acquire trace chunk reference during the creation of a stream");
@@ -726,8 +725,6 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 	     stream->net_seq_idx,
 	     stream->session_id);
 
-	rcu_read_unlock();
-
 	lttng_dynamic_array_init(
 		&stream->read_subbuffer_ops.post_consume_cbs, sizeof(post_consume_cb), nullptr);
 
@@ -772,7 +769,6 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 	return stream;
 
 error:
-	rcu_read_unlock();
 	lttng_trace_chunk_put(stream->trace_chunk);
 	lttng_dynamic_array_reset(&stream->read_subbuffer_ops.post_consume_cbs);
 	free(stream);
@@ -854,14 +850,12 @@ void consumer_stream_close_output(struct lttng_consumer_stream *stream)
 	stream->trace_chunk = nullptr;
 
 	/* Check and cleanup relayd if needed. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	relayd = consumer_find_relayd(stream->net_seq_idx);
 	if (relayd != nullptr) {
 		consumer_stream_relayd_close(stream, relayd);
 		stream->net_seq_idx = -1ULL;
 	}
-
-	rcu_read_unlock();
 }
 
 /*
@@ -879,7 +873,7 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream, struct lttng_h
 	/* Should NEVER be called not in monitor mode. */
 	LTTNG_ASSERT(stream->chan->monitor);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	if (ht) {
 		iter.iter.node = &stream->node.node;
@@ -901,8 +895,6 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream, struct lttng_h
 	iter.iter.node = &stream->node_session_id.node;
 	/* See the previous ht del on why we ignore the returned value. */
 	(void) lttng_ht_del(the_consumer_data.stream_list_ht, &iter);
-
-	rcu_read_unlock();
 
 	if (!stream->metadata_flag) {
 		/* Decrement the stream count of the global consumer data. */
@@ -1100,7 +1092,7 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(element);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		struct consumer_relayd_sock_pair *relayd;
 		relayd = consumer_find_relayd(stream->net_seq_idx);
@@ -1139,7 +1131,6 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 	}
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 

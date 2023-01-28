@@ -15,6 +15,7 @@
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
+#include <common/urcu.hpp>
 
 #include <fcntl.h>
 #include <inttypes.h>
@@ -424,14 +425,18 @@ void fd_tracker_log(struct fd_tracker *tracker)
 	}
 
 	DBG_NO_LOC("  Tracked unsuspendable file descriptors");
-	rcu_read_lock();
-	cds_lfht_for_each_entry (
-		tracker->unsuspendable_fds, &iter, unsuspendable_fd, tracker_node) {
-		DBG_NO_LOC("    %s [active, fd %d]",
-			   unsuspendable_fd->name ?: "Unnamed",
-			   unsuspendable_fd->fd);
+
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			tracker->unsuspendable_fds, &iter, unsuspendable_fd, tracker_node) {
+			DBG_NO_LOC("    %s [active, fd %d]",
+				   unsuspendable_fd->name ?: "Unnamed",
+				   unsuspendable_fd->fd);
+		}
 	}
-	rcu_read_unlock();
+
 	if (!UNSUSPENDABLE_COUNT(tracker)) {
 		DBG_NO_LOC("    None");
 	}
@@ -599,6 +604,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 	int ret, user_ret, i, fds_to_suspend;
 	unsigned int active_fds;
 	struct unsuspendable_fd **entries;
+	lttng::urcu::read_lock_guard read_lock;
 
 	entries = calloc<unsuspendable_fd *>(fd_count);
 	if (!entries) {
@@ -650,7 +656,6 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 		entries[i] = entry;
 	}
 
-	rcu_read_lock();
 	for (i = 0; i < fd_count; i++) {
 		struct cds_lfht_node *node;
 		struct unsuspendable_fd *entry = entries[i];
@@ -664,13 +669,11 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 
 		if (node != &entry->tracker_node) {
 			ret = -EEXIST;
-			rcu_read_unlock();
 			goto end_free_entries;
 		}
 		entries[i] = nullptr;
 	}
 	tracker->count.unsuspendable += fd_count;
-	rcu_read_unlock();
 	ret = user_ret;
 end_unlock:
 	pthread_mutex_unlock(&tracker->lock);
@@ -692,6 +695,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 {
 	int i, ret, user_ret;
 	int *fds = nullptr;
+	lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Maintain a local copy of fds_in as the user's callback may modify its
@@ -705,7 +709,6 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 	memcpy(fds, fds_in, sizeof(*fds) * fd_count);
 
 	pthread_mutex_lock(&tracker->lock);
-	rcu_read_lock();
 
 	/* Let the user close the file descriptors. */
 	user_ret = close(user_data, fds_in);
@@ -743,7 +746,6 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 	tracker->count.unsuspendable -= fd_count;
 	ret = 0;
 end_unlock:
-	rcu_read_unlock();
 	pthread_mutex_unlock(&tracker->lock);
 	free(fds);
 end:

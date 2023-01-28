@@ -11,6 +11,7 @@
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
+#include <common/urcu.hpp>
 
 #include <string.h>
 #include <urcu.h>
@@ -272,13 +273,12 @@ void lttng_ht_add_unique_str(struct lttng_ht *ht, struct lttng_ht_node_str *node
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_unique(ht->ht,
 				       ht->hash_fct(node->key, lttng_ht_seed),
 				       ht->match_fct,
 				       node->key,
 				       &node->node);
-	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
@@ -292,9 +292,8 @@ void lttng_ht_add_str(struct lttng_ht *ht, struct lttng_ht_node_str *node)
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_add(ht->ht, ht->hash_fct(node->key, lttng_ht_seed), &node->node);
-	rcu_read_unlock();
 }
 
 /*
@@ -307,9 +306,8 @@ void lttng_ht_add_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node)
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_add(ht->ht, ht->hash_fct((void *) node->key, lttng_ht_seed), &node->node);
-	rcu_read_unlock();
 }
 
 /*
@@ -322,9 +320,8 @@ void lttng_ht_add_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_add(ht->ht, ht->hash_fct(&node->key, lttng_ht_seed), &node->node);
-	rcu_read_unlock();
 }
 
 /*
@@ -338,13 +335,12 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_unique(ht->ht,
 				       ht->hash_fct((void *) node->key, lttng_ht_seed),
 				       ht->match_fct,
 				       (void *) node->key,
 				       &node->node);
-	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
@@ -359,13 +355,12 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_unique(ht->ht,
 				       ht->hash_fct(&node->key, lttng_ht_seed),
 				       ht->match_fct,
 				       &node->key,
 				       &node->node);
-	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
@@ -380,13 +375,12 @@ void lttng_ht_add_unique_two_u64(struct lttng_ht *ht, struct lttng_ht_node_two_u
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_unique(ht->ht,
 				       ht->hash_fct((void *) &node->key, lttng_ht_seed),
 				       ht->match_fct,
 				       (void *) &node->key,
 				       &node->node);
-	rcu_read_unlock();
 	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
@@ -402,19 +396,17 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_replace(ht->ht,
 					ht->hash_fct((void *) node->key, lttng_ht_seed),
 					ht->match_fct,
 					(void *) node->key,
 					&node->node);
-	rcu_read_unlock();
 	if (!node_ptr) {
 		return nullptr;
 	} else {
 		return lttng::utils::container_of(node_ptr, &lttng_ht_node_ulong::node);
 	}
-	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -429,19 +421,18 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 	LTTNG_ASSERT(node);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	node_ptr = cds_lfht_add_replace(ht->ht,
 					ht->hash_fct(&node->key, lttng_ht_seed),
 					ht->match_fct,
 					&node->key,
 					&node->node);
-	rcu_read_unlock();
 	if (!node_ptr) {
 		return nullptr;
 	} else {
+		LTTNG_ASSERT(node_ptr == &node->node);
 		return lttng::utils::container_of(node_ptr, &lttng_ht_node_u64::node);
 	}
-	LTTNG_ASSERT(node_ptr == &node->node);
 }
 
 /*
@@ -456,9 +447,8 @@ int lttng_ht_del(struct lttng_ht *ht, struct lttng_ht_iter *iter)
 	LTTNG_ASSERT(iter);
 
 	/* RCU read lock protects from ABA. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	ret = cds_lfht_del(ht->ht, iter->iter.node);
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -498,9 +488,8 @@ unsigned long lttng_ht_get_count(struct lttng_ht *ht)
 	LTTNG_ASSERT(ht->ht);
 
 	/* RCU read lock protects from ABA and allows RCU traversal. */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_count_nodes(ht->ht, &scb, &count, &sca);
-	rcu_read_unlock();
 
 	return count;
 }

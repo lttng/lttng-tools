@@ -41,6 +41,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/string-utils.hpp>
 #include <common/trace-chunk.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/action/action-internal.hpp>
@@ -324,7 +325,6 @@ static enum lttng_error_code list_lttng_agent_events(struct agent *agt,
 
 	DBG3("Listing agent events");
 
-	rcu_read_lock();
 	agent_event_count = lttng_ht_get_count(agt->events);
 	if (agent_event_count == 0) {
 		/* Early exit. */
@@ -338,39 +338,46 @@ static enum lttng_error_code list_lttng_agent_events(struct agent *agt,
 
 	local_nb_events = (unsigned int) agent_event_count;
 
-	cds_lfht_for_each_entry (agt->events->ht, &iter.iter, event, node.node) {
-		struct lttng_event *tmp_event = lttng_event_create();
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		if (!tmp_event) {
-			ret_code = LTTNG_ERR_NOMEM;
-			goto error;
-		}
+		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, event, node.node) {
+			struct lttng_event *tmp_event = lttng_event_create();
 
-		if (lttng_strncpy(tmp_event->name, event->name, sizeof(tmp_event->name))) {
+			if (!tmp_event) {
+				ret_code = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+
+			if (lttng_strncpy(tmp_event->name, event->name, sizeof(tmp_event->name))) {
+				lttng_event_destroy(tmp_event);
+				ret_code = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			tmp_event->name[sizeof(tmp_event->name) - 1] = '\0';
+			tmp_event->enabled = !!event->enabled_count;
+			tmp_event->loglevel = event->loglevel_value;
+			tmp_event->loglevel_type = event->loglevel_type;
+
+			ret = lttng_event_serialize(tmp_event,
+						    0,
+						    nullptr,
+						    event->filter_expression,
+						    0,
+						    nullptr,
+						    reply_payload);
 			lttng_event_destroy(tmp_event);
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
-		}
-
-		tmp_event->name[sizeof(tmp_event->name) - 1] = '\0';
-		tmp_event->enabled = !!event->enabled_count;
-		tmp_event->loglevel = event->loglevel_value;
-		tmp_event->loglevel_type = event->loglevel_type;
-
-		ret = lttng_event_serialize(
-			tmp_event, 0, nullptr, event->filter_expression, 0, nullptr, reply_payload);
-		lttng_event_destroy(tmp_event);
-		if (ret) {
-			ret_code = LTTNG_ERR_FATAL;
-			goto error;
+			if (ret) {
+				ret_code = LTTNG_ERR_FATAL;
+				goto error;
+			}
 		}
 	}
-
 end:
 	ret_code = LTTNG_OK;
 	*nb_events = local_nb_events;
 error:
-	rcu_read_unlock();
 	return ret_code;
 }
 
@@ -396,7 +403,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 
 	DBG("Listing UST global events for channel %s", channel_name);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	lttng_ht_lookup(ust_global->channels, (void *) channel_name, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
@@ -502,7 +509,6 @@ end:
 	ret_code = LTTNG_OK;
 	*nb_events = local_nb_events;
 error:
-	rcu_read_unlock();
 	return ret_code;
 }
 
@@ -738,9 +744,9 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 
 	LTTNG_ASSERT(session);
 
-	rcu_read_lock();
-
 	if (session->consumer_fds_sent == 0 && session->consumer != nullptr) {
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			session->consumer->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -754,7 +760,6 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	}
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1016,7 +1021,6 @@ int cmd_setup_relayd(struct ltt_session *session)
 
 	DBG("Setting relayd for session %s", session->name);
 
-	rcu_read_lock();
 	if (session->current_trace_chunk) {
 		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
 			session->current_trace_chunk, &current_chunk_id.value);
@@ -1033,6 +1037,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET &&
 	    usess->consumer->enabled) {
 		/* For each consumer socket, send relayd sockets */
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			usess->consumer->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -1054,6 +1060,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 			/* Session is now ready for network streaming. */
 			session->net_handle = 1;
 		}
+
 		session->consumer->relay_major_version = usess->consumer->relay_major_version;
 		session->consumer->relay_minor_version = usess->consumer->relay_minor_version;
 		session->consumer->relay_allows_clear = usess->consumer->relay_allows_clear;
@@ -1061,6 +1068,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 
 	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET &&
 	    ksess->consumer->enabled) {
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -1082,13 +1091,13 @@ int cmd_setup_relayd(struct ltt_session *session)
 			/* Session is now ready for network streaming. */
 			session->net_handle = 1;
 		}
+
 		session->consumer->relay_major_version = ksess->consumer->relay_major_version;
 		session->consumer->relay_minor_version = ksess->consumer->relay_minor_version;
 		session->consumer->relay_allows_clear = ksess->consumer->relay_allows_clear;
 	}
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1216,7 +1225,7 @@ int cmd_disable_channel(struct ltt_session *session,
 
 	usess = session->ust_session;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1256,7 +1265,6 @@ int cmd_disable_channel(struct ltt_session *session,
 	ret = LTTNG_OK;
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1325,6 +1333,8 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 	LTTNG_ASSERT(_attr);
 	LTTNG_ASSERT(domain);
 
+	lttng::urcu::read_lock_guard read_lock;
+
 	attr = lttng_channel_copy(_attr);
 	if (!attr) {
 		ret_code = LTTNG_ERR_NOMEM;
@@ -1340,8 +1350,6 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 	}
 
 	DBG("Enabling channel %s for session %s", attr->name, session->name);
-
-	rcu_read_lock();
 
 	/*
 	 * If the session is a live session, remove the switch timer, the
@@ -1488,7 +1496,6 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 		session->has_non_mmap_channel = true;
 	}
 error:
-	rcu_read_unlock();
 end:
 	lttng_channel_destroy(attr);
 	return ret_code;
@@ -1727,14 +1734,14 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 
 	event_name = event->name;
 
+	lttng::urcu::read_lock_guard read_lock;
+
 	/* Error out on unhandled search criteria */
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled || event->pid ||
 	    event->filter || event->exclusion) {
 		ret = LTTNG_ERR_UNK;
 		goto error;
 	}
-
-	rcu_read_lock();
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1880,7 +1887,6 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 	ret = LTTNG_OK;
 
 error_unlock:
-	rcu_read_unlock();
 error:
 	free(exclusion);
 	free(bytecode);
@@ -2084,7 +2090,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 
 	DBG("Enable event command for event \'%s\'", event->name);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2426,7 +2432,6 @@ error:
 	free(filter);
 	free(exclusion);
 	channel_attr_destroy(attr);
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -3609,9 +3614,8 @@ int cmd_register_consumer(struct ltt_session *session,
 		pthread_mutex_init(socket->lock, nullptr);
 		socket->registered = 1;
 
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
 		consumer_add_socket(socket, ksess->consumer);
-		rcu_read_unlock();
 
 		pthread_mutex_lock(&cdata->pid_mutex);
 		cdata->pid = -1;
@@ -3653,14 +3657,14 @@ ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **doma
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			session->ust_session->agents->ht, &iter.iter, agt, node.node) {
 			if (agt->being_used) {
 				nb_dom++;
 			}
 		}
-		rcu_read_unlock();
 	}
 
 	if (!nb_dom) {
@@ -3687,16 +3691,19 @@ ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **doma
 		(*domains)[index].buf_type = session->ust_session->buffer_type;
 		index++;
 
-		rcu_read_lock();
-		cds_lfht_for_each_entry (
-			session->ust_session->agents->ht, &iter.iter, agt, node.node) {
-			if (agt->being_used) {
-				(*domains)[index].type = agt->domain;
-				(*domains)[index].buf_type = session->ust_session->buffer_type;
-				index++;
+		{
+			lttng::urcu::read_lock_guard read_lock;
+
+			cds_lfht_for_each_entry (
+				session->ust_session->agents->ht, &iter.iter, agt, node.node) {
+				if (agt->being_used) {
+					(*domains)[index].type = agt->domain;
+					(*domains)[index].buf_type =
+						session->ust_session->buffer_type;
+					index++;
+				}
 			}
 		}
-		rcu_read_unlock();
 	}
 end:
 	return nb_dom;
@@ -3780,47 +3787,51 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 		struct lttng_ht_iter iter;
 		struct ltt_ust_channel *uchan;
 
-		rcu_read_lock();
-		cds_lfht_for_each_entry (session->ust_session->domain_global.channels->ht,
-					 &iter.iter,
-					 uchan,
-					 node.node) {
-			uint64_t discarded_events = 0, lost_packets = 0;
-			struct lttng_channel *channel = nullptr;
-			struct lttng_channel_extended *extended;
+		{
+			lttng::urcu::read_lock_guard read_lock;
 
-			channel = trace_ust_channel_to_lttng_channel(uchan);
-			if (!channel) {
-				ret_code = LTTNG_ERR_NOMEM;
-				goto end;
-			}
+			cds_lfht_for_each_entry (session->ust_session->domain_global.channels->ht,
+						 &iter.iter,
+						 uchan,
+						 node.node) {
+				uint64_t discarded_events = 0, lost_packets = 0;
+				struct lttng_channel *channel = nullptr;
+				struct lttng_channel_extended *extended;
 
-			extended = (struct lttng_channel_extended *) channel->attr.extended.ptr;
+				channel = trace_ust_channel_to_lttng_channel(uchan);
+				if (!channel) {
+					ret_code = LTTNG_ERR_NOMEM;
+					goto end;
+				}
 
-			ret = get_ust_runtime_stats(
-				session, uchan, &discarded_events, &lost_packets);
-			if (ret < 0) {
+				extended = (struct lttng_channel_extended *)
+						   channel->attr.extended.ptr;
+
+				ret = get_ust_runtime_stats(
+					session, uchan, &discarded_events, &lost_packets);
+				if (ret < 0) {
+					lttng_channel_destroy(channel);
+					ret_code = LTTNG_ERR_UNK;
+					goto end;
+				}
+
+				extended->discarded_events = discarded_events;
+				extended->lost_packets = lost_packets;
+
+				ret = lttng_channel_serialize(channel, &payload->buffer);
+				if (ret) {
+					ERR("Failed to serialize lttng_channel: channel name = '%s'",
+					    channel->name);
+					lttng_channel_destroy(channel);
+					ret_code = LTTNG_ERR_UNK;
+					goto end;
+				}
+
 				lttng_channel_destroy(channel);
-				ret_code = LTTNG_ERR_UNK;
-				goto end;
+				i++;
 			}
-
-			extended->discarded_events = discarded_events;
-			extended->lost_packets = lost_packets;
-
-			ret = lttng_channel_serialize(channel, &payload->buffer);
-			if (ret) {
-				ERR("Failed to serialize lttng_channel: channel name = '%s'",
-				    channel->name);
-				lttng_channel_destroy(channel);
-				ret_code = LTTNG_ERR_UNK;
-				goto end;
-			}
-
-			lttng_channel_destroy(channel);
-			i++;
 		}
-		rcu_read_unlock();
+
 		break;
 	}
 	default:
@@ -3895,7 +3906,8 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 			struct lttng_ht_iter iter;
 			struct agent *agt;
 
-			rcu_read_lock();
+			lttng::urcu::read_lock_guard read_lock;
+
 			cds_lfht_for_each_entry (
 				session->ust_session->agents->ht, &iter.iter, agt, node.node) {
 				if (agt->domain == domain) {
@@ -3904,8 +3916,6 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 					break;
 				}
 			}
-
-			rcu_read_unlock();
 		}
 		break;
 	default:
@@ -4119,12 +4129,10 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 		goto free_error;
 	}
 
-	rcu_read_lock();
 	snapshot_add_output(&session->snapshot, new_output);
 	if (id) {
 		*id = new_output->id;
 	}
-	rcu_read_unlock();
 
 	return LTTNG_OK;
 
@@ -4147,7 +4155,7 @@ int cmd_snapshot_del_output(struct ltt_session *session, const struct lttng_snap
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Permission denied to create an output if the session is not
@@ -4177,7 +4185,6 @@ int cmd_snapshot_del_output(struct ltt_session *session, const struct lttng_snap
 	ret = LTTNG_OK;
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -4222,49 +4229,54 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	}
 
 	/* Copy list from session to the new list object. */
-	rcu_read_lock();
-	cds_lfht_for_each_entry (session->snapshot.output_ht->ht, &iter.iter, output, node.node) {
-		LTTNG_ASSERT(output->consumer);
-		list[idx].id = output->id;
-		list[idx].max_size = output->max_size;
-		if (lttng_strncpy(list[idx].name, output->name, sizeof(list[idx].name))) {
-			ret = -LTTNG_ERR_INVALID;
-			goto error;
-		}
-		if (output->consumer->type == CONSUMER_DST_LOCAL) {
-			if (lttng_strncpy(list[idx].ctrl_url,
-					  output->consumer->dst.session_root_path,
-					  sizeof(list[idx].ctrl_url))) {
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			session->snapshot.output_ht->ht, &iter.iter, output, node.node) {
+			LTTNG_ASSERT(output->consumer);
+			list[idx].id = output->id;
+			list[idx].max_size = output->max_size;
+			if (lttng_strncpy(list[idx].name, output->name, sizeof(list[idx].name))) {
 				ret = -LTTNG_ERR_INVALID;
 				goto error;
 			}
-		} else {
-			/* Control URI. */
-			ret = uri_to_str_url(&output->consumer->dst.net.control,
-					     list[idx].ctrl_url,
-					     sizeof(list[idx].ctrl_url));
-			if (ret < 0) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error;
+
+			if (output->consumer->type == CONSUMER_DST_LOCAL) {
+				if (lttng_strncpy(list[idx].ctrl_url,
+						  output->consumer->dst.session_root_path,
+						  sizeof(list[idx].ctrl_url))) {
+					ret = -LTTNG_ERR_INVALID;
+					goto error;
+				}
+			} else {
+				/* Control URI. */
+				ret = uri_to_str_url(&output->consumer->dst.net.control,
+						     list[idx].ctrl_url,
+						     sizeof(list[idx].ctrl_url));
+				if (ret < 0) {
+					ret = -LTTNG_ERR_NOMEM;
+					goto error;
+				}
+
+				/* Data URI. */
+				ret = uri_to_str_url(&output->consumer->dst.net.data,
+						     list[idx].data_url,
+						     sizeof(list[idx].data_url));
+				if (ret < 0) {
+					ret = -LTTNG_ERR_NOMEM;
+					goto error;
+				}
 			}
 
-			/* Data URI. */
-			ret = uri_to_str_url(&output->consumer->dst.net.data,
-					     list[idx].data_url,
-					     sizeof(list[idx].data_url));
-			if (ret < 0) {
-				ret = -LTTNG_ERR_NOMEM;
-				goto error;
-			}
+			idx++;
 		}
-		idx++;
 	}
 
 	*outputs = list;
 	list = nullptr;
 	ret = session->snapshot.nb_output;
 error:
-	rcu_read_unlock();
 	free(list);
 end:
 	return ret;
@@ -4955,27 +4967,28 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 	 * For each consumer socket, create and send the relayd object of the
 	 * snapshot output.
 	 */
-	rcu_read_lock();
-	cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
-		pthread_mutex_lock(socket->lock);
-		status = send_consumer_relayd_sockets(
-			session->id,
-			output,
-			socket,
-			session->name,
-			session->hostname,
-			base_path,
-			session->live_timer,
-			current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
-			session->creation_time,
-			session->name_contains_creation_time);
-		pthread_mutex_unlock(socket->lock);
-		if (status != LTTNG_OK) {
-			rcu_read_unlock();
-			goto error;
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
+			pthread_mutex_lock(socket->lock);
+			status = send_consumer_relayd_sockets(
+				session->id,
+				output,
+				socket,
+				session->name,
+				session->hostname,
+				base_path,
+				session->live_timer,
+				current_chunk_id.is_set ? &current_chunk_id.value : nullptr,
+				session->creation_time,
+				session->name_contains_creation_time);
+			pthread_mutex_unlock(socket->lock);
+			if (status != LTTNG_OK) {
+				goto error;
+			}
 		}
 	}
-	rcu_read_unlock();
 
 error:
 	return status;
@@ -5349,7 +5362,8 @@ int cmd_snapshot_record(struct ltt_session *session,
 		struct snapshot_output *sout;
 		struct lttng_ht_iter iter;
 
-		rcu_read_lock();
+		lttng::urcu::read_lock_guard read_lock;
+
 		cds_lfht_for_each_entry (
 			session->snapshot.output_ht->ht, &iter.iter, sout, node.node) {
 			struct snapshot_output output_copy;
@@ -5374,19 +5388,17 @@ int cmd_snapshot_record(struct ltt_session *session,
 						  output->name,
 						  sizeof(output_copy.name))) {
 					cmd_ret = LTTNG_ERR_INVALID;
-					rcu_read_unlock();
 					goto error;
 				}
 			}
 
 			cmd_ret = snapshot_record(session, &output_copy);
 			if (cmd_ret != LTTNG_OK) {
-				rcu_read_unlock();
 				goto error;
 			}
+
 			snapshot_success = 1;
 		}
-		rcu_read_unlock();
 	}
 
 	if (snapshot_success) {
@@ -5399,6 +5411,7 @@ error:
 	if (tmp_output) {
 		snapshot_output_destroy(tmp_output);
 	}
+
 	return cmd_ret;
 }
 

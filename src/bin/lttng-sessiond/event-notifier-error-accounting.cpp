@@ -14,6 +14,7 @@
 #include <common/index-allocator.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/shm.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/trigger/trigger-internal.hpp>
 
@@ -154,10 +155,9 @@ static void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
 	struct ust_error_accounting_entry *entry =
 		lttng::utils::container_of(entry_ref, &ust_error_accounting_entry::ref);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(error_counter_uid_ht->ht, &entry->node.node);
 	call_rcu(&entry->rcu_head, free_ust_error_accounting_entry);
-	rcu_read_unlock();
 }
 
 static void ust_error_accounting_entry_put(struct ust_error_accounting_entry *entry)
@@ -179,12 +179,14 @@ static void put_ref_all_ust_error_accounting_entry()
 
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
-		ust_error_accounting_entry_put(uid_entry);
-	}
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-	rcu_read_unlock();
+		cds_lfht_for_each_entry (
+			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
+			ust_error_accounting_entry_put(uid_entry);
+		}
+	}
 }
 
 /*
@@ -197,12 +199,14 @@ static void get_ref_all_ust_error_accounting_entry()
 
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
-		ust_error_accounting_entry_get(uid_entry);
-	}
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-	rcu_read_unlock();
+		cds_lfht_for_each_entry (
+			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
+			ust_error_accounting_entry_get(uid_entry);
+		}
+	}
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
@@ -300,8 +304,8 @@ static enum event_notifier_error_accounting_status get_error_counter_index_for_t
 	struct lttng_ht_iter iter;
 	const struct index_ht_entry *index_entry;
 	enum event_notifier_error_accounting_status status;
+	lttng::urcu::read_lock_guard read_guard;
 
-	rcu_read_lock();
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
@@ -312,7 +316,6 @@ static enum event_notifier_error_accounting_status get_error_counter_index_for_t
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND;
 	}
 
-	rcu_read_unlock();
 	return status;
 }
 
@@ -591,6 +594,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	struct ust_error_accounting_entry *entry;
 	enum event_notifier_error_accounting_status status;
 	struct lttng_ust_abi_object_data **cpu_counters;
+	lttng::urcu::read_lock_guard read_lock;
 
 	if (!ust_app_supports_counters(app)) {
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED;
@@ -601,7 +605,6 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	 * Check if we already have a error counter for the user id of this
 	 * app. If not, create one.
 	 */
-	rcu_read_lock();
 	entry = ust_error_accounting_entry_find(error_counter_uid_ht, app);
 	if (entry == nullptr) {
 		/*
@@ -704,7 +707,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	app->event_notifier_group.nr_counter_cpu = entry->nr_counter_cpu_fds;
 	app->event_notifier_group.counter_cpu = cpu_counters;
 	cpu_counters = nullptr;
-	goto end_unlock;
+	goto end;
 
 error_send_cpu_counter_data:
 error_duplicate_cpu_counter:
@@ -732,8 +735,6 @@ error_duplicate_counter:
 	ust_error_accounting_entry_put(entry);
 error_creating_entry:
 	app->event_notifier_group.counter = nullptr;
-end_unlock:
-	rcu_read_unlock();
 end:
 	return status;
 }
@@ -745,7 +746,7 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 	struct ust_error_accounting_entry *entry;
 	int i;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	/* If an error occurred during app registration no entry was created. */
 	if (!app->event_notifier_group.counter) {
@@ -781,7 +782,6 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 end:
-	rcu_read_unlock();
 	return status;
 }
 
@@ -797,7 +797,7 @@ event_notifier_error_accounting_ust_get_count(const struct lttng_trigger *trigge
 	uid_t trigger_owner_uid;
 	const char *trigger_name;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
@@ -857,7 +857,6 @@ event_notifier_error_accounting_ust_get_count(const struct lttng_trigger *trigge
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 
 end:
-	rcu_read_unlock();
 	return status;
 }
 
@@ -871,7 +870,8 @@ event_notifier_error_accounting_ust_clear(const struct lttng_trigger *trigger)
 	size_t dimension_index;
 	const uint64_t tracer_token = lttng_trigger_get_tracer_token(trigger);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
+
 	status = get_error_counter_index_for_token(&ust_state, tracer_token, &error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		uid_t trigger_owner_uid;
@@ -915,7 +915,6 @@ event_notifier_error_accounting_ust_clear(const struct lttng_trigger *trigger)
 
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 end:
-	rcu_read_unlock();
 	return status;
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
@@ -1262,6 +1261,8 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 	enum event_notifier_error_accounting_status status;
 	struct error_accounting_state *state;
 
+	lttng::urcu::read_lock_guard read_lock;
+
 	status = event_notifier_error_accounting_clear(trigger);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		/* Trigger details already logged by callee on error. */
@@ -1269,8 +1270,6 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 		    error_accounting_status_str(status));
 		goto end;
 	}
-
-	rcu_read_lock();
 
 	switch (lttng_trigger_get_underlying_domain_type_restriction(trigger)) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1330,9 +1329,8 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 		LTTNG_ASSERT(!del_ret);
 		call_rcu(&index_entry->rcu_head, free_index_ht_entry);
 	}
-
 end:
-	rcu_read_unlock();
+	return;
 }
 
 void event_notifier_error_accounting_fini()

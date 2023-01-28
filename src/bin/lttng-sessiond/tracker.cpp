@@ -17,6 +17,7 @@
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/tracker.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/lttng-error.h>
 
@@ -91,12 +92,15 @@ static void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker
 		return;
 	}
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (
-		tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
-		process_attr_tracker_remove_value_node(tracker, value_node);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
+			process_attr_tracker_remove_value_node(tracker, value_node);
+		}
 	}
-	rcu_read_unlock();
+
 	ret = cds_lfht_destroy(tracker->inclusion_set_ht, nullptr);
 	LTTNG_ASSERT(ret == 0);
 	tracker->inclusion_set_ht = nullptr;
@@ -163,14 +167,13 @@ process_attr_tracker_lookup(const struct process_attr_tracker *tracker,
 
 	LTTNG_ASSERT(tracker->policy == LTTNG_TRACKING_POLICY_INCLUDE_SET);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(tracker->inclusion_set_ht,
 			process_attr_value_hash(value),
 			match_inclusion_set_value,
 			value,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	rcu_read_unlock();
 
 	return node ? lttng::utils::container_of(
 			      node, &process_attr_tracker_value_node::inclusion_set_ht_node) :
@@ -186,7 +189,7 @@ process_attr_tracker_inclusion_set_add_value(struct process_attr_tracker *tracke
 	struct process_attr_value *value_copy = nullptr;
 	struct process_attr_tracker_value_node *value_node = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	if (tracker->policy != LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		status = PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY;
 		goto end;
@@ -222,7 +225,6 @@ end:
 	if (value_node) {
 		free(value_node);
 	}
-	rcu_read_unlock();
 	return status;
 }
 
@@ -234,7 +236,7 @@ process_attr_tracker_inclusion_set_remove_value(struct process_attr_tracker *tra
 	struct process_attr_tracker_value_node *value_node;
 	enum process_attr_tracker_status status = PROCESS_ATTR_TRACKER_STATUS_OK;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	if (tracker->policy != LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		status = PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY;
 		goto end;
@@ -248,7 +250,6 @@ process_attr_tracker_inclusion_set_remove_value(struct process_attr_tracker *tra
 
 	process_attr_tracker_remove_value_node(tracker, value_node);
 end:
-	rcu_read_unlock();
 	return status;
 }
 
@@ -273,30 +274,32 @@ process_attr_tracker_get_inclusion_set(const struct process_attr_tracker *tracke
 		goto error;
 	}
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (
-		tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
-		int ret;
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		new_value = process_attr_value_copy(value_node->value);
-		if (!new_value) {
-			status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
-			goto error_unlock;
+		cds_lfht_for_each_entry (
+			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
+			int ret;
+
+			new_value = process_attr_value_copy(value_node->value);
+			if (!new_value) {
+				status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
+				goto error_unlock;
+			}
+
+			ret = lttng_dynamic_pointer_array_add_pointer(&values->array, new_value);
+			if (ret) {
+				status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
+				goto error_unlock;
+			}
+
+			new_value = nullptr;
 		}
-
-		ret = lttng_dynamic_pointer_array_add_pointer(&values->array, new_value);
-		if (ret) {
-			status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
-			goto error_unlock;
-		}
-
-		new_value = nullptr;
 	}
-	rcu_read_unlock();
+
 	*_values = values;
 	return status;
 error_unlock:
-	rcu_read_unlock();
 error:
 	lttng_process_attr_values_destroy(values);
 	process_attr_value_destroy(new_value);

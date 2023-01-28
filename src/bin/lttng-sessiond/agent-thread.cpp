@@ -18,6 +18,7 @@
 #include <common/common.hpp>
 #include <common/compat/endian.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/urcu.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
 
@@ -73,27 +74,28 @@ static void update_agent_app(const struct agent_app *app)
 		if (session->ust_session) {
 			const struct agent *agt;
 
-			rcu_read_lock();
+			lttng::urcu::read_lock_guard read_lock;
 			agt = trace_ust_find_agent(session->ust_session, app->domain);
 			if (agt) {
 				agent_update(agt, app);
 			}
-			rcu_read_unlock();
 		}
 		session_unlock(session);
 		session_put(session);
 	}
 
-	rcu_read_lock();
-	/*
-	 * We are protected against the addition of new events by the session
-	 * list lock being held.
-	 */
-	cds_lfht_for_each_entry (
-		the_trigger_agents_ht_by_domain->ht, &iter.iter, trigger_agent, node.node) {
-		agent_update(trigger_agent, app);
+	{
+		/*
+		 * We are protected against the addition of new events by the session
+		 * list lock being held.
+		 */
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (
+			the_trigger_agents_ht_by_domain->ht, &iter.iter, trigger_agent, node.node) {
+			agent_update(trigger_agent, app);
+		}
 	}
-	rcu_read_unlock();
 }
 
 /*

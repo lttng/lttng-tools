@@ -16,6 +16,7 @@
 #include <common/common.hpp>
 #include <common/defaults.hpp>
 #include <common/trace-chunk.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <inttypes.h>
@@ -761,14 +762,18 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 	if (!id_tracker->ht) {
 		return;
 	}
-	rcu_read_lock();
-	cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node, node.node) {
-		int ret = lttng_ht_del(id_tracker->ht, &iter);
 
-		LTTNG_ASSERT(!ret);
-		destroy_id_tracker_node(tracker_node);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node, node.node) {
+			int ret = lttng_ht_del(id_tracker->ht, &iter);
+
+			LTTNG_ASSERT(!ret);
+			destroy_id_tracker_node(tracker_node);
+		}
 	}
-	rcu_read_unlock();
+
 	lttng_ht_destroy(id_tracker->ht);
 	id_tracker->ht = nullptr;
 }
@@ -1202,18 +1207,20 @@ static void destroy_contexts(struct lttng_ht *ht)
 
 	LTTNG_ASSERT(ht);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (ht->ht, &iter.iter, node, node) {
-		/* Remove from ordered list. */
-		ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
-		cds_list_del(&ctx->list);
-		/* Remove from channel's hash table. */
-		ret = lttng_ht_del(ht, &iter);
-		if (!ret) {
-			call_rcu(&node->head, destroy_context_rcu);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (ht->ht, &iter.iter, node, node) {
+			/* Remove from ordered list. */
+			ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
+			cds_list_del(&ctx->list);
+			/* Remove from channel's hash table. */
+			ret = lttng_ht_del(ht, &iter);
+			if (!ret) {
+				call_rcu(&node->head, destroy_context_rcu);
+			}
 		}
 	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(ht);
 }
@@ -1268,13 +1275,15 @@ static void destroy_events(struct lttng_ht *events)
 
 	LTTNG_ASSERT(events);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
-		ret = lttng_ht_del(events, &iter);
-		LTTNG_ASSERT(!ret);
-		call_rcu(&node->head, destroy_event_rcu);
+	{
+		lttng::urcu::read_lock_guard read_lock;
+
+		cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
+			ret = lttng_ht_del(events, &iter);
+			LTTNG_ASSERT(!ret);
+			call_rcu(&node->head, destroy_event_rcu);
+		}
 	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(events);
 }
@@ -1336,7 +1345,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 	struct buffer_reg_uid *uid_reg = nullptr;
 	struct buffer_reg_session *session_reg = nullptr;
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	cds_list_for_each_entry (uid_reg, &usess->buffer_reg_uid_list, lnode) {
 		lsu::registry_session *registry;
 
@@ -1353,7 +1362,6 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 	}
 
 end:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1367,15 +1375,17 @@ static void destroy_channels(struct lttng_ht *channels)
 
 	LTTNG_ASSERT(channels);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (channels->ht, &iter.iter, node, node) {
-		struct ltt_ust_channel *chan =
-			lttng::utils::container_of(node, &ltt_ust_channel::node);
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		trace_ust_delete_channel(channels, chan);
-		trace_ust_destroy_channel(chan);
+		cds_lfht_for_each_entry (channels->ht, &iter.iter, node, node) {
+			struct ltt_ust_channel *chan =
+				lttng::utils::container_of(node, &ltt_ust_channel::node);
+
+			trace_ust_delete_channel(channels, chan);
+			trace_ust_destroy_channel(chan);
+		}
 	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(channels);
 }
@@ -1407,14 +1417,16 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (session->agents->ht, &iter.iter, agt, node.node) {
-		int ret = lttng_ht_del(session->agents, &iter);
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		LTTNG_ASSERT(!ret);
-		agent_destroy(agt);
+		cds_lfht_for_each_entry (session->agents->ht, &iter.iter, agt, node.node) {
+			int ret = lttng_ht_del(session->agents, &iter);
+
+			LTTNG_ASSERT(!ret);
+			agent_destroy(agt);
+		}
 	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(session->agents);
 

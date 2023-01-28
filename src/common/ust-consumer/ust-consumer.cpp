@@ -22,6 +22,7 @@
 #include <common/relayd/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/shm.hpp>
+#include <common/urcu.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/ust-ctl.h>
@@ -666,7 +667,7 @@ static int flush_channel(uint64_t chan_key)
 
 	DBG("UST consumer flush channel key %" PRIu64, chan_key);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
 		ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
@@ -721,7 +722,6 @@ static int flush_channel(uint64_t chan_key)
 	 */
 	sample_and_send_channel_buffer_stats(channel);
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -741,7 +741,7 @@ static int clear_quiescent_channel(uint64_t chan_key)
 
 	DBG("UST consumer clear quiescent channel key %" PRIu64, chan_key);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
 		ERR("UST consumer clear quiescent channel %" PRIu64 " not found", chan_key);
@@ -767,7 +767,6 @@ static int clear_quiescent_channel(uint64_t chan_key)
 		pthread_mutex_unlock(&stream->lock);
 	}
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -958,7 +957,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 
 	DBG("UST consumer snapshot metadata with key %" PRIu64 " at path %s", key, path);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(!metadata_channel->monitor);
 
@@ -1016,7 +1015,6 @@ error_stream:
 	metadata_channel->metadata_stream = nullptr;
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1067,7 +1065,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(ctx);
 	ASSERT_RCU_READ_LOCKED();
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	if (relayd_id != (uint64_t) -1ULL) {
 		use_relayd = 1;
@@ -1218,7 +1216,6 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		pthread_mutex_unlock(&stream->lock);
 	}
 
-	rcu_read_unlock();
 	return 0;
 
 error_put_subbuf:
@@ -1229,7 +1226,6 @@ error_close_stream:
 	consumer_stream_close_output(stream);
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
-	rcu_read_unlock();
 	return ret;
 }
 
@@ -1401,7 +1397,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* relayd needs RCU read-side lock */
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
@@ -1456,7 +1452,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
-		rcu_read_unlock();
 		return -ENOSYS;
 	}
 	case LTTNG_CONSUMER_DATA_PENDING:
@@ -1877,7 +1872,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		uint64_t key = msg.u.discarded_events.channel_key;
 
 		DBG("UST consumer discarded events command for session id %" PRIu64, id);
-		rcu_read_lock();
 		pthread_mutex_lock(&the_consumer_data.lock);
 
 		ht = the_consumer_data.stream_list_ht;
@@ -1904,7 +1898,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 		pthread_mutex_unlock(&the_consumer_data.lock);
-		rcu_read_unlock();
 
 		DBG("UST consumer discarded events command for session id %" PRIu64
 		    ", channel key %" PRIu64,
@@ -1933,7 +1926,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		uint64_t key = msg.u.lost_packets.channel_key;
 
 		DBG("UST consumer lost packets command for session id %" PRIu64, id);
-		rcu_read_lock();
 		pthread_mutex_lock(&the_consumer_data.lock);
 
 		ht = the_consumer_data.stream_list_ht;
@@ -1959,7 +1951,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 		}
 		pthread_mutex_unlock(&the_consumer_data.lock);
-		rcu_read_unlock();
 
 		DBG("UST consumer lost packets command for session id %" PRIu64
 		    ", channel key %" PRIu64,
@@ -2296,7 +2287,6 @@ error_fatal:
 	goto end;
 
 end:
-	rcu_read_unlock();
 	health_code_update();
 	return ret_func;
 }
@@ -3213,15 +3203,17 @@ void lttng_ustconsumer_close_all_metadata(struct lttng_ht *metadata_ht)
 
 	DBG("UST consumer closing all metadata streams");
 
-	rcu_read_lock();
-	cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
-		health_code_update();
+	{
+		lttng::urcu::read_lock_guard read_lock;
 
-		pthread_mutex_lock(&stream->chan->lock);
-		lttng_ustconsumer_close_metadata(stream->chan);
-		pthread_mutex_unlock(&stream->chan->lock);
+		cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
+			health_code_update();
+
+			pthread_mutex_lock(&stream->chan->lock);
+			lttng_ustconsumer_close_metadata(stream->chan);
+			pthread_mutex_unlock(&stream->chan->lock);
+		}
 	}
-	rcu_read_unlock();
 }
 
 void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)

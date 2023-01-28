@@ -15,6 +15,7 @@
 
 #include <common/error.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/urcu.hpp>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -374,7 +375,7 @@ int context_ust_add(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(channel_name);
 
-	rcu_read_lock();
+	lttng::urcu::read_lock_guard read_lock;
 
 	chan_ht = usess->domain_global.channels;
 
@@ -391,7 +392,6 @@ int context_ust_add(struct ltt_ust_session *usess,
 		/* Add ctx to channel */
 		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 	} else {
-		rcu_read_lock();
 		/* Add ctx all events, all channels */
 		cds_lfht_for_each_entry (chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
@@ -400,7 +400,6 @@ int context_ust_add(struct ltt_ust_session *usess,
 				continue;
 			}
 		}
-		rcu_read_unlock();
 	}
 
 	switch (ret) {
@@ -426,6 +425,5 @@ int context_ust_add(struct ltt_ust_session *usess,
 	}
 
 error:
-	rcu_read_unlock();
 	return ret;
 }
