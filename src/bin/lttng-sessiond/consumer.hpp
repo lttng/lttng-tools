@@ -147,7 +147,7 @@ struct consumer_output {
 	struct urcu_ref ref;	/* Refcount */
 
 	/* If the consumer is enabled meaning that should be used */
-	unsigned int enabled;
+	bool enabled;
 	enum consumer_dst_type type;
 
 	/*

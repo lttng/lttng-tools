@@ -43,7 +43,7 @@ struct ltt_kernel_context {
 /* Kernel event */
 struct ltt_kernel_event {
 	int fd;
-	int enabled;
+	bool enabled;
 	enum lttng_event_type type;
 	struct lttng_kernel_abi_event *event;
 	struct cds_list_head list;
@@ -56,7 +56,7 @@ struct ltt_kernel_event {
 struct ltt_kernel_event_notifier_rule {
 	int fd;
 	uint64_t error_counter_index;
-	int enabled;
+	bool enabled;
 	enum lttng_event_type type;
 	struct lttng_trigger *trigger;
 	uint64_t token;
@@ -71,7 +71,7 @@ struct ltt_kernel_event_notifier_rule {
 struct ltt_kernel_channel {
 	int fd;
 	uint64_t key; /* Key to reference this channel with the consumer. */
-	int enabled;
+	bool enabled;
 	unsigned int stream_count;
 	unsigned int event_count;
 	bool published_to_notification_thread;
@@ -121,7 +121,7 @@ struct ltt_kernel_session {
 	/* Tracing session id */
 	uint64_t id;
 	/* Session is active or not meaning it has been started or stopped. */
-	unsigned int active:1;
+	bool active;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;

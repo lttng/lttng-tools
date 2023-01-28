@@ -125,12 +125,9 @@ struct ltt_session {
 	 */
 	bool has_user_specified_directory;
 	/* Did at least ONE start command has been triggered?. */
-	unsigned int has_been_started:1;
-	/*
-	 * Is the session active? Start trace command sets this to 1 and the stop
-	 * command reset it to 0.
-	 */
-	unsigned int active:1;
+	bool has_been_started;
+	/* Is the session active? */
+	bool active;
 
 	/* Snapshot representation in a session. */
 	struct snapshot snapshot;

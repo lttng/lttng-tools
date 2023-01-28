@@ -257,7 +257,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *cha
 	lkc->fd = -1;
 	lkc->stream_count = 0;
 	lkc->event_count = 0;
-	lkc->enabled = 1;
+	lkc->enabled = true;
 	lkc->published_to_notification_thread = false;
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
@@ -459,7 +459,7 @@ enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
 	/* Setting up a kernel event */
 	local_kernel_event->fd = -1;
 	local_kernel_event->event = attr;
-	local_kernel_event->enabled = 1;
+	local_kernel_event->enabled = true;
 	local_kernel_event->filter_expression = filter_expression;
 	local_kernel_event->filter = filter;
 	local_kernel_event->userspace_probe_location = userspace_probe_location;
@@ -518,7 +518,7 @@ trace_kernel_create_event_notifier_rule(struct lttng_trigger *trigger,
 	}
 
 	local_kernel_token_event_rule->fd = -1;
-	local_kernel_token_event_rule->enabled = 1;
+	local_kernel_token_event_rule->enabled = true;
 	local_kernel_token_event_rule->token = token;
 	local_kernel_token_event_rule->error_counter_index = error_counter_index;
 

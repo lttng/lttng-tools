@@ -1205,7 +1205,7 @@ static struct ust_app_channel *alloc_ust_app_channel(const char *name,
 	strncpy(ua_chan->name, name, sizeof(ua_chan->name));
 	ua_chan->name[sizeof(ua_chan->name) - 1] = '\0';
 
-	ua_chan->enabled = 1;
+	ua_chan->enabled = true;
 	ua_chan->handle = -1;
 	ua_chan->session = ua_sess;
 	ua_chan->key = get_next_channel_key();
@@ -1274,7 +1274,7 @@ static struct ust_app_event *alloc_ust_app_event(char *name, struct lttng_ust_ab
 		goto error;
 	}
 
-	ua_event->enabled = 1;
+	ua_event->enabled = true;
 	strncpy(ua_event->name, name, sizeof(ua_event->name));
 	ua_event->name[sizeof(ua_event->name) - 1] = '\0';
 	lttng_ht_node_init_str(&ua_event->node, ua_event->name);
@@ -1310,7 +1310,7 @@ alloc_ust_app_event_notifier_rule(struct lttng_trigger *trigger)
 		goto error;
 	}
 
-	ua_event_notifier_rule->enabled = 1;
+	ua_event_notifier_rule->enabled = true;
 	ua_event_notifier_rule->token = lttng_trigger_get_tracer_token(trigger);
 	lttng_ht_node_init_u64(&ua_event_notifier_rule->node, ua_event_notifier_rule->token);
 
@@ -1910,7 +1910,7 @@ static int enable_ust_channel(struct ust_app *app,
 		goto error;
 	}
 
-	ua_chan->enabled = 1;
+	ua_chan->enabled = true;
 
 	DBG2("UST app channel %s enabled successfully for app: pid = %d", ua_chan->name, app->pid);
 
@@ -2952,7 +2952,7 @@ static int enable_ust_app_event(struct ust_app_event *ua_event, struct ust_app *
 		goto error;
 	}
 
-	ua_event->enabled = 1;
+	ua_event->enabled = true;
 
 error:
 	return ret;
@@ -2970,7 +2970,7 @@ static int disable_ust_app_event(struct ust_app_event *ua_event, struct ust_app 
 		goto error;
 	}
 
-	ua_event->enabled = 0;
+	ua_event->enabled = false;
 
 error:
 	return ret;
@@ -2990,7 +2990,7 @@ static int disable_ust_app_channel(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
-	ua_chan->enabled = 0;
+	ua_chan->enabled = false;
 
 error:
 	return ret;
@@ -4870,7 +4870,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		/* The channel must not be already disabled */
-		LTTNG_ASSERT(ua_chan->enabled == 1);
+		LTTNG_ASSERT(ua_chan->enabled);
 
 		/* Disable channel onto application */
 		ret = disable_ust_app_channel(ua_sess, ua_chan, app);
@@ -5311,8 +5311,8 @@ skip_setup:
 	}
 
 	/* Indicate that the session has been started once */
-	ua_sess->started = 1;
-	ua_sess->enabled = 1;
+	ua_sess->started = true;
+	ua_sess->enabled = true;
 
 	pthread_mutex_unlock(&ua_sess->lock);
 
@@ -5417,7 +5417,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 	}
 
 	health_code_update();
-	ua_sess->enabled = 0;
+	ua_sess->enabled = false;
 
 	/* Quiescent wait after stopping trace */
 	pthread_mutex_lock(&app->sock_lock);
@@ -5810,7 +5810,7 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 	 * Even though the start trace might fail, flag this session active so
 	 * other application coming in are started by default.
 	 */
-	usess->active = 1;
+	usess->active = true;
 
 	rcu_read_lock();
 
@@ -5847,7 +5847,7 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 	 * Even though the stop trace might fail, flag this session inactive so
 	 * other application coming in are not started by default.
 	 */
-	usess->active = 0;
+	usess->active = false;
 
 	rcu_read_lock();
 

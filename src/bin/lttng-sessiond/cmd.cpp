@@ -921,7 +921,7 @@ close_sock:
 		 * since the relayd connection failed thus making any tracing or/and
 		 * streaming not usable.
 		 */
-		consumer->enabled = 0;
+		consumer->enabled = false;
 	}
 	(void) relayd_close(rsock);
 	free(rsock);
@@ -1149,7 +1149,7 @@ int start_kernel_session(struct ltt_kernel_session *ksess)
 	/* Quiescent wait after starting trace */
 	kernel_wait_quiescent();
 
-	ksess->active = 1;
+	ksess->active = true;
 
 	ret = LTTNG_OK;
 
@@ -1194,7 +1194,7 @@ int stop_kernel_session(struct ltt_kernel_session *ksess)
 		}
 	}
 
-	ksess->active = 0;
+	ksess->active = false;
 	if (error_occurred) {
 		ret = LTTNG_ERR_UNK;
 	} else {
@@ -2758,7 +2758,7 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	session->active = 1;
+	session->active = true;
 	session->rotated_after_last_stop = false;
 	session->cleared_after_last_stop = false;
 	if (session->output_traces && !session->current_trace_chunk) {
@@ -2852,9 +2852,9 @@ int cmd_start_trace(struct ltt_session *session)
 error:
 	if (ret == LTTNG_OK) {
 		/* Flag this after a successful start. */
-		session->has_been_started |= 1;
+		session->has_been_started = true;
 	} else {
-		session->active = 0;
+		session->active = false;
 		/* Restore initial state on error. */
 		session->rotated_after_last_stop = session_rotated_after_last_stop;
 		session->cleared_after_last_stop = session_cleared_after_last_stop;
@@ -2900,7 +2900,7 @@ int cmd_stop_trace(struct ltt_session *session)
 
 	DBG("Completed stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
 	/* Flag inactive after a successful stop. */
-	session->active = 0;
+	session->active = false;
 	ret = LTTNG_OK;
 
 error:
@@ -3202,7 +3202,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
-	new_session->consumer->enabled = 1;
+	new_session->consumer->enabled = true;
 	ret_code = LTTNG_OK;
 end:
 	/* Release reference provided by the session_create function. */

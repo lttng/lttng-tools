@@ -147,8 +147,8 @@ end:
  */
 static int disable_events(char *session_name, char *event_list)
 {
-	int ret = CMD_SUCCESS, warn = 0, command_ret = CMD_SUCCESS;
-	int enabled = 1, success = 1;
+	enum cmd_error_code ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	bool enabled = true, success = true, warn = false;
 	char *event_name, *channel_name = nullptr;
 	struct lttng_domain dom;
 	struct lttng_event event;
@@ -175,28 +175,28 @@ static int disable_events(char *session_name, char *event_list)
 
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == nullptr) {
-		ret = -1;
+		ret = CMD_ERROR;
 		goto error;
 	}
 
 	/* Mi print the channel and open the events element */
 	if (lttng_opt_mi) {
-		ret = mi_lttng_writer_open_element(writer, config_element_channel);
-		if (ret) {
+		int mi_ret = mi_lttng_writer_open_element(writer, config_element_channel);
+		if (mi_ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
-		ret = mi_lttng_writer_write_element_string(
+		mi_ret = mi_lttng_writer_write_element_string(
 			writer, config_element_name, print_channel_name(channel_name));
-		if (ret) {
+		if (mi_ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open events element */
-		ret = mi_lttng_writer_open_element(writer, config_element_events);
-		if (ret) {
+		mi_ret = mi_lttng_writer_open_element(writer, config_element_events);
+		if (mi_ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
@@ -210,15 +210,16 @@ static int disable_events(char *session_name, char *event_list)
 	event.type = (lttng_event_type) opt_event_type;
 
 	if (opt_disable_all) {
-		command_ret = lttng_disable_event_ext(handle, &event, channel_name, nullptr);
-		if (command_ret < 0) {
-			ERR("%s", lttng_strerror(command_ret));
-			enabled = 1;
-			success = 0;
+		const int disable_ret = lttng_disable_event_ext(handle, &event, channel_name, nullptr);
 
+		if (disable_ret < 0) {
+			ERR("%s", lttng_strerror(command_ret));
+			command_ret = CMD_ERROR;
+			enabled = true;
+			success = false;
 		} else {
-			enabled = 0;
-			success = 1;
+			enabled = false;
+			success = true;
 			MSG("All %s events of type %s are disabled in channel %s",
 			    lttng_domain_type_str(dom.type),
 			    print_event_type((lttng_event_type) opt_event_type),
@@ -226,8 +227,9 @@ static int disable_events(char *session_name, char *event_list)
 		}
 
 		if (lttng_opt_mi) {
-			ret = mi_print_event("*", enabled, success);
-			if (ret) {
+			const int mi_ret = mi_print_event("*", enabled, success);
+
+			if (mi_ret) {
 				ret = CMD_ERROR;
 				goto error;
 			}
@@ -240,9 +242,9 @@ static int disable_events(char *session_name, char *event_list)
 
 			strncpy(event.name, event_name, sizeof(event.name));
 			event.name[sizeof(event.name) - 1] = '\0';
-			command_ret =
+			const int disable_ret =
 				lttng_disable_event_ext(handle, &event, channel_name, nullptr);
-			if (command_ret < 0) {
+			if (disable_ret < 0) {
 				ERR("%s of type %s : %s (channel %s, session %s)",
 				    event_name,
 				    print_event_type((lttng_event_type) opt_event_type),
@@ -251,13 +253,14 @@ static int disable_events(char *session_name, char *event_list)
 					    print_raw_channel_name(channel_name) :
 					    print_channel_name(channel_name),
 				    session_name);
-				warn = 1;
-				success = 0;
+				warn = true;
+				success = false;
 				/*
 				 * If an error occurred we assume that the event is still
 				 * enabled.
 				 */
-				enabled = 1;
+				enabled = true;
+				command_ret = CMD_ERROR;
 			} else {
 				MSG("%s %s of type %s disabled in channel %s for session %s",
 				    lttng_domain_type_str(dom.type),
@@ -265,13 +268,14 @@ static int disable_events(char *session_name, char *event_list)
 				    print_event_type((lttng_event_type) opt_event_type),
 				    print_channel_name(channel_name),
 				    session_name);
-				success = 1;
-				enabled = 0;
+				success = true;
+				enabled = false;
 			}
 
 			if (lttng_opt_mi) {
-				ret = mi_print_event(event_name, enabled, success);
-				if (ret) {
+				const int mi_ret = mi_print_event(event_name, enabled, success);
+
+				if (mi_ret) {
 					ret = CMD_ERROR;
 					goto error;
 				}
@@ -285,8 +289,9 @@ static int disable_events(char *session_name, char *event_list)
 end:
 	if (lttng_opt_mi) {
 		/* Close events element and channel element */
-		ret = mi_lttng_close_multi_element(writer, 2);
-		if (ret) {
+		const int mi_ret = mi_lttng_close_multi_element(writer, 2);
+
+		if (mi_ret) {
 			ret = CMD_ERROR;
 		}
 	}

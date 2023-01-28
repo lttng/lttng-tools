@@ -128,7 +128,7 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 		if (ret) {
 			goto end;
 		}
-	} else if (kevent->enabled == 0) {
+	} else if (!kevent->enabled) {
 		ret = kernel_enable_event(kevent);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
@@ -202,7 +202,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		goto end;
 	}
 
-	uevent->enabled = 1;
+	uevent->enabled = true;
 	if (to_create) {
 		/* Add ltt ust event to channel */
 		add_unique_ust_event(uchan->events, uevent);
@@ -285,11 +285,11 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		uevent = lttng::utils::container_of(node, &ltt_ust_event::node);
 		LTTNG_ASSERT(uevent);
 
-		if (uevent->enabled == 0) {
+		if (!uevent->enabled) {
 			/* It's already disabled so everything is OK */
 			goto next;
 		}
-		uevent->enabled = 0;
+		uevent->enabled = false;
 		DBG2("Event UST %s disabled in channel %s", uevent->attr.name, uchan->name);
 
 		if (!usess->active) {
@@ -331,7 +331,7 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_
 
 	/* Disabling existing events */
 	cds_lfht_for_each_entry (uchan->events->ht, &iter.iter, uevent, node.node) {
-		if (uevent->enabled == 1) {
+		if (uevent->enabled) {
 			ret = event_ust_disable_tracepoint(usess, uchan, uevent->attr.name);
 			if (ret < 0) {
 				error = LTTNG_ERR_UST_DISABLE_FAIL;
@@ -807,7 +807,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	 * Flag event that it's disabled so the shadow copy on the ust app side
 	 * will disable it if an application shows up.
 	 */
-	uevent->enabled = 0;
+	uevent->enabled = false;
 
 	ret = agent_disable_event(aevent, agt->domain);
 	if (ret != LTTNG_OK) {

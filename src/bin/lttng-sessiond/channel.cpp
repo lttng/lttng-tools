@@ -145,7 +145,7 @@ int channel_kernel_disable(struct ltt_kernel_session *ksession, char *channel_na
 	}
 
 	/* Only if channel is enabled disable it. */
-	if (kchan->enabled == 1) {
+	if (kchan->enabled) {
 		ret = kernel_disable_channel(kchan);
 		if (ret < 0 && ret != -EEXIST) {
 			ret = LTTNG_ERR_KERN_CHAN_DISABLE_FAIL;
@@ -170,7 +170,7 @@ enum lttng_error_code channel_kernel_enable(struct ltt_kernel_session *ksession,
 	LTTNG_ASSERT(ksession);
 	LTTNG_ASSERT(kchan);
 
-	if (kchan->enabled == 0) {
+	if (!kchan->enabled) {
 		if (kernel_enable_channel(kchan) < 0) {
 			ret_code = LTTNG_ERR_KERN_CHAN_ENABLE_FAIL;
 			goto error;
@@ -284,7 +284,7 @@ enum lttng_error_code channel_ust_enable(struct ltt_ust_session *usess,
 		ret_code = LTTNG_ERR_UST_CHAN_EXIST;
 		goto end;
 	} else {
-		uchan->enabled = 1;
+		uchan->enabled = true;
 		DBG2("Channel %s enabled successfully", uchan->name);
 	}
 
@@ -425,7 +425,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	uchan->enabled = 1;
+	uchan->enabled = true;
 	if (trace_ust_is_max_id(usess->used_channel_id)) {
 		ret_code = LTTNG_ERR_UST_CHAN_FAIL;
 		goto error;
@@ -501,12 +501,12 @@ int channel_ust_disable(struct ltt_ust_session *usess, struct ltt_ust_channel *u
 	LTTNG_ASSERT(uchan);
 
 	/* Already disabled */
-	if (uchan->enabled == 0) {
+	if (!uchan->enabled) {
 		DBG2("Channel UST %s already disabled", uchan->name);
 		goto end;
 	}
 
-	uchan->enabled = 0;
+	uchan->enabled = false;
 
 	/*
 	 * If session is inactive we don't notify the tracer right away. We

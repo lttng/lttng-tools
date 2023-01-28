@@ -519,7 +519,7 @@ struct consumer_output *consumer_create_output(enum consumer_dst_type type)
 	}
 
 	/* By default, consumer output is enabled */
-	output->enabled = 1;
+	output->enabled = true;
 	output->type = type;
 	output->net_seq_index = (uint64_t) -1ULL;
 	urcu_ref_init(&output->ref);

@@ -106,7 +106,7 @@ struct ust_app_ctx {
 };
 
 struct ust_app_event {
-	int enabled;
+	bool enabled;
 	int handle;
 	struct lttng_ust_abi_object_data *obj;
 	struct lttng_ust_abi_event attr;
@@ -117,7 +117,7 @@ struct ust_app_event {
 };
 
 struct ust_app_event_notifier_rule {
-	int enabled;
+	bool enabled;
 	uint64_t error_counter_index;
 	int handle;
 	struct lttng_ust_abi_object_data *obj;
@@ -145,7 +145,7 @@ struct ust_app_stream {
 };
 
 struct ust_app_channel {
-	int enabled;
+	bool enabled;
 	int handle;
 	/*
 	 * Unique key used to identify the channel on the consumer side.
@@ -196,9 +196,9 @@ struct ust_app_session {
 	 */
 	pthread_mutex_t lock;
 
-	int enabled;
+	bool enabled;
 	/* started: has the session been in started state at any time ? */
-	int started;  /* allows detection of start vs restart. */
+	bool started;  /* allows detection of start vs restart. */
 	int handle;   /* used has unique identifier for app session */
 
 	bool deleted;	/* Session deleted flag. Check with lock held. */

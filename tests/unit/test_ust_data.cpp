@@ -66,7 +66,7 @@ static void test_create_one_ust_session()
 		return;
 	}
 
-	ok(usess->id == 42 && usess->active == 0 && usess->domain_global.channels != nullptr &&
+	ok(usess->id == 42 && !usess->active && usess->domain_global.channels != nullptr &&
 		   usess->uid == 0 && usess->gid == 0,
 	   "Validate UST session");
 
@@ -94,7 +94,7 @@ static void test_create_ust_channel()
 		return;
 	}
 
-	ok(uchan->enabled == 0 && strncmp(uchan->name, "channel0", 8) == 0 &&
+	ok(!uchan->enabled && strncmp(uchan->name, "channel0", 8) == 0 &&
 		   uchan->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0' && uchan->ctx != nullptr &&
 		   uchan->events != nullptr && uchan->attr.overwrite == attr.attr.overwrite,
 	   "Validate UST channel");
@@ -123,7 +123,7 @@ static void test_create_ust_event()
 		return;
 	}
 
-	ok(event->enabled == 0 && event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
+	ok(!event->enabled && event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
 		   strcmp(event->attr.name, ev.name) == 0 &&
 		   event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0',
 	   "Validate UST event");
@@ -226,7 +226,7 @@ static void test_create_ust_event_exclusion()
 		goto end;
 	}
 
-	ok(event->enabled == 0 && event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
+	ok(!event->enabled && event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
 		   strcmp(event->attr.name, ev.name) == 0 && event->exclusion != nullptr &&
 		   event->exclusion->count == exclusion_count &&
 		   !memcmp(event->exclusion->names,

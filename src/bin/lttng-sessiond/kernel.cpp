@@ -691,7 +691,7 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 		goto error;
 	}
 
-	chan->enabled = 0;
+	chan->enabled = false;
 	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
 	    chan->channel->name,
 	    chan->fd,
@@ -718,7 +718,7 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 		goto error;
 	}
 
-	chan->enabled = 1;
+	chan->enabled = true;
 	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
 	    chan->channel->name,
 	    chan->fd,
@@ -752,7 +752,7 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 		goto error;
 	}
 
-	event->enabled = 1;
+	event->enabled = true;
 	DBG("Kernel event %s enabled (fd: %d)", event->event->name, event->fd);
 
 	return 0;
@@ -778,7 +778,7 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 		goto error;
 	}
 
-	event->enabled = 0;
+	event->enabled = false;
 	DBG("Kernel event %s disabled (fd: %d)", event->event->name, event->fd);
 
 	return 0;
@@ -808,7 +808,7 @@ static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_r
 		goto error;
 	}
 
-	event->enabled = 0;
+	event->enabled = false;
 	DBG("Disabled kernel event notifier: fd = %d, token = %" PRIu64, event->fd, event->token);
 
 error:

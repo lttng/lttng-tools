@@ -92,10 +92,9 @@ end:
  */
 static int disable_channels(char *session_name, char *channel_list)
 {
-	int ret = CMD_SUCCESS, warn = 0, success;
-
-	/* Normal case for disable channed is enabled = 0 */
-	unsigned int enabled = 0;
+	int ret = CMD_SUCCESS;
+	/* Normal case for disable channed is enabled = false */
+	bool warn = false, success, enabled = false;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -138,7 +137,7 @@ static int disable_channels(char *session_name, char *channel_list)
 			    channel_name,
 			    lttng_strerror(ret),
 			    session_name);
-			warn = 1;
+			warn = true;
 
 			/*
 			 * Mi:
@@ -147,16 +146,16 @@ static int disable_channels(char *session_name, char *channel_list)
 			 * The client should look at the stderr stream
 			 * for more informations.
 			 */
-			enabled = 1;
-			success = 0;
+			enabled = true;
+			success = false;
 
 		} else {
 			MSG("%s channel %s disabled for session %s",
 			    lttng_domain_type_str(dom.type),
 			    channel_name,
 			    session_name);
-			enabled = 0;
-			success = 1;
+			enabled = false;
+			success = true;
 		}
 
 		/* Print the channel */

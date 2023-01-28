@@ -39,7 +39,7 @@ struct ltt_ust_context {
 
 /* UST event */
 struct ltt_ust_event {
-	unsigned int enabled;
+	bool enabled;
 	struct lttng_ust_abi_event attr;
 	struct lttng_ht_node_str node;
 	char *filter_expression;
@@ -57,7 +57,7 @@ struct ltt_ust_event {
 /* UST channel */
 struct ltt_ust_channel {
 	uint64_t id;	/* unique id per session. */
-	unsigned int enabled;
+	bool enabled;
 	/*
 	 * A UST channel can be part of a userspace sub-domain such as JUL,
 	 * Log4j, Python.
@@ -100,7 +100,7 @@ struct ltt_ust_session {
 	uid_t uid;
 	gid_t gid;
 	/* Is the session active meaning has is been started or stopped. */
-	unsigned int active:1;
+	bool active;
 	struct consumer_output *consumer;
 	/* Sequence number for filters so the tracer knows the ordering. */
 	uint64_t filter_seq_num;

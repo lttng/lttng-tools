@@ -104,7 +104,7 @@ static void test_create_kernel_channel()
 		return;
 	}
 
-	ok(chan->fd == -1 && chan->enabled == 1 && chan->stream_count == 0 &&
+	ok(chan->fd == -1 && chan->enabled && chan->stream_count == 0 &&
 		   chan->channel->attr.overwrite == attr.attr.overwrite,
 	   "Validate kernel channel");
 
@@ -133,7 +133,7 @@ static void test_create_kernel_event()
 		return;
 	}
 
-	ok(event->fd == -1 && event->enabled == 1 &&
+	ok(event->fd == -1 && event->enabled &&
 		   event->event->instrumentation == LTTNG_KERNEL_ABI_TRACEPOINT &&
 		   strlen(event->event->name),
 	   "Validate kernel event");
