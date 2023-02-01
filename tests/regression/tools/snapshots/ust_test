@@ -16,7 +16,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 APPS_PID=
 
-NUM_TESTS=105
+NUM_TESTS=104
 
 TRACE_PATH=$(mktemp --tmpdir -d tmp.test_snapshots_ust_trace_path.XXXXXX)
 
@@ -109,9 +109,11 @@ function enable_mmap_overwrite_subbuf_ust_channel ()
 	local sess_name=$1
 	local chan_name=$2
 	local subbuf_size=$3
+	local subbuf_count=$4
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name \
 		$chan_name -u --output mmap --overwrite \
+		--num-subbuf=$subbuf_count \
 		--subbuf-size $subbuf_size > /dev/null 2>&1
 
 	ok $? "Enable channel $channel_name for session $sess_name with subbuf size $subbuf_size"
@@ -295,53 +297,65 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 
 function test_ust_local_snapshot_max_size ()
 {
-	NR_ITER=-1
-	NR_USEC_WAIT=100
-	page_size=`getconf PAGE_SIZE`
-	num_cpus=$(conf_proc_count)
+	local possible_cpus
+	local online_cpus
+	local subbuf_size
+	local subbuf_count
+	local snapshot_max_size
+	local channel_max_size_per_cpu
 
-	# The minimum subbuf size is the platform PAGE_SIZE
-	subbuf_size=$(($page_size*2))
-
-	# The minimum size limit is min(subbuf_size) * nb_streams
-	max_size=$(($subbuf_size*$num_cpus))
+	possible_cpus=$(get_possible_cpus_count)
+	online_cpus=$(conf_proc_count)
+	subbuf_size=$(getconf PAGE_SIZE)
+	subbuf_count=8
+	snapshot_max_size=$((subbuf_size*possible_cpus))
+	channel_max_size_per_cpu=$((subbuf_size*subbuf_count))
 
 	diag "Test local UST snapshots with max size $max_size"
-	create_lttng_session_no_output $SESSION_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
 
-	enable_mmap_overwrite_subbuf_ust_channel $SESSION_NAME $CHANNEL_NAME $subbuf_size
+	enable_mmap_overwrite_subbuf_ust_channel \
+		"$SESSION_NAME" "$CHANNEL_NAME" \
+		"$subbuf_size" "$subbuf_count"
 
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" "$EVENT_NAME" "$CHANNEL_NAME"
+	start_lttng_tracing_ok "$SESSION_NAME"
 
-	snapshot_add_output $SESSION_NAME "file://$TRACE_PATH" "" $max_size
+	snapshot_add_output "$SESSION_NAME" "file://$TRACE_PATH" "" "$snapshot_max_size"
 
-	# Returns once the application has at least fired ONE tracepoint.
-	start_test_app
+	# Fill all ring-buffers of the channel; assuming event size of at least one
+	# byte
+	for cpu in $(seq "$online_cpus");
+	do
+		taskset --cpu-list $((cpu-1)) "$TESTAPP_BIN" \
+			--iter "$channel_max_size_per_cpu"
+	done
+	diag "Filled channel ring-buffers"
 
-	lttng_snapshot_record $SESSION_NAME
+	lttng_snapshot_record "$SESSION_NAME"
 
 	# Check file size
-	sum_size_tracefiles=$(find $TRACE_PATH -name "${CHANNEL_NAME}_*" \
-		-exec stat -c '%s' {} \; | awk '{s = s + $1}END{print s}')
+	local snapshot_size
+	snapshot_size=$(find "$TRACE_PATH" -name "${CHANNEL_NAME}_*" \
+				-exec stat -c '%s' {} \; | \
+				awk '{s = s + $1}END{print s}')
 
-	if [ "$sum_size_tracefiles" -gt "$max_size" ]; then
-		fail "Tracefiles size sum validation"
-		diag "Tracefiles size sum: $sum_size_tracefiles Expected max: $max_size"
-	else
+	if [ "$snapshot_size" -eq "$snapshot_max_size" ]; then
 		pass "Tracefiles size sum validation"
+	else
+		fail "Tracefiles size sum validation"
+		diag "Tracefiles size sum: $snapshot_size Expected max: $snapshot_max_size"
 	fi
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/
 
-	if [ $? -eq 0 ]; then
+	if validate_trace "$EVENT_NAME" "$TRACE_PATH/"; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "$TRACE_PATH"
 	fi
 
 	stop_test_apps
