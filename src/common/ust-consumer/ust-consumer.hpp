@@ -27,7 +27,6 @@ int lttng_ustconsumer_get_consumed_snapshot(
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll);
 
-extern int lttng_ustconsumer_allocate_channel(struct lttng_consumer_channel *chan);
 extern void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan);
 extern void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan);
 extern int lttng_ustconsumer_add_stream(struct lttng_consumer_stream *stream);
@@ -121,13 +120,6 @@ int lttng_ustconsumer_recv_cmd(
 		struct lttng_consumer_local_data *ctx __attribute__((unused)),
 		int sock __attribute__((unused)),
 		struct pollfd *consumer_sockpoll __attribute__((unused)))
-{
-	return -ENOSYS;
-}
-
-static inline
-int lttng_ustconsumer_allocate_channel(
-		struct lttng_consumer_channel *chan __attribute__((unused)))
 {
 	return -ENOSYS;
 }
