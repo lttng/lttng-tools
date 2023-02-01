@@ -214,6 +214,38 @@ function randstring()
 	echo
 }
 
+# Helpers for get_possible_cpus.
+function get_possible_cpus_count_from_sysfs_possible_mask()
+{
+	local max_possible_cpu_id=$(cut -d '-' -f 2 < /sys/devices/system/cpu/possible)
+	echo $((max_possible_cpu_id+1))
+}
+
+function get_max_cpus_count_from_sysfs_cpu_directories()
+{
+	local max_possible_cpu_id= \
+		$(find /sys/devices/system/cpu/ -mindepth 1 -maxdepth 1 -regex ".+cpu[0-9]+" | \
+		  sed -e 's/cpu//g' | \
+		  awk -F '/' '{ if ($NF > N) N = $NF } END { print N }')
+	echo $((max_possible_cpu_id+1))
+}
+
+# Return the number of possible CPUs.
+function get_possible_cpus_count()
+{
+	local possible_cpus_count=$(get_possible_cpus_count_from_sysfs_possible_mask)
+
+	if [ $? -ne 0 ]; then
+		possible_cpus_count=$(get_max_cpus_count_from_sysfs_cpu_directories)
+		local configured_cpus_count=$(getconf _NPROCESSORS_CONF)
+		possible_cpus_count=$(($configured_cpus_count > $possible_cpus_count \
+							      ? $configured_cpus_count \
+							      : $possible_cpus_count))
+	fi
+
+	echo $possible_cpus_count
+}
+
 # Return the number of _configured_ CPUs.
 function conf_proc_count()
 {
