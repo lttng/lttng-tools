@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright (C) 2012 Christian Babeux <christian.babeux@efficios.com>
 #
