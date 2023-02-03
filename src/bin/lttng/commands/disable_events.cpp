@@ -248,8 +248,8 @@ static int disable_events(char *session_name, char *event_list)
 				ERR("%s of type %s : %s (channel %s, session %s)",
 				    event_name,
 				    print_event_type((lttng_event_type) opt_event_type),
-				    lttng_strerror(command_ret),
-				    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
+				    lttng_strerror(disable_ret),
+				    disable_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 					    print_raw_channel_name(channel_name) :
 					    print_channel_name(channel_name),
 				    session_name);
