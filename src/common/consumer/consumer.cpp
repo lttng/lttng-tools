@@ -2516,7 +2516,7 @@ error_testpoint:
  */
 void *consumer_thread_data_poll(void *data)
 {
-	int num_rdy, num_hup, high_prio, ret, i, err = -1;
+	int num_rdy, high_prio, ret, i, err = -1;
 	struct pollfd *pollfd = nullptr;
 	/* local view of the streams */
 	struct lttng_consumer_stream **local_stream = nullptr, *new_stream = nullptr;
@@ -2549,7 +2549,6 @@ void *consumer_thread_data_poll(void *data)
 		health_code_update();
 
 		high_prio = 0;
-		num_hup = 0;
 
 		/*
 		 * the fds set has been updated, we need to update our
@@ -2765,21 +2764,18 @@ void *consumer_thread_data_poll(void *data)
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
 					local_stream[i] = nullptr;
-					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLERR) {
 				ERR("Error returned in polling fd %d.", pollfd[i].fd);
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
 					local_stream[i] = nullptr;
-					num_hup++;
 				}
 			} else if (pollfd[i].revents & POLLNVAL) {
 				ERR("Polling fd %d tells fd is not open.", pollfd[i].fd);
 				if (!local_stream[i]->has_data_left_to_be_read_before_teardown) {
 					consumer_del_stream(local_stream[i], data_ht);
 					local_stream[i] = nullptr;
-					num_hup++;
 				}
 			}
 			if (local_stream[i] != nullptr) {
