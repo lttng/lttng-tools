@@ -1,0 +1,27 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (c) 2023 Olivier Dion <odion@efficios.com>
+
+srcdir=$(realpath "@abs_top_srcdir@")
+builddir=$(realpath "@abs_top_builddir@")
+bin="$builddir/src/bin"
+
+# lttng-sessiond setup.
+LTTNG_SESSION_CONFIG_XSD_PATH="$srcdir/src/common"
+export LTTNG_SESSION_CONFIG_XSD_PATH
+
+LTTNG_CONSUMERD32_BIN="$bin/lttng-consumerd/lttng-consumerd"
+LTTNG_CONSUMERD64_BIN="$bin/lttng-consumerd/lttng-consumerd"
+export LTTNG_CONSUMERD32_BIN
+export LTTNG_CONSUMERD64_BIN
+
+# lttng-create setup.
+LTTNG_SESSIOND_PATH="$bin/lttng-sessiond/lttng-sessiond"
+export LTTNG_SESSIOND_PATH
+
+# Easy access to binaries.
+PATH="$bin/lttng:$bin/lttng-consumerd:$bin/lttng-crash:$bin/lttng-relayd:$bin/lttng-sessiond:$PATH"
+export PATH
+
+exec "$@"

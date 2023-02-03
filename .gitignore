@@ -31,6 +31,7 @@ stamp-h1
 libtool
 tags
 /config/
+pre-inst-env
 
 .autotools
 .cproject

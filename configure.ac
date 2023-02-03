@@ -1292,6 +1292,7 @@ AC_CONFIG_FILES([tests/regression/ust/python-logging/test_python_logging],[chmod
 # Inject LTTNG_TOOLS_BUILD_WITH_LIBPFM variable in test script.
 AC_CONFIG_FILES([tests/perf/test_perf_raw],[chmod +x tests/perf/test_perf_raw])
 AC_CONFIG_FILES([tests/regression/ust/ust-dl/test_ust-dl],[chmod +x tests/regression/ust/ust-dl/test_ust-dl])
+AC_CONFIG_FILES([pre-inst-env],[chmod +x pre-inst-env])
 
 AC_OUTPUT
 
