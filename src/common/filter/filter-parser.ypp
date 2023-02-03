@@ -29,6 +29,14 @@
 #define WIDTH_x64_SCANF_IS_A_BROKEN_API	"17"
 #define WIDTH_lg_SCANF_IS_A_BROKEN_API	"4096"	/* Hugely optimistic approximation */
 
+/*
+ * bison 3.8.2 produces a parser with unused, but set, which results in warnings
+ * at build time.
+ */
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#endif /* __clang__ */
+
 #ifdef DEBUG
 static const int print_xml = 1;
 #define dbg_printf(fmt, args...)	\
