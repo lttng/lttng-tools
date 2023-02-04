@@ -70,7 +70,7 @@ void free(Type *ptr)
 template <typename WrappedType, void (*DeleterFunc)(WrappedType *)>
 std::unique_ptr<WrappedType,
 		typename memory::create_deleter_class<WrappedType, DeleterFunc>::deleter>
-make_unique_wrapper(WrappedType *instance)
+make_unique_wrapper(WrappedType *instance = nullptr)
 {
 	const memory::create_deleter_class<WrappedType, DeleterFunc> unique_deleter;
 
