@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (c) 2023 Olivier Dion <odion@efficios.com>
+
+# Augment this list incrementally when a shell script passes shellcheck.
+#
+# All file must be relative to the test directory.
+files=(
+    meta/shellcheck-tests
+    run.sh
+)
+
+TESTDIR=$(dirname "$0")/..
+
+# shellcheck source=../utils/tap/tap.sh
+source "$TESTDIR/utils/tap/tap.sh"
+
+function shellcheck_ok() {
+    shellcheck --external-sources "$1"
+    ok $? "Checking $1"
+}
+
+plan_tests "${#files[@]}"
+
+for f in "${files[@]}";
+do
+    shellcheck_ok "$TESTDIR/$f"
+done

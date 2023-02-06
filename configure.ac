@@ -1203,6 +1203,7 @@ AC_CONFIG_FILES([
 	src/vendor/msgpack/Makefile
 	tests/Makefile
 	tests/destructive/Makefile
+	tests/meta/Makefile
 	tests/regression/Makefile
 	tests/regression/kernel/Makefile
 	tests/regression/tools/Makefile
