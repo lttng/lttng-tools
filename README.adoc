@@ -144,7 +144,7 @@ You need the following tools to build {lt}:
 
 To build the {lt} manual pages:
 
-* **https://www.methods.co.nz/asciidoc/[AsciiDoc]{nbsp}≥{nbsp}8.4.5**
+* **https://asciidoc.org/[AsciiDoc]{nbsp}≥{nbsp}8.4.5**
 +
 NOTE: Previous versions could work, but were not tested.
 
