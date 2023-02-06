@@ -8,6 +8,7 @@
 #define _LGPL_SOURCE
 #include "../command.hpp"
 
+#include <common/exception.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
@@ -23,7 +24,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int opt_destroy_all;
 static int opt_no_wait;
 
 #ifdef LTTNG_EMBED_HELP
@@ -38,12 +38,15 @@ static struct mi_writer *writer;
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
+	OPT_ALL,
+	OPT_ENABLE_GLOB,
 };
 
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
-	{ "all", 'a', POPT_ARG_VAL, &opt_destroy_all, 1, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
+	{ "glob", 'g', POPT_ARG_NONE, nullptr, OPT_ENABLE_GLOB, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
@@ -55,7 +58,7 @@ static struct poptOption long_options[] = {
  * Unregister the provided session to the session daemon. On success, removes
  * the default configuration.
  */
-static int destroy_session(struct lttng_session *session)
+static int destroy_session(const struct lttng_session& session)
 {
 	int ret;
 	char *session_name = nullptr;
@@ -67,7 +70,7 @@ static int destroy_session(struct lttng_session *session)
 	enum lttng_rotation_state rotation_state;
 	char *stats_str = nullptr;
 
-	ret = lttng_stop_tracing_no_wait(session->name);
+	ret = lttng_stop_tracing_no_wait(session.name);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		ERR("%s", lttng_strerror(ret));
 	}
@@ -75,7 +78,7 @@ static int destroy_session(struct lttng_session *session)
 	session_was_already_stopped = ret == -LTTNG_ERR_TRACE_ALREADY_STOPPED;
 	if (!opt_no_wait) {
 		do {
-			ret = lttng_data_pending(session->name);
+			ret = lttng_data_pending(session.name);
 			if (ret < 0) {
 				/* Return the data available call error. */
 				goto error;
@@ -88,7 +91,7 @@ static int destroy_session(struct lttng_session *session)
 			 */
 			if (ret) {
 				if (!printed_destroy_msg) {
-					_MSG("Destroying session %s", session->name);
+					_MSG("Destroying session %s", session.name);
 					newline_needed = true;
 					printed_destroy_msg = true;
 					fflush(stdout);
@@ -106,13 +109,13 @@ static int destroy_session(struct lttng_session *session)
 		 * Don't print the event and packet loss warnings since the user
 		 * already saw them when stopping the trace.
 		 */
-		ret = get_session_stats_str(session->name, &stats_str);
+		ret = get_session_stats_str(session.name, &stats_str);
 		if (ret < 0) {
 			goto error;
 		}
 	}
 
-	ret_code = lttng_destroy_session_ext(session->name, &handle);
+	ret_code = lttng_destroy_session_ext(session.name, &handle);
 	if (ret_code != LTTNG_OK) {
 		ret = -ret_code;
 		goto error;
@@ -128,7 +131,7 @@ static int destroy_session(struct lttng_session *session)
 		switch (status) {
 		case LTTNG_DESTRUCTION_HANDLE_STATUS_TIMEOUT:
 			if (!printed_destroy_msg) {
-				_MSG("Destroying session %s", session->name);
+				_MSG("Destroying session %s", session.name);
 				newline_needed = true;
 				printed_destroy_msg = true;
 			}
@@ -140,7 +143,7 @@ static int destroy_session(struct lttng_session *session)
 		default:
 			ERR("%sFailed to wait for the completion of the destruction of session \"%s\"",
 			    newline_needed ? "\n" : "",
-			    session->name);
+			    session.name);
 			newline_needed = false;
 			ret = -1;
 			goto error;
@@ -177,7 +180,7 @@ static int destroy_session(struct lttng_session *session)
 
 		status = lttng_destruction_handle_get_archive_location(handle, &location);
 		if (status == LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
-			ret = print_trace_archive_location(location, session->name);
+			ret = print_trace_archive_location(location, session.name);
 			if (ret) {
 				ERR("%sFailed to print the location of trace archive",
 				    newline_needed ? "\n" : "");
@@ -195,19 +198,19 @@ static int destroy_session(struct lttng_session *session)
 		goto skip_wait_rotation;
 	}
 skip_wait_rotation:
-	MSG("%sSession %s destroyed", newline_needed ? "\n" : "", session->name);
+	MSG("%sSession %s destroyed", newline_needed ? "\n" : "", session.name);
 	newline_needed = false;
 	if (stats_str) {
 		MSG("%s", stats_str);
 	}
 
 	session_name = get_session_name_quiet();
-	if (session_name && !strncmp(session->name, session_name, NAME_MAX)) {
+	if (session_name && !strncmp(session.name, session_name, NAME_MAX)) {
 		config_destroy_default();
 	}
 
 	if (lttng_opt_mi) {
-		ret = mi_lttng_session(writer, session, 0);
+		ret = mi_lttng_session(writer, &session, 0);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -225,34 +228,45 @@ error:
 	return ret;
 }
 
-/*
- * destroy_all_sessions
- *
- * Call destroy_sessions for each registered sessions
- */
-static int destroy_all_sessions(struct lttng_session *sessions, int count)
+static int destroy_sessions(const struct session_spec& spec)
 {
-	int i;
-	bool error_occurred = false;
+	try {
+		auto sessions = list_sessions(spec);
+		int ret = CMD_SUCCESS;
 
-	LTTNG_ASSERT(count >= 0);
-	if (count == 0) {
-		MSG("No session found, nothing to do.");
-	}
+		if (sessions.size() == 0) {
+			switch (spec.type) {
+			case session_spec::ALL: /* fall throught */
+			case session_spec::GLOB_PATTERN:
+				MSG("No session found, nothing to do.");
+				break;
+			case session_spec::NAME:
+				ERR("Session name %s not found", spec.value);
+				ret = LTTNG_ERR_SESS_NOT_FOUND;
+				break;
+			}
 
-	for (i = 0; i < count; i++) {
-		int ret = destroy_session(&sessions[i]);
-
-		if (ret < 0) {
-			ERR("%s during the destruction of session \"%s\"",
-			    lttng_strerror(ret),
-			    sessions[i].name);
-			/* Continue to next session. */
-			error_occurred = true;
+			return ret;
 		}
+
+		for (const auto& session : sessions) {
+			int const sub_ret = destroy_session(session);
+
+			if (sub_ret != CMD_SUCCESS) {
+				ERR("%s during the destruction of session \"%s\"",
+				    lttng_strerror(sub_ret),
+				    session.name);
+				ret = CMD_ERROR;
+			}
+		}
+
+		return ret;
+
+	} catch (lttng::ctl::error& error) {
+		ERR("%s", lttng_strerror(error.code()));
 	}
 
-	return error_occurred ? CMD_ERROR : CMD_SUCCESS;
+	return CMD_ERROR;
 }
 
 /*
@@ -261,15 +275,15 @@ static int destroy_all_sessions(struct lttng_session *sessions, int count)
 int cmd_destroy(int argc, const char **argv)
 {
 	int opt;
-	int ret = CMD_SUCCESS, i, command_ret = CMD_SUCCESS, success = 1;
+	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	bool success;
 	static poptContext pc;
-	char *session_name = nullptr;
-	const char *arg_session_name = nullptr;
 	const char *leftover = nullptr;
-
-	struct lttng_session *sessions = nullptr;
-	int count;
-	bool found;
+	struct session_spec spec = {
+		.type = session_spec::NAME,
+		.value = nullptr,
+	};
+	session_list const sessions;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -278,15 +292,20 @@ int cmd_destroy(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			SHOW_HELP();
-			break;
+			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
+			goto end;
+		case OPT_ALL:
+			spec.type = session_spec::ALL;
+			break;
+		case OPT_ENABLE_GLOB:
+			spec.type = session_spec::GLOB_PATTERN;
 			break;
 		default:
 			ret = CMD_UNDEFINED;
-			break;
+			goto end;
 		}
-		goto end;
 	}
 
 	/* Mi preparation */
@@ -319,72 +338,19 @@ int cmd_destroy(int argc, const char **argv)
 		}
 	}
 
-	/* Recuperate all sessions for further operation */
-	count = lttng_list_sessions(&sessions);
-	if (count < 0) {
-		ERR("%s", lttng_strerror(count));
-		command_ret = CMD_ERROR;
-		success = 0;
-		goto mi_closing;
-	}
+	spec.value = poptGetArg(pc);
 
-	/* Ignore session name in case all sessions are to be destroyed */
-	if (opt_destroy_all) {
-		command_ret = destroy_all_sessions(sessions, count);
-		if (command_ret) {
-			success = 0;
-		}
-	} else {
-		arg_session_name = poptGetArg(pc);
+	command_ret = destroy_sessions(spec);
 
-		if (!arg_session_name) {
-			/* No session name specified, lookup default */
-			session_name = get_session_name();
-		} else {
-			session_name = strdup(arg_session_name);
-			if (session_name == nullptr) {
-				PERROR("Failed to copy session name");
-			}
-		}
-
-		if (session_name == nullptr) {
-			command_ret = CMD_ERROR;
-			success = 0;
-			goto mi_closing;
-		}
-
-		/* Find the corresponding lttng_session struct */
-		found = false;
-		for (i = 0; i < count; i++) {
-			if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-				found = true;
-				command_ret = destroy_session(&sessions[i]);
-				if (command_ret) {
-					success = 0;
-					ERR("%s during the destruction of session \"%s\"",
-					    lttng_strerror(command_ret),
-					    sessions[i].name);
-				}
-			}
-		}
-
-		if (!found) {
-			ERR("Session name %s not found", session_name);
-			command_ret = LTTNG_ERR_SESS_NOT_FOUND;
-			success = 0;
-			goto mi_closing;
-		}
-	}
+	success = command_ret == CMD_SUCCESS;
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
 		ret = CMD_ERROR;
-		success = 0;
-		goto mi_closing;
+		success = false;
 	}
 
-mi_closing:
 	/* Mi closing */
 	if (lttng_opt_mi) {
 		/* Close sessions and output element element */
@@ -415,9 +381,6 @@ end:
 		/* Preserve original error code */
 		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
 	}
-
-	free(session_name);
-	free(sessions);
 
 	/* Overwrite ret if an error occurred during destroy_session/all */
 	ret = command_ret ? command_ret : ret;

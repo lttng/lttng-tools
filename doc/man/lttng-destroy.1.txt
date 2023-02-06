@@ -11,7 +11,7 @@ lttng-destroy - Destroy LTTng recording sessions
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--no-wait] [option:--all | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--no-wait] [option:--all | option:--glob 'SESSION' | 'SESSION']
 
 
 DESCRIPTION
@@ -76,6 +76,9 @@ option:-a, option:--all::
     man:lttng-list(1), instead of the current recording session or the
     recording session named 'SESSION'.
 
+option:-g, option:--glob::
+    Interpret SESSION as a globbing pattern.
+
 option:-n, option:--no-wait::
     Do :not: ensure that the trace data of the recording session(s) to
     destroy is valid before exiting.
@@ -123,6 +126,16 @@ See the option:--all option.
 [role="term"]
 ----
 $ lttng destroy --all
+----
+====
+
+.Destroy all recording sessions with the suffix foo.
+====
+See the option:--glob option.
+
+[role="term"]
+----
+$ lttng destroy --global '*foo'
 ----
 ====
 
