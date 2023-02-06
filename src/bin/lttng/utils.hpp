@@ -10,9 +10,12 @@
 
 #include <common/argpar/argpar.h>
 #include <common/dynamic-array.hpp>
+#include <common/make-unique-wrapper.hpp>
 
 #include <lttng/lttng.h>
 
+#include <iterator>
+#include <memory>
 #include <popt.h>
 
 extern char *opt_relayd_path;
@@ -21,6 +24,127 @@ extern char *opt_sessiond_path;
 extern pid_t sessiond_pid;
 
 struct cmd_struct;
+
+struct session_spec {
+	enum type {
+		NAME,
+		GLOB_PATTERN,
+		ALL,
+	};
+
+	type type;
+	const char *value;
+};
+
+/*
+ * We don't use a std::vector here because it would make a copy of the C array.
+ */
+class session_list {
+	class iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
+	public:
+		explicit iterator(session_list& list, std::size_t k) : _list(list), _index(k)
+		{
+		}
+
+		iterator& operator++() noexcept
+		{
+			++_index;
+			return *this;
+		}
+
+		iterator& operator--() noexcept
+		{
+			--_index;
+			return *this;
+		}
+
+		iterator& operator++(int) noexcept
+		{
+			_index++;
+			return *this;
+		}
+
+		iterator& operator--(int) noexcept
+		{
+			_index--;
+			return *this;
+		}
+
+		bool operator==(iterator other) const noexcept
+		{
+			return _index == other._index;
+		}
+
+		bool operator!=(iterator other) const noexcept
+		{
+			return !(*this == other);
+		}
+
+		lttng_session& operator*() const noexcept
+		{
+			return _list[_index];
+		}
+
+	private:
+		session_list& _list;
+		std::size_t _index;
+	};
+
+public:
+	session_list() : _sessions_count(0), _sessions(nullptr)
+	{
+	}
+
+	session_list(session_list&& original, std::size_t new_count)
+	{
+		_sessions_count = new_count;
+		_sessions = std::move(original._sessions);
+	}
+
+	session_list(struct lttng_session *raw_sessions, std::size_t raw_sessions_count)
+	{
+		_sessions_count = raw_sessions_count;
+		_sessions.reset(raw_sessions);
+	}
+
+	iterator begin() noexcept
+	{
+		return iterator(*this, 0);
+	}
+
+	iterator end() noexcept
+	{
+		return iterator(*this, _sessions_count);
+	}
+
+	std::size_t size() const noexcept
+	{
+		return _sessions_count;
+	}
+
+	void resize(std::size_t new_size) noexcept
+	{
+		_sessions_count = new_size;
+	}
+
+	lttng_session& operator[](std::size_t index)
+	{
+		LTTNG_ASSERT(index < _sessions_count);
+		return _sessions.get()[index];
+	}
+
+	const lttng_session& operator[](std::size_t index) const
+	{
+		LTTNG_ASSERT(index < _sessions_count);
+		return _sessions.get()[index];
+	}
+
+private:
+	std::size_t _sessions_count;
+	std::unique_ptr<lttng_session,
+			lttng::details::create_unique_class<lttng_session, lttng::free>>
+		_sessions;
+};
 
 char *get_session_name(void);
 char *get_session_name_quiet(void);
@@ -61,5 +185,7 @@ int print_trace_archive_location(const struct lttng_trace_archive_location *loca
 
 int validate_exclusion_list(const char *event_name,
 			    const struct lttng_dynamic_pointer_array *exclusions);
+
+session_list list_sessions(const struct session_spec& spec);
 
 #endif /* _LTTNG_UTILS_H */

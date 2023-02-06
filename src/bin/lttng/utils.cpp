@@ -12,10 +12,13 @@
 
 #include <common/defaults.hpp>
 #include <common/error.hpp>
+#include <common/exception.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/utils.hpp>
 
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <fnmatch.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <netinet/in.h>
@@ -658,4 +661,82 @@ end:
 		MSG(" at an unknown location");
 	}
 	return ret;
+}
+
+namespace {
+template <typename FilterFunctionType>
+session_list get_sessions(const FilterFunctionType& filter, bool return_first_match_only = false)
+{
+	session_list list;
+
+	{
+		int list_ret;
+		struct lttng_session *psessions;
+
+		list_ret = lttng_list_sessions(&psessions);
+
+		if (list_ret < 0) {
+			LTTNG_THROW_CTL("Failed to list sessions",
+					static_cast<lttng_error_code>(list_ret));
+		}
+
+		list = session_list(psessions, list_ret);
+	}
+
+	std::size_t write_to = 0;
+	for (std::size_t read_from = 0; read_from < list.size(); ++read_from) {
+		if (!filter(list[read_from])) {
+			continue;
+		}
+
+		if (read_from != write_to) {
+			list[write_to] = list[read_from];
+		}
+
+		++write_to;
+
+		if (return_first_match_only) {
+			return session_list(std::move(list), 1);
+		}
+	}
+
+	list.resize(write_to);
+
+	return list;
+}
+} /* namespace */
+
+session_list list_sessions(const struct session_spec& spec)
+{
+	switch (spec.type) {
+	case session_spec::NAME:
+		if (spec.value == nullptr) {
+			const auto configured_name =
+				lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
+
+			if (configured_name) {
+				const struct session_spec new_spec = {
+					.type = session_spec::NAME, .value = configured_name.get()
+				};
+
+				return list_sessions(new_spec);
+			}
+
+			return session_list();
+		}
+
+		return get_sessions(
+			[&spec](const lttng_session& session) {
+				return strcmp(session.name, spec.value) == 0;
+			},
+			true);
+	case session_spec::GLOB_PATTERN:
+		return get_sessions([&spec](const lttng_session& session) {
+			return fnmatch(spec.value, session.name, 0) == 0;
+		});
+	case session_spec::ALL:
+		return get_sessions([](const lttng_session&) { return true; });
+	}
+
+	return session_list();
 }
