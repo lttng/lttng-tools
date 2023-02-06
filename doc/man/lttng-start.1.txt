@@ -11,7 +11,7 @@ lttng-start - Start an LTTng recording session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *start* ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *start* [option::--all | option::--glob 'SESSION' | 'SESSION' ]
 
 
 DESCRIPTION
@@ -44,6 +44,11 @@ include::common-lttng-cmd-options-head.txt[]
 
 include::common-lttng-cmd-help-options.txt[]
 
+option:-a, option:--all::
+    Start all sessions.
+
+option:-g, option:--glob::
+    Interpret SESSION as a globbing pattern.
 
 include::common-lttng-cmd-after-options.txt[]
 
@@ -64,6 +69,26 @@ $ lttng start
 [role="term"]
 ----
 $ lttng start my-session
+----
+====
+
+.Start all sessions.
+====
+See the option::--all option.
+
+[role="term"]
+----
+$ lttng start --all
+----
+====
+
+.Start all sessions with the suffix foo.
+====
+See the option::--glob option.
+
+[role="term"]
+----
+$ lttng start --glob '*foo'
 ----
 ====
 
