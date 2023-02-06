@@ -7,7 +7,9 @@
 
 #define _LGPL_SOURCE
 #include "../command.hpp"
+#include "../utils.hpp"
 
+#include <common/exception.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 
@@ -31,6 +33,8 @@ static const char help_msg[] =
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
+	OPT_ENABLE_GLOB,
+	OPT_ALL,
 };
 
 static struct poptOption long_options[] = {
@@ -38,13 +42,15 @@ static struct poptOption long_options[] = {
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "no-wait", 'n', POPT_ARG_VAL, &opt_no_wait, 1, nullptr, nullptr },
+	{ "glob", 'g', POPT_ARG_NONE, nullptr, OPT_ENABLE_GLOB, nullptr, nullptr },
+	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
 /*
  * Mi print of partial session
  */
-static int mi_print_session(char *session_name, int enabled)
+static int mi_print_session(const char *session_name, int enabled)
 {
 	int ret;
 	LTTNG_ASSERT(writer);
@@ -78,24 +84,9 @@ end:
 /*
  * Start tracing for all trace of the session.
  */
-static int stop_tracing(const char *arg_session_name)
+static int stop_tracing(const char *session_name)
 {
 	int ret;
-	char *session_name;
-
-	if (arg_session_name == nullptr) {
-		session_name = get_session_name();
-	} else {
-		session_name = strdup(arg_session_name);
-		if (session_name == nullptr) {
-			PERROR("Failed to copy session name");
-		}
-	}
-
-	if (session_name == nullptr) {
-		ret = CMD_ERROR;
-		goto error;
-	}
 
 	ret = lttng_stop_tracing_no_wait(session_name);
 	if (ret < 0) {
@@ -107,7 +98,7 @@ static int stop_tracing(const char *arg_session_name)
 			ERR("%s", lttng_strerror(ret));
 			break;
 		}
-		goto free_name;
+		goto error;
 	}
 
 	if (!opt_no_wait) {
@@ -117,7 +108,7 @@ static int stop_tracing(const char *arg_session_name)
 			ret = lttng_data_pending(session_name);
 			if (ret < 0) {
 				/* Return the data available call error. */
-				goto free_name;
+				goto error;
 			}
 
 			/*
@@ -139,15 +130,27 @@ static int stop_tracing(const char *arg_session_name)
 	MSG("Tracing stopped for session %s", session_name);
 	if (lttng_opt_mi) {
 		ret = mi_print_session(session_name, 0);
-		if (ret) {
-			goto free_name;
+	}
+error:
+	return ret;
+}
+
+static int stop_tracing(const struct session_spec& spec)
+{
+	int ret = CMD_SUCCESS;
+
+	try {
+		for (const auto& session : list_sessions(spec)) {
+			int const sub_ret = stop_tracing(session.name);
+
+			if (sub_ret != CMD_SUCCESS) {
+				ret = sub_ret;
+			}
 		}
+	} catch (lttng::ctl::error& error) {
+		ret = error.code();
 	}
 
-free_name:
-	free(session_name);
-
-error:
 	return ret;
 }
 
@@ -160,8 +163,11 @@ int cmd_stop(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
-	const char *arg_session_name = nullptr;
 	const char *leftover = nullptr;
+	struct session_spec session_spec = {
+		.type = session_spec::NAME,
+		.value = nullptr,
+	};
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -174,6 +180,12 @@ int cmd_stop(int argc, const char **argv)
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
+		case OPT_ENABLE_GLOB:
+			session_spec.type = session_spec::GLOB_PATTERN;
+			break;
+		case OPT_ALL:
+			session_spec.type = session_spec::ALL;
+			break;
 		default:
 			ret = CMD_UNDEFINED;
 			goto end;
@@ -213,7 +225,7 @@ int cmd_stop(int argc, const char **argv)
 		}
 	}
 
-	arg_session_name = poptGetArg(pc);
+	session_spec.value = poptGetArg(pc);
 
 	leftover = poptGetArg(pc);
 	if (leftover) {
@@ -222,7 +234,7 @@ int cmd_stop(int argc, const char **argv)
 		goto end;
 	}
 
-	command_ret = stop_tracing(arg_session_name);
+	command_ret = stop_tracing(session_spec);
 	if (command_ret) {
 		success = 0;
 	}

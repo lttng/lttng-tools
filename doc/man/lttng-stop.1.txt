@@ -11,7 +11,7 @@ lttng-stop - Stop an LTTng recording session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *stop* [option:--no-wait] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *stop* [option:--no-wait] [option:--all | option:--glob 'SESSION' | 'SESSION']
 
 
 DESCRIPTION
@@ -62,6 +62,11 @@ option:-n, option:--no-wait::
     Do :not: ensure that the trace data of the selected recording
     session is valid before exiting.
 
+option:-a, option:--all::
+    Stop all sessions.
+
+option:-g, option:--glob::
+    Interpret SESSION as a globbing pattern.
 
 include::common-lttng-cmd-help-options.txt[]
 
@@ -95,6 +100,26 @@ See the option:--no-wait option.
 [role="term"]
 ----
 $ lttng stop --no-wait
+----
+====
+
+.Stop all sessions.
+====
+See the option:--all option.
+
+[role="term"]
+----
+$ lttng stop --all
+----
+====
+
+.Stop all sessions with the suffix foo.
+====
+See the option:--glob option.
+
+[role="term"]
+----
+$ lttng stop --glob '*foo'
 ----
 ====
 
