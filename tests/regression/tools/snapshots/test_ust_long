@@ -15,4 +15,4 @@ if [ ! -x "$CURDIR/$TEST_BIN" ]; then
 	BAIL_OUT "No UST test found: $TEST_BIN"
 fi
 
-./$CURDIR/$TEST_BIN $NR_SNAPSHOT
+exec $CURDIR/$TEST_BIN $NR_SNAPSHOT
