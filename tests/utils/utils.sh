@@ -217,33 +217,69 @@ function randstring()
 # Helpers for get_possible_cpus.
 function get_possible_cpus_count_from_sysfs_possible_mask()
 {
-	local max_possible_cpu_id=$(cut -d '-' -f 2 < /sys/devices/system/cpu/possible)
-	echo $((max_possible_cpu_id+1))
+	local max_possible_cpu_id
+
+	# The Awk script extracts the highest CPU id from the possible CPU
+	# mask. Assuming a numerical order, a field separator '-' and a record
+	# separator ','. The last value parsed is the highest id.
+	if [ -f /sys/devices/system/cpu/possible ]; then
+		max_possible_cpu_id=$(awk -F '-' 'BEGIN { RS = ","} { last = $NF } END { printf("%d\n", last) }' \
+				      /sys/devices/system/cpu/possible)
+		echo "$((max_possible_cpu_id+1))"
+	else
+		echo "0"
+	fi
 }
 
+# This is a fallback if the possible CPU mask is not available. This will not
+# take into account unplugged CPUs.
 function get_max_cpus_count_from_sysfs_cpu_directories()
 {
-	local max_possible_cpu_id= \
-		$(find /sys/devices/system/cpu/ -mindepth 1 -maxdepth 1 -regex ".+cpu[0-9]+" | \
-		  sed -e 's/cpu//g' | \
-		  awk -F '/' '{ if ($NF > N) N = $NF } END { print N }')
-	echo $((max_possible_cpu_id+1))
+	local max_possible_cpu_id=0
+	local current_cpu_id
+
+	for i in /sys/devices/system/cpu/cpu[0-9]*; do
+		current_cpu_id="${i#/sys/devices/system/cpu/cpu}"
+		if [ "$current_cpu_id" -gt "$max_possible_cpu_id" ]; then
+			max_possible_cpu_id="$current_cpu_id"
+		fi
+	done
+
+	echo "$((max_possible_cpu_id+1))"
 }
 
 # Return the number of possible CPUs.
 function get_possible_cpus_count()
 {
-	local possible_cpus_count=$(get_possible_cpus_count_from_sysfs_possible_mask)
+	local possible_cpus_count
+	possible_cpus_count=$(get_possible_cpus_count_from_sysfs_possible_mask)
 
-	if [ $? -ne 0 ]; then
+	if [ "$possible_cpus_count" -eq "0" ]; then
+		local configured_cpus_count
+		configured_cpus_count=$(getconf _NPROCESSORS_CONF)
 		possible_cpus_count=$(get_max_cpus_count_from_sysfs_cpu_directories)
-		local configured_cpus_count=$(getconf _NPROCESSORS_CONF)
-		possible_cpus_count=$(($configured_cpus_count > $possible_cpus_count \
-							      ? $configured_cpus_count \
-							      : $possible_cpus_count))
+		possible_cpus_count=$((configured_cpus_count > possible_cpus_count \
+							     ? configured_cpus_count \
+							     : possible_cpus_count))
 	fi
 
-	echo $possible_cpus_count
+	echo "$possible_cpus_count"
+}
+
+# Return the list of exposed CPU.
+#
+# NOTE! Use it like so:
+#
+# IFS=" " read -r -a VARIABLE <<< "$(get_exposed_cpus_list)"
+function get_exposed_cpus_list()
+{
+	local list=()
+
+	for i in /sys/devices/system/cpu/cpu[0-9]*; do
+		list+=("${i#/sys/devices/system/cpu/cpu}")
+	done
+
+	echo "${list[@]}"
 }
 
 # Return the number of _configured_ CPUs.
