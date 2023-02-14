@@ -298,14 +298,15 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 function test_ust_local_snapshot_max_size ()
 {
 	local possible_cpus
-	local online_cpus
+	local cpus_list
 	local subbuf_size
 	local subbuf_count
 	local snapshot_max_size
 	local channel_max_size_per_cpu
 
+	IFS=" " read -r -a cpus_list <<< "$(get_exposed_cpus_list)"
+
 	possible_cpus=$(get_possible_cpus_count)
-	online_cpus=$(conf_proc_count)
 	subbuf_size=$(getconf PAGE_SIZE)
 	subbuf_count=8
 	snapshot_max_size=$((subbuf_size*possible_cpus))
@@ -325,9 +326,10 @@ function test_ust_local_snapshot_max_size ()
 
 	# Fill all ring-buffers of the channel; assuming event size of at least one
 	# byte
-	for cpu in $(seq "$online_cpus");
+	for cpu in "${cpus_list[@]}";
 	do
-		taskset --cpu-list $((cpu-1)) "$TESTAPP_BIN" \
+		diag "setting affinity to $cpu"
+		taskset --cpu-list "$cpu" "$TESTAPP_BIN" \
 			--iter "$channel_max_size_per_cpu"
 	done
 	diag "Filled channel ring-buffers"
