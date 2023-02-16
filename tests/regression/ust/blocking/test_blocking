@@ -19,13 +19,14 @@ EVENT_NAME="tp:tptest"
 
 NUM_TESTS=49
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source=../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
 
 # MUST set TESTDIR before calling those functions
-# Run app on CPU 0 to ensure we only write in a single ring buffer.
+# Run app on a single CPU to ensure we only write in a single ring buffer.
 function run_app()
 {
-	taskset 0x00000001 $TESTAPP_BIN -i $NUM_EVENT
+	taskset --cpu-list "$(get_any_available_cpu)" $TESTAPP_BIN -i $NUM_EVENT
 	ok $? "Application done"
 }
 

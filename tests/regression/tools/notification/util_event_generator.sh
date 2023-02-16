@@ -14,6 +14,9 @@ SYSCALL_TESTAPP_BIN=${SYSCALL_TESTAPP_BIN:-"$TESTAPP_PATH/$SYSCALL_TESTAPP_NAME/
 USERSPACE_PROBE_ELF_TESTAPP_NAME=${USERSPACE_PROBE_ELF_TESTAPP_NAME:-"userspace-probe-elf-binary"}
 USERSPACE_PROBE_ELF_TESTAPP_BIN=${USERSPACE_PROBE_ELF_TESTAPP_BIN:-"$TESTAPP_PATH/$USERSPACE_PROBE_ELF_TESTAPP_NAME/.libs/$USERSPACE_PROBE_ELF_TESTAPP_NAME"}
 
+# shellcheck source=../utils/utils.sh
+source "$GENERATOR_TESTDIR/utils/utils.sh"
+
 function generate_filter_events
 {
 	local nr=$1
@@ -25,7 +28,7 @@ function generate_syscalls
 	local nr=$1
 	shift
 
-	for i in $(seq 1 "$nr"); do
+	for _ in $(seq 1 "$nr"); do
 		# Pass /dev/null so to generate the syscall right away.
 		$SYSCALL_TESTAPP_BIN /dev/null "$@"
 	done
@@ -36,7 +39,7 @@ function userspace_probe_testapp
 	local nr=$1
 	shift 
 
-	for i in $(seq 1 "$nr"); do
+	for _ in $(seq 1 "$nr"); do
 		# This userspace probe test has to instrument the actual elf
 		# binary and not the generated libtool wrapper. However, we
 		# can't invoke the wrapper either since it will re-link the test
@@ -90,7 +93,7 @@ function ust_event_generator_run_once_per_transition
 			run=true
 			sleep 0.5
 		elif [ "$run" = true ]; then
-			taskset -c 0 "$test_app" -i "$nr_iter" -w "$nr_usec_wait" "$@"> /dev/null 2>&1
+			taskset -c "$(get_any_available_cpu)" "$test_app" -i "$nr_iter" -w "$nr_usec_wait" "$@"> /dev/null 2>&1
 			run=false;
 			if [[ -f $state_file ]]; then
 				rm -rf "$state_file" 2> /dev/null
@@ -127,7 +130,7 @@ function ust_event_generator
 			# Reset the "run" state
 			sleep 0.5
 		else
-			taskset -c 0 "$test_app" -i $nr_iter -w $nr_usec_wait "$@" > /dev/null 2>&1
+			taskset -c "$(get_any_available_cpu)" "$test_app" -i $nr_iter -w $nr_usec_wait "$@" > /dev/null 2>&1
 			if [[ -f $state_file ]]; then
 				rm -rf "$state_file" 2> /dev/null
 			fi
