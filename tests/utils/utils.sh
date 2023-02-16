@@ -282,6 +282,16 @@ function get_exposed_cpus_list()
 	echo "${list[@]}"
 }
 
+# Return any available CPU found. Do not make assumption about the returned
+# value, e.g. that it could be 0.
+function get_any_available_cpu()
+{
+	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+		echo "${cpu#/sys/devices/system/cpu/cpu}"
+		break;
+	done
+}
+
 # Return the number of _configured_ CPUs.
 function conf_proc_count()
 {

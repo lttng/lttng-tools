@@ -15,7 +15,8 @@ TRACE_PATH=$(mktemp -d -t tmp.test_clear_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=837
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source=../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
 
 function signal_cleanup ()
 {
@@ -488,7 +489,7 @@ function test_kernel_streaming_tracefile_rotation_overwrite_files ()
 		--tracefile-size=$PAGE_SIZE --tracefile-count=2
 	enable_kernel_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
 	start_lttng_tracing_ok $SESSION_NAME
-	taskset -c 0 echo -n "200000" > /proc/lttng-test-filter-event
+	taskset -c "$(get_any_available_cpu)" echo -n "200000" > /proc/lttng-test-filter-event
 	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
 	stop_lttng_tracing_ok $SESSION_NAME
 
@@ -499,7 +500,7 @@ function test_kernel_streaming_tracefile_rotation_overwrite_files ()
 	fi
 
 	start_lttng_tracing_ok $SESSION_NAME
-	taskset -c 0 echo -n "400000" > /proc/lttng-test-filter-event
+	taskset -c "$(get_any_available_cpu)" echo -n "400000" > /proc/lttng-test-filter-event
 	stop_lttng_tracing_ok
 
 	if [[ $rotate_before -eq 1 ]]; then

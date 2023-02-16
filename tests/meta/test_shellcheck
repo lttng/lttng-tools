@@ -8,6 +8,7 @@
 # All file must be relative to the test directory.
 files=(
     meta/test_shellcheck
+    regression/tools/notification/util_event_generator.sh
     run.sh
 )
 

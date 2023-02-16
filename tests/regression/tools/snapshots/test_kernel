@@ -96,8 +96,8 @@ function test_kernel_local_snapshot_append_to_metadata ()
 
 function generate_filter_events_cpu0()
 {
-	# Generate many events (fill buffers) on CPU 0
-	taskset 0x00000001 /bin/echo -n "$1" > /proc/lttng-test-filter-event 2> /dev/null
+	# Generate many events (fill buffers) on a single CPU
+	taskset --cpu-list "$(get_any_available_cpu)" /bin/echo -n "$1" > /proc/lttng-test-filter-event 2> /dev/null
 }
 
 function test_kernel_local_snapshot_discard ()
