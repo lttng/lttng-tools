@@ -7,7 +7,7 @@
 #
 # All file must be relative to the test directory.
 files=(
-    meta/shellcheck-tests
+    meta/test_shellcheck
     run.sh
 )
 
