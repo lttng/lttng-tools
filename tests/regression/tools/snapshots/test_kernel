@@ -104,7 +104,7 @@ function true_loop_cpu0()
 {
 	# Generate many system call events (fill buffers) on CPU 0
 	for a in $(seq 1 $1); do
-		taskset 0x00000001 /bin/true;
+		taskset --cpu-list "$(get_any_available_cpu)" /bin/true;
 	done
 }
 
