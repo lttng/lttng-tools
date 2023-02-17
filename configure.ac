@@ -1281,6 +1281,7 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/gen-kernel-test-events/Makefile
 	tests/utils/testapp/gen-py-events/Makefile
 	tests/utils/testapp/gen-ust-events/Makefile
+	tests/utils/testapp/gen-ust-events-constructor/Makefile
 	tests/utils/testapp/gen-ust-events-ns/Makefile
 	tests/utils/testapp/gen-syscall-events-callstack/Makefile
 	tests/utils/testapp/gen-ust-nevents/Makefile

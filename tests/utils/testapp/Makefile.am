@@ -8,7 +8,8 @@ SUBDIRS = \
 	  gen-ust-nevents-str \
 	  gen-ust-tracef \
 	  userspace-probe-elf-binary \
-	  userspace-probe-elf-cxx-binary
+	  userspace-probe-elf-cxx-binary \
+	  gen-ust-events-constructor
 
 if TEST_SDT_UPROBE
 SUBDIRS += userspace-probe-sdt-binary
