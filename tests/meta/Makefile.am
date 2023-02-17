@@ -4,7 +4,11 @@ LOG_DRIVER_FLAGS = --merge
 LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
 		$(top_srcdir)/tests/utils/tap-driver.sh
 
-TESTS = test_shellcheck
+TESTS =
+
+if HAVE_SHELLCHECK
+TESTS += test_shellcheck
+endif
 
 EXTRA_DIST = $(TESTS)
 

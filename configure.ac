@@ -171,6 +171,9 @@ AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != "x"])
 AC_PATH_PROG([PGREP], [pgrep])
 AM_CONDITIONAL([HAVE_PGREP], [test "x$PGREP" != "x"])
 
+AC_PATH_PROG([SHELLCHECK], [shellcheck])
+AM_CONDITIONAL([HAVE_SHELLCHECK], [test "x$SHELLCHECK" != "x"])
+
 # set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
 # is not distributed in tarballs
 AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
