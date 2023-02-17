@@ -187,6 +187,44 @@ class WaitTraceTestApplication:
             self._process.wait()
 
 
+class TraceTestApplication:
+    """
+    Create an application to trace.
+    """
+
+    def __init__(self, binary_path: pathlib.Path, environment: "Environment"):
+        self._environment: Environment = environment
+        self._has_returned = False
+
+        test_app_env = os.environ.copy()
+        test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
+        # Make sure the app is blocked until it is properly registered to
+        # the session daemon.
+        test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
+
+        test_app_args = [str(binary_path)]
+
+        self._process: subprocess.Popen = subprocess.Popen(
+            test_app_args, env=test_app_env
+        )
+
+    def wait_for_exit(self) -> None:
+        if self._process.wait() != 0:
+            raise RuntimeError(
+                "Test application has exit with return code `{return_code}`".format(
+                    return_code=self._process.returncode
+                )
+            )
+        self._has_returned = True
+
+    def __del__(self):
+        if not self._has_returned:
+            # This is potentially racy if the pid has been recycled. However,
+            # we can't use pidfd_open since it is only available in python >= 3.9.
+            self._process.kill()
+            self._process.wait()
+
+
 class ProcessOutputConsumer(threading.Thread, logger._Logger):
     def __init__(
         self,
@@ -371,6 +409,22 @@ class _Environment(logger._Logger):
             / "gen-ust-nevents"
             / "gen-ust-nevents",
             event_count,
+            self,
+        )
+
+    def launch_trace_test_constructor_application(
+        self
+    ) -> TraceTestApplication:
+        """
+        Launch an application that will trace from within constructors.
+        """
+        return TraceTestApplication(
+            self._project_root
+            / "tests"
+            / "utils"
+            / "testapp"
+            / "gen-ust-events-constructor"
+            / "gen-ust-events-constructor",
             self,
         )
 

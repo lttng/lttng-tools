@@ -24,7 +24,8 @@ SUBDIRS = \
 	overlap \
 	periodical-metadata-flush \
 	rotation-destroy-flush \
-	type-declarations
+	type-declarations \
+	ust-constructor
 
 if HAVE_OBJCOPY
 SUBDIRS += \
