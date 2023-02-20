@@ -154,6 +154,28 @@ enum lttng_event_output {
 %rename("EVENT_CONTEXT_PREEMPTIBLE") LTTNG_EVENT_CONTEXT_PREEMPTIBLE;
 %rename("EVENT_CONTEXT_NEED_RESCHEDULE") LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE;
 %rename("EVENT_CONTEXT_MIGRATABLE") LTTNG_EVENT_CONTEXT_MIGRATABLE;
+%rename("EVENT_CONTEXT_CALLSTACK_KERNEL") LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL;
+%rename("EVENT_CONTEXT_CALLSTACK_USER") LTTNG_EVENT_CONTEXT_CALLSTACK_USER;
+%rename("EVENT_CONTEXT_CGROUP_NS") LTTNG_EVENT_CONTEXT_CGROUP_NS;
+%rename("EVENT_CONTEXT_IPC_NS") LTTNG_EVENT_CONTEXT_IPC_NS;
+%rename("EVENT_CONTEXT_MNT_NS") LTTNG_EVENT_CONTEXT_MNT_NS;
+%rename("EVENT_CONTEXT_NET_NS") LTTNG_EVENT_CONTEXT_NET_NS;
+%rename("EVENT_CONTEXT_PID_NS") LTTNG_EVENT_CONTEXT_PID_NS;
+%rename("EVENT_CONTEXT_USER_NS") LTTNG_EVENT_CONTEXT_USER_NS;
+%rename("EVENT_CONTEXT_UTS_NS") LTTNG_EVENT_CONTEXT_UTS_NS;
+%rename("EVENT_CONTEXT_UID") LTTNG_EVENT_CONTEXT_UID;
+%rename("EVENT_CONTEXT_EUID") LTTNG_EVENT_CONTEXT_EUID;
+%rename("EVENT_CONTEXT_SUID") LTTNG_EVENT_CONTEXT_SUID;
+%rename("EVENT_CONTEXT_GID") LTTNG_EVENT_CONTEXT_GID;
+%rename("EVENT_CONTEXT_EGID") LTTNG_EVENT_CONTEXT_EGID;
+%rename("EVENT_CONTEXT_SGID") LTTNG_EVENT_CONTEXT_SGID;
+%rename("EVENT_CONTEXT_VUID") LTTNG_EVENT_CONTEXT_VUID;
+%rename("EVENT_CONTEXT_VEUID") LTTNG_EVENT_CONTEXT_VEUID;
+%rename("EVENT_CONTEXT_VSUID") LTTNG_EVENT_CONTEXT_VSUID;
+%rename("EVENT_CONTEXT_VGID") LTTNG_EVENT_CONTEXT_VGID;
+%rename("EVENT_CONTEXT_VEGID") LTTNG_EVENT_CONTEXT_VEGID;
+%rename("EVENT_CONTEXT_VSGID") LTTNG_EVENT_CONTEXT_VSGID;
+%rename("EVENT_CONTEXT_TIME_NS") LTTNG_EVENT_CONTEXT_TIME_NS;
 enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PID               = 0,
 	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
@@ -175,6 +197,28 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PREEMPTIBLE       = 17,
 	LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE   = 18,
 	LTTNG_EVENT_CONTEXT_MIGRATABLE        = 19,
+	LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL  = 20,
+	LTTNG_EVENT_CONTEXT_CALLSTACK_USER    = 21,
+	LTTNG_EVENT_CONTEXT_CGROUP_NS         = 22,
+	LTTNG_EVENT_CONTEXT_IPC_NS            = 23,
+	LTTNG_EVENT_CONTEXT_MNT_NS            = 24,
+	LTTNG_EVENT_CONTEXT_NET_NS            = 25,
+	LTTNG_EVENT_CONTEXT_PID_NS            = 26,
+	LTTNG_EVENT_CONTEXT_USER_NS           = 27,
+	LTTNG_EVENT_CONTEXT_UTS_NS            = 28,
+	LTTNG_EVENT_CONTEXT_UID               = 29,
+	LTTNG_EVENT_CONTEXT_EUID              = 30,
+	LTTNG_EVENT_CONTEXT_SUID              = 31,
+	LTTNG_EVENT_CONTEXT_GID               = 32,
+	LTTNG_EVENT_CONTEXT_EGID              = 33,
+	LTTNG_EVENT_CONTEXT_SGID              = 34,
+	LTTNG_EVENT_CONTEXT_VUID              = 35,
+	LTTNG_EVENT_CONTEXT_VEUID             = 36,
+	LTTNG_EVENT_CONTEXT_VSUID             = 37,
+	LTTNG_EVENT_CONTEXT_VGID              = 38,
+	LTTNG_EVENT_CONTEXT_VEGID             = 39,
+	LTTNG_EVENT_CONTEXT_VSGID             = 40,
+	LTTNG_EVENT_CONTEXT_TIME_NS           = 41,
 };
 
 
@@ -927,6 +971,72 @@ struct lttng_event_context {
 				break;
 			case 19:
 				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_MIGRATABLE)");
+				break;
+			case 20:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_CALLSTACK_KERNEL)");
+				break;
+			case 21:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_CALLSTACK_USER)");
+				break;
+			case 22:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_CGROUP_NS)");
+				break;
+			case 23:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_IPC_NS)");
+				break;
+			case 24:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_MNT_NS)");
+				break;
+			case 25:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_NET_NS)");
+				break;
+			case 26:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PID_NS)");
+				break;
+			case 27:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_USER_NS)");
+				break;
+			case 28:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_UTS_NS)");
+				break;
+			case 29:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_UID)");
+				break;
+			case 30:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_EUID)");
+				break;
+			case 31:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_SUID)");
+				break;
+			case 32:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_GID)");
+				break;
+			case 33:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_EGID)");
+				break;
+			case 34:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_SGID)");
+				break;
+			case 35:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VUID)");
+				break;
+			case 36:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VEUID)");
+				break;
+			case 37:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VSUID)");
+				break;
+			case 38:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VGID)");
+				break;
+			case 39:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VEGID)");
+				break;
+			case 40:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_VSGID)");
+				break;
+			case 41:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_TIME_NS)");
 				break;
 			default:
 				sprintf(temp, "lttng.EventContext; type(%i)", $self->ctx);
