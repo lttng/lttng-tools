@@ -55,7 +55,7 @@ channels.
 Repeat the option:--type='TYPE' option to add more than one context
 field to be recorded. 'TYPE' is one of:
 
-* A statically-known, or built-in context field named.
+* A statically-known, or built-in context field name.
 
 * A perf counter name:
 +
