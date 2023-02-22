@@ -73,6 +73,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	char *owner_uid = nullptr;
 	long long uid;
 	struct mi_writer *mi_writer = nullptr;
+	const char **args;
 
 	if (lttng_opt_mi) {
 		mi_writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
@@ -97,10 +98,9 @@ int cmd_remove_trigger(int argc, const char **argv)
 		}
 	}
 
-	argc--;
-	argv++;
+	args = argv + 1;
 
-	argpar_iter = argpar_iter_create(argc, argv, remove_trigger_options);
+	argpar_iter = argpar_iter_create(argc - 1, args, remove_trigger_options);
 	if (!argpar_iter) {
 		ERR("Failed to allocate an argpar iter.");
 		goto error;
@@ -110,7 +110,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 		enum parse_next_item_status status;
 
 		status =
-			parse_next_item(argpar_iter, &argpar_item, 1, argv, true, nullptr, nullptr);
+			parse_next_item(argpar_iter, &argpar_item, 1, args, true, nullptr, nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR ||
 		    status == PARSE_NEXT_ITEM_STATUS_ERROR_MEMORY) {
 			goto error;
