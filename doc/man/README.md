@@ -4,7 +4,7 @@ LTTng-tools man pages
 This directory contains the sources of the LTTng-tools man pages.
 
 LTTng-tools man pages are written in
-[AsciiDoc](http://www.methods.co.nz/asciidoc/), and then converted to
+[AsciiDoc](https://asciidoc.org/), and then converted to
 DocBook (XML) using the `asciidoc` command, and finally to troff using
 the appropriate DocBook XSL stylesheet (using the `xmlto` command).
 
