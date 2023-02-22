@@ -63,6 +63,30 @@ static int kernel_tracer_event_notifier_group_notification_fd = -1;
 static struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
 
 /*
+ * On some architectures, calling convention details are embedded in the symbol
+ * addresses. Uprobe requires a "clean" symbol offset (or at least, an address
+ * where an instruction boundary would be legal) to add
+ * instrumentation. sanitize_uprobe_offset implements that sanitization logic on
+ * a per-architecture basis.
+ */
+#if defined(__arm__) || defined(__aarch64__)
+static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
+{
+	/*
+	 * The least significant bit is used when branching to switch to thumb
+	 * ISA. However, it's an invalid address for us; mask the least
+	 * significant bit.
+	 */
+	return raw_offset &= ~0b1;
+}
+#else /* defined(__arm__) || defined(__aarch64__) */
+static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
+{
+	return raw_offset;
+}
+#endif
+
+/*
  * Add context on a kernel channel.
  *
  * Assumes the ownership of ctx.
@@ -446,7 +470,7 @@ int userspace_probe_add_callsite(
 			goto end;
 		}
 
-		callsite.u.uprobe.offset = offset;
+		callsite.u.uprobe.offset = sanitize_uprobe_offset(offset);
 		ret = kernctl_add_callsite(fd, &callsite);
 		if (ret) {
 			WARN("Failed to add callsite to ELF userspace probe.");
@@ -473,7 +497,7 @@ int userspace_probe_add_callsite(
 			goto end;
 		}
 		for (i = 0; i < offsets_count; i++) {
-			callsite.u.uprobe.offset = offsets[i];
+			callsite.u.uprobe.offset = sanitize_uprobe_offset(offsets[i]);
 			ret = kernctl_add_callsite(fd, &callsite);
 			if (ret) {
 				WARN("Failed to add callsite to SDT userspace probe");
