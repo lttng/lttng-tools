@@ -548,7 +548,7 @@ int mi_lttng_sessions_open(struct mi_writer *writer);
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_session(struct mi_writer *writer, struct lttng_session *session, int is_open);
+int mi_lttng_session(struct mi_writer *writer, const struct lttng_session *session, int is_open);
 
 /*
  * Machine interface: open a domains element.

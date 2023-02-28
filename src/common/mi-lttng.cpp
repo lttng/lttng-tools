@@ -930,7 +930,7 @@ int mi_lttng_sessions_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_sessions);
 }
 
-int mi_lttng_session(struct mi_writer *writer, struct lttng_session *session, int is_open)
+int mi_lttng_session(struct mi_writer *writer, const struct lttng_session *session, int is_open)
 {
 	int ret;
 
