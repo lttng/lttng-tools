@@ -54,10 +54,14 @@ public:
 			const char *file_name,
 			const char *function_name,
 			unsigned int line_number);
-	lttng_error_code get_code() const;
+
+	lttng_error_code code() const noexcept
+	{
+		return _error_code;
+	}
 
 private:
-	lttng_error_code _error_code;
+	const lttng_error_code _error_code;
 };
 } /* namespace ctl */
 
