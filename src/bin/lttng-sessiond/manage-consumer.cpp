@@ -164,8 +164,13 @@ static void *thread_consumer_management(void *data)
 
 	DBG2("Receiving code from consumer err_sock");
 
-	/* Getting status code from kconsumerd */
-	ret = lttcomm_recv_unix_sock(sock, &code, sizeof(enum lttcomm_return_code));
+	/* Getting status code from consumerd */
+	{
+		std::int32_t comm_code = 0;
+
+		ret = lttcomm_recv_unix_sock(sock, &comm_code, sizeof(comm_code));
+		code = static_cast<decltype(code)>(comm_code);
+	}
 	if (ret <= 0) {
 		mark_thread_intialization_as_failed(notifiers);
 		goto error;
@@ -304,9 +309,14 @@ static void *thread_consumer_management(void *data)
 					goto error;
 				}
 				health_code_update();
-				/* Wait for any kconsumerd error */
-				ret = lttcomm_recv_unix_sock(
-					sock, &code, sizeof(enum lttcomm_return_code));
+				/* Wait for any consumerd error */
+				{
+					std::int32_t comm_code = 0;
+
+					ret = lttcomm_recv_unix_sock(
+						sock, &comm_code, sizeof(comm_code));
+					code = static_cast<decltype(code)>(comm_code);
+				}
 				if (ret <= 0) {
 					ERR("consumer closed the command socket");
 					goto error;

@@ -921,7 +921,8 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Returns the return code of sendmsg : the number of bytes transmitted or -1
  * on error.
  */
-int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx, int cmd);
+int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
+		enum lttcomm_return_code error_code);
 
 /*
  * Called from signal handler to ensure a clean exit.

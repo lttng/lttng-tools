@@ -45,6 +45,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <type_traits>
 #include <unistd.h>
 
 lttng_consumer_global_data the_consumer_data;
@@ -1255,11 +1256,17 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Send return code to the session daemon.
  * If the socket is not defined, we return 0, it is not a fatal error
  */
-int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx, int cmd)
+int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
+			      enum lttcomm_return_code error_code)
 {
 	if (ctx->consumer_error_socket > 0) {
+		const std::int32_t comm_code = std::int32_t(error_code);
+
+		static_assert(
+			sizeof(comm_code) >= sizeof(std::underlying_type<lttcomm_return_code>),
+			"Fixed-size communication type too small to accomodate lttcomm_return_code");
 		return lttcomm_send_unix_sock(
-			ctx->consumer_error_socket, &cmd, sizeof(enum lttcomm_sessiond_command));
+			ctx->consumer_error_socket, &comm_code, sizeof(comm_code));
 	}
 
 	return 0;
