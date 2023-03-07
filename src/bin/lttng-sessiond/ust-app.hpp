@@ -249,9 +249,11 @@ struct ust_app_session {
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
+	/* Traffic initiated from the session daemon to the application. */
 	int sock;
 	pthread_mutex_t sock_lock;	/* Protects sock protocol. */
 
+	/* Traffic initiated from the application to the session daemon. */
 	int notify_sock;
 	pid_t pid;
 	pid_t ppid;
