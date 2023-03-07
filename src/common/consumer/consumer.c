@@ -1272,11 +1272,14 @@ void lttng_consumer_set_command_sock_path(
  * Send return code to the session daemon.
  * If the socket is not defined, we return 0, it is not a fatal error
  */
-int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx, int cmd)
+int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
+			      enum lttcomm_return_code error_code)
 {
 	if (ctx->consumer_error_socket > 0) {
-		return lttcomm_send_unix_sock(ctx->consumer_error_socket, &cmd,
-				sizeof(enum lttcomm_sessiond_command));
+		const int32_t comm_code = (int32_t) error_code;
+
+		return lttcomm_send_unix_sock(
+			ctx->consumer_error_socket, &comm_code, sizeof(comm_code));
 	}
 
 	return 0;
