@@ -1032,7 +1032,7 @@ int utils_show_help(int section, const char *page_name, const char *help_msg)
 	}
 
 	/* Section integer -> section string */
-	ret = sprintf(section_string, "%d", section);
+	ret = snprintf(section_string, sizeof(section_string), "%d", section);
 	LTTNG_ASSERT(ret > 0 && ret < 8);
 
 	/*

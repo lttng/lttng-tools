@@ -395,6 +395,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 {
 	char *new_str;
 	size_t oldlen = (*s) ? strlen(*s) : 0;
+	size_t addlen = 0;
 	int ret;
 	va_list args;
 
@@ -408,7 +409,8 @@ int strutils_appendf(char **s, const char *fmt, ...)
 	}
 
 	/* Allocate space for old string + new string + \0. */
-	new_str = zmalloc<char>(oldlen + ret + 1);
+	addlen = ret + 1;
+	new_str = zmalloc<char>(oldlen + addlen);
 	if (!new_str) {
 		ret = -ENOMEM;
 		goto end;
@@ -421,7 +423,7 @@ int strutils_appendf(char **s, const char *fmt, ...)
 
 	/* Format new string in-place. */
 	va_start(args, fmt);
-	ret = vsprintf(&new_str[oldlen], fmt, args);
+	ret = vsnprintf(&new_str[oldlen], addlen, fmt, args);
 	va_end(args);
 
 	if (ret == -1) {
