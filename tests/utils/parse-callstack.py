@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # Copyright (C) 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
 #
@@ -24,7 +24,9 @@ def addr2line(executable, addr):
     # Expand inlined functions
     cmd += ['--addresses', addr]
 
-    addr2line_output = subprocess.getoutput(' '.join(cmd))
+    status = subprocess.run(cmd, stdout=subprocess.PIPE, check=True)
+
+    addr2line_output = status.stdout.decode("utf-8")
 
     # Omit the last 2 lines as the caller of main can not be determine
     fcts = [addr2line_output.split()[-2]]
