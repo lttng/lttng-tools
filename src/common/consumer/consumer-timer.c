@@ -530,7 +530,7 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 	ret = consumer_channel_timer_stop(&channel->monitor_timer,
 			LTTNG_CONSUMER_SIG_MONITOR);
 	if (ret == -1) {
-		ERR("Failed to stop live timer");
+		ERR("Failed to stop monitor timer");
 		goto end;
 	}
 
