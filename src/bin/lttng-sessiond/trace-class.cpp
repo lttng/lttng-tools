@@ -11,7 +11,7 @@ namespace lst = lttng::sessiond::trace;
 
 lttng::sessiond::trace::trace_class::trace_class(const struct abi& in_abi,
 						 const lttng_uuid& in_trace_uuid) :
-	abi{ in_abi }, uuid{ in_trace_uuid }
+	abi(in_abi), uuid(in_trace_uuid)
 {
 }
 

@@ -139,7 +139,7 @@ public:
 
 	variant_tsdl_keyword_sanitizer(tsdl::details::type_overrider& type_overrides,
 				       type_lookup_function lookup_type) :
-		_type_overrides{ type_overrides }, _lookup_type(std::move(lookup_type))
+		_type_overrides(type_overrides), _lookup_type(std::move(lookup_type))
 	{
 	}
 
@@ -368,13 +368,13 @@ public:
 			   const tsdl::details::type_overrider& type_overrides,
 			   const nonstd::optional<std::string>& in_default_clock_class_name =
 				   nonstd::nullopt) :
-		_indentation_level{ indentation_level },
-		_trace_abi{ abi },
+		_indentation_level(indentation_level),
+		_trace_abi(abi),
 
-		_default_clock_class_name{ in_default_clock_class_name ?
+		_default_clock_class_name(in_default_clock_class_name ?
 						   in_default_clock_class_name->c_str() :
-						   nullptr },
-		_type_overrides{ type_overrides }
+						   nullptr),
+		_type_overrides(type_overrides)
 	{
 	}
 
@@ -815,7 +815,7 @@ private:
 tsdl::trace_class_visitor::trace_class_visitor(
 	const lst::abi& trace_abi,
 	tsdl::append_metadata_fragment_function append_metadata_fragment) :
-	_trace_abi{ trace_abi }, _append_metadata_fragment(std::move(append_metadata_fragment))
+	_trace_abi(trace_abi), _append_metadata_fragment(std::move(append_metadata_fragment))
 {
 }
 

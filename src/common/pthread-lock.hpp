@@ -26,7 +26,7 @@ namespace details {
  */
 class mutex {
 public:
-	explicit mutex(pthread_mutex_t& mutex_p) : _mutex{ mutex_p }
+	explicit mutex(pthread_mutex_t& mutex_p) : _mutex(mutex_p)
 	{
 	}
 
@@ -80,7 +80,7 @@ private:
  */
 class lock_guard {
 public:
-	explicit lock_guard(pthread_mutex_t& mutex) : _mutex{ mutex }, _guard(_mutex)
+	explicit lock_guard(pthread_mutex_t& mutex) : _mutex(mutex), _guard(_mutex)
 	{
 	}
 
