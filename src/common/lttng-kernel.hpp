@@ -10,6 +10,7 @@
 #define _LTTNG_KERNEL_H
 
 #include <stdint.h>
+#include <common/compiler.hpp>
 #include <common/macros.hpp>
 #include <lttng/constant.h>
 #include <lttng/event.h>
@@ -275,7 +276,7 @@ struct lttng_kernel_abi_tracer_abi_version {
 
 struct lttng_kernel_abi_syscall_mask {
 	uint32_t len;	/* in bits */
-	char mask[];
+	char mask[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 /*

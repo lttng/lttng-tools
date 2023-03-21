@@ -22,6 +22,7 @@
 #include "memstream.hpp"
 
 #include <common/compat/errno.hpp>
+#include <common/compiler.hpp>
 #include <common/macros.hpp>
 
 #define WIDTH_u64_SCANF_IS_A_BROKEN_API	"20"
@@ -62,7 +63,7 @@ void yyrestart(FILE * in_str, yyscan_t parser_ctx);
 struct gc_string {
 	struct cds_list_head gc;
 	size_t alloclen;
-	char s[];
+	char s[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 };
 
 static

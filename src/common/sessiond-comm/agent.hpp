@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 
+#include <common/compiler.hpp>
 #include <common/macros.hpp>
 #include <lttng/lttng.h>
 
@@ -87,7 +88,7 @@ struct lttcomm_agent_list_reply_hdr {
 struct lttcomm_agent_list_reply {
 	uint32_t nb_event;
 	/* List of event name each of them ending by a NULL byte. */
-	char payload[];
+	char payload[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 #endif	/* AGENT_COMM */

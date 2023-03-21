@@ -13,6 +13,7 @@
 #define _LGPL_SOURCE
 #include "lttng-ctl-helper.hpp"
 
+#include <common/compiler.hpp>
 #include <common/compat/errno.hpp>
 #include <common/defaults.hpp>
 #include <common/utils.hpp>
@@ -48,7 +49,7 @@ struct lttng_health {
 	char health_sock_path[PATH_MAX];
 	/* For consumer health only */
 	enum lttng_health_consumerd consumerd_type;
-	struct lttng_health_thread thread[];
+	struct lttng_health_thread thread[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 };
 
 static const char *get_sessiond_thread_name(health_type_sessiond type)

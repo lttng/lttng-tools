@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include <lttng/lttng.h>
+#include <common/compiler.hpp>
 #include <common/defaults.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/macros.hpp>
@@ -83,7 +84,7 @@ struct lttcomm_relayd_add_stream_2_11 {
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
 	uint64_t trace_chunk_id;
-	char names[];
+	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 /*
@@ -209,14 +210,14 @@ struct lttcomm_relayd_create_session_2_11 {
 	uint64_t creation_time;
 	LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED current_chunk_id;
 	/* Contains the session_name, hostname, base_path. */
-	char names[];
+	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_create_session_reply_2_11 {
 	struct lttcomm_relayd_status_session generic;
 	/* Includes the '\0' terminator. */
 	uint32_t output_path_length;
-	char output_path[];
+	char output_path[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 /*
@@ -309,7 +310,7 @@ struct lttcomm_relayd_create_trace_chunk {
 	uint64_t creation_timestamp;
 	/* Includes trailing NULL. */
 	uint32_t override_name_length;
-	char override_name[];
+	char override_name[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_close_trace_chunk {
@@ -324,7 +325,7 @@ struct lttcomm_relayd_close_trace_chunk_reply {
 	struct lttcomm_relayd_generic_reply generic;
 	/* Includes trailing NULL. */
 	uint32_t path_length;
-	char path[];
+	char path[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_trace_chunk_exists {
@@ -354,7 +355,7 @@ struct lttcomm_relayd_get_configuration_reply {
 	/* Set of lttcomm_relayd_configuration_flag. */
 	uint64_t relayd_configuration_flags;
 	/* Optional variable-length payload. */
-	char payload[];
+	char payload[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */

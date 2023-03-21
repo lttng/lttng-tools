@@ -22,6 +22,7 @@
 #include <lttng/trigger/trigger-internal.hpp>
 #include <lttng/rotate-internal.hpp>
 #include <common/compat/socket.hpp>
+#include <common/compiler.hpp>
 #include <common/uri.hpp>
 #include <common/defaults.hpp>
 #include <common/uuid.hpp>
@@ -563,7 +564,7 @@ struct lttng_bytecode {
 struct lttng_event_exclusion {
 	uint32_t count;
 	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
-	char names[][LTTNG_SYMBOL_NAME_LEN];
+	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 
 #define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) \

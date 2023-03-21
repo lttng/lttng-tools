@@ -57,6 +57,7 @@ libcommon_lgpl_la_SOURCES = \
 	actions/rate-policy.cpp \
 	buffer-view.hpp buffer-view.cpp \
 	channel.cpp \
+	compiler.hpp \
 	conditions/buffer-usage.cpp \
 	conditions/condition.cpp \
 	conditions/event-rule-matches.cpp \
