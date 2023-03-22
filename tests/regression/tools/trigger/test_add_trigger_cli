@@ -47,10 +47,8 @@ function test_success ()
 	shift 2
 
 	diag "${FULL_LTTNG_BIN} add-trigger $*"
-	set -x
 	"${FULL_LTTNG_BIN}" add-trigger "$@" > "${tmp_stdout}" 2> "${tmp_stderr}"
 	ok $? "${test_name}: exit code is 0"
-	set +x
 
 	diff -u "${tmp_stdout}" <(echo "Added trigger \`$trigger_name\`.")
 	ok $? "${test_name}: expected stdout"
