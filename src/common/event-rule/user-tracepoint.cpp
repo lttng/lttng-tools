@@ -149,6 +149,7 @@ static int lttng_event_rule_user_tracepoint_serialize(const struct lttng_event_r
 
 	for (i = 0; i < exclusion_count; i++) {
 		size_t len;
+		uint32_t serialized_len;
 		const char *exclusion;
 
 		status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
@@ -156,8 +157,10 @@ static int lttng_event_rule_user_tracepoint_serialize(const struct lttng_event_r
 		LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 		len = strlen(exclusion) + 1;
+
+		serialized_len = len;
 		/* Append exclusion length, includes the null terminator. */
-		ret = lttng_dynamic_buffer_append(&payload->buffer, &len, sizeof(uint32_t));
+		ret = lttng_dynamic_buffer_append(&payload->buffer, &serialized_len, sizeof(serialized_len));
 		if (ret) {
 			goto end;
 		}
