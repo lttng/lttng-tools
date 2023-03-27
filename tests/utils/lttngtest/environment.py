@@ -82,7 +82,7 @@ class WaitTraceTestApplication:
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_start_tracing",
-                dir=environment.lttng_home_location,
+                dir=self._compat_open_path(environment.lttng_home_location),
             )
         )
         self._has_returned = False
@@ -95,7 +95,9 @@ class WaitTraceTestApplication:
 
         # File that the application will create to indicate it has completed its initialization.
         app_ready_file_path: str = tempfile.mktemp(
-            prefix="app_", suffix="_ready", dir=environment.lttng_home_location
+            prefix="app_",
+            suffix="_ready",
+            dir=self._compat_open_path(environment.lttng_home_location),
         )
 
         test_app_args = [str(binary_path)]
@@ -140,7 +142,7 @@ class WaitTraceTestApplication:
                     return_code=self._process.returncode
                 )
             )
-        open(self._app_start_tracing_file_path, mode="x")
+        open(self._compat_open_path(self._app_start_tracing_file_path), mode="x")
 
     def wait_for_exit(self) -> None:
         if self._process.wait() != 0:
@@ -154,6 +156,19 @@ class WaitTraceTestApplication:
     @property
     def vpid(self) -> int:
         return self._process.pid
+
+    @staticmethod
+    def _compat_open_path(path):
+        # type: (pathlib.Path)
+        """
+        The builtin open() in python >= 3.6 expects a path-like object while
+        prior versions expect a string or bytes object. Return the correct type
+        based on the presence of the "__fspath__" attribute specified in PEP-519.
+        """
+        if hasattr(path, "__fspath__"):
+            return path
+        else:
+            return str(path)
 
     def __del__(self):
         if not self._has_returned:
