@@ -68,14 +68,18 @@ class JavaApplicationContextType(ContextType):
         return self._field_name
 
 
+@enum.unique
 class TracingDomain(enum.Enum):
     """Tracing domain."""
 
-    User = enum.auto(), "User space tracing domain"
-    Kernel = enum.auto(), "Linux kernel tracing domain."
-    Log4j = enum.auto(), "Log4j tracing back-end."
-    JUL = enum.auto(), "Java Util Logging tracing back-end."
-    Python = enum.auto(), "Python logging module tracing back-end."
+    User = "User space tracing domain"
+    Kernel = "Linux kernel tracing domain."
+    Log4j = "Log4j tracing back-end."
+    JUL = "Java Util Logging tracing back-end."
+    Python = "Python logging module tracing back-end."
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
 class EventRule(abc.ABC):
@@ -210,19 +214,17 @@ class ProcessAttributeTracker(abc.ABC):
     policy back to "all" once it has transitioned to "include set".
     """
 
+    @enum.unique
     class TrackingPolicy(enum.Enum):
-        INCLUDE_ALL = (
-            enum.auto(),
-            """
+        INCLUDE_ALL = """
             Track all possible process attribute value of a given type (i.e. no filtering).
             This is the default state of a process attribute tracker.
-            """,
-        )
-        EXCLUDE_ALL = (
-            enum.auto(),
-            "Exclude all possible process attribute values of a given type.",
-        )
-        INCLUDE_SET = enum.auto(), "Track a set of specific process attribute values."
+            """
+        EXCLUDE_ALL = "Exclude all possible process attribute values of a given type."
+        INCLUDE_SET = "Track a set of specific process attribute values."
+
+        def __repr__(self):
+            return "<%s.%s>" % (self.__class__.__name__, self.name)
 
     def __init__(self, policy: TrackingPolicy):
         self._policy = policy

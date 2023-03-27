@@ -144,13 +144,17 @@ class _Channel(lttngctl.Channel):
         return self._domain
 
 
+@enum.unique
 class _ProcessAttribute(enum.Enum):
-    PID = (enum.auto(),)
-    VPID = (enum.auto(),)
-    UID = (enum.auto(),)
-    VUID = (enum.auto(),)
-    GID = (enum.auto(),)
-    VGID = (enum.auto(),)
+    PID = "Process ID"
+    VPID = "Virtual Process ID"
+    UID = "User ID"
+    VUID = "Virtual User ID"
+    GID = "Group ID"
+    VGID = "Virtual Group ID"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
 def _get_process_attribute_option_name(attribute: _ProcessAttribute) -> str:
