@@ -22,7 +22,8 @@ control functionality that is used by tests.
 """
 
 
-def _generate_random_string(length: int) -> str:
+def _generate_random_string(length):
+    # type: (int) -> str
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(length)
     )
@@ -55,16 +56,22 @@ class VgidContextType(ContextType):
 class JavaApplicationContextType(ContextType):
     """A java application-specific context field is a piece of state which the application provides."""
 
-    def __init__(self, retriever_name: str, field_name: str):
-        self._retriever_name: str = retriever_name
-        self._field_name: str = field_name
+    def __init__(
+        self,
+        retriever_name,  # type: str
+        field_name,  # type: str
+    ):
+        self._retriever_name = retriever_name  # type: str
+        self._field_name = field_name  # type: str
 
     @property
-    def retriever_name(self) -> str:
+    def retriever_name(self):
+        # type: () -> str
         return self._retriever_name
 
     @property
-    def field_name(self) -> str:
+    def field_name(self):
+        # type: () -> str
         return self._field_name
 
 
@@ -93,60 +100,70 @@ class LogLevelRule:
 
 
 class LogLevelRuleAsSevereAs(LogLevelRule):
-    def __init__(self, level: int):
+    def __init__(self, level):
+        # type: (int)
         self._level = level
 
     @property
-    def level(self) -> int:
+    def level(self):
+        # type: () -> int
         return self._level
 
 
 class LogLevelRuleExactly(LogLevelRule):
-    def __init__(self, level: int):
+    def __init__(self, level):
+        # type: (int)
         self._level = level
 
     @property
-    def level(self) -> int:
+    def level(self):
+        # type: () -> int
         return self._level
 
 
 class TracepointEventRule(EventRule):
     def __init__(
         self,
-        name_pattern: Optional[str] = None,
-        filter_expression: Optional[str] = None,
-        log_level_rule: Optional[LogLevelRule] = None,
-        name_pattern_exclusions: Optional[List[str]] = None,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
-        self._name_pattern: Optional[str] = name_pattern
-        self._filter_expression: Optional[str] = filter_expression
-        self._log_level_rule: Optional[LogLevelRule] = log_level_rule
-        self._name_pattern_exclusions: Optional[List[str]] = name_pattern_exclusions
+        self._name_pattern = name_pattern  # type: Optional[str]
+        self._filter_expression = filter_expression  # type: Optional[str]
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
 
     @property
-    def name_pattern(self) -> Optional[str]:
+    def name_pattern(self):
+        # type: () -> Optional[str]
         return self._name_pattern
 
     @property
-    def filter_expression(self) -> Optional[str]:
+    def filter_expression(self):
+        # type: () -> Optional[str]
         return self._filter_expression
 
     @property
-    def log_level_rule(self) -> Optional[LogLevelRule]:
+    def log_level_rule(self):
+        # type: () -> Optional[LogLevelRule]
         return self._log_level_rule
 
     @property
-    def name_pattern_exclusions(self) -> Optional[List[str]]:
+    def name_pattern_exclusions(self):
+        # type: () -> Optional[List[str]]
         return self._name_pattern_exclusions
 
 
 class UserTracepointEventRule(TracepointEventRule):
     def __init__(
         self,
-        name_pattern: Optional[str] = None,
-        filter_expression: Optional[str] = None,
-        log_level_rule: Optional[LogLevelRule] = None,
-        name_pattern_exclusions: Optional[List[str]] = None,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
         TracepointEventRule.__init__(**locals())
 
@@ -154,10 +171,10 @@ class UserTracepointEventRule(TracepointEventRule):
 class KernelTracepointEventRule(TracepointEventRule):
     def __init__(
         self,
-        name_pattern: Optional[str] = None,
-        filter_expression: Optional[str] = None,
-        log_level_rule: Optional[LogLevelRule] = None,
-        name_pattern_exclusions: Optional[List[str]] = None,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
         TracepointEventRule.__init__(**locals())
 
@@ -169,25 +186,30 @@ class Channel(abc.ABC):
     """
 
     @staticmethod
-    def _generate_name() -> str:
+    def _generate_name():
+        # type: () -> str
         return "channel_{random_id}".format(random_id=_generate_random_string(8))
 
     @abc.abstractmethod
-    def add_context(self, context_type: ContextType) -> None:
+    def add_context(self, context_type):
+        # type: (ContextType) -> None
         pass
 
     @property
     @abc.abstractmethod
-    def domain(self) -> TracingDomain:
+    def domain(self):
+        # type: () -> TracingDomain
         pass
 
     @property
     @abc.abstractmethod
-    def name(self) -> str:
+    def name(self):
+        # type: () -> str
         pass
 
     @abc.abstractmethod
-    def add_recording_rule(self, rule: Type[EventRule]) -> None:
+    def add_recording_rule(self, rule) -> None:
+        # type: (Type[EventRule]) -> None
         pass
 
 
@@ -196,11 +218,13 @@ class SessionOutputLocation(abc.ABC):
 
 
 class LocalSessionOutputLocation(SessionOutputLocation):
-    def __init__(self, trace_path: pathlib.Path):
+    def __init__(self, trace_path):
+        # type: (pathlib.Path)
         self._path = trace_path
 
     @property
-    def path(self) -> pathlib.Path:
+    def path(self):
+        # type: () -> pathlib.Path
         return self._path
 
 
@@ -226,167 +250,180 @@ class ProcessAttributeTracker(abc.ABC):
         def __repr__(self):
             return "<%s.%s>" % (self.__class__.__name__, self.name)
 
-    def __init__(self, policy: TrackingPolicy):
+    def __init__(self, policy):
+        # type: (TrackingPolicy)
         self._policy = policy
 
     @property
-    def tracking_policy(self) -> TrackingPolicy:
+    def tracking_policy(self):
+        # type: () -> TrackingPolicy
         return self._policy
 
 
 class ProcessIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, pid: int) -> None:
+    def track(self, pid):
+        # type: (int) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, pid: int) -> None:
+    def untrack(self, pid):
+        # type: (int) -> None
         pass
 
 
 class VirtualProcessIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, vpid: int) -> None:
+    def track(self, vpid):
+        # type: (int) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, vpid: int) -> None:
+    def untrack(self, vpid):
+        # type: (int) -> None
         pass
 
 
 class UserIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, uid: Union[int, str]) -> None:
+    def track(self, uid):
+        # type: (Union[int, str]) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, uid: Union[int, str]) -> None:
+    def untrack(self, uid):
+        # type: (Union[int, str]) -> None
         pass
 
 
 class VirtualUserIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, vuid: Union[int, str]) -> None:
+    def track(self, vuid):
+        # type: (Union[int, str]) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, vuid: Union[int, str]) -> None:
+    def untrack(self, vuid):
+        # type: (Union[int, str]) -> None
         pass
 
 
 class GroupIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, gid: Union[int, str]) -> None:
+    def track(self, gid):
+        # type: (Union[int, str]) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, gid: Union[int, str]) -> None:
+    def untrack(self, gid):
+        # type: (Union[int, str]) -> None
         pass
 
 
 class VirtualGroupIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
-    def track(self, vgid: Union[int, str]) -> None:
+    def track(self, vgid):
+        # type: (Union[int, str]) -> None
         pass
 
     @abc.abstractmethod
-    def untrack(self, vgid: Union[int, str]) -> None:
+    def untrack(self, vgid):
+        # type: (Union[int, str]) -> None
         pass
 
 
 class Session(abc.ABC):
     @staticmethod
-    def _generate_name() -> str:
+    def _generate_name():
+        # type: () -> str
         return "session_{random_id}".format(random_id=_generate_random_string(8))
 
     @property
     @abc.abstractmethod
-    def name(self) -> str:
+    def name(self):
+        # type: () -> str
         pass
 
     @property
     @abc.abstractmethod
-    def output(self) -> Optional[Type[SessionOutputLocation]]:
+    def output(self):
+        # type: () -> Optional[Type[SessionOutputLocation]]
         pass
 
     @abc.abstractmethod
-    def add_channel(
-        self, domain: TracingDomain, channel_name: Optional[str] = None
-    ) -> Channel:
+    def add_channel(self, domain, channel_name=None):
+        # type: (TracingDomain, Optional[str]) -> Channel
         """Add a channel with default attributes to the session."""
         pass
 
     @abc.abstractmethod
-    def start(self) -> None:
+    def start(self):
+        # type: () -> None
         pass
 
     @abc.abstractmethod
-    def stop(self) -> None:
+    def stop(self):
+        # type: () -> None
         pass
 
     @abc.abstractmethod
-    def destroy(self) -> None:
+    def destroy(self):
+        # type: () -> None
         pass
 
     @abc.abstractproperty
-    def kernel_pid_process_attribute_tracker(
-        self,
-    ) -> Type[ProcessIDProcessAttributeTracker]:
+    def kernel_pid_process_attribute_tracker(self):
+        # type: () -> Type[ProcessIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def kernel_vpid_process_attribute_tracker(
-        self,
-    ) -> Type[VirtualProcessIDProcessAttributeTracker]:
+    def kernel_vpid_process_attribute_tracker(self):
+        # type: () -> Type[VirtualProcessIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
     def user_vpid_process_attribute_tracker(
         self,
     ) -> Type[VirtualProcessIDProcessAttributeTracker]:
+        # type: () -> Type[VirtualProcessIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def kernel_gid_process_attribute_tracker(
-        self,
-    ) -> Type[GroupIDProcessAttributeTracker]:
+    def kernel_gid_process_attribute_tracker(self):
+        # type: () -> Type[GroupIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def kernel_vgid_process_attribute_tracker(
-        self,
-    ) -> Type[VirtualGroupIDProcessAttributeTracker]:
+    def kernel_vgid_process_attribute_tracker(self):
+        # type: () -> Type[VirtualGroupIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def user_vgid_process_attribute_tracker(
-        self,
-    ) -> Type[VirtualGroupIDProcessAttributeTracker]:
+    def user_vgid_process_attribute_tracker(self):
+        # type: () -> Type[VirtualGroupIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def kernel_uid_process_attribute_tracker(
-        self,
-    ) -> Type[UserIDProcessAttributeTracker]:
+    def kernel_uid_process_attribute_tracker(self):
+        # type: () -> Type[UserIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def kernel_vuid_process_attribute_tracker(
-        self,
-    ) -> Type[VirtualUserIDProcessAttributeTracker]:
+    def kernel_vuid_process_attribute_tracker(self):
+        # type: () -> Type[VirtualUserIDProcessAttributeTracker]
         raise NotImplementedError
 
     @abc.abstractproperty
-    def user_vuid_process_attribute_tracker(
-        self,
-    ) -> Type[VirtualUserIDProcessAttributeTracker]:
+    def user_vuid_process_attribute_tracker(self):
+        # type: () -> Type[VirtualUserIDProcessAttributeTracker]
         raise NotImplementedError
 
 
 class ControlException(RuntimeError):
     """Base type for exceptions thrown by a controller."""
 
-    def __init__(self, msg: str):
+    def __init__(self, msg):
+        # type: (str)
         super().__init__(msg)
 
 
@@ -398,9 +435,8 @@ class Controller(abc.ABC):
     """
 
     @abc.abstractmethod
-    def create_session(
-        self, name: Optional[str] = None, output: Optional[SessionOutputLocation] = None
-    ) -> Session:
+    def create_session(self, name=None, output=None):
+        # type: (Optional[str], Optional[SessionOutputLocation]) -> Session
         """
         Create a session with an output. Don't specify an output
         to create a session without an output.

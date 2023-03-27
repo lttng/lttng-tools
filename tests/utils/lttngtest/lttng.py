@@ -19,11 +19,13 @@ Implementation of the lttngctl interface based on the `lttng` command line clien
 
 
 class Unsupported(lttngctl.ControlException):
-    def __init__(self, msg: str):
+    def __init__(self, msg):
+        # type: (str) -> None
         super().__init__(msg)
 
 
-def _get_domain_option_name(domain: lttngctl.TracingDomain) -> str:
+def _get_domain_option_name(domain):
+    # type: (lttngctl.TracingDomain) -> str
     if domain == lttngctl.TracingDomain.User:
         return "userspace"
     elif domain == lttngctl.TracingDomain.Kernel:
@@ -38,7 +40,8 @@ def _get_domain_option_name(domain: lttngctl.TracingDomain) -> str:
         raise Unsupported("Domain `{domain_name}` is not supported by the LTTng client")
 
 
-def _get_context_type_name(context: lttngctl.ContextType) -> str:
+def _get_context_type_name(context):
+    # type: (lttngctl.ContextType) -> str
     if isinstance(context, lttngctl.VgidContextType):
         return "vgid"
     elif isinstance(context, lttngctl.VuidContextType):
@@ -60,17 +63,18 @@ def _get_context_type_name(context: lttngctl.ContextType) -> str:
 class _Channel(lttngctl.Channel):
     def __init__(
         self,
-        client: "LTTngClient",
-        name: str,
-        domain: lttngctl.TracingDomain,
-        session: "_Session",
+        client,  # type: LTTngClient
+        name,  # type: str
+        domain,  # type: lttngctl.TracingDomain
+        session,  # type: _Session
     ):
-        self._client: LTTngClient = client
-        self._name: str = name
-        self._domain: lttngctl.TracingDomain = domain
-        self._session: _Session = session
+        self._client = client  # type: LTTngClient
+        self._name = name  # type: str
+        self._domain = domain  # type: lttngctl.TracingDomain
+        self._session = session  # type: _Session
 
-    def add_context(self, context_type: lttngctl.ContextType) -> None:
+    def add_context(self, context_type):
+        # type: (lttngctl.ContextType) -> None
         domain_option_name = _get_domain_option_name(self.domain)
         context_type_name = _get_context_type_name(context_type)
         self._client._run_cmd(
@@ -80,7 +84,8 @@ class _Channel(lttngctl.Channel):
             )
         )
 
-    def add_recording_rule(self, rule: Type[lttngctl.EventRule]) -> None:
+    def add_recording_rule(self, rule):
+        # type: (Type[lttngctl.EventRule]) -> None
         client_args = (
             "enable-event --session {session_name} --channel {channel_name}".format(
                 session_name=self._session.name, channel_name=self.name
@@ -136,11 +141,13 @@ class _Channel(lttngctl.Channel):
         self._client._run_cmd(client_args)
 
     @property
-    def name(self) -> str:
+    def name(self):
+        # type: () -> str
         return self._name
 
     @property
-    def domain(self) -> lttngctl.TracingDomain:
+    def domain(self):
+        # type: () -> lttngctl.TracingDomain
         return self._domain
 
 
@@ -157,7 +164,8 @@ class _ProcessAttribute(enum.Enum):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
-def _get_process_attribute_option_name(attribute: _ProcessAttribute) -> str:
+def _get_process_attribute_option_name(attribute):
+    # type: (_ProcessAttribute) -> str
     return {
         _ProcessAttribute.PID: "pid",
         _ProcessAttribute.VPID: "vpid",
@@ -171,21 +179,22 @@ def _get_process_attribute_option_name(attribute: _ProcessAttribute) -> str:
 class _ProcessAttributeTracker(lttngctl.ProcessAttributeTracker):
     def __init__(
         self,
-        client: "LTTngClient",
-        attribute: _ProcessAttribute,
-        domain: lttngctl.TracingDomain,
-        session: "_Session",
+        client,  # type: LTTngClient
+        attribute,  # type: _ProcessAttribute
+        domain,  # type: lttngctl.TracingDomain
+        session,  # type: _Session
     ):
-        self._client: LTTngClient = client
-        self._tracked_attribute: _ProcessAttribute = attribute
-        self._domain: lttngctl.TracingDomain = domain
-        self._session: "_Session" = session
+        self._client = client  # type: LTTngClient
+        self._tracked_attribute = attribute  # type: _ProcessAttribute
+        self._domain = domain  # type: lttngctl.TracingDomain
+        self._session = session  # type: _Session
         if attribute == _ProcessAttribute.PID or attribute == _ProcessAttribute.VPID:
-            self._allowed_value_types: list[type] = [int, str]
+            self._allowed_value_types = [int, str]  # type: list[type]
         else:
-            self._allowed_value_types: list[type] = [int]
+            self._allowed_value_types = [int]  # type: list[type]
 
-    def _call_client(self, cmd_name: str, value: Union[int, str]) -> None:
+    def _call_client(self, cmd_name, value):
+        # type: (str, Union[int, str]) -> None
         if type(value) not in self._allowed_value_types:
             raise TypeError(
                 "Value of type `{value_type}` is not allowed for process attribute {attribute_name}".format(
@@ -208,31 +217,33 @@ class _ProcessAttributeTracker(lttngctl.ProcessAttributeTracker):
             )
         )
 
-    def track(self, value: Union[int, str]) -> None:
+    def track(self, value):
+        # type: (Union[int, str]) -> None
         self._call_client("track", value)
 
-    def untrack(self, value: Union[int, str]) -> None:
+    def untrack(self, value):
+        # type: (Union[int, str]) -> None
         self._call_client("untrack", value)
 
 
 class _Session(lttngctl.Session):
     def __init__(
         self,
-        client: "LTTngClient",
-        name: str,
-        output: Optional[Type[lttngctl.SessionOutputLocation]],
+        client,  # type: LTTngClient
+        name,  # type: str
+        output,  # type: Optional[lttngctl.SessionOutputLocation]
     ):
-        self._client: LTTngClient = client
-        self._name: str = name
-        self._output: Optional[Type[lttngctl.SessionOutputLocation]] = output
+        self._client = client  # type: LTTngClient
+        self._name = name  # type: str
+        self._output = output  # type: Optional[lttngctl.SessionOutputLocation]
 
     @property
-    def name(self) -> str:
+    def name(self):
+        # type: () -> str
         return self._name
 
-    def add_channel(
-        self, domain: lttngctl.TracingDomain, channel_name: Optional[str] = None
-    ) -> lttngctl.Channel:
+    def add_channel(self, domain, channel_name=None):
+        # type: (lttngctl.TracingDomain, Optional[str]) -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         self._client._run_cmd(
@@ -242,81 +253,81 @@ class _Session(lttngctl.Session):
         )
         return _Channel(self._client, channel_name, domain, self)
 
-    def add_context(self, context_type: lttngctl.ContextType) -> None:
+    def add_context(self, context_type):
+        # type: (lttngctl.ContextType) -> None
         pass
 
     @property
-    def output(self) -> Optional[Type[lttngctl.SessionOutputLocation]]:
-        return self._output
+    def output(self):
+        # type: () -> "Optional[Type[lttngctl.SessionOutputLocation]]"
+        return self._output  # type: ignore
 
-    def start(self) -> None:
+    def start(self):
+        # type: () -> None
         self._client._run_cmd("start {session_name}".format(session_name=self.name))
 
-    def stop(self) -> None:
+    def stop(self):
+        # type: () -> None
         self._client._run_cmd("stop {session_name}".format(session_name=self.name))
 
-    def destroy(self) -> None:
+    def destroy(self):
+        # type: () -> None
         self._client._run_cmd("destroy {session_name}".format(session_name=self.name))
 
     @property
-    def kernel_pid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.ProcessIDProcessAttributeTracker]:
+    def kernel_pid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.ProcessIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.PID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def kernel_vpid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualProcessIDProcessAttributeTracker]:
+    def kernel_vpid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualProcessIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VPID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def user_vpid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualProcessIDProcessAttributeTracker]:
+    def user_vpid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualProcessIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VPID, lttngctl.TracingDomain.User, self)  # type: ignore
 
     @property
-    def kernel_gid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.GroupIDProcessAttributeTracker]:
+    def kernel_gid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.GroupIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.GID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def kernel_vgid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualGroupIDProcessAttributeTracker]:
+    def kernel_vgid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualGroupIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VGID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def user_vgid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualGroupIDProcessAttributeTracker]:
+    def user_vgid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualGroupIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VGID, lttngctl.TracingDomain.User, self)  # type: ignore
 
     @property
-    def kernel_uid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.UserIDProcessAttributeTracker]:
+    def kernel_uid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.UserIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.UID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def kernel_vuid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualUserIDProcessAttributeTracker]:
+    def kernel_vuid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualUserIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VUID, lttngctl.TracingDomain.Kernel, self)  # type: ignore
 
     @property
-    def user_vuid_process_attribute_tracker(
-        self,
-    ) -> Type[lttngctl.VirtualUserIDProcessAttributeTracker]:
+    def user_vuid_process_attribute_tracker(self):
+        # type: () -> Type[lttngctl.VirtualUserIDProcessAttributeTracker]
         return _ProcessAttributeTracker(self._client, _ProcessAttribute.VUID, lttngctl.TracingDomain.User, self)  # type: ignore
 
 
 class LTTngClientError(lttngctl.ControlException):
-    def __init__(self, command_args: str, error_output: str):
-        self._command_args: str = command_args
-        self._output: str = error_output
+    def __init__(
+        self,
+        command_args,  # type: str
+        error_output,  # type: str
+    ):
+        self._command_args = command_args  # type: str
+        self._output = error_output  # type: str
 
 
 class LTTngClient(logger._Logger, lttngctl.Controller):
@@ -326,23 +337,24 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
     def __init__(
         self,
-        test_environment: environment._Environment,
-        log: Optional[Callable[[str], None]],
+        test_environment,  # type: environment._Environment
+        log,  # type: Optional[Callable[[str], None]]
     ):
         logger._Logger.__init__(self, log)
-        self._environment: environment._Environment = test_environment
+        self._environment = test_environment  # type: environment._Environment
 
-    def _run_cmd(self, command_args: str) -> None:
+    def _run_cmd(self, command_args):
+        # type: (str) -> None
         """
         Invoke the `lttng` client with a set of arguments. The command is
         executed in the context of the client's test environment.
         """
-        args: list[str] = [str(self._environment.lttng_client_path)]
+        args = [str(self._environment.lttng_client_path)]  # type: list[str]
         args.extend(shlex.split(command_args))
 
         self._log("lttng {command_args}".format(command_args=command_args))
 
-        client_env: dict[str, str] = os.environ.copy()
+        client_env = os.environ.copy()  # type: dict[str, str]
         client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
 
         process = subprocess.Popen(
@@ -357,11 +369,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
                 self._log(error_line)
             raise LTTngClientError(command_args, decoded_output)
 
-    def create_session(
-        self,
-        name: Optional[str] = None,
-        output: Optional[lttngctl.SessionOutputLocation] = None,
-    ) -> lttngctl.Session:
+    def create_session(self, name=None, output=None):
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation]) -> lttngctl.Session
         name = name if name else lttngctl.Session._generate_name()
 
         if isinstance(output, lttngctl.LocalSessionOutputLocation):

@@ -29,7 +29,8 @@ import lttngtest
 import bt2
 
 
-def context_trace_field_name(context_type: Type[lttngtest.ContextType]) -> str:
+def context_trace_field_name(context_type):
+    # type: (Type[lttngtest.ContextType]) -> str
     if isinstance(context_type, lttngtest.VpidContextType):
         return "vpid"
     elif isinstance(context_type, lttngtest.VuidContextType):
@@ -46,8 +47,9 @@ def context_trace_field_name(context_type: Type[lttngtest.ContextType]) -> str:
 
 
 def trace_stream_class_has_context_field_in_event_context(
-    trace_location: pathlib.Path, context_field_name: str
-) -> bool:
+    trace_location, context_field_name
+):
+    # type: (pathlib.Path, str) -> bool
     iterator = bt2.TraceCollectionMessageIterator(str(trace_location))
 
     # A bt2 message sequence is guaranteed to begin with a StreamBeginningMessage.
@@ -67,9 +69,8 @@ def trace_stream_class_has_context_field_in_event_context(
     return context_field_name in event_common_context_field_class
 
 
-def trace_events_have_context_value(
-    trace_location: pathlib.Path, context_field_name: str, value: Any
-) -> bool:
+def trace_events_have_context_value(trace_location, context_field_name, value):
+    # type: (pathlib.Path, str, Any) -> bool
     for msg in bt2.TraceCollectionMessageIterator(str(trace_location)):
         if type(msg) is not bt2._EventMessageConst:
             continue
@@ -80,12 +81,8 @@ def trace_events_have_context_value(
     return True
 
 
-def test_static_context(
-    tap: lttngtest.TapGenerator,
-    test_env: lttngtest._Environment,
-    context_type: lttngtest.ContextType,
-    context_value_retriever: Callable[[lttngtest.WaitTraceTestApplication], Any],
-) -> None:
+def test_static_context(tap, test_env, context_type, context_value_retriever):
+    # type: (lttngtest.TapGenerator, lttngtest._Environment, lttngtest.ContextType, Callable[[lttngtest.WaitTraceTestApplication], Any]) -> None
     tap.diagnostic(
         "Test presence and expected value of context `{context_name}`".format(
             context_name=type(context_type).__name__
