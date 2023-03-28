@@ -100,7 +100,7 @@ class WaitTraceTestApplication:
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
         # File that the application will create to indicate it has completed its initialization.
-        app_ready_file_path: str = tempfile.mktemp(
+        app_ready_file_path = tempfile.mktemp(
             prefix="app_",
             suffix="_ready",
             dir=self._compat_open_path(environment.lttng_home_location),
