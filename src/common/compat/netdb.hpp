@@ -15,7 +15,7 @@ static inline struct hostent *lttng_gethostbyname2(const char *name, int af)
 {
 	return gethostbyname2(name, af);
 }
-#elif HAVE_GETIPNODEBYNAME
+#elif defined(HAVE_GETIPNODEBYNAME)
 static inline struct hostent *lttng_gethostbyname2(const char *name, int af)
 {
 	int unused;
