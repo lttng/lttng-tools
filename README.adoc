@@ -81,7 +81,7 @@ Debian/Ubuntu package: `liblttng{nbh}ust{nbh}dev`
 
 * **Perl**: `make{nbsp}check` and tests.
 
-* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.0**:
+* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.4**:
   `make{nbsp}check` and tests.
 +
 Debian/Ubuntu package: `python3`

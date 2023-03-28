@@ -656,7 +656,7 @@ AM_CONDITIONAL([PYTHON_BINDING], [test "x$enable_python_binding" = xyes])
 if test "x$enable_python_binding" = xyes; then
   AX_PKG_SWIG($swig_version, [], [ AC_MSG_ERROR([SWIG $swig_version or newer is needed]) ])
   AS_IF([test x$enable_shared = xno], [ AC_MSG_ERROR([Python bindings require shared libraries.]) ])
-  AM_PATH_PYTHON([3.0])
+  AM_PATH_PYTHON([3.4])
 
   AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
