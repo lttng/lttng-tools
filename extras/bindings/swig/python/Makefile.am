@@ -7,12 +7,17 @@ lttng.i: lttng.i.in
 # `swig_this` shadows a global of the same name.  Later versions (like 4.0.1)
 # have renamed this global to `Swig_This_global`.
 #
-# Disable -Wshadow for that file.
-AM_CFLAGS += -Wno-shadow
+# Disable some warning flags for that file.
+AM_CFLAGS += \
+	-Wno-cast-function-type \
+	-Wno-missing-field-initializers \
+	-Wno-redundant-decls \
+	-Wno-shadow \
+	-Wno-unused-parameter
 
-AM_CFLAGS += -Wno-missing-field-initializers
-
-AM_CFLAGS += -Wno-cast-function-type
+# Swig regularily changes and generates code that results warnings which break
+# Werror builds. Disable that option for this sub-project.
+AM_CFLAGS += -Wno-error
 
 AM_CPPFLAGS += $(PYTHON_INCLUDE)
 
