@@ -16,7 +16,7 @@ namespace lttng {
 
 /*
  * RAII wrapper around a UNIX file descriptor. A file_descriptor's underlying
- * file descriptor
+ * file descriptor.
  */
 class file_descriptor {
 public:
