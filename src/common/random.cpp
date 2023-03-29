@@ -5,6 +5,7 @@
  *
  */
 
+#include <common/error.hpp>
 #include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
@@ -138,11 +139,11 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 	}() };
 
 	lttng::random::seed_t seed;
-	const auto read_ret = lttng_read(urandom.fd(), &seed, sizeof(seed));
-	if (read_ret != sizeof(seed)) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to read from `/dev/urandom`: size={}",
-					      sizeof(seed)),
-				  errno);
+	try {
+		urandom.read(&seed, sizeof(seed));
+	} catch (const std::exception& e) {
+		LTTNG_THROW_RANDOM_PRODUCTION_ERROR(fmt::format(
+			"Failed to read from `/dev/urandom`: size={}: {}", sizeof(seed), e.what()));
 	}
 
 	return seed;

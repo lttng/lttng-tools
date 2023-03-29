@@ -73,6 +73,7 @@ libcommon_lgpl_la_SOURCES = \
 	error-query.cpp \
 	evaluation.cpp \
 	event.cpp \
+	eventfd.hpp eventfd.cpp \
 	event-expr/event-expr.cpp \
 	event-field-value.cpp \
 	event-rule/event-rule.cpp \
@@ -85,7 +86,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/jul-logging.cpp \
 	event-rule/python-logging.cpp \
 	exception.cpp exception.hpp \
-	file-descriptor.hpp \
+	file-descriptor.hpp file-descriptor.cpp \
 	fd-handle.cpp fd-handle.hpp\
 	format.hpp \
 	kernel-probe.cpp \

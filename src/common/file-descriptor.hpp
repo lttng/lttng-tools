@@ -8,75 +8,45 @@
 #ifndef LTTNG_FILE_DESCRIPTOR_HPP
 #define LTTNG_FILE_DESCRIPTOR_HPP
 
-#include <common/error.hpp>
-#include <common/format.hpp>
-
-#include <algorithm>
-
-#include <unistd.h>
+#include <cstddef>
 
 namespace lttng {
 
-/*
- * RAII wrapper around a UNIX file descriptor. A file_descriptor's underlying
- * file descriptor.
- */
+/* RAII wrapper around a UNIX file descriptor. */
 class file_descriptor {
 public:
-	file_descriptor()
-	{
-	}
+	file_descriptor() noexcept;
 
-	explicit file_descriptor(int raw_fd) noexcept : _raw_fd{ raw_fd }
-	{
-		LTTNG_ASSERT(_is_valid_fd(_raw_fd));
-	}
-
+	explicit file_descriptor(int raw_fd) noexcept;
 	file_descriptor(const file_descriptor&) = delete;
 	file_descriptor& operator=(const file_descriptor&) = delete;
-	file_descriptor& operator=(file_descriptor&& other)
-	{
-		_cleanup();
-		std::swap(_raw_fd, other._raw_fd);
-		return *this;
-	}
 
-	file_descriptor(file_descriptor&& other) noexcept
-	{
-		std::swap(_raw_fd, other._raw_fd);
-	}
+	file_descriptor(file_descriptor&& other) noexcept;
 
-	~file_descriptor()
-	{
-		_cleanup();
-	}
+	file_descriptor& operator=(file_descriptor&& other) noexcept;
 
-	int fd() const noexcept
-	{
-		LTTNG_ASSERT(_is_valid_fd(_raw_fd));
-		return _raw_fd;
-	}
+	~file_descriptor() noexcept;
+
+	/*
+	 * Read `size` bytes from the underlying file descriptor, assuming
+	 * raw_fd behaves as a blocking device.
+	 *
+	 * Throws an exception if the requested amount of bytes couldn't be read.
+	 */
+	void read(void *buffer, std::size_t size);
+	/*
+	 * Write `size` bytes to the underlying file descriptor, assuming
+	 * raw_fd behaves as a blocking device.
+	 *
+	 * Throws an exception if the requested amount of bytes couldn't be written.
+	 */
+	void write(const void *buffer, std::size_t size);
+
+protected:
+	int _fd() const noexcept;
+	void _cleanup() noexcept;
 
 private:
-	static bool _is_valid_fd(int fd)
-	{
-		return fd >= 0;
-	}
-
-	void _cleanup()
-	{
-		if (!_is_valid_fd(_raw_fd)) {
-			return;
-		}
-
-		const auto ret = ::close(_raw_fd);
-
-		_raw_fd = -1;
-		if (ret) {
-			PERROR("Failed to close file descriptor: fd=%i", _raw_fd);
-		}
-	}
-
 	int _raw_fd = -1;
 };
 
