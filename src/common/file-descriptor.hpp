@@ -5,6 +5,9 @@
  *
  */
 
+#ifndef LTTNG_FILE_DESCRIPTOR_HPP
+#define LTTNG_FILE_DESCRIPTOR_HPP
+
 #include <common/error.hpp>
 #include <common/format.hpp>
 
@@ -78,3 +81,5 @@ private:
 };
 
 } /* namespace lttng */
+
+#endif /* LTTNG_FILE_DESCRIPTOR_HPP */
