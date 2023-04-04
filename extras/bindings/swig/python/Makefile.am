@@ -11,6 +11,7 @@ lttng.i: lttng.i.in
 AM_CFLAGS += \
 	-Wno-cast-function-type \
 	-Wno-missing-field-initializers \
+	-Wno-null-dereference \
 	-Wno-redundant-decls \
 	-Wno-shadow \
 	-Wno-unused-parameter
