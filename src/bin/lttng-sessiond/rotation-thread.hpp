@@ -22,6 +22,7 @@
 #include "notification-thread.hpp"
 
 extern struct lttng_notification_channel *rotate_notification_channel;
+extern int rotate_notification_channel_subscription_change_eventfd;
 
 enum rotation_thread_job_type {
 	ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,

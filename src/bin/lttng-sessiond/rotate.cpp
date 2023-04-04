@@ -49,6 +49,7 @@ int subscribe_session_consumed_size_rotation(
 	int ret;
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
+	const uint64_t eventfd_increment_value = 1;
 	struct lttng_condition *rotate_condition = nullptr;
 	struct lttng_action *notify_action = nullptr;
 	const struct lttng_credentials session_creds = {
@@ -108,6 +109,15 @@ int subscribe_session_consumed_size_rotation(
 		goto end;
 	}
 
+	ret = lttng_write(rotate_notification_channel_subscription_change_eventfd,
+			  &eventfd_increment_value,
+			  sizeof(eventfd_increment_value));
+	if (ret != sizeof(eventfd_increment_value)) {
+		PERROR("Failed to wake up rotation thread as writing to the rotation thread notification channel subscription change eventfd failed");
+		ret = -1;
+		goto end;
+	}
+
 	ret = notification_thread_command_register_trigger(
 		notification_thread_handle, session->rotate_trigger, true);
 	if (ret < 0 && ret != -LTTNG_ERR_TRIGGER_EXISTS) {
@@ -132,6 +142,7 @@ int unsubscribe_session_consumed_size_rotation(
 {
 	int ret = 0;
 	enum lttng_notification_channel_status status;
+	const uint64_t eventfd_increment_value = 1;
 
 	LTTNG_ASSERT(session->rotate_trigger);
 	status = lttng_notification_channel_unsubscribe(
@@ -139,6 +150,15 @@ int unsubscribe_session_consumed_size_rotation(
 		lttng_trigger_get_const_condition(session->rotate_trigger));
 	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		ERR("Session unsubscribe error: %d", (int) status);
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_write(rotate_notification_channel_subscription_change_eventfd,
+			  &eventfd_increment_value,
+			  sizeof(eventfd_increment_value));
+	if (ret != sizeof(eventfd_increment_value)) {
+		PERROR("Failed to wake up rotation thread as writing to the rotation thread notification channel subscription change eventfd failed");
 		ret = -1;
 		goto end;
 	}
