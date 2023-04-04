@@ -47,12 +47,13 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	int ret;
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
-	struct lttng_condition *rotate_condition = NULL;
-	struct lttng_action *notify_action = NULL;
+	const uint64_t eventfd_increment_value = 1;
 	const struct lttng_credentials session_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
 		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
 	};
+	struct lttng_condition *rotate_condition;
+	struct lttng_action *notify_action = NULL;
 
 	rotate_condition = lttng_condition_session_consumed_size_create();
 	if (!rotate_condition) {
@@ -109,6 +110,15 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 		goto end;
 	}
 
+	ret = lttng_write(rotate_notification_channel_subscription_change_eventfd,
+			  &eventfd_increment_value,
+			  sizeof(eventfd_increment_value));
+	if (ret != sizeof(eventfd_increment_value)) {
+		PERROR("Failed to wake up rotation thread as writing to the rotation thread notification channel subscription change eventfd failed");
+		ret = -1;
+		goto end;
+	}
+
 	ret = notification_thread_command_register_trigger(
 			notification_thread_handle, session->rotate_trigger,
 			true);
@@ -134,6 +144,7 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 {
 	int ret = 0;
 	enum lttng_notification_channel_status status;
+	const uint64_t eventfd_increment_value = 1;
 
 	assert(session->rotate_trigger);
 	status = lttng_notification_channel_unsubscribe(
@@ -145,8 +156,17 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 		goto end;
 	}
 
-	ret = notification_thread_command_unregister_trigger(
-			notification_thread_handle, session->rotate_trigger);
+	ret = lttng_write(rotate_notification_channel_subscription_change_eventfd,
+			  &eventfd_increment_value,
+			  sizeof(eventfd_increment_value));
+	if (ret != sizeof(eventfd_increment_value)) {
+		PERROR("Failed to wake up rotation thread as writing to the rotation thread notification channel subscription change eventfd failed");
+		ret = -1;
+		goto end;
+	}
+
+	ret = notification_thread_command_unregister_trigger(notification_thread_handle,
+							     session->rotate_trigger);
 	if (ret != LTTNG_OK) {
 		ERR("Session unregister trigger error: %d", ret);
 		goto end;
