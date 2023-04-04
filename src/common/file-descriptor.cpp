@@ -49,7 +49,7 @@ lttng::file_descriptor::~file_descriptor() noexcept
 	_cleanup();
 }
 
-int lttng::file_descriptor::_fd() const noexcept
+int lttng::file_descriptor::fd() const noexcept
 {
 	LTTNG_ASSERT(is_valid_fd(_raw_fd));
 	return _raw_fd;
@@ -87,9 +87,9 @@ void lttng::file_descriptor::write(const void *buffer, std::size_t size)
 			max_supported_write_size));
 	}
 
-	const auto write_ret = lttng_write(_fd(), buffer, size);
+	const auto write_ret = lttng_write(fd(), buffer, size);
 	if (write_ret < 0 || static_cast<std::size_t>(write_ret) != size) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to write to file descriptor: fd={}", _fd()),
+		LTTNG_THROW_POSIX(fmt::format("Failed to write to file descriptor: fd={}", fd()),
 				  errno);
 	}
 }
@@ -111,9 +111,9 @@ void lttng::file_descriptor::read(void *buffer, std::size_t size)
 			max_supported_read_size));
 	}
 
-	const auto read_ret = lttng_read(_fd(), buffer, size);
+	const auto read_ret = lttng_read(fd(), buffer, size);
 	if (read_ret < 0 || static_cast<std::size_t>(read_ret) != size) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to read from file descriptor: fd={}", _fd()),
+		LTTNG_THROW_POSIX(fmt::format("Failed to read from file descriptor: fd={}", fd()),
 				  errno);
 	}
 }

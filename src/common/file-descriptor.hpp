@@ -42,8 +42,8 @@ public:
 	 */
 	void write(const void *buffer, std::size_t size);
 
+	int fd() const noexcept;
 protected:
-	int _fd() const noexcept;
 	void _cleanup() noexcept;
 
 private:

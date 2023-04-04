@@ -24,12 +24,15 @@ format_throw_location(const char *file_name, const char *function_name, unsigned
 }
 } /* namespace */
 
-lttng::ctl::error::error(lttng_error_code error_code,
+lttng::ctl::error::error(const std::string& msg,
+			 lttng_error_code error_code,
 			 const char *file_name,
 			 const char *function_name,
 			 unsigned int line_number) :
-	runtime_error(
-		std::string(error_get_str(error_code)), file_name, function_name, line_number),
+	runtime_error(msg + ": " + std::string(error_get_str(error_code)),
+		      file_name,
+		      function_name,
+		      line_number),
 	_error_code{ error_code }
 {
 }

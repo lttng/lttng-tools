@@ -22,7 +22,6 @@
 #include "lttng-syscall.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
-#include "rotate.hpp"
 #include "rotation-thread.hpp"
 #include "session.hpp"
 #include "timer.hpp"
@@ -3392,7 +3391,6 @@ error:
  * Called with session lock held.
  */
 int cmd_destroy_session(struct ltt_session *session,
-			struct notification_thread_handle *notification_thread_handle,
 			int *sock_fd)
 {
 	int ret;
@@ -3435,7 +3433,15 @@ int cmd_destroy_session(struct ltt_session *session,
 	}
 
 	if (session->rotate_size) {
-		unsubscribe_session_consumed_size_rotation(session, notification_thread_handle);
+		try {
+			the_rotation_thread_handle->unsubscribe_session_consumed_size_rotation(
+				*session);
+		} catch (std::exception& e) {
+			/* Continue the destruction of the session anyway. */
+			ERR("Failed to unsubscribe rotation thread notification channel from consumed size condition during session destruction: %s",
+			    e.what());
+		}
+
 		session->rotate_size = 0;
 	}
 
@@ -5619,7 +5625,7 @@ end:
 	ret = (cmd_ret == LTTNG_OK) ? cmd_ret : -((int) cmd_ret);
 	return ret;
 error:
-	if (session_reset_rotation_state(session, LTTNG_ROTATION_STATE_ERROR)) {
+	if (session_reset_rotation_state(*session, LTTNG_ROTATION_STATE_ERROR)) {
 		ERR("Failed to reset rotation state of session \"%s\"", session->name);
 	}
 	goto end;
@@ -5786,8 +5792,7 @@ end:
 int cmd_rotation_set_schedule(struct ltt_session *session,
 			      bool activate,
 			      enum lttng_rotation_schedule_type schedule_type,
-			      uint64_t new_value,
-			      struct notification_thread_handle *notification_thread_handle)
+			      uint64_t new_value)
 {
 	int ret;
 	uint64_t *parameter_value;
@@ -5889,18 +5894,22 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 		break;
 	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
 		if (activate) {
-			ret = subscribe_session_consumed_size_rotation(
-				session, new_value, notification_thread_handle);
-			if (ret) {
-				ERR("Failed to enable consumed-size notification in ROTATION_SET_SCHEDULE command");
+			try {
+				the_rotation_thread_handle->subscribe_session_consumed_size_rotation(
+					*session, new_value);
+			} catch (std::exception& e) {
+				ERR("Failed to enable consumed-size notification in ROTATION_SET_SCHEDULE command: %s",
+				    e.what());
 				ret = LTTNG_ERR_UNK;
 				goto end;
 			}
 		} else {
-			ret = unsubscribe_session_consumed_size_rotation(
-				session, notification_thread_handle);
-			if (ret) {
-				ERR("Failed to disable consumed-size notification in ROTATION_SET_SCHEDULE command");
+			try {
+				the_rotation_thread_handle
+					->unsubscribe_session_consumed_size_rotation(*session);
+			} catch (std::exception& e) {
+				ERR("Failed to disable consumed-size notification in ROTATION_SET_SCHEDULE command: %s",
+				    e.what());
 				ret = LTTNG_ERR_UNK;
 				goto end;
 			}

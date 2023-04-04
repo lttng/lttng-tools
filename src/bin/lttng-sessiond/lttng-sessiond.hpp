@@ -9,19 +9,20 @@
 #ifndef _LTT_SESSIOND_H
 #define _LTT_SESSIOND_H
 
-#include <urcu.h>
-#include <urcu/wfcqueue.h>
+#include "notification-thread.hpp"
+#include "rotation-thread.hpp"
+#include "session.hpp"
+#include "sessiond-config.hpp"
+#include "ust-app.hpp"
 
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/payload.hpp>
 #include <common/compat/poll.hpp>
 #include <common/compat/socket.hpp>
+#include <common/payload.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/uuid.hpp>
 
-#include "session.hpp"
-#include "ust-app.hpp"
-#include "notification-thread.hpp"
-#include "sessiond-config.hpp"
+#include <urcu.h>
+#include <urcu/wfcqueue.h>
 
 /*
  * Consumer daemon state which is changed when spawning it, killing it or in
@@ -66,6 +67,9 @@ extern struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
 
 /* Notification thread handle. */
 extern struct notification_thread_handle *the_notification_thread_handle;
+
+/* Rotation thread handle. */
+extern lttng::sessiond::rotation_thread::uptr the_rotation_thread_handle;
 
 /*
  * This contains extra data needed for processing a command received by the

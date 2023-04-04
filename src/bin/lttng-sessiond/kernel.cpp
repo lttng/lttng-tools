@@ -16,7 +16,6 @@
 #include "lttng-syscall.hpp"
 #include "modprobe.hpp"
 #include "notification-thread-commands.hpp"
-#include "rotate.hpp"
 #include "sessiond-config.hpp"
 #include "tracker.hpp"
 #include "utils.hpp"

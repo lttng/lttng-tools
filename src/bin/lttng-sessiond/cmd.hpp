@@ -40,9 +40,7 @@ void cmd_init(void);
 /* Session commands */
 enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
 		struct lttng_session_descriptor **return_descriptor);
-int cmd_destroy_session(struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle,
-		int *sock_fd);
+int cmd_destroy_session(struct ltt_session *session, int *sock_fd);
 
 /* Channel commands */
 int cmd_disable_channel(struct ltt_session *session,
@@ -171,8 +169,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 		uint64_t rotate_id);
 int cmd_rotation_set_schedule(struct ltt_session *session,
 		bool activate, enum lttng_rotation_schedule_type schedule_type,
-		uint64_t value,
-		struct notification_thread_handle *notification_thread_handle);
+		uint64_t value);
 
 const struct cmd_completion_handler *cmd_pop_completion_handler(void);
 int start_kernel_session(struct ltt_kernel_session *ksess);

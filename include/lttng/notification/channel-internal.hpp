@@ -8,12 +8,15 @@
 #ifndef LTTNG_NOTIFICATION_CHANNEL_INTERNAL_H
 #define LTTNG_NOTIFICATION_CHANNEL_INTERNAL_H
 
-#include <lttng/notification/channel.h>
 #include <common/macros.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/payload.hpp>
-#include <stdint.h>
-#include <stdbool.h>
+
+#include <lttng/notification/channel.h>
+
 #include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <urcu/list.h>
 
 /*
@@ -82,6 +85,10 @@ struct pending_notification {
  * in the pending_notifications list.
  */
 struct lttng_notification_channel {
+	using uptr = std::unique_ptr<
+		lttng_notification_channel,
+		lttng::details::create_unique_class<lttng_notification_channel, lttng_notification_channel_destroy>::deleter>;
+
 	pthread_mutex_t lock;
 	int socket;
 	struct {

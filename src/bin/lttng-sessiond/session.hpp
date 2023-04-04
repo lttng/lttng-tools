@@ -226,9 +226,9 @@ void session_unlock(struct ltt_session *session);
  * In other words, it prevents tracer configurations from changing while they
  * are being transmitted to the various applications.
  */
-void session_lock_list();
-int session_trylock_list();
-void session_unlock_list();
+void session_lock_list() noexcept;
+int session_trylock_list() noexcept;
+void session_unlock_list() noexcept;
 
 void session_destroy(struct ltt_session *session);
 int session_add_destroy_notifier(struct ltt_session *session,
@@ -236,7 +236,7 @@ int session_add_destroy_notifier(struct ltt_session *session,
 
 int session_add_clear_notifier(struct ltt_session *session,
 		ltt_session_clear_notifier notifier, void *user_data);
-void session_notify_clear(struct ltt_session *session);
+void session_notify_clear(ltt_session &session);
 
 bool session_get(struct ltt_session *session);
 void session_put(struct ltt_session *session);
@@ -259,7 +259,7 @@ void session_list_wait_empty();
 
 bool session_access_ok(struct ltt_session *session, uid_t uid);
 
-int session_reset_rotation_state(struct ltt_session *session,
+int session_reset_rotation_state(ltt_session &session,
 		enum lttng_rotation_state result);
 
 /* Create a new trace chunk object from the session's configuration. */

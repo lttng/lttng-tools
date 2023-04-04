@@ -14,12 +14,11 @@
 
 #include <lttng/lttng-error.h>
 
-#define LTTNG_THROW_CTL(error_code) \
+#define LTTNG_THROW_CTL(msg, error_code) \
 	throw lttng::ctl::error(msg, error_code, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_POSIX(msg, errno_code) \
 	throw lttng::posix_error(msg, errno_code, __FILE__, __func__, __LINE__)
-#define LTTNG_THROW_ERROR(msg) \
-	throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
+#define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
 	throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_COMMUNICATION_ERROR(msg) \
@@ -50,10 +49,11 @@ namespace ctl {
 /* Wrap lttng_error_code errors which may be reported through liblttng-ctl's interface. */
 class error : public runtime_error {
 public:
-	explicit error(lttng_error_code error_code,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+	explicit error(const std::string& msg,
+		       lttng_error_code error_code,
+		       const char *file_name,
+		       const char *function_name,
+		       unsigned int line_number);
 
 	lttng_error_code code() const noexcept
 	{

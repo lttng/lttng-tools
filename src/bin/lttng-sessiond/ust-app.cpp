@@ -19,7 +19,6 @@
 #include "lttng-ust-ctl.hpp"
 #include "lttng-ust-error.hpp"
 #include "notification-thread-commands.hpp"
-#include "rotate.hpp"
 #include "session.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"

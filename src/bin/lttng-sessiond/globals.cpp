@@ -21,6 +21,7 @@ long the_page_size;
 struct health_app *the_health_sessiond;
 
 struct notification_thread_handle *the_notification_thread_handle;
+lttng::sessiond::rotation_thread::uptr the_rotation_thread_handle;
 
 struct lttng_ht *the_agent_apps_ht_by_sock = nullptr;
 struct lttng_ht *the_trigger_agents_ht_by_domain = nullptr;

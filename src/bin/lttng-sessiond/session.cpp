@@ -158,7 +158,7 @@ void session_list_wait_empty()
 /*
  * Acquire session list lock
  */
-void session_lock_list()
+void session_lock_list() noexcept
 {
 	pthread_mutex_lock(&the_session_list.lock);
 }
@@ -166,7 +166,7 @@ void session_lock_list()
 /*
  * Try to acquire session list lock
  */
-int session_trylock_list()
+int session_trylock_list() noexcept
 {
 	return pthread_mutex_trylock(&the_session_list.lock);
 }
@@ -174,7 +174,7 @@ int session_trylock_list()
 /*
  * Release session list lock
  */
-void session_unlock_list()
+void session_unlock_list() noexcept
 {
 	pthread_mutex_unlock(&the_session_list.lock);
 }
@@ -928,19 +928,19 @@ static void session_notify_destruction(const struct ltt_session *session)
 /*
  * Fire each clear notifier once, and remove them from the array.
  */
-void session_notify_clear(struct ltt_session *session)
+void session_notify_clear(ltt_session &session)
 {
 	size_t i;
-	const size_t count = lttng_dynamic_array_get_count(&session->clear_notifiers);
+	const size_t count = lttng_dynamic_array_get_count(&session.clear_notifiers);
 
 	for (i = 0; i < count; i++) {
 		const struct ltt_session_clear_notifier_element *element =
 			(ltt_session_clear_notifier_element *) lttng_dynamic_array_get_element(
-				&session->clear_notifiers, i);
+				&session.clear_notifiers, i);
 
-		element->notifier(session, element->user_data);
+		element->notifier(&session, element->user_data);
 	}
-	lttng_dynamic_array_clear(&session->clear_notifiers);
+	lttng_dynamic_array_clear(&session.clear_notifiers);
 }
 
 static void session_release(struct urcu_ref *ref)
@@ -1359,26 +1359,26 @@ bool session_access_ok(struct ltt_session *session, uid_t uid)
  *
  * Must be called with the session and session_list locks held.
  */
-int session_reset_rotation_state(struct ltt_session *session, enum lttng_rotation_state result)
+int session_reset_rotation_state(ltt_session &session, enum lttng_rotation_state result)
 {
 	int ret = 0;
 
 	ASSERT_LOCKED(the_session_list.lock);
-	ASSERT_LOCKED(session->lock);
+	ASSERT_LOCKED(session.lock);
 
-	session->rotation_state = result;
-	if (session->rotation_pending_check_timer_enabled) {
+	session.rotation_state = result;
+	if (session.rotation_pending_check_timer_enabled) {
 		ret = timer_session_rotation_pending_check_stop(session);
 	}
-	if (session->chunk_being_archived) {
+	if (session.chunk_being_archived) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
 
-		chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived, &chunk_id);
+		chunk_status = lttng_trace_chunk_get_id(session.chunk_being_archived, &chunk_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id, chunk_id);
-		lttng_trace_chunk_put(session->chunk_being_archived);
-		session->chunk_being_archived = nullptr;
+		LTTNG_OPTIONAL_SET(&session.last_archived_chunk_id, chunk_id);
+		lttng_trace_chunk_put(session.chunk_being_archived);
+		session.chunk_being_archived = nullptr;
 		/*
 		 * Fire the clear reply notifiers if we are completing a clear
 		 * rotation.
@@ -1429,6 +1429,10 @@ end:
 
 void ls::details::locked_session_release(ltt_session *session)
 {
+	if (!session) {
+		return;
+	}
+
 	session_unlock(session);
 	session_put(session);
 }

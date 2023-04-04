@@ -8,16 +8,25 @@
 #ifndef LTTNG_NOTIFICATION_INTERNAL_H
 #define LTTNG_NOTIFICATION_INTERNAL_H
 
-#include <lttng/notification/notification.h>
 #include <common/macros.hpp>
-#include <stdint.h>
+#include <common/make-unique-wrapper.hpp>
+
+#include <lttng/notification/notification.h>
+
+#include <memory>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 struct lttng_payload;
 struct lttng_payload_view;
 
 struct lttng_notification {
+	using uptr = std::unique_ptr<
+		lttng_notification,
+		lttng::details::create_unique_class<lttng_notification,
+						    lttng_notification_destroy>::deleter>;
+
 	struct lttng_trigger *trigger;
 	struct lttng_evaluation *evaluation;
 };

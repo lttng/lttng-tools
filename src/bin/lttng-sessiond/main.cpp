@@ -1303,7 +1303,7 @@ static void destroy_all_sessions_and_wait()
 			goto unlock_session;
 		}
 		(void) cmd_stop_trace(session);
-		(void) cmd_destroy_session(session, the_notification_thread_handle, nullptr);
+		(void) cmd_destroy_session(session, nullptr);
 	unlock_session:
 		session_unlock(session);
 		session_put(session);
@@ -1411,10 +1411,8 @@ int main(int argc, char **argv)
 			  *ust64_channel_monitor_pipe = nullptr,
 			  *kernel_channel_monitor_pipe = nullptr;
 	struct timer_thread_parameters timer_thread_parameters;
-	/* Rotation thread handle. */
-	struct rotation_thread_handle *rotation_thread_handle = nullptr;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
-	struct rotation_thread_timer_queue *rotation_timer_queue = nullptr;
+	lttng::sessiond::rotation_thread_timer_queue *rotation_timer_queue = nullptr;
 	struct lttng_thread *client_thread = nullptr;
 	struct lttng_thread *notification_thread = nullptr;
 	struct lttng_thread *register_apps_thread = nullptr;
@@ -1600,7 +1598,7 @@ int main(int argc, char **argv)
 	 * sessiond timer thread and the rotation thread. The main thread keeps
 	 * its ownership and destroys it when both threads have been joined.
 	 */
-	rotation_timer_queue = rotation_thread_timer_queue_create();
+	rotation_timer_queue = lttng::sessiond::rotation_thread_timer_queue_create();
 	if (!rotation_timer_queue) {
 		retval = -1;
 		goto stop_threads;
@@ -1771,18 +1769,21 @@ int main(int argc, char **argv)
 		goto stop_threads;
 	}
 
-	/* rotation_thread_data acquires the pipes' read side. */
-	rotation_thread_handle =
-		rotation_thread_handle_create(rotation_timer_queue, the_notification_thread_handle);
-	if (!rotation_thread_handle) {
+	try {
+		the_rotation_thread_handle =
+			lttng::make_unique<lttng::sessiond::rotation_thread>(
+				*rotation_timer_queue, *the_notification_thread_handle);
+	} catch (const std::exception& e) {
 		retval = -1;
-		ERR("Failed to create rotation thread shared data");
+		ERR("Failed to create rotation thread: %s", e.what());
 		goto stop_threads;
 	}
 
-	/* Create rotation thread. */
-	if (!launch_rotation_thread(rotation_thread_handle)) {
+	try {
+		the_rotation_thread_handle->launch_thread();
+	} catch (const std::exception& e) {
 		retval = -1;
+		ERR("Failed to launch rotation thread: %s", e.what());
 		goto stop_threads;
 	}
 
@@ -1942,10 +1943,6 @@ stop_threads:
 
 	rcu_thread_offline();
 	rcu_unregister_thread();
-
-	if (rotation_thread_handle) {
-		rotation_thread_handle_destroy(rotation_thread_handle);
-	}
 
 	/*
 	 * After the rotation and timer thread have quit, we can safely destroy

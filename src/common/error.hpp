@@ -9,14 +9,16 @@
 #define _ERROR_H
 
 #include <common/compat/errno.hpp>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <urcu/tls-compat.h>
 #include <common/compat/time.hpp>
-#include <common/string-utils/format.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
+#include <common/string-utils/format.hpp>
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <urcu/tls-compat.h>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
@@ -251,6 +253,10 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 		_PERROR(call ": %s", ##args, _perror_buf);                \
 	} while (0);
 #endif
+
+#define DBG_FMT(format_str, args...)  DBG("%s", fmt::format(format_str, ##args).c_str())
+#define WARN_FMT(format_str, args...) WARN("%s", fmt::format(format_str, ##args).c_str())
+#define ERR_FMT(format_str, args...)  ERR("%s", fmt::format(format_str, ##args).c_str())
 
 const char *error_get_str(int32_t code);
 

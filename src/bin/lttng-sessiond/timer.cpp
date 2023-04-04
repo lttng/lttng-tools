@@ -233,25 +233,25 @@ end:
 /*
  * Call with session and session_list locks held.
  */
-int timer_session_rotation_pending_check_stop(struct ltt_session *session)
+int timer_session_rotation_pending_check_stop(ltt_session &session)
 {
 	int ret;
 
-	LTTNG_ASSERT(session);
-	LTTNG_ASSERT(session->rotation_pending_check_timer_enabled);
+	LTTNG_ASSERT(session.rotation_pending_check_timer_enabled);
 
-	DBG("Disabling session rotation pending check timer on session %" PRIu64, session->id);
-	ret = timer_stop(&session->rotation_pending_check_timer,
+	DBG("Disabling session rotation pending check timer on session %" PRIu64, session.id);
+	ret = timer_stop(&session.rotation_pending_check_timer,
 			 LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK);
 	if (ret == -1) {
 		ERR("Failed to stop rotate_pending_check timer");
 	} else {
-		session->rotation_pending_check_timer_enabled = false;
+		session.rotation_pending_check_timer_enabled = false;
 		/*
 		 * The timer's reference to the session can be released safely.
 		 */
-		session_put(session);
+		session_put(&session);
 	}
+
 	return ret;
 }
 
@@ -379,13 +379,15 @@ static void *thread_timer(void *data)
 			struct ltt_session *session =
 				(struct ltt_session *) info.si_value.sival_ptr;
 
-			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
-						    ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION,
-						    session);
+			rotation_thread_enqueue_job(
+				ctx->rotation_thread_job_queue,
+				lttng::sessiond::rotation_thread_job_type::CHECK_PENDING_ROTATION,
+				session);
 		} else if (signr == LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION) {
-			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
-						    ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,
-						    (struct ltt_session *) info.si_value.sival_ptr);
+			rotation_thread_enqueue_job(
+				ctx->rotation_thread_job_queue,
+				lttng::sessiond::rotation_thread_job_type::SCHEDULED_ROTATION,
+				(struct ltt_session *) info.si_value.sival_ptr);
 			/*
 			 * The scheduled periodic rotation timer is not in
 			 * "one-shot" mode. The reference to the session is not

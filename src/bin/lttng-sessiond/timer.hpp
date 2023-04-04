@@ -9,13 +9,14 @@
 #ifndef SESSIOND_TIMER_H
 #define SESSIOND_TIMER_H
 
+#include "rotation-thread.hpp"
+#include "session.hpp"
+
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "session.hpp"
-
 struct timer_thread_parameters {
-	struct rotation_thread_timer_queue *rotation_thread_job_queue;
+	lttng::sessiond::rotation_thread_timer_queue *rotation_thread_job_queue;
 };
 
 int timer_signal_init(void);
@@ -24,7 +25,7 @@ int timer_signal_init(void);
 int timer_session_rotation_pending_check_start(struct ltt_session *session,
 		unsigned int interval_us);
 /* Stop a session's rotation pending check timer. */
-int timer_session_rotation_pending_check_stop(struct ltt_session *session);
+int timer_session_rotation_pending_check_stop(ltt_session &session);
 
 /* Start a session's rotation schedule timer. */
 int timer_session_rotation_schedule_timer_start(struct ltt_session *session,

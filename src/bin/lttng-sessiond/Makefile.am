@@ -39,7 +39,6 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        notification-thread-commands.hpp notification-thread-commands.cpp \
                        notification-thread-events.hpp notification-thread-events.cpp \
                        sessiond-config.hpp sessiond-config.cpp \
-                       rotate.hpp rotate.cpp \
                        rotation-thread.hpp rotation-thread.cpp \
                        timer.cpp timer.hpp \
                        globals.cpp \

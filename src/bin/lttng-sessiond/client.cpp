@@ -1784,7 +1784,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION:
 	{
-		ret = cmd_destroy_session(cmd_ctx->session, the_notification_thread_handle, sock);
+		ret = cmd_destroy_session(cmd_ctx->session, sock);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
@@ -2217,8 +2217,7 @@ skip_domain:
 		ret = cmd_rotation_set_schedule(cmd_ctx->session,
 						set_schedule,
 						schedule_type,
-						value,
-						the_notification_thread_handle);
+						value);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
