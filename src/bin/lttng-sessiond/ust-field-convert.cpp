@@ -15,8 +15,17 @@
 
 namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
-namespace {
 
+/*
+ * fmtlib helper that must be under the same namespace as lttng_ust_ctl_abstract_types
+ * (global).
+ */
+static int format_as(lttng_ust_ctl_abstract_types type)
+{
+	return fmt::underlying(type);
+}
+
+namespace {
 /*
  * Type enclosing the session information that may be required during the decoding
  * of the lttng_ust_ctl_field array provided by applications on registration of
