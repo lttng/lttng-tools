@@ -395,8 +395,8 @@ void ls::rotation_thread_timer_queue_destroy(struct rotation_thread_timer_queue 
 
 ls::rotation_thread::rotation_thread(rotation_thread_timer_queue& rotation_timer_queue,
 				     notification_thread_handle& notification_thread_handle) :
-	_rotation_timer_queue{ rotation_timer_queue },
-	_notification_thread_handle{ notification_thread_handle }
+	_rotation_timer_queue(rotation_timer_queue),
+	_notification_thread_handle(notification_thread_handle)
 {
 	_quit_pipe.reset([]() {
 		auto raw_pipe = lttng_pipe_open(FD_CLOEXEC);
