@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2020-2022 Philippe Proulx <pproulx@efficios.com>
+
+expected_formatter_major_version=14
+
+# Runs the formatter, making sure it's the expected version.
+format_cpp() {
+	local formatter=$1
+	local version
+
+	version=$($formatter --version)
+
+        # shellcheck disable=SC2181
+	if (($? != 0)); then
+		echo "Cannot execute \`$formatter --version\`." >&2
+		return 1
+	fi
+
+	if [[ "$version" != *"clang-format version $expected_formatter_major_version"* ]]; then
+		echo "Expecting clang-format $expected_formatter_major_version." >&2
+		echo -n Got: >&2
+		echo " \`$version\`" >&2
+		echo >&2
+		echo "Use the FORMATTER environment variable to specify the location of clang-format $expected_formatter_major_version"
+		return 1
+	fi
+
+	local root_dir
+
+	root_dir="$(dirname "${BASH_SOURCE[0]}")"
+
+	# Using xargs to fail as soon as the formatter fails (`-exec`
+	# won't stop if its subprocess fails).
+	#
+	# shellcheck disable=SC2086
+	find "$root_dir" -path './src/vendor' -prune \
+		-o -type f \( -name '*\.h' -o -name '*\.hpp' -o -name '*\.c' -o -name '*\.cpp' \) \
+		-not -path '*/\.*' -print0 | xargs -n1 -0 $formatter -i --style=file --fallback-style=none
+}
+
+if [[ -n "$FORMATTER" ]]; then
+	# Try using environment-provided formatter
+	formatter=$FORMATTER
+elif command -v clang-format-$expected_formatter_major_version &> /dev/null; then
+	# Try using the expected version of clang-format
+	formatter="clang-format-$expected_formatter_major_version -i"
+else
+	# Try using `clang-format` as is
+	formatter='clang-format -i'
+fi
+
+# Try to format files
+format_cpp "$formatter"
