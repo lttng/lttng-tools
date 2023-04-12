@@ -17,6 +17,7 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
+BitFieldColonSpacing: None
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
 BraceWrapping:
