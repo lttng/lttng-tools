@@ -73,7 +73,6 @@ libcommon_lgpl_la_SOURCES = \
 	error-query.cpp \
 	evaluation.cpp \
 	event.cpp \
-	eventfd.hpp eventfd.cpp \
 	event-expr/event-expr.cpp \
 	event-field-value.cpp \
 	event-rule/event-rule.cpp \
@@ -119,6 +118,10 @@ libcommon_lgpl_la_SOURCES = \
 	userspace-probe.cpp \
 	urcu.hpp \
 	utils.cpp utils.hpp
+
+if IS_LINUX
+libcommon_lgpl_la_SOURCES += eventfd.cpp eventfd.hpp
+endif
 
 if HAVE_ELF_H
 libcommon_lgpl_la_SOURCES += \
