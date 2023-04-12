@@ -326,7 +326,6 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
 
-
 	/* Disabling existing events */
 	{
 		lttng::urcu::read_lock_guard read_lock;

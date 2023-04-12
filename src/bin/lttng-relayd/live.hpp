@@ -10,9 +10,9 @@
  *
  */
 
-#include <common/uri.hpp>
-
 #include "lttng-relayd.hpp"
+
+#include <common/uri.hpp>
 
 int relayd_live_create(struct lttng_uri *live_uri);
 int relayd_live_stop(void);

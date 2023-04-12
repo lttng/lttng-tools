@@ -9,12 +9,13 @@
 #ifndef _LTTNG_KERNEL_CTL_H
 #define _LTTNG_KERNEL_CTL_H
 
-#include <stdbool.h>
+#include <common/lttng-kernel-old.hpp>
+#include <common/lttng-kernel.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp> /* for struct lttng_filter_bytecode */
 
 #include <lttng/lttng.h>
-#include <common/lttng-kernel.hpp>
-#include <common/lttng-kernel-old.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>	/* for struct lttng_filter_bytecode */
+
+#include <stdbool.h>
 
 int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
@@ -32,15 +33,14 @@ int kernctl_create_event_notifier_group(int fd);
 
 /* Apply on event notifier_group file descriptor. */
 int kernctl_create_event_notifier_group_notification_fd(int fd);
-int kernctl_create_event_notifier_group_error_counter(int fd,
-		const struct lttng_kernel_abi_counter_conf *error_counter_conf);
+int kernctl_create_event_notifier_group_error_counter(
+	int fd, const struct lttng_kernel_abi_counter_conf *error_counter_conf);
 int kernctl_create_event_notifier(int fd,
-		const struct lttng_kernel_abi_event_notifier *event_notifier);
+				  const struct lttng_kernel_abi_event_notifier *event_notifier);
 
 int kernctl_counter_get_aggregate_value(int counter_fd,
-		struct lttng_kernel_abi_counter_aggregate *value);
-int kernctl_counter_clear(int counter_fd,
-		struct lttng_kernel_abi_counter_clear *clear);
+					struct lttng_kernel_abi_counter_aggregate *value);
+int kernctl_counter_clear(int counter_fd, struct lttng_kernel_abi_counter_clear *clear);
 
 /* Apply on event file descriptor. */
 int kernctl_filter(int fd, const struct lttng_bytecode *filter);
@@ -65,8 +65,7 @@ int kernctl_wait_quiescent(int fd);
  * It returns 0 if OK, -1 on error. In all cases (error and OK),
  * @syscall_mask should be freed by the caller with free(3).
  */
-int kernctl_syscall_mask(int fd, char **syscall_mask,
-		uint32_t *nr_bits);
+int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits);
 
 /* Process ID tracking can be applied to session file descriptor. */
 int kernctl_track_pid(int fd, int pid);

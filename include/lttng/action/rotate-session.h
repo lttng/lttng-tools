@@ -33,15 +33,16 @@ LTTNG_EXPORT extern struct lttng_action *lttng_action_rotate_session_create(void
  * Set the session name of an lttng_action object of type
  * LTTNG_ACTION_TYPE_ROTATE_SESSION.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_set_session_name(
-		struct lttng_action *action, const char *session_name);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_rotate_session_set_session_name(struct lttng_action *action, const char *session_name);
 
 /*
  * Get the session name of an lttng_action object of type
  * LTTNG_ACTION_TYPE_ROTATE_SESSION.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_get_session_name(
-		const struct lttng_action *action, const char **session_name);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_rotate_session_get_session_name(const struct lttng_action *action,
+					     const char **session_name);
 
 /*
  * Set the rate policy of a rotate session action.
@@ -50,9 +51,9 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_get_ses
  * LTTNG_ACTION_STATUS_ERROR on internal error,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_set_rate_policy(
-		struct lttng_action *action,
-		const struct lttng_rate_policy *policy);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_rotate_session_set_rate_policy(struct lttng_action *action,
+					    const struct lttng_rate_policy *policy);
 
 /*
  * Get the rate policy of a rotate session action.
@@ -60,9 +61,9 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_set_rat
  * Returns LTTNG_ACTION_STATUS_OK on success,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_rotate_session_get_rate_policy(
-		const struct lttng_action *action,
-		const struct lttng_rate_policy **policy);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_rotate_session_get_rate_policy(const struct lttng_action *action,
+					    const struct lttng_rate_policy **policy);
 
 #ifdef __cplusplus
 }

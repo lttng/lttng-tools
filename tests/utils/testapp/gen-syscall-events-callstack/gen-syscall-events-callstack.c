@@ -5,6 +5,8 @@
  *
  */
 
+#include "utils.h"
+
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -14,8 +16,6 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "utils.h"
 
 /**
  * The process waits for the creation of a file passed as argument from an
@@ -33,50 +33,34 @@
 volatile int val = 0;
 
 long nooptimization my_gettid(void);
-long nooptimization
-my_gettid(void)
+long nooptimization my_gettid(void)
 {
-    long ret;
+	long ret;
 #ifdef __x86_64
-    asm volatile
-    (
-        "syscall"
-        : "=a" (ret)
-        : "0"(__NR_gettid)
-        : "cc", "rcx", "r11", "memory"
-    );
+	asm volatile("syscall" : "=a"(ret) : "0"(__NR_gettid) : "cc", "rcx", "r11", "memory");
 #elif defined(__i386)
-    asm volatile
-    (
-        "int $0x80"
-        : "=a" (ret)
-        : "0"(__NR_gettid)
-        : "cc", "edi", "esi", "memory"
-    );
+	asm volatile("int $0x80" : "=a"(ret) : "0"(__NR_gettid) : "cc", "edi", "esi", "memory");
 #else
 #error "Userspace callstack test not supported for this architecture."
 #endif
-    return ret;
+	return ret;
 }
 
 int nooptimization fct_c(void);
-int nooptimization
-fct_c(void)
+int nooptimization fct_c(void)
 {
 	return my_gettid();
 }
 
 int nooptimization fct_b(void);
-int nooptimization
-fct_b(void)
+int nooptimization fct_b(void)
 {
 	val += fct_c();
 	return val;
 }
 
 int nooptimization fct_a(void);
-int nooptimization
-fct_a(void)
+int nooptimization fct_a(void)
 {
 	val += fct_b();
 	return val;

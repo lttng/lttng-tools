@@ -13,8 +13,8 @@
 #define _LGPL_SOURCE
 #include "lttng-ctl-helper.hpp"
 
-#include <common/compiler.hpp>
 #include <common/compat/errno.hpp>
+#include <common/compiler.hpp>
 #include <common/defaults.hpp>
 #include <common/utils.hpp>
 

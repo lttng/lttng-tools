@@ -10,11 +10,14 @@
 
 #include "action-executor.hpp"
 #include "thread.hpp"
+
 #include <common/compat/poll.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/pipe.hpp>
-#include <lttng/trigger/trigger.h>
+
 #include <lttng/domain.h>
+#include <lttng/trigger/trigger.h>
+
 #include <pthread.h>
 #include <semaphore.h>
 #include <urcu.h>
@@ -151,8 +154,8 @@ struct notification_thread_handle {
  *             for lookup on registration.
  *   - tracer_event_sources_list:
  *             A list of tracer event source (read side fd) of type
-*              struct notification_event_tracer_event_source_element.
-*
+ *              struct notification_event_tracer_event_source_element.
+ *
  *
  * The thread reacts to the following internal events:
  *   1) creation of a tracing channel,
@@ -315,13 +318,11 @@ struct notification_thread_state {
 };
 
 /* notification_thread_data takes ownership of the channel monitor pipes. */
-struct notification_thread_handle *notification_thread_handle_create(
-		struct lttng_pipe *ust32_channel_monitor_pipe,
-		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe);
-void notification_thread_handle_destroy(
-		struct notification_thread_handle *handle);
-struct lttng_thread *launch_notification_thread(
-		struct notification_thread_handle *handle);
+struct notification_thread_handle *
+notification_thread_handle_create(struct lttng_pipe *ust32_channel_monitor_pipe,
+				  struct lttng_pipe *ust64_channel_monitor_pipe,
+				  struct lttng_pipe *kernel_channel_monitor_pipe);
+void notification_thread_handle_destroy(struct notification_thread_handle *handle);
+struct lttng_thread *launch_notification_thread(struct notification_thread_handle *handle);
 
 #endif /* NOTIFICATION_THREAD_H */

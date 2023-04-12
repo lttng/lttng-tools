@@ -8,8 +8,9 @@
 #ifndef LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H
 #define LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H
 
-#include <common/payload-view.hpp>
 #include <common/macros.hpp>
+#include <common/payload-view.hpp>
+
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/kernel-syscall.h>
 
@@ -40,11 +41,10 @@ struct lttng_event_rule_kernel_syscall_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-ssize_t lttng_event_rule_kernel_syscall_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_rule **rule);
+ssize_t lttng_event_rule_kernel_syscall_create_from_payload(struct lttng_payload_view *view,
+							    struct lttng_event_rule **rule);
 
 const char *lttng_event_rule_kernel_syscall_emission_site_str(
-		enum lttng_event_rule_kernel_syscall_emission_site emission_site);
+	enum lttng_event_rule_kernel_syscall_emission_site emission_site);
 
 #endif /* LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H */

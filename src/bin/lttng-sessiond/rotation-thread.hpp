@@ -31,10 +31,7 @@
 namespace lttng {
 namespace sessiond {
 
-enum class rotation_thread_job_type {
-	SCHEDULED_ROTATION,
-	CHECK_PENDING_ROTATION
-};
+enum class rotation_thread_job_type { SCHEDULED_ROTATION, CHECK_PENDING_ROTATION };
 
 struct rotation_thread_timer_queue;
 
@@ -43,7 +40,7 @@ public:
 	using uptr = std::unique_ptr<rotation_thread>;
 
 	rotation_thread(rotation_thread_timer_queue& rotation_timer_queue,
-			       notification_thread_handle& notification_thread_handle);
+			notification_thread_handle& notification_thread_handle);
 	~rotation_thread();
 
 	/* Only use through the lttng_thread facilities. */

@@ -9,6 +9,7 @@
 #define LTTNG_NOTIFICATION_CHANNEL_H
 
 #include <lttng/lttng-export.h>
+
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -58,8 +59,8 @@ enum lttng_notification_channel_status {
  * The returned lttng_notification_channel must be destroyed using
  * the lttng_notification_channel_destroy() function.
  */
-LTTNG_EXPORT extern struct lttng_notification_channel *lttng_notification_channel_create(
-		struct lttng_endpoint *endpoint);
+LTTNG_EXPORT extern struct lttng_notification_channel *
+lttng_notification_channel_create(struct lttng_endpoint *endpoint);
 
 /*
  * Get the next notification received on a notification channel.
@@ -83,9 +84,8 @@ LTTNG_EXPORT extern struct lttng_notification_channel *lttng_notification_channe
  *     that caused the reception to fail.
  */
 LTTNG_EXPORT extern enum lttng_notification_channel_status
-lttng_notification_channel_get_next_notification(
-		struct lttng_notification_channel *channel,
-		struct lttng_notification **notification);
+lttng_notification_channel_get_next_notification(struct lttng_notification_channel *channel,
+						 struct lttng_notification **notification);
 
 /*
  * Check whether a notification is pending on a notification channel.
@@ -104,9 +104,8 @@ lttng_notification_channel_get_next_notification(
  *     provided.
  */
 LTTNG_EXPORT extern enum lttng_notification_channel_status
-lttng_notification_channel_has_pending_notification(
-		struct lttng_notification_channel *channel,
-		bool *notification_pending);
+lttng_notification_channel_has_pending_notification(struct lttng_notification_channel *channel,
+						    bool *notification_pending);
 
 /*
  * Subscribe to notifications of a condition through a notification channel.
@@ -124,9 +123,8 @@ lttng_notification_channel_has_pending_notification(
  *     client was already subscribed to the condition through this channel.
  */
 LTTNG_EXPORT extern enum lttng_notification_channel_status
-lttng_notification_channel_subscribe(
-		struct lttng_notification_channel *channel,
-		const struct lttng_condition *condition);
+lttng_notification_channel_subscribe(struct lttng_notification_channel *channel,
+				     const struct lttng_condition *condition);
 
 /*
  * Unsubscribe to notifications of a condition through a notification channel.
@@ -144,15 +142,14 @@ lttng_notification_channel_subscribe(
  *     client was not already subscribed to the condition through this channel.
  */
 LTTNG_EXPORT extern enum lttng_notification_channel_status
-lttng_notification_channel_unsubscribe(
-		struct lttng_notification_channel *channel,
-		const struct lttng_condition *condition);
+lttng_notification_channel_unsubscribe(struct lttng_notification_channel *channel,
+				       const struct lttng_condition *condition);
 
 /*
  * Closes and destroys (frees) a notification channel.
  */
-LTTNG_EXPORT extern void lttng_notification_channel_destroy(
-		struct lttng_notification_channel *channel);
+LTTNG_EXPORT extern void
+lttng_notification_channel_destroy(struct lttng_notification_channel *channel);
 
 #ifdef __cplusplus
 }

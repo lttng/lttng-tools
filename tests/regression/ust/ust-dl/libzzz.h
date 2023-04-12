@@ -10,4 +10,4 @@
 
 int zzz(void);
 
-#endif  /* _LIBZZZ_H */
+#endif /* _LIBZZZ_H */

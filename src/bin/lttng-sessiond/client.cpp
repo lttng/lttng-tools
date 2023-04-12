@@ -2214,10 +2214,8 @@ skip_domain:
 					cmd_ctx->lsm.u.rotation_set_schedule.type;
 		value = cmd_ctx->lsm.u.rotation_set_schedule.value;
 
-		ret = cmd_rotation_set_schedule(cmd_ctx->session,
-						set_schedule,
-						schedule_type,
-						value);
+		ret = cmd_rotation_set_schedule(
+			cmd_ctx->session, set_schedule, schedule_type, value);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}

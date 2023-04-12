@@ -8,11 +8,12 @@
 #ifndef LTTNG_TRIGGER_H
 #define LTTNG_TRIGGER_H
 
-#include <sys/types.h>
 #include <lttng/constant.h>
-#include <inttypes.h>
 #include <lttng/lttng-error.h>
 #include <lttng/lttng-export.h>
+
+#include <inttypes.h>
+#include <sys/types.h>
 
 struct lttng_action;
 struct lttng_condition;
@@ -63,8 +64,8 @@ enum lttng_trigger_status {
  * Trigger objects must be destroyed using the lttng_trigger_destroy()
  * function.
  */
-LTTNG_EXPORT extern struct lttng_trigger *lttng_trigger_create(
-		struct lttng_condition *condition, struct lttng_action *action);
+LTTNG_EXPORT extern struct lttng_trigger *lttng_trigger_create(struct lttng_condition *condition,
+							       struct lttng_action *action);
 
 /*
  * Set the user identity (uid) of a trigger.
@@ -75,8 +76,8 @@ LTTNG_EXPORT extern struct lttng_trigger *lttng_trigger_create(
  * LTTNG_TRIGGER_STATUS_EPERM if not authorized,
  * LTTNG_TRIGGER_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_trigger_status lttng_trigger_set_owner_uid(
-		struct lttng_trigger *trigger, uid_t uid);
+LTTNG_EXPORT extern enum lttng_trigger_status
+lttng_trigger_set_owner_uid(struct lttng_trigger *trigger, uid_t uid);
 
 /*
  * Get the user identity (uid) of a trigger.
@@ -85,8 +86,8 @@ LTTNG_EXPORT extern enum lttng_trigger_status lttng_trigger_set_owner_uid(
  * LTTNG_TRIGGER_STATUS_UNSET if unset,
  * LTTNG_TRIGGER_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_trigger_status lttng_trigger_get_owner_uid(
-		const struct lttng_trigger *trigger, uid_t *uid);
+LTTNG_EXPORT extern enum lttng_trigger_status
+lttng_trigger_get_owner_uid(const struct lttng_trigger *trigger, uid_t *uid);
 
 /*
  * Get the condition of a trigger.
@@ -95,11 +96,11 @@ LTTNG_EXPORT extern enum lttng_trigger_status lttng_trigger_get_owner_uid(
  *
  * Returns a condition on success, NULL on error.
  */
-LTTNG_EXPORT extern struct lttng_condition *lttng_trigger_get_condition(
-		struct lttng_trigger *trigger);
+LTTNG_EXPORT extern struct lttng_condition *
+lttng_trigger_get_condition(struct lttng_trigger *trigger);
 
-LTTNG_EXPORT extern const struct lttng_condition *lttng_trigger_get_const_condition(
-		const struct lttng_trigger *trigger);
+LTTNG_EXPORT extern const struct lttng_condition *
+lttng_trigger_get_const_condition(const struct lttng_trigger *trigger);
 
 /*
  * Get the action of a trigger.
@@ -108,11 +109,10 @@ LTTNG_EXPORT extern const struct lttng_condition *lttng_trigger_get_const_condit
  *
  * Returns an action on success, NULL on error.
  */
-LTTNG_EXPORT extern struct lttng_action *lttng_trigger_get_action(
-		struct lttng_trigger *trigger);
+LTTNG_EXPORT extern struct lttng_action *lttng_trigger_get_action(struct lttng_trigger *trigger);
 
-LTTNG_EXPORT extern const struct lttng_action *lttng_trigger_get_const_action(
-		const struct lttng_trigger *trigger);
+LTTNG_EXPORT extern const struct lttng_action *
+lttng_trigger_get_const_action(const struct lttng_trigger *trigger);
 
 /*
  * Get the name of a trigger.
@@ -125,8 +125,8 @@ LTTNG_EXPORT extern const struct lttng_action *lttng_trigger_get_const_action(
  * success, LTTNG_TRIGGER_STATUS_INVALID if an invalid parameter is passed,
  * or LTTNG_TRIGGER_STATUS_UNSET if the trigger is unnamed.
  */
-LTTNG_EXPORT extern enum lttng_trigger_status lttng_trigger_get_name(
-		const struct lttng_trigger *trigger, const char **name);
+LTTNG_EXPORT extern enum lttng_trigger_status
+lttng_trigger_get_name(const struct lttng_trigger *trigger, const char **name);
 
 /*
  * Destroy (frees) a trigger object.
@@ -141,9 +141,8 @@ LTTNG_EXPORT extern void lttng_trigger_destroy(struct lttng_trigger *trigger);
  *
  * Returns an LTTng status code.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_register_trigger_with_name(
-		struct lttng_trigger *trigger,
-		const char *name);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_register_trigger_with_name(struct lttng_trigger *trigger, const char *name);
 
 /*
  * Register a trigger to the session daemon, generating a unique name for its
@@ -155,8 +154,8 @@ LTTNG_EXPORT extern enum lttng_error_code lttng_register_trigger_with_name(
  *
  * Returns an LTTng status code.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_register_trigger_with_automatic_name(
-		struct lttng_trigger *trigger);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_register_trigger_with_automatic_name(struct lttng_trigger *trigger);
 
 /*
  * Unregister a trigger from the session daemon.
@@ -177,8 +176,7 @@ LTTNG_EXPORT extern int lttng_unregister_trigger(const struct lttng_trigger *tri
  *
  * Returns LTTNG_OK on success, else a suitable LTTng error code.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_list_triggers(
-		struct lttng_triggers **triggers);
+LTTNG_EXPORT extern enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers);
 
 /*
  * Get a trigger from the set at a given index.
@@ -189,8 +187,8 @@ LTTNG_EXPORT extern enum lttng_error_code lttng_list_triggers(
  *
  * Returns a trigger, or NULL on error.
  */
-LTTNG_EXPORT extern const struct lttng_trigger *lttng_triggers_get_at_index(
-		const struct lttng_triggers *triggers, unsigned int index);
+LTTNG_EXPORT extern const struct lttng_trigger *
+lttng_triggers_get_at_index(const struct lttng_triggers *triggers, unsigned int index);
 
 /*
  * Get the number of triggers in a trigger set.
@@ -198,8 +196,8 @@ LTTNG_EXPORT extern const struct lttng_trigger *lttng_triggers_get_at_index(
  * Return LTTNG_TRIGGER_STATUS_OK on success,
  * LTTNG_TRIGGER_STATUS_INVALID when invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_trigger_status lttng_triggers_get_count(
-		const struct lttng_triggers *triggers, unsigned int *count);
+LTTNG_EXPORT extern enum lttng_trigger_status
+lttng_triggers_get_count(const struct lttng_triggers *triggers, unsigned int *count);
 
 /*
  * Destroy a trigger set.

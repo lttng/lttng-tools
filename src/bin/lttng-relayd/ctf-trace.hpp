@@ -10,18 +10,18 @@
  *
  */
 
-#include <inttypes.h>
-#include <urcu/ref.h>
-
-#include <common/hashtable/hashtable.hpp>
-
 #include "session.hpp"
 #include "stream.hpp"
 #include "viewer-stream.hpp"
 
+#include <common/hashtable/hashtable.hpp>
+
+#include <inttypes.h>
+#include <urcu/ref.h>
+
 struct ctf_trace {
-	struct urcu_ref ref;		/* Every stream has a ref on the trace. */
-	struct relay_session *session;	/* Back ref to trace session */
+	struct urcu_ref ref; /* Every stream has a ref on the trace. */
+	struct relay_session *session; /* Back ref to trace session */
 
 	/* Trace sub-folder relative to the session output path. */
 	char *path;
@@ -31,7 +31,7 @@ struct ctf_trace {
 	 */
 	pthread_mutex_t lock;
 	uint64_t id;
-	struct relay_viewer_stream *viewer_metadata_stream;	/* RCU protected */
+	struct relay_viewer_stream *viewer_metadata_stream; /* RCU protected */
 
 	/*
 	 * Relay streams associated with this ctf trace.
@@ -46,7 +46,7 @@ struct ctf_trace {
 	 * stream path name.
 	 */
 	struct lttng_ht_node_str node;
-	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+	struct rcu_head rcu_node; /* For call_rcu teardown. */
 
 	/*
 	 * True if the metadata stream of this trace was sent the viewer in the
@@ -56,7 +56,7 @@ struct ctf_trace {
 };
 
 struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
-		const char *subpath);
+						  const char *subpath);
 bool ctf_trace_get(struct ctf_trace *trace);
 void ctf_trace_put(struct ctf_trace *trace);
 

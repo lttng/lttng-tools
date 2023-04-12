@@ -8,11 +8,11 @@
 #ifndef COMMON_ARGPAR_UTILS_H
 #define COMMON_ARGPAR_UTILS_H
 
-#include <stdarg.h>
-
-#include <common/macros.hpp>
 #include <common/argpar/argpar.h>
+#include <common/macros.hpp>
 #include <common/string-utils/format.hpp>
+
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,8 +20,7 @@ extern "C" {
 
 #define WHILE_PARSING_ARG_N_ARG_FMT "While parsing argument #%d (`%s`): "
 
-enum parse_next_item_status
-{
+enum parse_next_item_status {
 	PARSE_NEXT_ITEM_STATUS_OK = 0,
 	PARSE_NEXT_ITEM_STATUS_END = 1,
 	PARSE_NEXT_ITEM_STATUS_ERROR = -1,
@@ -53,10 +52,13 @@ enum parse_next_item_status
  */
 ATTR_FORMAT_PRINTF(7, 8)
 enum parse_next_item_status parse_next_item(struct argpar_iter *iter,
-		const struct argpar_item **item, int argc_offset,
-		const char **argv, bool unknown_opt_is_error,
-		const struct argpar_error **error_out,
-		const char *context_fmt, ...);
+					    const struct argpar_item **item,
+					    int argc_offset,
+					    const char **argv,
+					    bool unknown_opt_is_error,
+					    const struct argpar_error **error_out,
+					    const char *context_fmt,
+					    ...);
 
 #ifdef __cplusplus
 }

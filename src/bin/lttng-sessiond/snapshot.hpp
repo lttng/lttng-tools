@@ -8,14 +8,14 @@
 #ifndef SNAPSHOT_H
 #define SNAPSHOT_H
 
-#include <limits.h>
-#include <stdint.h>
+#include "consumer.hpp"
 
 #include <common/common.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/uri.hpp>
 
-#include "consumer.hpp"
+#include <limits.h>
+#include <stdint.h>
 
 struct consumer_output;
 struct ltt_session;
@@ -55,27 +55,29 @@ struct snapshot {
 struct snapshot *snapshot_alloc();
 void snapshot_destroy(struct snapshot *obj);
 int snapshot_init(struct snapshot *obj);
-void snapshot_delete_output(struct snapshot *snapshot,
-		struct snapshot_output *output);
-void snapshot_add_output(struct snapshot *snapshot,
-		struct snapshot_output *output);
+void snapshot_delete_output(struct snapshot *snapshot, struct snapshot_output *output);
+void snapshot_add_output(struct snapshot *snapshot, struct snapshot_output *output);
 
 /* Snapshot output object. */
 struct snapshot_output *snapshot_output_alloc();
 void snapshot_output_destroy(struct snapshot_output *obj);
 int snapshot_output_init(const struct ltt_session *session,
-		uint64_t max_size, const char *name,
-		const char *ctrl_url, const char *data_url,
-		struct consumer_output *consumer, struct snapshot_output *output,
-		struct snapshot *snapshot);
+			 uint64_t max_size,
+			 const char *name,
+			 const char *ctrl_url,
+			 const char *data_url,
+			 struct consumer_output *consumer,
+			 struct snapshot_output *output,
+			 struct snapshot *snapshot);
 int snapshot_output_init_with_uri(const struct ltt_session *session,
-		uint64_t max_size, const char *name,
-		struct lttng_uri *uris, size_t nb_uri,
-		struct consumer_output *consumer, struct snapshot_output *output,
-		struct snapshot *snapshot);
-struct snapshot_output *snapshot_find_output_by_id(uint32_t id,
-		struct snapshot *snapshot);
-struct snapshot_output *snapshot_find_output_by_name(const char *name,
-		struct snapshot *snapshot);
+				  uint64_t max_size,
+				  const char *name,
+				  struct lttng_uri *uris,
+				  size_t nb_uri,
+				  struct consumer_output *consumer,
+				  struct snapshot_output *output,
+				  struct snapshot *snapshot);
+struct snapshot_output *snapshot_find_output_by_id(uint32_t id, struct snapshot *snapshot);
+struct snapshot_output *snapshot_find_output_by_name(const char *name, struct snapshot *snapshot);
 
 #endif /* SNAPSHOT_H */

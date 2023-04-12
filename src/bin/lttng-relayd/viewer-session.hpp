@@ -10,17 +10,17 @@
  *
  */
 
-#include <limits.h>
-#include <inttypes.h>
-#include <pthread.h>
-#include <urcu/list.h>
-#include <urcu/ref.h>
+#include "lttng-viewer-abi.hpp"
+#include "session.hpp"
 
 #include <common/hashtable/hashtable.hpp>
 #include <common/trace-chunk.hpp>
 
-#include "session.hpp"
-#include "lttng-viewer-abi.hpp"
+#include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
+#include <urcu/list.h>
+#include <urcu/ref.h>
 
 struct relay_viewer_session {
 	/*
@@ -29,8 +29,8 @@ struct relay_viewer_session {
 	 * This list limits the design to having the sessions in at most
 	 * one viewer session.
 	 */
-	struct cds_list_head session_list;	/* RCU list. */
-	pthread_mutex_t session_list_lock;	/* Protects list updates. */
+	struct cds_list_head session_list; /* RCU list. */
+	pthread_mutex_t session_list_lock; /* Protects list updates. */
 	/*
 	 * The viewer session's current trace chunk is initially set, when
 	 * a viewer attaches to the viewer session, to a copy the corresponding
@@ -65,14 +65,13 @@ struct relay_viewer_session *viewer_session_create(void);
 void viewer_session_destroy(struct relay_viewer_session *vsession);
 void viewer_session_close(struct relay_viewer_session *vsession);
 
-enum lttng_viewer_attach_return_code viewer_session_attach(
-		struct relay_viewer_session *vsession,
-		struct relay_session *session);
+enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_session *vsession,
+							   struct relay_session *session);
 int viewer_session_is_attached(struct relay_viewer_session *vsession,
-		struct relay_session *session);
+			       struct relay_session *session);
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,
-		struct relay_session *session);
+				      struct relay_session *session);
 int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
-		struct lttng_trace_chunk *relay_session_trace_chunk);
+					struct lttng_trace_chunk *relay_session_trace_chunk);
 
 #endif /* _VIEWER_SESSION_H */

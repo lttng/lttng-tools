@@ -8,8 +8,8 @@
 #ifndef LTTNG_PAYLOAD_H
 #define LTTNG_PAYLOAD_H
 
-#include <common/dynamic-buffer.hpp>
 #include <common/dynamic-array.hpp>
+#include <common/dynamic-buffer.hpp>
 #include <common/fd-handle.hpp>
 
 /*
@@ -30,8 +30,7 @@ struct lttng_payload {
 void lttng_payload_init(struct lttng_payload *payload);
 
 /* Copy a payload. */
-int lttng_payload_copy(const struct lttng_payload *src_payload,
-		struct lttng_payload *dst_payload);
+int lttng_payload_copy(const struct lttng_payload *src_payload, struct lttng_payload *dst_payload);
 
 /* Release any memory and references held by the payload. */
 void lttng_payload_reset(struct lttng_payload *payload);
@@ -54,7 +53,6 @@ void lttng_payload_clear(struct lttng_payload *payload);
  *
  * Returns 0 on success, -1 on allocation error.
  */
-int lttng_payload_push_fd_handle(struct lttng_payload *payload,
-		struct fd_handle *fd_handle);
+int lttng_payload_push_fd_handle(struct lttng_payload *payload, struct fd_handle *fd_handle);
 
 #endif /* LTTNG_PAYLOAD_H */

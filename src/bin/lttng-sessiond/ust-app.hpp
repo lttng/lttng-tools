@@ -9,22 +9,22 @@
 #ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
-#include <stdint.h>
+#include "session.hpp"
+#include "trace-ust.hpp"
+#include "ust-field-convert.hpp"
+#include "ust-registry-session.hpp"
+#include "ust-registry.hpp"
 
-#include <common/index-allocator.hpp>
 #include <common/format.hpp>
+#include <common/index-allocator.hpp>
 #include <common/uuid.hpp>
 
-#include "trace-ust.hpp"
-#include "ust-registry.hpp"
-#include "ust-registry-session.hpp"
-#include "session.hpp"
-#include "ust-field-convert.hpp"
+#include <stdint.h>
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
 /* Process name (short). */
-#define UST_APP_PROCNAME_LEN	16
+#define UST_APP_PROCNAME_LEN 16
 
 struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
@@ -67,7 +67,7 @@ struct ust_register_msg {
 	uint32_t uint32_t_alignment;
 	uint32_t uint64_t_alignment;
 	uint32_t long_alignment;
-	int byte_order;		/* BIG_ENDIAN or LITTLE_ENDIAN */
+	int byte_order; /* BIG_ENDIAN or LITTLE_ENDIAN */
 	char name[LTTNG_UST_ABI_PROCNAME_LEN];
 };
 
@@ -198,17 +198,17 @@ struct ust_app_session {
 
 	bool enabled;
 	/* started: has the session been in started state at any time ? */
-	bool started;  /* allows detection of start vs restart. */
-	int handle;   /* used has unique identifier for app session */
+	bool started; /* allows detection of start vs restart. */
+	int handle; /* used has unique identifier for app session */
 
-	bool deleted;	/* Session deleted flag. Check with lock held. */
+	bool deleted; /* Session deleted flag. Check with lock held. */
 
 	/*
 	 * Tracing session ID. Multiple ust app session can have the same tracing
 	 * session id making this value NOT unique to the object.
 	 */
 	uint64_t tracing_id;
-	uint64_t id;	/* Unique session identifier */
+	uint64_t id; /* Unique session identifier */
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_u64 node;
 	/*
@@ -235,7 +235,7 @@ struct ust_app_session {
 	struct rcu_head rcu_head;
 	/* If the channel's streams have to be outputed or not. */
 	unsigned int output_traces;
-	unsigned int live_timer_interval;	/* usec */
+	unsigned int live_timer_interval; /* usec */
 
 	/* Metadata channel attributes. */
 	struct lttng_ust_ctl_consumer_channel_attr metadata_attr;
@@ -251,14 +251,14 @@ struct ust_app_session {
 struct ust_app {
 	/* Traffic initiated from the session daemon to the application. */
 	int sock;
-	pthread_mutex_t sock_lock;	/* Protects sock protocol. */
+	pthread_mutex_t sock_lock; /* Protects sock protocol. */
 
 	/* Traffic initiated from the application to the session daemon. */
 	int notify_sock;
 	pid_t pid;
 	pid_t ppid;
-	uid_t uid;           /* User ID that owns the apps */
-	gid_t gid;           /* Group ID that owns the apps */
+	uid_t uid; /* User ID that owns the apps */
+	gid_t gid; /* Group ID that owns the apps */
 
 	/* App ABI. */
 	lttng::sessiond::trace::abi abi;
@@ -267,8 +267,8 @@ struct ust_app {
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
 	struct lttng_ust_abi_tracer_version version;
-	uint32_t v_major;    /* Version major number */
-	uint32_t v_minor;    /* Version minor number */
+	uint32_t v_major; /* Version major number */
+	uint32_t v_minor; /* Version minor number */
 	/* Extra for the NULL byte. */
 	char name[UST_APP_PROCNAME_LEN + 1];
 	/* Type of buffer this application uses. */
@@ -341,11 +341,17 @@ struct formatter<ust_app> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(const ust_app& app, FormatContextType& ctx)
 	{
-		return format_to(ctx.out(),
-				"{{ procname = `{}`, ppid = {}, pid = {}, uid = {}, gid = {}, version = {}.{}, registration time = {} }}",
-				app.name, app.ppid, app.pid, app.uid, app.gid, app.v_major,
-				app.v_minor,
-				lttng::utils::time_to_iso8601_str(app.registration_time));
+		return format_to(
+			ctx.out(),
+			"{{ procname = `{}`, ppid = {}, pid = {}, uid = {}, gid = {}, version = {}.{}, registration time = {} }}",
+			app.name,
+			app.ppid,
+			app.pid,
+			app.uid,
+			app.gid,
+			app.v_major,
+			app.v_minor,
+			lttng::utils::time_to_iso8601_str(app.registration_time));
 	}
 };
 } /* namespace fmt */
@@ -362,17 +368,19 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
 int ust_app_create_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
-int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan);
-int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan);
+			     struct ltt_ust_channel *uchan,
+			     struct ltt_ust_event *uevent);
+int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
+int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan);
 int ust_app_enable_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
+			     struct ltt_ust_channel *uchan,
+			     struct ltt_ust_event *uevent);
 int ust_app_disable_event_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
+			      struct ltt_ust_channel *uchan,
+			      struct ltt_ust_event *uevent);
 int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, struct ltt_ust_context *uctx);
+				struct ltt_ust_channel *uchan,
+				struct ltt_ust_context *uctx);
 void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app);
 void ust_app_global_update_all(struct ltt_ust_session *usess);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
@@ -388,37 +396,38 @@ void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
 ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ptr& registry,
-		struct consumer_socket *socket,
-		int send_zero_data);
+			      struct consumer_socket *socket,
+			      int send_zero_data);
 void ust_app_destroy(struct ust_app *app);
-enum lttng_error_code ust_app_snapshot_record(
-		const struct ltt_ust_session *usess,
-		const struct consumer_output *output,
-		uint64_t nb_packets_per_stream);
-uint64_t ust_app_get_size_one_more_packet_per_stream(
-		const struct ltt_ust_session *usess, uint64_t cur_nr_packets);
+enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,
+					      const struct consumer_output *output,
+					      uint64_t nb_packets_per_stream);
+uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess,
+						     uint64_t cur_nr_packets);
 struct ust_app *ust_app_find_by_sock(int sock);
 int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
-		struct cds_list_head *buffer_reg_uid_list,
-		struct consumer_output *consumer, uint64_t uchan_id,
-		int overwrite, uint64_t *discarded, uint64_t *lost);
+					  struct cds_list_head *buffer_reg_uid_list,
+					  struct consumer_output *consumer,
+					  uint64_t uchan_id,
+					  int overwrite,
+					  uint64_t *discarded,
+					  uint64_t *lost);
 int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan,
-		struct consumer_output *consumer,
-		int overwrite, uint64_t *discarded, uint64_t *lost);
+					  struct ltt_ust_channel *uchan,
+					  struct consumer_output *consumer,
+					  int overwrite,
+					  uint64_t *discarded,
+					  uint64_t *lost);
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
 enum lttng_error_code ust_app_rotate_session(struct ltt_session *session);
-enum lttng_error_code ust_app_create_channel_subdirectories(
-		const struct ltt_ust_session *session);
-int ust_app_release_object(struct ust_app *app,
-		struct lttng_ust_abi_object_data *data);
+enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust_session *session);
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data);
 enum lttng_error_code ust_app_clear_session(struct ltt_session *session);
 enum lttng_error_code ust_app_open_packets(struct ltt_session *session);
 
 int ust_app_setup_event_notifier_group(struct ust_app *app);
 
-static inline
-int ust_app_supported()
+static inline int ust_app_supported()
 {
 	return 1;
 }
@@ -428,353 +437,293 @@ bool ust_app_supports_counters(const struct ust_app *app);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline
-int ust_app_destroy_trace_all(
-		struct ltt_ust_session *usess __attribute__((unused)))
+static inline int ust_app_destroy_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_start_trace(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ust_app *app __attribute__((unused)))
+static inline int ust_app_start_trace(struct ltt_ust_session *usess __attribute__((unused)),
+				      struct ust_app *app __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_start_trace_all(
-		struct ltt_ust_session *usess __attribute__((unused)))
+static inline int ust_app_start_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_stop_trace_all(
-		struct ltt_ust_session *usess __attribute__((unused)))
+static inline int ust_app_stop_trace_all(struct ltt_ust_session *usess __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_list_events(
-		struct lttng_event **events __attribute__((unused)))
+static inline int ust_app_list_events(struct lttng_event **events __attribute__((unused)))
 {
 	return -ENOSYS;
 }
 
-static inline
-int ust_app_list_event_fields(
-		struct lttng_event_field **fields __attribute__((unused)))
+static inline int ust_app_list_event_fields(struct lttng_event_field **fields
+					    __attribute__((unused)))
 {
 	return -ENOSYS;
 }
 
-static inline
-int ust_app_register(
-		struct ust_register_msg *msg __attribute__((unused)),
-		int sock __attribute__((unused)))
+static inline int ust_app_register(struct ust_register_msg *msg __attribute__((unused)),
+				   int sock __attribute__((unused)))
 {
 	return -ENOSYS;
 }
 
-static inline
-int ust_app_register_done(struct ust_app *app __attribute__((unused)))
+static inline int ust_app_register_done(struct ust_app *app __attribute__((unused)))
 {
 	return -ENOSYS;
 }
 
-static inline
-int ust_app_version(struct ust_app *app __attribute__((unused)))
+static inline int ust_app_version(struct ust_app *app __attribute__((unused)))
 {
 	return -ENOSYS;
 }
 
-static inline
-void ust_app_unregister(int sock __attribute__((unused)))
+static inline void ust_app_unregister(int sock __attribute__((unused)))
 {
 }
 
-static inline
-void ust_app_clean_list(void)
+static inline void ust_app_clean_list(void)
 {
 }
 
-static inline
-struct ust_app_list *ust_app_get_list(void)
+static inline struct ust_app_list *ust_app_get_list(void)
 {
 	return NULL;
 }
 
-static inline
-struct ust_app *ust_app_get_by_pid(pid_t pid __attribute__((unused)))
+static inline struct ust_app *ust_app_get_by_pid(pid_t pid __attribute__((unused)))
 {
 	return NULL;
 }
 
-static inline
-int ust_app_ht_alloc(void)
+static inline int ust_app_ht_alloc(void)
 {
 	return 0;
 }
 
-static inline
-void ust_app_global_update(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ust_app *app __attribute__((unused)))
-{}
+static inline void ust_app_global_update(struct ltt_ust_session *usess __attribute__((unused)),
+					 struct ust_app *app __attribute__((unused)))
+{
+}
 
-static inline
-void ust_app_global_update_event_notifier_rules(
-		struct ust_app *app __attribute__((unused)))
-{}
+static inline void ust_app_global_update_event_notifier_rules(struct ust_app *app
+							      __attribute__((unused)))
+{
+}
 
-static inline
-void ust_app_global_update_all_event_notifier_rules(void)
-{}
+static inline void ust_app_global_update_all_event_notifier_rules(void)
+{
+}
 
-static inline
-int ust_app_setup_event_notifier_group(
-		struct ust_app *app __attribute__((unused)))
+static inline int ust_app_setup_event_notifier_group(struct ust_app *app __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_disable_channel_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)))
+static inline int ust_app_disable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					      struct ltt_ust_channel *uchan __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_enable_channel_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)))
+static inline int ust_app_enable_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					     struct ltt_ust_channel *uchan __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_create_event_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct ltt_ust_event *uevent __attribute__((unused)))
+static inline int ust_app_create_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					   struct ltt_ust_channel *uchan __attribute__((unused)),
+					   struct ltt_ust_event *uevent __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_disable_event_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct ltt_ust_event *uevent __attribute__((unused)))
+static inline int ust_app_disable_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					    struct ltt_ust_channel *uchan __attribute__((unused)),
+					    struct ltt_ust_event *uevent __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_enable_event_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct ltt_ust_event *uevent __attribute__((unused)))
+static inline int ust_app_enable_event_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					   struct ltt_ust_channel *uchan __attribute__((unused)),
+					   struct ltt_ust_event *uevent __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_add_ctx_channel_glb(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct ltt_ust_context *uctx __attribute__((unused)))
+static inline int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess __attribute__((unused)),
+					      struct ltt_ust_channel *uchan __attribute__((unused)),
+					      struct ltt_ust_context *uctx __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_enable_event_pid(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct ltt_ust_event *uevent __attribute__((unused)),
-		pid_t pid __attribute__((unused)))
+static inline int ust_app_enable_event_pid(struct ltt_ust_session *usess __attribute__((unused)),
+					   struct ltt_ust_channel *uchan __attribute__((unused)),
+					   struct ltt_ust_event *uevent __attribute__((unused)),
+					   pid_t pid __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_recv_registration(
-		int sock __attribute__((unused)),
-		struct ust_register_msg *msg __attribute__((unused)))
+static inline int ust_app_recv_registration(int sock __attribute__((unused)),
+					    struct ust_register_msg *msg __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_recv_notify(int sock __attribute__((unused)))
+static inline int ust_app_recv_notify(int sock __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-struct ust_app *ust_app_create(
-		struct ust_register_msg *msg __attribute__((unused)),
-		int sock __attribute__((unused)))
+static inline struct ust_app *ust_app_create(struct ust_register_msg *msg __attribute__((unused)),
+					     int sock __attribute__((unused)))
 {
 	return NULL;
 }
 
-static inline
-void ust_app_add(struct ust_app *app __attribute__((unused)))
+static inline void ust_app_add(struct ust_app *app __attribute__((unused)))
 {
 }
 
-static inline
-void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
+static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused)))
 {
 }
 
-static inline
-ssize_t ust_app_push_metadata(
-		lttng::sessiond::ust::registry_session *registry __attribute__((unused)),
-		struct consumer_socket *socket __attribute__((unused)),
-		int send_zero_data __attribute__((unused)))
+static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_session *registry
+					    __attribute__((unused)),
+					    struct consumer_socket *socket __attribute__((unused)),
+					    int send_zero_data __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-void ust_app_destroy(struct ust_app *app __attribute__((unused)))
+static inline void ust_app_destroy(struct ust_app *app __attribute__((unused)))
 {
 	return;
 }
 
-static inline
-enum lttng_error_code ust_app_snapshot_record(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		const struct consumer_output *output __attribute__((unused)),
-		uint64_t max_stream_size __attribute__((unused)))
+static inline enum lttng_error_code
+ust_app_snapshot_record(struct ltt_ust_session *usess __attribute__((unused)),
+			const struct consumer_output *output __attribute__((unused)),
+			uint64_t max_stream_size __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline
-unsigned int ust_app_get_nb_stream(
-		struct ltt_ust_session *usess __attribute__((unused)))
+static inline unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess
+						 __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-void ust_app_update_event_notifier_error_count(
-		struct lttng_trigger *lttng_trigger __attribute__((unused)))
+static inline void ust_app_update_event_notifier_error_count(struct lttng_trigger *lttng_trigger
+							     __attribute__((unused)))
 {
 	return;
 }
 
-static inline
-int ust_app_supported(void)
+static inline int ust_app_supported(void)
 {
 	return 0;
 }
 
-static inline
-bool ust_app_supports_notifiers(
-		const struct ust_app *app __attribute__((unused)))
+static inline bool ust_app_supports_notifiers(const struct ust_app *app __attribute__((unused)))
 {
 	return false;
 }
 
-static inline
-bool ust_app_supports_counters(
-		const struct ust_app *app __attribute__((unused)))
+static inline bool ust_app_supports_counters(const struct ust_app *app __attribute__((unused)))
 {
 	return false;
 }
 
-static inline
-struct ust_app *ust_app_find_by_sock(int sock __attribute__((unused)))
+static inline struct ust_app *ust_app_find_by_sock(int sock __attribute__((unused)))
 {
 	return NULL;
 }
 
-static inline
-struct ust_app *ust_app_find_by_pid(pid_t pid __attribute__((unused)))
+static inline struct ust_app *ust_app_find_by_pid(pid_t pid __attribute__((unused)))
 {
 	return NULL;
 }
 
-static inline
-uint64_t ust_app_get_size_one_more_packet_per_stream(
-		const struct ltt_ust_session *usess __attribute__((unused)),
-		uint64_t cur_nr_packets __attribute__((unused))) {
-	return 0;
-}
-
-static inline
-int ust_app_uid_get_channel_runtime_stats(
-		uint64_t ust_session_id __attribute__((unused)),
-		struct cds_list_head *buffer_reg_uid_list __attribute__((unused)),
-		struct consumer_output *consumer __attribute__((unused)),
-		int overwrite __attribute__((unused)),
-		uint64_t uchan_id __attribute__((unused)),
-		uint64_t *discarded __attribute__((unused)),
-		uint64_t *lost __attribute__((unused)))
+static inline uint64_t
+ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_session *usess
+					    __attribute__((unused)),
+					    uint64_t cur_nr_packets __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_pid_get_channel_runtime_stats(
-		struct ltt_ust_session *usess __attribute__((unused)),
-		struct ltt_ust_channel *uchan __attribute__((unused)),
-		struct consumer_output *consumer __attribute__((unused)),
-		int overwrite __attribute__((unused)),
-		uint64_t *discarded __attribute__((unused)),
-		uint64_t *lost __attribute__((unused)))
+static inline int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id
+							__attribute__((unused)),
+							struct cds_list_head *buffer_reg_uid_list
+							__attribute__((unused)),
+							struct consumer_output *consumer
+							__attribute__((unused)),
+							int overwrite __attribute__((unused)),
+							uint64_t uchan_id __attribute__((unused)),
+							uint64_t *discarded __attribute__((unused)),
+							uint64_t *lost __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-int ust_app_regenerate_statedump_all(
-		struct ltt_ust_session *usess __attribute__((unused)))
+static inline int
+ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess __attribute__((unused)),
+				      struct ltt_ust_channel *uchan __attribute__((unused)),
+				      struct consumer_output *consumer __attribute__((unused)),
+				      int overwrite __attribute__((unused)),
+				      uint64_t *discarded __attribute__((unused)),
+				      uint64_t *lost __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-enum lttng_error_code ust_app_rotate_session(
-		struct ltt_session *session __attribute__((unused)))
+static inline int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess
+						   __attribute__((unused)))
+{
+	return 0;
+}
+
+static inline enum lttng_error_code ust_app_rotate_session(struct ltt_session *session
+							   __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline
-enum lttng_error_code ust_app_create_channel_subdirectories(
-		const struct ltt_ust_session *session __attribute__((unused)))
+static inline enum lttng_error_code
+ust_app_create_channel_subdirectories(const struct ltt_ust_session *session __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline
-int ust_app_release_object(struct ust_app *app __attribute__((unused)),
-		struct lttng_ust_abi_object_data *data __attribute__((unused)))
+static inline int ust_app_release_object(struct ust_app *app __attribute__((unused)),
+					 struct lttng_ust_abi_object_data *data
+					 __attribute__((unused)))
 {
 	return 0;
 }
 
-static inline
-enum lttng_error_code ust_app_clear_session(
-		struct ltt_session *session __attribute__((unused)))
+static inline enum lttng_error_code ust_app_clear_session(struct ltt_session *session
+							  __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }
 
-static inline
-enum lttng_error_code ust_app_open_packets(
-		struct ltt_session *session __attribute__((unused)))
+static inline enum lttng_error_code ust_app_open_packets(struct ltt_session *session
+							 __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
 }

@@ -8,8 +8,8 @@
 #include "foo.h"
 volatile int not_a_function = 0;
 
-void __attribute__ ((noinline)) test_function(void);
-void __attribute__ ((noinline)) test_function(void)
+void __attribute__((noinline)) test_function(void);
+void __attribute__((noinline)) test_function(void)
 {
 	not_a_function += 1;
 }

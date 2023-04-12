@@ -131,9 +131,8 @@ lttng_session_descriptor_local_create(const char *name, const char *path);
  *
  * Returns an lttng_session_descriptor instance on success, NULL on error.
  */
-LTTNG_EXPORT extern struct lttng_session_descriptor *
-lttng_session_descriptor_network_create(const char *name,
-		const char *control_url, const char *data_url);
+LTTNG_EXPORT extern struct lttng_session_descriptor *lttng_session_descriptor_network_create(
+	const char *name, const char *control_url, const char *data_url);
 
 /*
  * Create a snapshot session descriptor without a default output.
@@ -156,8 +155,7 @@ lttng_session_descriptor_snapshot_create(const char *name);
  * Returns an lttng_session_descriptor instance on success, NULL on error.
  */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
-lttng_session_descriptor_snapshot_local_create(const char *name,
-		const char *path);
+lttng_session_descriptor_snapshot_local_create(const char *name, const char *path);
 
 /*
  * Create a snapshot session descriptor with a remote output destination.
@@ -172,7 +170,8 @@ lttng_session_descriptor_snapshot_local_create(const char *name,
  */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
 lttng_session_descriptor_snapshot_network_create(const char *name,
-		const char *control_url, const char *data_url);
+						 const char *control_url,
+						 const char *data_url);
 
 /*
  * Create a live session descriptor without an output.
@@ -188,8 +187,7 @@ lttng_session_descriptor_snapshot_network_create(const char *name,
  * Returns an lttng_session_descriptor instance on success, NULL on error.
  */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
-lttng_session_descriptor_live_create(
-		const char *name, unsigned long long live_timer_interval_us);
+lttng_session_descriptor_live_create(const char *name, unsigned long long live_timer_interval_us);
 
 /*
  * Create a live session descriptor with a remote output destination.
@@ -208,10 +206,10 @@ lttng_session_descriptor_live_create(
  * Returns an lttng_session_descriptor instance on success, NULL on error.
  */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
-lttng_session_descriptor_live_network_create(
-		const char *name,
-		const char *control_url, const char *data_url,
-		unsigned long long live_timer_interval_us);
+lttng_session_descriptor_live_network_create(const char *name,
+					     const char *control_url,
+					     const char *data_url,
+					     unsigned long long live_timer_interval_us);
 
 /*
  * Get a session descriptor's session name.
@@ -229,9 +227,8 @@ lttng_session_descriptor_live_network_create(
  * name parameter is unset.
  */
 LTTNG_EXPORT extern enum lttng_session_descriptor_status
-lttng_session_descriptor_get_session_name(
-		const struct lttng_session_descriptor *descriptor,
-		const char **name);
+lttng_session_descriptor_get_session_name(const struct lttng_session_descriptor *descriptor,
+					  const char **name);
 
 /*
  * Destroy a local lttng_session object.
@@ -239,8 +236,8 @@ lttng_session_descriptor_get_session_name(
  * This does not destroy the session on the session daemon; it releases
  * the resources allocated by the descriptor object.
  */
-LTTNG_EXPORT extern void lttng_session_descriptor_destroy(
-		struct lttng_session_descriptor *descriptor);
+LTTNG_EXPORT extern void
+lttng_session_descriptor_destroy(struct lttng_session_descriptor *descriptor);
 
 #ifdef __cplusplus
 }

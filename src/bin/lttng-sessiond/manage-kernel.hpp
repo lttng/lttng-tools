@@ -10,8 +10,9 @@
 #ifndef SESSIOND_KERNEL_MANAGEMENT_THREAD_H
 #define SESSIOND_KERNEL_MANAGEMENT_THREAD_H
 
-#include <stdbool.h>
 #include "lttng-sessiond.hpp"
+
+#include <stdbool.h>
 
 bool launch_kernel_management_thread(int kernel_poll_pipe_read_fd);
 

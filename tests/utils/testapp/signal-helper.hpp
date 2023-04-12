@@ -13,16 +13,14 @@
 
 static volatile int should_quit;
 
-static
-void sighandler(int sig)
+static void sighandler(int sig)
 {
 	if (sig == SIGTERM) {
 		should_quit = 1;
 	}
 }
 
-static
-int set_signal_handler()
+static int set_signal_handler()
 {
 	int ret;
 	struct sigaction sa {};

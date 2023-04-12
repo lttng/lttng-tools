@@ -9,9 +9,9 @@
 #define LTTNG_EVENT_RULE_LOG4J_LOGGING_H
 
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/event.h>
 #include <lttng/log-level-rule.h>
 #include <lttng/lttng-export.h>
-#include <lttng/event.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +35,8 @@ LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_log4j_logging_crea
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_set_name_pattern(
-		struct lttng_event_rule *rule, const char *pattern);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_log4j_logging_set_name_pattern(struct lttng_event_rule *rule, const char *pattern);
 
 /*
  * Get the name pattern of a log4j logging event rule.
@@ -50,8 +50,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_get_name_pattern(
-		const struct lttng_event_rule *rule, const char **pattern);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_log4j_logging_get_name_pattern(const struct lttng_event_rule *rule,
+						const char **pattern);
 
 /*
  * Set the filter expression of a log4j logging event rule.
@@ -61,8 +62,8 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_set_filter(
-		struct lttng_event_rule *rule, const char *expression);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_log4j_logging_set_filter(struct lttng_event_rule *rule, const char *expression);
 
 /*
  * Get the filter expression of a log4j logging event rule.
@@ -76,8 +77,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a filter expression
  * was not set prior to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_get_filter(
-		const struct lttng_event_rule *rule, const char **expression);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_log4j_logging_get_filter(const struct lttng_event_rule *rule,
+					  const char **expression);
 
 /*
  * Set the log level rule of a log4j logging event rule.
@@ -87,9 +89,8 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status
-lttng_event_rule_log4j_logging_set_log_level_rule(struct lttng_event_rule *rule,
-		const struct lttng_log_level_rule *log_level_rule);
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_set_log_level_rule(
+	struct lttng_event_rule *rule, const struct lttng_log_level_rule *log_level_rule);
 
 /*
  * Get the log level rule of a log4j logging event rule.
@@ -103,10 +104,8 @@ lttng_event_rule_log4j_logging_set_log_level_rule(struct lttng_event_rule *rule,
  * is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a log level rule was not set prior
  * to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status
-lttng_event_rule_log4j_logging_get_log_level_rule(
-		const struct lttng_event_rule *rule,
-		const struct lttng_log_level_rule **log_level_rule);
+LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_log4j_logging_get_log_level_rule(
+	const struct lttng_event_rule *rule, const struct lttng_log_level_rule **log_level_rule);
 
 #ifdef __cplusplus
 }

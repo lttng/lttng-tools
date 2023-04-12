@@ -8,10 +8,12 @@
 #ifndef LTTNG_SNAPSHOT_INTERNAL_ABI_H
 #define LTTNG_SNAPSHOT_INTERNAL_ABI_H
 
+#include <common/macros.hpp>
+
+#include <lttng/constant.h>
+
 #include <limits.h>
 #include <stdint.h>
-#include <lttng/constant.h>
-#include <common/macros.hpp>
 
 /*
  * Object used for the snapshot API. This is opaque to the public library.

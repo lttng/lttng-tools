@@ -8,8 +8,9 @@
 #ifndef LTTNG_RATE_POLICY_H
 #define LTTNG_RATE_POLICY_H
 
-#include <inttypes.h>
 #include <lttng/lttng-export.h>
+
+#include <inttypes.h>
 #include <sys/types.h>
 
 struct lttng_rate_policy;
@@ -37,8 +38,8 @@ enum lttng_rate_policy_type {
 /*
  * Get the type of a rate policy.
  */
-LTTNG_EXPORT extern enum lttng_rate_policy_type lttng_rate_policy_get_type(
-		const struct lttng_rate_policy *policy);
+LTTNG_EXPORT extern enum lttng_rate_policy_type
+lttng_rate_policy_get_type(const struct lttng_rate_policy *policy);
 
 /*
  * Create a rate_policy of type `every n`.
@@ -50,8 +51,7 @@ LTTNG_EXPORT extern enum lttng_rate_policy_type lttng_rate_policy_get_type(
  * rate_policy objects must be destroyed using the lttng_rate_policy_destroy()
  * function.
  */
-LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(
-		uint64_t interval);
+LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(uint64_t interval);
 
 /*
  * Get the interval of a every N rate policy.
@@ -60,8 +60,8 @@ LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_every_n_create(
  * on success, LTTNG_RATE_FIRING_POLICY_STATUS_INVALID if an invalid
  * parameter is passed.
  */
-LTTNG_EXPORT extern enum lttng_rate_policy_status lttng_rate_policy_every_n_get_interval(
-		const struct lttng_rate_policy *policy, uint64_t *interval);
+LTTNG_EXPORT extern enum lttng_rate_policy_status
+lttng_rate_policy_every_n_get_interval(const struct lttng_rate_policy *policy, uint64_t *interval);
 
 /*
  * Create a rate_policy of type `once after N`.
@@ -74,8 +74,8 @@ LTTNG_EXPORT extern enum lttng_rate_policy_status lttng_rate_policy_every_n_get_
  * rate_policy objects must be destroyed using the lttng_rate_policy_destroy()
  * function.
  */
-LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_once_after_n_create(
-		uint64_t threshold);
+LTTNG_EXPORT extern struct lttng_rate_policy *
+lttng_rate_policy_once_after_n_create(uint64_t threshold);
 
 /*
  * Get the threshold of a once after N rate policy.
@@ -85,8 +85,8 @@ LTTNG_EXPORT extern struct lttng_rate_policy *lttng_rate_policy_once_after_n_cre
  * parameter is passed.
  */
 LTTNG_EXPORT extern enum lttng_rate_policy_status
-lttng_rate_policy_once_after_n_get_threshold(
-		const struct lttng_rate_policy *policy, uint64_t *threshold);
+lttng_rate_policy_once_after_n_get_threshold(const struct lttng_rate_policy *policy,
+					     uint64_t *threshold);
 
 /*
  * Destroy (frees) a rate policy object.

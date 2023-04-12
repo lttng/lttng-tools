@@ -9,6 +9,7 @@
 #define FS_HANDLE_H
 
 #include <common/macros.hpp>
+
 #include <stdio.h>
 
 struct fs_handle;

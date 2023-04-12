@@ -8,13 +8,14 @@
 #ifndef LTTNG_ROTATE_INTERNAL_ABI_H
 #define LTTNG_ROTATE_INTERNAL_ABI_H
 
-#include <limits.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <common/macros.hpp>
 
 #include <lttng/constant.h>
 #include <lttng/rotation.h>
-#include <common/macros.hpp>
+
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /*
  * Object returned by the rotate session API.

@@ -9,19 +9,18 @@
 #define _GNU_SOURCE
 #endif
 
+#include "foobar_provider.h"
+#include "libfoo.h"
+#include "sema.h"
+
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/sdt.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <sys/sdt.h>
-
-#include "foobar_provider.h"
-#include "libfoo.h"
-#include "sema.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,7 +47,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Can't dlopen libbar.so");
 		return -1;
 	}
-	bar_function = (void (*)())dlsym(handle, "bar_function");
+	bar_function = (void (*)()) dlsym(handle, "bar_function");
 	bar_function();
 	dlclose(handle);
 
@@ -68,4 +67,3 @@ int main(int argc, char *argv[])
 	sema_function();
 	return 0;
 }
-

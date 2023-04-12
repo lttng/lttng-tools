@@ -9,12 +9,6 @@
  *
  */
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <unistd.h>
-#include <inttypes.h>
-
 #include <lttng/action/action.h>
 #include <lttng/action/list.h>
 #include <lttng/action/notify.h>
@@ -23,10 +17,16 @@
 #include <lttng/condition/evaluation.h>
 #include <lttng/domain.h>
 #include <lttng/endpoint.h>
+#include <lttng/lttng-error.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
-#include <lttng/lttng-error.h>
+
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 static unsigned int nr_notifications = 0;
 static unsigned int nr_expected_notifications = 0;
@@ -39,12 +39,10 @@ static bool use_action_list = false;
 static enum lttng_condition_type buffer_usage_type = LTTNG_CONDITION_TYPE_UNKNOWN;
 static enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
-int handle_condition(
-		const struct lttng_condition *condition,
-		const struct lttng_evaluation *condition_evaluation);
+int handle_condition(const struct lttng_condition *condition,
+		     const struct lttng_evaluation *condition_evaluation);
 
-static
-int parse_arguments(char **argv)
+static int parse_arguments(char **argv)
 {
 	int sscanf_ret;
 	const char *domain_type_string = NULL;
@@ -91,32 +89,29 @@ int parse_arguments(char **argv)
 	/* Ratio or bytes ? */
 	if (!strcasecmp("bytes", buffer_usage_threshold_type)) {
 		is_threshold_ratio = false;
-		sscanf_ret = sscanf(buffer_usage_threshold_value, "%" SCNu64,
-				&threshold_bytes);
+		sscanf_ret = sscanf(buffer_usage_threshold_value, "%" SCNu64, &threshold_bytes);
 		if (sscanf_ret != 1) {
 			printf("error: Invalid buffer usage threshold value bytes (integer), sscanf returned %d\n",
-					sscanf_ret);
+			       sscanf_ret);
 			goto error;
 		}
 	}
 
 	if (!strcasecmp("ratio", buffer_usage_threshold_type)) {
 		is_threshold_ratio = true;
-		sscanf_ret = sscanf(buffer_usage_threshold_value, "%lf",
-				&threshold_ratio);
+		sscanf_ret = sscanf(buffer_usage_threshold_value, "%lf", &threshold_ratio);
 		if (sscanf_ret != 1) {
 			printf("error: Invalid buffer usage threshold value ratio (float), sscanf returned %d\n",
-					sscanf_ret);
+			       sscanf_ret);
 			goto error;
 		}
 	}
 
 	/* Number of notification to expect */
-	sscanf_ret = sscanf(nr_expected_notifications_string, "%d",
-			&nr_expected_notifications);
+	sscanf_ret = sscanf(nr_expected_notifications_string, "%d", &nr_expected_notifications);
 	if (sscanf_ret != 1) {
 		printf("error: Invalid nr_expected_notifications, sscanf returned %d\n",
-				sscanf_ret);
+		       sscanf_ret);
 		goto error;
 	}
 
@@ -162,8 +157,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup */
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	if (!notification_channel) {
 		printf("error: Could not create notification channel\n");
 		ret = 1;
@@ -191,10 +186,10 @@ int main(int argc, char **argv)
 
 	if (is_threshold_ratio) {
 		condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-				condition, threshold_ratio);
+			condition, threshold_ratio);
 	} else {
-		condition_status = lttng_condition_buffer_usage_set_threshold(
-				condition, threshold_bytes);
+		condition_status =
+			lttng_condition_buffer_usage_set_threshold(condition, threshold_bytes);
 	}
 
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
@@ -203,22 +198,19 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_session_name(
-			condition, session_name);
+	condition_status = lttng_condition_buffer_usage_set_session_name(condition, session_name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		printf("error: Could not set session name\n");
 		ret = 1;
 		goto end;
 	}
-	condition_status = lttng_condition_buffer_usage_set_channel_name(
-			condition, channel_name);
+	condition_status = lttng_condition_buffer_usage_set_channel_name(condition, channel_name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		printf("error: Could not set channel name\n");
 		ret = 1;
 		goto end;
 	}
-	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			condition, domain_type);
+	condition_status = lttng_condition_buffer_usage_set_domain_type(condition, domain_type);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		printf("error: Could not set domain type\n");
 		ret = 1;
@@ -302,9 +294,8 @@ int main(int argc, char **argv)
 			goto end;
 		}
 		/* Receive the next notification. */
-		status = lttng_notification_channel_get_next_notification(
-				notification_channel,
-				&notification);
+		status = lttng_notification_channel_get_next_notification(notification_channel,
+									  &notification);
 
 		switch (status) {
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
@@ -355,9 +346,8 @@ end:
 	return ret;
 }
 
-int handle_condition(
-		const struct lttng_condition *condition,
-		const struct lttng_evaluation *evaluation)
+int handle_condition(const struct lttng_condition *condition,
+		     const struct lttng_evaluation *evaluation)
 {
 	int ret = 0;
 	const char *string_low = "low";
@@ -379,22 +369,19 @@ int handle_condition(
 	}
 
 	/* Fetch info to test */
-	ret = lttng_condition_buffer_usage_get_session_name(condition,
-			&condition_session_name);
+	ret = lttng_condition_buffer_usage_get_session_name(condition, &condition_session_name);
 	if (ret) {
 		printf("error: session name could not be fetched\n");
 		ret = 1;
 		goto end;
 	}
-	ret = lttng_condition_buffer_usage_get_channel_name(condition,
-			&condition_channel_name);
+	ret = lttng_condition_buffer_usage_get_channel_name(condition, &condition_channel_name);
 	if (ret) {
 		printf("error: channel name could not be fetched\n");
 		ret = 1;
 		goto end;
 	}
-	ret = lttng_condition_buffer_usage_get_domain_type(condition,
-			&condition_domain_type);
+	ret = lttng_condition_buffer_usage_get_domain_type(condition, &condition_domain_type);
 	if (ret) {
 		printf("error: domain type could not be fetched\n");
 		ret = 1;
@@ -420,8 +407,7 @@ int handle_condition(
 	}
 
 	if (is_threshold_ratio) {
-		lttng_evaluation_buffer_usage_get_usage_ratio(
-				evaluation, &buffer_usage_ratio);
+		lttng_evaluation_buffer_usage_get_usage_ratio(evaluation, &buffer_usage_ratio);
 		switch (condition_type) {
 		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
 			if (buffer_usage_ratio > threshold_ratio) {
@@ -443,8 +429,7 @@ int handle_condition(
 			goto end;
 		}
 	} else {
-		lttng_evaluation_buffer_usage_get_usage(
-				evaluation, &buffer_usage_bytes);
+		lttng_evaluation_buffer_usage_get_usage(evaluation, &buffer_usage_bytes);
 		switch (condition_type) {
 		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
 			if (buffer_usage_bytes > threshold_bytes) {

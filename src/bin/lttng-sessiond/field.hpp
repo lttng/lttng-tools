@@ -137,11 +137,11 @@ public:
 	using roles = std::vector<role>;
 
 	integer_type(unsigned int alignment,
-			byte_order byte_order,
-			unsigned int size,
-			signedness signedness,
-			base base,
-			roles roles = {});
+		     byte_order byte_order,
+		     unsigned int size,
+		     signedness signedness,
+		     base base,
+		     roles roles = {});
 
 	type::cuptr copy() const override;
 
@@ -165,9 +165,9 @@ protected:
 class floating_point_type : public type {
 public:
 	floating_point_type(unsigned int alignment,
-			byte_order byte_order,
-			unsigned int exponent_digits,
-			unsigned int mantissa_digits);
+			    byte_order byte_order,
+			    unsigned int exponent_digits,
+			    unsigned int mantissa_digits);
 
 	type::cuptr copy() const final;
 
@@ -207,7 +207,7 @@ public:
 	using range_integer_t = MappingIntegerType;
 
 	enumeration_mapping_range(MappingIntegerType in_begin, MappingIntegerType in_end) :
-		begin{in_begin}, end{in_end}
+		begin{ in_begin }, end{ in_end }
 	{
 	}
 
@@ -270,31 +270,31 @@ public:
 	using mappings = std::vector<mapping>;
 
 	static_assert(std::is_integral<MappingIntegerType>::value &&
-					sizeof(MappingIntegerType) == 8,
-			"MappingIntegerType must be either int64_t or uint64_t");
+			      sizeof(MappingIntegerType) == 8,
+		      "MappingIntegerType must be either int64_t or uint64_t");
 
 	typed_enumeration_type(unsigned int in_alignment,
-			enum byte_order in_byte_order,
-			unsigned int in_size,
-			enum base in_base,
-			const std::shared_ptr<const mappings>& in_mappings,
-			integer_type::roles in_roles = {}) :
+			       enum byte_order in_byte_order,
+			       unsigned int in_size,
+			       enum base in_base,
+			       const std::shared_ptr<const mappings>& in_mappings,
+			       integer_type::roles in_roles = {}) :
 		enumeration_type(in_alignment,
-				in_byte_order,
-				in_size,
-				std::is_signed<MappingIntegerType>::value ?
-						integer_type::signedness::SIGNED :
-						      integer_type::signedness::UNSIGNED,
-				in_base,
-				std::move(in_roles)),
-		mappings_{std::move(in_mappings)}
+				 in_byte_order,
+				 in_size,
+				 std::is_signed<MappingIntegerType>::value ?
+					 integer_type::signedness::SIGNED :
+					 integer_type::signedness::UNSIGNED,
+				 in_base,
+				 std::move(in_roles)),
+		mappings_{ std::move(in_mappings) }
 	{
 	}
 
 	type::cuptr copy() const override
 	{
 		return lttng::make_unique<typed_enumeration_type<MappingIntegerType>>(
-				alignment, byte_order, size, base_, mappings_, roles_);
+			alignment, byte_order, size, base_, mappings_, roles_);
 	}
 
 	void accept(type_visitor& visitor) const final;
@@ -304,8 +304,8 @@ public:
 private:
 	bool _is_equal(const type& base_other) const noexcept final
 	{
-		const auto& other = static_cast<const typed_enumeration_type<MappingIntegerType>&>(
-				base_other);
+		const auto& other =
+			static_cast<const typed_enumeration_type<MappingIntegerType>&>(base_other);
 
 		return integer_type::_is_equal(base_other) && *this->mappings_ == *other.mappings_;
 	}
@@ -328,8 +328,8 @@ protected:
 class static_length_array_type : public array_type {
 public:
 	static_length_array_type(unsigned int alignment,
-			type::cuptr element_type,
-			uint64_t in_length);
+				 type::cuptr element_type,
+				 uint64_t in_length);
 
 	type::cuptr copy() const final;
 
@@ -344,8 +344,8 @@ private:
 class dynamic_length_array_type : public array_type {
 public:
 	dynamic_length_array_type(unsigned int alignment,
-			type::cuptr element_type,
-			field_location length_field_location);
+				  type::cuptr element_type,
+				  field_location length_field_location);
 
 	type::cuptr copy() const final;
 
@@ -415,8 +415,9 @@ protected:
 
 class static_length_string_type : public string_type {
 public:
-	static_length_string_type(
-			unsigned int alignment, enum encoding in_encoding, uint64_t length);
+	static_length_string_type(unsigned int alignment,
+				  enum encoding in_encoding,
+				  uint64_t length);
 
 	type::cuptr copy() const final;
 
@@ -431,8 +432,8 @@ private:
 class dynamic_length_string_type : public string_type {
 public:
 	dynamic_length_string_type(unsigned int alignment,
-			enum encoding in_encoding,
-			field_location length_field_location);
+				   enum encoding in_encoding,
+				   field_location length_field_location);
 
 	type::cuptr copy() const final;
 
@@ -471,24 +472,25 @@ private:
 
 template <typename MappingIntegerType>
 class variant_type : public type {
-	static_assert(std::is_same<MappingIntegerType,
-					unsigned_enumeration_type::mapping::range_t::
-							range_integer_t>::value ||
-					std::is_same<MappingIntegerType,
-							signed_enumeration_type::mapping::range_t::
-									range_integer_t>::value,
-			"Variant mapping integer type must be one of those allowed by typed_enumeration_type");
+	static_assert(
+		std::is_same<MappingIntegerType,
+			     unsigned_enumeration_type::mapping::range_t::range_integer_t>::value ||
+			std::is_same<
+				MappingIntegerType,
+				signed_enumeration_type::mapping::range_t::range_integer_t>::value,
+		"Variant mapping integer type must be one of those allowed by typed_enumeration_type");
 
 public:
-	using choice = std::pair<const details::enumeration_mapping<MappingIntegerType>, type::cuptr>;
+	using choice =
+		std::pair<const details::enumeration_mapping<MappingIntegerType>, type::cuptr>;
 	using choices = std::vector<choice>;
 
 	variant_type(unsigned int in_alignment,
-			field_location in_selector_field_location,
-			choices in_choices) :
+		     field_location in_selector_field_location,
+		     choices in_choices) :
 		type(in_alignment),
-		selector_field_location{std::move(in_selector_field_location)},
-		choices_{std::move(in_choices)}
+		selector_field_location{ std::move(in_selector_field_location) },
+		choices_{ std::move(in_choices) }
 	{
 	}
 
@@ -498,8 +500,8 @@ public:
 
 		copy_of_choices.reserve(choices_.size());
 		for (const auto& current_choice : choices_) {
-			copy_of_choices.emplace_back(
-					current_choice.first, current_choice.second->copy());
+			copy_of_choices.emplace_back(current_choice.first,
+						     current_choice.second->copy());
 		}
 
 		return lttng::make_unique<variant_type<MappingIntegerType>>(
@@ -518,11 +520,13 @@ private:
 			return false;
 		}
 
-		return std::equal(a.cbegin(), a.cend(), b.cbegin(),
-				[](const choice& choice_a, const choice& choice_b) {
-					return choice_a.first == choice_b.first &&
-						*choice_a.second == *choice_b.second;
-				});
+		return std::equal(a.cbegin(),
+				  a.cend(),
+				  b.cbegin(),
+				  [](const choice& choice_a, const choice& choice_b) {
+					  return choice_a.first == choice_b.first &&
+						  *choice_a.second == *choice_b.second;
+				  });
 	}
 
 	bool _is_equal(const type& base_other) const noexcept final
@@ -530,7 +534,7 @@ private:
 		const auto& other = static_cast<decltype(*this)&>(base_other);
 
 		return selector_field_location == other.selector_field_location &&
-				_choices_are_equal(choices_, other.choices_);
+			_choices_are_equal(choices_, other.choices_);
 	}
 };
 
@@ -568,8 +572,12 @@ public:
 	virtual void visit(const static_length_string_type& type) = 0;
 	virtual void visit(const dynamic_length_string_type& type) = 0;
 	virtual void visit(const structure_type& type) = 0;
-	virtual void visit(const variant_type<signed_enumeration_type::mapping::range_t::range_integer_t>& type) = 0;
-	virtual void visit(const variant_type<unsigned_enumeration_type::mapping::range_t::range_integer_t>& type) = 0;
+	virtual void
+	visit(const variant_type<signed_enumeration_type::mapping::range_t::range_integer_t>&
+		      type) = 0;
+	virtual void
+	visit(const variant_type<unsigned_enumeration_type::mapping::range_t::range_integer_t>&
+		      type) = 0;
 
 protected:
 	type_visitor() = default;
@@ -589,10 +597,10 @@ namespace fmt {
 template <>
 struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string> {
 	template <typename FormatContextType>
-	typename FormatContextType::iterator format(
-			const lttng::sessiond::trace::field_location& location, FormatContextType& ctx)
+	typename FormatContextType::iterator
+	format(const lttng::sessiond::trace::field_location& location, FormatContextType& ctx)
 	{
-		std::string location_str{"["};
+		std::string location_str{ "[" };
 
 		switch (location.root_) {
 		case lttng::sessiond::trace::field_location::root::PACKET_HEADER:
@@ -615,7 +623,7 @@ struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string
 			break;
 		}
 
-		for (const auto &name : location.elements_) {
+		for (const auto& name : location.elements_) {
 			location_str += ", \"" + name + "\"";
 		}
 
@@ -627,7 +635,7 @@ struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string
 namespace details {
 template <typename MappingIntegerType>
 ::std::string format_mapping_range(typename lttng::sessiond::trace::typed_enumeration_type<
-		MappingIntegerType>::mapping::range_t range)
+				   MappingIntegerType>::mapping::range_t range)
 {
 	if (range.begin == range.end) {
 		return ::fmt::format("[{}]", range.begin);
@@ -643,13 +651,12 @@ struct formatter<typename lttng::sessiond::trace::signed_enumeration_type::mappi
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t range,
-			FormatContextType& ctx)
+	       FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
-				details::format_mapping_range<
-						lttng::sessiond::trace::signed_enumeration_type::
-								mapping::range_t::range_integer_t>(
-						range));
+				 details::format_mapping_range<
+					 lttng::sessiond::trace::signed_enumeration_type::mapping::
+						 range_t::range_integer_t>(range));
 	}
 };
 
@@ -659,13 +666,12 @@ struct formatter<typename lttng::sessiond::trace::unsigned_enumeration_type::map
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t range,
-			FormatContextType& ctx)
+	       FormatContextType& ctx)
 	{
 		return format_to(ctx.out(),
-				details::format_mapping_range<
-						lttng::sessiond::trace::unsigned_enumeration_type::
-								mapping::range_t::range_integer_t>(
-						range));
+				 details::format_mapping_range<
+					 lttng::sessiond::trace::unsigned_enumeration_type::
+						 mapping::range_t::range_integer_t>(range));
 	}
 };
 

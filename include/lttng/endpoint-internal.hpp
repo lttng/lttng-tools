@@ -8,8 +8,9 @@
 #ifndef LTTNG_ENDPOINT_INTERNAL_H
 #define LTTNG_ENDPOINT_INTERNAL_H
 
-#include <lttng/endpoint.h>
 #include <common/macros.hpp>
+
+#include <lttng/endpoint.h>
 
 enum lttng_endpoint_type {
 	LTTNG_ENDPOINT_TYPE_DEFAULT_SESSIOND_NOTIFICATION = 0,

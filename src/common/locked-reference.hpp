@@ -46,7 +46,7 @@ public:
 		return _value;
 	}
 
-        WrappedType* operator->() const
+	WrappedType *operator->() const
 	{
 		return &_value;
 	}

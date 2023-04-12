@@ -7,17 +7,17 @@
  */
 
 #include <lttng/lttng-export.h>
+
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <urcu.h>
 
 /*
  * Check if the specified environment variable is set.
  * Return 1 if set, otherwise 0.
  */
-static
-int check_env_var(const char *env)
+static int check_env_var(const char *env)
 {
 	if (env) {
 		char *env_val = getenv(env);

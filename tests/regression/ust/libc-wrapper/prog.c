@@ -7,8 +7,8 @@
 /* This program is used to test malloc instrumentation with libustinstr-malloc.
  */
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define N_ITER 1000
 
@@ -19,7 +19,7 @@ int main(void)
 	void *ptrs[N_ITER];
 
 	for (i = 0; i < N_ITER; i++) {
-		ptrs[i] = malloc(i+1000);
+		ptrs[i] = malloc(i + 1000);
 		if (!ptrs[i]) {
 			exit(EXIT_FAILURE);
 		}

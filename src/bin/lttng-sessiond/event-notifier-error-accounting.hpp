@@ -8,11 +8,11 @@
 #ifndef _EVENT_NOTIFIER_ERROR_ACCOUNTING_H
 #define _EVENT_NOTIFIER_ERROR_ACCOUNTING_H
 
-#include <stdint.h>
+#include "ust-app.hpp"
 
 #include <lttng/trigger/trigger.h>
 
-#include "ust-app.hpp"
+#include <stdint.h>
 
 enum event_notifier_error_accounting_status {
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK,
@@ -30,16 +30,14 @@ enum event_notifier_error_accounting_status {
  * to be allocated for each domain.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_init(uint64_t buffer_size_kernel,
-		uint64_t buffer_size_ust);
+event_notifier_error_accounting_init(uint64_t buffer_size_kernel, uint64_t buffer_size_ust);
 
 /*
  * Register the kernel event notifier group.
  * This allocates the counter object on the kernel side.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_kernel(
-		int kernel_event_notifier_group_fd);
+event_notifier_error_accounting_register_kernel(int kernel_event_notifier_group_fd);
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
@@ -59,18 +57,14 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline
-enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_app(
-		struct ust_app *app __attribute__((unused)))
+static inline enum event_notifier_error_accounting_status
+event_notifier_error_accounting_register_app(struct ust_app *app __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
 
-static inline
-enum event_notifier_error_accounting_status
-event_notifier_error_accounting_unregister_app(
-		struct ust_app *app __attribute__((unused)))
+static inline enum event_notifier_error_accounting_status
+event_notifier_error_accounting_unregister_app(struct ust_app *app __attribute__((unused)))
 {
 	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 }
@@ -80,17 +74,13 @@ event_notifier_error_accounting_unregister_app(
  * Allocates, reserves and returns the error counter index for that trigger.
  */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_register_event_notifier(
-		const struct lttng_trigger *trigger,
-		uint64_t *error_counter_index);
+event_notifier_error_accounting_register_event_notifier(const struct lttng_trigger *trigger,
+							uint64_t *error_counter_index);
 
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_get_count(
-		const struct lttng_trigger *trigger,
-		uint64_t *count);
+event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, uint64_t *count);
 
-void event_notifier_error_accounting_unregister_event_notifier(
-		const struct lttng_trigger *trigger);
+void event_notifier_error_accounting_unregister_event_notifier(const struct lttng_trigger *trigger);
 
 void event_notifier_error_accounting_fini(void);
 

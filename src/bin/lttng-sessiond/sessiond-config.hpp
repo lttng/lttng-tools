@@ -9,6 +9,7 @@
 #define LTTNG_SESSIOND_CONFIG_H
 
 #include <common/macros.hpp>
+
 #include <stdbool.h>
 
 struct config_string {

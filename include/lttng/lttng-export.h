@@ -7,8 +7,8 @@
 #ifndef LTTNG_EXPORT_H
 #define LTTNG_EXPORT_H
 #if defined(_WIN32) || defined(__CYGWIN__)
-# define LTTNG_EXPORT
+#define LTTNG_EXPORT
 #else
-# define LTTNG_EXPORT __attribute__((visibility("default")))
+#define LTTNG_EXPORT __attribute__((visibility("default")))
 #endif
 #endif

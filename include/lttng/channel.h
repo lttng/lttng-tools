@@ -11,6 +11,7 @@
 #include <lttng/domain.h>
 #include <lttng/event.h>
 #include <lttng/lttng-export.h>
+
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -22,19 +23,19 @@ extern "C" {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 12
+#define LTTNG_CHANNEL_ATTR_PADDING1 LTTNG_SYMBOL_NAME_LEN + 12
 struct lttng_channel_attr {
-	int overwrite;                      /* -1: session default, 1: overwrite, 0: discard */
-	uint64_t subbuf_size;               /* bytes, power of 2 */
-	uint64_t num_subbuf;                /* power of 2 */
+	int overwrite; /* -1: session default, 1: overwrite, 0: discard */
+	uint64_t subbuf_size; /* bytes, power of 2 */
+	uint64_t num_subbuf; /* power of 2 */
 	unsigned int switch_timer_interval; /* usec */
-	unsigned int read_timer_interval;   /* usec */
-	enum lttng_event_output output;     /* splice, mmap */
+	unsigned int read_timer_interval; /* usec */
+	enum lttng_event_output output; /* splice, mmap */
 	/* LTTng 2.1 padding limit */
-	uint64_t tracefile_size;            /* bytes */
-	uint64_t tracefile_count;           /* number of tracefiles */
+	uint64_t tracefile_size; /* bytes */
+	uint64_t tracefile_count; /* number of tracefiles */
 	/* LTTng 2.3 padding limit */
-	unsigned int live_timer_interval;   /* usec */
+	unsigned int live_timer_interval; /* usec */
 	/* LTTng 2.7 padding limit */
 	uint32_t align_to_64;
 	union {
@@ -50,7 +51,7 @@ struct lttng_channel_attr {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_PADDING1             16
+#define LTTNG_CHANNEL_PADDING1 16
 struct lttng_channel {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	uint32_t enabled;
@@ -76,7 +77,7 @@ LTTNG_EXPORT extern void lttng_channel_destroy(struct lttng_channel *channel);
  * must free channels. On error, a negative LTTng error code is returned.
  */
 LTTNG_EXPORT extern int lttng_list_channels(struct lttng_handle *handle,
-		struct lttng_channel **channels);
+					    struct lttng_channel **channels);
 
 /*
  * Create or enable a channel.
@@ -86,7 +87,7 @@ LTTNG_EXPORT extern int lttng_list_channels(struct lttng_handle *handle,
  * Return 0 on success else a negative LTTng error code.
  */
 LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
-		struct lttng_channel *chan);
+					     struct lttng_channel *chan);
 
 /*
  * Disable channel.
@@ -95,8 +96,7 @@ LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_disable_channel(struct lttng_handle *handle,
-		const char *name);
+LTTNG_EXPORT extern int lttng_disable_channel(struct lttng_handle *handle, const char *name);
 
 /*
  * Set the default channel attributes for a specific domain and an allocated
@@ -105,7 +105,7 @@ LTTNG_EXPORT extern int lttng_disable_channel(struct lttng_handle *handle,
  * If one or both arguments are NULL, nothing happens.
  */
 LTTNG_EXPORT extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
-		struct lttng_channel_attr *attr);
+							struct lttng_channel_attr *attr);
 
 /*
  * Get the discarded event count of a specific LTTng channel.
@@ -113,7 +113,7 @@ LTTNG_EXPORT extern void lttng_channel_set_default_attr(struct lttng_domain *dom
  * Returns 0 on success, or a negative LTTng error code on error.
  */
 LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
-		uint64_t *discarded_events);
+								uint64_t *discarded_events);
 
 /*
  * Get the lost packet count of a specific LTTng channel.
@@ -121,19 +121,19 @@ LTTNG_EXPORT extern int lttng_channel_get_discarded_event_count(struct lttng_cha
  * Returns 0 on success, or a negative LTTng error code on error.
  */
 LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel *chan,
-		uint64_t *lost_packets);
+							    uint64_t *lost_packets);
 
 LTTNG_EXPORT extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
-		uint64_t *monitor_timer_interval);
+								 uint64_t *monitor_timer_interval);
 
 LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
-		uint64_t monitor_timer_interval);
+								 uint64_t monitor_timer_interval);
 
 LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
-		int64_t *blocking_timeout);
+							   int64_t *blocking_timeout);
 
 LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
-		int64_t blocking_timeout);
+							   int64_t blocking_timeout);
 
 #ifdef __cplusplus
 }

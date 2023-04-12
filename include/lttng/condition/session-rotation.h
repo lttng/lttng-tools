@@ -8,12 +8,13 @@
 #ifndef LTTNG_CONDITION_SESSION_ROTATION_H
 #define LTTNG_CONDITION_SESSION_ROTATION_H
 
-#include <lttng/condition/evaluation.h>
 #include <lttng/condition/condition.h>
-#include <stdint.h>
+#include <lttng/condition/evaluation.h>
 #include <lttng/domain.h>
 #include <lttng/location.h>
 #include <lttng/lttng-export.h>
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,8 +40,7 @@ extern "C" {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-LTTNG_EXPORT extern struct lttng_condition *
-lttng_condition_session_rotation_ongoing_create(void);
+LTTNG_EXPORT extern struct lttng_condition *lttng_condition_session_rotation_ongoing_create(void);
 
 /*
  * Create a newly allocated session rotation completion condition.
@@ -54,8 +54,7 @@ lttng_condition_session_rotation_ongoing_create(void);
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-LTTNG_EXPORT extern struct lttng_condition *
-lttng_condition_session_rotation_completed_create(void);
+LTTNG_EXPORT extern struct lttng_condition *lttng_condition_session_rotation_completed_create(void);
 
 /*
  * Get the session name property of a session rotation condition.
@@ -70,9 +69,8 @@ lttng_condition_session_rotation_completed_create(void);
  * was not set prior to this call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_session_rotation_get_session_name(
-		const struct lttng_condition *condition,
-		const char **session_name);
+lttng_condition_session_rotation_get_session_name(const struct lttng_condition *condition,
+						  const char **session_name);
 
 /*
  * Set the session name property of a session rotation condition.
@@ -83,9 +81,8 @@ lttng_condition_session_rotation_get_session_name(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_session_rotation_set_session_name(
-		struct lttng_condition *condition,
-		const char *session_name);
+lttng_condition_session_rotation_set_session_name(struct lttng_condition *condition,
+						  const char *session_name);
 
 /**
  * lttng_evaluation_session_rotation are specialised lttng_evaluations
@@ -101,8 +98,7 @@ lttng_condition_session_rotation_set_session_name(
  * passed.
  */
 LTTNG_EXPORT extern enum lttng_evaluation_status
-lttng_evaluation_session_rotation_get_id(
-		const struct lttng_evaluation *evaluation, uint64_t *id);
+lttng_evaluation_session_rotation_get_id(const struct lttng_evaluation *evaluation, uint64_t *id);
 
 /*
  * Get the session rotation location property of a session rotation completed
@@ -121,8 +117,8 @@ lttng_evaluation_session_rotation_get_id(
  */
 LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_session_rotation_completed_get_location(
-		const struct lttng_evaluation *evaluation,
-		const struct lttng_trace_archive_location **location);
+	const struct lttng_evaluation *evaluation,
+	const struct lttng_trace_archive_location **location);
 
 #ifdef __cplusplus
 }

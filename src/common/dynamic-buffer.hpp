@@ -8,9 +8,10 @@
 #ifndef LTTNG_DYNAMIC_BUFFER_H
 #define LTTNG_DYNAMIC_BUFFER_H
 
+#include <common/macros.hpp>
+
 #include <stddef.h>
 #include <stdint.h>
-#include <common/macros.hpp>
 
 struct lttng_buffer_view;
 
@@ -36,8 +37,7 @@ void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer);
  * (after its current "size"). The dynamic buffer's size is increased by
  * "len", and its capacity is adjusted automatically.
  */
-int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
-		const void *buf, size_t len);
+int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer, const void *buf, size_t len);
 
 /*
  * Performs the same action as lttng_dynamic_buffer_append(), but using another
@@ -45,7 +45,7 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
  * of "len".
  */
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
-		const struct lttng_dynamic_buffer *src_buffer);
+				       const struct lttng_dynamic_buffer *src_buffer);
 
 /*
  * Performs the same action as lttng_dynamic_buffer_append(), but using a
@@ -53,7 +53,7 @@ int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
  * of "len".
  */
 int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
-		const struct lttng_buffer_view *view);
+				     const struct lttng_buffer_view *view);
 
 /*
  * Set the buffer's size to new_size. The capacity of the buffer will
@@ -71,8 +71,7 @@ int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
  * NOTE: It is striclty _invalid_ to access memory after _size_, regardless
  *       of prior calls to set_capacity().
  */
-int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
-		size_t new_size);
+int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer, size_t new_size);
 
 /*
  * Set the buffer's capacity to accommodates the new_capacity, allocating memory
@@ -82,14 +81,12 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
  *
  * If the current size > new_capacity, the operation will fail.
  */
-int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
-		size_t new_capacity);
+int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer, size_t new_capacity);
 
 /* Release any memory used by the dynamic buffer. */
 void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer);
 
 /* Get the space left in the buffer before a new resize is needed. */
-size_t lttng_dynamic_buffer_get_capacity_left(
-		struct lttng_dynamic_buffer *buffer);
+size_t lttng_dynamic_buffer_get_capacity_left(struct lttng_dynamic_buffer *buffer);
 
 #endif /* LTTNG_DYNAMIC_BUFFER_H */

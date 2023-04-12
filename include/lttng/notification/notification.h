@@ -30,8 +30,8 @@ struct lttng_notification;
  *
  * Returns an lttng_condition object on success, NULL on error.
  */
-LTTNG_EXPORT extern const struct lttng_condition *lttng_notification_get_condition(
-		struct lttng_notification *notification);
+LTTNG_EXPORT extern const struct lttng_condition *
+lttng_notification_get_condition(struct lttng_notification *notification);
 
 /*
  * Get a notification's condition's evaluation.
@@ -45,8 +45,8 @@ LTTNG_EXPORT extern const struct lttng_condition *lttng_notification_get_conditi
  *
  * Returns an lttng_evaluation object on success, NULL on error.
  */
-LTTNG_EXPORT extern const struct lttng_evaluation *lttng_notification_get_evaluation(
-		struct lttng_notification *notification);
+LTTNG_EXPORT extern const struct lttng_evaluation *
+lttng_notification_get_evaluation(struct lttng_notification *notification);
 
 /*
  * Get a notification's origin trigger.
@@ -57,8 +57,8 @@ LTTNG_EXPORT extern const struct lttng_evaluation *lttng_notification_get_evalua
  *
  * Returns an lttng_trigger object on success, NULL on error.
  */
-LTTNG_EXPORT extern const struct lttng_trigger *lttng_notification_get_trigger(
-		struct lttng_notification *notification);
+LTTNG_EXPORT extern const struct lttng_trigger *
+lttng_notification_get_trigger(struct lttng_notification *notification);
 
 /*
  * Destroys (frees) a notification. The notification's condition and evaluation

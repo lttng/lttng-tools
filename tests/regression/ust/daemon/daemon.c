@@ -7,9 +7,9 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define TRACEPOINT_DEFINE
 #define TRACEPOINT_CREATE_PROBES

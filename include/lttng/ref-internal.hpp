@@ -17,16 +17,14 @@ struct lttng_ref {
 	lttng_release_func release;
 };
 
-static inline
-void lttng_ref_init(struct lttng_ref *ref, lttng_release_func release)
+static inline void lttng_ref_init(struct lttng_ref *ref, lttng_release_func release)
 {
 	LTTNG_ASSERT(ref);
 	ref->count = 1;
 	ref->release = release;
 }
 
-static inline
-void lttng_ref_get(struct lttng_ref *ref)
+static inline void lttng_ref_get(struct lttng_ref *ref)
 {
 	LTTNG_ASSERT(ref);
 	ref->count++;
@@ -34,8 +32,7 @@ void lttng_ref_get(struct lttng_ref *ref)
 	LTTNG_ASSERT(ref->count);
 }
 
-static inline
-void lttng_ref_put(struct lttng_ref *ref)
+static inline void lttng_ref_put(struct lttng_ref *ref)
 {
 	LTTNG_ASSERT(ref);
 	/* Underflow check. */

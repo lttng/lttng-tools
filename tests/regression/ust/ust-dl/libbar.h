@@ -12,4 +12,4 @@
 
 LTTNG_EXPORT int bar(void);
 
-#endif  /* _LIBBAR_H */
+#endif /* _LIBBAR_H */

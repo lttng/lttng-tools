@@ -10,8 +10,9 @@
 #ifndef SESSIOND_CONSUMER_MANAGEMENT_THREAD_H
 #define SESSIOND_CONSUMER_MANAGEMENT_THREAD_H
 
-#include <stdbool.h>
 #include "lttng-sessiond.hpp"
+
+#include <stdbool.h>
 
 bool launch_consumer_management_thread(struct consumer_data *consumer_data);
 

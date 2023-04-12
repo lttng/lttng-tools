@@ -41,8 +41,10 @@ using config_entry_handler_cb = int (*)(const struct config_entry *, void *);
  * Returns 0 on success. Negative values are error codes. If the return value
  * is positive, it represents the line number on which a parsing error occurred.
  */
-int config_get_section_entries(const char *path, const char *section,
-		config_entry_handler_cb handler, void *user_data);
+int config_get_section_entries(const char *path,
+			       const char *section,
+			       config_entry_handler_cb handler,
+			       void *user_data);
 
 /*
  * Parse a configuration value.

@@ -73,9 +73,8 @@ void getrandom_nonblock(char *out_data, std::size_t size)
 	}
 }
 #else /* defined(__linux__) && defined(SYS_getrandom) && defined(HAVE_SYS_RANDOM_H) */
-__attribute__((noreturn))
-void getrandom_nonblock(char *out_data __attribute__((unused)),
-		std::size_t size __attribute__((unused)))
+__attribute__((noreturn)) void getrandom_nonblock(char *out_data __attribute__((unused)),
+						  std::size_t size __attribute__((unused)))
 {
 	LTTNG_THROW_RANDOM_PRODUCTION_ERROR("getrandom() is not supported by this platform");
 }

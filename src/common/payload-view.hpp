@@ -75,9 +75,8 @@ bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
  *		cause the view to reference the whole payload from the
  *		offset provided.
  */
-struct lttng_payload_view lttng_payload_view_from_payload(
-		const struct lttng_payload *payload, size_t offset,
-		ptrdiff_t len);
+struct lttng_payload_view
+lttng_payload_view_from_payload(const struct lttng_payload *payload, size_t offset, ptrdiff_t len);
 
 /**
  * Return a payload view referencing a subset of a payload referenced by
@@ -89,9 +88,8 @@ struct lttng_payload_view lttng_payload_view_from_payload(
  *		cause the payload view to reference the whole payload view's
  *		buffer view from the offset provided.
  */
-struct lttng_payload_view lttng_payload_view_from_view(
-		struct lttng_payload_view *view, size_t offset,
-		ptrdiff_t len);
+struct lttng_payload_view
+lttng_payload_view_from_view(struct lttng_payload_view *view, size_t offset, ptrdiff_t len);
 
 /**
  * Return a payload view referencing a subset of a dynamic buffer.
@@ -106,8 +104,7 @@ struct lttng_payload_view lttng_payload_view_from_view(
  *		offset provided.
  */
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
-		const struct lttng_dynamic_buffer *buffer, size_t offset,
-		ptrdiff_t len);
+	const struct lttng_dynamic_buffer *buffer, size_t offset, ptrdiff_t len);
 /**
  *
  * Return a payload view referencing a subset of a dynamic buffer.
@@ -121,9 +118,9 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
  *		cause the payload view to reference the whole payload from the
  *		offset provided.
  */
-struct lttng_payload_view lttng_payload_view_from_buffer_view(
-		const struct lttng_buffer_view *view, size_t offset,
-		ptrdiff_t len);
+struct lttng_payload_view lttng_payload_view_from_buffer_view(const struct lttng_buffer_view *view,
+							      size_t offset,
+							      ptrdiff_t len);
 
 /**
  * Return a payload view referencing a subset of the memory referenced by a raw
@@ -136,8 +133,8 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
  * Note that a payload view never assumes the ownership of the memory it
  * references.
  */
-struct lttng_payload_view lttng_payload_view_init_from_buffer(
-		const char *src, size_t offset, ptrdiff_t len);
+struct lttng_payload_view
+lttng_payload_view_init_from_buffer(const char *src, size_t offset, ptrdiff_t len);
 
 /**
  * Get the number of file descriptor handles left in a payload view.
@@ -146,8 +143,7 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
  *
  * Returns the number of file descriptor handles left on success, -1 on error.
  */
-int lttng_payload_view_get_fd_handle_count(
-		const struct lttng_payload_view *payload_view);
+int lttng_payload_view_get_fd_handle_count(const struct lttng_payload_view *payload_view);
 
 /**
  * Pop an fd handle from a payload view.
@@ -158,7 +154,6 @@ int lttng_payload_view_get_fd_handle_count(
  *
  * Returns an fd_handle on success, -1 on error.
  */
-struct fd_handle *lttng_payload_view_pop_fd_handle(
-		struct lttng_payload_view *payload_view);
+struct fd_handle *lttng_payload_view_pop_fd_handle(struct lttng_payload_view *payload_view);
 
 #endif /* LTTNG_PAYLOAD_VIEW_H */

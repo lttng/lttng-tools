@@ -10,26 +10,26 @@
  *
  */
 
-#include <limits.h>
-#include <inttypes.h>
-#include <pthread.h>
-#include <urcu.h>
-#include <urcu/wfcqueue.h>
-#include <urcu/list.h>
-
-#include <common/hashtable/hashtable.hpp>
-#include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/sessiond-comm/relayd.hpp>
-#include <common/dynamic-buffer.hpp>
-
 #include "session.hpp"
 
+#include <common/dynamic-buffer.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/sessiond-comm/relayd.hpp>
+#include <common/sessiond-comm/sessiond-comm.hpp>
+
+#include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
+#include <urcu.h>
+#include <urcu/list.h>
+#include <urcu/wfcqueue.h>
+
 enum connection_type {
-	RELAY_CONNECTION_UNKNOWN    = 0,
-	RELAY_DATA                  = 1,
-	RELAY_CONTROL               = 2,
-	RELAY_VIEWER_COMMAND        = 3,
-	RELAY_VIEWER_NOTIFICATION   = 4,
+	RELAY_CONNECTION_UNKNOWN = 0,
+	RELAY_DATA = 1,
+	RELAY_CONTROL = 2,
+	RELAY_VIEWER_COMMAND = 3,
+	RELAY_VIEWER_NOTIFICATION = 4,
 };
 
 enum data_connection_state {
@@ -107,8 +107,8 @@ struct relay_connection {
 	 */
 	struct lttng_ht_node_ulong sock_n;
 	bool in_socket_ht;
-	struct lttng_ht *socket_ht;	/* HACK: Contained within this hash table. */
-	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+	struct lttng_ht *socket_ht; /* HACK: Contained within this hash table. */
+	struct rcu_head rcu_node; /* For call_rcu teardown. */
 
 	union {
 		struct {
@@ -129,16 +129,12 @@ struct relay_connection {
 	} protocol;
 };
 
-struct relay_connection *connection_create(struct lttcomm_sock *sock,
-		enum connection_type type);
-struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
-		int sock);
+struct relay_connection *connection_create(struct lttcomm_sock *sock, enum connection_type type);
+struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht, int sock);
 int connection_reset_protocol_state(struct relay_connection *connection);
 bool connection_get(struct relay_connection *connection);
 void connection_put(struct relay_connection *connection);
-void connection_ht_add(struct lttng_ht *relay_connections_ht,
-		struct relay_connection *conn);
-int connection_set_session(struct relay_connection *conn,
-		struct relay_session *session);
+void connection_ht_add(struct lttng_ht *relay_connections_ht, struct relay_connection *conn);
+int connection_set_session(struct relay_connection *conn, struct relay_session *session);
 
 #endif /* _CONNECTION_H */

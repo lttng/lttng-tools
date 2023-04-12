@@ -10,15 +10,15 @@
 #ifndef CONSUMER_TIMER_H
 #define CONSUMER_TIMER_H
 
-#include <pthread.h>
-
 #include "consumer.hpp"
 
-#define LTTNG_CONSUMER_SIG_SWITCH	((SIGRTMIN + 10))
-#define LTTNG_CONSUMER_SIG_TEARDOWN	((SIGRTMIN + 11))
-#define LTTNG_CONSUMER_SIG_LIVE		((SIGRTMIN + 12))
-#define LTTNG_CONSUMER_SIG_MONITOR	((SIGRTMIN + 13))
-#define LTTNG_CONSUMER_SIG_EXIT		((SIGRTMIN + 14))
+#include <pthread.h>
+
+#define LTTNG_CONSUMER_SIG_SWITCH   ((SIGRTMIN + 10))
+#define LTTNG_CONSUMER_SIG_TEARDOWN ((SIGRTMIN + 11))
+#define LTTNG_CONSUMER_SIG_LIVE	    ((SIGRTMIN + 12))
+#define LTTNG_CONSUMER_SIG_MONITOR  ((SIGRTMIN + 13))
+#define LTTNG_CONSUMER_SIG_EXIT	    ((SIGRTMIN + 14))
 
 #define CLOCKID CLOCK_MONOTONIC
 
@@ -29,20 +29,20 @@
  * exclusion.
  */
 struct timer_signal_data {
-	pthread_t tid;	/* thread id managing signals */
+	pthread_t tid; /* thread id managing signals */
 	int setup_done;
 	int qs_done;
 	pthread_mutex_t lock;
 };
 
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
-		unsigned int switch_timer_interval_us);
+				 unsigned int switch_timer_interval_us);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
-		unsigned int live_timer_interval_us);
+			       unsigned int live_timer_interval_us);
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
 int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
-		unsigned int monitor_timer_interval_us);
+				 unsigned int monitor_timer_interval_us);
 int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
 void *consumer_timer_thread(void *data);
 int consumer_signal_init();

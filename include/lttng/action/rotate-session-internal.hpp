@@ -19,8 +19,7 @@ struct lttng_payload_view;
  * On success, return the number of bytes consumed from `view`, and the created
  * action in `*action`. On failure, return -1.
  */
-extern ssize_t lttng_action_rotate_session_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_action **action);
+extern ssize_t lttng_action_rotate_session_create_from_payload(struct lttng_payload_view *view,
+							       struct lttng_action **action);
 
 #endif /* LTTNG_ACTION_ROTATE_SESSION_INTERNAL_H */

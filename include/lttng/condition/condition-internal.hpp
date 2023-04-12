@@ -11,8 +11,10 @@
 #include <common/macros.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
+
 #include <lttng/condition/condition.h>
 #include <lttng/lttng-error.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -53,27 +55,23 @@ void lttng_condition_get(struct lttng_condition *condition);
 
 void lttng_condition_put(struct lttng_condition *condition);
 
-void lttng_condition_init(struct lttng_condition *condition,
-		enum lttng_condition_type type);
+void lttng_condition_init(struct lttng_condition *condition, enum lttng_condition_type type);
 
 bool lttng_condition_validate(const struct lttng_condition *condition);
 
-ssize_t lttng_condition_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
+ssize_t lttng_condition_create_from_payload(struct lttng_payload_view *view,
+					    struct lttng_condition **condition);
 
 int lttng_condition_serialize(const struct lttng_condition *condition,
-		struct lttng_payload *payload);
+			      struct lttng_payload *payload);
 
-bool lttng_condition_is_equal(const struct lttng_condition *a,
-		const struct lttng_condition *b);
+bool lttng_condition_is_equal(const struct lttng_condition *a, const struct lttng_condition *b);
 
-enum lttng_error_code lttng_condition_mi_serialize(
-		const struct lttng_trigger *trigger,
-		const struct lttng_condition *condition,
-		struct mi_writer *writer,
-		const struct mi_lttng_error_query_callbacks
-				*error_query_callbacks);
+enum lttng_error_code
+lttng_condition_mi_serialize(const struct lttng_trigger *trigger,
+			     const struct lttng_condition *condition,
+			     struct mi_writer *writer,
+			     const struct mi_lttng_error_query_callbacks *error_query_callbacks);
 
 const char *lttng_condition_type_str(enum lttng_condition_type type);
 

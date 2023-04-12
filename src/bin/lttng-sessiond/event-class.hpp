@@ -11,6 +11,7 @@
 #include "field.hpp"
 
 #include <common/uuid.hpp>
+
 #include <vendor/optional.hpp>
 
 #include <string>
@@ -40,11 +41,11 @@ public:
 
 protected:
 	event_class(unsigned int id,
-			unsigned int stream_class_id,
-			int log_level,
-			std::string name,
-			nonstd::optional<std::string> model_emf_uri,
-			lttng::sessiond::trace::type::cuptr payload);
+		    unsigned int stream_class_id,
+		    int log_level,
+		    std::string name,
+		    nonstd::optional<std::string> model_emf_uri,
+		    lttng::sessiond::trace::type::cuptr payload);
 };
 
 } /* namespace trace */

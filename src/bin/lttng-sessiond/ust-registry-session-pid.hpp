@@ -11,9 +11,10 @@
 #include "trace-class.hpp"
 #include "ust-registry-session.hpp"
 
+#include <lttng/lttng.h>
+
 #include <cstdint>
 #include <ctime>
-#include <lttng/lttng.h>
 #include <string>
 #include <unistd.h>
 
@@ -24,18 +25,18 @@ namespace ust {
 class registry_session_per_pid : public registry_session {
 public:
 	registry_session_per_pid(const struct ust_app& app,
-			const struct lttng::sessiond::trace::abi& trace_abi,
-			uint32_t major,
-			uint32_t minor,
-			const char *root_shm_path,
-			const char *shm_path,
-			uid_t euid,
-			gid_t egid,
-			uint64_t tracing_id);
+				 const struct lttng::sessiond::trace::abi& trace_abi,
+				 uint32_t major,
+				 uint32_t minor,
+				 const char *root_shm_path,
+				 const char *shm_path,
+				 uid_t euid,
+				 gid_t egid,
+				 uint64_t tracing_id);
 
 	virtual lttng_buffer_type buffering_scheme() const noexcept override final;
 	virtual void accept(lttng::sessiond::trace::trace_class_environment_visitor&
-					environment_visitor) const override final;
+				    environment_visitor) const override final;
 
 private:
 	const unsigned int _tracer_patch_level_version;

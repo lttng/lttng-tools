@@ -13,6 +13,7 @@
 #define LTTNG_EVENT_INTERNAL_H
 
 #include <common/macros.hpp>
+
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 
@@ -58,7 +59,7 @@ struct lttng_event_comm {
 struct lttng_event_exclusion_comm {
 	/* Includes terminator `\0`. */
 	uint32_t len;
-	char payload [];
+	char payload[];
 } LTTNG_PACKED;
 
 struct lttng_event_probe_attr_comm {
@@ -154,43 +155,38 @@ struct lttng_event_extended {
 struct lttng_event *lttng_event_copy(const struct lttng_event *event);
 
 ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
-		struct lttng_event **out_event,
-		struct lttng_event_exclusion **out_exclusion,
-		char **out_filter_expression,
-		struct lttng_bytecode **out_bytecode);
+					struct lttng_event **out_event,
+					struct lttng_event_exclusion **out_exclusion,
+					char **out_filter_expression,
+					struct lttng_bytecode **out_bytecode);
 
 int lttng_event_serialize(const struct lttng_event *event,
-		unsigned int exclusion_count,
-		char **exclusion_list,
-		char *filter_expression,
-		size_t bytecode_len,
-		struct lttng_bytecode *bytecode,
-		struct lttng_payload *payload);
+			  unsigned int exclusion_count,
+			  char **exclusion_list,
+			  char *filter_expression,
+			  size_t bytecode_len,
+			  struct lttng_bytecode *bytecode,
+			  struct lttng_payload *payload);
 
-ssize_t lttng_event_context_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_context **event_ctx);
+ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
+						struct lttng_event_context **event_ctx);
 
 int lttng_event_context_serialize(struct lttng_event_context *context,
-		struct lttng_payload *payload);
+				  struct lttng_payload *payload);
 
 void lttng_event_context_destroy(struct lttng_event_context *context);
 
-enum lttng_error_code lttng_events_create_and_flatten_from_payload(
-		struct lttng_payload_view *view,
-		unsigned int count,
-		struct lttng_event **events);
+enum lttng_error_code lttng_events_create_and_flatten_from_payload(struct lttng_payload_view *view,
+								   unsigned int count,
+								   struct lttng_event **events);
 
-ssize_t lttng_event_field_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_field **field);
+ssize_t lttng_event_field_create_from_payload(struct lttng_payload_view *view,
+					      struct lttng_event_field **field);
 
 int lttng_event_field_serialize(const struct lttng_event_field *field,
-		struct lttng_payload *payload);
+				struct lttng_payload *payload);
 
 enum lttng_error_code lttng_event_fields_create_and_flatten_from_payload(
-		struct lttng_payload_view *view,
-		unsigned int count,
-		struct lttng_event_field **fields);
+	struct lttng_payload_view *view, unsigned int count, struct lttng_event_field **fields);
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

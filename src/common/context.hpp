@@ -21,7 +21,6 @@
  * Returns 0 if the string is a valid application context, else a negative
  * value on error.
  */
-int parse_application_context(const char *str, char **provider_name,
-		char **ctx_name);
+int parse_application_context(const char *str, char **provider_name, char **ctx_name);
 
 #endif /* LTTNG_COMMON_CONTEXT_H */

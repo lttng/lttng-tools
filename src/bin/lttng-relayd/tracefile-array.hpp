@@ -8,15 +8,15 @@
  *
  */
 
-#include <limits.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 
 struct tracefile {
 	/* Per-tracefile head/tail seq. */
-	uint64_t seq_head;	/* Newest seqcount. Inclusive. */
-	uint64_t seq_tail;	/* Oldest seqcount. Inclusive. */
+	uint64_t seq_head; /* Newest seqcount. Inclusive. */
+	uint64_t seq_tail; /* Oldest seqcount. Inclusive. */
 };
 
 enum tracefile_rotate_type {
@@ -54,8 +54,7 @@ struct tracefile_array *tracefile_array_create(size_t count);
 void tracefile_array_destroy(struct tracefile_array *tfa);
 
 void tracefile_array_file_rotate(struct tracefile_array *tfa, enum tracefile_rotate_type type);
-void tracefile_array_commit_seq(struct tracefile_array *tfa,
-		uint64_t new_seq_head);
+void tracefile_array_commit_seq(struct tracefile_array *tfa, uint64_t new_seq_head);
 void tracefile_array_reset(struct tracefile_array *tfa);
 
 uint64_t tracefile_array_get_read_file_index_head(struct tracefile_array *tfa);
@@ -66,7 +65,6 @@ uint64_t tracefile_array_get_file_index_tail(struct tracefile_array *tfa);
 /* May return -1ULL in the case where we have not received any indexes yet. */
 uint64_t tracefile_array_get_seq_tail(struct tracefile_array *tfa);
 
-bool tracefile_array_seq_in_file(struct tracefile_array *tfa,
-		uint64_t file_index, uint64_t seq);
+bool tracefile_array_seq_in_file(struct tracefile_array *tfa, uint64_t file_index, uint64_t seq);
 
 #endif /* _STREAM_H */

@@ -20,7 +20,7 @@ extern "C" {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_HANDLE_PADDING1              16
+#define LTTNG_HANDLE_PADDING1 16
 struct lttng_handle {
 	char session_name[LTTNG_NAME_MAX];
 	struct lttng_domain domain;
@@ -42,7 +42,7 @@ struct lttng_handle {
  * lttng_destroy_handle. On error, NULL is returned.
  */
 LTTNG_EXPORT extern struct lttng_handle *lttng_create_handle(const char *session_name,
-		struct lttng_domain *domain);
+							     struct lttng_domain *domain);
 
 /*
  * Destroy an handle that has been previously created with lttng_create_handle.
@@ -50,7 +50,6 @@ LTTNG_EXPORT extern struct lttng_handle *lttng_create_handle(const char *session
  * It free the given pointer making it unusable.
  */
 LTTNG_EXPORT extern void lttng_destroy_handle(struct lttng_handle *handle);
-
 
 #ifdef __cplusplus
 }

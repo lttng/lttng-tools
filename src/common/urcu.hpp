@@ -9,8 +9,8 @@
 #define LTTNG_URCU_H
 
 #define _LGPL_SOURCE
-#include <urcu.h>
 #include <mutex>
+#include <urcu.h>
 
 namespace lttng {
 namespace urcu {

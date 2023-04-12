@@ -8,8 +8,9 @@
 #ifndef LTTNG_SNAPSHOT_H
 #define LTTNG_SNAPSHOT_H
 
-#include <limits.h>
 #include <lttng/lttng-export.h>
+
+#include <limits.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -40,15 +41,20 @@ LTTNG_EXPORT extern void lttng_snapshot_output_destroy(struct lttng_snapshot_out
  */
 
 /* Return snapshot ID. */
-LTTNG_EXPORT extern uint32_t lttng_snapshot_output_get_id(const struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern uint32_t
+lttng_snapshot_output_get_id(const struct lttng_snapshot_output *output);
 /* Return maximum size of a snapshot. */
-LTTNG_EXPORT extern uint64_t lttng_snapshot_output_get_maxsize(const struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern uint64_t
+lttng_snapshot_output_get_maxsize(const struct lttng_snapshot_output *output);
 /* Return snapshot name. */
-LTTNG_EXPORT extern const char *lttng_snapshot_output_get_name(const struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern const char *
+lttng_snapshot_output_get_name(const struct lttng_snapshot_output *output);
 /* Return snapshot control URL in a text format. */
-LTTNG_EXPORT extern const char *lttng_snapshot_output_get_ctrl_url(const struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern const char *
+lttng_snapshot_output_get_ctrl_url(const struct lttng_snapshot_output *output);
 /* Return snapshot data URL in a text format. */
-LTTNG_EXPORT extern const char *lttng_snapshot_output_get_data_url(const struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern const char *
+lttng_snapshot_output_get_data_url(const struct lttng_snapshot_output *output);
 
 /*
  * Snapshot output setter family functions.
@@ -59,13 +65,13 @@ LTTNG_EXPORT extern const char *lttng_snapshot_output_get_data_url(const struct 
 
 /* Set a custom ID. */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_id(uint32_t id,
-		struct lttng_snapshot_output *output);
+						     struct lttng_snapshot_output *output);
 /* Set the maximum size. */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_size(uint64_t size,
-		struct lttng_snapshot_output *output);
+						       struct lttng_snapshot_output *output);
 /* Set the snapshot name. */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_name(const char *name,
-		struct lttng_snapshot_output *output);
+						       struct lttng_snapshot_output *output);
 
 /*
  * Set the output destination to be a path on the local filesystem.
@@ -75,7 +81,7 @@ LTTNG_EXPORT extern int lttng_snapshot_output_set_name(const char *name,
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_local_path(const char *path,
-		struct lttng_snapshot_output *output);
+							     struct lttng_snapshot_output *output);
 
 /*
  * Set the output destination to be the network from a combined control/data
@@ -86,7 +92,7 @@ LTTNG_EXPORT extern int lttng_snapshot_output_set_local_path(const char *path,
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_network_url(const char *url,
-		struct lttng_snapshot_output *output);
+							      struct lttng_snapshot_output *output);
 
 /*
  * Set the output destination to be the network using separate URLs for control
@@ -99,15 +105,14 @@ LTTNG_EXPORT extern int lttng_snapshot_output_set_network_url(const char *url,
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_network_urls(
-		const char *ctrl_url, const char *data_url,
-		struct lttng_snapshot_output *output);
+	const char *ctrl_url, const char *data_url, struct lttng_snapshot_output *output);
 
 /* Set the control URL. Local and remote URL are supported. */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_ctrl_url(const char *url,
-		struct lttng_snapshot_output *output);
+							   struct lttng_snapshot_output *output);
 /* Set the data URL. Local and remote URL are supported. */
 LTTNG_EXPORT extern int lttng_snapshot_output_set_data_url(const char *url,
-		struct lttng_snapshot_output *output);
+							   struct lttng_snapshot_output *output);
 
 /*
  * Add an output object to a session identified by name.
@@ -115,7 +120,7 @@ LTTNG_EXPORT extern int lttng_snapshot_output_set_data_url(const char *url,
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
 LTTNG_EXPORT extern int lttng_snapshot_add_output(const char *session_name,
-		struct lttng_snapshot_output *output);
+						  struct lttng_snapshot_output *output);
 
 /*
  * Delete an output object to a session identified by name.
@@ -123,7 +128,7 @@ LTTNG_EXPORT extern int lttng_snapshot_add_output(const char *session_name,
  * Return 0 on success or else a negative LTTNG_ERR code.
  */
 LTTNG_EXPORT extern int lttng_snapshot_del_output(const char *session_name,
-		struct lttng_snapshot_output *output);
+						  struct lttng_snapshot_output *output);
 
 /*
  * List all snapshot output(s) of a session identified by name. The output list
@@ -133,7 +138,7 @@ LTTNG_EXPORT extern int lttng_snapshot_del_output(const char *session_name,
  * is untouched.
  */
 LTTNG_EXPORT extern int lttng_snapshot_list_output(const char *session_name,
-		struct lttng_snapshot_output_list **list);
+						   struct lttng_snapshot_output_list **list);
 
 /*
  * Return the next available snapshot output object in the given list. A list
@@ -142,13 +147,14 @@ LTTNG_EXPORT extern int lttng_snapshot_list_output(const char *session_name,
  * Return the next object on success or else NULL indicating the end of the
  * list.
  */
-LTTNG_EXPORT extern struct lttng_snapshot_output *lttng_snapshot_output_list_get_next(
-		struct lttng_snapshot_output_list *list);
+LTTNG_EXPORT extern struct lttng_snapshot_output *
+lttng_snapshot_output_list_get_next(struct lttng_snapshot_output_list *list);
 
 /*
  * Free an output list object.
  */
-LTTNG_EXPORT extern void lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list);
+LTTNG_EXPORT extern void
+lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list);
 
 /*
  * Snapshot a trace for the given session.
@@ -162,8 +168,8 @@ LTTNG_EXPORT extern void lttng_snapshot_output_list_destroy(struct lttng_snapsho
  *
  * Return 0 on success or else a negative LTTNG_ERR value.
  */
-LTTNG_EXPORT extern int lttng_snapshot_record(const char *session_name,
-		struct lttng_snapshot_output *output, int wait);
+LTTNG_EXPORT extern int
+lttng_snapshot_record(const char *session_name, struct lttng_snapshot_output *output, int wait);
 
 #ifdef __cplusplus
 }

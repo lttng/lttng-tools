@@ -3390,8 +3390,7 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_destroy_session(struct ltt_session *session,
-			int *sock_fd)
+int cmd_destroy_session(struct ltt_session *session, int *sock_fd)
 {
 	int ret;
 	enum lttng_error_code destruction_last_error = LTTNG_OK;

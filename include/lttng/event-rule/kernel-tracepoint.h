@@ -34,8 +34,9 @@ LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepoint_set_name_pattern(
-		struct lttng_event_rule *rule, const char *pattern);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_tracepoint_set_name_pattern(struct lttng_event_rule *rule,
+						    const char *pattern);
 
 /*
  * Get the name pattern of a kernel tracepoint event rule.
@@ -49,8 +50,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepo
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepoint_get_name_pattern(
-		const struct lttng_event_rule *rule, const char **pattern);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_tracepoint_get_name_pattern(const struct lttng_event_rule *rule,
+						    const char **pattern);
 
 /*
  * Set the filter expression of a kernel tracepoint event rule.
@@ -60,8 +62,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepo
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepoint_set_filter(
-		struct lttng_event_rule *rule, const char *expression);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_tracepoint_set_filter(struct lttng_event_rule *rule,
+					      const char *expression);
 
 /*
  * Get the filter expression of a kernel tracepoint event rule.
@@ -75,8 +78,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepo
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a filter expression
  * was not set prior to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_tracepoint_get_filter(
-		const struct lttng_event_rule *rule, const char **expression);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_tracepoint_get_filter(const struct lttng_event_rule *rule,
+					      const char **expression);
 
 #ifdef __cplusplus
 }

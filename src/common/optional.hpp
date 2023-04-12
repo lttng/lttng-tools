@@ -37,10 +37,10 @@
  *
  * LTTNG_OPTIONAL_UNSET(&foo.b);
  */
-#define LTTNG_OPTIONAL(type) \
-	struct {             \
+#define LTTNG_OPTIONAL(type)    \
+	struct {                \
 		uint8_t is_set; \
-		type value;  \
+		type value;     \
 	}
 
 /*
@@ -60,10 +60,10 @@
  * Since this returns the 'optional' by value, it is not suitable for all
  * wrapped optional types. It is meant to be used with PODs.
  */
-#define LTTNG_OPTIONAL_GET(optional)			\
-	({						\
-		LTTNG_ASSERT((optional).is_set);		\
-		(optional).value;			\
+#define LTTNG_OPTIONAL_GET(optional)             \
+	({                                       \
+		LTTNG_ASSERT((optional).is_set); \
+		(optional).value;                \
 	})
 
 /*
@@ -71,10 +71,10 @@
  * an optional value is set to LTTNG_ASSERT() that it is set when fecthing the
  * underlying value's address.
  */
-#define LTTNG_OPTIONAL_GET_PTR(optional)			\
-	({						\
-		LTTNG_ASSERT((optional).is_set);		\
-		&(optional).value;			\
+#define LTTNG_OPTIONAL_GET_PTR(optional)         \
+	({                                       \
+		LTTNG_ASSERT((optional).is_set); \
+		&(optional).value;               \
 	})
 
 /*
@@ -83,7 +83,9 @@
  * The wrapped field is set to the value it would gave if it had static storage
  * duration.
  */
-#define LTTNG_OPTIONAL_INIT_UNSET {}
+#define LTTNG_OPTIONAL_INIT_UNSET \
+	{                         \
+	}
 
 /*
  * Initialize an optional field as 'set' with a given value.
@@ -94,16 +96,16 @@
 	}
 
 /* Set the value of an optional field. */
-#define LTTNG_OPTIONAL_SET(field_ptr, val)	\
-	do {					\
-		(field_ptr)->is_set = 1;	\
-		(field_ptr)->value = (val);	\
+#define LTTNG_OPTIONAL_SET(field_ptr, val)  \
+	do {                                \
+		(field_ptr)->is_set = 1;    \
+		(field_ptr)->value = (val); \
 	} while (0)
 
 /* Put an optional field in the "unset" (NULL-ed) state. */
-#define LTTNG_OPTIONAL_UNSET(field_ptr)		\
-	do {					\
-		(field_ptr)->is_set = 0;	\
+#define LTTNG_OPTIONAL_UNSET(field_ptr)  \
+	do {                             \
+		(field_ptr)->is_set = 0; \
 	} while (0)
 
 #endif /* LTTNG_OPTIONAL_H */

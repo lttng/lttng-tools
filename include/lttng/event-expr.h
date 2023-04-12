@@ -9,6 +9,7 @@
 #define LTTNG_EVENT_EXPR_H
 
 #include <lttng/lttng-export.h>
+
 #include <stdbool.h>
 
 struct lttng_event_expr;
@@ -84,8 +85,8 @@ enum lttng_event_expr_status {
  * Returns the type of the event expression `expr`, or
  * `LTTNG_EVENT_EXPR_TYPE_INVALID` if `expr` is `NULL`.
  */
-LTTNG_EXPORT extern enum lttng_event_expr_type lttng_event_expr_get_type(
-		const struct lttng_event_expr *expr);
+LTTNG_EXPORT extern enum lttng_event_expr_type
+lttng_event_expr_get_type(const struct lttng_event_expr *expr);
 
 /*
  * Creates an event payload field expression for the payload field named
@@ -96,8 +97,8 @@ LTTNG_EXPORT extern enum lttng_event_expr_type lttng_event_expr_get_type(
  * * There's a memory error.
  * * `field_name` is `NULL`.
  */
-LTTNG_EXPORT extern struct lttng_event_expr *lttng_event_expr_event_payload_field_create(
-		const char *field_name);
+LTTNG_EXPORT extern struct lttng_event_expr *
+lttng_event_expr_event_payload_field_create(const char *field_name);
 
 /*
  * Returns the field name of the event payload field expression `expr`,
@@ -107,8 +108,8 @@ LTTNG_EXPORT extern struct lttng_event_expr *lttng_event_expr_event_payload_fiel
  * * The type of `expr` is not
  *   `LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD`.
  */
-LTTNG_EXPORT extern const char *lttng_event_expr_event_payload_field_get_name(
-		const struct lttng_event_expr *expr);
+LTTNG_EXPORT extern const char *
+lttng_event_expr_event_payload_field_get_name(const struct lttng_event_expr *expr);
 
 /*
  * Creates a per-channel context field expression for the per-channel
@@ -130,8 +131,8 @@ lttng_event_expr_channel_context_field_create(const char *field_name);
  * * The type of `expr` is not
  *   `LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD`.
  */
-LTTNG_EXPORT extern const char *lttng_event_expr_channel_context_field_get_name(
-		const struct lttng_event_expr *expr);
+LTTNG_EXPORT extern const char *
+lttng_event_expr_channel_context_field_get_name(const struct lttng_event_expr *expr);
 
 /*
  * Creates an application-specific context field expression for the
@@ -145,8 +146,8 @@ LTTNG_EXPORT extern const char *lttng_event_expr_channel_context_field_get_name(
  * * `type_name` is `NULL`.
  */
 LTTNG_EXPORT extern struct lttng_event_expr *
-lttng_event_expr_app_specific_context_field_create(
-		const char *provider_name, const char *type_name);
+lttng_event_expr_app_specific_context_field_create(const char *provider_name,
+						   const char *type_name);
 
 /*
  * Returns the provider name of the application-specific context field
@@ -157,8 +158,7 @@ lttng_event_expr_app_specific_context_field_create(
  *   `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`.
  */
 LTTNG_EXPORT extern const char *
-lttng_event_expr_app_specific_context_field_get_provider_name(
-		const struct lttng_event_expr *expr);
+lttng_event_expr_app_specific_context_field_get_provider_name(const struct lttng_event_expr *expr);
 
 /*
  * Returns the type name of the application-specific context field
@@ -169,8 +169,7 @@ lttng_event_expr_app_specific_context_field_get_provider_name(
  *   `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`.
  */
 LTTNG_EXPORT extern const char *
-lttng_event_expr_app_specific_context_field_get_type_name(
-		const struct lttng_event_expr *expr);
+lttng_event_expr_app_specific_context_field_get_type_name(const struct lttng_event_expr *expr);
 
 /*
  * Creates an array field element expression for the parent array field
@@ -188,9 +187,9 @@ lttng_event_expr_app_specific_context_field_get_type_name(
  *    * `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`
  *    * `LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT`
  */
-LTTNG_EXPORT extern struct lttng_event_expr *lttng_event_expr_array_field_element_create(
-		struct lttng_event_expr *array_field_expr,
-		unsigned int index);
+LTTNG_EXPORT extern struct lttng_event_expr *
+lttng_event_expr_array_field_element_create(struct lttng_event_expr *array_field_expr,
+					    unsigned int index);
 
 /*
  * Returns the parent array field expression of the array field element
@@ -201,8 +200,7 @@ LTTNG_EXPORT extern struct lttng_event_expr *lttng_event_expr_array_field_elemen
  *   `LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT`.
  */
 LTTNG_EXPORT extern const struct lttng_event_expr *
-lttng_event_expr_array_field_element_get_parent_expr(
-		const struct lttng_event_expr *expr);
+lttng_event_expr_array_field_element_get_parent_expr(const struct lttng_event_expr *expr);
 
 /*
  * Sets `*index` to the index of the array field element expression
@@ -220,8 +218,8 @@ lttng_event_expr_array_field_element_get_parent_expr(
  *     * `index` is `NULL`.
  */
 LTTNG_EXPORT extern enum lttng_event_expr_status
-lttng_event_expr_array_field_element_get_index(
-		const struct lttng_event_expr *expr, unsigned int *index);
+lttng_event_expr_array_field_element_get_index(const struct lttng_event_expr *expr,
+					       unsigned int *index);
 
 /*
  * Returns whether or not the event expressions `expr_a` and `expr_b`
@@ -230,7 +228,7 @@ lttng_event_expr_array_field_element_get_index(
  * `expr_a` and `expr_b` can be `NULL`.
  */
 LTTNG_EXPORT extern bool lttng_event_expr_is_equal(const struct lttng_event_expr *expr_a,
-		const struct lttng_event_expr *expr_b);
+						   const struct lttng_event_expr *expr_b);
 
 /*
  * Destroys the event expression `expr` if not `NULL`.

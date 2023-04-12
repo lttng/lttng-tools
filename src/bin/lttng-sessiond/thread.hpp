@@ -31,10 +31,10 @@ using lttng_thread_cleanup_cb = void (*)(void *);
  * The shutdown and cleanup callbacks are optional.
  */
 struct lttng_thread *lttng_thread_create(const char *name,
-		lttng_thread_entry_point entry,
-		lttng_thread_shutdown_cb shutdown,
-		lttng_thread_cleanup_cb cleanup,
-		void *thread_data);
+					 lttng_thread_entry_point entry,
+					 lttng_thread_shutdown_cb shutdown,
+					 lttng_thread_cleanup_cb cleanup,
+					 void *thread_data);
 
 bool lttng_thread_get(struct lttng_thread *thread);
 void lttng_thread_put(struct lttng_thread *thread);

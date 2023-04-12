@@ -20,21 +20,20 @@ enum ir_op_signedness {
 	IR_SIGN_UNKNOWN = 0,
 	IR_SIGNED,
 	IR_UNSIGNED,
-	IR_SIGN_DYN,		/* signedness determined dynamically */
+	IR_SIGN_DYN, /* signedness determined dynamically */
 };
 
 enum ir_data_type {
 	IR_DATA_UNKNOWN = 0,
 	IR_DATA_STRING,
-	IR_DATA_NUMERIC,	/* numeric and boolean */
+	IR_DATA_NUMERIC, /* numeric and boolean */
 	IR_DATA_FLOAT,
 	IR_DATA_FIELD_REF,
 	IR_DATA_GET_CONTEXT_REF,
 	IR_DATA_EXPRESSION,
 };
 
-static inline
-const char *ir_data_type_str(enum ir_data_type type)
+static inline const char *ir_data_type_str(enum ir_data_type type)
 {
 	switch (type) {
 	case IR_DATA_UNKNOWN:
@@ -65,8 +64,7 @@ enum ir_op_type {
 	IR_OP_LOGICAL,
 };
 
-static inline
-const char *ir_op_type_str(enum ir_op_type type)
+static inline const char *ir_op_type_str(enum ir_op_type type)
 {
 	switch (type) {
 	case IR_OP_UNKNOWN:
@@ -117,8 +115,7 @@ enum ir_load_expression_type {
 	IR_LOAD_EXPRESSION_LOAD_FIELD,
 };
 
-static inline
-const char *ir_load_expression_type_str(enum ir_load_expression_type type)
+static inline const char *ir_load_expression_type_str(enum ir_load_expression_type type)
 {
 	switch (type) {
 	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:

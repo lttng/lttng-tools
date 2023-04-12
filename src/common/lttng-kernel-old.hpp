@@ -9,8 +9,9 @@
 #ifndef _LTTNG_KERNEL_OLD_H
 #define _LTTNG_KERNEL_OLD_H
 
-#include <stdint.h>
 #include <common/lttng-kernel.hpp>
+
+#include <stdint.h>
 
 /*
  * LTTng DebugFS ABI structures.
@@ -26,8 +27,8 @@ struct lttng_kernel_abi_old_perf_counter_ctx {
 };
 
 /* Event/Channel context */
-#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING1  16
-#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING2  ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
+#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING1 16
+#define LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING2 ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_old_context {
 	enum lttng_kernel_abi_context_type ctx;
 	char padding[LTTNG_KERNEL_ABI_OLD_CONTEXT_PADDING1];
@@ -60,8 +61,8 @@ struct lttng_kernel_abi_old_function {
 	char symbol_name[LTTNG_KERNEL_ABI_SYM_NAME_LEN];
 };
 
-#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING1    16
-#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING2    ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
+#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING1 16
+#define LTTNG_KERNEL_ABI_OLD_EVENT_PADDING2 ((LTTNG_KERNEL_ABI_SYM_NAME_LEN + 32))
 struct lttng_kernel_abi_old_event {
 	char name[LTTNG_KERNEL_ABI_SYM_NAME_LEN];
 	enum lttng_kernel_abi_instrumentation instrumentation;
@@ -87,12 +88,12 @@ struct lttng_kernel_abi_old_tracer_version {
  */
 #define LTTNG_KERNEL_ABI_OLD_CHANNEL_PADDING1 ((LTTNG_SYMBOL_NAME_LEN + 32))
 struct lttng_kernel_abi_old_channel {
-	int overwrite;                      /* 1: overwrite, 0: discard */
-	uint64_t subbuf_size;               /* bytes */
-	uint64_t num_subbuf;                /* power of 2 */
+	int overwrite; /* 1: overwrite, 0: discard */
+	uint64_t subbuf_size; /* bytes */
+	uint64_t num_subbuf; /* power of 2 */
 	unsigned int switch_timer_interval; /* usec */
-	unsigned int read_timer_interval;   /* usec */
-	enum lttng_event_output output;     /* splice, mmap */
+	unsigned int read_timer_interval; /* usec */
+	enum lttng_event_output output; /* splice, mmap */
 
 	char padding[LTTNG_KERNEL_ABI_OLD_CHANNEL_PADDING1];
 };

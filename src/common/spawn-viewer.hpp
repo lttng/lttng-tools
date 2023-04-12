@@ -9,6 +9,7 @@
  */
 
 #include <lttng/lttng-export.h>
+
 #include <stdbool.h>
 
 /*
@@ -21,7 +22,7 @@
  * This symbol was mistakenly made public before the 2.12 release. It can't
  * be removed (but it can be stubbed-out if necessary).
  */
-extern "C" LTTNG_EXPORT
-int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
+extern "C" LTTNG_EXPORT int
+spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
 
 #endif /* ifndef LTTNG_SPAWN_VIEWER_H */

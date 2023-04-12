@@ -10,6 +10,7 @@
 #define _LTT_TRACKER_H
 
 #include <common/tracker.hpp>
+
 #include <lttng/tracker.h>
 
 struct process_attr_tracker;
@@ -25,22 +26,20 @@ enum process_attr_tracker_status {
 struct process_attr_tracker *process_attr_tracker_create();
 void process_attr_tracker_destroy(struct process_attr_tracker *tracker);
 
-enum lttng_tracking_policy process_attr_tracker_get_tracking_policy(
-		const struct process_attr_tracker *tracker);
-int process_attr_tracker_set_tracking_policy(
-		struct process_attr_tracker *tracker,
-		enum lttng_tracking_policy tracking_policy);
+enum lttng_tracking_policy
+process_attr_tracker_get_tracking_policy(const struct process_attr_tracker *tracker);
+int process_attr_tracker_set_tracking_policy(struct process_attr_tracker *tracker,
+					     enum lttng_tracking_policy tracking_policy);
 
-enum process_attr_tracker_status process_attr_tracker_inclusion_set_add_value(
-		struct process_attr_tracker *tracker,
-		const struct process_attr_value *value);
 enum process_attr_tracker_status
-process_attr_tracker_inclusion_set_remove_value(
-		struct process_attr_tracker *tracker,
-		const struct process_attr_value *value);
+process_attr_tracker_inclusion_set_add_value(struct process_attr_tracker *tracker,
+					     const struct process_attr_value *value);
+enum process_attr_tracker_status
+process_attr_tracker_inclusion_set_remove_value(struct process_attr_tracker *tracker,
+						const struct process_attr_value *value);
 
-enum process_attr_tracker_status process_attr_tracker_get_inclusion_set(
-		const struct process_attr_tracker *tracker,
-		struct lttng_process_attr_values **values);
+enum process_attr_tracker_status
+process_attr_tracker_get_inclusion_set(const struct process_attr_tracker *tracker,
+				       struct lttng_process_attr_values **values);
 
 #endif /* _LTT_TRACKER_H */

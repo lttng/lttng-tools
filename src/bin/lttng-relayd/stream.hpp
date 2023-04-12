@@ -10,18 +10,18 @@
  *
  */
 
-#include <limits.h>
-#include <inttypes.h>
-#include <pthread.h>
-#include <urcu/list.h>
-
-#include <common/hashtable/hashtable.hpp>
-#include <common/trace-chunk.hpp>
-#include <common/optional.hpp>
-#include <common/buffer-view.hpp>
-
 #include "session.hpp"
 #include "tracefile-array.hpp"
+
+#include <common/buffer-view.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/optional.hpp>
+#include <common/trace-chunk.hpp>
+
+#include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
+#include <urcu/list.h>
 
 struct lttcomm_relayd_index;
 
@@ -118,8 +118,8 @@ struct relay_stream {
 	 */
 	struct tracefile_array *tfa;
 
-	bool closed;		/* Stream is closed. */
-	bool close_requested;	/* Close command has been received. */
+	bool closed; /* Stream is closed. */
+	bool close_requested; /* Close command has been received. */
 
 	/*
 	 * Counts number of indexes in indexes_ht. Redundant info.
@@ -169,8 +169,8 @@ struct relay_stream {
 	 * Node of stream within global stream hash table.
 	 */
 	struct lttng_ht_node_u64 node;
-	bool in_stream_ht;		/* is stream in stream hash table. */
-	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+	bool in_stream_ht; /* is stream in stream hash table. */
+	struct rcu_head rcu_node; /* For call_rcu teardown. */
 	/*
 	 * The trace chunk to which the file currently being produced (if any)
 	 * belongs.
@@ -186,33 +186,37 @@ struct relay_stream {
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,
-	uint64_t stream_handle, char *path_name,
-	char *channel_name, uint64_t tracefile_size,
-	uint64_t tracefile_count);
+				   uint64_t stream_handle,
+				   char *path_name,
+				   char *channel_name,
+				   uint64_t tracefile_size,
+				   uint64_t tracefile_count);
 
 struct relay_stream *stream_get_by_id(uint64_t stream_id);
 bool stream_get(struct relay_stream *stream);
 void stream_put(struct relay_stream *stream);
-int stream_rotate_output_files(struct relay_session *session,
-		struct relay_stream *stream);
+int stream_rotate_output_files(struct relay_session *session, struct relay_stream *stream);
 int stream_set_pending_rotation(struct relay_stream *stream,
-		struct lttng_trace_chunk *next_trace_chunk,
-		uint64_t rotation_sequence_number);
+				struct lttng_trace_chunk *next_trace_chunk,
+				uint64_t rotation_sequence_number);
 void try_stream_close(struct relay_stream *stream);
 void stream_publish(struct relay_stream *stream);
-int stream_init_packet(struct relay_stream *stream, size_t packet_size,
-		bool *file_rotated);
+int stream_init_packet(struct relay_stream *stream, size_t packet_size, bool *file_rotated);
 int stream_write(struct relay_stream *stream,
-		const struct lttng_buffer_view *packet, size_t padding_len);
+		 const struct lttng_buffer_view *packet,
+		 size_t padding_len);
 /* Called after the reception of a complete data packet. */
-int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
-		bool rotate_index, bool *flushed, uint64_t total_size);
+int stream_update_index(struct relay_stream *stream,
+			uint64_t net_seq_num,
+			bool rotate_index,
+			bool *flushed,
+			uint64_t total_size);
 int stream_complete_packet(struct relay_stream *stream,
-		size_t packet_total_size, uint64_t sequence_number,
-		bool index_flushed);
+			   size_t packet_total_size,
+			   uint64_t sequence_number,
+			   bool index_flushed);
 /* Index info is in host endianness. */
-int stream_add_index(struct relay_stream *stream,
-		const struct lttcomm_relayd_index *index_info);
+int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_index *index_info);
 int stream_reset_file(struct relay_stream *stream);
 
 void print_relay_streams(void);

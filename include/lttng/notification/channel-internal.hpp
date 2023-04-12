@@ -87,7 +87,8 @@ struct pending_notification {
 struct lttng_notification_channel {
 	using uptr = std::unique_ptr<
 		lttng_notification_channel,
-		lttng::details::create_unique_class<lttng_notification_channel, lttng_notification_channel_destroy>::deleter>;
+		lttng::details::create_unique_class<lttng_notification_channel,
+						    lttng_notification_channel_destroy>::deleter>;
 
 	pthread_mutex_t lock;
 	int socket;

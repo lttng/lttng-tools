@@ -1770,9 +1770,8 @@ int main(int argc, char **argv)
 	}
 
 	try {
-		the_rotation_thread_handle =
-			lttng::make_unique<lttng::sessiond::rotation_thread>(
-				*rotation_timer_queue, *the_notification_thread_handle);
+		the_rotation_thread_handle = lttng::make_unique<lttng::sessiond::rotation_thread>(
+			*rotation_timer_queue, *the_notification_thread_handle);
 	} catch (const std::exception& e) {
 		retval = -1;
 		ERR("Failed to create rotation thread: %s", e.what());

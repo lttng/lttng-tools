@@ -8,31 +8,30 @@
 #ifndef _COMPAT_SOCKET_H
 #define _COMPAT_SOCKET_H
 
+#include <common/macros.hpp>
+
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <common/macros.hpp>
-
 #ifndef MSG_NOSIGNAL
-# ifdef SO_NOSIGPIPE
-#   define MSG_NOSIGNAL SO_NOSIGPIPE
-# endif
+#ifdef SO_NOSIGPIPE
+#define MSG_NOSIGNAL SO_NOSIGPIPE
+#endif
 #endif
 
 #if defined(MSG_NOSIGNAL)
-static inline
-ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
+static inline ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 {
 	return recvmsg(sockfd, msg, MSG_NOSIGNAL);
 }
 #else
 
-#include <signal.h>
 #include <common/compat/errno.hpp>
 
-static inline
-ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
+#include <signal.h>
+
+static inline ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 {
 	ssize_t received;
 	int saved_err;
@@ -82,8 +81,7 @@ ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 		int ret;
 
 		do {
-			ret = sigtimedwait(&sigpipe_set, NULL,
-				&timeout);
+			ret = sigtimedwait(&sigpipe_set, NULL, &timeout);
 		} while (ret == -1 && errno == EINTR);
 	}
 	if (!sigpipe_was_pending) {
@@ -100,25 +98,24 @@ ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 
 #ifdef __sun__
 
-# ifndef CMSG_ALIGN
-#  ifdef _CMSG_DATA_ALIGN
-#   define CMSG_ALIGN(len) _CMSG_DATA_ALIGN(len)
-#  else
-    /* aligning to sizeof (long) is assumed to be portable (fd.o#40235) */
-#   define CMSG_ALIGN(len) (((len) + sizeof (long) - 1) & ~(sizeof (long) - 1))
-#  endif
-#  ifndef CMSG_SPACE
-#    define CMSG_SPACE(len) (CMSG_ALIGN (sizeof (struct cmsghdr)) + CMSG_ALIGN (len))
-#  endif
-#  ifndef CMSG_LEN
-#    define CMSG_LEN(len) (CMSG_ALIGN (sizeof (struct cmsghdr)) + (len))
-#  endif
-# endif
+#ifndef CMSG_ALIGN
+#ifdef _CMSG_DATA_ALIGN
+#define CMSG_ALIGN(len) _CMSG_DATA_ALIGN(len)
+#else
+/* aligning to sizeof (long) is assumed to be portable (fd.o#40235) */
+#define CMSG_ALIGN(len) (((len) + sizeof(long) - 1) & ~(sizeof(long) - 1))
+#endif
+#ifndef CMSG_SPACE
+#define CMSG_SPACE(len) (CMSG_ALIGN(sizeof(struct cmsghdr)) + CMSG_ALIGN(len))
+#endif
+#ifndef CMSG_LEN
+#define CMSG_LEN(len) (CMSG_ALIGN(sizeof(struct cmsghdr)) + (len))
+#endif
+#endif
 
 #include <ucred.h>
 
-static inline
-int getpeereid(int s, uid_t *euid, gid_t *gid)
+static inline int getpeereid(int s, uid_t *euid, gid_t *gid)
 {
 	int ret = 0;
 	ucred_t *ucred = NULL;
@@ -147,7 +144,6 @@ end:
 	return ret;
 }
 #endif /* __sun__ */
-
 
 #if defined(__linux__) || defined(__CYGWIN__)
 
@@ -183,8 +179,7 @@ typedef struct lttng_sock_cred lttng_sock_cred;
 
 #ifdef __APPLE__
 
-static inline
-int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+static inline int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 {
 	socklen_t pid_len = (socklen_t) sizeof(*pid);
 
@@ -195,8 +190,7 @@ int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 #elif defined(__sun__)
 
 /* Use the getpeerucreds interface on Solaris. */
-static inline
-int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+static inline int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 {
 	int ret = 0;
 	ucred_t *ucred = NULL;
@@ -223,16 +217,14 @@ end:
 
 #include <sys/ucred.h>
 
-static inline
-int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+static inline int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
 {
 	int ret;
 	struct xucred sock_creds = {};
 	socklen_t sock_creds_len = (socklen_t) sizeof(sock_creds);
 
 	/* Only available in FreeBSD 13.0 and up. */
-	ret = getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERCRED, &sock_creds,
-			&sock_creds_len);
+	ret = getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERCRED, &sock_creds, &sock_creds_len);
 	if (ret) {
 		goto end;
 	}
@@ -244,9 +236,7 @@ end:
 
 #endif /* __APPLE__ */
 
-
-static inline
-int lttng_get_unix_socket_peer_creds(int socket_fd, struct lttng_sock_cred *creds)
+static inline int lttng_get_unix_socket_peer_creds(int socket_fd, struct lttng_sock_cred *creds)
 {
 	int ret;
 

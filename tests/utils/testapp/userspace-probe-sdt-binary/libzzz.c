@@ -5,8 +5,10 @@
  *
  */
 
-#include <sys/sdt.h>
 #include "foobar_provider.h"
-void overridable_function() {
+
+#include <sys/sdt.h>
+void overridable_function()
+{
 	FOOBAR_TP_IN_LDPRELOAD();
 }

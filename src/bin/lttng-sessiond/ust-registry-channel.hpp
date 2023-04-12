@@ -15,8 +15,8 @@
 
 #include <lttng/lttng.h>
 
-#include <urcu.h>
 #include <functional>
+#include <urcu.h>
 
 struct ust_app;
 
@@ -29,23 +29,24 @@ class registry_event;
 class registry_channel : public lttng::sessiond::trace::stream_class {
 public:
 	using registered_listener_fn = std::function<void(const registry_channel&)>;
-	using event_added_listener_fn = std::function<void(const registry_channel&, const registry_event &)>;
+	using event_added_listener_fn =
+		std::function<void(const registry_channel&, const registry_event&)>;
 
 	registry_channel(uint32_t channel_id,
-			const lttng::sessiond::trace::abi& trace_abi,
-			std::string default_clock_class_name,
-			registered_listener_fn channel_registered_listener,
-			event_added_listener_fn new_event_listener);
+			 const lttng::sessiond::trace::abi& trace_abi,
+			 std::string default_clock_class_name,
+			 registered_listener_fn channel_registered_listener,
+			 event_added_listener_fn new_event_listener);
 	void add_event(int session_objd,
-			int channel_objd,
-			std::string name,
-			std::string signature,
-			std::vector<lttng::sessiond::trace::field::cuptr> event_fields,
-			int loglevel_value,
-			nonstd::optional<std::string> model_emf_uri,
-			lttng_buffer_type buffer_type,
-			const ust_app& app,
-			uint32_t& out_event_id);
+		       int channel_objd,
+		       std::string name,
+		       std::string signature,
+		       std::vector<lttng::sessiond::trace::field::cuptr> event_fields,
+		       int loglevel_value,
+		       nonstd::optional<std::string> model_emf_uri,
+		       lttng_buffer_type buffer_type,
+		       const ust_app& app,
+		       uint32_t& out_event_id);
 	~registry_channel() override;
 	registry_channel(const registry_channel&) = delete;
 	registry_channel(registry_channel&&) = delete;
@@ -75,7 +76,7 @@ public:
 
 private:
 	void _accept_on_event_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const final;
+		lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const final;
 
 	registered_listener_fn _is_registered_listener;
 	event_added_listener_fn _event_added_listener;

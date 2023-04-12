@@ -9,8 +9,8 @@
 
 #include <common/macros.hpp>
 
-#include <string>
 #include <cxxabi.h>
+#include <string>
 
 DIAGNOSTIC_PUSH
 DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT

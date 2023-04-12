@@ -40,7 +40,7 @@ public:
 	{
 	}
 
-	const char* const name;
+	const char *const name;
 	const ValueType& value;
 };
 

@@ -11,8 +11,8 @@
 
 #include "error.hpp"
 #include "macros.hpp"
-#include "runas.hpp"
 #include "readwrite.hpp"
+#include "runas.hpp"
 #include "time.hpp"
 
 #endif /* _COMMON_H */

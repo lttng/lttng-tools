@@ -10,17 +10,18 @@
  *
  */
 
-#include <limits.h>
+#include <common/hashtable/hashtable.hpp>
+#include <common/optional.hpp>
+#include <common/trace-chunk.hpp>
+#include <common/uuid.hpp>
+
+#include <lttng/constant.h>
+
 #include <inttypes.h>
+#include <limits.h>
 #include <pthread.h>
 #include <urcu/list.h>
 #include <urcu/ref.h>
-
-#include <lttng/constant.h>
-#include <common/hashtable/hashtable.hpp>
-#include <common/uuid.hpp>
-#include <common/trace-chunk.hpp>
-#include <common/optional.hpp>
 
 /*
  * Represents a session for the relay point of view
@@ -107,7 +108,7 @@ struct relay_session {
 	 * Traversals are protected by RCU.
 	 * recv_list_lock also protects stream_count.
 	 */
-	struct cds_list_head recv_list;	/* RCU list. */
+	struct cds_list_head recv_list; /* RCU list. */
 	uint32_t stream_count;
 	pthread_mutex_t recv_list_lock;
 
@@ -135,20 +136,21 @@ struct relay_session {
 	 */
 	bool ongoing_rotation;
 	struct lttng_directory_handle *output_directory;
-	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+	struct rcu_head rcu_node; /* For call_rcu teardown. */
 };
 
 struct relay_session *session_create(const char *session_name,
-		const char *hostname, const char *base_path,
-		uint32_t live_timer,
-		bool snapshot,
-		const lttng_uuid& sessiond_uuid,
-		const uint64_t *id_sessiond,
-		const uint64_t *current_chunk_id,
-		const time_t *creation_time,
-		uint32_t major,
-		uint32_t minor,
-		bool session_name_contains_creation_timestamp);
+				     const char *hostname,
+				     const char *base_path,
+				     uint32_t live_timer,
+				     bool snapshot,
+				     const lttng_uuid& sessiond_uuid,
+				     const uint64_t *id_sessiond,
+				     const uint64_t *current_chunk_id,
+				     const time_t *creation_time,
+				     uint32_t major,
+				     uint32_t minor,
+				     bool session_name_contains_creation_timestamp);
 struct relay_session *session_get_by_id(uint64_t id);
 bool session_get(struct relay_session *session);
 void session_put(struct relay_session *session);

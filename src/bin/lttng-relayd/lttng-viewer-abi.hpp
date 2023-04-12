@@ -10,92 +10,93 @@
  *
  */
 
-#include <limits.h>
 #include <common/macros.hpp>
 
-#define LTTNG_VIEWER_PATH_MAX		4096
-#define LTTNG_VIEWER_NAME_MAX		255
-#define LTTNG_VIEWER_HOST_NAME_MAX	64
+#include <limits.h>
+
+#define LTTNG_VIEWER_PATH_MAX	   4096
+#define LTTNG_VIEWER_NAME_MAX	   255
+#define LTTNG_VIEWER_HOST_NAME_MAX 64
 
 /* Flags in reply to get_next_index and get_packet. */
 enum {
 	/* New metadata is required to read this packet. */
-	LTTNG_VIEWER_FLAG_NEW_METADATA	= (1 << 0),
+	LTTNG_VIEWER_FLAG_NEW_METADATA = (1 << 0),
 	/* New stream got added to the trace. */
-	LTTNG_VIEWER_FLAG_NEW_STREAM	= (1 << 1),
+	LTTNG_VIEWER_FLAG_NEW_STREAM = (1 << 1),
 };
 
 enum lttng_viewer_command {
-	LTTNG_VIEWER_CONNECT		= 1,
-	LTTNG_VIEWER_LIST_SESSIONS	= 2,
-	LTTNG_VIEWER_ATTACH_SESSION	= 3,
-	LTTNG_VIEWER_GET_NEXT_INDEX	= 4,
-	LTTNG_VIEWER_GET_PACKET		= 5,
-	LTTNG_VIEWER_GET_METADATA	= 6,
-	LTTNG_VIEWER_GET_NEW_STREAMS	= 7,
-	LTTNG_VIEWER_CREATE_SESSION	= 8,
-	LTTNG_VIEWER_DETACH_SESSION	= 9,
+	LTTNG_VIEWER_CONNECT = 1,
+	LTTNG_VIEWER_LIST_SESSIONS = 2,
+	LTTNG_VIEWER_ATTACH_SESSION = 3,
+	LTTNG_VIEWER_GET_NEXT_INDEX = 4,
+	LTTNG_VIEWER_GET_PACKET = 5,
+	LTTNG_VIEWER_GET_METADATA = 6,
+	LTTNG_VIEWER_GET_NEW_STREAMS = 7,
+	LTTNG_VIEWER_CREATE_SESSION = 8,
+	LTTNG_VIEWER_DETACH_SESSION = 9,
 };
 
 enum lttng_viewer_attach_return_code {
-	LTTNG_VIEWER_ATTACH_OK		= 1, /* The attach command succeeded. */
-	LTTNG_VIEWER_ATTACH_ALREADY	= 2, /* A viewer is already attached. */
-	LTTNG_VIEWER_ATTACH_UNK		= 3, /* The session ID is unknown. */
-	LTTNG_VIEWER_ATTACH_NOT_LIVE	= 4, /* The session is not live. */
-	LTTNG_VIEWER_ATTACH_SEEK_ERR	= 5, /* Seek error. */
-	LTTNG_VIEWER_ATTACH_NO_SESSION	= 6, /* No viewer session created. */
+	LTTNG_VIEWER_ATTACH_OK = 1, /* The attach command succeeded. */
+	LTTNG_VIEWER_ATTACH_ALREADY = 2, /* A viewer is already attached. */
+	LTTNG_VIEWER_ATTACH_UNK = 3, /* The session ID is unknown. */
+	LTTNG_VIEWER_ATTACH_NOT_LIVE = 4, /* The session is not live. */
+	LTTNG_VIEWER_ATTACH_SEEK_ERR = 5, /* Seek error. */
+	LTTNG_VIEWER_ATTACH_NO_SESSION = 6, /* No viewer session created. */
 };
 
 enum lttng_viewer_next_index_return_code {
-	LTTNG_VIEWER_INDEX_OK		= 1, /* Index is available. */
-	LTTNG_VIEWER_INDEX_RETRY	= 2, /* Index not yet available. */
-	LTTNG_VIEWER_INDEX_HUP		= 3, /* Index closed (trace destroyed). */
-	LTTNG_VIEWER_INDEX_ERR		= 4, /* Unknow error. */
-	LTTNG_VIEWER_INDEX_INACTIVE	= 5, /* Inactive stream beacon. */
-	LTTNG_VIEWER_INDEX_EOF		= 6, /* End of index file. */
+	LTTNG_VIEWER_INDEX_OK = 1, /* Index is available. */
+	LTTNG_VIEWER_INDEX_RETRY = 2, /* Index not yet available. */
+	LTTNG_VIEWER_INDEX_HUP = 3, /* Index closed (trace destroyed). */
+	LTTNG_VIEWER_INDEX_ERR = 4, /* Unknow error. */
+	LTTNG_VIEWER_INDEX_INACTIVE = 5, /* Inactive stream beacon. */
+	LTTNG_VIEWER_INDEX_EOF = 6, /* End of index file. */
 };
 
 enum lttng_viewer_get_packet_return_code {
-	LTTNG_VIEWER_GET_PACKET_OK	= 1,
-	LTTNG_VIEWER_GET_PACKET_RETRY	= 2,
-	LTTNG_VIEWER_GET_PACKET_ERR	= 3,
-	LTTNG_VIEWER_GET_PACKET_EOF	= 4,
+	LTTNG_VIEWER_GET_PACKET_OK = 1,
+	LTTNG_VIEWER_GET_PACKET_RETRY = 2,
+	LTTNG_VIEWER_GET_PACKET_ERR = 3,
+	LTTNG_VIEWER_GET_PACKET_EOF = 4,
 };
 
 enum lttng_viewer_get_metadata_return_code {
-	LTTNG_VIEWER_METADATA_OK	= 1,
-	LTTNG_VIEWER_NO_NEW_METADATA	= 2,
-	LTTNG_VIEWER_METADATA_ERR	= 3,
+	LTTNG_VIEWER_METADATA_OK = 1,
+	LTTNG_VIEWER_NO_NEW_METADATA = 2,
+	LTTNG_VIEWER_METADATA_ERR = 3,
 };
 
 enum lttng_viewer_connection_type {
-	LTTNG_VIEWER_CLIENT_COMMAND		= 1,
-	LTTNG_VIEWER_CLIENT_NOTIFICATION	= 2,
+	LTTNG_VIEWER_CLIENT_COMMAND = 1,
+	LTTNG_VIEWER_CLIENT_NOTIFICATION = 2,
 };
 
 enum lttng_viewer_seek {
 	/* Receive the trace packets from the beginning. */
-	LTTNG_VIEWER_SEEK_BEGINNING	= 1,
+	LTTNG_VIEWER_SEEK_BEGINNING = 1,
 	/* Receive the trace packets from now. */
-	LTTNG_VIEWER_SEEK_LAST		= 2,
+	LTTNG_VIEWER_SEEK_LAST = 2,
 };
 
 enum lttng_viewer_new_streams_return_code {
-	LTTNG_VIEWER_NEW_STREAMS_OK           = 1, /* If new streams are being sent. */
-	LTTNG_VIEWER_NEW_STREAMS_NO_NEW       = 2, /* If no new streams are available. */
-	LTTNG_VIEWER_NEW_STREAMS_ERR          = 3, /* Error. */
-	LTTNG_VIEWER_NEW_STREAMS_HUP          = 4, /* Session closed. */
+	LTTNG_VIEWER_NEW_STREAMS_OK = 1, /* If new streams are being sent. */
+	LTTNG_VIEWER_NEW_STREAMS_NO_NEW = 2, /* If no new streams are available. */
+	LTTNG_VIEWER_NEW_STREAMS_ERR = 3, /* Error. */
+	LTTNG_VIEWER_NEW_STREAMS_HUP = 4, /* Session closed. */
 };
 
 enum lttng_viewer_create_session_return_code {
-	LTTNG_VIEWER_CREATE_SESSION_OK		= 1,
-	LTTNG_VIEWER_CREATE_SESSION_ERR		= 2,
+	LTTNG_VIEWER_CREATE_SESSION_OK = 1,
+	LTTNG_VIEWER_CREATE_SESSION_ERR = 2,
 };
 
 enum lttng_viewer_detach_session_return_code {
-	LTTNG_VIEWER_DETACH_SESSION_OK          = 1,
-	LTTNG_VIEWER_DETACH_SESSION_UNK		= 2,
-	LTTNG_VIEWER_DETACH_SESSION_ERR         = 3,
+	LTTNG_VIEWER_DETACH_SESSION_OK = 1,
+	LTTNG_VIEWER_DETACH_SESSION_UNK = 2,
+	LTTNG_VIEWER_DETACH_SESSION_ERR = 3,
 };
 
 struct lttng_viewer_session {
@@ -116,9 +117,9 @@ struct lttng_viewer_stream {
 } LTTNG_PACKED;
 
 struct lttng_viewer_cmd {
-	uint64_t data_size;	/* data size following this header */
-	uint32_t cmd;		/* enum lttcomm_relayd_command */
-	uint32_t cmd_version;	/* command version */
+	uint64_t data_size; /* data size following this header */
+	uint32_t cmd; /* enum lttcomm_relayd_command */
+	uint32_t cmd_version; /* command version */
 } LTTNG_PACKED;
 
 /*
@@ -129,7 +130,7 @@ struct lttng_viewer_connect {
 	uint64_t viewer_session_id;
 	uint32_t major;
 	uint32_t minor;
-	uint32_t type;		/* enum lttng_viewer_connection_type */
+	uint32_t type; /* enum lttng_viewer_connection_type */
 } LTTNG_PACKED;
 
 /*
@@ -137,7 +138,7 @@ struct lttng_viewer_connect {
  */
 struct lttng_viewer_list_sessions {
 	uint32_t sessions_count;
-	char session_list[];	/* struct lttng_viewer_session */
+	char session_list[]; /* struct lttng_viewer_session */
 } LTTNG_PACKED;
 
 /*
@@ -145,8 +146,8 @@ struct lttng_viewer_list_sessions {
  */
 struct lttng_viewer_attach_session_request {
 	uint64_t session_id;
-	uint64_t offset;	/* unused for now */
-	uint32_t seek;		/* enum lttng_viewer_seek */
+	uint64_t offset; /* unused for now */
+	uint32_t seek; /* enum lttng_viewer_seek */
 } LTTNG_PACKED;
 
 struct lttng_viewer_attach_session_response {
@@ -162,7 +163,7 @@ struct lttng_viewer_attach_session_response {
  */
 struct lttng_viewer_get_next_index {
 	uint64_t stream_id;
-} __attribute__ ((__packed__));
+} __attribute__((__packed__));
 
 struct lttng_viewer_index {
 	uint64_t offset;
@@ -172,9 +173,9 @@ struct lttng_viewer_index {
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
 	uint64_t stream_id;
-	uint32_t status;	/* enum lttng_viewer_next_index_return_code */
-	uint32_t flags;		/* LTTNG_VIEWER_FLAG_* */
-} __attribute__ ((__packed__));
+	uint32_t status; /* enum lttng_viewer_next_index_return_code */
+	uint32_t flags; /* LTTNG_VIEWER_FLAG_* */
+} __attribute__((__packed__));
 
 /*
  * LTTNG_VIEWER_GET_PACKET payload.
@@ -186,9 +187,9 @@ struct lttng_viewer_get_packet {
 } LTTNG_PACKED;
 
 struct lttng_viewer_trace_packet {
-	uint32_t status;	/* enum lttng_viewer_get_packet_return_code */
+	uint32_t status; /* enum lttng_viewer_get_packet_return_code */
 	uint32_t len;
-	uint32_t flags;		/* LTTNG_VIEWER_FLAG_* */
+	uint32_t flags; /* LTTNG_VIEWER_FLAG_* */
 	char data[];
 } LTTNG_PACKED;
 
@@ -201,7 +202,7 @@ struct lttng_viewer_get_metadata {
 
 struct lttng_viewer_metadata_packet {
 	uint64_t len;
-	uint32_t status;	/* enum lttng_viewer_get_metadata_return_code */
+	uint32_t status; /* enum lttng_viewer_get_metadata_return_code */
 	char data[];
 } LTTNG_PACKED;
 

@@ -11,12 +11,11 @@
 
 #include <common/compat/string.hpp>
 
+#include <memory>
+#include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <memory>
-#include <pthread.h>
 #include <type_traits>
 
 /*
@@ -43,21 +42,20 @@
 
 #ifdef NDEBUG
 /*
-* Force usage of the assertion condition to prevent unused variable warnings
-* when `assert()` are disabled by the `NDEBUG` definition.
-*/
-# define LTTNG_ASSERT(_cond) ((void) sizeof((void) (_cond), 0))
+ * Force usage of the assertion condition to prevent unused variable warnings
+ * when `assert()` are disabled by the `NDEBUG` definition.
+ */
+#define LTTNG_ASSERT(_cond) ((void) sizeof((void) (_cond), 0))
 #else
-# include <assert.h>
-# define LTTNG_ASSERT(_cond) assert(_cond)
+#include <assert.h>
+#define LTTNG_ASSERT(_cond) assert(_cond)
 #endif
 
 /*
  * Memory allocation zeroed
  */
 
-static inline
-void *zmalloc_internal(size_t size)
+static inline void *zmalloc_internal(size_t size)
 {
 	return calloc(1, size);
 }
@@ -133,10 +131,10 @@ AllocatedType *malloc()
  * Malloc a buffer of size `size`, asserting that AllocatedType can be safely
  * malloc-ed (is trivially constructible).
  */
-template<typename AllocatedType>
+template <typename AllocatedType>
 AllocatedType *malloc(size_t size)
 {
-	static_assert (can_malloc<AllocatedType>::value, "type can be malloc'ed");
+	static_assert(can_malloc<AllocatedType>::value, "type can be malloc'ed");
 	return (AllocatedType *) malloc(size);
 }
 
@@ -153,9 +151,8 @@ AllocatedType *malloc(size_t size)
  * pointers to void, these will not be checked.
  */
 
-template<typename FreedType>
-struct can_free
-{
+template <typename FreedType>
+struct can_free {
 	/*
 	 * gcc versions before 5.0 lack some type traits defined in C++11.
 	 * Since in this instance we use the trait to prevent misuses
@@ -185,9 +182,8 @@ template <typename InitializedType,
 	  typename = typename std::enable_if<!can_memset<InitializedType>::value>::type>
 void *memset(InitializedType *s, int c, size_t n) = delete;
 
-template<typename T>
-struct can_memcpy
-{
+template <typename T>
+struct can_memcpy {
 	/*
 	 * gcc versions before 5.0 lack some type traits defined in C++11.
 	 * Since in this instance we use the trait to prevent misuses
@@ -233,7 +229,7 @@ template <typename DestinationType,
 void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
+#define ARRAY_SIZE(array) (sizeof(array) / (sizeof((array)[0])))
 #endif
 
 #ifndef LTTNG_PACKED
@@ -241,17 +237,17 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 #endif
 
 #ifndef LTTNG_NO_SANITIZE_ADDRESS
-#if defined(__clang__) || defined (__GNUC__)
+#if defined(__clang__) || defined(__GNUC__)
 #define LTTNG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
 #else
 #define LTTNG_NO_SANITIZE_ADDRESS
 #endif
 #endif
 
-#define member_sizeof(type, field)	sizeof(((type *) 0)->field)
+#define member_sizeof(type, field) sizeof(((type *) 0)->field)
 
-#define ASSERT_LOCKED(lock)	     LTTNG_ASSERT(pthread_mutex_trylock(&(lock)))
-#define ASSERT_RCU_READ_LOCKED() LTTNG_ASSERT(rcu_read_ongoing())
+#define ASSERT_LOCKED(lock)	   LTTNG_ASSERT(pthread_mutex_trylock(&(lock)))
+#define ASSERT_RCU_READ_LOCKED()   LTTNG_ASSERT(rcu_read_ongoing())
 #define ASSERT_RCU_READ_UNLOCKED() LTTNG_ASSERT(!rcu_read_ongoing())
 
 /* Attribute suitable to tag functions as having printf()-like arguments. */
@@ -259,39 +255,36 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 	__attribute__((format(printf, _string_index, _first_to_check)))
 
 /* Attribute suitable to tag functions as having strftime()-like arguments. */
-#define ATTR_FORMAT_STRFTIME(_string_index) \
-	__attribute__((format(strftime, _string_index, 0)))
+#define ATTR_FORMAT_STRFTIME(_string_index) __attribute__((format(strftime, _string_index, 0)))
 
 /* Macros used to ignore specific compiler diagnostics. */
 
 #define DIAGNOSTIC_PUSH _Pragma("GCC diagnostic push")
-#define DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+#define DIAGNOSTIC_POP	_Pragma("GCC diagnostic pop")
 
 #if defined(__clang__)
-  /* Clang */
-# define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
-# define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
+/* Clang */
+#define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
+#define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
-# define DIAGNOSTIC_IGNORE_LOGICAL_OP
-# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
-# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-	_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
+#define DIAGNOSTIC_IGNORE_LOGICAL_OP
+#define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
+#define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #else
-  /* GCC */
-# define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
+/* GCC */
+#define DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT \
 	_Pragma("GCC diagnostic ignored \"-Wsuggest-attribute=format\"")
-# define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
+#define DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL \
 	_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"")
-# define DIAGNOSTIC_IGNORE_LOGICAL_OP \
-	_Pragma("GCC diagnostic ignored \"-Wlogical-op\"")
+#define DIAGNOSTIC_IGNORE_LOGICAL_OP _Pragma("GCC diagnostic ignored \"-Wlogical-op\"")
 #if __GNUG__ && __GNUC__ >= 7
-# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES				\
+#define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES \
 	_Pragma("GCC diagnostic ignored \"-Wduplicated-branches\"")
 #else
-# define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
+#define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #endif /* __GNUG__ && __GNUC__ >= 7 */
-# define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF				\
-	_Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
+#define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #endif
 
 /* Used to make specific C++ functions to C code. */
@@ -301,17 +294,16 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 #define C_LINKAGE
 #endif
 
-/*
- * lttng_strncpy returns 0 on success, or nonzero on failure.
- * It checks that the @src string fits into @dst_len before performing
- * the copy. On failure, no copy has been performed.
- *
- * Assumes that 'src' is null-terminated.
- *
- * dst_len includes the string's trailing NULL.
- */
-static inline
-int lttng_strncpy(char *dst, const char *src, size_t dst_len)
+	/*
+	 * lttng_strncpy returns 0 on success, or nonzero on failure.
+	 * It checks that the @src string fits into @dst_len before performing
+	 * the copy. On failure, no copy has been performed.
+	 *
+	 * Assumes that 'src' is null-terminated.
+	 *
+	 * dst_len includes the string's trailing NULL.
+	 */
+	static inline int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 {
 	if (strlen(src) >= dst_len) {
 		/* Fail since copying would result in truncation. */

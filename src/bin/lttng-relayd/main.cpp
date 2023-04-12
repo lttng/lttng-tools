@@ -1321,12 +1321,13 @@ static void *relay_thread_dispatcher(void *data __attribute__((unused)))
 			 * the data will be read at some point in time
 			 * or wait to the end of the world :)
 			 */
-			ret = lttng_write(relay_conn_pipe[1], &new_conn, sizeof(new_conn)); /* NOLINT
-											       sizeof
-											       used
-											       on a
-											       pointer.
-											     */
+			ret = lttng_write(
+				relay_conn_pipe[1], &new_conn, sizeof(new_conn)); /* NOLINT
+										     sizeof
+										     used
+										     on a
+										     pointer.
+										   */
 			if (ret < 0) {
 				PERROR("write connection pipe");
 				connection_put(new_conn);

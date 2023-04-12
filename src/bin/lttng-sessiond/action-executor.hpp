@@ -22,8 +22,7 @@ enum action_executor_status {
 	ACTION_EXECUTOR_STATUS_INVALID,
 };
 
-struct action_executor *action_executor_create(
-		struct notification_thread_handle *handle);
+struct action_executor *action_executor_create(struct notification_thread_handle *handle);
 
 void action_executor_destroy(struct action_executor *executor);
 
@@ -37,11 +36,11 @@ void action_executor_destroy(struct action_executor *executor);
  * This function assumes the ownership of the `evaluation` both on success and
  * failure: the caller should no longer access it once the function returns.
  */
-enum action_executor_status action_executor_enqueue_trigger(
-		struct action_executor *executor,
-		struct lttng_trigger *trigger,
-		struct lttng_evaluation *evaluation,
-		const struct lttng_credentials *object_creds,
-		struct notification_client_list *list);
+enum action_executor_status
+action_executor_enqueue_trigger(struct action_executor *executor,
+				struct lttng_trigger *trigger,
+				struct lttng_evaluation *evaluation,
+				const struct lttng_credentials *object_creds,
+				struct notification_client_list *list);
 
 #endif /* ACTION_EXECUTOR_H */

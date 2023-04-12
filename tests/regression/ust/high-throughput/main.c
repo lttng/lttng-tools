@@ -6,28 +6,26 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <string.h>
-#include <arpa/inet.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-static
-void inthandler(int sig __attribute__((unused)))
+static void inthandler(int sig __attribute__((unused)))
 {
 }
 
-static
-int init_int_handler(void)
+static int init_int_handler(void)
 {
 	int result;
 	struct sigaction act;
@@ -72,8 +70,7 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < 1000000; i++) {
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text,
-				strlen(text), dbl, flt);
+		tracepoint(tp, tptest, i, netint, values, text, strlen(text), dbl, flt);
 	}
 
 	return 0;

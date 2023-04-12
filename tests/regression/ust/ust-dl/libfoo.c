@@ -5,8 +5,8 @@
  *
  */
 
-#include "libfoo.h"
 #include "libbar.h"
+#include "libfoo.h"
 
 #define TRACEPOINT_DEFINE
 #define TRACEPOINT_PROBE_DYNAMIC_LINKAGE

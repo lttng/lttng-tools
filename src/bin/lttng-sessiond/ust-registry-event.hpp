@@ -13,6 +13,7 @@
 
 #include <common/format.hpp>
 #include <common/hashtable/hashtable.hpp>
+
 #include <vendor/optional.hpp>
 
 #include <typeinfo>
@@ -28,14 +29,14 @@ namespace ust {
 class registry_event : public lttng::sessiond::trace::event_class {
 public:
 	registry_event(unsigned int id,
-			unsigned int stream_class_id,
-			int session_objd,
-			int channel_objd,
-			std::string name,
-			std::string signature,
-			std::vector<lttng::sessiond::trace::field::cuptr> fields,
-			int loglevel_value,
-			nonstd::optional<std::string> model_emf_uri);
+		       unsigned int stream_class_id,
+		       int session_objd,
+		       int channel_objd,
+		       std::string name,
+		       std::string signature,
+		       std::vector<lttng::sessiond::trace::field::cuptr> fields,
+		       int loglevel_value,
+		       nonstd::optional<std::string> model_emf_uri);
 	~registry_event() override = default;
 	registry_event(const registry_event&) = delete;
 	registry_event(registry_event&&) = delete;
@@ -75,13 +76,17 @@ namespace fmt {
 template <>
 struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {
 	template <typename FormatContextType>
-	typename FormatContextType::iterator format(
-			const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx)
+	typename FormatContextType::iterator
+	format(const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx)
 	{
-		return format_to(ctx.out(),
-				"{{ name = `{}`, signature = `{}`, id = {}, session objd = {}, channel objd = {} }}",
-				event.name, event.signature, event.id, event.session_objd,
-				event.channel_objd);
+		return format_to(
+			ctx.out(),
+			"{{ name = `{}`, signature = `{}`, id = {}, session objd = {}, channel objd = {} }}",
+			event.name,
+			event.signature,
+			event.id,
+			event.session_objd,
+			event.channel_objd);
 	}
 };
 } /* namespace fmt */

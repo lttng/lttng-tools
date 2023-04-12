@@ -8,14 +8,17 @@
 #ifndef NOTIFICATION_THREAD_COMMANDS_H
 #define NOTIFICATION_THREAD_COMMANDS_H
 
+#include "notification-thread-events.hpp"
+#include "notification-thread-internal.hpp"
+#include "notification-thread.hpp"
+
+#include <common/waiter.hpp>
+
 #include <lttng/domain.h>
 #include <lttng/lttng-error.h>
-#include <urcu/rculfhash.h>
-#include "notification-thread.hpp"
-#include "notification-thread-internal.hpp"
-#include "notification-thread-events.hpp"
-#include <common/waiter.hpp>
+
 #include <stdbool.h>
+#include <urcu/rculfhash.h>
 
 struct notification_thread_data;
 struct lttng_trigger;
@@ -121,47 +124,48 @@ struct notification_thread_command {
 	bool is_async;
 };
 
-enum lttng_error_code notification_thread_command_register_trigger(
-		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger,
-		bool is_anonymous_trigger);
+enum lttng_error_code
+notification_thread_command_register_trigger(struct notification_thread_handle *handle,
+					     struct lttng_trigger *trigger,
+					     bool is_anonymous_trigger);
 
-enum lttng_error_code notification_thread_command_unregister_trigger(
-		struct notification_thread_handle *handle,
-		const struct lttng_trigger *trigger);
+enum lttng_error_code
+notification_thread_command_unregister_trigger(struct notification_thread_handle *handle,
+					       const struct lttng_trigger *trigger);
 
-enum lttng_error_code notification_thread_command_add_session(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		const char *session_name,
-		uid_t session_uid,
-		gid_t session_gid);
+enum lttng_error_code
+notification_thread_command_add_session(struct notification_thread_handle *handle,
+					uint64_t session_id,
+					const char *session_name,
+					uid_t session_uid,
+					gid_t session_gid);
 
-enum lttng_error_code notification_thread_command_remove_session(
-		struct notification_thread_handle *handle,
-		uint64_t session_id);
+enum lttng_error_code
+notification_thread_command_remove_session(struct notification_thread_handle *handle,
+					   uint64_t session_id);
 
-enum lttng_error_code notification_thread_command_add_channel(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		char *channel_name, uint64_t key,
-		enum lttng_domain_type domain, uint64_t capacity);
+enum lttng_error_code
+notification_thread_command_add_channel(struct notification_thread_handle *handle,
+					uint64_t session_id,
+					char *channel_name,
+					uint64_t key,
+					enum lttng_domain_type domain,
+					uint64_t capacity);
 
 enum lttng_error_code notification_thread_command_remove_channel(
-		struct notification_thread_handle *handle,
-		uint64_t key, enum lttng_domain_type domain);
+	struct notification_thread_handle *handle, uint64_t key, enum lttng_domain_type domain);
 
-enum lttng_error_code notification_thread_command_session_rotation_ongoing(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		uint64_t trace_archive_chunk_id);
+enum lttng_error_code
+notification_thread_command_session_rotation_ongoing(struct notification_thread_handle *handle,
+						     uint64_t session_id,
+						     uint64_t trace_archive_chunk_id);
 
 /* Ownership of location is transferred. */
 enum lttng_error_code notification_thread_command_session_rotation_completed(
-		struct notification_thread_handle *handle,
-		uint64_t session_id,
-		uint64_t trace_archive_chunk_id,
-		struct lttng_trace_archive_location *location);
+	struct notification_thread_handle *handle,
+	uint64_t session_id,
+	uint64_t trace_archive_chunk_id,
+	struct lttng_trace_archive_location *location);
 
 /*
  * Return the set of triggers visible to a given client.
@@ -176,30 +180,29 @@ enum lttng_error_code notification_thread_command_session_rotation_completed(
  *
  * The caller has the exclusive ownership of the returned trigger set.
  */
-enum lttng_error_code notification_thread_command_list_triggers(
-		struct notification_thread_handle *handle,
-		uid_t client_uid,
-		struct lttng_triggers **triggers);
+enum lttng_error_code
+notification_thread_command_list_triggers(struct notification_thread_handle *handle,
+					  uid_t client_uid,
+					  struct lttng_triggers **triggers);
 
 /*
  * The ownership of trigger_event_application_pipe is _not_ transferred to
  * the notification thread.
  */
-enum lttng_error_code notification_thread_command_add_tracer_event_source(
-		struct notification_thread_handle *handle,
-		int tracer_event_source_fd,
-		enum lttng_domain_type domain);
+enum lttng_error_code
+notification_thread_command_add_tracer_event_source(struct notification_thread_handle *handle,
+						    int tracer_event_source_fd,
+						    enum lttng_domain_type domain);
 
-enum lttng_error_code notification_thread_command_remove_tracer_event_source(
-		struct notification_thread_handle *handle,
-		int tracer_event_source_fd);
+enum lttng_error_code
+notification_thread_command_remove_tracer_event_source(struct notification_thread_handle *handle,
+						       int tracer_event_source_fd);
 
-void notification_thread_command_quit(
-		struct notification_thread_handle *handle);
+void notification_thread_command_quit(struct notification_thread_handle *handle);
 
-enum lttng_error_code notification_thread_command_get_trigger(
-		struct notification_thread_handle *handle,
-		const struct lttng_trigger *trigger,
-		struct lttng_trigger **real_trigger);
+enum lttng_error_code
+notification_thread_command_get_trigger(struct notification_thread_handle *handle,
+					const struct lttng_trigger *trigger,
+					struct lttng_trigger **real_trigger);
 
 #endif /* NOTIFICATION_THREAD_COMMANDS_H */

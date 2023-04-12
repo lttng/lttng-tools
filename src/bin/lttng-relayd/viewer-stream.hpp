@@ -10,15 +10,15 @@
  *
  */
 
-#include <limits.h>
-#include <inttypes.h>
-#include <pthread.h>
-
-#include <common/hashtable/hashtable.hpp>
-
 #include "ctf-trace.hpp"
 #include "lttng-viewer-abi.hpp"
 #include "stream.hpp"
+
+#include <common/hashtable/hashtable.hpp>
+
+#include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
 
 struct relay_stream;
 
@@ -78,15 +78,14 @@ struct relay_viewer_stream {
 };
 
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
-		struct lttng_trace_chunk *viewer_trace_chunk,
-		enum lttng_viewer_seek seek_t);
+						 struct lttng_trace_chunk *viewer_trace_chunk,
+						 enum lttng_viewer_seek seek_t);
 
 struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id);
 bool viewer_stream_get(struct relay_viewer_stream *vstream);
 void viewer_stream_put(struct relay_viewer_stream *vstream);
 int viewer_stream_rotate(struct relay_viewer_stream *vstream);
-bool viewer_stream_is_tracefile_seq_readable(struct relay_viewer_stream *vstream,
-		uint64_t seq);
+bool viewer_stream_is_tracefile_seq_readable(struct relay_viewer_stream *vstream, uint64_t seq);
 void print_viewer_streams(void);
 void viewer_stream_close_files(struct relay_viewer_stream *vstream);
 void viewer_stream_sync_tracefile_array_tail(struct relay_viewer_stream *vstream);

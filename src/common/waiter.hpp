@@ -12,10 +12,11 @@
 
 #define _LGPL_SOURCE
 
+#include "macros.hpp"
+
+#include <stdbool.h>
 #include <stdint.h>
 #include <urcu/wfstack.h>
-#include <stdbool.h>
-#include "macros.hpp"
 
 struct lttng_waiter {
 	struct cds_wfs_node wait_queue_node;

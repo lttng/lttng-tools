@@ -34,15 +34,17 @@ LTTNG_EXPORT extern struct lttng_action *lttng_action_snapshot_session_create(vo
  * Set the session name of an lttng_action object of type
  * LTTNG_ACTION_TYPE_SNAPSHOT_SESSION.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_set_session_name(
-		struct lttng_action *action, const char *session_name);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_set_session_name(struct lttng_action *action,
+					       const char *session_name);
 
 /*
  * Get the session name of an lttng_action object of type
  * LTTNG_ACTION_TYPE_SNAPSHOT_SESSION.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_get_session_name(
-		const struct lttng_action *action, const char **session_name);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_get_session_name(const struct lttng_action *action,
+					       const char **session_name);
 
 /*
  * Set an explicit snapshot output for this snapshot session action.
@@ -52,16 +54,16 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_get_s
  *
  * This function takes ownership of the given snapshot output.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_set_output(
-		struct lttng_action *action,
-		struct lttng_snapshot_output *output);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_set_output(struct lttng_action *action,
+					 struct lttng_snapshot_output *output);
 
 /*
  * Get the explicit snapshot output for this snapshot session action.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_get_output(
-		const struct lttng_action *action,
-		const struct lttng_snapshot_output **output);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_get_output(const struct lttng_action *action,
+					 const struct lttng_snapshot_output **output);
 
 /*
  * Set the rate policy of a snapshot session action.
@@ -70,9 +72,9 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_get_o
  * LTTNG_ACTION_STATUS_ERROR on internal error,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_set_rate_policy(
-		struct lttng_action *action,
-		const struct lttng_rate_policy *policy);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_set_rate_policy(struct lttng_action *action,
+					      const struct lttng_rate_policy *policy);
 
 /*
  * Get the rate policy of a snapshot session action.
@@ -80,9 +82,9 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_set_r
  * Returns LTTNG_ACTION_STATUS_OK on success,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_snapshot_session_get_rate_policy(
-		const struct lttng_action *action,
-		const struct lttng_rate_policy **policy);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_snapshot_session_get_rate_policy(const struct lttng_action *action,
+					      const struct lttng_rate_policy **policy);
 
 #ifdef __cplusplus
 }

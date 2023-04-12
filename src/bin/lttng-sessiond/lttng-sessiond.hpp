@@ -31,7 +31,7 @@
 enum consumerd_state {
 	CONSUMER_STARTED = 1,
 	CONSUMER_STOPPED = 2,
-	CONSUMER_ERROR   = 3,
+	CONSUMER_ERROR = 3,
 };
 
 /* Unique identifier of a session daemon instance. */

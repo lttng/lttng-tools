@@ -35,9 +35,9 @@ public:
 	stream_class& operator=(stream_class&&) = delete;
 	stream_class& operator=(const stream_class&) = delete;
 
-	virtual const type* packet_context() const;
-	virtual const type* event_header() const;
-	virtual const type* event_context() const;
+	virtual const type *packet_context() const;
+	virtual const type *event_header() const;
+	virtual const type *event_context() const;
 
 	const unsigned int id;
 	/*
@@ -50,8 +50,8 @@ public:
 
 protected:
 	stream_class(unsigned int id,
-			enum header_type header_type,
-			nonstd::optional<std::string> default_clock_class_name = nonstd::nullopt);
+		     enum header_type header_type,
+		     nonstd::optional<std::string> default_clock_class_name = nonstd::nullopt);
 	virtual void _accept_on_event_classes(trace_class_visitor& trace_class_visitor) const = 0;
 
 	lttng::sessiond::trace::type::cuptr _packet_context;

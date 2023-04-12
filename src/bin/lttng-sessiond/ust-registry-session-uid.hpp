@@ -11,8 +11,9 @@
 #include "trace-class.hpp"
 #include "ust-registry-session.hpp"
 
-#include <cstdint>
 #include <lttng/lttng.h>
+
+#include <cstdint>
 #include <unistd.h>
 
 namespace lttng {
@@ -22,21 +23,20 @@ namespace ust {
 class registry_session_per_uid : public registry_session {
 public:
 	registry_session_per_uid(const struct lttng::sessiond::trace::abi& trace_abi,
-			uint32_t major,
-			uint32_t minor,
-			const char *root_shm_path,
-			const char *shm_path,
-			uid_t euid,
-			gid_t egid,
-			uint64_t tracing_id,
-			uid_t tracing_uid);
+				 uint32_t major,
+				 uint32_t minor,
+				 const char *root_shm_path,
+				 const char *shm_path,
+				 uid_t euid,
+				 gid_t egid,
+				 uint64_t tracing_id,
+				 uid_t tracing_uid);
 
 	virtual lttng_buffer_type buffering_scheme() const noexcept override final;
 	virtual void accept(lttng::sessiond::trace::trace_class_environment_visitor&
-					environment_visitor) const override final;
+				    environment_visitor) const override final;
 
 private:
-
 	const uid_t _tracing_uid;
 };
 

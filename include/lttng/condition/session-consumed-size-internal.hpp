@@ -8,11 +8,12 @@
 #ifndef LTTNG_CONDITION_SESSION_CONSUMED_SIZE_INTERNAL_H
 #define LTTNG_CONDITION_SESSION_CONSUMED_SIZE_INTERNAL_H
 
-#include <lttng/condition/session-consumed-size.h>
-#include <lttng/condition/condition-internal.hpp>
-#include <lttng/condition/evaluation-internal.hpp>
 #include <common/buffer-view.hpp>
 #include <common/macros.hpp>
+
+#include <lttng/condition/condition-internal.hpp>
+#include <lttng/condition/evaluation-internal.hpp>
+#include <lttng/condition/session-consumed-size.h>
 
 struct lttng_payload;
 struct lttng_payload_view;
@@ -42,15 +43,14 @@ struct lttng_evaluation_session_consumed_size_comm {
 	uint64_t session_consumed;
 } LTTNG_PACKED;
 
-struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
-		uint64_t consumed);
+struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(uint64_t consumed);
 
-ssize_t lttng_condition_session_consumed_size_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
+ssize_t
+lttng_condition_session_consumed_size_create_from_payload(struct lttng_payload_view *view,
+							  struct lttng_condition **condition);
 
-ssize_t lttng_evaluation_session_consumed_size_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_evaluation **evaluation);
+ssize_t
+lttng_evaluation_session_consumed_size_create_from_payload(struct lttng_payload_view *view,
+							   struct lttng_evaluation **evaluation);
 
 #endif /* LTTNG_CONDITION_SESSION_CONSUMED_SIZE_INTERNAL_H */

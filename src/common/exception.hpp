@@ -8,11 +8,11 @@
 #ifndef LTTNG_EXCEPTION_H_
 #define LTTNG_EXCEPTION_H_
 
-#include <string>
-#include <stdexcept>
-#include <system_error>
-
 #include <lttng/lttng-error.h>
+
+#include <stdexcept>
+#include <string>
+#include <system_error>
 
 #define LTTNG_THROW_CTL(msg, error_code) \
 	throw lttng::ctl::error(msg, error_code, __FILE__, __func__, __LINE__)
@@ -32,17 +32,17 @@ namespace lttng {
 class runtime_error : public std::runtime_error {
 public:
 	explicit runtime_error(const std::string& msg,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+			       const char *file_name,
+			       const char *function_name,
+			       unsigned int line_number);
 };
 
 class unsupported_error : public std::runtime_error {
 public:
 	explicit unsupported_error(const std::string& msg,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+				   const char *file_name,
+				   const char *function_name,
+				   unsigned int line_number);
 };
 
 namespace ctl {
@@ -68,34 +68,34 @@ private:
 class posix_error : public std::system_error {
 public:
 	explicit posix_error(const std::string& msg,
-			int errno_code,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+			     int errno_code,
+			     const char *file_name,
+			     const char *function_name,
+			     unsigned int line_number);
 };
 
 class communication_error : public runtime_error {
 public:
 	explicit communication_error(const std::string& msg,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+				     const char *file_name,
+				     const char *function_name,
+				     unsigned int line_number);
 };
 
 class protocol_error : public communication_error {
 public:
 	explicit protocol_error(const std::string& msg,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+				const char *file_name,
+				const char *function_name,
+				unsigned int line_number);
 };
 
 class invalid_argument_error : public runtime_error {
 public:
 	explicit invalid_argument_error(const std::string& msg,
-			const char *file_name,
-			const char *function_name,
-			unsigned int line_number);
+					const char *file_name,
+					const char *function_name,
+					unsigned int line_number);
 };
 
 }; /* namespace lttng */

@@ -5,6 +5,11 @@
  *
  */
 
+#include "utils.h"
+
+#include <lttng/condition/event-rule-matches.h>
+#include <lttng/lttng.h>
+
 #include <getopt.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -14,34 +19,26 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <lttng/condition/event-rule-matches.h>
-#include <lttng/lttng.h>
-
-#include "utils.h"
-
-static struct option long_options[] =
-{
+static struct option long_options[] = {
 	/* These options set a flag. */
-	{"trigger", required_argument, 0, 't'},
-	{"sync-after-notif-register", required_argument, 0, 'a'},
+	{ "trigger", required_argument, 0, 't' },
+	{ "sync-after-notif-register", required_argument, 0, 'a' },
 	/* Default alue for count is 1 */
-	{"count", required_argument, 0, 'b'},
+	{ "count", required_argument, 0, 'b' },
 	/*
 	 * When end-trigger is present the reception loop is exited only when a
 	 * notification matching the end trigger is received.
 	 * Otherwise the loop is exited when the count of notification received
 	 * for `trigger` math the `count` argument.
 	 */
-	{"end-trigger", required_argument, 0, 'c'},
-	{0, 0, 0, 0}
+	{ "end-trigger", required_argument, 0, 'c' },
+	{ 0, 0, 0, 0 }
 };
 
-static bool action_list_contains_notify(
-		const struct lttng_action *action_list)
+static bool action_list_contains_notify(const struct lttng_action *action_list)
 {
 	unsigned int i, count;
-	enum lttng_action_status status =
-			lttng_action_list_get_count(action_list, &count);
+	enum lttng_action_status status = lttng_action_list_get_count(action_list, &count);
 
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		printf("Failed to get action count from action list\n");
@@ -49,11 +46,8 @@ static bool action_list_contains_notify(
 	}
 
 	for (i = 0; i < count; i++) {
-		const struct lttng_action *action =
-				lttng_action_list_get_at_index(
-						action_list, i);
-		const enum lttng_action_type action_type =
-				lttng_action_get_type(action);
+		const struct lttng_action *action = lttng_action_list_get_at_index(action_list, i);
+		const enum lttng_action_type action_type = lttng_action_get_type(action);
 
 		if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 			return true;
@@ -64,7 +58,7 @@ static bool action_list_contains_notify(
 
 /* Only expects named triggers. */
 static bool is_trigger_name(const char *expected_trigger_name,
-		struct lttng_notification *notification)
+			    struct lttng_notification *notification)
 {
 	const char *trigger_name = NULL;
 	enum lttng_trigger_status trigger_status;
@@ -87,8 +81,10 @@ static bool is_trigger_name(const char *expected_trigger_name,
 
 	names_match = strcmp(expected_trigger_name, trigger_name) == 0;
 	if (!names_match) {
-		fprintf(stderr, "Got an unexpected trigger name: name = '%s', expected name = '%s'\n",
-				trigger_name, expected_trigger_name);
+		fprintf(stderr,
+			"Got an unexpected trigger name: name = '%s', expected name = '%s'\n",
+			trigger_name,
+			expected_trigger_name);
 	}
 end:
 	return names_match;
@@ -108,8 +104,7 @@ int main(int argc, char **argv)
 	struct lttng_notification_channel *notification_channel = NULL;
 	int expected_notifications = 1, notification_count = 0;
 
-	while ((option = getopt_long(argc, argv, "a:b:c:t:", long_options,
-				&option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "a:b:c:t:", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'a':
 			after_notif_register_file_path = strdup(optarg);
@@ -136,9 +131,8 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-
-	notification_channel = lttng_notification_channel_create(
-			lttng_session_daemon_notification_endpoint);
+	notification_channel =
+		lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
 	if (!notification_channel) {
 		fprintf(stderr, "Failed to create notification channel\n");
 		ret = -1;
@@ -161,14 +155,11 @@ int main(int argc, char **argv)
 
 	/* Look for the trigger we want to subscribe to. */
 	for (i = 0; i < count; i++) {
-		const struct lttng_trigger *trigger =
-				lttng_triggers_get_at_index(triggers, i);
+		const struct lttng_trigger *trigger = lttng_triggers_get_at_index(triggers, i);
 		const struct lttng_condition *condition =
-				lttng_trigger_get_const_condition(trigger);
-		const struct lttng_action *action =
-				lttng_trigger_get_const_action(trigger);
-		const enum lttng_action_type action_type =
-				lttng_action_get_type(action);
+			lttng_trigger_get_const_condition(trigger);
+		const struct lttng_action *action = lttng_trigger_get_const_action(trigger);
+		const enum lttng_action_type action_type = lttng_action_get_type(action);
 		enum lttng_notification_channel_status channel_status;
 		const char *trigger_name = NULL;
 
@@ -176,23 +167,23 @@ int main(int argc, char **argv)
 		if (strcmp(trigger_name, expected_trigger_name) != 0) {
 			/* Might match the end event trigger */
 			if (end_trigger_name != NULL &&
-					strcmp(trigger_name,
-							end_trigger_name) != 0) {
+			    strcmp(trigger_name, end_trigger_name) != 0) {
 				continue;
 			}
 		}
 		if (!((action_type == LTTNG_ACTION_TYPE_LIST &&
-				      action_list_contains_notify(action)) ||
-				    action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
+		       action_list_contains_notify(action)) ||
+		      action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
 			/* "The action of trigger is not notify, skipping. */
 			continue;
 		}
 
-		channel_status = lttng_notification_channel_subscribe(
-				notification_channel, condition);
+		channel_status =
+			lttng_notification_channel_subscribe(notification_channel, condition);
 		if (channel_status) {
-			fprintf(stderr, "Failed to subscribe to notifications of trigger \"%s\"\n",
-					trigger_name);
+			fprintf(stderr,
+				"Failed to subscribe to notifications of trigger \"%s\"\n",
+				trigger_name);
 			ret = -1;
 			goto end;
 		}
@@ -225,10 +216,8 @@ int main(int argc, char **argv)
 		struct lttng_notification *notification;
 		enum lttng_notification_channel_status channel_status;
 
-		channel_status =
-				lttng_notification_channel_get_next_notification(
-						notification_channel,
-						&notification);
+		channel_status = lttng_notification_channel_get_next_notification(
+			notification_channel, &notification);
 		switch (channel_status) {
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
 			printf("Dropped notification\n");
@@ -243,18 +232,17 @@ int main(int argc, char **argv)
 			printf("Notification channel was closed by peer.\n");
 			break;
 		default:
-			fprintf(stderr, "A communication error occurred on the notification channel.\n");
+			fprintf(stderr,
+				"A communication error occurred on the notification channel.\n");
 			ret = -1;
 			goto end;
 		}
 
 		/* Early exit check. */
-		if (end_trigger_name != NULL &&
-				is_trigger_name(end_trigger_name,
-						notification)) {
+		if (end_trigger_name != NULL && is_trigger_name(end_trigger_name, notification)) {
 			/* Exit the loop immediately. */
 			printf("Received end event notification from trigger %s\n",
-					end_trigger_name);
+			       end_trigger_name);
 			lttng_notification_destroy(notification);
 			goto evaluate_success;
 		}
@@ -266,11 +254,9 @@ int main(int argc, char **argv)
 			goto end;
 		}
 
-		printf("Received event notification from trigger %s\n",
-				expected_trigger_name);
+		printf("Received event notification from trigger %s\n", expected_trigger_name);
 		notification_count++;
-		if (end_trigger_name == NULL &&
-				expected_notifications == notification_count) {
+		if (end_trigger_name == NULL && expected_notifications == notification_count) {
 			/*
 			 * Here the loop exit is controlled by the number of
 			 * notification and not by the reception of the end
@@ -287,8 +273,10 @@ evaluate_success:
 		/* Success */
 		ret = 0;
 	} else {
-		fprintf(stderr, "Expected %d notification got %d\n",
-				expected_notifications, notification_count);
+		fprintf(stderr,
+			"Expected %d notification got %d\n",
+			expected_notifications,
+			notification_count);
 		ret = 1;
 	}
 

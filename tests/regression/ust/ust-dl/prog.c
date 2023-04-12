@@ -6,12 +6,12 @@
  */
 
 /* _GNU_SOURCE is defined by config.h */
+#include <common/compat/errno.hpp>
+
 #include <dlfcn.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
-
-#include <common/compat/errno.hpp>
+#include <unistd.h>
 
 /*
  * libfoo has a direct dependency on libbar.

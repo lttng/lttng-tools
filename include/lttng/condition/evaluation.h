@@ -31,8 +31,8 @@ enum lttng_evaluation_status {
  * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
  * error.
  */
-LTTNG_EXPORT extern enum lttng_condition_type lttng_evaluation_get_type(
-		const struct lttng_evaluation *evaluation);
+LTTNG_EXPORT extern enum lttng_condition_type
+lttng_evaluation_get_type(const struct lttng_evaluation *evaluation);
 
 /*
  * Destroy (frees) an evaluation object.

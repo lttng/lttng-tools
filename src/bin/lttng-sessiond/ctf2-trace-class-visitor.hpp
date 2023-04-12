@@ -8,12 +8,12 @@
 #ifndef LTTNG_CTF2_TRACE_CLASS_VISITOR_H
 #define LTTNG_CTF2_TRACE_CLASS_VISITOR_H
 
-#include "trace-class.hpp"
-#include "stream-class.hpp"
 #include "event-class.hpp"
+#include "stream-class.hpp"
+#include "trace-class.hpp"
 
-#include <vendor/optional.hpp>
 #include <vendor/nlohmann/json.hpp>
+#include <vendor/optional.hpp>
 
 #include <functional>
 

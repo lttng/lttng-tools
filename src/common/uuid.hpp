@@ -9,34 +9,34 @@
 #define LTTNG_UUID_H
 
 #include <common/macros.hpp>
+
+#include <array>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <array>
 #include <string>
 
 /*
  * Includes final \0.
  */
-#define LTTNG_UUID_STR_LEN	37
-#define LTTNG_UUID_LEN		16
-#define LTTNG_UUID_VER		4
+#define LTTNG_UUID_STR_LEN 37
+#define LTTNG_UUID_LEN	   16
+#define LTTNG_UUID_VER	   4
 
-#define LTTNG_UUID_FMT \
-	"%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "-%02" SCNx8 \
-	"%02" SCNx8 "-%02" SCNx8 "%02" SCNx8 "-%02" SCNx8 "%02" SCNx8 \
-	"-%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "%02" SCNx8 \
-	"%02" SCNx8
+#define LTTNG_UUID_FMT                                                                        \
+	"%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "-%02" SCNx8 "%02" SCNx8 "-%02" SCNx8 \
+	"%02" SCNx8 "-%02" SCNx8 "%02" SCNx8 "-%02" SCNx8 "%02" SCNx8 "%02" SCNx8 "%02" SCNx8 \
+	"%02" SCNx8 "%02" SCNx8
 
-#define LTTNG_UUID_FMT_VALUES(uuid) \
-	(uuid)[0], (uuid)[1], (uuid)[2], (uuid)[3], (uuid)[4], (uuid)[5], \
-	(uuid)[6], (uuid)[7], (uuid)[8], (uuid)[9], (uuid)[10], (uuid)[11], \
-	(uuid)[12], (uuid)[13], (uuid)[14], (uuid)[15]
+#define LTTNG_UUID_FMT_VALUES(uuid)                                                               \
+	(uuid)[0], (uuid)[1], (uuid)[2], (uuid)[3], (uuid)[4], (uuid)[5], (uuid)[6], (uuid)[7],   \
+		(uuid)[8], (uuid)[9], (uuid)[10], (uuid)[11], (uuid)[12], (uuid)[13], (uuid)[14], \
+		(uuid)[15]
 
-#define LTTNG_UUID_SCAN_VALUES(uuid) \
-	&(uuid)[0], &(uuid)[1], &(uuid)[2], &(uuid)[3], &(uuid)[4], &(uuid)[5], \
-	&(uuid)[6], &(uuid)[7], &(uuid)[8], &(uuid)[9], &(uuid)[10], &(uuid)[11], \
-	&(uuid)[12], &(uuid)[13], &(uuid)[14], &(uuid)[15]
+#define LTTNG_UUID_SCAN_VALUES(uuid)                                                        \
+	&(uuid)[0], &(uuid)[1], &(uuid)[2], &(uuid)[3], &(uuid)[4], &(uuid)[5], &(uuid)[6], \
+		&(uuid)[7], &(uuid)[8], &(uuid)[9], &(uuid)[10], &(uuid)[11], &(uuid)[12],  \
+		&(uuid)[13], &(uuid)[14], &(uuid)[15]
 
 using lttng_uuid = std::array<uint8_t, LTTNG_UUID_LEN>;
 

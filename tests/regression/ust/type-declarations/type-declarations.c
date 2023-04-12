@@ -20,8 +20,8 @@ int main(void)
 	int i;
 
 	for (i = 0; i < 2; i++) {
-		tracepoint(ust_tests_td, tptest, i % 2, (i+1) % 2, i % 21);
-		tracepoint(ust_tests_td, tptest_bis,  i % 2);
+		tracepoint(ust_tests_td, tptest, i % 2, (i + 1) % 2, i % 21);
+		tracepoint(ust_tests_td, tptest_bis, i % 2);
 	}
 
 	tracepoint(ust_tests_td, test_auto);

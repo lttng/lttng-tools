@@ -32,12 +32,13 @@
  */
 
 #include <lttng/lttng.h>
+
+#include <assert.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
 
 #define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000 /* usec */
 
@@ -46,7 +47,7 @@ static volatile int quit = 0;
 static void sighandler(int signal __attribute__((unused)))
 {
 	const char msg[] = "Signal caught, exiting\n";
-	const int ret =  write(STDOUT_FILENO, msg, sizeof(msg));
+	const int ret = write(STDOUT_FILENO, msg, sizeof(msg));
 
 	assert(ret == 0); /* NOLINT assert is not async signal safe */
 	quit = 1;
@@ -80,8 +81,7 @@ static int setup_session(const char *session_name, const char *path)
 	strcpy(ev.name, "*");
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	ret = lttng_enable_event_with_exclusions(
-			chan_handle, &ev, "mychan", NULL, 0, NULL);
+	ret = lttng_enable_event_with_exclusions(chan_handle, &ev, "mychan", NULL, 0, NULL);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to enable events (ret = %i)\n", ret);
 		goto end;
@@ -157,16 +157,14 @@ static int rotate_session(const char *session_name, const char *ext_program)
 
 	ret = lttng_rotate_session(session_name, NULL, &handle);
 	if (ret < 0) {
-		fprintf(stderr, "Failed to rotate session, %s\n",
-				lttng_strerror(ret));
+		fprintf(stderr, "Failed to rotate session, %s\n", lttng_strerror(ret));
 		goto end;
 	}
 
 	fflush(stdout);
 
 	do {
-		rotation_status = lttng_rotation_handle_get_state(
-				handle, &rotation_state);
+		rotation_status = lttng_rotation_handle_get_state(handle, &rotation_state);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 			ret = -1;
 			fprintf(stderr, "Failed to get the current rotation's state\n");
@@ -193,27 +191,24 @@ static int rotate_session(const char *session_name, const char *ext_program)
 		const char *absolute_path;
 		enum lttng_trace_archive_location_status location_status;
 
-		rotation_status = lttng_rotation_handle_get_archive_location(
-				handle, &location);
+		rotation_status = lttng_rotation_handle_get_archive_location(handle, &location);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
-			fprintf(stderr, "Failed to retrieve the rotation's completed chunk archive location\n");
+			fprintf(stderr,
+				"Failed to retrieve the rotation's completed chunk archive location\n");
 			ret = -1;
 			goto end;
 		}
 
-		location_status =
-				lttng_trace_archive_location_local_get_absolute_path(
-						location, &absolute_path);
+		location_status = lttng_trace_archive_location_local_get_absolute_path(
+			location, &absolute_path);
 		if (location_status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
 			fprintf(stderr, "Failed to get absolute path of completed chunk archive");
 			ret = -1;
 			goto end;
 		}
 
-		printf("Output files of session %s rotated to %s\n",
-				session_name, absolute_path);
-		ret = snprintf(cmd, PATH_MAX, "%s %s", ext_program,
-				absolute_path);
+		printf("Output files of session %s rotated to %s\n", session_name, absolute_path);
+		ret = snprintf(cmd, PATH_MAX, "%s %s", ext_program, absolute_path);
 		if (ret < 0) {
 			fprintf(stderr, "Failed to prepare command string\n");
 			goto end;
@@ -223,20 +218,22 @@ static int rotate_session(const char *session_name, const char *ext_program)
 	}
 	case LTTNG_ROTATION_STATE_EXPIRED:
 		printf("Output files of session %s rotated, but the handle expired\n",
-				session_name);
+		       session_name);
 		ret = 0;
 		goto end;
 	case LTTNG_ROTATION_STATE_ERROR:
-		fprintf(stderr, "An error occurred with the rotation of session %s\n",
-				session_name);
+		fprintf(stderr,
+			"An error occurred with the rotation of session %s\n",
+			session_name);
 		ret = -1;
 		goto end;
 	case LTTNG_ROTATION_STATE_ONGOING:
 		abort();
 		goto end;
 	case LTTNG_ROTATION_STATE_NO_ROTATION:
-		fprintf(stderr, "No rotation was performed on rotation request for session %s\n",
-				session_name);
+		fprintf(stderr,
+			"No rotation was performed on rotation request for session %s\n",
+			session_name);
 		ret = -1;
 		goto end;
 	}
@@ -264,16 +261,15 @@ end:
 
 static void usage(const char *prog_name)
 {
-	fprintf(stderr, "Usage: %s <session-name> <delay-sec> <nr-rotate> <program>\n",
-			prog_name);
+	fprintf(stderr, "Usage: %s <session-name> <delay-sec> <nr-rotate> <program>\n", prog_name);
 	fprintf(stderr, "  <session-name>: the name of the session you want to create\n");
 	fprintf(stderr, "  <delay-sec>: the delay in seconds between each rotation\n");
 	fprintf(stderr,
-			"  <nr-rotate>: the number of rotation you want to perform, "
-			"-1 for infinite until ctrl-c\n");
+		"  <nr-rotate>: the number of rotation you want to perform, "
+		"-1 for infinite until ctrl-c\n");
 	fprintf(stderr,
-			"  <program>: program to run on each chunk, it must be "
-			"executable, and expect a trace folder as only argument\n");
+		"  <program>: program to run on each chunk, it must be "
+		"executable, and expect a trace folder as only argument\n");
 	fprintf(stderr, "\nThe trace folder is deleted when this program completes.\n");
 }
 

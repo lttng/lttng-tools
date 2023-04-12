@@ -33,14 +33,14 @@ LTTNG_EXPORT extern struct lttng_action *lttng_action_list_create(void);
  *
  * Adding an action list to an action list is not supported.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_list_add_action(
-		struct lttng_action *list, struct lttng_action *action);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_list_add_action(struct lttng_action *list, struct lttng_action *action);
 
 /*
  * Get the number of actions in an action list.
  */
-LTTNG_EXPORT extern enum lttng_action_status lttng_action_list_get_count(
-		const struct lttng_action *list, unsigned int *count);
+LTTNG_EXPORT extern enum lttng_action_status
+lttng_action_list_get_count(const struct lttng_action *list, unsigned int *count);
 
 /*
  * Get an action from the action list at a given index.
@@ -51,9 +51,8 @@ LTTNG_EXPORT extern enum lttng_action_status lttng_action_list_get_count(
  *
  * Returns an action, or NULL on error.
  */
-LTTNG_EXPORT extern const struct lttng_action *lttng_action_list_get_at_index(
-		const struct lttng_action *list,
-		unsigned int index);
+LTTNG_EXPORT extern const struct lttng_action *
+lttng_action_list_get_at_index(const struct lttng_action *list, unsigned int index);
 
 #ifdef __cplusplus
 }

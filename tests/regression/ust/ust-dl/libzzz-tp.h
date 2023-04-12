@@ -16,12 +16,7 @@
 
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_EVENT(
-    libzzz,
-    zzz,
-    TP_ARGS(void),
-    TP_FIELDS()
-)
+TRACEPOINT_EVENT(libzzz, zzz, TP_ARGS(void), TP_FIELDS())
 
 #endif /* _LIBZZZ_TP_H */
 

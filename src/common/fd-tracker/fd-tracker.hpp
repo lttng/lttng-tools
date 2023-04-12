@@ -10,6 +10,7 @@
 
 #include <common/compat/directory-handle.hpp>
 #include <common/macros.hpp>
+
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -49,8 +50,7 @@ using fd_close_cb = int (*)(void *, int *);
  * under which unlinked files will be stored for as long as a reference to them
  * is held.
  */
-struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
-		unsigned int capacity);
+struct fd_tracker *fd_tracker_create(const char *unlinked_file_path, unsigned int capacity);
 
 /* Returns an error if file descriptors are leaked. */
 int fd_tracker_destroy(struct fd_tracker *tracker);
@@ -78,10 +78,10 @@ int fd_tracker_destroy(struct fd_tracker *tracker);
  * open.
  */
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
-		struct lttng_directory_handle *directory,
-		const char *path,
-		int flags,
-		mode_t *mode);
+					    struct lttng_directory_handle *directory,
+					    const char *path,
+					    int flags,
+					    mode_t *mode);
 
 /*
  * Open a tracked unsuspendable file descriptor.
@@ -106,11 +106,11 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
  *             accommodates the request for a new unsuspendable entry.
  */
 int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
-		int *out_fds,
-		const char **names,
-		unsigned int fd_count,
-		fd_open_cb open,
-		void *data);
+				     int *out_fds,
+				     const char **names,
+				     unsigned int fd_count,
+				     fd_open_cb open,
+				     void *data);
 
 /*
  * Close a tracked unsuspendable file descriptor.
@@ -127,11 +127,8 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
  * Closed fds are set to -1 in the fds array which, in the event of an error,
  * allows the user to know which file descriptors are no longer being tracked.
  */
-int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
-		int *fds,
-		unsigned int fd_count,
-		fd_close_cb close,
-		void *data);
+int fd_tracker_close_unsuspendable_fd(
+	struct fd_tracker *tracker, int *fds, unsigned int fd_count, fd_close_cb close, void *data);
 
 /*
  * Log the contents of the fd_tracker.

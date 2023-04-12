@@ -5,10 +5,13 @@
  *
  */
 
-#include <sys/sdt.h>
 #include "foobar_provider.h"
-void foo_function() {
+
+#include <sys/sdt.h>
+void foo_function()
+{
 	FOOBAR_TP_IN_SHARED_OBJECT();
 }
-void overridable_function() {
+void overridable_function()
+{
 }

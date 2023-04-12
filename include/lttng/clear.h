@@ -54,9 +54,9 @@ struct lttng_clear_handle;
  *    LTTNG_ERR_CLEAR_RELAY_DISALLOWED
  *    LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY
  *    LTTNG_ERR_CLEAR_FAIL_CONSUMER
-*/
+ */
 LTTNG_EXPORT extern enum lttng_error_code lttng_clear_session(const char *session_name,
-		struct lttng_clear_handle **handle);
+							      struct lttng_clear_handle **handle);
 #ifdef __cplusplus
 }
 #endif

@@ -119,9 +119,9 @@ argpar_iter_next() produces the following items, in this order:
  * <https://gcc.gnu.org/wiki/Visibility>.
  */
 #if defined(_WIN32) || defined(__CYGWIN__)
-# define ARGPAR_HIDDEN
+#define ARGPAR_HIDDEN
 #else
-# define ARGPAR_HIDDEN __attribute__((visibility("hidden")))
+#define ARGPAR_HIDDEN __attribute__((visibility("hidden")))
 #endif
 
 struct argpar_opt_descr;
@@ -190,8 +190,7 @@ enum argpar_item_type argpar_item_type(const struct argpar_item *item);
 /// @cond hidden_macro
 ARGPAR_HIDDEN
 /// @endcond
-const struct argpar_opt_descr *argpar_item_opt_descr(
-		const struct argpar_item *item);
+const struct argpar_opt_descr *argpar_item_opt_descr(const struct argpar_item *item);
 
 /*!
 @brief
@@ -331,10 +330,10 @@ void argpar_item_destroy(const struct argpar_item *item);
     Item to destroy and variable to reset
     (<code>const struct argpar_item *</code> type).
 */
-#define ARGPAR_ITEM_DESTROY_AND_RESET(_item)				\
-	{								\
-		argpar_item_destroy(_item);				\
-		((_item)) = NULL;						\
+#define ARGPAR_ITEM_DESTROY_AND_RESET(_item) \
+	{                                    \
+		argpar_item_destroy(_item);  \
+		((_item)) = NULL;            \
 	}
 
 /// @}
@@ -468,8 +467,8 @@ const char *argpar_error_unknown_opt_name(const struct argpar_error *error);
 /// @cond hidden_macro
 ARGPAR_HIDDEN
 /// @endcond
-const struct argpar_opt_descr *argpar_error_opt_descr(
-		const struct argpar_error *error, bool *is_short);
+const struct argpar_opt_descr *argpar_error_opt_descr(const struct argpar_error *error,
+						      bool *is_short);
 
 /*!
 @brief
@@ -516,7 +515,7 @@ struct argpar_opt_descr {
 	const char short_name;
 
 	/// Long option name (without the <code>\--</code> prefix), or \c NULL
-	const char * const long_name;
+	const char *const long_name;
 
 	/// \c true if this option has an argument
 	const bool with_arg;
@@ -537,7 +536,10 @@ const struct argpar_opt_descr descrs[] = {
 };
 @endcode
 */
-#define ARGPAR_OPT_DESCR_SENTINEL	{ -1, '\0', NULL, false }
+#define ARGPAR_OPT_DESCR_SENTINEL     \
+	{                             \
+		-1, '\0', NULL, false \
+	}
 
 /*!
 @struct argpar_iter
@@ -607,8 +609,8 @@ argpar_iter_next().
 ARGPAR_HIDDEN
 /// @endcond
 struct argpar_iter *argpar_iter_create(unsigned int argc,
-		const char * const *argv,
-		const struct argpar_opt_descr *descrs);
+				       const char *const *argv,
+				       const struct argpar_opt_descr *descrs);
 
 /*!
 @brief
@@ -681,9 +683,9 @@ If there are no more original arguments to parse, this function returns
 /// @cond hidden_macro
 ARGPAR_HIDDEN
 /// @endcond
-enum argpar_iter_next_status argpar_iter_next(
-		struct argpar_iter *iter, const struct argpar_item **item,
-		const struct argpar_error **error);
+enum argpar_iter_next_status argpar_iter_next(struct argpar_iter *iter,
+					      const struct argpar_item **item,
+					      const struct argpar_error **error);
 
 /*
  * Returns the number of ingested elements from `argv`, as passed to

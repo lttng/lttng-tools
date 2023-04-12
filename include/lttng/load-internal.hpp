@@ -9,12 +9,13 @@
 #ifndef LTTNG_LOAD_INTERNAL_ABI_H
 #define LTTNG_LOAD_INTERNAL_ABI_H
 
-#include <limits.h>
-#include <stdint.h>
+#include <common/config/session-config.hpp>
+#include <common/macros.hpp>
 
 #include <lttng/constant.h>
-#include <common/macros.hpp>
-#include <common/config/session-config.hpp>
+
+#include <limits.h>
+#include <stdint.h>
 
 /*
  * Object used by the load_session API. This is opaque to the public library.

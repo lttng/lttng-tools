@@ -40,7 +40,7 @@ LTTNG_EXPORT extern struct lttng_health *lttng_health_create_sessiond(void);
  * Return a newly allocated health object, or NULL on error.
  */
 LTTNG_EXPORT extern struct lttng_health *
-	lttng_health_create_consumerd(enum lttng_health_consumerd consumerd);
+lttng_health_create_consumerd(enum lttng_health_consumerd consumerd);
 
 /**
  * lttng_health_create_relayd - Create relayd health object
@@ -101,8 +101,7 @@ LTTNG_EXPORT extern int lttng_health_get_nr_threads(const struct lttng_health *h
  * lttng_health_destroy() is called on @health.
  */
 LTTNG_EXPORT extern const struct lttng_health_thread *
-	lttng_health_get_thread(const struct lttng_health *health,
-		unsigned int nth_thread);
+lttng_health_get_thread(const struct lttng_health *health, unsigned int nth_thread);
 
 /**
  * lttng_health_thread_state - Get thread health state

@@ -8,8 +8,9 @@
 #ifndef LTTNG_EVENT_RULE_KERNEL_UPROBE_INTERNAL_H
 #define LTTNG_EVENT_RULE_KERNEL_UPROBE_INTERNAL_H
 
-#include <common/payload-view.hpp>
 #include <common/macros.hpp>
+#include <common/payload-view.hpp>
+
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/kernel-uprobe.h>
 
@@ -32,12 +33,10 @@ struct lttng_event_rule_kernel_uprobe_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_event_rule **rule);
+ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(struct lttng_payload_view *view,
+							   struct lttng_event_rule **rule);
 
 struct lttng_userspace_probe_location *
-lttng_event_rule_kernel_uprobe_get_location_mutable(
-		const struct lttng_event_rule *rule);
+lttng_event_rule_kernel_uprobe_get_location_mutable(const struct lttng_event_rule *rule);
 
 #endif /* LTTNG_EVENT_RULE_KERNEL_UPROBE_INTERNAL_H */

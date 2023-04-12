@@ -11,24 +11,23 @@
 #ifdef LTTNG_HAVE_FMEMOPEN
 #include <stdio.h>
 
-static inline
-FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
+static inline FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
 {
 	return fmemopen(buf, size, mode);
 }
 
 #else /* LTTNG_HAVE_FMEMOPEN */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <common/error.hpp>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 /*
  * Fallback for systems which don't have fmemopen. Copy buffer to a
  * temporary file, and use that file as FILE * input.
  */
-static inline
-FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
+static inline FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
 {
 	char tmpname[PATH_MAX];
 	size_t len;

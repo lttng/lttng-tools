@@ -8,8 +8,9 @@
  *
  */
 
-#include <unistd.h>
 #include <common/macros.hpp>
+
+#include <unistd.h>
 
 /*
  * lttng_read and lttng_write take care of EINTR and partial read/write.

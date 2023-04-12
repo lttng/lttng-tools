@@ -9,24 +9,25 @@
 #ifndef _RELAYD_COMM
 #define _RELAYD_COMM
 
-#include <limits.h>
-#include <stdint.h>
-
-#include <lttng/lttng.h>
 #include <common/compiler.hpp>
 #include <common/defaults.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/macros.hpp>
-#include <common/uuid.hpp>
 #include <common/optional.hpp>
+#include <common/uuid.hpp>
 
-#define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
-#define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
+#include <lttng/lttng.h>
 
-#define RELAYD_COMM_LTTNG_HOST_NAME_MAX_2_4	64
-#define RELAYD_COMM_LTTNG_NAME_MAX_2_4	255
-#define RELAYD_COMM_LTTNG_PATH_MAX	4096
-#define RELAYD_COMM_DEFAULT_STREAM_NAME_LEN	264 /* 256 + 8 */
+#include <limits.h>
+#include <stdint.h>
+
+#define RELAYD_VERSION_COMM_MAJOR VERSION_MAJOR
+#define RELAYD_VERSION_COMM_MINOR VERSION_MINOR
+
+#define RELAYD_COMM_LTTNG_HOST_NAME_MAX_2_4 64
+#define RELAYD_COMM_LTTNG_NAME_MAX_2_4	    255
+#define RELAYD_COMM_LTTNG_PATH_MAX	    4096
+#define RELAYD_COMM_DEFAULT_STREAM_NAME_LEN 264 /* 256 + 8 */
 
 /*
  * lttng-relayd communication header.
@@ -34,9 +35,9 @@
 struct lttcomm_relayd_hdr {
 	/* Circuit ID not used for now so always ignored */
 	uint64_t circuit_id;
-	uint64_t data_size;		/* data size following this header */
-	uint32_t cmd;			/* enum lttcomm_relayd_command */
-	uint32_t cmd_version;	/* command version */
+	uint64_t data_size; /* data size following this header */
+	uint32_t cmd; /* enum lttcomm_relayd_command */
+	uint32_t cmd_version; /* command version */
 } LTTNG_PACKED;
 
 /*
@@ -45,10 +46,10 @@ struct lttcomm_relayd_hdr {
 struct lttcomm_relayd_data_hdr {
 	/* Circuit ID not used for now so always ignored */
 	uint64_t circuit_id;
-	uint64_t stream_id;     /* Stream ID known by the relayd */
-	uint64_t net_seq_num;   /* Network sequence number, per stream. */
-	uint32_t data_size;     /* data size following this header */
-	uint32_t padding_size;  /* Size of 0 padding the data */
+	uint64_t stream_id; /* Stream ID known by the relayd */
+	uint64_t net_seq_num; /* Network sequence number, per stream. */
+	uint32_t data_size; /* data size following this header */
+	uint32_t padding_size; /* Size of 0 padding the data */
 } LTTNG_PACKED;
 
 /*
@@ -124,7 +125,7 @@ struct lttcomm_relayd_metadata_payload {
  */
 struct lttcomm_relayd_close_stream {
 	uint64_t stream_id;
-	uint64_t last_net_seq_num;	/* sequence number of last packet */
+	uint64_t last_net_seq_num; /* sequence number of last packet */
 } LTTNG_PACKED;
 
 /*
@@ -170,13 +171,11 @@ static inline size_t lttcomm_relayd_index_len(uint32_t major, uint32_t minor)
 	if (major == 1) {
 		switch (minor) {
 		case 0:
-			return offsetof(struct lttcomm_relayd_index, stream_id)
-				+ member_sizeof(struct lttcomm_relayd_index,
-						stream_id);
+			return offsetof(struct lttcomm_relayd_index, stream_id) +
+				member_sizeof(struct lttcomm_relayd_index, stream_id);
 		case 1:
-			return offsetof(struct lttcomm_relayd_index, packet_seq_num)
-				+ member_sizeof(struct lttcomm_relayd_index,
-						packet_seq_num);
+			return offsetof(struct lttcomm_relayd_index, packet_seq_num) +
+				member_sizeof(struct lttcomm_relayd_index, packet_seq_num);
 		default:
 			abort();
 		}
@@ -358,4 +357,4 @@ struct lttcomm_relayd_get_configuration_reply {
 	char payload[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
-#endif	/* _RELAYD_COMM */
+#endif /* _RELAYD_COMM */

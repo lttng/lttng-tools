@@ -12,7 +12,6 @@
 
 struct lttng_userspace_probe_location;
 
-int parse_userspace_probe_opts(const char *opt,
-		struct lttng_userspace_probe_location **uprobe_loc);
+int parse_userspace_probe_opts(const char *opt, struct lttng_userspace_probe_location **uprobe_loc);
 
 #endif /* SRC_BIN_LTTNG_UPROBE_H */

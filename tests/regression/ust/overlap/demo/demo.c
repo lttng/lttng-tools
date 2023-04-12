@@ -6,17 +6,17 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <stdarg.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <string.h>
-#include <arpa/inet.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define TRACEPOINT_DEFINE
 #define TRACEPOINT_PROBE_DYNAMIC_LINKAGE
@@ -44,8 +44,7 @@ int main(int argc, char **argv)
 	tracepoint(ust_tests_demo, starting, 123);
 	for (i = 0; i < 5; i++) {
 		netint = htonl(i);
-		tracepoint(ust_tests_demo2, loop, i, netint, values,
-			   text, strlen(text), dbl, flt);
+		tracepoint(ust_tests_demo2, loop, i, netint, values, text, strlen(text), dbl, flt);
 	}
 	tracepoint(ust_tests_demo, done, 456);
 	tracepoint(ust_tests_demo3, done, 42);

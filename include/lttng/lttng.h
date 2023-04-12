@@ -42,13 +42,13 @@
 #include <lttng/event-expr.h>
 #include <lttng/event-field-value.h>
 #include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/log4j-logging.h>
 #include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall.h>
-#include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe.h>
+#include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/event.h>
 #include <lttng/handle.h>
@@ -75,15 +75,15 @@ extern "C" {
 #endif
 
 enum lttng_calibrate_type {
-	LTTNG_CALIBRATE_FUNCTION              = 0,
+	LTTNG_CALIBRATE_FUNCTION = 0,
 };
 
 /* Machine interface output type */
 enum lttng_mi_output_type {
-	LTTNG_MI_XML                          = 1 /* XML output */
+	LTTNG_MI_XML = 1 /* XML output */
 };
 
-#define LTTNG_CALIBRATE_PADDING1           16
+#define LTTNG_CALIBRATE_PADDING1 16
 struct lttng_calibrate {
 	enum lttng_calibrate_type type;
 
@@ -116,7 +116,7 @@ LTTNG_EXPORT extern int lttng_set_tracing_group(const char *name);
  * Return 0 on success else a negative LTTng error code.
  */
 LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
-		const char *socket_path);
+						const char *socket_path);
 
 /*
  * Start tracing for *all* domain(s) in the session.
@@ -152,7 +152,7 @@ LTTNG_EXPORT extern int lttng_stop_tracing_no_wait(const char *session_name);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 LTTNG_EXPORT extern int lttng_calibrate(struct lttng_handle *handle,
-		struct lttng_calibrate *calibrate);
+					struct lttng_calibrate *calibrate);
 #pragma GCC diagnostic pop
 
 /*
@@ -179,8 +179,8 @@ LTTNG_EXPORT extern int lttng_calibrate(struct lttng_handle *handle,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_set_consumer_url(struct lttng_handle *handle,
-		const char *control_url, const char *data_url);
+LTTNG_EXPORT extern int
+lttng_set_consumer_url(struct lttng_handle *handle, const char *control_url, const char *data_url);
 
 /*
  * For a given session name, this call checks if the data is ready to be read

@@ -16,6 +16,6 @@
  * assumes that no grouping/locale-aware formatting is performed (i.e. using
  * the `'` specifier in POSIX formatting functions).
  */
-#define MAX_INT_DEC_LEN(val)       ((3 * sizeof(val)) + 2)
+#define MAX_INT_DEC_LEN(val) ((3 * sizeof(val)) + 2)
 
 #endif /* _STRING_UTILS_FORMAT_H */

@@ -8,9 +8,11 @@
 #ifndef LTTNG_EVALUATION_INTERNAL_H
 #define LTTNG_EVALUATION_INTERNAL_H
 
-#include <lttng/condition/evaluation.h>
-#include <lttng/condition/condition.h>
 #include <common/macros.hpp>
+
+#include <lttng/condition/condition.h>
+#include <lttng/condition/evaluation.h>
+
 #include <stdbool.h>
 #include <sys/types.h>
 
@@ -32,15 +34,13 @@ struct lttng_evaluation {
 	evaluation_destroy_cb destroy;
 };
 
-void lttng_evaluation_init(struct lttng_evaluation *evaluation,
-		enum lttng_condition_type type);
+void lttng_evaluation_init(struct lttng_evaluation *evaluation, enum lttng_condition_type type);
 
-ssize_t lttng_evaluation_create_from_payload(
-		const struct lttng_condition *condition,
-		struct lttng_payload_view *view,
-		struct lttng_evaluation **evaluation);
+ssize_t lttng_evaluation_create_from_payload(const struct lttng_condition *condition,
+					     struct lttng_payload_view *view,
+					     struct lttng_evaluation **evaluation);
 
 int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
-		struct lttng_payload *payload);
+			       struct lttng_payload *payload);
 
 #endif /* LTTNG_EVALUATION_INTERNAL_H */

@@ -8,17 +8,20 @@
 #ifndef NOTIFICATION_THREAD_INTERNAL_H
 #define NOTIFICATION_THREAD_INTERNAL_H
 
+#include "notification-thread.hpp"
+
 #include <common/compat/socket.hpp>
 #include <common/credentials.hpp>
 #include <common/payload.hpp>
+
 #include <lttng/notification/channel-internal.hpp>
 #include <lttng/ref-internal.hpp>
+
 #include <stdbool.h>
 #include <unistd.h>
+#include <urcu/call-rcu.h>
 #include <urcu/rculfhash.h>
 #include <urcu/ref.h>
-#include <urcu/call-rcu.h>
-#include "notification-thread.hpp"
 
 struct lttng_evaluation;
 struct notification_thread_handle;
@@ -243,29 +246,25 @@ using report_client_transmission_result_cb = int (*)(struct notification_client 
 						     enum client_transmission_status,
 						     void *);
 
-int notification_client_list_send_evaluation(
-		struct notification_client_list *list,
-		const struct lttng_trigger *trigger,
-		const struct lttng_evaluation *evaluation,
-		const struct lttng_credentials *source_object_creds,
-		report_client_transmission_result_cb client_report,
-		void *user_data);
+int notification_client_list_send_evaluation(struct notification_client_list *list,
+					     const struct lttng_trigger *trigger,
+					     const struct lttng_evaluation *evaluation,
+					     const struct lttng_credentials *source_object_creds,
+					     report_client_transmission_result_cb client_report,
+					     void *user_data);
 
 int notification_thread_client_communication_update(
-		struct notification_thread_handle *handle,
-		notification_client_id id,
-		enum client_transmission_status transmission_status);
+	struct notification_thread_handle *handle,
+	notification_client_id id,
+	enum client_transmission_status transmission_status);
 
 /*
  * Takes ownership of the payload if present.
  */
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
-		uint64_t tracer_token,
-		enum lttng_domain_type domain,
-		char *payload,
-		size_t payload_size);
+	uint64_t tracer_token, enum lttng_domain_type domain, char *payload, size_t payload_size);
 
 void lttng_event_notifier_notification_destroy(
-		struct lttng_event_notifier_notification *event_notifier_notification);
+	struct lttng_event_notifier_notification *event_notifier_notification);
 
 #endif /* NOTIFICATION_THREAD_INTERNAL_H */

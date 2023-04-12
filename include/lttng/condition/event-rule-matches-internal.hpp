@@ -8,12 +8,13 @@
 #ifndef LTTNG_CONDITION_EVENT_RULE_MATCHES_INTERNAL_H
 #define LTTNG_CONDITION_EVENT_RULE_MATCHES_INTERNAL_H
 
-#include <lttng/condition/condition-internal.hpp>
 #include <common/buffer-view.hpp>
+#include <common/dynamic-array.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
+
+#include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/evaluation-internal.hpp>
-#include <common/dynamic-array.hpp>
 #include <lttng/event-field-value.h>
 
 struct lttng_capture_descriptor {
@@ -51,39 +52,34 @@ struct lttng_evaluation_event_rule_matches {
 	struct lttng_event_field_value *captured_values;
 };
 
-ssize_t lttng_condition_event_rule_matches_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
+ssize_t lttng_condition_event_rule_matches_create_from_payload(struct lttng_payload_view *view,
+							       struct lttng_condition **condition);
 
 enum lttng_condition_status
-lttng_condition_event_rule_matches_borrow_rule_mutable(
-		const struct lttng_condition *condition,
-		struct lttng_event_rule **rule);
+lttng_condition_event_rule_matches_borrow_rule_mutable(const struct lttng_condition *condition,
+						       struct lttng_event_rule **rule);
 
-void lttng_condition_event_rule_matches_set_error_counter_index(
-		struct lttng_condition *condition,
-		uint64_t error_counter_index);
+void lttng_condition_event_rule_matches_set_error_counter_index(struct lttng_condition *condition,
+								uint64_t error_counter_index);
 
-uint64_t lttng_condition_event_rule_matches_get_error_counter_index(
-		const struct lttng_condition *condition);
+uint64_t
+lttng_condition_event_rule_matches_get_error_counter_index(const struct lttng_condition *condition);
 
 struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
-		const struct lttng_condition_event_rule_matches *condition,
-		const char *capture_payload,
-		size_t capture_payload_size,
-		bool decode_capture_payload);
+	const struct lttng_condition_event_rule_matches *condition,
+	const char *capture_payload,
+	size_t capture_payload_size,
+	bool decode_capture_payload);
 
 ssize_t lttng_evaluation_event_rule_matches_create_from_payload(
-		const struct lttng_condition_event_rule_matches *condition,
-		struct lttng_payload_view *view,
-		struct lttng_evaluation **_evaluation);
+	const struct lttng_condition_event_rule_matches *condition,
+	struct lttng_payload_view *view,
+	struct lttng_evaluation **_evaluation);
 
-enum lttng_error_code
-lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
-		struct lttng_condition *condition);
+enum lttng_error_code lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
+	struct lttng_condition *condition);
 
-const struct lttng_bytecode *
-lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
-		const struct lttng_condition *condition, unsigned int index);
+const struct lttng_bytecode *lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
+	const struct lttng_condition *condition, unsigned int index);
 
 #endif /* LTTNG_CONDITION_EVENT_RULE_MATCHES_INTERNAL_H */

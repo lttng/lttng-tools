@@ -17,7 +17,6 @@
  */
 unsigned long lttng_condition_hash(const struct lttng_condition *condition);
 
-struct lttng_condition *lttng_condition_copy(
-		const struct lttng_condition *condition);
+struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condition);
 
 #endif /* LTTNG_SESSIOND_CONDITION_INTERNAL_H */

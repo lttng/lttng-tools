@@ -16,14 +16,14 @@
  * Note: filter-ast.h should be included before filter-parser.h.
  */
 
-#include <urcu/list.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <urcu/list.h>
 
-#define printf_debug(fmt, args...)					\
-	do {								\
-		if (filter_parser_debug)				\
-			fprintf(stdout, "[debug] " fmt, ## args);	\
+#define printf_debug(fmt, args...)                               \
+	do {                                                     \
+		if (filter_parser_debug)                         \
+			fprintf(stdout, "[debug] " fmt, ##args); \
 	} while (0)
 
 // the parameter name (of the reentrant 'yyparse' function)
@@ -117,8 +117,8 @@ struct filter_node {
 		} root;
 		struct {
 			enum ast_expt_type type;
-			enum ast_link_type post_op;	/* reverse */
-			enum ast_link_type pre_op;	/* forward */
+			enum ast_link_type post_op; /* reverse */
+			enum ast_link_type pre_op; /* forward */
 			union {
 				const char *string;
 				uint64_t constant;
@@ -169,17 +169,15 @@ struct filter_parser_ctx {
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input);
 void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx);
 int filter_parser_ctx_append_ast(struct filter_parser_ctx *parser_ctx);
-int filter_parser_ctx_create_from_filter_expression(
-		const char *filter_expression, struct filter_parser_ctx **ctxp);
+int filter_parser_ctx_create_from_filter_expression(const char *filter_expression,
+						    struct filter_parser_ctx **ctxp);
 
-static inline
-struct filter_ast *filter_parser_get_ast(struct filter_parser_ctx *parser_ctx)
+static inline struct filter_ast *filter_parser_get_ast(struct filter_parser_ctx *parser_ctx)
 {
 	return parser_ctx->ast;
 }
 
-int filter_visitor_print_xml(struct filter_parser_ctx *ctx, FILE *stream,
-			int indent);
+int filter_visitor_print_xml(struct filter_parser_ctx *ctx, FILE *stream, int indent);
 int filter_visitor_ir_generate(struct filter_parser_ctx *ctx);
 void filter_ir_free(struct filter_parser_ctx *ctx);
 int filter_visitor_bytecode_generate(struct filter_parser_ctx *ctx);

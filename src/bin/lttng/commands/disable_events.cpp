@@ -210,7 +210,8 @@ static int disable_events(char *session_name, char *event_list)
 	event.type = (lttng_event_type) opt_event_type;
 
 	if (opt_disable_all) {
-		const int disable_ret = lttng_disable_event_ext(handle, &event, channel_name, nullptr);
+		const int disable_ret =
+			lttng_disable_event_ext(handle, &event, channel_name, nullptr);
 
 		if (disable_ret < 0) {
 			ERR("%s", lttng_strerror(command_ret));

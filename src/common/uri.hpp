@@ -8,20 +8,22 @@
 #ifndef URI_H
 #define URI_H
 
-#include <netinet/in.h>
-#include <lttng/lttng.h>
 #include <common/macros.hpp>
+
+#include <lttng/lttng.h>
+
+#include <netinet/in.h>
 
 /* Destination type of lttng URI */
 enum lttng_dst_type {
-	LTTNG_DST_IPV4                        = 1,
-	LTTNG_DST_IPV6                        = 2,
-	LTTNG_DST_PATH                        = 3,
+	LTTNG_DST_IPV4 = 1,
+	LTTNG_DST_IPV6 = 2,
+	LTTNG_DST_PATH = 3,
 };
 
 /* Type of lttng URI where it is a final destination or a hop */
 enum lttng_uri_type {
-	LTTNG_URI_DST,	/* The URI is a final destination */
+	LTTNG_URI_DST, /* The URI is a final destination */
 	/*
 	 * Hops are not supported yet but planned for a future release.
 	 *
@@ -40,8 +42,8 @@ enum lttng_stream_type {
  * should be ignored.
  */
 enum lttng_proto_type {
-	LTTNG_PROTO_TYPE_NONE                 = 0,
-	LTTNG_TCP                             = 1,
+	LTTNG_PROTO_TYPE_NONE = 0,
+	LTTNG_TCP = 1,
 	/*
 	 * UDP protocol is not supported for now.
 	 *
@@ -69,8 +71,7 @@ struct lttng_uri {
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2);
 void uri_free(struct lttng_uri *uri);
 ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris);
-ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
-		struct lttng_uri **uris);
+ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url, struct lttng_uri **uris);
 int uri_to_str_url(struct lttng_uri *uri, char *dst, size_t size);
 
 #endif /* _LTT_URI_H */

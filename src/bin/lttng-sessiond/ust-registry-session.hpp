@@ -17,9 +17,10 @@
 
 #include <common/make-unique-wrapper.hpp>
 
+#include <lttng/lttng.h>
+
 #include <cstdint>
 #include <ctime>
-#include <lttng/lttng.h>
 #include <string>
 #include <unistd.h>
 
@@ -36,10 +37,11 @@ void locked_registry_session_release(registry_session *session);
 
 class registry_session : public lttng::sessiond::trace::trace_class {
 public:
-	using locked_ptr = std::unique_ptr<registry_session,
-			lttng::details::create_unique_class<registry_session,
-					details::locked_registry_session_release>::
-					deleter>;
+	using locked_ptr =
+		std::unique_ptr<registry_session,
+				lttng::details::create_unique_class<
+					registry_session,
+					details::locked_registry_session_release>::deleter>;
 
 	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
 	locked_ptr lock() noexcept;
@@ -52,12 +54,12 @@ public:
 	void remove_channel(uint64_t channel_key, bool notify);
 
 	void create_or_find_enum(int session_objd,
-			const char *enum_name,
-			struct lttng_ust_ctl_enum_entry *raw_entries,
-			size_t nr_entries,
-			uint64_t *enum_id);
-	registry_enum::const_rcu_protected_reference enumeration(
-			const char *enum_name, uint64_t enum_id) const;
+				 const char *enum_name,
+				 struct lttng_ust_ctl_enum_entry *raw_entries,
+				 size_t nr_entries,
+				 uint64_t *enum_id);
+	registry_enum::const_rcu_protected_reference enumeration(const char *enum_name,
+								 uint64_t enum_id) const;
 
 	void regenerate_metadata();
 
@@ -102,15 +104,14 @@ public:
 protected:
 	/* Prevent instanciation of this base class. */
 	registry_session(const struct lttng::sessiond::trace::abi& abi,
-			unsigned int app_tracer_version_major,
-			unsigned int app_tracer_version_minor,
-			const char *root_shm_path,
-			const char *shm_path,
-			uid_t euid,
-			gid_t egid,
-			uint64_t tracing_id);
-	void accept(
-			trace::trace_class_environment_visitor& environment_visitor) const override;
+			 unsigned int app_tracer_version_major,
+			 unsigned int app_tracer_version_minor,
+			 const char *root_shm_path,
+			 const char *shm_path,
+			 uid_t euid,
+			 gid_t egid,
+			 uint64_t tracing_id);
+	void accept(trace::trace_class_environment_visitor& environment_visitor) const override;
 	void _generate_metadata();
 
 private:
@@ -123,11 +124,9 @@ private:
 	lttng::sessiond::trace::type::cuptr _create_packet_header() const;
 
 	void _accept_on_clock_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const final;
+		lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const final;
 	void _accept_on_stream_classes(
-			lttng::sessiond::trace::trace_class_visitor& trace_class_visitor)
-			const final;
+		lttng::sessiond::trace::trace_class_visitor& trace_class_visitor) const final;
 
 	/* Next channel ID available for a newly registered channel. */
 	uint32_t _next_channel_id = 0;

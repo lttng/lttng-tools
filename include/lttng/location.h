@@ -9,6 +9,7 @@
 #define LTTNG_LOCATION_H
 
 #include <lttng/lttng-export.h>
+
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -40,8 +41,7 @@ struct lttng_trace_archive_location;
  * Get a trace archive location's type.
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_type
-lttng_trace_archive_location_get_type(
-		const struct lttng_trace_archive_location *location);
+lttng_trace_archive_location_get_type(const struct lttng_trace_archive_location *location);
 
 /*
  * Get the absolute path of a local trace archive location.
@@ -50,8 +50,7 @@ lttng_trace_archive_location_get_type(
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
 lttng_trace_archive_location_local_get_absolute_path(
-		const struct lttng_trace_archive_location *location,
-		const char **absolute_path);
+	const struct lttng_trace_archive_location *location, const char **absolute_path);
 
 /*
  * Get the host address of the relay daemon associated to this trace archive
@@ -60,9 +59,8 @@ lttng_trace_archive_location_local_get_absolute_path(
  * The trace archive location maintains ownership of relay_host.
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
-lttng_trace_archive_location_relay_get_host(
-		const struct lttng_trace_archive_location *location,
-		const char **relay_host);
+lttng_trace_archive_location_relay_get_host(const struct lttng_trace_archive_location *location,
+					    const char **relay_host);
 
 /*
  * Get the control port of the relay daemon associated to this trace archive
@@ -70,8 +68,7 @@ lttng_trace_archive_location_relay_get_host(
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
 lttng_trace_archive_location_relay_get_control_port(
-		const struct lttng_trace_archive_location *location,
-		uint16_t *control_port);
+	const struct lttng_trace_archive_location *location, uint16_t *control_port);
 
 /*
  * Get the data port of the relay daemon associated to this trace archive
@@ -79,8 +76,7 @@ lttng_trace_archive_location_relay_get_control_port(
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
 lttng_trace_archive_location_relay_get_data_port(
-		const struct lttng_trace_archive_location *location,
-		uint16_t *data_port);
+	const struct lttng_trace_archive_location *location, uint16_t *data_port);
 
 /*
  * Get the protocol used to communicate with the relay daemon associated to this
@@ -88,8 +84,8 @@ lttng_trace_archive_location_relay_get_data_port(
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
 lttng_trace_archive_location_relay_get_protocol_type(
-		const struct lttng_trace_archive_location *location,
-		enum lttng_trace_archive_location_relay_protocol_type *protocol);
+	const struct lttng_trace_archive_location *location,
+	enum lttng_trace_archive_location_relay_protocol_type *protocol);
 
 /*
  * Get path relative to the relay daemon's current output path.
@@ -98,8 +94,7 @@ lttng_trace_archive_location_relay_get_protocol_type(
  */
 LTTNG_EXPORT extern enum lttng_trace_archive_location_status
 lttng_trace_archive_location_relay_get_relative_path(
-		const struct lttng_trace_archive_location *location,
-		const char **relative_path);
+	const struct lttng_trace_archive_location *location, const char **relative_path);
 
 #ifdef __cplusplus
 }

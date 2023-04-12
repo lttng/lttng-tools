@@ -9,12 +9,12 @@
 #define LTTNG_UST_FIELD_CONVERT_H
 
 #include "field.hpp"
-#include "ust-registry.hpp"
 #include "ust-registry-session.hpp"
+#include "ust-registry.hpp"
 
 #include <cstddef>
-#include <vector>
 #include <type_traits>
+#include <vector>
 
 namespace lttng {
 namespace sessiond {
@@ -42,12 +42,12 @@ inline ctl_field_quirks operator|(ctl_field_quirks lhs, ctl_field_quirks rhs)
 	return ctl_field_quirks(static_cast<enum_type>(lhs) | static_cast<enum_type>(rhs));
 }
 
-std::vector<trace::field::cuptr> create_trace_fields_from_ust_ctl_fields(
-		const lttng::sessiond::ust::registry_session& session,
-		const lttng_ust_ctl_field *fields,
-		std::size_t field_count,
-		trace::field_location::root lookup_root,
-		ctl_field_quirks quirks = ctl_field_quirks::NONE);
+std::vector<trace::field::cuptr>
+create_trace_fields_from_ust_ctl_fields(const lttng::sessiond::ust::registry_session& session,
+					const lttng_ust_ctl_field *fields,
+					std::size_t field_count,
+					trace::field_location::root lookup_root,
+					ctl_field_quirks quirks = ctl_field_quirks::NONE);
 
 } /* namespace ust */
 } /* namespace sessiond */

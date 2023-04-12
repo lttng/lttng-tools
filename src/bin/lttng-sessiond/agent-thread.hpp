@@ -17,14 +17,12 @@ bool agent_tracing_is_enabled(void);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-static inline
-bool launch_agent_management_thread(void)
+static inline bool launch_agent_management_thread(void)
 {
 	return true;
 }
 
-static inline
-bool agent_tracing_is_enabled(void)
+static inline bool agent_tracing_is_enabled(void)
 {
 	return false;
 }

@@ -160,7 +160,8 @@ static int lttng_event_rule_user_tracepoint_serialize(const struct lttng_event_r
 
 		serialized_len = len;
 		/* Append exclusion length, includes the null terminator. */
-		ret = lttng_dynamic_buffer_append(&payload->buffer, &serialized_len, sizeof(serialized_len));
+		ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &serialized_len, sizeof(serialized_len));
 		if (ret) {
 			goto end;
 		}

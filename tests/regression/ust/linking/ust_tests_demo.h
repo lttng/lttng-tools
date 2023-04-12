@@ -13,20 +13,16 @@
 
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_EVENT(ust_tests_demo, starting,
-	TP_ARGS(int, value),
-	TP_FIELDS(
-		ctf_integer(int, value, value)
-	)
-)
+TRACEPOINT_EVENT(ust_tests_demo,
+		 starting,
+		 TP_ARGS(int, value),
+		 TP_FIELDS(ctf_integer(int, value, value)))
 TRACEPOINT_LOGLEVEL(ust_tests_demo, starting, TRACE_CRIT)
 
-TRACEPOINT_EVENT(ust_tests_demo, done,
-	TP_ARGS(int, value),
-	TP_FIELDS(
-		ctf_integer(int, value, value)
-	)
-)
+TRACEPOINT_EVENT(ust_tests_demo,
+		 done,
+		 TP_ARGS(int, value),
+		 TP_FIELDS(ctf_integer(int, value, value)))
 TRACEPOINT_LOGLEVEL(ust_tests_demo, done, TRACE_CRIT)
 
 #endif /* _TRACEPOINT_UST_TESTS_DEMO_H */

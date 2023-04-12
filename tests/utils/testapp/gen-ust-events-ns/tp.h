@@ -11,15 +11,11 @@
 #if !defined(_TRACEPOINT_TP_H) || defined(TRACEPOINT_HEADER_MULTI_READ)
 #define _TRACEPOINT_TP_H
 
-#include <sys/types.h>
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_EVENT(tp, tptest,
-	TP_ARGS(ino_t, ns_ino),
-	TP_FIELDS(
-		ctf_integer(ino_t, ns_ino, ns_ino)
-	)
-)
+#include <sys/types.h>
+
+TRACEPOINT_EVENT(tp, tptest, TP_ARGS(ino_t, ns_ino), TP_FIELDS(ctf_integer(ino_t, ns_ino, ns_ino)))
 
 #endif /* _TRACEPOINT_TP_H */
 

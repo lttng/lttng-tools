@@ -39,8 +39,7 @@ enum lttng_action_status {
  *
  * Returns the type of an action on success, LTTNG_ACTION_TYPE_UNKNOWN on error.
  */
-LTTNG_EXPORT extern enum lttng_action_type lttng_action_get_type(
-		const struct lttng_action *action);
+LTTNG_EXPORT extern enum lttng_action_type lttng_action_get_type(const struct lttng_action *action);
 
 /*
  * Destroy (frees) an action object.

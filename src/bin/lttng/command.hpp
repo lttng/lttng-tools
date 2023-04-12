@@ -8,32 +8,32 @@
 #ifndef _LTTNG_CMD_H
 #define _LTTNG_CMD_H
 
-#include <lttng/lttng.h>
-#include <common/common.hpp>
-#include <common/defaults.hpp>
-
 #include "conf.hpp"
 #include "utils.hpp"
 
-#define DECL_COMMAND(_name) \
-	extern int cmd_##_name(int, const char **)
+#include <common/common.hpp>
+#include <common/defaults.hpp>
+
+#include <lttng/lttng.h>
+
+#define DECL_COMMAND(_name) extern int cmd_##_name(int, const char **)
 
 #ifdef LTTNG_EMBED_HELP
-# define HELP_MSG_NAME		help_msg
-# define SHOW_HELP_ERROR_LINE	ERR("Cannot show --help for `lttng-%s`", argv[0]);
+#define HELP_MSG_NAME	     help_msg
+#define SHOW_HELP_ERROR_LINE ERR("Cannot show --help for `lttng-%s`", argv[0]);
 #else
-# define HELP_MSG_NAME		NULL
-# define SHOW_HELP_ERROR_LINE	;
+#define HELP_MSG_NAME	     NULL
+#define SHOW_HELP_ERROR_LINE ;
 #endif
 
-#define SHOW_HELP() 							\
-	do {								\
-		ret = show_cmd_help(argv[0], HELP_MSG_NAME);		\
-									\
-		if (ret) {						\
-			SHOW_HELP_ERROR_LINE 				\
-			ret = CMD_ERROR;				\
-		}							\
+#define SHOW_HELP()                                          \
+	do {                                                 \
+		ret = show_cmd_help(argv[0], HELP_MSG_NAME); \
+                                                             \
+		if (ret) {                                   \
+			SHOW_HELP_ERROR_LINE                 \
+			ret = CMD_ERROR;                     \
+		}                                            \
 	} while (0)
 
 enum cmd_error_code {
@@ -81,7 +81,6 @@ DECL_COMMAND(add_trigger);
 DECL_COMMAND(list_triggers);
 DECL_COMMAND(remove_trigger);
 
-extern int cmd_help(int argc, const char **argv,
-		const struct cmd_struct commands[]);
+extern int cmd_help(int argc, const char **argv, const struct cmd_struct commands[]);
 
 #endif /* _LTTNG_CMD_H */

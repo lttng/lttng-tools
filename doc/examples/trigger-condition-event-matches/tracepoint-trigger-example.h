@@ -16,12 +16,10 @@
 
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_EVENT(trigger_example, my_event,
-	TP_ARGS(int, iteration),
-	TP_FIELDS(
-		ctf_integer(uint64_t, iteration, iteration)
-	)
-)
+TRACEPOINT_EVENT(trigger_example,
+		 my_event,
+		 TP_ARGS(int, iteration),
+		 TP_FIELDS(ctf_integer(uint64_t, iteration, iteration)))
 
 #endif /* _TRACEPOINT_TRIGGER_EXAMPLE_H */
 

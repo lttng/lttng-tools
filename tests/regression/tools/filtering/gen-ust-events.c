@@ -46,8 +46,17 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text, strlen(text), escape, dbl, flt,
-			net_values);
+		tracepoint(tp,
+			   tptest,
+			   i,
+			   netint,
+			   values,
+			   text,
+			   strlen(text),
+			   escape,
+			   dbl,
+			   flt,
+			   net_values);
 		usleep(nr_usec);
 	}
 

@@ -9,18 +9,16 @@
 #ifndef _COMPAT_STRING_H
 #define _COMPAT_STRING_H
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef HAVE_STRNLEN
-static inline
-size_t lttng_strnlen(const char *str, size_t max)
+static inline size_t lttng_strnlen(const char *str, size_t max)
 {
 	return strnlen(str, max);
 }
 #else
-static inline
-size_t lttng_strnlen(const char *str, size_t max)
+static inline size_t lttng_strnlen(const char *str, size_t max)
 {
 	size_t ret;
 	const char *end;
@@ -38,14 +36,12 @@ size_t lttng_strnlen(const char *str, size_t max)
 #endif /* HAVE_STRNLEN */
 
 #ifdef HAVE_STRNDUP
-static inline
-char *lttng_strndup(const char *s, size_t n)
+static inline char *lttng_strndup(const char *s, size_t n)
 {
 	return strndup(s, n);
 }
 #else
-static inline
-char *lttng_strndup(const char *s, size_t n)
+static inline char *lttng_strndup(const char *s, size_t n)
 {
 	char *ret;
 	size_t navail;
@@ -110,20 +106,18 @@ static inline int lttng_fls(int val)
 #endif /* HAVE_FLS */
 
 #ifdef HAVE_MEMRCHR
-static inline
-void *lttng_memrchr(const void *s, int c, size_t n)
+static inline void *lttng_memrchr(const void *s, int c, size_t n)
 {
 	return (void *) memrchr(s, c, n);
 }
 #else
-static inline
-void *lttng_memrchr(const void *s, int c, size_t n)
+static inline void *lttng_memrchr(const void *s, int c, size_t n)
 {
 	int i;
 	const char *str = (const char *) s;
-	for (i = n-1; i >= 0; i--) {
-		if (str[i] == (char)c) {
-			return (void *)(str+i);
+	for (i = n - 1; i >= 0; i--) {
+		if (str[i] == (char) c) {
+			return (void *) (str + i);
 		}
 	}
 	return NULL;

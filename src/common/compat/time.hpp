@@ -16,9 +16,10 @@
 
 typedef uint64_t timer_t;
 
-#include <mach/mach.h>
-#include <mach/clock.h>
 #include <common/compat/errno.hpp>
+
+#include <mach/clock.h>
+#include <mach/mach.h>
 
 #undef NSEC_PER_SEC
 #undef NSEC_PER_MSEC
@@ -31,11 +32,10 @@ typedef uint64_t timer_t;
 #if defined(__APPLE__) && !defined(LTTNG_HAVE_CLOCK_GETTIME)
 
 typedef int clockid_t;
-#define CLOCK_REALTIME CALENDAR_CLOCK
+#define CLOCK_REALTIME	CALENDAR_CLOCK
 #define CLOCK_MONOTONIC SYSTEM_CLOCK
 
-static inline
-int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
+static inline int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
 	int ret = 0;
 	clock_serv_t clock;
@@ -66,8 +66,7 @@ end:
 
 #else /* __APPLE__ && !LTTNG_HAVE_CLOCK_GETTIME */
 
-static inline
-int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
+static inline int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
 	return clock_gettime(clk_id, tp);
 }

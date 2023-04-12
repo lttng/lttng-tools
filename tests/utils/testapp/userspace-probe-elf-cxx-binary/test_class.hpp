@@ -5,12 +5,9 @@
  *
  */
 
-class test_class
-{
+class test_class {
 public:
 	test_class();
 	void test_method();
 	volatile int test_member;
 };
-
-

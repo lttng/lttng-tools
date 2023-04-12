@@ -8,16 +8,17 @@
 #ifndef LTTNG_BUFFER_REGISTRY_H
 #define LTTNG_BUFFER_REGISTRY_H
 
-#include <stdint.h>
-#include <urcu/list.h>
-
-#include <lttng/lttng.h>
-#include <common/hashtable/hashtable.hpp>
-
 #include "consumer.hpp"
 #include "lttng-ust-ctl.hpp"
-#include "ust-registry.hpp"
 #include "ust-registry-session.hpp"
+#include "ust-registry.hpp"
+
+#include <common/hashtable/hashtable.hpp>
+
+#include <lttng/lttng.h>
+
+#include <stdint.h>
+#include <urcu/list.h>
 
 struct buffer_reg_stream {
 	struct cds_list_head lnode;
@@ -68,9 +69,9 @@ struct buffer_reg_uid {
 	 * Keys to match this object in a hash table. The following three variables
 	 * identify a unique per UID buffer registry.
 	 */
-	uint64_t session_id;	/* Unique tracing session id. */
-	int bits_per_long;	/* ABI */
-	uid_t uid;			/* Owner. */
+	uint64_t session_id; /* Unique tracing session id. */
+	int bits_per_long; /* ABI */
+	uid_t uid; /* Owner. */
 
 	enum lttng_domain_type domain;
 	struct buffer_reg_session *registry;
@@ -101,20 +102,24 @@ struct buffer_reg_pid {
 
 /* Buffer registry per UID. */
 void buffer_reg_init_uid_registry(void);
-int buffer_reg_uid_create(uint64_t session_id, uint32_t bits_per_long, uid_t uid,
-		enum lttng_domain_type domain, struct buffer_reg_uid **regp,
-		const char *root_shm_path, const char *shm_path);
+int buffer_reg_uid_create(uint64_t session_id,
+			  uint32_t bits_per_long,
+			  uid_t uid,
+			  enum lttng_domain_type domain,
+			  struct buffer_reg_uid **regp,
+			  const char *root_shm_path,
+			  const char *shm_path);
 void buffer_reg_uid_add(struct buffer_reg_uid *reg);
-struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id,
-		uint32_t bits_per_long, uid_t uid);
+struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id, uint32_t bits_per_long, uid_t uid);
 void buffer_reg_uid_remove(struct buffer_reg_uid *regp);
-void buffer_reg_uid_destroy(struct buffer_reg_uid *regp,
-		struct consumer_output *consumer);
+void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output *consumer);
 
 /* Buffer registry per PID. */
 void buffer_reg_init_pid_registry(void);
-int buffer_reg_pid_create(uint64_t session_id, struct buffer_reg_pid **regp,
-		const char *root_shm_path, const char *shm_path);
+int buffer_reg_pid_create(uint64_t session_id,
+			  struct buffer_reg_pid **regp,
+			  const char *root_shm_path,
+			  const char *shm_path);
 void buffer_reg_pid_add(struct buffer_reg_pid *reg);
 struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id);
 void buffer_reg_pid_remove(struct buffer_reg_pid *regp);
@@ -122,27 +127,21 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp);
 
 /* Channel */
 int buffer_reg_channel_create(uint64_t key, struct buffer_reg_channel **regp);
-void buffer_reg_channel_add(struct buffer_reg_session *session,
-		struct buffer_reg_channel *channel);
-struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key,
-		struct buffer_reg_uid *reg);
-void buffer_reg_channel_remove(struct buffer_reg_session *session,
-		struct buffer_reg_channel *regp);
-void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
-		enum lttng_domain_type domain);
+void buffer_reg_channel_add(struct buffer_reg_session *session, struct buffer_reg_channel *channel);
+struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key, struct buffer_reg_uid *reg);
+void buffer_reg_channel_remove(struct buffer_reg_session *session, struct buffer_reg_channel *regp);
+void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_domain_type domain);
 
 /* Stream */
 int buffer_reg_stream_create(struct buffer_reg_stream **regp);
-void buffer_reg_stream_add(struct buffer_reg_stream *stream,
-		struct buffer_reg_channel *channel);
-void buffer_reg_stream_destroy(struct buffer_reg_stream *regp,
-		enum lttng_domain_type domain);
+void buffer_reg_stream_add(struct buffer_reg_stream *stream, struct buffer_reg_channel *channel);
+void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain_type domain);
 
 /* Global registry. */
 void buffer_reg_destroy_registries(void);
 
-int buffer_reg_uid_consumer_channel_key(
-		struct cds_list_head *buffer_reg_uid_list,
-		uint64_t chan_key, uint64_t *consumer_chan_key);
+int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_list,
+					uint64_t chan_key,
+					uint64_t *consumer_chan_key);
 
 #endif /* LTTNG_BUFFER_REGISTRY_H */

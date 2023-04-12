@@ -10,6 +10,7 @@
 
 #include <common/config/config-session-abi.hpp>
 #include <common/macros.hpp>
+
 #include <stdint.h>
 
 struct config_load_session_override_attr {
@@ -56,8 +57,7 @@ int config_writer_destroy(struct config_writer *writer);
  * Returns zero if the XML element could be opened.
  * Negative values indicate an error.
  */
-int config_writer_open_element(struct config_writer *writer,
-		const char *element_name);
+int config_writer_open_element(struct config_writer *writer, const char *element_name);
 
 /*
  * Write an element tag attribute.
@@ -70,7 +70,8 @@ int config_writer_open_element(struct config_writer *writer,
  * Negative values indicate an error.
  */
 int config_writer_write_attribute(struct config_writer *writer,
-		const char *name, const char *value);
+				  const char *name,
+				  const char *value);
 
 /*
  * Close the current element tag.
@@ -95,7 +96,8 @@ int config_writer_close_element(struct config_writer *writer);
  * Negative values indicate an error.
  */
 int config_writer_write_element_unsigned_int(struct config_writer *writer,
-		const char *element_name, uint64_t value);
+					     const char *element_name,
+					     uint64_t value);
 
 /*
  * Write an element of type signed int.
@@ -110,7 +112,8 @@ int config_writer_write_element_unsigned_int(struct config_writer *writer,
  * Negative values indicate an error.
  */
 int config_writer_write_element_signed_int(struct config_writer *writer,
-		const char *element_name, int64_t value);
+					   const char *element_name,
+					   int64_t value);
 
 /*
  * Write an element of type boolean.
@@ -125,7 +128,8 @@ int config_writer_write_element_signed_int(struct config_writer *writer,
  * Negative values indicate an error.
  */
 int config_writer_write_element_bool(struct config_writer *writer,
-		const char *element_name, int value);
+				     const char *element_name,
+				     int value);
 
 /*
  * Write an element of type string.
@@ -140,7 +144,8 @@ int config_writer_write_element_bool(struct config_writer *writer,
  * Negative values indicate an error.
  */
 int config_writer_write_element_string(struct config_writer *writer,
-		const char *element_name, const char *value);
+				       const char *element_name,
+				       const char *value);
 
 /*
  * Write an element of type double.
@@ -155,8 +160,8 @@ int config_writer_write_element_string(struct config_writer *writer,
  * Negative values indicate an error.
  */
 int config_writer_write_element_double(struct config_writer *writer,
-		const char *element_name,
-		double value);
+				       const char *element_name,
+				       double value);
 
 /*
  * Load session configurations from a file.
@@ -177,8 +182,10 @@ int config_writer_write_element_double(struct config_writer *writer,
  * Returns zero if the session could be loaded successfully. Returns
  * a negative LTTNG_ERR code on error.
  */
-int config_load_session(const char *path, const char *session_name,
-		int overwrite, unsigned int autoload,
-		const struct config_load_session_override_attr *overrides);
+int config_load_session(const char *path,
+			const char *session_name,
+			int overwrite,
+			unsigned int autoload,
+			const struct config_load_session_override_attr *overrides);
 
 #endif /* _CONFIG_H */

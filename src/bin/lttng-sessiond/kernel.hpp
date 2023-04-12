@@ -23,32 +23,32 @@
  */
 #define KERNEL_EVENT_INIT_LIST_SIZE 64
 
-int kernel_add_channel_context(struct ltt_kernel_channel *chan,
-		struct ltt_kernel_context *ctx);
+int kernel_add_channel_context(struct ltt_kernel_channel *chan, struct ltt_kernel_context *ctx);
 int kernel_create_session(struct ltt_session *session);
-int kernel_create_channel(struct ltt_kernel_session *session,
-		struct lttng_channel *chan);
-int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel,
-		char *filter_expression, struct lttng_bytecode *filter);
+int kernel_create_channel(struct ltt_kernel_session *session, struct lttng_channel *chan);
+int kernel_create_event(struct lttng_event *ev,
+			struct ltt_kernel_channel *channel,
+			char *filter_expression,
+			struct lttng_bytecode *filter);
 int kernel_disable_channel(struct ltt_kernel_channel *chan);
 int kernel_disable_event(struct ltt_kernel_event *event);
 int kernel_enable_event(struct ltt_kernel_event *event);
 int kernel_enable_channel(struct ltt_kernel_channel *chan);
-enum lttng_error_code kernel_process_attr_tracker_set_tracking_policy(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		enum lttng_tracking_policy policy);
-enum lttng_error_code kernel_process_attr_tracker_inclusion_set_add_value(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value);
-enum lttng_error_code kernel_process_attr_tracker_inclusion_set_remove_value(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr,
-		const struct process_attr_value *value);
-const struct process_attr_tracker *kernel_get_process_attr_tracker(
-		struct ltt_kernel_session *session,
-		enum lttng_process_attr process_attr);
+enum lttng_error_code
+kernel_process_attr_tracker_set_tracking_policy(struct ltt_kernel_session *session,
+						enum lttng_process_attr process_attr,
+						enum lttng_tracking_policy policy);
+enum lttng_error_code
+kernel_process_attr_tracker_inclusion_set_add_value(struct ltt_kernel_session *session,
+						    enum lttng_process_attr process_attr,
+						    const struct process_attr_value *value);
+enum lttng_error_code
+kernel_process_attr_tracker_inclusion_set_remove_value(struct ltt_kernel_session *session,
+						       enum lttng_process_attr process_attr,
+						       const struct process_attr_value *value);
+const struct process_attr_tracker *
+kernel_get_process_attr_tracker(struct ltt_kernel_session *session,
+				enum lttng_process_attr process_attr);
 int kernel_open_metadata(struct ltt_kernel_session *session);
 int kernel_open_metadata_stream(struct ltt_kernel_session *session);
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel);
@@ -59,14 +59,13 @@ int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(struct lttng_event **event_list);
 void kernel_wait_quiescent(void);
 int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_tracer_version,
-		struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
+			    struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
-enum lttng_error_code kernel_snapshot_record(
-		struct ltt_kernel_session *ksess,
-		const struct consumer_output *output,
-		uint64_t nb_packets_per_stream);
+enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
+					     const struct consumer_output *output,
+					     uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_session *session);
 enum lttng_error_code kernel_clear_session(struct ltt_session *session);
@@ -79,19 +78,16 @@ int init_kernel_tracer(void);
 void cleanup_kernel_tracer(void);
 bool kernel_tracer_is_initialized(void);
 
-enum lttng_error_code kernel_create_channel_subdirectories(
-		const struct ltt_kernel_session *ksess);
+enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess);
 
-enum lttng_error_code kernel_create_event_notifier_group_notification_fd(
-		int *event_notifier_group_notification_fd);
-enum lttng_error_code kernel_destroy_event_notifier_group_notification_fd(
-		int event_notifier_group_notification_fd);
+enum lttng_error_code
+kernel_create_event_notifier_group_notification_fd(int *event_notifier_group_notification_fd);
+enum lttng_error_code
+kernel_destroy_event_notifier_group_notification_fd(int event_notifier_group_notification_fd);
 
-enum lttng_error_code kernel_register_event_notifier(
-		struct lttng_trigger *trigger,
-		const struct lttng_credentials *cmd_creds);
-enum lttng_error_code kernel_unregister_event_notifier(
-		const struct lttng_trigger *trigger);
+enum lttng_error_code kernel_register_event_notifier(struct lttng_trigger *trigger,
+						     const struct lttng_credentials *cmd_creds);
+enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigger *trigger);
 
 int kernel_get_notification_fd(void);
 

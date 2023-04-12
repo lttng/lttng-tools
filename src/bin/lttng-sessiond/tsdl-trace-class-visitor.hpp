@@ -8,9 +8,9 @@
 #ifndef LTTNG_TSDL_TRACE_CLASS_VISITOR_H
 #define LTTNG_TSDL_TRACE_CLASS_VISITOR_H
 
-#include "trace-class.hpp"
-#include "stream-class.hpp"
 #include "event-class.hpp"
+#include "stream-class.hpp"
+#include "trace-class.hpp"
 
 #include <vendor/optional.hpp>
 
@@ -36,13 +36,13 @@ public:
 	type_overrider() = default;
 
 	void publish(const lttng::sessiond::trace::type& original,
-			lttng::sessiond::trace::type::cuptr new_type_override);
-	const lttng::sessiond::trace::type& type(
-			const lttng::sessiond::trace::type& original) const noexcept;
+		     lttng::sessiond::trace::type::cuptr new_type_override);
+	const lttng::sessiond::trace::type&
+	type(const lttng::sessiond::trace::type& original) const noexcept;
 
 private:
 	std::unordered_map<const lttng::sessiond::trace::type *, lttng::sessiond::trace::type::cuptr>
-			_overriden_types;
+		_overriden_types;
 };
 } /* namespace details. */
 
@@ -56,7 +56,7 @@ private:
 class trace_class_visitor : public lttng::sessiond::trace::trace_class_visitor {
 public:
 	trace_class_visitor(const lttng::sessiond::trace::abi& trace_abi,
-			append_metadata_fragment_function append_metadata);
+			    append_metadata_fragment_function append_metadata);
 
 	virtual void visit(const lttng::sessiond::trace::trace_class& trace_class) override final;
 	virtual void visit(const lttng::sessiond::trace::clock_class& clock_class) override final;
@@ -66,8 +66,8 @@ public:
 private:
 	/* Coherent (parseable) fragments must be appended. */
 	void append_metadata_fragment(const std::string& fragment) const;
-	const lttng::sessiond::trace::type& _lookup_field_type(
-			const lttng::sessiond::trace::field_location& field_location) const;
+	const lttng::sessiond::trace::type&
+	_lookup_field_type(const lttng::sessiond::trace::field_location& field_location) const;
 
 	const lttng::sessiond::trace::abi& _trace_abi;
 	const append_metadata_fragment_function _append_metadata_fragment;

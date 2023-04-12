@@ -19,26 +19,26 @@ extern "C" {
  * Domain types: the different possible tracers.
  */
 enum lttng_domain_type {
-	LTTNG_DOMAIN_NONE                     = 0,	/* No associated domain. */
-	LTTNG_DOMAIN_KERNEL                   = 1,	/* Linux Kernel tracer. */
-	LTTNG_DOMAIN_UST                      = 2,	/* Global Userspace tracer. */
-	LTTNG_DOMAIN_JUL                      = 3,	/* Java Util Logging. */
-	LTTNG_DOMAIN_LOG4J                    = 4,	/* Java Log4j Framework. */
-	LTTNG_DOMAIN_PYTHON                   = 5,	/* Python logging Framework. */
+	LTTNG_DOMAIN_NONE = 0, /* No associated domain. */
+	LTTNG_DOMAIN_KERNEL = 1, /* Linux Kernel tracer. */
+	LTTNG_DOMAIN_UST = 2, /* Global Userspace tracer. */
+	LTTNG_DOMAIN_JUL = 3, /* Java Util Logging. */
+	LTTNG_DOMAIN_LOG4J = 4, /* Java Log4j Framework. */
+	LTTNG_DOMAIN_PYTHON = 5, /* Python logging Framework. */
 };
 
 /* Buffer type for a specific domain. */
 enum lttng_buffer_type {
-	LTTNG_BUFFER_PER_PID,	/* Only supported by UST being the default. */
-	LTTNG_BUFFER_PER_UID,	/* Only supported by UST. */
-	LTTNG_BUFFER_GLOBAL,	/* Only supported by the Kernel. */
+	LTTNG_BUFFER_PER_PID, /* Only supported by UST being the default. */
+	LTTNG_BUFFER_PER_UID, /* Only supported by UST. */
+	LTTNG_BUFFER_GLOBAL, /* Only supported by the Kernel. */
 };
 
 /*
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_DOMAIN_PADDING1              12
-#define LTTNG_DOMAIN_PADDING2              LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_DOMAIN_PADDING1 12
+#define LTTNG_DOMAIN_PADDING2 LTTNG_SYMBOL_NAME_LEN + 32
 struct lttng_domain {
 	enum lttng_domain_type type;
 	enum lttng_buffer_type buf_type;
@@ -59,8 +59,7 @@ struct lttng_domain {
  * Return the size (number of entries) of the "lttng_domain" array. Caller
  * must free domains. On error, a negative LTTng error code is returned.
  */
-LTTNG_EXPORT extern int lttng_list_domains(const char *session_name,
-		struct lttng_domain **domains);
+LTTNG_EXPORT extern int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
 
 #ifdef __cplusplus
 }

@@ -8,10 +8,10 @@
 #ifndef SAVE_H
 #define SAVE_H
 
-#include <lttng/save.h>
 #include <common/compat/socket.hpp>
 
-int cmd_save_sessions(struct lttng_save_session_attr *attr,
-	lttng_sock_cred *creds);
+#include <lttng/save.h>
+
+int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *creds);
 
 #endif /* SAVE_H */

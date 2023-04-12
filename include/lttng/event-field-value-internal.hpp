@@ -8,9 +8,11 @@
 #ifndef LTTNG_EVENT_FIELD_VALUE_INTERNAL_H
 #define LTTNG_EVENT_FIELD_VALUE_INTERNAL_H
 
-#include <stdint.h>
-#include <lttng/event-field-value.h>
 #include <common/dynamic-array.hpp>
+
+#include <lttng/event-field-value.h>
+
+#include <stdint.h>
 
 struct lttng_event_field_value {
 	enum lttng_event_field_value_type type;
@@ -114,9 +116,8 @@ struct lttng_event_field_value_array {
  *     * `count` is `NULL`.
  */
 enum lttng_event_field_value_status
-lttng_event_field_value_enum_get_label_count(
-		const struct lttng_event_field_value *field_val,
-		unsigned int *count);
+lttng_event_field_value_enum_get_label_count(const struct lttng_event_field_value *field_val,
+					     unsigned int *count);
 
 /*
  * Returns the label at index `index` of the enumeration event field
@@ -129,45 +130,39 @@ lttng_event_field_value_enum_get_label_count(
  * * `index` is greater than or equal to the label count of `field_val`,
  *   as returned by lttng_event_field_value_enum_get_label_count().
  */
-const char *lttng_event_field_value_enum_get_label_at_index(
-		const struct lttng_event_field_value *field_val,
-		unsigned int index);
+const char *
+lttng_event_field_value_enum_get_label_at_index(const struct lttng_event_field_value *field_val,
+						unsigned int index);
 
-struct lttng_event_field_value *lttng_event_field_value_uint_create(
-		uint64_t val);
+struct lttng_event_field_value *lttng_event_field_value_uint_create(uint64_t val);
 
-struct lttng_event_field_value *lttng_event_field_value_int_create(
-		int64_t val);
+struct lttng_event_field_value *lttng_event_field_value_int_create(int64_t val);
 
-struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(
-		uint64_t val);
+struct lttng_event_field_value *lttng_event_field_value_enum_uint_create(uint64_t val);
 
-struct lttng_event_field_value *lttng_event_field_value_enum_int_create(
-		int64_t val);
+struct lttng_event_field_value *lttng_event_field_value_enum_int_create(int64_t val);
 
 struct lttng_event_field_value *lttng_event_field_value_real_create(double val);
 
-struct lttng_event_field_value *lttng_event_field_value_string_create(
-		const char *val);
+struct lttng_event_field_value *lttng_event_field_value_string_create(const char *val);
 
-struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(
-		const char *val, size_t size);
+struct lttng_event_field_value *lttng_event_field_value_string_create_with_size(const char *val,
+										size_t size);
 
 struct lttng_event_field_value *lttng_event_field_value_array_create();
 
-int lttng_event_field_value_enum_append_label(
-		struct lttng_event_field_value *field_val, const char *label);
+int lttng_event_field_value_enum_append_label(struct lttng_event_field_value *field_val,
+					      const char *label);
 
-int lttng_event_field_value_enum_append_label_with_size(
-		struct lttng_event_field_value *field_val, const char *label,
-		size_t size);
+int lttng_event_field_value_enum_append_label_with_size(struct lttng_event_field_value *field_val,
+							const char *label,
+							size_t size);
 
-int lttng_event_field_value_array_append(
-		struct lttng_event_field_value *array_field_val,
-		struct lttng_event_field_value *field_val);
+int lttng_event_field_value_array_append(struct lttng_event_field_value *array_field_val,
+					 struct lttng_event_field_value *field_val);
 
 int lttng_event_field_value_array_append_unavailable(
-		struct lttng_event_field_value *array_field_val);
+	struct lttng_event_field_value *array_field_val);
 
 void lttng_event_field_value_destroy(struct lttng_event_field_value *field_val);
 

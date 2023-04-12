@@ -13,37 +13,25 @@
 
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_EVENT(ust_gen_nevents, tptest0,
-	TP_ARGS(int, anint, long, value),
-	TP_FIELDS(
-		ctf_integer(int, intfield, anint)
-		ctf_integer(long, longfield, value)
-	)
-)
+TRACEPOINT_EVENT(ust_gen_nevents,
+		 tptest0,
+		 TP_ARGS(int, anint, long, value),
+		 TP_FIELDS(ctf_integer(int, intfield, anint) ctf_integer(long, longfield, value)))
 
-TRACEPOINT_EVENT(ust_gen_nevents, tptest1,
-	TP_ARGS(int, anint, long, value),
-	TP_FIELDS(
-		ctf_integer(int, intfield, anint)
-		ctf_integer(long, longfield, value)
-	)
-)
+TRACEPOINT_EVENT(ust_gen_nevents,
+		 tptest1,
+		 TP_ARGS(int, anint, long, value),
+		 TP_FIELDS(ctf_integer(int, intfield, anint) ctf_integer(long, longfield, value)))
 
-TRACEPOINT_EVENT(ust_gen_nevents, tptest2,
-	TP_ARGS(int, anint, long, value),
-	TP_FIELDS(
-		ctf_integer(int, intfield, anint)
-		ctf_integer(long, longfield, value)
-	)
-)
+TRACEPOINT_EVENT(ust_gen_nevents,
+		 tptest2,
+		 TP_ARGS(int, anint, long, value),
+		 TP_FIELDS(ctf_integer(int, intfield, anint) ctf_integer(long, longfield, value)))
 
-TRACEPOINT_EVENT(ust_gen_nevents, tptest3,
-	TP_ARGS(int, anint, long, value),
-	TP_FIELDS(
-		ctf_integer(int, intfield, anint)
-		ctf_integer(long, longfield, value)
-	)
-)
+TRACEPOINT_EVENT(ust_gen_nevents,
+		 tptest3,
+		 TP_ARGS(int, anint, long, value),
+		 TP_FIELDS(ctf_integer(int, intfield, anint) ctf_integer(long, longfield, value)))
 
 #endif /* _TRACEPOINT_UST_GEN_NEVENTS_H */
 

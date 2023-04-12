@@ -10,8 +10,9 @@
 #ifndef SESSIOND_APPLICATION_MANAGEMENT_THREAD_H
 #define SESSIOND_APPLICATION_MANAGEMENT_THREAD_H
 
-#include <stdbool.h>
 #include "lttng-sessiond.hpp"
+
+#include <stdbool.h>
 
 bool launch_application_management_thread(int apps_cmd_pipe_read_fd);
 

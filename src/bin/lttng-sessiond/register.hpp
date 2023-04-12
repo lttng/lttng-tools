@@ -10,10 +10,10 @@
 #ifndef SESSIOND_APPLICATION_REGISTRATION_THREAD_H
 #define SESSIOND_APPLICATION_REGISTRATION_THREAD_H
 
-#include <stdbool.h>
 #include "lttng-sessiond.hpp"
 
-struct lttng_thread *launch_application_registration_thread(
-		struct ust_cmd_queue *cmd_queue);
+#include <stdbool.h>
+
+struct lttng_thread *launch_application_registration_thread(struct ust_cmd_queue *cmd_queue);
 
 #endif /* SESSIOND_APPLICATION_REGISTRATION_THREAD_H */

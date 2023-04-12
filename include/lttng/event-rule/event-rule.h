@@ -48,8 +48,8 @@ enum lttng_event_rule_status {
  * Returns the type of an event rule on success, LTTNG_EVENT_RULE_UNKNOWN on
  * error.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_type lttng_event_rule_get_type(
-		const struct lttng_event_rule *event_rule);
+LTTNG_EXPORT extern enum lttng_event_rule_type
+lttng_event_rule_get_type(const struct lttng_event_rule *event_rule);
 
 /*
  * Destroy an event rule object.

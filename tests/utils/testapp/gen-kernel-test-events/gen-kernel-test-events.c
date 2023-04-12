@@ -6,14 +6,14 @@
  *
  */
 
+#include "utils.h"
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "utils.h"
 
 #define LTTNG_MODULES_FILE "/proc/lttng-test-filter-event"
 
@@ -31,8 +31,7 @@ int main(int argc, char **argv)
 
 	if (argc != 3) {
 		fprintf(stderr, "Error: Missing argument\n");
-		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE NR_EVENTS\n",
-				argv[0]);
+		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE NR_EVENTS\n", argv[0]);
 		ret = -1;
 		goto end;
 	}

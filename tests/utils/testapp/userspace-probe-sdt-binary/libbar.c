@@ -5,8 +5,10 @@
  *
  */
 
-#include <sys/sdt.h>
 #include "foobar_provider.h"
-void bar_function() {
+
+#include <sys/sdt.h>
+void bar_function()
+{
 	FOOBAR_TP_IN_DLOPEN();
 }

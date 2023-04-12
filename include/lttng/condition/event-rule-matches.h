@@ -8,9 +8,9 @@
 #ifndef LTTNG_CONDITION_EVENT_RULE_MATCHES_H
 #define LTTNG_CONDITION_EVENT_RULE_MATCHES_H
 
-#include <lttng/event-rule/event-rule.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
+#include <lttng/event-rule/event-rule.h>
 #include <lttng/lttng-export.h>
 
 #ifdef __cplusplus
@@ -43,8 +43,8 @@ enum lttng_evaluation_event_rule_matches_status {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-LTTNG_EXPORT extern struct lttng_condition *lttng_condition_event_rule_matches_create(
-		struct lttng_event_rule *rule);
+LTTNG_EXPORT extern struct lttng_condition *
+lttng_condition_event_rule_matches_create(struct lttng_event_rule *rule);
 
 /*
  * Get the rule property of an Event Rule Matches condition.
@@ -56,9 +56,9 @@ LTTNG_EXPORT extern struct lttng_condition *lttng_condition_event_rule_matches_c
  * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's rule
  * on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
  * parameter is passed. */
-LTTNG_EXPORT extern enum lttng_condition_status lttng_condition_event_rule_matches_get_rule(
-		const struct lttng_condition *condition,
-		const struct lttng_event_rule **rule);
+LTTNG_EXPORT extern enum lttng_condition_status
+lttng_condition_event_rule_matches_get_rule(const struct lttng_condition *condition,
+					    const struct lttng_event_rule **rule);
 
 /**
  * lttng_evaluation_event_rule_matches_hit are specialised lttng_evaluations
@@ -92,8 +92,8 @@ LTTNG_EXPORT extern enum lttng_condition_status lttng_condition_event_rule_match
  */
 LTTNG_EXPORT extern enum lttng_evaluation_event_rule_matches_status
 lttng_evaluation_event_rule_matches_get_captured_values(
-		const struct lttng_evaluation *evaluation,
-		const struct lttng_event_field_value **field_val);
+	const struct lttng_evaluation *evaluation,
+	const struct lttng_event_field_value **field_val);
 
 /*
  * Appends (transfering the ownership) the capture descriptor `expr` to
@@ -124,9 +124,8 @@ lttng_evaluation_event_rule_matches_get_captured_values(
  *     * The associated event-rule does not support runtime capture.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_event_rule_matches_append_capture_descriptor(
-		struct lttng_condition *condition,
-		struct lttng_event_expr *expr);
+lttng_condition_event_rule_matches_append_capture_descriptor(struct lttng_condition *condition,
+							     struct lttng_event_expr *expr);
 
 /*
  * Sets `*count` to the number of capture descriptors in the Event Rule Matches
@@ -145,7 +144,7 @@ lttng_condition_event_rule_matches_append_capture_descriptor(
  */
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_event_rule_matches_get_capture_descriptor_count(
-		const struct lttng_condition *condition, unsigned int *count);
+	const struct lttng_condition *condition, unsigned int *count);
 
 /*
  * Returns the capture descriptor (borrowed) of the Event Rule Matches condition
@@ -160,7 +159,7 @@ lttng_condition_event_rule_matches_get_capture_descriptor_count(
  */
 LTTNG_EXPORT extern const struct lttng_event_expr *
 lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
-		const struct lttng_condition *condition, unsigned int index);
+	const struct lttng_condition *condition, unsigned int index);
 
 #ifdef __cplusplus
 }

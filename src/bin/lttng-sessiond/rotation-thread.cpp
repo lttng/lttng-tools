@@ -393,9 +393,8 @@ void ls::rotation_thread_timer_queue_destroy(struct rotation_thread_timer_queue 
 	free(queue);
 }
 
-ls::rotation_thread::rotation_thread(
-	rotation_thread_timer_queue& rotation_timer_queue,
-	notification_thread_handle& notification_thread_handle) :
+ls::rotation_thread::rotation_thread(rotation_thread_timer_queue& rotation_timer_queue,
+				     notification_thread_handle& notification_thread_handle) :
 	_rotation_timer_queue{ rotation_timer_queue },
 	_notification_thread_handle{ notification_thread_handle }
 {
@@ -460,8 +459,8 @@ ls::rotation_thread::~rotation_thread()
 }
 
 void ls::rotation_thread_enqueue_job(ls::rotation_thread_timer_queue *queue,
-				 ls::rotation_thread_job_type job_type,
-				 ltt_session *session)
+				     ls::rotation_thread_job_type job_type,
+				     ltt_session *session)
 {
 	const char dummy = '!';
 	struct rotation_thread_job *job = nullptr;
@@ -539,7 +538,8 @@ void ls::rotation_thread::_handle_job_queue()
 		}
 
 		session_lock_list();
-		const auto unlock_list = lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
+		const auto unlock_list =
+			lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
 
 		/* locked_ptr will unlock the session and release the ref held by the job. */
 		session_lock(job->session);
@@ -551,7 +551,7 @@ void ls::rotation_thread::_handle_job_queue()
 	}
 }
 
-void ls::rotation_thread::_handle_notification(const lttng_notification &notification)
+void ls::rotation_thread::_handle_notification(const lttng_notification& notification)
 {
 	int ret = 0;
 	const char *condition_session_name = nullptr;
@@ -770,7 +770,8 @@ void ls::rotation_thread::_run()
 				}
 
 				if (fd == _notification_channel_subscribtion_change_eventfd.fd()) {
-					_notification_channel_subscribtion_change_eventfd.decrement();
+					_notification_channel_subscribtion_change_eventfd
+						.decrement();
 				}
 			} else {
 				/* Job queue or quit pipe activity. */
@@ -829,7 +830,7 @@ void ls::rotation_thread::launch_thread()
 }
 
 void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& session,
-									  std::uint64_t size)
+								   std::uint64_t size)
 {
 	const struct lttng_credentials session_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(session.uid),
@@ -851,8 +852,8 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 			"Could not set session consumed size condition threshold: size={}", size));
 	}
 
-	condition_status = lttng_condition_session_consumed_size_set_session_name(rotate_condition.get(),
-										  session.name);
+	condition_status = lttng_condition_session_consumed_size_set_session_name(
+		rotate_condition.get(), session.name);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		LTTNG_THROW_ERROR(fmt::format(
 			"Could not set session consumed size condition session name: name=`{}`",
@@ -869,8 +870,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	/* trigger acquires its own reference to condition and action on success. */
 	auto trigger = lttng::make_unique_wrapper<lttng_trigger, lttng_trigger_put>(
 		lttng_trigger_create(rotate_condition.get(), notify_action.get()));
-	if (!trigger)
-	{
+	if (!trigger) {
 		LTTNG_THROW_POSIX("Could not create size-based rotation trigger", errno);
 	}
 
@@ -878,8 +878,8 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	lttng_trigger_set_hidden(trigger.get());
 	lttng_trigger_set_credentials(trigger.get(), &session_creds);
 
-	auto nc_status =
-		lttng_notification_channel_subscribe(_notification_channel.get(), rotate_condition.get());
+	auto nc_status = lttng_notification_channel_subscribe(_notification_channel.get(),
+							      rotate_condition.get());
 	if (nc_status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
 		LTTNG_THROW_ERROR("Could not subscribe to session consumed size notification");
 	}

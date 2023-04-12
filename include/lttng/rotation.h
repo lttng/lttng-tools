@@ -9,9 +9,10 @@
 #ifndef LTTNG_ROTATION_H
 #define LTTNG_ROTATION_H
 
-#include <stdint.h>
 #include <lttng/location.h>
 #include <lttng/lttng-export.h>
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,9 +103,9 @@ struct lttng_rotation_handle;
  * This will issue a request to the session daemon on every call. Hence,
  * the result of this call may change over time.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_handle_get_state(
-		struct lttng_rotation_handle *rotation_handle,
-		enum lttng_rotation_state *rotation_state);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_rotation_handle_get_state(struct lttng_rotation_handle *rotation_handle,
+				enum lttng_rotation_state *rotation_state);
 
 /*
  * Get the location of the rotation's resulting archive.
@@ -115,15 +116,15 @@ LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_handle_get_state(
  * Note that location will not be set in case of error, or if the session
  * rotation handle has expired.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_handle_get_archive_location(
-		struct lttng_rotation_handle *rotation_handle,
-		const struct lttng_trace_archive_location **location);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_rotation_handle_get_archive_location(struct lttng_rotation_handle *rotation_handle,
+					   const struct lttng_trace_archive_location **location);
 
 /*
  * Destroy an lttng_rotate_session handle.
  */
-LTTNG_EXPORT extern void lttng_rotation_handle_destroy(
-		struct lttng_rotation_handle *rotation_handle);
+LTTNG_EXPORT extern void
+lttng_rotation_handle_destroy(struct lttng_rotation_handle *rotation_handle);
 
 /*
  * Rotate the output folder of the session.
@@ -139,14 +140,14 @@ LTTNG_EXPORT extern void lttng_rotation_handle_destroy(
  * LTTng error code on error.
  */
 LTTNG_EXPORT extern int lttng_rotate_session(const char *session_name,
-		struct lttng_rotation_immediate_descriptor *descriptor,
-		struct lttng_rotation_handle **rotation_handle);
+					     struct lttng_rotation_immediate_descriptor *descriptor,
+					     struct lttng_rotation_handle **rotation_handle);
 
 /*
  * Get the type of a rotation schedule object.
  */
-LTTNG_EXPORT extern enum lttng_rotation_schedule_type lttng_rotation_schedule_get_type(
-		const struct lttng_rotation_schedule *schedule);
+LTTNG_EXPORT extern enum lttng_rotation_schedule_type
+lttng_rotation_schedule_get_type(const struct lttng_rotation_schedule *schedule);
 
 /*
  * Return a newly allocated size-based session rotation schedule or NULL on
@@ -162,24 +163,21 @@ lttng_rotation_schedule_size_threshold_create(void);
  * LTTNG_ROTATION_STATUS_UNAVAILABLE is returned if the value is unset.
  */
 LTTNG_EXPORT extern enum lttng_rotation_status
-lttng_rotation_schedule_size_threshold_get_threshold(
-		const struct lttng_rotation_schedule *schedule,
-		uint64_t *size_threshold_bytes);
+lttng_rotation_schedule_size_threshold_get_threshold(const struct lttng_rotation_schedule *schedule,
+						     uint64_t *size_threshold_bytes);
 
 /*
  * Set a session rotation schedule's size threshold.
  */
 LTTNG_EXPORT extern enum lttng_rotation_status
-lttng_rotation_schedule_size_threshold_set_threshold(
-		struct lttng_rotation_schedule *schedule,
-		uint64_t size_threshold_bytes);
+lttng_rotation_schedule_size_threshold_set_threshold(struct lttng_rotation_schedule *schedule,
+						     uint64_t size_threshold_bytes);
 
 /*
  * Return a newly allocated periodic session rotation schedule or NULL on
  * error.
  */
-LTTNG_EXPORT extern struct lttng_rotation_schedule *
-lttng_rotation_schedule_periodic_create(void);
+LTTNG_EXPORT extern struct lttng_rotation_schedule *lttng_rotation_schedule_periodic_create(void);
 
 /*
  * Get a time-based session rotation schedule's period.
@@ -187,36 +185,35 @@ lttng_rotation_schedule_periodic_create(void);
  * Returns LTTNG_ROTATION_STATUS_OK on success.
  * LTTNG_ROTATION_STATUS_UNAVAILABLE is returned if the value is unset.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_schedule_periodic_get_period(
-		const struct lttng_rotation_schedule *schedule,
-		uint64_t *period_us);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_rotation_schedule_periodic_get_period(const struct lttng_rotation_schedule *schedule,
+					    uint64_t *period_us);
 
 /*
  * Set a time-based session rotation schedule's period.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_schedule_periodic_set_period(
-		struct lttng_rotation_schedule *schedule,
-		uint64_t period_us);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_rotation_schedule_periodic_set_period(struct lttng_rotation_schedule *schedule,
+					    uint64_t period_us);
 
 /*
  * Destroy a rotation schedule.
  */
-LTTNG_EXPORT extern void lttng_rotation_schedule_destroy(
-		struct lttng_rotation_schedule *schedule);
+LTTNG_EXPORT extern void lttng_rotation_schedule_destroy(struct lttng_rotation_schedule *schedule);
 
 /*
  * Destroy a set of rotation schedules. Pointers to any schedule contained
  * in this set become invalid after this call.
  */
-LTTNG_EXPORT extern void lttng_rotation_schedules_destroy(
-		struct lttng_rotation_schedules *schedules);
+LTTNG_EXPORT extern void
+lttng_rotation_schedules_destroy(struct lttng_rotation_schedules *schedules);
 
 /*
  * Get the number of schedules in a schedule set.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_schedules_get_count(
-		const struct lttng_rotation_schedules *schedules,
-		unsigned int *count);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_rotation_schedules_get_count(const struct lttng_rotation_schedules *schedules,
+				   unsigned int *count);
 
 /*
  * Get a schedule from the set at a given index.
@@ -228,9 +225,8 @@ LTTNG_EXPORT extern enum lttng_rotation_status lttng_rotation_schedules_get_coun
  * Returns a rotation schedule, or NULL on error.
  */
 LTTNG_EXPORT extern const struct lttng_rotation_schedule *
-lttng_rotation_schedules_get_at_index(
-		const struct lttng_rotation_schedules *schedules,
-		unsigned int index);
+lttng_rotation_schedules_get_at_index(const struct lttng_rotation_schedules *schedules,
+				      unsigned int index);
 
 /*
  * Add a session rotation schedule to a session.
@@ -242,9 +238,9 @@ lttng_rotation_schedules_get_at_index(
  * LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET if a rotation of the same type
  * is already set.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_session_add_rotation_schedule(
-		const char *session_name,
-		const struct lttng_rotation_schedule *schedule);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_session_add_rotation_schedule(const char *session_name,
+				    const struct lttng_rotation_schedule *schedule);
 
 /*
  * Remove a session rotation schedule from a session.
@@ -253,18 +249,18 @@ LTTNG_EXPORT extern enum lttng_rotation_status lttng_session_add_rotation_schedu
  * LTTNG_ROTATION_STATUS_SCHEDULE_INVALID if the provided schedule is
  * not set.
  */
-LTTNG_EXPORT extern enum lttng_rotation_status lttng_session_remove_rotation_schedule(
-		const char *session_name,
-		const struct lttng_rotation_schedule *schedule);
+LTTNG_EXPORT extern enum lttng_rotation_status
+lttng_session_remove_rotation_schedule(const char *session_name,
+				       const struct lttng_rotation_schedule *schedule);
 
 /*
  * Get the rotation schedules associated with a given session.
  *
  * Returns LTTNG_OK on success, or a negative lttng error code on error.
  */
-LTTNG_EXPORT extern int lttng_session_list_rotation_schedules(
-		const char *session_name,
-		struct lttng_rotation_schedules **schedules);
+LTTNG_EXPORT extern int
+lttng_session_list_rotation_schedules(const char *session_name,
+				      struct lttng_rotation_schedules **schedules);
 
 #ifdef __cplusplus
 }

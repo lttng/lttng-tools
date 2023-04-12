@@ -9,6 +9,7 @@
 #define LTTNG_EVENT_EXPR_INTERNAL_H
 
 #include <common/macros.hpp>
+
 #include <lttng/event-expr.h>
 
 struct lttng_bytecode;
@@ -47,21 +48,19 @@ struct lttng_event_expr_array_field_element {
 /*
  * Returns whether or not `expr` is an l-value (locator value).
  */
-static inline
-bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
+static inline bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
 {
 	LTTNG_ASSERT(expr);
 	return expr->type == LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD ||
-			expr->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD ||
-			expr->type == LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD ||
-			expr->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT;
+		expr->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD ||
+		expr->type == LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD ||
+		expr->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT;
 }
 
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
-		struct lttng_bytecode **bytecode_out);
+				 struct lttng_bytecode **bytecode_out);
 
-enum lttng_error_code lttng_event_expr_mi_serialize(
-		const struct lttng_event_expr *expression,
-		struct mi_writer *writer);
+enum lttng_error_code lttng_event_expr_mi_serialize(const struct lttng_event_expr *expression,
+						    struct mi_writer *writer);
 
 #endif /* LTTNG_EVENT_EXPR_INTERNAL_H */

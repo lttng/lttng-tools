@@ -11,22 +11,22 @@
 #include <dirent.h>
 
 #ifdef HAVE_DIRFD
-static inline
-int lttng_dirfd(DIR *dir) {
+static inline int lttng_dirfd(DIR *dir)
+{
 	return dirfd(dir);
 }
 #else
-# ifndef __XOPEN_OR_POSIX
-static inline
-int lttng_dirfd(DIR *dir) {
+#ifndef __XOPEN_OR_POSIX
+static inline int lttng_dirfd(DIR *dir)
+{
 	return dir->dd_fd;
 }
-# else
-static inline
-int lttng_dirfd(DIR *dir) {
+#else
+static inline int lttng_dirfd(DIR *dir)
+{
 	return dir->d_fd;
 }
-# endif
+#endif
 #endif
 
 #endif /* _COMPAT_DIRENT_H */

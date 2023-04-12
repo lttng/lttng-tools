@@ -8,11 +8,12 @@
 #ifndef LTTNG_CONDITION_BUFFER_USAGE_H
 #define LTTNG_CONDITION_BUFFER_USAGE_H
 
-#include <lttng/condition/evaluation.h>
 #include <lttng/condition/condition.h>
-#include <stdint.h>
+#include <lttng/condition/evaluation.h>
 #include <lttng/domain.h>
 #include <lttng/lttng-export.h>
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,8 +58,7 @@ extern "C" {
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-LTTNG_EXPORT extern struct lttng_condition *
-lttng_condition_buffer_usage_low_create(void);
+LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_low_create(void);
 
 /*
  * Create a newly allocated upper-bound buffer usage condition.
@@ -73,8 +73,7 @@ lttng_condition_buffer_usage_low_create(void);
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-LTTNG_EXPORT extern struct lttng_condition *
-lttng_condition_buffer_usage_high_create(void);
+LTTNG_EXPORT extern struct lttng_condition *lttng_condition_buffer_usage_high_create(void);
 
 /*
  * Get the buffer usage threshold ratio of a buffer usage condition.
@@ -89,9 +88,8 @@ lttng_condition_buffer_usage_high_create(void);
  * call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_get_threshold_ratio(
-		const struct lttng_condition *condition,
-	        double *threshold_ratio);
+lttng_condition_buffer_usage_get_threshold_ratio(const struct lttng_condition *condition,
+						 double *threshold_ratio);
 
 /*
  * Set the buffer usage threshold ratio of a buffer usage condition.
@@ -105,9 +103,8 @@ lttng_condition_buffer_usage_get_threshold_ratio(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_threshold_ratio(
-		struct lttng_condition *condition,
-	        double threshold_ratio);
+lttng_condition_buffer_usage_set_threshold_ratio(struct lttng_condition *condition,
+						 double threshold_ratio);
 
 /*
  * Get the buffer usage threshold of a buffer usage condition.
@@ -121,9 +118,8 @@ lttng_condition_buffer_usage_set_threshold_ratio(
  * bytes, was not set prior to this call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_get_threshold(
-		const struct lttng_condition *condition,
-	        uint64_t *threshold_bytes);
+lttng_condition_buffer_usage_get_threshold(const struct lttng_condition *condition,
+					   uint64_t *threshold_bytes);
 
 /*
  * Set the buffer usage threshold in bytes of a buffer usage condition.
@@ -135,9 +131,8 @@ lttng_condition_buffer_usage_get_threshold(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_threshold(
-		struct lttng_condition *condition,
-	        uint64_t threshold_bytes);
+lttng_condition_buffer_usage_set_threshold(struct lttng_condition *condition,
+					   uint64_t threshold_bytes);
 
 /*
  * Get the session name property of a buffer usage condition.
@@ -152,9 +147,8 @@ lttng_condition_buffer_usage_set_threshold(
  * was not set prior to this call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_get_session_name(
-		const struct lttng_condition *condition,
-		const char **session_name);
+lttng_condition_buffer_usage_get_session_name(const struct lttng_condition *condition,
+					      const char **session_name);
 
 /*
  * Set the session name property of a buffer usage condition.
@@ -165,9 +159,8 @@ lttng_condition_buffer_usage_get_session_name(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_session_name(
-		struct lttng_condition *condition,
-		const char *session_name);
+lttng_condition_buffer_usage_set_session_name(struct lttng_condition *condition,
+					      const char *session_name);
 
 /*
  * Get the channel name property of a buffer usage condition.
@@ -182,9 +175,8 @@ lttng_condition_buffer_usage_set_session_name(
  * was not set prior to this call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_get_channel_name(
-		const struct lttng_condition *condition,
-		const char **channel_name);
+lttng_condition_buffer_usage_get_channel_name(const struct lttng_condition *condition,
+					      const char **channel_name);
 
 /*
  * Set the channel name property of a buffer usage condition.
@@ -195,9 +187,8 @@ lttng_condition_buffer_usage_get_channel_name(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_channel_name(
-		struct lttng_condition *condition,
-		const char *channel_name);
+lttng_condition_buffer_usage_set_channel_name(struct lttng_condition *condition,
+					      const char *channel_name);
 
 /*
  * Get the domain type property of a buffer usage condition.
@@ -208,9 +199,8 @@ lttng_condition_buffer_usage_set_channel_name(
  * call.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_get_domain_type(
-		const struct lttng_condition *condition,
-		enum lttng_domain_type *type);
+lttng_condition_buffer_usage_get_domain_type(const struct lttng_condition *condition,
+					     enum lttng_domain_type *type);
 
 /*
  * Set the domain type property of a buffer usage condition.
@@ -219,10 +209,8 @@ lttng_condition_buffer_usage_get_domain_type(
  * if invalid paramenters are passed.
  */
 LTTNG_EXPORT extern enum lttng_condition_status
-lttng_condition_buffer_usage_set_domain_type(
-		struct lttng_condition *condition,
-		enum lttng_domain_type type);
-
+lttng_condition_buffer_usage_set_domain_type(struct lttng_condition *condition,
+					     enum lttng_domain_type type);
 
 /**
  * lttng_evaluation_buffer_usage are specialised lttng_evaluations which
@@ -242,9 +230,8 @@ lttng_condition_buffer_usage_set_domain_type(
  * an invalid parameter is passed.
  */
 LTTNG_EXPORT extern enum lttng_evaluation_status
-lttng_evaluation_buffer_usage_get_usage_ratio(
-		const struct lttng_evaluation *evaluation,
-		double *usage_ratio);
+lttng_evaluation_buffer_usage_get_usage_ratio(const struct lttng_evaluation *evaluation,
+					      double *usage_ratio);
 
 /*
  * Get the buffer usage property of a buffer usage evaluation.
@@ -253,9 +240,8 @@ lttng_evaluation_buffer_usage_get_usage_ratio(
  * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
  */
 LTTNG_EXPORT extern enum lttng_evaluation_status
-lttng_evaluation_buffer_usage_get_usage(
-		const struct lttng_evaluation *evaluation,
-	        uint64_t *usage_bytes);
+lttng_evaluation_buffer_usage_get_usage(const struct lttng_evaluation *evaluation,
+					uint64_t *usage_bytes);
 
 #ifdef __cplusplus
 }

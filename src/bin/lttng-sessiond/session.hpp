@@ -8,21 +8,22 @@
 #ifndef _LTT_SESSION_H
 #define _LTT_SESSION_H
 
+#include "consumer.hpp"
+#include "snapshot.hpp"
+#include "trace-kernel.hpp"
+
+#include <common/dynamic-array.hpp>
+#include <common/hashtable/hashtable.hpp>
+#include <common/make-unique-wrapper.hpp>
+#include <common/pthread-lock.hpp>
+
+#include <lttng/location.h>
+#include <lttng/lttng-error.h>
+#include <lttng/rotation.h>
+
 #include <limits.h>
 #include <stdbool.h>
 #include <urcu/list.h>
-
-#include <common/hashtable/hashtable.hpp>
-#include <common/dynamic-array.hpp>
-#include <common/make-unique-wrapper.hpp>
-#include <common/pthread-lock.hpp>
-#include <lttng/rotation.h>
-#include <lttng/location.h>
-#include <lttng/lttng-error.h>
-
-#include "snapshot.hpp"
-#include "trace-kernel.hpp"
-#include "consumer.hpp"
 
 #define ASSERT_SESSION_LIST_LOCKED() LTTNG_ASSERT(session_trylock_list())
 
@@ -76,8 +77,10 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	using id_t = uint64_t;
-	using locked_ptr = std::unique_ptr<ltt_session,
-			lttng::details::create_unique_class<ltt_session,
+	using locked_ptr =
+		std::unique_ptr<ltt_session,
+				lttng::details::create_unique_class<
+					ltt_session,
 					lttng::sessiond::details::locked_session_release>::deleter>;
 	using sptr = std::shared_ptr<ltt_session>;
 
@@ -212,8 +215,8 @@ struct ltt_session {
 	char *base_path;
 };
 
-enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
-		struct ltt_session **out_session);
+enum lttng_error_code
+session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_session);
 void session_lock(struct ltt_session *session);
 void session_unlock(struct ltt_session *session);
 
@@ -232,24 +235,24 @@ void session_unlock_list() noexcept;
 
 void session_destroy(struct ltt_session *session);
 int session_add_destroy_notifier(struct ltt_session *session,
-		ltt_session_destroy_notifier notifier, void *user_data);
+				 ltt_session_destroy_notifier notifier,
+				 void *user_data);
 
 int session_add_clear_notifier(struct ltt_session *session,
-		ltt_session_clear_notifier notifier, void *user_data);
-void session_notify_clear(ltt_session &session);
+			       ltt_session_clear_notifier notifier,
+			       void *user_data);
+void session_notify_clear(ltt_session& session);
 
 bool session_get(struct ltt_session *session);
 void session_put(struct ltt_session *session);
 
-enum consumer_dst_type session_get_consumer_destination_type(
-		const struct ltt_session *session);
-const char *session_get_net_consumer_hostname(
-		const struct ltt_session *session);
-void session_get_net_consumer_ports(
-		const struct ltt_session *session,
-		uint16_t *control_port, uint16_t *data_port);
-struct lttng_trace_archive_location *session_get_trace_archive_location(
-		const struct ltt_session *session);
+enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session);
+const char *session_get_net_consumer_hostname(const struct ltt_session *session);
+void session_get_net_consumer_ports(const struct ltt_session *session,
+				    uint16_t *control_port,
+				    uint16_t *data_port);
+struct lttng_trace_archive_location *
+session_get_trace_archive_location(const struct ltt_session *session);
 
 struct ltt_session *session_find_by_name(const char *name);
 struct ltt_session *session_find_by_id(ltt_session::id_t id);
@@ -259,15 +262,14 @@ void session_list_wait_empty();
 
 bool session_access_ok(struct ltt_session *session, uid_t uid);
 
-int session_reset_rotation_state(ltt_session &session,
-		enum lttng_rotation_state result);
+int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result);
 
 /* Create a new trace chunk object from the session's configuration. */
-struct lttng_trace_chunk *session_create_new_trace_chunk(
-		const struct ltt_session *session,
-		const struct consumer_output *consumer_output_override,
-		const char *session_base_path_override,
-		const char *chunk_name_override);
+struct lttng_trace_chunk *
+session_create_new_trace_chunk(const struct ltt_session *session,
+			       const struct consumer_output *consumer_output_override,
+			       const char *session_base_path_override,
+			       const char *chunk_name_override);
 
 /*
  * Set `new_trace_chunk` as the session's current trace chunk. A reference
@@ -278,17 +280,17 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
  * `current_session_trace_chunk` on success.
  */
 int session_set_trace_chunk(struct ltt_session *session,
-		struct lttng_trace_chunk *new_trace_chunk,
-		struct lttng_trace_chunk **current_session_trace_chunk);
+			    struct lttng_trace_chunk *new_trace_chunk,
+			    struct lttng_trace_chunk **current_session_trace_chunk);
 
 /*
  * Close a chunk on the remote peers of a session. Has no effect on the
  * ltt_session itself.
  */
 int session_close_trace_chunk(struct ltt_session *session,
-		struct lttng_trace_chunk *trace_chunk,
-		enum lttng_trace_chunk_command_type close_command,
-		char *path);
+			      struct lttng_trace_chunk *trace_chunk,
+			      enum lttng_trace_chunk_command_type close_command,
+			      char *path);
 
 /* Open a packet in all channels of a given session. */
 enum lttng_error_code session_open_packets(struct ltt_session *session);

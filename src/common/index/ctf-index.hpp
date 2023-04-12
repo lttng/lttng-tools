@@ -13,9 +13,9 @@
 #include <common/compat/endian.hpp>
 #include <common/macros.hpp>
 
-#include <stdint.h>
 #include <limits.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define CTF_INDEX_MAGIC 0xC1F1DCC1
 #define CTF_INDEX_MAJOR 1
@@ -38,16 +38,16 @@ struct ctf_packet_index_file_hdr {
  * All integer fields are stored in big endian.
  */
 struct ctf_packet_index {
-	uint64_t offset;		/* offset of the packet in the file, in bytes */
-	uint64_t packet_size;		/* packet size, in bits */
-	uint64_t content_size;		/* content size, in bits */
+	uint64_t offset; /* offset of the packet in the file, in bytes */
+	uint64_t packet_size; /* packet size, in bits */
+	uint64_t content_size; /* content size, in bits */
 	uint64_t timestamp_begin;
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
-	uint64_t stream_id;		/* ID of the channel */
+	uint64_t stream_id; /* ID of the channel */
 	/* CTF_INDEX 1.0 limit */
-	uint64_t stream_instance_id;	/* ID of the channel instance */
-	uint64_t packet_seq_num;	/* packet sequence number */
+	uint64_t stream_instance_id; /* ID of the channel instance */
+	uint64_t packet_seq_num; /* packet sequence number */
 } __attribute__((__packed__));
 
 static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
@@ -55,13 +55,11 @@ static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
 	if (major == 1) {
 		switch (minor) {
 		case 0:
-			return offsetof(struct ctf_packet_index, stream_id)
-				+ member_sizeof(struct ctf_packet_index,
-						stream_id);
+			return offsetof(struct ctf_packet_index, stream_id) +
+				member_sizeof(struct ctf_packet_index, stream_id);
 		case 1:
-			return offsetof(struct ctf_packet_index, packet_seq_num)
-				+ member_sizeof(struct ctf_packet_index,
-						packet_seq_num);
+			return offsetof(struct ctf_packet_index, packet_seq_num) +
+				member_sizeof(struct ctf_packet_index, packet_seq_num);
 		default:
 			abort();
 		}
@@ -70,7 +68,7 @@ static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
 }
 
 static inline uint32_t lttng_to_index_major(uint32_t lttng_major,
-		uint32_t lttng_minor __attribute__((unused)))
+					    uint32_t lttng_minor __attribute__((unused)))
 {
 	if (lttng_major == 2) {
 		return 1;
@@ -78,8 +76,7 @@ static inline uint32_t lttng_to_index_major(uint32_t lttng_major,
 	abort();
 }
 
-static inline uint32_t lttng_to_index_minor(uint32_t lttng_major,
-		uint32_t lttng_minor)
+static inline uint32_t lttng_to_index_minor(uint32_t lttng_major, uint32_t lttng_minor)
 {
 	if (lttng_major == 2) {
 		if (lttng_minor < 8) {
@@ -91,16 +88,15 @@ static inline uint32_t lttng_to_index_minor(uint32_t lttng_major,
 	abort();
 }
 
-static inline void ctf_packet_index_file_hdr_init(
-		struct ctf_packet_index_file_hdr *hdr,
-		uint32_t idx_major, uint32_t idx_minor)
+static inline void ctf_packet_index_file_hdr_init(struct ctf_packet_index_file_hdr *hdr,
+						  uint32_t idx_major,
+						  uint32_t idx_minor)
 {
 	memset(hdr, 0, sizeof(*hdr));
 	hdr->magic = htobe32(CTF_INDEX_MAGIC);
 	hdr->index_major = htobe32(idx_major);
 	hdr->index_minor = htobe32(idx_minor);
-	hdr->packet_index_len = htobe32(
-			ctf_packet_index_len(idx_major, idx_minor));
+	hdr->packet_index_len = htobe32(ctf_packet_index_len(idx_major, idx_minor));
 }
 
 #endif /* LTTNG_INDEX_H */

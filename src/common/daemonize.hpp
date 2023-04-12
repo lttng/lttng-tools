@@ -9,8 +9,9 @@
  *
  */
 
-#include <unistd.h>
 #include <common/macros.hpp>
+
+#include <unistd.h>
 
 /*
  * Daemonize this process by forking and making the parent wait for the child
@@ -22,7 +23,6 @@
  *
  * Return 0 on success else -1 on error.
  */
-int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
-		int close_fds);
+int lttng_daemonize(pid_t *child_ppid, int *completion_flag, int close_fds);
 
 #endif /* LTTNG_DAEMONIZE_H */

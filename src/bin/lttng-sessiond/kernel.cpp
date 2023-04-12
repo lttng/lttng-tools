@@ -86,7 +86,7 @@ static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 	return raw_offset;
 }
 #endif
-}
+} /* namespace */
 
 /*
  * Add context on a kernel channel.

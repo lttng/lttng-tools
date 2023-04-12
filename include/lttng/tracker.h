@@ -116,17 +116,17 @@ struct lttng_process_attr_values;
  * The tracker's ownership is transfered to the caller. Use
  * lttng_process_attr_tracker_handle_destroy() to dispose of it.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_session_get_tracker_handle(
-		const char *session_name,
-		enum lttng_domain_type domain,
-		enum lttng_process_attr process_attr,
-		struct lttng_process_attr_tracker_handle **out_tracker_handle);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_get_tracker_handle(const char *session_name,
+				 enum lttng_domain_type domain,
+				 enum lttng_process_attr process_attr,
+				 struct lttng_process_attr_tracker_handle **out_tracker_handle);
 
 /*
  * Destroy a process attribute tracker handle.
  */
-LTTNG_EXPORT extern void lttng_process_attr_tracker_handle_destroy(
-		struct lttng_process_attr_tracker_handle *tracker_handle);
+LTTNG_EXPORT extern void
+lttng_process_attr_tracker_handle_destroy(struct lttng_process_attr_tracker_handle *tracker_handle);
 
 /*
  * Get the tracking policy of a process attribute tracker.
@@ -137,8 +137,8 @@ LTTNG_EXPORT extern void lttng_process_attr_tracker_handle_destroy(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_get_tracking_policy(
-		const struct lttng_process_attr_tracker_handle *tracker_handle,
-		enum lttng_tracking_policy *policy);
+	const struct lttng_process_attr_tracker_handle *tracker_handle,
+	enum lttng_tracking_policy *policy);
 
 /*
  * Set the tracking policy of a process attribute tracker.
@@ -150,8 +150,8 @@ lttng_process_attr_tracker_handle_get_tracking_policy(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_set_tracking_policy(
-		const struct lttng_process_attr_tracker_handle *tracker_handle,
-		enum lttng_tracking_policy policy);
+	const struct lttng_process_attr_tracker_handle *tracker_handle,
+	enum lttng_tracking_policy policy);
 
 /*
  * Add a numerical PID to the process ID process attribute tracker inclusion
@@ -165,9 +165,7 @@ lttng_process_attr_tracker_handle_set_tracking_policy(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_process_id_tracker_handle_add_pid(
-		const struct lttng_process_attr_tracker_handle
-				*process_id_tracker,
-		pid_t pid);
+	const struct lttng_process_attr_tracker_handle *process_id_tracker, pid_t pid);
 
 /*
  * Remove a numerical PID from the process ID process attribute tracker include
@@ -180,9 +178,7 @@ lttng_process_attr_process_id_tracker_handle_add_pid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_process_id_tracker_handle_remove_pid(
-		const struct lttng_process_attr_tracker_handle
-				*process_id_tracker,
-		pid_t pid);
+	const struct lttng_process_attr_tracker_handle *process_id_tracker, pid_t pid);
 
 /*
  * Add a numerical PID to the virtual process ID process attribute tracker
@@ -196,9 +192,7 @@ lttng_process_attr_process_id_tracker_handle_remove_pid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
-		const struct lttng_process_attr_tracker_handle
-				*process_id_tracker,
-		pid_t vpid);
+	const struct lttng_process_attr_tracker_handle *process_id_tracker, pid_t vpid);
 
 /*
  * Remove a numerical PID from the virtual process ID process attribute tracker
@@ -211,9 +205,7 @@ lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_process_id_tracker_handle_remove_pid(
-		const struct lttng_process_attr_tracker_handle
-				*process_id_tracker,
-		pid_t vpid);
+	const struct lttng_process_attr_tracker_handle *process_id_tracker, pid_t vpid);
 
 /*
  * Add a numerical UID to the user ID process attribute tracker inclusion set.
@@ -226,8 +218,7 @@ lttng_process_attr_virtual_process_id_tracker_handle_remove_pid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_add_uid(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		uid_t uid);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, uid_t uid);
 
 /*
  * Remove a numerical UID from the user ID process attribute tracker include
@@ -240,8 +231,7 @@ lttng_process_attr_user_id_tracker_handle_add_uid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_remove_uid(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		uid_t uid);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, uid_t uid);
 
 /*
  * Add a user name to the user ID process attribute tracker inclusion set.
@@ -257,8 +247,7 @@ lttng_process_attr_user_id_tracker_handle_remove_uid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_add_user_name(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		const char *user_name);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, const char *user_name);
 
 /*
  * Remove a user name from the user ID process attribute tracker include
@@ -274,8 +263,7 @@ lttng_process_attr_user_id_tracker_handle_add_user_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_user_id_tracker_handle_remove_user_name(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		const char *user_name);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, const char *user_name);
 
 /*
  * Add a numerical UID to the virtual user ID process attribute tracker
@@ -289,8 +277,7 @@ lttng_process_attr_user_id_tracker_handle_remove_user_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_add_uid(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		uid_t vuid);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, uid_t vuid);
 
 /*
  * Remove a numerical UID from the virtual user ID process attribute tracker
@@ -303,8 +290,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_add_uid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_remove_uid(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		uid_t vuid);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker, uid_t vuid);
 
 /*
  * Add a user name to the virtual user ID process attribute tracker include
@@ -321,8 +307,8 @@ lttng_process_attr_virtual_user_id_tracker_handle_remove_uid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_add_user_name(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		const char *virtual_user_name);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker,
+	const char *virtual_user_name);
 
 /*
  * Remove a user name from the virtual user ID process attribute tracker
@@ -338,8 +324,8 @@ lttng_process_attr_virtual_user_id_tracker_handle_add_user_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_user_id_tracker_handle_remove_user_name(
-		const struct lttng_process_attr_tracker_handle *user_id_tracker,
-		const char *virtual_user_name);
+	const struct lttng_process_attr_tracker_handle *user_id_tracker,
+	const char *virtual_user_name);
 
 /*
  * Add a numerical GID to the group ID process attribute tracker inclusion set.
@@ -352,8 +338,7 @@ lttng_process_attr_virtual_user_id_tracker_handle_remove_user_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_add_gid(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		gid_t gid);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, gid_t gid);
 
 /*
  * Remove a numerical GID from the group ID process attribute tracker include
@@ -366,8 +351,7 @@ lttng_process_attr_group_id_tracker_handle_add_gid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_remove_gid(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		gid_t gid);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, gid_t gid);
 
 /*
  * Add a group name to the group ID process attribute tracker inclusion set.
@@ -383,8 +367,7 @@ lttng_process_attr_group_id_tracker_handle_remove_gid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_add_group_name(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		const char *group_name);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, const char *group_name);
 
 /*
  * Remove a group name from the group ID process attribute tracker include
@@ -400,8 +383,7 @@ lttng_process_attr_group_id_tracker_handle_add_group_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_group_id_tracker_handle_remove_group_name(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		const char *group_name);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, const char *group_name);
 
 /*
  * Add a numerical GID to the virtual group ID process attribute tracker
@@ -415,8 +397,7 @@ lttng_process_attr_group_id_tracker_handle_remove_group_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_add_gid(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		gid_t vgid);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, gid_t vgid);
 
 /*
  * Remove a numerical GID from the virtual group ID process attribute tracker
@@ -429,8 +410,7 @@ lttng_process_attr_virtual_group_id_tracker_handle_add_gid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_remove_gid(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		gid_t vgid);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker, gid_t vgid);
 
 /*
  * Add a group name to the virtual group ID process attribute tracker include
@@ -447,8 +427,8 @@ lttng_process_attr_virtual_group_id_tracker_handle_remove_gid(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_add_group_name(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		const char *virtual_group_name);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker,
+	const char *virtual_group_name);
 
 /*
  * Remove a group name from the virtual group ID process attribute tracker
@@ -464,8 +444,8 @@ lttng_process_attr_virtual_group_id_tracker_handle_add_group_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_virtual_group_id_tracker_handle_remove_group_name(
-		const struct lttng_process_attr_tracker_handle *group_id_tracker,
-		const char *virtual_group_name);
+	const struct lttng_process_attr_tracker_handle *group_id_tracker,
+	const char *virtual_group_name);
 
 /*
  * Get the process attribute values that are part of a tracker's inclusion set.
@@ -482,8 +462,8 @@ lttng_process_attr_virtual_group_id_tracker_handle_remove_group_name(
  */
 LTTNG_EXPORT extern enum lttng_process_attr_tracker_handle_status
 lttng_process_attr_tracker_handle_get_inclusion_set(
-		struct lttng_process_attr_tracker_handle *tracker_handle,
-		const struct lttng_process_attr_values **values);
+	struct lttng_process_attr_tracker_handle *tracker_handle,
+	const struct lttng_process_attr_values **values);
 
 /*
  * Get the count of values within a set of process attribute values.
@@ -492,9 +472,8 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
  * LTTNG_PROCESS_ATTR_VALUES_STATUS_INVALID if an invalid argument is provided.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_count(
-		const struct lttng_process_attr_values *values,
-		unsigned int *count);
+lttng_process_attr_values_get_count(const struct lttng_process_attr_values *values,
+				    unsigned int *count);
 
 /*
  * Get the type of a process attribute value at a given index.
@@ -503,9 +482,8 @@ lttng_process_attr_values_get_count(
  * LTTNG_PROCESS_ATTR_VALUE_TYPE_INVALID if an invalid argument is provided.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_value_type
-lttng_process_attr_values_get_type_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index);
+lttng_process_attr_values_get_type_at_index(const struct lttng_process_attr_values *values,
+					    unsigned int index);
 
 /*
  * Get a process ID process attribute value.
@@ -515,10 +493,9 @@ lttng_process_attr_values_get_type_at_index(
  * is not a process ID.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_pid_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index,
-		pid_t *pid);
+lttng_process_attr_values_get_pid_at_index(const struct lttng_process_attr_values *values,
+					   unsigned int index,
+					   pid_t *pid);
 
 /*
  * Get a user ID process attribute value.
@@ -528,10 +505,9 @@ lttng_process_attr_values_get_pid_at_index(
  * is not a user ID.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_uid_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index,
-		uid_t *uid);
+lttng_process_attr_values_get_uid_at_index(const struct lttng_process_attr_values *values,
+					   unsigned int index,
+					   uid_t *uid);
 
 /*
  * Get a user name process attribute value.
@@ -541,10 +517,9 @@ lttng_process_attr_values_get_uid_at_index(
  * is not a user name.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_user_name_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index,
-		const char **user_name);
+lttng_process_attr_values_get_user_name_at_index(const struct lttng_process_attr_values *values,
+						 unsigned int index,
+						 const char **user_name);
 
 /*
  * Get a group ID process attribute value.
@@ -554,10 +529,9 @@ lttng_process_attr_values_get_user_name_at_index(
  * is not a group ID.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_gid_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index,
-		gid_t *gid);
+lttng_process_attr_values_get_gid_at_index(const struct lttng_process_attr_values *values,
+					   unsigned int index,
+					   gid_t *gid);
 
 /*
  * Get a group name process attribute value.
@@ -567,10 +541,9 @@ lttng_process_attr_values_get_gid_at_index(
  * is not a group name.
  */
 LTTNG_EXPORT extern enum lttng_process_attr_values_status
-lttng_process_attr_values_get_group_name_at_index(
-		const struct lttng_process_attr_values *values,
-		unsigned int index,
-		const char **group_name);
+lttng_process_attr_values_get_group_name_at_index(const struct lttng_process_attr_values *values,
+						  unsigned int index,
+						  const char **group_name);
 
 /* The following entry points are deprecated. */
 
@@ -589,10 +562,8 @@ lttng_process_attr_values_get_group_name_at_index(
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_list_tracker_pids(struct lttng_handle *handle,
-		int *enabled,
-		int32_t **pids,
-		size_t *nr_pids);
+LTTNG_EXPORT extern int
+lttng_list_tracker_pids(struct lttng_handle *handle, int *enabled, int32_t **pids, size_t *nr_pids);
 
 /*
  * Deprecated: see `lttng_process_attr_process_id_tracker_handle_add_pid`.

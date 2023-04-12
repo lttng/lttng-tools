@@ -8,12 +8,14 @@
 #ifndef LTTNG_CONDITION_BUFFER_USAGE_INTERNAL_H
 #define LTTNG_CONDITION_BUFFER_USAGE_INTERNAL_H
 
+#include "common/buffer-view.hpp"
+
+#include <common/macros.hpp>
+
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.hpp>
 #include <lttng/condition/evaluation-internal.hpp>
 #include <lttng/domain.h>
-#include "common/buffer-view.hpp"
-#include <common/macros.hpp>
 
 struct lttng_condition_buffer_usage {
 	struct lttng_condition parent;
@@ -57,24 +59,21 @@ struct lttng_evaluation_buffer_usage_comm {
 	uint64_t buffer_capacity;
 } LTTNG_PACKED;
 
-struct lttng_evaluation *lttng_evaluation_buffer_usage_create(
-		enum lttng_condition_type type, uint64_t use,
-		uint64_t capacity);
+struct lttng_evaluation *lttng_evaluation_buffer_usage_create(enum lttng_condition_type type,
+							      uint64_t use,
+							      uint64_t capacity);
 
-ssize_t lttng_condition_buffer_usage_low_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
+ssize_t lttng_condition_buffer_usage_low_create_from_payload(struct lttng_payload_view *view,
+							     struct lttng_condition **condition);
 
-ssize_t lttng_condition_buffer_usage_high_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_condition **condition);
+ssize_t lttng_condition_buffer_usage_high_create_from_payload(struct lttng_payload_view *view,
+							      struct lttng_condition **condition);
 
-ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_evaluation **evaluation);
+ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(struct lttng_payload_view *view,
+							      struct lttng_evaluation **evaluation);
 
-ssize_t lttng_evaluation_buffer_usage_high_create_from_payload(
-		struct lttng_payload_view *view,
-		struct lttng_evaluation **evaluation);
+ssize_t
+lttng_evaluation_buffer_usage_high_create_from_payload(struct lttng_payload_view *view,
+						       struct lttng_evaluation **evaluation);
 
 #endif /* LTTNG_CONDITION_BUFFER_USAGE_INTERNAL_H */

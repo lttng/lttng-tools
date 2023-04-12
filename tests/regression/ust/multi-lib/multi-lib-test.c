@@ -6,10 +6,10 @@
  */
 
 #include <dlfcn.h>
+#include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <popt.h>
 
 #if HAS_CALLSITES
 #include "callsites.h"
@@ -23,19 +23,20 @@ void exec_callsite(void)
 #endif
 }
 
-static
-void print_list(void)
+static void print_list(void)
 {
 	fprintf(stderr, "Test list (-t X):\n");
-	fprintf(stderr, "\t0: dlopen() all libraries pass in arguments and execute "
-			"the callsite.\n");
-	fprintf(stderr, "\t1: simulate the upgrade of a probe provider using dlopen() and dlclose(). \n");
-	fprintf(stderr, "\t2: simulate the upgrade of a library containing the callsites using dlopen() and dlclose(). \n");
+	fprintf(stderr,
+		"\t0: dlopen() all libraries pass in arguments and execute "
+		"the callsite.\n");
+	fprintf(stderr,
+		"\t1: simulate the upgrade of a probe provider using dlopen() and dlclose(). \n");
+	fprintf(stderr,
+		"\t2: simulate the upgrade of a library containing the callsites using dlopen() and dlclose(). \n");
 }
 
 #if HAS_CALLSITES
-static
-int dl_open_all(int nb_libraries, char **libraries)
+static int dl_open_all(int nb_libraries, char **libraries)
 {
 	int i, ret = 0;
 	void **handles;
@@ -65,8 +66,7 @@ error:
  * Takes 2 paths to libraries, dlopen() the first, trace, dlopen() the second,
  * and dlclose the first to simulate the upgrade of a library.
  */
-static
-int upgrade_lib(int nb_libraries, char **libraries)
+static int upgrade_lib(int nb_libraries, char **libraries)
 {
 	int i, ret = 0;
 	void *handles[2];
@@ -104,8 +104,7 @@ error:
  * Simulate the upgrade of a library containing a callsite.
  * Receives two libraries containing callsites for the same tracepoint.
  */
-static
-int upgrade_callsite(int nb_libraries, char **libraries)
+static int upgrade_callsite(int nb_libraries, char **libraries)
 {
 	int ret = 0;
 	void *handles[2];
@@ -175,10 +174,9 @@ int main(int argc, const char **argv)
 	char **libraries = NULL;
 	poptContext optCon;
 	struct poptOption optionsTable[] = {
-			{ "test", 't', POPT_ARG_INT, &test, 0, "Test to run", NULL },
-			{ "list", 'l', 0, 0, 'l', "List of tests (-t X)", NULL },
-			POPT_AUTOHELP
-			{ NULL, 0, 0, NULL, 0, NULL, NULL }
+		{ "test", 't', POPT_ARG_INT, &test, 0, "Test to run", NULL },
+		{ "list", 'l', 0, 0, 'l', "List of tests (-t X)", NULL },
+		POPT_AUTOHELP{ NULL, 0, 0, NULL, 0, NULL, NULL }
 	};
 
 	optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
@@ -189,7 +187,7 @@ int main(int argc, const char **argv)
 	}
 
 	while ((c = poptGetNextOpt(optCon)) >= 0) {
-		switch(c) {
+		switch (c) {
 		case 'l':
 			print_list();
 			goto error;
@@ -212,29 +210,35 @@ int main(int argc, const char **argv)
 		libraries[nb_libraries - 1] = (char *) poptGetArg(optCon);
 	}
 
-	switch(test) {
+	switch (test) {
 	case 0:
 #if HAS_CALLSITES
 		ret = dl_open_all(nb_libraries, libraries);
 #else
-		fprintf(stderr, "Test not implemented for configuration "
-				"(HAS_CALLSITES=%d)\n", HAS_CALLSITES == 1);
+		fprintf(stderr,
+			"Test not implemented for configuration "
+			"(HAS_CALLSITES=%d)\n",
+			HAS_CALLSITES == 1);
 #endif
 		break;
 	case 1:
 #if HAS_CALLSITES
 		ret = upgrade_lib(nb_libraries, libraries);
 #else
-		fprintf(stderr, "Test not implemented for configuration "
-				"(HAS_CALLSITES=%d)\n", HAS_CALLSITES == 1);
+		fprintf(stderr,
+			"Test not implemented for configuration "
+			"(HAS_CALLSITES=%d)\n",
+			HAS_CALLSITES == 1);
 #endif
 		break;
 	case 2:
 #if !HAS_CALLSITES
 		ret = upgrade_callsite(nb_libraries, libraries);
 #else
-		fprintf(stderr, "Test not implemented for configuration "
-				"(HAS_CALLSITES=%d)\n", HAS_CALLSITES == 1);
+		fprintf(stderr,
+			"Test not implemented for configuration "
+			"(HAS_CALLSITES=%d)\n",
+			HAS_CALLSITES == 1);
 #endif
 		break;
 	default:

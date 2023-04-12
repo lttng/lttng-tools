@@ -8,38 +8,38 @@
 #ifndef LTTNG_TIME_H
 #define LTTNG_TIME_H
 
-#include <time.h>
+#include <common/compat/time.hpp>
+#include <common/macros.hpp>
+
 #include <ctime>
 #include <stdbool.h>
 #include <string>
+#include <time.h>
 
-#include <common/macros.hpp>
-#include <common/compat/time.hpp>
+#define MSEC_PER_SEC  1000ULL
+#define NSEC_PER_SEC  1000000000ULL
+#define NSEC_PER_MSEC 1000000ULL
+#define NSEC_PER_USEC 1000ULL
+#define USEC_PER_SEC  1000000ULL
+#define USEC_PER_MSEC 1000ULL
 
-#define MSEC_PER_SEC    1000ULL
-#define NSEC_PER_SEC    1000000000ULL
-#define NSEC_PER_MSEC   1000000ULL
-#define NSEC_PER_USEC   1000ULL
-#define USEC_PER_SEC    1000000ULL
-#define USEC_PER_MSEC   1000ULL
-
-#define SEC_PER_MINUTE  60ULL
+#define SEC_PER_MINUTE	60ULL
 #define MINUTE_PER_HOUR 60ULL
 
 #define USEC_PER_MINUTE (USEC_PER_SEC * SEC_PER_MINUTE)
-#define USEC_PER_HOURS  (USEC_PER_MINUTE * MINUTE_PER_HOUR)
+#define USEC_PER_HOURS	(USEC_PER_MINUTE * MINUTE_PER_HOUR)
 
-#define ISO8601_STR_LEN sizeof("YYYYmmddTHHMMSS+HHMM")
+#define ISO8601_STR_LEN	 sizeof("YYYYmmddTHHMMSS+HHMM")
 #define DATETIME_STR_LEN sizeof("YYYYmmdd-HHMMSS")
 
 bool locale_supports_utf8();
 
-#define NSEC_UNIT       "ns"
-#define USEC_UNIT       (locale_supports_utf8() ? "µs" : "us")
-#define MSEC_UNIT       "ms"
-#define SEC_UNIT        "s"
-#define MIN_UNIT        "m"
-#define HR_UNIT         "h"
+#define NSEC_UNIT "ns"
+#define USEC_UNIT (locale_supports_utf8() ? "µs" : "us")
+#define MSEC_UNIT "ms"
+#define SEC_UNIT  "s"
+#define MIN_UNIT  "m"
+#define HR_UNIT	  "h"
 
 /*
  * timespec_to_ms: Convert timespec to milliseconds.

@@ -8,8 +8,8 @@
 #ifndef LTTNG_DOMAIN_INTERNAL_H
 #define LTTNG_DOMAIN_INTERNAL_H
 
-#include "lttng/domain.h"
 #include "common/macros.hpp"
+#include "lttng/domain.h"
 
 const char *lttng_domain_type_str(enum lttng_domain_type domain_type);
 

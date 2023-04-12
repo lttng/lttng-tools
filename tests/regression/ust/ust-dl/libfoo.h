@@ -12,4 +12,4 @@
 
 LTTNG_EXPORT int foo(void);
 
-#endif  /* _LIBFOO_H */
+#endif /* _LIBFOO_H */

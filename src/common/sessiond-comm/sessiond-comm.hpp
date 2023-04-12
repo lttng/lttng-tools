@@ -14,29 +14,30 @@
 #ifndef _LTTNG_SESSIOND_COMM_H
 #define _LTTNG_SESSIOND_COMM_H
 
-#include <limits.h>
-#include <lttng/lttng.h>
-#include <lttng/snapshot-internal.hpp>
-#include <lttng/save-internal.hpp>
-#include <lttng/channel-internal.hpp>
-#include <lttng/trigger/trigger-internal.hpp>
-#include <lttng/rotate-internal.hpp>
+#include "inet.hpp"
+#include "inet6.hpp"
+
 #include <common/compat/socket.hpp>
 #include <common/compiler.hpp>
-#include <common/uri.hpp>
 #include <common/defaults.hpp>
-#include <common/uuid.hpp>
 #include <common/macros.hpp>
 #include <common/optional.hpp>
+#include <common/unix.hpp>
+#include <common/uri.hpp>
+#include <common/uuid.hpp>
+
+#include <lttng/channel-internal.hpp>
+#include <lttng/lttng.h>
+#include <lttng/rotate-internal.hpp>
+#include <lttng/save-internal.hpp>
+#include <lttng/snapshot-internal.hpp>
+#include <lttng/trigger/trigger-internal.hpp>
 
 #include <arpa/inet.h>
+#include <limits.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/un.h>
-
-#include "inet.hpp"
-#include "inet6.hpp"
-#include <common/unix.hpp>
 
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
@@ -44,9 +45,9 @@
 /* Maximum number of FDs that can be sent over a Unix socket */
 #if defined(__linux__)
 /* Based on the kernel's SCM_MAX_FD which is 253 since 2.6.38 (255 before) */
-#define LTTCOMM_MAX_SEND_FDS           253
+#define LTTCOMM_MAX_SEND_FDS 253
 #else
-#define LTTCOMM_MAX_SEND_FDS           16
+#define LTTCOMM_MAX_SEND_FDS 16
 #endif
 
 enum lttcomm_sessiond_command {
@@ -97,14 +98,12 @@ enum lttcomm_sessiond_command {
 	LTTCOMM_SESSIOND_COMMAND_MAX,
 };
 
-static inline
-bool lttcomm_sessiond_command_is_valid(enum lttcomm_sessiond_command cmd)
+static inline bool lttcomm_sessiond_command_is_valid(enum lttcomm_sessiond_command cmd)
 {
 	return cmd > LTTCOMM_SESSIOND_COMMAND_MIN && cmd < LTTCOMM_SESSIOND_COMMAND_MAX;
 }
 
-static inline
-const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_command cmd)
+static inline const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_command cmd)
 {
 	switch (cmd) {
 	case LTTCOMM_SESSIOND_COMMAND_ADD_CONTEXT:
@@ -199,42 +198,41 @@ const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_command cmd)
 }
 
 enum lttcomm_relayd_command {
-	RELAYD_ADD_STREAM                   = 1,
-	RELAYD_CREATE_SESSION               = 2,
-	RELAYD_START_DATA                   = 3,
-	RELAYD_UPDATE_SYNC_INFO             = 4,
-	RELAYD_VERSION                      = 5,
-	RELAYD_SEND_METADATA                = 6,
-	RELAYD_CLOSE_STREAM                 = 7,
-	RELAYD_DATA_PENDING                 = 8,
-	RELAYD_QUIESCENT_CONTROL            = 9,
-	RELAYD_BEGIN_DATA_PENDING           = 10,
-	RELAYD_END_DATA_PENDING             = 11,
-	RELAYD_ADD_INDEX                    = 12,
-	RELAYD_SEND_INDEX                   = 13,
-	RELAYD_CLOSE_INDEX                  = 14,
+	RELAYD_ADD_STREAM = 1,
+	RELAYD_CREATE_SESSION = 2,
+	RELAYD_START_DATA = 3,
+	RELAYD_UPDATE_SYNC_INFO = 4,
+	RELAYD_VERSION = 5,
+	RELAYD_SEND_METADATA = 6,
+	RELAYD_CLOSE_STREAM = 7,
+	RELAYD_DATA_PENDING = 8,
+	RELAYD_QUIESCENT_CONTROL = 9,
+	RELAYD_BEGIN_DATA_PENDING = 10,
+	RELAYD_END_DATA_PENDING = 11,
+	RELAYD_ADD_INDEX = 12,
+	RELAYD_SEND_INDEX = 13,
+	RELAYD_CLOSE_INDEX = 14,
 	/* Live-reading commands (2.4+). */
-	RELAYD_LIST_SESSIONS                = 15,
+	RELAYD_LIST_SESSIONS = 15,
 	/* All streams of the channel have been sent to the relayd (2.4+). */
-	RELAYD_STREAMS_SENT                 = 16,
+	RELAYD_STREAMS_SENT = 16,
 	/* Ask the relay to reset the metadata trace file (2.8+) */
-	RELAYD_RESET_METADATA               = 17,
+	RELAYD_RESET_METADATA = 17,
 	/* Ask the relay to rotate a set of stream files (2.11+) */
-	RELAYD_ROTATE_STREAMS                = 18,
+	RELAYD_ROTATE_STREAMS = 18,
 	/* Ask the relay to create a trace chunk (2.11+) */
-	RELAYD_CREATE_TRACE_CHUNK           = 19,
+	RELAYD_CREATE_TRACE_CHUNK = 19,
 	/* Ask the relay to close a trace chunk (2.11+) */
-	RELAYD_CLOSE_TRACE_CHUNK            = 20,
+	RELAYD_CLOSE_TRACE_CHUNK = 20,
 	/* Ask the relay whether a trace chunk exists (2.11+) */
-	RELAYD_TRACE_CHUNK_EXISTS           = 21,
+	RELAYD_TRACE_CHUNK_EXISTS = 21,
 	/* Get the current configuration of a relayd peer (2.12+) */
-	RELAYD_GET_CONFIGURATION            = 22,
+	RELAYD_GET_CONFIGURATION = 22,
 
 	/* Feature branch specific commands start at 10000. */
 };
 
-static inline
-const char *lttcomm_relayd_command_str(lttcomm_relayd_command cmd)
+static inline const char *lttcomm_relayd_command_str(lttcomm_relayd_command cmd)
 {
 	switch (cmd) {
 	case RELAYD_ADD_STREAM:
@@ -290,7 +288,7 @@ const char *lttcomm_relayd_command_str(lttcomm_relayd_command cmd)
  * lttcomm error code.
  */
 enum lttcomm_return_code {
-	LTTCOMM_CONSUMERD_SUCCESS            = 0,   /* Everything went fine. */
+	LTTCOMM_CONSUMERD_SUCCESS = 0, /* Everything went fine. */
 	/*
 	 * Some code paths use -1 to express an error, others
 	 * negate this consumer return code. Starting codes at
@@ -298,39 +296,39 @@ enum lttcomm_return_code {
 	 * and legitimate status codes.
 	 */
 	LTTCOMM_CONSUMERD_COMMAND_SOCK_READY = 100, /* Command socket ready */
-	LTTCOMM_CONSUMERD_SUCCESS_RECV_FD,          /* Success on receiving fds */
-	LTTCOMM_CONSUMERD_ERROR_RECV_FD,            /* Error on receiving fds */
-	LTTCOMM_CONSUMERD_ERROR_RECV_CMD,           /* Error on receiving command */
-	LTTCOMM_CONSUMERD_POLL_ERROR,               /* Error in polling thread */
-	LTTCOMM_CONSUMERD_POLL_NVAL,                /* Poll on closed fd */
-	LTTCOMM_CONSUMERD_POLL_HUP,                 /* All fds have hungup */
-	LTTCOMM_CONSUMERD_EXIT_SUCCESS,             /* Consumerd exiting normally */
-	LTTCOMM_CONSUMERD_EXIT_FAILURE,             /* Consumerd exiting on error */
-	LTTCOMM_CONSUMERD_OUTFD_ERROR,              /* Error opening the tracefile */
-	LTTCOMM_CONSUMERD_SPLICE_EBADF,             /* EBADF from splice(2) */
-	LTTCOMM_CONSUMERD_SPLICE_EINVAL,            /* EINVAL from splice(2) */
-	LTTCOMM_CONSUMERD_SPLICE_ENOMEM,            /* ENOMEM from splice(2) */
-	LTTCOMM_CONSUMERD_SPLICE_ESPIPE,            /* ESPIPE from splice(2) */
-	LTTCOMM_CONSUMERD_ENOMEM,                   /* Consumer is out of memory */
-	LTTCOMM_CONSUMERD_ERROR_METADATA,           /* Error with metadata. */
-	LTTCOMM_CONSUMERD_FATAL,                    /* Fatal error. */
-	LTTCOMM_CONSUMERD_RELAYD_FAIL,              /* Error on remote relayd */
-	LTTCOMM_CONSUMERD_CHANNEL_FAIL,             /* Channel creation failed. */
-	LTTCOMM_CONSUMERD_CHAN_NOT_FOUND,           /* Channel not found. */
-	LTTCOMM_CONSUMERD_ALREADY_SET,              /* Resource already set. */
-	LTTCOMM_CONSUMERD_ROTATION_FAIL,            /* Rotation has failed. */
-	LTTCOMM_CONSUMERD_SNAPSHOT_FAILED,          /* snapshot has failed. */
-	LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED,/* Trace chunk creation failed. */
+	LTTCOMM_CONSUMERD_SUCCESS_RECV_FD, /* Success on receiving fds */
+	LTTCOMM_CONSUMERD_ERROR_RECV_FD, /* Error on receiving fds */
+	LTTCOMM_CONSUMERD_ERROR_RECV_CMD, /* Error on receiving command */
+	LTTCOMM_CONSUMERD_POLL_ERROR, /* Error in polling thread */
+	LTTCOMM_CONSUMERD_POLL_NVAL, /* Poll on closed fd */
+	LTTCOMM_CONSUMERD_POLL_HUP, /* All fds have hungup */
+	LTTCOMM_CONSUMERD_EXIT_SUCCESS, /* Consumerd exiting normally */
+	LTTCOMM_CONSUMERD_EXIT_FAILURE, /* Consumerd exiting on error */
+	LTTCOMM_CONSUMERD_OUTFD_ERROR, /* Error opening the tracefile */
+	LTTCOMM_CONSUMERD_SPLICE_EBADF, /* EBADF from splice(2) */
+	LTTCOMM_CONSUMERD_SPLICE_EINVAL, /* EINVAL from splice(2) */
+	LTTCOMM_CONSUMERD_SPLICE_ENOMEM, /* ENOMEM from splice(2) */
+	LTTCOMM_CONSUMERD_SPLICE_ESPIPE, /* ESPIPE from splice(2) */
+	LTTCOMM_CONSUMERD_ENOMEM, /* Consumer is out of memory */
+	LTTCOMM_CONSUMERD_ERROR_METADATA, /* Error with metadata. */
+	LTTCOMM_CONSUMERD_FATAL, /* Fatal error. */
+	LTTCOMM_CONSUMERD_RELAYD_FAIL, /* Error on remote relayd */
+	LTTCOMM_CONSUMERD_CHANNEL_FAIL, /* Channel creation failed. */
+	LTTCOMM_CONSUMERD_CHAN_NOT_FOUND, /* Channel not found. */
+	LTTCOMM_CONSUMERD_ALREADY_SET, /* Resource already set. */
+	LTTCOMM_CONSUMERD_ROTATION_FAIL, /* Rotation has failed. */
+	LTTCOMM_CONSUMERD_SNAPSHOT_FAILED, /* snapshot has failed. */
+	LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED, /* Trace chunk creation failed. */
 	LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED, /* Trace chunk close failed. */
-	LTTCOMM_CONSUMERD_INVALID_PARAMETERS,       /* Invalid parameters. */
+	LTTCOMM_CONSUMERD_INVALID_PARAMETERS, /* Invalid parameters. */
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL, /* Trace chunk exists on consumer daemon. */
-	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE,/* Trace chunk exists on relay daemon. */
-	LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK,      /* Unknown trace chunk. */
-	LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED,  /* Relayd does not accept clear command. */
-	LTTCOMM_CONSUMERD_UNKNOWN_ERROR,            /* Unknown error. */
+	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE, /* Trace chunk exists on relay daemon. */
+	LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK, /* Unknown trace chunk. */
+	LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED, /* Relayd does not accept clear command. */
+	LTTCOMM_CONSUMERD_UNKNOWN_ERROR, /* Unknown error. */
 
 	/* MUST be last element */
-	LTTCOMM_NR,						/* Last element */
+	LTTCOMM_NR, /* Last element */
 };
 
 /* lttng socket protocol. */
@@ -343,8 +341,8 @@ enum lttcomm_sock_proto {
  * Index in the net_families array below. Please keep in sync!
  */
 enum lttcomm_sock_domain {
-	LTTCOMM_INET      = 0,
-	LTTCOMM_INET6     = 1,
+	LTTCOMM_INET = 0,
+	LTTCOMM_INET6 = 1,
 };
 
 enum lttcomm_metadata_command {
@@ -393,19 +391,17 @@ struct lttcomm_relayd_sock {
 
 struct lttcomm_net_family {
 	int family;
-	int (*create) (struct lttcomm_sock *sock, int type, int proto);
+	int (*create)(struct lttcomm_sock *sock, int type, int proto);
 };
 
 struct lttcomm_proto_ops {
-	int (*bind) (struct lttcomm_sock *sock);
-	int (*close) (struct lttcomm_sock *sock);
-	int (*connect) (struct lttcomm_sock *sock);
-	struct lttcomm_sock *(*accept) (struct lttcomm_sock *sock);
-	int (*listen) (struct lttcomm_sock *sock, int backlog);
-	ssize_t (*recvmsg) (struct lttcomm_sock *sock, void *buf, size_t len,
-			int flags);
-	ssize_t (*sendmsg) (struct lttcomm_sock *sock, const void *buf,
-			size_t len, int flags);
+	int (*bind)(struct lttcomm_sock *sock);
+	int (*close)(struct lttcomm_sock *sock);
+	int (*connect)(struct lttcomm_sock *sock);
+	struct lttcomm_sock *(*accept)(struct lttcomm_sock *sock);
+	int (*listen)(struct lttcomm_sock *sock, int backlog);
+	ssize_t (*recvmsg)(struct lttcomm_sock *sock, void *buf, size_t len, int flags);
+	ssize_t (*sendmsg)(struct lttcomm_sock *sock, const void *buf, size_t len, int flags);
 };
 
 struct process_attr_integral_value_comm {
@@ -419,7 +415,7 @@ struct process_attr_integral_value_comm {
  * Data structure received from lttng client to session daemon.
  */
 struct lttcomm_session_msg {
-	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
+	uint32_t cmd_type; /* enum lttcomm_sessiond_command */
 	struct lttng_session session;
 	struct lttng_domain domain;
 	union {
@@ -464,7 +460,7 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED snapshot_record;
 		struct {
 			uint32_t nb_uri;
-			unsigned int timer_interval;	/* usec */
+			unsigned int timer_interval; /* usec */
 		} LTTNG_PACKED session_live;
 		struct {
 			struct lttng_save_session_attr attr;
@@ -538,17 +534,17 @@ struct lttcomm_session_msg {
 	uint32_t fd_count;
 } LTTNG_PACKED;
 
-#define LTTNG_FILTER_MAX_LEN	65536
-#define LTTNG_SESSION_DESCRIPTOR_MAX_LEN	65536
+#define LTTNG_FILTER_MAX_LEN		 65536
+#define LTTNG_SESSION_DESCRIPTOR_MAX_LEN 65536
 
 /*
  * Filter bytecode data. The reloc table is located at the end of the
  * bytecode. It is made of tuples: (uint16_t, var. len. string). It
  * starts at reloc_table_offset.
  */
-#define LTTNG_FILTER_PADDING	32
+#define LTTNG_FILTER_PADDING 32
 struct lttng_bytecode {
-	uint32_t len;	/* len of data */
+	uint32_t len; /* len of data */
 	uint32_t reloc_table_offset;
 	uint64_t seqnum;
 	char padding[LTTNG_FILTER_PADDING];
@@ -560,15 +556,14 @@ struct lttng_bytecode {
  * by zero or more names, where the actual number of names is given by
  * the 'count' item of the structure.
  */
-#define LTTNG_EVENT_EXCLUSION_PADDING	32
+#define LTTNG_EVENT_EXCLUSION_PADDING 32
 struct lttng_event_exclusion {
 	uint32_t count;
 	char padding[LTTNG_EVENT_EXCLUSION_PADDING];
 	char names[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH][LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 
-#define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) \
-	((_exclusion)->names[_i])
+#define LTTNG_EVENT_EXCLUSION_NAME_AT(_exclusion, _i) ((_exclusion)->names[_i])
 
 /*
  * Listing command header.
@@ -622,9 +617,9 @@ struct lttcomm_tracker_command_header {
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
-	uint32_t cmd_type;	/* enum lttcomm_sessiond_command */
-	uint32_t ret_code;	/* enum lttcomm_return_code */
-	uint32_t pid;		/* pid_t */
+	uint32_t cmd_type; /* enum lttcomm_sessiond_command */
+	uint32_t ret_code; /* enum lttcomm_return_code */
+	uint32_t pid; /* pid_t */
 	uint32_t cmd_header_size;
 	uint32_t data_size;
 	uint32_t fd_count;
@@ -640,7 +635,7 @@ struct lttcomm_lttng_output_id {
  * operation.
  */
 struct lttcomm_consumer_msg {
-	uint32_t cmd_type;	/* enum lttng_consumer_command */
+	uint32_t cmd_type; /* enum lttng_consumer_command */
 	union {
 		struct {
 			uint64_t channel_key;
@@ -669,10 +664,10 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t stream_key;
 			uint64_t channel_key;
-			int32_t cpu;	/* On which CPU this stream is assigned. */
+			int32_t cpu; /* On which CPU this stream is assigned. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t no_monitor;
-		} LTTNG_PACKED stream;	/* Only used by Kernel. */
+		} LTTNG_PACKED stream; /* Only used by Kernel. */
 		struct {
 			uint64_t net_index;
 			enum lttng_stream_type type;
@@ -691,33 +686,33 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 		} LTTNG_PACKED data_pending;
 		struct {
-			uint64_t subbuf_size;			/* bytes */
-			uint64_t num_subbuf;			/* power of 2 */
-			int32_t overwrite;			/* 1: overwrite, 0: discard */
-			uint32_t switch_timer_interval;		/* usec */
-			uint32_t read_timer_interval;		/* usec */
-			unsigned int live_timer_interval;	/* usec */
-			uint8_t is_live;			/* is part of a live session */
-			uint32_t monitor_timer_interval;	/* usec */
-			int32_t output;				/* splice, mmap */
-			int32_t type;				/* metadata or per_cpu */
-			uint64_t session_id;			/* Tracing session id */
-			char pathname[PATH_MAX];		/* Channel file path. */
-			char name[LTTNG_SYMBOL_NAME_LEN];	/* Channel name. */
+			uint64_t subbuf_size; /* bytes */
+			uint64_t num_subbuf; /* power of 2 */
+			int32_t overwrite; /* 1: overwrite, 0: discard */
+			uint32_t switch_timer_interval; /* usec */
+			uint32_t read_timer_interval; /* usec */
+			unsigned int live_timer_interval; /* usec */
+			uint8_t is_live; /* is part of a live session */
+			uint32_t monitor_timer_interval; /* usec */
+			int32_t output; /* splice, mmap */
+			int32_t type; /* metadata or per_cpu */
+			uint64_t session_id; /* Tracing session id */
+			char pathname[PATH_MAX]; /* Channel file path. */
+			char name[LTTNG_SYMBOL_NAME_LEN]; /* Channel name. */
 			/* Credentials used to open the UST buffer shared mappings. */
 			struct {
 				uint32_t uid;
 				uint32_t gid;
 			} LTTNG_PACKED buffer_credentials;
-			uint64_t relayd_id;			/* Relayd id if apply. */
-			uint64_t key;				/* Unique channel key. */
+			uint64_t relayd_id; /* Relayd id if apply. */
+			uint64_t key; /* Unique channel key. */
 			/* ID of the session's current trace chunk. */
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED chunk_id;
-			unsigned char uuid[LTTNG_UUID_LEN];	/* uuid for ust tracer. */
-			uint32_t chan_id;			/* Channel ID on the tracer side. */
-			uint64_t tracefile_size;	/* bytes */
-			uint32_t tracefile_count;	/* number of tracefiles */
-			uint64_t session_id_per_pid;	/* Per-pid session ID. */
+			unsigned char uuid[LTTNG_UUID_LEN]; /* uuid for ust tracer. */
+			uint32_t chan_id; /* Channel ID on the tracer side. */
+			uint64_t tracefile_size; /* bytes */
+			uint32_t tracefile_count; /* number of tracefiles */
+			uint64_t session_id_per_pid; /* Per-pid session ID. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t monitor;
 			/*
@@ -738,29 +733,29 @@ struct lttcomm_consumer_msg {
 			uint64_t key;
 		} LTTNG_PACKED destroy_channel;
 		struct {
-			uint64_t key;	/* Metadata channel key. */
-			uint64_t target_offset;	/* Offset in the consumer */
-			uint64_t len;	/* Length of metadata to be received. */
+			uint64_t key; /* Metadata channel key. */
+			uint64_t target_offset; /* Offset in the consumer */
+			uint64_t len; /* Length of metadata to be received. */
 			uint64_t version; /* Version of the metadata. */
 		} LTTNG_PACKED push_metadata;
 		struct {
-			uint64_t key;	/* Metadata channel key. */
+			uint64_t key; /* Metadata channel key. */
 		} LTTNG_PACKED close_metadata;
 		struct {
-			uint64_t key;	/* Metadata channel key. */
+			uint64_t key; /* Metadata channel key. */
 		} LTTNG_PACKED setup_metadata;
 		struct {
-			uint64_t key;	/* Channel key. */
+			uint64_t key; /* Channel key. */
 		} LTTNG_PACKED flush_channel;
 		struct {
-			uint64_t key;	/* Channel key. */
+			uint64_t key; /* Channel key. */
 		} LTTNG_PACKED clear_quiescent_channel;
 		struct {
 			char pathname[PATH_MAX];
 			/* Indicate if the snapshot goes on the relayd or locally. */
 			uint32_t use_relayd;
-			uint32_t metadata;		/* This a metadata snapshot. */
-			uint64_t relayd_id;		/* Relayd id if apply. */
+			uint32_t metadata; /* This a metadata snapshot. */
+			uint64_t relayd_id; /* Relayd id if apply. */
 			uint64_t key;
 			uint64_t nb_packets_per_stream;
 		} LTTNG_PACKED snapshot_channel;
@@ -812,7 +807,8 @@ struct lttcomm_consumer_msg {
 			LTTNG_OPTIONAL_COMM(struct {
 				uint32_t uid;
 				uint32_t gid;
-			} LTTNG_PACKED ) LTTNG_PACKED credentials;
+			} LTTNG_PACKED)
+			LTTNG_PACKED credentials;
 		} LTTNG_PACKED create_trace_chunk;
 		struct {
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
@@ -903,8 +899,8 @@ struct lttcomm_ust_msg {
 struct lttcomm_ust_reply {
 	uint32_t handle;
 	uint32_t cmd;
-	uint32_t ret_code;	/* enum lttcomm_return_code */
-	uint32_t ret_val;	/* return value */
+	uint32_t ret_code; /* enum lttcomm_return_code */
+	uint32_t ret_val; /* return value */
 	union {
 		struct {
 			uint64_t memory_map_size;
@@ -921,30 +917,30 @@ struct lttcomm_ust_reply {
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 
 int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
-		const char *ip, unsigned int port);
+			       const char *ip,
+			       unsigned int port);
 int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
-		const char *ip, unsigned int port);
+				const char *ip,
+				unsigned int port);
 
 struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto);
 int lttcomm_populate_sock_from_open_socket(struct lttcomm_sock *sock,
-		int fd,
-		enum lttcomm_sock_proto protocol);
+					   int fd,
+					   enum lttcomm_sock_proto protocol);
 int lttcomm_create_sock(struct lttcomm_sock *sock);
 struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri);
 void lttcomm_destroy_sock(struct lttcomm_sock *sock);
 struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src);
-void lttcomm_copy_sock(struct lttcomm_sock *dst,
-		struct lttcomm_sock *src);
+void lttcomm_copy_sock(struct lttcomm_sock *dst, struct lttcomm_sock *src);
 
 /* Relayd socket object. */
-struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
-		struct lttng_uri *uri, uint32_t major, uint32_t minor);
+struct lttcomm_relayd_sock *
+lttcomm_alloc_relayd_sock(struct lttng_uri *uri, uint32_t major, uint32_t minor);
 
 int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec);
 int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec);
 
-int lttcomm_sock_get_port(const struct lttcomm_sock *sock,
-		uint16_t *port);
+int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port);
 /*
  * Set a port to an lttcomm_sock. This will have no effect is the socket is
  * already bound.
@@ -955,4 +951,4 @@ void lttcomm_init();
 /* Get network timeout, in milliseconds */
 unsigned long lttcomm_get_network_timeout();
 
-#endif	/* _LTTNG_SESSIOND_COMM_H */
+#endif /* _LTTNG_SESSIOND_COMM_H */

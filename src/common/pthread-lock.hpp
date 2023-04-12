@@ -10,8 +10,8 @@
 
 #include <common/exception.hpp>
 
-#include <pthread.h>
 #include <mutex>
+#include <pthread.h>
 
 namespace lttng {
 namespace pthread {

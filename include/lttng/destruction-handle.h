@@ -8,9 +8,9 @@
 #ifndef LTTNG_DESTRUCTION_HANDLE_H
 #define LTTNG_DESTRUCTION_HANDLE_H
 
-#include <lttng/rotation.h>
 #include <lttng/lttng-error.h>
 #include <lttng/lttng-export.h>
+#include <lttng/rotation.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,8 +44,7 @@ enum lttng_destruction_handle_status {
  * Destroy an lttng_destruction_session handle.
  * The handle should be discarded after this call.
  */
-LTTNG_EXPORT extern void lttng_destruction_handle_destroy(
-		struct lttng_destruction_handle *handle);
+LTTNG_EXPORT extern void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle);
 
 /*
  * Wait for the destruction of a session to complete.
@@ -62,8 +61,8 @@ LTTNG_EXPORT extern void lttng_destruction_handle_destroy(
  * operation completed successfully.
  */
 LTTNG_EXPORT extern enum lttng_destruction_handle_status
-lttng_destruction_handle_wait_for_completion(
-		struct lttng_destruction_handle *handle, int timeout_ms);
+lttng_destruction_handle_wait_for_completion(struct lttng_destruction_handle *handle,
+					     int timeout_ms);
 
 /*
  * Get the result of a session destruction operation.
@@ -81,9 +80,8 @@ lttng_destruction_handle_wait_for_completion(
  * invalid (e.g. NULL).
  */
 LTTNG_EXPORT extern enum lttng_destruction_handle_status
-lttng_destruction_handle_get_result(
-		const struct lttng_destruction_handle *handle,
-		enum lttng_error_code *result);
+lttng_destruction_handle_get_result(const struct lttng_destruction_handle *handle,
+				    enum lttng_error_code *result);
 
 /*
  * Get the status of the session rotation performed as part of the session's
@@ -109,9 +107,8 @@ lttng_destruction_handle_get_result(
  * LTTNG_ROTATION_STATE_NO_ROTATION.
  */
 LTTNG_EXPORT extern enum lttng_destruction_handle_status
-lttng_destruction_handle_get_rotation_state(
-		const struct lttng_destruction_handle *handle,
-		enum lttng_rotation_state *rotation_state);
+lttng_destruction_handle_get_rotation_state(const struct lttng_destruction_handle *handle,
+					    enum lttng_rotation_state *rotation_state);
 
 /*
  * Get the location of the archive resulting from the rotation performed during
@@ -133,9 +130,8 @@ lttng_destruction_handle_get_rotation_state(
  * invalid (e.g. NULL).
  */
 LTTNG_EXPORT extern enum lttng_destruction_handle_status
-lttng_destruction_handle_get_archive_location(
-		const struct lttng_destruction_handle *handle,
-		const struct lttng_trace_archive_location **location);
+lttng_destruction_handle_get_archive_location(const struct lttng_destruction_handle *handle,
+					      const struct lttng_trace_archive_location **location);
 
 #ifdef __cplusplus
 }

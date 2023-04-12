@@ -38,8 +38,7 @@ namespace lttng {
  * a proper, idiomatic, wrapper.
  */
 
-namespace details
-{
+namespace details {
 template <typename WrappedType, void (*DeleterFunction)(WrappedType *)>
 struct create_unique_class {
 	struct deleter {
@@ -69,7 +68,8 @@ void free(Type *ptr)
 }
 
 template <typename WrappedType, void (*DeleterFunc)(WrappedType *)>
-std::unique_ptr<WrappedType, typename details::create_unique_class<WrappedType, DeleterFunc>::deleter>
+std::unique_ptr<WrappedType,
+		typename details::create_unique_class<WrappedType, DeleterFunc>::deleter>
 make_unique_wrapper(WrappedType *instance)
 {
 	const details::create_unique_class<WrappedType, DeleterFunc> unique_deleter;

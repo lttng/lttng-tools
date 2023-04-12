@@ -9,14 +9,15 @@
 #ifndef LTTNG_SESSIOND_AGENT_H
 #define LTTNG_SESSIOND_AGENT_H
 
-#include <inttypes.h>
-
 #include <common/hashtable/hashtable.hpp>
+
 #include <lttng/lttng.h>
 
+#include <inttypes.h>
+
 /* Agent protocol version that is verified during the agent registration. */
-#define AGENT_MAJOR_VERSION		2
-#define AGENT_MINOR_VERSION		0
+#define AGENT_MAJOR_VERSION 2
+#define AGENT_MINOR_VERSION 0
 
 /*
  * Hash table that contains the agent app created upon registration indexed by
@@ -145,32 +146,29 @@ void agent_add(struct agent *agt, struct lttng_ht *ht);
 
 /* Agent event API. */
 struct agent_event *agent_create_event(const char *name,
-		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		struct lttng_bytecode *filter,
-		char *filter_expression);
+				       enum lttng_loglevel_type loglevel_type,
+				       int loglevel_value,
+				       struct lttng_bytecode *filter,
+				       char *filter_expression);
 void agent_add_event(struct agent_event *event, struct agent *agt);
 
 struct agent_event *agent_find_event(const char *name,
-		enum lttng_loglevel_type loglevel_type,
-		int loglevel_value,
-		const char *filter_expression,
-		struct agent *agt);
-void agent_find_events_by_name(const char *name, struct agent *agt,
-		struct lttng_ht_iter* iter);
-void agent_event_next_duplicate(const char *name,
-		struct agent *agt, struct lttng_ht_iter* iter);
+				     enum lttng_loglevel_type loglevel_type,
+				     int loglevel_value,
+				     const char *filter_expression,
+				     struct agent *agt);
+void agent_find_events_by_name(const char *name, struct agent *agt, struct lttng_ht_iter *iter);
+void agent_event_next_duplicate(const char *name, struct agent *agt, struct lttng_ht_iter *iter);
 void agent_delete_event(struct agent_event *event, struct agent *agt);
 void agent_destroy_event(struct agent_event *event);
 
 /* Agent context API.*/
-int agent_enable_context(const struct lttng_event_context *ctx,
-		enum lttng_domain_type domain);
-int agent_add_context(const struct lttng_event_context *ctx,
-		struct agent *agt);
+int agent_enable_context(const struct lttng_event_context *ctx, enum lttng_domain_type domain);
+int agent_add_context(const struct lttng_event_context *ctx, struct agent *agt);
 
 /* Agent app API. */
-struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
-		struct lttcomm_sock *sock);
+struct agent_app *
+agent_create_app(pid_t pid, enum lttng_domain_type domain, struct lttcomm_sock *sock);
 void agent_add_app(struct agent_app *app);
 void agent_delete_app(struct agent_app *app);
 struct agent_app *agent_find_app_by_sock(int sock);
@@ -179,20 +177,16 @@ void agent_destroy_app_by_sock(int sock);
 int agent_send_registration_done(struct agent_app *app);
 
 /* Agent action API */
-int agent_enable_event(struct agent_event *event,
-		enum lttng_domain_type domain);
-int agent_disable_event(struct agent_event *event,
-		enum lttng_domain_type domain);
+int agent_enable_event(struct agent_event *event, enum lttng_domain_type domain);
+int agent_disable_event(struct agent_event *event, enum lttng_domain_type domain);
 void agent_update(const struct agent *agt, const struct agent_app *app);
-int agent_list_events(struct lttng_event **events,
-		enum lttng_domain_type domain);
+int agent_list_events(struct lttng_event **events, enum lttng_domain_type domain);
 
-struct agent_event *agent_find_event_by_trigger(
-		const struct lttng_trigger *trigger, struct agent *agt);
+struct agent_event *agent_find_event_by_trigger(const struct lttng_trigger *trigger,
+						struct agent *agt);
 
 /* Global event notifier per-domain agents. */
-struct agent *agent_find_by_event_notifier_domain(
-		enum lttng_domain_type domain_type);
+struct agent *agent_find_by_event_notifier_domain(enum lttng_domain_type domain_type);
 void agent_by_event_notifier_domain_ht_destroy(void);
 int agent_by_event_notifier_domain_ht_create(void);
 

@@ -9,22 +9,23 @@
 #ifndef AGENT_COMM
 #define AGENT_COMM
 
-#include <stdint.h>
-
 #include <common/compiler.hpp>
 #include <common/macros.hpp>
+
 #include <lttng/lttng.h>
+
+#include <stdint.h>
 
 /*
  * Command value passed in the header.
  */
 enum lttcomm_agent_command {
-	AGENT_CMD_LIST			= 1,
-	AGENT_CMD_ENABLE		= 2,
-	AGENT_CMD_DISABLE		= 3,
-	AGENT_CMD_REG_DONE		= 4,	/* End registration process. */
-	AGENT_CMD_APP_CTX_ENABLE	= 5,
-	AGENT_CMD_APP_CTX_DISABLE	= 6,
+	AGENT_CMD_LIST = 1,
+	AGENT_CMD_ENABLE = 2,
+	AGENT_CMD_DISABLE = 3,
+	AGENT_CMD_REG_DONE = 4, /* End registration process. */
+	AGENT_CMD_APP_CTX_ENABLE = 5,
+	AGENT_CMD_APP_CTX_DISABLE = 6,
 };
 
 /*
@@ -32,11 +33,11 @@ enum lttcomm_agent_command {
  */
 enum lttcomm_agent_ret_code {
 	/* Success, assumed to be the first entry */
-	AGENT_RET_CODE_SUCCESS		= 1,
+	AGENT_RET_CODE_SUCCESS = 1,
 	/* Invalid command */
-	AGENT_RET_CODE_INVALID		= 2,
+	AGENT_RET_CODE_INVALID = 2,
 	/* Unknown logger name */
-	AGENT_RET_CODE_UNKNOWN_NAME	= 3,
+	AGENT_RET_CODE_UNKNOWN_NAME = 3,
 	AGENT_RET_CODE_NR,
 };
 
@@ -44,9 +45,9 @@ enum lttcomm_agent_ret_code {
  * Agent application communication header.
  */
 struct lttcomm_agent_hdr {
-	uint64_t data_size;		/* data size following this header */
-	uint32_t cmd;			/* Enum of agent command. */
-	uint32_t cmd_version;	/* command version */
+	uint64_t data_size; /* data size following this header */
+	uint32_t cmd; /* Enum of agent command. */
+	uint32_t cmd_version; /* command version */
 } LTTNG_PACKED;
 
 /*
@@ -91,4 +92,4 @@ struct lttcomm_agent_list_reply {
 	char payload[LTTNG_FLEXIBLE_ARRAY_MEMBER_LENGTH];
 } LTTNG_PACKED;
 
-#endif	/* AGENT_COMM */
+#endif /* AGENT_COMM */

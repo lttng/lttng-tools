@@ -52,11 +52,14 @@ struct consumer_metadata_cache {
 
 enum consumer_metadata_cache_write_status
 consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
-		unsigned int offset, unsigned int len, uint64_t version,
-		const char *data);
+			      unsigned int offset,
+			      unsigned int len,
+			      uint64_t version,
+			      const char *data);
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
-		uint64_t offset, int timer);
+				    uint64_t offset,
+				    int timer);
 
 #endif /* CONSUMER_METADATA_CACHE_H */

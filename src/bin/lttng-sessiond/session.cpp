@@ -928,7 +928,7 @@ static void session_notify_destruction(const struct ltt_session *session)
 /*
  * Fire each clear notifier once, and remove them from the array.
  */
-void session_notify_clear(ltt_session &session)
+void session_notify_clear(ltt_session& session)
 {
 	size_t i;
 	const size_t count = lttng_dynamic_array_get_count(&session.clear_notifiers);
@@ -1359,7 +1359,7 @@ bool session_access_ok(struct ltt_session *session, uid_t uid)
  *
  * Must be called with the session and session_list locks held.
  */
-int session_reset_rotation_state(ltt_session &session, enum lttng_rotation_state result)
+int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result)
 {
 	int ret = 0;
 

@@ -6,7 +6,9 @@
  */
 
 #include "foobar_provider.h"
+
 #include <sys/sdt.h>
-void sema_function() {
+void sema_function()
+{
 	FOOBAR_TP_WITH_SEMAPHORE();
 }

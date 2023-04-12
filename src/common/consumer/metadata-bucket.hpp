@@ -19,13 +19,12 @@ enum metadata_bucket_status {
 	METADATA_BUCKET_STATUS_ERROR,
 };
 
-struct metadata_bucket *metadata_bucket_create(
-		metadata_bucket_flush_cb flush, void *data);
+struct metadata_bucket *metadata_bucket_create(metadata_bucket_flush_cb flush, void *data);
 
 void metadata_bucket_destroy(struct metadata_bucket *bucket);
 
 enum metadata_bucket_status metadata_bucket_fill(struct metadata_bucket *bucket,
-		const struct stream_subbuffer *buffer);
+						 const struct stream_subbuffer *buffer);
 
 void metadata_bucket_reset(struct metadata_bucket *bucket);
 

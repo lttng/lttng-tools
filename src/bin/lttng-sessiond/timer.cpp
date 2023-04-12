@@ -233,7 +233,7 @@ end:
 /*
  * Call with session and session_list locks held.
  */
-int timer_session_rotation_pending_check_stop(ltt_session &session)
+int timer_session_rotation_pending_check_stop(ltt_session& session)
 {
 	int ret;
 

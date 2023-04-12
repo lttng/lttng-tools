@@ -54,8 +54,7 @@ LTTNG_EXPORT extern void lttng_clear_handle_destroy(struct lttng_clear_handle *h
  * operation completed successfully.
  */
 LTTNG_EXPORT extern enum lttng_clear_handle_status
-	lttng_clear_handle_wait_for_completion(
-		struct lttng_clear_handle *handle, int timeout_ms);
+lttng_clear_handle_wait_for_completion(struct lttng_clear_handle *handle, int timeout_ms);
 
 /*
  * Get the result of a session clear operation.
@@ -73,9 +72,8 @@ LTTNG_EXPORT extern enum lttng_clear_handle_status
  * invalid (e.g. NULL).
  */
 LTTNG_EXPORT extern enum lttng_clear_handle_status
-	lttng_clear_handle_get_result(
-		const struct lttng_clear_handle *handle,
-		enum lttng_error_code *result);
+lttng_clear_handle_get_result(const struct lttng_clear_handle *handle,
+			      enum lttng_error_code *result);
 #ifdef __cplusplus
 }
 #endif

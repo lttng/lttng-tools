@@ -43,6 +43,7 @@ public:
 	void write(const void *buffer, std::size_t size);
 
 	int fd() const noexcept;
+
 protected:
 	void _cleanup() noexcept;
 

@@ -8,15 +8,16 @@
 #ifndef _LTT_TRACE_KERNEL_H
 #define _LTT_TRACE_KERNEL_H
 
-#include <urcu/list.h>
-
-#include <lttng/lttng.h>
-#include <common/lttng-kernel.hpp>
-#include <common/lttng-kernel-old.hpp>
-#include <common/defaults.hpp>
-
 #include "consumer.hpp"
 #include "tracker.hpp"
+
+#include <common/defaults.hpp>
+#include <common/lttng-kernel-old.hpp>
+#include <common/lttng-kernel.hpp>
+
+#include <lttng/lttng.h>
+
+#include <urcu/list.h>
 
 /* Kernel event list */
 struct ltt_kernel_event_list {
@@ -141,41 +142,38 @@ struct ltt_kernel_session {
 /*
  * Lookup functions. NULL is returned if not found.
  */
-struct ltt_kernel_event *trace_kernel_get_event_by_name(
-		char *name, struct ltt_kernel_channel *channel,
-		enum lttng_event_type type);
-struct ltt_kernel_event *trace_kernel_find_event(
-		char *name, struct ltt_kernel_channel *channel,
-		enum lttng_event_type type,
-		struct lttng_bytecode *filter);
-struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
-		const char *name, struct ltt_kernel_session *session);
+struct ltt_kernel_event *trace_kernel_get_event_by_name(char *name,
+							struct ltt_kernel_channel *channel,
+							enum lttng_event_type type);
+struct ltt_kernel_event *trace_kernel_find_event(char *name,
+						 struct ltt_kernel_channel *channel,
+						 enum lttng_event_type type,
+						 struct lttng_bytecode *filter);
+struct ltt_kernel_channel *trace_kernel_get_channel_by_name(const char *name,
+							    struct ltt_kernel_session *session);
 
 /*
  * Create functions malloc() the data structure.
  */
 struct ltt_kernel_session *trace_kernel_create_session();
-struct ltt_kernel_channel *trace_kernel_create_channel(
-		struct lttng_channel *chan);
+struct ltt_kernel_channel *trace_kernel_create_channel(struct lttng_channel *chan);
 enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
-		char *filter_expression, struct lttng_bytecode *filter,
-		struct ltt_kernel_event **kernel_event);
+						char *filter_expression,
+						struct lttng_bytecode *filter,
+						struct ltt_kernel_event **kernel_event);
 struct ltt_kernel_metadata *trace_kernel_create_metadata();
-struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
-		unsigned int count);
-struct ltt_kernel_context *trace_kernel_create_context(
-		struct lttng_kernel_abi_context *ctx);
+struct ltt_kernel_stream *trace_kernel_create_stream(const char *name, unsigned int count);
+struct ltt_kernel_context *trace_kernel_create_context(struct lttng_kernel_abi_context *ctx);
 /* Trigger is only non-const to acquire a reference. */
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
-		struct lttng_trigger *trigger,
-		uint64_t token,
-		uint64_t error_counter_index,
-		struct ltt_kernel_event_notifier_rule **event_notifier_rule);
-struct ltt_kernel_context *trace_kernel_copy_context(
-		struct ltt_kernel_context *ctx);
+	struct lttng_trigger *trigger,
+	uint64_t token,
+	uint64_t error_counter_index,
+	struct ltt_kernel_event_notifier_rule **event_notifier_rule);
+struct ltt_kernel_context *trace_kernel_copy_context(struct ltt_kernel_context *ctx);
 enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
-		const struct lttng_event_rule *rule,
-		struct lttng_kernel_abi_event_notifier *kernel_event_notifier);
+	const struct lttng_event_rule *rule,
+	struct lttng_kernel_abi_event_notifier *kernel_event_notifier);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if

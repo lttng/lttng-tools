@@ -8,13 +8,15 @@
 #ifndef _CONSUMER_H
 #define _CONSUMER_H
 
+#include "snapshot.hpp"
+
 #include <common/consumer/consumer.hpp>
 #include <common/hashtable/hashtable.hpp>
-#include <lttng/lttng.h>
-#include <urcu/ref.h>
-#include <algorithm>
 
-#include "snapshot.hpp"
+#include <lttng/lttng.h>
+
+#include <algorithm>
+#include <urcu/ref.h>
 
 struct snapshot;
 struct snapshot_output;
@@ -75,9 +77,9 @@ struct consumer_socket {
 };
 
 struct consumer_data {
-	explicit consumer_data (lttng_consumer_type type_)
-		: type(type_)
-	{}
+	explicit consumer_data(lttng_consumer_type type_) : type(type_)
+	{
+	}
 
 	enum lttng_consumer_type type;
 
@@ -144,7 +146,7 @@ struct consumer_net {
  * Consumer output object describing where and how to send data.
  */
 struct consumer_output {
-	struct urcu_ref ref;	/* Refcount */
+	struct urcu_ref ref; /* Refcount */
 
 	/* If the consumer is enabled meaning that should be used */
 	bool enabled;
@@ -167,9 +169,8 @@ struct consumer_output {
 	 * Subdirectory path name used for both local and network
 	 * consumer ("kernel", "ust", or empty).
 	 */
-	char domain_subdir[
-		max_constexpr(sizeof(DEFAULT_KERNEL_TRACE_DIR),
-			sizeof(DEFAULT_UST_TRACE_DIR))];
+	char domain_subdir[max_constexpr(sizeof(DEFAULT_KERNEL_TRACE_DIR),
+					 sizeof(DEFAULT_UST_TRACE_DIR))];
 
 	/*
 	 * Hashtable of consumer_socket index by the file descriptor value. For
@@ -193,152 +194,161 @@ struct consumer_output {
 	char chunk_path[LTTNG_PATH_MAX];
 };
 
-struct consumer_socket *consumer_find_socket(int key,
-		const struct consumer_output *consumer);
+struct consumer_socket *consumer_find_socket(int key, const struct consumer_output *consumer);
 struct consumer_socket *consumer_find_socket_by_bitness(int bits,
-		const struct consumer_output *consumer);
+							const struct consumer_output *consumer);
 struct consumer_socket *consumer_allocate_socket(int *fd);
-void consumer_add_socket(struct consumer_socket *sock,
-		struct consumer_output *consumer);
-void consumer_del_socket(struct consumer_socket *sock,
-		struct consumer_output *consumer);
+void consumer_add_socket(struct consumer_socket *sock, struct consumer_output *consumer);
+void consumer_del_socket(struct consumer_socket *sock, struct consumer_output *consumer);
 void consumer_destroy_socket(struct consumer_socket *sock);
-int consumer_copy_sockets(struct consumer_output *dst,
-		struct consumer_output *src);
+int consumer_copy_sockets(struct consumer_output *dst, struct consumer_output *src);
 void consumer_destroy_output_sockets(struct consumer_output *obj);
-int consumer_socket_send(struct consumer_socket *socket, const void *msg,
-		size_t len);
-int consumer_socket_recv(struct consumer_socket *socket, void *msg,
-		size_t len);
+int consumer_socket_send(struct consumer_socket *socket, const void *msg, size_t len);
+int consumer_socket_recv(struct consumer_socket *socket, void *msg, size_t len);
 
 struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
 void consumer_output_get(struct consumer_output *obj);
 void consumer_output_put(struct consumer_output *obj);
 int consumer_set_network_uri(const struct ltt_session *session,
-		struct consumer_output *obj,
-		struct lttng_uri *uri);
-int consumer_send_fds(struct consumer_socket *sock, const int *fds,
-		size_t nb_fd);
-int consumer_send_msg(struct consumer_socket *sock,
-		const struct lttcomm_consumer_msg *msg);
+			     struct consumer_output *obj,
+			     struct lttng_uri *uri);
+int consumer_send_fds(struct consumer_socket *sock, const int *fds, size_t nb_fd);
+int consumer_send_msg(struct consumer_socket *sock, const struct lttcomm_consumer_msg *msg);
 int consumer_send_stream(struct consumer_socket *sock,
-		struct consumer_output *dst, struct lttcomm_consumer_msg *msg,
-		const int *fds, size_t nb_fd);
-int consumer_send_channel(struct consumer_socket *sock,
-		struct lttcomm_consumer_msg *msg);
+			 struct consumer_output *dst,
+			 struct lttcomm_consumer_msg *msg,
+			 const int *fds,
+			 size_t nb_fd);
+int consumer_send_channel(struct consumer_socket *sock, struct lttcomm_consumer_msg *msg);
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
-		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
-		enum lttng_stream_type type, uint64_t session_id,
-		const char *session_name, const char *hostname,
-		const char *base_path, int session_live_timer,
-		const uint64_t *current_chunk_id, time_t session_creation_time,
-		bool session_name_contains_creation_time);
-int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
-		int pipe);
-int consumer_send_destroy_relayd(struct consumer_socket *sock,
-		struct consumer_output *consumer);
+				struct lttcomm_relayd_sock *rsock,
+				struct consumer_output *consumer,
+				enum lttng_stream_type type,
+				uint64_t session_id,
+				const char *session_name,
+				const char *hostname,
+				const char *base_path,
+				int session_live_timer,
+				const uint64_t *current_chunk_id,
+				time_t session_creation_time,
+				bool session_name_contains_creation_time);
+int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock, int pipe);
+int consumer_send_destroy_relayd(struct consumer_socket *sock, struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);
 int consumer_recv_status_channel(struct consumer_socket *sock,
-		uint64_t *key, unsigned int *stream_count);
+				 uint64_t *key,
+				 unsigned int *stream_count);
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
-int consumer_create_socket(struct consumer_data *data,
-		struct consumer_output *output);
+int consumer_create_socket(struct consumer_data *data, struct consumer_output *output);
 
 void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
-		uint64_t subbuf_size,
-		uint64_t num_subbuf,
-		int overwrite,
-		unsigned int switch_timer_interval,
-		unsigned int read_timer_interval,
-		unsigned int live_timer_interval,
-		bool is_in_live_session,
-		unsigned int monitor_timer_interval,
-		int output,
-		int type,
-		uint64_t session_id,
-		const char *pathname,
-		const char *name,
-		uint64_t relayd_id,
-		uint64_t key,
-		const lttng_uuid& uuid,
-		uint32_t chan_id,
-		uint64_t tracefile_size,
-		uint64_t tracefile_count,
-		uint64_t session_id_per_pid,
-		unsigned int monitor,
-		uint32_t ust_app_uid,
-		int64_t blocking_timeout,
-		const char *root_shm_path,
-		const char *shm_path,
-		struct lttng_trace_chunk *trace_chunk,
-		const struct lttng_credentials *buffer_credentials);
+					uint64_t subbuf_size,
+					uint64_t num_subbuf,
+					int overwrite,
+					unsigned int switch_timer_interval,
+					unsigned int read_timer_interval,
+					unsigned int live_timer_interval,
+					bool is_in_live_session,
+					unsigned int monitor_timer_interval,
+					int output,
+					int type,
+					uint64_t session_id,
+					const char *pathname,
+					const char *name,
+					uint64_t relayd_id,
+					uint64_t key,
+					const lttng_uuid& uuid,
+					uint32_t chan_id,
+					uint64_t tracefile_size,
+					uint64_t tracefile_count,
+					uint64_t session_id_per_pid,
+					unsigned int monitor,
+					uint32_t ust_app_uid,
+					int64_t blocking_timeout,
+					const char *root_shm_path,
+					const char *shm_path,
+					struct lttng_trace_chunk *trace_chunk,
+					const struct lttng_credentials *buffer_credentials);
 void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
-		uint64_t channel_key,
-		uint64_t stream_key,
-		int32_t cpu);
+				       uint64_t channel_key,
+				       uint64_t stream_key,
+				       int32_t cpu);
 void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
-		enum lttng_consumer_command cmd,
-		uint64_t channel_key, uint64_t net_seq_idx);
+					 enum lttng_consumer_command cmd,
+					 uint64_t channel_key,
+					 uint64_t net_seq_idx);
 void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
-		uint64_t channel_key,
-		uint64_t session_id,
-		const char *pathname,
-		uint64_t relayd_id,
-		const char *name,
-		unsigned int nb_init_streams,
-		enum lttng_event_output output,
-		int type,
-		uint64_t tracefile_size,
-		uint64_t tracefile_count,
-		unsigned int monitor,
-		unsigned int live_timer_interval,
-		bool is_in_live_session,
-		unsigned int monitor_timer_interval,
-		struct lttng_trace_chunk *trace_chunk);
-int consumer_is_data_pending(uint64_t session_id,
-		struct consumer_output *consumer);
-int consumer_close_metadata(struct consumer_socket *socket,
-		uint64_t metadata_key);
-int consumer_setup_metadata(struct consumer_socket *socket,
-		uint64_t metadata_key);
+					uint64_t channel_key,
+					uint64_t session_id,
+					const char *pathname,
+					uint64_t relayd_id,
+					const char *name,
+					unsigned int nb_init_streams,
+					enum lttng_event_output output,
+					int type,
+					uint64_t tracefile_size,
+					uint64_t tracefile_count,
+					unsigned int monitor,
+					unsigned int live_timer_interval,
+					bool is_in_live_session,
+					unsigned int monitor_timer_interval,
+					struct lttng_trace_chunk *trace_chunk);
+int consumer_is_data_pending(uint64_t session_id, struct consumer_output *consumer);
+int consumer_close_metadata(struct consumer_socket *socket, uint64_t metadata_key);
+int consumer_setup_metadata(struct consumer_socket *socket, uint64_t metadata_key);
 int consumer_push_metadata(struct consumer_socket *socket,
-		uint64_t metadata_key, char *metadata_str, size_t len,
-		size_t target_offset, uint64_t version);
+			   uint64_t metadata_key,
+			   char *metadata_str,
+			   size_t len,
+			   size_t target_offset,
+			   uint64_t version);
 int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
 int consumer_clear_quiescent_channel(struct consumer_socket *socket, uint64_t key);
-int consumer_get_discarded_events(uint64_t session_id, uint64_t channel_key,
-		struct consumer_output *consumer, uint64_t *discarded);
-int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
-		struct consumer_output *consumer, uint64_t *lost);
+int consumer_get_discarded_events(uint64_t session_id,
+				  uint64_t channel_key,
+				  struct consumer_output *consumer,
+				  uint64_t *discarded);
+int consumer_get_lost_packets(uint64_t session_id,
+			      uint64_t channel_key,
+			      struct consumer_output *consumer,
+			      uint64_t *lost);
 
 /* Snapshot command. */
 enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
-		uint64_t key, const struct consumer_output *output, int metadata,
-		const char *channel_path, uint64_t nb_packets_per_stream);
+						uint64_t key,
+						const struct consumer_output *output,
+						int metadata,
+						const char *channel_path,
+						uint64_t nb_packets_per_stream);
 
 /* Rotation commands. */
-int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
-		struct consumer_output *output, bool is_metadata_channel);
-int consumer_init(struct consumer_socket *socket,
-		const lttng_uuid& sessiond_uuid);
+int consumer_rotate_channel(struct consumer_socket *socket,
+			    uint64_t key,
+			    struct consumer_output *output,
+			    bool is_metadata_channel);
+int consumer_init(struct consumer_socket *socket, const lttng_uuid& sessiond_uuid);
 
 int consumer_create_trace_chunk(struct consumer_socket *socket,
-		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk,
-		const char *domain_subdir);
+				uint64_t relayd_id,
+				uint64_t session_id,
+				struct lttng_trace_chunk *chunk,
+				const char *domain_subdir);
 int consumer_close_trace_chunk(struct consumer_socket *socket,
-		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk,
-		char *closed_trace_chunk_path);
+			       uint64_t relayd_id,
+			       uint64_t session_id,
+			       struct lttng_trace_chunk *chunk,
+			       char *closed_trace_chunk_path);
 int consumer_trace_chunk_exists(struct consumer_socket *socket,
-		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk,
-		enum consumer_trace_chunk_exists_status *result);
+				uint64_t relayd_id,
+				uint64_t session_id,
+				struct lttng_trace_chunk *chunk,
+				enum consumer_trace_chunk_exists_status *result);
 int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key);
 
 char *setup_channel_trace_path(struct consumer_output *consumer,
-		const char *session_path, size_t *consumer_path_offset);
+			       const char *session_path,
+			       size_t *consumer_path_offset);
 
 /* Clear command */
 int consumer_clear_channel(struct consumer_socket *socket, uint64_t key);

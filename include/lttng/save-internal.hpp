@@ -8,11 +8,12 @@
 #ifndef LTTNG_SAVE_INTERNAL_ABI_H
 #define LTTNG_SAVE_INTERNAL_ABI_H
 
-#include <limits.h>
-#include <stdint.h>
+#include <common/macros.hpp>
 
 #include <lttng/constant.h>
-#include <common/macros.hpp>
+
+#include <limits.h>
+#include <stdint.h>
 
 /*
  * Object used by the save_session API. This is opaque to the public library.

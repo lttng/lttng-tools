@@ -8,8 +8,9 @@
 #ifndef LTTNG_SESSION_INTERNAL_H
 #define LTTNG_SESSION_INTERNAL_H
 
-#include <lttng/constant.h>
 #include <common/macros.hpp>
+
+#include <lttng/constant.h>
 
 struct lttng_session_extended {
 	struct {

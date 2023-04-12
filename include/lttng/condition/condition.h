@@ -41,8 +41,8 @@ enum lttng_condition_status {
  * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
  * error.
  */
-LTTNG_EXPORT extern enum lttng_condition_type lttng_condition_get_type(
-		const struct lttng_condition *condition);
+LTTNG_EXPORT extern enum lttng_condition_type
+lttng_condition_get_type(const struct lttng_condition *condition);
 
 /*
  * Destroy (release) a condition object.

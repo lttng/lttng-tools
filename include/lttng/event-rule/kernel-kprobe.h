@@ -25,8 +25,8 @@ struct lttng_kernel_probe_location;
  * Returns a new event rule on success, NULL on failure. The returned event rule
  * must be destroyed using lttng_event_rule_destroy().
  */
-LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_kernel_kprobe_create(
-		const struct lttng_kernel_probe_location *location);
+LTTNG_EXPORT extern struct lttng_event_rule *
+lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *location);
 
 /*
  * Get the kernel probe location of a kernel kprobe event rule.
@@ -40,9 +40,9 @@ LTTNG_EXPORT extern struct lttng_event_rule *lttng_event_rule_kernel_kprobe_crea
  * passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a location was not set prior to
  * this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_get_location(
-		const struct lttng_event_rule *rule,
-		const struct lttng_kernel_probe_location **location);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_kprobe_get_location(const struct lttng_event_rule *rule,
+					    const struct lttng_kernel_probe_location **location);
 
 /*
  * Set the name of a kernel kprobe event rule.
@@ -52,8 +52,8 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_set_event_name(
-		struct lttng_event_rule *rule, const char *name);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_kprobe_set_event_name(struct lttng_event_rule *rule, const char *name);
 
 /*
  * Get the name of a kernel kprobe event rule.
@@ -66,8 +66,9 @@ LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_
  * success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is passed,
  * or LTTNG_EVENT_RULE_STATUS_UNSET if a name was not set prior to this call.
  */
-LTTNG_EXPORT extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_get_event_name(
-		const struct lttng_event_rule *rule, const char **name);
+LTTNG_EXPORT extern enum lttng_event_rule_status
+lttng_event_rule_kernel_kprobe_get_event_name(const struct lttng_event_rule *rule,
+					      const char **name);
 
 #ifdef __cplusplus
 }

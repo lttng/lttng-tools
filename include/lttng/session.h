@@ -28,7 +28,7 @@ struct lttng_destruction_handle;
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_SESSION_PADDING1             8
+#define LTTNG_SESSION_PADDING1 8
 struct lttng_session {
 	char name[LTTNG_NAME_MAX];
 	/*
@@ -41,9 +41,9 @@ struct lttng_session {
 	 *     net://hostname/path:ctrl_port [data: data_port]
 	 */
 	char path[PATH_MAX];
-	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
+	uint32_t enabled; /* enabled/started: 1, disabled/stopped: 0 */
 	uint32_t snapshot_mode;
-	unsigned int live_timer_interval;	/* usec */
+	unsigned int live_timer_interval; /* usec */
 
 	/*
 	 * End of public attributes.
@@ -87,8 +87,8 @@ struct lttng_session {
  * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
  * return codes.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_create_session_ext(
-		struct lttng_session_descriptor *session_descriptor);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor);
 
 /*
  * Create a tracing session using a name and an optional URL.
@@ -112,8 +112,7 @@ LTTNG_EXPORT extern int lttng_create_session(const char *name, const char *url);
  *
  * Return 0 on success else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *name,
-		const char *snapshot_url);
+LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *name, const char *snapshot_url);
 
 /*
  * Create a session exclusively used for live reading.
@@ -128,8 +127,8 @@ LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *name,
  *
  * Return 0 on success else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_create_session_live(const char *name, const char *url,
-		unsigned int timer_interval);
+LTTNG_EXPORT extern int
+lttng_create_session_live(const char *name, const char *url, unsigned int timer_interval);
 
 /*
  * Destroy a tracing session.
@@ -162,8 +161,8 @@ LTTNG_EXPORT extern int lttng_destroy_session(const char *name);
  * Returns LTTNG_OK on success. The returned handle is owned by the caller
  * and must be free'd using lttng_destruction_handle_destroy().
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
-		struct lttng_destruction_handle **handle);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_destroy_session_ext(const char *session_name, struct lttng_destruction_handle **handle);
 
 /*
  * Behaves exactly like lttng_destroy_session but does not wait for data
@@ -193,8 +192,8 @@ LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
  * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
  * return codes.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_session_get_creation_time(
-		const struct lttng_session *session, uint64_t *creation_time);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *creation_time);
 
 /*
  * Set the shared memory path for a session.
@@ -205,8 +204,7 @@ LTTNG_EXPORT extern enum lttng_error_code lttng_session_get_creation_time(
  *
  * Return 0 on success else a negative LTTng error code.
  */
-LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name,
-		const char *shm_path);
+LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_path);
 
 #ifdef __cplusplus
 }

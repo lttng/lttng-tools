@@ -29,15 +29,13 @@ struct lttng_dynamic_pointer_array {
  * allocation and can't fail.
  */
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
-		size_t element_size,
-		lttng_dynamic_array_element_destructor destructor);
+			      size_t element_size,
+			      lttng_dynamic_array_element_destructor destructor);
 
 /*
  * Returns the number of elements in the dynamic array.
  */
-static inline
-size_t lttng_dynamic_array_get_count(
-		const struct lttng_dynamic_array *array)
+static inline size_t lttng_dynamic_array_get_count(const struct lttng_dynamic_array *array)
 {
 	return array->size;
 }
@@ -46,9 +44,8 @@ size_t lttng_dynamic_array_get_count(
  * Returns a pointer to the element. Mutating operations on the array invalidate
  * the returned pointer.
  */
-static inline
-void *lttng_dynamic_array_get_element(const struct lttng_dynamic_array *array,
-		size_t element_index)
+static inline void *lttng_dynamic_array_get_element(const struct lttng_dynamic_array *array,
+						    size_t element_index)
 {
 	LTTNG_ASSERT(element_index < array->size);
 	return array->buffer.data + (element_index * array->element_size);
@@ -69,8 +66,7 @@ void *lttng_dynamic_array_get_element(const struct lttng_dynamic_array *array,
  * NOTE: It is striclty _invalid_ to access memory after _size_, regardless
  *       of prior calls to set_capacity().
  */
-int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
-		size_t new_element_count);
+int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array, size_t new_element_count);
 
 /*
  * Add an element to the end of a dynamic array. The array's element count is
@@ -78,16 +74,14 @@ int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
  *
  * element is a pointer to the element to add (copy) to the array.
  */
-int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
-		const void *element);
+int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array, const void *element);
 
 /*
  * Remove an element from the dynamic array. The array's element count is
  * decreased by one and the following elements are shifted to take its place
  * (when applicable).
  */
-int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
-		size_t element_index);
+int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array, size_t element_index);
 
 /* Release any memory used by the dynamic array. */
 void lttng_dynamic_array_reset(struct lttng_dynamic_array *array);
@@ -106,16 +100,14 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array);
  * Initialize a resizable array of fixed-size elements. This performs no
  * allocation and can't fail.
  */
-void lttng_dynamic_pointer_array_init(
-		struct lttng_dynamic_pointer_array *array,
-		lttng_dynamic_pointer_array_destructor destructor);
+void lttng_dynamic_pointer_array_init(struct lttng_dynamic_pointer_array *array,
+				      lttng_dynamic_pointer_array_destructor destructor);
 
 /*
  * Returns the number of pointers in the dynamic pointer array.
  */
-static inline
-size_t lttng_dynamic_pointer_array_get_count(
-		const struct lttng_dynamic_pointer_array *array)
+static inline size_t
+lttng_dynamic_pointer_array_get_count(const struct lttng_dynamic_pointer_array *array)
 {
 	return lttng_dynamic_array_get_count(&array->array);
 }
@@ -123,9 +115,9 @@ size_t lttng_dynamic_pointer_array_get_count(
 /*
  * Returns the pointer at index `index`.
  */
-static inline
-void *lttng_dynamic_pointer_array_get_pointer(
-		const struct lttng_dynamic_pointer_array *array, size_t index)
+static inline void *
+lttng_dynamic_pointer_array_get_pointer(const struct lttng_dynamic_pointer_array *array,
+					size_t index)
 {
 	void **element = (void **) lttng_dynamic_array_get_element(&array->array, index);
 
@@ -137,9 +129,8 @@ void *lttng_dynamic_pointer_array_get_pointer(
  * run the destructor.
  */
 
-static inline
-void *lttng_dynamic_pointer_array_steal_pointer(
-		struct lttng_dynamic_pointer_array *array, size_t index)
+static inline void *
+lttng_dynamic_pointer_array_steal_pointer(struct lttng_dynamic_pointer_array *array, size_t index)
 {
 	void **p_element = (void **) lttng_dynamic_array_get_element(&array->array, index);
 	void *element = *p_element;
@@ -154,9 +145,8 @@ void *lttng_dynamic_pointer_array_steal_pointer(
  * count is increased by one and its underlying capacity is adjusted
  * automatically.
  */
-static inline
-int lttng_dynamic_pointer_array_add_pointer(
-		struct lttng_dynamic_pointer_array *array, void *pointer)
+static inline int lttng_dynamic_pointer_array_add_pointer(struct lttng_dynamic_pointer_array *array,
+							  void *pointer)
 {
 	return lttng_dynamic_array_add_element(&array->array, &pointer);
 }
@@ -166,15 +156,13 @@ int lttng_dynamic_pointer_array_add_pointer(
  * count is decreased by one and the following pointers are shifted to
  * take the place of the removed pointer (if applicable).
  */
-int lttng_dynamic_pointer_array_remove_pointer(
-		struct lttng_dynamic_pointer_array *array, size_t index);
+int lttng_dynamic_pointer_array_remove_pointer(struct lttng_dynamic_pointer_array *array,
+					       size_t index);
 
 /* Release any memory used by the dynamic array. */
-void lttng_dynamic_pointer_array_reset(
-		struct lttng_dynamic_pointer_array *array);
+void lttng_dynamic_pointer_array_reset(struct lttng_dynamic_pointer_array *array);
 
 /* Remove all elements from the dynamic pointer array. */
-void lttng_dynamic_pointer_array_clear(
-		struct lttng_dynamic_pointer_array *array);
+void lttng_dynamic_pointer_array_clear(struct lttng_dynamic_pointer_array *array);
 
 #endif /* LTTNG_DYNAMIC_ARRAY_H */

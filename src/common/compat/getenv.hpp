@@ -8,23 +8,22 @@
  *
  */
 
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <common/error.hpp>
 
-static inline
-int lttng_is_setuid_setgid()
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+static inline int lttng_is_setuid_setgid()
 {
 	return geteuid() != getuid() || getegid() != getgid();
 }
 
-static inline
-char *lttng_secure_getenv(const char *name)
+static inline char *lttng_secure_getenv(const char *name)
 {
 	if (lttng_is_setuid_setgid()) {
 		WARN("Getting environment variable '%s' from setuid/setgid binary refused for security reasons.",
-			name);
+		     name);
 		return nullptr;
 	}
 	return getenv(name);

@@ -6,17 +6,16 @@
  *
  */
 
+#include <lttng/health.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <lttng/health.h>
-
 static const char *relayd_path;
 
-static
-int check_component(struct lttng_health *lh, const char *component_name,
-		int ok_if_not_running)
+static int
+check_component(struct lttng_health *lh, const char *component_name, int ok_if_not_running)
 {
 	const struct lttng_health_thread *thread;
 	int nr_threads, i, status;
@@ -25,8 +24,7 @@ int check_component(struct lttng_health *lh, const char *component_name,
 		if (ok_if_not_running) {
 			return 0;
 		}
-		fprintf(stderr, "Error querying %s health\n",
-			component_name);
+		fprintf(stderr, "Error querying %s health\n", component_name);
 		return -1;
 	}
 	status = lttng_health_state(lh);
@@ -54,15 +52,13 @@ int check_component(struct lttng_health *lh, const char *component_name,
 			continue;
 		}
 		printf("Thread \"%s\" is not responding in component \"%s\".\n",
-			lttng_health_thread_name(thread),
-			component_name);
-
+		       lttng_health_thread_name(thread),
+		       component_name);
 	}
 	return status;
 }
 
-static
-int check_sessiond(void)
+static int check_sessiond(void)
 {
 	struct lttng_health *lh;
 	int status;
@@ -80,8 +76,7 @@ int check_sessiond(void)
 	return status;
 }
 
-static
-int check_consumerd(enum lttng_health_consumerd hc)
+static int check_consumerd(enum lttng_health_consumerd hc)
 {
 	struct lttng_health *lh;
 	int status;
@@ -104,8 +99,7 @@ int check_consumerd(enum lttng_health_consumerd hc)
 	return status;
 }
 
-static
-int check_relayd(const char *path)
+static int check_relayd(const char *path)
 {
 	struct lttng_health *lh;
 	int status;
@@ -129,11 +123,12 @@ int main(int argc, char *argv[])
 
 	for (i = 1; i < argc; i++) {
 		size_t relayd_path_arg_len = strlen("--relayd-path=");
-		if (!strncmp(argv[i], "--relayd-path=",
-				relayd_path_arg_len)) {
+		if (!strncmp(argv[i], "--relayd-path=", relayd_path_arg_len)) {
 			relayd_path = &argv[i][relayd_path_arg_len];
 		} else {
-			fprintf(stderr, "Unknown option \"%s\". Try --relayd-path=PATH.\n", argv[i]);
+			fprintf(stderr,
+				"Unknown option \"%s\". Try --relayd-path=PATH.\n",
+				argv[i]);
 			exit(EXIT_FAILURE);
 		}
 	}

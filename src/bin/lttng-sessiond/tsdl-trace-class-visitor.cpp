@@ -372,8 +372,8 @@ public:
 		_trace_abi(abi),
 
 		_default_clock_class_name(in_default_clock_class_name ?
-						   in_default_clock_class_name->c_str() :
-						   nullptr),
+						  in_default_clock_class_name->c_str() :
+						  nullptr),
 		_type_overrides(type_overrides)
 	{
 	}
