@@ -170,7 +170,7 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 {
 	try {
 		return lttng::random::produce_true_random_seed();
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		WARN("%s",
 		     fmt::format(
 			     "Failed to produce a random seed using getrandom(), falling back to pseudo-random device seed generation which will block until its pool is initialized: {}",
@@ -184,7 +184,7 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 		 * under some containerized environments.
 		 */
 		produce_random_seed_from_urandom();
-	} catch (std::exception& e) {
+	} catch (const std::exception& e) {
 		WARN("%s",
 		     fmt::format("Failed to produce a random seed from the urandom device: {}",
 				 e.what())

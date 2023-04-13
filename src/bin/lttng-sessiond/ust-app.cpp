@@ -6612,7 +6612,7 @@ static int handle_app_register_channel_notification(int sock,
 				goto reply;
 			}
 		}
-	} catch (std::exception& ex) {
+	} catch (const std::exception& ex) {
 		ERR("Failed to handle application context: %s", ex.what());
 		ret_code = -EINVAL;
 		goto reply;

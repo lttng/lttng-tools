@@ -3435,7 +3435,7 @@ int cmd_destroy_session(struct ltt_session *session, int *sock_fd)
 		try {
 			the_rotation_thread_handle->unsubscribe_session_consumed_size_rotation(
 				*session);
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			/* Continue the destruction of the session anyway. */
 			ERR("Failed to unsubscribe rotation thread notification channel from consumed size condition during session destruction: %s",
 			    e.what());
@@ -5898,7 +5898,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 			try {
 				the_rotation_thread_handle->subscribe_session_consumed_size_rotation(
 					*session, new_value);
-			} catch (std::exception& e) {
+			} catch (const std::exception& e) {
 				ERR("Failed to enable consumed-size notification in ROTATION_SET_SCHEDULE command: %s",
 				    e.what());
 				ret = LTTNG_ERR_UNK;
@@ -5908,7 +5908,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 			try {
 				the_rotation_thread_handle
 					->unsubscribe_session_consumed_size_rotation(*session);
-			} catch (std::exception& e) {
+			} catch (const std::exception& e) {
 				ERR("Failed to disable consumed-size notification in ROTATION_SET_SCHEDULE command: %s",
 				    e.what());
 				ret = LTTNG_ERR_UNK;
