@@ -242,6 +242,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 /*
  * Version using GNU strerror_r, for linux with appropriate defines.
  */
+const char *error_get_str(int32_t code);
 #define PERROR(call, args...)                                                      \
 	do {                                                                       \
 		char *_perror_buf;                                                 \
@@ -251,11 +252,44 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 	} while (0);
 #endif
 
-#define DBG_FMT(format_str, args...)  DBG("%s", fmt::format(format_str, ##args).c_str())
-#define WARN_FMT(format_str, args...) WARN("%s", fmt::format(format_str, ##args).c_str())
-#define ERR_FMT(format_str, args...)  ERR("%s", fmt::format(format_str, ##args).c_str())
+namespace lttng {
+namespace logging {
+namespace details {
+[[noreturn]] void die_formatting_exception(const char *format,
+					   const std::exception& formatting_exception);
+} /* namespace details */
+} /* namespace logging */
+} /* namespace lttng */
 
-const char *error_get_str(int32_t code);
+#define DBG_FMT(format_str, args...)                                                              \
+	do {                                                                                      \
+		try {                                                                             \
+			DBG("%s", fmt::format(format_str, ##args).c_str());                       \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
+#define WARN_FMT(format_str, args...)                                                             \
+	do {                                                                                      \
+		try {                                                                             \
+			WARN("%s", fmt::format(format_str, ##args).c_str());                      \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
+#define ERR_FMT(format_str, args...)                                                              \
+	do {                                                                                      \
+		try {                                                                             \
+			ERR("%s", fmt::format(format_str, ##args).c_str());                       \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
 
 /*
  * Function that format the time and return the reference of log_time.str to

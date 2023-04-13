@@ -16,6 +16,7 @@
 #include <lttng/lttng-error.h>
 
 #include <inttypes.h>
+#include <iostream>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -451,4 +452,13 @@ void lttng_abort_on_error(void)
 	if (lttng_opt_abort_on_error > 0) {
 		abort();
 	}
+}
+
+[[noreturn]] void
+lttng::logging::details::die_formatting_exception(const char *format,
+						  const std::exception& formatting_exception)
+{
+	std::cerr << "Error occurred while formatting logging message: msg=`" << format
+		  << "`: " << formatting_exception.what();
+	abort();
 }
