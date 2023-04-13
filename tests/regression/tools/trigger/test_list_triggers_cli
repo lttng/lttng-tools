@@ -799,8 +799,8 @@ test_event_rule_matches_probe ()
 
 	diag "Listing event-rule-matches kernel probe"
 
-	channel_enable_addr=$(grep 'lttng_channel_enable' /proc/kallsyms | cut -f 1 -d ' ')
-	channel_disable_addr=$(grep 'lttng_channel_disable' /proc/kallsyms | cut -f 1 -d ' ')
+	channel_enable_addr=$(grep '\<lttng_channel_enable\>' /proc/kallsyms | cut -f 1 -d ' ')
+	channel_disable_addr=$(grep '\<lttng_channel_disable\>' /proc/kallsyms | cut -f 1 -d ' ')
 
 	# We need to find a valid offset.
 	base_symbol=""
