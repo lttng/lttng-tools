@@ -1403,7 +1403,7 @@ static void sessiond_uuid_log()
 /*
  * main
  */
-int main(int argc, char **argv)
+static int _main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	const char *env_app_timeout;
@@ -1973,5 +1973,15 @@ exit_set_signal_handler:
 		exit(EXIT_SUCCESS);
 	} else {
 		exit(EXIT_FAILURE);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	try {
+		return _main(argc, argv);
+	} catch (const std::exception& e) {
+		ERR_FMT("Unhandled exception caught by main thread: %s", e.what());
+		abort();
 	}
 }
