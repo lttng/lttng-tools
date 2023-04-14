@@ -4468,6 +4468,8 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 				    (int) trigger_owner,
 				    ret_code);
 			}
+
+			goto end_unlock_session_list;
 		}
 		break;
 	}
