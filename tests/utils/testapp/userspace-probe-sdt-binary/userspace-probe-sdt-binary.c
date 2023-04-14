@@ -9,7 +9,16 @@
 #define _GNU_SOURCE
 #endif
 
+/*
+ * The order of inclusion is important here: including sdt.h _before_ the probe
+ * declarations ensures that semaphore-protected SDT probes (which we don't support) are not
+ * generated. See SYSTEMTAP(2) for more details.
+ */
+/* clang-format off */
+#include <sys/sdt.h>
 #include "foobar_provider.h"
+/* clang-format on */
+
 #include "libfoo.h"
 #include "sema.h"
 
@@ -18,7 +27,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/sdt.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
