@@ -4519,6 +4519,8 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 						(int) trigger_owner,
 						ret_code);
 			}
+
+			goto end_unlock_session_list;
 		}
 		break;
 	}
