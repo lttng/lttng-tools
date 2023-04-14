@@ -1,2 +1,4 @@
 # Run clang-format on the whole tree
 28ab034a2c3582d07d3423d2d746731f87d3969f
+# Clean-up: run format-cpp on the tree
+28f23191dcbf047429d51950a337a57d7a3f866a
