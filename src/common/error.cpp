@@ -20,14 +20,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+namespace {
 /*
  * lttng_opt_abort_on_error: unset: -1, disabled: 0, enabled: 1.
  * Controlled by the LTTNG_ABORT_ON_ERROR environment variable.
  */
-static int lttng_opt_abort_on_error = -1;
+int lttng_opt_abort_on_error = -1;
 
 /* TLS variable that contains the time of one single log entry. */
 DEFINE_URCU_TLS(struct log_time, error_log_time);
+} /* namespace */
+
 DEFINE_URCU_TLS(const char *, logger_thread_name);
 
 const char *log_add_time()

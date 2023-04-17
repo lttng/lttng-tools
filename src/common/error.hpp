@@ -46,7 +46,6 @@ struct log_time {
 	/* Format: 00:00:00.000000000 plus NULL byte. */
 	char str[19];
 };
-extern LTTNG_EXPORT DECLARE_URCU_TLS(struct log_time, error_log_time);
 extern DECLARE_URCU_TLS(const char *, logger_thread_name);
 
 extern int lttng_opt_quiet;
