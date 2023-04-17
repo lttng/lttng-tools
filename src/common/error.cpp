@@ -29,10 +29,10 @@ namespace {
 int lttng_opt_abort_on_error = -1;
 
 /* TLS variable that contains the time of one single log entry. */
-DEFINE_URCU_TLS(struct log_time, error_log_time);
+thread_local struct log_time error_log_time;
 } /* namespace */
 
-DEFINE_URCU_TLS(const char *, logger_thread_name);
+thread_local const char * logger_thread_name;
 
 const char *log_add_time()
 {
@@ -54,8 +54,8 @@ const char *log_add_time()
 	}
 
 	/* Format time in the TLS variable. */
-	ret = snprintf(URCU_TLS(error_log_time).str,
-		       sizeof(URCU_TLS(error_log_time).str),
+	ret = snprintf(error_log_time.str,
+		       sizeof(error_log_time.str),
 		       "%02d:%02d:%02d.%09ld",
 		       tm.tm_hour,
 		       tm.tm_min,
@@ -66,7 +66,7 @@ const char *log_add_time()
 	}
 
 	errno = errsv;
-	return URCU_TLS(error_log_time).str;
+	return error_log_time.str;
 
 error:
 	/* Return an empty string on error so logging is not affected. */
@@ -79,7 +79,7 @@ void logger_set_thread_name(const char *name, bool set_pthread_name)
 	int ret;
 
 	LTTNG_ASSERT(name);
-	URCU_TLS(logger_thread_name) = name;
+	logger_thread_name = name;
 
 	if (set_pthread_name) {
 		ret = lttng_thread_setname(name);

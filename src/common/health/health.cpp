@@ -44,7 +44,7 @@ struct health_app {
 };
 
 /* Define TLS health state. */
-DEFINE_URCU_TLS(struct health_state, health_state);
+thread_local struct health_state health_state;
 
 /*
  * Initialize health check subsytem.
@@ -258,16 +258,16 @@ void health_register(struct health_app *ha, int type)
 	LTTNG_ASSERT(type < ha->nr_types);
 
 	/* Init TLS state. */
-	uatomic_set(&URCU_TLS(health_state).last, 0);
-	uatomic_set(&URCU_TLS(health_state).last_time.tv_sec, 0);
-	uatomic_set(&URCU_TLS(health_state).last_time.tv_nsec, 0);
-	uatomic_set(&URCU_TLS(health_state).current, 0);
-	uatomic_set(&URCU_TLS(health_state).flags, (health_flags) 0);
-	uatomic_set(&URCU_TLS(health_state).type, type);
+	uatomic_set(&health_state.last, 0);
+	uatomic_set(&health_state.last_time.tv_sec, 0);
+	uatomic_set(&health_state.last_time.tv_nsec, 0);
+	uatomic_set(&health_state.current, 0);
+	uatomic_set(&health_state.flags, (health_flags) 0);
+	uatomic_set(&health_state.type, type);
 
 	/* Add it to the global TLS state list. */
 	state_lock(ha);
-	cds_list_add(&URCU_TLS(health_state).node, &ha->list);
+	cds_list_add(&health_state.node, &ha->list);
 	state_unlock(ha);
 }
 
@@ -281,9 +281,9 @@ void health_unregister(struct health_app *ha)
 	 * On error, set the global_error_state since we are about to remove
 	 * the node from the global list.
 	 */
-	if (uatomic_read(&URCU_TLS(health_state).flags) & HEALTH_ERROR) {
-		uatomic_set(&ha->flags[URCU_TLS(health_state).type], HEALTH_ERROR);
+	if (uatomic_read(&health_state.flags) & HEALTH_ERROR) {
+		uatomic_set(&ha->flags[health_state.type], HEALTH_ERROR);
 	}
-	cds_list_del(&URCU_TLS(health_state).node);
+	cds_list_del(&health_state.node);
 	state_unlock(ha);
 }

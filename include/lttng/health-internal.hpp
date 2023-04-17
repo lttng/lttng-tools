@@ -65,7 +65,7 @@ struct health_comm_reply {
 } LTTNG_PACKED;
 
 /* Declare TLS health state. */
-extern DECLARE_URCU_TLS(struct health_state, health_state);
+extern thread_local struct health_state health_state;
 
 /*
  * Update current counter by 1 to indicate that the thread entered or left a
@@ -75,9 +75,9 @@ extern DECLARE_URCU_TLS(struct health_state, health_state);
 static inline void health_poll_entry()
 {
 	/* Code MUST be in code execution state which is an even number. */
-	LTTNG_ASSERT(!(uatomic_read(&URCU_TLS(health_state).current) & HEALTH_POLL_VALUE));
+	LTTNG_ASSERT(!(uatomic_read(&health_state.current) & HEALTH_POLL_VALUE));
 
-	uatomic_add(&URCU_TLS(health_state).current, HEALTH_POLL_VALUE);
+	uatomic_add(&health_state.current, HEALTH_POLL_VALUE);
 }
 
 /*
@@ -88,9 +88,9 @@ static inline void health_poll_entry()
 static inline void health_poll_exit()
 {
 	/* Code MUST be in poll execution state which is an odd number. */
-	LTTNG_ASSERT(uatomic_read(&URCU_TLS(health_state).current) & HEALTH_POLL_VALUE);
+	LTTNG_ASSERT(uatomic_read(&health_state.current) & HEALTH_POLL_VALUE);
 
-	uatomic_add(&URCU_TLS(health_state).current, HEALTH_POLL_VALUE);
+	uatomic_add(&health_state.current, HEALTH_POLL_VALUE);
 }
 
 /*
@@ -99,7 +99,7 @@ static inline void health_poll_exit()
  */
 static inline void health_code_update()
 {
-	uatomic_add(&URCU_TLS(health_state).current, HEALTH_CODE_VALUE);
+	uatomic_add(&health_state.current, HEALTH_CODE_VALUE);
 }
 
 /*
@@ -107,7 +107,7 @@ static inline void health_code_update()
  */
 static inline void health_error()
 {
-	uatomic_or(&URCU_TLS(health_state).flags, HEALTH_ERROR);
+	uatomic_or(&health_state.flags, HEALTH_ERROR);
 }
 
 struct health_app *health_app_create(int nr_types);

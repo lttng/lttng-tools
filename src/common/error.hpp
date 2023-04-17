@@ -46,7 +46,8 @@ struct log_time {
 	/* Format: 00:00:00.000000000 plus NULL byte. */
 	char str[19];
 };
-extern DECLARE_URCU_TLS(const char *, logger_thread_name);
+
+extern thread_local const char * logger_thread_name;
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
@@ -159,7 +160,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 				      msg " - %s [%s]: " fmt " (in %s() at " __FILE__     \
 					  ":" XSTR(__LINE__) ")\n",                       \
 				      log_add_time(),                                     \
-				      URCU_TLS(logger_thread_name) ?: generic_name,       \
+				      logger_thread_name ?: generic_name,                 \
 				      ##args,                                             \
 				      __func__);                                          \
 		}                                                                         \
@@ -179,7 +180,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 			__lttng_print(type,                                               \
 				      msg " - %s [%s]: " fmt "\n",                        \
 				      log_add_time(),                                     \
-				      URCU_TLS(logger_thread_name) ?: generic_name,       \
+				      logger_thread_name ?: generic_name,                 \
 				      ##args);                                            \
 		}                                                                         \
 	} while (0)
