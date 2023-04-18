@@ -17,11 +17,12 @@ namespace lttng {
 class eventfd : public file_descriptor {
 public:
 	/* Throws a posix_error exception on failure to create the underlying resource. */
-	eventfd(bool use_semaphore_semantics = true, std::uint64_t initial_value = 0);
+	explicit eventfd(bool use_semaphore_semantics = true, std::uint64_t initial_value = 0);
 	eventfd(const eventfd&) = delete;
 	eventfd& operator=(const eventfd&) = delete;
 	eventfd(eventfd&&) = delete;
 	void operator=(eventfd&&) = delete;
+	~eventfd() = default;
 
 	/* Throws on error. */
 	void increment(std::uint64_t value = 1);

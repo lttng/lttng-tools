@@ -23,10 +23,6 @@ bool is_valid_fd(int fd)
 }
 } // anonymous namespace
 
-lttng::file_descriptor::file_descriptor() noexcept
-{
-}
-
 lttng::file_descriptor::file_descriptor(int raw_fd) noexcept : _raw_fd{ raw_fd }
 {
 	LTTNG_ASSERT(is_valid_fd(_raw_fd));

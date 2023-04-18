@@ -15,7 +15,7 @@ namespace lttng {
 /* RAII wrapper around a UNIX file descriptor. */
 class file_descriptor {
 public:
-	file_descriptor() noexcept;
+	file_descriptor() noexcept = default;
 
 	explicit file_descriptor(int raw_fd) noexcept;
 	file_descriptor(const file_descriptor&) = delete;
