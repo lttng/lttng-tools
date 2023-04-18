@@ -86,7 +86,7 @@ libcommon_lgpl_la_SOURCES = \
 	event-rule/python-logging.cpp \
 	exception.cpp exception.hpp \
 	file-descriptor.hpp file-descriptor.cpp \
-	fd-handle.cpp fd-handle.hpp\
+	fd-handle.cpp fd-handle.hpp \
 	format.hpp \
 	io-hint.cpp \
 	io-hint.hpp \
