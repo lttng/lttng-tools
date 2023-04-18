@@ -243,7 +243,6 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 /*
  * Version using GNU strerror_r, for linux with appropriate defines.
  */
-const char *error_get_str(int32_t code);
 #define PERROR(call, args...)                                                      \
 	do {                                                                       \
 		char *_perror_buf;                                                 \
@@ -252,6 +251,8 @@ const char *error_get_str(int32_t code);
 		_PERROR(call ": %s", ##args, _perror_buf);                         \
 	} while (0);
 #endif
+
+const char *error_get_str(int32_t code);
 
 namespace lttng {
 namespace logging {
