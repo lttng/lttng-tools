@@ -204,6 +204,7 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
+	original_date=$(date)
 	start_lttng_relayd "-o $TRACE_PATH"
 	start_lttng_sessiond
 
@@ -217,4 +218,11 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	stop_lttng_sessiond
 	stop_lttng_relayd
+
+	# This set of test sets the date in the past which causes
+	# `make` to panic when it sees files created in the "future"
+	# while running the "check" target. Obviously this doesn't set
+	# the correct date, but at least its close enough to allow the
+	# test suite to continue.
+	date --set "$original_date"
 }
