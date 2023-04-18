@@ -27,7 +27,7 @@ bool lttng_uuid_is_init;
 
 void lttng_uuid_to_str(const lttng_uuid& uuid, char *uuid_str)
 {
-	sprintf(uuid_str, LTTNG_UUID_FMT, LTTNG_UUID_FMT_VALUES(uuid));
+	snprintf(uuid_str, LTTNG_UUID_STR_LEN, LTTNG_UUID_FMT, LTTNG_UUID_FMT_VALUES(uuid));
 }
 
 std::string lttng::utils::uuid_to_str(const lttng_uuid& uuid)
