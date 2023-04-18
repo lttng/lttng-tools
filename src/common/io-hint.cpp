@@ -54,7 +54,7 @@ int flush_range_async(int fd, off_t offset, off_t nbytes)
 }
 } /* namespace */
 
-#else
+#else /* HAVE_SYNC_FILE_RANGE */
 
 namespace {
 /*
@@ -109,7 +109,44 @@ int flush_range_async(int fd, off_t offset, off_t nbytes)
 	return flush_range(fd, offset, nbytes, MS_ASYNC);
 }
 } /* namespace */
-#endif
+#endif /* !HAVE_SYNC_FILE_RANGE */
+
+/*
+ * Use posix_fadvise when available.
+ */
+#ifdef HAVE_POSIX_FADVISE
+namespace {
+int hint_dont_need(int fd, off_t offset, off_t nbytes)
+{
+	const int ret = posix_fadvise(fd, offset, nbytes, POSIX_FADV_DONTNEED);
+	if (ret && ret != -ENOSYS) {
+		PERROR("Failed to mark region as DONTNEED with posix_fadvise: fd=%i, offset=%" PRIu64
+		       ", nbytes=%" PRIu64,
+		       fd,
+		       static_cast<uint64_t>(offset),
+		       static_cast<uint64_t>(nbytes));
+		errno = ret;
+	}
+
+	return ret;
+}
+} /* namespace */
+
+#else /* HAVE_POSIX_FADVISE */
+
+/*
+ * Generic noop compat for platforms wihtout posix_fadvise, this is acceptable
+ * since we are only giving a hint to the kernel.
+ */
+namespace {
+int hint_dont_need(int fd __attribute__((unused)),
+		   off_t offset __attribute__((unused)),
+		   off_t nbytes __attribute__((unused)))
+{
+	return 0;
+}
+} /* namespace */
+#endif /* !HAVE_POSIX_FADVISE */
 
 /*
  * Give a hint to the kernel that we won't need the data at the specified range
@@ -135,15 +172,7 @@ void lttng::io::hint_flush_range_dont_need_sync(int fd, off_t offset, off_t nbyt
 	 * defined. So it can be expected to lead to lower throughput in
 	 * streaming.
 	 */
-	const int ret = posix_fadvise(fd, offset, nbytes, POSIX_FADV_DONTNEED);
-	if (ret && ret != -ENOSYS) {
-		PERROR("Failed to mark region as DONTNEED with posix_fadvise: fd=%i, offset=%" PRIu64
-		       ", nbytes=%" PRIu64,
-		       fd,
-		       static_cast<uint64_t>(offset),
-		       static_cast<uint64_t>(nbytes));
-		errno = ret;
-	}
+	hint_dont_need(fd, offset, nbytes);
 }
 
 /*
