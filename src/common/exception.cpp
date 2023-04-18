@@ -9,6 +9,8 @@
 
 #include <common/error.hpp>
 
+#include <lttng/lttng-error.h>
+
 #include <sstream>
 
 namespace {
