@@ -315,7 +315,8 @@ AC_CHECK_FUNCS([ \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
-	sched_getcpu sysconf sync_file_range getrandom posix_fadvise
+	sched_getcpu sysconf sync_file_range getrandom posix_fadvise \
+	arc4random
 ])
 
 # Check for pthread_setname_np and pthread_getname_np

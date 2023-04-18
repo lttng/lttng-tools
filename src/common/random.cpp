@@ -72,6 +72,17 @@ void getrandom_nonblock(char *out_data, std::size_t size)
 			errno);
 	}
 }
+#elif defined(HAVE_ARC4RANDOM)
+
+#include <stdlib.h>
+
+/*
+ * According to the MacOS / FreeBSD manpage, this function never fails nor blocks.
+ */
+void getrandom_nonblock(char *out_data, std::size_t size)
+{
+	arc4random_buf(out_data, size);
+}
 #else /* defined(__linux__) && defined(SYS_getrandom) && defined(HAVE_SYS_RANDOM_H) */
 __attribute__((noreturn)) void getrandom_nonblock(char *out_data __attribute__((unused)),
 						  std::size_t size __attribute__((unused)))
