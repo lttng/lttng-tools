@@ -47,7 +47,7 @@ struct log_time {
 	char str[19];
 };
 
-extern thread_local const char * logger_thread_name;
+extern thread_local const char *logger_thread_name;
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;

@@ -32,7 +32,7 @@ int lttng_opt_abort_on_error = -1;
 thread_local struct log_time error_log_time;
 } /* namespace */
 
-thread_local const char * logger_thread_name;
+thread_local const char *logger_thread_name;
 
 const char *log_add_time()
 {
