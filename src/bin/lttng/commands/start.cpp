@@ -21,14 +21,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static struct mi_writer *writer;
-
-#ifdef LTTNG_EMBED_HELP
-static const char help_msg[] =
-#include <lttng-start.1.h>
-	;
-#endif
-
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
@@ -36,7 +28,16 @@ enum {
 	OPT_ALL,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+struct mi_writer *writer;
+
+#ifdef LTTNG_EMBED_HELP
+const char help_msg[] =
+#include <lttng-start.1.h>
+	;
+#endif
+
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
@@ -45,7 +46,7 @@ static struct poptOption long_options[] = {
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
 
-static int mi_print_session(const char *session_name, int enabled)
+int mi_print_session(const char *session_name, int enabled)
 {
 	int ret;
 
@@ -78,7 +79,7 @@ end:
  *
  *  Start tracing for all trace of the session.
  */
-static int start_tracing(const char *session_name)
+int start_tracing(const char *session_name)
 {
 	int ret;
 
@@ -117,7 +118,7 @@ error:
 	return ret;
 }
 
-static int start_tracing(const struct session_spec& spec)
+int start_tracing(const struct session_spec& spec)
 {
 	int ret = CMD_SUCCESS;
 	bool had_warning = false;
@@ -148,6 +149,7 @@ static int start_tracing(const struct session_spec& spec)
 
 	return ret;
 }
+} /* namespace */
 
 /*
  *  cmd_start
