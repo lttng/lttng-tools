@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - Callstack context"
 
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=11
+NUM_TESTS=12
 TEST_APP_USERSPACE="$TESTDIR/utils/testapp/gen-syscall-events-callstack/gen-syscall-events-callstack"
 TEST_APP_KERNELSPACE="$TESTDIR/utils/testapp/gen-syscall-events/gen-syscall-events"
 PARSE_CALLSTACK="$TESTDIR/utils/parse-callstack.py"
@@ -123,7 +123,7 @@ function test_kernel_callstack()
 # Only run userspace callstack test on x86
 uname -m | grep -E "x86" >/dev/null 2>&1
 if test $? == 0; then
-	NUM_TESTS=$((NUM_TESTS+11))
+	NUM_TESTS=$((NUM_TESTS+10))
 	RUN_USERSPACE_TEST=1
 else
 	RUN_USERSPACE_TEST=0
