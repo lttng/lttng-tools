@@ -120,8 +120,8 @@ function test_kernel_callstack()
 	rm -rf "$TRACE_PATH"
 }
 
-# Only run userspace callstack test on x86
-uname -m | grep -E "x86" >/dev/null 2>&1
+# Only run userspace callstack test on x86 (32 and 64 variants)
+uname -m | grep "86" >/dev/null 2>&1
 if test $? == 0; then
 	NUM_TESTS=$((NUM_TESTS+10))
 	RUN_USERSPACE_TEST=1
