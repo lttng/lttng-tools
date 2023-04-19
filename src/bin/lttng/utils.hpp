@@ -40,55 +40,59 @@ struct session_spec {
  * We don't use a std::vector here because it would make a copy of the C array.
  */
 class session_list {
-	class iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
+	template <typename ContainerType, typename DereferenceReturnType>
+	class iterator_template : public std::iterator<std::random_access_iterator_tag, std::size_t> {
 	public:
-		explicit iterator(session_list& list, std::size_t k) : _list(list), _index(k)
+		explicit iterator_template(ContainerType& list, std::size_t k) : _list(list), _index(k)
 		{
 		}
 
-		iterator& operator++() noexcept
+		iterator_template& operator++() noexcept
 		{
 			++_index;
 			return *this;
 		}
 
-		iterator& operator--() noexcept
+		iterator_template& operator--() noexcept
 		{
 			--_index;
 			return *this;
 		}
 
-		iterator& operator++(int) noexcept
+		iterator_template& operator++(int) noexcept
 		{
 			_index++;
 			return *this;
 		}
 
-		iterator& operator--(int) noexcept
+		iterator_template& operator--(int) noexcept
 		{
 			_index--;
 			return *this;
 		}
 
-		bool operator==(iterator other) const noexcept
+		bool operator==(iterator_template other) const noexcept
 		{
 			return _index == other._index;
 		}
 
-		bool operator!=(iterator other) const noexcept
+		bool operator!=(iterator_template other) const noexcept
 		{
 			return !(*this == other);
 		}
 
-		lttng_session& operator*() const noexcept
+		DereferenceReturnType& operator*() const noexcept
 		{
 			return _list[_index];
 		}
 
 	private:
-		session_list& _list;
+		ContainerType& _list;
 		std::size_t _index;
 	};
+
+	using iterator = iterator_template<session_list, lttng_session>;
+	using const_iterator = iterator_template<const session_list, const lttng_session>;
 
 public:
 	session_list() : _sessions_count(0), _sessions(nullptr)
@@ -115,6 +119,16 @@ public:
 	iterator end() noexcept
 	{
 		return iterator(*this, _sessions_count);
+	}
+
+	const_iterator begin() const noexcept
+	{
+		return const_iterator(*this, 0);
+	}
+
+	const_iterator end() const noexcept
+	{
+		return const_iterator(*this, _sessions_count);
 	}
 
 	std::size_t size() const noexcept
