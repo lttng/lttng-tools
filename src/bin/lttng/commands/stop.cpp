@@ -29,14 +29,14 @@ enum {
 };
 
 namespace {
+int opt_no_wait;
+struct mi_writer *writer;
+
 #ifdef LTTNG_EMBED_HELP
-static const char help_msg[] =
+const char help_msg[] =
 #include <lttng-stop.1.h>
 	;
 #endif
-
-int opt_no_wait;
-struct mi_writer *writer;
 
 struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -85,21 +85,14 @@ end:
 /*
  * Start tracing for all trace of the session.
  */
-int stop_tracing(const char *session_name)
+cmd_error_code stop_tracing(const char *session_name)
 {
 	int ret;
 
 	ret = lttng_stop_tracing_no_wait(session_name);
 	if (ret < 0) {
-		switch (-ret) {
-		case LTTNG_ERR_TRACE_ALREADY_STOPPED:
-			WARN("Tracing already stopped for session %s", session_name);
-			break;
-		default:
-			ERR("%s", lttng_strerror(ret));
-			break;
-		}
-		goto error;
+		LTTNG_THROW_CTL(fmt::format("Failed to start session `{}`", session_name),
+				static_cast<lttng_error_code>(-ret));
 	}
 
 	if (!opt_no_wait) {
@@ -109,7 +102,10 @@ int stop_tracing(const char *session_name)
 			ret = lttng_data_pending(session_name);
 			if (ret < 0) {
 				/* Return the data available call error. */
-				goto error;
+				ERR_FMT("Failed to check pending data for session `{}` ({})",
+					session_name,
+					lttng_strerror(ret));
+				return CMD_ERROR;
 			}
 
 			/*
@@ -125,34 +121,88 @@ int stop_tracing(const char *session_name)
 		MSG("");
 	}
 
-	ret = CMD_SUCCESS;
-
 	print_session_stats(session_name);
-	MSG("Tracing stopped for session %s", session_name);
+	MSG("Tracing stopped for session `%s`", session_name);
 	if (lttng_opt_mi) {
-		ret = mi_print_session(session_name, 0);
+		if (mi_print_session(session_name, 0)) {
+			return CMD_ERROR;
+		}
 	}
-error:
-	return ret;
+
+	return CMD_SUCCESS;
 }
 
-int stop_tracing(const struct session_spec& spec)
+cmd_error_code stop_tracing(const session_spec& spec) noexcept
 {
-	int ret = CMD_SUCCESS;
+	bool had_warning = false;
+	bool had_error = false;
+	bool listing_failed = false;
 
-	try {
-		for (const auto& session : list_sessions(spec)) {
-			int const sub_ret = stop_tracing(session.name);
-
-			if (sub_ret != CMD_SUCCESS) {
-				ret = sub_ret;
-			}
+	const auto sessions = [&listing_failed, &spec]() -> session_list {
+		try {
+			return list_sessions(spec);
+		} catch (const lttng::ctl::error& ctl_exception) {
+			ERR_FMT("Failed to list sessions ({})",
+				lttng_strerror(-ctl_exception.code()));
+			listing_failed = true;
+			return {};
 		}
-	} catch (lttng::ctl::error& error) {
-		ret = error.code();
+	}();
+
+	if (!listing_failed && sessions.size() == 0 && spec.type == session_spec::type::NAME) {
+		ERR_FMT("Session `{}` not found", spec.value);
+		return CMD_ERROR;
 	}
 
-	return ret;
+	if (listing_failed) {
+		return CMD_FATAL;
+	}
+
+	for (const auto& session : sessions) {
+		cmd_error_code sub_ret;
+
+		try {
+			sub_ret = stop_tracing(session.name);
+		} catch (const lttng::ctl::error& ctl_exception) {
+			switch (ctl_exception.code()) {
+			case LTTNG_ERR_TRACE_ALREADY_STOPPED:
+				WARN_FMT("Tracing already stopped for session `{}`", session.name);
+				sub_ret = CMD_SUCCESS;
+				break;
+			case LTTNG_ERR_NO_SESSION:
+				if (spec.type != session_spec::type::NAME) {
+					/* Session destroyed during command, ignore and carry-on. */
+					sub_ret = CMD_SUCCESS;
+					break;
+				} else {
+					sub_ret = CMD_ERROR;
+					break;
+				}
+			case LTTNG_ERR_NO_SESSIOND:
+				/* Don't keep going on a fatal error. */
+				return CMD_FATAL;
+			default:
+				/* Generic error. */
+				sub_ret = CMD_ERROR;
+				ERR_FMT("Failed to stop session `{}` ({})",
+					session.name,
+					lttng_strerror(-ctl_exception.code()));
+				break;
+			}
+		}
+
+		/* Keep going, but report the most serious state. */
+		had_warning |= sub_ret == CMD_WARNING;
+		had_error |= sub_ret == CMD_ERROR;
+	}
+
+	if (had_error) {
+		return CMD_ERROR;
+	} else if (had_warning) {
+		return CMD_WARNING;
+	} else {
+		return CMD_SUCCESS;
+	}
 }
 } /* namespace */
 
@@ -163,7 +213,9 @@ int stop_tracing(const struct session_spec& spec)
  */
 int cmd_stop(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
+	int opt;
+	cmd_error_code command_ret = CMD_SUCCESS;
+	bool success = true;
 	static poptContext pc;
 	const char *leftover = nullptr;
 	struct session_spec session_spec = {
@@ -177,8 +229,13 @@ int cmd_stop(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
+		{
+			int ret;
+
 			SHOW_HELP();
+			command_ret = static_cast<cmd_error_code>(ret);
 			goto end;
+		}
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
@@ -189,7 +246,7 @@ int cmd_stop(int argc, const char **argv)
 			session_spec.type = session_spec::ALL;
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			command_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -198,21 +255,19 @@ int cmd_stop(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_stop);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_command_open(writer, mi_lttng_element_command_stop)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_open_element(writer, mi_lttng_element_command_output)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
@@ -220,9 +275,8 @@ int cmd_stop(int argc, const char **argv)
 		 * Open sessions element
 		 * For validation
 		 */
-		ret = mi_lttng_writer_open_element(writer, config_element_sessions);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_open_element(writer, config_element_sessions)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -232,36 +286,33 @@ int cmd_stop(int argc, const char **argv)
 	leftover = poptGetArg(pc);
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
 	command_ret = stop_tracing(session_spec);
 	if (command_ret) {
-		success = 0;
+		success = false;
 	}
 
 	/* Mi closing */
 	if (lttng_opt_mi) {
 		/* Close sessions and  output element */
-		ret = mi_lttng_close_multi_element(writer, 2);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_close_multi_element(writer, 2)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(
-			writer, mi_lttng_element_command_success, success);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_write_element_bool(
+			    writer, mi_lttng_element_command_success, success)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_command_close(writer)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -269,13 +320,9 @@ int cmd_stop(int argc, const char **argv)
 end:
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+		command_ret = CMD_ERROR;
 	}
 
-	/* Overwrite ret if an error occurred in stop_tracing() */
-	ret = command_ret ? command_ret : ret;
-
 	poptFreeContext(pc);
-	return ret;
+	return command_ret;
 }
