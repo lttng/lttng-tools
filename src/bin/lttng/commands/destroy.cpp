@@ -24,17 +24,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int opt_no_wait;
-
-#ifdef LTTNG_EMBED_HELP
-static const char help_msg[] =
-#include <lttng-destroy.1.h>
-	;
-#endif
-
-/* Mi writer */
-static struct mi_writer *writer;
-
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
@@ -42,7 +31,19 @@ enum {
 	OPT_ENABLE_GLOB,
 };
 
-static struct poptOption long_options[] = {
+namespace {
+#ifdef LTTNG_EMBED_HELP
+const char help_msg[] =
+#include <lttng-destroy.1.h>
+	;
+#endif
+
+int opt_no_wait;
+
+/* Mi writer */
+struct mi_writer *writer;
+
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "all", 'a', POPT_ARG_NONE, nullptr, OPT_ALL, nullptr, nullptr },
@@ -58,7 +59,7 @@ static struct poptOption long_options[] = {
  * Unregister the provided session to the session daemon. On success, removes
  * the default configuration.
  */
-static int destroy_session(const struct lttng_session& session)
+int destroy_session(const struct lttng_session& session)
 {
 	int ret;
 	char *session_name = nullptr;
@@ -228,46 +229,50 @@ error:
 	return ret;
 }
 
-static int destroy_sessions(const struct session_spec& spec)
+cmd_error_code destroy_sessions(const struct session_spec& spec)
 {
-	try {
-		auto sessions = list_sessions(spec);
-		int ret = CMD_SUCCESS;
+	//bool had_warning = false;
+	//bool had_error = false;
+	bool listing_failed = false;
 
-		if (sessions.size() == 0) {
-			switch (spec.type) {
-			case session_spec::ALL: /* fall throught */
-			case session_spec::GLOB_PATTERN:
-				MSG("No session found, nothing to do.");
-				break;
-			case session_spec::NAME:
-				ERR("Session name %s not found", spec.value);
-				ret = LTTNG_ERR_SESS_NOT_FOUND;
-				break;
-			}
-
-			return ret;
+	const auto sessions = [&listing_failed, &spec]() -> session_list {
+		try {
+			return list_sessions(spec);
+		} catch (const lttng::ctl::error& ctl_exception) {
+			ERR_FMT("Failed to list sessions ({})",
+				lttng_strerror(-ctl_exception.code()));
+			listing_failed = true;
+			return {};
 		}
+	}();
 
-		for (const auto& session : sessions) {
-			int const sub_ret = destroy_session(session);
-
-			if (sub_ret != CMD_SUCCESS) {
-				ERR("%s during the destruction of session \"%s\"",
-				    lttng_strerror(sub_ret),
-				    session.name);
-				ret = CMD_ERROR;
-			}
+	if (sessions.size() == 0) {
+		switch (spec.type) {
+		case session_spec::ALL:
+			/* fall-through. */
+		case session_spec::GLOB_PATTERN:
+			MSG("No session found, nothing to do.");
+			break;
+		case session_spec::NAME:
+			ERR("Session name %s not found", spec.value);
+			return CMD_ERROR;
 		}
-
-		return ret;
-
-	} catch (lttng::ctl::error& error) {
-		ERR("%s", lttng_strerror(error.code()));
 	}
 
-	return CMD_ERROR;
+	for (const auto& session : sessions) {
+		int const sub_ret = destroy_session(session);
+
+		if (sub_ret != CMD_SUCCESS) {
+			ERR("%s during the destruction of session \"%s\"",
+				lttng_strerror(sub_ret),
+				session.name);
+			return CMD_ERROR;
+		}
+	}
+
+	return CMD_SUCCESS;
 }
+} /* namespace */
 
 /*
  * The 'destroy <options>' first level command
@@ -275,7 +280,7 @@ static int destroy_sessions(const struct session_spec& spec)
 int cmd_destroy(int argc, const char **argv)
 {
 	int opt;
-	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	cmd_error_code command_ret = CMD_SUCCESS;
 	bool success;
 	static poptContext pc;
 	const char *leftover = nullptr;
@@ -291,8 +296,13 @@ int cmd_destroy(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
+		{
+			int ret;
+
 			SHOW_HELP();
+			command_ret = static_cast<cmd_error_code>(ret);
 			goto end;
+		}
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
@@ -303,7 +313,7 @@ int cmd_destroy(int argc, const char **argv)
 			spec.type = session_spec::GLOB_PATTERN;
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			command_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -312,28 +322,25 @@ int cmd_destroy(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_destroy);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_command_open(writer, mi_lttng_element_command_destroy)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_open_element(writer, mi_lttng_element_command_output)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* For validation and semantic purpose we open a sessions element */
-		ret = mi_lttng_sessions_open(writer);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_sessions_open(writer)) {
+			command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -347,44 +354,37 @@ int cmd_destroy(int argc, const char **argv)
 	leftover = poptGetArg(pc);
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		success = false;
 	}
 
 	/* Mi closing */
 	if (lttng_opt_mi) {
 		/* Close sessions and output element element */
-		ret = mi_lttng_close_multi_element(writer, 2);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_close_multi_element(writer, 2)) {
+		command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(
-			writer, mi_lttng_element_command_success, success);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_write_element_bool(
+			writer, mi_lttng_element_command_success, success)) {
+		command_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_lttng_writer_command_close(writer)) {
+		command_ret = CMD_ERROR;
 			goto end;
 		}
 	}
 end:
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+		command_ret = CMD_ERROR;
 	}
 
-	/* Overwrite ret if an error occurred during destroy_session/all */
-	ret = command_ret ? command_ret : ret;
-
 	poptFreeContext(pc);
-	return ret;
+	return command_ret;
 }
