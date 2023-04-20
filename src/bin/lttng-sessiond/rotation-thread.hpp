@@ -41,6 +41,10 @@ public:
 
 	rotation_thread(rotation_thread_timer_queue& rotation_timer_queue,
 			notification_thread_handle& notification_thread_handle);
+	rotation_thread(const rotation_thread&) = delete;
+	rotation_thread(rotation_thread&&) = delete;
+	rotation_thread& operator=(const rotation_thread&) = delete;
+	rotation_thread& operator=(rotation_thread&&) = delete;
 	~rotation_thread();
 
 	/* Only use through the lttng_thread facilities. */
