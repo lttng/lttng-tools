@@ -1241,6 +1241,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/trigger/name/Makefile
 	tests/regression/tools/trigger/hidden/Makefile
 	tests/regression/tools/context/Makefile
+	tests/regression/tools/client/Makefile
 	tests/regression/ust/Makefile
 	tests/regression/ust/nprocesses/Makefile
 	tests/regression/ust/high-throughput/Makefile

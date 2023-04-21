@@ -3,6 +3,7 @@
 SUBDIRS = base-path \
 	channel \
 	clear \
+	client \
 	context \
 	crash \
 	exclusion \

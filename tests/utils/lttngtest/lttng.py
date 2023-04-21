@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from concurrent.futures import process
+
 from . import lttngctl, logger, environment
 import pathlib
 import os
@@ -12,6 +12,7 @@ from typing import Callable, Optional, Type, Union
 import shlex
 import subprocess
 import enum
+import xml.etree.ElementTree
 
 """
 Implementation of the lttngctl interface based on the `lttng` command line client.
@@ -19,6 +20,12 @@ Implementation of the lttngctl interface based on the `lttng` command line clien
 
 
 class Unsupported(lttngctl.ControlException):
+    def __init__(self, msg):
+        # type: (str) -> None
+        super().__init__(msg)
+
+
+class InvalidMI(lttngctl.ControlException):
     def __init__(self, msg):
         # type: (str) -> None
         super().__init__(msg)
@@ -78,8 +85,9 @@ class _Channel(lttngctl.Channel):
         domain_option_name = _get_domain_option_name(self.domain)
         context_type_name = _get_context_type_name(context_type)
         self._client._run_cmd(
-            "add-context --{domain_option_name} --type {context_type_name}".format(
+            "add-context --{domain_option_name} --channel '{channel_name}' --type {context_type_name}".format(
                 domain_option_name=domain_option_name,
+                channel_name=self.name,
                 context_type_name=context_type_name,
             )
         )
@@ -208,7 +216,7 @@ class _ProcessAttributeTracker(lttngctl.ProcessAttributeTracker):
         )
         domain_name = _get_domain_option_name(self._domain)
         self._client._run_cmd(
-            "{cmd_name} --session {session_name} --{domain_name} --{tracked_attribute_name} {value}".format(
+            "{cmd_name} --session '{session_name}' --{domain_name} --{tracked_attribute_name} {value}".format(
                 cmd_name=cmd_name,
                 session_name=self._session.name,
                 domain_name=domain_name,
@@ -247,8 +255,10 @@ class _Session(lttngctl.Session):
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         self._client._run_cmd(
-            "enable-channel --{domain_name} {channel_name}".format(
-                domain_name=domain_option_name, channel_name=channel_name
+            "enable-channel --session '{session_name}' --{domain_name} '{channel_name}'".format(
+                session_name=self.name,
+                domain_name=domain_option_name,
+                channel_name=channel_name,
             )
         )
         return _Channel(self._client, channel_name, domain, self)
@@ -264,15 +274,38 @@ class _Session(lttngctl.Session):
 
     def start(self):
         # type: () -> None
-        self._client._run_cmd("start {session_name}".format(session_name=self.name))
+        self._client._run_cmd("start '{session_name}'".format(session_name=self.name))
 
     def stop(self):
         # type: () -> None
-        self._client._run_cmd("stop {session_name}".format(session_name=self.name))
+        self._client._run_cmd("stop '{session_name}'".format(session_name=self.name))
 
     def destroy(self):
         # type: () -> None
-        self._client._run_cmd("destroy {session_name}".format(session_name=self.name))
+        self._client._run_cmd("destroy '{session_name}'".format(session_name=self.name))
+
+    @property
+    def is_active(self):
+        # type: () -> bool
+        list_session_xml = self._client._run_cmd(
+            "list '{session_name}'".format(session_name=self.name),
+            LTTngClient.CommandOutputFormat.MI_XML,
+        )
+
+        root = xml.etree.ElementTree.fromstring(list_session_xml)
+        command_output = LTTngClient._mi_find_in_element(root, "output")
+        sessions = LTTngClient._mi_find_in_element(command_output, "sessions")
+        session_mi = LTTngClient._mi_find_in_element(sessions, "session")
+
+        enabled_text = LTTngClient._mi_find_in_element(session_mi, "enabled").text
+        if enabled_text not in ["true", "false"]:
+            raise InvalidMI(
+                "Expected boolean value in element '{}': value='{}'".format(
+                    session_mi.tag, enabled_text
+                )
+            )
+
+        return enabled_text == "true"
 
     @property
     def kernel_pid_process_attribute_tracker(self):
@@ -335,6 +368,12 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
     Implementation of a LTTngCtl Controller that uses the `lttng` client as a back-end.
     """
 
+    class CommandOutputFormat(enum.Enum):
+        MI_XML = 0
+        HUMAN = 1
+
+    _MI_NS = "{https://lttng.org/xml/ns/lttng-mi}"
+
     def __init__(
         self,
         test_environment,  # type: environment._Environment
@@ -343,13 +382,21 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         logger._Logger.__init__(self, log)
         self._environment = test_environment  # type: environment._Environment
 
-    def _run_cmd(self, command_args):
-        # type: (str) -> None
+    @staticmethod
+    def _namespaced_mi_element(property):
+        # type: (str) -> str
+        return LTTngClient._MI_NS + property
+
+    def _run_cmd(self, command_args, output_format=CommandOutputFormat.MI_XML):
+        # type: (str, CommandOutputFormat) -> str
         """
         Invoke the `lttng` client with a set of arguments. The command is
         executed in the context of the client's test environment.
         """
         args = [str(self._environment.lttng_client_path)]  # type: list[str]
+        if output_format == LTTngClient.CommandOutputFormat.MI_XML:
+            args.extend(["--mi", "xml"])
+
         args.extend(shlex.split(command_args))
 
         self._log("lttng {command_args}".format(command_args=command_args))
@@ -368,6 +415,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             for error_line in decoded_output.splitlines():
                 self._log(error_line)
             raise LTTngClientError(command_args, decoded_output)
+        else:
+            return out.decode("utf-8")
 
     def create_session(self, name=None, output=None):
         # type: (Optional[str], Optional[lttngctl.SessionOutputLocation]) -> lttngctl.Session
@@ -381,8 +430,92 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             raise TypeError("LTTngClient only supports local or no output")
 
         self._run_cmd(
-            "create {session_name} {output_option}".format(
+            "create '{session_name}' {output_option}".format(
                 session_name=name, output_option=output_option
             )
         )
         return _Session(self, name, output)
+
+    def start_session_by_name(self, name):
+        # type: (str) -> None
+        self._run_cmd("start '{session_name}'".format(session_name=name))
+
+    def start_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        self._run_cmd("start --glob '{pattern}'".format(pattern=pattern))
+
+    def start_sessions_all(self):
+        # type: () -> None
+        self._run_cmd("start --all")
+
+    def stop_session_by_name(self, name):
+        # type: (str) -> None
+        self._run_cmd("stop '{session_name}'".format(session_name=name))
+
+    def stop_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        self._run_cmd("stop --glob '{pattern}'".format(pattern=pattern))
+
+    def stop_sessions_all(self):
+        # type: () -> None
+        self._run_cmd("stop --all")
+
+    def destroy_session_by_name(self, name):
+        # type: (str) -> None
+        self._run_cmd("destroy '{session_name}'".format(session_name=name))
+
+    def destroy_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        self._run_cmd("destroy --glob '{pattern}'".format(pattern=pattern))
+
+    def destroy_sessions_all(self):
+        # type: () -> None
+        self._run_cmd("destroy --all")
+
+    @staticmethod
+    def _mi_find_in_element(element, sub_element_name):
+        # type: (xml.etree.ElementTree.Element, str) -> xml.etree.ElementTree.Element
+        result = element.find(LTTngClient._namespaced_mi_element(sub_element_name))
+        if result is None:
+            raise InvalidMI(
+                "Failed to find element '{}' within command MI element '{}'".format(
+                    element.tag, sub_element_name
+                )
+            )
+
+        return result
+
+    def list_sessions(self):
+        # type () -> List[Session]
+        list_sessions_xml = self._run_cmd(
+            "list", LTTngClient.CommandOutputFormat.MI_XML
+        )
+
+        root = xml.etree.ElementTree.fromstring(list_sessions_xml)
+        command_output = self._mi_find_in_element(root, "output")
+        sessions = self._mi_find_in_element(command_output, "sessions")
+
+        ctl_sessions = []  # type: list[lttngctl.Session]
+
+        for session_mi in sessions:
+            name = self._mi_find_in_element(session_mi, "name").text
+            path = self._mi_find_in_element(session_mi, "path").text
+
+            if name is None:
+                raise InvalidMI(
+                    "Invalid empty 'name' element in '{}'".format(session_mi.tag)
+                )
+            if path is None:
+                raise InvalidMI(
+                    "Invalid empty 'path' element in '{}'".format(session_mi.tag)
+                )
+            if not path.startswith("/"):
+                raise Unsupported(
+                    "{} does not support non-local session outputs".format(type(self))
+                )
+
+            ctl_sessions.append(
+                _Session(self, name, lttngctl.LocalSessionOutputLocation(path))
+            )
+
+        return ctl_sessions

@@ -371,6 +371,11 @@ class Session(abc.ABC):
         # type: () -> None
         pass
 
+    @abc.abstractmethod
+    def is_active(self):
+        # type: () -> bool
+        pass
+
     @abc.abstractproperty
     def kernel_pid_process_attribute_tracker(self):
         # type: () -> Type[ProcessIDProcessAttributeTracker]
@@ -440,5 +445,85 @@ class Controller(abc.ABC):
         """
         Create a session with an output. Don't specify an output
         to create a session without an output.
+        """
+        pass
+
+    @abc.abstractmethod
+    def start_session_by_name(self, name):
+        # type: (str) -> None
+        """
+        Start a session by name.
+        """
+        pass
+
+    @abc.abstractmethod
+    def start_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        """
+        Start sessions whose name matches `pattern`, see GLOB(7).
+        """
+        pass
+
+    @abc.abstractmethod
+    def start_sessions_all(self):
+        """
+        Start all sessions visible to the current user.
+        """
+        # type: () -> None
+        pass
+
+    @abc.abstractmethod
+    def stop_session_by_name(self, name):
+        # type: (str) -> None
+        """
+        Stop a session by name.
+        """
+        pass
+
+    @abc.abstractmethod
+    def stop_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        """
+        Stop sessions whose name matches `pattern`, see GLOB(7).
+        """
+        pass
+
+    @abc.abstractmethod
+    def stop_sessions_all(self):
+        """
+        Stop all sessions visible to the current user.
+        """
+        # type: () -> None
+        pass
+
+    @abc.abstractmethod
+    def destroy_session_by_name(self, name):
+        # type: (str) -> None
+        """
+        Destroy a session by name.
+        """
+        pass
+
+    @abc.abstractmethod
+    def destroy_session_by_glob_pattern(self, pattern):
+        # type: (str) -> None
+        """
+        Destroy sessions whose name matches `pattern`, see GLOB(7).
+        """
+        pass
+
+    @abc.abstractmethod
+    def destroy_sessions_all(self):
+        # type: () -> None
+        """
+        Destroy all sessions visible to the current user.
+        """
+        pass
+
+    @abc.abstractmethod
+    def list_sessions(self):
+        # type: () -> List[Session]
+        """
+        List all sessions visible to the current user.
         """
         pass
