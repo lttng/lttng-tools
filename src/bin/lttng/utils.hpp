@@ -156,7 +156,7 @@ public:
 private:
 	std::size_t _sessions_count;
 	std::unique_ptr<lttng_session,
-			lttng::details::create_unique_class<lttng_session, lttng::free>>
+			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>
 		_sessions;
 };
 

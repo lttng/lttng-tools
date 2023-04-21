@@ -70,7 +70,7 @@ namespace {
 struct rotation_thread_job {
 	using uptr = std::unique_ptr<
 		rotation_thread_job,
-		lttng::details::create_unique_class<rotation_thread_job, lttng::free>>;
+		lttng::memory::create_deleter_class<rotation_thread_job, lttng::free>::deleter>;
 
 	enum ls::rotation_thread_job_type type;
 	struct ltt_session *session;

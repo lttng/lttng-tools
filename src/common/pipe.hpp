@@ -30,7 +30,7 @@ struct lttng_pipe {
 
 	using uptr = std::unique_ptr<
 		lttng_pipe,
-		lttng::details::create_unique_class<lttng_pipe, _lttng_pipe_close_wrapper>::deleter>;
+		lttng::memory::create_deleter_class<lttng_pipe, _lttng_pipe_close_wrapper>::deleter>;
 
 	/* Read: 0, Write: 1. */
 	int fd[2];

@@ -79,7 +79,7 @@ struct ltt_session {
 	using id_t = uint64_t;
 	using locked_ptr =
 		std::unique_ptr<ltt_session,
-				lttng::details::create_unique_class<
+				lttng::memory::create_deleter_class<
 					ltt_session,
 					lttng::sessiond::details::locked_session_release>::deleter>;
 	using sptr = std::shared_ptr<ltt_session>;

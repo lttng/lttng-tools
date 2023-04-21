@@ -110,7 +110,7 @@ cmd_error_code destroy_session(const lttng_session& session)
 		} while (ret != 0);
 	}
 
-	std::unique_ptr<char, lttng::details::create_unique_class<char, lttng::free>>
+	std::unique_ptr<char, lttng::memory::create_deleter_class<char, lttng::free>::deleter>
 		stats_str;
 	if (!session_was_already_stopped) {
 		char *raw_stats_str = nullptr;

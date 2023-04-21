@@ -24,7 +24,7 @@ struct lttng_payload_view;
 struct lttng_notification {
 	using uptr = std::unique_ptr<
 		lttng_notification,
-		lttng::details::create_unique_class<lttng_notification,
+		lttng::memory::create_deleter_class<lttng_notification,
 						    lttng_notification_destroy>::deleter>;
 
 	struct lttng_trigger *trigger;

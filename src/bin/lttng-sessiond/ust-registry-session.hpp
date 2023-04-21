@@ -39,7 +39,7 @@ class registry_session : public lttng::sessiond::trace::trace_class {
 public:
 	using locked_ptr =
 		std::unique_ptr<registry_session,
-				lttng::details::create_unique_class<
+				lttng::memory::create_deleter_class<
 					registry_session,
 					details::locked_registry_session_release>::deleter>;
 

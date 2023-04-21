@@ -38,9 +38,9 @@ namespace lttng {
  * a proper, idiomatic, wrapper.
  */
 
-namespace details {
+namespace memory {
 template <typename WrappedType, void (*DeleterFunction)(WrappedType *)>
-struct create_unique_class {
+struct create_deleter_class {
 	struct deleter {
 		void operator()(WrappedType *instance) const
 		{
@@ -53,7 +53,7 @@ struct create_unique_class {
 		return std::unique_ptr<WrappedType, deleter>(instance);
 	}
 };
-} /* namespace details */
+} /* namespace memory */
 
 /*
  * 'free' is a utility function for use with make_unique_wrapper. It makes it easier to
@@ -69,10 +69,10 @@ void free(Type *ptr)
 
 template <typename WrappedType, void (*DeleterFunc)(WrappedType *)>
 std::unique_ptr<WrappedType,
-		typename details::create_unique_class<WrappedType, DeleterFunc>::deleter>
+		typename memory::create_deleter_class<WrappedType, DeleterFunc>::deleter>
 make_unique_wrapper(WrappedType *instance)
 {
-	const details::create_unique_class<WrappedType, DeleterFunc> unique_deleter;
+	const memory::create_deleter_class<WrappedType, DeleterFunc> unique_deleter;
 
 	return unique_deleter(instance);
 }
