@@ -41,42 +41,44 @@ struct session_spec {
  */
 class session_list {
 	template <typename ContainerType, typename DereferenceReturnType>
-	class iterator_template : public std::iterator<std::random_access_iterator_tag, std::size_t> {
+	class _iterator
+		: public std::iterator<std::random_access_iterator_tag, std::size_t> {
 	public:
-		explicit iterator_template(ContainerType& list, std::size_t k) : _list(list), _index(k)
+		explicit _iterator(ContainerType& list, std::size_t k) :
+			_list(list), _index(k)
 		{
 		}
 
-		iterator_template& operator++() noexcept
+		_iterator& operator++() noexcept
 		{
 			++_index;
 			return *this;
 		}
 
-		iterator_template& operator--() noexcept
+		_iterator& operator--() noexcept
 		{
 			--_index;
 			return *this;
 		}
 
-		iterator_template& operator++(int) noexcept
+		_iterator& operator++(int) noexcept
 		{
 			_index++;
 			return *this;
 		}
 
-		iterator_template& operator--(int) noexcept
+		_iterator& operator--(int) noexcept
 		{
 			_index--;
 			return *this;
 		}
 
-		bool operator==(iterator_template other) const noexcept
+		bool operator==(_iterator other) const noexcept
 		{
 			return _index == other._index;
 		}
 
-		bool operator!=(iterator_template other) const noexcept
+		bool operator!=(_iterator other) const noexcept
 		{
 			return !(*this == other);
 		}
@@ -91,8 +93,8 @@ class session_list {
 		std::size_t _index;
 	};
 
-	using iterator = iterator_template<session_list, lttng_session>;
-	using const_iterator = iterator_template<const session_list, const lttng_session>;
+	using iterator = _iterator<session_list, lttng_session>;
+	using const_iterator = _iterator<const session_list, const lttng_session>;
 
 public:
 	session_list() : _sessions_count(0), _sessions(nullptr)
