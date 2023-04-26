@@ -656,14 +656,14 @@ function test_start_stop ()
 	ok $? "Mi test: enabled element : $result expected: false"
 
 	#Test failing stop command
-	stop_lttng_tracing_fail $session_name
+	stop_lttng_tracing_ok $session_name
 	$MI_VALIDATE $OUTPUT_DEST
-	ok $? "Mi test: failed stop xsd validation"
+	ok $? "Mi test: stop warning xsd validation"
 
-	#Expect a false element
+	#Expect a true element
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
-	test "$result" = "false"
-	ok $? "Mi test: mi report failure on start command as expected"
+	test "$result" = "true"
+	ok $? "Mi test: mi reports success on stop command as expected"
 
 	#Teardown
 	OUTPUT_DEST=$DEVNULL
