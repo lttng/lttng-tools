@@ -26,13 +26,19 @@ extern pid_t sessiond_pid;
 struct cmd_struct;
 
 struct session_spec {
-	enum type {
+	enum class type {
 		NAME,
 		GLOB_PATTERN,
 		ALL,
 	};
 
-	type type;
+	explicit session_spec(type spec_type, const char *name_or_pattern = nullptr) noexcept :
+		type_(spec_type), value(name_or_pattern)
+	{
+	}
+
+	/* Disambiguate type enum from the member for buggy g++ versions. */
+	type type_;
 	const char *value;
 };
 

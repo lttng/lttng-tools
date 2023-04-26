@@ -120,7 +120,7 @@ cmd_error_code start_tracing(const session_spec& spec) noexcept
 		}
 	}();
 
-	if (!listing_failed && sessions.size() == 0 && spec.type == session_spec::type::NAME) {
+	if (!listing_failed && sessions.size() == 0 && spec.type_ == session_spec::type::NAME) {
 		ERR_FMT("Session `{}` not found", spec.value);
 		return CMD_ERROR;
 	}
@@ -141,7 +141,7 @@ cmd_error_code start_tracing(const session_spec& spec) noexcept
 				sub_ret = CMD_SUCCESS;
 				break;
 			case LTTNG_ERR_NO_SESSION:
-				if (spec.type != session_spec::type::NAME) {
+				if (spec.type_ != session_spec::type::NAME) {
 					/* Session destroyed during command, ignore and carry-on. */
 					sub_ret = CMD_SUCCESS;
 					break;
@@ -189,10 +189,7 @@ int cmd_start(int argc, const char **argv)
 	bool success = true;
 	static poptContext pc;
 	const char *leftover = nullptr;
-	session_spec session_spec = {
-		.type = session_spec::NAME,
-		.value = nullptr,
-	};
+	session_spec session_spec(session_spec::type::NAME);
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -211,10 +208,10 @@ int cmd_start(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		case OPT_ENABLE_GLOB:
-			session_spec.type = session_spec::GLOB_PATTERN;
+			session_spec.type_ = session_spec::type::GLOB_PATTERN;
 			break;
 		case OPT_ALL:
-			session_spec.type = session_spec::ALL;
+			session_spec.type_ = session_spec::type::ALL;
 			break;
 		default:
 			command_ret = CMD_UNDEFINED;

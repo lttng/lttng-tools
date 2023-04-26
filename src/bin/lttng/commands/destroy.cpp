@@ -272,7 +272,7 @@ cmd_error_code destroy_sessions(const session_spec& spec)
 		}
 	}();
 
-	if (!listing_failed && sessions.size() == 0 && spec.type == session_spec::type::NAME) {
+	if (!listing_failed && sessions.size() == 0 && spec.type_ == session_spec::type::NAME) {
 		ERR_FMT("Session `{}` not found", spec.value);
 		return CMD_ERROR;
 	}
@@ -289,7 +289,7 @@ cmd_error_code destroy_sessions(const session_spec& spec)
 		} catch (const lttng::ctl::error& ctl_exception) {
 			switch (ctl_exception.code()) {
 			case LTTNG_ERR_NO_SESSION:
-				if (spec.type != session_spec::type::NAME) {
+				if (spec.type_ != session_spec::type::NAME) {
 					/* Session destroyed during command, ignore and carry-on. */
 					sub_ret = CMD_SUCCESS;
 					break;
@@ -335,10 +335,7 @@ int cmd_destroy(int argc, const char **argv)
 	bool success;
 	static poptContext pc;
 	const char *leftover = nullptr;
-	struct session_spec spec = {
-		.type = session_spec::NAME,
-		.value = nullptr,
-	};
+	struct session_spec spec(session_spec::type::NAME);
 	session_list const sessions;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
@@ -358,10 +355,10 @@ int cmd_destroy(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		case OPT_ALL:
-			spec.type = session_spec::ALL;
+			spec.type_ = session_spec::type::ALL;
 			break;
 		case OPT_ENABLE_GLOB:
-			spec.type = session_spec::GLOB_PATTERN;
+			spec.type_ = session_spec::type::GLOB_PATTERN;
 			break;
 		default:
 			command_ret = CMD_UNDEFINED;

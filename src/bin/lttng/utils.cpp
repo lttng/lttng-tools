@@ -708,16 +708,15 @@ session_list get_sessions(const FilterFunctionType& filter, bool return_first_ma
 
 session_list list_sessions(const struct session_spec& spec)
 {
-	switch (spec.type) {
-	case session_spec::NAME:
+	switch (spec.type_) {
+	case session_spec::type::NAME:
 		if (spec.value == nullptr) {
 			const auto configured_name =
 				lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
 
 			if (configured_name) {
-				const struct session_spec new_spec = {
-					.type = session_spec::NAME, .value = configured_name.get()
-				};
+				const struct session_spec new_spec(session_spec::type::NAME,
+								   configured_name.get());
 
 				return list_sessions(new_spec);
 			}
@@ -730,11 +729,11 @@ session_list list_sessions(const struct session_spec& spec)
 				return strcmp(session.name, spec.value) == 0;
 			},
 			true);
-	case session_spec::GLOB_PATTERN:
+	case session_spec::type::GLOB_PATTERN:
 		return get_sessions([&spec](const lttng_session& session) {
 			return fnmatch(spec.value, session.name, 0) == 0;
 		});
-	case session_spec::ALL:
+	case session_spec::type::ALL:
 		return get_sessions([](const lttng_session&) { return true; });
 	}
 
