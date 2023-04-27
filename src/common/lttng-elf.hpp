@@ -10,6 +10,8 @@
 
 #include <lttng/lttng-export.h>
 
+#include <stdint.h>
+
 extern "C" LTTNG_EXPORT int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset);
 
 extern "C" LTTNG_EXPORT int lttng_elf_get_sdt_probe_offsets(int fd,
