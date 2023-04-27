@@ -8,6 +8,8 @@
 #ifndef _LTTNG_IO_HINT_H
 #define _LTTNG_IO_HINT_H
 
+#include <sys/types.h>
+
 namespace lttng {
 namespace io {
 
