@@ -47,11 +47,9 @@ struct session_spec {
  */
 class session_list {
 	template <typename ContainerType, typename DereferenceReturnType>
-	class _iterator
-		: public std::iterator<std::random_access_iterator_tag, std::size_t> {
+	class _iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
 	public:
-		explicit _iterator(ContainerType& list, std::size_t k) :
-			_list(list), _index(k)
+		explicit _iterator(ContainerType& list, std::size_t k) : _list(list), _index(k)
 		{
 		}
 
