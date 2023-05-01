@@ -189,7 +189,8 @@ class WaitTraceTestApplication:
 
 class TraceTestApplication:
     """
-    Create an application to trace.
+    Create an application that emits events as soon as it is launched. In most
+    scenarios, it is preferable to use a WaitTraceTestApplication.
     """
 
     def __init__(self, binary_path, environment):
