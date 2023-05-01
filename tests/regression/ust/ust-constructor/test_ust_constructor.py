@@ -173,7 +173,7 @@ def capture_trace(tap, test_env):
         test_env.create_temporary_directory("trace")
     )
 
-    client: lttngtest.Controller = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
 
     with tap.case("Create a session") as test_case:
         session = client.create_session(output=session_output_location)
