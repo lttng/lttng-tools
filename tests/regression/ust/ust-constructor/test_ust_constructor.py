@@ -196,7 +196,7 @@ def capture_trace(tap, test_env):
     return session_output_location
 
 
-def validate_trace(trace_location, tap) -> bool:
+def validate_trace(trace_location, tap):
     # type: (pathlib.Path, lttngtest.TapGenerator) -> bool
     success = True
     unknown_event_count = 0

@@ -192,8 +192,9 @@ class TraceTestApplication:
     Create an application to trace.
     """
 
-    def __init__(self, binary_path: pathlib.Path, environment: "Environment"):
-        self._environment: Environment = environment
+    def __init__(self, binary_path, environment):
+        # type: (pathlib.Path, Environment)
+        self._environment = environment  # type: Environment
         self._has_returned = False
 
         test_app_env = os.environ.copy()
@@ -208,7 +209,8 @@ class TraceTestApplication:
             test_app_args, env=test_app_env
         )
 
-    def wait_for_exit(self) -> None:
+    def wait_for_exit(self):
+        # type: () -> None
         if self._process.wait() != 0:
             raise RuntimeError(
                 "Test application has exit with return code `{return_code}`".format(
@@ -412,9 +414,8 @@ class _Environment(logger._Logger):
             self,
         )
 
-    def launch_trace_test_constructor_application(
-        self
-    ) -> TraceTestApplication:
+    def launch_trace_test_constructor_application(self):
+        # type () -> TraceTestApplication
         """
         Launch an application that will trace from within constructors.
         """
