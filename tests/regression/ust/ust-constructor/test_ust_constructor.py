@@ -163,9 +163,8 @@ expected_events = [
 ]
 
 
-def capture_trace(
-    tap: lttngtest.TapGenerator, test_env: lttngtest._Environment
-) -> lttngtest.LocalSessionOutputLocation:
+def capture_trace(tap, test_env):
+    # type: (lttngtest.TapGenerator, lttngtest._Environment) -> lttngtest.LocalSessionOutputLocation
     tap.diagnostic(
         "Capture trace from application with instrumented C/C++ constructors/destructors"
     )
@@ -197,7 +196,8 @@ def capture_trace(
     return session_output_location
 
 
-def validate_trace(trace_location: pathlib.Path, tap: lttngtest.TapGenerator) -> bool:
+def validate_trace(trace_location, tap) -> bool:
+    # type: (pathlib.Path, lttngtest.TapGenerator) -> bool
     success = True
     unknown_event_count = 0
 
