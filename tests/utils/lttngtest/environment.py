@@ -206,9 +206,9 @@ class TraceTestApplication:
 
         test_app_args = [str(binary_path)]
 
-        self._process: subprocess.Popen = subprocess.Popen(
+        self._process = subprocess.Popen(
             test_app_args, env=test_app_env
-        )
+        )  # type: subprocess.Popen
 
     def wait_for_exit(self):
         # type: () -> None
