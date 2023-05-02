@@ -26,8 +26,6 @@ sys.path.append(str(test_utils_import_path))
 import lttngtest
 import bt2
 
-num_tests = 3
-
 expected_events = [
     {"name": "tp_so:constructor_c_provider_shared_library", "msg": None, "count": 0},
     {"name": "tp_a:constructor_c_provider_static_archive", "msg": None, "count": 0},
@@ -162,6 +160,8 @@ expected_events = [
     {"name": "tp_so:destructor_c_provider_shared_library", "msg": None, "count": 0},
 ]
 
+num_tests = 7 + len(expected_events)
+
 
 def capture_trace(tap, test_env):
     # type: (lttngtest.TapGenerator, lttngtest._Environment) -> lttngtest.LocalSessionOutputLocation
@@ -188,17 +188,30 @@ def capture_trace(tap, test_env):
     # Enable all user space events, the default for a user tracepoint event rule.
     channel.add_recording_rule(lttngtest.UserTracepointEventRule("tp*"))
 
-    session.start()
+    with tap.case(
+        "Start session `{session_name}`".format(session_name=session.name)
+    ) as test_case:
+        session.start()
+
     test_app = test_env.launch_trace_test_constructor_application()
-    test_app.wait_for_exit()
-    session.stop()
-    session.destroy()
+    with tap.case("Run test app".format(session_name=session.name)) as test_case:
+        test_app.wait_for_exit()
+
+    with tap.case(
+        "Stop session `{session_name}`".format(session_name=session.name)
+    ) as test_case:
+        session.stop()
+
+    with tap.case(
+        "Destroy session `{session_name}`".format(session_name=session.name)
+    ) as test_case:
+        session.destroy()
+
     return session_output_location
 
 
 def validate_trace(trace_location, tap):
-    # type: (pathlib.Path, lttngtest.TapGenerator) -> bool
-    success = True
+    # type: (pathlib.Path, lttngtest.TapGenerator)
     unknown_event_count = 0
 
     for msg in bt2.TraceCollectionMessageIterator(str(trace_location)):
@@ -219,6 +232,7 @@ def validate_trace(trace_location, tap):
                 found = True
                 event["count"] = event["count"] + 1
                 break
+
         if found == False:
             unknown_event_count = unknown_event_count + 1
             printmsg = None
@@ -231,12 +245,14 @@ def validate_trace(trace_location, tap):
             )
 
     for event in expected_events:
-        if event["count"] != 1:
-            success = False
-            tap.diagnostic("Expected event {} not found".format(event["name"]))
-    if unknown_event_count != 0:
-        success = False
-    return success
+        tap.test(
+            event["count"] == 1,
+            'Found expected event name="{}" msg="{}"'.format(
+                event["name"], str(event["msg"])
+            ),
+        )
+
+    tap.test(unknown_event_count == 0, "Found no unexpected events")
 
 
 tap = lttngtest.TapGenerator(num_tests)
@@ -244,9 +260,6 @@ tap.diagnostic("Test user space constructor/destructor instrumentation coverage"
 
 with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
     outputlocation = capture_trace(tap, test_env)
-    tap.test(
-        validate_trace(outputlocation.path, tap),
-        "Validate that trace constains expected events",
-    )
+    validate_trace(outputlocation.path, tap)
 
 sys.exit(0 if tap.is_successful else 1)
