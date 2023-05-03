@@ -6,7 +6,7 @@
 #
 
 from types import FrameType
-from typing import Callable, Iterator, Optional, Tuple, List
+from typing import Callable, Iterator, Optional, Tuple, List, Generator
 import sys
 import pathlib
 import signal
@@ -62,6 +62,19 @@ class _SignalWaitQueue:
 
     def wait_for_signal(self):
         self._queue.get(block=True)
+
+    @contextlib.contextmanager
+    def intercept_signal(self, signal_number):
+        # type: (int) -> Generator[None, None, None]
+        original_handler = signal.getsignal(signal_number)
+        signal.signal(signal_number, self.signal)
+        try:
+            yield
+        except:
+            # Restore the original signal handler and forward the exception.
+            raise
+        finally:
+            signal.signal(signal_number, original_handler)
 
 
 class WaitTraceTestApplication:
@@ -358,35 +371,33 @@ class _Environment(logger._Logger):
         sessiond_env["LTTNG_HOME"] = str(self._lttng_home.path)
 
         wait_queue = _SignalWaitQueue()
-        signal.signal(signal.SIGUSR1, wait_queue.signal)
-
-        self._log(
-            "Launching session daemon with LTTNG_HOME=`{home_dir}`".format(
-                home_dir=str(self._lttng_home.path)
+        with wait_queue.intercept_signal(signal.SIGUSR1):
+            self._log(
+                "Launching session daemon with LTTNG_HOME=`{home_dir}`".format(
+                    home_dir=str(self._lttng_home.path)
+                )
             )
-        )
-        process = subprocess.Popen(
-            [
-                str(sessiond_path),
-                consumerd_path_option_name,
-                str(consumerd_path),
-                "--sig-parent",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            env=sessiond_env,
-        )
+            process = subprocess.Popen(
+                [
+                    str(sessiond_path),
+                    consumerd_path_option_name,
+                    str(consumerd_path),
+                    "--sig-parent",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env=sessiond_env,
+            )
 
-        if self._logging_function:
-            self._sessiond_output_consumer = ProcessOutputConsumer(
-                process, "lttng-sessiond", self._logging_function
-            )  # type: Optional[ProcessOutputConsumer]
-            self._sessiond_output_consumer.daemon = True
-            self._sessiond_output_consumer.start()
+            if self._logging_function:
+                self._sessiond_output_consumer = ProcessOutputConsumer(
+                    process, "lttng-sessiond", self._logging_function
+                )  # type: Optional[ProcessOutputConsumer]
+                self._sessiond_output_consumer.daemon = True
+                self._sessiond_output_consumer.start()
 
-        # Wait for SIGUSR1, indicating the sessiond is ready to proceed
-        wait_queue.wait_for_signal()
-        signal.signal(signal.SIGUSR1, wait_queue.signal)
+            # Wait for SIGUSR1, indicating the sessiond is ready to proceed
+            wait_queue.wait_for_signal()
 
         return process
 
