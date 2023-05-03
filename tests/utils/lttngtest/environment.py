@@ -92,10 +92,7 @@ class WaitTraceTestApplication:
         wait_time_between_events_us=0,  # type: int
     ):
         self._environment = environment  # type: Environment
-        if event_count % 5:
-            # The test application currently produces 5 different events per iteration.
-            raise ValueError("event count must be a multiple of 5")
-        self._iteration_count = int(event_count / 5)  # type: int
+        self._iteration_count = event_count
         # File that the application will wait to see before tracing its events.
         self._app_start_tracing_file_path = pathlib.Path(
             tempfile.mktemp(
@@ -122,7 +119,7 @@ class WaitTraceTestApplication:
         test_app_args = [str(binary_path)]
         test_app_args.extend(
             shlex.split(
-                "--iter {iteration_count} --create-in-main {app_ready_file_path} --wait-before-first-event {app_start_tracing_file_path} --wait {wait_time_between_events_us}".format(
+                "--iter {iteration_count} --sync-application-in-main-touch {app_ready_file_path} --sync-before-first-event {app_start_tracing_file_path} --wait {wait_time_between_events_us}".format(
                     iteration_count=self._iteration_count,
                     app_ready_file_path=app_ready_file_path,
                     app_start_tracing_file_path=self._app_start_tracing_file_path,
@@ -420,8 +417,8 @@ class _Environment(logger._Logger):
             / "tests"
             / "utils"
             / "testapp"
-            / "gen-ust-nevents"
-            / "gen-ust-nevents",
+            / "gen-ust-events"
+            / "gen-ust-events",
             event_count,
             self,
         )

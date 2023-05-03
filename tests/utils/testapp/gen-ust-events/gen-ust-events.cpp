@@ -32,12 +32,14 @@ static struct option long_options[] = {
 	/* These options set a flag. */
 	{ "iter", required_argument, nullptr, 'i' },
 	{ "wait", required_argument, nullptr, 'w' },
-	{ "sync-after-first-event", required_argument, nullptr, 'a' },
-	{ "sync-before-last-event", required_argument, nullptr, 'b' },
-	{ "sync-before-last-event-touch", required_argument, nullptr, 'c' },
-	{ "sync-before-exit", required_argument, nullptr, 'd' },
-	{ "sync-before-exit-touch", required_argument, nullptr, 'e' },
-	{ "emit-end-event", no_argument, nullptr, 'f' },
+	{ "sync-application-in-main-touch", required_argument, nullptr, 'a' },
+	{ "sync-before-first-event", required_argument, nullptr, 'b' },
+	{ "sync-after-first-event", required_argument, nullptr, 'c' },
+	{ "sync-before-last-event", required_argument, nullptr, 'd' },
+	{ "sync-before-last-event-touch", required_argument, nullptr, 'e' },
+	{ "sync-before-exit", required_argument, nullptr, 'f' },
+	{ "sync-before-exit-touch", required_argument, nullptr, 'g' },
+	{ "emit-end-event", no_argument, nullptr, 'h' },
 	{ nullptr, 0, nullptr, 0 }
 };
 
@@ -54,6 +56,8 @@ int main(int argc, char **argv)
 	uint32_t net_values[] = { 1, 2, 3 };
 	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;
+	char *application_in_main_file_path = nullptr;
+	char *before_first_event_file_path = nullptr;
 	char *after_first_event_file_path = nullptr;
 	char *before_last_event_file_path = nullptr;
 	/*
@@ -72,25 +76,31 @@ int main(int argc, char **argv)
 		net_values[i] = htonl(net_values[i]);
 	}
 
-	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f", long_options, &option_index)) !=
+	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f:g:h", long_options, &option_index)) !=
 	       -1) {
 		switch (option) {
 		case 'a':
-			after_first_event_file_path = strdup(optarg);
+			application_in_main_file_path = strdup(optarg);
 			break;
 		case 'b':
-			before_last_event_file_path = strdup(optarg);
+			before_first_event_file_path = strdup(optarg);
 			break;
 		case 'c':
-			before_last_event_file_path_touch = strdup(optarg);
+			after_first_event_file_path = strdup(optarg);
 			break;
 		case 'd':
-			before_exit_file_path = strdup(optarg);
+			before_last_event_file_path = strdup(optarg);
 			break;
 		case 'e':
-			before_exit_file_path_touch = strdup(optarg);
+			before_last_event_file_path_touch = strdup(optarg);
 			break;
 		case 'f':
+			before_exit_file_path = strdup(optarg);
+			break;
+		case 'g':
+			before_exit_file_path_touch = strdup(optarg);
+			break;
+		case 'h':
 			emit_end_event = true;
 			break;
 		case 'i':
@@ -127,6 +137,14 @@ int main(int argc, char **argv)
 	if (set_signal_handler()) {
 		ret = -1;
 		goto end;
+	}
+
+	if (application_in_main_file_path) {
+		create_file(application_in_main_file_path);
+	}
+
+	if (before_first_event_file_path) {
+		wait_on_file(before_first_event_file_path);
 	}
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
@@ -204,6 +222,8 @@ int main(int argc, char **argv)
 		}
 	}
 end:
+	free(application_in_main_file_path);
+	free(before_first_event_file_path);
 	free(after_first_event_file_path);
 	free(before_last_event_file_path);
 	free(before_last_event_file_path_touch);
