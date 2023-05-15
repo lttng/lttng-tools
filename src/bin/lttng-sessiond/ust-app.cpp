@@ -6192,11 +6192,9 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 	ret = find_or_create_ust_app_session(usess, app, &ua_sess, nullptr);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
-		if (ua_sess) {
-			destroy_app_session(app, ua_sess);
-		}
 		goto end;
 	}
+
 	LTTNG_ASSERT(ua_sess);
 
 	pthread_mutex_lock(&ua_sess->lock);
