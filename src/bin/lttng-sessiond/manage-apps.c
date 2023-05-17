@@ -163,7 +163,7 @@ static void *thread_application_management(void *data)
 					}
 
 					/* Socket closed on remote end. */
-					ust_app_unregister(pollfd);
+					ust_app_unregister_by_socket(pollfd);
 				} else {
 					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
 					goto error;

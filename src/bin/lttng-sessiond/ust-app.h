@@ -10,6 +10,7 @@
 #define _LTT_UST_APP_H
 
 #include <stdint.h>
+#include <urcu/ref.h>
 
 #include <common/index-allocator.h>
 #include <common/uuid.h>
@@ -249,6 +250,12 @@ struct ust_app_session {
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
+	/*
+	 * The lifetime of 'sock' holds a reference to the application; the
+	 * application management thread will release a reference to the
+	 * application if the application dies.
+	 */
+	struct urcu_ref ref;
 	int sock;
 	pthread_mutex_t sock_lock;	/* Protects sock protocol. */
 
@@ -338,7 +345,7 @@ struct ust_app {
 int ust_app_register(struct ust_register_msg *msg, int sock);
 int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
-void ust_app_unregister(int sock);
+void ust_app_unregister_by_socket(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
@@ -372,7 +379,6 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
 ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		struct consumer_socket *socket, int send_zero_data);
-void ust_app_destroy(struct ust_app *app);
 enum lttng_error_code ust_app_snapshot_record(
 		const struct ltt_ust_session *usess,
 		const struct consumer_output *output, int wait,
@@ -407,6 +413,9 @@ int ust_app_supported(void)
 
 bool ust_app_supports_notifiers(const struct ust_app *app);
 bool ust_app_supports_counters(const struct ust_app *app);
+
+bool ust_app_get(struct ust_app *app);
+void ust_app_put(struct ust_app *app);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -456,7 +465,7 @@ int ust_app_version(struct ust_app *app)
 	return -ENOSYS;
 }
 static inline
-void ust_app_unregister(int sock)
+void ust_app_unregister_by_socket(int sock)
 {
 }
 static inline
@@ -573,11 +582,6 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 	return 0;
 }
 static inline
-void ust_app_destroy(struct ust_app *app)
-{
-	return;
-}
-static inline
 enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
 		const struct consumer_output *output, int wait, uint64_t max_stream_size)
 {
@@ -677,6 +681,16 @@ static inline
 enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 {
 	return 0;
+}
+
+static inline
+void ust_app_get(struct ust_app *app)
+{
+}
+
+static inline
+void ust_app_put(struct ust_app *app)
+{
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

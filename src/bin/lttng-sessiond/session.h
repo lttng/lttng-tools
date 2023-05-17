@@ -184,6 +184,7 @@ struct ltt_session {
 	 * Trigger for size-based rotations.
 	 */
 	struct lttng_trigger *rotate_trigger;
+
 	LTTNG_OPTIONAL(uint64_t) most_recent_chunk_id;
 	struct lttng_trace_chunk *current_trace_chunk;
 	struct lttng_trace_chunk *chunk_being_archived;
@@ -192,6 +193,7 @@ struct ltt_session {
 	bool quiet_rotation;
 	char *last_archived_chunk_name;
 	LTTNG_OPTIONAL(uint64_t) last_archived_chunk_id;
+
 	struct lttng_dynamic_array destroy_notifiers;
 	struct lttng_dynamic_array clear_notifiers;
 	/* Session base path override. Set non-null. */

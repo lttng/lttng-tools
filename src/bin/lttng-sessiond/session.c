@@ -1416,6 +1416,7 @@ int session_reset_rotation_state(struct ltt_session *session,
 		 */
 		session_notify_clear(session);
 	}
+
 	return ret;
 }
 

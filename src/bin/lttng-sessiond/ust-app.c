@@ -3983,6 +3983,8 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 		goto error_free_pipe;
 	}
 
+	urcu_ref_init(&lta->ref);
+
 	lta->event_notifier_group.event_pipe = event_notifier_event_source_pipe;
 
 	lta->ppid = msg->ppid;
@@ -4221,30 +4223,13 @@ error:
 	return ret;
 }
 
-/*
- * Unregister app by removing it from the global traceable app list and freeing
- * the data struct.
- *
- * The socket is already closed at this point so no close to sock.
- */
-void ust_app_unregister(int sock)
+static void ust_app_unregister(struct ust_app *app)
 {
-	struct ust_app *lta;
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter ust_app_sock_iter;
+	int ret;
 	struct lttng_ht_iter iter;
 	struct ust_app_session *ua_sess;
-	int ret;
 
 	rcu_read_lock();
-
-	/* Get the node reference for a call_rcu */
-	lttng_ht_lookup(ust_app_ht_by_sock, (void *)((unsigned long) sock), &ust_app_sock_iter);
-	node = lttng_ht_iter_get_node_ulong(&ust_app_sock_iter);
-	assert(node);
-
-	lta = caa_container_of(node, struct ust_app, sock_n);
-	DBG("PID %d unregistering with sock %d", lta->pid, sock);
 
 	/*
 	 * For per-PID buffers, perform "push metadata" and flush all
@@ -4252,18 +4237,18 @@ void ust_app_unregister(int sock)
 	 * ensuring proper behavior of data_pending check.
 	 * Remove sessions so they are not visible during deletion.
 	 */
-	cds_lfht_for_each_entry(lta->sessions->ht, &iter.iter, ua_sess,
+	cds_lfht_for_each_entry(app->sessions->ht, &iter.iter, ua_sess,
 			node.node) {
 		struct ust_registry_session *registry;
 
-		ret = lttng_ht_del(lta->sessions, &iter);
+		ret = lttng_ht_del(app->sessions, &iter);
 		if (ret) {
 			/* The session was already removed so scheduled for teardown. */
 			continue;
 		}
 
 		if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
-			(void) ust_app_flush_app_session(lta, ua_sess);
+			(void) ust_app_flush_app_session(app, ua_sess);
 		}
 
 		/*
@@ -4304,14 +4289,10 @@ void ust_app_unregister(int sock)
 				(void) close_metadata(registry, ua_sess->consumer);
 			}
 		}
-		cds_list_add(&ua_sess->teardown_node, &lta->teardown_head);
 
+		cds_list_add(&ua_sess->teardown_node, &app->teardown_head);
 		pthread_mutex_unlock(&ua_sess->lock);
 	}
-
-	/* Remove application from PID hash table */
-	ret = lttng_ht_del(ust_app_ht_by_sock, &ust_app_sock_iter);
-	assert(!ret);
 
 	/*
 	 * Remove application from notify hash table. The thread handling the
@@ -4319,26 +4300,52 @@ void ust_app_unregister(int sock)
 	 * either way it's valid. The close of that socket is handled by the
 	 * apps_notify_thread.
 	 */
-	iter.iter.node = &lta->notify_sock_n.node;
+	iter.iter.node = &app->notify_sock_n.node;
 	(void) lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
 
-	/*
-	 * Ignore return value since the node might have been removed before by an
-	 * add replace during app registration because the PID can be reassigned by
-	 * the OS.
-	 */
-	iter.iter.node = &lta->pid_n.node;
+	iter.iter.node = &app->pid_n.node;
 	ret = lttng_ht_del(ust_app_ht, &iter);
 	if (ret) {
-		DBG3("Unregister app by PID %d failed. This can happen on pid reuse",
-				lta->pid);
+		WARN("Unregister app by PID %d failed", app->pid);
 	}
 
-	/* Free memory */
-	call_rcu(&lta->pid_n.head, delete_ust_app_rcu);
-
 	rcu_read_unlock();
-	return;
+}
+
+/*
+ * Unregister app by removing it from the global traceable app list and freeing
+ * the data struct.
+ *
+ * The socket is already closed at this point, so there is no need to close it.
+ */
+void ust_app_unregister_by_socket(int sock)
+{
+	struct ust_app *app;
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter ust_app_sock_iter;
+	int ret;
+
+	rcu_read_lock();
+
+	/* Get the node reference for a call_rcu */
+	lttng_ht_lookup(ust_app_ht_by_sock, (void *)((unsigned long) sock), &ust_app_sock_iter);
+	node = lttng_ht_iter_get_node_ulong(&ust_app_sock_iter);
+	assert(node);
+
+	app = caa_container_of(node, struct ust_app, sock_n);
+
+	DBG("PID %d unregistering with sock %d", app->pid, sock);
+
+	/* Remove application from socket hash table */
+	ret = lttng_ht_del(ust_app_ht_by_sock, &ust_app_sock_iter);
+	assert(!ret);
+
+	/*
+	 * The socket is closed: release its reference to the application
+	 * to trigger its eventual teardown.
+	 */
+	ust_app_put(app);
+	rcu_read_unlock();
 }
 
 /*
@@ -4634,16 +4641,7 @@ void ust_app_clean_list(void)
 			 * are unregistered prior to this clean-up.
 			 */
 			assert(lttng_ht_get_count(app->token_to_event_notifier_rule_ht) == 0);
-
 			ust_app_notify_sock_unregister(app->notify_sock);
-		}
-	}
-
-	if (ust_app_ht) {
-		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ret = lttng_ht_del(ust_app_ht, &iter);
-			assert(!ret);
-			call_rcu(&app->pid_n.head, delete_ust_app_rcu);
 		}
 	}
 
@@ -4653,6 +4651,8 @@ void ust_app_clean_list(void)
 				sock_n.node) {
 			ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
 			assert(!ret);
+
+			ust_app_put(app);
 		}
 	}
 
@@ -6990,7 +6990,7 @@ close_socket:
 /*
  * Destroy a ust app data structure and free its memory.
  */
-void ust_app_destroy(struct ust_app *app)
+static void ust_app_destroy(struct ust_app *app)
 {
 	if (!app) {
 		return;
@@ -7417,7 +7417,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
-	struct ust_app *app;
+	struct ust_app *app = NULL;
 	struct ltt_ust_session *usess = session->ust_session;
 
 	assert(usess);
@@ -7490,10 +7490,20 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
 			struct ust_registry_session *registry;
+			bool app_reference_taken;
+
+			app_reference_taken = ust_app_get(app);
+			if (!app_reference_taken) {
+				/* Application unregistered concurrently, skip it. */
+				DBG("Could not get application reference as it is being torn down; skipping application");
+				continue;
+			}
 
 			ua_sess = lookup_session_by_app(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
+				ust_app_put(app);
+				app = NULL;
 				continue;
 			}
 
@@ -7505,11 +7515,9 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 				goto error;
 			}
 
+
 			registry = get_session_registry(ua_sess);
-			if (!registry) {
-				DBG("Application session is being torn down. Skip application.");
-				continue;
-			}
+			assert(registry);
 
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
@@ -7521,9 +7529,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 						ua_sess->consumer,
 						/* is_metadata_channel */ false);
 				if (ret < 0) {
-					/* Per-PID buffer and application going away. */
-					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
-						continue;
 					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 					goto error;
 				}
@@ -7538,13 +7543,15 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 					ua_sess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {
-				/* Per-PID buffer and application going away. */
-				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
-					continue;
 				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
+
+			ust_app_put(app);
+			app = NULL;
 		}
+
+		app = NULL;
 		break;
 	}
 	default:
@@ -7555,6 +7562,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 	cmd_ret = LTTNG_OK;
 
 error:
+	ust_app_put(app);
 	rcu_read_unlock();
 	return cmd_ret;
 }
@@ -7935,4 +7943,27 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 error:
 	rcu_read_unlock();
 	return ret;
+}
+
+static void ust_app_release(struct urcu_ref *ref)
+{
+	struct ust_app *app = container_of(ref, struct ust_app, ref);
+
+	ust_app_unregister(app);
+	ust_app_destroy(app);
+}
+
+bool ust_app_get(struct ust_app *app)
+{
+	assert(app);
+	return urcu_ref_get_unless_zero(&app->ref);
+}
+
+void ust_app_put(struct ust_app *app)
+{
+	if (!app) {
+		return;
+	}
+
+	urcu_ref_put(&app->ref, ust_app_release);
 }
