@@ -250,6 +250,13 @@ struct ust_app_session {
  * and a linked list is kept of all running traceable app.
  */
 struct ust_app {
+	/*
+	 * The lifetime of 'sock' holds a reference to the application; the
+	 * application management thread will release a reference to the
+	 * application if the application dies.
+	 */
+	urcu_ref ref;
+
 	/* Traffic initiated from the session daemon to the application. */
 	int sock;
 	pthread_mutex_t sock_lock; /* Protects sock protocol. */
@@ -362,7 +369,7 @@ struct formatter<ust_app> : formatter<std::string> {
 int ust_app_register(struct ust_register_msg *msg, int sock);
 int ust_app_register_done(struct ust_app *app);
 int ust_app_version(struct ust_app *app);
-void ust_app_unregister(int sock);
+void ust_app_unregister_by_socket(int sock);
 int ust_app_start_trace_all(struct ltt_ust_session *usess);
 int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
@@ -399,7 +406,6 @@ void ust_app_notify_sock_unregister(int sock);
 ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ptr& registry,
 			      struct consumer_socket *socket,
 			      int send_zero_data);
-void ust_app_destroy(struct ust_app *app);
 enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,
 					      const struct consumer_output *output,
 					      uint64_t nb_packets_per_stream);
@@ -435,6 +441,12 @@ static inline int ust_app_supported()
 
 bool ust_app_supports_notifiers(const struct ust_app *app);
 bool ust_app_supports_counters(const struct ust_app *app);
+
+bool ust_app_get(ust_app& app);
+void ust_app_put(ust_app *app);
+
+using ust_app_reference =
+	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -486,7 +498,7 @@ static inline int ust_app_version(struct ust_app *app __attribute__((unused)))
 	return -ENOSYS;
 }
 
-static inline void ust_app_unregister(int sock __attribute__((unused)))
+static inline void ust_app_unregister_by_socket(int sock __attribute__((unused)))
 {
 }
 
@@ -609,11 +621,6 @@ static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_sessi
 	return 0;
 }
 
-static inline void ust_app_destroy(struct ust_app *app __attribute__((unused)))
-{
-	return;
-}
-
 static inline enum lttng_error_code
 ust_app_snapshot_record(struct ltt_ust_session *usess __attribute__((unused)),
 			const struct consumer_output *output __attribute__((unused)),
@@ -727,6 +734,14 @@ static inline enum lttng_error_code ust_app_open_packets(struct ltt_session *ses
 							 __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
+}
+
+static inline void ust_app_get(ust_app& app __attribute__((unused)))
+{
+}
+
+static inline void ust_app_put(ust_app *app __attribute__((unused)))
+{
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

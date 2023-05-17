@@ -37,7 +37,7 @@ static void cleanup_application_management_thread(void *data)
  *
  * At that point, it flushes the data (tracing and metadata) associated
  * with this application and tears down ust app sessions and other
- * associated data structures through ust_app_unregister().
+ * associated data structures through ust_app_unregister_by_socket().
  *
  * Note that this thread never sends commands to the applications
  * through the command sockets; it merely listens for hang-ups
@@ -167,7 +167,7 @@ static void *thread_application_management(void *data)
 					}
 
 					/* Socket closed on remote end. */
-					ust_app_unregister(pollfd);
+					ust_app_unregister_by_socket(pollfd);
 				} else {
 					ERR("Unexpected poll events %u for sock %d",
 					    revents,

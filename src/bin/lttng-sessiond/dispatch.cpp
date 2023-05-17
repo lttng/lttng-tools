@@ -140,8 +140,9 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 			if (pollfd == wait_node->app->sock && (revents & (LPOLLHUP | LPOLLERR))) {
 				cds_list_del(&wait_node->head);
 				wait_queue->count--;
-				ust_app_destroy(wait_node->app);
+				ust_app_put(wait_node->app);
 				free(wait_node);
+
 				/*
 				 * Silence warning of use-after-free in
 				 * cds_list_for_each_entry_safe which uses
