@@ -30,6 +30,7 @@
 #include "utils.hpp"
 
 #include <common/compat/getenv.hpp>
+#include <common/exception.hpp>
 #include <common/tracker.hpp>
 #include <common/unix.hpp>
 #include <common/utils.hpp>
@@ -2583,24 +2584,36 @@ static void *thread_manage_clients(void *data)
 		 * informations for the client. The command context struct contains
 		 * everything this function may needs.
 		 */
-		ret = process_client_msg(&cmd_ctx, &sock, &sock_error);
-		rcu_thread_offline();
-		if (ret < 0) {
-			if (sock >= 0) {
-				ret = close(sock);
-				if (ret) {
-					PERROR("close");
+		try {
+			ret = process_client_msg(&cmd_ctx, &sock, &sock_error);
+			rcu_thread_offline();
+			if (ret < 0) {
+				if (sock >= 0) {
+					ret = close(sock);
+					if (ret) {
+						PERROR("close");
+					}
 				}
+				sock = -1;
+				/*
+				 * TODO: Inform client somehow of the fatal error. At
+				 * this point, ret < 0 means that a zmalloc failed
+				 * (ENOMEM). Error detected but still accept
+				 * command, unless a socket error has been
+				 * detected.
+				 */
+				continue;
 			}
-			sock = -1;
-			/*
-			 * TODO: Inform client somehow of the fatal error. At
-			 * this point, ret < 0 means that a zmalloc failed
-			 * (ENOMEM). Error detected but still accept
-			 * command, unless a socket error has been
-			 * detected.
-			 */
-			continue;
+		} catch (const std::bad_alloc& ex) {
+			WARN_FMT("Failed to allocate memory while handling client request: {}",
+				 ex.what());
+			ret = LTTNG_ERR_NOMEM;
+		} catch (const lttng::ctl::error& ex) {
+			WARN_FMT("Client request failed: {}", ex.what());
+			ret = ex.code();
+		} catch (const std::exception& ex) {
+			WARN_FMT("Client request failed: {}", ex.what());
+			ret = LTTNG_ERR_UNK;
 		}
 
 		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
