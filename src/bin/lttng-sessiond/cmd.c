@@ -376,9 +376,12 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 	struct ltt_ust_event *uevent;
 	unsigned long channel_event_count;
 	unsigned int local_nb_events = 0;
+	struct lttng_dynamic_pointer_array exclusion_names;
 
 	assert(reply_payload);
 	assert(nb_events);
+
+	lttng_dynamic_pointer_array_init(&exclusion_names, NULL);
 
 	DBG("Listing UST global events for channel %s", channel_name);
 
@@ -465,14 +468,34 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 			tmp_event->exclusion = 1;
 		}
 
+		if (uevent->exclusion) {
+			int i;
+
+			for (i = 0; i < uevent->exclusion->count; i++) {
+				const int add_ret = lttng_dynamic_pointer_array_add_pointer(
+						&exclusion_names,
+						LTTNG_EVENT_EXCLUSION_NAME_AT(uevent->exclusion, i));
+
+				if (add_ret) {
+					PERROR("Failed to add exclusion name to temporary serialization array");
+					ret_code = LTTNG_ERR_NOMEM;
+					goto error;
+				}
+			}
+		}
+
 		/*
 		 * We do not care about the filter bytecode and the fd from the
 		 * userspace_probe_location.
 		 */
-		ret = lttng_event_serialize(tmp_event, uevent->exclusion ? uevent->exclusion->count : 0,
-				uevent->exclusion ? (char **) uevent->exclusion ->names : NULL,
-				uevent->filter_expression, 0, NULL, reply_payload);
+		ret = lttng_event_serialize(tmp_event,
+				lttng_dynamic_pointer_array_get_count(&exclusion_names),
+				lttng_dynamic_pointer_array_get_count(&exclusion_names) ?
+						(char **) exclusion_names.array.buffer.data : NULL,
+				uevent->filter_expression, 0, NULL,
+				reply_payload);
 		lttng_event_destroy(tmp_event);
+		lttng_dynamic_pointer_array_clear(&exclusion_names);
 		if (ret) {
 			ret_code = LTTNG_ERR_FATAL;
 			goto error;
@@ -484,6 +507,7 @@ end:
 	ret_code = LTTNG_OK;
 	*nb_events = local_nb_events;
 error:
+	lttng_dynamic_pointer_array_reset(&exclusion_names);
 	rcu_read_unlock();
 	return ret_code;
 }
