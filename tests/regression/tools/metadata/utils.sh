@@ -11,7 +11,7 @@ function get_env_value ()
 	local result
 	local ret
 
-	result=$(grep "$key" < "$env_file")
+	result=$(grep "$key =" < "$env_file")
 	ret=$?
 	if [ $ret -eq 1 ]; then
 		echo "invalid_value_extraction"

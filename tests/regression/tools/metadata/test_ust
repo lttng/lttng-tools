@@ -32,13 +32,14 @@ fi
 function test_per_uid ()
 {
 	local metadata_path
-	local value
-	local value2
+	local metadata
+	local metadata_env
 
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="per-uid"
-	local metadata=$(mktemp -t tmp.test_${FUNCNAME[0]}_metadata.XXXXXX)
-	local metadata_env=$(mktemp -t tmp.test_${FUNCNAME[0]}_metadata_env.XXXXXX)
+
+	metadata=$(mktemp -t tmp.test_per_uid_metadata.XXXXXX)
+	metadata_env=$(mktemp -t tmp.test_per_uid_metadata_env.XXXXXX)
 
 	diag "Test UST metadata env field in per-uid mode"
 	create_lttng_session_ok "$session_name"
@@ -66,51 +67,58 @@ function test_per_uid ()
 	# to allow trace viewer to recreate the same directory hierarchy.
 
 	# Trace name
-	value=$(get_env_value "$metadata_env" trace_name)
-	ok $? "Extracting trace_name from env metadata"
-	expected_path="${expected_path}/${value}"
+	local trace_name
+	trace_name=$(get_env_value "$metadata_env" trace_name)
+	ok $? "Extracting trace_name from env metadata: \`$trace_name\`"
+	expected_path="${expected_path}/${trace_name}"
 
 	# Session creation time
-	value=$(get_env_value "$metadata_env" trace_creation_datetime)
-	ok $? "Extracting trace_creation_datetime from env metadata"
-	value=$(iso8601_to_lttng_dir_datetime "$value")
-	expected_path="${expected_path}-${value}"
+	local trace_creation_datetime
+	trace_creation_datetime=$(get_env_value "$metadata_env" trace_creation_datetime)
+	ok $? "Extracting trace_creation_datetime from env metadata: \`$trace_creation_datetime\`"
+	trace_creation_datetime=$(iso8601_to_lttng_dir_datetime "$trace_creation_datetime")
+	expected_path="${expected_path}-${trace_creation_datetime}"
 
 	# Domain
-	value=$(get_env_value "$metadata_env" domain)
-	ok $? "Extracting domain from env metadata"
-	expected_path="${expected_path}/${value}"
+	local domain
+	domain=$(get_env_value "$metadata_env" domain)
+	ok $? "Extracting domain from env metadata: \`$domain\`"
+	expected_path="${expected_path}/${domain}"
 
 	# Buffering scheme
-	value=$(get_env_value "$metadata_env" tracer_buffering_scheme)
-	ok $? "Extracting tracer_buffering_scheme from env metadata"
-	expected_path="${expected_path}/${value}"
+	local tracer_buffering_scheme
+	tracer_buffering_scheme=$(get_env_value "$metadata_env" tracer_buffering_scheme)
+	ok $? "Extracting tracer_buffering_scheme from env metadata: \`$tracer_buffering_scheme\`"
+	expected_path="${expected_path}/${tracer_buffering_scheme}"
 
 	# tracer_buffering_id
-	value=$(get_env_value "$metadata_env" tracer_buffering_id)
-	ok $? "Extracting tracer_buffering_id from env metadata"
-	expected_path="${expected_path}/${value}"
+	local tracer_buffering_id
+	tracer_buffering_id=$(get_env_value "$metadata_env" tracer_buffering_id)
+	ok $? "Extracting tracer_buffering_id from env metadata: \`$tracer_buffering_id\`"
+	expected_path="${expected_path}/${tracer_buffering_id}"
 
 	# Check that the uid is the one we expect from the current user
-	is "$value" "$(id -u)" "tracer_buffering_id match current user uid"
+	is "$tracer_buffering_id" "$(id -u)" "tracer_buffering_id match current user uid: \`$tracer_buffering_id\`"
 
 	# Architecture_bit_width
-	value=$(get_env_value "$metadata_env" architecture_bit_width)
-	ok $? "Extracting architecture_bit_width from env metadata"
-	expected_path="${expected_path}/${value}-bit"
+	local architecture_bit_width
+	architecture_bit_width=$(get_env_value "$metadata_env" architecture_bit_width)
+	ok $? "Extracting architecture_bit_width from env metadata: \`$architecture_bit_width\`"
+	expected_path="${expected_path}/${architecture_bit_width}-bit"
 
 	# Append "metadata" and test that we find the file.
 	expected_path="${expected_path}/metadata"
 
-	test -e "$expected_path"
-	ok $? "Reconstructed path from metadata is valid"
+	test -f "$expected_path"
+	ok $? "Reconstructed path from metadata is an existing file: \`$expected_path\`"
 
 	# Hostname
 	# The hostname is not part of the lttng hierarchy still we can test for
 	# its validity here.
-	value=$(get_env_value "$metadata_env" hostname)
-	ok $? "Extracting hostname from env metadata"
-	is "$value" "$(hostname)" "Hostname is valid"
+	local hostname
+	hostname=$(get_env_value "$metadata_env" hostname)
+	ok $? "Extracting hostname from env metadata: \`$hostname\`"
+	is "$hostname" "$(hostname)" "Extracted hostname matches current hostname"
 
 	rm -f "$metadata"
 	rm -f "$metadata_env"
@@ -119,14 +127,15 @@ function test_per_uid ()
 function test_per_pid ()
 {
 	local metadata_path
+	local metadata
+	local metadata_env
 	local testapp_pid
-	local value
-	local value2
 
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="per-pid"
-	local metadata=$(mktemp -t tmp.test_${FUNCNAME[0]}_metadata.XXXXXX)
-	local metadata_env=$(mktemp -t tmp.test_${FUNCNAME[0]}_metadata_env.XXXXXX)
+
+	metadata=$(mktemp -t tmp.test_per_pid_metadata.XXXXXX)
+	metadata_env=$(mktemp -t tmp.test_per_pid_metadata_env.XXXXXX)
 
 	diag "Test UST metadata env field in per-pid mode"
 	create_lttng_session_ok "$session_name"
@@ -157,62 +166,70 @@ function test_per_pid ()
 	# to allow trace viewer to recreate the same directory hierarchy.
 
 	# Trace name
-	value=$(get_env_value "$metadata_env" trace_name)
-	ok $? "Extracting trace_name from env metadata"
-	expected_path="${expected_path}/${value}"
+	local trace_name
+	trace_name=$(get_env_value "$metadata_env" trace_name)
+	ok $? "Extracting trace_name from env metadata: \`$trace_name\`"
+	expected_path="${expected_path}/${trace_name}"
 
 	# Session creation time
-	value=$(get_env_value "$metadata_env" trace_creation_datetime)
-	ok $? "Extracting trace_creation_datetime from env metadata"
-	value=$(iso8601_to_lttng_dir_datetime "$value")
-	expected_path="${expected_path}-${value}"
+	local trace_creation_datetime
+	trace_creation_datetime=$(get_env_value "$metadata_env" trace_creation_datetime)
+	ok $? "Extracting trace_creation_datetime from env metadata: \`$trace_creation_datetime\`"
+	trace_creation_datetime=$(iso8601_to_lttng_dir_datetime "$trace_creation_datetime")
+	expected_path="${expected_path}-${trace_creation_datetime}"
 
 	# Domain
-	value=$(get_env_value "$metadata_env" domain)
-	ok $? "Extracting domain from env metadata"
-	expected_path="${expected_path}/${value}"
+	local domain
+	domain=$(get_env_value "$metadata_env" domain)
+	ok $? "Extracting domain from env metadata: \`$domain\`"
+	expected_path="${expected_path}/${domain}"
 
 	# Buffering scheme
-	value=$(get_env_value "$metadata_env" tracer_buffering_scheme)
-	ok $? "Extracting tracer_buffering_scheme from env metadata"
-	expected_path="${expected_path}/${value}"
+	local tracer_buffering_scheme
+	tracer_buffering_scheme=$(get_env_value "$metadata_env" tracer_buffering_scheme)
+	ok $? "Extracting tracer_buffering_scheme from env metadata: \`$tracer_buffering_scheme\`"
+	expected_path="${expected_path}/${tracer_buffering_scheme}"
 
 	# Procname
-	value=$(get_env_value "$metadata_env" procname)
-	ok $? "Extracting procname from env metadata"
-	expected_path="${expected_path}/${value}"
+	local procname
+	procname=$(get_env_value "$metadata_env" procname)
+	ok $? "Extracting procname from env metadata: \`$procname\`"
+	expected_path="${expected_path}/${procname}"
 
 	# vpid and tracer_buffering_id should be the same here.
-	# "vpid =" is used since other key have vpid in them.
-	value=$(get_env_value "$metadata_env" "vpid =")
-	ok $? "Extracting vpid from env metadata"
+	local vpid
+	vpid=$(get_env_value "$metadata_env" "vpid")
+	ok $? "Extracting vpid from env metadata: \`$vpid\`"
 
-	value2=$(get_env_value "$metadata_env" tracer_buffering_id)
-	ok $? "Extracting tracer_buffering_id from env metadata"
-	expected_path="${expected_path}-${value2}"
+	local tracer_buffering_id
+	tracer_buffering_id=$(get_env_value "$metadata_env" tracer_buffering_id)
+	ok $? "Extracting tracer_buffering_id from env metadata: \`$tracer_buffering_id\`"
+	expected_path="${expected_path}-${tracer_buffering_id}"
 
-	is "$value" "$value2" "vpid and tracer_buffering_id are identical"
-	is "$testapp_pid" "$value" "vpid and known testapp pid are identical"
-	is "$testapp_pid" "$value2" "tracer_buffering_id and known testapp pid are identical"
+	is "$vpid" "$tracer_buffering_id" "vpid and tracer_buffering_id are identical"
+	is "$testapp_pid" "$vpid" "vpid and known testapp pid are identical"
+	is "$testapp_pid" "$tracer_buffering_id" "tracer_buffering_id and known testapp pid are identical"
 
 	# vpid_datetime
-	value=$(get_env_value "$metadata_env" vpid_datetime)
-	ok $? "Extracting vpid_datetime from env metadata"
-	value=$(iso8601_to_lttng_dir_datetime "$value")
-	expected_path="${expected_path}-${value}"
+	local vpid_datetime
+	vpid_datetime=$(get_env_value "$metadata_env" vpid_datetime)
+	ok $? "Extracting vpid_datetime from env metadata: \`$vpid_datetime\`"
+	vpid_datetime=$(iso8601_to_lttng_dir_datetime "$vpid_datetime")
+	expected_path="${expected_path}-${vpid_datetime}"
 
 	# Append "metadata" and test that we find the file.
 	expected_path="${expected_path}/metadata"
 
-	test -e "$expected_path"
-	ok $? "Reconstructed path from metadata is valid"
+	test -f "$expected_path"
+	ok $? "Reconstructed path from metadata is an existing file: \`$expected_path\`"
 
 	# Hostname
 	# The hostname is not part of the lttng hierarchy still we can test for
 	# its validity here.
-	value=$(get_env_value "$metadata_env" hostname)
-	ok $? "Extracting hostname from env metadata"
-	is "$value" "$(hostname)" "Hostname is valid"
+	local hostname
+	hostname=$(get_env_value "$metadata_env" hostname)
+	ok $? "Extracting hostname from env metadata: \`$hostname\`"
+	is "$hostname" "$(hostname)" "Extracted hostname matches current hostname"
 
 	rm -f "$metadata"
 	rm -f "$metadata_env"
@@ -226,9 +243,8 @@ bail_out_if_no_babeltrace
 
 # Use LTTNG_HOME since we want the complete "default" lttng directory hierarchy
 # with "<session_name>-<datetime>/...".
-LTTNG_HOME="$TRACE_PATH"
+export LTTNG_HOME="$TRACE_PATH"
 
-export LTTNG_HOME
 start_lttng_sessiond
 
 tests=( test_per_uid test_per_pid )
