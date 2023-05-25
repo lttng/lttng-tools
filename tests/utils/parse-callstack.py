@@ -26,14 +26,23 @@ def addr2line(executable, addr):
 
     status = subprocess.run(cmd, stdout=subprocess.PIPE, check=True)
 
-    addr2line_output = status.stdout.decode("utf-8")
+    addr2line_output = status.stdout.decode("utf-8").splitlines()
+    # addr2line's output is made of 3-tuples:
+    #   - address
+    #   - function name
+    #   - source location
+    if len(addr2line_output) % 3 != 0:
+        raise Exception('Unexpected addr2line output:\n\t{}'.format('\n\t'.join(addr2line_output)))
 
-    # Omit the last 2 lines as the caller of main can not be determine
-    fcts = [addr2line_output.split()[-2]]
+    function_names = []
+    for address_line_number in range(0, len(addr2line_output), 3):
+        function_name = addr2line_output[address_line_number + 1]
 
-    fcts = [ f for f in fcts if '??' not in f]
+        # Filter-out unresolved functions
+        if "??" not in function_name:
+            function_names.append(addr2line_output[address_line_number + 1])
 
-    return fcts
+    return function_names
 
 def extract_user_func_names(executable, raw_callstack):
     """
