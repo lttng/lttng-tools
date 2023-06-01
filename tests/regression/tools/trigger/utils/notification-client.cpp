@@ -38,13 +38,12 @@ static struct option long_options[] = {
 
 static bool action_list_contains_notify(const struct lttng_action *action_list)
 {
-	const struct lttng_action *sub_action;
-
-	for_each_action_const (sub_action, action_list) {
+	for (auto sub_action : lttng::ctl::const_action_list_view(action_list)) {
 		if (lttng_action_get_type(sub_action) == LTTNG_ACTION_TYPE_NOTIFY) {
 			return true;
 		}
 	}
+
 	return false;
 }
 

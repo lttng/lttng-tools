@@ -992,9 +992,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	LTTNG_ASSERT(subitems);
 
 	if (type == LTTNG_ACTION_TYPE_LIST) {
-		struct lttng_action *inner_action = NULL;
-
-		for_each_action_mutable (inner_action, action) {
+		for (auto inner_action : lttng::ctl::action_list_view(action)) {
 			LTTNG_ASSERT(inner_action);
 
 			ret = add_action_to_subitem_array(inner_action, subitems);

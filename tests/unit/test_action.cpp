@@ -103,9 +103,8 @@ static void test_action_list(void)
 {
 	int ret, action_idx;
 	struct lttng_action *list_action = NULL, *list_action_from_buffer = NULL,
-			    *mut_inner_action = NULL, *stop_session_action = NULL,
-			    *notify_action = NULL, *start_session_action = NULL;
-	const struct lttng_action *const_inner_action;
+			    *stop_session_action = NULL, *notify_action = NULL,
+			    *start_session_action = NULL;
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
@@ -139,9 +138,8 @@ static void test_action_list(void)
 	   "Serialized and de-serialized list action are equal");
 
 	action_idx = 0;
-	for_each_action_const (const_inner_action, list_action) {
-		enum lttng_action_type inner_action_type =
-			lttng_action_get_type(const_inner_action);
+	for (auto action : lttng::ctl::const_action_list_view(list_action)) {
+		enum lttng_action_type inner_action_type = lttng_action_get_type(action);
 		switch (action_idx) {
 		case 0:
 			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,
@@ -160,8 +158,8 @@ static void test_action_list(void)
 	}
 
 	action_idx = 0;
-	for_each_action_mutable (mut_inner_action, list_action) {
-		enum lttng_action_type inner_action_type = lttng_action_get_type(mut_inner_action);
+	for (auto action : lttng::ctl::action_list_view(list_action)) {
+		enum lttng_action_type inner_action_type = lttng_action_get_type(action);
 		switch (action_idx) {
 		case 0:
 			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,

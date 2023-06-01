@@ -2503,7 +2503,6 @@ static bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 {
 	bool is_notify = false;
 	const struct lttng_action *action = lttng_trigger_get_const_action(trigger);
-	const struct lttng_action *inner_action;
 	enum lttng_action_type action_type;
 
 	LTTNG_ASSERT(action);
@@ -2515,7 +2514,7 @@ static bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	for_each_action_const (inner_action, action) {
+	for (auto inner_action : lttng::ctl::const_action_list_view(action)) {
 		if (lttng_action_get_type(inner_action) == LTTNG_ACTION_TYPE_NOTIFY) {
 			is_notify = true;
 			goto end;

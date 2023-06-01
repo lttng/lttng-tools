@@ -1024,11 +1024,10 @@ static void print_one_trigger(const struct lttng_trigger *trigger)
 	action = lttng_trigger_get_const_action(trigger);
 	action_type = lttng_action_get_type(action);
 	if (action_type == LTTNG_ACTION_TYPE_LIST) {
-		const struct lttng_action *subaction;
 		uint64_t action_path_index = 0;
 
 		MSG("  actions:");
-		for_each_action_const (subaction, action) {
+		for (auto subaction : lttng::ctl::const_action_list_view(action)) {
 			_MSG("    ");
 			print_one_action(trigger, subaction, &action_path_index, 1);
 			action_path_index++;

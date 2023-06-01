@@ -63,6 +63,7 @@ libcommon_lgpl_la_SOURCES = \
 	conditions/event-rule-matches.cpp \
 	conditions/session-consumed-size.cpp \
 	conditions/session-rotation.cpp \
+	container-wrapper.hpp \
 	credentials.cpp credentials.hpp \
 	defaults.cpp \
 	domain.cpp \

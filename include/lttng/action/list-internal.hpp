@@ -8,9 +8,12 @@
 #ifndef LTTNG_ACTION_LIST_INTERNAL_H
 #define LTTNG_ACTION_LIST_INTERNAL_H
 
+#include <common/container-wrapper.hpp>
+#include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
-#include <lttng/lttng-error.h>
+#include <lttng/lttng.h>
 
 #include <assert.h>
 #include <sys/types.h>
@@ -41,19 +44,54 @@ lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,
 			       const struct mi_lttng_error_query_callbacks *error_query_callbacks,
 			       struct lttng_dynamic_array *action_path_indexes);
 
-#define for_each_action_const(__action_element, __action_list)                                 \
-	assert(lttng_action_get_type(__action_list) == LTTNG_ACTION_TYPE_LIST);                \
-                                                                                               \
-	for (unsigned int __action_idx = 0;                                                    \
-	     (__action_element = lttng_action_list_get_at_index(__action_list, __action_idx)); \
-	     __action_idx++)
+namespace lttng {
+namespace ctl {
+namespace details {
+class action_list_operations {
+public:
+	static lttng_action *get(const lttng_action *list, std::size_t index) noexcept
+	{
+		return lttng_action_list_borrow_mutable_at_index(list, index);
+	}
 
-#define for_each_action_mutable(__action_element, __action_list)                               \
-	assert(lttng_action_get_type(__action_list) == LTTNG_ACTION_TYPE_LIST);                \
-                                                                                               \
-	for (unsigned int __action_idx = 0;                                                    \
-	     (__action_element =                                                               \
-		      lttng_action_list_borrow_mutable_at_index(__action_list, __action_idx)); \
-	     __action_idx++)
+	static std::size_t size(const lttng_action *list)
+	{
+		unsigned int count;
+		const auto status = lttng_action_list_get_count(list, &count);
+
+		if (status != LTTNG_ACTION_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Failed to get action list element count");
+		}
+
+		return count;
+	}
+};
+
+class const_action_list_operations {
+public:
+	static const lttng_action *get(const lttng_action *list, std::size_t index) noexcept
+	{
+		return lttng_action_list_get_at_index(list, index);
+	}
+
+	static std::size_t size(const lttng_action *list)
+	{
+		return action_list_operations::size(list);
+	}
+};
+} /* namespace details */
+
+using action_list_view = utils::random_access_container_wrapper<const lttng_action *,
+								lttng_action *,
+								details::action_list_operations>;
+
+using const_action_list_view =
+	utils::random_access_container_wrapper<const lttng_action *,
+					       const lttng_action *,
+					       details::const_action_list_operations>;
+
+} /* namespace ctl */
+} /* namespace lttng */
 
 #endif /* LTTNG_ACTION_LIST_INTERNAL_H */
