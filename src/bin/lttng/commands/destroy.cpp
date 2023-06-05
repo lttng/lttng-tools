@@ -255,13 +255,13 @@ cmd_error_code destroy_session(const lttng_session& session)
 	return CMD_SUCCESS;
 }
 
-cmd_error_code destroy_sessions(const session_spec& spec)
+cmd_error_code destroy_sessions(const lttng::cli::session_spec& spec)
 {
 	bool had_warning = false;
 	bool had_error = false;
 	bool listing_failed = false;
 
-	const auto sessions = [&listing_failed, &spec]() -> session_list {
+	const auto sessions = [&listing_failed, &spec]() -> lttng::cli::session_list {
 		try {
 			return list_sessions(spec);
 		} catch (const lttng::ctl::error& ctl_exception) {
@@ -272,7 +272,8 @@ cmd_error_code destroy_sessions(const session_spec& spec)
 		}
 	}();
 
-	if (!listing_failed && sessions.size() == 0 && spec.type_ == session_spec::type::NAME) {
+	if (!listing_failed && sessions.size() == 0 &&
+	    spec.type_ == lttng::cli::session_spec::type::NAME) {
 		ERR_FMT("Session `{}` not found", spec.value);
 		return CMD_ERROR;
 	}
@@ -289,7 +290,7 @@ cmd_error_code destroy_sessions(const session_spec& spec)
 		} catch (const lttng::ctl::error& ctl_exception) {
 			switch (ctl_exception.code()) {
 			case LTTNG_ERR_NO_SESSION:
-				if (spec.type_ != session_spec::type::NAME) {
+				if (spec.type_ != lttng::cli::session_spec::type::NAME) {
 					/* Session destroyed during command, ignore and carry-on. */
 					sub_ret = CMD_SUCCESS;
 					break;
@@ -335,8 +336,8 @@ int cmd_destroy(int argc, const char **argv)
 	bool success;
 	static poptContext pc;
 	const char *leftover = nullptr;
-	struct session_spec spec(session_spec::type::NAME);
-	session_list const sessions;
+	lttng::cli::session_spec spec(lttng::cli::session_spec::type::NAME);
+	lttng::cli::session_list const sessions;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -355,10 +356,10 @@ int cmd_destroy(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		case OPT_ALL:
-			spec.type_ = session_spec::type::ALL;
+			spec.type_ = lttng::cli::session_spec::type::ALL;
 			break;
 		case OPT_ENABLE_GLOB:
-			spec.type_ = session_spec::type::GLOB_PATTERN;
+			spec.type_ = lttng::cli::session_spec::type::GLOB_PATTERN;
 			break;
 		default:
 			command_ret = CMD_UNDEFINED;

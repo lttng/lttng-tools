@@ -9,6 +9,7 @@
 #define _LTTNG_UTILS_H
 
 #include <common/argpar/argpar.h>
+#include <common/container-wrapper.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/make-unique-wrapper.hpp>
 
@@ -24,6 +25,9 @@ extern char *opt_sessiond_path;
 extern pid_t sessiond_pid;
 
 struct cmd_struct;
+
+namespace lttng {
+namespace cli {
 
 struct session_spec {
 	enum class type {
@@ -166,6 +170,10 @@ private:
 		_sessions;
 };
 
+lttng::cli::session_list list_sessions(const struct session_spec& spec);
+} /* namespace cli */
+} /* namespace lttng */
+
 char *get_session_name(void);
 char *get_session_name_quiet(void);
 void list_commands(struct cmd_struct *commands, FILE *ofp);
@@ -205,7 +213,5 @@ int print_trace_archive_location(const struct lttng_trace_archive_location *loca
 
 int validate_exclusion_list(const char *event_name,
 			    const struct lttng_dynamic_pointer_array *exclusions);
-
-session_list list_sessions(const struct session_spec& spec);
 
 #endif /* _LTTNG_UTILS_H */

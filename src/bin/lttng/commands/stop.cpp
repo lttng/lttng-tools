@@ -132,13 +132,13 @@ cmd_error_code stop_tracing(const char *session_name)
 	return CMD_SUCCESS;
 }
 
-cmd_error_code stop_tracing(const session_spec& spec) noexcept
+cmd_error_code stop_tracing(const lttng::cli::session_spec& spec) noexcept
 {
 	bool had_warning = false;
 	bool had_error = false;
 	bool listing_failed = false;
 
-	const auto sessions = [&listing_failed, &spec]() -> session_list {
+	const auto sessions = [&listing_failed, &spec]() -> lttng::cli::session_list {
 		try {
 			return list_sessions(spec);
 		} catch (const lttng::ctl::error& ctl_exception) {
@@ -149,7 +149,8 @@ cmd_error_code stop_tracing(const session_spec& spec) noexcept
 		}
 	}();
 
-	if (!listing_failed && sessions.size() == 0 && spec.type_ == session_spec::type::NAME) {
+	if (!listing_failed && sessions.size() == 0 &&
+	    spec.type_ == lttng::cli::session_spec::type::NAME) {
 		ERR_FMT("Session `{}` not found", spec.value);
 		return CMD_ERROR;
 	}
@@ -170,7 +171,7 @@ cmd_error_code stop_tracing(const session_spec& spec) noexcept
 				sub_ret = CMD_SUCCESS;
 				break;
 			case LTTNG_ERR_NO_SESSION:
-				if (spec.type_ != session_spec::type::NAME) {
+				if (spec.type_ != lttng::cli::session_spec::type::NAME) {
 					/* Session destroyed during command, ignore and carry-on. */
 					sub_ret = CMD_SUCCESS;
 					break;
@@ -218,7 +219,7 @@ int cmd_stop(int argc, const char **argv)
 	bool success = true;
 	static poptContext pc;
 	const char *leftover = nullptr;
-	struct session_spec session_spec(session_spec::type::NAME);
+	lttng::cli::session_spec session_spec(lttng::cli::session_spec::type::NAME);
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -237,10 +238,10 @@ int cmd_stop(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		case OPT_ENABLE_GLOB:
-			session_spec.type_ = session_spec::type::GLOB_PATTERN;
+			session_spec.type_ = lttng::cli::session_spec::type::GLOB_PATTERN;
 			break;
 		case OPT_ALL:
-			session_spec.type_ = session_spec::type::ALL;
+			session_spec.type_ = lttng::cli::session_spec::type::ALL;
 			break;
 		default:
 			command_ret = CMD_UNDEFINED;

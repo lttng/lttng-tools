@@ -665,9 +665,10 @@ end:
 
 namespace {
 template <typename FilterFunctionType>
-session_list get_sessions(const FilterFunctionType& filter, bool return_first_match_only = false)
+lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
+				      bool return_first_match_only = false)
 {
-	session_list list;
+	lttng::cli::session_list list;
 
 	{
 		int list_ret;
@@ -680,7 +681,7 @@ session_list get_sessions(const FilterFunctionType& filter, bool return_first_ma
 					static_cast<lttng_error_code>(list_ret));
 		}
 
-		list = session_list(psessions, list_ret);
+		list = lttng::cli::session_list(psessions, list_ret);
 	}
 
 	std::size_t write_to = 0;
@@ -696,7 +697,7 @@ session_list get_sessions(const FilterFunctionType& filter, bool return_first_ma
 		++write_to;
 
 		if (return_first_match_only) {
-			return session_list(std::move(list), 1);
+			return lttng::cli::session_list(std::move(list), 1);
 		}
 	}
 
@@ -706,22 +707,23 @@ session_list get_sessions(const FilterFunctionType& filter, bool return_first_ma
 }
 } /* namespace */
 
-session_list list_sessions(const struct session_spec& spec)
+lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& spec)
 {
 	switch (spec.type_) {
-	case session_spec::type::NAME:
+	case lttng::cli::session_spec::type::NAME:
 		if (spec.value == nullptr) {
 			const auto configured_name =
 				lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
 
 			if (configured_name) {
-				const struct session_spec new_spec(session_spec::type::NAME,
-								   configured_name.get());
+				const struct lttng::cli::session_spec new_spec(
+					lttng::cli::session_spec::type::NAME,
+					configured_name.get());
 
 				return list_sessions(new_spec);
 			}
 
-			return session_list();
+			return lttng::cli::session_list();
 		}
 
 		return get_sessions(
@@ -729,13 +731,13 @@ session_list list_sessions(const struct session_spec& spec)
 				return strcmp(session.name, spec.value) == 0;
 			},
 			true);
-	case session_spec::type::GLOB_PATTERN:
+	case lttng::cli::session_spec::type::GLOB_PATTERN:
 		return get_sessions([&spec](const lttng_session& session) {
 			return fnmatch(spec.value, session.name, 0) == 0;
 		});
-	case session_spec::type::ALL:
+	case lttng::cli::session_spec::type::ALL:
 		return get_sessions([](const lttng_session&) { return true; });
 	}
 
-	return session_list();
+	return lttng::cli::session_list();
 }
