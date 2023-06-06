@@ -496,16 +496,14 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 		 * We do not care about the filter bytecode and the fd from the
 		 * userspace_probe_location.
 		 */
-		ret = lttng_event_serialize(
-			tmp_event,
-			exclusion_names.size(),
-			exclusion_names.size() ?
-				exclusion_names.data() :
-				nullptr,
-			uevent->filter_expression,
-			0,
-			nullptr,
-			reply_payload);
+		ret = lttng_event_serialize(tmp_event,
+					    exclusion_names.size(),
+					    exclusion_names.size() ? exclusion_names.data() :
+								     nullptr,
+					    uevent->filter_expression,
+					    0,
+					    nullptr,
+					    reply_payload);
 		lttng_event_destroy(tmp_event);
 		if (ret) {
 			ret_code = LTTNG_ERR_FATAL;

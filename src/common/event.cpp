@@ -664,7 +664,7 @@ end:
 
 int lttng_event_serialize(const struct lttng_event *event,
 			  unsigned int exclusion_count,
-			  const char **exclusion_list,
+			  const char *const *exclusion_list,
 			  const char *filter_expression,
 			  size_t bytecode_len,
 			  struct lttng_bytecode *bytecode,

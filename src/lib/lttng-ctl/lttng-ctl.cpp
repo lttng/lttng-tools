@@ -1180,7 +1180,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 serialize:
 	ret = lttng_event_serialize(ev,
 				    exclusion_count,
-				    const_cast<const char **>(exclusion_list),
+				    exclusion_list,
 				    filter_expression,
 				    bytecode_len,
 				    (ctx && bytecode_len) ? &ctx->bytecode->b : nullptr,
