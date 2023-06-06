@@ -1,0 +1,3 @@
+# Ensures that generated code is not flagged.
+
+filter-parser.hpp
