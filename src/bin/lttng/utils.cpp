@@ -668,9 +668,7 @@ template <typename FilterFunctionType>
 lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
 				      bool return_first_match_only = false)
 {
-	lttng::cli::session_list list;
-
-	{
+	lttng::cli::session_list list = []() {
 		int list_ret;
 		struct lttng_session *psessions;
 
@@ -681,8 +679,8 @@ lttng::cli::session_list get_sessions(const FilterFunctionType& filter,
 					static_cast<lttng_error_code>(list_ret));
 		}
 
-		list = lttng::cli::session_list(psessions, list_ret);
-	}
+		return lttng::cli::session_list(psessions, list_ret);
+	}();
 
 	std::size_t write_to = 0;
 	for (std::size_t read_from = 0; read_from < list.size(); ++read_from) {

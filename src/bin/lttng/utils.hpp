@@ -46,128 +46,93 @@ struct session_spec {
 	const char *value;
 };
 
+class session_list;
+
+namespace details {
+class session_storage {
+public:
+	session_storage(lttng_session *raw_sessions, std::size_t sessions_count) :
+		_array(raw_sessions), _count(sessions_count)
+	{
+	}
+
+	session_storage(session_storage&& original) :
+		_array(std::move(original._array)), _count(original._count)
+	{
+	}
+
+	session_storage(session_storage&& original, std::size_t new_count) :
+		_array(std::move(original._array)), _count(new_count)
+	{
+	}
+
+	std::unique_ptr<lttng_session,
+			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>
+		_array = nullptr;
+	std::size_t _count = 0;
+};
+
+class session_list_operations {
+public:
+	static lttng_session& get(const lttng::cli::details::session_storage& storage,
+				  std::size_t index) noexcept
+	{
+		return storage._array.get()[index];
+	}
+
+	static std::size_t size(const lttng::cli::details::session_storage& storage)
+	{
+		return storage._count;
+	}
+};
+} /* namespace details */
+
 /*
  * We don't use a std::vector here because it would make a copy of the C array.
  */
-class session_list {
-	template <typename ContainerType, typename DereferenceReturnType>
-	class _iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
-	public:
-		explicit _iterator(ContainerType& list, std::size_t k) : _list(list), _index(k)
-		{
-		}
-
-		_iterator& operator++() noexcept
-		{
-			++_index;
-			return *this;
-		}
-
-		_iterator& operator--() noexcept
-		{
-			--_index;
-			return *this;
-		}
-
-		_iterator& operator++(int) noexcept
-		{
-			_index++;
-			return *this;
-		}
-
-		_iterator& operator--(int) noexcept
-		{
-			_index--;
-			return *this;
-		}
-
-		bool operator==(_iterator other) const noexcept
-		{
-			return _index == other._index;
-		}
-
-		bool operator!=(_iterator other) const noexcept
-		{
-			return !(*this == other);
-		}
-
-		DereferenceReturnType& operator*() const noexcept
-		{
-			return _list[_index];
-		}
-
-	private:
-		ContainerType& _list;
-		std::size_t _index;
-	};
-
-	using iterator = _iterator<session_list, lttng_session>;
-	using const_iterator = _iterator<const session_list, const lttng_session>;
-
+class session_list
+	: public lttng::utils::random_access_container_wrapper<details::session_storage,
+							       lttng_session&,
+							       details::session_list_operations> {
 public:
-	session_list() : _sessions_count(0), _sessions(nullptr)
+	friend details::session_list_operations;
+
+	session_list() :
+		lttng::utils::random_access_container_wrapper<details::session_storage,
+							      lttng_session&,
+							      details::session_list_operations>(
+			{ nullptr, 0 })
 	{
 	}
 
-	session_list(session_list&& original, std::size_t new_count)
+	session_list(session_list&& original) :
+		lttng::utils::random_access_container_wrapper<details::session_storage,
+							      lttng_session&,
+							      details::session_list_operations>(
+			{ std::move(original._container) })
 	{
-		_sessions_count = new_count;
-		_sessions = std::move(original._sessions);
 	}
 
-	session_list(struct lttng_session *raw_sessions, std::size_t raw_sessions_count)
+	session_list(session_list&& original, std::size_t new_count) :
+		lttng::utils::random_access_container_wrapper<details::session_storage,
+							      lttng_session&,
+							      details::session_list_operations>(
+			{ std::move(original._container), new_count })
 	{
-		_sessions_count = raw_sessions_count;
-		_sessions.reset(raw_sessions);
 	}
 
-	iterator begin() noexcept
+	session_list(lttng_session *raw_sessions, std::size_t raw_sessions_count) :
+		lttng::utils::random_access_container_wrapper<details::session_storage,
+							      lttng_session&,
+							      details::session_list_operations>(
+			{ raw_sessions, raw_sessions_count })
 	{
-		return iterator(*this, 0);
-	}
-
-	iterator end() noexcept
-	{
-		return iterator(*this, _sessions_count);
-	}
-
-	const_iterator begin() const noexcept
-	{
-		return const_iterator(*this, 0);
-	}
-
-	const_iterator end() const noexcept
-	{
-		return const_iterator(*this, _sessions_count);
-	}
-
-	std::size_t size() const noexcept
-	{
-		return _sessions_count;
 	}
 
 	void resize(std::size_t new_size) noexcept
 	{
-		_sessions_count = new_size;
+		_container._count = new_size;
 	}
-
-	lttng_session& operator[](std::size_t index)
-	{
-		LTTNG_ASSERT(index < _sessions_count);
-		return _sessions.get()[index];
-	}
-
-	const lttng_session& operator[](std::size_t index) const
-	{
-		LTTNG_ASSERT(index < _sessions_count);
-		return _sessions.get()[index];
-	}
-
-private:
-	std::size_t _sessions_count;
-	std::unique_ptr<lttng_session,
-			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>
-		_sessions;
 };
 
 lttng::cli::session_list list_sessions(const struct session_spec& spec);

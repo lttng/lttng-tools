@@ -24,10 +24,10 @@ namespace utils {
  */
 template <typename ContainerType, typename ElementType, typename ContainerOperations>
 class random_access_container_wrapper {
+	template <typename IteratorContainerType, typename IteratorElementType>
 	class _iterator : public std::iterator<std::random_access_iterator_tag, std::size_t> {
 	public:
-		explicit _iterator(const random_access_container_wrapper& container,
-				   std::size_t start_index = 0) :
+		explicit _iterator(IteratorContainerType& container, std::size_t start_index = 0) :
 			_container(container), _index(start_index)
 		{
 		}
@@ -68,23 +68,25 @@ class random_access_container_wrapper {
 			return !(*this == other);
 		}
 
-		typename std::conditional<std::is_pointer<ElementType>::value,
-					  ElementType,
-					  ElementType&>::type
+		typename std::conditional<std::is_pointer<IteratorElementType>::value,
+					  IteratorElementType,
+					  IteratorElementType&>::type
 		operator*() const noexcept
 		{
 			return _container[_index];
 		}
 
 	private:
-		const random_access_container_wrapper& _container;
+		IteratorContainerType& _container;
 		std::size_t _index;
 	};
 
-	using iterator = _iterator;
+	using iterator = _iterator<random_access_container_wrapper, ElementType>;
+	using const_iterator = _iterator<const random_access_container_wrapper, const ElementType>;
 
 public:
-	explicit random_access_container_wrapper(ContainerType container) : _container{ container }
+	explicit random_access_container_wrapper(ContainerType container) :
+		_container{ std::move(container) }
 	{
 	}
 
@@ -96,6 +98,16 @@ public:
 	iterator end() noexcept
 	{
 		return iterator(*this, ContainerOperations::size(_container));
+	}
+
+	const_iterator begin() const noexcept
+	{
+		return const_iterator(*this);
+	}
+
+	const_iterator end() const noexcept
+	{
+		return const_iterator(*this, ContainerOperations::size(_container));
 	}
 
 	std::size_t size() const noexcept
@@ -119,7 +131,7 @@ public:
 		return ContainerOperations::get(_container, index);
 	}
 
-private:
+protected:
 	ContainerType _container;
 };
 } /* namespace utils */
