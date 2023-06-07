@@ -109,7 +109,7 @@ public:
 		lttng::utils::random_access_container_wrapper<details::session_storage,
 							      lttng_session&,
 							      details::session_list_operations>(
-			{ std::move(original._container) })
+			std::move(original._container))
 	{
 	}
 
