@@ -8,6 +8,8 @@
 #ifndef LTTNG_CONTAINER_WRAPPER_H
 #define LTTNG_CONTAINER_WRAPPER_H
 
+#include <common/exception.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <cstddef>
@@ -71,7 +73,7 @@ class random_access_container_wrapper {
 		typename std::conditional<std::is_pointer<IteratorElementType>::value,
 					  IteratorElementType,
 					  IteratorElementType&>::type
-		operator*() const noexcept
+		operator*() const
 		{
 			return _container[_index];
 		}
@@ -95,7 +97,7 @@ public:
 		return iterator(*this);
 	}
 
-	iterator end() noexcept
+	iterator end()
 	{
 		return iterator(*this, ContainerOperations::size(_container));
 	}
@@ -105,7 +107,7 @@ public:
 		return const_iterator(*this);
 	}
 
-	const_iterator end() const noexcept
+	const_iterator end() const
 	{
 		return const_iterator(*this, ContainerOperations::size(_container));
 	}
@@ -118,8 +120,22 @@ public:
 	typename std::conditional<std::is_pointer<ElementType>::value, ElementType, ElementType&>::type
 	operator[](std::size_t index)
 	{
-		LTTNG_ASSERT(index < ContainerOperations::size(_container));
-		return ContainerOperations::get(_container, index);
+		/*
+		 * To share code between the const and mutable versions of this operator, 'this'
+		 * is casted to a const reference. A const_cast then ensures that a mutable
+		 * reference (or pointer) is returned.
+		 *
+		 * We typically avoid const_cast, but this is safe: if the user is calling the
+		 * mutable version of this operator, it had a mutable object anyhow.
+		 *
+		 * For more information, see Item 3 of Effective C++.
+		 */
+		const auto& const_this = static_cast<const decltype(*this)&>(*this);
+
+		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
+		return const_cast<typename std::conditional<std::is_pointer<ElementType>::value,
+							    ElementType,
+							    ElementType&>::type>(const_this[index]);
 	}
 
 	typename std::conditional<std::is_pointer<ElementType>::value,
@@ -127,7 +143,13 @@ public:
 				  const ElementType&>::type
 	operator[](std::size_t index) const
 	{
-		LTTNG_ASSERT(index < ContainerOperations::size(_container));
+		if (index >= ContainerOperations::size(_container)) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Out of bound access through random_access_container_wrapper: index={}, size={}",
+				index,
+				size()));
+		}
+
 		return ContainerOperations::get(_container, index);
 	}
 
