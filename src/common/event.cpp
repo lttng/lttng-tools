@@ -736,7 +736,7 @@ int lttng_event_serialize(const struct lttng_event *event,
 	for (i = 0; i < exclusion_count; i++) {
 		const size_t exclusion_len =
 			lttng_strnlen(*(exclusion_list + i), LTTNG_SYMBOL_NAME_LEN);
-		struct lttng_event_exclusion_comm exclusion_header;
+		struct lttng_event_exclusion_comm exclusion_header = {};
 
 		exclusion_header.len = (uint32_t) exclusion_len + 1;
 
