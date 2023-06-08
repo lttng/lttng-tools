@@ -6,24 +6,24 @@
 
 TEST_DESC="Streaming - Snapshot UST tracing"
 
-CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../../..
+CURDIR=$(dirname "$0")/
+TESTDIR="$CURDIR/../../.."
 EVENT_NAME="tp:tptest"
 SESSION_NAME=""
 CHANNEL_NAME="chan1"
-BIN_NAME="gen-nevents"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=-1
 NR_USEC_WAIT=100
-APPS_PID=
+APP_PIDS=()
 
 TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_ust_streaming_trace_path.XXXXXX)
 
 NUM_TESTS=85
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../../
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
@@ -34,25 +34,42 @@ function snapshot_add_output ()
 	local sess_name=$1
 	local trace_path=$2
 	local name=$3
-	local extra_opt=""
+	local options=()
+	local args=()
 
-	if [ ! -z $name ]; then
-		extra_opt="-n $name"
+	if [ -n "$sess_name" ] ; then
+		options+=(-s "$sess_name")
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name $extra_opt $trace_path >/dev/null 2>&1
+	if [ -n "$name" ]; then
+		options+=(-n "$name")
+	fi
+
+	# Checking for any other optional arguments that should be passed to the lttng command
+	args=("$@")
+	if [ -n "${args[*]:3}" ] ; then
+		options+=("${args[@]:3}")
+	fi
+
+	# The trace_path is a positional argument and must always come last if it is defined
+	if [ -n "$trace_path" ] ; then
+		options+=("$trace_path")
+	fi
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" snapshot add-output "${options[@]}" >/dev/null 2>&1
 	ok $? "Added snapshot output $trace_path"
 }
 
 # Start trace application and return once one event has been hit.
 function start_test_app()
 {
-	local tmp_file=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_tmp_file.XXXXXX)
+	local tmp_file
+	tmp_file=$(mktemp -u -t tmp.test_"${FUNCNAME[0]}"_tmp_file.XXXXXX)
 
 	# Start application with a temporary file.
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event "$tmp_file" &
 	ret=$?
-	APPS_PID="${APPS_PID} ${!}"
+	APP_PIDS+=(${!})
 	ok $ret "Start application to trace"
 
 	# Wait for the application file to appear indicating that at least one
@@ -61,55 +78,51 @@ function start_test_app()
 		sleep 0.5
 	done
 	diag "Removing test app temporary file $tmp_file"
-	rm -f $tmp_file
+	rm -f "$tmp_file"
 }
 
 function stop_test_apps()
 {
 	diag "Stopping $TESTAPP_NAME"
-	for p in ${APPS_PID}; do
-		kill ${p}
-		wait ${p} 2>/dev/null
-	done
-	APPS_PID=
+	kill "${APP_PIDS[@]}"
+	wait "${APP_PIDS[@]}" 2>/dev/null
+	APP_PIDS=()
 }
 
 # Test a snapshot using a default name for the output destination.
 function test_ust_default_name_with_del()
 {
 	diag "Test UST snapshot streaming with default name with delete output"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost"
-	lttng_snapshot_record $SESSION_NAME
+	snapshot_add_output "$SESSION_NAME" "net://localhost"
+	lttng_snapshot_record "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
-	if [ $? -ne 0 ]; then
+	if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
 		stop_test_apps
 		return $?
 	fi
 
-	lttng_snapshot_del_output_ok $SESSION_NAME 1
-	snapshot_add_output $SESSION_NAME "net://localhost"
-	lttng_snapshot_record $SESSION_NAME
+	lttng_snapshot_del_output_ok "$SESSION_NAME" 1
+	snapshot_add_output "$SESSION_NAME" "net://localhost"
+	lttng_snapshot_record "$SESSION_NAME"
 
 	# Validate test with the next ID since a del output was done prior.
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-2" 1
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-2*
-	if [ $? -ne 0 ]; then
+	if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-2*" ; then
 		stop_test_apps
 		return $?
 	fi
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	stop_test_apps
 
@@ -120,20 +133,20 @@ function test_ust_default_name_with_del()
 function test_ust_default_name()
 {
 	diag "Test UST snapshot streaming with default name"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost"
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	snapshot_add_output "$SESSION_NAME" "net://localhost"
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
+	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
 	out=$?
 
 	stop_test_apps
@@ -144,20 +157,20 @@ function test_ust_default_name()
 function test_ust_default_name_custom_uri()
 {
 	diag "Test UST snapshot streaming with default name with custom URL"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "-C tcp://localhost:5342 -D tcp://localhost:5343"
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	snapshot_add_output "$SESSION_NAME" '' '' -C tcp://localhost:5342 -D tcp://localhost:5343
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
+	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
 	out=$?
 
 	stop_test_apps
@@ -172,23 +185,23 @@ function test_ust_custom_name()
 	local name="asnapshotname"
 
 	diag "Test UST snapshot streaming with custom name"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
 
 	start_test_app
 
-	snapshot_add_output $SESSION_NAME "net://localhost" $name
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	snapshot_add_output "$SESSION_NAME" "net://localhost" $name
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
-	if ls $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name* &> /dev/null; then
+	if ls "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"*/"$name"* &> /dev/null; then
 		ok 0 "Custom name snapshot exists"
 		# Validate test
 		validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "$name" 0
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name-*
+		validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name-*"
 		out=$?
 	else
 		fail "No custom name snapshot found"
@@ -203,27 +216,26 @@ function test_ust_custom_name()
 function test_ust_n_snapshot()
 {
 	diag "Test ust snapshot streaming multiple consecutive snapshot"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	snapshot_add_output $SESSION_NAME "net://localhost"
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	snapshot_add_output "$SESSION_NAME" "net://localhost"
 	start_test_app
 	for i in {0..4};
 	do
-		start_lttng_tracing_ok $SESSION_NAME
-		lttng_snapshot_record $SESSION_NAME
-		stop_lttng_tracing_ok $SESSION_NAME
-		validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" $i
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
-		if [ $? -ne 0 ]; then
+		start_lttng_tracing_ok "$SESSION_NAME"
+		lttng_snapshot_record "$SESSION_NAME"
+		stop_lttng_tracing_ok "$SESSION_NAME"
+		validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" "$i"
+		if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
 			return 1
 		fi
 		set -u
-		rm -rf $TRACE_PATH/$HOSTNAME
+		rm -rf "${TRACE_PATH:?}/${HOSTNAME}"
 		set +u
 	done
 
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok "$SESSION_NAME"
 	stop_test_apps
 	return 0
 }
@@ -234,13 +246,8 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
-if [ "$(id -u)" == "0" ]; then
-	isroot=1
-else
-	isroot=0
-fi
-
 start_lttng_relayd "-o $TRACE_PATH"
+# shellcheck disable=SC2119
 start_lttng_sessiond
 
 tests=( test_ust_default_name_with_del
@@ -250,17 +257,18 @@ tests=( test_ust_default_name_with_del
 	test_ust_n_snapshot
 )
 
-for fct_test in ${tests[@]};
+for fct_test in "${tests[@]}";
 do
 	SESSION_NAME=$(randstring 16 0)
-	${fct_test}
-	if [ $? -eq 0 ]; then
+	if ${fct_test} ; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "$TRACE_PATH"
 	else
 		break
 	fi
 done
 
+# shellcheck disable=SC2119
 stop_lttng_sessiond
+# shellcheck disable=SC2119
 stop_lttng_relayd

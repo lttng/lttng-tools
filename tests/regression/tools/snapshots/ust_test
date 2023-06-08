@@ -6,42 +6,44 @@
 
 TEST_DESC="Snapshots - UST tracing"
 
-CURDIR=$(dirname $0)/
-TESTDIR=$CURDIR/../../..
+CURDIR=$(dirname "$0")/
+TESTDIR="$CURDIR/../../.."
 EVENT_NAME="tp:tptest"
 SESSION_NAME=""
 CHANNEL_NAME="snapchan"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
-APPS_PID=
+APPS_PID=()
 
 NUM_TESTS=104
 
 TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_ust_trace_path.XXXXXX)
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../../
+source "$TESTDIR/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected"
 fi
 
 # Need the number of snapshot to do.
-if [ -z $1 ]; then
+if [ -z "$1" ]; then
 	BAIL_OUT "A number of snapshot is needed"
 fi
 NR_SNAPSHOT=$1
 
-NUM_TESTS=$(($NUM_TESTS + ($NR_SNAPSHOT * 3)))
+NUM_TESTS=$((NUM_TESTS + (NR_SNAPSHOT * 3)))
 
 function start_test_app()
 {
-	local tmp_file=$(mktemp -u -t "tmp.${FUNCNAME[0]}_tmp_file.XXXXXX")
+	local tmp_file
+	tmp_file=$(mktemp -u -t "tmp.${FUNCNAME[0]}_tmp_file.XXXXXX")
 
 	# Start application with a temporary file.
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &
+	$TESTAPP_BIN -i "$NR_ITER" -w "$NR_USEC_WAIT" --sync-after-first-event "$tmp_file" &
 	ret=$?
-	APPS_PID="${APPS_PID} ${!}"
+	APPS_PID+=(${!})
 	ok $ret "Start application to trace"
 
 	# Wait for the application file to appear indicating that at least one
@@ -50,25 +52,21 @@ function start_test_app()
 		sleep 0.5
 	done
 	diag "Removing test app temporary file $tmp_file"
-	rm -f $tmp_file
+	rm -f "$tmp_file"
 }
 
 function wait_test_apps()
 {
 	diag "Waiting for $TESTAPP_NAME"
-	for p in ${APPS_PID}; do
-		wait ${p} 2>/dev/null
-	done
+	wait "${APPS_PID[@]}" 2>/dev/null
 }
 
 function stop_test_apps()
 {
 	diag "Stopping $TESTAPP_NAME"
-	for p in ${APPS_PID}; do
-		kill ${p}
-		wait ${p} 2>/dev/null
-	done
-	APPS_PID=
+	kill "${APPS_PID[@]}"
+	wait "${APPS_PID[@]}"
+	APPS_PID=()
 }
 
 function snapshot_add_output ()
@@ -77,20 +75,20 @@ function snapshot_add_output ()
 	local trace_path=$2
 	local name=$3
 	local max_size=$4
-	local extra_opt=""
+	local extra_opt=()
 
-	if [ ! -z $name ]; then
-		extra_opt+=" -n $name "
+	if [ -n "$name" ]; then
+		extra_opt+=(-n "$name")
 	fi
 
-	if [ ! -z $max_size ]; then
-		extra_opt+=" -m $max_size "
+	if [ -n "$max_size" ]; then
+		extra_opt+=(-m "$max_size")
 	fi
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output \
-		-s $sess_name $extra_opt $trace_path > /dev/null 2>&1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" snapshot add-output \
+		-s "$sess_name" "${extra_opt[@]}" "$trace_path" > /dev/null 2>&1
 
-	ok $? "Added snapshot output $trace_path ($extra_opt)"
+	ok $? "Added snapshot output $trace_path (${extra_opt[*]})"
 }
 
 function snapshot_del_output ()
@@ -98,8 +96,8 @@ function snapshot_del_output ()
 	local sess_name=$1
 	local name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot del-output \
-		-s $sess_name $name > /dev/null 2>&1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" snapshot del-output \
+		-s "$sess_name" "$name" > /dev/null 2>&1
 
 	ok $? "Deleted snapshot output named $name"
 }
@@ -111,10 +109,10 @@ function enable_mmap_overwrite_subbuf_ust_channel ()
 	local subbuf_size=$3
 	local subbuf_count=$4
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name \
-		$chan_name -u --output mmap --overwrite \
-		--num-subbuf=$subbuf_count \
-		--subbuf-size $subbuf_size > /dev/null 2>&1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel -s "$sess_name" \
+		"$chan_name" -u --output mmap --overwrite \
+		--num-subbuf="$subbuf_count" \
+		--subbuf-size "$subbuf_size" > /dev/null 2>&1
 
 	ok $? "Enable channel $channel_name for session $sess_name with subbuf size $subbuf_size"
 }
@@ -124,9 +122,9 @@ function enable_mmap_small_discard_ust_channel ()
 	local sess_name=$1
 	local chan_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name \
-		$chan_name -u --output mmap --discard \
-		--subbuf-size $(getconf PAGE_SIZE) --num-subbuf 2 \
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel -s "$sess_name" \
+		"$chan_name" -u --output mmap --discard \
+		--subbuf-size "$(getconf PAGE_SIZE)" --num-subbuf 2 \
 		> /dev/null 2>&1
 
 	ok $? "Enable channel $channel_name for session $sess_name with small discard buffers"
@@ -137,9 +135,9 @@ function enable_mmap_small_overwrite_ust_channel ()
 	local sess_name=$1
 	local chan_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name \
-		$chan_name -u --output mmap --overwrite \
-		--subbuf-size $(getconf PAGE_SIZE) --num-subbuf 2 \
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel -s "$sess_name" \
+		"$chan_name" -u --output mmap --overwrite \
+		--subbuf-size "$(getconf PAGE_SIZE)" --num-subbuf 2 \
 		> /dev/null 2>&1
 
 	ok $? "Enable channel $channel_name for session $sess_name with small discard buffers"
@@ -150,29 +148,29 @@ function test_ust_list_output ()
 	output_names=("randomname" "somesnapshot")
 
 	diag "Test UST snapshot output listing"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
 
-	start_lttng_tracing_ok $SESSION_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
 
-	snapshot_add_output $SESSION_NAME "file://$TRACE_PATH" ${output_names[0]}
+	snapshot_add_output "$SESSION_NAME" "file://$TRACE_PATH" "${output_names[0]}"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot list-output \
-		-s $SESSION_NAME 2>&1 | grep ${output_names[0]} > /dev/null
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" snapshot list-output \
+		-s "$SESSION_NAME" 2>&1 | grep "${output_names[0]}" > /dev/null
 	ok $? "Snapshot named ${output_names[0]} present in list-output listing"
 
-	snapshot_del_output $SESSION_NAME ${output_names[0]}
+	snapshot_del_output "$SESSION_NAME" "${output_names[0]}"
 
-	snapshot_add_output $SESSION_NAME "file://$TRACE_PATH" ${output_names[1]}
+	snapshot_add_output "$SESSION_NAME" "file://$TRACE_PATH" "${output_names[1]}"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot list-output \
-		-s $SESSION_NAME 2>&1 | grep ${output_names[1]} > /dev/null
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" snapshot list-output \
+		-s "$SESSION_NAME" 2>&1 | grep "${output_names[1]}" > /dev/null
 
 	ok $? "Snapshot named ${output_names[1]} present in list-output listing"
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 }
 
 function test_ust_local_snapshot ()
@@ -181,25 +179,24 @@ function test_ust_local_snapshot ()
 	NR_USEC_WAIT=100
 
 	diag "Test local UST snapshots"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
 
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/
-	if [ $? -eq 0 ]; then
+	if validate_trace $EVENT_NAME "$TRACE_PATH/" ; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "$TRACE_PATH"
 	fi
 
 	stop_test_apps
@@ -213,31 +210,31 @@ function test_ust_local_snapshot_small_discard_buffers ()
 
 	diag "Test local UST snapshots with small discard buffers"
 	taskset -c "$(get_any_available_cpu)" -p $$ 1>/dev/null 2>&1
-	create_lttng_session_no_output $SESSION_NAME
-	enable_mmap_small_discard_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_mmap_small_discard_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Run test apps, wait for them to complete.
 	start_test_app
 	wait_test_apps
 
 	# Take first snapshot, remember first line.
-	lttng_snapshot_record $SESSION_NAME
-	FIRST_LINE="$(trace_first_line $TRACE_PATH/)"
+	lttng_snapshot_record "$SESSION_NAME"
+	FIRST_LINE="$(trace_first_line "$TRACE_PATH/")"
 	diag "First line (1st snapshot): $FIRST_LINE"
-	rm -rf $TRACE_PATH/
+	rm -rf "${TRACE_PATH:?}/"
 
 	# Run test apps, wait for them to complete.
 	start_test_app
 	wait_test_apps
 
 	# Take second snapshot, remember first line.
-	lttng_snapshot_record $SESSION_NAME
-	FIRST_LINE_2="$(trace_first_line $TRACE_PATH/)"
+	lttng_snapshot_record "$SESSION_NAME"
+	FIRST_LINE_2="$(trace_first_line "$TRACE_PATH/")"
 	diag "First line (2nd snapshot): $FIRST_LINE_2"
-	rm -rf $TRACE_PATH/
+	rm -rf "${TRACE_PATH:?}/"
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
 		fail "First snapshot event do not match"
@@ -245,9 +242,9 @@ function test_ust_local_snapshot_small_discard_buffers ()
 		pass "First snapshot event match"
 	fi
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	taskset -p $OLDCPUSET $$ 1>/dev/null 2>&1
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
+	taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1
 }
 
 function test_ust_local_snapshot_small_overwrite_buffers ()
@@ -258,31 +255,31 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 
 	diag "Test local UST snapshots with small overwrite buffers"
 	taskset -p "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
-	create_lttng_session_no_output $SESSION_NAME
-	enable_mmap_small_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_mmap_small_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Run test apps, wait for them to complete.
 	start_test_app
 	wait_test_apps
 
 	# Take first snapshot, remember first line.
-	lttng_snapshot_record $SESSION_NAME
-	FIRST_LINE="$(trace_first_line $TRACE_PATH/)"
+	lttng_snapshot_record "$SESSION_NAME"
+	FIRST_LINE="$(trace_first_line "$TRACE_PATH/")"
 	diag "First line (1st snapshot): $FIRST_LINE"
-	rm -rf $TRACE_PATH/
+	rm -rf "${TRACE_PATH:?}/"
 
 	# Run test apps, wait for them to complete.
 	start_test_app
 	wait_test_apps
 
 	# Take second snapshot, remember first line.
-	lttng_snapshot_record $SESSION_NAME
-	FIRST_LINE_2="$(trace_first_line $TRACE_PATH/)"
+	lttng_snapshot_record "$SESSION_NAME"
+	FIRST_LINE_2="$(trace_first_line "$TRACE_PATH/")"
 	diag "First line (2nd snapshot): $FIRST_LINE_2"
-	rm -rf $TRACE_PATH/
+	rm -rf "${TRACE_PATH:?}/"
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
 		pass "First snapshot event do not match"
@@ -290,9 +287,9 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 		fail "First snapshot event match"
 	fi
 
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	taskset -p $OLDCPUSET $$ 1>/dev/null 2>&1
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
+	taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1
 }
 
 function test_ust_local_snapshot_max_size ()
@@ -371,23 +368,22 @@ function test_ust_local_snapshot_large_metadata ()
 	LM_BIN="$LM_PATH/$LM_NAME/$LM_NAME"
 
 	diag "Test local UST snapshots with > 4kB metadata"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $LM_EVENT $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $LM_EVENT $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 	$LM_BIN --iter 1 --wait 1
 	ok $? "Start application to trace"
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
-	validate_trace $LM_EVENT $TRACE_PATH/
-	if [ $? -eq 0 ]; then
+	if validate_trace $LM_EVENT "$TRACE_PATH/" ; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "${TRACE_PATH:?}/"
 	fi
 }
 
@@ -396,7 +392,7 @@ function enable_channel_per_uid_mmap_overwrite()
 	sess_name=$1
 	channel_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name --output mmap --overwrite >/dev/null 2>&1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel --buffers-uid -u "$channel_name" -s "$sess_name" --output mmap --overwrite >/dev/null 2>&1
 	ok $? "Enable channel $channel_name per UID for session $sess_name"
 }
 
@@ -405,25 +401,24 @@ function test_ust_per_uid_local_snapshot ()
 	NR_ITER=-1
 	NR_USEC_WAIT=100
 	diag "Test per-uid local UST snapshots"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_channel_per_uid_mmap_overwrite "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
 
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/
-	if [ $? -eq 0 ]; then
+	if validate_trace $EVENT_NAME "$TRACE_PATH/" ; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "${TRACE_PATH:?}/"
 	fi
 
 	stop_test_apps
@@ -435,26 +430,25 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	NR_USEC_WAIT=100
 
 	diag "Test local UST snapshots post-mortem"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_channel_per_uid_mmap_overwrite "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
 	stop_test_apps
 
-	lttng_snapshot_record $SESSION_NAME
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	lttng_snapshot_record "$SESSION_NAME"
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
-	validate_trace $EVENT_NAME $TRACE_PATH/
-	if [ $? -eq 0 ]; then
+	if validate_trace $EVENT_NAME "$TRACE_PATH/" ; then
 		# Only delete if successful
-		rm -rf $TRACE_PATH
+		rm -rf "${TRACE_PATH:?}/"
 	fi
 }
 
@@ -464,29 +458,28 @@ function test_ust_local_snapshots ()
 	NR_USEC_WAIT=100
 
 	diag "Test $NR_SNAPSHOT local UST snapshots"
-	create_lttng_session_no_output $SESSION_NAME
-	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
 
-	for i in $(seq 1 $NR_SNAPSHOT); do
+	for i in $(seq 1 "$NR_SNAPSHOT"); do
 		diag "Snapshot $i/$NR_SNAPSHOT"
-		rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
-		lttng_snapshot_record $SESSION_NAME
+		rm -rf "$TRACE_PATH/snapshot/*" 2>/dev/null
+		lttng_snapshot_record "$SESSION_NAME"
 		# Validate test
 		validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" $((i - 1))
-		validate_trace $EVENT_NAME $TRACE_PATH/
-		if [ $? -eq 0 ]; then
+		if validate_trace $EVENT_NAME "$TRACE_PATH/" ; then
 			# Only delete if successful
-			rm -rf $TRACE_PATH
+			rm -rf "${TRACE_PATH:?}/"
 		fi
 	done
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
 
 	stop_test_apps
 }
@@ -497,6 +490,7 @@ print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
 
+# shellcheck disable=SC2119
 start_lttng_sessiond
 tests=( test_ust_list_output
 	test_ust_local_snapshot
@@ -509,10 +503,11 @@ tests=( test_ust_list_output
 	test_ust_local_snapshot_small_overwrite_buffers
 )
 
-for fct_test in ${tests[@]};
+for fct_test in "${tests[@]}";
 do
 	SESSION_NAME=$(randstring 16 0)
 	${fct_test}
 done
 
+# shellcheck disable=SC2119
 stop_lttng_sessiond

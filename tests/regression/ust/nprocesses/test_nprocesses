@@ -7,20 +7,20 @@
 NUM_PROCESS=30
 TEST_DESC="UST tracer - Generate $NUM_PROCESS process"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
-NR_ITER=-1	# infinite loop
+NR_ITER=-1 # infinite loop
 NR_USEC_WAIT=1000000
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="ust-nprocesses"
 EVENT_NAME="tp:tptest"
-TEST_WAIT_SEC=5
 NUM_TESTS=9
-APPS_PID=
+APP_PIDS=()
 
-source $TESTDIR/utils/utils.sh
+# shellcheck source-path=SCRIPTDIR/../../../
+source "${TESTDIR}/utils/utils.sh"
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST $TESTAPP_BIN binary detected."
@@ -32,6 +32,7 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
+# shellcheck disable=SC2119
 start_lttng_sessiond
 
 # Start tests. Each is an infinite tracing loop.
@@ -40,32 +41,33 @@ file_sync_after_first=$(mktemp -u -t tmp.test_nprocesses_sync_after_first.XXXXXX
 file_sync_before_last=$(mktemp -u -t tmp.test_nprocesses_sync_before_last.XXXXXX)
 
 diag "Starting $NUM_PROCESS test applications"
-for i in `seq 1 $NUM_PROCESS`
+# shellcheck disable=SC2034
+for i in $(seq 1 $NUM_PROCESS)
 do
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
-		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
-	APPS_PID="${APPS_PID} ${!}"
+		--sync-after-first-event "${file_sync_after_first}" \
+		--sync-before-last-event "${file_sync_before_last}" >/dev/null 2>&1 &
+	APP_PIDS+=(${!})
 done
 
 diag "Waiting for applications to be registered to sessiond"
 
 reg_app_count=0
 while [ $reg_app_count -ne $NUM_PROCESS ]; do
-	listing=$($TESTDIR/../src/bin/lttng/$LTTNG_BIN list -u)
-	reg_app_count=$(echo -n $listing | sed "s#$TESTAPP_BIN#$TESTAPP_BIN\n#g" | grep "$TESTAPP_BIN" | wc -l)
+	listing=$("${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}" list -u)
+	reg_app_count=$(echo -n "${listing}" | sed "s#$TESTAPP_BIN#$TESTAPP_BIN\n#g" | grep -c "$TESTAPP_BIN")
 done
 
 pass "All applications are registered to sessiond"
 
 TRACE_PATH=$(mktemp -d -t tmp.test_nprocesses_trace_path.XXXXXX)
 
-create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+create_lttng_session_ok $SESSION_NAME "${TRACE_PATH}"
 
 enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 start_lttng_tracing_ok $SESSION_NAME
 
-touch ${file_sync_before_last}
+touch "${file_sync_before_last}"
 
 # We don't validate whether the applications have traced here, rather
 # just that they registered to sessiond (above).
@@ -75,17 +77,16 @@ destroy_lttng_session_ok $SESSION_NAME
 
 #TODO: add trace validation.
 
-rm -rf $TRACE_PATH
+rm -rf "${TRACE_PATH}"
 
 diag "Stopping all spawned applications"
-for p in ${APPS_PID}; do
-	kill ${p}
-	wait ${p} 2>/dev/null
-done
-APPS_PID=
+kill "${APP_PIDS[@]}"
+wait "${APP_PIDS[@]}" 2>/dev/null
+APP_PIDS=()
 pass "Stopped all spawned applications"
 
-rm -f ${file_sync_after_first}
-rm -f ${file_sync_before_last}
+rm -f "${file_sync_after_first}"
+rm -f "${file_sync_before_last}"
 
+# shellcheck disable=SC2119
 stop_lttng_sessiond
