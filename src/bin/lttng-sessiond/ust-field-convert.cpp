@@ -90,7 +90,7 @@ ust_ctl_encoding_to_string_field_encoding(UstCtlEncodingType encoding)
 
 	const auto encoding_it = encoding_conversion_map.find(encoding);
 	if (encoding_it == encoding_conversion_map.end()) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unknown lttng_ust_ctl_string_encodings value `{}` encountered when decoding integer field",
 			encoding));
 	}
@@ -109,7 +109,7 @@ enum lst::integer_type::base ust_ctl_base_to_integer_field_base(UstCtlBaseType b
 
 	const auto base_it = base_conversion_map.find(base);
 	if (base_it == base_conversion_map.end()) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unknown integer base value `{}` encountered when decoding integer field",
 			base));
 	}
@@ -125,7 +125,7 @@ create_integer_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -154,7 +154,7 @@ create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curren
 					       lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -171,7 +171,7 @@ create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curren
 			current->type.u._float.exp_dig,
 			current->type.u._float.mant_dig);
 	} catch (lttng::invalid_argument_error& ex) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Invalid floating point attribute in {}: {}", typeid(*current), ex.what()));
 	}
 }
@@ -184,7 +184,7 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					    lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -198,15 +198,15 @@ create_enumeration_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 		/* Nestable enumeration fields are followed by their container type. */
 		++current;
 		if (current >= end) {
-			LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 				"Array of {} is too short to contain nestable enumeration's container",
 				typeid(*current)));
 		}
 
 		if (current->type.atype != lttng_ust_ctl_atype_integer) {
-			LTTNG_THROW_PROTOCOL_ERROR(
-				fmt::format("Invalid type of nestable enum container: type id = {}",
-					    current->type.atype));
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
+				"Invalid type of nestable enum container: type id = {}",
+				current->type.atype));
 		}
 
 		enum_container_uctl_type = &current->type.u.integer;
@@ -259,7 +259,7 @@ create_string_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				       lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -301,7 +301,7 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 				      lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -315,7 +315,7 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 
 	const auto& element_uctl_type = array_uctl_field.type.u.legacy.array.elem_type;
 	if (element_uctl_type.atype != lttng_ust_ctl_atype_integer) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unexpected legacy array element type: atype = {}, expected atype = lttng_ust_ctl_atype_integer ({})",
 			element_uctl_type.atype,
 			lttng_ust_ctl_atype_integer));
@@ -337,7 +337,7 @@ create_array_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 			static_cast<const lst::integer_type&>(*element_type).size;
 
 		if (integer_element_size != 8) {
-			LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 				"Unexpected legacy array element type: integer has encoding but size is not 8: size = {}",
 				integer_element_size));
 		}
@@ -363,7 +363,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(
 	lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -400,7 +400,7 @@ lst::type::cuptr create_array_nestable_type_from_ust_ctl_fields(
 			static_cast<const lst::integer_type&>(*element_type).size;
 
 		if (integer_element_size != 8) {
-			LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 				"Unexpected array element type: integer has encoding but size is not 8: size = {}",
 				integer_element_size));
 		}
@@ -429,7 +429,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 	lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -439,14 +439,14 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 	const auto sequence_alignment = 0U;
 
 	if (element_uctl_type.atype != lttng_ust_ctl_atype_integer) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unexpected legacy sequence element type: atype = {}, expected atype = lttng_ust_ctl_atype_integer ({})",
 			element_uctl_type.atype,
 			lttng_ust_ctl_atype_integer));
 	}
 
 	if (length_uctl_type.atype != lttng_ust_ctl_atype_integer) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unexpected legacy sequence length field type: atype = {}, expected atype = lttng_ust_ctl_atype_integer ({})",
 			length_uctl_type.atype,
 			lttng_ust_ctl_atype_integer));
@@ -460,7 +460,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 			element_uctl_type.u.basic.integer.encoding);
 	}
 
-	auto length_field_name = fmt::format("_{}_length", sequence_uctl_field.name);
+	auto length_field_name = lttng::format("_{}_length", sequence_uctl_field.name);
 	auto element_type =
 		create_integer_type_from_ust_ctl_basic_type(element_uctl_type, session_attributes);
 	auto length_type =
@@ -484,7 +484,7 @@ lst::type::cuptr create_sequence_type_from_ust_ctl_fields(
 			static_cast<const lst::integer_type&>(*element_type).size;
 
 		if (integer_element_size != 8) {
-			LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 				"Unexpected legacy array element type: integer has encoding but size is not 8: size = {}",
 				integer_element_size));
 		}
@@ -510,7 +510,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 	lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -567,7 +567,7 @@ lst::type::cuptr create_sequence_nestable_type_from_ust_ctl_fields(
 			static_cast<const lst::integer_type&>(*element_type).size;
 
 		if (integer_element_size != 8) {
-			LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+			LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 				"Unexpected array element type: integer has encoding but size is not 8: size = {}",
 				integer_element_size));
 		}
@@ -590,7 +590,7 @@ create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 					   lsu::ctl_field_quirks quirks __attribute__((unused)))
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -607,7 +607,7 @@ create_structure_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 	}
 
 	if (field_count != 0) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Only empty structures are supported by LTTng-UST: nr_fields = {}",
 			field_count));
 	}
@@ -673,7 +673,7 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 					});
 
 				if (mapping_it == typed_enumeration.mappings_->end()) {
-					LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+					LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 						"Invalid variant choice: `{}` does not match any mapping in `{}` enumeration",
 						field->name,
 						selector_field.name));
@@ -703,7 +703,7 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 	lsu::ctl_field_quirks quirks)
 {
 	if (current >= end) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"End of {} array reached unexpectedly during decoding", typeid(*current)));
 	}
 
@@ -855,11 +855,11 @@ create_type_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 								quirks);
 	default:
 		LTTNG_THROW_PROTOCOL_ERROR(
-			fmt::format("Unknown {} value `{}` encountered while converting {} to {}",
-				    typeid(current->type.atype),
-				    current->type.atype,
-				    typeid(*current),
-				    typeid(lst::type::cuptr::element_type)));
+			lttng::format("Unknown {} value `{}` encountered while converting {} to {}",
+				      typeid(current->type.atype),
+				      current->type.atype,
+				      typeid(*current),
+				      typeid(lst::type::cuptr::element_type)));
 	}
 }
 
@@ -877,7 +877,7 @@ void create_field_from_ust_ctl_fields(const lttng_ust_ctl_field *current,
 
 	if (lttng_strnlen(current->name, sizeof(current->name)) == sizeof(current->name)) {
 		LTTNG_THROW_PROTOCOL_ERROR(
-			fmt::format("Name of {} is not null-terminated", typeid(*current)));
+			lttng::format("Name of {} is not null-terminated", typeid(*current)));
 	}
 
 	publish_field(lttng::make_unique<lst::field>(
@@ -897,7 +897,7 @@ std::vector<lst::field::cuptr>::iterator
 lookup_field_in_vector(std::vector<lst::field::cuptr>& fields, const lst::field_location& location)
 {
 	if (location.elements_.size() != 1) {
-		LTTNG_THROW_ERROR(fmt::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Unexpected field location received during field look-up: location = {}",
 			location));
 	}
@@ -916,7 +916,7 @@ lookup_field_in_vector(std::vector<lst::field::cuptr>& fields, const lst::field_
 
 	if (field_it == fields.end()) {
 		LTTNG_THROW_PROTOCOL_ERROR(
-			fmt::format("Failed to look-up field: location = {}", location));
+			lttng::format("Failed to look-up field: location = {}", location));
 	}
 
 	return field_it;

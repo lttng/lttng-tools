@@ -638,9 +638,9 @@ template <typename MappingIntegerType>
 				   MappingIntegerType>::mapping::range_t range)
 {
 	if (range.begin == range.end) {
-		return ::fmt::format("[{}]", range.begin);
+		return ::lttng::format("[{}]", range.begin);
 	} else {
-		return ::fmt::format("[{}, {}]", range.begin, range.end);
+		return ::lttng::format("[{}, {}]", range.begin, range.end);
 	}
 }
 } /* namespace details */

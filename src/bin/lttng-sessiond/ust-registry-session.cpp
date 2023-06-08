@@ -240,7 +240,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	lst::trace_class(in_abi, generate_uuid_or_throw()),
 	_root_shm_path{ root_shm_path ? root_shm_path : "" },
 	_shm_path{ shm_path ? shm_path : "" },
-	_metadata_path{ _shm_path.size() > 0 ? fmt::format("{}/metadata", _shm_path) :
+	_metadata_path{ _shm_path.size() > 0 ? lttng::format("{}/metadata", _shm_path) :
 					       std::string("") },
 	_uid{ euid },
 	_gid{ egid },
@@ -268,7 +268,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 					    egid);
 		if (ret < 0) {
 			LTTNG_THROW_POSIX(
-				fmt::format(
+				lttng::format(
 					"Failed to open metadata file during registry session creation: path = {}",
 					_metadata_path),
 				errno);
@@ -451,7 +451,7 @@ void lsu::registry_session::add_channel(uint64_t key)
 	 * the metadata can be dumped for that event.
 	 */
 	if (is_max_channel_id(_used_channel_id)) {
-		LTTNG_THROW_ERROR(fmt::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to allocate unique id for channel under session while adding channel"));
 	}
 
@@ -496,8 +496,8 @@ lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t 
 	lttng_ht_lookup(_channels.get(), &channel_key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
-			fmt::format("Invalid channel key provided: channel key = {}", channel_key));
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			"Invalid channel key provided: channel key = {}", channel_key));
 	}
 
 	DIAGNOSTIC_PUSH
@@ -722,7 +722,7 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
 			&iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
-		LTTNG_THROW_PROTOCOL_ERROR(fmt::format(
+		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
 			enum_name,
 			enum_id));
@@ -795,12 +795,12 @@ void lsu::registry_session::create_or_find_enum(int session_objd,
 	 * external party, don't assert and simply validate values.
 	 */
 	if (session_objd < 0) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 			"Invalid parameters used to create or look-up enumeration from registry session: session_objd = {}",
 			session_objd));
 	}
 	if (nr_entries == 0) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 			"Invalid parameters used to create or look-up enumeration from registry session: nr_entries = {}",
 			nr_entries));
 	}

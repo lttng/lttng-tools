@@ -11,6 +11,7 @@
 
 #include <cxxabi.h>
 #include <string>
+#include <utility>
 
 DIAGNOSTIC_PUSH
 DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
@@ -41,5 +42,17 @@ struct formatter<std::type_info> : formatter<std::string> {
 	}
 };
 } /* namespace fmt */
+
+namespace lttng {
+template <typename... FormattingArguments>
+std::string format(FormattingArguments&&...args)
+{
+	try {
+		return fmt::format(std::forward<FormattingArguments>(args)...);
+	} catch (const fmt::format_error& ex) {
+		return std::string("Failed to format string: ") += ex.what();
+	}
+}
+} /* namespace lttng */
 
 #endif /* LTTNG_FORMAT_H */

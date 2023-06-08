@@ -222,7 +222,7 @@ private:
 				new_mappings->emplace_back(mapping);
 			} else {
 				/* Unsafe mapping, rename it and keep the rest of its attributes. */
-				new_mappings->emplace_back(fmt::format("_{}", mapping.name),
+				new_mappings->emplace_back(lttng::format("_{}", mapping.name),
 							   mapping.range);
 			}
 		}
@@ -248,7 +248,7 @@ private:
 			}
 		}
 
-		LTTNG_THROW_ERROR(fmt::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to find mapping by range in enumeration while sanitizing a variant: target_mapping_range={}",
 			target_mapping_range));
 	}
@@ -419,9 +419,9 @@ private:
 		_description += "integer { ";
 
 		/* Mandatory properties (no defaults). */
-		_description += fmt::format("size = {size}; align = {alignment};",
-					    fmt::arg("size", type.size),
-					    fmt::arg("alignment", type.alignment));
+		_description += lttng::format("size = {size}; align = {alignment};",
+					      fmt::arg("size", type.size),
+					      fmt::arg("alignment", type.alignment));
 
 		/* Defaults to unsigned. */
 		if (type.signedness_ == lst::integer_type::signedness::SIGNED) {
@@ -443,12 +443,12 @@ private:
 				base = 16;
 				break;
 			default:
-				LTTNG_THROW_ERROR(fmt::format(
+				LTTNG_THROW_ERROR(lttng::format(
 					"Unexpected base encountered while serializing integer type to TSDL: base = {}",
 					(int) type.base_));
 			}
 
-			_description += fmt::format(" base = {};", base);
+			_description += lttng::format(" base = {};", base);
 		}
 
 		/* Defaults to the trace's native byte order. */
@@ -456,7 +456,7 @@ private:
 			const auto byte_order_str =
 				type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
 
-			_description += fmt::format(" byte_order = {};", byte_order_str);
+			_description += lttng::format(" byte_order = {};", byte_order_str);
 		}
 
 		if (_current_integer_encoding_override) {
@@ -470,12 +470,12 @@ private:
 				encoding_str = "UTF8";
 				break;
 			default:
-				LTTNG_THROW_ERROR(fmt::format(
+				LTTNG_THROW_ERROR(lttng::format(
 					"Unexpected encoding encountered while serializing integer type to TSDL: encoding = {}",
 					(int) *_current_integer_encoding_override));
 			}
 
-			_description += fmt::format(" encoding = {};", encoding_str);
+			_description += lttng::format(" encoding = {};", encoding_str);
 			_current_integer_encoding_override.reset();
 		}
 
@@ -489,7 +489,7 @@ private:
 			    type.roles_.end()) {
 			LTTNG_ASSERT(_default_clock_class_name);
 			_description +=
-				fmt::format(" map = clock.{}.value;", _default_clock_class_name);
+				lttng::format(" map = clock.{}.value;", _default_clock_class_name);
 		}
 
 		_description += " }";
@@ -497,7 +497,7 @@ private:
 
 	void visit(const lst::floating_point_type& type) final
 	{
-		_description += fmt::format(
+		_description += lttng::format(
 			"floating_point {{ align = {alignment}; mant_dig = {mantissa_digits}; exp_dig = {exponent_digits};",
 			fmt::arg("alignment", type.alignment),
 			fmt::arg("mantissa_digits", type.mantissa_digits),
@@ -508,7 +508,7 @@ private:
 			const auto byte_order_str =
 				type.byte_order == lst::byte_order::BIG_ENDIAN_ ? "be" : "le";
 
-			_description += fmt::format(" byte_order = {};", byte_order_str);
+			_description += lttng::format(" byte_order = {};", byte_order_str);
 		}
 
 		_description += " }";
@@ -533,12 +533,12 @@ private:
 
 			_description.resize(_description.size() + mappings_indentation_level, '\t');
 			if (mapping.range.begin == mapping.range.end) {
-				_description +=
-					fmt::format("\"{mapping_name}\" = {mapping_value}",
-						    fmt::arg("mapping_name", mapping.name),
-						    fmt::arg("mapping_value", mapping.range.begin));
+				_description += lttng::format(
+					"\"{mapping_name}\" = {mapping_value}",
+					fmt::arg("mapping_name", mapping.name),
+					fmt::arg("mapping_value", mapping.range.begin));
 			} else {
-				_description += fmt::format(
+				_description += lttng::format(
 					"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
 					fmt::arg("mapping_name", mapping.name),
 					fmt::arg("mapping_range_begin", mapping.range.begin),
@@ -567,7 +567,7 @@ private:
 	{
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
-			_description += fmt::format(
+			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),
 				fmt::arg("field_name", _current_field_name.top()));
@@ -575,7 +575,7 @@ private:
 		}
 
 		type.element_type->accept(*this);
-		_type_suffixes.emplace(fmt::format("[{}]", type.length));
+		_type_suffixes.emplace(lttng::format("[{}]", type.length));
 	}
 
 	void visit(const lst::dynamic_length_array_type& type) final
@@ -588,7 +588,7 @@ private:
 			 * would allow us to express alignment constraints.
 			 */
 			LTTNG_ASSERT(_current_field_name.size() > 0);
-			_description += fmt::format(
+			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),
 				fmt::arg("field_name", _current_field_name.top()));
@@ -596,7 +596,7 @@ private:
 		}
 
 		type.element_type->accept(*this);
-		_type_suffixes.emplace(fmt::format(
+		_type_suffixes.emplace(lttng::format(
 			"[{}]",
 			_bypass_identifier_escape ?
 				*(type.length_field_location.elements_.end() - 1) :
@@ -677,7 +677,7 @@ private:
 	{
 		if (type.alignment != 0) {
 			LTTNG_ASSERT(_current_field_name.size() > 0);
-			_description += fmt::format(
+			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),
 				fmt::arg("field_name", _current_field_name.top()));
@@ -685,7 +685,7 @@ private:
 		}
 
 		_indentation_level++;
-		_description += fmt::format(
+		_description += lttng::format(
 			"variant <{}> {{\n",
 			_bypass_identifier_escape ?
 				*(type.selector_field_location.elements_.end() - 1) :
@@ -703,7 +703,7 @@ private:
 		for (const auto& field : type.choices_) {
 			_description.resize(_description.size() + _indentation_level, '\t');
 			field.second->accept(*this);
-			_description += fmt::format(" {};\n", field.first.name);
+			_description += lttng::format(" {};\n", field.first.name);
 		}
 
 		_bypass_identifier_escape = previous_bypass_identifier_escape;
@@ -790,14 +790,13 @@ public:
 
 	void visit(const lst::environment_field<int64_t>& field) override
 	{
-		_environment += fmt::format("	{} = {};\n", field.name, field.value);
+		_environment += lttng::format("	{} = {};\n", field.name, field.value);
 	}
 
 	void visit(const lst::environment_field<const char *>& field) override
 	{
-		_environment += fmt::format("	{} = \"{}\";\n",
-					    field.name,
-					    escape_tsdl_env_string_value(field.value));
+		_environment += lttng::format(
+			"	{} = \"{}\";\n", field.name, escape_tsdl_env_string_value(field.value));
 	}
 
 	/* Only call once. */
@@ -835,7 +834,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 	trace_class.packet_header()->accept(packet_header_visitor);
 
 	/* Declare type aliases, trace class, and packet header. */
-	auto trace_class_tsdl = fmt::format(
+	auto trace_class_tsdl = lttng::format(
 		"/* CTF {ctf_major}.{ctf_minor} */\n\n"
 		"trace {{\n"
 		"	major = {ctf_major};\n"
@@ -869,24 +868,24 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::trace_class&
 void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::clock_class& clock_class)
 {
 	auto uuid_str = clock_class.uuid ?
-		fmt::format("	uuid = \"{}\";\n", lttng::utils::uuid_to_str(*clock_class.uuid)) :
+		lttng::format("	uuid = \"{}\";\n", lttng::utils::uuid_to_str(*clock_class.uuid)) :
 		"";
 
 	/* Assumes a single clock that maps to specific stream class fields/roles. */
-	auto clock_class_str = fmt::format("clock {{\n"
-					   "	name = \"{name}\";\n"
-					   /* Optional uuid. */
-					   "{uuid}"
-					   "	description = \"{description}\";\n"
-					   "	freq = {frequency};\n"
-					   "	offset = {offset};\n"
-					   "}};\n"
-					   "\n",
-					   fmt::arg("name", clock_class.name),
-					   fmt::arg("uuid", uuid_str),
-					   fmt::arg("description", clock_class.description),
-					   fmt::arg("frequency", clock_class.frequency),
-					   fmt::arg("offset", clock_class.offset));
+	auto clock_class_str = lttng::format("clock {{\n"
+					     "	name = \"{name}\";\n"
+					     /* Optional uuid. */
+					     "{uuid}"
+					     "	description = \"{description}\";\n"
+					     "	freq = {frequency};\n"
+					     "	offset = {offset};\n"
+					     "}};\n"
+					     "\n",
+					     fmt::arg("name", clock_class.name),
+					     fmt::arg("uuid", uuid_str),
+					     fmt::arg("description", clock_class.description),
+					     fmt::arg("frequency", clock_class.frequency),
+					     fmt::arg("offset", clock_class.offset));
 
 	append_metadata_fragment(clock_class_str);
 }
@@ -897,9 +896,9 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 	const auto clear_stream_class_on_exit =
 		lttng::make_scope_exit([this]() noexcept { _current_stream_class = nullptr; });
 
-	auto stream_class_str = fmt::format("stream {{\n"
-					    "	id = {};\n",
-					    stream_class.id);
+	auto stream_class_str = lttng::format("stream {{\n"
+					      "	id = {};\n",
+					      stream_class.id);
 	variant_tsdl_keyword_sanitizer variant_sanitizer(
 		_sanitized_types_overrides,
 		[this](const lttng::sessiond::trace::field_location& location) -> const lst::type& {
@@ -915,8 +914,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		event_header->accept(variant_sanitizer);
 		event_header->accept(event_header_visitor);
-		stream_class_str += fmt::format("	event.header := {};\n",
-						event_header_visitor.move_description());
+		stream_class_str += lttng::format("	event.header := {};\n",
+						  event_header_visitor.move_description());
 	}
 
 	const auto *packet_context = stream_class.packet_context();
@@ -928,8 +927,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		packet_context->accept(variant_sanitizer);
 		packet_context->accept(packet_context_visitor);
-		stream_class_str += fmt::format("	packet.context := {};\n",
-						packet_context_visitor.move_description());
+		stream_class_str += lttng::format("	packet.context := {};\n",
+						  packet_context_visitor.move_description());
 	}
 
 	const auto *event_context = stream_class.event_context();
@@ -940,8 +939,8 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::stream_class
 
 		event_context->accept(variant_sanitizer);
 		event_context->accept(event_context_visitor);
-		stream_class_str += fmt::format("	event.context := {};\n",
-						event_context_visitor.move_description());
+		stream_class_str += lttng::format("	event.context := {};\n",
+						  event_context_visitor.move_description());
 	}
 
 	stream_class_str += "};\n\n";
@@ -955,19 +954,20 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 	const auto clear_event_class_on_exit =
 		lttng::make_scope_exit([this]() noexcept { _current_event_class = nullptr; });
 
-	auto event_class_str = fmt::format("event {{\n"
-					   "	name = \"{name}\";\n"
-					   "	id = {id};\n"
-					   "	stream_id = {stream_class_id};\n"
-					   "	loglevel = {log_level};\n",
-					   fmt::arg("name", event_class.name),
-					   fmt::arg("id", event_class.id),
-					   fmt::arg("stream_class_id", event_class.stream_class_id),
-					   fmt::arg("log_level", event_class.log_level));
+	auto event_class_str =
+		lttng::format("event {{\n"
+			      "	name = \"{name}\";\n"
+			      "	id = {id};\n"
+			      "	stream_id = {stream_class_id};\n"
+			      "	loglevel = {log_level};\n",
+			      fmt::arg("name", event_class.name),
+			      fmt::arg("id", event_class.id),
+			      fmt::arg("stream_class_id", event_class.stream_class_id),
+			      fmt::arg("log_level", event_class.log_level));
 
 	if (event_class.model_emf_uri) {
 		event_class_str +=
-			fmt::format("	model.emf.uri = \"{}\";\n", *event_class.model_emf_uri);
+			lttng::format("	model.emf.uri = \"{}\";\n", *event_class.model_emf_uri);
 	}
 
 	tsdl_field_visitor payload_visitor{ _trace_abi, 1, _sanitized_types_overrides };
@@ -981,7 +981,7 @@ void tsdl::trace_class_visitor::visit(const lttng::sessiond::trace::event_class&
 	event_class.payload->accept(payload_visitor);
 
 	event_class_str +=
-		fmt::format("	fields := {};\n}};\n\n", payload_visitor.move_description());
+		lttng::format("	fields := {};\n}};\n\n", payload_visitor.move_description());
 
 	append_metadata_fragment(event_class_str);
 }
@@ -1033,7 +1033,7 @@ lookup_type_from_root_type(const lttng::sessiond::trace::type& root_type,
 		 * safely.
 		 */
 		if (!struct_type) {
-			LTTNG_THROW_ERROR(fmt::format(
+			LTTNG_THROW_ERROR(lttng::format(
 				"Encountered a type that is not a structure while traversing field location: field-location=`{}`",
 				field_location));
 		}
@@ -1046,7 +1046,7 @@ lookup_type_from_root_type(const lttng::sessiond::trace::type& root_type,
 				     });
 
 		if (field_found_it == struct_type->fields_.cend()) {
-			LTTNG_THROW_ERROR(fmt::format(
+			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to find field using field location: field-name:=`{field_name}`, field-location=`{field_location}`",
 				fmt::arg("field_location", field_location),
 				fmt::arg("field_name", location_element)));

@@ -77,7 +77,7 @@ void lttng::file_descriptor::write(const void *buffer, std::size_t size)
 		std::numeric_limits<lttng_write_return_type>::max();
 
 	if (size > max_supported_write_size) {
-		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
+		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
 			"Write size exceeds the maximal supported value of lttng_write: write_size={}, maximal_write_size={}",
 			size,
 			max_supported_write_size));
@@ -85,7 +85,7 @@ void lttng::file_descriptor::write(const void *buffer, std::size_t size)
 
 	const auto write_ret = lttng_write(fd(), buffer, size);
 	if (write_ret < 0 || static_cast<std::size_t>(write_ret) != size) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to write to file descriptor: fd={}", fd()),
+		LTTNG_THROW_POSIX(lttng::format("Failed to write to file descriptor: fd={}", fd()),
 				  errno);
 	}
 }
@@ -101,7 +101,7 @@ void lttng::file_descriptor::read(void *buffer, std::size_t size)
 	constexpr auto max_supported_read_size = std::numeric_limits<lttng_read_return_type>::max();
 
 	if (size > max_supported_read_size) {
-		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
+		LTTNG_THROW_UNSUPPORTED_ERROR(lttng::format(
 			"Read size exceeds the maximal supported value of lttng_read: read_size={}, maximal_read_size={}",
 			size,
 			max_supported_read_size));
@@ -109,7 +109,7 @@ void lttng::file_descriptor::read(void *buffer, std::size_t size)
 
 	const auto read_ret = lttng_read(fd(), buffer, size);
 	if (read_ret < 0 || static_cast<std::size_t>(read_ret) != size) {
-		LTTNG_THROW_POSIX(fmt::format("Failed to read from file descriptor: fd={}", fd()),
+		LTTNG_THROW_POSIX(lttng::format("Failed to read from file descriptor: fd={}", fd()),
 				  errno);
 	}
 }

@@ -67,8 +67,8 @@ void getrandom_nonblock(char *out_data, std::size_t size)
 
 	if (ret < 0) {
 		LTTNG_THROW_POSIX(
-			fmt::format("Failed to get true random data using getrandom(): size={}",
-				    size),
+			lttng::format("Failed to get true random data using getrandom(): size={}",
+				      size),
 			errno);
 	}
 }
@@ -152,7 +152,7 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 	try {
 		urandom.read(&seed, sizeof(seed));
 	} catch (const std::exception& e) {
-		LTTNG_THROW_RANDOM_PRODUCTION_ERROR(fmt::format(
+		LTTNG_THROW_RANDOM_PRODUCTION_ERROR(lttng::format(
 			"Failed to read from `/dev/urandom`: size={}: {}", sizeof(seed), e.what()));
 	}
 
@@ -183,7 +183,7 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 		return lttng::random::produce_true_random_seed();
 	} catch (const std::exception& e) {
 		WARN("%s",
-		     fmt::format(
+		     lttng::format(
 			     "Failed to produce a random seed using getrandom(), falling back to pseudo-random device seed generation which will block until its pool is initialized: {}",
 			     e.what())
 			     .c_str());
@@ -197,8 +197,8 @@ lttng::random::seed_t lttng::random::produce_best_effort_random_seed()
 		produce_random_seed_from_urandom();
 	} catch (const std::exception& e) {
 		WARN("%s",
-		     fmt::format("Failed to produce a random seed from the urandom device: {}",
-				 e.what())
+		     lttng::format("Failed to produce a random seed from the urandom device: {}",
+				   e.what())
 			     .c_str());
 	}
 

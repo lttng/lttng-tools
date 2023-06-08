@@ -74,7 +74,7 @@ cmd_error_code destroy_session(const lttng_session& session)
 
 	ret = lttng_stop_tracing_no_wait(session.name);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
-		LTTNG_THROW_CTL(fmt::format("Failed to stop session `{}`", session.name),
+		LTTNG_THROW_CTL(lttng::format("Failed to stop session `{}`", session.name),
 				static_cast<lttng_error_code>(-ret));
 	}
 
@@ -134,7 +134,8 @@ cmd_error_code destroy_session(const lttng_session& session)
 		auto ctl_ret_code =
 			lttng_destroy_session_ext(session.name, &raw_destruction_handle);
 		if (ctl_ret_code != LTTNG_OK) {
-			LTTNG_THROW_CTL(fmt::format("Failed to destroy session `{}`", session.name),
+			LTTNG_THROW_CTL(lttng::format("Failed to destroy session `{}`",
+						      session.name),
 					ctl_ret_code);
 		}
 
@@ -184,7 +185,8 @@ cmd_error_code destroy_session(const lttng_session& session)
 		}
 
 		if (ctl_ret_code != LTTNG_OK) {
-			LTTNG_THROW_CTL(fmt::format("Failed to destroy session `{}`", session.name),
+			LTTNG_THROW_CTL(lttng::format("Failed to destroy session `{}`",
+						      session.name),
 					ctl_ret_code);
 		}
 

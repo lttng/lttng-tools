@@ -388,14 +388,14 @@ void lsu::registry_channel::add_event(int session_objd,
 	 * external party, don't assert and simply validate values.
 	 */
 	if (session_objd < 0) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 			"Invalid session object descriptor provided by application: session descriptor = {}, app = {}",
 			session_objd,
 			app));
 	}
 
 	if (channel_objd < 0) {
-		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 			"Invalid channel object descriptor provided by application: channel descriptor = {}, app = {}",
 			channel_objd,
 			app));
@@ -403,7 +403,7 @@ void lsu::registry_channel::add_event(int session_objd,
 
 	/* Check if we've reached the maximum possible id. */
 	if (is_max_event_id(_next_event_id)) {
-		LTTNG_THROW_ERROR(fmt::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Failed to allocate new event id (id would overflow): app = {}", app));
 	}
 
@@ -418,7 +418,7 @@ void lsu::registry_channel::add_event(int session_objd,
 					loglevel_value,
 					std::move(model_emf_uri)));
 
-	DBG3("%s", fmt::format("UST registry creating event: event = {}", *event).c_str());
+	DBG3("%s", lttng::format("UST registry creating event: event = {}", *event).c_str());
 
 	/*
 	 * This is an add unique with a custom match function for event. The node
@@ -439,7 +439,7 @@ void lsu::registry_channel::add_event(int session_objd,
 				nptr, &lttng::sessiond::ust::registry_event::_node);
 			event_id = existing_event->id;
 		} else {
-			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 				"UST registry create event add unique failed for event: event = {}",
 				*event));
 		}

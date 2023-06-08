@@ -6842,7 +6842,7 @@ static int add_enum_ust_registry(int sock,
 		application_reply_code = 0;
 	} catch (const std::exception& ex) {
 		ERR("%s: %s",
-		    fmt::format(
+		    lttng::format(
 			    "Failed to create or find enumeration provided by application: app = {}, enumeration name = {}",
 			    *app,
 			    name)

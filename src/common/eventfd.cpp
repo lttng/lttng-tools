@@ -36,7 +36,7 @@ void lttng::eventfd::increment(std::uint64_t value)
 	try {
 		write(&value, sizeof(value));
 	} catch (const std::exception& e) {
-		LTTNG_THROW_ERROR(fmt::format("Failed to increment eventfd: {}", e.what()));
+		LTTNG_THROW_ERROR(lttng::format("Failed to increment eventfd: {}", e.what()));
 	}
 }
 
@@ -47,7 +47,7 @@ std::uint64_t lttng::eventfd::decrement()
 	try {
 		read(&value, sizeof(value));
 	} catch (const std::exception& e) {
-		LTTNG_THROW_ERROR(fmt::format("Failed to decrement eventfd: {}", e.what()));
+		LTTNG_THROW_ERROR(lttng::format("Failed to decrement eventfd: {}", e.what()));
 	}
 
 	return value;

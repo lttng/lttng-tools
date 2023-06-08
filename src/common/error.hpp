@@ -266,7 +266,7 @@ namespace details {
 #define DBG_FMT(format_str, args...)                                                              \
 	do {                                                                                      \
 		try {                                                                             \
-			DBG("%s", fmt::format(format_str, ##args).c_str());                       \
+			DBG("%s", lttng::format(format_str, ##args).c_str());                     \
 		} catch (const std::exception& _formatting_exception) {                           \
 			lttng::logging::details::die_formatting_exception(format_str,             \
 									  _formatting_exception); \
@@ -276,7 +276,7 @@ namespace details {
 #define WARN_FMT(format_str, args...)                                                             \
 	do {                                                                                      \
 		try {                                                                             \
-			WARN("%s", fmt::format(format_str, ##args).c_str());                      \
+			WARN("%s", lttng::format(format_str, ##args).c_str());                    \
 		} catch (const std::exception& _formatting_exception) {                           \
 			lttng::logging::details::die_formatting_exception(format_str,             \
 									  _formatting_exception); \
@@ -286,7 +286,7 @@ namespace details {
 #define ERR_FMT(format_str, args...)                                                              \
 	do {                                                                                      \
 		try {                                                                             \
-			ERR("%s", fmt::format(format_str, ##args).c_str());                       \
+			ERR("%s", lttng::format(format_str, ##args).c_str());                     \
 		} catch (const std::exception& _formatting_exception) {                           \
 			lttng::logging::details::die_formatting_exception(format_str,             \
 									  _formatting_exception); \

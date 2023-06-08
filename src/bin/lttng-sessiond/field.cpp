@@ -65,8 +65,8 @@ lst::field::field(std::string in_name, lst::type::cuptr in_type) :
 	name{ std::move(in_name) }, _type{ std::move(in_type) }
 {
 	if (!_type) {
-		LTTNG_THROW_ERROR(
-			fmt::format("Invalid type used to create field: field name = `{}`", name));
+		LTTNG_THROW_ERROR(lttng::format(
+			"Invalid type used to create field: field name = `{}`", name));
 	}
 }
 
@@ -90,7 +90,7 @@ const lst::type& lst::field::get_type() const
 	if (_type) {
 		return *_type;
 	} else {
-		LTTNG_THROW_ERROR(fmt::format(
+		LTTNG_THROW_ERROR(lttng::format(
 			"Invalid attempt to access field type after transfer: field name = `{}`",
 			name));
 	}
@@ -162,7 +162,7 @@ lst::floating_point_type::floating_point_type(unsigned int in_alignment,
 		return;
 	}
 
-	LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+	LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 		"Invalid exponent/mantissa values provided while creating {}", typeid(*this)));
 }
 

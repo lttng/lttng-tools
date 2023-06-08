@@ -89,7 +89,7 @@ cmd_error_code start_tracing(const char *session_name)
 
 	const int ret = lttng_start_tracing(session_name);
 	if (ret < 0) {
-		LTTNG_THROW_CTL(fmt::format("Failed to start session `{}`", session_name),
+		LTTNG_THROW_CTL(lttng::format("Failed to start session `{}`", session_name),
 				static_cast<lttng_error_code>(-ret));
 	}
 
