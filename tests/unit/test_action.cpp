@@ -9,6 +9,7 @@
  *
  */
 
+#include <common/error.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 
@@ -541,7 +542,7 @@ static void test_action_snapshot_session()
 	lttng_payload_reset(&payload);
 }
 
-int main()
+static int _main()
 {
 	plan_tests(NUM_TESTS);
 	test_action_notify();
@@ -551,4 +552,14 @@ int main()
 	test_action_stop_session();
 	test_action_snapshot_session();
 	return exit_status();
+}
+
+int main()
+{
+	try {
+		return _main();
+	} catch (const std::exception& e) {
+		ERR_FMT("Unhandled exception caught by action unit test: %s", e.what());
+		abort();
+	}
 }

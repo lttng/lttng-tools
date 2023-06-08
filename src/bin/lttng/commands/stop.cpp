@@ -132,7 +132,7 @@ cmd_error_code stop_tracing(const char *session_name)
 	return CMD_SUCCESS;
 }
 
-cmd_error_code stop_tracing(const lttng::cli::session_spec& spec) noexcept
+cmd_error_code stop_tracing(const lttng::cli::session_spec& spec)
 {
 	bool had_warning = false;
 	bool had_error = false;

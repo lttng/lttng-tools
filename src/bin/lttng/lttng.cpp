@@ -460,7 +460,7 @@ error:
 /*
  *  main
  */
-int main(int argc, char *argv[])
+static int _main(int argc, char *argv[])
 {
 	int ret;
 
@@ -477,4 +477,14 @@ int main(int argc, char *argv[])
 	}
 
 	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	try {
+		return _main(argc, argv);
+	} catch (const std::exception& e) {
+		ERR_FMT("Unhandled exception caught by client: %s", e.what());
+		abort();
+	}
 }

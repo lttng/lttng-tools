@@ -7,6 +7,8 @@
 
 #include "utils.h"
 
+#include <common/error.hpp>
+
 #include <lttng/action/list-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/lttng.h>
@@ -81,7 +83,7 @@ end:
 	return names_match;
 }
 
-int main(int argc, char **argv)
+static int _main(int argc, char **argv)
 {
 	int ret;
 	int option;
@@ -278,4 +280,14 @@ end:
 	free(end_trigger_name);
 	free(expected_trigger_name);
 	return !!ret;
+}
+
+int main(int argc, char **argv)
+{
+	try {
+		return _main(argc, argv);
+	} catch (const std::exception& e) {
+		ERR_FMT("Unhandled exception caught by notification client: %s", e.what());
+		abort();
+	}
 }
