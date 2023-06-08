@@ -99,7 +99,7 @@ public:
 
 	iterator end()
 	{
-		return iterator(*this, ContainerOperations::size(_container));
+		return iterator(*this, size());
 	}
 
 	const_iterator begin() const noexcept
@@ -109,10 +109,10 @@ public:
 
 	const_iterator end() const
 	{
-		return const_iterator(*this, ContainerOperations::size(_container));
+		return const_iterator(*this, size());
 	}
 
-	std::size_t size() const noexcept
+	std::size_t size() const
 	{
 		return ContainerOperations::size(_container);
 	}
