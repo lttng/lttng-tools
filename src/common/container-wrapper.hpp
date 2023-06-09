@@ -130,7 +130,7 @@ public:
 		 *
 		 * For more information, see Item 3 of Effective C++.
 		 */
-		const auto& const_this = static_cast<const decltype(*this)&>(*this);
+		const auto& const_this = static_cast<const random_access_container_wrapper&>(*this);
 
 		/* NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) */
 		return const_cast<typename std::conditional<std::is_pointer<ElementType>::value,
