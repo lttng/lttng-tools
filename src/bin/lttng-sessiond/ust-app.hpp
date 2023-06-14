@@ -45,6 +45,7 @@ struct ust_app_ht_key {
 	const char *name;
 	const struct lttng_bytecode *filter;
 	enum lttng_ust_abi_loglevel_type loglevel_type;
+	int loglevel_value;
 	const struct lttng_event_exclusion *exclusion;
 };
 

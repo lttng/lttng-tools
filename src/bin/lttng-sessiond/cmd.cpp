@@ -2095,6 +2095,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 	}
 
+	/* Normalize loglevel value to simplify comparisons. */
+	if (event->loglevel_type == LTTNG_EVENT_LOGLEVEL_ALL) {
+		/* Ignore the user-specified value; it has no meaning. */
+		event->loglevel = -1;
+	}
+
 	DBG("Enable event command for event \'%s\'", event->name);
 
 	lttng::urcu::read_lock_guard read_lock;
@@ -2338,6 +2344,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		memset(&uevent, 0, sizeof(uevent));
 		uevent.type = LTTNG_EVENT_TRACEPOINT;
 		uevent.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+		uevent.loglevel = -1;
 		default_event_name = event_get_default_agent_ust_name(domain->type);
 		if (!default_event_name) {
 			ret = LTTNG_ERR_FATAL;

@@ -180,14 +180,12 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 {
 	struct ust_app_event *event;
 	const struct ust_app_ht_key *key;
-	int ev_loglevel_value;
 
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
 	event = caa_container_of(node, struct ust_app_event, node.node);
 	key = (ust_app_ht_key *) _key;
-	ev_loglevel_value = event->attr.loglevel;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions */
 
@@ -197,18 +195,12 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 	}
 
 	/* Event loglevel. */
-	if (ev_loglevel_value != key->loglevel_type) {
-		if (event->attr.loglevel_type == LTTNG_UST_ABI_LOGLEVEL_ALL &&
-		    key->loglevel_type == 0 && ev_loglevel_value == -1) {
-			/*
-			 * Match is accepted. This is because on event creation, the
-			 * loglevel is set to -1 if the event loglevel type is ALL so 0 and
-			 * -1 are accepted for this loglevel type since 0 is the one set by
-			 * the API when receiving an enable event.
-			 */
-		} else {
-			goto no_match;
-		}
+	if (!loglevels_match(event->attr.loglevel_type,
+			     event->attr.loglevel,
+			     key->loglevel_type,
+			     key->loglevel_value,
+			     LTTNG_UST_ABI_LOGLEVEL_ALL)) {
+		goto no_match;
 	}
 
 	/* One of the filters is NULL, fail. */
@@ -263,7 +255,8 @@ static void add_unique_ust_app_event(struct ust_app_channel *ua_chan, struct ust
 	ht = ua_chan->events;
 	key.name = event->attr.name;
 	key.filter = event->filter;
-	key.loglevel_type = (lttng_ust_abi_loglevel_type) event->attr.loglevel;
+	key.loglevel_type = (lttng_ust_abi_loglevel_type) event->attr.loglevel_type;
+	key.loglevel_value = event->attr.loglevel;
 	key.exclusion = event->exclusion;
 
 	node_ptr = cds_lfht_add_unique(ht->ht,
@@ -1499,6 +1492,7 @@ error:
 static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 						const char *name,
 						const struct lttng_bytecode *filter,
+						lttng_ust_abi_loglevel_type loglevel_type,
 						int loglevel_value,
 						const struct lttng_event_exclusion *exclusion)
 {
@@ -1513,7 +1507,8 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 	/* Setup key for event lookup. */
 	key.name = name;
 	key.filter = filter;
-	key.loglevel_type = (lttng_ust_abi_loglevel_type) loglevel_value;
+	key.loglevel_type = loglevel_type;
+	key.loglevel_value = loglevel_value;
 	/* lttng_event_exclusion and lttng_ust_event_exclusion structures are similar */
 	key.exclusion = exclusion;
 
@@ -5001,11 +4996,13 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			}
 			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-			ua_event = find_ust_app_event(ua_chan->events,
-						      uevent->attr.name,
-						      uevent->filter,
-						      uevent->attr.loglevel,
-						      uevent->exclusion);
+			ua_event = find_ust_app_event(
+				ua_chan->events,
+				uevent->attr.name,
+				uevent->filter,
+				(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
+				uevent->attr.loglevel,
+				uevent->exclusion);
 			if (ua_event == nullptr) {
 				DBG2("Event %s not found in channel %s for app pid %d."
 				     "Skipping",
@@ -5164,11 +5161,13 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 			/* Get event node */
-			ua_event = find_ust_app_event(ua_chan->events,
-						      uevent->attr.name,
-						      uevent->filter,
-						      uevent->attr.loglevel,
-						      uevent->exclusion);
+			ua_event = find_ust_app_event(
+				ua_chan->events,
+				uevent->attr.name,
+				uevent->filter,
+				(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
+				uevent->attr.loglevel,
+				uevent->exclusion);
 			if (ua_event == nullptr) {
 				DBG3("UST app enable event %s not found for app PID %d."
 				     "Skipping app",
@@ -5952,6 +5951,7 @@ static int ust_app_channel_synchronize_event(struct ust_app_channel *ua_chan,
 	ua_event = find_ust_app_event(ua_chan->events,
 				      uevent->attr.name,
 				      uevent->filter,
+				      (enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
 				      uevent->attr.loglevel,
 				      uevent->exclusion);
 	if (!ua_event) {
