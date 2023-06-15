@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from cgi import test
 import pathlib
 import sys
 import os
