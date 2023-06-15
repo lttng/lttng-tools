@@ -77,7 +77,7 @@ class _SignalWaitQueue:
             signal.signal(signal_number, original_handler)
 
 
-class WaitTraceTestApplication:
+class _WaitTraceTestApplication:
     """
     Create an application that waits before tracing. This allows a test to
     launch an application, get its PID, and get it to start tracing when it
@@ -90,6 +90,8 @@ class WaitTraceTestApplication:
         event_count,  # type: int
         environment,  # type: Environment
         wait_time_between_events_us=0,  # type: int
+        wait_before_exit=False,  # type: bool
+        wait_before_exit_file_path=None,  # type: Optional[pathlib.Path]
     ):
         self._environment = environment  # type: Environment
         self._iteration_count = event_count
@@ -101,6 +103,24 @@ class WaitTraceTestApplication:
                 dir=self._compat_open_path(environment.lttng_home_location),
             )
         )
+        # File that the application will create when all events have been emitted.
+        self._app_tracing_done_file_path = pathlib.Path(
+            tempfile.mktemp(
+                prefix="app_",
+                suffix="_done_tracing",
+                dir=self._compat_open_path(environment.lttng_home_location),
+            )
+        )
+
+        if wait_before_exit and wait_before_exit_file_path is None:
+            wait_before_exit_file_path = pathlib.Path(
+                tempfile.mktemp(
+                    prefix="app_",
+                    suffix="_exit",
+                    dir=self._compat_open_path(environment.lttng_home_location),
+                )
+            )
+
         self._has_returned = False
 
         test_app_env = os.environ.copy()
@@ -117,38 +137,46 @@ class WaitTraceTestApplication:
         )  # type: str
 
         test_app_args = [str(binary_path)]
+        test_app_args.extend(["--iter", str(event_count)])
         test_app_args.extend(
-            shlex.split(
-                "--iter {iteration_count} --sync-application-in-main-touch {app_ready_file_path} --sync-before-first-event {app_start_tracing_file_path} --wait {wait_time_between_events_us}".format(
-                    iteration_count=self._iteration_count,
-                    app_ready_file_path=app_ready_file_path,
-                    app_start_tracing_file_path=self._app_start_tracing_file_path,
-                    wait_time_between_events_us=wait_time_between_events_us,
-                )
-            )
+            ["--sync-application-in-main-touch", str(app_ready_file_path)]
         )
+        test_app_args.extend(
+            ["--sync-before-first-event", str(self._app_start_tracing_file_path)]
+        )
+        test_app_args.extend(
+            ["--sync-before-exit-touch", str(self._app_tracing_done_file_path)]
+        )
+        if wait_time_between_events_us != 0:
+            test_app_args.extend(["--wait", str(wait_time_between_events_us)])
 
         self._process = subprocess.Popen(
             test_app_args,
             env=test_app_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )  # type: subprocess.Popen
 
         # Wait for the application to create the file indicating it has fully
         # initialized. Make sure the app hasn't crashed in order to not wait
         # forever.
+        self._wait_for_file_to_be_created(pathlib.Path(app_ready_file_path))
+
+    def _wait_for_file_to_be_created(self, sync_file_path):
+        # type: (pathlib.Path) -> None
         while True:
-            if os.path.exists(app_ready_file_path):
+            if os.path.exists(sync_file_path):
                 break
 
             if self._process.poll() is not None:
                 # Application has unexepectedly returned.
                 raise RuntimeError(
-                    "Test application has unexepectedly returned during its initialization with return code `{return_code}`".format(
-                        return_code=self._process.returncode
+                    "Test application has unexepectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`".format(
+                        sync_file=sync_file_path, return_code=self._process.returncode
                     )
                 )
 
-            time.sleep(0.1)
+            time.sleep(0.001)
 
     def trace(self):
         # type: () -> None
@@ -160,6 +188,10 @@ class WaitTraceTestApplication:
                 )
             )
         open(self._compat_open_path(self._app_start_tracing_file_path), mode="x")
+
+    def wait_for_tracing_done(self):
+        # type: () -> None
+        self._wait_for_file_to_be_created(self._app_tracing_done_file_path)
 
     def wait_for_exit(self):
         # type: () -> None
@@ -197,7 +229,84 @@ class WaitTraceTestApplication:
             self._process.wait()
 
 
-class TraceTestApplication:
+class WaitTraceTestApplicationGroup:
+    def __init__(
+        self,
+        environment,  # type: Environment
+        application_count,  # type: int
+        event_count,  # type: int
+        wait_time_between_events_us=0,  # type: int
+        wait_before_exit=False,  # type: bool
+    ):
+        self._wait_before_exit_file_path = (
+            pathlib.Path(
+                tempfile.mktemp(
+                    prefix="app_group_",
+                    suffix="_exit",
+                    dir=_WaitTraceTestApplication._compat_open_path(
+                        environment.lttng_home_location
+                    ),
+                )
+            )
+            if wait_before_exit
+            else None
+        )
+
+        self._apps = []
+        self._consumers = []
+        for i in range(application_count):
+            new_app = environment.launch_wait_trace_test_application(
+                event_count,
+                wait_time_between_events_us,
+                wait_before_exit,
+                self._wait_before_exit_file_path,
+            )
+
+            # Attach an output consumer to log the application's error output (if any).
+            if environment._logging_function:
+                app_output_consumer = ProcessOutputConsumer(
+                    new_app._process,
+                    "app-{}".format(str(new_app.vpid)),
+                    environment._logging_function,
+                )  # type: Optional[ProcessOutputConsumer]
+                app_output_consumer.daemon = True
+                app_output_consumer.start()
+                self._consumers.append(app_output_consumer)
+
+            self._apps.append(new_app)
+
+    def trace(self):
+        # type: () -> None
+        for app in self._apps:
+            app.trace()
+
+    def exit(
+        self, wait_for_apps=False  # type: bool
+    ):
+        if self._wait_before_exit_file_path is None:
+            raise RuntimeError(
+                "Can't call exit on an application group created with `wait_before_exit=False`"
+            )
+
+        # Wait for apps to have produced all of their events so that we can
+        # cause the death of all apps to happen within a short time span.
+        for app in self._apps:
+            app.wait_for_tracing_done()
+
+        open(
+            _WaitTraceTestApplication._compat_open_path(
+                self._wait_before_exit_file_path
+            ),
+            mode="x",
+        )
+        # Performed in two passes to allow tests to stress the unregistration of many applications.
+        # Waiting for each app to exit turn-by-turn would defeat the purpose here.
+        if wait_for_apps:
+            for app in self._apps:
+                app.wait_for_exit()
+
+
+class _TraceTestApplication:
     """
     Create an application that emits events as soon as it is launched. In most
     scenarios, it is preferable to use a WaitTraceTestApplication.
@@ -407,12 +516,18 @@ class _Environment(logger._Logger):
         )
         self._cleanup()
 
-    def launch_wait_trace_test_application(self, event_count):
-        # type: (int) -> WaitTraceTestApplication
+    def launch_wait_trace_test_application(
+        self,
+        event_count,  # type: int
+        wait_time_between_events_us=0,
+        wait_before_exit=False,
+        wait_before_exit_file_path=None,
+    ):
+        # type: (int, int, bool, Optional[pathlib.Path]) -> _WaitTraceTestApplication
         """
         Launch an application that will wait before tracing `event_count` events.
         """
-        return WaitTraceTestApplication(
+        return _WaitTraceTestApplication(
             self._project_root
             / "tests"
             / "utils"
@@ -421,6 +536,9 @@ class _Environment(logger._Logger):
             / "gen-ust-events",
             event_count,
             self,
+            wait_time_between_events_us,
+            wait_before_exit,
+            wait_before_exit_file_path,
         )
 
     def launch_trace_test_constructor_application(self):
@@ -428,7 +546,7 @@ class _Environment(logger._Logger):
         """
         Launch an application that will trace from within constructors.
         """
-        return TraceTestApplication(
+        return _TraceTestApplication(
             self._project_root
             / "tests"
             / "utils"
