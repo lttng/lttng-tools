@@ -89,6 +89,17 @@ class TracingDomain(enum.Enum):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
+@enum.unique
+class BufferSharingPolicy(enum.Enum):
+    """Buffer sharing policy."""
+
+    PerUID = "Per-UID buffering"
+    PerPID = "Per-PID buffering"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+
 class EventRule(abc.ABC):
     """Event rule base class, see LTTNG-EVENT-RULE(7)."""
 
@@ -351,8 +362,13 @@ class Session(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def add_channel(self, domain, channel_name=None):
-        # type: (TracingDomain, Optional[str]) -> Channel
+    def add_channel(
+        self,
+        domain,
+        channel_name=None,
+        buffer_sharing_policy=BufferSharingPolicy.PerUID,
+    ):
+        # type: (TracingDomain, Optional[str], BufferSharingPolicy) -> Channel
         """Add a channel with default attributes to the session."""
         pass
 

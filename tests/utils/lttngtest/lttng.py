@@ -250,15 +250,23 @@ class _Session(lttngctl.Session):
         # type: () -> str
         return self._name
 
-    def add_channel(self, domain, channel_name=None):
-        # type: (lttngctl.TracingDomain, Optional[str]) -> lttngctl.Channel
+    def add_channel(
+        self,
+        domain,
+        channel_name=None,
+        buffer_sharing_policy=lttngctl.BufferSharingPolicy.PerUID,
+    ):
+        # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy) -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         self._client._run_cmd(
-            "enable-channel --session '{session_name}' --{domain_name} '{channel_name}'".format(
+            "enable-channel --session '{session_name}' --{domain_name} '{channel_name}' {buffer_sharing_policy}".format(
                 session_name=self.name,
                 domain_name=domain_option_name,
                 channel_name=channel_name,
+                buffer_sharing_policy="--buffers-uid"
+                if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
+                else "--buffers-pid",
             )
         )
         return _Channel(self._client, channel_name, domain, self)
