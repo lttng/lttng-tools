@@ -204,24 +204,24 @@ class Channel(abc.ABC):
     @abc.abstractmethod
     def add_context(self, context_type):
         # type: (ContextType) -> None
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def domain(self):
         # type: () -> TracingDomain
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def name(self):
         # type: () -> str
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def add_recording_rule(self, rule) -> None:
         # type: (Type[EventRule]) -> None
-        pass
+        raise NotImplementedError
 
 
 class SessionOutputLocation(abc.ABC):
@@ -275,72 +275,72 @@ class ProcessIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, pid):
         # type: (int) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, pid):
         # type: (int) -> None
-        pass
+        raise NotImplementedError
 
 
 class VirtualProcessIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, vpid):
         # type: (int) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, vpid):
         # type: (int) -> None
-        pass
+        raise NotImplementedError
 
 
 class UserIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, uid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, uid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
 
 class VirtualUserIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, vuid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, vuid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
 
 class GroupIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, gid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, gid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
 
 class VirtualGroupIDProcessAttributeTracker(ProcessAttributeTracker):
     @abc.abstractmethod
     def track(self, vgid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def untrack(self, vgid):
         # type: (Union[int, str]) -> None
-        pass
+        raise NotImplementedError
 
 
 class Session(abc.ABC):
@@ -353,13 +353,13 @@ class Session(abc.ABC):
     @abc.abstractmethod
     def name(self):
         # type: () -> str
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def output(self):
         # type: () -> Optional[Type[SessionOutputLocation]]
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def add_channel(
@@ -370,27 +370,27 @@ class Session(abc.ABC):
     ):
         # type: (TracingDomain, Optional[str], BufferSharingPolicy) -> Channel
         """Add a channel with default attributes to the session."""
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def start(self):
         # type: () -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def stop(self):
         # type: () -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def destroy(self):
         # type: () -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def is_active(self):
         # type: () -> bool
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def rotate(self):
@@ -467,7 +467,7 @@ class Controller(abc.ABC):
         Create a session with an output. Don't specify an output
         to create a session without an output.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def start_session_by_name(self, name):
@@ -475,7 +475,7 @@ class Controller(abc.ABC):
         """
         Start a session by name.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def start_session_by_glob_pattern(self, pattern):
@@ -483,7 +483,7 @@ class Controller(abc.ABC):
         """
         Start sessions whose name matches `pattern`, see GLOB(7).
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def start_sessions_all(self):
@@ -491,7 +491,7 @@ class Controller(abc.ABC):
         Start all sessions visible to the current user.
         """
         # type: () -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def stop_session_by_name(self, name):
@@ -499,7 +499,7 @@ class Controller(abc.ABC):
         """
         Stop a session by name.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def stop_session_by_glob_pattern(self, pattern):
@@ -507,7 +507,7 @@ class Controller(abc.ABC):
         """
         Stop sessions whose name matches `pattern`, see GLOB(7).
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def stop_sessions_all(self):
@@ -515,7 +515,7 @@ class Controller(abc.ABC):
         Stop all sessions visible to the current user.
         """
         # type: () -> None
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def destroy_session_by_name(self, name):
@@ -523,7 +523,7 @@ class Controller(abc.ABC):
         """
         Destroy a session by name.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def destroy_session_by_glob_pattern(self, pattern):
@@ -531,7 +531,7 @@ class Controller(abc.ABC):
         """
         Destroy sessions whose name matches `pattern`, see GLOB(7).
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def destroy_sessions_all(self):
@@ -539,7 +539,7 @@ class Controller(abc.ABC):
         """
         Destroy all sessions visible to the current user.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def list_sessions(self):
@@ -547,7 +547,7 @@ class Controller(abc.ABC):
         """
         List all sessions visible to the current user.
         """
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def rotate_session_by_name(self, name, wait=True):
