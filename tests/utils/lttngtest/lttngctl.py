@@ -107,28 +107,92 @@ class EventRule(abc.ABC):
 
 
 class LogLevelRule:
+    def __eq__(self, other):
+        # type (LogLevelRule) -> bool
+        if type(self) != type(other):
+            return False
+
+        return self.level == other.level
+
+
+@enum.unique
+class LogLevel(enum.Enum):
     pass
+
+
+@enum.unique
+class UserLogLevel(LogLevel):
+    EMERGENCY = 0
+    ALERT = 1
+    CRITICAL = 2
+    ERROR = 3
+    WARNING = 4
+    NOTICE = 5
+    INFO = 6
+    DEBUG_SYSTEM = 7
+    DEBUG_PROGRAM = 8
+    DEBUG_PROCESS = 9
+    DEBUG_MODULE = 10
+    DEBUG_UNIT = 11
+    DEBUG_FUNCTION = 12
+    DEBUG_LINE = 13
+    DEBUG = 14
+
+
+@enum.unique
+class JULLogLevel(LogLevel):
+    OFF = 2147483647
+    SEVERE = 1000
+    WARNING = 900
+    INFO = 800
+    CONFIG = 700
+    FINE = 500
+    FINER = 400
+    FINEST = 300
+    ALL = -2147483648
+
+
+@enum.unique
+class Log4jLogLevel(LogLevel):
+    OFF = 2147483647
+    FATAL = 50000
+    ERROR = 40000
+    WARN = 30000
+    INFO = 20000
+    DEBUG = 10000
+    TRACE = 5000
+    ALL = -2147483648
+
+
+@enum.unique
+class PythonLogLevel(LogLevel):
+    CRITICAL = 50
+    ERROR = 40
+    WARNING = 30
+    INFO = 20
+    DEBUG = 10
+    NOTSET = 0
 
 
 class LogLevelRuleAsSevereAs(LogLevelRule):
     def __init__(self, level):
-        # type: (int)
+        # type: (LogLevel)
         self._level = level
 
     @property
     def level(self):
-        # type: () -> int
+        # type: () -> LogLevel
         return self._level
 
 
 class LogLevelRuleExactly(LogLevelRule):
     def __init__(self, level):
-        # type: (int)
+        # type: (LogLevel)
         self._level = level
 
     @property
     def level(self):
-        # type: () -> int
+        # type: () -> LogLevel
         return self._level
 
 
@@ -137,15 +201,27 @@ class TracepointEventRule(EventRule):
         self,
         name_pattern=None,  # type: Optional[str]
         filter_expression=None,  # type: Optional[str]
-        log_level_rule=None,  # type: Optional[LogLevelRule]
-        name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
         self._name_pattern = name_pattern  # type: Optional[str]
         self._filter_expression = filter_expression  # type: Optional[str]
-        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
-        self._name_pattern_exclusions = (
-            name_pattern_exclusions
-        )  # type: Optional[List[str]]
+
+    def _equals(self, other):
+        # type (TracepointEventRule) -> bool
+        # Overridden by derived classes that have supplementary attributes.
+        return True
+
+    def __eq__(self, other):
+        # type (TracepointEventRule) -> bool
+        if type(self) != type(other):
+            return False
+
+        if self.name_pattern != other.name_pattern:
+            return False
+
+        if self.filter_expression != other.filter_expression:
+            return False
+
+        return self._equals(other)
 
     @property
     def name_pattern(self):
@@ -156,6 +232,31 @@ class TracepointEventRule(EventRule):
     def filter_expression(self):
         # type: () -> Optional[str]
         return self._filter_expression
+
+
+class UserTracepointEventRule(TracepointEventRule):
+    def __init__(
+        self,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
+    ):
+        TracepointEventRule.__init__(self, name_pattern, filter_expression)
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
+
+        if log_level_rule and not isinstance(log_level_rule.level, UserLogLevel):
+            raise ValueError("Log level rule must use a UserLogLevel as its value")
+
+    def _equals(self, other):
+        # type (UserTracepointEventRule) -> bool
+        return (
+            self.log_level_rule == other.log_level_rule
+            and self.name_pattern_exclusions == other.name_pattern_exclusions
+        )
 
     @property
     def log_level_rule(self):
@@ -168,7 +269,7 @@ class TracepointEventRule(EventRule):
         return self._name_pattern_exclusions
 
 
-class UserTracepointEventRule(TracepointEventRule):
+class Log4jTracepointEventRule(TracepointEventRule):
     def __init__(
         self,
         name_pattern=None,  # type: Optional[str]
@@ -176,7 +277,101 @@ class UserTracepointEventRule(TracepointEventRule):
         log_level_rule=None,  # type: Optional[LogLevelRule]
         name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
-        TracepointEventRule.__init__(**locals())
+        TracepointEventRule.__init__(self, name_pattern, filter_expression)
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
+
+        if log_level_rule and not isinstance(log_level_rule.level, Log4jLogLevel):
+            raise ValueError("Log level rule must use a Log4jLogLevel as its value")
+
+    def _equals(self, other):
+        # type (Log4jTracepointEventRule) -> bool
+        return (
+            self.log_level_rule == other.log_level_rule
+            and self.name_pattern_exclusions == other.name_pattern_exclusions
+        )
+
+    @property
+    def log_level_rule(self):
+        # type: () -> Optional[LogLevelRule]
+        return self._log_level_rule
+
+    @property
+    def name_pattern_exclusions(self):
+        # type: () -> Optional[List[str]]
+        return self._name_pattern_exclusions
+
+
+class JULTracepointEventRule(TracepointEventRule):
+    def __init__(
+        self,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
+    ):
+        TracepointEventRule.__init__(self, name_pattern, filter_expression)
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
+
+        if log_level_rule and not isinstance(log_level_rule.level, JULLogLevel):
+            raise ValueError("Log level rule must use a JULLogLevel as its value")
+
+    def _equals(self, other):
+        # type (JULTracepointEventRule) -> bool
+        return (
+            self.log_level_rule == other.log_level_rule
+            and self.name_pattern_exclusions == other.name_pattern_exclusions
+        )
+
+    @property
+    def log_level_rule(self):
+        # type: () -> Optional[LogLevelRule]
+        return self._log_level_rule
+
+    @property
+    def name_pattern_exclusions(self):
+        # type: () -> Optional[List[str]]
+        return self._name_pattern_exclusions
+
+
+class PythonTracepointEventRule(TracepointEventRule):
+    def __init__(
+        self,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
+    ):
+        TracepointEventRule.__init__(self, name_pattern, filter_expression)
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
+
+        if log_level_rule and not isinstance(log_level_rule.level, PythonLogLevel):
+            raise ValueError("Log level rule must use a PythonLogLevel as its value")
+
+    def _equals(self, other):
+        # type (PythonTracepointEventRule) -> bool
+        return (
+            self.log_level_rule == other.log_level_rule
+            and self.name_pattern_exclusions == other.name_pattern_exclusions
+        )
+
+    @property
+    def log_level_rule(self):
+        # type: () -> Optional[LogLevelRule]
+        return self._log_level_rule
+
+    @property
+    def name_pattern_exclusions(self):
+        # type: () -> Optional[List[str]]
+        return self._name_pattern_exclusions
 
 
 class KernelTracepointEventRule(TracepointEventRule):
@@ -184,8 +379,6 @@ class KernelTracepointEventRule(TracepointEventRule):
         self,
         name_pattern=None,  # type: Optional[str]
         filter_expression=None,  # type: Optional[str]
-        log_level_rule=None,  # type: Optional[LogLevelRule]
-        name_pattern_exclusions=None,  # type: Optional[List[str]]
     ):
         TracepointEventRule.__init__(**locals())
 

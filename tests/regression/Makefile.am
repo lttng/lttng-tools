@@ -65,7 +65,8 @@ TESTS = tools/base-path/test_ust \
 	tools/trigger/name/test_trigger_name_backwards_compat \
 	tools/trigger/hidden/test_hidden_trigger \
 	tools/context/test_ust.py \
-	tools/client/test_session_commands.py
+	tools/client/test_session_commands.py \
+	tools/client/test_event_rule_listing.py
 
 # Only build kernel tests on Linux.
 if IS_LINUX
