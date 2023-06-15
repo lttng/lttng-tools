@@ -292,6 +292,10 @@ class _Session(lttngctl.Session):
         # type: () -> None
         self._client._run_cmd("destroy '{session_name}'".format(session_name=self.name))
 
+    def rotate(self, wait=True):
+        # type: (bool) -> None
+        self._client.rotate_session_by_name(self.name, wait)
+
     @property
     def is_active(self):
         # type: () -> bool
@@ -479,6 +483,29 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
     def destroy_sessions_all(self):
         # type: () -> None
         self._run_cmd("destroy --all")
+
+    def rotate_session_by_name(self, name, wait=True):
+        self._run_cmd(
+            "rotate '{session_name}' {wait_option}".format(
+                session_name=name, wait_option="-n" if wait is False else ""
+            )
+        )
+
+    def schedule_size_based_rotation(self, name, size_bytes):
+        # type (str, int) -> None
+        self._run_cmd(
+            "enable-rotation --session '{session_name}' --size {size}".format(
+                session_name=name, size=size_bytes
+            )
+        )
+
+    def schedule_time_based_rotation(self, name, period_seconds):
+        # type (str, int) -> None
+        self._run_cmd(
+            "enable-rotation --session '{session_name}' --timer {period_seconds}s".format(
+                session_name=name, period_seconds=period_seconds
+            )
+        )
 
     @staticmethod
     def _mi_find_in_element(element, sub_element_name):

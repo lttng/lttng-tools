@@ -392,6 +392,11 @@ class Session(abc.ABC):
         # type: () -> bool
         pass
 
+    @abc.abstractmethod
+    def rotate(self):
+        # type: () -> None
+        raise NotImplementedError
+
     @abc.abstractproperty
     def kernel_pid_process_attribute_tracker(self):
         # type: () -> Type[ProcessIDProcessAttributeTracker]
@@ -543,3 +548,27 @@ class Controller(abc.ABC):
         List all sessions visible to the current user.
         """
         pass
+
+    @abc.abstractmethod
+    def rotate_session_by_name(self, name, wait=True):
+        # type: (str, bool) -> None
+        """
+        Rotate a session
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def schedule_size_based_rotation(self, name, size_bytes):
+        # type: (str, int) -> None
+        """
+        Schedule automatic size-based rotations.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def schedule_time_based_rotation(self, name, period_seconds):
+        # type: (str, int) -> None
+        """
+        Schedule automatic time-based rotations.
+        """
+        raise NotImplementedError
