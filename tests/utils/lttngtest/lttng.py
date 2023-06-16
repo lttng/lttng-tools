@@ -435,7 +435,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         name = name if name else lttngctl.Session._generate_name()
 
         if isinstance(output, lttngctl.LocalSessionOutputLocation):
-            output_option = "--output {output_path}".format(output_path=output.path)
+            output_option = "--output '{output_path}'".format(output_path=output.path)
         elif output is None:
             output_option = "--no-output"
         else:
