@@ -22,30 +22,15 @@ TRACEFILE_SIZE=$PAGE_SIZE
 
 source "$TESTDIR"/utils/utils.sh
 
-NUM_CPUS=$(conf_proc_count)
-
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
 function pick_random_cpuid ()
 {
-        local cpuid=0
-
-        # On Linux pick a random available cpuid from sysfs
-        if [ -d "/sys/devices/system/cpu" ]; then
-                local cpuids=()
-
-                for i in /sys/devices/system/cpu/cpu[0-9]*; do
-                        cpuids+=("${i#/sys/devices/system/cpu/cpu}")
-                done
-
-                cpuid=${cpuids[ $RANDOM % ${#cpuids[@]} ]}
-        else
-                cpuid=$((RANDOM % NUM_CPUS))
-        fi
-
-        echo $cpuid
+	local cpuids
+	read -r -a cpuids <<< "$(get_online_cpus)"
+	echo "${cpuids[ $RANDOM % ${#cpuids[@]} ]}"
 }
 
 function enable_lttng_channel_count_limit ()
