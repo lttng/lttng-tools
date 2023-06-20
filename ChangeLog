@@ -1,3 +1,20 @@
+2023-06-20 lttng-tools 2.13.10 (National Ice Cream Soda Day)
+	* Fix: sessiond: incorrect use of exclusions array leads to crash
+	* Tests fix: test_callstack: output of addr2line incorrectly parsed
+	* Fix: sessiond: silent kernel notifier registration error
+	* Fix: sessiond: size-based notification occasionally not triggered
+	* Fix: adding a user space probe fails on thumb functions
+	* Fix: Tests that assume CPU 0 is present
+	* Fix: Wrong assumption about possible CPUs
+	* Tests: fix: parse-callback reports missing addr2line
+	* Fix: lttng remove-trigger -h fails
+	* Tests: snapshot tests complain that nothing is output
+	* Tests: Test snapshot maximum size correctly
+	* Tests: Add get_possible_cpus_count utility
+	* Fix: ini parser: truncation of value name
+	* Fix: truncated len in lttng_event_rule_user_tracepoint_serialize()
+	* Tests: remove leftover debug printing in test_add_trigger_cli
+
 2023-01-05 lttng-tools 2.13.9 (National Whipped Cream Day)
 	* Fix: lttng: poptGetArg doesn't provide string ownership
 	* Fix: relayd: missing space in trace creation logging statement
