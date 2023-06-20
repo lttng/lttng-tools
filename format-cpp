@@ -38,7 +38,7 @@ format_cpp() {
 	# shellcheck disable=SC2086
 	find "$root_dir" -path './src/vendor' -prune \
 		-o -type f \( -name '*\.h' -o -name '*\.hpp' -o -name '*\.c' -o -name '*\.cpp' \) \
-		-not -path '*/\.*' -print0 | xargs -n1 -0 $formatter -i --style=file --fallback-style=none
+		-not -path '*/\.*' -print0 | xargs -P$(nproc) -n1 -0 $formatter -i --style=file --fallback-style=none
 }
 
 if [[ -n "$FORMATTER" ]]; then
