@@ -1,3 +1,14 @@
+2023-06-20 lttng-tools 2.12.14 (National Ice Cream Soda Day)
+	* Tests fix: test_callstack: output of addr2line incorrectly parsed
+	* Fix: adding a user space probe fails on thumb functions
+	* Fix: Tests that assume CPU 0 is present
+	* Fix: Wrong assumption about possible CPUs
+	* Tests: fix: parse-callback reports missing addr2line
+	* Tests: snapshot tests complain that nothing is output
+	* Tests: Test snapshot maximum size correctly
+	* Tests: Add get_possible_cpus_count utility
+	* Fix: ini parser: truncation of value name
+
 2023-01-05 lttng-tools 2.12.13 (National Whipped Cream Day)
 	* Fix: lttng: poptGetArg doesn't provide string ownership
 	* Fix: relayd: missing space in trace creation logging statement
