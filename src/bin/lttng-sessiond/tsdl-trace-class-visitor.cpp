@@ -795,8 +795,14 @@ public:
 
 	void visit(const lst::environment_field<const char *>& field) override
 	{
+		/*
+		 * clang-format 14 oscillates between two formatting for this
+		 * line, disable it locally.
+		 */
+		/* clang-format off */
 		_environment += lttng::format(
 			"	{} = \"{}\";\n", field.name, escape_tsdl_env_string_value(field.value));
+		/* clang-format on */
 	}
 
 	/* Only call once. */
