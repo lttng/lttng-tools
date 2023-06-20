@@ -76,8 +76,8 @@ int main(int argc, char **argv)
 		net_values[i] = htonl(net_values[i]);
 	}
 
-	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f:g:h", long_options, &option_index)) !=
-	       -1) {
+	while ((option = getopt_long(
+			argc, argv, "i:w:a:b:c:d:e:f:g:h", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'a':
 			application_in_main_file_path = strdup(optarg);
