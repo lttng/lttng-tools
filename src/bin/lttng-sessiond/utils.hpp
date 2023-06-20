@@ -19,6 +19,5 @@ int loglevels_match(int a_loglevel_type,
 		    int b_loglevel_value,
 		    int loglevel_all_type);
 const char *consumer_output_get_base_path(const struct consumer_output *output);
-bool force_experimental_ctf_2();
 
 #endif /* _LTT_UTILS_H */

@@ -105,4 +105,6 @@ int utils_create_value_file(const ValueType value, const lttng::c_string_view fi
 	return 0;
 }
 
+bool utils_force_experimental_ctf_2();
+
 #endif /* _COMMON_UTILS_H */

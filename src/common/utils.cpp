@@ -1520,3 +1520,13 @@ success:
 end:
 	return ret_code;
 }
+
+bool utils_force_experimental_ctf_2()
+{
+	if (const auto val =
+		    lttng::c_string_view(lttng_secure_getenv("LTTNG_EXPERIMENTAL_FORCE_CTF_2"))) {
+		return val == "1";
+	}
+
+	return false;
+}

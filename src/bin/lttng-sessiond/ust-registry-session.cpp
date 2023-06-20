@@ -31,6 +31,7 @@
 #include <common/string-utils/c-string-view.hpp>
 #include <common/time.hpp>
 #include <common/urcu.hpp>
+#include <common/utils.hpp>
 
 #include <fcntl.h>
 #include <functional>
@@ -255,7 +256,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 			_append_metadata_fragment(fragment);
 		};
 
-		if (force_experimental_ctf_2()) {
+		if (utils_force_experimental_ctf_2()) {
 			return lttng::make_unique<ctf2::trace_class_visitor>(std::move(func));
 		}
 

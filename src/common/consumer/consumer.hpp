@@ -386,8 +386,7 @@ using extract_subbuffer_info_cb = int (*)(struct lttng_consumer_stream *,
  *
  * Stream and channel locks are acquired during this call.
  */
-using pre_consume_subbuffer_cb = int (*)(struct lttng_consumer_stream *,
-					 const struct stream_subbuffer *);
+using pre_consume_subbuffer_cb = int (*)(struct lttng_consumer_stream *, struct stream_subbuffer *);
 
 /*
  * Consume subbuffer contents.

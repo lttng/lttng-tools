@@ -218,7 +218,7 @@ int kernel_create_session(const ltt_session::locked_ref& session)
 	}
 
 	ret = kernctl_session_set_output_format(lks->fd,
-						force_experimental_ctf_2() ?
+						utils_force_experimental_ctf_2() ?
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 :
 							LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8);
 	if (ret) {
