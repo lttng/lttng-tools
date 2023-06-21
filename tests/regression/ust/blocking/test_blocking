@@ -30,6 +30,19 @@ function run_app()
 	ok $? "Application done"
 }
 
+function check_disk_space()
+{
+	local path
+
+	path="${1:?}"
+	kb_free=$(df -k -P "${path}" | tail -n 1 | awk '{ print $4 }')
+	if [ "${kb_free}" -lt "1048576" ] ; then
+		return 1
+	fi
+
+	return 0
+}
+
 function test_ust_implicit_no_blocking()
 {
 	NUM_EVENT=5000000
@@ -135,6 +148,10 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 bail_out_if_no_babeltrace
+
+if ! check_disk_space "${TMPDIR:-/tmp}"; then
+	BAIL_OUT "Not enough free space to run blocking tests"
+fi
 
 TESTS=(
 	"test_ust_implicit_no_blocking"
