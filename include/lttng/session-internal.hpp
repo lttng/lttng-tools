@@ -9,8 +9,11 @@
 #define LTTNG_SESSION_INTERNAL_H
 
 #include <common/macros.hpp>
+#include <common/make-unique-wrapper.hpp>
 
 #include <lttng/constant.h>
+
+struct lttng_session;
 
 struct lttng_session_extended {
 	struct {
@@ -18,5 +21,9 @@ struct lttng_session_extended {
 		uint8_t is_set;
 	} LTTNG_PACKED creation_time;
 } LTTNG_PACKED;
+
+using lttng_session_uptr =
+	std::unique_ptr<lttng_session[],
+			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>;
 
 #endif /* LTTNG_SESSION_INTERNAL_H */

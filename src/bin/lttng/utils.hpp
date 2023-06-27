@@ -14,6 +14,7 @@
 #include <common/make-unique-wrapper.hpp>
 
 #include <lttng/lttng.h>
+#include <lttng/session-internal.hpp>
 
 #include <iterator>
 #include <memory>
@@ -66,9 +67,7 @@ public:
 	{
 	}
 
-	std::unique_ptr<lttng_session[],
-			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>
-		_array = nullptr;
+	lttng_session_uptr _array = nullptr;
 	std::size_t _count = 0;
 };
 
