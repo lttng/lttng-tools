@@ -66,7 +66,7 @@ public:
 	{
 	}
 
-	std::unique_ptr<lttng_session,
+	std::unique_ptr<lttng_session[],
 			lttng::memory::create_deleter_class<lttng_session, lttng::free>::deleter>
 		_array = nullptr;
 	std::size_t _count = 0;
@@ -77,7 +77,7 @@ public:
 	static lttng_session& get(const lttng::cli::details::session_storage& storage,
 				  std::size_t index) noexcept
 	{
-		return storage._array.get()[index];
+		return storage._array[index];
 	}
 
 	static std::size_t size(const lttng::cli::details::session_storage& storage)
