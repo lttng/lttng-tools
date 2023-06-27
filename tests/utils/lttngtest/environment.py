@@ -100,7 +100,7 @@ class _WaitTraceTestApplication:
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_start_tracing",
-                dir=self._compat_open_path(environment.lttng_home_location),
+                dir=self._compat_pathlike(environment.lttng_home_location),
             )
         )
         # File that the application will create when all events have been emitted.
@@ -108,7 +108,7 @@ class _WaitTraceTestApplication:
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_done_tracing",
-                dir=self._compat_open_path(environment.lttng_home_location),
+                dir=self._compat_pathlike(environment.lttng_home_location),
             )
         )
 
@@ -117,7 +117,7 @@ class _WaitTraceTestApplication:
                 tempfile.mktemp(
                     prefix="app_",
                     suffix="_exit",
-                    dir=self._compat_open_path(environment.lttng_home_location),
+                    dir=self._compat_pathlike(environment.lttng_home_location),
                 )
             )
 
@@ -133,7 +133,7 @@ class _WaitTraceTestApplication:
         app_ready_file_path = tempfile.mktemp(
             prefix="app_",
             suffix="_ready",
-            dir=self._compat_open_path(environment.lttng_home_location),
+            dir=self._compat_pathlike(environment.lttng_home_location),
         )  # type: str
 
         test_app_args = [str(binary_path)]
@@ -165,7 +165,7 @@ class _WaitTraceTestApplication:
     def _wait_for_file_to_be_created(self, sync_file_path):
         # type: (pathlib.Path) -> None
         while True:
-            if os.path.exists(sync_file_path):
+            if os.path.exists(self._compat_pathlike(sync_file_path)):
                 break
 
             if self._process.poll() is not None:
@@ -187,7 +187,7 @@ class _WaitTraceTestApplication:
                     return_code=self._process.returncode
                 )
             )
-        open(self._compat_open_path(self._app_start_tracing_file_path), mode="x")
+        open(self._compat_pathlike(self._app_start_tracing_file_path), mode="x")
 
     def wait_for_tracing_done(self):
         # type: () -> None
@@ -209,12 +209,13 @@ class _WaitTraceTestApplication:
         return self._process.pid
 
     @staticmethod
-    def _compat_open_path(path):
+    def _compat_pathlike(path):
         # type: (pathlib.Path) -> pathlib.Path | str
         """
-        The builtin open() in python >= 3.6 expects a path-like object while
-        prior versions expect a string or bytes object. Return the correct type
-        based on the presence of the "__fspath__" attribute specified in PEP-519.
+        The builtin open() and many methods of the 'os' library in Python >= 3.6
+        expect a path-like object while prior versions expect a string or
+        bytes object. Return the correct type based on the presence of the
+        "__fspath__" attribute specified in PEP-519.
         """
         if hasattr(path, "__fspath__"):
             return path
@@ -243,7 +244,7 @@ class WaitTraceTestApplicationGroup:
                 tempfile.mktemp(
                     prefix="app_group_",
                     suffix="_exit",
-                    dir=_WaitTraceTestApplication._compat_open_path(
+                    dir=_WaitTraceTestApplication._compat_pathlike(
                         environment.lttng_home_location
                     ),
                 )
@@ -294,7 +295,7 @@ class WaitTraceTestApplicationGroup:
             app.wait_for_tracing_done()
 
         open(
-            _WaitTraceTestApplication._compat_open_path(
+            _WaitTraceTestApplication._compat_pathlike(
                 self._wait_before_exit_file_path
             ),
             mode="x",
