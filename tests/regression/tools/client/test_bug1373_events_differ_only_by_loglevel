@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+#
+
+TEST_DESC="lttng-sessiond should not crash when activating rules that different by loglevel only"
+
+CURDIR=$(dirname "$0")
+TESTDIR=$(realpath "${CURDIR}/../../../")
+
+# Test app for ust event
+TESTAPP_PATH="${TESTDIR}/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}/${TESTAPP_NAME}"
+NR_USEC_WAIT=1
+NR_ITER=100000
+
+SESSION_NAME="test_session"
+CHANNEL_NAME="test_channel"
+EVENT_NAME="'l*'"
+
+OUTPUT_DIR=$(mktemp -d -t tmp.test_events_differ_only_by_loglevels.XXXXXX)
+
+NUM_TESTS=9
+
+# shellcheck source-path=SCRIPTDIR/../../../
+source "${TESTDIR}/utils/utils.sh"
+
+if [ ! -x "${TESTAPP_BIN}" ] ; then
+    BAIL_OUT "No UST events binary detected"
+fi
+
+plan_tests "${NUM_TESTS}"
+print_test_banner "${TEST_DESC}"
+bail_out_if_no_babeltrace
+
+# shellcheck disable=SC2119
+start_lttng_sessiond
+
+"${TESTAPP_BIN}" -i "${NR_ITER}" -w "${NR_USEC_WAIT}" &
+ TESTAPP_PID="${!}"
+
+create_lttng_session_ok "${SESSION_NAME}" "${OUTPUT_DIR}"
+enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+start_lttng_tracing_ok "${SESSION_NAME}"
+enable_ust_lttng_event_loglevel "${SESSION_NAME}" "${EVENT_NAME}" TRACE_DEBUG_LINE "${CHANNEL_NAME}"
+enable_ust_lttng_event_loglevel_only "${SESSION_NAME}" "${EVENT_NAME}" TRACE_DEBUG_LINE "${CHANNEL_NAME}"
+
+sleep 1
+
+stop_lttng_tracing_ok "${SESSION_NAME}"
+destroy_lttng_session_ok "${SESSION_NAME}"
+
+# shellcheck disable=SC2119
+stop_lttng_sessiond
+
+kill "${TESTAPP_PID}"
+rm -rf "${OUTPUT_DIR}"

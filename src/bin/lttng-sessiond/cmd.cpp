@@ -2095,14 +2095,6 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 	}
 
-	/* Normalize loglevel value to simplify comparisons. */
-	if (event->loglevel_type == LTTNG_EVENT_LOGLEVEL_ALL) {
-		/* Ignore the user-specified value; it has no meaning. */
-		event->loglevel = -1;
-	}
-
-	DBG("Enable event command for event \'%s\'", event->name);
-
 	lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain->type) {

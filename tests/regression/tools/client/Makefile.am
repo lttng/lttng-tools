@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_SCRIPTS = test_session_commands.py test_event_rule_listing.py
-EXTRA_DIST = test_session_commands.py test_event_rule_listing.py
+noinst_SCRIPTS = test_session_commands.py test_event_rule_listing.py \
+	test_bug1373_events_differ_only_by_loglevel
+EXTRA_DIST = test_session_commands.py test_event_rule_listing.py \
+	test_bug1373_events_differ_only_by_loglevel
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

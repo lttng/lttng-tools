@@ -367,8 +367,7 @@ ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 
 	local_event->type = (enum lttng_event_type) event_comm->event_type;
 	local_event->loglevel_type = (enum lttng_loglevel_type) event_comm->loglevel_type;
-	local_event->loglevel =
-		local_event->loglevel_type == LTTNG_EVENT_LOGLEVEL_ALL ? -1 : event_comm->loglevel;
+	local_event->loglevel = event_comm->loglevel;
 	local_event->enabled = !!event_comm->enabled;
 	local_event->pid = event_comm->pid;
 	local_event->flags = (enum lttng_event_flag) event_comm->flags;

@@ -1514,9 +1514,14 @@ function enable_ust_lttng_event_loglevel()
 	local sess_name="$1"
 	local event_name="$2"
 	local loglevel="$3"
+	local channel_name="$4"
+	local chan=()
+	if [ -n "${channel_name}" ] ; then
+		chan=('-c' "${channel_name}")
+	fi
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
-		enable-event "$event_name" -s $sess_name -u --loglevel $loglevel
+		enable-event "${chan[@]}" "$event_name" -s "${sess_name}" -u --loglevel="${loglevel}"
 	ok $? "Enable event $event_name with loglevel $loglevel"
 }
 
@@ -1525,9 +1530,14 @@ function enable_ust_lttng_event_loglevel_only()
 	local sess_name="$1"
 	local event_name="$2"
 	local loglevel="$3"
+	local channel_name="$4"
+	local chan=()
+	if [ -n "${channel_name}" ] ; then
+		chan=('-c' "${channel_name}")
+	fi
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
-		enable-event "$event_name" -s $sess_name -u --loglevel-only $loglevel
+		enable-event "${chan[@]}" "$event_name" -s "${sess_name}" -u --loglevel-only "${loglevel}"
 	ok $? "Enable event $event_name with loglevel-only $loglevel"
 }
 
