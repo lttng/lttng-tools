@@ -58,8 +58,8 @@ consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 			      const char *data);
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
-int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
-				    uint64_t offset,
-				    int timer);
+void consumer_wait_metadata_cache_flushed(struct lttng_consumer_channel *channel,
+					  uint64_t offset,
+					  bool invoked_by_timer);
 
 #endif /* CONSUMER_METADATA_CACHE_H */

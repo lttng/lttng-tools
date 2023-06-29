@@ -3316,12 +3316,12 @@ end:
 		free(cmd);
 		cmd = nullptr;
 	} else {
-		lttng_waiter_wake_up(&cmd->reply_waiter);
+		lttng_waiter_wake(&cmd->reply_waiter);
 	}
 	return ret;
 error_unlock:
 	/* Wake-up and return a fatal error to the calling thread. */
-	lttng_waiter_wake_up(&cmd->reply_waiter);
+	lttng_waiter_wake(&cmd->reply_waiter);
 	cmd->reply_code = LTTNG_ERR_FATAL;
 error:
 	/* Indicate a fatal error to the caller. */

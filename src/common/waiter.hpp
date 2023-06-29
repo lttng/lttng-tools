@@ -23,15 +23,33 @@ struct lttng_waiter {
 	int32_t state;
 };
 
+struct lttng_wait_queue {
+	struct cds_wfs_stack stack;
+};
+
 void lttng_waiter_init(struct lttng_waiter *waiter);
 
 void lttng_waiter_wait(struct lttng_waiter *waiter);
 
 /*
- * lttng_waiter_wake_up must only be called by a single waker.
+ * lttng_waiter_wake must only be called by a single waker.
  * It is invalid for multiple "wake" operations to be invoked
  * on a single waiter without re-initializing it before.
  */
-void lttng_waiter_wake_up(struct lttng_waiter *waiter);
+void lttng_waiter_wake(struct lttng_waiter *waiter);
+
+void lttng_wait_queue_init(struct lttng_wait_queue *queue);
+
+/*
+ * Atomically add a waiter to a wait queue.
+ * A full memory barrier is issued before being added to the wait queue.
+ */
+void lttng_wait_queue_add(struct lttng_wait_queue *queue, struct lttng_waiter *waiter);
+
+/*
+ * Wake every waiter present in the wait queue and remove them from
+ * the queue.
+ */
+void lttng_wait_queue_wake_all(struct lttng_wait_queue *queue);
 
 #endif /* LTTNG_WAITER_H */

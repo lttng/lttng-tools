@@ -54,6 +54,7 @@ ForEachMacros:
   - 'cds_list_for_each_entry_safe'
   - 'for_each_action_mutable'
   - 'for_each_action_const'
+  - 'cds_wfs_for_each_blocking_safe'
 
 IncludeBlocks: Regroup
 IncludeCategories:

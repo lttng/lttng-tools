@@ -462,6 +462,8 @@ static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
 	cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
 		if (stream->net_seq_idx == net_seq_idx) {
 			uatomic_set(&stream->endpoint_status, status);
+			lttng_wait_queue_wake_all(&stream->chan->metadata_pushed_wait_queue);
+
 			DBG("Delete flag set to metadata stream %d", stream->wait_fd);
 		}
 	}
@@ -1033,8 +1035,9 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->monitor = monitor;
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
-	pthread_mutex_init(&channel->lock, nullptr);
-	pthread_mutex_init(&channel->timer_lock, nullptr);
+	pthread_mutex_init(&channel->lock, NULL);
+	pthread_mutex_init(&channel->timer_lock, NULL);
+	lttng_wait_queue_init(&channel->metadata_pushed_wait_queue);
 
 	switch (output) {
 	case LTTNG_EVENT_SPLICE:
@@ -2130,6 +2133,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct l
 	 * pointer value.
 	 */
 	channel->metadata_stream = nullptr;
+	lttng_wait_queue_wake_all(&channel->metadata_pushed_wait_queue);
 
 	if (channel->metadata_cache) {
 		pthread_mutex_unlock(&channel->metadata_cache->lock);

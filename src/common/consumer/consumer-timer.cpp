@@ -96,7 +96,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx, siginfo
 		 * - metadata_socket_lock
 		 *   - Calling lttng_ustconsumer_recv_metadata():
 		 *     - channel->metadata_cache->lock
-		 *     - Calling consumer_metadata_cache_flushed():
+		 *     - Calling consumer_wait_metadata_cache_flushed():
 		 *       - channel->timer_lock
 		 *         - channel->metadata_cache->lock
 		 *
@@ -105,7 +105,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx, siginfo
 		 * they are held while consumer_timer_switch_stop() is
 		 * called.
 		 */
-		ret = lttng_ustconsumer_request_metadata(ctx, channel, 1, 1);
+		ret = lttng_ustconsumer_request_metadata(ctx, channel, true, 1);
 		if (ret < 0) {
 			channel->switch_timer_error = 1;
 		}
