@@ -29,6 +29,7 @@
 #include <common/credentials.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-array.h>
+#include <common/waiter.h>
 
 struct lttng_consumer_local_data;
 
@@ -184,6 +185,11 @@ struct lttng_consumer_channel {
 
 	/* Metadata cache is metadata channel */
 	struct consumer_metadata_cache *metadata_cache;
+
+	/*
+	 * Wait queue awaiting updates to metadata stream's flushed position.
+	 */
+	struct lttng_wait_queue metadata_pushed_wait_queue;
 
 	/* For UST metadata periodical flush */
 	int switch_timer_enabled;

@@ -49,9 +49,11 @@ void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata);
 void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 		uint64_t len, uint64_t version,
-		struct lttng_consumer_channel *channel, int timer, int wait);
+		struct lttng_consumer_channel *channel, bool invoked_by_timer,
+		int wait);
 int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_channel *channel, int timer, int wait);
+		struct lttng_consumer_channel *channel, bool invoked_by_timer,
+		int wait);
 enum sync_metadata_status lttng_ustconsumer_sync_metadata(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *metadata);
