@@ -168,7 +168,7 @@ option:--action=**notify** [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Sends a notification through the notification
-mechanism of the session daemon (see man:lttng-session(8)).
+mechanism of the session daemon (see man:lttng-sessiond(8)).
 +
 The session daemon sends details about the condition evaluation along
 with the notification.
