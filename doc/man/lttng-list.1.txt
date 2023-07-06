@@ -85,13 +85,13 @@ With the option:--jul, option:--log4j, and/or option:--python options::
 Also list the available instrumentation point fields with the
 option:--fields option.
 
-See man:lttng-concept(7) to learn more about recording sessions, tracing
+See man:lttng-concepts(7) to learn more about recording sessions, tracing
 domains, channels, recording event rules, and instrumentation points.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the channels and recording event rules of the current recording
-session (see man:lttng-concept(7) to learn more) with the
+session (see man:lttng-concepts(7) to learn more) with the
 man:lttng-status(1) command.
 
 
