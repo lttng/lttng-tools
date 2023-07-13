@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+TEST_DESC="lttng-sessiond should not crash when receiving data-pending for an active session"
+CURDIR=$(dirname "$0")
+TESTDIR=$(realpath "${CURDIR}/../../../")
+# Test app for ust event
+TESTAPP_PATH="${TESTDIR}/utils/testapp"
+TESTAPP_NAME="gen-data-pending"
+TESTAPP_BIN="${TESTAPP_PATH}/${TESTAPP_NAME}/${TESTAPP_NAME}"
+SESSION_NAME=asdf
+
+NUM_TESTS=7
+
+# shellcheck source-path=SCRIPTDIR/../../../
+source "${TESTDIR}/utils/utils.sh"
+if [ ! -x "${TESTAPP_BIN}" ] ; then
+    BAIL_OUT "Test binary '${TESTAPP_BIN}' not detected or not executable"
+fi
+
+OUTPUT_DIR=$(mktemp -d)
+CHANNEL_NAME=asdf
+
+plan_tests "${NUM_TESTS}"
+print_test_banner "${TEST_DESC}"
+
+# shellcheck disable=SC2119
+start_lttng_sessiond
+
+create_lttng_session_ok "${SESSION_NAME}" "${OUTPUT_DIR}"
+enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+start_lttng_tracing_ok "${SESSION_NAME}"
+
+"${TESTAPP_BIN}" "${SESSION_NAME}"
+
+stop_lttng_tracing_ok "${SESSION_NAME}"
+destroy_lttng_session_ok "${SESSION_NAME}"
+# shellcheck disable=SC2119
+stop_lttng_sessiond
+rm -rf "${OUTPUT_DIR}"

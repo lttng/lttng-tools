@@ -1278,6 +1278,7 @@ AC_CONFIG_FILES([
 	tests/utils/lttngtest/Makefile
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
+	tests/utils/testapp/gen-data-pending/Makefile
 	tests/utils/testapp/gen-ns-events/Makefile
 	tests/utils/testapp/gen-kernel-test-events/Makefile
 	tests/utils/testapp/gen-py-events/Makefile

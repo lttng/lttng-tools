@@ -1948,12 +1948,12 @@ skip_domain:
 			 * ret will be set to LTTNG_OK at the end of
 			 * this function.
 			 */
-		} else if (pending_ret < 0) {
+		} else if (pending_ret <= LTTNG_OK || pending_ret >= LTTNG_ERR_NR) {
 			ret = LTTNG_ERR_UNK;
-			goto setup_error;
+			goto error;
 		} else {
 			ret = pending_ret;
-			goto setup_error;
+			goto error;
 		}
 
 		pending_ret_byte = (uint8_t) pending_ret;
