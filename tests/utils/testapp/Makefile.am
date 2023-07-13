@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 SUBDIRS = \
+	  gen-data-pending \
 	  gen-kernel-test-events \
 	  gen-py-events \
 	  gen-syscall-events \
