@@ -413,7 +413,7 @@ lttng_event_rule_jul_logging_generate_lttng_event(const struct lttng_event_rule 
 	status = lttng_event_rule_jul_logging_get_log_level_rule(rule, &log_level_rule);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 		loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		loglevel_value = -1;
+		loglevel_value = LTTNG_LOGLEVEL_JUL_ALL;
 	} else if (status == LTTNG_EVENT_RULE_STATUS_OK) {
 		enum lttng_log_level_rule_status llr_status;
 
