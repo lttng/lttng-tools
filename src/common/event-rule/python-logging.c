@@ -442,7 +442,7 @@ static struct lttng_event *lttng_event_rule_python_logging_generate_lttng_event(
 			rule, &log_level_rule);
 	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 		loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
-		loglevel_value = 0;
+		loglevel_value = -1;
 	} else if (status == LTTNG_EVENT_RULE_STATUS_OK) {
 		enum lttng_log_level_rule_status llr_status;
 
