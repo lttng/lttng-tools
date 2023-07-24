@@ -812,9 +812,16 @@ static void destroy_ctx_type(struct ctx_type *type)
 	if (!type) {
 		return;
 	}
+
 	if (type->opt) {
 		free(type->opt->symbol);
 	}
+
+	if (type->opt->ctx_type == CONTEXT_APP_CONTEXT) {
+		free(type->opt->u.app_ctx.ctx_name);
+		free(type->opt->u.app_ctx.provider_name);
+	}
+
 	delete type->opt;
 	free(type);
 }
