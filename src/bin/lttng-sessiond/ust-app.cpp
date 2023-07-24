@@ -323,6 +323,12 @@ static void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx, struct ust_
 		}
 		free(ua_ctx->obj);
 	}
+
+	if (ua_ctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
+		free(ua_ctx->ctx.u.app_ctx.provider_name);
+		free(ua_ctx->ctx.u.app_ctx.ctx_name);
+	}
+
 	free(ua_ctx);
 }
 
