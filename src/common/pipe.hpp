@@ -21,16 +21,12 @@ enum lttng_pipe_state {
 
 /* Close both side of pipe. */
 int lttng_pipe_close(struct lttng_pipe *pipe);
+void lttng_pipe_destroy(struct lttng_pipe *pipe);
 
 struct lttng_pipe {
-	static void _lttng_pipe_close_wrapper(lttng_pipe *pipe)
-	{
-		lttng_pipe_close(pipe);
-	}
-
 	using uptr = std::unique_ptr<
 		lttng_pipe,
-		lttng::memory::create_deleter_class<lttng_pipe, _lttng_pipe_close_wrapper>::deleter>;
+		lttng::memory::create_deleter_class<lttng_pipe, lttng_pipe_destroy>::deleter>;
 
 	/* Read: 0, Write: 1. */
 	int fd[2];
@@ -82,7 +78,6 @@ struct lttng_pipe *lttng_pipe_open(int flags);
 struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode, int flags);
 int lttng_pipe_write_close(struct lttng_pipe *pipe);
 int lttng_pipe_read_close(struct lttng_pipe *pipe);
-void lttng_pipe_destroy(struct lttng_pipe *pipe);
 
 ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count);
 ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf, size_t count);
