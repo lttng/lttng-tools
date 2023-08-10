@@ -133,7 +133,7 @@ information on versioning.
 You need the following tools to build {lt}:
 
 * **https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html[GNU{nbsp}Autotools]**
-  (**Automake{nbsp}≥{nbsp}1.10**,
+  (**Automake{nbsp}≥{nbsp}1.12**,
   **Autoconf{nbsp}≥{nbsp}2.64**, and **Autoheader{nbsp}≥{nbsp}2.50**)
 
 * **http://www.gnu.org/software/autoconf/[GNU{nbsp}Libtool]{nbsp}≥{nbsp}2.2**
