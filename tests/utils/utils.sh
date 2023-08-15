@@ -130,6 +130,27 @@ function randstring()
 	echo
 }
 
+# Return a space-separated string of online CPU IDs, based on
+# /sys/devices/system/cpu/online, or from 0 to nproc - 1 otherwise.
+function get_online_cpus()
+{
+	local cpus=()
+	local range_re
+	if [ -f /sys/devices/system/cpu/online ]; then
+		range_re='([0-9]+)-([0-9]+)'
+		while read -r range ; do
+			if [[ "${range}" =~ ${range_re} ]] ; then
+				mapfile -t -O "${#cpus[*]}" cpus <<< $(seq "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
+			else
+				cpus+=("${range}")
+			fi
+		done < <(tr ',' $'\n' < /sys/devices/system/cpu/online)
+	else
+		read -r -a cpus <<< $(seq 0 $(( $(conf_proc_count) - 1 )) )
+	fi
+	echo "${cpus[*]}"
+}
+
 # Helpers for get_possible_cpus.
 function get_possible_cpus_count_from_sysfs_possible_mask()
 {
@@ -202,8 +223,8 @@ function get_exposed_cpus_list()
 # value, e.g. that it could be 0.
 function get_any_available_cpu()
 {
-	for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
-		echo "${cpu#/sys/devices/system/cpu/cpu}"
+	for cpu in $(get_online_cpus); do
+		echo "${cpu}"
 		break;
 	done
 }

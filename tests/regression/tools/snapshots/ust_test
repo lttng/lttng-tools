@@ -212,7 +212,7 @@ function test_ust_local_snapshot_small_discard_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small discard buffers"
-	taskset -p 0x1 $$ 1>/dev/null 2>&1 	# CPU 0 only
+	taskset -c "$(get_any_available_cpu)" -p $$ 1>/dev/null 2>&1
 	create_lttng_session_no_output $SESSION_NAME
 	enable_mmap_small_discard_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
@@ -257,7 +257,7 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small overwrite buffers"
-	taskset -p 0x1 $$ 1>/dev/null 2>&1 	# CPU 0 only
+	taskset -p "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
 	create_lttng_session_no_output $SESSION_NAME
 	enable_mmap_small_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
@@ -304,7 +304,7 @@ function test_ust_local_snapshot_max_size ()
 	local snapshot_max_size
 	local channel_max_size_per_cpu
 
-	IFS=" " read -r -a cpus_list <<< "$(get_exposed_cpus_list)"
+	IFS=" " read -r -a cpus_list <<< "$(get_online_cpus)"
 
 	possible_cpus=$(get_possible_cpus_count)
 	subbuf_size=$(getconf PAGE_SIZE)
