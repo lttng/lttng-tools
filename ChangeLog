@@ -1,3 +1,16 @@
+2023-08-21 lttng-tools 2.13.11 (National Spumoni Day)
+	* Tests: use CPU ids from online ranges
+	* docs: fix: Match stated automake requirement
+	* Docs: Fix broken reference in lttng-add-trigger
+	* Docs: Fix broken reference to lttng-concepts(7) man page
+	* Tests: Preemptively fail infinite blocking tests when low on disk space
+	* Fix: lttng-add-context: leak of application context parameters
+	* Fix: sessiond: bad fd used while rotating exiting app's buffers
+	* Fix: consumerd: slow metadata push slows down application registration
+	* event-rule: set event rule loglevel to domain specific value when unset
+	* Fix: sessiond: preserve jul/log4j domain loglevels
+	* Fix: sessiond: crash enabling event rules that differ only by loglevel type
+
 2023-06-20 lttng-tools 2.13.10 (National Ice Cream Soda Day)
 	* Fix: sessiond: incorrect use of exclusions array leads to crash
 	* Tests fix: test_callstack: output of addr2line incorrectly parsed
