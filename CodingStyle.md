@@ -30,7 +30,7 @@ Note that clang-format 14 is required to use the project's `.clang-format` file.
 
 Most text editors allow you to format a sub-section of a source file using clang-format to ensure it adheres to the project's style.
 
-If you are submitting a change to existing source files, __do not run clang-format on the whole file_ as this may introduce more changes than you intended and _will_ cause your changes to be rejected.
+If you are submitting a change to existing source files, _do not run clang-format on the whole file_ as this may introduce more changes than you intended and _will_ cause your changes to be rejected.
 
 ## Tabs VS Spaces
 
