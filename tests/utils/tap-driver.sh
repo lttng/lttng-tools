@@ -211,6 +211,17 @@ function copy_in_global_log()
   return 0
 }
 
+function gettime_ns(    r,    cmd)
+{
+   cmd = "date +%s.%N"
+   r = ""
+   if (cmd | getline r) {
+     r = r
+   }
+   close(cmd)
+   return sprintf("%f", r)
+}
+
 function get_global_test_result()
 {
     if ("ERROR" in test_results_seen)
@@ -482,6 +493,7 @@ function write_test_results()
   print ":global-test-result: " get_global_test_result() > trs_file
   print ":recheck: "  yn(must_recheck()) > trs_file
   print ":copy-in-global-log: " yn(copy_in_global_log()) > trs_file
+  print ":time-taken: " sprintf("%f", gettime_ns() - TIME_START) > trs_file
   for (i = 0; i < test_results_index; i += 1)
     print ":test-result: " test_results_list[i] > trs_file
   close(trs_file);
@@ -515,6 +527,7 @@ bailed_out = 0 # Whether a "Bail out!" directive has been seen.
 # it is ("early" is seen before any test result, "late" otherwise).
 plan_seen = NO_PLAN
 
+TIME_START = gettime_ns();
 ## --------- ##
 ##  PARSING  ##
 ## --------- ##
