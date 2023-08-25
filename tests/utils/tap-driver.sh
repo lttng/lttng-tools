@@ -117,6 +117,8 @@ else
   init_colors=''
 fi
 
+TIME_SCRIPT="$(realpath -e -- "$(dirname "$0")")/tap/clock"
+
 # :; is there to work around a bug in bash 3.2 (and earlier) which
 # does not always set '$?' properly on redirection failure.
 # See the Autoconf manual for more details.
@@ -142,7 +144,13 @@ fi
     else
       exec 2>&3
     fi
-    "$@"
+    # Since stderr and stdout may go to the same file and the script
+    # may run in situations with different types of buffering, enforce
+    # line buffering for both FDs. This helps to prevent interleave between
+    # the outputs in the resulting file for half written lines, eg.
+    #   ok 93 - Tes# PERROR - xxxx
+    #   t some function
+    stdbuf -eL -oL -- "$@"
     echo $?
   ) | LC_ALL=C ${AM_TAP_AWK-awk} \
         -v me="$me" \
@@ -154,6 +162,7 @@ fi
         -v ignore_exit="$ignore_exit" \
         -v comments="$comments" \
         -v diag_string="$diag_string" \
+        -v time_script="${TIME_SCRIPT}" \
 '
 # TODO: the usages of "cat >&3" below could be optimized when using
 #       GNU awk, and/on on systems that supports /dev/fd/.
@@ -211,14 +220,13 @@ function copy_in_global_log()
   return 0
 }
 
-function gettime_ns(    r,    cmd)
+function gettime_ns(    r)
 {
-   cmd = "date +%s.%N"
    r = ""
-   if (cmd | getline r) {
+   if (time_script | getline r) {
      r = r
    }
-   close(cmd)
+   close(time_script)
    return sprintf("%f", r)
 }
 

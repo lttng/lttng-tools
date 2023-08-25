@@ -14,8 +14,11 @@ _test_died=0
 _expected_tests=0
 _executed_tests=0
 _failed_tests=0
+_auto_timing="${TAP_AUTOTIME:-1}"
+_last_time=''
 TODO=
-
+TIME_SCRIPT="$(realpath -e -- "$(dirname "${BASH_SOURCE[0]}")")/clock"
+print "${TIME_SCRIPT}"
 
 usage(){
     cat <<'USAGE'
@@ -52,6 +55,7 @@ TODO:
 
 OTHER:
   diag MSG
+  autotime 0|1
 
 EXAMPLE:
   #!/bin/bash
@@ -105,6 +109,7 @@ plan_no_plan(){
 
     _plan_set=1
     _no_plan=1
+    _last_time=$("${TIME_SCRIPT}")
 
     return 0
 }
@@ -119,6 +124,7 @@ plan_skip_all(){
 
     _skip_all=1
     _plan_set=1
+    _last_time=$("${TIME_SCRIPT}")
     _exit 0
 
     return 0
@@ -133,6 +139,7 @@ plan_tests(){
     _print_plan $tests
     _expected_tests=$tests
     _plan_set=1
+    _last_time=$("${TIME_SCRIPT}")
 
     return $tests
 }
@@ -195,6 +202,7 @@ ok(){
     fi
 
     echo
+    _autotime
     if (( result != 0 )) ; then
         local file='tap-functions'
         local func=
@@ -233,6 +241,7 @@ okx(){
         diag "$line"
     done
     ok ${PIPESTATUS[0]} "$command"
+    _autotime
 }
 
 
@@ -342,6 +351,7 @@ skip(){
         for (( i=0 ; i<$n ; i++ )) ; do
             _executed_tests=$(( _executed_tests + 1 ))
             echo "ok $_executed_tests # skip: $reason"
+            _autotime
         done
         return 0
     else
@@ -349,6 +359,32 @@ skip(){
     fi
 }
 
+_autotime(){
+    local new_time
+    local duration
+
+    if [ "${_auto_timing}" -eq "1" ] ; then
+        new_time=$("${TIME_SCRIPT}")
+        duration=$(awk "BEGIN { printf(\"%f\n\", ($new_time - $_last_time)*1000) }")
+        echo "  ---"
+        echo "    duration_ms: ${duration}"
+        echo "  ..."
+    fi
+    _last_time=$("${TIME_SCRIPT}")
+    return 0
+}
+
+
+autotime(){
+    local val=${1:?}
+
+    if [[ "${val}" != "0" ]] ; then
+        _auto_timing=1
+    else
+        _auto_timing=0;
+    fi
+    return 0
+}
 
 diag(){
     local msg=${1:?}

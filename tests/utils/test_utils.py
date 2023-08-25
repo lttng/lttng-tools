@@ -10,6 +10,7 @@ import os
 import subprocess
 import shutil
 import sys
+import time
 import tempfile
 
 # Import lttng bindings generated in the current tree
@@ -21,6 +22,11 @@ lttng_bindings_libs_path = lttng_bindings_path + "/.libs"
 sys.path.append(lttng_bindings_path)
 sys.path.append(lttng_bindings_libs_path)
 from lttng import *
+
+_time_tests = True
+if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0":
+    _time_tests = False
+_last_time = time.monotonic_ns()
 
 BABELTRACE_BIN="babeltrace2"
 
@@ -43,6 +49,15 @@ def bail(diag, session_info = None):
             shutil.rmtree(session_info.tmp_directory)
     exit(-1)
 
+def print_automatic_test_timing():
+    global _time_tests
+    global _last_time
+    if not _time_tests:
+        return
+    duration_ns = time.monotonic_ns() - _last_time
+    print("  ---\n    duration_ms: {:02f}\n  ...".format(duration_ns / 1_000_000))
+    _last_time = time.monotonic_ns()
+
 def print_test_result(result, number, description):
     result_string = None
     if result is True:
@@ -52,9 +67,11 @@ def print_test_result(result, number, description):
 
     result_string += " {0} - {1}".format(number, description)
     print(result_string)
+    print_automatic_test_timing()
 
 def skip_test(number, description):
     print('ok {} # skip {}'.format(number, description))
+    print_automatic_test_timing()
 
 def enable_ust_tracepoint_event(session_info, event_name):
     event = Event()

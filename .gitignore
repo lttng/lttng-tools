@@ -135,6 +135,7 @@ compile_commands.json
 /tests/regression/ust/multi-lib/exec-with-callsites
 /tests/regression/ust/multi-lib/exec-without-callsites
 /tests/utils/testapp/gen-data-pending/gen-data-pending
+/tests/utils/tap/clock
 /tests/utils/testapp/gen-syscall-events-callstack/gen-syscall-events-callstack
 /tests/utils/testapp/gen-ust-events/gen-ust-events
 /tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns

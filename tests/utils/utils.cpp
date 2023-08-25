@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static inline int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
+int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
 {
 	struct timespec delta;
 

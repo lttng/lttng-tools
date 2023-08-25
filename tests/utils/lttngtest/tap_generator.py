@@ -6,7 +6,9 @@
 #
 
 import contextlib
+import os
 import sys
+import time
 from typing import Iterator, Optional
 
 
@@ -70,6 +72,10 @@ class TapGenerator:
         self._last_test_case_id = 0  # type: int
         self._printed_plan = False  # type: bool
         self._has_failure = False  # type: bool
+        self._time_tests = True  # type: bool
+        if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0":
+            self._time_tests = False
+        self._last_time = time.monotonic_ns()
 
     def __del__(self):
         if self.remaining_test_cases > 0:
@@ -123,6 +129,7 @@ class TapGenerator:
 
     def test(self, result, description):
         # type: (bool, str) -> None
+        duration = (time.monotonic_ns() - self._last_time) / 1_000_000
         if self._last_test_case_id == self._total_test_count:
             raise InvalidTestPlan("Executing too many tests")
 
@@ -138,6 +145,9 @@ class TapGenerator:
                 description=description,
             )
         )
+        if self._time_tests:
+            self._print("---\n  duration_ms: {}\n...\n".format(duration))
+        self._last_time = time.monotonic_ns()
 
     def ok(self, description):
         # type: (str) -> None
