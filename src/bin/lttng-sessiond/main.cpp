@@ -1982,7 +1982,7 @@ int main(int argc, char **argv)
 	try {
 		return _main(argc, argv);
 	} catch (const std::exception& e) {
-		ERR_FMT("Unhandled exception caught by main thread: %s", e.what());
+		ERR_FMT("Unhandled exception caught by main thread: {}", e.what());
 		abort();
 	}
 }

@@ -559,7 +559,7 @@ int main()
 	try {
 		return _main();
 	} catch (const std::exception& e) {
-		ERR_FMT("Unhandled exception caught by action unit test: %s", e.what());
+		ERR_FMT("Unhandled exception caught by action unit test: {}", e.what());
 		abort();
 	}
 }
