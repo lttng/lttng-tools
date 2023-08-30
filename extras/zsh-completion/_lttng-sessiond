@@ -1,0 +1,153 @@
+#compdef lttng-sessiond
+#
+# Copyright (c) 2015-2023 Philippe Proulx <eeppeliteloop@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#
+# This is a Zsh completion function for the lttng-sessiond(1) command
+# (see <https://lttng.org/>), for versions 2.5 to 2.14.
+#
+# If you want, at your own risk, the function to work with versions
+# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+
+# Sets the `minor_version` variable to the minor version of LTTng-tools,
+# or to `0` if not found.
+__lttng_set_minor_version() {
+  minor_version=0
+
+  local -a match
+
+  if [[ $($words[1] --version) =~ '2\.([[:digit:]]+)' ]]; then
+    minor_version=$match[1]
+  fi
+}
+
+# Adds completions for an LTTng kernel probe name.
+__lttng_complete_probe_modules() {
+  # Find relevant kernel module files
+  local dir="/usr/lib/modules/$(uname -r)/extra"
+
+  if [[ ! -d $dir ]]; then
+    dir="/usr/lib/modules/$(uname -r)/updates"
+
+    if [[ ! -d $dir ]]; then
+      _message "cannot find directory \"$dir\""
+      return 1
+    fi
+  fi
+
+  local -a probe_files=("$dir"/**/lttng-probe-*.(ko|ko.gz|ko.zst)(:t))
+
+  if (($#probe_files == 0)); then
+    _message "no probe modules found in \"$dir\""
+    return 1
+  fi
+
+  # Strip prefix and extension
+  probe_files=(${probe_files#lttng-probe-})
+  probe_files=(${probe_files%.gz})
+  probe_files=(${probe_files%.zst})
+  probe_files=(${probe_files%.ko})
+
+  # Add completions
+  local expl
+
+  compadd "$@" -a - probe_files
+}
+
+# Adds completions for the arguments of the `lttng-sessiond` command.
+__lttng_complete_lttng_sessiond() {
+  local curcontext=$curcontext state state_descr line
+  local -A opt_args
+
+  # LTTng-tools 2.5+
+  local specs=(
+    '(-q --quiet)*'{-v,--verbose}'[increase verbosity]'
+    '(-q --quiet -v --verbose)'{-q,--quiet}'[suppress all messages, including warnings and errors]'
+    '(- : *)'{-V,--version}'[show version and quit]'
+    '(- : *)'{-h,--help}'[show help]'
+    '(-c --client-sock)'{-c+,--client-sock=}'[set the path to the client Unix socket]:client Unix socket path:_files'
+    '(-a --apps-sock)'{-a+,--apps-sock=}'[set the path to the app Unix socket]:app Unix socket path:_files'
+    '--kconsumerd-err-sock=[set the path to the kernel consumer daemon error socket]:kernel consumer daemon error Unix socket path:_files'
+    '--kconsumerd-cmd-sock=[set the path to the kernel consumer daemon command socket]:kernel consumer daemon command Unix socket path:_files'
+    '--ustconsumerd32-err-sock=[set the path to the 32-bit UST consumer daemon error Unix socket]:32-bit UST consumer daemon error Unix socket path:_files'
+    '--ustconsumerd32-cmd-sock=[set the path to the 32-bit UST consumer daemon command Unix socket]:32-bit UST consumer daemon command Unix socket path:_files'
+    '--ustconsumerd64-err-sock=[set the path to the 64-bit UST consumer daemon error Unix socket]:64-bit UST consumer daemon error Unix socket path:_files'
+    '--ustconsumerd64-cmd-sock=[set the path to the 64-bit UST consumer daemon command Unix socket]:64-bit UST consumer daemon command Unix socket path:_files'
+    '--consumerd32-path=[set the path to the 32-bit UST consumer daemon]:32-bit UST consumer daemon path:_files'
+    '--consumerd32-libdir=[set the path to the directory containing 32-bit UST consumer daemon libraries]:32-bit UST consumer daemon libraries directory path:_directories'
+    '--consumerd64-path=[set the path to the 64-bit UST consumer daemon]:64-bit UST consumer daemon path:_files'
+    '--consumerd64-libdir=[set the path to the directory containing 64-bit UST consumer daemon libraries]:64-bit UST consumer daemon libraries directory path:_directories'
+    '(-d --daemonize -b --background)'{-d,--daemonize}'[start as daemon and close file descriptors (console)]'
+    '(-b --background -d --daemonize)'{-b,--background}'[start as daemon, but keep file descriptors (console) open]'
+    '(-g --group)'{-g+,--group=}'[set the Unix tracing group name]:Unix tracing group name:_groups'
+    '(-S --sig-parent)'{-S,--sig-parent}'[send the USR1 signal to the parent process to notify readiness]'
+    '(-p --pidfile)'{-p+,--pidfile=}'[set the path to the PID file]:PID file path:_files'
+    "--verbose-consumer[increase verbosity of consumer daemon]"
+    '(--kmod-probes --extra-kmod-probes)--no-kernel[disable the kernel tracer]'
+    '(-f --config)'{-f+,--config=}'[set the path to the INI daemon configuration file]:configuration file path:_files'
+    '(-l --load)'{-l+,--load=}'[set the path from which to load recording session configurations]:recording session configurations path:_files'
+    '(--no-kernel --kmod-probes)--extra-kmod-probes=[extra kernel probe modules to load]:kernel probe module:_sequence __lttng_complete_probe_modules'
+  )
+
+  # LTTng-tools 2.5 only
+  if ((minor_version == 5)); then
+    specs+=(
+      '--jul-tcp-port=[set the TCP port on which to listen for `java.util.logging` application registration]:JUL application registration TCP port: '
+    )
+  fi
+
+  # LTTng-tools 2.6+
+  if ((minor_version >= 6)); then
+    specs+=(
+      '--agent-tcp-port=[set the TCP port on which to listen for agent application registration]:agent application registration TCP port: '
+      '(--no-kernel --extra-kmod-probes)--kmod-probes=[kernel probe modules to load]:kernel probe module:_sequence __lttng_complete_probe_modules'
+    )
+  fi
+
+  # LTTng-tools 2.13+
+  if ((minor_version >= 13)); then
+    specs+=(
+      '--event-notifier-error-buffer-size-kernel=[set the size of the kernel event notifier error counter buffers]:kernel event notifier error counter buffer size (slots): '
+      '--event-notifier-error-buffer-size-userspace=[set the size of the user space event notifier error counter buffers]:user space event notifier error counter buffer size (slots): '
+    )
+  fi
+
+  _arguments -C -s -w : $specs
+}
+
+# First, set the `minor_version` variable to the minor version of
+# LTTng-tools. Some features depend on a specific version and this
+# completion function supports many versions from LTTng-tools 2.5.
+local -i minor_version
+
+__lttng_set_minor_version
+
+# Exit now with LTTng-tools < 2.5 or LTTng-tools > 2.14
+local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
+
+if ((minor_version < 5 || (minor_version > 14 && !ignore_version_limit))); then
+  _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
+  return 1
+fi
+
+# Add completions for lttng-sessiond(1)
+__lttng_complete_lttng_sessiond "$@"

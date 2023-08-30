@@ -1,0 +1,93 @@
+#compdef lttng-relayd
+#
+# Copyright (c) 2015-2023 Philippe Proulx <eeppeliteloop@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#
+# This is a Zsh completion function for the lttng-relayd(1) command
+# (see <https://lttng.org/>), for versions 2.5 to 2.14.
+#
+# If you want, at your own risk, the function to work with versions
+# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+
+# Sets the `minor_version` variable to the minor version of LTTng-tools,
+# or to `0` if not found.
+__lttng_set_minor_version() {
+  minor_version=0
+
+  local -a match
+
+  if [[ $($words[1] --version) =~ '2\.([[:digit:]]+)' ]]; then
+    minor_version=$match[1]
+  fi
+}
+
+# Adds completions for the arguments of the `lttng-relayd` command.
+__lttng_complete_lttng_relayd() {
+  local curcontext=$curcontext state state_descr line
+  local -A opt_args
+
+  # LTTng-tools 2.5+
+  local specs=(
+    '*'{-v,--verbose}'[increase verbosity]'
+    '(- : *)'{-V,--version}'[show version and quit]'
+    '(- : *)'{-h,--help}'[show help]'
+    '(-d --daemonize -b --background)'{-d,--daemonize}'[start as daemon and close file descriptors (console)]'
+    '(-b --background -d --daemonize)'{-b,--background}'[start as daemon, but keep file descriptors (console) open]'
+    '(-C --control-port)'{-C+,--control-port=}'[set the control port URL]:control port URL: '
+    '(-D --data-port)'{-D+,--data-port=}'[set the data port URL]:data port URL: '
+    '(-L --live-port)'{-L+,--live-port=}'[set the live port URL]:live port URL: '
+    '(-o --output)'{-o+,--output=}'[set the trace output directory path]:trace output directory path:_directories'
+    '(-g --group)'{-g+,--group=}'[set the Unix tracing group name]:Unix tracing group name:_groups'
+    '(-f --config)'{-f+,--config=}'[set the path to the INI daemon configuration file]:configuration file path:_files'
+  )
+
+  # LTTng-tools 2.12+
+  if ((minor_version >= 12)); then
+    specs+=(
+      '(--fd-pool-size)--fd-pool-size=[set the size of the file descriptor pool]:file descriptor pool size: '
+      '(-w --working-directory)'{-w+,--working-directory=}'[set the working directory of the processes `lttng-relayd` creates]:working directory:_directories'
+      '(-p --group-output-by-host -s --group-output-by-session)'{-p,--group-output-by-host}'[group the written trace directories by hostname]'
+      '(-p --group-output-by-host -s --group-output-by-session)'{-s,--group-output-by-session}'[group the written trace directories by recording session name]'
+      '(-x --disallow-clear)'{-x,--disallow-clear}'[disallow clearing operations]'
+    )
+  fi
+
+  _arguments -C -s -w : $specs
+}
+
+# First, set the `minor_version` variable to the minor version of
+# LTTng-tools. Some features depend on a specific version and this
+# completion function supports many versions from LTTng-tools 2.5.
+local -i minor_version
+
+__lttng_set_minor_version
+
+# Exit now with LTTng-tools < 2.5 or LTTng-tools > 2.14
+local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
+
+if ((minor_version < 5 || (minor_version > 14 && !ignore_version_limit))); then
+  _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
+  return 1
+fi
+
+# Add completions for lttng-relayd(1)
+__lttng_complete_lttng_relayd "$@"

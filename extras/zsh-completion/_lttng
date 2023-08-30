@@ -1,0 +1,2040 @@
+#compdef lttng
+#
+# Copyright (c) 2015-2023 Philippe Proulx <eeppeliteloop@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#
+# This is a Zsh completion function for the lttng(1) command (see
+# <https://lttng.org/>), for versions 2.5 to 2.14.
+#
+# If you want, at your own risk, the function to work with versions
+# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+#
+# Each subcommand changes the command part of the current context so
+# that you can target a specific subcommand with `zstyle`, for
+# example:
+#
+#     $ zstyle ':completion:*:*:lttng-start:*:sessions' verbose yes
+#     $ zstyle ':completion:*:*:lttng-add-context:type-option:*' \
+#              group-order perf-context-types static-context-types
+#
+# The relevant style arguments and tags are:
+#
+# `actions` tag (with the `lttng-snapshot` command):
+#     Snapshot action names.
+#
+# `channel` argument and `channels` tag:
+#     Channel names.
+#
+#     The `verbose` style controls whether or not this function adds
+#     completions as a list (with channel information for each item) or
+#     simple channel names.
+#
+#     If the verbose style is enabled, then the information part of each
+#     item starts with either `  [enabled` or `  [disabled` (note the
+#     two leading spaces), depending on the status of the channel.
+#
+# `commands` tag:
+#     lttng(1) subcommand names.
+#
+# `log-levels` tag:
+#     Log level names.
+#
+# `session` argument and `sessions` tag:
+#     Recording session names.
+#
+#     The `verbose` style controls whether or not this function adds
+#     completions as a list (with recording session information for each
+#     item) or simple recording session names.
+#
+#     If the verbose style is enabled, then the information part of each
+#     item starts with either `  [active` or `  [inactive` (note the two
+#     leading spaces), depending on the status of the recording session.
+#
+# `type-option` argument:
+#     `static-context-types` tag:
+#         Statically-known context field types.
+#
+#     `perf-context-types` tag:
+#         perf counter context field types.
+#
+# `triggers` tag:
+#     Trigger names.
+
+# Sets the `minor_version` variable to the minor version of LTTng-tools,
+# or to `0` if not found.
+__lttng_set_minor_version() {
+  minor_version=0
+
+  local -a match
+
+  if [[ $($prog_name --version) =~ '[[:blank:]]+2\.([[:digit:]]+)' ]]; then
+    minor_version=$match[1]
+  fi
+}
+
+# Runs the `lttng` command with `"$@"` using `$tracing_group`.
+__lttng_run() {
+  $prog_name --no-sessiond --group=$tracing_group "$@" 2>/dev/null
+}
+
+# Runs the `lttng --mi=xml` command using the selected tracing group
+# (`$tracing_group`) with:
+#
+# `$1`:
+#     A message of what's expected to show on error.
+#
+# Other arguments:
+#     Passed to the command as is.
+#
+# This function returns 1 with LTTng-tools < 2.6 and if `xmllint` isn't
+# available.
+__lttng_mi_run() {
+  local -r msg=$1
+
+  shift
+
+  if ((minor_version < 6)); then
+    # MI output requires LTTng-tools ≥ 2.6
+    _message -e descriptions $msg
+    return 1
+  fi
+
+  if ((! $+commands[xmllint])); then
+    # XML output parsing requires xmllint
+    _message -e descriptions $msg
+    return 1
+  fi
+
+  __lttng_run --mi=xml "$@"
+
+  if (($? != 0)); then
+    # Command failed
+    _message -e descriptions $msg
+    return 1
+  fi
+}
+
+# Call this instead of _arguments() within this function when you don't
+# need the `-C` option.
+__lttng_arguments() {
+  _arguments -s -W : "$@"
+}
+
+# Returns whether or not the verbose style is enabled for the given
+# argument (`$1`) and tag (`$2`), using `$curcontext` for the other
+# parts of the full completion context.
+__lttng_style_is_verbose() {
+  local -r arg=$1 tag=$2
+  local -r ccparts=("${(@s.:.)curcontext}")
+
+  zstyle -t :completion:${ccparts[1]}:${ccparts[2]}:${ccparts[3]}:$arg:$tag verbose
+}
+
+# Returns 0 if a Linux kernel tracing domain option is set in
+# `$opt_args`, or `1` otherwise.
+__lttng_kernel_domain_opt_is_set() {
+  (($+opt_args[-k] || $+opt_args[--kernel] ||
+    $+opt_args[domain--k] || $+opt_args[domain---kernel]))
+}
+
+# Returns 0 if a user space tracing domain option is set in
+# `$opt_args`, or `1` otherwise.
+__lttng_user_domain_opt_is_set() {
+  (($+opt_args[-u] || $+opt_args[--userspace] ||
+    $+opt_args[domain--u] || $+opt_args[domain---userspace]))
+}
+
+# Returns 0 if a `java.util.logging` tracing domain option is set in
+# `$opt_args`, or `1` otherwise.
+__lttng_jul_domain_opt_is_set() {
+  (($+opt_args[-j] || $+opt_args[--jul] ||
+    $+opt_args[domain--j] || $+opt_args[domain---jul]))
+}
+
+# Returns 0 if an Apache log4j tracing domain option is set in
+# `$opt_args`, or `1` otherwise.
+__lttng_log4j_domain_opt_is_set() {
+  (($+opt_args[-l] || $+opt_args[--log4j] ||
+    $+opt_args[domain--l] || $+opt_args[domain---log4j]))
+}
+
+# Returns 0 if a Python tracing domain option is set in `$opt_args`,
+# or `1` otherwise.
+__lttng_python_domain_opt_is_set() {
+  (($+opt_args[-p] || $+opt_args[--python] ||
+    $+opt_args[domain--p] || $+opt_args[domain---python]))
+}
+
+# Adds completions for the name of an `lttng` command.
+__lttng_complete_cmd_name() {
+  # LTTng-tools 2.5+
+  local cmd_names=(
+    'add-context:add context fields to be recorded'
+    'create:create a recording session'
+    'destroy:destroy a recording session'
+    'disable-channel:disable channels'
+    'disable-event:disable recording event rules'
+    'enable-channel:create or enable a channel'
+    'enable-event:create or enable recording event rules'
+    'help:show the help of a command'
+    'list:list recording sessions and instrumentation points'
+    'set-session:set the current recording session'
+    'snapshot:take a recording session snapshot'
+    'start:start a recording session'
+    'stop:stop a recording session'
+    'version:show LTTng-tools version information'
+    'view:launch a trace reader'
+  )
+
+  # LTTng-tools 2.6+
+  if ((minor_version >= 6)); then
+    cmd_names+=(
+      'load:load recording session configurations'
+      'save:save recording session configurations'
+    )
+  fi
+
+  # LTTng-tools 2.7+
+  if ((minor_version >= 7)); then
+    cmd_names+=(
+      'track:allow specific processes to record events'
+      'untrack:disallow specific processes to record events'
+    )
+  fi
+
+  # LTTng-tools 2.8+
+  if ((minor_version >= 8)); then
+    cmd_names+=(
+      'status:show the status of the current recording session'
+    )
+  fi
+
+  # LTTng-tools 2.9+
+  if ((minor_version >= 9)); then
+    cmd_names+=(
+      'regenerate:regenerate specific recording session data'
+    )
+  fi
+
+  # LTTng-tools 2.11+
+  if ((minor_version >= 11)); then
+    cmd_names+=(
+      'rotate:archive the current trace chunk of a recording session'
+      'enable-rotation:set a recording session rotation schedule'
+      'disable-rotation:unset a recording session rotation schedule'
+    )
+  fi
+
+  # LTTng-tools 2.12+
+  if ((minor_version >= 12)); then
+    cmd_names+=(
+      'clear:clear a recording session'
+    )
+  fi
+
+  # LTTng-tools 2.13+
+  if ((minor_version >= 13)); then
+    cmd_names+=(
+      'add-trigger:add a trigger'
+      'list-triggers:list triggers'
+      'remove-trigger:remove a trigger'
+    )
+  fi
+
+  # Add completions
+  local expl
+
+  _describe -t commands command cmd_names
+}
+
+# Adds completions for the name of an `lttng snapshot` action.
+__lttng_complete_snapshot_action_name() {
+  local -r action_names=(
+    'add-output:add a snapshot output'
+    'del-output:remove a snapshot output'
+    'list-output:show the snapshot output'
+    'record:take a snapshot'
+  )
+
+  # Add completions
+  local expl
+
+  _describe -t actions 'snapshot action' action_names
+}
+
+# Adds user ID completions.
+#
+# The added completions are displayed as user names, but the actual
+# completions are corresponding user IDs.
+__lttng_complete_uid() {
+  if [[ ! -f /etc/passwd ]]; then
+    # Weird flex but ok
+    _message -e descriptions 'user ID'
+    return
+  fi
+
+  # Read user names and IDs from `/etc/passwd`
+  local line
+  local -a uids names fields
+
+  while read -r line; do
+    if [[ -z ${line// } ]]; then
+      # Skip empty line
+      continue
+    fi
+
+    # Extract user ID and name
+    fields=("${(@s/:/)line}")
+    uids+=($fields[3])
+    names+=("$fields[1]")
+  done < /etc/passwd
+
+  # Add completions
+  local expl
+
+  _wanted users expl 'user ID' compadd -d names -a uids
+}
+
+# Adds completions for a context field type (for the `--type` option of
+# the `add-context` command).
+#
+# This function replaces the argument field of the current context with
+# `type-option`.
+#
+# This function relies on the tracing domain options of `$opt_args` to
+# restrict the offered completions. Without a tracing domain option,
+# this function adds all the possible context field type completions.
+#
+# This function runs `lttng add-context --list` to get the list of
+# available context field types.
+#
+# This function adds completions with both the `static-context-types`
+# and `perf-context-types` tags so that the Zsh user can hide a group or
+# select them with the `group-order` and `tag-order` style.
+__lttng_complete_context_type() {
+  # Statically-known context field types
+  local kernel_types=(
+    pid procname prio nice vpid tid vtid ppid vppid hostname
+    interruptible preemptible need_reschedule migratable
+    callstack-kernel callstack-user cgroup_ns ipc_ns mnt_ns net_ns
+    pid_ns time_ns user_ns uts_ns uid euid suid gid egid sgid vuid veuid
+    vsuid vgid vegid vsgid
+  )
+  local user_types=(
+    vpid pthread_id procname ip cgroup_ns ipc_ns mnt_ns net_ns pid_ns
+    time_ns user_ns uts_ns vuid veuid vsuid vgid vegid vsgid
+  )
+
+  # Set `types` and `domain` depending on the selected tracing domain
+  local -a types
+  local domain descr_suffix
+
+  if __lttng_kernel_domain_opt_is_set; then
+    # Kernel context field types
+    types=($kernel_types)
+    domain=k
+  elif __lttng_user_domain_opt_is_set; then
+    # User space context field types
+    types=($user_types)
+    domain=u
+  else
+    # No supported tracing domain: offer all context field types
+    types=($user_types $kernel_types)
+    descr_suffix=' (all tracing domains)'
+  fi
+
+  # Get XML list of available context field types
+  local -r msg='context type'
+  local list_xml
+
+  list_xml=$(__lttng_mi_run $msg add-context --list)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Convert to one context field type per line
+  local lines
+
+  lines=$(__lttng_xmllint_xpath $list_xml '//*[local-name()="symbol"]/text()')
+
+  if (($? != 0)); then
+    _guard '^-*' $msg
+    return
+  fi
+
+  # Filter context field types depending on the selected tracing domain
+  local -a static_items perf_items
+  local line
+
+  while read -r line; do
+    if (($types[(Ie)$line])); then
+      # Statically-known context field type
+      static_items+=$line
+    elif [[ $line = perf:cpu:* && $domain != u ]]; then
+      # Per-CPU perf counter
+      perf_items+=$line
+    elif [[ $line = perf:thread:* && $domain != k ]]; then
+      # Per-thread perf counter
+      perf_items+=$line
+    elif [[ $line = perf:* && $domain != u ]]; then
+      # Other perf counter (Linux kernel tracing domain or none)
+      perf_items+=$line
+    fi
+  done <<< $lines
+
+  # Add completions
+  _alternative -C type-option \
+    "static-context-types:statically-known context type${descr_suffix}:compadd -a static_items" \
+    "perf-context-types:perf counter context type${descr_suffix}:compadd -a perf_items"
+}
+
+# Adds completions for a trigger name.
+#
+# Relies on `$opt_args[--owner-uid]` to restrict the offered
+# completions.
+__lttng_complete_trigger_name() {
+  # Get XML list of available triggers
+  local msg='trigger name'
+  local list_xml
+
+  list_xml=$(__lttng_mi_run $msg list-triggers)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Create the owner UID predicate XPath part
+  local owner_uid_xpath
+
+  if (($+opt_args[--owner-uid])); then
+    owner_uid_xpath="[./*[local-name()='owner_uid'] = ${opt_args[--owner-uid]}]"
+  fi
+
+  # Convert to one trigger name per line
+  local lines
+
+  lines=$(__lttng_xmllint_xpath $list_xml "//*[local-name()='trigger']$owner_uid_xpath/*[local-name()='name']/text()")
+
+  if (($? != 0)); then
+    _guard '^-*' $msg
+    return
+  fi
+
+  local -a trigger_names
+
+  while read -r line; do
+    trigger_names+=$line
+  done <<< $lines
+
+  # Add completions
+  local expl
+
+  _wanted triggers expl $msg compadd -a trigger_names
+}
+
+# Runs `xmllint` with:
+#
+# `$1`:
+#     An XML document to parse.
+#
+# `$2`:
+#     An XPath to extract data.
+__lttng_xmllint_xpath() {
+  local -r xml=$1 xpath=$2
+
+  xmllint --xpath $xpath - <<< $xml 2>/dev/null
+}
+
+# Prints the equivalent recording session status adjective (`active` or
+# `inactive`) for an `enabled` XML property, or `unknown` on error.
+__lttng_session_status_from_enabled_prop() {
+  local -r prop=$1
+
+  case $prop in
+    true) echo -n active;;
+    false) echo -n inactive;;
+    *) echo -n unknown;;
+  esac
+}
+
+# Prints the value of the immediate XML property named `$3` of the child
+# node named `$2` within the parent node `$1`.
+__lttng_immediate_prop_from_xml() {
+  local -r node_xml=$1 node_name=$2 prop_name=$3
+
+  __lttng_xmllint_xpath $node_xml "/*[local-name()='$node_name']/*[local-name()='$prop_name']/text()"
+}
+
+# Prints the value of the immediate XML `name` property of the child
+# node named `$2` within the parent node `$1`.
+__lttng_name_prop_from_xml() {
+  local -r node_xml=$1 node_name=$2
+
+  __lttng_immediate_prop_from_xml $node_xml $node_name name
+}
+
+# Prints the value of the immediate XML `enabled` property of the child
+# node named `$2` within the parent node `$1`.
+__lttng_enabled_prop_from_xml() {
+  local -r node_xml=$1 node_name=$2
+
+  __lttng_immediate_prop_from_xml $node_xml $node_name enabled
+}
+
+# Adds completions for a recording session name.
+#
+# Arguments:
+#
+# `$1`:
+#     One of:
+#
+#     `all`:
+#         Add completions for active and inactive recording sessions.
+#
+#     `active`:
+#         Only add completions for active recording sessions.
+#
+#     `inactive`:
+#         Only add completions for inactive recording sessions.
+#
+# `$2`:
+#     One of:
+#
+#     `all`:
+#         Add completions for recording sessions regardless of their
+#         mode.
+#
+#     `snapshot`:
+#         Only add completions for snapshot recording sessions.
+#
+#     `live`:
+#         Only add completions for LTTng live recording sessions.
+__lttng_complete_session_name() {
+  local -r req_status=$1 req_mode=$2
+
+  # Get XML document (summary of recording sessions)
+  local session_summaries_xml
+
+  session_summaries_xml=$(__lttng_mi_run 'recording session name' list)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Count recording sessions
+  local -i session_count
+
+  session_count=$(__lttng_xmllint_xpath $session_summaries_xml 'count(//*[local-name()="session"])')
+
+  if (($? != 0 || session_count == 0)); then
+    _guard '^-*' 'recording session name'
+    return
+  fi
+
+  # Append the name and info of one recording session at a time
+  local -a session_names session_infos
+  local -i index iprop
+  local session_name session_summary_xml snapshot_mode session_status session_info
+
+  # For each recording session summary
+  for index in {1..$session_count}; do
+    # Get recording session summary XML node
+    session_summary_xml=$(__lttng_xmllint_xpath $session_summaries_xml "//*[local-name()='session'][$index]")
+
+    if (($? != 0)); then
+      continue
+    fi
+
+    # Get recording session name
+    session_name=$(__lttng_name_prop_from_xml $session_summary_xml session)
+
+    if (($? != 0)); then
+      continue
+    fi
+
+    # Get recording session status
+    session_status=$(__lttng_enabled_prop_from_xml $session_summary_xml session)
+
+    if (($? != 0)); then
+      continue
+    fi
+
+    session_status=$(__lttng_session_status_from_enabled_prop $session_status)
+
+    if [[ $req_status != all && $req_status != $session_status ]]; then
+      # Skip recording session with unexpected status
+      continue
+    fi
+
+    # Get recording session mode
+    session_mode=
+    iprop=$(__lttng_immediate_prop_from_xml $session_summary_xml session snapshot_mode)
+
+    if (($? == 0 && iprop)); then
+      session_mode=snapshot
+    else
+      iprop=$(__lttng_immediate_prop_from_xml $session_summary_xml session live_timer_interval)
+
+      if (($? == 0 && iprop)); then
+        session_mode=live
+      fi
+    fi
+
+    if [[ $req_mode != all && $req_mode != $session_mode ]]; then
+      # Skip recording session with unexpected mode
+      continue
+    fi
+
+    session_info=$session_status
+
+    if [[ -n $session_mode ]]; then
+      session_info+=", $session_mode mode"
+    fi
+
+    session_names+=("$session_name")
+    session_infos+=($session_info)
+  done
+
+  # No recording sessions: show message
+  if (($#session_names == 0)); then
+    _guard '^-*' 'recording session name'
+    return
+  fi
+
+  # Compute maximum session info length
+  local -i max_info_len=0 len
+
+  for session_info in $session_infos; do
+    len=$#session_info
+
+    if ((len > max_info_len)); then
+      max_info_len=$len
+    fi
+  done
+
+  # Compute maximum session name length
+  local -i max_name_len=0
+
+  for session_name in $session_names; do
+    len=$#session_name
+
+    if ((len > max_name_len)); then
+      max_name_len=$len
+    fi
+  done
+
+  # Some room for the longest info string, two spaces, and two brackets
+  local -ir max_possible_name_len=$((COLUMNS - max_info_len - 5))
+
+  if ((max_name_len > max_possible_name_len)); then
+    # Clamp
+    max_name_len=$max_possible_name_len
+  fi
+
+  # Create the dislay strings (name, status, mode)
+  local -a disps
+
+  for index in {1..${#session_names}}; do
+    disps+=("${(r:$max_name_len:: :)session_names[$index]}  [$session_infos[$index]]")
+  done
+
+  # Add completions
+  local expl
+
+  if __lttng_style_is_verbose session sessions; then
+    # Verbose mode (list with infos)
+    _wanted -C session sessions expl 'recording session name' \
+      compadd -d disps -l -a session_names
+  else
+    # Just the recording session names
+    _wanted -C session sessions expl 'recording session name' \
+      compadd -a session_names
+  fi
+}
+
+# Prints the name of the Unix user's current recording session, if any.
+__lttng_cur_session_name() {
+  local -r lttngrc_path=${LTTNG_HOME:-$HOME}/.lttngrc
+
+  if [[ ! -f $lttngrc_path ]]; then
+    return 1
+  fi
+
+  local cur_session_name
+  local -a match
+
+  while read -r line; do
+    if [[ $line =~ 'session=([^[:blank:]]+)' ]]; then
+      cur_session_name=$match[1]
+      break
+    fi
+  done < $lttngrc_path
+
+  if [[ -z $cur_session_name ]]; then
+    return 1
+  fi
+
+  echo -n $cur_session_name
+}
+
+# Prints the equivalent status adjective (`enabled` or `disabled`) for
+# an `enabled` XML property, or `unknown` on error.
+__lttng_status_from_enabled_prop() {
+  local -r prop=$1
+
+  case $prop in
+    true) echo -n enabled;;
+    false) echo -n disabled;;
+    *) echo -n unknown;;
+  esac
+}
+
+# Prints the XML document of `lttng list $2` (specifics of a single
+# recording session).
+#
+# `$1` is a message of what's expected to show on error.
+__lttng_session_xml() {
+  local -r msg=$1 session_name=$2
+
+  __lttng_mi_run $msg list $session_name
+}
+
+# Adds completions for a channel name.
+#
+# This function relies on the tracing domain options of `$opt_args`,
+# `$opt_args[-s]`, `$opt_args[--session]`, and the first non-option
+# argument to restrict the offered completions.
+#
+# Arguments:
+#
+# `$1`:
+#     One of:
+#
+#     `all`:
+#         Add completions for enabled and disabled channels.
+#
+#     `enabled`:
+#         Only add completions for enabled channels.
+#
+#     `disabled`:
+#         Only add completions for disabled channels.
+#
+# `$2`:
+#     `opt`:
+#         Use `$opt_args[-s]` and `$opt_args[--session]` to find the
+#         name of the selected recording session.
+#
+#     `arg`:
+#         Use `$line[1]` to find the name of the selected recording
+#         session.
+__lttng_complete_channel_name() {
+  local -r req_status=$1 session_name_src=$2
+
+  shift 2
+
+  # Find the recording session name to use
+  local session_name
+
+  if [[ $session_name_src = opt ]]; then
+    if (($+opt_args[-s])); then
+      session_name=$opt_args[-s]
+    elif (($+opt_args[--session])); then
+      session_name=$opt_args[--session]
+    fi
+  elif [[ $session_name_src = arg ]]; then
+    session_name=$line[1]
+  fi
+
+  if [[ -z $session_name ]]; then
+    # Fall back to current recording session
+    session_name=$(__lttng_cur_session_name)
+
+    if (($? != 0)); then
+      _guard '^-*' 'channel name'
+      return
+    fi
+  fi
+
+  # Get XML document (detailed recording session)
+  local session_xml
+
+  session_xml=$(__lttng_session_xml 'channel name' $session_name)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Count tracing domains
+  local -i domain_count
+
+  domain_count=$(__lttng_xmllint_xpath $session_xml 'count(//*[local-name()="domain"])')
+
+  if (($? != 0 || domain_count == 0)); then
+    _guard '^-*' 'channel name'
+    return
+  fi
+
+  # Append the name and info of one channel at a time
+  local domain_xml domain prop
+  local channel_xml channel_name channel_status channel_erl_mode
+  local -a channel_names channel_infos
+  local -i channel_count domain_index channel_index
+
+  # For each tracing domain
+  for domain_index in {1..$domain_count}; do
+    # Get tracing domain XML node
+    domain_xml=$(__lttng_xmllint_xpath $session_xml "//*[local-name()='domain'][$domain_index]")
+
+    if (($? != 0)); then
+      continue
+    fi
+
+    # Get tracing domain type
+    domain=$(__lttng_xmllint_xpath $domain_xml '/*/*[local-name()="type"]/text()')
+
+    if (($? != 0)); then
+      continue
+    fi
+
+    # Skip unexpected tracing domains
+    if [[ $domain = KERNEL ]]; then
+      if __lttng_user_domain_opt_is_set; then
+        # Skip unexpected Linux kernel tracing domain
+        continue
+      fi
+
+      domain='Linux kernel'
+    fi
+
+    if [[ $domain = UST ]]; then
+      if __lttng_kernel_domain_opt_is_set; then
+        # Skip unexpected user space tracing domain
+        continue
+      fi
+
+      domain='user space'
+    fi
+
+    # Count channels within tracing domain
+    channel_count=$(__lttng_xmllint_xpath $domain_xml 'count(//*[local-name()="channel"])')
+
+    if (($? != 0 || channel_count == 0)); then
+      continue
+    fi
+
+    # For each channel
+    for channel_index in {1..$channel_count}; do
+      # Get channel XML node
+      channel_xml=$(__lttng_xmllint_xpath $domain_xml "//*[local-name()='channel'][$channel_index]")
+
+      if (($? != 0)); then
+        continue
+      fi
+
+      # Get channel name
+      channel_name=$(__lttng_name_prop_from_xml $channel_xml channel)
+
+      if (($? != 0)); then
+        continue
+      fi
+
+      # Get channel status
+      channel_status=$(__lttng_enabled_prop_from_xml $channel_xml channel)
+
+      if (($? != 0)); then
+        continue
+      fi
+
+      channel_status=$(__lttng_status_from_enabled_prop $channel_status)
+
+      if [[ $req_status != all && $req_status != $channel_status ]]; then
+        # Skip channel with unexpected status
+        continue
+      fi
+
+      # Get channel event record loss mode
+      channel_erl_mode=$(__lttng_xmllint_xpath $channel_xml '//*[local-name()="attributes"]/*[local-name()="overwrite_mode"]/text()')
+
+      if (($? != 0)); then
+        continue
+      fi
+
+      if [[ $channel_erl_mode = DISCARD ]]; then
+        channel_erl_mode=discard
+      elif [[ $channel_erl_mode = OVERWRITE ]]; then
+        channel_erl_mode=overwrite
+      fi
+
+      channel_names+=("$channel_name")
+      channel_infos+=("$channel_status, $domain, $channel_erl_mode mode")
+    done
+  done
+
+  # No channels: show message
+  if (($#channel_names == 0)); then
+    _guard '^-*' 'channel name'
+    return
+  fi
+
+  # Compute maximum channel info length
+  local channel_info
+  local -i max_info_len=0 len
+
+  for channel_info in $channel_infos; do
+    len=$#channel_info
+
+    if ((len > max_info_len)); then
+      max_info_len=$len
+    fi
+  done
+
+  # Compute maximum channel name length
+  local -i max_name_len=0
+
+  for channel_name in $channel_names; do
+    len=$#channel_name
+
+    if ((len > max_name_len)); then
+      max_name_len=$len
+    fi
+  done
+
+  # Some room for the longest info string, two spaces, and two brackets
+  local -ir max_possible_name_len=$((COLUMNS - max_info_len - 5))
+
+  if ((max_name_len > max_possible_name_len)); then
+    # Clamp
+    max_name_len=$max_possible_name_len
+  fi
+
+  # Create the dislay strings (name, status, tracing domain, mode)
+  local -a disps
+
+  for channel_index in {1..${#channel_names}}; do
+    disps+=("${(r:$max_name_len:: :)channel_names[$channel_index]}  [$channel_infos[$channel_index]]")
+  done
+
+  # Add completions
+  local expl
+
+  if __lttng_style_is_verbose channel channels; then
+    # Verbose mode (list with infos).
+    #
+    # Using `-2` as Linux kernel and user space channels may have the
+    # same name, but we want to show the different infos.
+    _wanted -C channel channels expl 'channel name' \
+      compadd "$@" -2 -d disps -l -a channel_names
+  else
+    # Just the channel names, no duplicates
+    _wanted -C channel channels expl 'channel name' \
+      compadd "$@" -a channel_names
+  fi
+}
+
+# Add completions for instrumentation point names.
+#
+# This function relies on the tracing domain options of `$opt_args` and
+# `$opt_args[ip---syscall]` to restrict the offered completions.
+__lttng_complete_ip_name() {
+  local msg
+  local -a list_opts
+
+  if __lttng_kernel_domain_opt_is_set; then
+    list_opts=(-k)
+
+    if (($+opt_args[ip---syscall])); then
+      msg='system call name (no `sys_` prefix)'
+      list_opts+=(--syscall)
+    else
+      msg='Linux kernel tracepoint name'
+    fi
+  elif __lttng_user_domain_opt_is_set; then
+    msg='user space tracepoint name'
+    list_opts=(-u)
+  elif __lttng_jul_domain_opt_is_set; then
+    msg='`java.util.logging` logger name'
+    list_opts=(-j)
+  elif __lttng_log4j_domain_opt_is_set; then
+    msg='Apache log4j logger name'
+    list_opts=(-l)
+  elif __lttng_python_domain_opt_is_set; then
+    msg='Python logger name'
+    list_opts=(-p)
+  else
+    # No tracing domain option
+    _guard '^-*' 'instrumentation point or recording event rule name'
+    return
+  fi
+
+  # Get XML list of available instrumentation point names
+  local list_xml
+
+  list_xml=$(__lttng_mi_run $msg list $list_opts)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Convert to one instrumentation point name per line
+  local ip_names
+
+  ip_names=$(__lttng_xmllint_xpath $list_xml '//*[local-name()="event"]//*[local-name()="name"]/text()')
+
+  if (($? != 0)) || [[ -z $ip_names ]]; then
+    # `xmllint` error or no instrumentation points
+    _guard '^-*' $msg
+    return
+  fi
+
+  local ip_name
+  local -a items
+
+  while read -r ip_name; do
+    if [[ -z $ip_name ]]; then
+      continue
+    fi
+
+    items+=($ip_name)
+  done <<< $ip_names
+
+  # Add completions
+  local expl
+
+  _wanted instrumentation-points expl $msg compadd "$@" -a items
+}
+
+# Adds completions for the arguments of the `add-context` command.
+__lttng_complete_add_context_cmd() {
+  local specs=(
+    $help_opt_specs
+    '(- : *)--list[list the available context field types]'
+    '(--list -s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name inactive all'
+    '(--list -c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name enabled opt'
+    '(--list)*'{-t+,--type=}'[add a context field to be recorded]: : __lttng_complete_context_type'
+    + '(domain)'
+    '(--list)'{-k,--kernel}'[select the Linux kernel tracing domain]'
+    '(--list)'{-u,--userspace}'[select the user space tracing domain]'
+  )
+
+  # The Java tracing domain options require LTTng-tools ≥ 2.8 (for
+  # application-specific context field types).
+  if ((minor_version >= 8)); then
+    specs+=(
+      '(--list)'{-j,--jul}'[select the `java.util.logging` tracing domain]'
+      '(--list)'{-l,--log4j}'[select the Apache log4j tracing domain]'
+    )
+  fi
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for log level names.
+#
+# This function relies on the tracing domain options of `$opt_args` to
+# restrict the offered completions.
+__lttng_complete_log_level() {
+  local -a log_levels
+
+  # Fill the `log_levels` array depending on the tracing domain option
+  if __lttng_user_domain_opt_is_set; then
+    log_levels=(
+      EMERG
+      ALERT
+      CRIT
+      ERR
+      WARNING
+      NOTICE
+      INFO
+      DEBUG_SYSTEM
+      DEBUG_PROGRAM
+      DEBUG_PROCESS
+      DEBUG_MODULE
+      DEBUG_UNIT
+      DEBUG_FUNCTION
+      DEBUG_LINE
+      DEBUG
+    )
+  elif __lttng_jul_domain_opt_is_set; then
+    log_levels=(
+      OFF
+      SEVERE
+      WARNING
+      INFO
+      CONFIG
+      FINE
+      FINER
+      FINEST
+      ALL
+    )
+  elif __lttng_log4j_domain_opt_is_set; then
+    log_levels=(
+      OFF
+      FATAL
+      ERROR
+      WARN
+      INFO
+      DEBUG
+      TRACE
+      ALL
+    )
+  elif __lttng_python_domain_opt_is_set; then
+    log_levels=(
+      CRITICAL
+      ERROR
+      WARNING
+      INFO
+      DEBUG
+      NOTSET
+    )
+  else
+    # No tracing domain option
+    _guard '^-*' 'log level name'
+  fi
+
+  # Add completions
+  local expl
+
+  _wanted log-levels expl 'log level name' compadd -a log_levels
+}
+
+# Adds completions for a trigger condition type.
+__lttng_complete_trigger_condition_type() {
+  local -r types=(
+    'event-rule-matches:an event rule matches an event'
+  )
+
+  # Add completions
+  local expl
+
+  _describe 'trigger condition type' types
+}
+
+# Adds completions for a trigger action type.
+__lttng_complete_trigger_action_type() {
+  local -r types=(
+    'notify:send a notification through the notification mechanism'
+    'start-session:start a recording session'
+    'stop-session:stop a recording session'
+    'rotate-session:archive the current trace chunk of a recording session'
+    'snapshot-session:take a recording session snapshot'
+  )
+
+  # Add completions
+  local expl
+
+  _describe 'trigger action type' types
+}
+
+# Adds completions for the arguments of the `add-trigger` command.
+#
+# Note that those completions are incomplete, in that:
+#
+# • A valid event rule specification, as per lttng-event-rule(7),
+#   must follow `--condition=event-rule-matches`.
+#
+# • `--capture` options are possible within an `event-rule-matches`
+#   condition specifier.
+#
+# • The `--rate-policy` option and other arguments, sometimes mandatory,
+#   are possible within an action specifier.
+#
+# Having full completion for condition and action specifiers require
+# more Zsh magic as _arguments(), like most command-line argument
+# parsers, doesn't take option positions into account.
+__lttng_complete_add_trigger_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-n --name)'{-n+,--name=}'[set the trigger name]:new trigger name:'
+    '--owner-uid=[add the trigger as another Unix user]: : __lttng_complete_uid'
+    '--condition=[set the condition type and arguments]: : __lttng_complete_trigger_condition_type'
+    '*--action=[set the action type and arguments]: : __lttng_complete_trigger_action_type'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `clear` command.
+__lttng_complete_clear_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-a --all):: : __lttng_complete_session_name all all'
+    '(1 -a --all)'{-a,--all}'[clear all recording sessions]'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `create` command.
+__lttng_complete_create_cmd() {
+  local specs=(
+    $help_opt_specs
+    ':: :_guard "^-*" "new recording session name"'
+    '(-C --ctrl-url output)'{-C+,--ctrl-url=}'[set the control URL]:control URL:'
+    '(-D --data-url output)'{-D+,--data-url=}'[set the trace data output URL]:trace data output URL:'
+  )
+
+  # The `--shm-path` option LTTng-tools ≥ 2.7
+  if ((minor_version >= 7)); then
+    specs+=(
+      '--shm-path=[write shared memory files to a specific directory]:shared memory file directory:_files -/'
+    )
+  fi
+
+  # Add the remaining option groups
+  specs+=(
+    + '(output)'
+    '(-D --data-url -C --ctrl-url --live)--no-output[disable trace data output]'
+    '(-D --data-url -C --ctrl-url --live)'{-o+,--output=}'[set the local trace data output directory]:trace data output directory:_files -/'
+    '(-D --data-url -C --ctrl-url)'{-U+,--set-url=}'[set the trace data output and control URL]:trace data output and control URL:'
+    + '(mode)'
+    '(-o --output --no-output)--live=[create an LTTng live recording session]:live timer period (µs):'
+    '--snapshot[create a snapshot recording session]'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `destroy` command.
+__lttng_complete_destroy_cmd() {
+  local specs=(
+    $help_opt_specs
+    '(-a --all):: : __lttng_complete_session_name all all'
+    '(1 -a --all)'{-a,--all}'[destroy all recording sessions]'
+  )
+
+  # The `--no-wait` option requires LTTng-tools ≥ 2.8
+  if ((minor_version >= 8)); then
+    specs+=(
+      '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
+    )
+  fi
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `disable-channel` command.
+__lttng_complete_disable_channel_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    ': : _sequence __lttng_complete_channel_name enabled opt'
+    + '(domain)'
+    {-k,--kernel}'[select the Linux kernel tracing domain]'
+    {-u,--userspace}'[select the user space tracing domain]'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Prints the XML tracing domain name value depending on the tracing
+# domain option (in `$opt_args`), or prints nothing and returns 1 when
+# not available.
+__lttng_xml_domain_name_from_opt() {
+  if __lttng_kernel_domain_opt_is_set; then
+    echo -n KERNEL
+  elif __lttng_user_domain_opt_is_set; then
+    echo -n UST
+  elif __lttng_jul_domain_opt_is_set; then
+    echo -n JUL
+  elif __lttng_log4j_domain_opt_is_set; then
+    echo -n LOG4J
+  elif __lttng_python_domain_opt_is_set; then
+    echo -n PYTHON
+  else
+    return 1
+  fi
+}
+
+# Prints the XML instrumentation point type value depending on the
+# instrumentation point option (in `$opt_args`).
+__lttng_xml_ip_type_from_opt() {
+  if (($+opt_args[--syscall] || $+opt_args[ip---syscall])); then
+    echo -n SYSCALL
+  elif (($+opt_args[--probe] || $+opt_args[ip---probe])); then
+    echo -n PROBE
+  elif (($+opt_args[--function] || $+opt_args[ip---function])); then
+    echo -n FUNCTION
+  else
+    echo -n TRACEPOINT
+  fi
+}
+
+# Adds completions for an old, enabled recording event rule name
+# condition (for the `disable-event` command).
+__lttng_complete_old_enabled_er_name_cond() {
+  local -r msg='recording event rule name condition'
+
+  # Find the recording session name to use
+  local session_name
+
+  if (($+opt_args[-s])); then
+    session_name=$opt_args[-s]
+  elif (($+opt_args[--session])); then
+    session_name=$opt_args[--session]
+  else
+    # Fall back to current recording session
+    session_name=$(__lttng_cur_session_name)
+
+    if (($? != 0)); then
+      _guard '^-*' $msg
+    fi
+  fi
+
+  # Find the channel name to use (`channel0` is the default name)
+  local channel_name=channel0
+
+  if (($+opt_args[-c])); then
+    channel_name=$opt_args[-c]
+  elif (($+opt_args[--channel])); then
+    channel_name=$opt_args[--channel]
+  fi
+
+  # Create tracing domain XPath part
+  local domain_xpath
+  local xml_domain_val
+
+  xml_domain_val=$(__lttng_xml_domain_name_from_opt)
+
+  if (($? == 0)); then
+    domain_xpath="*[local-name() = 'domain'][*[local-name() = 'type'] = '$xml_domain_val']//"
+  fi
+
+  # Create channel XPath part
+  local -r channel_xpath="*[local-name() = 'channel'][*[local-name() = 'name'] = '$channel_name']//"
+
+  # Create instrumentation point type XPath part
+  local -r xml_ip_type_val=$(__lttng_xml_ip_type_from_opt)
+  local -r ip_type_xpath="[*[local-name() = 'type'] = '$xml_ip_type_val']"
+
+  # Get XML document (detailed recording session)
+  local session_xml
+
+  session_xml=$(__lttng_session_xml $msg $session_name)
+
+  if (($? != 0)); then
+    return 1
+  fi
+
+  # Convert to one recording event rule name per line
+  local lines
+
+  lines=$(__lttng_xmllint_xpath $session_xml "//$domain_xpath${channel_xpath}*[local-name() = 'event']${ip_type_xpath}[*[local-name() = 'enabled'] = 'true']/*[local-name() = 'name']/text()")
+
+  if (($? != 0)); then
+    _guard '^-*' $msg
+    return
+  fi
+
+  local -a er_names
+
+  while read -r line; do
+    if [[ -z ${line// } ]]; then
+      # Skip empty line
+      continue
+    fi
+
+    er_names+=$line
+  done <<< $lines
+
+  # Add completions
+  local expl
+
+  _wanted -C event events expl $msg compadd "$@" -a er_names
+}
+
+# Adds completions for the arguments of the `disable-event` command.
+__lttng_complete_disable_event_cmd() {
+  local -r kernel_ip_opt_excl=(--syscall --probe --function)
+  local specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
+    + '(names)'
+    {-a,--all-events}'[disable all recording event rules]'
+    ': :_sequence __lttng_complete_old_enabled_er_name_cond'
+    + '(domain)'
+    {-k,--kernel}'[select the Linux kernel tracing domain]'
+    "($kernel_ip_opt_excl)"{-u,--userspace}'[select the user space tracing domain]'
+    "($kernel_ip_opt_excl)"{-j,--jul}'[select the `java.util.logging` tracing domain]'
+  )
+
+  # Add tracing domain option specifications based on the minor version
+  # of LTTng-tools.
+  if ((minor_version >= 6)); then
+    specs+=(
+      "($kernel_ip_opt_excl)"{-l,--log4j}'[select the Apache log4j tracing domain]'
+    )
+  fi
+
+  if ((minor_version >= 7)); then
+    specs+=(
+      "($kernel_ip_opt_excl)"{-p,--python}'[select the Python tracing domain]'
+    )
+  fi
+
+  # Add instrumentation point type option specifications based on the
+  # minor version of LTTng-tools.
+  if ((minor_version >= 6)); then
+    specs+=(
+      + '(ip)'
+      "($non_kernel_domain_opt_excl)--syscall[disable recording ER matching Linux system call events]"
+    )
+  fi
+
+  if ((minor_version >= 7)); then
+    specs+=(
+      '--tracepoint[disable recording ER matching tracepoint events]'
+      "($non_kernel_domain_opt_excl)--probe[disable recording ER matching kprobe events]"
+      "($non_kernel_domain_opt_excl)--function[disable recording ER matching kretprobe events]"
+    )
+  fi
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `disable-rotation` command.
+__lttng_complete_disable_rotation_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '--timer[disable the periodic rotation schedule]'
+    '--size[disable the size-based rotation schedule]'
+  )
+
+  __lttng_arguments $specs
+}
+
+# Adds completions for a channel output type (`mmap` and, possibly,
+# `splice`) (for the `--output` option of the `enable-channel` command).
+#
+# This function replaces the argument field of the current context with
+# `output-opt`.
+#
+# This function relies on the user space tracing domain options of
+# `$opt_args` to restrict the offered completions. Without the user
+# space tracing domain option, this function adds the `splice`
+# completion too.
+__lttng_complete_channel_output_type() {
+  local output_types=(mmap)
+
+  if ! __lttng_user_domain_opt_is_set; then
+    # Linux kernel tracing domain or none
+    output_types+=(splice)
+  fi
+
+  local expl
+
+  _wanted -C 'output-opt' values expl 'output type' compadd -a output_types
+}
+
+# Adds completions for the non-option argument of the `enable-channel`
+# command.
+#
+# This function either, depending on the keys of `$opt_args`:
+#
+# At least one creation option:
+#     Shows a message to enter the new channel name.
+#
+# Otherwise:
+#     Adds completions for a comma-separated list of known channel names
+#     using __lttng_complete_channel_name().
+__lttng_complete_enable_channel_cmd_names() {
+  local key
+  local -r enable_opts=(
+    -s --session
+    domain---kernel domain--k
+    domain---userspace domain--u
+  )
+
+  # For each key of `$opt_args`
+  for key in "${(@k)opt_args}"; do
+    if (($enable_opts[(Ie)$key])); then
+      # Enabling option exists: skip
+      continue
+    fi
+
+    # Creation option exists: single name
+    _guard '^-*' 'new channel name'
+    return
+  done
+
+  # Comma-separated list of existing channel names
+  _sequence __lttng_complete_channel_name disabled opt
+}
+
+# Adds completions for the arguments of the `enable-channel` command.
+__lttng_complete_enable_channel_cmd() {
+  local specs=(
+    $help_opt_specs
+    '--switch-timer=[set the switch timer period]:switch timer period (µs):'
+    '--read-timer=[set the read timer period]:read timer period (µs):'
+    '--subbuf-size=[set the size of each sub-buffer]:sub-buffer size (bytes; `k`/`M`/`G` suffixes supported):'
+    '--num-subbuf=[set the number of sub-buffers per ring buffer]:sub-buffer count:'
+    '--tracefile-size=[set the maximum size of each trace file]:trace file size (bytes; `k`/`M`/`G` suffixes supported):'
+    '--tracefile-count=[set the maximum number of trace files]:maximum trace file count:'
+    '--output=[set the output type]: : __lttng_complete_channel_output_type'
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    ': : __lttng_complete_enable_channel_cmd_names'
+  )
+
+  # The `--blocking-timeout` and `--monitor-timer` options require
+  # LTTng-tools ≥ 2.10.
+  if ((minor_version >= 10)); then
+    specs+=(
+      '(--kernel --overwrite --buffers-global)--blocking-timeout=[set the blocking timeout]:blocking timeout (µs):'
+      '--monitor-timer=[set the monitor timer period]:monitor timer period (µs):'
+    )
+  fi
+
+  # Add the remaining option groups
+  specs+=(
+    + '(domain)'
+    '(--blocking-timeout --buffers-uid --buffers-pid)'{-k,--kernel}'[select the Linux kernel tracing domain]'
+    '(--buffers-global)'{-u,--userspace}'[select the user space tracing domain]'
+    + '(loss-mode)'
+    '--discard[discard event records with no available sub-buffer]'
+    '(--blocking-timeout)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
+    + '(buffering)'
+    '(-k --kernel)--buffers-uid[use per-user ring buffers]'
+    '(-k --kernel)--buffers-pid[use per-process ring buffers]'
+    '(-u --userspace --blocking-timeout)--buffers-global[use global ring buffers]'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `enable-event` command.
+__lttng_complete_enable_event_cmd() {
+  local -r kernel_opts_excl=(
+    -k --kernel
+    --syscall
+    --probe
+    --userspace-probe
+    --function
+  )
+  local -r non_kernel_opts_excl=(
+    $non_kernel_domain_opt_excl
+    -x --exclude
+    log-level
+  )
+  local -r exclude_opt_excl=(
+    $kernel_opts_excl
+    -j --jul
+    -l --log4j
+    -p --python
+    -x --exclude
+  )
+  local ip_specs=(
+    '--tracepoint[only match LTTng tracepoint events]'
+    "($non_kernel_opts_excl)--syscall[only match Linux system call events]"
+    "($non_kernel_opts_excl)--probe=[only match kprobe events]:kprobe location:"
+    "($non_kernel_opts_excl)--function=[only match kretprobe events]:kretprobe location:"
+  )
+  local domain_specs=(
+    "($non_kernel_opts_excl)"{-k,--kernel}'[select the Linux kernel tracing domain]'
+    "($kernel_opts_excl)"{-u,--userspace}'[select the user space tracing domain]'
+    "($kernel_opts_excl -x --exclude)"{-j,--jul}'[select the `java.util.logging` tracing domain]'
+  )
+
+  # The Apache log4j tracing domain options require LTTng-tools ≥ 2.6
+  if ((minor_version >= 6)); then
+    domain_specs+=(
+      "($kernel_opts_excl -x --exclude)"{-l,--log4j}'[select the Apache log4j tracing domain]'
+    )
+  fi
+
+  # The Python tracing domain options require LTTng-tools 2.7
+  if ((minor_version >= 7)); then
+    domain_specs+=(
+      "($kernel_opts_excl -x --exclude)"{-p,--python}'[select the Python tracing domain]'
+    )
+  fi
+
+  # The Linux user space probe instrumentation options require LTTng-tools 2.11
+  if ((minor_version >= 11)); then
+    ip_specs+=(
+      "($non_kernel_opts_excl)--userspace-probe=[only match Linux user space probe events]:user space probe location:"
+    )
+  fi
+
+  # Add completions.
+  #
+  # There's no way, based on the command-line arguments, to distinguish
+  # between creating a new recording event rule and enabling an
+  # existing, disabled recording event rule here.
+  #
+  # For example, given this:
+  #
+  #     $ lttng enable-event --kernel --syscall <TAB>
+  #
+  # At this point, the user might want the list of existing, disabled
+  # kernel system call recording event rule names (current recording
+  # session, default channel name), or the full list of available system
+  # call instrumentation point names.
+  #
+  # This function makes the arbitrary choice to provide the available
+  # instrumentation point names (__lttng_complete_ip_name()) because,
+  # interactively, it seems to be more common/useful than disabling
+  # existing recording event rules.
+  local -r specs=(
+    $help_opt_specs
+    '(--probe --userspace-probe --function -f --filter)'{-f+,--filter=}'[only match events which satisfy an expression]:filter expression:'
+    "($exclude_opt_excl)"{-x+,--exclude=}'[exclude event name patterns]:comma-separated list of patterns:'
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '(-c --channel)'{-c+,--channel=}'[select a specific channel]: : __lttng_complete_channel_name all opt'
+    + '(log-level)'
+    "($kernel_opts_excl)--loglevel=[only match events with specific log levels]: : __lttng_complete_log_level"
+    "($kernel_opts_excl)--loglevel-only=[only match events with an exact log level]: : __lttng_complete_log_level"
+    + '(names)'
+    {-a,--all}'[match events regardless of their name]'
+    ': :_sequence __lttng_complete_ip_name'
+    + '(ip)' $ip_specs
+    + '(domain)' $domain_specs
+  )
+
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `enable-rotation` command.
+__lttng_complete_enable_rotation_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '--timer=[rotate periodically]:period (µs; `ms`/`s`/`m`/`h` suffixes supported):'
+    '--size=[rotate based on flushed size of current trace chunk]:size (bytes; `k`/`M`/`G` suffixes supported):'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `help` command.
+__lttng_complete_help_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    ': : __lttng_complete_cmd_name'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `list` command.
+__lttng_complete_list_cmd() {
+  local -r domain_opt_excl=(
+    -d --domain
+    -f --fields
+    -c --channel
+    -k --kernel
+    -u --userspace
+    -j --jul
+    -l --log4j
+    -p --python
+    --syscall
+  )
+  local specs=(
+    $help_opt_specs
+    '(-d --domain -f --fields --syscall -c --channel 1)'{-f,--fields}'[show instrumentation point fields]'
+    "($domain_opt_excl)"{-d,--domain}'[show tracing domains with at least one channel]'
+    '(-d --domain -f --fields --syscall -c --channel)'{-c+,--channel=}'[list the objects of a specific channel]: : __lttng_complete_channel_name all arg'
+    '(-d --domain -f --fields --syscall):recording session name: __lttng_complete_session_name all all'
+    '(-d --domain -k --kernel)'{-k,--kernel}'[list Linux kernel tracing domain objects]'
+    '(-d --domain -u --userspace)'{-u,--userspace}'[list user space tracing domain objects]'
+    '(-d --domain -j --jul)'{-j,--jul}'[list `java.util.logging` tracing domain objects]'
+  )
+
+  # The Apache log4j tracing domain and `--syscall` options require
+  # LTTng-tools ≥ 2.6.
+  if ((minor_version >= 6)); then
+    specs+=(
+      '(-d --domain -l --log4j)'{-l,--log4j}'[list Apache log4j tracing domain objects]'
+      '(-d --domain)--syscall[list Linux kernel system calls]'
+    )
+  fi
+
+  # The Python tracing domain options require LTTng-tools 2.7
+  if ((minor_version >= 7)); then
+    specs+=(
+      '(-d --domain -p --python)'{-p,--python}'[list Python tracing domain objects]'
+    )
+  fi
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `list-triggers` command.
+__lttng_complete_list_triggers_cmd() {
+  __lttng_arguments $help_opt_specs
+}
+
+# Adds completions for the arguments of the `load` command.
+__lttng_complete_load_cmd() {
+  local specs=(
+    $help_opt_specs
+    '(-f --force)'{-f,--force}'[overwrite existing recording sessions]'
+    '(-i --input-path)'{-i+,--input-path=}'[load recording session configurations from a specific path]:recording session configuration path:_files'
+    '(-a --all --override-name 1)'{-a,--all}'[load all recording session configurations]'
+    '(-a --all):recording session configuration name:_guard "^-*" "recording session name"'
+  )
+
+  if ((minor_version >= 9)); then
+    specs+=(
+      '--override-url=[override the loaded recording session output URL]:output URL:'
+      '(-a --all)--override-name=[override the loaded recording session name]:recording session name:'
+    )
+  fi
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `metadata` command
+# (deprecated).
+__lttng_complete_metadata_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    ':action:(regenerate)'
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `regenerate` command.
+__lttng_complete_regenerate_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    ':trace data type:(metadata statedump)'
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `remove-trigger` command.
+__lttng_complete_remove_trigger_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '--owner-uid=[remove the trigger as another Unix user]: : __lttng_complete_uid'
+    ': : __lttng_complete_trigger_name'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `rotate` command.
+__lttng_complete_rotate_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
+    ': : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `save` command.
+__lttng_complete_save_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-f --force)'{-f,--force}'[overwrite existing recording session configuration files]'
+    '(-o --output-path)'{-o+,--output-path=}'[save recording session configuration files to a specific directory]:recording session configuration directory:_files -/'
+    '(-a --all 1)'{-a,--all}'[save all recording session configurations]'
+    '(-a --all): : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `set-session` command.
+__lttng_complete_set_session_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    ': : __lttng_complete_session_name all all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `snapshot` command.
+__lttng_complete_snapshot_cmd() {
+  local specs=(
+    $help_opt_specs
+    '(-): : __lttng_complete_snapshot_action_name' \
+    '(-)*:: :->action-args' \
+  )
+
+  # Add action name completions
+  local curcontext=$curcontext state state_descr line
+  local -A opt_args
+
+  _arguments -C -s -W : $specs
+
+  if (($? == 0)); then
+    # Completions added: we're done
+    return
+  fi
+
+  # Add action-specific completions
+  local -r common_session_specs=(
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all snapshot'
+  )
+  local -r common_output_specs=(
+    '(-m --max-size)'{-m+,--max-size=}'[set the maximum total size of all snapshot files]:maximum size (bytes; `k`/`M`/`G` suffixes supported):'
+    '(-n --name)'{-n+,--name=}'[set the snapshot output name]:snapshot output name:'
+    '(1 -C --ctrl-url output)'{-C+,--ctrl-url=}'[set the control URL]:control URL:'
+    '(1 -D --data-url output)'{-D+,--data-url=}'[set the trace data output URL]:trace data output URL:'
+    '(-C --ctrl-url -D --data-url): :_guard "^-*" "snapshot output URL"'
+  )
+
+  if [[ $state[1] = action-args ]]; then
+    # Add completions for the arguments of the specific snapshot action
+    curcontext=${curcontext%:*:*}:lttng-snapshot-$line[1]:
+
+    case $line[1] in
+      add-output | record)
+        specs=($common_session_specs $common_output_specs);;
+      del-output)
+        specs=($common_session_specs ':snapshot output index:(1)');;
+      list-output)
+        specs=($common_session_specs);;
+      *)
+        _message "unknown snapshot action \`$line[1]\`"
+        return 1
+        ;;
+    esac
+
+    # Add completions
+    __lttng_arguments $specs
+    return
+  fi
+
+  return 1
+}
+
+# Adds completions for the arguments of the `start` command.
+__lttng_complete_start_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    ': : __lttng_complete_session_name inactive all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `stop` command.
+__lttng_complete_stop_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
+    ': : __lttng_complete_session_name active all'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `status` command.
+__lttng_complete_status_cmd() {
+  __lttng_arguments $help_opt_specs
+}
+
+# Adds completions for the arguments of the `track` command.
+__lttng_complete_track_cmd() {
+  local specs=(
+    $help_opt_specs
+    '(-s --session)'{-s+,--session=}'[select a specific recording session]: : __lttng_complete_session_name all all'
+    '(-a --all)'{-a,--all}'[add all possible values to the selected inclusion sets]'
+    '(-p --pid)'{-p+,--pid=}'[add values to the process ID inclusion set]:process ID(s):_sequence _pids'
+  )
+
+  # Virtual PID and user/group inclusion sets require LTTng-tools ≥ 2.12
+  if ((minor_version >= 12)); then
+    specs+=(
+      '--vpid=[add values to the virtual process ID inclusion set]:virtual process ID(s):_sequence _pids'
+      '(-u --userspace)--uid=[add values to the user ID inclusion set]:user(s):_sequence _users'
+      '--vuid=[add values to the virtual user ID inclusion set]:virtual user(s):_sequence _users'
+      '(-u --userspace)--gid=[add values to the group ID inclusion set]:group(s):_sequence _groups'
+      '--vgid=[add values to the virtual group ID inclusion set]:virtual group(s):_sequence _groups'
+    )
+  fi
+
+  # Append tracing domain specifications
+  specs+=(
+    + '(domain)'
+    {-k,--kernel}'[select the Linux kernel tracing domain]'
+    "(--uid --gid)"{-u,--userspace}'[select the user space tracing domain]'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Adds completions for the arguments of the `untrack` command.
+__lttng_complete_untrack_cmd() {
+  # As of LTTng-tools 2.13, the `track` and `untrack` commands expect
+  # the same arguments.
+  __lttng_complete_track_cmd
+}
+
+# Adds completions for the arguments of the `version` command.
+__lttng_complete_version_cmd() {
+  __lttng_arguments $help_opt_specs
+}
+
+# Adds completions for the arguments of the `view` command.
+__lttng_complete_view_cmd() {
+  local -r specs=(
+    $help_opt_specs
+    '(-e --viewer)'{-e+,--viewer=}'[set the trace reader path]:trace reader path:_files'
+    '(-t --trace-path): : __lttng_complete_session_name all all'
+    '(1 -t --trace-path)'{-t+,--trace-path=}'[set the trace directory to pass to the reader]:trace directory:_files -/'
+  )
+
+  # Add completions
+  __lttng_arguments $specs
+}
+
+# Add completions for the specific `lttng` command named `$line[1]`.
+__lttng_complete_cmd() {
+  # An lttng(1) command: replace `lttng` with `lttng-$line[1]` (for
+  # example, `lttng-add-trigger`).
+  curcontext=${curcontext%:*:*}:lttng-$line[1]:
+
+  # Keep the tracing group: we need to execute `lttng` for some
+  # completions and use the required tracing group to connect to the
+  # same session daemon.
+  #
+  # The default tracing group is `tracing`.
+  local tracing_group=tracing
+
+  if (($+opt_args[-g])); then
+    tracing_group=$opt_args[-g]
+  elif (($+opt_args[--group])); then
+    tracing_group=$opt_args[--group]
+  fi
+
+  # Add command completions: dispatch to a dedicated function
+  local -r func_name=__lttng_complete_${line[1]//-/_}_cmd
+
+  if ! typeset -f $func_name >/dev/null; then
+    _message "unknown command \`$line[1]\`"
+    return 1
+  fi
+
+  local -A opt_args
+
+  $func_name
+}
+
+# Save program name
+local -r prog_name=$words[1]
+
+# First, set the `minor_version` variable to the minor version of
+# LTTng-tools. Some features depend on a specific version and this
+# completion function supports many versions from LTTng-tools 2.5.
+local -i minor_version
+
+__lttng_set_minor_version
+
+# Exit now with LTTng-tools < 2.5 or LTTng-tools > 2.14
+local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
+
+if ((minor_version < 5 || (minor_version > 14 && !ignore_version_limit))); then
+  _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
+  return 1
+fi
+
+# Common help option specifications
+local -r help_opt_specs=(
+  '(- : *)'{-h,--help}'[show help]'
+)
+
+# Common non Linux kernel tracing domain option exclusions
+local -r non_kernel_domain_opt_excl=(-u --userspace -j --jul -l --log4j -p --python)
+
+# General option specifications
+local gen_opt_specs=(
+  $help_opt_specs
+  '(- : *)--list-commands[list the available commands and quit]'
+  '--relayd-path=[set the relay daemon path]:relay daemon path:_files -g \*lttng-relayd'
+  '--group=[set the tracing group]:tracing group:_groups'
+  '(-q --quiet)*'{-v,--verbose}'[increase verbosity]'
+  '(-q --quiet -v --verbose)'{-q,--quiet}'[suppress all messages, including warnings and errors]'
+  '(- : *)'{-V,--version}'[show version and quit]'
+)
+
+# MI output requires LTTng-tools ≥ 2.6
+if ((minor_version >= 6)); then
+  gen_opt_specs+=(
+    '(-m --mi)'{-m+,--mi=}'[use the machine interface output]:machine interface type:(xml)'
+  )
+fi
+
+# Append session daemon option specifications
+gen_opt_specs+=(
+  + '(sessiond)'
+  {-n,--no-sessiond}'[do not spawn a session daemon]'
+  '--sessiond-path=[set the session daemon path]:session daemon path:_files -g \*lttng-sessiond'
+)
+
+# Add general option and command name completions
+local curcontext=$curcontext state state_descr line
+local -A opt_args
+
+_arguments -C -s -W : \
+  '(-): : __lttng_complete_cmd_name' \
+  '(-)*:: :->cmd-args' \
+  $gen_opt_specs
+
+local -ir main_ret=$?
+
+if ((main_ret == 0)); then
+  # Completions added: we're done
+  return
+fi
+
+if [[ $state[1] = cmd-args ]]; then
+  # Add completions for the arguments of the specific command
+  __lttng_complete_cmd
+  return
+fi
+
+return $main_ret

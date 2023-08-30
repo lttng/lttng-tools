@@ -1,0 +1,75 @@
+#compdef lttng-crash
+#
+# Copyright (c) 2015-2023 Philippe Proulx <eeppeliteloop@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#
+# This is a Zsh completion function for the lttng-crash(1) command (see
+# <https://lttng.org/>), for versions 2.7 to 2.14.
+#
+# If you want, at your own risk, the function to work with versions
+# above 2.14, set `LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1`.
+
+# Sets the `minor_version` variable to the minor version of LTTng-tools,
+# or to `0` if not found.
+__lttng_set_minor_version() {
+  minor_version=0
+
+  local -a match
+
+  if [[ $($words[1] --version) =~ '[[:blank:]]+2\.([[:digit:]]+)' ]]; then
+    minor_version=$match[1]
+  fi
+}
+
+# Adds completions for the arguments of the `lttng-crash` command.
+__lttng_complete_lttng_crash() {
+  local curcontext=$curcontext state state_descr line
+  local -A opt_args
+  local specs=(
+    '*'{-v,--verbose}'[increase verbosity]'
+    '(- : *)'{-V,--version}'[show version and quit]'
+    '(- : *)'{-h,--help}'[show help]'
+    '(-x --extract)'{-x+,--extract=}'[set the path of the directory where to extract the trace]:trace extraction directory path:_directories'
+    '(-e --viewer)'{-e+,--viewer=}'[set the trace reader command]:trace reader command:_files'
+    '1:shared memory directory:_directories'
+  )
+
+  _arguments -C -s -w : $specs
+}
+
+# First, set the `minor_version` variable to the minor version of
+# LTTng-tools. Some features depend on a specific version and this
+# completion function supports many versions from LTTng-tools 2.7.
+local -i minor_version
+
+__lttng_set_minor_version
+
+# Exit now with LTTng-tools < 2.7 or LTTng-tools > 2.14
+local -r ignore_version_limit=${LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT:-0}
+
+if ((minor_version < 7 || (minor_version > 14 && !ignore_version_limit))); then
+  _message "completion not available for LTTng-tools 2.$minor_version; please update the completion files or set \`LTTNG_ZSH_COMP_IGNORE_VERSION_LIMIT=1\`"
+  return 1
+fi
+
+# Add completions for lttng-crash(1)
+__lttng_complete_lttng_crash "$@"

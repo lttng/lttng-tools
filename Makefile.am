@@ -17,6 +17,7 @@ dist_doc_DATA = LICENSE \
 dist_noinst_DATA = CodingStyle.md
 
 EXTRA_DIST = extras/lttng-bash_completion \
+	     extras/zsh-completion \
 	     LICENSES/BSD-2-Clause \
 	     LICENSES/BSD-3-Clause \
 	     LICENSES/GPL-2.0 \
