@@ -1995,7 +1995,7 @@ function wait_live_trace_ready ()
 	diag "Waiting for live trace at url: $url"
 	while [ $zero_client_match -eq 0 ]; do
 		zero_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "0 client(s) connected" | wc -l)
-		sleep 0.5
+		sleep 0.1
 	done
 	pass "Waiting for live trace at url: $url"
 }
@@ -2008,7 +2008,7 @@ function wait_live_viewer_connect ()
 	diag "Waiting for live viewers on url: $url"
 	while [ $one_client_match -eq 0 ]; do
 		one_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "1 client(s) connected" | wc -l)
-		sleep 0.5
+		sleep 0.1
 	done
 	pass "Waiting for live viewers on url: $url"
 }
