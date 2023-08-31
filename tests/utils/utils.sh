@@ -675,8 +675,9 @@ function stop_lttng_relayd_opt()
 
 
 	# Multiply time by 2 to simplify integer arithmetic
+	# Multiply time by 5 to adjust for sleeping every 0.1s
 	if [ -n "$timeout_s" ]; then
-		dtimeleft_s=$((timeout_s * 2))
+		dtimeleft_s=$((timeout_s * 2 * 5))
 	fi
 
 
@@ -711,7 +712,7 @@ function stop_lttng_relayd_opt()
 				fi
 				dtimeleft_s=$((dtimeleft_s - 1))
 			fi
-			sleep 0.5
+			sleep 0.1
 		done
 		if [ "$withtap" -eq "1" ]; then
 			if [ "$retval" -eq "0" ]; then
@@ -835,8 +836,9 @@ function stop_lttng_sessiond_opt()
 	fi
 
 	# Multiply time by 2 to simplify integer arithmetic
+	# Multiply time by 5 to adjust for sleeping every 0.1s
 	if [ -n "$timeout_s" ]; then
-		dtimeleft_s=$((timeout_s * 2))
+		dtimeleft_s=$((timeout_s * 2 * 5))
 	fi
 
 	if [ -n "$TEST_NO_SESSIOND" ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
@@ -881,7 +883,7 @@ function stop_lttng_sessiond_opt()
 				fi
 				dtimeleft_s=$((dtimeleft_s - 1))
 			fi
-			sleep 0.5
+			sleep 0.1
 		done
 		out=1
 		while [ -n "$out" ]; do
@@ -893,7 +895,7 @@ function stop_lttng_sessiond_opt()
 				fi
 				dtimeleft_s=$((dtimeleft_s - 1))
 			fi
-			sleep 0.5
+			sleep 0.1
 		done
 
 		if [ "$withtap" -eq "1" ]; then
@@ -1003,8 +1005,9 @@ function stop_lttng_consumerd_opt()
 	fi
 
 	# Multiply time by 2 to simplify integer arithmetic
+	# Multiply time by 5 to adjust for sleeping every 0.1s
 	if [ -n "$timeout_s" ]; then
-		dtimeleft_s=$((timeout_s * 2))
+		dtimeleft_s=$((timeout_s * 2 * 5))
 	fi
 
 	pids="$(lttng_pgrep "$CONSUMERD_MATCH")"
@@ -1049,7 +1052,7 @@ function stop_lttng_consumerd_opt()
 				fi
 				dtimeleft_s=$((dtimeleft_s - 1))
 			fi
-			sleep 0.5
+			sleep 0.1
 		done
 		if [ "$withtap" -eq "1" ]; then
 			if [ "$retval" -eq "0" ]; then
