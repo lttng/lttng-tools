@@ -134,13 +134,12 @@ function test_ust_blocking_no_discard()
 	start_lttng_tracing_ok $SESSION_NAME
 	LTTNG_UST_ALLOW_BLOCKING=1 run_app
 	stop_lttng_tracing_ok $SESSION_NAME
+	discarded=$("${XML_EXTRACT}" <("${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}" --mi=xml list --channel="${CHANNEL_NAME}" "${SESSION_NAME}") '//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel/lttng:attributes/lttng:discarded_events')
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	nr_events=$("$BABELTRACE_BIN" $TRACE_PATH 2>/dev/null | wc -l)
-
-	test $nr_events -eq $NUM_EVENT
-	ok $? "No event lost with UST blocking mode: found $nr_events expect $NUM_EVENT"
+	test "$(echo "${discarded}" | grep -Eo '[0-9]+')" = "0"
+	ok $? "No event lost with UST blocking mode: ${discarded}"
 }
 
 plan_tests $NUM_TESTS
