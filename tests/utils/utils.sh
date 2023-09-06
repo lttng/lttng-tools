@@ -1691,9 +1691,10 @@ function destroy_lttng_session ()
 	local withtap=$1
 	local expected_to_fail=$2
 	local sess_name=$3
+	shift 3
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
-		destroy $sess_name
+		destroy $sess_name $@
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
