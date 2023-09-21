@@ -17,6 +17,7 @@ gen_ust_events_ns_SOURCES = \
 	gen-ust-events-ns.cpp \
 	tp.c \
 	tp.h
+gen_ust_events_ns_CPPFLAGS = $(POPT_CFLAGS) $(AM_CPPFLAGS)
 gen_ust_events_ns_LDADD = $(UST_LIBS) -llttng-ust-fork \
 		$(top_builddir)/tests/utils/libtestutils.la \
 		$(DL_LIBS) $(POPT_LIBS)
