@@ -930,7 +930,7 @@ error:
 	 */
 	consumer_stream_destroy(metadata->metadata_stream, nullptr);
 	metadata->metadata_stream = nullptr;
-	lttng_wait_queue_wake_all(&metadata->metadata_pushed_wait_queue);
+	metadata->metadata_pushed_wait_queue.wake_all();
 
 send_streams_error:
 error_no_stream:
@@ -1015,7 +1015,7 @@ error_stream:
 	 */
 	consumer_stream_destroy(metadata_stream, nullptr);
 	metadata_channel->metadata_stream = nullptr;
-	lttng_wait_queue_wake_all(&metadata_channel->metadata_pushed_wait_queue);
+	metadata_channel->metadata_pushed_wait_queue.wake_all();
 
 error:
 	return ret;
@@ -2548,8 +2548,9 @@ static int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 		ret = write_len;
 		goto end;
 	}
+
 	stream->ust_metadata_pushed += write_len;
-	lttng_wait_queue_wake_all(&stream->chan->metadata_pushed_wait_queue);
+	stream->chan->metadata_pushed_wait_queue.wake_all();
 
 	LTTNG_ASSERT(stream->chan->metadata_cache->contents.size >= stream->ust_metadata_pushed);
 	ret = write_len;

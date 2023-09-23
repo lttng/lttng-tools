@@ -258,18 +258,17 @@ void consumer_wait_metadata_cache_flushed(struct lttng_consumer_channel *channel
 
 	/* Metadata cache is not currently flushed, wait on wait queue. */
 	for (;;) {
-		struct lttng_waiter waiter;
+		lttng::synchro::waiter waiter;
 
-		lttng_waiter_init(&waiter);
-		lttng_wait_queue_add(&channel->metadata_pushed_wait_queue, &waiter);
+		channel->metadata_pushed_wait_queue.add(waiter);
 		if (consumer_metadata_cache_is_flushed(channel, offset, invoked_by_timer)) {
 			/* Wake up all waiters, ourself included. */
-			lttng_wait_queue_wake_all(&channel->metadata_pushed_wait_queue);
+			channel->metadata_pushed_wait_queue.wake_all();
 			/* Ensure proper teardown of waiter. */
-			lttng_waiter_wait(&waiter);
+			waiter.wait();
 			break;
 		}
 
-		lttng_waiter_wait(&waiter);
+		waiter.wait();
 	}
 }

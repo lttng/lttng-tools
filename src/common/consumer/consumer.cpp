@@ -303,7 +303,8 @@ static void free_channel_rcu(struct rcu_head *head)
 		ERR("Unknown consumer_data type");
 		abort();
 	}
-	free(channel);
+
+	delete channel;
 }
 
 /*
@@ -462,7 +463,7 @@ static void update_endpoint_status_by_netidx(uint64_t net_seq_idx,
 	cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
 		if (stream->net_seq_idx == net_seq_idx) {
 			uatomic_set(&stream->endpoint_status, status);
-			lttng_wait_queue_wake_all(&stream->chan->metadata_pushed_wait_queue);
+			stream->chan->metadata_pushed_wait_queue.wake_all();
 
 			DBG("Delete flag set to metadata stream %d", stream->wait_fd);
 		}
@@ -1019,9 +1020,11 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		}
 	}
 
-	channel = zmalloc<lttng_consumer_channel>();
-	if (channel == nullptr) {
-		PERROR("malloc struct lttng_consumer_channel");
+	try {
+		channel = new lttng_consumer_channel;
+	} catch (const std::bad_alloc& e) {
+		ERR("Failed to allocate lttng_consumer_channel: %s", e.what());
+		channel = nullptr;
 		goto end;
 	}
 
@@ -1037,7 +1040,6 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->is_live = is_in_live_session;
 	pthread_mutex_init(&channel->lock, NULL);
 	pthread_mutex_init(&channel->timer_lock, NULL);
-	lttng_wait_queue_init(&channel->metadata_pushed_wait_queue);
 
 	switch (output) {
 	case LTTNG_EVENT_SPLICE:
@@ -1048,7 +1050,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		break;
 	default:
 		abort();
-		free(channel);
+		delete channel;
 		channel = nullptr;
 		goto end;
 	}
@@ -2133,7 +2135,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream, struct l
 	 * pointer value.
 	 */
 	channel->metadata_stream = nullptr;
-	lttng_wait_queue_wake_all(&channel->metadata_pushed_wait_queue);
+	channel->metadata_pushed_wait_queue.wake_all();
 
 	if (channel->metadata_cache) {
 		pthread_mutex_unlock(&channel->metadata_cache->lock);

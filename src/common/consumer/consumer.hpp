@@ -109,30 +109,30 @@ struct consumer_metadata_cache;
 
 struct lttng_consumer_channel {
 	/* Is the channel published in the channel hash tables? */
-	bool is_published;
+	bool is_published = false;
 	/*
 	 * Was the channel deleted (logically) and waiting to be reclaimed?
 	 * If this flag is set, no modification that is not cleaned-up by the
 	 * RCU reclamation callback should be made
 	 */
-	bool is_deleted;
+	bool is_deleted = false;
 	/* HT node used for consumer_data.channel_ht */
-	struct lttng_ht_node_u64 node;
+	struct lttng_ht_node_u64 node = {};
 	/* HT node used for consumer_data.channels_by_session_id_ht */
-	struct lttng_ht_node_u64 channels_by_session_id_ht_node;
+	struct lttng_ht_node_u64 channels_by_session_id_ht_node = {};
 	/* Indexed key. Incremented value in the consumer. */
-	uint64_t key;
+	uint64_t key = 0;
 	/* Number of streams referencing this channel */
-	int refcount;
+	int refcount = 0;
 	/* Tracing session id on the session daemon side. */
-	uint64_t session_id;
+	uint64_t session_id = 0;
 	/* Current trace chunk of the session in which this channel exists. */
-	struct lttng_trace_chunk *trace_chunk;
+	struct lttng_trace_chunk *trace_chunk = nullptr;
 	/*
 	 * Session id when requesting metadata to the session daemon for
 	 * a session with per-PID buffers.
 	 */
-	uint64_t session_id_per_pid;
+	uint64_t session_id_per_pid = 0;
 	/*
 	 * In the case of local streams, this field contains the channel's
 	 * output path; a path relative to the session's output path.
@@ -144,77 +144,77 @@ struct lttng_consumer_channel {
 	 * peers, this contains a path of the form:
 	 *   /hostname/session_path/ust/uid/1000/64-bit
 	 */
-	char pathname[PATH_MAX];
+	char pathname[PATH_MAX] = {};
 	/* Channel name. */
-	char name[LTTNG_SYMBOL_NAME_LEN];
+	char name[LTTNG_SYMBOL_NAME_LEN] = {};
 	/* Relayd id of the channel. -1ULL if it does not apply. */
-	uint64_t relayd_id;
+	uint64_t relayd_id = 0;
 	/*
 	 * Number of streams NOT initialized yet. This is used in order to not
 	 * delete this channel if streams are getting initialized.
 	 */
-	unsigned int nb_init_stream_left;
+	unsigned int nb_init_stream_left = 0;
 	/* Output type (mmap or splice). */
-	enum consumer_channel_output output;
+	enum consumer_channel_output output = CONSUMER_CHANNEL_MMAP;
 	/* Channel type for stream */
-	enum consumer_channel_type type;
+	enum consumer_channel_type type = CONSUMER_CHANNEL_TYPE_METADATA;
 
 	/* For UST */
-	uid_t ust_app_uid; /* Application UID. */
-	struct lttng_ust_ctl_consumer_channel *uchan;
-	unsigned char uuid[LTTNG_UUID_STR_LEN];
+	uid_t ust_app_uid = 65534; /* Application UID. */
+	struct lttng_ust_ctl_consumer_channel *uchan = nullptr;
+	unsigned char uuid[LTTNG_UUID_STR_LEN] = {};
 	/*
 	 * Temporary stream list used to store the streams once created and waiting
 	 * to be sent to the session daemon by receiving the
 	 * LTTNG_CONSUMER_GET_CHANNEL.
 	 */
-	struct stream_list streams;
+	struct stream_list streams = {};
 
 	/*
 	 * Set if the channel is metadata. We keep a reference to the stream
 	 * because we have to flush data once pushed by the session daemon. For a
 	 * regular channel, this is always set to NULL.
 	 */
-	struct lttng_consumer_stream *metadata_stream;
+	struct lttng_consumer_stream *metadata_stream = nullptr;
 
 	/* for UST */
-	int wait_fd;
+	int wait_fd = -1;
 	/* Node within channel thread ht */
-	struct lttng_ht_node_u64 wait_fd_node;
+	struct lttng_ht_node_u64 wait_fd_node = {};
 
 	/* Metadata cache is metadata channel */
-	struct consumer_metadata_cache *metadata_cache;
+	struct consumer_metadata_cache *metadata_cache = nullptr;
 
 	/*
 	 * Wait queue awaiting updates to metadata stream's flushed position.
 	 */
-	struct lttng_wait_queue metadata_pushed_wait_queue;
+	lttng::synchro::wait_queue metadata_pushed_wait_queue;
 
 	/* For UST metadata periodical flush */
-	int switch_timer_enabled;
-	timer_t switch_timer;
-	int switch_timer_error;
+	int switch_timer_enabled = 0;
+	timer_t switch_timer = {};
+	int switch_timer_error = 0;
 
 	/* For the live mode */
-	int live_timer_enabled;
-	timer_t live_timer;
-	int live_timer_error;
+	int live_timer_enabled = 0;
+	timer_t live_timer = {};
+	int live_timer_error = 0;
 	/* Channel is part of a live session ? */
-	bool is_live;
+	bool is_live = false;
 
 	/* For channel monitoring timer. */
-	int monitor_timer_enabled;
-	timer_t monitor_timer;
+	int monitor_timer_enabled = 0;
+	timer_t monitor_timer = {};
 
 	/* On-disk circular buffer */
-	uint64_t tracefile_size;
-	uint64_t tracefile_count;
+	uint64_t tracefile_size = 0;
+	uint64_t tracefile_count = 0;
 	/*
 	 * Monitor or not the streams of this channel meaning this indicates if the
 	 * streams should be sent to the data/metadata thread or added to the no
 	 * monitor list of the channel.
 	 */
-	unsigned int monitor;
+	unsigned int monitor = 0;
 
 	/*
 	 * Channel lock.
@@ -227,7 +227,7 @@ struct lttng_consumer_channel {
 	 * This is nested OUTSIDE stream lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
-	pthread_mutex_t lock;
+	pthread_mutex_t lock = {};
 
 	/*
 	 * Channel teardown lock.
@@ -241,24 +241,24 @@ struct lttng_consumer_channel {
 	 * This is nested OUTSIDE stream lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
-	pthread_mutex_t timer_lock;
+	pthread_mutex_t timer_lock = {};
 
 	/* Timer value in usec for live streaming. */
-	unsigned int live_timer_interval;
+	unsigned int live_timer_interval = 0;
 
-	int *stream_fds;
-	int nr_stream_fds;
-	char root_shm_path[PATH_MAX];
-	char shm_path[PATH_MAX];
+	int *stream_fds = nullptr;
+	int nr_stream_fds = 0;
+	char root_shm_path[PATH_MAX] = {};
+	char shm_path[PATH_MAX] = {};
 	/* Only set for UST channels. */
-	LTTNG_OPTIONAL(struct lttng_credentials) buffer_credentials;
+	LTTNG_OPTIONAL(struct lttng_credentials) buffer_credentials = {};
 	/* Total number of discarded events for that channel. */
-	uint64_t discarded_events;
+	uint64_t discarded_events = 0;
 	/* Total number of missed packets due to overwriting (overwrite). */
-	uint64_t lost_packets;
+	uint64_t lost_packets = 0;
 
-	bool streams_sent_to_relayd;
-	uint64_t last_consumed_size_sample_sent;
+	bool streams_sent_to_relayd = false;
+	uint64_t last_consumed_size_sample_sent = false;
 };
 
 struct stream_subbuffer {

@@ -18,38 +18,89 @@
 #include <stdint.h>
 #include <urcu/wfstack.h>
 
-struct lttng_waiter {
-	struct cds_wfs_node wait_queue_node;
-	int32_t state;
+namespace lttng {
+namespace synchro {
+class waiter;
+class wait_queue;
+
+class waker {
+	friend waiter;
+
+public:
+	waker(const waker&) = default;
+	waker(waker&&) = default;
+	waker& operator=(const waker& other)
+	{
+		_state = other._state;
+		return *this;
+	}
+	waker& operator=(waker&& other)
+	{
+		_state = other._state;
+		return *this;
+	}
+
+	void wake();
+
+	~waker() = default;
+
+private:
+	waker(int32_t& state) : _state{ state }
+	{
+	}
+
+	int32_t& _state;
 };
 
-struct lttng_wait_queue {
-	struct cds_wfs_stack stack;
+class waiter final {
+	friend wait_queue;
+
+public:
+	waiter();
+
+	/* Deactivate copy and assignment. */
+	waiter(const waiter&) = delete;
+	waiter(waiter&&) = delete;
+	waiter& operator=(const waiter&) = delete;
+	waiter& operator=(waiter&&) = delete;
+	~waiter() = default;
+
+	void arm() noexcept;
+	void wait();
+
+	waker get_waker();
+
+private:
+	cds_wfs_node _wait_queue_node;
+	int32_t _state;
 };
 
-void lttng_waiter_init(struct lttng_waiter *waiter);
+class wait_queue final {
+public:
+	wait_queue();
 
-void lttng_waiter_wait(struct lttng_waiter *waiter);
+	/* Deactivate copy and assignment. */
+	wait_queue(const wait_queue&) = delete;
+	wait_queue(wait_queue&&) = delete;
+	wait_queue& operator=(const wait_queue&) = delete;
+	wait_queue& operator=(wait_queue&&) = delete;
+	~wait_queue() = default;
 
-/*
- * lttng_waiter_wake must only be called by a single waker.
- * It is invalid for multiple "wake" operations to be invoked
- * on a single waiter without re-initializing it before.
- */
-void lttng_waiter_wake(struct lttng_waiter *waiter);
+	/*
+	 * Atomically add a waiter to a wait queue.
+	 * A full memory barrier is issued before being added to the wait queue.
+	 */
+	void add(waiter& waiter) noexcept;
+	/*
+	 * Wake every waiter present in the wait queue and remove them from
+	 * the queue.
+	 */
+	void wake_all();
 
-void lttng_wait_queue_init(struct lttng_wait_queue *queue);
-
-/*
- * Atomically add a waiter to a wait queue.
- * A full memory barrier is issued before being added to the wait queue.
- */
-void lttng_wait_queue_add(struct lttng_wait_queue *queue, struct lttng_waiter *waiter);
-
-/*
- * Wake every waiter present in the wait queue and remove them from
- * the queue.
- */
-void lttng_wait_queue_wake_all(struct lttng_wait_queue *queue);
+private:
+	cds_wfs_stack _stack;
+};
+} /* namespace synchro */
+} /* namespace lttng */
 
 #endif /* LTTNG_WAITER_H */

@@ -3311,21 +3311,24 @@ int handle_notification_thread_command(struct notification_thread_handle *handle
 	if (ret) {
 		goto error_unlock;
 	}
+
 end:
 	if (cmd->is_async) {
-		free(cmd);
+		delete cmd;
 		cmd = nullptr;
 	} else {
-		lttng_waiter_wake(&cmd->reply_waiter);
+		cmd->command_completed_waker->wake();
 	}
+
 	return ret;
+
 error_unlock:
 	/* Wake-up and return a fatal error to the calling thread. */
-	lttng_waiter_wake(&cmd->reply_waiter);
 	cmd->reply_code = LTTNG_ERR_FATAL;
+
 error:
-	/* Indicate a fatal error to the caller. */
-	return -1;
+	ret = -1;
+	goto end;
 }
 
 static int socket_set_non_blocking(int socket)
