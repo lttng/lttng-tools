@@ -52,7 +52,7 @@ function prepare_ust_app
 	# Wait for the app to execute all the way to right before the last
 	# event.
 	while [ ! -f "${TOUCH_BEFORE_LAST_PATH}" ]; do
-		sleep 0.5
+		sleep 0.01
 	done
 }
 
@@ -114,7 +114,7 @@ function test_event_tracker()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		trace_matches "$EVENT_NAME" $NR_ITER "$trace_path"
@@ -159,7 +159,7 @@ function test_event_vpid_tracker()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		validate_trace "$EVENT_NAME" "$trace_path"
@@ -204,7 +204,7 @@ function test_event_pid_tracker()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		validate_trace "$EVENT_NAME" "$trace_path"
@@ -230,7 +230,7 @@ function test_event_tracker_fail()
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard"
 	lttng_track_"$domain"_fail "${tracker}"
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	rm -rf "$trace_path"
 }
@@ -267,7 +267,7 @@ function test_event_track_untrack()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		trace_matches "$EVENT_NAME" $NR_ITER "$trace_path"
@@ -309,7 +309,7 @@ function test_event_vpid_track_untrack()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		validate_trace "$EVENT_NAME" "$trace_path"
@@ -351,7 +351,7 @@ function test_event_pid_track_untrack()
 	trace_"$domain"_app
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	if [ "$expect_event" -eq 1 ]; then
 		validate_trace "$EVENT_NAME" "$trace_path"
@@ -382,7 +382,7 @@ function test_event_ust_vpid_untrack_snapshot()
 	lttng_snapshot_record $SESSION_NAME
 
 	stop_lttng_tracing_ok
-	destroy_lttng_session_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
 	snapshot_count=$(find "$trace_path" -name metadata | wc -l)
 	is "$snapshot_count" 0 "Number of snapshot is zero"
@@ -564,6 +564,19 @@ skip $isroot "Root access is needed. Skipping all kernel tracker tests." $NUM_KE
 	#matching
 	test_event_tracker kernel 1 "${EVENT_NAME}" "--pid --all"
 	test_event_pid_tracker kernel 1 "${EVENT_NAME}"
+
+	# When using session destroy with '--no-wait', the quick
+	# exit at the end means that the lttng-test modules is
+	# still marked as being in use and 'modprobe --remove' fails.
+	#
+	# It is possible to work around the issue by not setting
+	# '--no-wait' on the last kernel test, but it seems like
+	# an easy detail to forget about.
+	#
+	# The sleep here gives the system a small amount of time to
+	# finish wrapping up the session that had the lttng-test kernel
+	# module loaded.
+	sleep 1
 
 	modprobe --remove lttng-test
 	ok $? "Unloading lttng-test module"
