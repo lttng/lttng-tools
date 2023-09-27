@@ -94,7 +94,7 @@ function test_valid_filter
 	event_name="$3"
 	filter="$4"
 	validator="$5"
-	local trace_path=$(mktemp -d -t tmp.test_filtering_invalid_filters_trace_path.XXXXXX)
+	local trace_path=$(mktemp -d -t tmp.test_filtering_valid_filters_trace_path.XXXXXX)
 
 	diag "Test valid $domain_name filter: $filter"
 
