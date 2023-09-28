@@ -9,12 +9,12 @@ TEST_DESC="Tracefile count limits"
 
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
+BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-STATS_BIN="$TESTDIR/utils/babelstats.pl"
 NUM_TESTS=74
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
@@ -140,7 +140,7 @@ function test_tracefile_count_limit ()
 	[ "$(get_stream_file_count "$trace_path" "$stream_pattern")" -eq "$count_limit" ]
 	ok $? "Stream meets the trace file limit of $count_limit"
 
-	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint $event_name`
+	stats=$("$BABELTRACE_BIN" --plugin-path "${BT2_PLUGINS_DIR}" convert $trace_path -c filter.lttngtest.event_name -p "names=[\"${event_name}\"]" -c sink.lttngtest.field_stats)
 
 	validate_min_max "$stats" "intfield" "[0-9]+" "$expected_max"
 	ok $? "Trace validation - intfield"

@@ -17,8 +17,8 @@ control. The upstream Git repository URL is:
 
 See CodingStyle for guidelines style and design guidelines.
 
-Although the LTTng-tools code base is primarily written in C, it does
-contain shell, Perl, and Python code as well. There is no official coding
+Although the LTTng-tools code base is primarily written in C++, it does
+contain C, shell, and Python code as well. There is no official coding
 standard for these languages. However, using a style consistent with the
 rest of the code written in that language is strongly encouraged.
 

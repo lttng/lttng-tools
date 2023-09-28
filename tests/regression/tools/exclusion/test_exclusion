@@ -9,7 +9,8 @@ TEST_DESC="Event exclusion"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-STATS_BIN="$TESTDIR/utils/babelstats.pl"
+BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
+
 SESSION_NAME="test-exclusion"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-nevents"
@@ -86,7 +87,7 @@ function test_exclusion
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null`
+	stats=$("$BABELTRACE_BIN" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index 2> /dev/null)
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
@@ -139,7 +140,7 @@ function test_exclusion_tracing_started
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=$("$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null)
+	stats=$("$BABELTRACE_BIN" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index 2> /dev/null)
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else

@@ -72,14 +72,12 @@ The following dependencies are optional:
   of the https://lttng.org/man/1/lttng-view/[`lttng view`] command,
   `make{nbsp}check` and tests.
 +
-Debian/Ubuntu package: `babeltrace2`
+Debian/Ubuntu package: `babeltrace2 libbabeltrace2-dev`
 
 * **https://lttng.org/[LTTng{nbh}UST]** (same minor version as {lt}):
   LTTng user space tracing (applications and libraries).
 +
 Debian/Ubuntu package: `liblttng{nbh}ust{nbh}dev`
-
-* **Perl**: `make{nbsp}check` and tests.
 
 * **https://www.python.org/[Python]{nbsp}≥{nbsp}3.4**:
   `make{nbsp}check` and tests.

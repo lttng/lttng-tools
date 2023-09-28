@@ -1139,6 +1139,13 @@ test "x$enable_bin_lttng_sessiond" != "xno"],
 )
 
 AM_CONDITIONAL([BUILD_TESTS], [test x$build_tests = xyes])
+
+AS_IF([test "x$build_tests" = "xyes"],
+  [
+    PKG_CHECK_MODULES([babeltrace2], [babeltrace2])
+  ]
+)
+
 AM_CONDITIONAL([BUILD_EXTRAS], [test x$enable_extras != xno])
 
 # Export libraries build conditions.
@@ -1290,6 +1297,9 @@ AC_CONFIG_FILES([
 	tests/unit/ini_config/Makefile
 	tests/perf/Makefile
 	tests/utils/Makefile
+	tests/utils/bt2_plugins/Makefile
+	tests/utils/bt2_plugins/event_name/Makefile
+	tests/utils/bt2_plugins/field_stats/Makefile
 	tests/utils/lttngtest/Makefile
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile

@@ -9,7 +9,8 @@ TEST_DESC="Filtering - Valid filters"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-STATS_BIN="$TESTDIR/utils/babelstats.pl"
+BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
+
 SESSION_NAME="valid_filter"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
@@ -112,14 +113,10 @@ function test_valid_filter
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME --no-wait
 
-	stats=`"$BABELTRACE_BIN" $trace_path | $STATS_BIN --tracepoint $event_name`
-
-	rm -rf $trace_path
+	stats=$("${BABELTRACE_BIN}" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name}\"]" -c sink.lttngtest.field_stats)
 
 	$validator "$stats"
-
 	ok $? "Validate trace filter output"
-
 	rm -rf $trace_path
 }
 
