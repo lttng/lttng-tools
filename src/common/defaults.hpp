@@ -30,6 +30,9 @@
 /* Environment variable to set man pager binary path. */
 #define DEFAULT_MAN_BIN_PATH_ENV "LTTNG_MAN_BIN_PATH"
 
+/* Environment variable to set man manpath. */
+#define DEFAULT_MANPATH "LTTNG_MANPATH"
+
 /* Default man pager binary path. */
 #define DEFAULT_MAN_BIN_PATH "/usr/bin/man"
 

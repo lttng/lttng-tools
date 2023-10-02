@@ -28,4 +28,12 @@ export PATH
 MANPATH="$builddir/doc/man"
 export MANPATH
 
+# Use local path to search manual pages for lttng --help.
+LTTNG_MANPATH="$builddir/doc/man"
+export LTTNG_MANPATH
+
+# Use system man instead of /usr/bin/man.
+LTTNG_MAN_BIN_PATH=$(type -p man)
+export LTTNG_MAN_BIN_PATH
+
 exec "$@"

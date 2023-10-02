@@ -1020,10 +1020,23 @@ static const char *get_man_bin_path()
 	return DEFAULT_MAN_BIN_PATH;
 }
 
+static const char *get_manpath()
+{
+	char *manpath = lttng_secure_getenv(DEFAULT_MANPATH);
+
+	if (manpath) {
+		return manpath;
+	}
+
+	/* As defined during configuration. */
+	return MANPATH;
+}
+
 int utils_show_help(int section, const char *page_name, const char *help_msg)
 {
 	char section_string[8];
 	const char *man_bin_path = get_man_bin_path();
+	const char *manpath = get_manpath();
 	int ret = 0;
 
 	if (help_msg) {
@@ -1042,7 +1055,7 @@ int utils_show_help(int section, const char *page_name, const char *help_msg)
 	 * be installed outside /usr, in which case its man pages are
 	 * not located in the default /usr/share/man directory.
 	 */
-	ret = execlp(man_bin_path, "man", "-M", MANPATH, section_string, page_name, NULL);
+	ret = execlp(man_bin_path, "man", "-M", manpath, section_string, page_name, NULL);
 
 end:
 	return ret;
