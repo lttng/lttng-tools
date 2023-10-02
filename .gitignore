@@ -172,6 +172,10 @@ compile_commands.json
 /doc/man/*.h
 /doc/man/asciidoc-attrs.conf
 !/doc/man/lttng-health-check.3
+/doc/man/man1
+/doc/man/man3
+/doc/man/man7
+/doc/man/man8
 
 # examples
 /doc/examples/rotation/rotate-client
