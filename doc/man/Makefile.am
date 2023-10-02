@@ -7,6 +7,9 @@
 # function which adds the source directory prefix and adds a given suffix
 manaddsuffix = $(addsuffix $(1),$(addprefix $(srcdir)/,$(2)))
 
+# Local targets.
+LOCAL =
+
 # List only the names without the .*.txt extension here:
 MAN1_NAMES = \
 	lttng \
@@ -113,7 +116,7 @@ MAN_H_RECIPE = \
 %.8.h: %.8
 	$(MAN_H_RECIPE)
 
-all-local: $(MAN_H)
+LOCAL += $(MAN_H)
 
 CLEANFILES += $(MAN_H)
 endif # EMBED_HELP
@@ -205,6 +208,27 @@ dist_man7_MANS += $(MAN7)
 dist_man8_MANS += $(MAN8)
 endif # MAN_PAGES_OPT
 
+MAN_HIERARCHY = man1 man3 man7 man8
+
+LOCAL += $(MAN_HIERARCHY)
+
+CLEANFILES += $(MAN_HIERARCHY)
+
+# Mimic mandb(8) path hierarchy -- as if installed -- by symlinking
+# sub-directories to the top man directory. This allows developers to read
+# the locally generated man pages. For example `$ ./pre-inst-env man lttng'.
+man1:
+	@ln -s $(abs_builddir) $@
+
+man3:
+	@ln -s $(abs_builddir) $@
+
+man7:
+	@ln -s $(abs_builddir) $@
+
+man8:
+	@ln -s $(abs_builddir) $@
+
 if !MAN_PAGES_OPT
 dist-hook:
 	@echo "Error: Please enable the man pages before creating a distribution tarball."
@@ -214,6 +238,9 @@ endif # !MAN_PAGES_OPT
 # always distribute the source files
 EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_FILE) \
 	$(ASCIIDOC_CONF) $(ASCIIDOC_ATTRS_CONF).in
+
+# Build local targets.
+all-local: $(LOCAL)
 
 # keep generated man pages that can be considered intermediate files
 .PRECIOUS: %.1 %.3 %.7 %.8
