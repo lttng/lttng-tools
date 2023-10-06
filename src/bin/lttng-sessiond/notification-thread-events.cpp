@@ -22,6 +22,7 @@
 #include <common/futex.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/unix.hpp>
 #include <common/urcu.hpp>
@@ -3150,27 +3151,27 @@ end:
 	return 0;
 }
 
-static int pop_cmd_queue(struct notification_thread_handle *handle,
-			 struct notification_thread_command **cmd)
+static notification_thread_command *pop_cmd_queue(notification_thread_handle *handle)
 {
-	int ret;
-	uint64_t counter;
+	lttng::pthread::lock_guard queue_lock(handle->cmd_queue.lock);
 
-	pthread_mutex_lock(&handle->cmd_queue.lock);
-	ret = lttng_read(handle->cmd_queue.event_fd, &counter, sizeof(counter));
-	if (ret != sizeof(counter)) {
-		ret = -1;
-		goto error_unlock;
+	uint64_t counter;
+	const auto read_ret = lttng_read(handle->cmd_queue.event_fd, &counter, sizeof(counter));
+	if (read_ret != sizeof(counter)) {
+		if (read_ret < 0) {
+			LTTNG_THROW_POSIX("Failed to read counter value from event_fd", errno);
+		} else {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to read counter value from event_fd because of a truncated read: ret={}, expected read size={}",
+				read_ret,
+				sizeof(counter)));
+		}
 	}
 
-	*cmd = cds_list_first_entry(
+	auto command = cds_list_first_entry(
 		&handle->cmd_queue.list, struct notification_thread_command, cmd_list_node);
-	cds_list_del(&((*cmd)->cmd_list_node));
-	ret = 0;
-
-error_unlock:
-	pthread_mutex_unlock(&handle->cmd_queue.lock);
-	return ret;
+	cds_list_del(&((command)->cmd_list_node));
+	return command;
 }
 
 /* Returns 0 on success, 1 on exit requested, negative value on error. */
@@ -3178,10 +3179,12 @@ int handle_notification_thread_command(struct notification_thread_handle *handle
 				       struct notification_thread_state *state)
 {
 	int ret;
-	struct notification_thread_command *cmd;
+	struct notification_thread_command *cmd = nullptr;
 
-	ret = pop_cmd_queue(handle, &cmd);
-	if (ret) {
+	try {
+		cmd = pop_cmd_queue(handle);
+	} catch (const std::exception& ex) {
+		ERR("Failed to get next notification thread command: %s", ex.what());
 		goto error;
 	}
 
@@ -3313,11 +3316,13 @@ int handle_notification_thread_command(struct notification_thread_handle *handle
 	}
 
 end:
-	if (cmd->is_async) {
-		delete cmd;
-		cmd = nullptr;
-	} else {
-		cmd->command_completed_waker->wake();
+	if (cmd) {
+		if (cmd->is_async) {
+			delete cmd;
+			cmd = nullptr;
+		} else {
+			cmd->command_completed_waker->wake();
+		}
 	}
 
 	return ret;
