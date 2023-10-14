@@ -15,6 +15,7 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/consumer/metadata-bucket.hpp>
+#include <common/exception.hpp>
 #include <common/index/index.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
@@ -28,6 +29,32 @@
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#define LTTNG_THROW_DISCARDED_EVENTS_COUNTER_OVERFLOW_ERROR(previous_value, new_value) \
+	throw discarded_events_counter_overflow_error(                                 \
+		previous_value, new_value, LTTNG_SOURCE_LOCATION())
+
+namespace {
+class discarded_events_counter_overflow_error : public lttng::runtime_error {
+public:
+	explicit discarded_events_counter_overflow_error(uint64_t previous_value_,
+							 uint64_t current_value_,
+							 const lttng::source_location& location) :
+		lttng::runtime_error(
+			lttng::format(
+				"Unexpected discarded events overflow detected: previous_value={}, current_value={}",
+				previous_value_,
+				current_value_),
+			location),
+		previous_value(previous_value_),
+		current_value(current_value_)
+	{
+	}
+
+	const std::uint64_t previous_value;
+	const std::uint64_t current_value;
+};
+} /* namespace */
 
 struct metadata_packet_header {
 	uint32_t magic; /* 0x75D11D57 */
@@ -97,6 +124,40 @@ static void consumer_stream_metadata_assert_locked_all(struct lttng_consumer_str
 	consumer_stream_data_assert_locked_all(stream);
 }
 
+static void aggregate_discarded_events(uint64_t& channel_discarded_events,
+				       uint64_t& stream_previous_discarded_events,
+				       uint64_t stream_current_discarded_events)
+{
+	uint64_t stream_delta = 0;
+
+	if (stream_current_discarded_events < stream_previous_discarded_events) {
+		if (CAA_BITS_PER_LONG >= 64) {
+			/*
+			 * Unexpected counter overflow: don't update the counter,
+			 * so if this is caused by a race condition, we can
+			 * recover on the next aggregation.
+			 */
+			LTTNG_THROW_DISCARDED_EVENTS_COUNTER_OVERFLOW_ERROR(
+				stream_previous_discarded_events, stream_current_discarded_events);
+		} else {
+			/*
+			 * A 32-bit overflow is detected. We assume only one
+			 * wrap-around has occurred.
+			 *
+			 * To compute the correct delta, we add 2^32 to the
+			 * (possibly negative) difference between the current
+			 * and previous values. This is equivalent to:
+			 *   delta = (current + 2^32) - previous
+			 */
+			stream_delta += 1ULL << 32;
+		}
+	}
+
+	stream_delta += stream_current_discarded_events - stream_previous_discarded_events;
+	channel_discarded_events += stream_delta;
+	stream_previous_discarded_events = stream_current_discarded_events;
+}
+
 /* Only used for data streams. */
 static int consumer_stream_update_stats(struct lttng_consumer_stream *stream,
 					struct stream_subbuffer *subbuf_)
@@ -133,17 +194,19 @@ static int consumer_stream_update_stats(struct lttng_consumer_stream *stream,
 	}
 	stream->last_sequence_number = sequence_number;
 
-	if (discarded_events < stream->last_discarded_events) {
-		/*
-		 * Overflow has occurred. We assume only one wrap-around
-		 * has occurred.
-		 */
-		stream->chan->discarded_events += (1ULL << (CAA_BITS_PER_LONG - 1)) -
-			stream->last_discarded_events + discarded_events;
-	} else {
-		stream->chan->discarded_events += discarded_events - stream->last_discarded_events;
+	try {
+		aggregate_discarded_events(stream->chan->discarded_events,
+					   stream->last_discarded_events,
+					   discarded_events);
+	} catch (const discarded_events_counter_overflow_error& e) {
+		WARN_FMT(
+			"Failed to aggregate discarded events for stream: {}, session_id={}, channel_name=`{}`, stream_key={}",
+			e.what(),
+			stream->chan->session_id,
+			stream->chan->name,
+			stream->key);
 	}
-	stream->last_discarded_events = discarded_events;
+
 	ret = 0;
 
 end:
