@@ -9,7 +9,7 @@
 #ifndef _LTT_SHM_H
 #define _LTT_SHM_H
 
-char *shm_ust_get_mmap(char *shm_path, int global);
+char *shm_ust_get_mmap(char *shm_path, bool wait_shm_is_file, int global);
 
 int shm_create_anonymous(const char *owner_name);
 

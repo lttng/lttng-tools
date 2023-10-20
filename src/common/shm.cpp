@@ -20,6 +20,15 @@
 #include <unistd.h>
 #include <urcu.h>
 
+static int wait_shm_open(const char *wait_shm_path, int flags, mode_t mode, bool wait_shm_is_file)
+{
+	if (wait_shm_is_file) {
+		return open(wait_shm_path, flags, mode);
+	} else {
+		return shm_open(wait_shm_path, flags, mode);
+	}
+}
+
 /*
  * We deal with the shm_open vs ftruncate race (happening when the sessiond owns
  * the shm and does not let everybody modify it, to ensure safety against
@@ -27,7 +36,7 @@
  * seconds. For global shm, everybody has rw access to it until the sessiond
  * starts.
  */
-static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
+static int get_wait_shm(char *shm_path, bool wait_shm_is_file, size_t mmap_size, int global)
 {
 	int wait_shm_fd, ret;
 	mode_t mode, old_mode;
@@ -79,7 +88,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	 * use a now-unlinked shm, while the next application would create
 	 * a new named shm.
 	 */
-	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
+	wait_shm_fd = wait_shm_open(shm_path, O_RDWR | O_CREAT, mode, wait_shm_is_file);
 	if (wait_shm_fd < 0) {
 		if (errno == EACCES) {
 			/* Work around sysctl fs.protected_regular. */
@@ -88,7 +97,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 			    "Attempting to open the shm without "
 			    "creating it.",
 			    shm_path);
-			wait_shm_fd = shm_open(shm_path, O_RDWR, mode);
+			wait_shm_fd = wait_shm_open(shm_path, O_RDWR, mode, wait_shm_is_file);
 		}
 		if (wait_shm_fd < 0) {
 			PERROR("Failed to open \"wait\" shared memory object: path = '%s'",
@@ -166,7 +175,7 @@ error:
  * This returned value is used by futex_wait_update() in futex.c to WAKE all
  * waiters which are UST application waiting for a session daemon.
  */
-char *shm_ust_get_mmap(char *shm_path, int global)
+char *shm_ust_get_mmap(char *shm_path, bool wait_shm_is_file, int global)
 {
 	size_t mmap_size;
 	int wait_shm_fd, ret;
@@ -182,7 +191,7 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 	}
 	mmap_size = sys_page_size;
 
-	wait_shm_fd = get_wait_shm(shm_path, mmap_size, global);
+	wait_shm_fd = get_wait_shm(shm_path, wait_shm_is_file, mmap_size, global);
 	if (wait_shm_fd < 0) {
 		goto error;
 	}

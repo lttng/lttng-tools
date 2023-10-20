@@ -9,7 +9,8 @@ noinst_PROGRAMS = ini_config
 EXTRA_DIST = test_ini_config sample.ini
 
 ini_config_SOURCES = ini_config.cpp
-ini_config_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+ini_config_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

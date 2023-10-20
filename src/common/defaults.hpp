@@ -105,6 +105,7 @@
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_HOME_ENV_VAR	      "LTTNG_HOME"
 #define DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR   "HOME"
+#define DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR    "LTTNG_UST_CTL_PATH"
 #define DEFAULT_LTTNG_RUNDIR		      CONFIG_LTTNG_SYSTEM_RUNDIR
 #define DEFAULT_LTTNG_HOME_RUNDIR	      "%s/.lttng"
 #define DEFAULT_LTTNG_SESSIOND_PIDFILE	      "lttng-sessiond.pid"

@@ -438,7 +438,8 @@ libstring_utils_la_SOURCES = \
 
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp
-filter_grammar_test_LDADD = libcommon-gpl.la
+filter_grammar_test_LDADD = libcommon-gpl.la \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 EXTRA_DIST = \
 	mi-lttng-4.1.xsd \

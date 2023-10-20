@@ -17,6 +17,7 @@
 #include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/format.hpp>
 #include <common/readwrite.hpp>
 #include <common/runas.hpp>
 #include <common/string-utils/format.hpp>
@@ -737,6 +738,23 @@ const char *utils_get_home_dir()
 	DBG3("Home directory is '%s'", val);
 
 end:
+	return val;
+}
+
+/*
+ * Obtain the value of LTTNG_UST_CTL_PATH environment variable, if
+ * exists.  Otherwise return NULL.
+ */
+const char *utils_get_lttng_ust_ctl_path_override_dir()
+{
+	const auto *val = lttng_secure_getenv(DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR);
+	if (val == nullptr) {
+		return nullptr;
+	}
+
+	DBG_FMT("LTTng ust-ctl override path specified: {}=`{}`",
+		DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR,
+		val);
 	return val;
 }
 

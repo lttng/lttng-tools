@@ -78,7 +78,8 @@ endif
 
 # URI unit tests
 test_uri_SOURCES = test_uri.cpp
-test_uri_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_uri_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
 
@@ -103,16 +104,19 @@ test_kernel_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.cpp
-test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # parse_time_suffix unit test
 test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.cpp
-test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # compat_poll unit test
 test_utils_compat_poll_SOURCES = test_utils_compat_poll.cpp
 test_utils_compat_poll_LDADD  = $(LIBTAP) $(DL_LIBS) \
-		      $(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL)
+		      $(top_builddir)/src/common/libcompat.la $(LIBCOMMON_GPL) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # compat_pthread unit test
 test_utils_compat_pthread_SOURCES = test_utils_compat_pthread.cpp
@@ -125,11 +129,13 @@ test_utils_expand_path_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
 
 # directory handle unit test
 test_directory_handle_SOURCES = test_directory_handle.cpp
-test_directory_handle_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS)
+test_directory_handle_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(DL_LIBS) \
+			$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.cpp
-test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBSTRINGUTILS) $(DL_LIBS)
+test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBSTRINGUTILS) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Notification api
 test_notification_SOURCES = test_notification.cpp
@@ -138,11 +144,13 @@ test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
 # Event rule api
 test_event_rule_SOURCES = test_event_rule.cpp
 test_event_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
-		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT)
+		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Condition api
 test_condition_SOURCES = test_condition.cpp
-test_condition_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
+test_condition_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # relayd backward compat for groou-by-session utilities
 test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.cpp
@@ -152,11 +160,13 @@ test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_s
 # rate policy object unit test
 test_rate_policy_SOURCES = test_rate_policy.cpp
 test_rate_policy_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
-		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT)
+		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # fd tracker unit test
 test_fd_tracker_SOURCES = test_fd_tracker.cpp
-test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBCOMMON_GPL)
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBCOMMON_GPL) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # uuid unit test
 test_uuid_SOURCES = test_uuid.cpp
@@ -169,25 +179,30 @@ test_buffer_view_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
 
 # payload unit test
 test_payload_SOURCES = test_payload.cpp
-test_payload_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON_GPL)
+test_payload_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON_GPL) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # unix socket test
 test_unix_socket_SOURCES = test_unix_socket.cpp
-test_unix_socket_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON_GPL)
+test_unix_socket_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON_GPL) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Kernel probe location api test
 test_kernel_probe_SOURCES = test_kernel_probe.cpp
-test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
-#
+test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
+
 # Event expression to bytecode test
 test_event_expr_to_bytecode_SOURCES = test_event_expr_to_bytecode.cpp
-test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON_GPL)
+test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON_GPL) \
+			$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Log level rule api
 test_log_level_rule_SOURCES = test_log_level_rule.cpp
-test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
+test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+			$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Action api
 test_action_SOURCES = test_action.cpp
 test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
-	$(top_builddir)/src/vendor/fmt/libfmt.la
+			$(top_builddir)/src/vendor/fmt/libfmt.la

@@ -52,8 +52,20 @@ struct sessiond_config {
 	struct config_string apps_unix_sock_path;
 	/* Global client Unix socket path */
 	struct config_string client_unix_sock_path;
-	/* Global wait shm path for UST */
-	struct config_string wait_shm_path;
+	struct {
+		/*
+		 * Whether wait_shm is a regular file path or an shm_open parameter (false).
+		 * The default configuration values assume the path refers to a POSIX shared memory
+		 * object by name.
+		 *
+		 * When an ustctl override path is specified, the path is assumed to point to a
+		 * regular file path.
+		 */
+		bool is_regular_path;
+		/* Global wait shm path for UST */
+		struct config_string path;
+
+	} wait_shm;
 	/* Global health check unix path */
 	struct config_string health_unix_sock_path;
 	/*

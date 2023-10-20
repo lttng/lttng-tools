@@ -92,7 +92,8 @@ static int notify_ust_apps(int active, bool is_root)
 	DBG("Notifying applications of session daemon state: %d", active);
 
 	/* See shm.c for this call implying mmap, shm and futex calls */
-	wait_shm_mmap = shm_ust_get_mmap(the_config.wait_shm_path.value, is_root);
+	wait_shm_mmap = shm_ust_get_mmap(
+		the_config.wait_shm.path.value, the_config.wait_shm.is_regular_path, is_root);
 	if (wait_shm_mmap == nullptr) {
 		goto error;
 	}

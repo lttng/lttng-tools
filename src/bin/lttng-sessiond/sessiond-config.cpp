@@ -45,7 +45,7 @@ static struct sessiond_config sessiond_config_build_defaults = {
 
 	.apps_unix_sock_path = { nullptr, false },
 	.client_unix_sock_path = { nullptr, false },
-	.wait_shm_path = { nullptr, false },
+	.wait_shm = { false, {nullptr, false}},
 	.health_unix_sock_path = { nullptr, false },
 	.lttng_ust_clock_plugin = { nullptr, false },
 	.pid_file_path = { nullptr, false },
@@ -153,6 +153,42 @@ end:
 	return ret;
 }
 
+static int config_set_ust_ctl_paths(struct sessiond_config *config,
+				    const char *lttng_ust_ctl_path_override)
+{
+	char *str;
+	int ret;
+
+	ret = asprintf(&str, "%s/%s", lttng_ust_ctl_path_override, LTTNG_UST_SOCK_FILENAME);
+	if (ret < 0) {
+		ERR("Failed to set default ust_ctl unix socket path");
+		return ret;
+	}
+
+	config_string_set(&config->apps_unix_sock_path, str);
+	str = nullptr;
+	ret = asprintf(&str, "%s/%s", lttng_ust_ctl_path_override, LTTNG_UST_WAIT_FILENAME);
+	if (ret < 0) {
+		ERR("Failed to set default ust_ctl wait shm path");
+		return ret;
+	}
+
+	config->wait_shm.is_regular_path = true;
+	config_string_set(&config->wait_shm.path, str);
+	str = nullptr;
+
+	ret = asprintf(
+		&str, "%s/%s", lttng_ust_ctl_path_override, DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
+	if (ret < 0) {
+		ERR("Failed to set ust_ctl agent port file path");
+		return ret;
+	}
+
+	config_string_set(&config->agent_port_file_path, str);
+	str = nullptr;
+	return 0;
+}
+
 static int config_set_paths_root(struct sessiond_config *config)
 {
 	int ret = 0;
@@ -165,8 +201,8 @@ static int config_set_paths_root(struct sessiond_config *config)
 	}
 
 	config_string_set_static(&config->apps_unix_sock_path, DEFAULT_GLOBAL_APPS_UNIX_SOCK);
+	config_string_set_static(&config->wait_shm.path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
 	config_string_set_static(&config->client_unix_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
-	config_string_set_static(&config->wait_shm_path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
 	config_string_set_static(&config->health_unix_sock_path, DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
 end:
 	return ret;
@@ -201,7 +237,16 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		ERR("Failed to set default home apps unix socket path");
 		goto end;
 	}
+
 	config_string_set(&config->apps_unix_sock_path, str);
+	str = nullptr;
+	ret = asprintf(&str, DEFAULT_HOME_APPS_WAIT_SHM_PATH, getuid());
+	if (ret < 0) {
+		ERR("Failed to set default home apps wait shm path");
+		goto end;
+	}
+
+	config_string_set(&config->wait_shm.path, str);
 	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
@@ -210,14 +255,6 @@ static int config_set_paths_non_root(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->client_unix_sock_path, str);
-	str = nullptr;
-
-	ret = asprintf(&str, DEFAULT_HOME_APPS_WAIT_SHM_PATH, getuid());
-	if (ret < 0) {
-		ERR("Failed to set default home apps wait shm path");
-		goto end;
-	}
-	config_string_set(&config->wait_shm_path, str);
 	str = nullptr;
 
 	ret = asprintf(&str, DEFAULT_HOME_HEALTH_UNIX_SOCK, home_path);
@@ -235,6 +272,7 @@ end:
 
 int sessiond_config_init(struct sessiond_config *config)
 {
+	const char *lttng_ust_ctl_path_override = utils_get_lttng_ust_ctl_path_override_dir();
 	int ret;
 	const bool is_root = (getuid() == 0);
 	char *str;
@@ -249,6 +287,30 @@ int sessiond_config_init(struct sessiond_config *config)
 	}
 	if (ret < 0) {
 		goto error;
+	}
+
+	if (lttng_ust_ctl_path_override) {
+		/*
+		 * Since a ustctl path override has been specified, re-evaluate the following paths
+		 * to take it into account:
+		 *   - apps_unix_sock_path
+		 *   - wait_shm_path
+		 *   - agent_port_file_path
+		 */
+		ret = config_set_ust_ctl_paths(config, lttng_ust_ctl_path_override);
+		if (ret < 0) {
+			goto error;
+		}
+	} else {
+		ret = asprintf(
+			&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
+		if (ret < 0) {
+			ERR("Failed to set agent port file path");
+			goto error;
+		}
+
+		config_string_set(&config->agent_port_file_path, str);
+		str = nullptr;
 	}
 
 	/* 32 bits consumerd path setup */
@@ -342,14 +404,6 @@ int sessiond_config_init(struct sessiond_config *config)
 	config_string_set(&config->lock_file_path, str);
 	str = nullptr;
 
-	ret = asprintf(&str, "%s/%s", config->rundir.value, DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
-	if (ret < 0) {
-		ERR("Failed to set agent port file path");
-		goto error;
-	}
-	config_string_set(&config->agent_port_file_path, str);
-	str = nullptr;
-
 	/*
 	 * Allow INSTALL_BIN_PATH to be used as a target path for the
 	 * native architecture size consumer if CONFIG_CONSUMER*_PATH
@@ -381,7 +435,7 @@ void sessiond_config_fini(struct sessiond_config *config)
 	config_string_fini(&config->rundir);
 	config_string_fini(&config->apps_unix_sock_path);
 	config_string_fini(&config->client_unix_sock_path);
-	config_string_fini(&config->wait_shm_path);
+	config_string_fini(&config->wait_shm.path);
 	config_string_fini(&config->health_unix_sock_path);
 	config_string_fini(&config->lttng_ust_clock_plugin);
 	config_string_fini(&config->pid_file_path);
@@ -431,7 +485,7 @@ int sessiond_config_resolve_paths(struct sessiond_config *config)
 {
 	RESOLVE_CHECK(&config->apps_unix_sock_path);
 	RESOLVE_CHECK(&config->client_unix_sock_path);
-	RESOLVE_CHECK(&config->wait_shm_path);
+	RESOLVE_CHECK(&config->wait_shm.path);
 	RESOLVE_CHECK(&config->health_unix_sock_path);
 	RESOLVE_CHECK(&config->lttng_ust_clock_plugin);
 	RESOLVE_CHECK(&config->pid_file_path);
@@ -495,7 +549,7 @@ void sessiond_config_log(struct sessiond_config *config)
 		   config->apps_unix_sock_path.value ?: "Unknown");
 	DBG_NO_LOC("\tclient socket path:            %s",
 		   config->client_unix_sock_path.value ?: "Unknown");
-	DBG_NO_LOC("\twait shm path:                 %s", config->wait_shm_path.value ?: "Unknown");
+	DBG_NO_LOC("\twait shm path:                 %s", config->wait_shm.path.value ?: "Unknown");
 	DBG_NO_LOC("\thealth socket path:            %s",
 		   config->health_unix_sock_path.value ?: "Unknown");
 	DBG_NO_LOC("\tLTTNG_UST_CLOCK_PLUGIN:        %s",
