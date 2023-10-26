@@ -25,7 +25,7 @@ run_test=@RUN_PYTHON_AGENT_TEST@
 if [[ -z "$run_test" ]]; then
 	NUM_TESTS=1
 else
-	NUM_TESTS=$(((199 * ${#python_versions[@]})+2))
+	NUM_TESTS=$(((208 * ${#python_versions[@]})+2))
 fi
 
 source $TESTDIR/utils/utils.sh
@@ -714,6 +714,40 @@ function test_python_trigger_notify_action
 	rm -f "${tmp_expected_stdout}"
 }
 
+
+function test_app_path_with_separators
+{
+	local PYTHON="${1}"
+
+	diag "Test LTTNG_UST_APP_PATH and LTTNG_UST_CTL_PATH with separators"
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	CTL_PATH2="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl2.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LTTNG_UST_CTL_PATH="${CTL_PATH}:${CTL_PATH2}"
+	)
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_python_lttng_event_loglevel "${SESSION_NAME}" "${EVENT_NAME}" "INFO"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+
+	LTTNG_UST_APP_PATH="${CTL_PATH}:${CTL_PATH2}" "${PYTHON}" "$TESTAPP_PATH/$TESTAPP_BIN" -n 100 -s 0
+
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+
+	validate_trace_count "${EVENT_NAME}" "${TRACE_PATH}" 100 0
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	# Cleanup
+	rm -rf "${CTL_PATH}" "${CTL_PATH2}" "${TRACE_PATH}"
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -748,6 +782,9 @@ skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 		test_python_filter_loglevel
 		test_python_trigger_notify_action
 	)
+	standalone_tests=(
+		test_app_path_with_separators
+	)
 
 
 	for python_version in ${python_versions[*]};
@@ -765,4 +802,11 @@ skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 		done
 	done
 	stop_lttng_sessiond
+
+	for python_version in "${python_versions[@]}"; do
+		for fct_test in "${standalone_tests[@]}"; do
+			diag "(Python $python_version)"
+			"${fct_test}" "${python_version}"
+		done
+	done
 }

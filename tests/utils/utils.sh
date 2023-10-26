@@ -139,6 +139,14 @@ if [ -z "$PGREP" ]; then
 	PGREP=pgrep
 fi
 
+function lttng_default_rundir () {
+	if [ "${UID}" == "0" ] ; then
+		echo "/var/run/lttng"
+	else
+		echo "${LTTNG_HOME:-$HOME}/.lttng"
+	fi
+}
+
 function _lttng_client_log_file ()
 {
 	local output_dest="${1}"
@@ -956,7 +964,7 @@ function start_lttng_sessiond_opt()
 	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/"}"
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z "$(lttng_pgrep "${SESSIOND_MATCH}")" ]; then
+	if [ -z "$(lttng_pgrep "${SESSIOND_MATCH}")" ] || [ -n "${TEST_IGNORE_EXISTING_SESSIOND}" ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			diag "env $env_vars --load $load_path --background $consumerd ${opts[*]}"
@@ -994,12 +1002,20 @@ function start_lttng_sessiond_opt()
 				gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT}" -ex "continue" -ex "disconnect" &
 			fi
 		fi
+
+		return $status
 	fi
 }
 
 function start_lttng_sessiond()
 {
 	start_lttng_sessiond_opt 1 "$@"
+}
+
+function start_lttng_sessiond_fail()
+{
+	start_lttng_sessiond_opt 0 "$@"
+	isnt "${?}" "0" "start_lttng_sessiond_fail"
 }
 
 function start_lttng_sessiond_notap()
@@ -1510,6 +1526,13 @@ function enable_ust_lttng_event ()
 	local event_name="$4"
 	local channel_name=$5
 
+	# Any other arguments are passed to `lttng enable-event` without modification
+	local enable_event_args=()
+	if [ "${#}" -gt 5 ] ; then
+		enable_event_args=("${@:5}")
+	fi
+	echo "${enable_event_args[@]}" >&2
+
 	if [ -z $channel_name ]; then
 		# default channel if none specified
 		chan=""
@@ -1518,7 +1541,7 @@ function enable_ust_lttng_event ()
 	fi
 
 	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
-		enable-event "$event_name" $chan -s "$sess_name" -u
+		enable-event "$event_name" $chan -s "$sess_name" -u "${enable_event_args[@]}"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"

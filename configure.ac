@@ -1333,6 +1333,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/rotation-destroy-flush/Makefile
 	tests/regression/ust/blocking/Makefile
 	tests/regression/ust/namespaces/Makefile
+	tests/regression/ust/ust-app-ctl-paths/Makefile
 	tests/regression/ust/ust-constructor/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile

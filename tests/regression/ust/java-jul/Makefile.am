@@ -2,8 +2,12 @@
 
 JAVAROOT = .
 
-noinst_SCRIPTS = test_java_jul JTestLTTng.java
-EXTRA_DIST = test_java_jul JTestLTTng.java
+noinst_SCRIPTS = test_java_jul \
+	JTestLTTng.java \
+	test_ust_app_ctl_path_separators.sh
+EXTRA_DIST = test_java_jul \
+	JTestLTTng.java \
+	test_ust_app_ctl_path_separators.sh
 
 if TEST_JAVA_JUL_AGENT
 dist_noinst_JAVA = JTestLTTng.java

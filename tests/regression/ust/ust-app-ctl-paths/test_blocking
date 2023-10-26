@@ -1,0 +1,181 @@
+#!/bin/bash
+#
+# Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+#
+
+TEST_DESC="Verifies that the sessiond starts (or doesn't start) appropriately depending on the combination of path settings in conjuction with LTTNG_UST_ALLOW_BLOCKING and '--blocking-timeout'"
+
+CURDIR="$(dirname "${0}")"
+TESTDIR="${CURDIR}/../../../"
+
+NUM_TESTS=33
+
+# shellcheck source=../../../utils/utils.sh
+source "${TESTDIR}/utils/utils.sh"
+
+TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events/gen-ust-events"
+SESSION_NAME="ust-blocking"
+CHANNEL_NAME="ust-blocking"
+EVENT_NAMES="tp:tptest"
+
+function test_blocking_mode_app_path()
+{
+	APP_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.app.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LTTNG_UST_ALLOW_BLOCKING=1
+		LTTNG_UST_APP_PATH="${APP_PATH}"
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	"${TESTAPP}" -i 100 -w 0
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+	rm -rf "${APP_PATH}" "${TRACE_PATH}"
+}
+
+function test_blocking_mode_defaults_paths()
+{
+	diag "Test starting sessiond in blocking with neither LTTNG_UST_APP_PATH nor LTTNG_UST_CTL_PATH set"
+	env_vars=(
+		LTTNG_UST_ALLOW_BLOCKING=1
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond_cleanup
+}
+
+function test_blocking_mode_ctl_path()
+{
+	diag "Test starting sessiond in blocking with LTTNG_UST_CTL_PATH set"
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LTTNG_UST_ALLOW_BLOCKING=1
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -i 100 -w 0
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+	rm -rf "${CTL_PATH}" "${TRACE_PATH}"
+}
+
+function test_blocking_mode_with_different_paths()
+{
+	diag "Test starting sessiond in blocking with different LTTNG_UST_APP_PATH and LTTNG_UST_CTL_PATHs"
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	APP_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.app.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LTTNG_UST_ALLOW_BLOCKING=1
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+		LTTNG_UST_APP_PATH="${APP_PATH}"
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}" "--blocking-timeout=inf"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -i 100 -w 0
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+	rm -rf "${CTL_PATH}" "${TRACE_PATH}" "${APP_PATH}"
+}
+
+function test_blocking_mode_with_same_paths()
+{
+	diag "Test starting sessiond in blocking with the same LTTNG_UST_APP_PATH and LTTNG_UST_CTL_PATHs"
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.XXXXXX")"
+	env_vars=(
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+		LTTNG_UST_APP_PATH="${CTL_PATH}"
+		LTTNG_UST_ALLOW_BLOCKING=1
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond_cleanup
+
+	rm -rf "${CTL_PATH}"
+}
+
+function test_blocking_mode_app_path_is_default_ctl_path() {
+	diag "Test starting sessiond when it's app path happens to match the default ctl path"
+	APP_PATH="$(lttng_default_rundir)"
+
+	env_vars=(
+		LTTNG_UST_APP_PATH="${APP_PATH}"
+		LTTNG_UST_ALLOW_BLOCKING=1
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond_cleanup
+}
+
+function test_blocking_mode_ctl_path_is_default_app_path() {
+	diag "Test starting sessiond when it's ctl path happens to match the default ctl path"
+	CTL_PATH="$(lttng_default_rundir)"
+
+	env_vars=(
+		LTTNG_UST_CTL_PATH="${APP_PATH}"
+		LTTNG_UST_ALLOW_BLOCKING=1
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond_cleanup
+}
+
+TESTS=(
+	test_blocking_mode_default_paths
+	test_blocking_mode_app_path
+	test_blocking_mode_ctl_path
+	test_blocking_mode_with_same_paths
+	test_blocking_mode_with_different_paths
+	test_blocking_mode_app_path_is_default_ctl_path
+	test_blocking_mode_ctl_path_is_default_app_path
+)
+
+plan_tests "${NUM_TESTS}"
+print_test_banner "${TEST_DESC}"
+
+for TEST in "${TESTS[@]}" ; do
+	"${TEST}"
+done

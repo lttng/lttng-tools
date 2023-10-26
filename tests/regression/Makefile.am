@@ -94,6 +94,9 @@ TESTS += ust/before-after/test_before_after \
 	ust/blocking/test_blocking \
 	ust/multi-lib/test_multi_lib \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
+	ust/ust-app-ctl-paths/test_blocking \
+	ust/ust-app-ctl-paths/test_path_separators \
+	ust/ust-app-ctl-paths/test_ust_app_ctl_paths \
 	ust/ust-constructor/test_ust_constructor_c_dynamic.py \
 	ust/ust-constructor/test_ust_constructor_c_static.py \
 	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
@@ -103,7 +106,8 @@ TESTS += ust/before-after/test_before_after \
 	tools/trigger/rate-policy/test_ust_rate_policy
 
 if TEST_JAVA_JUL_AGENT
-TESTS += ust/java-jul/test_java_jul
+TESTS += ust/java-jul/test_java_jul \
+	ust/java-jul/test_ust_app_ctl_path_separators.sh
 endif # TEST_JAVA_JUL_AGENT
 
 if TEST_JAVA_LOG4J_AGENT

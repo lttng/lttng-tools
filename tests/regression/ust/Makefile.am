@@ -25,6 +25,7 @@ SUBDIRS = \
 	periodical-metadata-flush \
 	rotation-destroy-flush \
 	type-declarations \
+	ust-app-ctl-paths \
 	ust-constructor
 
 if HAVE_OBJCOPY

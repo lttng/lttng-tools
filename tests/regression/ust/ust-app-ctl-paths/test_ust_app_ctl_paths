@@ -1,0 +1,363 @@
+#!/bin/bash
+#
+# Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+#
+
+TEST_DESC="Verifies the sessiond and traced applications with different combinations of LTTNG_UST_APP_PATH and LTTNG_UST_CTL_PATH settings."
+
+CURDIR="$(dirname "${0}")"
+TESTDIR="${CURDIR}/../../../"
+
+NUM_TESTS=98
+
+# shellcheck source=../../../utils/utils.sh
+source "${TESTDIR}/utils/utils.sh"
+
+TESTAPP="${TESTDIR}/utils/testapp/gen-ust-events/gen-ust-events"
+EVENT_NAMES="tp:tptest"
+SESSION_NAME="ust-app-ctl-path"
+CHANNEL_NAME="ust-app-ctl-path"
+
+function test_sessiond_started_before_app()
+{
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	env_vars=(
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -i 100 -w 0
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+	rm -rf "${TRACE_PATH}" "${CTL_PATH}"
+}
+
+function test_sessiond_started_after_app()
+{
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	SYNC_FILE=$(mktemp -d)
+	env_vars=(
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+	)
+
+	LTTNG_UST_APP_PATH="${CTL_PATH}" "${TESTAPP}" -b "${SYNC_FILE}/a" &
+	APP_PID="${!}"
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	touch "${SYNC_FILE}/a"
+	wait "${APP_PID}"
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	validate_trace "${EVENT_NAMES}" "${TRACE_PATH}"
+	rm -rf "${TRACE_PATH}" "${CTL_PATH}" "${SYNC_FILE}"
+}
+
+function test_multi_sessiond()
+{
+	# Multiple root sessionds cannot be started
+	if [ "${UID}" == "0" ] ; then
+		skip 0 "Multiple root sessionds aren't supported" 28
+		return
+	fi
+
+	N_SESSIOND=3
+	CTL_PATH_BASE="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH_BASE="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	LTTNG_HOME_BASE="$(mktemp -d -t "tmp.${FUNCNAME[0]}.lttng-home.XXXXXX")"
+	LTTNG_HOME_ORIG="${LTTNG_HOME}"
+
+	for i in $(seq 1 "${N_SESSIOND}") ; do
+		CTL_PATH="${CTL_PATH_BASE}/$i"
+		TRACE_PATH="${TRACE_PATH_BASE}/$i"
+		LTTNG_HOME="${LTTNG_HOME_BASE}/$i"
+		mkdir -p "${CTL_PATH}" "${TRACE_PATH}" "${LTTNG_HOME}"
+		env_vars=(
+			LTTNG_HOME="${LTTNG_HOME}"
+			LTTNG_UST_CTL_PATH="${CTL_PATH}"
+			TEST_IGNORE_EXISTING_SESSIOND=1
+		)
+		# shellcheck disable=SC2119
+		LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+		export "${env_vars[@]}"
+		create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+		enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+		enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+		start_lttng_tracing_ok "${SESSION_NAME}"
+		unset LTTNG_HOME
+		unset LTTNG_UST_CTL_PATH
+	done
+	for i in $(seq 1 "${N_SESSIOND}") ; do
+		LTTNG_UST_APP_PATH="${CTL_PATH_BASE}/$i" "${TESTAPP}" -i 100 -w 0
+	done
+	for i in $(seq 1 "${N_SESSIOND}") ; do
+		env_vars=(
+			LTTNG_HOME="${LTTNG_HOME_BASE}/$i"
+		)
+		export "${env_vars[@]}"
+		stop_lttng_tracing_ok "${SESSION_NAME}"
+		destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+		unset LTTNG_HOME
+		validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH_BASE}/$i" 100
+	done
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	# Cleanup
+	rm -rf "${TRACE_PATH_BASE}" "${CTL_PATH_BASE}" "${LTTNG_HOME_BASE}"
+	unset TEST_IGNORE_EXISTING_SESSIOND LTTNG_UST_CTL_PATH
+	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
+		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
+	fi
+}
+
+function test_multi_sessiond_default()
+{
+	diag "Verifies that the lttng_session_daemon_alive()/set_session_daemon_path() in liblttng is coherent with LTTNG_UST_CTL_PATH"
+
+	# Multiple root sessionds cannot be started
+	if [ "${UID}" == "0" ] ; then
+		skip 0 "Multiple root sessionds aren't supported" 11
+		return
+	fi
+
+	LTTNG_HOME_B="$(mktemp -d -t "tmp.${FUNCNAME[0]}.lttng-home.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+	LTTNG_HOME_ORIG="${LTTNG_HOME}"
+
+	# shellcheck disable=SC2119
+	start_lttng_sessiond
+
+	LTTNG_UST_APP_PATH="${LTTNG_HOME_B}/.lttng"
+	env_vars_b=(
+		LTTNG_HOME="${LTTNG_HOME_B}"
+		TEST_IGNORE_EXISTING_SESSIOND=1
+	)
+	export "${env_vars_b[@]}"
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars_b[*]}" start_lttng_sessiond
+
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	LTTNG_UST_APP_PATH="${LTTNG_UST_APP_PATH}" "${TESTAPP}" -i 100 -w 0
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	unset LTTNG_HOME LTTNG_RUNDIR
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH}" 100
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	unset LTTNG_HOME TEST_IGNORE_EXISTING_SESSIOND
+	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
+		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
+	fi
+	rm -rf "${LTTNG_HOME_B}" "${TRACE_PATH}"
+}
+
+function test_trace_another_sessiond()
+{
+	if [ "${UID}" == "0" ] ; then
+		skip 0 "Multiple root sessionds aren't supported" 18
+		return
+	fi
+
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH_A="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace_a.XXXXXX")"
+	TRACE_PATH_B="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace_b.XXXXXX")"
+	LTTNG_HOME_A="$(mktemp -d -t "tmp.${FUNCNAME[0]}.lttng-home.XXXXXX")"
+	LTTNG_HOME_ORIG="${LTTNG_HOME}"
+
+	# This sessiond will trace a new one that will be started
+	env_vars_a=(
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+		LTTNG_HOME="${LTTNG_HOME_A}"
+		TEST_IGNORE_EXISTING_SESSIOND=1
+	)
+	export "${env_vars_a[@]}"
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars_a[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH_A}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	unset LTTNG_HOME LTTNG_UST_CTL_PATH
+
+	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
+		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
+	fi
+	# This sessiond will be traced
+	env_vars_b=(
+		LTTNG_UST_APP_PATH="${CTL_PATH}"
+		TEST_IGNORE_EXISTING_SESSIOND=1
+		LD_PRELOAD="liblttng-ust-fd.so:liblttng-ust-fork.so"
+	)
+
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars_b[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH_B}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+
+	"${TESTAPP}" -i 100 -w 0
+
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH_B}" 100
+
+	# Confirm that we get traced data from the subordinate sessiond
+	export LTTNG_HOME="${LTTNG_HOME_A}"
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH_A}" | wc -l)"
+	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+
+	# Cleanup
+	rm -rf "${TRACE_PATH_A}" "{$TRACE_PATH_B}" "${LTTNG_HOME_A}" "${CTL_PATH}"
+	unset LTTNG_HOME LTTNG_UST_CTL_PATH TEST_IGNORE_EXISTING_SESSIOND
+	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
+		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
+	fi
+}
+
+function test_trace_self_default_paths()
+{
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LD_PRELOAD="liblttng-ust-fd.so:liblttng-ust-fork.so"
+		# Don't block during registration
+		LTTNG_UST_REGISTER_TIMEOUT=0
+	)
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	add_context_ust_ok "${SESSION_NAME}" "${CHANNEL_NAME}" vpid -t procname
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}" -x "${EVENT_NAMES}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}"
+
+	LTTNG_UST_APP_PATH="${CTL_PATH}" \
+					  LTTNG_UST_WITHOUT_BADDR_STATEDUMP=1 \
+					  LTTNG_UST_WITHOUT_PROCNAME_STATEDUMP=1 \
+					  "${TESTAPP}" -i 100 -w 0 &
+	APP_PID="${!}"
+
+	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH}" | grep -v "vpid = ${APP_PID}" -c)"
+	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+	# Cleanup
+	rm -rf "${TRACE_PATH}"
+}
+
+function test_trace_self_app_and_ctl_paths()
+{
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
+
+	env_vars=(
+		LTTNG_UST_APP_PATH="${CTL_PATH}"
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+		LD_PRELOAD="liblttng-ust-fd.so:liblttng-ust-fork.so"
+		# Don't block during registration
+		LTTNG_UST_REGISTER_TIMEOUT=0
+	)
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
+	create_lttng_session_ok "${SESSION_NAME}" "${TRACE_PATH}"
+	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
+	add_context_ust_ok "${SESSION_NAME}" "${CHANNEL_NAME}" vpid -t procname
+	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}" -x "${EVENT_NAMES}"
+	start_lttng_tracing_ok "${SESSION_NAME}"
+
+	LTTNG_UST_APP_PATH="${CTL_PATH}" \
+					  LTTNG_UST_WITHOUT_BADDR_STATEDUMP=1 \
+					  LTTNG_UST_WITHOUT_PROCNAME_STATEDUMP=1 \
+					  "${TESTAPP}" -i 100 -w 0 &
+	APP_PID="${!}"
+
+	stop_lttng_tracing_ok "${SESSION_NAME}"
+	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
+
+	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH}" | grep -v "vpid = ${APP_PID}" -c)"
+	isnt "${EVENT_COUNT}" "0" "More than zero events were expected"
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond
+	# Cleanup
+	rm -rf "${TRACE_PATH}" "${CTL_PATH}"
+}
+
+function test_sessiond_bad_ctl_path() {
+	diag "Test that starting a sessiond with a LTTNG_UST_CTL_PATH that doesn't exist fails"
+	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
+	rm -rf "${CTL_PATH}"
+
+	env_vars=(
+		LTTNG_UST_APP_PATH="${CTL_PATH}"
+		LTTNG_UST_CTL_PATH="${CTL_PATH}"
+	)
+	# shellcheck disable=SC2119
+	LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond_fail
+	LTTNG_UST_APP_PATH="${CTL_PATH}" \
+					  LTTNG_UST_WITHOUT_BADDR_STATEDUMP=1 \
+					  LTTNG_UST_WITHOUT_PROCNAME_STATEDUMP=1 \
+					  "${TESTAPP}" -i 100 -w 0 &
+	APP_PID="${!}"
+	wait "${APP_PID}"
+	ok "${?}" "Test application exited successfully"
+
+	# shellcheck disable=SC2119
+	stop_lttng_sessiond_cleanup
+}
+
+plan_tests "${NUM_TESTS}"
+print_test_banner "${TEST_DESC}"
+bail_out_if_no_babeltrace
+
+TESTS=(
+	test_sessiond_started_before_app
+	test_sessiond_started_after_app
+	test_multi_sessiond
+	test_multi_sessiond_default
+	test_trace_another_sessiond
+	test_trace_self_default_paths
+	test_trace_self_app_and_ctl_paths
+	test_sessiond_bad_ctl_path
+)
+
+for TEST in "${TESTS[@]}" ; do
+    "${TEST}"
+    lttng_pgrep "${SESSIOND_MATCH}"
+done
