@@ -382,6 +382,32 @@ Set to `0` or `-1` to use the timeout of the operating system (default).
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Recording session configuration XML schema definition (XSD) path.
 
+`LTTNG_UST_APP_PATH`::
+    The directory path in which to look for listening sockets as a tracee.
++
+See man:lttng-ust(1) for more details.
+
+`LTTNG_UST_CTL_PATH`::
+    The directory path in which listening sockets for UST applications are opened.
+    If the value contains a colon (':'), each section delimited by the colons is
+    considered as a separate path.
++
+The directory must exist prior to starting lttng-sessiond. There is no provision
+for escaping the colons (':') that are used as path separators.
++
+At this time, paths after the first are ignored and warning issued.
++
+When `LTTNG_UST_CTL_PATH` is set, the default UST socket paths are not used. When
+tracing an application, start the application with `LTTNG_UST_APP_PATH` set to
+the same value of the session daemons `LTTNG_UST_CTL_PATH`.
+
+`LTTNG_UST_ALLOW_BLOCKING`::
+    Allow the sessiond to operate as a tracee in blocking mode.
++
+See man:lttng-ust(1) for more details. lttng-sessiond will refuse to start as a
+tracee in blocking mode if neither `LTTNG_UST_APP_PATH` nor `LTTNG_UST_CTL_PATH`
+are set, or if both `LTTNG_UST_APP_PATH` and `LTTNG_UST_CTL_PATH` are set to the
+same value.
 
 FILES
 -----
