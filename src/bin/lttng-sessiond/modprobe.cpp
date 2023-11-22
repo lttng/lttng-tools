@@ -393,11 +393,11 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 			ret = 0;
 		} else if (ret < 0) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
-				ERR("Unable to load required module %s", modules[i].name);
+				PERROR("Unable to load required module `%s`", modules[i].name)
 				goto error;
 			} else {
-				DBG("Unable to load optional module %s; continuing",
-				    modules[i].name);
+				PERROR("Unable to load optional module `%s`; continuing",
+				       modules[i].name);
 				ret = 0;
 			}
 		} else {
@@ -491,7 +491,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules, int 
 			DBG("Module %s is not in kernel.", modules[i].name);
 		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED &&
 			   ret < 0) {
-			ERR("Unable to remove module %s", modules[i].name);
+			PERROR("Unable to remove module `%s`", modules[i].name);
 		} else {
 			DBG("Modprobe removal successful %s", modules[i].name);
 		}
