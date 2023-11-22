@@ -540,6 +540,10 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 		} else if (WEXITSTATUS(ret) != 0) {
 			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to load required module %s", modules[i].name);
+				/* Force negative return code */
+				if (ret > 0) {
+					ret = -ret;
+				}
 				goto error;
 			} else {
 				DBG("Unable to load optional module %s; continuing",

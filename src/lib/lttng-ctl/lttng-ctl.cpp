@@ -2878,6 +2878,35 @@ end:
 }
 
 /*
+ * Get the status of the kernel tracer
+ *
+ * Sets the value of the argument
+ */
+enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status)
+{
+	enum lttng_error_code ret = LTTNG_ERR_INVALID;
+
+	if (status == nullptr) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	struct lttcomm_session_msg lsm = {};
+	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS;
+
+	uint32_t *u_status = nullptr;
+	const auto ask_ret = lttng_ctl_ask_sessiond(&lsm, (void **) &u_status);
+	if (ask_ret != 4) {
+		goto end;
+	}
+
+	*status = (enum lttng_kernel_tracer_status) * u_status;
+	ret = LTTNG_OK;
+end:
+	free(u_status);
+	return ret;
+}
+
+/*
  * Regenerate the metadata for a session.
  * Return 0 on success, a negative error code on error.
  */

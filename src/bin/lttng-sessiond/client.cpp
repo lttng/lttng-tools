@@ -1033,6 +1033,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 	case LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
 		need_domain = false;
 		break;
 	default:
@@ -1116,6 +1117,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 	case LTTCOMM_SESSIOND_COMMAND_UNREGISTER_TRIGGER:
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:
 	case LTTCOMM_SESSIOND_COMMAND_EXECUTE_ERROR_QUERY:
+	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
 		need_tracing_session = false;
 		break;
 	default:
@@ -1925,6 +1927,25 @@ skip_domain:
 
 		ret = cmd_register_consumer(
 			cmd_ctx->session, cmd_ctx->lsm.domain.type, cmd_ctx->lsm.u.reg.path, cdata);
+		break;
+	}
+	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
+	{
+		uint32_t u_status;
+		enum lttng_kernel_tracer_status status;
+
+		ret = cmd_kernel_tracer_status(&status);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		u_status = (uint32_t) status;
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &u_status, 4);
+		if (ret < 0) {
+			goto error;
+		}
+
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DATA_PENDING:

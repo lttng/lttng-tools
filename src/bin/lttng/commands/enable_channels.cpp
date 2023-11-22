@@ -11,6 +11,7 @@
 
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/lttng-kernel.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/domain-internal.hpp>
@@ -141,6 +142,7 @@ static int enable_channel(char *session_name, char *channel_list)
 {
 	struct lttng_channel *channel = nullptr;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
+	enum lttng_kernel_tracer_status kernel_tracer_status;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -308,6 +310,43 @@ static int enable_channel(char *session_name, char *channel_list)
 				    session_name);
 				error = 1;
 				break;
+			}
+			/*
+			 * Ask the sessiond for the more details on the status of the kernel tracer.
+			 */
+			ret = lttng_get_kernel_tracer_status(&kernel_tracer_status);
+			if (ret < 0) {
+				ERR("Failed to get kernel tracer status: %s", lttng_strerror(ret));
+			} else {
+				switch (kernel_tracer_status) {
+				case LTTNG_KERNEL_TRACER_STATUS_INITIALIZED:
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN:
+					MSG("\tKernel module loading failed");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING:
+					MSG("\tMissing one or more required kernel modules");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE:
+					MSG("\tKernel module signature error prevented loading of one or more required kernel modules");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT:
+					MSG("\tlttng-sessiond isn't running as root");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER:
+					MSG("\tFailed to setup notifiers");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG:
+					MSG("\tlttng-sessiond failed to open proc lttng");
+					break;
+				case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
+					MSG("\tVersion mismatch between kernel tracer and kernel tracer ABI");
+					break;
+				default:
+					MSG("\tUnknown kernel tracer status (%d)", kernel_tracer_status);
+					break;
+				}
+				MSG("\tConsult lttng-sessiond logs for more information");
 			}
 		} else {
 			MSG("%s channel %s enabled for session %s",

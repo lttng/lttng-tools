@@ -58,6 +58,7 @@ static uint64_t next_kernel_channel_key;
 static const char *module_proc_lttng = "/proc/lttng";
 
 static int kernel_tracer_fd = -1;
+static nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
 static int kernel_tracer_event_notifier_group_fd = -1;
 static int kernel_tracer_event_notifier_group_notification_fd = -1;
 static struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
@@ -1950,6 +1951,48 @@ error:
 }
 
 /*
+ * Get current kernel tracer status
+ */
+enum lttng_kernel_tracer_status get_kernel_tracer_status()
+{
+	if (!kernel_tracer_status) {
+		return LTTNG_KERNEL_TRACER_STATUS_ERR_UNKNOWN;
+	}
+
+	return *kernel_tracer_status;
+}
+
+/*
+ * Sets the kernel tracer status based on the positive errno code
+ */
+void set_kernel_tracer_status_from_modules_ret(int code)
+{
+	switch (code) {
+	case ENOENT:
+	{
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING);
+		break;
+	}
+	case ENOKEY:
+	case EKEYEXPIRED:
+	case EKEYREVOKED:
+	case EKEYREJECTED:
+	{
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE);
+		break;
+	}
+	default:
+	{
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN);
+		break;
+	}
+	}
+}
+
+/*
  * Setup necessary data for kernel tracer action.
  */
 int init_kernel_tracer()
@@ -1960,6 +2003,7 @@ int init_kernel_tracer()
 	/* Modprobe lttng kernel modules */
 	ret = modprobe_lttng_control();
 	if (ret < 0) {
+		set_kernel_tracer_status_from_modules_ret(-ret);
 		goto error;
 	}
 
@@ -1967,17 +2011,22 @@ int init_kernel_tracer()
 	kernel_tracer_fd = open(module_proc_lttng, O_RDWR);
 	if (kernel_tracer_fd < 0) {
 		DBG("Failed to open %s", module_proc_lttng);
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG);
 		goto error_open;
 	}
 
 	/* Validate kernel version */
 	ret = kernel_validate_version(&the_kernel_tracer_version, &the_kernel_tracer_abi_version);
 	if (ret < 0) {
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH);
 		goto error_version;
 	}
 
 	ret = modprobe_lttng_data();
 	if (ret < 0) {
+		set_kernel_tracer_status_from_modules_ret(-ret);
 		goto error_modules;
 	}
 
@@ -1994,6 +2043,8 @@ int init_kernel_tracer()
 	ret = kernel_supports_event_notifiers();
 	if (ret < 0) {
 		ERR("Failed to check for kernel tracer event notifier support");
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER);
 		goto error_modules;
 	}
 	ret = kernel_create_event_notifier_group(&kernel_tracer_event_notifier_group_fd);
@@ -2008,6 +2059,8 @@ int init_kernel_tracer()
 				&kernel_tracer_event_notifier_group_notification_fd);
 
 		if (error_code_ret != LTTNG_OK) {
+			kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+				LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER);
 			goto error_modules;
 		}
 
@@ -2016,12 +2069,16 @@ int init_kernel_tracer()
 		if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 			ERR("Failed to initialize event notifier error accounting for kernel tracer");
 			error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING;
+			kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+				LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER);
 			goto error_modules;
 		}
 
 		kernel_token_to_event_notifier_rule_ht = cds_lfht_new(
 			DEFAULT_HT_SIZE, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, nullptr);
 		if (!kernel_token_to_event_notifier_rule_ht) {
+			kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+				LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER);
 			goto error_token_ht;
 		}
 	}
@@ -2037,6 +2094,7 @@ int init_kernel_tracer()
 		    "work for this session daemon.");
 	}
 
+	kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(LTTNG_KERNEL_TRACER_STATUS_INITIALIZED);
 	return 0;
 
 error_version:
@@ -2081,6 +2139,8 @@ error:
 	WARN("No kernel tracer available");
 	kernel_tracer_fd = -1;
 	if (!is_root) {
+		kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+			LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT);
 		return LTTNG_ERR_NEED_ROOT_SESSIOND;
 	} else {
 		return LTTNG_ERR_KERN_NA;
@@ -2136,6 +2196,7 @@ void cleanup_kernel_tracer()
 		kernel_tracer_fd = -1;
 	}
 
+	kernel_tracer_status = nonstd::nullopt;
 	free(syscall_table);
 }
 

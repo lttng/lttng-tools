@@ -53,6 +53,7 @@
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
+#include <lttng/kernel.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/load.h>
 #include <lttng/location.h>
@@ -193,6 +194,13 @@ lttng_set_consumer_url(struct lttng_handle *handle, const char *control_url, con
  * by lttng_strerror().
  */
 LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
+
+/*
+ * Gets the status of the kernel tracer.
+ *
+ * Sets the value of the argument, which must not be null.
+ */
+LTTNG_EXPORT extern enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
 
 /*
  * Deprecated, replaced by lttng_regenerate_metadata.

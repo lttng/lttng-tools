@@ -14,6 +14,7 @@
 #include "session.hpp"
 
 #include <common/tracker.hpp>
+#include <lttng/kernel.h>
 
 struct notification_thread_handle;
 struct lttng_dynamic_buffer;
@@ -132,6 +133,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 enum lttng_error_code cmd_list_syscalls(struct lttng_payload *reply_payload);
 
 int cmd_data_pending(struct ltt_session *session);
+enum lttng_error_code cmd_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
 
 /* Snapshot */
 int cmd_snapshot_add_output(struct ltt_session *session,

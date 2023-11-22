@@ -55,6 +55,7 @@
 #include <lttng/event-internal.hpp>
 #include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/kernel.h>
 #include <lttng/location-internal.hpp>
 #include <lttng/lttng-error.h>
 #include <lttng/rotate-internal.hpp>
@@ -4015,6 +4016,19 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		i++;
 		session_put(session);
 	}
+}
+
+/*
+ * Command LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS
+ */
+enum lttng_error_code cmd_kernel_tracer_status(enum lttng_kernel_tracer_status *status)
+{
+	if (status == nullptr) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	*status = get_kernel_tracer_status();
+	return LTTNG_OK;
 }
 
 /*

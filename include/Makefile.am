@@ -110,6 +110,7 @@ lttnginclude_HEADERS = \
 	lttng/event.h \
 	lttng/handle.h \
 	lttng/health.h \
+	lttng/kernel.h \
 	lttng/kernel-probe.h \
 	lttng/load.h \
 	lttng/location.h \

@@ -74,6 +74,8 @@ int init_kernel_workarounds(void);
 int kernel_supports_ring_buffer_snapshot_sample_positions(void);
 int kernel_supports_ring_buffer_packet_sequence_number(void);
 int kernel_supports_event_notifiers(void);
+enum lttng_kernel_tracer_status get_kernel_tracer_status(void);
+void set_kernel_tracer_status_from_modules_ret(int);
 int init_kernel_tracer(void);
 void cleanup_kernel_tracer(void);
 bool kernel_tracer_is_initialized(void);
