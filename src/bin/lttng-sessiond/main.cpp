@@ -49,11 +49,13 @@
 #include <common/daemonize.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/exception.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/lockfile.hpp>
 #include <common/logging-utils.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/utils.hpp>
@@ -64,6 +66,7 @@
 #include <getopt.h>
 #include <grp.h>
 #include <inttypes.h>
+#include <libgen.h>
 #include <limits.h>
 #include <paths.h>
 #include <pthread.h>
@@ -939,6 +942,97 @@ end:
 	return ret;
 }
 
+namespace {
+std::string dirname_str(const char *dir)
+{
+	auto dir_copy = lttng::make_unique_wrapper<char, lttng::memory::free>(strdup(dir));
+
+	if (!dir_copy) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to copy path before use of dirname",
+						     strlen(dir) + 1);
+	}
+
+	return std::string(dirname(dir_copy.get()));
+}
+
+/*
+ * Check to see if there the settings of LTTNG_UST_APP_PATH and LTTNG_UST_CTL_PATH
+ * are such that the sessiond could potentially trace itself while blocking mode
+ * can be enabled for any of the sessions.
+ *
+ * Throws lttng::unsupported_error is the configuration is illegal.
+ */
+void check_trace_self_blocking()
+{
+	const auto *allow_blocking = lttng_secure_getenv("LTTNG_UST_ALLOW_BLOCKING");
+	if (!allow_blocking) {
+		return;
+	}
+
+	const auto *ust_app_path = lttng_secure_getenv(DEFAULT_LTTNG_UST_APP_PATH_ENV_VAR);
+	const auto *ust_ctl_path = lttng_secure_getenv(DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR);
+	if (ust_app_path == nullptr && ust_ctl_path == nullptr) {
+		/* Session daemon could block, disallow this configuration. */
+		LTTNG_THROW_UNSUPPORTED_ERROR(
+			"Cannot launch session daemon with LTTNG_UST_ALLOW_BLOCKING set using default application and control paths");
+	}
+
+	/* Use the resolved ctl path from the configuration. */
+	ust_ctl_path = the_config.apps_unix_sock_path.value;
+	LTTNG_ASSERT(ust_ctl_path);
+
+	std::string canonical_ust_app_path;
+	const auto canonical_ust_ctl_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		utils_partial_realpath(dirname_str(ust_ctl_path).c_str()));
+	if (!canonical_ust_ctl_path) {
+		LTTNG_THROW_ERROR("Failed to determine canonical ust-ctl path from override");
+	}
+
+	/*
+	 * When the environment variable for ust app path isn't set, assume it
+	 * will be in the rundir. This might not actually be correct when root.
+	 */
+	if (!ust_app_path) {
+		ust_app_path = the_config.rundir.value;
+		LTTNG_ASSERT(the_config.rundir.value);
+
+		auto resolved_app_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+			utils_partial_realpath(ust_app_path));
+		if (!resolved_app_path) {
+			LTTNG_THROW_ERROR(
+				"Failed to determine canonical ust app path from override");
+		}
+
+		canonical_ust_app_path = resolved_app_path.get();
+	} else {
+		/*
+		 * Find the position of ':' or the end of the c-string in case the variable is a
+		 * list of values.
+		 */
+		const auto end =
+			std::find(ust_app_path, ust_app_path + std::strlen(ust_app_path), ':');
+
+		std::string first_entry_of_list;
+		std::copy(ust_app_path, end, std::back_inserter(first_entry_of_list));
+
+		auto resolved_app_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+			utils_partial_realpath(first_entry_of_list.c_str()));
+		if (!resolved_app_path) {
+			LTTNG_THROW_ERROR(
+				"Failed to determine canonical ust app path from override");
+		}
+
+		canonical_ust_app_path = resolved_app_path.get();
+	}
+
+	if (canonical_ust_app_path != canonical_ust_ctl_path.get()) {
+		return;
+	}
+
+	LTTNG_THROW_UNSUPPORTED_ERROR("Cannot trace self with LTTNG_UST_ALLOW_BLOCKING set");
+}
+} /* namespace */
+
 static void sessiond_cleanup_lock_file()
 {
 	int ret;
@@ -1487,6 +1581,18 @@ static int _main(int argc, char **argv)
 	sessiond_config_log(&the_config);
 	sessiond_uuid_log();
 	lttng::logging::log_system_information(PRINT_DBG);
+
+	/*
+	 * If the lttng-sessiond may trace itself, stop startup if blocking mode
+	 * is allowed by the LTTNG_UST_ALLOW_BLOCKING environment variable.
+	 */
+	try {
+		check_trace_self_blocking();
+	} catch (const std::exception& ex) {
+		ERR_FMT(ex.what());
+		retval = -1;
+		goto exit_options;
+	}
 
 	if (opt_print_version) {
 		print_version();

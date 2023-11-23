@@ -9,5 +9,6 @@
 
 char *utils_expand_path(const char *path);
 char *utils_expand_path_keep_symlink(const char *path);
+char *utils_partial_realpath(const char *path);
 
 #endif /* _COMMON_PATH_H */

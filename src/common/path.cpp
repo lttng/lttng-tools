@@ -21,7 +21,7 @@
  *
  * Return a newly-allocated string.
  */
-static char *utils_partial_realpath(const char *path)
+char *utils_partial_realpath(const char *path)
 {
 	char *cut_path = nullptr, *try_path = nullptr, *try_path_prev = nullptr;
 	const char *next, *prev, *end;
