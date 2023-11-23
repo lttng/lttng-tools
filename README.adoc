@@ -245,3 +245,6 @@ Continuous integration::
 Code review::
     https://review.lttng.org/q/project:lttng-tools[_lttng{nbh}tools_ project]
     on LTTng Review
+
+Contributor's guide::
+    https://github.com/lttng/lttng-tools/blob/master/CONTRIBUTING.md

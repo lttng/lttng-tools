@@ -25,22 +25,29 @@ rest of the code written in that language is strongly encouraged.
 
 ## Creating and sending a patch
 
-LTTng-tools's development flow is primarily email-based, although we
-also accept pull requests on our
-[GitHub mirror](https://github.com/lttng/lttng-tools) and
-[Gerrit Code Review](https://review.lttng.org). If you're going
-to create GitHub pull requests, make sure you still follow the
+LTTng-tools's development flow is primarily based on
+[Gerrit Code Review](https://review.lttng.org), although we also accept
+e-mail based patch series on the
+[`lttng-dev` mailing list](https://lists.lttng.org/cgi-bin/mailman/listinfo/lttng-dev)
+and pull requests on our [GitHub mirror](https://github.com/lttng/lttng-tools).
+If you're going to create GitHub pull requests, make sure you still follow the
 guidelines below.
 
-Like a lot of open source projects, patches are submitted and reviewed
-on its development mailing list,
-[`lttng-dev`](http://lists.lttng.org/cgi-bin/mailman/listinfo/lttng-dev)
-(`lttng-dev@lists.lttng.org`). The mailing list is also used to share
-and comment on <abbr title="Request for Comments">RFC</abbr>s and answer
+The mailing list is also used to share and comment on
+<abbr title="Request for Comments">RFC</abbr>s and answer
 user questions.
 
-Once your changes have been committed to your local branch, you may use
-Git's [`format-patch`](https://git-scm.com/docs/git-format-patch) command
+Once your changes have been comitted to your local branch, you may use the
+[git-review](https://opendev.org/opendev/git-review) plugin to submit them
+directly to [Gerrit](https://review.lttng.org) using the following command:
+
+    git review
+
+Please note that you will need to create an account on [Gerrit](https://review.lttng.org)
+and add an SSH public key.
+
+For e-mail based patches you may use Git's
+[`format-patch`](https://git-scm.com/docs/git-format-patch) command
 to generate a patch file. The following command line generates a
 patch from the latest commit:
 
