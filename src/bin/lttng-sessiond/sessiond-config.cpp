@@ -45,7 +45,7 @@ static struct sessiond_config sessiond_config_build_defaults = {
 
 	.apps_unix_sock_path = { nullptr, false },
 	.client_unix_sock_path = { nullptr, false },
-	.wait_shm = { false, {nullptr, false}},
+	.wait_shm = { false, { nullptr, false } },
 	.health_unix_sock_path = { nullptr, false },
 	.lttng_ust_clock_plugin = { nullptr, false },
 	.pid_file_path = { nullptr, false },
@@ -272,10 +272,11 @@ end:
 
 int sessiond_config_init(struct sessiond_config *config)
 {
-	const char *lttng_ust_ctl_path_override = utils_get_lttng_ust_ctl_path_override_dir();
 	int ret;
 	const bool is_root = (getuid() == 0);
 	char *str;
+	auto lttng_ust_ctl_path_override = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		utils_get_lttng_ust_ctl_path_override_dir());
 
 	LTTNG_ASSERT(config);
 	memcpy(config, &sessiond_config_build_defaults, sizeof(*config));
@@ -297,7 +298,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		 *   - wait_shm_path
 		 *   - agent_port_file_path
 		 */
-		ret = config_set_ust_ctl_paths(config, lttng_ust_ctl_path_override);
+		ret = config_set_ust_ctl_paths(config, lttng_ust_ctl_path_override.get());
 		if (ret < 0) {
 			goto error;
 		}

@@ -44,7 +44,7 @@ int utils_get_count_order_u32(uint32_t x);
 int utils_get_count_order_u64(uint64_t x);
 const char *utils_get_home_dir();
 char *utils_get_user_home_dir(uid_t uid);
-const char *utils_get_lttng_ust_ctl_path_override_dir();
+char *utils_get_lttng_ust_ctl_path_override_dir();
 
 size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 	ATTR_FORMAT_STRFTIME(1);

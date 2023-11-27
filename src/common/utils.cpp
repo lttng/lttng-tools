@@ -20,10 +20,12 @@
 #include <common/format.hpp>
 #include <common/readwrite.hpp>
 #include <common/runas.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/string-utils/format.hpp>
 
 #include <lttng/constant.h>
 
+#include <algorithm>
 #include <ctype.h>
 #include <fcntl.h>
 #include <grp.h>
@@ -742,20 +744,42 @@ end:
 }
 
 /*
- * Obtain the value of LTTNG_UST_CTL_PATH environment variable, if
- * exists.  Otherwise return NULL.
+ * Obtain the value of the LTTNG_UST_CTL_PATH environment variable, if
+ * it is set. Otherwise NULL is returned. Dynamically allocated, must be
+ * freed by the caller.
  */
-const char *utils_get_lttng_ust_ctl_path_override_dir()
+char *utils_get_lttng_ust_ctl_path_override_dir()
 {
-	const auto *val = lttng_secure_getenv(DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR);
-	if (val == nullptr) {
+	const lttng::c_string_view env_val(lttng_secure_getenv(DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR));
+	if (env_val.data() == nullptr) {
 		return nullptr;
 	}
 
 	DBG_FMT("LTTng ust-ctl override path specified: {}=`{}`",
 		DEFAULT_LTTNG_UST_CTL_PATH_ENV_VAR,
-		val);
-	return val;
+		env_val);
+
+	const auto separator_location = std::find(env_val.begin(), env_val.end(), ':');
+	if (separator_location == env_val.end()) {
+		auto new_val = ::strdup(env_val);
+		if (!new_val) {
+			PERROR("Failed to allocate LTTng ust-ctl override path override value");
+		}
+
+		return new_val;
+	}
+
+	WARN("LTTng ust-ctl override path contains multiple values; only the first will be considered");
+
+	const auto length = std::distance(env_val.begin(), separator_location);
+	auto new_val = zmalloc<char>(length + 1);
+	if (new_val == nullptr) {
+		PERROR("Failed to allocate LTTng ust-ctl override path override value");
+		return nullptr;
+	}
+
+	std::strncpy(new_val, env_val.data(), length);
+	return new_val;
 }
 
 /*
