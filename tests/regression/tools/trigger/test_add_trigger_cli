@@ -40,6 +40,12 @@ else
 	ist_root=0
 fi
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        ist_skip=0
+else
+        ist_skip=1
+fi
+
 function test_success ()
 {
 	local test_name="$1"
@@ -223,6 +229,7 @@ test_success "--exclude-name two" "trigger5" \
 	--condition event-rule-matches --type=user --name='jean-*' --exclude-name jean-chretien -x jean-charest \
 	--action notify
 
+skip $ist_skip "SKIP_KERNEL_TEST: skipping kprobe tests" 18 ||
 skip $ist_root "non-root user: skipping kprobe tests" 18 || {
 	i=0
 
@@ -262,6 +269,7 @@ skip $ist_root "non-root user: skipping kprobe tests" 18 || {
 	done
 }
 
+skip $ist_skip "SKIP_KERNEL_TEST: skipping uprobe tests" 6 ||
 skip $ist_root "non-root user: skipping uprobe tests" 6 || {
 	test_success "--condition event-rule-matches uprobe" "uprobe-trigger-0" \
 		--name="uprobe-trigger-0" \
@@ -274,6 +282,7 @@ skip $ist_root "non-root user: skipping uprobe tests" 6 || {
 		--action notify
 }
 
+skip $ist_skip "SKIP_KERNEL_TEST: skipping syscall tests" 30 ||
 skip $ist_root "non-root user: skipping syscall tests" 30 || {
 	test_success "--condition event-rule-matches one syscall" "syscall-trigger-0" \
 		--name="syscall-trigger-0" \

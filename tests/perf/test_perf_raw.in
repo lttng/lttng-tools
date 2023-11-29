@@ -154,6 +154,7 @@ have_libpfm
 
 test_ust_raw
 
+skip $SKIP_KERNEL_TEST -ne 0 "SKIP_KERNEL_TEST was enabled, skipping." 9 ||
 skip $isroot "Root access is needed for kernel testing, skipping." 9 ||
 {
 	modprobe lttng-test

@@ -565,6 +565,11 @@ snapshot_tests=(test_kernel_streaming_snapshot
 	test_kernel_local_snapshot
 )
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        skip 0 "SKIP_KERNEL_TEST was enabled, skipping." $NUM_TESTS
+        exit 1
+fi
+
 skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
 {
 	trap signal_cleanup SIGTERM SIGINT

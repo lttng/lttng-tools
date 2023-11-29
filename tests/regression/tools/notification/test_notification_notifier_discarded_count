@@ -394,6 +394,11 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 test_ust_notifier_discarded_count
 test_ust_notifier_discarded_count_max_bucket
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        skip 0 "SKIP_KERNEL_TEST was enabled, skipping." $KERNEL_NUM_TESTS
+        exit 1
+fi
+
 if [ "$(id -u)" == "0" ]; then
 
 	validate_lttng_modules_present

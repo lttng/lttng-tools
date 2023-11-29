@@ -202,6 +202,7 @@ if ! destructive_tests_enabled ; then
 	exit 0
 fi
 
+skip $SKIP_KERNEL_TEST -ne 0 "SKIP_KERNEL_TEST was enabled. Skipping all tests." $NUM_TESTS ||
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
 	original_date=$(date)

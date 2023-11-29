@@ -67,6 +67,7 @@ function test_thread_ok
 	$CURDIR/$HEALTH_CHECK_BIN > ${STDOUT_PATH} 2> ${STDERR_PATH}
 	report_errors
 
+	skip $ist_skip "SKIP_KERNEL_TEST was enabled. Skipping kernel consumer health check test." "5" ||
 	skip $isroot "Root access is needed. Skipping kernel consumer health check test." "5" ||
 	{
 		diag "With kernel consumer daemon"
@@ -120,6 +121,12 @@ if [ "$(id -u)" == "0" ]; then
 	isroot=1
 else
 	isroot=0
+fi
+
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+	ist_skip=0
+else
+	ist_skip=1
 fi
 
 test_thread_ok

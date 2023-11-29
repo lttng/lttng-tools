@@ -39,6 +39,11 @@ function clean_live_tracing()
 	rm -rf $TRACE_PATH
 }
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+	plan_skip_all "SKIP_KERNEL_TEST was enabled. Skipping all tests."
+	exit 0
+fi
+
 # Need root access for kernel tracing.
 if [ "$(id -u)" == "0" ]; then
 	isroot=1

@@ -79,6 +79,11 @@ else
 	isroot=0
 fi
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        skip 0 "SKIP_KERNEL_TEST was enabled, skipping." $NUM_TESTS
+        exit 1
+fi
+
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
 	validate_lttng_modules_present

@@ -51,7 +51,6 @@ else
 	hast_sdt_binary=0
 fi
 
-
 test_top_level_options ()
 {
 	diag "Listing top level options"
@@ -2689,6 +2688,11 @@ test_notify_action ()
 }
 
 plan_tests $NUM_TESTS
+
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        skip 0 "SKIP_KERNEL_TEST was enabled, skipping." $NUM_TESTS
+        exit 0
+fi
 
 # shellcheck disable=SC2119
 start_lttng_sessiond_notap

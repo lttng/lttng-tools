@@ -427,16 +427,24 @@ else
         skip 0 "Root access is needed. Skipping all kernel multi-app notification tests." $NUM_TEST_KERNEL
 fi
 
+if [ "$SKIP_KERNEL_TEST" == "1" ]; then
+        skiptest=0
+else
+        skiptest=1
+fi
 
-for fct_test in ${TESTS[@]};
-do
-	TRACE_PATH=$(mktemp -d -t tmp.test_notification_multi_app_trace_path.XXXXXX)
+skip $skiptest "SKIP_KERNEL_TEST was enabled. Skipping all tests." $NUM_TEST_KERNEL ||
+{
+	for fct_test in ${TESTS[@]};
+	do
+		TRACE_PATH=$(mktemp -d -t tmp.test_notification_multi_app_trace_path.XXXXXX)
 
-	${fct_test}
-	if [ $? -ne 0 ]; then
-		break;
-	fi
+		${fct_test}
+		if [ $? -ne 0 ]; then
+			break;
+		fi
 
-	# Only delete if successful
-	rm -rf $TRACE_PATH
-done
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	done
+}
