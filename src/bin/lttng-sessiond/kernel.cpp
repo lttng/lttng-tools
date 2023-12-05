@@ -49,20 +49,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/*
- * Key used to reference a channel between the sessiond and the consumer. This
- * is only read and updated with the session_list lock held.
- */
-static uint64_t next_kernel_channel_key;
-
-static const char *module_proc_lttng = "/proc/lttng";
-
-static int kernel_tracer_fd = -1;
-static nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
-static int kernel_tracer_event_notifier_group_fd = -1;
-static int kernel_tracer_event_notifier_group_notification_fd = -1;
-static struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
-
 namespace {
 /*
  * On some architectures, calling convention details are embedded in the symbol
@@ -87,6 +73,20 @@ static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 	return raw_offset;
 }
 #endif
+
+/*
+ * Key used to reference a channel between the sessiond and the consumer. This
+ * is only read and updated with the session_list lock held.
+ */
+uint64_t next_kernel_channel_key;
+
+const char *module_proc_lttng = "/proc/lttng";
+
+int kernel_tracer_fd = -1;
+nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
+int kernel_tracer_event_notifier_group_fd = -1;
+int kernel_tracer_event_notifier_group_notification_fd = -1;
+struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
 } /* namespace */
 
 /*
