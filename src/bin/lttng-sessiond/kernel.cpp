@@ -24,6 +24,7 @@
 #include <common/hashtable/utils.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/kernel-ctl/kernel-ioctl.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk.hpp>
 #include <common/tracker.hpp>
@@ -51,6 +52,46 @@
 
 namespace {
 /*
+ * Key used to reference a channel between the sessiond and the consumer. This
+ * is only read and updated with the session_list lock held.
+ */
+uint64_t next_kernel_channel_key;
+
+const char *module_proc_lttng = "/proc/lttng";
+
+int kernel_tracer_fd = -1;
+nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
+int kernel_tracer_event_notifier_group_fd = -1;
+int kernel_tracer_event_notifier_group_notification_fd = -1;
+struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
+
+const char *kernel_tracer_status_to_str(lttng_kernel_tracer_status status)
+{
+	switch (status) {
+	case LTTNG_KERNEL_TRACER_STATUS_INITIALIZED:
+		return "LTTNG_KERNEL_TRACER_STATUS_INITIALIZED";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_UNKNOWN:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_UNKNOWN";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING";
+	case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE:
+		return "LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE";
+	}
+
+	abort();
+}
+
+/*
  * On some architectures, calling convention details are embedded in the symbol
  * addresses. Uprobe requires a "clean" symbol offset (or at least, an address
  * where an instruction boundary would be legal) to add
@@ -73,20 +114,6 @@ static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 	return raw_offset;
 }
 #endif
-
-/*
- * Key used to reference a channel between the sessiond and the consumer. This
- * is only read and updated with the session_list lock held.
- */
-uint64_t next_kernel_channel_key;
-
-const char *module_proc_lttng = "/proc/lttng";
-
-int kernel_tracer_fd = -1;
-nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
-int kernel_tracer_event_notifier_group_fd = -1;
-int kernel_tracer_event_notifier_group_notification_fd = -1;
-struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
 } /* namespace */
 
 /*
@@ -1999,6 +2026,11 @@ int init_kernel_tracer()
 {
 	int ret;
 	bool is_root = !getuid();
+
+	const auto log_status_on_exit = lttng::make_scope_exit([]() noexcept {
+		DBG_FMT("Kernel tracer status set to `{}`",
+			kernel_tracer_status_to_str(*kernel_tracer_status));
+	});
 
 	/* Modprobe lttng kernel modules */
 	ret = modprobe_lttng_control();
