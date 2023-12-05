@@ -24,6 +24,7 @@
 #include <common/filter/filter-ast.hpp>
 #include <common/filter/filter-parser.hpp>
 #include <common/filter/memstream.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -2882,28 +2883,27 @@ end:
  *
  * Sets the value of the argument
  */
-enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status)
+enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *out_status)
 {
-	enum lttng_error_code ret = LTTNG_ERR_INVALID;
-
-	if (status == nullptr) {
+	if (out_status == nullptr) {
 		return LTTNG_ERR_INVALID;
 	}
 
 	struct lttcomm_session_msg lsm = {};
 	lsm.cmd_type = LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS;
 
-	uint32_t *u_status = nullptr;
-	const auto ask_ret = lttng_ctl_ask_sessiond(&lsm, (void **) &u_status);
+	uint32_t *raw_tracer_status = nullptr;
+	const auto ask_ret = lttng_ctl_ask_sessiond(&lsm, (void **) &raw_tracer_status);
+
+	const auto tracer_status =
+		lttng::make_unique_wrapper<uint32_t, lttng::free>(raw_tracer_status);
+
 	if (ask_ret != 4) {
-		goto end;
+		return LTTNG_ERR_INVALID;
 	}
 
-	*status = (enum lttng_kernel_tracer_status) * u_status;
-	ret = LTTNG_OK;
-end:
-	free(u_status);
-	return ret;
+	*out_status = (enum lttng_kernel_tracer_status) * tracer_status;
+	return LTTNG_OK;
 }
 
 /*
