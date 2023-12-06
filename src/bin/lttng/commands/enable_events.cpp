@@ -35,22 +35,24 @@
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"
 #endif
 
-static int opt_event_type;
-static const char *opt_loglevel;
-static int opt_loglevel_type;
-static int opt_kernel;
-static char *opt_session_name;
-static int opt_userspace;
-static int opt_jul;
-static int opt_log4j;
-static int opt_python;
-static int opt_enable_all;
-static char *opt_probe;
-static char *opt_userspace_probe;
-static char *opt_function;
-static char *opt_channel_name;
-static char *opt_filter;
-static char *opt_exclude;
+namespace {
+
+int opt_event_type;
+const char *opt_loglevel;
+int opt_loglevel_type;
+int opt_kernel;
+char *opt_session_name;
+int opt_userspace;
+int opt_jul;
+int opt_log4j;
+int opt_python;
+int opt_enable_all;
+char *opt_probe;
+char *opt_userspace_probe;
+char *opt_function;
+char *opt_channel_name;
+char *opt_filter;
+char *opt_exclude;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -73,10 +75,10 @@ enum {
 	OPT_EXCLUDE,
 };
 
-static struct lttng_handle *handle;
-static struct mi_writer *writer;
+struct lttng_handle *handle;
+struct mi_writer *writer;
 
-static struct poptOption long_options[] = {
+struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
@@ -109,7 +111,7 @@ static struct poptOption long_options[] = {
 /*
  * Parse probe options.
  */
-static int parse_probe_opts(struct lttng_event *ev, char *opt)
+int parse_probe_opts(struct lttng_event *ev, char *opt)
 {
 	int ret = CMD_SUCCESS;
 	int match;
@@ -184,12 +186,12 @@ end:
 	return ret;
 }
 
-static const char *print_channel_name(const char *name)
+const char *print_channel_name(const char *name)
 {
 	return name ?: DEFAULT_CHANNEL_NAME;
 }
 
-static const char *print_raw_channel_name(const char *name)
+const char *print_raw_channel_name(const char *name)
 {
 	return name ?: "<default>";
 }
@@ -197,7 +199,7 @@ static const char *print_raw_channel_name(const char *name)
 /*
  * Mi print exlcusion list
  */
-static int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
+int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 {
 	int ret;
 	size_t i;
@@ -236,7 +238,7 @@ end:
 /*
  * Return allocated string for pretty-printing exclusion names.
  */
-static char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
+char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 {
 	int length = 0;
 	size_t i;
@@ -278,7 +280,7 @@ static char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusio
 	return ret;
 }
 
-static int check_exclusion_subsets(const char *event_name, const char *exclusion)
+int check_exclusion_subsets(const char *event_name, const char *exclusion)
 {
 	bool warn = false;
 	int ret = 0;
@@ -341,55 +343,9 @@ end:
 	return ret;
 }
 
-int validate_exclusion_list(const char *event_name,
-			    const struct lttng_dynamic_pointer_array *exclusions)
-{
-	int ret;
-
-	/* Event name must be a valid globbing pattern to allow exclusions. */
-	if (!strutils_is_star_glob_pattern(event_name)) {
-		ERR("Event %s: Exclusions can only be used with a globbing pattern", event_name);
-		goto error;
-	}
-
-	/*
-	 * If the event name is a star-at-end only globbing pattern,
-	 * then we can validate the individual exclusions. Otherwise
-	 * all exclusions are passed to the session daemon.
-	 */
-	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
-		size_t i, num_exclusions;
-
-		num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
-
-		for (i = 0; i < num_exclusions; i++) {
-			const char *exclusion =
-				(const char *) lttng_dynamic_pointer_array_get_pointer(exclusions,
-										       i);
-
-			if (!strutils_is_star_glob_pattern(exclusion) ||
-			    strutils_is_star_at_the_end_only_glob_pattern(exclusion)) {
-				ret = check_exclusion_subsets(event_name, exclusion);
-				if (ret) {
-					goto error;
-				}
-			}
-		}
-	}
-
-	ret = 0;
-	goto end;
-
-error:
-	ret = -1;
-
-end:
-	return ret;
-}
-
-static int create_exclusion_list_and_validate(const char *event_name,
-					      const char *exclusions_arg,
-					      struct lttng_dynamic_pointer_array *exclusions)
+int create_exclusion_list_and_validate(const char *event_name,
+				       const char *exclusions_arg,
+				       struct lttng_dynamic_pointer_array *exclusions)
 {
 	int ret = 0;
 
@@ -413,8 +369,8 @@ end:
 	return ret;
 }
 
-static void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer_array *exclusions,
-					      int *warn)
+void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer_array *exclusions,
+				       int *warn)
 {
 	size_t i;
 	const size_t num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
@@ -434,7 +390,7 @@ static void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer
  * Enabling event using the lttng API.
  * Note: in case of error only the last error code will be return.
  */
-static int enable_events(char *session_name, char *event_list)
+int enable_events(char *session_name, char *event_list)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
@@ -1250,6 +1206,54 @@ error:
 	ret = error_holder ? error_holder : ret;
 
 	lttng_event_destroy(ev);
+	return ret;
+}
+
+} /* namespace */
+
+int validate_exclusion_list(const char *event_name,
+			    const struct lttng_dynamic_pointer_array *exclusions)
+{
+	int ret;
+
+	/* Event name must be a valid globbing pattern to allow exclusions. */
+	if (!strutils_is_star_glob_pattern(event_name)) {
+		ERR("Event %s: Exclusions can only be used with a globbing pattern", event_name);
+		goto error;
+	}
+
+	/*
+	 * If the event name is a star-at-end only globbing pattern,
+	 * then we can validate the individual exclusions. Otherwise
+	 * all exclusions are passed to the session daemon.
+	 */
+	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
+		size_t i, num_exclusions;
+
+		num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
+
+		for (i = 0; i < num_exclusions; i++) {
+			const char *exclusion =
+				(const char *) lttng_dynamic_pointer_array_get_pointer(exclusions,
+										       i);
+
+			if (!strutils_is_star_glob_pattern(exclusion) ||
+			    strutils_is_star_at_the_end_only_glob_pattern(exclusion)) {
+				ret = check_exclusion_subsets(event_name, exclusion);
+				if (ret) {
+					goto error;
+				}
+			}
+		}
+	}
+
+	ret = 0;
+	goto end;
+
+error:
+	ret = -1;
+
+end:
 	return ret;
 }
 
