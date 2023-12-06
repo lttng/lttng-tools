@@ -142,7 +142,6 @@ static int enable_channel(char *session_name, char *channel_list)
 {
 	struct lttng_channel *channel = nullptr;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
-	enum lttng_kernel_tracer_status kernel_tracer_status;
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -285,15 +284,13 @@ static int enable_channel(char *session_name, char *channel_list)
 
 		ret = lttng_enable_channel(handle, channel);
 		if (ret < 0) {
+			bool msg_already_printed = false;
+
 			success = 0;
 			switch (-ret) {
 			case LTTNG_ERR_KERN_CHAN_EXIST:
 			case LTTNG_ERR_UST_CHAN_EXIST:
 			case LTTNG_ERR_CHAN_EXIST:
-				WARN("Channel %s: %s (session %s)",
-				     channel_name,
-				     lttng_strerror(ret),
-				     session_name);
 				warn = 1;
 				break;
 			case LTTNG_ERR_INVALID_CHANNEL_NAME:
@@ -301,55 +298,27 @@ static int enable_channel(char *session_name, char *channel_list)
 				    "Channel names may not start with '.', and "
 				    "may not contain '/'.",
 				    channel_name);
+				msg_already_printed = true;
 				error = 1;
 				break;
 			default:
-				ERR("Channel %s: %s (session %s)",
-				    channel_name,
-				    lttng_strerror(ret),
-				    session_name);
 				error = 1;
 				break;
 			}
-			/*
-			 * Ask the sessiond for the more details on the status of the kernel tracer.
-			 */
-			ret = lttng_get_kernel_tracer_status(&kernel_tracer_status);
-			if (ret < 0) {
-				ERR("Failed to get kernel tracer status: %s", lttng_strerror(ret));
-			} else {
-				switch (kernel_tracer_status) {
-				case LTTNG_KERNEL_TRACER_STATUS_INITIALIZED:
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN:
-					MSG("\tKernel module loading failed");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING:
-					MSG("\tMissing one or more required kernel modules");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE:
-					MSG("\tKernel module signature error prevented loading of one or more required kernel modules");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT:
-					MSG("\tlttng-sessiond isn't running as root");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER:
-					MSG("\tFailed to setup notifiers");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG:
-					MSG("\tlttng-sessiond failed to open proc lttng");
-					break;
-				case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
-					MSG("\tVersion mismatch between kernel tracer and kernel tracer ABI");
-					break;
-				default:
-					MSG("\tUnknown kernel tracer status (%d)", kernel_tracer_status);
-					break;
-				}
-				MSG("\tConsult lttng-sessiond logs for more information");
+
+			if (!msg_already_printed) {
+				LOG(error ? PRINT_ERR : PRINT_WARN,
+				    "Failed to enable channel `%s` under session `%s`: %s",
+				    channel_name,
+				    session_name,
+				    lttng_strerror(ret));
+			}
+
+			if (opt_kernel) {
+				print_kernel_tracer_status_error();
 			}
 		} else {
-			MSG("%s channel %s enabled for session %s",
+			MSG("%s channel `%s` enabled for session `%s`",
 			    lttng_domain_type_str(dom.type),
 			    channel_name,
 			    session_name);

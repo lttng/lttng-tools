@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <fnmatch.h>
 #include <inttypes.h>
+#include <iostream>
 #include <limits.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -738,4 +739,55 @@ lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& sp
 	}
 
 	return lttng::cli::session_list();
+}
+
+void print_kernel_tracer_status_error()
+{
+	if (lttng_opt_mi) {
+		return;
+	}
+
+	enum lttng_kernel_tracer_status kernel_tracer_status;
+	const auto ret = lttng_get_kernel_tracer_status(&kernel_tracer_status);
+
+	if (ret < 0) {
+		ERR("Failed to get kernel tracer status: %s", lttng_strerror(ret));
+	} else {
+		switch (kernel_tracer_status) {
+		case LTTNG_KERNEL_TRACER_STATUS_INITIALIZED:
+			return;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN:
+			std::cerr << "\tKernel module loading failed" << std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING:
+			std::cerr << "\tMissing one or more required kernel modules" << std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE:
+			std::cerr
+				<< "\tKernel module signature error prevented loading of one or more required kernel modules"
+				<< std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT:
+			std::cerr << "\tlttng-sessiond isn't running as root" << std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER:
+			std::cerr << "\tFailed to setup notifiers" << std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG:
+			std::cerr << "\tlttng-sessiond failed to open /proc/lttng" << std::endl;
+			break;
+		case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
+			std::cerr
+				<< "\tVersion mismatch between kernel tracer and kernel tracer ABI"
+				<< std::endl;
+			break;
+		default:
+			std::cerr << lttng::format("\t\tUnknown kernel tracer status (%d)",
+						   static_cast<int>(kernel_tracer_status))
+				  << std::endl;
+			break;
+		}
+
+		std::cerr << "\tConsult lttng-sessiond logs for more information" << std::endl;
+	}
 }

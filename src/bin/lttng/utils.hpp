@@ -178,4 +178,10 @@ int print_trace_archive_location(const struct lttng_trace_archive_location *loca
 int validate_exclusion_list(const char *event_name,
 			    const struct lttng_dynamic_pointer_array *exclusions);
 
+/*
+ * Ask the sessiond for the more details on the status of the kernel tracer and
+ * print it to stderr.
+ */
+void print_kernel_tracer_status_error();
+
 #endif /* _LTTNG_UTILS_H */
