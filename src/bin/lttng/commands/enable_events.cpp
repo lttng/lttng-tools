@@ -1220,6 +1220,11 @@ error:
 	return ret;
 }
 
+void _poptContextFree_deleter_func(poptContext ctx)
+{
+	poptFreeContext(ctx);
+}
+
 } /* namespace */
 
 int validate_exclusion_list(const char *event_name,
@@ -1274,20 +1279,20 @@ end:
 int cmd_enable_events(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
-	static poptContext pc;
 	char *session_name = nullptr;
 	char *event_list = nullptr;
 	const char *arg_event_list = nullptr;
 	const char *leftover = nullptr;
 	int event_type = -1;
 
-	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
-	poptReadDefaultConfig(pc, 0);
+	auto pc = lttng::make_unique_wrapper<poptContext_s, _poptContextFree_deleter_func>(
+		poptGetContext(nullptr, argc, argv, long_options, 0));
+	poptReadDefaultConfig(pc.get(), 0);
 
 	/* Default event type */
 	opt_event_type = LTTNG_EVENT_ALL;
 
-	while ((opt = poptGetNextOpt(pc)) != -1) {
+	while ((opt = poptGetNextOpt(pc.get())) != -1) {
 		switch (opt) {
 		case OPT_HELP:
 			SHOW_HELP();
@@ -1312,11 +1317,11 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_LOGLEVEL:
 			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
-			opt_loglevel = poptGetOptArg(pc);
+			opt_loglevel = poptGetOptArg(pc.get());
 			break;
 		case OPT_LOGLEVEL_ONLY:
 			opt_loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
-			opt_loglevel = poptGetOptArg(pc);
+			opt_loglevel = poptGetOptArg(pc.get());
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
@@ -1373,7 +1378,7 @@ int cmd_enable_events(int argc, const char **argv)
 		}
 	}
 
-	arg_event_list = poptGetArg(pc);
+	arg_event_list = poptGetArg(pc.get());
 	if (arg_event_list == nullptr && opt_enable_all == 0) {
 		ERR("Missing event name(s).");
 		ret = CMD_ERROR;
@@ -1389,7 +1394,7 @@ int cmd_enable_events(int argc, const char **argv)
 		}
 	}
 
-	leftover = poptGetArg(pc);
+	leftover = poptGetArg(pc.get());
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
 		ret = CMD_ERROR;
@@ -1447,7 +1452,5 @@ end:
 
 	/* Overwrite ret if an error occurred in enable_events */
 	ret = command_ret ? command_ret : ret;
-
-	poptFreeContext(pc);
 	return ret;
 }
