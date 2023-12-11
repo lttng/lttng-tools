@@ -234,7 +234,13 @@ static int handle_command(int argc, char **argv)
 	while (cmd->name != nullptr) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
-			ret = cmd->func(argc, (const char **) argv);
+			try {
+				ret = cmd->func(argc, (const char **) argv);
+			} catch (const std::exception& e) {
+				ERR_FMT("{}", e.what());
+				ret = CMD_ERROR;
+			}
+
 			goto end;
 		}
 		i++;

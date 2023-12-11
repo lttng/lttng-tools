@@ -8,6 +8,7 @@
 #define _LGPL_SOURCE
 #include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/string-utils.hpp>
 #include <common/utils.hpp>
@@ -36,6 +37,16 @@
 #endif
 
 namespace {
+void _mi_lttng_writer_deleter_func(mi_writer *writer)
+{
+	if (writer && mi_lttng_writer_destroy(writer)) {
+		LTTNG_THROW_ERROR("Failed to destroy mi_writer instance");
+	}
+}
+
+using mi_writer_uptr = std::unique_ptr<
+	mi_writer,
+	lttng::memory::create_deleter_class<mi_writer, _mi_lttng_writer_deleter_func>::deleter>;
 
 int opt_event_type;
 const char *opt_loglevel;
@@ -53,6 +64,9 @@ char *opt_function;
 char *opt_channel_name;
 char *opt_filter;
 char *opt_exclude;
+
+struct lttng_handle *handle;
+mi_writer_uptr writer;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -74,9 +88,6 @@ enum {
 	OPT_FILTER,
 	OPT_EXCLUDE,
 };
-
-struct lttng_handle *handle;
-struct mi_writer *writer;
 
 struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
@@ -212,7 +223,7 @@ int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 		goto end;
 	}
 
-	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
+	ret = mi_lttng_writer_open_element(writer.get(), config_element_exclusions);
 	if (ret) {
 		goto end;
 	}
@@ -222,14 +233,14 @@ int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 			(const char *) lttng_dynamic_pointer_array_get_pointer(exclusions, i);
 
 		ret = mi_lttng_writer_write_element_string(
-			writer, config_element_exclusion, exclusion);
+			writer.get(), config_element_exclusion, exclusion);
 		if (ret) {
 			goto end;
 		}
 	}
 
 	/* Close exclusions element */
-	ret = mi_lttng_writer_close_element(writer);
+	ret = mi_lttng_writer_close_element(writer.get());
 
 end:
 	return ret;
@@ -492,7 +503,7 @@ int enable_events(char *session_name, char *event_list)
 	/* Prepare Mi */
 	if (lttng_opt_mi) {
 		/* Open a events element */
-		ret = mi_lttng_writer_open_element(writer, config_element_events);
+		ret = mi_lttng_writer_open_element(writer.get(), config_element_events);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -752,7 +763,7 @@ int enable_events(char *session_name, char *event_list)
 				ev->enabled = 0;
 				success = 0;
 			}
-			ret = mi_lttng_event(writer, ev, 1, handle->domain.type);
+			ret = mi_lttng_event(writer.get(), ev, 1, handle->domain.type);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -767,14 +778,14 @@ int enable_events(char *session_name, char *event_list)
 
 			/* Success ? */
 			ret = mi_lttng_writer_write_element_bool(
-				writer, mi_lttng_element_command_success, success);
+				writer.get(), mi_lttng_element_command_success, success);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
 			}
 
 			/* Close event element */
-			ret = mi_lttng_writer_close_element(writer);
+			ret = mi_lttng_writer_close_element(writer.get());
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -1144,7 +1155,7 @@ int enable_events(char *session_name, char *event_list)
 				ev->enabled = 1;
 			}
 
-			ret = mi_lttng_event(writer, ev, 1, handle->domain.type);
+			ret = mi_lttng_event(writer.get(), ev, 1, handle->domain.type);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -1159,14 +1170,14 @@ int enable_events(char *session_name, char *event_list)
 
 			/* Success ? */
 			ret = mi_lttng_writer_write_element_bool(
-				writer, mi_lttng_element_command_success, success);
+				writer.get(), mi_lttng_element_command_success, success);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
 			}
 
 			/* Close event element */
-			ret = mi_lttng_writer_close_element(writer);
+			ret = mi_lttng_writer_close_element(writer.get());
 			if (ret) {
 				ret = CMD_ERROR;
 				goto end;
@@ -1183,7 +1194,7 @@ end:
 	/* Close Mi */
 	if (lttng_opt_mi) {
 		/* Close events element */
-		ret = mi_lttng_writer_close_element(writer);
+		ret = mi_lttng_writer_close_element(writer.get());
 		if (ret) {
 			ret = CMD_ERROR;
 			goto error;
@@ -1340,21 +1351,22 @@ int cmd_enable_events(int argc, const char **argv)
 
 	/* Mi check */
 	if (lttng_opt_mi) {
-		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
+		writer = mi_writer_uptr(mi_lttng_writer_create(fileno(stdout), lttng_opt_mi));
 		if (!writer) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer, mi_lttng_element_command_enable_event);
+		ret = mi_lttng_writer_command_open(writer.get(),
+						   mi_lttng_element_command_enable_event);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command_output);
+		ret = mi_lttng_writer_open_element(writer.get(), mi_lttng_element_command_output);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -1405,21 +1417,21 @@ mi_closing:
 	/* Mi closing */
 	if (lttng_opt_mi) {
 		/* Close  output element */
-		ret = mi_lttng_writer_close_element(writer);
+		ret = mi_lttng_writer_close_element(writer.get());
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		ret = mi_lttng_writer_write_element_bool(
-			writer, mi_lttng_element_command_success, success);
+			writer.get(), mi_lttng_element_command_success, success);
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer);
+		ret = mi_lttng_writer_command_close(writer.get());
 		if (ret) {
 			ret = CMD_ERROR;
 			goto end;
@@ -1427,12 +1439,6 @@ mi_closing:
 	}
 
 end:
-	/* Mi clean-up */
-	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
-	}
-
 	if (opt_session_name == nullptr) {
 		free(session_name);
 	}
