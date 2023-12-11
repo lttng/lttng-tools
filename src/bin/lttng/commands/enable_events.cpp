@@ -9,6 +9,7 @@
 #include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/string-utils.hpp>
 #include <common/utils.hpp>
@@ -1295,7 +1296,7 @@ int cmd_enable_events(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			SHOW_HELP();
-			goto end;
+			return CMD_SUCCESS;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
 			break;
@@ -1324,14 +1325,13 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
-			goto end;
+			return CMD_SUCCESS;
 		case OPT_FILTER:
 			break;
 		case OPT_EXCLUDE:
 			break;
 		default:
-			ret = CMD_UNDEFINED;
-			goto end;
+			return CMD_UNDEFINED;
 		}
 
 		/* Validate event type. Multiple event type are not supported. */
@@ -1340,8 +1340,7 @@ int cmd_enable_events(int argc, const char **argv)
 		} else {
 			if (event_type != opt_event_type) {
 				ERR("Multiple event type not supported.");
-				ret = CMD_ERROR;
-				goto end;
+				return CMD_ERROR;
 			}
 		}
 	}
@@ -1349,39 +1348,66 @@ int cmd_enable_events(int argc, const char **argv)
 	ret = print_missing_or_multiple_domains(
 		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python, true);
 	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
+		return CMD_ERROR;
 	}
 
 	/* Mi check */
 	if (lttng_opt_mi) {
 		writer = mi_writer_uptr(mi_lttng_writer_create(fileno(stdout), lttng_opt_mi));
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to create MI writer: format_code={}", lttng_opt_mi));
 		}
 
 		/* Open command element */
 		ret = mi_lttng_writer_command_open(writer.get(),
 						   mi_lttng_element_command_enable_event);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			LTTNG_THROW_ERROR(lttng::format(
+				"Failed to open MI command element: command_name=`{}`",
+				mi_lttng_element_command_enable_event));
 		}
 
 		/* Open output element */
 		ret = mi_lttng_writer_open_element(writer.get(), mi_lttng_element_command_output);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			LTTNG_THROW_ERROR(
+				lttng::format("Failed to open MI element: element_name=`{}`",
+					      mi_lttng_element_command_output));
 		}
 	}
+
+	/* Close the MI command context when leaving the function, no matter the result. */
+	const auto close_mi_on_exit = lttng::make_scope_exit([&success]() noexcept {
+		if (!lttng_opt_mi) {
+			return;
+		}
+
+		/* Close output element. */
+		if (mi_lttng_writer_close_element(writer.get())) {
+			ERR_FMT("Failed to close MI output element");
+			return;
+		}
+
+		if (mi_lttng_writer_write_element_bool(
+			    writer.get(), mi_lttng_element_command_success, success)) {
+			ERR_FMT("Failed to write MI element: element_name=`{}`, value={}",
+				mi_lttng_element_command_success,
+				success);
+			return;
+		}
+
+		/* Command element close. */
+		if (mi_lttng_writer_command_close(writer.get())) {
+			ERR_FMT("Failed to close MI command element");
+			return;
+		}
+	});
 
 	arg_event_list = poptGetArg(pc.get());
 	if (arg_event_list == nullptr && opt_enable_all == 0) {
 		ERR("Missing event name(s).");
-		ret = CMD_ERROR;
-		goto end;
+		return CMD_ERROR;
 	}
 
 	for (std::string line; std::getline(event_list_arg_stream, line, ',');) {
@@ -1391,8 +1417,7 @@ int cmd_enable_events(int argc, const char **argv)
 	leftover = poptGetArg(pc.get());
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
-		ret = CMD_ERROR;
-		goto end;
+		return CMD_ERROR;
 	}
 
 	if (!opt_session_name) {
@@ -1400,9 +1425,7 @@ int cmd_enable_events(int argc, const char **argv)
 			lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
 
 		if (!rc_file_session_name) {
-			command_ret = CMD_ERROR;
-			success = 0;
-			goto mi_closing;
+			return CMD_ERROR;
 		}
 
 		session_name = rc_file_session_name.get();
@@ -1412,37 +1435,8 @@ int cmd_enable_events(int argc, const char **argv)
 
 	command_ret = enable_events(session_name, patterns);
 	if (command_ret) {
-		success = 0;
-		goto mi_closing;
+		return CMD_ERROR;
 	}
 
-mi_closing:
-	/* Mi closing */
-	if (lttng_opt_mi) {
-		/* Close  output element */
-		ret = mi_lttng_writer_close_element(writer.get());
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		ret = mi_lttng_writer_write_element_bool(
-			writer.get(), mi_lttng_element_command_success, success);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer.get());
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
-
-end:
-	/* Overwrite ret if an error occurred in enable_events */
-	ret = command_ret ? command_ret : ret;
-	return ret;
+	return CMD_SUCCESS;
 }
