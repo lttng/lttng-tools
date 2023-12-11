@@ -16,11 +16,14 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <popt.h>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 
 /* Mi dependancy */
 #include "../command.hpp"
@@ -47,6 +50,7 @@ void _mi_lttng_writer_deleter_func(mi_writer *writer)
 using mi_writer_uptr = std::unique_ptr<
 	mi_writer,
 	lttng::memory::create_deleter_class<mi_writer, _mi_lttng_writer_deleter_func>::deleter>;
+using event_rule_patterns = std::vector<std::string>;
 
 int opt_event_type;
 const char *opt_loglevel;
@@ -291,11 +295,11 @@ char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 	return ret;
 }
 
-int check_exclusion_subsets(const char *event_name, const char *exclusion)
+int check_exclusion_subsets(const char *pattern, const char *exclusion)
 {
 	bool warn = false;
 	int ret = 0;
-	const char *e = event_name;
+	const char *e = pattern;
 	const char *x = exclusion;
 
 	/* Scan both the excluder and the event letter by letter */
@@ -313,10 +317,7 @@ int check_exclusion_subsets(const char *event_name, const char *exclusion)
 
 		if (*x == '*') {
 			/* Event is a subset of the excluder */
-			ERR("Event %s: %s excludes all events from %s",
-			    event_name,
-			    exclusion,
-			    event_name);
+			ERR("Event %s: %s excludes all events from %s", pattern, exclusion, pattern);
 			goto error;
 		}
 
@@ -346,15 +347,15 @@ error:
 end:
 	if (warn) {
 		WARN("Event %s: %s does not exclude any events from %s",
-		     event_name,
+		     pattern,
 		     exclusion,
-		     event_name);
+		     pattern);
 	}
 
 	return ret;
 }
 
-int create_exclusion_list_and_validate(const char *event_name,
+int create_exclusion_list_and_validate(const char *pattern,
 				       const char *exclusions_arg,
 				       struct lttng_dynamic_pointer_array *exclusions)
 {
@@ -366,7 +367,7 @@ int create_exclusion_list_and_validate(const char *event_name,
 		goto error;
 	}
 
-	if (validate_exclusion_list(event_name, exclusions) != 0) {
+	if (validate_exclusion_list(pattern, exclusions) != 0) {
 		goto error;
 	}
 
@@ -401,11 +402,11 @@ void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer_array 
  * Enabling event using the lttng API.
  * Note: in case of error only the last error code will be return.
  */
-int enable_events(char *session_name, char *event_list)
+int enable_events(const std::string& session_name, const event_rule_patterns& patterns)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
-	char *event_name, *channel_name = nullptr;
+	char *channel_name = nullptr;
 	struct lttng_event *ev;
 	struct lttng_domain dom = {};
 	struct lttng_dynamic_pointer_array exclusions;
@@ -494,7 +495,7 @@ int enable_events(char *session_name, char *event_list)
 
 	channel_name = opt_channel_name;
 
-	handle = lttng_create_handle(session_name, &dom);
+	handle = lttng_create_handle(session_name.c_str(), &dom);
 	if (handle == nullptr) {
 		ret = -1;
 		goto error;
@@ -595,7 +596,7 @@ int enable_events(char *session_name, char *event_list)
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel events already enabled (channel %s, session %s)",
 					     print_channel_name(channel_name),
-					     session_name);
+					     session_name.c_str());
 					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
@@ -605,7 +606,7 @@ int enable_events(char *session_name, char *event_list)
 					ERR("Events: %s (channel %s, session %s)",
 					    msg,
 					    print_channel_name(channel_name),
-					    session_name);
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
@@ -615,7 +616,7 @@ int enable_events(char *session_name, char *event_list)
 					    ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
-					    session_name);
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
@@ -713,7 +714,7 @@ int enable_events(char *session_name, char *event_list)
 					WARN("Filter on all events is already enabled"
 					     " (channel %s, session %s)",
 					     print_channel_name(channel_name),
-					     session_name);
+					     session_name.c_str());
 					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
@@ -723,7 +724,7 @@ int enable_events(char *session_name, char *event_list)
 					ERR("All events: %s (channel %s, session %s, filter \'%s\')",
 					    msg,
 					    print_channel_name(channel_name),
-					    session_name,
+					    session_name.c_str(),
 					    opt_filter);
 					error = 1;
 					break;
@@ -734,7 +735,7 @@ int enable_events(char *session_name, char *event_list)
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
-					    session_name,
+					    session_name.c_str(),
 					    opt_filter);
 					error = 1;
 					break;
@@ -796,18 +797,17 @@ int enable_events(char *session_name, char *event_list)
 	}
 
 	/* Strip event list */
-	event_name = strtok(event_list, ",");
-	while (event_name != nullptr) {
+	for (const auto& pattern : patterns) {
 		/* Copy name and type of the event */
-		strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
+		strncpy(ev->name, pattern.c_str(), LTTNG_SYMBOL_NAME_LEN);
 		ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		ev->type = (lttng_event_type) opt_event_type;
 
 		/* Kernel tracer action */
 		if (opt_kernel) {
-			DBG("Enabling kernel event %s for channel %s",
-			    event_name,
-			    print_channel_name(channel_name));
+			DBG_FMT("Enabling kernel event: pattern=`{}`, channel_name=`{}`",
+				pattern,
+				print_channel_name(channel_name));
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL: /* Enable tracepoints and syscalls */
@@ -877,7 +877,7 @@ int enable_events(char *session_name, char *event_list)
 			ev->loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else if (opt_userspace) { /* User-space tracer action */
 			DBG("Enabling UST event %s for channel %s, loglevel %s",
-			    event_name,
+			    pattern.c_str(),
 			    print_channel_name(channel_name),
 			    opt_loglevel ?: "<all>");
 
@@ -887,7 +887,7 @@ int enable_events(char *session_name, char *event_list)
 			case LTTNG_EVENT_TRACEPOINT:
 				/* Copy name and type of the event */
 				ev->type = LTTNG_EVENT_TRACEPOINT;
-				strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
+				strncpy(ev->name, pattern.c_str(), LTTNG_SYMBOL_NAME_LEN);
 				ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 				break;
 			case LTTNG_EVENT_PROBE:
@@ -911,7 +911,7 @@ int enable_events(char *session_name, char *event_list)
 				/* Free previously allocated items. */
 				lttng_dynamic_pointer_array_reset(&exclusions);
 				ret = create_exclusion_list_and_validate(
-					event_name, opt_exclude, &exclusions);
+					pattern.c_str(), opt_exclude, &exclusions);
 				if (ret) {
 					ret = CMD_ERROR;
 					goto error;
@@ -984,7 +984,7 @@ int enable_events(char *session_name, char *event_list)
 				}
 			}
 			ev->type = LTTNG_EVENT_TRACEPOINT;
-			strncpy(ev->name, event_name, LTTNG_SYMBOL_NAME_LEN);
+			strncpy(ev->name, pattern.c_str(), LTTNG_SYMBOL_NAME_LEN);
 			ev->name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
 		} else {
 			abort();
@@ -1011,10 +1011,10 @@ int enable_events(char *session_name, char *event_list)
 				switch (-command_ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
 					WARN("Kernel event %s%s already enabled (channel %s, session %s)",
-					     event_name,
+					     pattern.c_str(),
 					     exclusion_string,
 					     print_channel_name(channel_name),
-					     session_name);
+					     session_name.c_str());
 					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
@@ -1022,30 +1022,30 @@ int enable_events(char *session_name, char *event_list)
 					const char *msg =
 						"The command tried to enable an event in a new domain for a session that has already been started once.";
 					ERR("Event %s%s: %s (channel %s, session %s)",
-					    event_name,
+					    pattern.c_str(),
 					    exclusion_string,
 					    msg,
 					    print_channel_name(channel_name),
-					    session_name);
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
 				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
 					ERR("SDT probes %s guarded by semaphores are not supported (channel %s, session %s)",
-					    event_name,
+					    pattern.c_str(),
 					    print_channel_name(channel_name),
-					    session_name);
+					    session_name.c_str());
 					error = 1;
 					break;
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)",
-					    event_name,
+					    pattern.c_str(),
 					    exclusion_string,
 					    lttng_strerror(command_ret),
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
-					    session_name);
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
@@ -1056,7 +1056,7 @@ int enable_events(char *session_name, char *event_list)
 				case LTTNG_DOMAIN_UST:
 					MSG("%s event %s%s created in channel %s",
 					    lttng_domain_type_str(dom.type),
-					    event_name,
+					    pattern.c_str(),
 					    exclusion_string,
 					    print_channel_name(channel_name));
 					break;
@@ -1069,7 +1069,7 @@ int enable_events(char *session_name, char *event_list)
 					 */
 					MSG("%s event %s%s enabled",
 					    lttng_domain_type_str(dom.type),
-					    event_name,
+					    pattern.c_str(),
 					    exclusion_string);
 					break;
 				default:
@@ -1103,10 +1103,10 @@ int enable_events(char *session_name, char *event_list)
 				case LTTNG_ERR_FILTER_EXIST:
 					WARN("Filter on event %s%s is already enabled"
 					     " (channel %s, session %s)",
-					     event_name,
+					     pattern.c_str(),
 					     exclusion_string,
 					     print_channel_name(channel_name),
-					     session_name);
+					     session_name.c_str());
 					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
@@ -1118,7 +1118,7 @@ int enable_events(char *session_name, char *event_list)
 					    exclusion_string,
 					    msg,
 					    print_channel_name(channel_name),
-					    session_name,
+					    session_name.c_str(),
 					    opt_filter);
 					error = 1;
 					break;
@@ -1131,7 +1131,7 @@ int enable_events(char *session_name, char *event_list)
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
-					    session_name,
+					    session_name.c_str(),
 					    opt_filter);
 					error = 1;
 					break;
@@ -1140,7 +1140,7 @@ int enable_events(char *session_name, char *event_list)
 
 			} else {
 				MSG("Event %s%s: Filter '%s' successfully set",
-				    event_name,
+				    pattern.c_str(),
 				    exclusion_string,
 				    opt_filter);
 			}
@@ -1184,8 +1184,6 @@ int enable_events(char *session_name, char *event_list)
 			}
 		}
 
-		/* Next event */
-		event_name = strtok(nullptr, ",");
 		/* Reset warn, error and success */
 		success = 1;
 	}
@@ -1227,14 +1225,14 @@ void _poptContextFree_deleter_func(poptContext ctx)
 
 } /* namespace */
 
-int validate_exclusion_list(const char *event_name,
+int validate_exclusion_list(const char *pattern,
 			    const struct lttng_dynamic_pointer_array *exclusions)
 {
 	int ret;
 
 	/* Event name must be a valid globbing pattern to allow exclusions. */
-	if (!strutils_is_star_glob_pattern(event_name)) {
-		ERR("Event %s: Exclusions can only be used with a globbing pattern", event_name);
+	if (!strutils_is_star_glob_pattern(pattern)) {
+		ERR("Event %s: Exclusions can only be used with a globbing pattern", pattern);
 		goto error;
 	}
 
@@ -1243,7 +1241,7 @@ int validate_exclusion_list(const char *event_name,
 	 * then we can validate the individual exclusions. Otherwise
 	 * all exclusions are passed to the session daemon.
 	 */
-	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
+	if (strutils_is_star_at_the_end_only_glob_pattern(pattern)) {
 		size_t i, num_exclusions;
 
 		num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
@@ -1255,7 +1253,7 @@ int validate_exclusion_list(const char *event_name,
 
 			if (!strutils_is_star_glob_pattern(exclusion) ||
 			    strutils_is_star_at_the_end_only_glob_pattern(exclusion)) {
-				ret = check_exclusion_subsets(event_name, exclusion);
+				ret = check_exclusion_subsets(pattern, exclusion);
 				if (ret) {
 					goto error;
 				}
@@ -1279,11 +1277,12 @@ end:
 int cmd_enable_events(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
-	char *session_name = nullptr;
-	char *event_list = nullptr;
+	std::string session_name;
 	const char *arg_event_list = nullptr;
 	const char *leftover = nullptr;
 	int event_type = -1;
+	event_rule_patterns patterns;
+	std::stringstream event_list_arg_stream(arg_event_list);
 
 	auto pc = lttng::make_unique_wrapper<poptContext_s, _poptContextFree_deleter_func>(
 		poptGetContext(nullptr, argc, argv, long_options, 0));
@@ -1385,13 +1384,8 @@ int cmd_enable_events(int argc, const char **argv)
 		goto end;
 	}
 
-	if (opt_enable_all == 0) {
-		event_list = strdup(arg_event_list);
-		if (event_list == nullptr) {
-			PERROR("Failed to copy event name(s)");
-			ret = CMD_ERROR;
-			goto end;
-		}
+	for (std::string line; std::getline(event_list_arg_stream, line, ',');) {
+		patterns.emplace_back(std::move(line));
 	}
 
 	leftover = poptGetArg(pc.get());
@@ -1402,17 +1396,21 @@ int cmd_enable_events(int argc, const char **argv)
 	}
 
 	if (!opt_session_name) {
-		session_name = get_session_name();
-		if (session_name == nullptr) {
+		const auto rc_file_session_name =
+			lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
+
+		if (!rc_file_session_name) {
 			command_ret = CMD_ERROR;
 			success = 0;
 			goto mi_closing;
 		}
+
+		session_name = rc_file_session_name.get();
 	} else {
 		session_name = opt_session_name;
 	}
 
-	command_ret = enable_events(session_name, event_list);
+	command_ret = enable_events(session_name, patterns);
 	if (command_ret) {
 		success = 0;
 		goto mi_closing;
@@ -1444,12 +1442,6 @@ mi_closing:
 	}
 
 end:
-	if (opt_session_name == nullptr) {
-		free(session_name);
-	}
-
-	free(event_list);
-
 	/* Overwrite ret if an error occurred in enable_events */
 	ret = command_ret ? command_ret : ret;
 	return ret;
