@@ -316,7 +316,7 @@ AC_CHECK_FUNCS([ \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
 	sched_getcpu sysconf sync_file_range getrandom posix_fadvise \
-	arc4random
+	arc4random flock
 ])
 
 # Check for pthread_setname_np and pthread_getname_np
