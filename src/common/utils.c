@@ -265,52 +265,6 @@ error:
 }
 
 /*
- * Create lock file to the given path and filename.
- * Returns the associated file descriptor, -1 on error.
- */
-LTTNG_HIDDEN
-int utils_create_lock_file(const char *filepath)
-{
-	int ret;
-	int fd;
-	struct flock lock;
-
-	assert(filepath);
-
-	memset(&lock, 0, sizeof(lock));
-	fd = open(filepath, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR |
-		S_IRGRP | S_IWGRP);
-	if (fd < 0) {
-		PERROR("open lock file %s", filepath);
-		fd = -1;
-		goto error;
-	}
-
-	/*
-	 * Attempt to lock the file. If this fails, there is
-	 * already a process using the same lock file running
-	 * and we should exit.
-	 */
-	lock.l_whence = SEEK_SET;
-	lock.l_type = F_WRLCK;
-
-	ret = fcntl(fd, F_SETLK, &lock);
-	if (ret == -1) {
-		PERROR("fcntl lock file");
-		ERR("Could not get lock file %s, another instance is running.",
-			filepath);
-		if (close(fd)) {
-			PERROR("close lock file");
-		}
-		fd = ret;
-		goto error;
-	}
-
-error:
-	return fd;
-}
-
-/*
  * Create directory using the given path and mode.
  *
  * On success, return 0 else a negative error code.

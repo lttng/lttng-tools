@@ -44,6 +44,7 @@ libcommon_lgpl_la_SOURCES = \
 	evaluation.c \
 	event.c \
 	location.c \
+	lockfile.c lockfile.h \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
 	notify.c \
