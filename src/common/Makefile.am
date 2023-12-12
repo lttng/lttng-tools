@@ -84,6 +84,7 @@ libcommon_lgpl_la_SOURCES = \
 	fd-handle.c fd-handle.h \
 	kernel-probe.c \
 	location.c \
+	lockfile.c lockfile.h \
 	log-level-rule.c \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
