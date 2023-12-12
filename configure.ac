@@ -235,7 +235,7 @@ AC_CHECK_FUNCS([ \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
-	sched_getcpu sysconf sync_file_range getrandom
+	sched_getcpu sysconf sync_file_range getrandom flock
 ])
 
 # Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
