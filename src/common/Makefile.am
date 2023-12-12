@@ -93,6 +93,7 @@ libcommon_lgpl_la_SOURCES = \
 	io-hint.hpp \
 	kernel-probe.cpp \
 	location.cpp \
+	lockfile.cpp lockfile.hpp \
 	locked-reference.hpp \
 	logging-utils.hpp logging-utils.cpp \
 	log-level-rule.cpp \

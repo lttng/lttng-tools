@@ -52,6 +52,7 @@
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
+#include <common/lockfile.hpp>
 #include <common/logging-utils.hpp>
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
