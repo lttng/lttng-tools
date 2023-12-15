@@ -14,6 +14,7 @@ TESTS = tools/base-path/test_ust \
 	tools/streaming/test_kernel \
 	tools/streaming/test_ust \
 	tools/health/test_thread_ok \
+	tools/live/test_early_inactive_app.py \
 	tools/live/test_kernel \
 	tools/live/test_lttng_kernel \
 	tools/live/test_miss_short_lived_app.py \
