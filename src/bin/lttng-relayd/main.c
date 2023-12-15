@@ -1524,6 +1524,7 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	if (session->viewer_attached) {
 		uatomic_set(&session->new_streams, 1);
 	}
+
 	pthread_mutex_unlock(&session->lock);
 }
 
