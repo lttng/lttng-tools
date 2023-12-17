@@ -474,6 +474,9 @@ else
 	isroot=0
 fi
 
+check_skip_kernel_test
+
+skip $? "LTTng modules not detected. Skipping all tests." $NUM_KERNEL_TESTS ||
 skip $isroot "Root access is needed. Skipping all kernel tracker tests." $NUM_KERNEL_TESTS ||
 {
 	diag "Test kernel tracker"

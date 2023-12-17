@@ -28,7 +28,16 @@ function test_kernel_instrumentation_notification
 	wait $APP_PID 2> /dev/null
 }
 
+check_skip_kernel_test
+ismodready=$?
+
 if [ "$(id -u)" == "0" ]; then
+	if [ $ismodready == 0 ]; then
+		plan_tests $NUM_TESTS
+		skip 0 "LTTng modules not detected. Skipping all tests." $NUM_TESTS
+		exit 0
+	fi
+
 	validate_lttng_modules_present
 
 	modprobe lttng-test

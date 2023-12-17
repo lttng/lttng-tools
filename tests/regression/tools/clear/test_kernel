@@ -565,6 +565,9 @@ snapshot_tests=(test_kernel_streaming_snapshot
 	test_kernel_local_snapshot
 )
 
+check_skip_kernel_test
+
+skip $? "LTTng modules not detected. Skipping all tests." $NUM_TESTS ||
 skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
 {
 	trap signal_cleanup SIGTERM SIGINT

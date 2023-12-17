@@ -371,6 +371,9 @@ fi
 
 diag "Supported syscalls are $SUPPORTED_SYSCALLS_LIST"
 
+check_skip_kernel_test
+
+skip $? "LTTng modules not detected. Skipping all tests." $NUM_TESTS ||
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
 	validate_lttng_modules_present

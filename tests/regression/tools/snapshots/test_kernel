@@ -228,6 +228,9 @@ else
 	isroot=0
 fi
 
+check_skip_kernel_test
+
+skip $? "LTTng modules not detected. Skipping all tests." $NUM_TESTS ||
 skip $isroot "Root access is needed. Skipping all kernel snapshot tests" $NUM_TESTS ||
 {
 

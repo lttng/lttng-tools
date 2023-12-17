@@ -323,6 +323,17 @@ function conf_proc_count()
 	echo
 }
 
+# Return 0 if disable kernel test was set
+function check_skip_kernel_test ()
+{
+	# Check for skip test kernel flag
+	if [ $LTTNG_TOOLS_DISABLE_KERNEL_TESTS == 1 ]; then
+		return 0
+	fi
+
+	return 1
+}
+
 # Check if base lttng-modules are present.
 # Bail out on failure
 function validate_lttng_modules_present ()

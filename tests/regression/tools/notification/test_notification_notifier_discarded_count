@@ -393,8 +393,15 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 
 test_ust_notifier_discarded_count
 test_ust_notifier_discarded_count_max_bucket
+check_skip_kernel_test
+ismodready=$?
 
 if [ "$(id -u)" == "0" ]; then
+
+	if [ $ismodready == 0 ]; then
+		skip 0 "LTTng modules not detected. Skipping all tests." $KERNEL_NUM_TESTS
+		exit 1
+	fi
 
 	validate_lttng_modules_present
 

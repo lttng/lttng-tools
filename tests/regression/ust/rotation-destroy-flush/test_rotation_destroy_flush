@@ -117,6 +117,13 @@ function test_rotation_destroy_flush()
 
 plan_tests $NUM_TESTS
 
+check_skip_kernel_test
+
+if [ $? == 0 ]; then
+	skip 0 "LTTng modules not detected. Skipping all tests." $NUM_TESTS
+	exit 0
+fi
+
 print_test_banner "$TEST_DESC"
 
 TESTS=(

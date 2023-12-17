@@ -417,7 +417,14 @@ TESTS=(
 	test_on_register_evaluation_ust
 )
 
+check_skip_kernel_test
+ismodready=$?
+
 if [ "$(id -u)" == "0" ]; then
+	if [ ismodready == 0 ]; then
+		skip 0 "LTTng modules not detected. Skipping all tests." $NUM_TEST_KERNEL
+		exit 0
+	fi
 	validate_lttng_modules_present
 	TESTS+=(
 	test_multi_app_kernel
