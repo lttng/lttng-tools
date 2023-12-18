@@ -16,7 +16,7 @@ endif::env-github[]
 5 May 2020
 
 [.normal]
-https://ci.lttng.org/job/lttng-tools_master_build/[image:https://img.shields.io/jenkins/s/https/ci.lttng.org/lttng-tools_master_build.svg[Jenkins, title="Jenkins"]]
+https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[image:https://img.shields.io/jenkins/build.svg?jobUrl=https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[Jenkins, title="Jenkins"]]
 https://scan.coverity.com/projects/lttng-tools[image:https://img.shields.io/coverity/scan/lttng-tools.svg[Coverity, title="Coverity"]]
 
 [.lead]
