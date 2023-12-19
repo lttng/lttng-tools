@@ -623,7 +623,7 @@ function start_lttng_relayd_opt()
 	if [ -z $(lttng_pgrep "$RELAYD_MATCH") ]; then
 		# shellcheck disable=SC2086
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
-		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
+		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
 			if [ $withtap -eq "1" ]; then
 				fail "Start lttng-relayd (process mode: $process_mode opt: $opt)"
