@@ -637,6 +637,7 @@ function test_ust_local_snapshot_per_pid ()
 		--sync-before-last-event-touch ${file_sync_before_last_touch} \
 		--sync-before-exit ${file_sync_before_exit} \
 		--sync-before-exit-touch ${file_sync_before_exit_touch} >/dev/null 2>&1 &
+	local app_pid="${!}"
 
 	# Continue only when there is only the last event remaining.
 	while [ ! -f "${file_sync_before_last_touch}" ]; do
@@ -680,7 +681,7 @@ function test_ust_local_snapshot_per_pid ()
 
 	# Release the application.
 	touch ${file_sync_before_exit}
-	wait
+	wait "${app_pid}"
 	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -f ${file_sync_before_last}
