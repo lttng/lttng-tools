@@ -76,7 +76,7 @@ function test_ns()
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
 	ok $? "Get current $ns namespace inode: $ns_inode"
 
-	trace_path=$(mktemp -d -t tmp.{FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	start_lttng_sessiond
 
