@@ -12,6 +12,12 @@ import time
 from typing import Iterator, Optional
 
 
+def _get_time_ns():
+    assert sys.version_info > (3, 3, 0)
+    # time.monotonic_ns is only available for python >= 3.8
+    return time.monotonic() * 1000000000
+
+
 class InvalidTestPlan(RuntimeError):
     def __init__(self, msg):
         # type: (str) -> None
@@ -75,7 +81,7 @@ class TapGenerator:
         self._time_tests = True  # type: bool
         if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0":
             self._time_tests = False
-        self._last_time = time.monotonic_ns()
+        self._last_time = _get_time_ns()
 
     def __del__(self):
         if self.remaining_test_cases > 0:
@@ -129,7 +135,7 @@ class TapGenerator:
 
     def test(self, result, description):
         # type: (bool, str) -> None
-        duration = (time.monotonic_ns() - self._last_time) / 1_000_000
+        duration = (_get_time_ns() - self._last_time) / 1000000
         if self._last_test_case_id == self._total_test_count:
             raise InvalidTestPlan("Executing too many tests")
 
@@ -147,7 +153,7 @@ class TapGenerator:
         )
         if self._time_tests:
             self._print("---\n  duration_ms: {}\n...\n".format(duration))
-        self._last_time = time.monotonic_ns()
+        self._last_time = _get_time_ns()
 
     def ok(self, description):
         # type: (str) -> None

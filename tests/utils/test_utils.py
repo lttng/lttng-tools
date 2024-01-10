@@ -24,9 +24,16 @@ sys.path.append(lttng_bindings_libs_path)
 from lttng import *
 
 _time_tests = True
-if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0":
+if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0" or sys.version_info < (3,3,0):
     _time_tests = False
-_last_time = time.monotonic_ns()
+
+def _get_time_ns():
+    assert sys.version_info > (3, 3, 0)
+    # time.monotonic_ns is only available for python >= 3.8
+    return time.monotonic() * 1000000000
+
+
+_last_time = _get_time_ns()
 
 BABELTRACE_BIN="babeltrace2"
 
@@ -54,9 +61,9 @@ def print_automatic_test_timing():
     global _last_time
     if not _time_tests:
         return
-    duration_ns = time.monotonic_ns() - _last_time
-    print("  ---\n    duration_ms: {:02f}\n  ...".format(duration_ns / 1_000_000))
-    _last_time = time.monotonic_ns()
+    duration_ns = _get_time_ns() - _last_time
+    print("  ---\n    duration_ms: {:02f}\n  ...".format(duration_ns / 1000000))
+    _last_time = _get_time_ns()
 
 def print_test_result(result, number, description):
     result_string = None
