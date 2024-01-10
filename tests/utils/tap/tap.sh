@@ -18,7 +18,6 @@ _auto_timing="${TAP_AUTOTIME:-1}"
 _last_time=''
 TODO=
 TIME_SCRIPT="$(realpath -e -- "$(dirname "${BASH_SOURCE[0]}")")/clock"
-print "${TIME_SCRIPT}"
 
 usage(){
     cat <<'USAGE'
