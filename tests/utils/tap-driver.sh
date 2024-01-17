@@ -150,7 +150,11 @@ TIME_SCRIPT="$(realpath -e -- "$(dirname "$0")")/tap/clock"
     # the outputs in the resulting file for half written lines, eg.
     #   ok 93 - Tes# PERROR - xxxx
     #   t some function
-    stdbuf -eL -oL -- "$@"
+    if [ "${TAP_AUTOTIME:-}" != 0 ]; then
+      stdbuf -eL -oL -- "$@"
+    else
+      "$@"
+    fi
     echo $?
   ) | LC_ALL=C ${AM_TAP_AWK-awk} \
         -v me="$me" \
