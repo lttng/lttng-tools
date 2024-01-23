@@ -953,6 +953,9 @@ AS_IF([test "$test_sdt_uprobe" = "autodetect"], [
 
 AM_CONDITIONAL([TEST_SDT_UPROBE], [test "$test_sdt_uprobe" = "yes"])
 
+AC_ARG_ENABLE([lib-lttng-ctl], AS_HELP_STRING([--disable-lib-lttng-ctl],
+	[Disable the build of liblttng-ctl (only possible if no binaries that depend on it are built)]))
+
 # Arguments for binaries build exclusion
 AC_ARG_ENABLE([bin-lttng], AS_HELP_STRING([--disable-bin-lttng],[Disable the build of lttng binaries]))
 AC_ARG_ENABLE([bin-lttng-consumerd], AS_HELP_STRING([--disable-bin-lttng-consumerd],
@@ -1023,11 +1026,23 @@ AS_IF([test x$enable_bin_lttng_sessiond != xno],
 )
 
 # Libraries dependencies enabling
+# If we want to build liblttng-ctl
+AS_IF([test x$enable_lib_lttng_ctl != xno],
+      [
+       build_lib_lttng_ctl=yes
+      ]
+)
+# If we need to build liblttng-ctl because a binary depends on it
 AS_IF([test x$build_lib_lttng_ctl = xyes],
       [
        build_lib_sessiond_comm=yes
       ]
 )
+# Fail if we didn't want to build liblttng-ctl but need to build it anyway
+AS_IF([test "x$build_lib_lttng_ctl" = "xyes" -a "x$enable_lib_lttng_ctl" = "xno"],[
+	AC_MSG_FAILURE(
+		[liblttng-ctl must be built, because at least one binary that depends on it is enabled])
+])
 
 AS_IF([test x$build_lib_consumer = xyes],
       [
@@ -1346,6 +1361,13 @@ PPRINT_PROP_BOOL([libkmod support], $value)
 # LTTng-UST enabled/disabled
 test "x$with_lttng_ust" = "xyes" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST support], $value)
+
+AS_ECHO
+PPRINT_SUBTITLE([Libraries])
+
+# liblttng-ctl enabled/disabled
+test x$build_lib_lttng_ctl != xno && value=1 || value=0
+PPRINT_PROP_BOOL([liblttng-ctl], $value)
 
 AS_ECHO
 PPRINT_SUBTITLE([Binaries])
