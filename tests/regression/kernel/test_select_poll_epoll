@@ -390,12 +390,18 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	NEW_BUG=$(dmesg | grep " BUG:" | cut -d' ' -f1 | tail -1)
 
 	if test "$LAST_WARNING" != "$NEW_WARNING"; then
+		diag "Last WARNING before tests: ${LAST_WARNING}"
+		diag "Last WARNING after tests: ${NEW_WARNING}"
 		fail "New WARNING generated"
 	fi
 	if test "$LAST_OOPS" != "$NEW_OOPS"; then
+		diag "Last OOPS before tests: ${LAST_OOPS}"
+		diag "Last OOPS after tests: ${NEW_OOPS}"
 		fail "New OOPS generated"
 	fi
 	if test "$LAST_BUG" != "$NEW_BUG"; then
+		diag "Last BUG before tests: ${LAST_BUG}"
+		diag "Last BUG after tests: ${NEW_BUG}"
 		fail "New BUG generated"
 	fi
 }
