@@ -48,9 +48,9 @@ libtp_a_define_la_SOURCES = \
 	tp-a-define.cpp \
 	tp-a.h
 
-noinst_PROGRAMS = gen-ust-events-constructor
-gen_ust_events_constructor_SOURCES = \
-	main.cpp \
+noinst_PROGRAMS = gen-ust-events-constructor \
+	uses_heap
+gen_ust_events_constructor_SOURCES = main.cpp \
 	01-tp-before-define.cpp \
 	02-define-tp.cpp \
 	03-tp-after-define.cpp \
@@ -66,4 +66,6 @@ gen_ust_events_constructor_LDADD = $(UST_LIBS) \
 		$(builddir)/libtp-a-provider.la \
 		$(top_builddir)/tests/utils/libtestutils.la \
 		$(DL_LIBS)
+
+uses_heap_SOURCES = uses_heap.cpp
 endif

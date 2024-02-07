@@ -8,6 +8,7 @@
 import pathlib
 import sys
 import os
+import subprocess
 from typing import Any, Callable, Type
 
 """
@@ -25,9 +26,34 @@ sys.path.append(str(test_utils_import_path))
 import lttngtest
 import bt2
 
+# Determine if LTTNG_UST_ALLOCATE_COMPOUND_LITERAL_ON_HEAP is set. This will
+# affect if certain events may or may not be expected when compiling with
+# C++.
+# @see https://github.com/lttng/lttng-ust/blob/47fa3e4ed7ab43e034dc61fc1480f919f4ee51d0/include/lttng/ust-compiler.h#L51
+#
+compound_literal_on_heap = False
+process = subprocess.Popen(
+    [
+        os.path.join(
+            str(test_utils_import_path),
+            "testapp",
+            "gen-ust-events-constructor",
+            "uses_heap",
+        )
+    ]
+)
+process.wait()
+if process.returncode == 0:
+    compound_literal_on_heap = True
+
 expected_events = [
     {"name": "tp_so:constructor_c_provider_shared_library", "msg": None, "count": 0},
-    {"name": "tp_a:constructor_c_provider_static_archive", "msg": None, "count": 0},
+    {
+        "name": "tp_a:constructor_c_provider_static_archive",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {
         "name": "tp_so:constructor_cplusplus_provider_shared_library",
         "msg": "global - shared library define and provider",
@@ -37,37 +63,73 @@ expected_events = [
         "name": "tp_a:constructor_cplusplus_provider_static_archive",
         "msg": "global - static archive define and provider",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
-    {"name": "tp:constructor_c_across_units_before_define", "msg": None, "count": 0},
+    {
+        "name": "tp:constructor_c_across_units_before_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {
         "name": "tp:constructor_cplusplus",
         "msg": "global - across units before define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
-    {"name": "tp:constructor_c_same_unit_before_define", "msg": None, "count": 0},
-    {"name": "tp:constructor_c_same_unit_after_define", "msg": None, "count": 0},
+    {
+        "name": "tp:constructor_c_same_unit_before_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_c_same_unit_after_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {
         "name": "tp:constructor_cplusplus",
         "msg": "global - same unit before define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:constructor_cplusplus",
         "msg": "global - same unit after define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
-    {"name": "tp:constructor_c_across_units_after_define", "msg": None, "count": 0},
+    {
+        "name": "tp:constructor_c_across_units_after_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {
         "name": "tp:constructor_cplusplus",
         "msg": "global - across units after define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
-    {"name": "tp:constructor_c_same_unit_before_provider", "msg": None, "count": 0},
-    {"name": "tp:constructor_c_same_unit_after_provider", "msg": None, "count": 0},
+    {
+        "name": "tp:constructor_c_same_unit_before_provider",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_c_same_unit_after_provider",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {
         "name": "tp:constructor_cplusplus",
         "msg": "global - same unit before provider",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:constructor_cplusplus",
@@ -117,45 +179,91 @@ expected_events = [
         "name": "tp:destructor_cplusplus",
         "msg": "global - same unit before provider",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:destructor_cplusplus",
         "msg": "global - across units after define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:destructor_cplusplus",
         "msg": "global - same unit after define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:destructor_cplusplus",
         "msg": "global - same unit before define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:destructor_cplusplus",
         "msg": "global - across units before define",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp_a:destructor_cplusplus_provider_static_archive",
         "msg": "global - static archive define and provider",
         "count": 0,
+        "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp_so:destructor_cplusplus_provider_shared_library",
         "msg": "global - shared library define and provider",
         "count": 0,
     },
-    {"name": "tp:destructor_c_across_units_after_provider", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_same_unit_after_provider", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_same_unit_before_provider", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_across_units_after_define", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_same_unit_after_define", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_same_unit_before_define", "msg": None, "count": 0},
-    {"name": "tp:destructor_c_across_units_before_define", "msg": None, "count": 0},
-    {"name": "tp_a:destructor_c_provider_static_archive", "msg": None, "count": 0},
+    {
+        "name": "tp:destructor_c_across_units_after_provider",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_same_unit_after_provider",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_same_unit_before_provider",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_across_units_after_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_same_unit_after_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_same_unit_before_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_c_across_units_before_define",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp_a:destructor_c_provider_static_archive",
+        "msg": None,
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
     {"name": "tp_so:destructor_c_provider_shared_library", "msg": None, "count": 0},
 ]
 
@@ -244,12 +352,16 @@ def validate_trace(trace_location, tap):
             )
 
     for event in expected_events:
-        tap.test(
-            event["count"] == 1,
-            'Found expected event name="{}" msg="{}"'.format(
-                event["name"], str(event["msg"])
+        may_fail = "may_fail" in event.keys() and event["may_fail"]
+        if not may_fail:
+            tap.test(
+                event["count"] == 1,
+                'Found expected event name="{}" msg="{}"'.format(
+                    event["name"], str(event["msg"])
+                ),
             ),
-        )
+        else:
+            tap.skip("Event '{}' may or may not be recorded".format(event["name"]))
 
     tap.test(unknown_event_count == 0, "Found no unexpected events")
 

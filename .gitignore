@@ -101,6 +101,7 @@ compile_commands.json
 /tests/regression/tools/filtering/gen-ust-events
 /tests/utils/testapp/gen-ust-events/gen-ust-events
 /tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-constructor
+/tests/utils/testapp/gen-ust-events-constructor/uses_heap
 /tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns
 /tests/regression/tools/health/health_check
 /tests/regression/kernel/select_poll_epoll
