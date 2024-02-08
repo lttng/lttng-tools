@@ -60,7 +60,7 @@ expected_events = [
         "count": 0,
     },
     {
-        "name": "tp_a:constructor_cplusplus_provider_static_archive",
+        "name": "tp_a_c:constructor_cplusplus_provider_static_archive",
         "msg": "global - static archive define and provider",
         "count": 0,
         "may_fail": compound_literal_on_heap,
@@ -259,7 +259,7 @@ expected_events = [
         "may_fail": compound_literal_on_heap,
     },
     {
-        "name": "tp_a:destructor_c_provider_static_archive",
+        "name": "tp_a_c:destructor_c_provider_static_archive",
         "msg": None,
         "count": 0,
         "may_fail": compound_literal_on_heap,

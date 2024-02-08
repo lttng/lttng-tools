@@ -24,7 +24,8 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 endif
 
 noinst_LTLIBRARIES = libtp-so-provider.la libtp-so-define.la \
-		     libtp-a-provider.la libtp-a-define.la
+		     libtp-a-provider.la libtp-a-define.la \
+		     libtp-a_c-provider.la libtp-a_c-define.la
 
 # dynamic libraries
 libtp_so_provider_la_SOURCES = \
@@ -48,6 +49,15 @@ libtp_a_define_la_SOURCES = \
 	tp-a-define.cpp \
 	tp-a.h
 
+libtp_a_c_provider_la_SOURCES = \
+	tp-a_c-provider.c \
+	tp-a_c.h
+
+libtp_a_c_define_la_SOURCES = \
+	tp-a_c-define.c \
+	tp-a_c.h
+
+
 noinst_PROGRAMS = gen-ust-events-constructor \
 	uses_heap
 gen_ust_events_constructor_SOURCES = main.cpp \
@@ -64,6 +74,8 @@ gen_ust_events_constructor_LDADD = $(UST_LIBS) \
 		$(builddir)/libtp-so-provider.la \
 		$(builddir)/libtp-a-define.la \
 		$(builddir)/libtp-a-provider.la \
+		$(builddir)/libtp-a_c-define.la \
+		$(builddir)/libtp-a_c-provider.la \
 		$(top_builddir)/tests/utils/libtestutils.la \
 		$(DL_LIBS)
 

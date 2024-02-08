@@ -6,6 +6,7 @@
 
 #include "obj.h"
 #include "tp-a.h"
+#include "tp-a_c.h"
 #include "tp-so.h"
 #include "tp.h"
 
@@ -28,13 +29,13 @@ Objso g_objso_shared_library("global - shared library define and provider");
 void test_constructor_a(void) __attribute__((constructor));
 void test_constructor_a(void)
 {
-	tracepoint(tp_a, constructor_c_provider_static_archive);
+	tracepoint(tp_a_c, constructor_c_provider_static_archive);
 }
 
 void test_destructor_a(void) __attribute__((destructor));
 void test_destructor_a(void)
 {
-	tracepoint(tp_a, destructor_c_provider_static_archive);
+	tracepoint(tp_a_c, destructor_c_provider_static_archive);
 }
 
 Obja g_obja_static_archive("global - static archive define and provider");
