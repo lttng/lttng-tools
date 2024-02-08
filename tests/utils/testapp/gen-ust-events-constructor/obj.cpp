@@ -6,7 +6,6 @@
  */
 
 #include "obj.h"
-#include "tp-a.h"
 #include "tp-so.h"
 #include "tp.h"
 
@@ -28,14 +27,4 @@ Objso::Objso(const char *_msg) : msg(_msg)
 Objso::~Objso()
 {
 	tracepoint(tp_so, destructor_cplusplus_provider_shared_library, msg);
-}
-
-Obja::Obja(const char *_msg) : msg(_msg)
-{
-	tracepoint(tp_a, constructor_cplusplus_provider_static_archive, msg);
-}
-
-Obja::~Obja()
-{
-	tracepoint(tp_a, destructor_cplusplus_provider_static_archive, msg);
 }

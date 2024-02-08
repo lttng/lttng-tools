@@ -12,6 +12,11 @@ WARN_FLAGS = \
 AM_CFLAGS += $(WARN_FLAGS)
 AM_CXXFLAGS += $(WARN_FLAGS)
 
+noinst_LTLIBRARIES = libtp-a-provider.la libtp-a-define.la \
+	libtp-a_c-provider.la libtp-a_c-define.la
+noinst_PROGRAMS = gen-ust-events-constructor-a \
+	uses_heap
+
 if NO_SHARED
 # Build the shared library as a static archive if shared libraries
 # are disabled.
@@ -21,12 +26,12 @@ else
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 			   -rpath $(abs_builddir)
+
+noinst_LTLIBRARIES += libtp-so-provider.la libtp-so-define.la \
+	libtp-so_c-provider.la libtp-so_c-define.la
+noinst_PROGRAMS += gen-ust-events-constructor-so
 endif
 
-noinst_LTLIBRARIES = libtp-so-provider.la libtp-so-define.la \
-		     libtp-so_c-provider.la libtp-so_c-define.la \
-		     libtp-a-provider.la libtp-a-define.la \
-		     libtp-a_c-provider.la libtp-a_c-define.la
 
 # dynamic libraries
 libtp_so_provider_la_SOURCES = \
@@ -69,9 +74,7 @@ libtp_a_c_define_la_SOURCES = \
 	tp-a_c.h
 
 
-noinst_PROGRAMS = gen-ust-events-constructor \
-	uses_heap
-gen_ust_events_constructor_SOURCES = main.cpp \
+gen_ust_events_constructor_so_SOURCES = main.cpp \
 	01-tp-before-define.cpp \
 	02-define-tp.cpp \
 	03-tp-after-define.cpp \
@@ -80,17 +83,31 @@ gen_ust_events_constructor_SOURCES = main.cpp \
 	obj.cpp \
 	obj.h \
 	tp.h
-gen_ust_events_constructor_LDADD = $(UST_LIBS) \
-		$(builddir)/libtp-so-define.la \
-		$(builddir)/libtp-so-provider.la \
-		$(builddir)/libtp-so_c-define.la \
-		$(builddir)/libtp-so_c-provider.la \
-		$(builddir)/libtp-a-define.la \
-		$(builddir)/libtp-a-provider.la \
-		$(builddir)/libtp-a_c-define.la \
-		$(builddir)/libtp-a_c-provider.la \
-		$(top_builddir)/tests/utils/libtestutils.la \
-		$(DL_LIBS)
+gen_ust_events_constructor_so_LDADD = $(UST_LIBS) \
+	$(builddir)/libtp-so-define.la \
+	$(builddir)/libtp-so-provider.la \
+	$(builddir)/libtp-so_c-define.la \
+	$(builddir)/libtp-so_c-provider.la \
+	$(top_builddir)/tests/utils/libtestutils.la \
+	$(DL_LIBS)
+
+gen_ust_events_constructor_a_SOURCES = main-a.cpp \
+	01-tp-before-define.cpp \
+	02-define-tp.cpp \
+	03-tp-after-define.cpp \
+	04-tp-provider.cpp \
+	05-tp-after-provider.cpp \
+	obj-a.cpp \
+	obj-a.h \
+	tp.h
+gen_ust_events_constructor_a_LDADD = $(UST_LIBS) \
+	$(builddir)/libtp-a-define.la \
+	$(builddir)/libtp-a-provider.la \
+	$(builddir)/libtp-a_c-define.la \
+	$(builddir)/libtp-a_c-provider.la \
+	$(top_builddir)/tests/utils/libtestutils.la \
+	$(DL_LIBS)
 
 uses_heap_SOURCES = uses_heap.cpp
+
 endif

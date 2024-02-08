@@ -5,6 +5,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import copy
 import pathlib
 import sys
 import os
@@ -46,25 +47,7 @@ process.wait()
 if process.returncode == 0:
     compound_literal_on_heap = True
 
-expected_events = [
-    {"name": "tp_so_c:constructor_c_provider_shared_library", "msg": None, "count": 0},
-    {
-        "name": "tp_a:constructor_c_provider_static_archive",
-        "msg": None,
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp_so:constructor_cplusplus_provider_shared_library",
-        "msg": "global - shared library define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_a_c:constructor_cplusplus_provider_static_archive",
-        "msg": "global - static archive define and provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
+expected_events_common = [
     {
         "name": "tp:constructor_c_across_units_before_define",
         "msg": None,
@@ -143,28 +126,8 @@ expected_events = [
         "count": 0,
     },
     {"name": "tp:constructor_cplusplus", "msg": "main() local", "count": 0},
-    {
-        "name": "tp_so:constructor_cplusplus_provider_shared_library",
-        "msg": "main() local - shared library define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_a:constructor_cplusplus_provider_static_archive",
-        "msg": "main() local - static archive define and provider",
-        "count": 0,
-    },
-    {"name": "tp:main", "msg": None, "count": 0},
-    {
-        "name": "tp_a:destructor_cplusplus_provider_static_archive",
-        "msg": "main() local - static archive define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_so:destructor_cplusplus_provider_shared_library",
-        "msg": "main() local - shared library define and provider",
-        "count": 0,
-    },
     {"name": "tp:destructor_cplusplus", "msg": "main() local", "count": 0},
+    {"name": "tp:main", "msg": None, "count": 0},
     {
         "name": "tp:destructor_cplusplus",
         "msg": "global - across units after provider",
@@ -204,17 +167,6 @@ expected_events = [
         "msg": "global - across units before define",
         "count": 0,
         "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp_a:destructor_cplusplus_provider_static_archive",
-        "msg": "global - static archive define and provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp_so:destructor_cplusplus_provider_shared_library",
-        "msg": "global - shared library define and provider",
-        "count": 0,
     },
     {
         "name": "tp:destructor_c_across_units_after_provider",
@@ -258,23 +210,62 @@ expected_events = [
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
+]
+expected_events_tp_so = [
+    {"name": "tp_so_c:constructor_c_provider_shared_library", "msg": None, "count": 0},
     {
-        "name": "tp_a_c:destructor_c_provider_static_archive",
-        "msg": None,
+        "name": "tp_so:constructor_cplusplus_provider_shared_library",
+        "msg": "global - shared library define and provider",
         "count": 0,
-        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp_so:constructor_cplusplus_provider_shared_library",
+        "msg": "main() local - shared library define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_so:destructor_cplusplus_provider_shared_library",
+        "msg": "main() local - shared library define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_so:destructor_cplusplus_provider_shared_library",
+        "msg": "global - shared library define and provider",
+        "count": 0,
     },
     {"name": "tp_so_c:destructor_c_provider_shared_library", "msg": None, "count": 0},
 ]
+expected_events_tp_a = [
+    {"name": "tp_a_c:constructor_c_provider_static_archive", "msg": None, "count": 0},
+    {
+        "name": "tp_a:constructor_cplusplus_provider_static_archive",
+        "msg": "global - static archive define and provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp_a:constructor_cplusplus_provider_static_archive",
+        "msg": "main() local - static archive define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_a:destructor_cplusplus_provider_static_archive",
+        "msg": "main() local - static archive define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_a:destructor_cplusplus_provider_static_archive",
+        "msg": "global - static archive define and provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {"name": "tp_a_c:destructor_c_provider_static_archive", "msg": None, "count": 0},
+]
 
-num_tests = 7 + len(expected_events)
 
-
-def capture_trace(tap, test_env):
+def capture_trace(tap, test_env, application, description):
     # type: (lttngtest.TapGenerator, lttngtest._Environment) -> lttngtest.LocalSessionOutputLocation
-    tap.diagnostic(
-        "Capture trace from application with instrumented C/C++ constructors/destructors"
-    )
+    tap.diagnostic(description)
 
     session_output_location = lttngtest.LocalSessionOutputLocation(
         test_env.create_temporary_directory("trace")
@@ -300,8 +291,10 @@ def capture_trace(tap, test_env):
     ) as test_case:
         session.start()
 
-    test_app = test_env.launch_trace_test_constructor_application()
-    with tap.case("Run test app".format(session_name=session.name)) as test_case:
+    test_app = test_env.launch_test_application(application)
+    with tap.case(
+        "Run test app '{}'".format(application, session_name=session.name)
+    ) as test_case:
         test_app.wait_for_exit()
 
     with tap.case(
@@ -317,7 +310,7 @@ def capture_trace(tap, test_env):
     return session_output_location
 
 
-def validate_trace(trace_location, tap):
+def validate_trace(trace_location, tap, expected_events):
     # type: (pathlib.Path, lttngtest.TapGenerator)
     unknown_event_count = 0
 
@@ -366,11 +359,45 @@ def validate_trace(trace_location, tap):
     tap.test(unknown_event_count == 0, "Found no unexpected events")
 
 
-tap = lttngtest.TapGenerator(num_tests)
-tap.diagnostic("Test user space constructor/destructor instrumentation coverage")
+success = True
+tests = [
+    {
+        "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ static archive)",
+        "application": "gen-ust-events-constructor/gen-ust-events-constructor-a",
+        "expected_events": copy.deepcopy(expected_events_common + expected_events_tp_a),
+        "skip_if_application_not_present": False,
+    },
+    {
+        "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ dynamic object",
+        "application": "gen-ust-events-constructor/gen-ust-events-constructor-so",
+        "expected_events": copy.deepcopy(
+            expected_events_common + expected_events_tp_so
+        ),
+        # This application is not be built when `NO_SHARED` is set in the
+        # configuration options.
+        "skip_if_application_not_present": True,
+    },
+]
 
-with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
-    outputlocation = capture_trace(tap, test_env)
-    validate_trace(outputlocation.path, tap)
+success = True
+for test in tests:
+    tap = lttngtest.TapGenerator(7 + len(test["expected_events"]))
+    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
+        try:
+            outputlocation = capture_trace(
+                tap, test_env, test["application"], test["description"]
+            )
+        except FileNotFoundError as fne:
+            tap.diagnostic(fne)
+            if test["skip_if_application_not_present"]:
+                tap.skip(
+                    "Test application '{}' not found".format(test["application"]),
+                    tap.remaining_test_cases,
+                )
+            break
+        # Warning: validate_trace mutates test['expected_events']
+        validate_trace(outputlocation.path, tap, test["expected_events"])
+    success = success and tap.is_successful
 
-sys.exit(0 if tap.is_successful else 1)
+
+sys.exit(0 if success else 1)

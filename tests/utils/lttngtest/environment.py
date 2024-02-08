@@ -612,7 +612,7 @@ class _Environment(logger._Logger):
             wait_before_exit_file_path,
         )
 
-    def launch_trace_test_constructor_application(self):
+    def launch_test_application(self, subpath):
         # type () -> TraceTestApplication
         """
         Launch an application that will trace from within constructors.
@@ -622,8 +622,7 @@ class _Environment(logger._Logger):
             / "tests"
             / "utils"
             / "testapp"
-            / "gen-ust-events-constructor"
-            / "gen-ust-events-constructor",
+            / subpath,
             self,
         )
 

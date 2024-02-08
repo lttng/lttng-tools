@@ -5,10 +5,8 @@
  */
 
 #include "obj.h"
-#include "tp-a.h"
-#include "tp-a_c.h"
-#include "tp-so_c.h"
 #include "tp-so.h"
+#include "tp-so_c.h"
 #include "tp.h"
 
 /* Use tracepoints defined and provided by shared libraries. */
@@ -26,26 +24,10 @@ void test_destructor_so(void)
 
 Objso g_objso_shared_library("global - shared library define and provider");
 
-/* Use tracepoints defined and provided by static archive. */
-void test_constructor_a(void) __attribute__((constructor));
-void test_constructor_a(void)
-{
-	tracepoint(tp_a_c, constructor_c_provider_static_archive);
-}
-
-void test_destructor_a(void) __attribute__((destructor));
-void test_destructor_a(void)
-{
-	tracepoint(tp_a_c, destructor_c_provider_static_archive);
-}
-
-Obja g_obja_static_archive("global - static archive define and provider");
-
 int main(void)
 {
 	Obj l_obj("main() local");
 	Objso l_objso("main() local - shared library define and provider");
-	Obja l_obja("main() local - static archive define and provider");
 
 	tracepoint(tp, main);
 	return 0;

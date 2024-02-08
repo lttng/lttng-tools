@@ -100,7 +100,8 @@ compile_commands.json
 /tests/regression/ust/high-throughput/gen-events
 /tests/regression/tools/filtering/gen-ust-events
 /tests/utils/testapp/gen-ust-events/gen-ust-events
-/tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-constructor
+/tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-constructor-a
+/tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-constructor-so
 /tests/utils/testapp/gen-ust-events-constructor/uses_heap
 /tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns
 /tests/regression/tools/health/health_check

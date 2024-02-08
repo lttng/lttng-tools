@@ -20,10 +20,4 @@ struct Objso {
 	~Objso();
 };
 
-struct Obja {
-	const char *msg;
-	Obja(const char *msg);
-	~Obja();
-};
-
 #endif /* _OBJ_H */
