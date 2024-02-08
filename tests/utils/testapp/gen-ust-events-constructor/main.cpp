@@ -7,6 +7,7 @@
 #include "obj.h"
 #include "tp-a.h"
 #include "tp-a_c.h"
+#include "tp-so_c.h"
 #include "tp-so.h"
 #include "tp.h"
 
@@ -14,13 +15,13 @@
 void test_constructor_so(void) __attribute__((constructor));
 void test_constructor_so(void)
 {
-	tracepoint(tp_so, constructor_c_provider_shared_library);
+	tracepoint(tp_so_c, constructor_c_provider_shared_library);
 }
 
 void test_destructor_so(void) __attribute__((destructor));
 void test_destructor_so(void)
 {
-	tracepoint(tp_so, destructor_c_provider_shared_library);
+	tracepoint(tp_so_c, destructor_c_provider_shared_library);
 }
 
 Objso g_objso_shared_library("global - shared library define and provider");

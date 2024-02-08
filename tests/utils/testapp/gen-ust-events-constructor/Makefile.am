@@ -24,6 +24,7 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 endif
 
 noinst_LTLIBRARIES = libtp-so-provider.la libtp-so-define.la \
+		     libtp-so_c-provider.la libtp-so_c-define.la \
 		     libtp-a-provider.la libtp-a-define.la \
 		     libtp-a_c-provider.la libtp-a_c-define.la
 
@@ -39,6 +40,16 @@ libtp_so_define_la_SOURCES = \
 	tp-so.h
 libtp_so_define_la_LDFLAGS = \
 	$(FORCE_SHARED_LIB_OPTIONS)
+
+libtp_so_c_provider_la_SOURCES = \
+	tp-so_c-provider.c \
+	tp-so_c.h
+libtp_so_c_provider_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
+
+libtp_so_c_define_la_SOURCES = \
+	tp-so_c-define.c \
+	tp-so_c.h
+libtp_so_c_define_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
 # static archives
 libtp_a_provider_la_SOURCES = \
@@ -72,6 +83,8 @@ gen_ust_events_constructor_SOURCES = main.cpp \
 gen_ust_events_constructor_LDADD = $(UST_LIBS) \
 		$(builddir)/libtp-so-define.la \
 		$(builddir)/libtp-so-provider.la \
+		$(builddir)/libtp-so_c-define.la \
+		$(builddir)/libtp-so_c-provider.la \
 		$(builddir)/libtp-a-define.la \
 		$(builddir)/libtp-a-provider.la \
 		$(builddir)/libtp-a_c-define.la \

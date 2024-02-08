@@ -15,10 +15,6 @@
 
 #include <stdint.h>
 
-TRACEPOINT_EVENT(tp_so, constructor_c_provider_shared_library, TP_ARGS(), TP_FIELDS())
-
-TRACEPOINT_EVENT(tp_so, destructor_c_provider_shared_library, TP_ARGS(), TP_FIELDS())
-
 TRACEPOINT_EVENT(tp_so,
 		 constructor_cplusplus_provider_shared_library,
 		 TP_ARGS(const char *, msg),

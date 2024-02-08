@@ -47,7 +47,7 @@ if process.returncode == 0:
     compound_literal_on_heap = True
 
 expected_events = [
-    {"name": "tp_so:constructor_c_provider_shared_library", "msg": None, "count": 0},
+    {"name": "tp_so_c:constructor_c_provider_shared_library", "msg": None, "count": 0},
     {
         "name": "tp_a:constructor_c_provider_static_archive",
         "msg": None,
@@ -264,7 +264,7 @@ expected_events = [
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
-    {"name": "tp_so:destructor_c_provider_shared_library", "msg": None, "count": 0},
+    {"name": "tp_so_c:destructor_c_provider_shared_library", "msg": None, "count": 0},
 ]
 
 num_tests = 7 + len(expected_events)
