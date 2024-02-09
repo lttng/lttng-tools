@@ -37,6 +37,11 @@ The mailing list is also used to share and comment on
 <abbr title="Request for Comments">RFC</abbr>s and answer
 user questions.
 
+A template commit messsage is available below, and as a file that you may
+configure your local check out to use:
+
+    git config commit.template .commit_template
+
 Once your changes have been comitted to your local branch, you may use the
 [git-review](https://opendev.org/opendev/git-review) plugin to submit them
 directly to [Gerrit](https://review.lttng.org) using the following command:

@@ -1,0 +1,24 @@
+Fix: Short description
+
+Observed issue
+==============
+
+Steps to reproduce (list of commands or narrative description).
+
+Cause
+=====
+
+Solution
+========
+
+Known drawbacks
+===============
+
+References
+==========
+[1]:
+
+Fixes: #xxx
+Refs: #yyy
+
+Signed-off-by:
