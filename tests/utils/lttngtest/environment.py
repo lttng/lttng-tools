@@ -93,6 +93,7 @@ class _WaitTraceTestApplication:
         wait_before_exit=False,  # type: bool
         wait_before_exit_file_path=None,  # type: Optional[pathlib.Path]
     ):
+        self._process = None
         self._environment = environment  # type: Environment
         self._iteration_count = event_count
         # File that the application will wait to see before tracing its events.
@@ -223,7 +224,7 @@ class _WaitTraceTestApplication:
             return str(path)
 
     def __del__(self):
-        if not self._has_returned:
+        if self._process is not None and not self._has_returned:
             # This is potentially racy if the pid has been recycled. However,
             # we can't use pidfd_open since it is only available in python >= 3.9.
             self._process.kill()
@@ -315,6 +316,7 @@ class _TraceTestApplication:
 
     def __init__(self, binary_path, environment):
         # type: (pathlib.Path, Environment)
+        self._process = None
         self._environment = environment  # type: Environment
         self._has_returned = False
 
@@ -341,7 +343,7 @@ class _TraceTestApplication:
         self._has_returned = True
 
     def __del__(self):
-        if not self._has_returned:
+        if self._process is not None and not self._has_returned:
             # This is potentially racy if the pid has been recycled. However,
             # we can't use pidfd_open since it is only available in python >= 3.9.
             self._process.kill()
