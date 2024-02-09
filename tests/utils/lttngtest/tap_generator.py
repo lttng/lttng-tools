@@ -130,7 +130,7 @@ class TapGenerator:
             self._last_test_case_id = self._last_test_case_id + 1
             self._print(
                 "ok {test_number} # Skip: {reason}".format(
-                    reason=reason, test_number=(i + self._last_test_case_id)
+                    reason=reason, test_number=(self._last_test_case_id)
                 )
             )
 
