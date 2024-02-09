@@ -47,16 +47,95 @@ process.wait()
 if process.returncode == 0:
     compound_literal_on_heap = True
 
-expected_events_common = [
+expected_events_common_cpp = [
     {
-        "name": "tp:constructor_c_across_units_before_define",
-        "msg": None,
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - across units before define",
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
     {
         "name": "tp:constructor_cplusplus",
+        "msg": "global - same unit before define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - same unit after define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - across units after define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - same unit before provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - same unit after provider",
+        "count": 0,
+    },
+    {
+        "name": "tp:constructor_cplusplus",
+        "msg": "global - across units after provider",
+        "count": 0,
+    },
+    {"name": "tp:constructor_cplusplus", "msg": "main() local", "count": 0},
+    {"name": "tp:destructor_cplusplus", "msg": "main() local", "count": 0},
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - across units after provider",
+        "count": 0,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - same unit after provider",
+        "count": 0,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - same unit before provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - across units after define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - same unit after define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
+        "msg": "global - same unit before define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp:destructor_cplusplus",
         "msg": "global - across units before define",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+]
+
+expected_events_common = [
+    {
+        "name": "tp:constructor_c_across_units_before_define",
+        "msg": None,
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
@@ -73,26 +152,8 @@ expected_events_common = [
         "may_fail": compound_literal_on_heap,
     },
     {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - same unit before define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - same unit after define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
         "name": "tp:constructor_c_across_units_after_define",
         "msg": None,
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - across units after define",
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
@@ -108,66 +169,8 @@ expected_events_common = [
         "count": 0,
         "may_fail": compound_literal_on_heap,
     },
-    {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - same unit before provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - same unit after provider",
-        "count": 0,
-    },
     {"name": "tp:constructor_c_across_units_after_provider", "msg": None, "count": 0},
-    {
-        "name": "tp:constructor_cplusplus",
-        "msg": "global - across units after provider",
-        "count": 0,
-    },
-    {"name": "tp:constructor_cplusplus", "msg": "main() local", "count": 0},
-    {"name": "tp:destructor_cplusplus", "msg": "main() local", "count": 0},
     {"name": "tp:main", "msg": None, "count": 0},
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - across units after provider",
-        "count": 0,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - same unit after provider",
-        "count": 0,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - same unit before provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - across units after define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - same unit after define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - same unit before define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp:destructor_cplusplus",
-        "msg": "global - across units before define",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
     {
         "name": "tp:destructor_c_across_units_after_provider",
         "msg": None,
@@ -211,54 +214,62 @@ expected_events_common = [
         "may_fail": compound_literal_on_heap,
     },
 ]
+
+expected_events_tp_so_cpp = [
+    {
+        "name": "tp_so:constructor_cplusplus_provider_shared_library",
+        "msg": "global - shared library define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_so:constructor_cplusplus_provider_shared_library",
+        "msg": "main() local - shared library define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_so:destructor_cplusplus_provider_shared_library",
+        "msg": "main() local - shared library define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_so:destructor_cplusplus_provider_shared_library",
+        "msg": "global - shared library define and provider",
+        "count": 0,
+    },
+]
+
 expected_events_tp_so = [
     {"name": "tp_so_c:constructor_c_provider_shared_library", "msg": None, "count": 0},
-    {
-        "name": "tp_so:constructor_cplusplus_provider_shared_library",
-        "msg": "global - shared library define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_so:constructor_cplusplus_provider_shared_library",
-        "msg": "main() local - shared library define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_so:destructor_cplusplus_provider_shared_library",
-        "msg": "main() local - shared library define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_so:destructor_cplusplus_provider_shared_library",
-        "msg": "global - shared library define and provider",
-        "count": 0,
-    },
     {"name": "tp_so_c:destructor_c_provider_shared_library", "msg": None, "count": 0},
 ]
+
+expected_events_tp_a_cpp = [
+    {
+        "name": "tp_a:constructor_cplusplus_provider_static_archive",
+        "msg": "global - static archive define and provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+    {
+        "name": "tp_a:constructor_cplusplus_provider_static_archive",
+        "msg": "main() local - static archive define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_a:destructor_cplusplus_provider_static_archive",
+        "msg": "main() local - static archive define and provider",
+        "count": 0,
+    },
+    {
+        "name": "tp_a:destructor_cplusplus_provider_static_archive",
+        "msg": "global - static archive define and provider",
+        "count": 0,
+        "may_fail": compound_literal_on_heap,
+    },
+]
+
 expected_events_tp_a = [
     {"name": "tp_a_c:constructor_c_provider_static_archive", "msg": None, "count": 0},
-    {
-        "name": "tp_a:constructor_cplusplus_provider_static_archive",
-        "msg": "global - static archive define and provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
-    {
-        "name": "tp_a:constructor_cplusplus_provider_static_archive",
-        "msg": "main() local - static archive define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_a:destructor_cplusplus_provider_static_archive",
-        "msg": "main() local - static archive define and provider",
-        "count": 0,
-    },
-    {
-        "name": "tp_a:destructor_cplusplus_provider_static_archive",
-        "msg": "global - static archive define and provider",
-        "count": 0,
-        "may_fail": compound_literal_on_heap,
-    },
     {"name": "tp_a_c:destructor_c_provider_static_archive", "msg": None, "count": 0},
 ]
 
@@ -364,12 +375,36 @@ tests = [
     {
         "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ static archive)",
         "application": "gen-ust-events-constructor/gen-ust-events-constructor-a",
-        "expected_events": copy.deepcopy(expected_events_common + expected_events_tp_a),
+        "expected_events": copy.deepcopy(
+            expected_events_common
+            + expected_events_common_cpp
+            + expected_events_tp_a
+            + expected_events_tp_a_cpp
+        ),
         "skip_if_application_not_present": False,
     },
     {
         "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ dynamic object",
         "application": "gen-ust-events-constructor/gen-ust-events-constructor-so",
+        "expected_events": copy.deepcopy(
+            expected_events_common
+            + expected_events_common_cpp
+            + expected_events_tp_so
+            + expected_events_tp_so_cpp
+        ),
+        # This application is not be built when `NO_SHARED` is set in the
+        # configuration options.
+        "skip_if_application_not_present": True,
+    },
+    {
+        "description": "Test user space constructor/destructor instrumentation coverage (C w/ static archive)",
+        "application": "gen-ust-events-constructor/gen-ust-events-c-constructor-a",
+        "expected_events": copy.deepcopy(expected_events_common + expected_events_tp_a),
+        "skip_if_application_not_present": False,
+    },
+    {
+        "description": "Test user space constructor/destructor instrumentation coverage (C w/ dynamic object",
+        "application": "gen-ust-events-constructor/gen-ust-events-c-constructor-so",
         "expected_events": copy.deepcopy(
             expected_events_common + expected_events_tp_so
         ),
