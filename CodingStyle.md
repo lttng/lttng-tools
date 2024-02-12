@@ -8,7 +8,9 @@ As such, this guide attempts to lay out the conventions used in the project so t
 
 Contributions are expected to adhere to these guidelines.
 
-## Migration from C
+## C++
+
+### Migration from C
 
 As the LTTng-tools project aims at supporting a broad range of compilers -- currently starting from GCC 4.8 and Clang 3.3 -- its build system is configured to use the C++11 standard.
 
@@ -20,7 +22,7 @@ As such, most of the project's code does not qualify as idiomatic C++ code. This
 
 However, new contributions are expected to conform the C++ style described in this guide. Some exceptions are allowed for small fixes which have to be back-ported to stable branches.
 
-## Automated formatting
+### Automated formatting
 
 All the project's C++ files follow the [clang-format](https://clang.llvm.org/docs/ClangFormat.html) [style](https://clang.llvm.org/docs/ClangFormatStyleOptions.html) of the `.clang-format` file for whitespaces, indentation, and line breaks.
 
@@ -32,7 +34,7 @@ Most text editors allow you to format a sub-section of a source file using clang
 
 If you are submitting a change to existing source files, _do not run clang-format on the whole file_ as this may introduce more changes than you intended and _will_ cause your changes to be rejected.
 
-## Tabs VS Spaces
+### Tabs VS Spaces
 
 While our founding mothers and fathers eschewed any consideration for non-English languages when designing the ASCII character encoding they, in a rare moment of technical decadence, decided to dedicate a character to the sole purpose of expressing tabulations.
 
@@ -40,7 +42,7 @@ This project makes use of this character to express indentations in its source f
 
 Note that while tab characters are used for semantic indentation purposes, spaces are perfectly fine to use for _visual_ alignment (e.g. ascii diagrams).
 
-## Single line control flow statements
+### Single line control flow statements
 
 Single line control flow statements (if/for/while) are required to use braces.
 
@@ -55,7 +57,7 @@ if  (my_thingy)  {
 }
 ```
 
-## Naming
+### Naming
 
 - Use snake case (e.g. `a_snake_case_name`) except for template parameters, which use camel case and end with `Type` (e.g. `ACamelCaseNameType`).
 
@@ -83,7 +85,7 @@ if  (my_thingy)  {
 
 - Do not make-up abbreviations to shorten names. Term of art abbreviations are, however, acceptable. For example: `mpeg`, `ctf`, `cfg`, `init` are accepted. A notable exception to this rule applies to namespaces, see the "Use of namespaces/Aliases" section.
 
-## Comments
+### Comments
 
 In general, comments should focus on _why_ something is done and document the assumptions the code was built upon. They should not repeat what it does in plain english except if the code is particularily complex. Keep in mind that what may be obvious to you right now may not be obvious to reviewers... or your future self.
 
@@ -97,7 +99,7 @@ Also, write comments in grammatically-sound English and avoid writing using tele
 /* Good: The configuration must be initialized before replying since it initializes the user's credentials. */
 ```
 
-## Include guards
+### Include guards
 
 Header files must use include guards to prevent multiple inclusion issues. To avoid collisions, the name of include guards must be as specific as possible and include the name of the file.
 
@@ -113,18 +115,18 @@ Header files must use include guards to prevent multiple inclusion issues. To av
 ```
 
 
-## Use of namespaces
+### Use of namespaces
 
 Make liberal use of namespaces. Very little should be available in the `lttng`,
 let alone global, namespace.
 
 Moreover, prefer to use anonymous namespaces to the `static`  keyword to restrict the visibility of a symbol to its translation unit.
 
-### Do not pollute the global namespace
+#### Do not pollute the global namespace
 
 Never use the `using` directive to import the contents of a namespace. If a namespace is used often in a file, define an alias.
 
-### Aliases
+#### Aliases
 
 Within a translation unit, it is acceptable to abbreviate commonly-used namespace names to define an alias. For instance, the file containing the implementation of the `food::fruits::citrus::grapefruit` can use the `ffc` namespace alias for brievety.
 
@@ -139,7 +141,7 @@ ffc::grapefruit::grapefruit()
 }
 ```
 
-## File layout example
+### File layout example
 
 ```cpp
 /*
@@ -192,7 +194,7 @@ private:
 #endif /* LTTNG_THING_DOER_H */
 ```
 
-## Miscelaneous guidelines
+### Miscelaneous guidelines
 
 In general, the project’s contributors make an effort to follow, for C++11 code:
 
