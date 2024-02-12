@@ -267,6 +267,11 @@ Here are a couple of reminders:
 
 Python code should be formatted using [black](https://github.com/psf/black).
 
+## Shell (BASH)
+
+New scripts and modifications to existing scripts should pass linting
+with [Shellcheck](https://www.shellcheck.net/).
+
 ## C Style (historical)
 
 The coding style used for this project follows the the Linux kernel guide lines, except that brackets `{`, `}` should typically be used even for single-line if/else statements. Please refer to:
