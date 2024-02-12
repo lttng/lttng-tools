@@ -31,22 +31,21 @@ function test_basic_error_path
 }
 
 
-if [ "$(id -u)" == "0" ]; then
-	validate_lttng_modules_present
+check_skip_kernel_test &&
+{
+	plan_skip_all "Skipping all tests."
+	exit 0
+}
 
-	modprobe lttng-test
+validate_lttng_modules_present
 
-	start_lttng_sessiond_notap
+modprobe lttng-test
 
-	test_basic_error_path
+start_lttng_sessiond_notap
 
-	stop_lttng_sessiond_notap
-	rmmod lttng-test
+test_basic_error_path
 
-else
-	# Kernel tests are skipped.
-	plan_tests $NUM_TESTS
-	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
-fi
+stop_lttng_sessiond_notap
+rmmod lttng-test
 
 rm -f "$TESTAPP_STATE_PATH"

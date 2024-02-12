@@ -394,7 +394,8 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 test_ust_notifier_discarded_count
 test_ust_notifier_discarded_count_max_bucket
 
-if [ "$(id -u)" == "0" ]; then
+check_skip_kernel_test "$KERNEL_NUM_TESTS" "Skipping kernel notification tests." ||
+{
 
 	validate_lttng_modules_present
 
@@ -416,9 +417,7 @@ if [ "$(id -u)" == "0" ]; then
 	modprobe --remove lttng-test
 
 	rm -rf "${sessiond_pipe[@]}" 2> /dev/null
-else
-	# Kernel tests are skipped.
-	skip 0 "Root access is needed. Skipping all kernel notification tests." $KERNEL_NUM_TESTS
-fi
+
+}
 
 rm -rf "$TEST_TMPDIR"

@@ -411,22 +411,18 @@ function test_on_register_evaluation ()
 	rm -rf "$output_dir"
 }
 
-
 TESTS=(
 	test_multi_app_ust
 	test_on_register_evaluation_ust
 )
 
-if [ "$(id -u)" == "0" ]; then
+check_skip_kernel_test "$NUM_TEST_KERNEL" "Skipping kernel multi-app notification tests." || {
 	validate_lttng_modules_present
 	TESTS+=(
-	test_multi_app_kernel
-	test_on_register_evaluation_kernel
-)
-else
-        skip 0 "Root access is needed. Skipping all kernel multi-app notification tests." $NUM_TEST_KERNEL
-fi
-
+		test_multi_app_kernel
+		test_on_register_evaluation_kernel
+	)
+}
 
 for fct_test in ${TESTS[@]};
 do

@@ -145,9 +145,9 @@ function test_relayd_debug_permission()
 	diag "Test lttng-relayd change working directory on non writable directory"
 
 	if [ "$(id -u)" == "0" ]; then
-	    is_user=0
+		is_user=0
 	else
-	    is_user=1
+		is_user=1
 	fi
 
 	skip $is_user "Skipping permission debug output test; operation can't fail as root" 6 ||

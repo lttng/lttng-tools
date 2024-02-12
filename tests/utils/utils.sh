@@ -323,6 +323,41 @@ function conf_proc_count()
 	echo
 }
 
+# Usage:
+# check_skip_kernel_test [NB_TESTS] [SKIP_MESSAGE]
+# Return 0 if LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set or the current user is not a root user
+# If NB_TESTS is set, call skip() to skip number of tests.
+# If NB_TESTS is empty, just output a reason with diag.
+# An optional message can be added.
+
+function check_skip_kernel_test ()
+{
+	local num_tests="$1"
+	local skip_message="$2"
+
+	# Check for skip test kernel flag
+	if [ "$LTTNG_TOOLS_DISABLE_KERNEL_TESTS" == "1" ]; then
+		if ! test -z "$num_tests"; then
+			skip 0 "LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set.${skip_message+ }${skip_message}" "$num_tests"
+		else
+			diag "LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set.${skip_message+ }${skip_message}"
+		fi
+		return 0
+	fi
+
+	# Check if we are running as root
+	if [ "$(id -u)" != "0" ]; then
+		if ! test -z "$num_tests"; then
+			skip 0 "Root access is needed for kernel testing.${skip_message+ }${skip_message}" "$num_tests"
+		else
+			diag "Root access is needed for kernel testing.${skip_message+ }${skip_message}"
+		fi
+		return 0
+	fi
+
+	return 1
+}
+
 # Check if base lttng-modules are present.
 # Bail out on failure
 function validate_lttng_modules_present ()

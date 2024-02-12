@@ -36,21 +36,11 @@ uprobe_sdt_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-sdt-binar
 register_some_triggers_bin=$(realpath "${CURDIR}/utils/register-some-triggers")
 
 uid=$(id --user)
-gid=$(id --group)
 
-if [ "$uid" == "0" ]; then
-	ist_root=1
-	ls "$uprobe_sdt_binary" >/dev/null 2>&1
-	if test $? == 0; then
-		hast_sdt_binary=1
-	else
-		hast_sdt_binary=0
-	fi
-else
-	ist_root=0
-	hast_sdt_binary=0
+sdt_binary_present=0
+if [ -f "$uprobe_sdt_binary" ]; then
+	sdt_binary_present=1
 fi
-
 
 test_top_level_options ()
 {
@@ -2695,10 +2685,12 @@ start_lttng_sessiond_notap
 
 test_top_level_options
 test_event_rule_matches_tracepoint
-skip $ist_root "non-root user: skipping kprobe tests" 13 || test_event_rule_matches_probe
-skip $ist_root "non-root user: skipping uprobe tests" 9 || test_event_rule_matches_userspace_probe_elf
-skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 9 || test_event_rule_matches_userspace_probe_sdt
-skip $ist_root "non-root user: skipping syscall tests" 17 || test_event_rule_matches_syscall
+check_skip_kernel_test 48 "Skipping kprobe, uprobe, SDT and syscall tests." || {
+	test_event_rule_matches_probe
+	test_event_rule_matches_userspace_probe_elf
+	skip $sdt_binary_present "No SDT binary. Skipping userspace probe SDT tests" 9 || test_event_rule_matches_userspace_probe_sdt
+	test_event_rule_matches_syscall
+}
 test_session_consumed_size_condition
 test_buffer_usage_conditions
 test_session_rotation_conditions

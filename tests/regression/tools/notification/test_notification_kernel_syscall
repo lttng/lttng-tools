@@ -31,19 +31,18 @@ function test_kernel_syscall_notification
 	wait $APP_PID 2> /dev/null
 }
 
-if [ "$(id -u)" == "0" ]; then
-	validate_lttng_modules_present
+check_skip_kernel_test &&
+{
+	plan_skip_all "Skipping all tests."
+	exit 0
+}
 
-	start_lttng_sessiond_notap
+validate_lttng_modules_present
 
-	test_kernel_syscall_notification
+start_lttng_sessiond_notap
 
-	stop_lttng_sessiond_notap
+test_kernel_syscall_notification
 
-else
-	# Kernel tests are skipped.
-	plan_tests $NUM_TESTS
-	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
-fi
+stop_lttng_sessiond_notap
 
 rm -f "$TESTAPP_STATE_PATH"

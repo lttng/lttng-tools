@@ -63,29 +63,27 @@ function test_buffer_usage_notification
 	wait $APP_PID 2> /dev/null
 }
 
-if [ "$(id -u)" == "0" ]; then
+check_skip_kernel_test &&
+{
+	plan_skip_all "Skipping all tests."
+	rm -rf "$TEST_TMPDIR"
+	exit 0
+}
 
-	validate_lttng_modules_present
+validate_lttng_modules_present
 
+modprobe lttng-test
 
-	modprobe lttng-test
+# Used on sessiond launch.
+LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
+	CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
+	LD_PRELOAD=${TESTPOINT}"
+start_lttng_sessiond_notap
 
-	# Used on sessiond launch.
-	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
-		CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
-		LD_PRELOAD=${TESTPOINT}"
-	start_lttng_sessiond_notap
+test_buffer_usage_notification
 
-	test_buffer_usage_notification
+stop_lttng_sessiond_notap
+rmmod lttng-test
 
-	stop_lttng_sessiond_notap
-	rmmod lttng-test
-
-	rm -rf "${consumerd_pipe[@]}" 2> /dev/null
-else
-	# Kernel tests are skipped.
-	plan_tests $NUM_TESTS
-	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
-fi
-
+rm -rf "${consumerd_pipe[@]}" 2> /dev/null
 rm -rf "$TEST_TMPDIR"
