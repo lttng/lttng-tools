@@ -263,6 +263,10 @@ Here are a couple of reminders:
 
 * Accept a by-value parameter and move it (when it's moveable) when you intend to copy it anyway. You can do this with most STL containers.
 
+## Python
+
+Python code should be formatted using [black](https://github.com/psf/black).
+
 ## C Style (historical)
 
 The coding style used for this project follows the the Linux kernel guide lines, except that brackets `{`, `}` should typically be used even for single-line if/else statements. Please refer to:
