@@ -1982,6 +1982,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 	struct lttng_viewer_get_metadata request;
 	struct lttng_viewer_metadata_packet reply;
 	struct relay_viewer_stream *vstream = NULL;
+	bool dispose_of_stream = false;
 
 	assert(conn);
 
@@ -2012,6 +2013,9 @@ int viewer_get_metadata(struct relay_connection *conn)
 		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 		goto send_reply;
 	}
+
+	pthread_mutex_lock(&vstream->stream->trace->session->lock);
+	pthread_mutex_lock(&vstream->stream->trace->lock);
 	pthread_mutex_lock(&vstream->stream->lock);
 	if (!vstream->stream->is_metadata) {
 		ERR("Invalid metadata stream");
@@ -2020,11 +2024,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	if (vstream->metadata_sent >= vstream->stream->metadata_received) {
 		/*
-		 * The live viewers expect to receive a NO_NEW_METADATA
-		 * status before a stream disappears, otherwise they abort the
-		 * entire live connection when receiving an error status.
-		 *
-		 * Clear feature resets the metadata_sent to 0 until the
+		 * Clear feature resets the metadata_received to 0 until the
 		 * same metadata is received again.
 		 */
 		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
@@ -2032,13 +2032,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * The live viewer considers a closed 0 byte metadata stream as
 		 * an error.
 		 */
-		if (vstream->metadata_sent > 0) {
-			if (vstream->stream->closed && vstream->stream->no_new_metadata_notified) {
-				/* Release ownership for the viewer metadata stream. */
-				viewer_stream_put(vstream);
-			}
-			vstream->stream->no_new_metadata_notified = true;
-		}
+		dispose_of_stream = vstream->metadata_sent > 0 && vstream->stream->closed;
 		goto send_reply;
 	}
 
@@ -2078,6 +2072,19 @@ int viewer_get_metadata(struct relay_connection *conn)
 	len = vstream->stream->metadata_received - vstream->metadata_sent;
 
 	if (!vstream->stream_file.trace_chunk) {
+		if (vstream->stream->trace->session->connection_closed) {
+			/*
+			 * If the connection is closed, there is no way for the metadata stream
+			 * to ever transition back to an active chunk. As such, signal to the viewer
+			 * that there is no new metadata available.
+			 *
+			 * The stream can be disposed-of. On the next execution of this command,
+			 * the relay daemon will reply with an error status since the stream can't
+			 * be found.
+			 */
+			dispose_of_stream = true;
+		}
+
 		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
 		len = 0;
 		goto send_reply;
@@ -2207,6 +2214,8 @@ send_reply:
 	health_code_update();
 	if (vstream) {
 		pthread_mutex_unlock(&vstream->stream->lock);
+		pthread_mutex_unlock(&vstream->stream->trace->lock);
+		pthread_mutex_unlock(&vstream->stream->trace->session->lock);
 	}
 	ret = send_response(conn->sock, &reply, sizeof(reply));
 	if (ret < 0) {
@@ -2231,7 +2240,22 @@ end_free:
 end:
 	if (vstream) {
 		viewer_stream_put(vstream);
+		if (dispose_of_stream) {
+			/*
+			 * Trigger the destruction of the viewer stream
+			 * by releasing its global reference.
+			 *
+			 * The live viewers expect to receive a NO_NEW_METADATA
+			 * status before a stream disappears, otherwise they abort the
+			 * entire live connection when receiving an error status.
+			 *
+			 * On the next query for this stream, an error will be reported to the
+			 * client.
+			 */
+			viewer_stream_put(vstream);
+		}
 	}
+
 	return ret;
 }
 
