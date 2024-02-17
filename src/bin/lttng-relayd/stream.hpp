@@ -162,8 +162,6 @@ struct relay_stream {
 	struct cds_list_head recv_node;
 	/* Protected by session lock. */
 	bool published;
-	/* Notified viewer that no new metadata is available. */
-	bool no_new_metadata_notified;
 	/*
 	 * Node of stream within global stream hash table.
 	 */
