@@ -2168,7 +2168,7 @@ static int viewer_get_metadata(struct relay_connection *conn)
 		 * status before a stream disappears, otherwise they abort the
 		 * entire live connection when receiving an error status.
 		 *
-		 * Clear feature resets the metadata_sent to 0 until the
+		 * Clear feature resets the metadata_received to 0 until the
 		 * same metadata is received again.
 		 */
 		reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
