@@ -56,8 +56,7 @@ struct relay_stream {
 	struct ctf_trace *trace;
 
 	/*
-	 * To protect from concurrent read/update. The viewer stream
-	 * lock nests inside the stream lock. The stream lock nests
+	 * To protect from concurrent read/update.The stream lock nests
 	 * inside the ctf_trace lock.
 	 */
 	pthread_mutex_t lock;
