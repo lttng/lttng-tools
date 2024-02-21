@@ -525,6 +525,10 @@ class _Session(lttngctl.Session):
         # type: () -> None
         self._client._run_cmd("stop '{session_name}'".format(session_name=self.name))
 
+    def clear(self):
+        # type: () -> None
+        self._client._run_cmd("clear '{session_name}'".format(session_name=self.name))
+
     def destroy(self):
         # type: () -> None
         self._client._run_cmd("destroy '{session_name}'".format(session_name=self.name))
