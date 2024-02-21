@@ -57,6 +57,7 @@ TESTS = tools/base-path/test_ust \
 	tools/working-directory/test_relayd_working_directory \
 	tools/clear/test_ust \
 	tools/clear/test_kernel \
+	tools/clear/test_live_hang.py \
 	tools/tracker/test_event_tracker \
 	tools/trigger/start-stop/test_start_stop \
 	tools/trigger/test_add_trigger_cli \
