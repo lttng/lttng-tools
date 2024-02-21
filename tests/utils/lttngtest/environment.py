@@ -375,6 +375,7 @@ class _Environment(logger._Logger):
         self,
         with_sessiond,  # type: bool
         log=None,  # type: Optional[Callable[[str], None]]
+        with_relayd=False,  # type: bool
     ):
         super().__init__(log)
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
@@ -388,6 +389,11 @@ class _Environment(logger._Logger):
         self._lttng_home = TemporaryDirectory(
             "lttng_test_env_home"
         )  # type: Optional[TemporaryDirectory]
+
+        self._relayd = (
+            self._launch_lttng_relayd() if with_relayd else None
+        )  # type: Optional[subprocess.Popen[bytes]]
+        self._relayd_output_consumer = None
 
         self._sessiond = (
             self._launch_lttng_sessiond() if with_sessiond else None
@@ -404,6 +410,21 @@ class _Environment(logger._Logger):
     def lttng_client_path(self):
         # type: () -> pathlib.Path
         return self._project_root / "src" / "bin" / "lttng" / "lttng"
+
+    @property
+    def lttng_relayd_control_port(self):
+        # type: () -> int
+        return 5400
+
+    @property
+    def lttng_relayd_data_port(self):
+        # type: () -> int
+        return 5401
+
+    @property
+    def lttng_relayd_live_port(self):
+        # type: () -> int
+        return 5402
 
     def create_temporary_directory(self, prefix=None):
         # type: (Optional[str]) -> pathlib.Path
@@ -439,6 +460,53 @@ class _Environment(logger._Logger):
             unpacked_vars.append((var_name, var_value))
 
         return unpacked_vars
+
+    def _launch_lttng_relayd(self):
+        # type: () -> Optional[subprocess.Popen]
+        relayd_path = (
+            self._project_root / "src" / "bin" / "lttng-relayd" / "lttng-relayd"
+        )
+        if os.environ.get("LTTNG_TEST_NO_RELAYD", "0") == "1":
+            # Run without a relay daemon; the user may be running one
+            # under gdb, for example.
+            return None
+
+        relayd_env_vars = os.environ.get("LTTNG_RELAYD_ENV_VARS")
+        relayd_env = os.environ.copy()
+        if relayd_env_vars:
+            self._log("Additional lttng-relayd environment variables:")
+            for name, value in self._unpack_env_vars(relayd_env_vars):
+                self._log("{}={}".format(name, value))
+                relayd_env[name] = value
+
+        assert self._lttng_home is not None
+        relayd_env["LTTNG_HOME"] = str(self._lttng_home.path)
+        self._log(
+            "Launching relayd with LTTNG_HOME='${}'".format(str(self._lttng_home.path))
+        )
+        process = subprocess.Popen(
+            [
+                str(relayd_path),
+                "-C",
+                "tcp://0.0.0.0:{}".format(self.lttng_relayd_control_port),
+                "-D",
+                "tcp://0.0.0.0:{}".format(self.lttng_relayd_data_port),
+                "-L",
+                "tcp://localhost:{}".format(self.lttng_relayd_live_port),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=relayd_env,
+        )
+
+        if self._logging_function:
+            self._relayd_output_consumer = ProcessOutputConsumer(
+                process, "lttng-relayd", self._logging_function
+            )
+            self._relayd_output_consumer.daemon = True
+            self._relayd_output_consumer.start()
+
+        return process
 
     def _launch_lttng_sessiond(self):
         # type: () -> Optional[subprocess.Popen]
@@ -577,6 +645,15 @@ class _Environment(logger._Logger):
             self._log("Session daemon killed")
             self._sessiond = None
 
+        if self._relayd and self._relayd.poll() is None:
+            self._relayd.terminate()
+            self._relayd.wait()
+            if self._relayd_output_consumer:
+                self._relayd_output_consumer.join()
+                self._relayd_output_consumer = None
+            self._log("Relayd killed")
+            self._relayd = None
+
         self._lttng_home = None
 
     def __del__(self):
@@ -584,9 +661,9 @@ class _Environment(logger._Logger):
 
 
 @contextlib.contextmanager
-def test_environment(with_sessiond, log=None):
-    # type: (bool, Optional[Callable[[str], None]]) -> Iterator[_Environment]
-    env = _Environment(with_sessiond, log)
+def test_environment(with_sessiond, log=None, with_relayd=False):
+    # type: (bool, Optional[Callable[[str], None]], bool) -> Iterator[_Environment]
+    env = _Environment(with_sessiond, log, with_relayd)
     try:
         yield env
     finally:

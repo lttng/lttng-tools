@@ -672,20 +672,24 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         else:
             return out.decode("utf-8")
 
-    def create_session(self, name=None, output=None):
-        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation]) -> lttngctl.Session
+    def create_session(self, name=None, output=None, live=False):
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool) -> lttngctl.Session
         name = name if name else lttngctl.Session._generate_name()
 
         if isinstance(output, lttngctl.LocalSessionOutputLocation):
             output_option = "--output '{output_path}'".format(output_path=output.path)
+        elif isinstance(output, lttngctl.NetworkSessionOutputLocation):
+            output_option = "--set-url '{}'".format(output.url)
         elif output is None:
             output_option = "--no-output"
         else:
             raise TypeError("LTTngClient only supports local or no output")
 
         self._run_cmd(
-            "create '{session_name}' {output_option}".format(
-                session_name=name, output_option=output_option
+            "create '{session_name}' {output_option} {live_option}".format(
+                session_name=name,
+                output_option=output_option,
+                live_option="--live" if live else "",
             )
         )
         return _Session(self, name, output)

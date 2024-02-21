@@ -432,6 +432,17 @@ class LocalSessionOutputLocation(SessionOutputLocation):
         return self._path
 
 
+class NetworkSessionOutputLocation(SessionOutputLocation):
+    def __init__(self, set_url):
+        # type (str)
+        self._set_url = set_url
+
+    @property
+    def url(self):
+        # type: () -> str
+        return self._set_url
+
+
 class ProcessAttributeTracker(abc.ABC):
     """
     Process attribute tracker used to filter before the evaluation of event
