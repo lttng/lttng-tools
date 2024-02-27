@@ -184,7 +184,7 @@ int parse_probe_opts(struct lttng_event *ev, char *opt)
 		 * is in hexadecimal and can be 1 to 9 if it's in decimal.
 		 */
 		if (*s_hex == '\0' || !isdigit(*s_hex)) {
-			ERR("Invalid probe description %s", s_hex);
+			ERR("Invalid probe description `%s`", s_hex);
 			ret = CMD_ERROR;
 			goto end;
 		}
@@ -285,9 +285,9 @@ char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 		const char *exclusion =
 			(const char *) lttng_dynamic_pointer_array_get_pointer(exclusions, i);
 
-		strcat(ret, "\"");
+		strcat(ret, "`");
 		strcat(ret, exclusion);
-		strcat(ret, "\"");
+		strcat(ret, "`");
 		if (i != count - 1) {
 			strcat(ret, ", ");
 		}
@@ -318,7 +318,9 @@ int check_exclusion_subsets(const char *pattern, const char *exclusion)
 
 		if (*x == '*') {
 			/* Event is a subset of the excluder */
-			ERR("Event %s: %s excludes all events from %s", pattern, exclusion, pattern);
+			ERR("Exclusion pattern `%s` excludes all events from `%s`",
+			    exclusion,
+			    pattern);
 			goto error;
 		}
 
@@ -347,8 +349,7 @@ error:
 
 end:
 	if (warn) {
-		WARN("Event %s: %s does not exclude any events from %s",
-		     pattern,
+		WARN("Exclusion pattern `%s` does not exclude any event from `%s`",
 		     exclusion,
 		     pattern);
 	}
@@ -423,7 +424,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 
 	if (opt_kernel) {
 		if (opt_loglevel) {
-			WARN("Kernel loglevels are not supported.");
+			WARN("Kernel log levels are not supported");
 		}
 	}
 
@@ -458,7 +459,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
 		case LTTNG_DOMAIN_PYTHON:
-			ERR("Event name exclusions are not yet implemented for %s events",
+			ERR("Event name exclusions are not supported for %s event rules",
 			    lttng_domain_type_str(dom.type));
 			ret = CMD_ERROR;
 			goto error;
@@ -484,7 +485,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		case LTTNG_EVENT_PROBE:
 		case LTTNG_EVENT_USERSPACE_PROBE:
 		case LTTNG_EVENT_FUNCTION:
-			ERR("Filter expressions are not supported for %s events",
+			ERR("Filter expressions are not supported for %s event rules",
 			    get_event_type_str((lttng_event_type) opt_event_type));
 			ret = CMD_ERROR;
 			goto error;
@@ -520,7 +521,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 
 		/* Kernel tracer action */
 		if (opt_kernel) {
-			DBG_FMT("Enabling kernel event: pattern=`{}`, channel_name=`{}`",
+			DBG_FMT("Enabling kernel event rule: pattern=`{}`, channel_name=`{}`",
 				pattern,
 				print_channel_name(channel_name));
 
@@ -556,7 +557,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 						break;
 					case CMD_ERROR:
 					default:
-						ERR("Unable to parse userspace probe options");
+						ERR("Unable to parse user space probe options");
 						break;
 					}
 					goto error;
@@ -591,10 +592,10 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 			/* kernel loglevels not implemented */
 			ev->loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		} else if (opt_userspace) { /* User-space tracer action */
-			DBG("Enabling UST event %s for channel %s, loglevel %s",
-			    pattern.c_str(),
-			    print_channel_name(channel_name),
-			    opt_loglevel ?: "<all>");
+			DBG_FMT("Enabling user space event rule: pattern=`{}`, channel_name=`{}`, log_level=`{}`",
+				pattern.c_str(),
+				print_channel_name(channel_name),
+				opt_loglevel ?: "all");
 
 			switch (opt_event_type) {
 			case LTTNG_EVENT_ALL: /* Default behavior is tracepoint */
@@ -610,7 +611,8 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 			case LTTNG_EVENT_SYSCALL:
 			case LTTNG_EVENT_USERSPACE_PROBE:
 			default:
-				ERR("Event type not available for user-space tracing");
+				ERR("Instrumentation point type not supported for the %s domain",
+				    lttng_domain_type_str(dom.type));
 				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
@@ -642,7 +644,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					loglevel_name_to_value(opt_loglevel, &loglevel);
 
 				if (name_search_ret == -1) {
-					ERR("Unknown loglevel %s", opt_loglevel);
+					ERR("Unknown log level `%s`", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
@@ -654,7 +656,8 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		} else if (opt_jul || opt_log4j || opt_python) {
 			if (opt_event_type != LTTNG_EVENT_ALL &&
 			    opt_event_type != LTTNG_EVENT_TRACEPOINT) {
-				ERR("Event type not supported for domain.");
+				ERR("Instrumentation point type not supported for the %s domain",
+				    lttng_domain_type_str(dom.type));
 				ret = CMD_UNSUPPORTED;
 				goto error;
 			}
@@ -685,7 +688,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				}
 
 				if (name_search_ret) {
-					ERR("Unknown loglevel %s", opt_loglevel);
+					ERR("Unknown log level `%s`", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
@@ -721,12 +724,16 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				error = 1;
 				goto end;
 			}
+
 			if (command_ret < 0) {
 				/* Turn ret to positive value to handle the positive error code */
 				switch (-command_ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
-					WARN("Kernel event %s%s already enabled (channel %s, session %s)",
-					     pattern.c_str(),
+					WARN("Kernel event rule %s%s and attached to channel `%s` is already enabled (session `%s`)",
+					     opt_enable_all ? "matching all events" :
+							      (std::string("with pattern `") +
+							       pattern + std::string("`"))
+								      .c_str(),
 					     exclusion_string,
 					     print_channel_name(channel_name),
 					     session_name.c_str());
@@ -734,32 +741,29 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
 				{
-					const char *msg =
-						"The command tried to enable an event in a new domain for a session that has already been started once.";
-					ERR("Event %s%s: %s (channel %s, session %s)",
-					    pattern.c_str(),
-					    exclusion_string,
-					    msg,
-					    print_channel_name(channel_name),
+					ERR("Can't enable an event in a new domain for a session that has already been started once (session `%s`)",
 					    session_name.c_str());
 					error = 1;
 					break;
 				}
 				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
-					ERR("SDT probes %s guarded by semaphores are not supported (channel %s, session %s)",
+					ERR("Failed to enable event rule with pattern `%s` and attached to channel `%s` as SDT probes guarded by semaphores are not supported (session `%s`)",
 					    pattern.c_str(),
 					    print_channel_name(channel_name),
 					    session_name.c_str());
 					error = 1;
 					break;
 				default:
-					ERR("Event %s%s: %s (channel %s, session %s)",
-					    pattern.c_str(),
+					ERR("Failed to enable event rule %s%s and attached to channel `%s`: %s (session `%s`)",
+					    opt_enable_all ? "matching all events" :
+							     (std::string("with pattern `") +
+							      pattern + std::string("`"))
+								     .c_str(),
 					    exclusion_string,
-					    lttng_strerror(command_ret),
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
+					    lttng_strerror(command_ret),
 					    session_name.c_str());
 					error = 1;
 					break;
@@ -769,12 +773,17 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				switch (dom.type) {
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
-					MSG("%s event %s%s created in channel %s",
+				{
+					MSG("Enabled %s event rule %s%s and attached to channel `%s`",
 					    lttng_domain_type_str(dom.type),
-					    pattern.c_str(),
+					    opt_enable_all ? "matching all events" :
+							     (std::string("with pattern `") +
+							      pattern + std::string("`"))
+								     .c_str(),
 					    exclusion_string,
 					    print_channel_name(channel_name));
 					break;
+				}
 				case LTTNG_DOMAIN_JUL:
 				case LTTNG_DOMAIN_LOG4J:
 				case LTTNG_DOMAIN_PYTHON:
@@ -782,19 +791,21 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					 * Don't print the default channel
 					 * name for agent domains.
 					 */
-					MSG("%s event %s%s enabled",
+					MSG("Enabled %s event rule %s%s",
 					    lttng_domain_type_str(dom.type),
-					    pattern.c_str(),
+					    opt_enable_all ? "matching all events" :
+							     (std::string("with pattern `") +
+							      pattern + std::string("`"))
+								     .c_str(),
 					    exclusion_string);
 					break;
 				default:
 					abort();
 				}
 			}
-			free(exclusion_string);
-		}
 
-		if (opt_filter) {
+			free(exclusion_string);
+		} else {
 			char *exclusion_string;
 
 			/* Filter present */
@@ -809,56 +820,60 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				(char **) exclusions.array.buffer.data);
 			exclusion_string = print_exclusions(&exclusions);
 			if (!exclusion_string) {
-				PERROR("Cannot allocate exclusion_string");
+				PERROR("Failed allocate exclusion string");
 				error = 1;
 				goto end;
 			}
 			if (command_ret < 0) {
 				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
-					WARN("Filter on event %s%s is already enabled"
-					     " (channel %s, session %s)",
-					     pattern.c_str(),
+					WARN("An event rule %s%s and filter expression `%s` is already attached to channel `%s`",
+					     opt_enable_all ? "matching all events" :
+							      (std::string("with pattern `") +
+							       pattern + std::string("`"))
+								      .c_str(),
 					     exclusion_string,
-					     print_channel_name(channel_name),
-					     session_name.c_str());
+					     opt_filter,
+					     print_channel_name(channel_name));
 					warn = 1;
 					break;
 				case LTTNG_ERR_TRACE_ALREADY_STARTED:
 				{
-					const char *msg =
-						"The command tried to enable an event in a new domain for a session that has already been started once.";
-					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')",
-					    ev->name,
-					    exclusion_string,
-					    msg,
-					    print_channel_name(channel_name),
-					    session_name.c_str(),
-					    opt_filter);
+					ERR("Can't enable an event in a new domain for a session that has already been started once (session `%s`)",
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
 				default:
-					ERR("Event %s%s: %s (channel %s, session %s, filter \'%s\')",
-					    ev->name,
+					ERR("Failed to enable event rule %s%s, with filter expression `%s`, and attached to channel `%s`: %s (session `%s`)",
+					    opt_enable_all ? "matching all events" :
+							     (std::string("with pattern `") +
+							      pattern + std::string("`"))
+								     .c_str(),
 					    exclusion_string,
-					    lttng_strerror(command_ret),
+					    opt_filter,
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
-					    session_name.c_str(),
-					    opt_filter);
+					    lttng_strerror(command_ret),
+					    session_name.c_str());
 					error = 1;
 					break;
 				}
-				error_holder = command_ret;
 
+				error_holder = command_ret;
 			} else {
-				MSG("Event %s%s: Filter '%s' successfully set",
-				    pattern.c_str(),
+				MSG("Enabled %s event rule %s%s and filter expression `%s`",
+				    lttng_domain_type_str(dom.type),
+				    opt_enable_all ? "matching all events" :
+						     (std::string("with pattern `") + pattern +
+						      std::string("`"))
+							     .c_str(),
+
 				    exclusion_string,
 				    opt_filter);
 			}
+
 			free(exclusion_string);
 		}
 
@@ -945,9 +960,9 @@ int validate_exclusion_list(const char *pattern,
 {
 	int ret;
 
-	/* Event name must be a valid globbing pattern to allow exclusions. */
+	/* Event name pattern must be a valid globbing pattern to allow exclusions. */
 	if (!strutils_is_star_glob_pattern(pattern)) {
-		ERR("Event %s: Exclusions can only be used with a globbing pattern", pattern);
+		ERR("Event name pattern must contain wildcard characters to use exclusions");
 		goto error;
 	}
 
@@ -1052,7 +1067,7 @@ int cmd_enable_events(int argc, const char **argv)
 			event_type = opt_event_type;
 		} else {
 			if (event_type != opt_event_type) {
-				ERR("Multiple event type not supported.");
+				ERR("Only one event type may be enabled at once");
 				return CMD_ERROR;
 			}
 		}
@@ -1119,7 +1134,7 @@ int cmd_enable_events(int argc, const char **argv)
 
 	arg_event_list = poptGetArg(pc.get());
 	if (arg_event_list == nullptr && opt_enable_all == 0) {
-		ERR("Missing event name(s).");
+		ERR("Missing event name pattern(s)");
 		return CMD_ERROR;
 	}
 

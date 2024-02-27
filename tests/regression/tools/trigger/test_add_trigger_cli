@@ -504,7 +504,7 @@ test_failure "--condition event-rule-matches: --type=syscall:nope" \
 	--name=open
 
 test_failure "--exclude-name with non-glob name" \
-	"Error: Event jean: Exclusions can only be used with a globbing pattern" \
+	"Error: Event name pattern must contain wildcard characters to use exclusions" \
 	--condition event-rule-matches --type=user --name='jean' --exclude-name jean-chretien \
 	--action notify
 

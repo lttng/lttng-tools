@@ -16,13 +16,13 @@ const char *lttng_domain_type_str(enum lttng_domain_type domain_type)
 	case LTTNG_DOMAIN_KERNEL:
 		return "kernel";
 	case LTTNG_DOMAIN_UST:
-		return "ust";
+		return "user space";
 	case LTTNG_DOMAIN_JUL:
-		return "jul";
+		return "java.util.logging (JUL)";
 	case LTTNG_DOMAIN_LOG4J:
 		return "log4j";
 	case LTTNG_DOMAIN_PYTHON:
-		return "python";
+		return "Python logging";
 	default:
 		return "???";
 	}

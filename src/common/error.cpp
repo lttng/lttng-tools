@@ -115,7 +115,7 @@ static const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_FATAL:
 		return "Fatal error of the session daemon";
 	case LTTNG_ERR_SELECT_SESS:
-		return "A session MUST be selected";
+		return "A session must be selected";
 	case LTTNG_ERR_EXIST_SESS:
 		return "Session name already exists";
 	case LTTNG_ERR_NO_EVENT:
@@ -161,45 +161,45 @@ static const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_KERN_LIST_FAIL:
 		return "Listing kernel events failed";
 	case LTTNG_ERR_UST_CALIBRATE_FAIL:
-		return "UST calibration failed";
+		return "User space tracer calibration failed";
 	case LTTNG_ERR_UST_SESS_FAIL:
-		return "UST create session failed";
+		return "User space tracer session creation failed";
 	case LTTNG_ERR_UST_CHAN_FAIL:
-		return "UST create channel failed";
+		return "User space tracer channel creation failed";
 	case LTTNG_ERR_UST_CHAN_EXIST:
-		return "UST channel already exist";
+		return "User space tracer channel already exist";
 	case LTTNG_ERR_UST_CHAN_NOT_FOUND:
-		return "UST channel not found";
+		return "User space tracer channel not found";
 	case LTTNG_ERR_UST_CHAN_DISABLE_FAIL:
-		return "Disable UST channel failed";
+		return "Disabling user space tracer channel failed";
 	case LTTNG_ERR_UST_CHAN_ENABLE_FAIL:
-		return "Enable UST channel failed";
+		return "Enabling user space tracer channel failed";
 	case LTTNG_ERR_UST_ENABLE_FAIL:
-		return "Enable UST event failed";
+		return "Enabling user space event failed";
 	case LTTNG_ERR_UST_DISABLE_FAIL:
-		return "Disable UST event failed";
+		return "Disabling user space event failed";
 	case LTTNG_ERR_UST_META_FAIL:
 		return "Opening metadata failed";
 	case LTTNG_ERR_UST_START_FAIL:
-		return "Starting UST trace failed";
+		return "Starting user space tracer session failed";
 	case LTTNG_ERR_UST_STOP_FAIL:
-		return "Stopping UST trace failed";
+		return "Stopping user space tracer session trace failed";
 	case LTTNG_ERR_UST_CONSUMER64_FAIL:
-		return "64-bit UST consumer start failed";
+		return "64-bit user space trace consumer start failed";
 	case LTTNG_ERR_UST_CONSUMER32_FAIL:
-		return "32-bit UST consumer start failed";
+		return "32-bit user space trace consumer start failed";
 	case LTTNG_ERR_UST_STREAM_FAIL:
-		return "UST create stream failed";
+		return "User space tracer stream creation failed";
 	case LTTNG_ERR_UST_LIST_FAIL:
-		return "Listing UST events failed";
+		return "Listing of user space tracer events failed";
 	case LTTNG_ERR_UST_EVENT_EXIST:
-		return "UST event already exist";
+		return "User space event already exist";
 	case LTTNG_ERR_UST_EVENT_NOT_FOUND:
-		return "UST event not found";
+		return "User space event not found";
 	case LTTNG_ERR_UST_CONTEXT_EXIST:
-		return "UST context already exist";
+		return "User space tracing context already exists";
 	case LTTNG_ERR_UST_CONTEXT_INVAL:
-		return "UST invalid context";
+		return "Invalid user space tracing context";
 	case LTTNG_ERR_NEED_ROOT_SESSIOND:
 		return "Tracing the kernel requires a root lttng-sessiond daemon, as well as \"tracing\" group membership or root user ID for the lttng client";
 	case LTTNG_ERR_NO_UST:
@@ -249,7 +249,7 @@ static const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_NOT_SUPPORTED:
 		return "Operation not supported";
 	case LTTNG_ERR_UST_EVENT_ENABLED:
-		return "UST event already enabled";
+		return "User space event rule already enabled";
 	case LTTNG_ERR_SET_URL:
 		return "Error setting URL";
 	case LTTNG_ERR_URL_EXIST:
