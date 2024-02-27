@@ -709,8 +709,6 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 		}
 
 		if (!opt_filter) {
-			char *exclusion_string;
-
 			command_ret = lttng_enable_event_with_exclusions(
 				handle,
 				ev,
@@ -718,7 +716,9 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				nullptr,
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
-			exclusion_string = print_exclusions(&exclusions);
+
+			auto exclusion_string = lttng::make_unique_wrapper<char, lttng::free>(
+				print_exclusions(&exclusions));
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -734,7 +734,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							      (std::string("with pattern `") +
 							       pattern + std::string("`"))
 								      .c_str(),
-					     exclusion_string,
+					     exclusion_string.get(),
 					     print_channel_name(channel_name),
 					     session_name.c_str());
 					warn = 1;
@@ -759,12 +759,17 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))
 								     .c_str(),
-					    exclusion_string,
+					    exclusion_string.get(),
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
 						    print_channel_name(channel_name),
 					    lttng_strerror(command_ret),
 					    session_name.c_str());
+
+					if (opt_kernel) {
+						print_kernel_tracer_status_error();
+					}
+
 					error = 1;
 					break;
 				}
@@ -780,7 +785,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))
 								     .c_str(),
-					    exclusion_string,
+					    exclusion_string.get(),
 					    print_channel_name(channel_name));
 					break;
 				}
@@ -797,17 +802,13 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))
 								     .c_str(),
-					    exclusion_string);
+					    exclusion_string.get());
 					break;
 				default:
 					abort();
 				}
 			}
-
-			free(exclusion_string);
 		} else {
-			char *exclusion_string;
-
 			/* Filter present */
 			ev->filter = 1;
 
@@ -818,7 +819,9 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				opt_filter,
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
-			exclusion_string = print_exclusions(&exclusions);
+
+			auto exclusion_string = lttng::make_unique_wrapper<char, lttng::free>(
+				print_exclusions(&exclusions));
 			if (!exclusion_string) {
 				PERROR("Failed allocate exclusion string");
 				error = 1;
@@ -832,7 +835,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							      (std::string("with pattern `") +
 							       pattern + std::string("`"))
 								      .c_str(),
-					     exclusion_string,
+					     exclusion_string.get(),
 					     opt_filter,
 					     print_channel_name(channel_name));
 					warn = 1;
@@ -850,7 +853,7 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 							     (std::string("with pattern `") +
 							      pattern + std::string("`"))
 								     .c_str(),
-					    exclusion_string,
+					    exclusion_string.get(),
 					    opt_filter,
 					    command_ret == -LTTNG_ERR_NEED_CHANNEL_NAME ?
 						    print_raw_channel_name(channel_name) :
@@ -858,6 +861,11 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 					    lttng_strerror(command_ret),
 					    session_name.c_str());
 					error = 1;
+
+					if (opt_kernel) {
+						print_kernel_tracer_status_error();
+					}
+
 					break;
 				}
 
@@ -870,11 +878,9 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 						      std::string("`"))
 							     .c_str(),
 
-				    exclusion_string,
+				    exclusion_string.get(),
 				    opt_filter);
 			}
-
-			free(exclusion_string);
 		}
 
 		if (lttng_opt_mi) {
