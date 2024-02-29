@@ -27,10 +27,18 @@ _time_tests = True
 if os.getenv("TAP_AUTOTIME", "1") == "" or os.getenv("TAP_AUTOTIME", "1") == "0" or sys.version_info < (3,3,0):
     _time_tests = False
 
+
 def _get_time_ns():
-    assert sys.version_info > (3, 3, 0)
-    # time.monotonic_ns is only available for python >= 3.8
-    return time.monotonic() * 1000000000
+    # type: () -> int
+
+    # time.monotonic is only available since Python 3.3. We don't support
+    # those older versions so we can simply assert here.
+    assert sys.version_info >= (3, 3, 0)
+
+    # time.monotonic_ns is only available for python >= 3.8,
+    # so the value is multiplied by 10^9 to maintain compatibility with
+    # older versions of the interpreter.
+    return int(time.monotonic() * 1000000000)
 
 
 _last_time = _get_time_ns()
