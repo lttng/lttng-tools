@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -183,11 +184,22 @@ void _tap_init(void)
 		   with Test::Harness */
 		setbuf(stdout, 0);
 
-		char *autotime_env = getenv("TAP_AUTOTIME");
-		if (autotime_env != NULL) {
-			time_tests = atoi(autotime_env);
-			if (time_tests != 0) {
-				time_tests = 1;
+		/*
+		 * Check if the TAP_AUTOTIME environment variable is set and
+		 * contains at least one byte.
+		 */
+		const char *autotime_env = getenv("TAP_AUTOTIME");
+		if (autotime_env != NULL && strnlen(autotime_env, 1)) {
+			int tap_autotime;
+
+			/*
+			 * Check if TAP_AUTOTIME is '0', also check errno
+			 * because strtol() can return '0' on error.
+			 */
+			errno = 0;
+			tap_autotime = strtol(autotime_env, NULL, 10);
+			if (tap_autotime == 0 && errno == 0) {
+				time_tests = 0;
 			}
 		}
 
