@@ -24,7 +24,9 @@ print("1..{0}".format(NR_TESTS))
 
 # Check if a sessiond is running... bail out if none found.
 if session_daemon_alive() == 0:
-    bail("No sessiond running. Please make sure you are running this test with the \"run\" shell script and verify that the lttng tools are properly installed.")
+    bail(
+        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+    )
 
 session_info = create_session()
 enable_ust_tracepoint_event(session_info, "ust_tests_td*")
@@ -33,67 +35,116 @@ start_session(session_info)
 test_env = os.environ.copy()
 test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
-td_process = subprocess.Popen(test_path + "type-declarations", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=test_env)
+td_process = subprocess.Popen(
+    test_path + "type-declarations",
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    env=test_env,
+)
 td_process.wait()
 
-print_test_result(td_process.returncode == 0, current_test, "Test application exited normally")
+print_test_result(
+    td_process.returncode == 0, current_test, "Test application exited normally"
+)
 current_test += 1
 
 stop_session(session_info)
 
 # Check event fields using type declarations are present
 try:
-    babeltrace_process = subprocess.Popen([BABELTRACE_BIN, session_info.trace_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    babeltrace_process = subprocess.Popen(
+        [BABELTRACE_BIN, session_info.trace_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 except FileNotFoundError:
     bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
 
 event_lines = []
 for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode('utf-8').replace("\n", "")
+    event_line = event_line.decode("utf-8").replace("\n", "")
     event_lines.append(event_line)
 babeltrace_process.wait()
 
-print_test_result(babeltrace_process.returncode == 0, current_test, "Resulting trace is readable")
+print_test_result(
+    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
+)
 current_test += 1
 
 if babeltrace_process.returncode != 0:
     bail("Unreadable trace; can't proceed with analysis.")
 
-print_test_result(len(event_lines) == 5, current_test, "Correct number of events found in resulting trace")
+print_test_result(
+    len(event_lines) == 5,
+    current_test,
+    "Correct number of events found in resulting trace",
+)
 current_test += 1
 
 if len(event_lines) != 5:
-    bail("Unexpected number of events found in resulting trace (" + session_info.trace_path + ")." )
+    bail(
+        "Unexpected number of events found in resulting trace ("
+        + session_info.trace_path
+        + ")."
+    )
 
-match = re.search(r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" :.*enumfield_third = .*:.*", event_lines[0])
-print_test_result(match is not None and match.group(1) == "tptest", current_test,\
-                      "First tracepoint is present")
+match = re.search(
+    r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" :.*enumfield_third = .*:.*",
+    event_lines[0],
+)
+print_test_result(
+    match is not None and match.group(1) == "tptest",
+    current_test,
+    "First tracepoint is present",
+)
 current_test += 1
 
-print_test_result(match is not None and match.group(2) == "zero", current_test,\
-                      "First tracepoint's enum value maps to zero")
+print_test_result(
+    match is not None and match.group(2) == "zero",
+    current_test,
+    "First tracepoint's enum value maps to zero",
+)
 current_test += 1
 
-print_test_result(match is not None and match.group(3) == "one", current_test,\
-                      "First tracepoint's second enum value maps to one")
+print_test_result(
+    match is not None and match.group(3) == "one",
+    current_test,
+    "First tracepoint's second enum value maps to one",
+)
 current_test += 1
 
 match = re.search(r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*", event_lines[1])
-print_test_result(match is not None and match.group(1) == "tptest_bis", current_test,\
-                      "Second tracepoint is present")
+print_test_result(
+    match is not None and match.group(1) == "tptest_bis",
+    current_test,
+    "Second tracepoint is present",
+)
 current_test += 1
 
-print_test_result(match is not None and match.group(2) == "zero", current_test,\
-                      "Second tracepoint's enum value maps to zero")
+print_test_result(
+    match is not None and match.group(2) == "zero",
+    current_test,
+    "Second tracepoint's enum value maps to zero",
+)
 current_test += 1
 
-match = re.search(r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" .*", event_lines[2])
+match = re.search(
+    r".*ust_tests_td:(.*):.*enumfield = \( \"(.*)\" :.*enumfield_bis = \( \"(.*)\" .*",
+    event_lines[2],
+)
 
-print_test_result(match is not None and match.group(2) == "one", current_test,\
-                      "Third tracepoint's enum value maps to one")
+print_test_result(
+    match is not None and match.group(2) == "one",
+    current_test,
+    "Third tracepoint's enum value maps to one",
+)
 current_test += 1
 
-print_test_result('{ zero = ( "zero" : container = 0 ), two = ( "two" : container = 2 ), three = ( "three" : container = 3 ), fifteen = ( "ten_to_twenty" : container = 15 ), twenty_one = ( "twenty_one" : container = 21 ) }' in event_lines[4],
-                  current_test, 'Auto-incrementing enum values are correct')
+print_test_result(
+    '{ zero = ( "zero" : container = 0 ), two = ( "two" : container = 2 ), three = ( "three" : container = 3 ), fifteen = ( "ten_to_twenty" : container = 15 ), twenty_one = ( "twenty_one" : container = 21 ) }'
+    in event_lines[4],
+    current_test,
+    "Auto-incrementing enum values are correct",
+)
 
 shutil.rmtree(session_info.tmp_directory)

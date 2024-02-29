@@ -18,23 +18,23 @@ def _perror(msg):
 
 try:
     import lttngust
-except (ImportError) as e:
-    _perror('lttngust package not found: {}'.format(e))
+except ImportError as e:
+    _perror("lttngust package not found: {}".format(e))
 
 
 def _main():
-    ev1 = logging.getLogger('python-ev-test1');
-    ev2 = logging.getLogger('python-ev-test2');
+    ev1 = logging.getLogger("python-ev-test1")
+    ev2 = logging.getLogger("python-ev-test2")
 
     logging.basicConfig()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--nr-iter', required=True)
-    parser.add_argument('-s', '--wait', required=True)
-    parser.add_argument('-d', '--fire-debug-event', action="store_true")
-    parser.add_argument('-e', '--fire-second-event', action="store_true")
-    parser.add_argument('-r', '--ready-file')
-    parser.add_argument('-g', '--go-file')
+    parser.add_argument("-n", "--nr-iter", required=True)
+    parser.add_argument("-s", "--wait", required=True)
+    parser.add_argument("-d", "--fire-debug-event", action="store_true")
+    parser.add_argument("-e", "--fire-second-event", action="store_true")
+    parser.add_argument("-r", "--ready-file")
+    parser.add_argument("-g", "--go-file")
     args = parser.parse_args()
 
     nr_iter = int(args.nr_iter)
@@ -46,34 +46,34 @@ def _main():
     go_file = args.go_file
 
     if ready_file is not None and os.path.exists(ready_file):
-        raise ValueError('Ready file already exist')
+        raise ValueError("Ready file already exist")
 
     if go_file is not None and os.path.exists(go_file):
-        raise ValueError('Go file already exist. Review synchronization')
+        raise ValueError("Go file already exist. Review synchronization")
 
     if (ready_file is None) != (go_file is None):
-        raise ValueError('--go-file and --ready-file need each others, review'
-                'synchronization')
-
+        raise ValueError(
+            "--go-file and --ready-file need each others, review" "synchronization"
+        )
 
     # Inform that we are ready, if necessary
     if ready_file is not None:
-        open(ready_file, 'a').close()
+        open(ready_file, "a").close()
 
     # Wait for go, if necessary
     while go_file is not None and not os.path.exists(go_file):
         time.sleep(0.5)
 
     for i in range(nr_iter):
-        ev1.info('{} fired [INFO]'.format(ev1.name))
+        ev1.info("{} fired [INFO]".format(ev1.name))
 
         if fire_debug_ev:
-            ev1.debug('{} fired [DEBUG]'.format(ev1.name))
+            ev1.debug("{} fired [DEBUG]".format(ev1.name))
 
         time.sleep(wait_time)
 
     if fire_second_ev:
-        ev2.info('{} fired [INFO]'.format(ev2.name))
+        ev2.info("{} fired [INFO]".format(ev2.name))
 
     if ready_file is not None:
         try:
@@ -83,5 +83,5 @@ def _main():
             raise
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     _main()

@@ -499,9 +499,11 @@ class _Session(lttngctl.Session):
                 session_name=self.name,
                 domain_name=domain_option_name,
                 channel_name=channel_name,
-                buffer_sharing_policy="--buffers-uid"
-                if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
-                else "--buffers-pid",
+                buffer_sharing_policy=(
+                    "--buffers-uid"
+                    if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
+                    else "--buffers-pid"
+                ),
             )
         )
         return _Channel(self._client, channel_name, domain, self)

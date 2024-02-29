@@ -10,7 +10,8 @@ import time
 import tempfile
 from lttng import *
 
-class TestLttngPythonModule (unittest.TestCase):
+
+class TestLttngPythonModule(unittest.TestCase):
 
     def setUp(self):
         self.tmpdir = tempfile.TemporaryDirectory()
@@ -45,7 +46,6 @@ class TestLttngPythonModule (unittest.TestCase):
         r = destroy("test_kernel_all_ev")
         self.assertGreaterEqual(r, 0, strerror(r))
 
-
     def test_kernel_event(self):
 
         dom = Domain()
@@ -53,7 +53,7 @@ class TestLttngPythonModule (unittest.TestCase):
         dom.buf_type = BUFFER_GLOBAL
 
         channel = Channel()
-        channel.name="mychan"
+        channel.name = "mychan"
         channel.attr.overwrite = 0
         channel.attr.subbuf_size = 4096
         channel.attr.num_subbuf = 8
@@ -78,15 +78,15 @@ class TestLttngPythonModule (unittest.TestCase):
 
         han = Handle("test_kernel_event", dom)
 
-        #Create session test
+        # Create session test
         r = create("test_kernel_event", self.tmpdir.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Enabling channel tests
+        # Enabling channel tests
         r = enable_channel(han, channel)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Enabling events tests
+        # Enabling events tests
         r = enable_event(han, sched_switch, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
@@ -96,21 +96,21 @@ class TestLttngPythonModule (unittest.TestCase):
         r = enable_event(han, sched_process_free, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Disabling events tests
+        # Disabling events tests
         r = disable_event(han, sched_switch.name, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
         r = disable_event(han, sched_process_free.name, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Renabling events tests
+        # Renabling events tests
         r = enable_event(han, sched_switch, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
         r = enable_event(han, sched_process_free, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Start, stop, destroy
+        # Start, stop, destroy
         r = start("test_kernel_event")
         self.assertGreaterEqual(r, 0, strerror(r))
         time.sleep(2)
@@ -118,13 +118,11 @@ class TestLttngPythonModule (unittest.TestCase):
         r = stop("test_kernel_event")
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        r=disable_channel(han, channel.name)
+        r = disable_channel(han, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        r=destroy("test_kernel_event")
+        r = destroy("test_kernel_event")
         self.assertGreaterEqual(r, 0, strerror(r))
-
-
 
     def test_ust_all_events(self):
         dom = Domain()
@@ -153,7 +151,6 @@ class TestLttngPythonModule (unittest.TestCase):
         r = destroy("test_ust_all_ev")
         self.assertGreaterEqual(r, 0, strerror(r))
 
-
     def test_ust_event(self):
 
         dom = Domain()
@@ -161,7 +158,7 @@ class TestLttngPythonModule (unittest.TestCase):
         dom.buf_type = BUFFER_PER_UID
 
         channel = Channel()
-        channel.name="mychan"
+        channel.name = "mychan"
         channel.attr.overwrite = 0
         channel.attr.subbuf_size = 4096
         channel.attr.num_subbuf = 8
@@ -186,15 +183,15 @@ class TestLttngPythonModule (unittest.TestCase):
 
         han = Handle("test_ust_event", dom)
 
-        #Create session test
+        # Create session test
         r = create("test_ust_event", self.tmpdir.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Enabling channel tests
+        # Enabling channel tests
         r = enable_channel(han, channel)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Enabling events tests
+        # Enabling events tests
         r = enable_event(han, ev1, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
@@ -204,21 +201,21 @@ class TestLttngPythonModule (unittest.TestCase):
         r = enable_event(han, ev3, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Disabling events tests
+        # Disabling events tests
         r = disable_event(han, ev1.name, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
         r = disable_event(han, ev3.name, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Renabling events tests
+        # Renabling events tests
         r = enable_event(han, ev1, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
         r = enable_event(han, ev3, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Start, stop
+        # Start, stop
         r = start("test_ust_event")
         self.assertGreaterEqual(r, 0, strerror(r))
         time.sleep(2)
@@ -226,7 +223,7 @@ class TestLttngPythonModule (unittest.TestCase):
         r = stop("test_ust_event")
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Restart/restop
+        # Restart/restop
         r = start("test_ust_event")
         self.assertGreaterEqual(r, 0, strerror(r))
         time.sleep(2)
@@ -234,25 +231,24 @@ class TestLttngPythonModule (unittest.TestCase):
         r = stop("test_ust_event")
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Disabling channel and destroy
-        r=disable_channel(han, channel.name)
+        # Disabling channel and destroy
+        r = disable_channel(han, channel.name)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        r=destroy("test_ust_event")
+        r = destroy("test_ust_event")
         self.assertGreaterEqual(r, 0, strerror(r))
-
 
     def test_other_functions(self):
         dom = Domain()
-        dom.type=DOMAIN_KERNEL
+        dom.type = DOMAIN_KERNEL
         dom.buf_type = BUFFER_GLOBAL
 
-        event=Event()
-        event.type=EVENT_TRACEPOINT
-        event.loglevel_type=EVENT_LOGLEVEL_ALL
+        event = Event()
+        event.type = EVENT_TRACEPOINT
+        event.loglevel_type = EVENT_LOGLEVEL_ALL
 
         ctx = EventContext()
-        ctx.type=EVENT_CONTEXT_PID
+        ctx.type = EVENT_CONTEXT_PID
 
         chattr = ChannelAttr()
         chattr.overwrite = 0
@@ -262,7 +258,7 @@ class TestLttngPythonModule (unittest.TestCase):
         chattr.read_timer_interval = 200
         chattr.output = EVENT_SPLICE
 
-        han = Handle("test_otherf" , dom)
+        han = Handle("test_otherf", dom)
 
         r = create("test_otherf", self.tmpdir.name)
         self.assertGreaterEqual(r, 0, strerror(r))
@@ -270,28 +266,27 @@ class TestLttngPythonModule (unittest.TestCase):
         r = enable_event(han, event, None)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Context test
+        # Context test
         r = add_context(han, ctx, "sched_switch", "channel0")
         self.assertGreaterEqual(r, 0, strerror(r))
-        #Any channel
+        # Any channel
         r = add_context(han, ctx, "sched_wakeup", None)
         self.assertGreaterEqual(r, 0, strerror(r))
-        #All events
+        # All events
         r = add_context(han, ctx, None, None)
         self.assertGreaterEqual(r, 0, strerror(r))
 
-        #Def. channel attr
+        # Def. channel attr
         channel_set_default_attr(dom, chattr)
         channel_set_default_attr(None, None)
 
-        #Ses Daemon alive
+        # Ses Daemon alive
         r = session_daemon_alive()
         self.assertTrue(r == 1 or r == 0, strerror(r))
 
-        #Setting trace group
+        # Setting trace group
         r = set_tracing_group("testing")
         self.assertGreaterEqual(r, 0, strerror(r))
-
 
         r = start("test_otherf")
         self.assertGreaterEqual(r, 0, strerror(r))
@@ -316,6 +311,7 @@ def ust_suite():
     suite.addTest(TestLttngPythonModule("test_ust_all_events"))
     return suite
 
+
 def kernel_suite():
     suite = unittest.TestSuite()
     suite.addTest(TestLttngPythonModule("test_kernel_event"))
@@ -323,7 +319,8 @@ def kernel_suite():
     suite.addTest(TestLttngPythonModule("test_other_functions"))
     return suite
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     destroy("test_kernel_event")
     destroy("test_kernel_all_events")
     destroy("test_ust_all_events")

@@ -27,7 +27,9 @@ print("1..{0}".format(NR_TESTS))
 
 # Check if a sessiond is running... bail out if none found.
 if session_daemon_alive() == 0:
-    bail("No sessiond running. Please make sure you are running this test with the \"run\" shell script and verify that the lttng tools are properly installed.")
+    bail(
+        'No sessiond running. Please make sure you are running this test with the "run" shell script and verify that the lttng tools are properly installed.'
+    )
 
 session_info = create_session()
 enable_ust_tracepoint_event(session_info, "ust_tests_exitfast*")
@@ -36,49 +38,81 @@ start_session(session_info)
 test_env = os.environ.copy()
 test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
-exit_fast_process = subprocess.Popen(test_path + "exit-fast", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=test_env)
+exit_fast_process = subprocess.Popen(
+    test_path + "exit-fast",
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    env=test_env,
+)
 exit_fast_process.wait()
 
-print_test_result(exit_fast_process.returncode == 0, current_test, "Test application exited normally")
+print_test_result(
+    exit_fast_process.returncode == 0, current_test, "Test application exited normally"
+)
 current_test += 1
 
-exit_fast_process = subprocess.Popen([test_path + "exit-fast", "suicide"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=test_env)
+exit_fast_process = subprocess.Popen(
+    [test_path + "exit-fast", "suicide"],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    env=test_env,
+)
 exit_fast_process.wait()
 
 stop_session(session_info)
 
 # Check both events (normal exit and suicide messages) are present in the resulting trace
 try:
-    babeltrace_process = subprocess.Popen([BABELTRACE_BIN, session_info.trace_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    babeltrace_process = subprocess.Popen(
+        [BABELTRACE_BIN, session_info.trace_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 except FileNotFoundError:
     bail("Could not open {}. Please make sure it is installed.".format(BABELTRACE_BIN))
 
 event_lines = []
 for event_line in babeltrace_process.stdout:
-    event_line = event_line.decode('utf-8').replace("\n", "")
+    event_line = event_line.decode("utf-8").replace("\n", "")
     event_lines.append(event_line)
 babeltrace_process.wait()
 
-print_test_result(babeltrace_process.returncode == 0, current_test, "Resulting trace is readable")
+print_test_result(
+    babeltrace_process.returncode == 0, current_test, "Resulting trace is readable"
+)
 current_test += 1
 
 if babeltrace_process.returncode != 0:
     bail("Unreadable trace; can't proceed with analysis.")
 
-print_test_result(len(event_lines) == 2, current_test, "Correct number of events found in resulting trace")
+print_test_result(
+    len(event_lines) == 2,
+    current_test,
+    "Correct number of events found in resulting trace",
+)
 current_test += 1
 
 if len(event_lines) != 2:
-    bail("Unexpected number of events found in resulting trace (" + session_info.trace_path + ")." )
+    bail(
+        "Unexpected number of events found in resulting trace ("
+        + session_info.trace_path
+        + ")."
+    )
 
 match = re.search(r".*message = \"(.*)\"", event_lines[0])
-print_test_result(match is not None and match.group(1) == normal_exit_message, current_test,\
-                      "Tracepoint message generated during normal exit run is present in trace and has the expected value")
+print_test_result(
+    match is not None and match.group(1) == normal_exit_message,
+    current_test,
+    "Tracepoint message generated during normal exit run is present in trace and has the expected value",
+)
 current_test += 1
 
 match = re.search(r".*message = \"(.*)\"", event_lines[1])
-print_test_result(match is not None and match.group(1) == suicide_exit_message, current_test,\
-                      "Tracepoint message generated during suicide run is present in trace and has the expected value")
+print_test_result(
+    match is not None and match.group(1) == suicide_exit_message,
+    current_test,
+    "Tracepoint message generated during suicide run is present in trace and has the expected value",
+)
 current_test += 1
 
 shutil.rmtree(session_info.tmp_directory)
