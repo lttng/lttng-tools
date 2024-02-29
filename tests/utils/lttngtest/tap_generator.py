@@ -86,7 +86,7 @@ class TapGenerator:
         self._printed_plan = False  # type: bool
         self._has_failure = False  # type: bool
         self._time_tests = True  # type: bool
-        if os.getenv("TAP_AUTOTIME", "1") == "0":
+        if os.getenv("LTTNG_TESTS_TAP_AUTOTIME", "1") == "0":
             self._time_tests = False
         self._last_time = _get_time_ns()
 

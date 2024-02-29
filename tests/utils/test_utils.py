@@ -24,7 +24,7 @@ sys.path.append(lttng_bindings_libs_path)
 from lttng import *
 
 _time_tests = True
-if os.getenv("TAP_AUTOTIME", "1") == "0":
+if os.getenv("LTTNG_TESTS_TAP_AUTOTIME", "1") == "0":
     _time_tests = False
 
 
