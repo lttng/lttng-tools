@@ -34,6 +34,11 @@ _lttng_la_LIBADD = 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la 		\
 			$(top_builddir)/src/common/libsessiond-comm.la		\
 			$(top_builddir)/src/common/libcommon-gpl.la
 
+# Use this fake source file to force the link mode of the library
+# from gcc to g++. The library contains only C code, but depends on
+# libstdc++.
+nodist_EXTRA__lttng_la_SOURCES = dummy.cpp
+
 lttng_wrap.c: lttng.i
 	$(SWIG) -python -I. -I$(top_srcdir)/src/common/sessiond-comm lttng.i
 
