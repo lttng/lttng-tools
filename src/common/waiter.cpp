@@ -58,8 +58,7 @@ void lttng::synchro::waiter::wait()
 	}
 
 	while (uatomic_read(&_state) == WAITER_WAITING) {
-		if (!futex_noasync(
-			    &_state, FUTEX_WAIT, WAITER_WAITING, nullptr, nullptr, 0)) {
+		if (!futex_noasync(&_state, FUTEX_WAIT, WAITER_WAITING, nullptr, nullptr, 0)) {
 			/*
 			 * Prior queued wakeups queued by unrelated code
 			 * using the same address can cause futex wait to
@@ -142,7 +141,7 @@ lttng::synchro::wait_queue::wait_queue()
 	cds_wfs_init(&_stack);
 }
 
-void lttng::synchro::wait_queue::add(waiter &waiter) noexcept
+void lttng::synchro::wait_queue::add(waiter& waiter) noexcept
 {
 	(void) cds_wfs_push(&_stack, &waiter._wait_queue_node);
 }
@@ -154,7 +153,7 @@ void lttng::synchro::wait_queue::wake_all()
 
 	/* Wake all waiters in our stack head. */
 	cds_wfs_node *iter, *iter_n;
-	cds_wfs_for_each_blocking_safe(waiters, iter, iter_n) {
+	cds_wfs_for_each_blocking_safe (waiters, iter, iter_n) {
 		auto& waiter = *lttng::utils::container_of(
 			iter, &lttng::synchro::waiter::_wait_queue_node);
 

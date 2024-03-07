@@ -9,9 +9,9 @@
 #include "../command.hpp"
 #include "../utils.hpp"
 
+#include <common/lttng-kernel.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
-#include <common/lttng-kernel.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/domain-internal.hpp>

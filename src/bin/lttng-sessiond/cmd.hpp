@@ -14,6 +14,7 @@
 #include "session.hpp"
 
 #include <common/tracker.hpp>
+
 #include <lttng/kernel.h>
 
 struct notification_thread_handle;

@@ -53,8 +53,8 @@
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
-#include <lttng/kernel.h>
 #include <lttng/kernel-probe.h>
+#include <lttng/kernel.h>
 #include <lttng/load.h>
 #include <lttng/location.h>
 #include <lttng/log-level-rule.h>
@@ -200,7 +200,8 @@ LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
  *
  * Sets the value of the argument, which must not be null.
  */
-LTTNG_EXPORT extern enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
 
 /*
  * Deprecated, replaced by lttng_regenerate_metadata.

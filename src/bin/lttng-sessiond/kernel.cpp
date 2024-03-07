@@ -2126,7 +2126,8 @@ int init_kernel_tracer()
 		    "work for this session daemon.");
 	}
 
-	kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(LTTNG_KERNEL_TRACER_STATUS_INITIALIZED);
+	kernel_tracer_status = nonstd::optional<enum lttng_kernel_tracer_status>(
+		LTTNG_KERNEL_TRACER_STATUS_INITIALIZED);
 	return 0;
 
 error_version:

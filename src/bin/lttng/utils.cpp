@@ -777,9 +777,8 @@ void print_kernel_tracer_status_error()
 			std::cerr << "\tlttng-sessiond failed to open /proc/lttng" << std::endl;
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
-			std::cerr
-				<< "\tVersion mismatch between kernel tracer and kernel tracer ABI"
-				<< std::endl;
+			std::cerr << "\tVersion mismatch between kernel tracer and kernel tracer ABI"
+				  << std::endl;
 			break;
 		default:
 			std::cerr << lttng::format("\t\tUnknown kernel tracer status (%d)",

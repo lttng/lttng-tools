@@ -8,11 +8,14 @@
 
 #include <stdio.h>
 
-int main() {
-   struct timespec t;
-   int ret = lttng_clock_gettime(CLOCK_MONOTONIC, &t);
-   if (ret == 0) {
-      printf("%ld.%09ld\n", t.tv_sec, t.tv_nsec);
-   }
-   return ret;
+int main()
+{
+	struct timespec t;
+	const auto ret = lttng_clock_gettime(CLOCK_MONOTONIC, &t);
+
+	if (ret == 0) {
+		printf("%ld.%09ld\n", t.tv_sec, t.tv_nsec);
+	}
+
+	return ret;
 }

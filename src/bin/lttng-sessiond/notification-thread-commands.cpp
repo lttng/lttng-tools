@@ -48,7 +48,8 @@ static int run_command_wait(struct notification_thread_handle *handle,
 	}
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 
-	command_completion_waiter.wait();;
+	command_completion_waiter.wait();
+	;
 	return 0;
 error_unlock_queue:
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
@@ -62,7 +63,7 @@ notification_thread_command_copy(const struct notification_thread_command *origi
 
 	try {
 		new_cmd = new notification_thread_command;
-	} catch (const std::bad_alloc &e) {
+	} catch (const std::bad_alloc& e) {
 		ERR("Failed to allocate notification_thread_command: %s", e.what());
 		return nullptr;
 	}
