@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2022 Jérémie Galarneau <jeremie.galarneau@efficios.com>
-# Copyright (C) 2023 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+# SPDX-FileCopyrightText: 2024 Kienan Stewart <kstewart@efficios.com>
+# SPDX-License-Identifer: GPL-2.0-only
 #
-# SPDX-License-Identifier: GPL-2.0-only
 
 import copy
 import pathlib
@@ -11,14 +10,6 @@ import sys
 import os
 import subprocess
 from typing import Any, Callable, Type
-
-"""
-Test instrumentation coverage of C/C++ constructors and destructors by LTTng-UST
-tracepoints.
-
-This test successively sets up a session, traces a test application, and then
-reads the resulting trace to determine if all the expected events are present.
-"""
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -363,76 +354,8 @@ def validate_trace(trace_location, tap, expected_events):
                 'Found expected event name="{}" msg="{}"'.format(
                     event["name"], str(event["msg"])
                 ),
-            ),
+            )
         else:
             tap.skip("Event '{}' may or may not be recorded".format(event["name"]))
 
     tap.test(unknown_event_count == 0, "Found no unexpected events")
-
-
-success = True
-tests = [
-    {
-        "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ static archive)",
-        "application": "gen-ust-events-constructor/gen-ust-events-constructor-a",
-        "expected_events": copy.deepcopy(
-            expected_events_common
-            + expected_events_common_cpp
-            + expected_events_tp_a
-            + expected_events_tp_a_cpp
-        ),
-        "skip_if_application_not_present": False,
-    },
-    {
-        "description": "Test user space constructor/destructor instrumentation coverage (C++ w/ dynamic object",
-        "application": "gen-ust-events-constructor/gen-ust-events-constructor-so",
-        "expected_events": copy.deepcopy(
-            expected_events_common
-            + expected_events_common_cpp
-            + expected_events_tp_so
-            + expected_events_tp_so_cpp
-        ),
-        # This application is not be built when `NO_SHARED` is set in the
-        # configuration options.
-        "skip_if_application_not_present": True,
-    },
-    {
-        "description": "Test user space constructor/destructor instrumentation coverage (C w/ static archive)",
-        "application": "gen-ust-events-constructor/gen-ust-events-c-constructor-a",
-        "expected_events": copy.deepcopy(expected_events_common + expected_events_tp_a),
-        "skip_if_application_not_present": False,
-    },
-    {
-        "description": "Test user space constructor/destructor instrumentation coverage (C w/ dynamic object",
-        "application": "gen-ust-events-constructor/gen-ust-events-c-constructor-so",
-        "expected_events": copy.deepcopy(
-            expected_events_common + expected_events_tp_so
-        ),
-        # This application is not be built when `NO_SHARED` is set in the
-        # configuration options.
-        "skip_if_application_not_present": True,
-    },
-]
-
-success = True
-for test in tests:
-    tap = lttngtest.TapGenerator(7 + len(test["expected_events"]))
-    with lttngtest.test_environment(with_sessiond=True, log=tap.diagnostic) as test_env:
-        try:
-            outputlocation = capture_trace(
-                tap, test_env, test["application"], test["description"]
-            )
-        except FileNotFoundError as fne:
-            tap.diagnostic(fne)
-            if test["skip_if_application_not_present"]:
-                tap.skip(
-                    "Test application '{}' not found".format(test["application"]),
-                    tap.remaining_test_cases,
-                )
-            break
-        # Warning: validate_trace mutates test['expected_events']
-        validate_trace(outputlocation.path, tap, test["expected_events"])
-    success = success and tap.is_successful
-
-
-sys.exit(0 if success else 1)

@@ -1,7 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_SCRIPTS = test_ust_constructor.py
-EXTRA_DIST = test_ust_constructor.py
+noinst_SCRIPTS = __init__.py \
+	test_ust_constructor_c_dynamic.py \
+	test_ust_constructor_c_static.py \
+	test_ust_constructor_cpp_dynamic.py \
+	test_ust_constructor_cpp_static.py \
+	ust_constructor_common.py
+
+EXTRA_DIST = __init__.py \
+	test_ust_constructor_c_dynamic.py \
+	test_ust_constructor_c_static.py \
+	test_ust_constructor_cpp_dynamic.py \
+	test_ust_constructor_cpp_static.py \
+	ust_constructor_common.py
+
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

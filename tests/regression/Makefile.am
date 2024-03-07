@@ -91,7 +91,10 @@ TESTS += ust/before-after/test_before_after \
 	ust/blocking/test_blocking \
 	ust/multi-lib/test_multi_lib \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
-	ust/ust-constructor/test_ust_constructor.py \
+	ust/ust-constructor/test_ust_constructor_c_dynamic.py \
+	ust/ust-constructor/test_ust_constructor_c_static.py \
+	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
+	ust/ust-constructor/test_ust_constructor_cpp_static.py \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \
 	tools/trigger/rate-policy/test_ust_rate_policy
