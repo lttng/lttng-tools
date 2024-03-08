@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef FIELD_STATS_H
-#define FIELD_STATS_H
+#ifndef LTTNG_TEST_UTILS_BT2_PLUGIN_FIELD_STATS_HPP
+#define LTTNG_TEST_UTILS_BT2_PLUGIN_FIELD_STATS_HPP
 
 #include <babeltrace2/babeltrace.h>
 
@@ -24,4 +24,4 @@ field_stats_graph_is_configured(bt_self_component_sink *self_component_sink);
 bt_component_class_sink_consume_method_status
 field_stats_consume(bt_self_component_sink *self_component_sink);
 
-#endif /* FIELD_STATS_H */
+#endif /* LTTNG_TEST_UTILS_BT2_PLUGIN_FIELD_STATS_HPP */

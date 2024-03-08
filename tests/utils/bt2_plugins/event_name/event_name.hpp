@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef EVENT_NAME_H
-#define EVENT_NAME_H
+#ifndef LTTNG_TEST_UTILS_BT2_PLUGIN_EVENT_NAME_HPP
+#define LTTNG_TEST_UTILS_BT2_PLUGIN_EVENT_NAME_HPP
 
 #include <babeltrace2/babeltrace.h>
 
@@ -31,4 +31,4 @@ event_name_message_iterator_next(bt_self_message_iterator *self_message_iterator
 				 uint64_t capacity,
 				 uint64_t *count);
 
-#endif /* EVENT_NAME_H */
+#endif /* LTTNG_TEST_UTILS_BT2_PLUGIN_EVENT_NAME_HPP */

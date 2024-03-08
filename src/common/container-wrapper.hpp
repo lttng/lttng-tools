@@ -117,6 +117,11 @@ public:
 		return ContainerOperations::size(_container);
 	}
 
+	bool empty() const
+	{
+		return size() == 0;
+	}
+
 	typename std::conditional<std::is_pointer<ElementType>::value, ElementType, ElementType&>::type
 	operator[](std::size_t index)
 	{
@@ -144,7 +149,7 @@ public:
 	operator[](std::size_t index) const
 	{
 		if (index >= ContainerOperations::size(_container)) {
-			LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
+			throw std::invalid_argument(lttng::format(
 				"Out of bound access through random_access_container_wrapper: index={}, size={}",
 				index,
 				size()));

@@ -16,7 +16,9 @@ lttngtest_la_CXXFLAGS = \
 	-fvisibility=default
 
 lttngtest_la_SOURCES = \
-	lttngtest-plugin.cpp
+	lttngtest-plugin.cpp \
+	fmt.hpp \
+	utils.hpp
 
 lttngtest_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
