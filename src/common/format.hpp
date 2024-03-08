@@ -36,9 +36,9 @@ struct formatter<std::type_info> : formatter<std::string> {
 		int status;
 		/*
 		 * The documentation of __cxa_demangle mentions the returned string is allocated
-		 * using malloc (not new), hence the use of lttng::free.
+		 * using malloc (not new), hence the use of lttng::memory::free.
 		 */
-		const auto demangled_name = lttng::make_unique_wrapper<char, lttng::free>(
+		const auto demangled_name = lttng::make_unique_wrapper<char, lttng::memory::free>(
 			abi::__cxa_demangle(type_info.name(), nullptr, nullptr, &status));
 
 		auto it = status == 0 ? formatter<std::string>::format(demangled_name.get(), ctx) :

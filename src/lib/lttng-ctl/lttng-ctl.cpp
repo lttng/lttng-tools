@@ -2896,7 +2896,7 @@ enum lttng_error_code lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_st
 	const auto ask_ret = lttng_ctl_ask_sessiond(&lsm, (void **) &raw_tracer_status);
 
 	const auto tracer_status =
-		lttng::make_unique_wrapper<uint32_t, lttng::free>(raw_tracer_status);
+		lttng::make_unique_wrapper<uint32_t, lttng::memory::free>(raw_tracer_status);
 
 	if (ask_ret != 4) {
 		return LTTNG_ERR_INVALID;

@@ -53,7 +53,6 @@ struct create_deleter_class {
 		return std::unique_ptr<WrappedType, deleter>(instance);
 	}
 };
-} /* namespace memory */
 
 /*
  * 'free' is a utility function for use with make_unique_wrapper. It makes it easier to
@@ -66,6 +65,7 @@ void free(Type *ptr)
 {
 	std::free(ptr);
 }
+} /* namespace memory */
 
 template <typename WrappedType, void (*DeleterFunc)(WrappedType *)>
 std::unique_ptr<WrappedType,

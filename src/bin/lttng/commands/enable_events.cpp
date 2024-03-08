@@ -717,8 +717,9 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
 
-			auto exclusion_string = lttng::make_unique_wrapper<char, lttng::free>(
-				print_exclusions(&exclusions));
+			auto exclusion_string =
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					print_exclusions(&exclusions));
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -820,8 +821,9 @@ int enable_events(const std::string& session_name, const event_rule_patterns& pa
 				lttng_dynamic_pointer_array_get_count(&exclusions),
 				(char **) exclusions.array.buffer.data);
 
-			auto exclusion_string = lttng::make_unique_wrapper<char, lttng::free>(
-				print_exclusions(&exclusions));
+			auto exclusion_string =
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					print_exclusions(&exclusions));
 			if (!exclusion_string) {
 				PERROR("Failed allocate exclusion string");
 				error = 1;
@@ -1162,7 +1164,7 @@ int cmd_enable_events(int argc, const char **argv)
 
 	if (!opt_session_name) {
 		const auto rc_file_session_name =
-			lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
+			lttng::make_unique_wrapper<char, lttng::memory::free>(get_session_name());
 
 		if (!rc_file_session_name) {
 			return CMD_ERROR;

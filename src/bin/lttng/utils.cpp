@@ -712,7 +712,8 @@ lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& sp
 	case lttng::cli::session_spec::type::NAME:
 		if (spec.value == nullptr) {
 			const auto configured_name =
-				lttng::make_unique_wrapper<char, lttng::free>(get_session_name());
+				lttng::make_unique_wrapper<char, lttng::memory::free>(
+					get_session_name());
 
 			if (configured_name) {
 				const struct lttng::cli::session_spec new_spec(

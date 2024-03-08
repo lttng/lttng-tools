@@ -68,9 +68,10 @@ struct ls::rotation_thread_timer_queue {
 
 namespace {
 struct rotation_thread_job {
-	using uptr = std::unique_ptr<
-		rotation_thread_job,
-		lttng::memory::create_deleter_class<rotation_thread_job, lttng::free>::deleter>;
+	using uptr =
+		std::unique_ptr<rotation_thread_job,
+				lttng::memory::create_deleter_class<rotation_thread_job,
+								    lttng::memory::free>::deleter>;
 
 	enum ls::rotation_thread_job_type type;
 	struct ltt_session *session;

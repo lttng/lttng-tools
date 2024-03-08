@@ -110,7 +110,8 @@ cmd_error_code destroy_session(const lttng_session& session)
 		} while (ret != 0);
 	}
 
-	std::unique_ptr<char, lttng::memory::create_deleter_class<char, lttng::free>::deleter>
+	std::unique_ptr<char,
+			lttng::memory::create_deleter_class<char, lttng::memory::free>::deleter>
 		stats_str;
 	if (!session_was_already_stopped) {
 		char *raw_stats_str = nullptr;
@@ -242,7 +243,7 @@ cmd_error_code destroy_session(const lttng_session& session)
 	 * destroy the file.
 	 */
 	const auto session_name =
-		lttng::make_unique_wrapper<char, lttng::free>(get_session_name_quiet());
+		lttng::make_unique_wrapper<char, lttng::memory::free>(get_session_name_quiet());
 	if (session_name && !strncmp(session.name, session_name.get(), NAME_MAX)) {
 		config_destroy_default();
 	}

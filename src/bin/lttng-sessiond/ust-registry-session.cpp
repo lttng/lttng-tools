@@ -785,8 +785,8 @@ void lsu::registry_session::create_or_find_enum(int session_objd,
 	struct cds_lfht_node *nodep;
 	lsu::registry_enum *reg_enum = nullptr, *old_reg_enum;
 	lttng::urcu::read_lock_guard read_lock_guard;
-	auto entries =
-		lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::free>(raw_entries);
+	auto entries = lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::memory::free>(
+		raw_entries);
 
 	LTTNG_ASSERT(enum_name);
 

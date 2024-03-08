@@ -6522,7 +6522,8 @@ static int handle_app_register_channel_notification(int sock,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
 	auto ust_ctl_context_fields =
-		lttng::make_unique_wrapper<lttng_ust_ctl_field, lttng::free>(raw_context_fields);
+		lttng::make_unique_wrapper<lttng_ust_ctl_field, lttng::memory::free>(
+			raw_context_fields);
 
 	lttng::urcu::read_lock_guard read_lock_guard;
 
@@ -6686,9 +6687,11 @@ static int add_event_ust_registry(int sock,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
 	lttng::urcu::read_lock_guard rcu_lock;
-	auto signature = lttng::make_unique_wrapper<char, lttng::free>(raw_signature);
-	auto fields = lttng::make_unique_wrapper<lttng_ust_ctl_field, lttng::free>(raw_fields);
-	auto model_emf_uri = lttng::make_unique_wrapper<char, lttng::free>(raw_model_emf_uri);
+	auto signature = lttng::make_unique_wrapper<char, lttng::memory::free>(raw_signature);
+	auto fields =
+		lttng::make_unique_wrapper<lttng_ust_ctl_field, lttng::memory::free>(raw_fields);
+	auto model_emf_uri =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_model_emf_uri);
 
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
@@ -6809,8 +6812,9 @@ static int add_enum_ust_registry(int sock,
 	struct ust_app_session *ua_sess;
 	uint64_t enum_id = -1ULL;
 	lttng::urcu::read_lock_guard read_lock_guard;
-	auto entries = lttng::make_unique_wrapper<struct lttng_ust_ctl_enum_entry, lttng::free>(
-		raw_entries);
+	auto entries =
+		lttng::make_unique_wrapper<struct lttng_ust_ctl_enum_entry, lttng::memory::free>(
+			raw_entries);
 
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
