@@ -20,6 +20,8 @@ DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #include <vendor/fmt/core.h>
 DIAGNOSTIC_POP
 
+#include <common/make-unique-wrapper.hpp>
+
 /*
  * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
  * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
@@ -32,12 +34,15 @@ struct formatter<std::type_info> : formatter<std::string> {
 						    FormatContextType& ctx)
 	{
 		int status;
-		auto demangled_name =
-			abi::__cxa_demangle(type_info.name(), nullptr, nullptr, &status);
-		auto it = status == 0 ? formatter<std::string>::format(demangled_name, ctx) :
-					formatter<std::string>::format(type_info.name(), ctx);
+		/*
+		 * The documentation of __cxa_demangle mentions the returned string is allocated
+		 * using malloc (not new), hence the use of lttng::free.
+		 */
+		const auto demangled_name = lttng::make_unique_wrapper<char, lttng::free>(
+			abi::__cxa_demangle(type_info.name(), nullptr, nullptr, &status));
 
-		free(demangled_name);
+		auto it = status == 0 ? formatter<std::string>::format(demangled_name.get(), ctx) :
+					formatter<std::string>::format(type_info.name(), ctx);
 		return it;
 	}
 };
