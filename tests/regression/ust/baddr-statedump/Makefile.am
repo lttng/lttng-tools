@@ -19,11 +19,11 @@ EXTRA_DIST = test_baddr-statedump test_baddr-statedump.py
 
 # Extract debug symbols
 prog.debug: prog
-	$(objcopy_verbose)$(OBJCOPY) --only-keep-debug prog prog.debug
+	$(objcopy_verbose)$(LIBTOOL) --mode=execute $(OBJCOPY) --only-keep-debug prog prog.debug
 
 # Strip and add debuglink
 prog.strip: prog.debug
-	@cp -f prog prog.strip
+	@$(LIBTOOL) --mode=execute cp -f prog prog.strip
 	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=prog.debug prog.strip
 
 all-local: prog.strip
