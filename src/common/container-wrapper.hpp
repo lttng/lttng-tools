@@ -60,6 +60,11 @@ class random_access_container_wrapper {
 			return *this;
 		}
 
+		ptrdiff_t operator-(const _iterator& other) const
+		{
+			return _index - other._index;
+		}
+
 		bool operator==(const _iterator& other) const noexcept
 		{
 			return _index == other._index;
