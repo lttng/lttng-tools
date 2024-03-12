@@ -566,7 +566,7 @@ private:
 	void visit(const lst::static_length_array_type& type) final
 	{
 		if (type.alignment != 0) {
-			LTTNG_ASSERT(_current_field_name.size() > 0);
+			LTTNG_ASSERT(!_current_field_name.empty());
 			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),
@@ -587,7 +587,7 @@ private:
 			 * could wrap nested sequences in structures, which
 			 * would allow us to express alignment constraints.
 			 */
-			LTTNG_ASSERT(_current_field_name.size() > 0);
+			LTTNG_ASSERT(!_current_field_name.empty());
 			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),
@@ -676,7 +676,7 @@ private:
 	void visit_variant(const lst::variant_type<MappingIntegerType>& type)
 	{
 		if (type.alignment != 0) {
-			LTTNG_ASSERT(_current_field_name.size() > 0);
+			LTTNG_ASSERT(!_current_field_name.empty());
 			_description += lttng::format(
 				"struct {{ }} align({alignment}) {field_name}_padding;\n",
 				fmt::arg("alignment", type.alignment),

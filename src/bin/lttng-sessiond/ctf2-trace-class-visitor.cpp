@@ -165,7 +165,7 @@ private:
 		_fragment["alignment"] = type.alignment;
 		_fragment["preferred-display-base"] = (unsigned int) type.base_;
 
-		if (type.roles_.size() > 0) {
+		if (!type.roles_.empty()) {
 			json::json role_array = json::json::array();
 
 			for (const auto role : type.roles_) {
@@ -201,7 +201,7 @@ private:
 		_fragment["alignment"] = type.alignment;
 		_fragment["preferred-display-base"] = (unsigned int) type.base_;
 
-		if (type.roles_.size() > 0) {
+		if (!type.roles_.empty()) {
 			if (std::is_signed<typename EnumerationType::mapping::range_t::
 						   range_integer_t>::value) {
 				LTTNG_THROW_ERROR(
@@ -278,7 +278,7 @@ private:
 		_fragment["type"] = "static-length-blob";
 		_fragment["length"] = type.length_bytes;
 
-		if (type.roles_.size() > 0) {
+		if (!type.roles_.empty()) {
 			auto role_array = json::json::array();
 
 			for (const auto role : type.roles_) {
