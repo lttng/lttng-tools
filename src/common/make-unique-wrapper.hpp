@@ -34,7 +34,7 @@ namespace lttng {
  *                    create_my_c_struct());
  *
  * Note that this facility is intended for use in the scope of a function.
- * If you need to return this unique_ptr instance, you should consider writting
+ * If you need to return this unique_ptr instance, you should consider writing
  * a proper, idiomatic, wrapper.
  */
 
