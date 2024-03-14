@@ -1197,7 +1197,7 @@ __lttng_complete_create_cmd() {
     '(-D --data-url output)'{-D+,--data-url=}'[set the trace data output URL]:trace data output URL:'
   )
 
-  # The `--shm-path` option LTTng-tools ≥ 2.7
+  # The `--shm-path` option requires LTTng-tools ≥ 2.7
   if ((minor_version >= 7)); then
     specs+=(
       '--shm-path=[write shared memory files to a specific directory]:shared memory file directory:_files -/'
