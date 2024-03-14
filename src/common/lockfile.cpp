@@ -96,7 +96,7 @@ int utils_create_lock_file(const char *filepath)
 		goto error;
 	}
 
-	DBG_FMT("Acquired lock file: file_path={}", filepath);
+	DBG_FMT("Acquired lock file: file_path=`{}`", filepath);
 
 error:
 	return fd;
