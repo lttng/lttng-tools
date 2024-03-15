@@ -68,6 +68,7 @@ Checks:          '-*,
                   misc-throw-by-value-catch-by-reference,
                   misc-unused-parameters,
                   misc-unused-using-decls,
+                  misc-use-anonymous-namespace,
                   modernize-avoid-bind,
                   modernize-concat-nested-namespaces,
                   modernize-loop-convert,
@@ -92,7 +93,8 @@ Checks:          '-*,
                   performance-*,
                   -performance-no-int-to-ptr,
                   readability-redundant-member-init,
-                  readability-simplify-boolean-expr'
+                  readability-simplify-boolean-expr,
+                  readability-static-definition-in-anonymous-namespace'
 FormatStyle: 'file'
 CheckOptions:
   - key:          bugprone-assert-side-effect.AssertMacros
