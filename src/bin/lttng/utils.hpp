@@ -8,13 +8,14 @@
 #ifndef _LTTNG_UTILS_H
 #define _LTTNG_UTILS_H
 
-#include <common/argpar/argpar.h>
 #include <common/container-wrapper.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/make-unique-wrapper.hpp>
 
 #include <lttng/lttng.h>
 #include <lttng/session-internal.hpp>
+
+#include <vendor/argpar/argpar.h>
 
 #include <iterator>
 #include <memory>

@@ -9,11 +9,11 @@
 #include "../loglevel.hpp"
 #include "../uprobe.hpp"
 #include "common/argpar-utils/argpar-utils.hpp"
-#include "common/argpar/argpar.h"
 #include "common/dynamic-array.hpp"
 #include "common/mi-lttng.hpp"
 #include "common/string-utils/string-utils.hpp"
 #include "common/utils.hpp"
+#include "vendor/argpar/argpar.h"
 
 #include <lttng/domain-internal.hpp>
 

@@ -7,10 +7,10 @@
 
 #include "../command.hpp"
 #include "common/argpar-utils/argpar-utils.hpp"
-#include "common/argpar/argpar.h"
 #include "common/dynamic-array.hpp"
 #include "common/mi-lttng.hpp"
 #include "lttng/action/list-internal.hpp"
+#include "vendor/argpar/argpar.h"
 
 /* For lttng_condition_type_str(). */
 #include "lttng/condition/condition-internal.hpp"

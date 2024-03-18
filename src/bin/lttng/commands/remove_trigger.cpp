@@ -7,8 +7,8 @@
 
 #include "../command.hpp"
 #include "common/argpar-utils/argpar-utils.hpp"
-#include "common/argpar/argpar.h"
 #include "common/mi-lttng.hpp"
+#include "vendor/argpar/argpar.h"
 
 #include <lttng/lttng.h>
 

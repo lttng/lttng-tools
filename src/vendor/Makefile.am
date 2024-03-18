@@ -3,3 +3,11 @@
 SUBDIRS = msgpack
 
 EXTRA_DIST = optional.hpp fmt nlohmann
+
+noinst_LTLIBRARIES =
+
+# libargpar
+noinst_LTLIBRARIES += argpar/libargpar.la
+argpar_libargpar_la_SOURCES = \
+	argpar/argpar.c \
+	argpar/argpar.h

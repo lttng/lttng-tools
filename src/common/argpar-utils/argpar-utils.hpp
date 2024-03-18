@@ -8,9 +8,10 @@
 #ifndef COMMON_ARGPAR_UTILS_H
 #define COMMON_ARGPAR_UTILS_H
 
-#include <common/argpar/argpar.h>
 #include <common/macros.hpp>
 #include <common/string-utils/format.hpp>
+
+#include <vendor/argpar/argpar.h>
 
 #include <stdarg.h>
 
