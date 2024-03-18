@@ -262,7 +262,9 @@ static int check_new_streams(struct relay_connection *conn)
 	}
 
 end:
-	DBG("Viewer connection has%s new streams: socket_fd = %d", ret == 0 ? " no" : "", conn->sock->fd);
+	DBG("Viewer connection has%s new streams: socket_fd = %d",
+	    ret == 0 ? " no" : "",
+	    conn->sock->fd);
 	return ret;
 }
 
