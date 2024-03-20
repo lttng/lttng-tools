@@ -618,13 +618,19 @@ class _Environment(logger._Logger):
         Launch an application that will trace from within constructors.
         """
         return _TraceTestApplication(
-            self._project_root
-            / "tests"
-            / "utils"
-            / "testapp"
-            / subpath,
+            self._project_root / "tests" / "utils" / "testapp" / subpath,
             self,
         )
+
+    def _terminate_relayd(self):
+        if self._relayd and self._relayd.poll() is None:
+            self._relayd.terminate()
+            self._relayd.wait()
+            if self._relayd_output_consumer:
+                self._relayd_output_consumer.join()
+                self._relayd_output_consumer = None
+            self._log("Relayd killed")
+            self._relayd = None
 
     # Clean-up managed processes
     def _cleanup(self):
@@ -646,14 +652,7 @@ class _Environment(logger._Logger):
             self._log("Session daemon killed")
             self._sessiond = None
 
-        if self._relayd and self._relayd.poll() is None:
-            self._relayd.terminate()
-            self._relayd.wait()
-            if self._relayd_output_consumer:
-                self._relayd_output_consumer.join()
-                self._relayd_output_consumer = None
-            self._log("Relayd killed")
-            self._relayd = None
+        self._terminate_relayd()
 
         self._lttng_home = None
 

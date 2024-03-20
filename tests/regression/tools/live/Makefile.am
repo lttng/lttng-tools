@@ -6,7 +6,7 @@ LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
 
 noinst_PROGRAMS = live_test
-EXTRA_DIST = test_kernel test_lttng_kernel
+EXTRA_DIST = test_kernel test_lttng_kernel test_per_application_leaks.py
 
 if HAVE_LIBLTTNG_UST_CTL
 EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust

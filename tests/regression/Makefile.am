@@ -16,6 +16,7 @@ TESTS = tools/base-path/test_ust \
 	tools/health/test_thread_ok \
 	tools/live/test_kernel \
 	tools/live/test_lttng_kernel \
+	tools/live/test_per_application_leaks.py \
 	tools/live/test_ust \
 	tools/live/test_ust_tracefile_count \
 	tools/live/test_lttng_ust \
