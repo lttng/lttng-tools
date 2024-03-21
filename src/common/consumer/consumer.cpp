@@ -178,13 +178,6 @@ static void clean_channel_stream_list(struct lttng_consumer_channel *channel)
 
 	/* Delete streams that might have been left in the stream list. */
 	cds_list_for_each_entry_safe (stream, stmp, &channel->streams.head, send_node) {
-		/*
-		 * Once a stream is added to this list, the buffers were created so we
-		 * have a guarantee that this call will succeed. Setting the monitor
-		 * mode to 0 so we don't lock nor try to delete the stream from the
-		 * global hash table.
-		 */
-		stream->monitor = 0;
 		consumer_stream_destroy(stream, nullptr);
 	}
 }
