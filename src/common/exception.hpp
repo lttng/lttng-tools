@@ -20,7 +20,7 @@
 	throw lttng::posix_error(msg, errno_code, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
-	throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::unsupported_error(msg, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_COMMUNICATION_ERROR(msg) \
 	throw lttng::communication_error(msg, __FILE__, __func__, __LINE__)
 #define LTTNG_THROW_PROTOCOL_ERROR(msg) \
