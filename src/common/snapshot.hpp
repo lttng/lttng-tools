@@ -8,6 +8,7 @@
 #ifndef COMMON_SNAPSHOT_H
 #define COMMON_SNAPSHOT_H
 
+#include <common/error.hpp>
 #include <common/macros.hpp>
 
 #include <stdbool.h>

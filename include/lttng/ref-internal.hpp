@@ -1,6 +1,3 @@
-#ifndef LTTNG_REF_INTERNAL_H
-#define LTTNG_REF_INTERNAL_H
-
 /*
  * LTTng - Non thread-safe reference counting
  *
@@ -9,6 +6,13 @@
  * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
+
+#ifndef LTTNG_REF_INTERNAL_H
+#define LTTNG_REF_INTERNAL_H
+
+#include <common/macros.hpp>
+
+#include <urcu/urcu.h>
 
 using lttng_release_func = void (*)(void *);
 

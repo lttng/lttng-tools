@@ -14,6 +14,7 @@
 #include <lttng/lttng.h>
 
 #include <inttypes.h>
+#include <urcu/urcu.h>
 
 /* Agent protocol version that is verified during the agent registration. */
 #define AGENT_MAJOR_VERSION 2

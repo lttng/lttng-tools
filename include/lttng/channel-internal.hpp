@@ -8,6 +8,7 @@
 #ifndef LTTNG_CHANNEL_INTERNAL_H
 #define LTTNG_CHANNEL_INTERNAL_H
 
+#include <common/error.hpp>
 #include <common/macros.hpp>
 
 struct lttng_channel_extended {
