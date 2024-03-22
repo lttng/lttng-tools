@@ -104,7 +104,7 @@ struct agent_event {
 	struct lttng_event_exclusion *exclusion;
 };
 
-#define AGENT_EVENT_IS_ENABLED(agent_event) (!!agent_event->enabled_count)
+#define AGENT_EVENT_IS_ENABLED(agent_event) (!!(agent_event)->enabled_count)
 
 /*
  * Agent object containing events enabled/disabled for a given domain in a
@@ -134,9 +134,9 @@ struct agent {
 };
 
 /* Allocate agent apps hash table */
-int agent_app_ht_alloc(void);
+int agent_app_ht_alloc();
 /* Clean-up agent apps hash table */
-void agent_app_ht_clean(void);
+void agent_app_ht_clean();
 
 /* Initialize an already allocated agent domain. */
 int agent_init(struct agent *agt);
@@ -187,7 +187,7 @@ struct agent_event *agent_find_event_by_trigger(const struct lttng_trigger *trig
 
 /* Global event notifier per-domain agents. */
 struct agent *agent_find_by_event_notifier_domain(enum lttng_domain_type domain_type);
-void agent_by_event_notifier_domain_ht_destroy(void);
-int agent_by_event_notifier_domain_ht_create(void);
+void agent_by_event_notifier_domain_ht_destroy();
+int agent_by_event_notifier_domain_ht_create();
 
 #endif /* LTTNG_SESSIOND_AGENT_H */

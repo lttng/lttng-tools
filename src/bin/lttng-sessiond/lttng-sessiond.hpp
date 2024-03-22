@@ -144,16 +144,16 @@ extern struct consumer_data the_ustconsumer32_data;
 extern struct consumer_data the_ustconsumer64_data;
 extern struct consumer_data the_kconsumer_data;
 
-int sessiond_init_main_quit_pipe(void);
+int sessiond_init_main_quit_pipe();
 int sessiond_wait_for_main_quit_pipe(int timeout_ms);
-int sessiond_notify_main_quit_pipe(void);
-void sessiond_close_main_quit_pipe(void);
+int sessiond_notify_main_quit_pipe();
+void sessiond_close_main_quit_pipe();
 
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
-void sessiond_signal_parents(void);
+void sessiond_signal_parents();
 
 void sessiond_set_client_thread_state(bool running);
-void sessiond_wait_client_thread_stopped(void);
+void sessiond_wait_client_thread_stopped();
 
 void *thread_manage_consumer(void *data);
 

@@ -52,12 +52,12 @@ extern enum relay_group_output_by opt_group_output_by;
 
 extern struct fd_tracker *the_fd_tracker;
 
-void lttng_relay_notify_ready(void);
-int lttng_relay_stop_threads(void);
+void lttng_relay_notify_ready();
+int lttng_relay_stop_threads();
 
-int relayd_init_thread_quit_pipe(void);
-int relayd_notify_thread_quit_pipe(void);
-void relayd_close_thread_quit_pipe(void);
+int relayd_init_thread_quit_pipe();
+int relayd_notify_thread_quit_pipe();
+void relayd_close_thread_quit_pipe();
 bool relayd_is_thread_quit_pipe(const int fd);
 
 int create_named_thread_poll_set(struct lttng_poll_event *events, int size, const char *name);

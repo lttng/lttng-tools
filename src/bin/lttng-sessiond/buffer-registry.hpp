@@ -101,7 +101,7 @@ struct buffer_reg_pid {
 };
 
 /* Buffer registry per UID. */
-void buffer_reg_init_uid_registry(void);
+void buffer_reg_init_uid_registry();
 int buffer_reg_uid_create(uint64_t session_id,
 			  uint32_t bits_per_long,
 			  uid_t uid,
@@ -115,7 +115,7 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp);
 void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output *consumer);
 
 /* Buffer registry per PID. */
-void buffer_reg_init_pid_registry(void);
+void buffer_reg_init_pid_registry();
 int buffer_reg_pid_create(uint64_t session_id,
 			  struct buffer_reg_pid **regp,
 			  const char *root_shm_path,
@@ -138,7 +138,7 @@ void buffer_reg_stream_add(struct buffer_reg_stream *stream, struct buffer_reg_c
 void buffer_reg_stream_destroy(struct buffer_reg_stream *regp, enum lttng_domain_type domain);
 
 /* Global registry. */
-void buffer_reg_destroy_registries(void);
+void buffer_reg_destroy_registries();
 
 int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_list,
 					uint64_t chan_key,

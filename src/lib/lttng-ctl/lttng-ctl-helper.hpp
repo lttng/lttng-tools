@@ -50,7 +50,7 @@ static inline int lttng_ctl_ask_sessiond_varlen_no_cmd_header(struct lttcomm_ses
 							      void **user_payload_buf)
 {
 	return lttng_ctl_ask_sessiond_fds_varlen(
-		lsm, NULL, 0, vardata, vardata_len, user_payload_buf, NULL, NULL);
+		lsm, nullptr, 0, vardata, vardata_len, user_payload_buf, nullptr, nullptr);
 }
 
 /*
@@ -61,18 +61,19 @@ static inline int lttng_ctl_ask_sessiond_fds_no_cmd_header(struct lttcomm_sessio
 							   size_t nb_fd,
 							   void **buf __attribute__((unused)))
 {
-	return lttng_ctl_ask_sessiond_fds_varlen(lsm, fds, nb_fd, NULL, 0, NULL, NULL, NULL);
+	return lttng_ctl_ask_sessiond_fds_varlen(
+		lsm, fds, nb_fd, nullptr, 0, nullptr, nullptr, nullptr);
 }
 /*
  * Use this if no variable length data needs to be sent.
  */
 static inline int lttng_ctl_ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 {
-	return lttng_ctl_ask_sessiond_varlen_no_cmd_header(lsm, NULL, 0, buf);
+	return lttng_ctl_ask_sessiond_varlen_no_cmd_header(lsm, nullptr, 0, buf);
 }
 
-int lttng_check_tracing_group(void);
+int lttng_check_tracing_group();
 
-int connect_sessiond(void);
+int connect_sessiond();
 
 #endif /* LTTNG_CTL_HELPER_H */

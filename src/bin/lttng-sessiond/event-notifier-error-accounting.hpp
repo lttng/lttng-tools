@@ -82,6 +82,6 @@ event_notifier_error_accounting_get_count(const struct lttng_trigger *trigger, u
 
 void event_notifier_error_accounting_unregister_event_notifier(const struct lttng_trigger *trigger);
 
-void event_notifier_error_accounting_fini(void);
+void event_notifier_error_accounting_fini();
 
 #endif /* _EVENT_NOTIFIER_ERROR_ACCOUNTING_H */

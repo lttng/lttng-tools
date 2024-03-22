@@ -12,6 +12,6 @@
 
 #include "thread.hpp"
 
-struct lttng_thread *launch_client_thread(void);
+struct lttng_thread *launch_client_thread();
 
 #endif /* CLIENT_SESSIOND_H */

@@ -11,7 +11,7 @@
 #define CONFIG_FILENAME ".lttngrc"
 
 void config_destroy(const char *path);
-void config_destroy_default(void);
+void config_destroy_default();
 int config_exists(const char *path);
 int config_init(const char *path);
 int config_add_session_name(const char *path, const char *name);

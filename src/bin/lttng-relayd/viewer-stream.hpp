@@ -86,7 +86,7 @@ bool viewer_stream_get(struct relay_viewer_stream *vstream);
 void viewer_stream_put(struct relay_viewer_stream *vstream);
 int viewer_stream_rotate(struct relay_viewer_stream *vstream);
 bool viewer_stream_is_tracefile_seq_readable(struct relay_viewer_stream *vstream, uint64_t seq);
-void print_viewer_streams(void);
+void print_viewer_streams();
 void viewer_stream_close_files(struct relay_viewer_stream *vstream);
 void viewer_stream_sync_tracefile_array_tail(struct relay_viewer_stream *vstream);
 

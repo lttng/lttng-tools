@@ -57,7 +57,7 @@ int kernel_metadata_flush_buffer(int fd);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(struct lttng_event **event_list);
-void kernel_wait_quiescent(void);
+void kernel_wait_quiescent();
 int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_tracer_version,
 			    struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
@@ -70,15 +70,15 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_session *session);
 enum lttng_error_code kernel_clear_session(struct ltt_session *session);
 
-int init_kernel_workarounds(void);
-int kernel_supports_ring_buffer_snapshot_sample_positions(void);
-int kernel_supports_ring_buffer_packet_sequence_number(void);
-int kernel_supports_event_notifiers(void);
-enum lttng_kernel_tracer_status get_kernel_tracer_status(void);
+int init_kernel_workarounds();
+int kernel_supports_ring_buffer_snapshot_sample_positions();
+int kernel_supports_ring_buffer_packet_sequence_number();
+int kernel_supports_event_notifiers();
+enum lttng_kernel_tracer_status get_kernel_tracer_status();
 void set_kernel_tracer_status_from_modules_ret(int);
-int init_kernel_tracer(void);
-void cleanup_kernel_tracer(void);
-bool kernel_tracer_is_initialized(void);
+int init_kernel_tracer();
+void cleanup_kernel_tracer();
+bool kernel_tracer_is_initialized();
 
 enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kernel_session *ksess);
 
@@ -91,6 +91,6 @@ enum lttng_error_code kernel_register_event_notifier(struct lttng_trigger *trigg
 						     const struct lttng_credentials *cmd_creds);
 enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigger *trigger);
 
-int kernel_get_notification_fd(void);
+int kernel_get_notification_fd();
 
 #endif /* _LTT_KERNEL_CTL_H */

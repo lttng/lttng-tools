@@ -19,7 +19,7 @@ struct timer_thread_parameters {
 	lttng::sessiond::rotation_thread_timer_queue *rotation_thread_job_queue;
 };
 
-int timer_signal_init(void);
+int timer_signal_init();
 
 /* Start a session's rotation pending check timer (one-shot mode). */
 int timer_session_rotation_pending_check_start(struct ltt_session *session,

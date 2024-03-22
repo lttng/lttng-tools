@@ -61,7 +61,7 @@ struct relay_viewer_session {
 	struct lttng_trace_chunk *current_trace_chunk;
 };
 
-struct relay_viewer_session *viewer_session_create(void);
+struct relay_viewer_session *viewer_session_create();
 void viewer_session_destroy(struct relay_viewer_session *vsession);
 void viewer_session_close(struct relay_viewer_session *vsession);
 

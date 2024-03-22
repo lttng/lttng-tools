@@ -15,7 +15,7 @@
 #include <common/uri.hpp>
 
 int relayd_live_create(struct lttng_uri *live_uri);
-int relayd_live_stop(void);
-int relayd_live_join(void);
+int relayd_live_stop();
+int relayd_live_join();
 
 #endif /* LTTNG_RELAYD_LIVE_H */

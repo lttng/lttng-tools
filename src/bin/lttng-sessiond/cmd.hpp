@@ -38,7 +38,7 @@ struct cmd_completion_handler {
  * Init the command subsystem. Must be called before using any of the functions
  * above. This is called in the main() of the session daemon.
  */
-void cmd_init(void);
+void cmd_init();
 
 /* Session commands */
 enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx,
@@ -183,7 +183,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 			      enum lttng_rotation_schedule_type schedule_type,
 			      uint64_t value);
 
-const struct cmd_completion_handler *cmd_pop_completion_handler(void);
+const struct cmd_completion_handler *cmd_pop_completion_handler();
 int start_kernel_session(struct ltt_kernel_session *ksess);
 int stop_kernel_session(struct ltt_kernel_session *ksess);
 

@@ -57,7 +57,7 @@ public:
 	{
 	}
 
-	session_storage(session_storage&& original) :
+	session_storage(session_storage&& original) noexcept :
 		_array(std::move(original._array)), _count(original._count)
 	{
 	}
@@ -104,7 +104,7 @@ public:
 	{
 	}
 
-	session_list(session_list&& original) :
+	session_list(session_list&& original) noexcept :
 		lttng::utils::random_access_container_wrapper<details::session_storage,
 							      lttng_session&,
 							      details::session_list_operations>(
@@ -138,8 +138,8 @@ lttng::cli::session_list list_sessions(const struct session_spec& spec);
 } /* namespace cli */
 } /* namespace lttng */
 
-char *get_session_name(void);
-char *get_session_name_quiet(void);
+char *get_session_name();
+char *get_session_name_quiet();
 void list_commands(struct cmd_struct *commands, FILE *ofp);
 void list_cmd_options(FILE *ofp, struct poptOption *options);
 void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options);
@@ -167,7 +167,7 @@ const char *get_event_type_str(enum lttng_event_type event_type);
 int print_missing_or_multiple_domains(unsigned int domain_count, bool include_agent_domains);
 
 int spawn_relayd(const char *pathname, int port);
-int check_relayd(void);
+int check_relayd();
 void print_session_stats(const char *session_name);
 int get_session_stats_str(const char *session_name, char **str);
 int show_cmd_help(const char *cmd_name, const char *help_msg);

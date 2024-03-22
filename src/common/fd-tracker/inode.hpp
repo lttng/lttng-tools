@@ -30,7 +30,7 @@ struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(const char *pat
 void lttng_unlinked_file_pool_destroy(struct lttng_unlinked_file_pool *pool);
 
 /* The inode registry is protected by the fd-tracker's lock. */
-struct lttng_inode_registry *lttng_inode_registry_create(void);
+struct lttng_inode_registry *lttng_inode_registry_create();
 
 struct lttng_inode *lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 						   struct lttng_directory_handle *handle,

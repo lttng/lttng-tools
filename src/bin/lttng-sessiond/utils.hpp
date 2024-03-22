@@ -12,7 +12,7 @@ struct lttng_ht;
 struct ltt_session;
 struct consumer_output;
 
-const char *get_home_dir(void);
+const char *get_home_dir();
 int notify_thread_pipe(int wpipe);
 int loglevels_match(int a_loglevel_type,
 		    int a_loglevel_value,

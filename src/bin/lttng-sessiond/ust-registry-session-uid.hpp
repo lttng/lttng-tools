@@ -32,9 +32,9 @@ public:
 				 uint64_t tracing_id,
 				 uid_t tracing_uid);
 
-	virtual lttng_buffer_type buffering_scheme() const noexcept override final;
-	virtual void accept(lttng::sessiond::trace::trace_class_environment_visitor&
-				    environment_visitor) const override final;
+	lttng_buffer_type buffering_scheme() const noexcept final;
+	void accept(lttng::sessiond::trace::trace_class_environment_visitor& environment_visitor)
+		const final;
 
 private:
 	const uid_t _tracing_uid;

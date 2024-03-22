@@ -216,6 +216,6 @@ int stream_complete_packet(struct relay_stream *stream,
 int stream_add_index(struct relay_stream *stream, const struct lttcomm_relayd_index *index_info);
 int stream_reset_file(struct relay_stream *stream);
 
-void print_relay_streams(void);
+void print_relay_streams();
 
 #endif /* _STREAM_H */

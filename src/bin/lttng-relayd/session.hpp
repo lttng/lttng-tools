@@ -160,6 +160,6 @@ int session_abort(struct relay_session *session);
 
 bool session_has_ongoing_rotation(const struct relay_session *session);
 
-void print_sessions(void);
+void print_sessions();
 
 #endif /* _SESSION_H */

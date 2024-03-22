@@ -26,7 +26,7 @@
  */
 struct sessiond_trace_chunk_registry;
 
-struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create(void);
+struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry_create();
 
 void sessiond_trace_chunk_registry_destroy(struct sessiond_trace_chunk_registry *sessiond_registry);
 

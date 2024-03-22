@@ -12,8 +12,8 @@
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-bool launch_agent_management_thread(void);
-bool agent_tracing_is_enabled(void);
+bool launch_agent_management_thread();
+bool agent_tracing_is_enabled();
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 

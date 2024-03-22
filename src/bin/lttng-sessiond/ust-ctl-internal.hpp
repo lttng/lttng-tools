@@ -181,7 +181,7 @@ struct lttng_ust_ctl_consumer_channel;
 struct lttng_ust_ctl_consumer_stream;
 struct lttng_ust_ctl_consumer_channel_attr;
 
-int lttng_ust_ctl_get_nr_stream_per_channel(void);
+int lttng_ust_ctl_get_nr_stream_per_channel();
 
 struct lttng_ust_ctl_consumer_channel *lttng_ust_ctl_create_channel(
 	struct lttng_ust_ctl_consumer_channel_attr *attr, const int *stream_fds, int nr_stream_fds);
@@ -287,7 +287,7 @@ int lttng_ust_ctl_get_instance_id(struct lttng_ust_ctl_consumer_stream *stream, 
 int lttng_ust_ctl_get_current_timestamp(struct lttng_ust_ctl_consumer_stream *stream, uint64_t *ts);
 
 /* returns whether UST has perf counters support. */
-int lttng_ust_ctl_has_perf_counters(void);
+int lttng_ust_ctl_has_perf_counters();
 
 /* Regenerate the statedump. */
 int lttng_ust_ctl_regenerate_statedump(int sock, int handle);
@@ -591,7 +591,7 @@ enum lttng_ust_ctl_counter_alloc {
 
 struct lttng_ust_ctl_daemon_counter;
 
-int lttng_ust_ctl_get_nr_cpu_per_counter(void);
+int lttng_ust_ctl_get_nr_cpu_per_counter();
 
 struct lttng_ust_ctl_counter_dimension {
 	uint64_t size;

@@ -15,6 +15,6 @@ enum lttng_fd_type {
 
 int lttng_fd_get(enum lttng_fd_type type, unsigned int nr);
 void lttng_fd_put(enum lttng_fd_type type, unsigned int nr);
-void lttng_fd_init(void);
+void lttng_fd_init();
 
 #endif /* _LTTNG_FD_LIMIT_H */

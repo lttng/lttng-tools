@@ -58,10 +58,10 @@ public:
 	trace_class_visitor(const lttng::sessiond::trace::abi& trace_abi,
 			    append_metadata_fragment_function append_metadata);
 
-	virtual void visit(const lttng::sessiond::trace::trace_class& trace_class) override final;
-	virtual void visit(const lttng::sessiond::trace::clock_class& clock_class) override final;
-	virtual void visit(const lttng::sessiond::trace::stream_class& stream_class) override final;
-	virtual void visit(const lttng::sessiond::trace::event_class& event_class) override final;
+	void visit(const lttng::sessiond::trace::trace_class& trace_class) final;
+	void visit(const lttng::sessiond::trace::clock_class& clock_class) final;
+	void visit(const lttng::sessiond::trace::stream_class& stream_class) final;
+	void visit(const lttng::sessiond::trace::event_class& event_class) final;
 
 private:
 	/* Coherent (parseable) fragments must be appended. */

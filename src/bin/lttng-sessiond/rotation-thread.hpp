@@ -81,7 +81,7 @@ private:
 	lttng_poll_event _events;
 };
 
-struct rotation_thread_timer_queue *rotation_thread_timer_queue_create(void);
+struct rotation_thread_timer_queue *rotation_thread_timer_queue_create();
 void rotation_thread_timer_queue_destroy(struct rotation_thread_timer_queue *queue);
 void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 				 enum rotation_thread_job_type job_type,

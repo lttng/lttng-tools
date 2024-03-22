@@ -8,10 +8,10 @@
 #ifndef _MODPROBE_H
 #define _MODPROBE_H
 
-void modprobe_remove_lttng_all(void);
-void modprobe_remove_lttng_control(void);
-void modprobe_remove_lttng_data(void);
-int modprobe_lttng_control(void);
-int modprobe_lttng_data(void);
+void modprobe_remove_lttng_all();
+void modprobe_remove_lttng_control();
+void modprobe_remove_lttng_data();
+int modprobe_lttng_control();
+int modprobe_lttng_data();
 
 #endif /* _MODPROBE_H */
