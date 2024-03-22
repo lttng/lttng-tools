@@ -8,7 +8,6 @@
 #define _LGPL_SOURCE
 #include "command.hpp"
 #include "conf.hpp"
-#include "exception.hpp"
 #include "utils.hpp"
 
 #include <common/defaults.hpp>
@@ -716,14 +715,15 @@ lttng::cli::session_list lttng::cli::list_sessions(const struct session_spec& sp
 				lttng::make_unique_wrapper<char, lttng::memory::free>(
 					get_session_name());
 
-			if (!configured_name) {
-				LTTNG_THROW_CLI_NO_DEFAULT_SESSION();
+			if (configured_name) {
+				const struct lttng::cli::session_spec new_spec(
+					lttng::cli::session_spec::type::NAME,
+					configured_name.get());
+
+				return list_sessions(new_spec);
 			}
 
-			const struct lttng::cli::session_spec new_spec(
-				lttng::cli::session_spec::type::NAME, configured_name.get());
-
-			return list_sessions(new_spec);
+			return lttng::cli::session_list();
 		}
 
 		return get_sessions(

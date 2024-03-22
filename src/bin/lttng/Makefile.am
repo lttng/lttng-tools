@@ -34,8 +34,7 @@ lttng_SOURCES = command.hpp conf.cpp conf.hpp commands/start.cpp \
 				commands/list_triggers.cpp \
 				commands/remove_trigger.cpp \
 				utils.cpp utils.hpp lttng.cpp \
-				uprobe.cpp uprobe.hpp \
-				exception.hpp exception.cpp
+				uprobe.cpp uprobe.hpp
 
 lttng_CXXFLAGS = $(AM_CXXFLAGS) $(POPT_CFLAGS)
 

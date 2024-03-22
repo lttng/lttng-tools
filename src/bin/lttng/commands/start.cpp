@@ -7,7 +7,6 @@
 
 #define _LGPL_SOURCE
 #include "../command.hpp"
-#include "../exception.hpp"
 #include "../utils.hpp"
 
 #include <common/exception.hpp>
@@ -116,14 +115,6 @@ cmd_error_code start_tracing(const lttng::cli::session_spec& spec)
 		} catch (const lttng::ctl::error& ctl_exception) {
 			ERR_FMT("Failed to list sessions ({})",
 				lttng_strerror(-ctl_exception.code()));
-			listing_failed = true;
-			return {};
-		} catch (const lttng::cli::no_default_session_error& cli_exception) {
-			/*
-			 * The retrieval of the default session name already logs
-			 * an error when it fails. There is no value in printing
-			 * anything about this exception.
-			 */
 			listing_failed = true;
 			return {};
 		}
