@@ -179,7 +179,7 @@ class thing_doer : public lttng::sessiond::doer {
 public:
 	explicit thing_doer(const std::string& name);
 
-	virtual void do() override final;
+	void do() override final;
 	const std::string& name() const;
 
 private:
