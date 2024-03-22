@@ -14,7 +14,7 @@
 
 #include "macros.hpp"
 
-#include <stdbool.h>
+#include <functional>
 #include <stdint.h>
 #include <urcu/wfstack.h>
 
@@ -29,16 +29,8 @@ class waker {
 public:
 	waker(const waker&) = default;
 	waker(waker&&) = default;
-	waker& operator=(const waker& other)
-	{
-		_state = other._state;
-		return *this;
-	}
-	waker& operator=(waker&& other)
-	{
-		_state = other._state;
-		return *this;
-	}
+	waker& operator=(const waker& other) = default;
+	waker& operator=(waker&& other) = default;
 
 	void wake();
 
@@ -49,7 +41,7 @@ private:
 	{
 	}
 
-	int32_t& _state;
+	std::reference_wrapper<int32_t> _state;
 };
 
 class waiter final {

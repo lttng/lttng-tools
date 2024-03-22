@@ -122,18 +122,18 @@ void lttng::synchro::waker::wake()
 {
 	cmm_smp_mb();
 
-	LTTNG_ASSERT(uatomic_read(&_state) == WAITER_WAITING);
+	LTTNG_ASSERT(uatomic_read(&_state.get()) == WAITER_WAITING);
 
-	uatomic_set(&_state, WAITER_WOKEN_UP);
-	if (!(uatomic_read(&_state) & WAITER_RUNNING)) {
-		if (futex_noasync(&_state, FUTEX_WAKE, 1, nullptr, nullptr, 0) < 0) {
+	uatomic_set(&_state.get(), WAITER_WOKEN_UP);
+	if (!(uatomic_read(&_state.get()) & WAITER_RUNNING)) {
+		if (futex_noasync(&_state.get(), FUTEX_WAKE, 1, nullptr, nullptr, 0) < 0) {
 			PERROR("futex_noasync");
 			abort();
 		}
 	}
 
 	/* Allow teardown of struct urcu_wait memory. */
-	uatomic_or(&_state, WAITER_TEARDOWN);
+	uatomic_or(&_state.get(), WAITER_TEARDOWN);
 }
 
 lttng::synchro::wait_queue::wait_queue()
