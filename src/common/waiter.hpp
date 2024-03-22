@@ -23,21 +23,21 @@ namespace synchro {
 class waiter;
 class wait_queue;
 
-class waker {
+class waker final {
 	friend waiter;
 
 public:
-	waker(const waker&) = default;
-	waker(waker&&) = default;
-	waker& operator=(const waker& other) = default;
-	waker& operator=(waker&& other) = default;
+	waker(const waker&) noexcept = default;
+	waker(waker&&) noexcept = default;
+	waker& operator=(const waker& other) noexcept = default;
+	waker& operator=(waker&& other) noexcept = default;
 
 	void wake();
 
 	~waker() = default;
 
 private:
-	waker(int32_t& state) : _state{ state }
+	explicit waker(int32_t& state) noexcept : _state{ state }
 	{
 	}
 
