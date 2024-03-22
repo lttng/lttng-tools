@@ -17,7 +17,7 @@ namespace bt2 {
 namespace internal {
 static inline void bt_value_put_ref(bt_value *value)
 {
-	bt_value_put_ref(const_cast<const bt_value *>(value));
+	bt_value_put_ref(static_cast<const bt_value *>(value));
 }
 } /* namespace internal */
 
