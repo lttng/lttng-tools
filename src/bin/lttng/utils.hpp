@@ -67,6 +67,11 @@ public:
 	{
 	}
 
+	session_storage(session_storage&) = delete;
+	session_storage& operator=(const session_storage& other) = delete;
+	session_storage& operator=(session_storage&& other) = delete;
+	~session_storage() = default;
+
 	lttng_session_uptr _array = nullptr;
 	std::size_t _count = 0;
 };
@@ -127,6 +132,11 @@ public:
 			{ raw_sessions, raw_sessions_count })
 	{
 	}
+
+	session_list(session_list&) = delete;
+	session_list& operator=(const session_list& other) = delete;
+	session_list& operator=(session_list&& other) = delete;
+	~session_list() = default;
 
 	void resize(std::size_t new_size) noexcept
 	{
