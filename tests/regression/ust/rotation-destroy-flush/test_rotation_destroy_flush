@@ -23,10 +23,10 @@ SIZE_LIMIT=$PAGE_SIZE
 NR_ITER=10
 NUM_TESTS=$((15*$NR_ITER))
 
-# Ensure the daemons invoke abort on error.
-export LTTNG_ABORT_ON_ERROR=1
-
 source $TESTDIR/utils/utils.sh
+
+# Ensure the daemons invoke abort on error.
+check_skip_kernel_test || export LTTNG_ABORT_ON_ERROR=1
 
 # MUST set TESTDIR before calling those functions
 function run_app()
