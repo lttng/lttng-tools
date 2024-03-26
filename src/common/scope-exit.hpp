@@ -33,7 +33,8 @@ class scope_exit {
 public:
 	/*
 	 * Since ScopeExitInvocableType will be invoked in the destructor, it
-	 * must be `noexcept` lest we anger the undefined behaviour gods.
+	 * must be `noexcept` lest we anger the undefined behaviour gods by throwing
+	 * an exception while an exception is active.
 	 */
 	static_assert(details::is_invocation_noexcept<ScopeExitInvocableType>::value,
 		      "scope_exit requires a noexcept invocable type");
