@@ -1,3 +1,14 @@
+2024-03-28 lttng-tools 2.12.15 (Respect Your Cat Day)
+	* Fix: baddr-statedump: use $(LIBTOOL) --mode=execute
+	* Fix: relayd: live client not notified of inactive streams
+	* Fix: relayd: live: dispose of zombie viewer metadata stream
+	* Fix: sessiond: freeze on channel creation on restart
+	* common: move utils_create_lock_file to its own file
+	* tests: tools/clear/test_ust wait for specific test app pid
+	* Tests: use CPU ids from online ranges
+	* Tests: Preemptively fail infinite blocking tests when low on disk space
+	* Fix: lttng-add-context: leak of application context parameters
+
 2023-06-20 lttng-tools 2.12.14 (National Ice Cream Soda Day)
 	* Tests fix: test_callstack: output of addr2line incorrectly parsed
 	* Fix: adding a user space probe fails on thumb functions
