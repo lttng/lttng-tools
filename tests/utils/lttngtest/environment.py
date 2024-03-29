@@ -249,11 +249,12 @@ class _WaitTraceTestApplication:
                 tempfile.mktemp(
                     prefix="app_",
                     suffix="_exit",
-                    dir=self._compat_pathlike(environment.lttng_home_location),
+                    dir=dir,
                 )
             )
-
+        self._wait_before_exit_file_path = wait_before_exit_file_path
         self._has_returned = False
+        self._tracing_started = False
 
         test_app_env = os.environ.copy()
         test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
@@ -279,6 +280,10 @@ class _WaitTraceTestApplication:
         test_app_args.extend(
             ["--sync-before-exit-touch", str(self._app_tracing_done_file_path)]
         )
+        if wait_before_exit:
+            test_app_args.extend(
+                ["--sync-before-exit", str(self._wait_before_exit_file_path)]
+            )
         if wait_time_between_events_us != 0:
             test_app_args.extend(["--wait", str(wait_time_between_events_us)])
 
@@ -380,6 +385,9 @@ class _WaitTraceTestApplication:
 
             time.sleep(0.001)
 
+    def touch_exit_file(self):
+        open(self._compat_pathlike(self._wait_before_exit_file_path), mode="x")
+
     def trace(self):
         # type: () -> None
         if self._process.poll() is not None:
@@ -390,10 +398,15 @@ class _WaitTraceTestApplication:
                 )
             )
         open(self._compat_pathlike(self._app_start_tracing_file_path), mode="x")
+        self._environment._log("[{}] Tracing started".format(self.vpid))
+        self._tracing_started = True
 
     def wait_for_tracing_done(self):
         # type: () -> None
+        if not self._tracing_started:
+            raise RuntimeError("Tracing hasn't been started")
         self._wait_for_file_to_be_created(self._app_tracing_done_file_path)
+        self._environment._log("[{}] Tracing done".format(self.vpid))
 
     def wait_for_exit(self):
         # type: () -> None
@@ -504,12 +517,8 @@ class WaitTraceTestApplicationGroup:
         for app in self._apps:
             app.wait_for_tracing_done()
 
-        open(
-            _WaitTraceTestApplication._compat_pathlike(
-                self._wait_before_exit_file_path
-            ),
-            mode="x",
-        )
+        self._apps[0].touch_exit_file()
+
         # Performed in two passes to allow tests to stress the unregistration of many applications.
         # Waiting for each app to exit turn-by-turn would defeat the purpose here.
         if wait_for_apps:
