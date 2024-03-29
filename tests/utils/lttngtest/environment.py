@@ -9,10 +9,14 @@ from types import FrameType
 from typing import Callable, Iterator, Optional, Tuple, List, Generator
 import sys
 import pathlib
+import pwd
+import random
 import signal
 import subprocess
 import shlex
 import shutil
+import stat
+import string
 import os
 import queue
 import tempfile
@@ -28,7 +32,8 @@ class TemporaryDirectory:
         self._directory_path = tempfile.mkdtemp(prefix=prefix)
 
     def __del__(self):
-        shutil.rmtree(self._directory_path, ignore_errors=True)
+        if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1":
+            shutil.rmtree(self._directory_path, ignore_errors=True)
 
     @property
     def path(self):
@@ -92,24 +97,29 @@ class _WaitTraceTestApplication:
         wait_time_between_events_us=0,  # type: int
         wait_before_exit=False,  # type: bool
         wait_before_exit_file_path=None,  # type: Optional[pathlib.Path]
+        run_as=None,  # type: Optional[str]
     ):
         self._process = None
         self._environment = environment  # type: Environment
         self._iteration_count = event_count
         # File that the application will wait to see before tracing its events.
+        dir = self._compat_pathlike(environment.lttng_home_location)
+        if run_as is not None:
+            dir = os.path.join(dir, run_as)
         self._app_start_tracing_file_path = pathlib.Path(
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_start_tracing",
-                dir=self._compat_pathlike(environment.lttng_home_location),
+                dir=dir,
             )
         )
+
         # File that the application will create when all events have been emitted.
         self._app_tracing_done_file_path = pathlib.Path(
             tempfile.mktemp(
                 prefix="app_",
                 suffix="_done_tracing",
-                dir=self._compat_pathlike(environment.lttng_home_location),
+                dir=dir,
             )
         )
 
@@ -134,7 +144,7 @@ class _WaitTraceTestApplication:
         app_ready_file_path = tempfile.mktemp(
             prefix="app_",
             suffix="_ready",
-            dir=self._compat_pathlike(environment.lttng_home_location),
+            dir=dir,
         )  # type: str
 
         test_app_args = [str(binary_path)]
@@ -151,6 +161,74 @@ class _WaitTraceTestApplication:
         if wait_time_between_events_us != 0:
             test_app_args.extend(["--wait", str(wait_time_between_events_us)])
 
+        if run_as is not None:
+            # When running as root and reducing the permissions to run as another
+            # user, the test binary needs to be readable and executable by the
+            # world; however, the file may be in a deep path or on systems where
+            # we don't want to modify the filesystem state (eg. for a person who
+            # has downloaded and ran the tests manually).
+            # Therefore, the binary_path is copied to a temporary file in the
+            # `run_as` user's home directory
+            new_binary_path = os.path.join(
+                str(environment.lttng_home_location),
+                run_as,
+                os.path.basename(str(binary_path)),
+            )
+
+            if not os.path.exists(new_binary_path):
+                shutil.copy(str(binary_path), new_binary_path)
+
+            test_app_args[0] = new_binary_path
+
+            lib_dir = environment.lttng_home_location / run_as / "lib"
+            if not os.path.isdir(str(lib_dir)):
+                os.mkdir(str(lib_dir))
+                # When running dropping privileges, the libraries built in the
+                # root-owned directories may not be reachable and readable by
+                # the loader running as an unprivileged user. These should also be
+                # copied.
+                _ldd = subprocess.Popen(
+                    ["ldd", new_binary_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                if _ldd.wait() != 0:
+                    raise RuntimeError(
+                        "Error while using `ldd` to determine test application dependencies: `{}`".format(
+                            stderr.read().decode("utf-8")
+                        )
+                    )
+                libs = [
+                    x.decode("utf-8").split(sep="=>") for x in _ldd.stdout.readlines()
+                ]
+                libs = [
+                    x[1].split(sep=" ")[1]
+                    for x in libs
+                    if len(x) >= 2 and x[1].find("lttng") != -1
+                ]
+                for lib in libs:
+                    shutil.copy(lib, lib_dir)
+
+            test_app_env["LD_LIBRARY_PATH"] = "{}:{}".format(
+                test_app_env["LD_LIBRARY_PATH"],
+                str(lib_dir),
+            )
+
+            # As of python 3.9, subprocess.Popen supports a user parameter which
+            # runs `setreuid()` before executing the proces and will be preferable
+            # when support for older python versions is no longer required.
+            test_app_args = [
+                "runuser",
+                "-u",
+                run_as,
+                "--",
+            ] + test_app_args
+
+        self._environment._log(
+            "Launching test application: '{}'".format(
+                self._compat_shlex_join(test_app_args)
+            )
+        )
         self._process = subprocess.Popen(
             test_app_args,
             env=test_app_env,
@@ -172,8 +250,10 @@ class _WaitTraceTestApplication:
             if self._process.poll() is not None:
                 # Application has unexepectedly returned.
                 raise RuntimeError(
-                    "Test application has unexepectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`".format(
-                        sync_file=sync_file_path, return_code=self._process.returncode
+                    "Test application has unexepectedly returned while waiting for synchronization file to be created: sync_file=`{sync_file}`, return_code=`{return_code}`, output=`{output}`".format(
+                        sync_file=sync_file_path,
+                        return_code=self._process.returncode,
+                        output=self._process.stderr.read().decode("utf-8"),
                     )
                 )
 
@@ -198,8 +278,10 @@ class _WaitTraceTestApplication:
         # type: () -> None
         if self._process.wait() != 0:
             raise RuntimeError(
-                "Test application has exit with return code `{return_code}`".format(
-                    return_code=self._process.returncode
+                "Test application [{pid}] has exit with return code `{return_code}`, output=`{output}`".format(
+                    pid=self.vpid,
+                    return_code=self._process.returncode,
+                    output=self._process.stderr.read().decode("utf-8"),
                 )
             )
         self._has_returned = True
@@ -222,6 +304,12 @@ class _WaitTraceTestApplication:
             return path
         else:
             return str(path)
+
+    @staticmethod
+    def _compat_shlex_join(args):
+        # type: list[str] -> str
+        # shlex.join was added in python 3.8
+        return " ".join([shlex.quote(x) for x in args])
 
     def __del__(self):
         if self._process is not None and not self._has_returned:
@@ -388,9 +476,14 @@ class _Environment(logger._Logger):
         self._project_root = (
             pathlib.Path(__file__).absolute().parents[3]
         )  # type: pathlib.Path
+
         self._lttng_home = TemporaryDirectory(
             "lttng_test_env_home"
-        )  # type: Optional[TemporaryDirectory]
+        )  # type: Optional[str]
+        os.chmod(
+            str(self._lttng_home.path),
+            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IROTH | stat.S_IXOTH,
+        )
 
         self._relayd = (
             self._launch_lttng_relayd() if with_relayd else None
@@ -400,6 +493,9 @@ class _Environment(logger._Logger):
         self._sessiond = (
             self._launch_lttng_sessiond() if with_sessiond else None
         )  # type: Optional[subprocess.Popen[bytes]]
+
+        self._dummy_users = {}  # type: Dictionary[int, string]
+        self._preserve_test_env = os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1"
 
     @property
     def lttng_home_location(self):
@@ -427,6 +523,54 @@ class _Environment(logger._Logger):
     def lttng_relayd_live_port(self):
         # type: () -> int
         return 5402
+
+    @property
+    def preserve_test_env(self):
+        # type: () -> bool
+        return self._preserve_test_env
+
+    @staticmethod
+    def allows_destructive():
+        # type: () -> bool
+        return os.getenv("LTTNG_ENABLE_DESTRUCTIVE_TESTS", "") == "will-break-my-system"
+
+    def create_dummy_user(self):
+        # type: () -> (int, str)
+        # Create a dummy user. The uid and username will be eturned in a tuple.
+        # If the name already exists, an exception will be thrown.
+        # The users will be removed when the environment is cleaned up.
+        name = "".join([random.choice(string.ascii_lowercase) for x in range(10)])
+
+        try:
+            entry = pwd.getpwnam(name)
+            raise Exception("User '{}' already exists".format(name))
+        except KeyError:
+            pass
+
+        # Create user
+        proc = subprocess.Popen(
+            [
+                "useradd",
+                "--base-dir",
+                str(self._lttng_home.path),
+                "--create-home",
+                "--no-user-group",
+                "--shell",
+                "/bin/sh",
+                name,
+            ]
+        )
+        proc.wait()
+        if proc.returncode != 0:
+            raise Exception(
+                "Failed to create user '{}', useradd returned {}".format(
+                    name, proc.returncode
+                )
+            )
+
+        entry = pwd.getpwnam(name)
+        self._dummy_users[entry[2]] = name
+        return (entry[2], name)
 
     def create_temporary_directory(self, prefix=None):
         # type: (Optional[str]) -> pathlib.Path
@@ -593,8 +737,9 @@ class _Environment(logger._Logger):
         wait_time_between_events_us=0,
         wait_before_exit=False,
         wait_before_exit_file_path=None,
+        run_as=None,
     ):
-        # type: (int, int, bool, Optional[pathlib.Path]) -> _WaitTraceTestApplication
+        # type: (int, int, bool, Optional[pathlib.Path], Optional[str]) -> _WaitTraceTestApplication
         """
         Launch an application that will wait before tracing `event_count` events.
         """
@@ -610,6 +755,7 @@ class _Environment(logger._Logger):
             wait_time_between_events_us,
             wait_before_exit,
             wait_before_exit_file_path,
+            run_as,
         )
 
     def launch_test_application(self, subpath):
@@ -653,6 +799,38 @@ class _Environment(logger._Logger):
             self._sessiond = None
 
         self._terminate_relayd()
+
+        # The user accounts will always be deleted, but the home directories will
+        # be retained unless the user has opted to preserve the test environment.
+        userdel = ["userdel"]
+        if not self.preserve_test_env:
+            userdel += ["--remove"]
+        for uid, name in self._dummy_users.items():
+            # When subprocess is run during the interpreter teardown, ImportError
+            # may be raised; however, the commands seem to execute correctly.
+            # Eg.
+            #
+            # Exception ignored in: <function _Environment.__del__ at 0x7f2d62e3b9c0>
+            # Traceback (most recent call last):
+            #   File "tests/utils/lttngtest/environment.py", line 1024, in __del__
+            #   File "tests/utils/lttngtest/environment.py", line 1016, in _cleanup
+            #   File "/usr/lib/python3.11/subprocess.py", line 1026, in __init__
+            #   File "/usr/lib/python3.11/subprocess.py", line 1880, in _execute_child
+            #   File "<frozen os>", line 629, in get_exec_path
+            # ImportError: sys.meta_path is None, Python is likely shutting down
+            #
+            try:
+                _proc = subprocess.Popen(
+                    ["pkill", "--uid", str(uid)], stderr=subprocess.PIPE
+                )
+                _proc.wait()
+            except ImportError:
+                pass
+            try:
+                _proc = subprocess.Popen(userdel + [name], stderr=subprocess.PIPE)
+                _proc.wait()
+            except ImportError:
+                pass
 
         self._lttng_home = None
 
