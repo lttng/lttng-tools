@@ -15,7 +15,6 @@ import pathlib
 import socket
 import subprocess
 import sys
-import time
 
 # Import in-tree test utils
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
@@ -47,73 +46,16 @@ def test_live_hang(tap, test_env):
     session.stop()
     session.clear()
 
-    ctf_live_cc = bt2.find_plugin("ctf").source_component_classes["lttng-live"]
-    query_executor = bt2.QueryExecutor(
-        ctf_live_cc,
-        "sessions",
-        params={"url": "net://localhost:{}".format(test_env.lttng_relayd_live_port)},
-    )
-
-    # wait until 'ready'
-    ready = False
-    query_result = None
-    while not ready:
-        try:
-            query_result = query_executor.query()
-        except bt2._Error:
-            time.sleep(0.1)
-            continue
-
-        for live_session in query_result:
-            if live_session["session-name"] == session.name:
-                ready = True
-                break
-        time.sleep(0.1)
-
-    # start live viewer
-    bt2_args = [
-        "babeltrace2",
-        "-i",
-        "lttng-live",
-        "net://localhost:{}/host/{}/{}".format(
-            test_env.lttng_relayd_live_port, socket.gethostname(), session.name
-        ),
-        "--params=session-not-found-action=end",
-    ]
-    tap.diagnostic("Running bt2: {}".format(bt2_args))
-    bt2_proc = subprocess.Popen(bt2_args)
-
-    # wait until one client is connected
-    ready = False
-    while not ready:
-        try:
-            query_result = query_executor.query()
-        except bt2._Error:
-            time.sleep(0.1)
-            continue
-        for live_session in query_result:
-            if (
-                live_session["session-name"] == session.name
-                and live_session["client-count"] == 1
-            ):
-                ready = True
-                break
-        time.sleep(0.1)
+    viewer = test_env.launch_live_viewer(session.name)
+    viewer.wait_until_connected()
 
     session.destroy()
 
-    # assert live viewer has exited
-    stopped = False
-    try:
-        bt2_proc.wait(5)
-        stopped = True
-    except subprocess.TimeoutExpired as e:
-        tap.diagnostic("Timed out (5s) waiting for babeltrace2 to return")
+    viewer.wait()
     tap.test(
-        stopped and bt2_proc.returncode == 0, "BT2 live viewer exited successfully"
+        True,
+        "BT2 live viewer exited successfully",
     )
-    if not stopped:
-        bt2_proc.terminate()
 
 
 with lttngtest.test_environment(
