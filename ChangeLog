@@ -1,3 +1,8 @@
+2024-04-05 lttng-tools 2.13.13 (National Deep Dish Pizza Day)
+	* Fix: consumerd: leak of tracing buffers on relayd connectivity issue
+	* Fix: consumerd: wrong timer mentioned in error logging
+	* Fix: consumerd: type confusion in lttng_consumer_send_error
+
 2024-03-28 lttng-tools 2.13.12 (Respect Your Cat Day)
 	* Fix: baddr-statedump: use $(LIBTOOL) --mode=execute
 	* Fix: relayd: live client not notified of inactive streams
