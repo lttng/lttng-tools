@@ -620,6 +620,11 @@ class _Environment(logger._Logger):
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
         signal.signal(signal.SIGINT, self._handle_termination_signal)
 
+        if os.getenv("LTTNG_TEST_VERBOSE_BABELTRACE", "0") == "1":
+            # @TODO: Is there a way to feed the logging output to
+            # the logger._Logger instead of directly to stderr?
+            bt2.set_global_logging_level(bt2.LoggingLevel.TRACE)
+
         # Assumes the project's hierarchy to this file is:
         # tests/utils/python/this_file
         self._project_root = (
@@ -779,6 +784,9 @@ class _Environment(logger._Logger):
         self._log(
             "Launching relayd with LTTNG_HOME='${}'".format(str(self._lttng_home.path))
         )
+        verbose = []
+        if os.environ.get("LTTNG_TEST_VERBOSE_RELAYD") is not None:
+            verbose = ["-vvv"]
         process = subprocess.Popen(
             [
                 str(relayd_path),
@@ -788,7 +796,8 @@ class _Environment(logger._Logger):
                 "tcp://0.0.0.0:{}".format(self.lttng_relayd_data_port),
                 "-L",
                 "tcp://localhost:{}".format(self.lttng_relayd_live_port),
-            ],
+            ]
+            + verbose,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=relayd_env,
@@ -847,13 +856,17 @@ class _Environment(logger._Logger):
                     home_dir=str(self._lttng_home.path)
                 )
             )
+            verbose = []
+            if os.environ.get("LTTNG_TEST_VERBOSE_SESSIOND") is not None:
+                verbose = ["-vvv", "--verbose-consumer"]
             process = subprocess.Popen(
                 [
                     str(sessiond_path),
                     consumerd_path_option_name,
                     str(consumerd_path),
                     "--sig-parent",
-                ],
+                ]
+                + verbose,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=sessiond_env,
