@@ -24,6 +24,10 @@
 
 struct relay_viewer_session {
 	/*
+	 * The id of the relay viewer session. Uses the associated connection's socket FD.
+	 */
+	uint64_t id;
+	/*
 	 * Session list. Updates are protected by the session_list_lock.
 	 * Traversals are protected by RCU.
 	 * This list limits the design to having the sessions in at most
@@ -31,6 +35,20 @@ struct relay_viewer_session {
 	 */
 	struct cds_list_head session_list; /* RCU list. */
 	pthread_mutex_t session_list_lock; /* Protects list updates. */
+	/*
+	 * Unannounced stream list. Updates are protected by the
+	 * unannounced_stream_list_lock. This lock nests inside
+	 * the following locks (in order): relay session, ctf_trace,
+	 * and relay stream.
+	 *
+	 * Traversals are protected by RCU.
+	 */
+	struct cds_list_head unannounced_stream_list;
+	pthread_mutex_t unannounced_stream_list_lock;
+	/*
+	 * Node in the global viewer sessions hashtable.
+	 */
+	struct lttng_ht_node_u64 viewer_session_n;
 	/*
 	 * The viewer session's current trace chunk is initially set, when
 	 * a viewer attaches to the viewer session, to a copy the corresponding

@@ -9,6 +9,7 @@
 
 #define _LGPL_SOURCE
 #include "ctf-trace.hpp"
+#include "live.hpp"
 #include "lttng-relayd.hpp"
 #include "session.hpp"
 #include "stream.hpp"
@@ -20,6 +21,10 @@
 
 #include <urcu/rculist.h>
 
+/* Global session id used in the session creation. */
+static uint64_t last_viewer_session_id;
+static pthread_mutex_t last_viewer_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
+
 struct relay_viewer_session *viewer_session_create()
 {
 	struct relay_viewer_session *vsession;
@@ -28,7 +33,14 @@ struct relay_viewer_session *viewer_session_create()
 	if (!vsession) {
 		goto end;
 	}
+	pthread_mutex_lock(&last_viewer_session_id_lock);
+	vsession->id = ++last_viewer_session_id;
+	pthread_mutex_unlock(&last_viewer_session_id_lock);
 	CDS_INIT_LIST_HEAD(&vsession->session_list);
+	CDS_INIT_LIST_HEAD(&vsession->unannounced_stream_list);
+	pthread_mutex_init(&vsession->unannounced_stream_list_lock, nullptr);
+	lttng_ht_node_init_u64(&vsession->viewer_session_n, vsession->id);
+	lttng_ht_add_unique_u64(viewer_sessions_ht, &vsession->viewer_session_n);
 end:
 	return vsession;
 }
@@ -98,6 +110,40 @@ enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_s
 		/* Ownership is transfered to the list. */
 		cds_list_add_rcu(&session->viewer_session_node, &vsession->session_list);
 		pthread_mutex_unlock(&vsession->session_list_lock);
+
+		/*
+		 * Immediately create new viewer streams for the attached session
+		 * so that the viewer streams hold a reference on the any relay
+		 * streams that could be unpublished between now and the next
+		 * GET_NEW_STREAMS command from the live viewer.
+		 */
+		uint32_t created = 0;
+		uint32_t total = 0;
+		uint32_t unsent = 0;
+		bool closed = false;
+		const int make_viewer_streams_ret = make_viewer_streams(session,
+								  vsession,
+								  LTTNG_VIEWER_SEEK_BEGINNING,
+								  &total,
+								  &unsent,
+								  &created,
+								  &closed);
+
+		if (make_viewer_streams_ret == 0) {
+			DBG("Created %d new viewer streams while attaching to relay session %" PRIu64, created, session->id);
+		} else {
+			/*
+			 * Warning, since the creation of the streams will be retried when
+			 * the viewer next sends the GET_NEW_STREAMS commands.
+			 */
+			WARN("Failed to create new viewer streams while attaching to relay session %" PRIu64 ", ret=%d, total=%d, unsent=%d, created=%d, closed=%d",
+			     session->id,
+			     make_viewer_streams_ret,
+			     total,
+			     unsent,
+			     created,
+			     closed);
+		}
 	} else {
 		/* Put our local ref. */
 		session_put(session);
@@ -126,6 +172,7 @@ static int viewer_session_detach(struct relay_viewer_session *vsession,
 		/* Release reference held by the list. */
 		session_put(session);
 	}
+
 	/* Safe since we know the session exists. */
 	pthread_mutex_unlock(&session->lock);
 	return ret;
@@ -133,6 +180,12 @@ static int viewer_session_detach(struct relay_viewer_session *vsession,
 
 void viewer_session_destroy(struct relay_viewer_session *vsession)
 {
+	struct lttng_ht_iter iter;
+
+	LTTNG_ASSERT(cds_list_empty(&vsession->unannounced_stream_list));
+
+	iter.iter.node = &vsession->viewer_session_n.node;
+	lttng_ht_del(viewer_sessions_ht, &iter);
 	lttng_trace_chunk_put(vsession->current_trace_chunk);
 	free(vsession);
 }
@@ -155,6 +208,7 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		if (!viewer_stream_get(vstream)) {
 			continue;
 		}
+
 		if (vstream->stream->trace->session != session) {
 			viewer_stream_put(vstream);
 			continue;
@@ -166,6 +220,25 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		 * end condition. This "put" will cause the proper
 		 * teardown of the viewer stream.
 		 */
+		viewer_stream_put(vstream);
+	}
+
+	for (auto *vstream: lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+		     &relay_viewer_stream::viewer_stream_node>(vsession->unannounced_stream_list))
+	{
+		if (!viewer_stream_get(vstream)) {
+			continue;
+		}
+		if (vstream->stream->trace->session != session) {
+			viewer_stream_put(vstream);
+			continue;
+		}
+		pthread_mutex_lock(&vsession->unannounced_stream_list_lock);
+		cds_list_del_rcu(&vstream->viewer_stream_node);
+		pthread_mutex_unlock(&vsession->unannounced_stream_list_lock);
+		/* Local reference */
+		viewer_stream_put(vstream);
+		/* Reference from unannounced_stream_list */
 		viewer_stream_put(vstream);
 	}
 

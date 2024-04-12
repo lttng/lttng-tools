@@ -268,13 +268,61 @@ end:
 }
 
 /*
+ * Sends one viewer stream to the given socket.
+ *
+ * This function needs to be called with the stream locked.
+ *
+ * Return 0 on success, or else a negative value.
+ */
+static ssize_t send_one_viewer_stream(struct lttcomm_sock *sock,
+				      struct relay_viewer_stream *vstream)
+{
+	struct ctf_trace *ctf_trace;
+	struct lttng_viewer_stream send_stream = {};
+	ssize_t ret = -1;
+
+	ASSERT_LOCKED(vstream->stream->lock);
+
+	ctf_trace = vstream->stream->trace;
+	send_stream.id = htobe64(vstream->stream->stream_handle);
+	send_stream.ctf_trace_id = htobe64(ctf_trace->id);
+	send_stream.metadata_flag = htobe32(vstream->stream->is_metadata);
+	if (lttng_strncpy(
+		    send_stream.path_name, vstream->path_name, sizeof(send_stream.path_name))) {
+		ret = -1; /* Error. */
+		goto end;
+	}
+	if (lttng_strncpy(send_stream.channel_name,
+			  vstream->channel_name,
+			  sizeof(send_stream.channel_name))) {
+		ret = -1; /* Error. */
+		goto end;
+	}
+
+	DBG("Sending stream %" PRIu64 " to viewer", vstream->stream->stream_handle);
+	vstream->sent_flag = true;
+
+	ret = send_response(sock, &send_stream, sizeof(send_stream));
+	if (ret < 0) {
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+/*
  * Send viewer streams to the given socket. The ignore_sent_flag indicates if
  * this function should ignore the sent flag or not.
  *
  * Return 0 on success or else a negative value.
  */
-static ssize_t
-send_viewer_streams(struct lttcomm_sock *sock, uint64_t session_id, unsigned int ignore_sent_flag)
+static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
+				   uint64_t session_id,
+				   unsigned int ignore_sent_flag,
+				   struct relay_viewer_session *viewer_session)
 {
 	ssize_t ret;
 
@@ -283,8 +331,6 @@ send_viewer_streams(struct lttcomm_sock *sock, uint64_t session_id, unsigned int
 						 decltype(relay_viewer_stream::stream_n),
 						 &relay_viewer_stream::stream_n>(
 		     *viewer_streams_ht->ht)) {
-		struct ctf_trace *ctf_trace;
-		struct lttng_viewer_stream send_stream = {};
 
 		health_code_update();
 
@@ -301,36 +347,50 @@ send_viewer_streams(struct lttcomm_sock *sock, uint64_t session_id, unsigned int
 			continue;
 		}
 
-		ctf_trace = vstream->stream->trace;
-		send_stream.id = htobe64(vstream->stream->stream_handle);
-		send_stream.ctf_trace_id = htobe64(ctf_trace->id);
-		send_stream.metadata_flag = htobe32(vstream->stream->is_metadata);
-		if (lttng_strncpy(send_stream.path_name,
-				  vstream->path_name,
-				  sizeof(send_stream.path_name))) {
-			pthread_mutex_unlock(&vstream->stream->lock);
-			viewer_stream_put(vstream);
-			ret = -1; /* Error. */
-			goto end;
-		}
-		if (lttng_strncpy(send_stream.channel_name,
-				  vstream->channel_name,
-				  sizeof(send_stream.channel_name))) {
-			pthread_mutex_unlock(&vstream->stream->lock);
-			viewer_stream_put(vstream);
-			ret = -1; /* Error. */
-			goto end;
-		}
-
-		DBG("Sending stream %" PRIu64 " to viewer", vstream->stream->stream_handle);
-		vstream->sent_flag = true;
+		ret = send_one_viewer_stream(sock, vstream);
 		pthread_mutex_unlock(&vstream->stream->lock);
-
-		ret = send_response(sock, &send_stream, sizeof(send_stream));
-		viewer_stream_put(vstream);
 		if (ret < 0) {
+			viewer_stream_put(vstream);
 			goto end;
 		}
+
+		pthread_mutex_lock(&viewer_session->unannounced_stream_list_lock);
+		cds_list_del_rcu(&vstream->viewer_stream_node);
+		pthread_mutex_unlock(&viewer_session->unannounced_stream_list_lock);
+		viewer_stream_put(vstream);
+	}
+
+	/*
+	 * Any remaining streams that have been seen, but are perhaps unpublished
+	 * due to a session being destroyed in between attach and get_new_streams.
+	 */
+	for (auto *vstream : lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+		     &relay_viewer_stream::viewer_stream_node>(viewer_session->unannounced_stream_list)) {
+		health_code_update();
+		if (!viewer_stream_get(vstream)) {
+			continue;
+		}
+
+		pthread_mutex_lock(&vstream->stream->lock);
+		if (vstream->stream->trace->session->id != session_id) {
+			pthread_mutex_unlock(&vstream->stream->lock);
+			viewer_stream_put(vstream);
+			continue;
+		}
+
+		ret = send_one_viewer_stream(sock, vstream);
+		pthread_mutex_unlock(&vstream->stream->lock);
+		if (ret < 0) {
+			viewer_stream_put(vstream);
+			goto end;
+		}
+
+		pthread_mutex_lock(&viewer_session->unannounced_stream_list_lock);
+		cds_list_del_rcu(&vstream->viewer_stream_node);
+		viewer_stream_put(vstream);
+		pthread_mutex_unlock(&viewer_session->unannounced_stream_list_lock);
+		viewer_stream_put(vstream);
+
 	}
 
 	ret = 0;
@@ -350,12 +410,12 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-static int make_viewer_streams(struct relay_session *relay_session,
+int make_viewer_streams(struct relay_session *relay_session,
 			       struct relay_viewer_session *viewer_session,
 			       enum lttng_viewer_seek seek_t,
-			       uint32_t *nb_total,
-			       uint32_t *nb_unsent,
-			       uint32_t *nb_created,
+			       unsigned int *nb_total,
+			       unsigned int *nb_unsent,
+			       unsigned int *nb_created,
 			       bool *closed)
 {
 	int ret;
@@ -365,6 +425,47 @@ static int make_viewer_streams(struct relay_session *relay_session,
 
 	if (relay_session->connection_closed) {
 		*closed = true;
+	}
+
+	/*
+	 * Check unannounced viewer streams for any that have been seen but are no longer published.
+	 */
+	for (auto *viewer_stream : lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+		     &relay_viewer_stream::viewer_stream_node>(viewer_session->unannounced_stream_list)) {
+		if (!viewer_stream_get(viewer_stream)) {
+			DBG("Couldn't get reference for viewer_stream");
+			continue;
+		}
+
+		if (viewer_stream->sent_flag) {
+			ERR("logic error -> viewer stream %ld is in unannounced_stream_list is marked as sent",
+			    viewer_stream->stream->stream_handle);
+			abort();
+		}
+
+		if (viewer_stream->stream->published) {
+			/*
+			 * This stream should be handled later when iterating via the
+			 * ctf_traces
+			 */
+			viewer_stream_put(viewer_stream);
+			continue;
+		}
+
+		if (viewer_stream->stream->trace->session->id != relay_session->id) {
+			viewer_stream_put(viewer_stream);
+			continue;
+		}
+
+		if (nb_unsent) {
+			(*nb_unsent)++;
+		}
+
+		if (nb_total) {
+			(*nb_total)++;
+		}
+
+		viewer_stream_put(viewer_stream);
 	}
 
 	/*
@@ -384,6 +485,11 @@ static int make_viewer_streams(struct relay_session *relay_session,
 
 		auto ctf_trace =
 			lttng::make_unique_wrapper<struct ctf_trace, ctf_trace_put>(raw_ctf_trace);
+		/*
+		 * The trace metadata state may be updated while iterating over all the
+		 * relay streams associated with the trace, so the lock is required.
+		 */
+		const lttng::pthread::lock_guard ctf_trace_lock(ctf_trace->lock);
 
 		/*
 		 * Iterate over all the streams of the trace to see if we have a
@@ -513,6 +619,25 @@ static int make_viewer_streams(struct relay_session *relay_session,
 					goto end;
 				}
 
+				/*
+				 * Add the new stream to the list of streams to publish for
+				 * this session.
+				 */
+				pthread_mutex_lock(
+					&viewer_session->unannounced_stream_list_lock);
+				cds_list_add_rcu(&viewer_stream->viewer_stream_node,
+						 &viewer_session->unannounced_stream_list);
+				pthread_mutex_unlock(
+					&viewer_session->unannounced_stream_list_lock);
+				/*
+				 * Get for the unannounced stream list, this should be
+				 * put when the unannounced stream is sent.
+				 */
+				if (!viewer_stream_get(viewer_stream)) {
+					ERR("Unable to get self-reference on viewer stream");
+					abort();
+				}
+
 				if (nb_created) {
 					/* Update number of created stream counter. */
 					(*nb_created)++;
@@ -533,7 +658,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 			}
 			/* Update number of total stream counter. */
 			if (nb_total) {
-				if (stream->is_metadata) {
+			   	if (stream->is_metadata) {
 					if (!stream->closed ||
 					    stream->metadata_received >
 						    viewer_stream->metadata_sent) {
@@ -1124,7 +1249,7 @@ end_free:
 static int viewer_get_new_streams(struct relay_connection *conn)
 {
 	int ret, send_streams = 0;
-	uint32_t nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
+	unsigned int nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
 	struct lttng_viewer_new_streams_request request;
 	struct lttng_viewer_new_streams_response response;
 	struct relay_session *session = nullptr;
@@ -1199,7 +1324,7 @@ static int viewer_get_new_streams(struct relay_connection *conn)
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
 	/* Only send back the newly created streams with the unsent ones. */
-	nb_streams = nb_created + nb_unsent;
+	nb_streams = nb_unsent + nb_created;
 	response.streams_count = htobe32(nb_streams);
 
 	/*
@@ -1237,7 +1362,7 @@ send_reply:
 	 * streams that were not sent from that point will be sent to
 	 * the viewer.
 	 */
-	ret = send_viewer_streams(conn->sock, session_id, 0);
+	ret = send_viewer_streams(conn->sock, session_id, 0, conn->viewer_session);
 	if (ret < 0) {
 		goto end_put_session;
 	}
@@ -1257,7 +1382,7 @@ static int viewer_attach_session(struct relay_connection *conn)
 {
 	int send_streams = 0;
 	ssize_t ret;
-	uint32_t nb_streams = 0;
+	unsigned int nb_streams = 0;
 	enum lttng_viewer_seek seek_type;
 	struct lttng_viewer_attach_session_request request;
 	struct lttng_viewer_attach_session_response response;
@@ -1390,7 +1515,7 @@ send_reply:
 	}
 
 	/* Send stream and ignore the sent flag. */
-	ret = send_viewer_streams(conn->sock, session_id, 1);
+	ret = send_viewer_streams(conn->sock, session_id, 1, conn->viewer_session);
 	if (ret < 0) {
 		goto end_put_session;
 	}
@@ -1786,6 +1911,20 @@ static int viewer_get_next_index(struct relay_connection *conn)
 		    conn->viewer_session->current_trace_chunk ?
 			    std::to_string(viewer_session_chunk_id).c_str() :
 			    "None");
+	} else if (vstream->stream_file.trace_chunk && rstream->completed_rotation_count == vstream->last_seen_rotation_count && !rstream->trace_chunk) {
+		/*
+		 * When a relay stream is closed, there is a window before the rotation of the
+		 * streams happens, during which the next index may be fetched. If the seen
+		 * rotations are the same and the relay stream trace chunk is null, don't rotate.
+		 * When the close finishes, the rotation count on the relay stream will go up.
+		 */
+		DBG("Transition to latest chunk check (%s -> %s): relay stream chunk is null, but viewer stream knows a chunk and isn't yet behind a rotation",
+		    vstream->stream_file.trace_chunk ?
+			    std::to_string(stream_file_chunk_id).c_str() :
+			    "None",
+		    conn->viewer_session->current_trace_chunk ?
+			    std::to_string(viewer_session_chunk_id).c_str() :
+			    "None");
 	} else {
 		DBG("Transition to latest chunk check (%s -> %s): Viewer stream chunk ID and viewer session chunk ID differ, rotating viewer stream",
 		    vstream->stream_file.trace_chunk ?
@@ -1820,7 +1959,7 @@ static int viewer_get_next_index(struct relay_connection *conn)
 		if (rstream->closed) {
 			viewer_index.status = LTTNG_VIEWER_INDEX_HUP;
 			DBG("Cannot open index for stream id %" PRIu64
-			    "stream is closed, returning status=%s",
+			    " stream is closed, returning status=%s",
 			    (uint64_t) be64toh(request_index.stream_id),
 			    lttng_viewer_next_index_return_code_str(
 				    (enum lttng_viewer_next_index_return_code) viewer_index.status));
@@ -2181,7 +2320,7 @@ static int viewer_get_metadata(struct relay_connection *conn)
 		bool acquired_reference;
 
 		DBG("Viewer session and viewer stream chunk differ: "
-		    "vsession chunk %p vstream chunk %p",
+		    "vsession chunk %p vstream chunk=%p",
 		    conn->viewer_session->current_trace_chunk,
 		    vstream->stream_file.trace_chunk);
 		lttng_trace_chunk_put(vstream->stream_file.trace_chunk);

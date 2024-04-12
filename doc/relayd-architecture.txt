@@ -22,6 +22,8 @@ relay connection (main.c, for sessiond/consumer)
 live connection (live.c, for client)
   |
   \-> 1 viewer session
+       |     |
+       |     \-> (transient ref) 0 or many unannounced relay streams
        |
        \-> 0 or many session (actually a reference to session as created
              |                by the relay connection)
@@ -30,8 +32,9 @@ live connection (live.c, for client)
 
 There are global tables declared in lttng-relayd.h for sessions
 (sessions_ht, indexed by session id), streams (relay_streams_ht, indexed
-by stream handle), and viewer streams (viewer_streams_ht, indexed by
-stream handle). The purpose of those tables is to allow fast lookup of
+by stream handle), viewer sessions (viewer_sessions_ht, indexed by
+connection sock fd), and viewer streams (viewer_streams_ht, indexed
+by stream handle). The purpose of those tables is to allow fast lookup of
 those objects using the IDs received in the communication protocols.
 
 There is also one connection hash table per worker thread. There is one
@@ -56,7 +59,10 @@ There is also a "lock" mutex in each object. Those are used to
 synchronize between threads (currently the main.c relay thread and
 live.c client thread) when objects are shared. Locks can be nested from
 the outermost object to the innermost object. IOW, the ctf-trace lock can
-nest within the session lock.
+nest within the session lock. The unannounced stream list lock in viewer
+sessions is an exception to the default locking order: it may be nested
+inside the following locks (in order): relay session, ctf_trace, and relay
+stream.
 
 RCU linked lists are used to iterate using RCU, and are protected by
 their own mutex for modifications. Iterations should be confirmed using

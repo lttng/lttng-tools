@@ -39,6 +39,13 @@ struct relay_viewer_stream {
 	/* Back ref to stream. */
 	struct relay_stream *stream;
 
+	/*
+	 * Member of unannounced_stream_list in struct viewer_sesion.
+	 * Updates are protected by the unannounced_stream_list_lock, and
+	 * traversals are protected by RCU.
+	 */
+	struct cds_list_head viewer_stream_node;
+
 	struct {
 		struct fs_handle *handle;
 		struct lttng_trace_chunk *trace_chunk;

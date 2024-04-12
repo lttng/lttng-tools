@@ -25,6 +25,7 @@
 #include "tracefile-array.hpp"
 #include "utils.hpp"
 #include "version.hpp"
+#include "viewer-session.hpp"
 #include "viewer-stream.hpp"
 
 #include <common/align.hpp>
@@ -168,6 +169,9 @@ struct lttng_ht *viewer_streams_ht;
 
 /* Global relay sessions hash table. */
 struct lttng_ht *sessions_ht;
+
+/* Global viewer sessions hash table. */
+struct lttng_ht *viewer_sessions_ht;
 
 /* Relayd health monitoring */
 struct health_app *health_relayd;
@@ -774,11 +778,13 @@ static void relayd_cleanup()
 
 	if (viewer_streams_ht)
 		lttng_ht_destroy(viewer_streams_ht);
+	if (viewer_sessions_ht) {
+		lttng_ht_destroy(viewer_sessions_ht);
+	}
 	if (relay_streams_ht)
 		lttng_ht_destroy(relay_streams_ht);
 	if (sessions_ht)
 		lttng_ht_destroy(sessions_ht);
-
 	free(opt_output_path);
 	free(opt_working_directory);
 
@@ -1513,6 +1519,10 @@ end:
 static void publish_connection_local_streams(struct relay_connection *conn)
 {
 	struct relay_session *session = conn->session;
+	unsigned int created = 0;
+	bool closed = false;
+
+	LTTNG_ASSERT(viewer_sessions_ht);
 
 	/*
 	 * We publish all streams belonging to a session atomically wrt
@@ -1529,9 +1539,57 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	/*
 	 * Inform the viewer that there are new streams in the session.
 	 */
-	if (session->viewer_attached) {
-		uatomic_set(&session->new_streams, 1);
+	if (!session->viewer_attached) {
+		goto unlock;
 	}
+
+	/*
+	 * Create viewer_streams for all the newly published streams for this relay session.
+	 * This searches through all known viewer sessions and finds those that are
+	 * attached to this connection's relay session. This is done so that the newer
+	 * viewer streams will hold a reference on any relay streams that already exist,
+	 * but may be unpublished between now and the next GET_NEW_STREAMS from the
+	 * attached live viewer.
+	 */
+	for (auto *viewer_session: lttng::urcu::lfht_iteration_adapter<relay_viewer_session,
+		     decltype(relay_viewer_session::viewer_session_n),
+		     &relay_viewer_session::viewer_session_n>(*viewer_sessions_ht->ht))
+	{
+		for (auto *session_iter: lttng::urcu::rcu_list_iteration_adapter<relay_session,
+			     &relay_session::viewer_session_node>(viewer_session->session_list))
+		{
+			if (session != session_iter) {
+				continue;
+			}
+			const int ret = make_viewer_streams(session,
+							    viewer_session,
+							    LTTNG_VIEWER_SEEK_BEGINNING,
+							    nullptr,
+							    nullptr,
+							    &created,
+							    &closed);
+			if (ret == 0) {
+				DBG("Created %d new viewer streams during publication of relay streams for relay session %" PRIu64,
+				    created,
+				    session->id);
+			} else if (ret < 0) {
+				/*
+				 * Warning, since the creation of the
+				 * streams will be retried when the viewer
+				 * next sends the GET_NEW_STREAMS again.
+				 */
+				WARN("Failed to create new viewer streams during publication of relay streams for relay session %" PRIu64
+				     ", ret=%d, created=%d, closed=%d",
+				     session->id,
+				     ret,
+				     created,
+				     closed);
+			}
+		}
+	}
+unlock:
+	uatomic_set(&session->new_streams, 1);
+	pthread_mutex_unlock(&session->lock);
 }
 
 static int conform_channel_path(char *channel_path)
@@ -4389,6 +4447,13 @@ int main(int argc, char **argv)
 	/* tables of streams indexed by stream ID */
 	relay_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!relay_streams_ht) {
+		retval = -1;
+		goto exit_options;
+	}
+
+	/* tables of viewer sessions indexed by session ID */
+	viewer_sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!viewer_sessions_ht) {
 		retval = -1;
 		goto exit_options;
 	}

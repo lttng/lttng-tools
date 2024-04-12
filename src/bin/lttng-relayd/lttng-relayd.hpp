@@ -42,6 +42,7 @@ enum relay_group_output_by {
  */
 extern struct lttng_ht *sessions_ht;
 extern struct lttng_ht *relay_streams_ht;
+extern struct lttng_ht *viewer_sessions_ht;
 extern struct lttng_ht *viewer_streams_ht;
 extern struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
 

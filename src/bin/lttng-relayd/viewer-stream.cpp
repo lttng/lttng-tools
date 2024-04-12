@@ -69,7 +69,6 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		PERROR("relay viewer stream zmalloc");
 		goto error;
 	}
-
 	if (trace_chunk) {
 		const bool acquired_reference = lttng_trace_chunk_get(trace_chunk);
 
@@ -211,7 +210,6 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	lttng_ht_node_init_u64(&vstream->stream_n, stream->stream_handle);
 	urcu_ref_init(&vstream->ref);
 	lttng_ht_add_unique_u64(viewer_streams_ht, &vstream->stream_n);
-
 	return vstream;
 
 error:
