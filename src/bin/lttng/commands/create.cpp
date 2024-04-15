@@ -479,7 +479,8 @@ static int create_session(const char *session_name)
 	/* Init lttng session config */
 	ret = config_init(created_session_name);
 	if (ret < 0) {
-		ret = CMD_ERROR;
+		MSG("Unable to initialize configuration for created session: future commands will require the target session name explicitly");
+		ret = CMD_WARNING;
 		goto error;
 	}
 

@@ -54,6 +54,7 @@ static FILE *open_config(const char *path, const char *mode)
 
 	fp = fopen(file_path, mode);
 	if (fp == nullptr) {
+		PWARN("Failed to open configuration file '%s'", file_path);
 		goto error;
 	}
 
@@ -74,7 +75,6 @@ static int create_config_file(const char *path)
 
 	fp = open_config(path, "w+");
 	if (fp == nullptr) {
-		ERR("Unable to create config file");
 		ret = -1;
 		goto error;
 	}
