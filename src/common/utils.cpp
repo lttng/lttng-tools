@@ -783,6 +783,60 @@ char *utils_get_lttng_ust_ctl_path_override_dir()
 }
 
 /*
+ * Get configured run directory. Dynamically allocated, must be freed
+ * by the caller.
+ */
+char *utils_get_rundir(gid_t tracing_group_id)
+{
+	char *run_dir = nullptr;
+	int ret = -1;
+
+	const auto *run_dir_env = lttng_secure_getenv(DEFAULT_LTTNG_RUNDIR_ENV_VAR);
+	if (run_dir_env) {
+		run_dir = strdup(run_dir_env);
+		if (!run_dir) {
+			PERROR("Failed to duplicate `%s` environment variable contents",
+			       DEFAULT_LTTNG_RUNDIR_ENV_VAR);
+			return nullptr;
+		}
+	} else {
+		/*
+		 * Legacy behaviour: if the user is root, use the system rundir.
+		 * Else, use the HOME_RUNDIR.
+		 */
+		if (getuid() == 0 || tracing_group_id != 0) {
+			run_dir = strdup(DEFAULT_LTTNG_RUNDIR);
+			if (!run_dir) {
+				PERROR("Failed to duplicate default run directory path");
+				return nullptr;
+			}
+		} else {
+			const auto *home_dir = utils_get_home_dir();
+			if (!home_dir) {
+				ERR("Failed to get home directory while determining run directory path");
+				return nullptr;
+			}
+
+			ret = asprintf(&run_dir, DEFAULT_LTTNG_HOME_RUNDIR, home_dir);
+			if (ret < 0) {
+				/*
+				 * The contents of run_dir during an error may be undefined. Set
+				 * the value to nullptr to avoid a potentially non-pointer from
+				 * being returned.
+				 */
+				run_dir = nullptr;
+				PERROR("Failed to format run directory path: default_home_rundir=`%s`, home_dir=`%s`",
+				       DEFAULT_LTTNG_HOME_RUNDIR,
+				       home_dir);
+				return nullptr;
+			}
+		}
+	}
+
+	return run_dir;
+}
+
+/*
  * Get user's home directory. Dynamically allocated, must be freed
  * by the caller.
  */

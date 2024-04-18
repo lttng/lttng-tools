@@ -189,91 +189,77 @@ static int config_set_ust_ctl_paths(struct sessiond_config *config,
 	return 0;
 }
 
-static int config_set_paths_root(struct sessiond_config *config)
+static int config_set_paths(struct sessiond_config *config)
 {
-	int ret = 0;
-
-	config_string_set(&config->rundir, strdup(DEFAULT_LTTNG_RUNDIR));
+	config_string_set(&config->rundir, utils_get_rundir(0));
 	if (!config->rundir.value) {
-		ERR("Failed to set rundir");
-		ret = -1;
-		goto end;
+		ERR("Failed to set rundir in session daemon's configuration");
+		return -1;
 	}
 
-	config_string_set_static(&config->apps_unix_sock_path, DEFAULT_GLOBAL_APPS_UNIX_SOCK);
-	config_string_set_static(&config->wait_shm.path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
-	config_string_set_static(&config->client_unix_sock_path, DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
-	config_string_set_static(&config->health_unix_sock_path, DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
-end:
-	return ret;
-}
+	{
+		char *app_sock_path;
 
-static int config_set_paths_non_root(struct sessiond_config *config)
-{
-	int ret = 0;
-	const char *home_path = utils_get_home_dir();
-	char *str;
+		const auto fmt_ret =
+			asprintf(&app_sock_path, DEFAULT_APPS_UNIX_SOCK, config->rundir.value);
+		if (fmt_ret < 0) {
+			ERR("Failed to format apps unix socket path");
+			return -1;
+		}
 
-	if (home_path == nullptr) {
-		ERR("Can't get HOME directory for sockets creation.");
-		ret = -1;
-		goto end;
+		/* Ownership of app_sock_path transfered to config. */
+		config_string_set(&config->apps_unix_sock_path, app_sock_path);
 	}
 
-	/*
-	 * Create rundir from home path. This will create something like
-	 * $HOME/.lttng
-	 */
-	ret = asprintf(&str, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
-	if (ret < 0) {
-		ERR("Failed to set rundir");
-		goto end;
-	}
-	config_string_set(&config->rundir, str);
-	str = nullptr;
+	const auto current_uid = getuid();
+	if (current_uid == 0) {
+		config_string_set_static(&config->wait_shm.path, DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
+	} else {
+		char *home_apps_wait_shm_path;
 
-	ret = asprintf(&str, DEFAULT_HOME_APPS_UNIX_SOCK, home_path);
-	if (ret < 0) {
-		ERR("Failed to set default home apps unix socket path");
-		goto end;
-	}
+		const auto fmt_ret = asprintf(
+			&home_apps_wait_shm_path, DEFAULT_HOME_APPS_WAIT_SHM_PATH, current_uid);
+		if (fmt_ret < 0) {
+			ERR("Failed to set default home apps wait shm path");
+			return -1;
+		}
 
-	config_string_set(&config->apps_unix_sock_path, str);
-	str = nullptr;
-	ret = asprintf(&str, DEFAULT_HOME_APPS_WAIT_SHM_PATH, getuid());
-	if (ret < 0) {
-		ERR("Failed to set default home apps wait shm path");
-		goto end;
+		/* Ownership of home_apps_wait_shm_path transfered to config. */
+		config_string_set(&config->wait_shm.path, home_apps_wait_shm_path);
 	}
 
-	config_string_set(&config->wait_shm.path, str);
-	str = nullptr;
+	{
+		char *client_unix_sock_path;
 
-	ret = asprintf(&str, DEFAULT_HOME_CLIENT_UNIX_SOCK, home_path);
-	if (ret < 0) {
-		ERR("Failed to set default home client unix socket path");
-		goto end;
+		const auto fmt_ret = asprintf(
+			&client_unix_sock_path, DEFAULT_CLIENT_UNIX_SOCK, config->rundir.value);
+		if (fmt_ret < 0) {
+			ERR("Failed to format client unix sock path");
+			return -1;
+		}
+
+		config_string_set(&config->client_unix_sock_path, client_unix_sock_path);
 	}
-	config_string_set(&config->client_unix_sock_path, str);
-	str = nullptr;
 
-	ret = asprintf(&str, DEFAULT_HOME_HEALTH_UNIX_SOCK, home_path);
-	if (ret < 0) {
-		ERR("Failed to set default home health UNIX socket path");
-		goto end;
+	{
+		char *health_unix_sock_path;
+
+		const auto fmt_ret = asprintf(
+			&health_unix_sock_path, DEFAULT_HEALTH_UNIX_SOCK, config->rundir.value);
+		if (fmt_ret < 0) {
+			ERR("Failed to format health unix sock path");
+			return -1;
+		}
+
+		config_string_set(&config->health_unix_sock_path, health_unix_sock_path);
 	}
-	config_string_set(&config->health_unix_sock_path, str);
-	str = nullptr;
 
-	ret = 0;
-end:
-	return ret;
+	return 0;
 }
 
 int sessiond_config_init(struct sessiond_config *config)
 {
 	int ret;
-	const bool is_root = (getuid() == 0);
 	char *str;
 	auto lttng_ust_ctl_path_override = lttng::make_unique_wrapper<char, lttng::memory::free>(
 		utils_get_lttng_ust_ctl_path_override_dir());
@@ -281,11 +267,7 @@ int sessiond_config_init(struct sessiond_config *config)
 	LTTNG_ASSERT(config);
 	memcpy(config, &sessiond_config_build_defaults, sizeof(*config));
 
-	if (is_root) {
-		ret = config_set_paths_root(config);
-	} else {
-		ret = config_set_paths_non_root(config);
-	}
+	ret = config_set_paths(config);
 	if (ret < 0) {
 		goto error;
 	}

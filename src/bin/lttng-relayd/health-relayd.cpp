@@ -15,7 +15,9 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
+#include <common/exception.hpp>
 #include <common/fd-tracker/utils.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
 
@@ -41,17 +43,18 @@
 #include <urcu/compiler.h>
 #include <urcu/list.h>
 
-/* Global health check unix path */
-static char health_unix_sock_path[PATH_MAX];
-
 int health_quit_pipe[2] = { -1, -1 };
+
+namespace {
+/* Global health check unix path */
+char health_unix_sock_path[PATH_MAX];
 
 /*
  * Send data on a unix socket using the liblttsessiondcomm API.
  *
  * Return lttcomm error code.
  */
-static int send_unix_sock(int sock, void *buf, size_t len)
+int send_unix_sock(int sock, void *buf, size_t len)
 {
 	/* Check valid length */
 	if (len == 0) {
@@ -61,57 +64,54 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
-static int create_lttng_rundir_with_perm(const char *rundir)
+void create_lttng_rundir_with_perm(const char *rundir)
 {
-	int ret;
+	DBG_FMT("Creating LTTng run directory: `%s`", rundir);
 
-	DBG3("Creating LTTng run directory: %s", rundir);
-
-	ret = mkdir(rundir, S_IRWXU);
-	if (ret < 0) {
+	const auto mkdir_ret = mkdir(rundir, S_IRWXU);
+	if (mkdir_ret < 0) {
 		if (errno != EEXIST) {
-			ERR("Unable to create %s", rundir);
-			goto error;
-		} else {
-			ret = 0;
-		}
-	} else if (ret == 0) {
-		const int is_root = !getuid();
-
-		if (is_root) {
-			gid_t gid;
-
-			ret = utils_get_group_id(tracing_group_name, true, &gid);
-			if (ret) {
-				/* Default to root group. */
-				gid = 0;
-			}
-
-			ret = chown(rundir, 0, gid);
-			if (ret < 0) {
-				ERR("Unable to set group on %s", rundir);
-				PERROR("chown");
-				ret = -1;
-				goto error;
-			}
-
-			ret = chmod(rundir,
-				    S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
-					    S_IXOTH);
-			if (ret < 0) {
-				ERR("Unable to set permissions on %s", rundir);
-				PERROR("chmod");
-				ret = -1;
-				goto error;
-			}
+			LTTNG_THROW_POSIX(fmt::format("Failed to create rundir: path=`{}`", rundir),
+					  errno);
 		}
 	}
 
-error:
-	return ret;
+	const auto is_root = !getuid();
+	if (!is_root) {
+		/* Nothing more to do. */
+		return;
+	}
+
+	gid_t gid;
+	const auto get_group_id_ret = utils_get_group_id(tracing_group_name, true, &gid);
+	if (get_group_id_ret) {
+		/* Default to root group. */
+		gid = 0;
+	}
+
+	const auto chown_ret = chown(rundir, 0, gid);
+	if (chown_ret < 0) {
+		LTTNG_THROW_POSIX(
+			fmt::format("Failed to set group on rundir: path=`{}`, group_id={}",
+				    rundir,
+				    gid),
+			errno);
+	}
+
+	const auto permission_mask = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
+		S_IXOTH;
+	const auto chmod_ret = chmod(rundir, permission_mask);
+	if (chmod_ret < 0) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to set permissions on rundir: path=`{}`, permission={:o}",
+				rundir,
+				permission_mask),
+			errno);
+	}
 }
 
-static int parse_health_env()
+void parse_health_env()
 {
 	const char *health_path;
 
@@ -120,94 +120,45 @@ static int parse_health_env()
 		strncpy(health_unix_sock_path, health_path, PATH_MAX);
 		health_unix_sock_path[PATH_MAX - 1] = '\0';
 	}
-
-	return 0;
 }
 
-static int setup_health_path()
+void setup_health_path()
 {
-	int is_root, ret = 0;
-	const char *home_path = nullptr;
-	char *rundir = nullptr, *relayd_path = nullptr;
+	parse_health_env();
 
-	ret = parse_health_env();
-	if (ret) {
-		return ret;
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to determine RUNDIR for health socket creation");
 	}
 
-	is_root = !getuid();
-
-	if (is_root) {
-		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
-		if (!rundir) {
-			ret = -ENOMEM;
-			goto end;
-		}
-	} else {
-		/*
-		 * Create rundir from home path. This will create something like
-		 * $HOME/.lttng
-		 */
-		home_path = utils_get_home_dir();
-
-		if (home_path == nullptr) {
-			/* TODO: Add --socket PATH option */
-			ERR("Can't get HOME directory for sockets creation.");
-			ret = -EPERM;
-			goto end;
+	auto relayd_rundir_path = [&rundir_path]() {
+		char *raw_relayd_path = nullptr;
+		const auto fmt_ret =
+			asprintf(&raw_relayd_path, DEFAULT_RELAYD_PATH, rundir_path.get());
+		if (fmt_ret < 0) {
+			LTTNG_THROW_POSIX("Failed to fomat relayd rundir path", errno);
 		}
 
-		ret = asprintf(&rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
-		if (ret < 0) {
-			ret = -ENOMEM;
-			goto end;
-		}
+		return lttng::make_unique_wrapper<char, lttng::memory::free>(raw_relayd_path);
+	}();
+
+	create_lttng_rundir_with_perm(rundir_path.get());
+	create_lttng_rundir_with_perm(relayd_rundir_path.get());
+
+	if (strlen(health_unix_sock_path) != 0) {
+		return;
 	}
 
-	ret = asprintf(&relayd_path, DEFAULT_RELAYD_PATH, rundir);
-	if (ret < 0) {
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	ret = create_lttng_rundir_with_perm(rundir);
-	if (ret < 0) {
-		goto end;
-	}
-
-	ret = create_lttng_rundir_with_perm(relayd_path);
-	if (ret < 0) {
-		goto end;
-	}
-
-	if (is_root) {
-		if (strlen(health_unix_sock_path) != 0) {
-			goto end;
-		}
-		snprintf(health_unix_sock_path,
-			 sizeof(health_unix_sock_path),
-			 DEFAULT_GLOBAL_RELAY_HEALTH_UNIX_SOCK,
-			 (int) getpid());
-	} else {
-		/* Set health check Unix path */
-		if (strlen(health_unix_sock_path) != 0) {
-			goto end;
-		}
-
-		snprintf(health_unix_sock_path,
-			 sizeof(health_unix_sock_path),
-			 DEFAULT_HOME_RELAY_HEALTH_UNIX_SOCK,
-			 home_path,
-			 (int) getpid());
-	}
-
-end:
-	free(rundir);
-	free(relayd_path);
-	return ret;
+	snprintf(health_unix_sock_path,
+		 sizeof(health_unix_sock_path),
+		 DEFAULT_RELAY_HEALTH_UNIX_SOCK,
+		 rundir_path.get(),
+		 (int) getpid());
 }
 
-static int accept_unix_socket(void *data, int *out_fd)
+int accept_unix_socket(void *data, int *out_fd)
 {
 	int ret;
 	const int accepting_sock = *((int *) data);
@@ -223,7 +174,7 @@ end:
 	return ret;
 }
 
-static int open_unix_socket(void *data, int *out_fd)
+int open_unix_socket(void *data, int *out_fd)
 {
 	int ret;
 	const char *path = (const char *) data;
@@ -238,6 +189,7 @@ static int open_unix_socket(void *data, int *out_fd)
 end:
 	return ret;
 }
+} /* namespace */
 
 /*
  * Thread managing health check socket.
@@ -254,7 +206,12 @@ void *thread_manage_health_relayd(void *data __attribute__((unused)))
 
 	DBG("[thread] Manage health check started");
 
-	setup_health_path();
+	try {
+		setup_health_path();
+	} catch (const lttng::runtime_error& ex) {
+		ERR_FMT("Failed to setup health socket path of relay daemon: {}", ex.what());
+		goto error;
+	}
 
 	rcu_register_thread();
 

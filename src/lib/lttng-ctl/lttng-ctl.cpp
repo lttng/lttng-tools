@@ -17,6 +17,7 @@
 #include <common/bytecode/bytecode.hpp>
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
+#include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-array.hpp>
@@ -404,18 +405,30 @@ static int set_session_daemon_path()
 		in_tgroup = lttng_check_tracing_group();
 	}
 
+	auto rundir = lttng::make_unique_wrapper<char, lttng::memory::free>();
 	if ((uid == 0) || in_tgroup == 1) {
-		const int ret = lttng_strncpy(sessiond_sock_path,
-					      DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
-					      sizeof(sessiond_sock_path));
+		int ret = -1;
 
-		if (ret) {
+		rundir.reset(utils_get_rundir(in_tgroup));
+		if (!rundir) {
+			goto error;
+		}
+		ret = snprintf(sessiond_sock_path,
+			       sizeof(sessiond_sock_path),
+			       DEFAULT_CLIENT_UNIX_SOCK,
+			       rundir.get());
+		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			goto error;
 		}
 	}
 
 	if (uid != 0) {
 		int ret;
+
+		rundir.reset(utils_get_rundir(0));
+		if (!rundir) {
+			goto error;
+		}
 
 		if (in_tgroup) {
 			/* Tracing group. */
@@ -435,8 +448,8 @@ static int set_session_daemon_path()
 		 */
 		ret = snprintf(sessiond_sock_path,
 			       sizeof(sessiond_sock_path),
-			       DEFAULT_HOME_CLIENT_UNIX_SOCK,
-			       utils_get_home_dir());
+			       DEFAULT_CLIENT_UNIX_SOCK,
+			       rundir.get());
 		if ((ret < 0) || (ret >= sizeof(sessiond_sock_path))) {
 			goto error;
 		}

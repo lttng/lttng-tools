@@ -20,6 +20,7 @@
 #include <common/defaults.hpp>
 #include <common/error.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/time.hpp>
 #include <common/utils.hpp>
 
@@ -155,42 +156,29 @@ error:
 
 static char *get_notification_channel_sock_path()
 {
-	int ret;
-	const bool is_root = !getuid();
-	char *sock_path;
-
-	sock_path = calloc<char>(LTTNG_PATH_MAX);
+	auto sock_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		zmalloc<char>(LTTNG_PATH_MAX));
 	if (!sock_path) {
-		goto error;
+		ERR("Failed to allocate notification channel socket path");
+		return nullptr;
 	}
 
-	if (is_root) {
-		ret = snprintf(
-			sock_path, LTTNG_PATH_MAX, DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK);
-		if (ret < 0) {
-			goto error;
-		}
-	} else {
-		const char *home_path = utils_get_home_dir();
-
-		if (!home_path) {
-			ERR("Can't get HOME directory for socket creation");
-			goto error;
-		}
-
-		ret = snprintf(sock_path,
-			       LTTNG_PATH_MAX,
-			       DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
-			       home_path);
-		if (ret < 0) {
-			goto error;
-		}
+	auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		ERR("Can't get RUNDIR directory for socket creation");
+		return nullptr;
 	}
 
-	return sock_path;
-error:
-	free(sock_path);
-	return nullptr;
+	const auto fmt_ret = snprintf(sock_path.get(),
+				      LTTNG_PATH_MAX,
+				      DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
+				      rundir_path.get());
+	if (fmt_ret < 0) {
+		return nullptr;
+	}
+
+	return sock_path.release();
 }
 
 static void notification_channel_socket_destroy(int fd)

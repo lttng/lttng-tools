@@ -75,12 +75,6 @@ function test_sessiond_started_after_app()
 
 function test_multi_sessiond()
 {
-	# Multiple root sessionds cannot be started
-	if [ "${UID}" == "0" ] ; then
-		skip 0 "Multiple root sessionds aren't supported" 28
-		return
-	fi
-
 	N_SESSIOND=3
 	CTL_PATH_BASE="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
 	TRACE_PATH_BASE="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
@@ -97,6 +91,9 @@ function test_multi_sessiond()
 			LTTNG_UST_CTL_PATH="${CTL_PATH}"
 			TEST_IGNORE_EXISTING_SESSIOND=1
 		)
+		if [ "${UID}" == "0" ] ; then
+			env_vars+=(LTTNG_RUNDIR="${LTTNG_HOME_BASE}/$i")
+		fi
 		# shellcheck disable=SC2119
 		LTTNG_SESSIOND_ENV_VARS="${env_vars[*]}" start_lttng_sessiond
 		export "${env_vars[@]}"
@@ -105,6 +102,7 @@ function test_multi_sessiond()
 		enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
 		start_lttng_tracing_ok "${SESSION_NAME}"
 		unset LTTNG_HOME
+		unset LTTNG_RUNDIR
 		unset LTTNG_UST_CTL_PATH
 	done
 	for i in $(seq 1 "${N_SESSIOND}") ; do
@@ -114,10 +112,13 @@ function test_multi_sessiond()
 		env_vars=(
 			LTTNG_HOME="${LTTNG_HOME_BASE}/$i"
 		)
+		if [ "${UID}" == "0" ] ; then
+			env_vars+=(LTTNG_RUNDIR="${LTTNG_HOME_BASE}/$i")
+		fi
 		export "${env_vars[@]}"
 		stop_lttng_tracing_ok "${SESSION_NAME}"
 		destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
-		unset LTTNG_HOME
+		unset LTTNG_HOME LTTNG_RUNDIR
 		validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH_BASE}/$i" 100
 	done
 	# shellcheck disable=SC2119
@@ -135,12 +136,6 @@ function test_multi_sessiond_default()
 {
 	diag "Verifies that the lttng_session_daemon_alive()/set_session_daemon_path() in liblttng is coherent with LTTNG_UST_CTL_PATH"
 
-	# Multiple root sessionds cannot be started
-	if [ "${UID}" == "0" ] ; then
-		skip 0 "Multiple root sessionds aren't supported" 11
-		return
-	fi
-
 	LTTNG_HOME_B="$(mktemp -d -t "tmp.${FUNCNAME[0]}.lttng-home.XXXXXX")"
 	TRACE_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace.XXXXXX")"
 	LTTNG_HOME_ORIG="${LTTNG_HOME}"
@@ -153,6 +148,10 @@ function test_multi_sessiond_default()
 		LTTNG_HOME="${LTTNG_HOME_B}"
 		TEST_IGNORE_EXISTING_SESSIOND=1
 	)
+	if [ "${UID}" == "0" ] ; then
+		env_vars_b+=(LTTNG_RUNDIR="${LTTNG_HOME_B}")
+		LTTNG_UST_APP_PATH="${LTTNG_HOME_B}"
+	fi
 	export "${env_vars_b[@]}"
 	# shellcheck disable=SC2119
 	LTTNG_SESSIOND_ENV_VARS="${env_vars_b[*]}" start_lttng_sessiond
@@ -170,7 +169,7 @@ function test_multi_sessiond_default()
 	# shellcheck disable=SC2119
 	stop_lttng_sessiond
 
-	unset LTTNG_HOME TEST_IGNORE_EXISTING_SESSIOND
+	unset LTTNG_HOME LTTNG_RUNDIR TEST_IGNORE_EXISTING_SESSIOND
 	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
 		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
 	fi
@@ -179,11 +178,6 @@ function test_multi_sessiond_default()
 
 function test_trace_another_sessiond()
 {
-	if [ "${UID}" == "0" ] ; then
-		skip 0 "Multiple root sessionds aren't supported" 18
-		return
-	fi
-
 	CTL_PATH="$(mktemp -d -t "tmp.${FUNCNAME[0]}.ctl.XXXXXX")"
 	TRACE_PATH_A="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace_a.XXXXXX")"
 	TRACE_PATH_B="$(mktemp -d -t "tmp.${FUNCNAME[0]}.trace_b.XXXXXX")"
@@ -196,6 +190,9 @@ function test_trace_another_sessiond()
 		LTTNG_HOME="${LTTNG_HOME_A}"
 		TEST_IGNORE_EXISTING_SESSIOND=1
 	)
+	if [ "${UID}" == "0" ] ; then
+		env_vars_a+=(LTTNG_RUNDIR="${LTTNG_HOME_A}")
+	fi
 	export "${env_vars_a[@]}"
 
 	# shellcheck disable=SC2119
@@ -204,7 +201,7 @@ function test_trace_another_sessiond()
 	enable_ust_lttng_channel_ok "${SESSION_NAME}" "${CHANNEL_NAME}"
 	enable_ust_lttng_event_ok "${SESSION_NAME}" "--all" "${CHANNEL_NAME}"
 	start_lttng_tracing_ok "${SESSION_NAME}"
-	unset LTTNG_HOME LTTNG_UST_CTL_PATH
+	unset LTTNG_HOME LTTNG_RUNDIR LTTNG_UST_CTL_PATH
 
 	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
 		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
@@ -228,9 +225,10 @@ function test_trace_another_sessiond()
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 	validate_trace_count "${EVENT_NAMES}" "${TRACE_PATH_B}" 100
+	unset LTTNG_HOME LTTNG_RUNDIR LTTNG_UST_CTL_PATH TEST_IGNORE_EXISTING_SESSIOND
 
 	# Confirm that we get traced data from the subordinate sessiond
-	export LTTNG_HOME="${LTTNG_HOME_A}"
+	export "${env_vars_a[@]}"
 	stop_lttng_tracing_ok "${SESSION_NAME}"
 	destroy_lttng_session_ok "${SESSION_NAME}" --no-wait
 	EVENT_COUNT="$("${BABELTRACE_BIN}" "${TRACE_PATH_A}" | wc -l)"
@@ -241,7 +239,7 @@ function test_trace_another_sessiond()
 
 	# Cleanup
 	rm -rf "${TRACE_PATH_A}" "{$TRACE_PATH_B}" "${LTTNG_HOME_A}" "${CTL_PATH}"
-	unset LTTNG_HOME LTTNG_UST_CTL_PATH TEST_IGNORE_EXISTING_SESSIOND
+	unset LTTNG_HOME LTTNG_RUNDIR LTTNG_UST_CTL_PATH TEST_IGNORE_EXISTING_SESSIOND
 	if [ "${LTTNG_HOME_ORIG}" != "" ] ; then
 		export LTTNG_HOME="${LTTNG_HOME_ORIG}"
 	fi

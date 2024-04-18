@@ -149,30 +149,23 @@ static const char *get_thread_name(int comp, int nr)
  */
 static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 {
-	uid_t uid;
-	const char *home;
 	int ret;
-	/* Global and home format strings */
-	const char *global_str, *home_str;
+	const char *health_unix_sock_fmt_string;
 
 	switch (lh->component) {
 	case HEALTH_COMPONENT_SESSIOND:
-		global_str = DEFAULT_GLOBAL_HEALTH_UNIX_SOCK;
-		home_str = DEFAULT_HOME_HEALTH_UNIX_SOCK;
+		health_unix_sock_fmt_string = DEFAULT_HEALTH_UNIX_SOCK;
 		break;
 	case HEALTH_COMPONENT_CONSUMERD:
 		switch (lh->consumerd_type) {
 		case LTTNG_HEALTH_CONSUMERD_UST_32:
-			global_str = DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK;
-			home_str = DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK;
+			health_unix_sock_fmt_string = DEFAULT_USTCONSUMER32_HEALTH_UNIX_SOCK;
 			break;
 		case LTTNG_HEALTH_CONSUMERD_UST_64:
-			global_str = DEFAULT_GLOBAL_USTCONSUMER64_HEALTH_UNIX_SOCK;
-			home_str = DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK;
+			health_unix_sock_fmt_string = DEFAULT_USTCONSUMER64_HEALTH_UNIX_SOCK;
 			break;
 		case LTTNG_HEALTH_CONSUMERD_KERNEL:
-			global_str = DEFAULT_GLOBAL_KCONSUMER_HEALTH_UNIX_SOCK;
-			home_str = DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK;
+			health_unix_sock_fmt_string = DEFAULT_KCONSUMER_HEALTH_UNIX_SOCK;
 			break;
 		default:
 			return -EINVAL;
@@ -189,11 +182,11 @@ static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 		return -EINVAL;
 	}
 
-	uid = getuid();
-
-	if (uid == 0 || tracing_group) {
-		ret = lttng_strncpy(lh->health_sock_path, global_str, sizeof(lh->health_sock_path));
-		return ret == 0 ? 0 : -EINVAL;
+	bool use_default_rundir_path = false;
+	auto rundir_path = lttng::make_unique_wrapper<char, lttng::memory::free>(
+		utils_get_rundir(tracing_group));
+	if (!rundir_path) {
+		use_default_rundir_path = true;
 	}
 
 	/*
@@ -201,18 +194,15 @@ static int set_health_socket_path(struct lttng_health *lh, int tracing_group)
 	 * is too small; With GNU C >= 2.1, snprintf returns the
 	 * required size (excluding closing null).
 	 */
-	home = utils_get_home_dir();
-	if (home == nullptr) {
-		/* Fallback in /tmp */
-		home = "/tmp";
-	}
-
 	DIAGNOSTIC_PUSH
 	DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
-	ret = snprintf(lh->health_sock_path, sizeof(lh->health_sock_path), home_str, home);
+	ret = snprintf(lh->health_sock_path,
+		       sizeof(lh->health_sock_path),
+		       health_unix_sock_fmt_string,
+		       use_default_rundir_path ? DEFAULT_HOME_DIR : rundir_path.get());
 	DIAGNOSTIC_POP
 	if ((ret < 0) || (ret >= sizeof(lh->health_sock_path))) {
-		return -ENOMEM;
+		return -EINVAL;
 	}
 
 	return 0;

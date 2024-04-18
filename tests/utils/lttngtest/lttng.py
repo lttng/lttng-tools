@@ -658,9 +658,11 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         self,
         test_environment,  # type: environment._Environment
         log,  # type: Optional[Callable[[str], None]]
+        extra_env_vars=dict(),  # type: dict
     ):
         logger._Logger.__init__(self, log)
         self._environment = test_environment  # type: environment._Environment
+        self._extra_env_vars = extra_env_vars
 
     @staticmethod
     def _namespaced_mi_element(property):
@@ -684,6 +686,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         client_env = os.environ.copy()  # type: dict[str, str]
         if self._environment.lttng_home_location is not None:
             client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
+        client_env.update(self._extra_env_vars)
 
         process = subprocess.Popen(
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=client_env

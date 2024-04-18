@@ -10,7 +10,7 @@ TEST_DESC="Verifies that the sessiond starts (or doesn't start) appropriately de
 CURDIR="$(dirname "${0}")"
 TESTDIR="${CURDIR}/../../../"
 
-NUM_TESTS=33
+NUM_TESTS=34
 
 # shellcheck source=../../../utils/utils.sh
 source "${TESTDIR}/utils/utils.sh"
@@ -46,7 +46,7 @@ function test_blocking_mode_app_path()
 	rm -rf "${APP_PATH}" "${TRACE_PATH}"
 }
 
-function test_blocking_mode_defaults_paths()
+function test_blocking_mode_default_paths()
 {
 	diag "Test starting sessiond in blocking with neither LTTNG_UST_APP_PATH nor LTTNG_UST_CTL_PATH set"
 	env_vars=(

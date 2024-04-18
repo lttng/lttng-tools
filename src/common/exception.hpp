@@ -12,6 +12,8 @@
 
 #include <lttng/lttng-error.h>
 
+#include <vendor/optional.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -24,7 +26,9 @@
 	throw lttng::posix_error(msg, errno_code, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_ERROR(msg)	      throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_OUT_OF_RANGE(msg) throw lttng::out_of_range(msg, LTTNG_SOURCE_LOCATION())
-#define LTTNG_THROW_ALLOCATION_FAILURE_ERROR(msg, allocation_size) \
+#define LTTNG_THROW_ALLOCATION_FAILURE_ERROR(msg) \
+	throw lttng::allocation_failure(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(msg, allocation_size) \
 	throw lttng::allocation_failure(msg, allocation_size, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
 	throw lttng::unsupported_error(msg, LTTNG_SOURCE_LOCATION())
@@ -105,10 +109,12 @@ public:
 class allocation_failure : public lttng::runtime_error {
 public:
 	explicit allocation_failure(const std::string& msg,
+				    const lttng::source_location& source_location);
+	explicit allocation_failure(const std::string& msg,
 				    std::size_t allocation_size,
 				    const lttng::source_location& source_location);
 
-	std::size_t allocation_size;
+	nonstd::optional<std::size_t> allocation_size;
 };
 
 /*

@@ -76,6 +76,39 @@ enum lttng_consumer_type {
 	LTTNG_CONSUMER32_UST,
 };
 
+/*
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng_consumer_type> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_consumer_type consumer_type,
+						    FormatContextType& ctx) const
+	{
+		const char *name;
+
+		switch (consumer_type) {
+		case LTTNG_CONSUMER_KERNEL:
+			name = "kernel consumer";
+			break;
+		case LTTNG_CONSUMER64_UST:
+			name = "64-bit user space consumer";
+			break;
+		case LTTNG_CONSUMER32_UST:
+			name = "32-bit user space consumer";
+			break;
+		case LTTNG_CONSUMER_UNKNOWN:
+			name = "unknown consumer";
+			break;
+		}
+
+		return format_to(ctx.out(), name);
+	}
+};
+} /* namespace fmt */
+
 enum consumer_endpoint_status {
 	CONSUMER_ENDPOINT_ACTIVE,
 	CONSUMER_ENDPOINT_INACTIVE,

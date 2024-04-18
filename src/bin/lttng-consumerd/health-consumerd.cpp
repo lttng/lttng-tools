@@ -14,6 +14,8 @@
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
 #include <common/defaults.hpp>
+#include <common/exception.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/utils.hpp>
 
@@ -40,17 +42,18 @@
 #include <urcu/compiler.h>
 #include <urcu/list.h>
 
-/* Global health check unix path */
-static char health_unix_sock_path[PATH_MAX];
-
 int health_quit_pipe[2] = { -1, -1 };
+
+namespace {
+/* Global health check unix path */
+char health_unix_sock_path[PATH_MAX];
 
 /*
  * Send data on a unix socket using the liblttsessiondcomm API.
  *
  * Return lttcomm error code.
  */
-static int send_unix_sock(int sock, void *buf, size_t len)
+int send_unix_sock(int sock, void *buf, size_t len)
 {
 	/* Check valid length */
 	if (len == 0) {
@@ -60,79 +63,56 @@ static int send_unix_sock(int sock, void *buf, size_t len)
 	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
-static int setup_health_path()
+void setup_health_path()
 {
-	int is_root, ret = 0;
-	enum lttng_consumer_type type;
-	const char *home_path;
-
-	type = lttng_consumer_get_type();
-	is_root = !getuid();
-
-	if (is_root) {
-		if (strlen(health_unix_sock_path) != 0) {
-			goto end;
-		}
-		switch (type) {
-		case LTTNG_CONSUMER_KERNEL:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_GLOBAL_KCONSUMER_HEALTH_UNIX_SOCK);
-			break;
-		case LTTNG_CONSUMER64_UST:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_GLOBAL_USTCONSUMER64_HEALTH_UNIX_SOCK);
-			break;
-		case LTTNG_CONSUMER32_UST:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK);
-			break;
-		default:
-			ret = -EINVAL;
-			goto end;
-		}
-	} else {
-		home_path = utils_get_home_dir();
-		if (home_path == nullptr) {
-			/* TODO: Add --socket PATH option */
-			ERR("Can't get HOME directory for sockets creation.");
-			ret = -EPERM;
-			goto end;
-		}
-
-		/* Set health check Unix path */
-		if (strlen(health_unix_sock_path) != 0) {
-			goto end;
-		}
-		switch (type) {
-		case LTTNG_CONSUMER_KERNEL:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_HOME_KCONSUMER_HEALTH_UNIX_SOCK,
-				 home_path);
-			break;
-		case LTTNG_CONSUMER64_UST:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_HOME_USTCONSUMER64_HEALTH_UNIX_SOCK,
-				 home_path);
-			break;
-		case LTTNG_CONSUMER32_UST:
-			snprintf(health_unix_sock_path,
-				 sizeof(health_unix_sock_path),
-				 DEFAULT_HOME_USTCONSUMER32_HEALTH_UNIX_SOCK,
-				 home_path);
-			break;
-		default:
-			ret = -EINVAL;
-			goto end;
-		}
+	if (strlen(health_unix_sock_path) != 0) {
+		return;
 	}
-end:
-	return ret;
+
+	const char *consumer_health_socket_fmt_string;
+	const auto consumer_type = lttng_consumer_get_type();
+	switch (consumer_type) {
+	case LTTNG_CONSUMER_KERNEL:
+	{
+		consumer_health_socket_fmt_string = DEFAULT_KCONSUMER_HEALTH_UNIX_SOCK;
+		break;
+	}
+	case LTTNG_CONSUMER64_UST:
+	{
+		consumer_health_socket_fmt_string = DEFAULT_USTCONSUMER64_HEALTH_UNIX_SOCK;
+		break;
+	}
+	case LTTNG_CONSUMER32_UST:
+	{
+		consumer_health_socket_fmt_string = DEFAULT_USTCONSUMER32_HEALTH_UNIX_SOCK;
+		break;
+	}
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+			"Invalid consumer type encountered while setting up consumerd health socket path");
+	}
+
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to determine RUNDIR for health socket creation");
+	}
+
+	DIAGNOSTIC_PUSH
+	DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
+	const auto fmt_ret = snprintf(health_unix_sock_path,
+				      sizeof(health_unix_sock_path),
+				      consumer_health_socket_fmt_string,
+				      rundir_path.get());
+	DIAGNOSTIC_POP
+	if (fmt_ret < 0) {
+		LTTNG_THROW_POSIX(fmt::format("Failed to format {} health socket path",
+					      consumer_type),
+				  errno);
+	}
 }
+} /* namespace */
 
 /*
  * Thread managing health check socket.
@@ -148,7 +128,13 @@ void *thread_manage_health_consumerd(void *data __attribute__((unused)))
 
 	DBG("[thread] Manage health check started");
 
-	setup_health_path();
+	try {
+		setup_health_path();
+	} catch (const lttng::runtime_error& ex) {
+		ERR("Failed to setup health path: %s", ex.what());
+		err = -1;
+		goto error;
+	}
 
 	rcu_register_thread();
 

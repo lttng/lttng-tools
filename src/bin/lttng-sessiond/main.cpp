@@ -948,8 +948,8 @@ std::string dirname_str(const char *dir)
 	auto dir_copy = lttng::make_unique_wrapper<char, lttng::memory::free>(strdup(dir));
 
 	if (!dir_copy) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to copy path before use of dirname",
-						     strlen(dir) + 1);
+		LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
+			"Failed to copy path before use of dirname", strlen(dir) + 1);
 	}
 
 	return std::string(dirname(dir_copy.get()));

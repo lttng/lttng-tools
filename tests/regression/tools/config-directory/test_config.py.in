@@ -141,6 +141,42 @@ tests = {
         "substitutions": DEFAULT_SUBSTITUTIONS,
         "expected_paths": _ust_ctl_path_expected_paths,
     },
+    "lttng_rundir": {
+        "description": "LTTng with LTTNG_RUNDIR set",
+        "environment_variables": {
+            "LTTNG_RUNDIR": True,
+        },
+        "substitutions": DEFAULT_SUBSTITUTIONS,
+        "expected_paths": DEFAULT_EXPECTED_PATHS,
+    },
+    "lttng_home_and_rundir": {
+        "description": "LTTng with LTTNG_RUNDIR and LTTNG_HOME set",
+        "environment_variables": {
+            "LTTNG_RUNDIR": True,
+            "LTTNG_HOME": True,
+        },
+        "substitutions": DEFAULT_SUBSTITUTIONS,
+        "expected_paths": DEFAULT_EXPECTED_PATHS,
+    },
+    "lttng_rundir_and_ust_ctl_path": {
+        "description": "LTTng with LTTNG_RUNDIR and LTTNG_UST_CTL_PATH set",
+        "environment_variables": {
+            "LTTNG_RUNDIR": True,
+            "LTTNG_UST_CTL_PATH": True,
+        },
+        "substitutions": DEFAULT_SUBSTITUTIONS,
+        "expected_paths": _ust_ctl_path_expected_paths,
+    },
+    "lttng_home_and_rundir_and_ust_ctl_path": {
+        "description": "LTTng with LTTNG_RUNDIR, LTTNG_HOME, and LTTNG_UST_CTL_PATH set",
+        "environment_variables": {
+            "LTTNG_RUNDIR": True,
+            "LTTNG_HOME": True,
+            "LTTNG_UST_CTL_PATH": True,
+        },
+        "substitutions": DEFAULT_SUBSTITUTIONS,
+        "expected_paths": _ust_ctl_path_expected_paths,
+    },
 }
 
 
@@ -171,7 +207,9 @@ def test_config_and_socket_paths(
 
     substitutions["RELAYD_PID"] = test_env._relayd.pid
 
-    client = lttngtest.LTTngClient(test_env, log=tap.diagnostic)
+    client = lttngtest.LTTngClient(
+        test_env, log=tap.diagnostic, extra_env_vars=environment_variables
+    )
     session_output_location = lttngtest.LocalSessionOutputLocation(
         test_env.create_temporary_directory("trace")
     )
@@ -193,6 +231,8 @@ def test_config_and_socket_paths(
     test_app.wait_for_exit()
 
     errors = []
+    if "LTTNG_RUNDIR" in environment_variables:
+        os.system("find {}".format(environment_variables["LTTNG_RUNDIR"]))
     for path_id, path_conf in expected_paths.items():
         path = path_conf["path"]
         while re.search("\{\w+\}", path) is not None:
@@ -267,6 +307,10 @@ if __name__ == "__main__":
                 -1
             ].name
             temp_conf["substitutions"]["LTTNG_UST_CTL_PATH"] = tempfiles[-1].name
+        if "LTTNG_RUNDIR" in test_configuration["environment_variables"]:
+            tempfiles.append(tempfile.TemporaryDirectory())
+            temp_conf["environment_variables"]["LTTNG_RUNDIR"] = tempfiles[-1].name
+            temp_conf["substitutions"]["RUNDIR"] = tempfiles[-1].name
         with lttngtest.test_environment(
             with_sessiond=True,
             log=tap.diagnostic,

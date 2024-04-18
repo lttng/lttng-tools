@@ -11,6 +11,7 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/unix.hpp>
@@ -20,6 +21,8 @@
 #include <lttng/endpoint.h>
 #include <lttng/notification/channel-internal.hpp>
 #include <lttng/notification/notification-internal.hpp>
+
+#include <vector>
 
 static int handshake(struct lttng_notification_channel *channel);
 
@@ -134,16 +137,15 @@ struct lttng_notification_channel *
 lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 {
 	int fd, ret;
-	bool is_in_tracing_group = false, is_root = false;
-	char *sock_path = nullptr;
 	struct lttng_notification_channel *channel = nullptr;
 
-	if (!endpoint || endpoint != lttng_session_daemon_notification_endpoint) {
-		goto end;
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		goto error;
 	}
 
-	sock_path = calloc<char>(LTTNG_PATH_MAX);
-	if (!sock_path) {
+	if (!endpoint || endpoint != lttng_session_daemon_notification_endpoint) {
 		goto end;
 	}
 
@@ -151,56 +153,42 @@ lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 	if (!channel) {
 		goto end;
 	}
+
 	channel->socket = -1;
 	pthread_mutex_init(&channel->lock, nullptr);
 	lttng_payload_init(&channel->reception_payload);
 	CDS_INIT_LIST_HEAD(&channel->pending_notifications.list);
 
-	is_root = (getuid() == 0);
-	if (!is_root) {
-		is_in_tracing_group = lttng_check_tracing_group();
-	}
+	{
+		const auto length = std::snprintf(
+			nullptr, 0, DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK, rundir_path.get()) + 1;
 
-	if (is_root || is_in_tracing_group) {
-		ret = lttng_strncpy(
-			sock_path, DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK, LTTNG_PATH_MAX);
-		if (ret) {
-			ret = -LTTNG_ERR_INVALID;
+		std::vector<char> sock_path;
+		sock_path.reserve(length);
+		ret = std::snprintf(sock_path.data(),
+				    length,
+				    DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
+				    rundir_path.get());
+		if (ret < 0 || ret >= LTTNG_PATH_MAX) {
 			goto error;
 		}
 
-		ret = lttcomm_connect_unix_sock(sock_path);
-		if (ret >= 0) {
-			fd = ret;
-			goto set_fd;
+		ret = lttcomm_connect_unix_sock(sock_path.data());
+		if (ret < 0) {
+			goto error;
 		}
 	}
 
-	/* Fallback to local session daemon. */
-	ret = snprintf(sock_path,
-		       LTTNG_PATH_MAX,
-		       DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK,
-		       utils_get_home_dir());
-	if (ret < 0 || ret >= LTTNG_PATH_MAX) {
-		goto error;
-	}
-
-	ret = lttcomm_connect_unix_sock(sock_path);
-	if (ret < 0) {
-		goto error;
-	}
 	fd = ret;
-
-set_fd:
 	channel->socket = fd;
-
 	ret = handshake(channel);
 	if (ret) {
 		goto error;
 	}
+
 end:
-	free(sock_path);
 	return channel;
+
 error:
 	lttng_notification_channel_destroy(channel);
 	channel = nullptr;

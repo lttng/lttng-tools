@@ -15,6 +15,7 @@
 #include <common/dynamic-buffer.hpp>
 #include <common/error.hpp>
 #include <common/macros.hpp>
+#include <common/make-unique-wrapper.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng-error.h>
@@ -1089,7 +1090,7 @@ static int create_snapshot_session(const char *session_name,
 				   xmlNodePtr output_node,
 				   const struct config_load_session_override_attr *overrides)
 {
-	int ret;
+	int ret = 0;
 	enum lttng_error_code ret_code;
 	xmlNodePtr node = nullptr;
 	xmlNodePtr snapshot_output_list_node;
@@ -3097,7 +3098,7 @@ static int process_session_node(xmlNodePtr session_node,
 				int overwrite,
 				const struct config_load_session_override_attr *overrides)
 {
-	int ret, started = -1, snapshot_mode = -1;
+	int ret = -1, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX, rotation_timer_interval = 0, rotation_size = 0;
 	xmlChar *name = nullptr;
 	xmlChar *shm_path = nullptr;
@@ -3686,6 +3687,8 @@ int config_load_session(const char *path,
 	bool session_loaded = false;
 	const char *path_ptr = nullptr;
 	struct session_config_validation_ctx validation_ctx = {};
+	const char *home_path = nullptr;
+	char path_buf[PATH_MAX];
 
 	ret = init_session_config_validation_ctx(&validation_ctx);
 	if (ret) {
@@ -3693,14 +3696,9 @@ int config_load_session(const char *path,
 	}
 
 	if (!path) {
-		const char *home_path;
-		const char *sys_path;
-
 		/* Try home path */
 		home_path = utils_get_home_dir();
 		if (home_path) {
-			char path_buf[PATH_MAX];
-
 			/*
 			 * Try user session configuration path. Ignore error here so we can
 			 * continue loading the system wide sessions.
@@ -3759,16 +3757,38 @@ int config_load_session(const char *path,
 		path_ptr = nullptr;
 
 		/* Try system wide configuration directory. */
+		const auto sys_path =
+			lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+		if (!sys_path) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
 		if (autoload) {
-			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH
-				"/" DEFAULT_SESSION_CONFIG_AUTOLOAD;
-			ret = validate_path_creds(sys_path);
+			ret = snprintf(path_buf,
+				       sizeof(path_buf),
+				       DEFAULT_SESSION_CONFIGPATH
+				       "/" DEFAULT_SESSION_CONFIG_AUTOLOAD,
+				       sys_path.get());
+			if (ret < 0) {
+				PERROR("snprintf session auto sys config path");
+				ret = -LTTNG_ERR_INVALID;
+				goto end;
+			}
+			ret = validate_path_creds(sys_path.get());
 			if (ret) {
-				path_ptr = sys_path;
+				path_ptr = sys_path.get();
 			}
 		} else {
-			sys_path = DEFAULT_SESSION_SYSTEM_CONFIGPATH;
-			path_ptr = sys_path;
+			ret = snprintf(path_buf,
+				       sizeof(path_buf),
+				       DEFAULT_SESSION_CONFIGPATH,
+				       sys_path.get());
+			if (ret < 0) {
+				PERROR("snprintf session sys config path");
+				ret = -LTTNG_ERR_INVALID;
+				goto end;
+			}
 		}
 
 		if (path_ptr) {

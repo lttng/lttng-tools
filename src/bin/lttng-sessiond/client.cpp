@@ -111,7 +111,7 @@ static void setup_lttng_msg(struct command_ctx *cmd_ctx,
 
 	/* Append reply header. */
 	if (lttng_dynamic_buffer_append(&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm))) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+		LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
 			"Failed to append the reply header to a client reply", sizeof(llm));
 	}
 
@@ -119,7 +119,7 @@ static void setup_lttng_msg(struct command_ctx *cmd_ctx,
 	if (cmd_header_len) {
 		if (lttng_dynamic_buffer_append(
 			    &cmd_ctx->reply_payload.buffer, cmd_header_buf, cmd_header_len)) {
-			LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
 				"Failed to append the command header to a client reply",
 				cmd_header_len);
 		}
@@ -129,7 +129,7 @@ static void setup_lttng_msg(struct command_ctx *cmd_ctx,
 	if (payload_len) {
 		if (lttng_dynamic_buffer_append(
 			    &cmd_ctx->reply_payload.buffer, payload_buf, payload_len)) {
-			LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
 				"Failed to append the payload to a client reply", payload_len);
 		}
 	}
@@ -144,7 +144,7 @@ static void setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
 
 	/* Append place-holder reply header. */
 	if (lttng_dynamic_buffer_append(&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm))) {
-		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+		LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
 			"Failed to append the reply header to a client reply", sizeof(llm));
 	}
 
@@ -1890,7 +1890,7 @@ skip_domain:
 				(sizeof(struct lttng_session_extended) * nr_sessions);
 			sessions_payload = zmalloc<lttng_session>(payload_len);
 			if (!sessions_payload) {
-				LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+				LTTNG_THROW_ALLOCATION_FAILURE_WITH_SIZE_ERROR(
 					"Failed to allocate session list reply payload",
 					payload_len);
 			}
