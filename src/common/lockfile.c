@@ -66,6 +66,7 @@ static int lock_file(const char *filepath, int fd)
 
 #endif /* HAVE_FLOCK */
 
+LTTNG_HIDDEN
 int utils_create_lock_file(const char *filepath)
 {
 	int ret, fd;
