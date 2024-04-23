@@ -115,6 +115,7 @@ libcommon_lgpl_la_SOURCES = \
 	time.cpp \
 	tracker.cpp tracker.hpp \
 	trigger.cpp \
+	type-traits.hpp \
 	unix.cpp unix.hpp \
 	uri.cpp uri.hpp \
 	userspace-probe.cpp \
@@ -432,6 +433,7 @@ endif
 # libstring-utils
 noinst_LTLIBRARIES += libstring-utils.la
 libstring_utils_la_SOURCES = \
+	string-utils/c-string-view.hpp \
 	string-utils/format.hpp \
 	string-utils/string-utils.cpp \
 	string-utils/string-utils.hpp
