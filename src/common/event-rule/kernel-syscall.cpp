@@ -133,6 +133,10 @@ static bool lttng_event_rule_kernel_syscall_is_equal(const struct lttng_event_ru
 		goto end;
 	}
 
+	if (a->emission_site != b->emission_site) {
+		goto end;
+	}
+
 	is_equal = true;
 end:
 	return is_equal;
