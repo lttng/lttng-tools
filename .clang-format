@@ -35,7 +35,6 @@ BraceWrapping:
   SplitEmptyFunction: true
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: false
-BreakConstructorInitializers: AfterColon
 BreakStringLiterals: false
 ColumnLimit: 100
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
