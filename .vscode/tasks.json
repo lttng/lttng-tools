@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build LTTng-tools",
+            // Assumes you ran ./bootstrap and ./configure with your preferred options
+            "command": "${workspaceFolder}/.vscode/build.sh ${workspaceFolder}",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

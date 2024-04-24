@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug LTTng Client",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/bin/lttng/.libs/lttng",
+            // Replace with your args
+            "args": [
+                "help"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "${workspaceFolder}/.vscode/libtool_gdb_wrapper.sh",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build LTTng-tools"
+        },
+        {
+            "name": "Debug LTTng Session Daemon",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/bin/lttng-sessiond/.libs/lttng-sessiond",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            // The session daemon fails to launch if it can't find the session schema description
+            "environment": [
+                {
+                    "name": "LTTNG_SESSION_CONFIG_XSD_PATH",
+                    "value": "${workspaceFolder}/src/common/"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "${workspaceFolder}/.vscode/libtool_gdb_wrapper.sh",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build LTTng-tools"
+        },
+        {
+            "name": "Debug LTTng Relay Daemon",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/bin/lttng-relayd/lttng-relayd",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "${workspaceFolder}/.vscode/libtool_gdb_wrapper.sh",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build LTTng-tools"
+        },
+    ]
+}
