@@ -101,6 +101,7 @@ TESTS += ust/before-after/test_before_after \
 	ust/ust-constructor/test_ust_constructor_c_static.py \
 	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
 	ust/ust-constructor/test_ust_constructor_cpp_static.py \
+	tools/config-directory/test_config.py \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \
 	tools/trigger/rate-policy/test_ust_rate_policy

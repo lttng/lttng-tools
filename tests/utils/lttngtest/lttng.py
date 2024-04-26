@@ -261,7 +261,7 @@ class _Channel(lttngctl.Channel):
             if rule.filter_expression:
                 client_args = client_args + " " + rule.filter_expression
 
-            if rule.log_level_rule:
+            if getattr(rule, "log_level_rule", None):
                 if isinstance(rule.log_level_rule, lttngctl.LogLevelRuleAsSevereAs):
                     client_args = client_args + " --loglevel {log_level}".format(
                         log_level=_get_log_level_argument_name(
@@ -281,7 +281,7 @@ class _Channel(lttngctl.Channel):
                         )
                     )
 
-            if rule.name_pattern_exclusions:
+            if getattr(rule, "name_pattern_exclusions", None):
                 client_args = client_args + " --exclude "
                 for idx, pattern in enumerate(rule.name_pattern_exclusions):
                     if idx != 0:
@@ -516,15 +516,20 @@ class _Session(lttngctl.Session):
         # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy) -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
+        buffer_sharing_policy = (
+            "--buffers-uid"
+            if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
+            else "--buffers-pid"
+        )
         self._client._run_cmd(
             "enable-channel --session '{session_name}' --{domain_name} '{channel_name}' {buffer_sharing_policy}".format(
                 session_name=self.name,
                 domain_name=domain_option_name,
                 channel_name=channel_name,
                 buffer_sharing_policy=(
-                    "--buffers-uid"
-                    if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
-                    else "--buffers-pid"
+                    buffer_sharing_policy
+                    if domain != lttngctl.TracingDomain.Kernel
+                    else ""
                 ),
             )
         )
@@ -677,7 +682,8 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         self._log("lttng {command_args}".format(command_args=command_args))
 
         client_env = os.environ.copy()  # type: dict[str, str]
-        client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
+        if self._environment.lttng_home_location is not None:
+            client_env["LTTNG_HOME"] = str(self._environment.lttng_home_location)
 
         process = subprocess.Popen(
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=client_env

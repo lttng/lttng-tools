@@ -106,6 +106,7 @@ compile_commands.json
 /tests/utils/testapp/gen-ust-events-constructor/gen-ust-events-c-constructor-so
 /tests/utils/testapp/gen-ust-events-constructor/uses_heap
 /tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns
+/tests/regression/tools/config-directory/test_config.py
 /tests/regression/tools/health/health_check
 /tests/regression/kernel/select_poll_epoll
 /tests/regression/tools/notification/base_client

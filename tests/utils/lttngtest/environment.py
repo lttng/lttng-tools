@@ -236,7 +236,11 @@ class _WaitTraceTestApplication:
         self._environment = environment  # type: Environment
         self._iteration_count = event_count
         # File that the application will wait to see before tracing its events.
-        dir = self._compat_pathlike(environment.lttng_home_location)
+        dir = (
+            self._compat_pathlike(environment.lttng_home_location)
+            if environment.lttng_home_location
+            else None
+        )
         if run_as is not None:
             dir = os.path.join(dir, run_as)
         self._app_start_tracing_file_path = pathlib.Path(
@@ -269,7 +273,8 @@ class _WaitTraceTestApplication:
         self._tracing_started = False
 
         test_app_env = os.environ.copy()
-        test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
+        if environment.lttng_home_location is not None:
+            test_app_env["LTTNG_HOME"] = str(environment.lttng_home_location)
         # Make sure the app is blocked until it is properly registered to
         # the session daemon.
         test_app_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
@@ -627,6 +632,8 @@ class _Environment(logger._Logger):
         with_sessiond,  # type: bool
         log=None,  # type: Optional[Callable[[str], None]]
         with_relayd=False,  # type: bool
+        extra_env_vars=dict(),  # type: dict
+        skip_temporary_lttng_home=False,  # type: bool
     ):
         super().__init__(log)
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
@@ -643,13 +650,24 @@ class _Environment(logger._Logger):
             pathlib.Path(__file__).absolute().parents[3]
         )  # type: pathlib.Path
 
-        self._lttng_home = TemporaryDirectory(
-            "lttng_test_env_home"
-        )  # type: Optional[str]
-        os.chmod(
-            str(self._lttng_home.path),
-            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IROTH | stat.S_IXOTH,
-        )
+        self._extra_env_vars = extra_env_vars
+
+        # There are times when we need to exercise default configurations
+        # that don't set LTTNG_HOME. When doing this, it makes it impossible
+        # to safely run parallel tests.
+        self._lttng_home = None
+        if not skip_temporary_lttng_home:
+            self._lttng_home = TemporaryDirectory(
+                "lttng_test_env_home"
+            )  # type: Optional[TemporaryDirectory]
+            os.chmod(
+                str(self._lttng_home.path),
+                stat.S_IRUSR
+                | stat.S_IWUSR
+                | stat.S_IXUSR
+                | stat.S_IROTH
+                | stat.S_IXOTH,
+            )
 
         self._relayd = (
             self._launch_lttng_relayd() if with_relayd else None
@@ -666,9 +684,9 @@ class _Environment(logger._Logger):
     @property
     def lttng_home_location(self):
         # type: () -> pathlib.Path
-        if self._lttng_home is None:
-            raise RuntimeError("Attempt to access LTTng home after clean-up")
-        return self._lttng_home.path
+        if self._lttng_home is not None:
+            return self._lttng_home.path
+        return None
 
     @property
     def lttng_client_path(self):
@@ -742,12 +760,19 @@ class _Environment(logger._Logger):
         # type: (Optional[str]) -> pathlib.Path
         # Simply return a path that is contained within LTTNG_HOME; it will
         # be destroyed when the temporary home goes out of scope.
-        assert self._lttng_home
         return pathlib.Path(
             tempfile.mkdtemp(
                 prefix="tmp" if prefix is None else prefix,
-                dir=str(self._lttng_home.path),
+                dir=str(self.lttng_home_location) if self.lttng_home_location else None,
             )
+        )
+
+    @staticmethod
+    def run_kernel_tests():
+        # type: () -> bool
+        return (
+            os.getenv("LTTNG_TOOLS_DISABLE_KERNEL_TESTS", "0") != "1"
+            and os.getuid() == 0
         )
 
     # Unpack a list of environment variables from a string
@@ -785,16 +810,19 @@ class _Environment(logger._Logger):
 
         relayd_env_vars = os.environ.get("LTTNG_RELAYD_ENV_VARS")
         relayd_env = os.environ.copy()
+        relayd_env.update(self._extra_env_vars)
         if relayd_env_vars:
             self._log("Additional lttng-relayd environment variables:")
             for name, value in self._unpack_env_vars(relayd_env_vars):
                 self._log("{}={}".format(name, value))
                 relayd_env[name] = value
 
-        assert self._lttng_home is not None
-        relayd_env["LTTNG_HOME"] = str(self._lttng_home.path)
+        if self.lttng_home_location is not None:
+            relayd_env["LTTNG_HOME"] = str(self.lttng_home_location)
         self._log(
-            "Launching relayd with LTTNG_HOME='${}'".format(str(self._lttng_home.path))
+            "Launching relayd with LTTNG_HOME='${}'".format(
+                str(self.lttng_home_location)
+            )
         )
         verbose = []
         if os.environ.get("LTTNG_TEST_VERBOSE_RELAYD") is not None:
@@ -877,6 +905,7 @@ class _Environment(logger._Logger):
         # Setup the session daemon's environment
         sessiond_env_vars = os.environ.get("LTTNG_SESSIOND_ENV_VARS")
         sessiond_env = os.environ.copy()
+        sessiond_env.update(self._extra_env_vars)
         if sessiond_env_vars:
             self._log("Additional lttng-sessiond environment variables:")
             additional_vars = self._unpack_env_vars(sessiond_env_vars)
@@ -888,14 +917,14 @@ class _Environment(logger._Logger):
             self._project_root / "src" / "common"
         )
 
-        assert self._lttng_home is not None
-        sessiond_env["LTTNG_HOME"] = str(self._lttng_home.path)
+        if self.lttng_home_location is not None:
+            sessiond_env["LTTNG_HOME"] = str(self.lttng_home_location)
 
         wait_queue = _SignalWaitQueue()
         with wait_queue.intercept_signal(signal.SIGUSR1):
             self._log(
                 "Launching session daemon with LTTNG_HOME=`{home_dir}`".format(
-                    home_dir=str(self._lttng_home.path)
+                    home_dir=str(self.lttng_home_location)
                 )
             )
             verbose = []
@@ -1099,9 +1128,17 @@ class _Environment(logger._Logger):
 
 
 @contextlib.contextmanager
-def test_environment(with_sessiond, log=None, with_relayd=False):
+def test_environment(
+    with_sessiond,
+    log=None,
+    with_relayd=False,
+    extra_env_vars=dict(),
+    skip_temporary_lttng_home=False,
+):
     # type: (bool, Optional[Callable[[str], None]], bool) -> Iterator[_Environment]
-    env = _Environment(with_sessiond, log, with_relayd)
+    env = _Environment(
+        with_sessiond, log, with_relayd, extra_env_vars, skip_temporary_lttng_home
+    )
     try:
         yield env
     finally:

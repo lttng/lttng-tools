@@ -1365,6 +1365,7 @@ AC_CONFIG_FILES([
 ])
 
 # Inject variable into python test script.
+AC_CONFIG_FILES([tests/regression/tools/config-directory/test_config.py],[chmod +x tests/regression/tools/config-directory/test_config.py])
 AC_CONFIG_FILES([tests/regression/ust/python-logging/test_python_logging],[chmod +x tests/regression/ust/python-logging/test_python_logging])
 # Inject LTTNG_TOOLS_BUILD_WITH_LIBPFM variable in test script.
 AC_CONFIG_FILES([tests/perf/test_perf_raw],[chmod +x tests/perf/test_perf_raw])
