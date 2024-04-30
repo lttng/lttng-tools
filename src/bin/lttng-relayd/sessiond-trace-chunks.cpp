@@ -78,8 +78,8 @@ struct trace_chunk_registry_ht_element {
 
 static unsigned long trace_chunk_registry_ht_key_hash(const struct trace_chunk_registry_ht_key *key)
 {
-	const uint64_t uuid_h1 = *reinterpret_cast<const uint64_t *>(&key->sessiond_uuid[0]);
-	const uint64_t uuid_h2 = *reinterpret_cast<const uint64_t *>(&key->sessiond_uuid[1]);
+	const uint64_t uuid_h1 = reinterpret_cast<const uint64_t *>(key->sessiond_uuid.data())[0];
+	const uint64_t uuid_h2 = reinterpret_cast<const uint64_t *>(key->sessiond_uuid.data())[1];
 
 	return hash_key_u64(&uuid_h1, lttng_ht_seed) ^ hash_key_u64(&uuid_h2, lttng_ht_seed);
 }
