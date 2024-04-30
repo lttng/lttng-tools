@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+EXTRA_DIST = common.hpp
+
 noinst_PROGRAMS = validate_xml extract_xml pretty_xml
 validate_xml_SOURCES = validate_xml.cpp
 validate_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)

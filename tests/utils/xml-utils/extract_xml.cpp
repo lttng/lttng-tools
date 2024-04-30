@@ -24,6 +24,8 @@
  *     node;b;
  *     node;c;
  */
+#include "common.hpp"
+
 #include <common/defaults.hpp>
 
 #include <libxml/parser.h>
@@ -176,8 +178,15 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 	LTTNG_ASSERT(xml_path);
 	LTTNG_ASSERT(xpath);
 
+	xml_parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
+
+	if (!parserCtx) {
+		fprintf(stderr, "ERR: could not allocate an XML parser context\n");
+		return -1;
+	}
+
 	/* Parse the xml file */
-	doc = xmlParseFile(xml_path);
+	doc = xmlCtxtReadFile(parserCtx.get(), xml_path, nullptr, XML_PARSE_NOBLANKS);
 	if (!doc) {
 		fprintf(stderr, "ERR parsing: xml file invalid \"%s\"\n", xml_path);
 		return -1;
@@ -253,7 +262,6 @@ int main(int argc, char **argv)
 
 	/* Init libxml */
 	xmlInitParser();
-	xmlKeepBlanksDefault(0);
 	if (access(argv[optind], F_OK)) {
 		fprintf(stderr, "ERR:%s\n", "Xml path not valid");
 		return -1;

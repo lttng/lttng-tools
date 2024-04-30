@@ -10,26 +10,34 @@
  * This allows a more human friendly format for xml testing when problems occur.
  */
 
-#include <libxml/parser.h>
+#include "common.hpp"
 
-int main(void)
+#include <libxml/parser.h>
+#include <unistd.h>
+
+int main()
 {
 	xmlDocPtr doc = NULL;
 
 	/* Init libxml. */
 	xmlInitParser();
-	xmlKeepBlanksDefault(0);
 
-	/* Parse the XML document from stdin. */
-	doc = xmlParseFile("-");
-	if (!doc) {
-		fprintf(stderr, "ERR parsing: xml input invalid");
-		return -1;
+	{
+		xml_parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
+
+		/* Parse the XML document from stdin. */
+		doc = xmlCtxtReadFd(
+			parserCtx.get(), STDIN_FILENO, nullptr, nullptr, XML_PARSE_NOBLANKS);
+		if (!doc) {
+			fprintf(stderr, "ERR parsing: xml input invalid");
+			return -1;
+		}
+
+		xmlDocFormatDump(stdout, doc, 1);
+
+		xmlFreeDoc(doc);
 	}
 
-	xmlDocFormatDump(stdout, doc, 1);
-
-	xmlFreeDoc(doc);
 	/* Shutdown libxml. */
 	xmlCleanupParser();
 
