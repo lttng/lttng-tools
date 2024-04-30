@@ -922,7 +922,7 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * on error.
  */
 int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
-		enum lttcomm_return_code error_code);
+			      enum lttcomm_return_code error_code);
 
 /*
  * Called from signal handler to ensure a clean exit.
