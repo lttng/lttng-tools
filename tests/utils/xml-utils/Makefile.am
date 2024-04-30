@@ -9,7 +9,7 @@ extract_xml_SOURCES = extract_xml.cpp
 extract_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 extract_xml_LDADD = $(libxml2_LIBS)
 
-pretty_xml_SOURCES = pretty_xml.c
+pretty_xml_SOURCES = pretty_xml.cpp
 pretty_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 pretty_xml_LDADD = $(libxml2_LIBS)
 
