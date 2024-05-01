@@ -12,34 +12,28 @@
 
 #include "common.hpp"
 
+#include <common/scope-exit.hpp>
+
+#include <iostream>
 #include <libxml/parser.h>
 #include <unistd.h>
 
+namespace ll = lttng::libxml;
+
 int main()
 {
-	xmlDocPtr doc = NULL;
+	const ll::global_parser_context global_parser_context;
+	const ll::parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
 
-	/* Init libxml. */
-	xmlInitParser();
-
-	{
-		xml_parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
-
-		/* Parse the XML document from stdin. */
-		doc = xmlCtxtReadFd(
-			parserCtx.get(), STDIN_FILENO, nullptr, nullptr, XML_PARSE_NOBLANKS);
-		if (!doc) {
-			fprintf(stderr, "ERR parsing: xml input invalid");
-			return -1;
-		}
-
-		xmlDocFormatDump(stdout, doc, 1);
-
-		xmlFreeDoc(doc);
+	/* Parse the XML document from stdin. */
+	const ll::doc_uptr doc{ xmlCtxtReadFd(
+		parserCtx.get(), STDIN_FILENO, nullptr, nullptr, XML_PARSE_NOBLANKS) };
+	if (!doc) {
+		std::cerr << "Error: invalid XML input on stdin\n";
+		return -1;
 	}
 
-	/* Shutdown libxml. */
-	xmlCleanupParser();
+	xmlDocFormatDump(stdout, doc.get(), 1);
 
 	return 0;
 }

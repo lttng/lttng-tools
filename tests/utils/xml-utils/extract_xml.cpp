@@ -38,6 +38,8 @@
 #include <string.h>
 #include <unistd.h>
 
+namespace ll = lttng::libxml;
+
 #if defined(LIBXML_XPATH_ENABLED)
 
 static int opt_verbose;
@@ -178,7 +180,7 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 	LTTNG_ASSERT(xml_path);
 	LTTNG_ASSERT(xpath);
 
-	xml_parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
+	ll::parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
 
 	if (!parserCtx) {
 		fprintf(stderr, "ERR: could not allocate an XML parser context\n");
