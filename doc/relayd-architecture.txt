@@ -7,9 +7,9 @@ ownership and reference counting".
 
 We have the following object composition hierarchy:
 
-relay connection (main.c, for sessiond/consumer)
+relay connection (main.cpp, for sessiond/consumer)
   |
-  \-> 0 or 1 session
+  \-> 0 or 1 per-consumer relay session
        |
        \-> 0 or many ctf-trace
                  |
@@ -19,18 +19,18 @@ relay connection (main.c, for sessiond/consumer)
                       |
                       \-------> 0 or 1 viewer stream
 
-live connection (live.c, for client)
+live connection (live.cpp, for client)
   |
   \-> 1 viewer session
        |     |
        |     \-> (transient ref) 0 or many unannounced relay streams
        |
-       \-> 0 or many session (actually a reference to session as created
-             |                by the relay connection)
+       \-> 0 or many per-consumer relay sessions (actually a reference to a
+             |       per-consumer relay session as created by the relay connection)
              |
              \-> ..... (ctf-trace, stream, index, viewer stream)
 
-There are global tables declared in lttng-relayd.h for sessions
+There are global tables declared in lttng-relayd.h for per-consumer relay sessions
 (sessions_ht, indexed by session id), streams (relay_streams_ht, indexed
 by stream handle), viewer sessions (viewer_sessions_ht, indexed by
 connection sock fd), and viewer streams (viewer_streams_ht, indexed
@@ -59,10 +59,10 @@ There is also a "lock" mutex in each object. Those are used to
 synchronize between threads (currently the main.c relay thread and
 live.c client thread) when objects are shared. Locks can be nested from
 the outermost object to the innermost object. IOW, the ctf-trace lock can
-nest within the session lock. The unannounced stream list lock in viewer
-sessions is an exception to the default locking order: it may be nested
-inside the following locks (in order): relay session, ctf_trace, and relay
-stream.
+nest within the per-consumer relay session lock. The unannounced stream list
+lock in viewer sessions is an exception to the default locking order: it may
+be nested inside the following locks (in order): relay session, ctf_trace,
+and relay stream.
 
 RCU linked lists are used to iterate using RCU, and are protected by
 their own mutex for modifications. Iterations should be confirmed using
@@ -83,20 +83,25 @@ triggering release, and thus free through call_rcu.
 In the composition scheme, we find back references from each composite
 to its container. Therefore, each composite holds a reference (refcount)
 on its container. This allows following pointers from e.g. viewer stream
-to stream to ctf-trace to session without performing any validation,
-due to transitive refcounting of those back-references.
+to stream to ctf-trace to per-consumer relay session without performing
+any validation, due to transitive refcounting of those back-references.
 
 In addition to those back references, there are a few key ownership
 references held. The connection in the relay worker thread (main.c)
-holds ownership on the session, and on each stream it contains. The
-connection in the live worker thread (live.c) holds ownership on each
-viewer stream it creates. The rest is ensured by back references from
+holds ownership on the per-consumer relay session, and on each stream it
+contains. The connection in the live worker thread (live.c) holds ownership on
+each viewer stream it creates. The rest is ensured by back references from
 composite to container objects. When a connection is closed, it puts all
 the ownership references it is holding. This will then eventually
-trigger destruction of the session, streams, and viewer streams
-associated with the connection when all the back references reach 0.
+trigger destruction of the per-consumer relay session, streams, and
+viewer streams associated with the connection when all the back references
+reach 0.
 
 RCU read-side locks are now only held during iteration on RCU lists and
 hash tables, and within the internals of the get (lookup) and put
 functions. Those functions then use refcounting to ensure existence of
 the object when returned to their caller.
+
+In the current implementation, while a live viewer may attach to
+multiple per-consumer relay sessions, they are meant to belong to
+only a single lttng-sessiond session.
