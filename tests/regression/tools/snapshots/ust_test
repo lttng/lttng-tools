@@ -16,7 +16,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 APPS_PID=()
 
-NUM_TESTS=104
+NUM_TESTS=106
 
 TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_ust_trace_path.XXXXXX)
 
@@ -209,7 +209,8 @@ function test_ust_local_snapshot_small_discard_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small discard buffers"
-	taskset -c "$(get_any_available_cpu)" -p $$ 1>/dev/null 2>&1
+	taskset -cp "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
+	ok $? "Set current process CPU affinity"
 	create_lttng_session_no_output "$SESSION_NAME"
 	enable_mmap_small_discard_ust_channel "$SESSION_NAME" $CHANNEL_NAME
 	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
@@ -254,7 +255,8 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small overwrite buffers"
-	taskset -p "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
+	taskset -cp "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
+	ok $? "Set current process CPU affinity"
 	create_lttng_session_no_output "$SESSION_NAME"
 	enable_mmap_small_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
 	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
