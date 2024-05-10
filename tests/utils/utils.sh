@@ -1337,7 +1337,7 @@ function enable_lttng_mmap_overwrite_small_kernel_channel()
 
 	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
 		enable-channel -s $sess_name $channel_name -k --output mmap --overwrite --subbuf-size=$(getconf PAGE_SIZE) --num-subbuf=2
-	ok $? "Enable small discard channel $channel_name for session $sess_name"
+	ok $? "Enable small overwrite channel $channel_name for session $sess_name"
 }
 
 function enable_lttng_mmap_overwrite_ust_channel()
