@@ -60,6 +60,11 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 enum sync_metadata_status lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 							  struct lttng_consumer_stream *metadata);
 int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream, int producer);
+int lttng_ustconsumer_flush_buffer_or_populate_packet(
+	struct lttng_consumer_stream *stream,
+	struct lttng_ust_ctl_consumer_packet *terminal_packet,
+	bool *packet_populated,
+	bool *flush_done);
 int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_get_current_timestamp(struct lttng_consumer_stream *stream, uint64_t *ts);
 int lttng_ustconsumer_get_sequence_number(struct lttng_consumer_stream *stream, uint64_t *seq);

@@ -1061,7 +1061,7 @@ error:
 }
 
 /*
- * Take a snapshot of all the stream of a channel.
+ * Take a snapshot of all the streams of a channel.
  * RCU read-side lock and the channel lock must be held by the caller.
  *
  * Returns 0 on success, < 0 on error
@@ -1073,13 +1073,25 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			    uint64_t nb_packets_per_stream,
 			    struct lttng_consumer_local_data *ctx)
 {
-	int ret;
-	unsigned use_relayd = 0;
 	unsigned long consumed_pos, produced_pos;
+	bool packet_populated = false;
+	auto terminal_packet = []() {
+		lttng_ust_ctl_consumer_packet *raw_packet = nullptr;
+		lttng_ust_ctl_packet_create(&raw_packet);
+		return lttng::make_unique_wrapper<lttng_ust_ctl_consumer_packet,
+						  lttng_ust_ctl_packet_destroy>(raw_packet);
+	}();
+	unsigned use_relayd = 0;
+	int ret;
 
 	LTTNG_ASSERT(path);
 	LTTNG_ASSERT(ctx);
 	ASSERT_RCU_READ_LOCKED();
+
+	if (!terminal_packet) {
+		ERR("Failed to allocate lttng-ust consumer packet");
+		return -1;
+	}
 
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -1106,9 +1118,9 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			ERR("Failed to acquire reference to channel's trace chunk");
 			return -1;
 		}
+
 		LTTNG_ASSERT(!stream->trace_chunk);
 		stream->trace_chunk = channel->trace_chunk;
-
 		stream->net_seq_idx = relayd_id;
 
 		/* Close stream output when were are done. */
@@ -1130,16 +1142,18 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
-		 * If tracing is active, we want to perform a "full" buffer flush.
+		 * If tracing is active, we want to perform an active buffer flush.
 		 * Else, if quiescent, it has already been done by the prior stop.
 		 */
 		if (!stream->quiescent) {
-			ret = lttng_ust_ctl_flush_buffer(stream->ustream, 0);
+			ret = lttng_ustconsumer_flush_buffer_or_populate_packet(
+				stream, terminal_packet.get(), &packet_populated, nullptr);
 			if (ret < 0) {
 				ERR("Failed to flush buffer during snapshot of channel: channel key = %" PRIu64
-				    ", channel name = '%s'",
+				    ", channel name='%s', ret=%d",
 				    channel->key,
-				    channel->name);
+				    channel->name,
+				    ret);
 				return ret;
 			}
 		}
@@ -1232,6 +1246,39 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			}
 
 			consumed_pos += stream->max_sb_size;
+		}
+
+		if (packet_populated) {
+			uint64_t length, packet_length = 0, packet_length_padded = 0;
+			struct lttng_buffer_view subbuf_view;
+			ssize_t read_len;
+			const char *src;
+
+			ret = lttng_ust_ctl_packet_get_buffer(terminal_packet.get(),
+							      (void **) &src,
+							      &packet_length,
+							      &packet_length_padded);
+			if (ret < 0) {
+				WARN("Failed to get terminal packet, ret=%d", ret);
+				return ret;
+			}
+
+			if (use_relayd) {
+				length = packet_length;
+			} else {
+				length = packet_length_padded;
+			}
+
+			subbuf_view =
+				lttng_buffer_view_init(src, 0, (ptrdiff_t) packet_length_padded);
+			read_len = lttng_consumer_on_read_subbuffer_mmap(
+				stream, &subbuf_view, packet_length_padded - packet_length);
+			if (read_len < length) {
+				WARN("Failed to write terminal packet to stream, read %ld of %ld",
+				     read_len,
+				     length);
+				return -EPERM;
+			}
 		}
 
 		/* Simply close the stream so we can use it on the next snapshot. */
@@ -2371,6 +2418,21 @@ int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream, int pro
 	LTTNG_ASSERT(stream->ustream);
 
 	return lttng_ust_ctl_flush_buffer(stream->ustream, producer);
+}
+
+int lttng_ustconsumer_flush_buffer_or_populate_packet(
+	struct lttng_consumer_stream *stream,
+	struct lttng_ust_ctl_consumer_packet *terminal_packet,
+	bool *packet_populated,
+	bool *flush_done)
+{
+	LTTNG_ASSERT(stream);
+	LTTNG_ASSERT(stream->ustream);
+	LTTNG_ASSERT(terminal_packet);
+	LTTNG_ASSERT(packet_populated);
+
+	return lttng_ust_ctl_flush_events_or_populate_packet(
+		stream->ustream, terminal_packet, packet_populated, flush_done);
 }
 
 int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
