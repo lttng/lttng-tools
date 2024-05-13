@@ -47,6 +47,7 @@ TAGS
 /.clangd/
 compile_commands.json
 *_flymake*
+/.vscode/settings.json
 
 # m4 macros not automatically generated
 /m4/libtool.m4
