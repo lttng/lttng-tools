@@ -21,9 +21,7 @@ using seed_t = unsigned int;
 class production_error : public ::lttng::runtime_error {
 public:
 	explicit production_error(const std::string& msg,
-				  const char *file_name,
-				  const char *function_name,
-				  unsigned int line_number);
+				  const lttng::source_location& source_location);
 };
 
 /*

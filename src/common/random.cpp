@@ -22,7 +22,8 @@
 #endif
 
 #define LTTNG_THROW_RANDOM_PRODUCTION_ERROR(msg) \
-	throw lttng::random::production_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::random::production_error(   \
+		msg, lttng::source_location(__FILE__, __func__, __LINE__))
 
 namespace {
 /* getrandom is available in Linux >= 3.17. */
@@ -162,10 +163,8 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 } /* namespace */
 
 lttng::random::production_error::production_error(const std::string& msg,
-						  const char *file_name,
-						  const char *function_name,
-						  unsigned int line_number) :
-	lttng::runtime_error(msg, file_name, function_name, line_number)
+						  const lttng::source_location& location) :
+	lttng::runtime_error(msg, location)
 {
 }
 

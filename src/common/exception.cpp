@@ -11,79 +11,47 @@
 
 #include <sstream>
 
-namespace {
-std::string
-format_throw_location(const char *file_name, const char *function_name, unsigned int line_number)
-{
-	std::stringstream location;
-
-	location << "[" << function_name << "()"
-		 << " " << file_name << ":" << line_number << "]";
-
-	return location.str();
-}
-} /* namespace */
-
 lttng::ctl::error::error(const std::string& msg,
 			 lttng_error_code error_code,
-			 const char *file_name,
-			 const char *function_name,
-			 unsigned int line_number) :
-	runtime_error(msg + ": " + std::string(error_get_str(error_code)),
-		      file_name,
-		      function_name,
-		      line_number),
-	_error_code{ error_code }
+			 const lttng::source_location& location) :
+	runtime_error(msg, location), _error_code{ error_code }
 {
 }
 
 lttng::posix_error::posix_error(const std::string& msg,
-				int errno_code,
-				const char *file_name,
-				const char *function_name,
-				unsigned int line_number) :
-	std::system_error(errno_code,
-			  std::generic_category(),
-			  msg + " " + format_throw_location(file_name, function_name, line_number))
+				unsigned int errno_code,
+				const lttng::source_location& location) :
+	std::system_error(errno_code, std::generic_category()),
+	lttng::runtime_error(msg, location)
 {
 }
 
 lttng::runtime_error::runtime_error(const std::string& msg,
-				    const char *file_name,
-				    const char *function_name,
-				    unsigned int line_number) :
-	std::runtime_error(msg + " " + format_throw_location(file_name, function_name, line_number))
+				    const lttng::source_location& location) :
+	std::runtime_error(msg), source_location(location)
 {
 }
 
 lttng::unsupported_error::unsupported_error(const std::string& msg,
-					    const char *file_name,
-					    const char *function_name,
-					    unsigned int line_number) :
-	std::runtime_error(msg + " " + format_throw_location(file_name, function_name, line_number))
+					    const lttng::source_location& location) :
+	lttng::runtime_error(msg, location)
 {
 }
 
 lttng::communication_error::communication_error(const std::string& msg,
-						const char *file_name,
-						const char *function_name,
-						unsigned int line_number) :
-	runtime_error(msg, file_name, function_name, line_number)
+						const lttng::source_location& location) :
+	runtime_error(msg, location)
 {
 }
 
 lttng::protocol_error::protocol_error(const std::string& msg,
-				      const char *file_name,
-				      const char *function_name,
-				      unsigned int line_number) :
-	communication_error(msg, file_name, function_name, line_number)
+				      const lttng::source_location& location) :
+	communication_error(msg, location)
 {
 }
 
 lttng::invalid_argument_error::invalid_argument_error(const std::string& msg,
-						      const char *file_name,
-						      const char *function_name,
-						      unsigned int line_number) :
-	runtime_error(msg, file_name, function_name, line_number)
+						      const lttng::source_location& location) :
+	runtime_error(msg, location)
 {
 }

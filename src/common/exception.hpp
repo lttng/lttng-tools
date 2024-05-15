@@ -8,52 +8,117 @@
 #ifndef LTTNG_EXCEPTION_H_
 #define LTTNG_EXCEPTION_H_
 
+#include <common/string-utils/c-string-view.hpp>
+
 #include <lttng/lttng-error.h>
 
 #include <stdexcept>
 #include <string>
 #include <system_error>
 
+#define LTTNG_SOURCE_LOCATION() lttng::source_location(__FILE__, __func__, __LINE__)
+
 #define LTTNG_THROW_CTL(msg, error_code) \
-	throw lttng::ctl::error(msg, error_code, __FILE__, __func__, __LINE__)
+	throw lttng::ctl::error(msg, error_code, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_POSIX(msg, errno_code) \
-	throw lttng::posix_error(msg, errno_code, __FILE__, __func__, __LINE__)
-#define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::posix_error(msg, errno_code, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
-	throw lttng::unsupported_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::unsupported_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_COMMUNICATION_ERROR(msg) \
-	throw lttng::communication_error(msg, __FILE__, __func__, __LINE__)
-#define LTTNG_THROW_PROTOCOL_ERROR(msg) \
-	throw lttng::protocol_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::communication_error(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_PROTOCOL_ERROR(msg) throw lttng::protocol_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_INVALID_ARGUMENT_ERROR(msg) \
-	throw lttng::invalid_argument_error(msg, __FILE__, __func__, __LINE__)
+	throw lttng::invalid_argument_error(msg, LTTNG_SOURCE_LOCATION())
 
 namespace lttng {
-class runtime_error : public std::runtime_error {
+/**
+ * @class source_location
+ * @brief Represents the location in the source code where an exception was thrown.
+ *
+ * The source_location class captures the file name, function name, and line number
+ * of the source code where an exception occurs. This information is useful for
+ * debugging and logging purposes.
+ *
+ * @details
+ * This class provides:
+ * - The name of the source file (file_name).
+ * - The name of the function (function_name).
+ * - The line number in the source file (line_number).
+ *
+ * Example usage:
+ * @code
+ * try {
+ *     // Code that may throw an exception.
+ * } catch (const lttng::runtime_error& ex) {
+ *     // Handle the exception, possibly logging location information.
+ *     ERR_FMT("{} [{}]", ex.what(), ex.source_location);
+ * }
+ * @endcode
+ */
+class source_location {
 public:
-	explicit runtime_error(const std::string& msg,
-			       const char *file_name,
-			       const char *function_name,
-			       unsigned int line_number);
+	source_location(lttng::c_string_view file_name_,
+			lttng::c_string_view function_name_,
+			unsigned int line_number_) :
+		file_name(file_name_), function_name(function_name_), line_number(line_number_)
+	{
+	}
+
+	lttng::c_string_view file_name;
+	lttng::c_string_view function_name;
+	unsigned int line_number;
 };
 
-class unsupported_error : public std::runtime_error {
+/**
+ * @class runtime_error
+ * @brief Base type for all LTTng exceptions.
+ *
+ * Exceptions in the project provide an error message (through the usual what() method), but that
+ * message may not include the whole context of the error. For example, it is not always desirable
+ * to include the source location in a user-facing message.
+ *
+ * As such, exception handlers should mind the type of the exception being thrown and consider
+ * what context is suitable to extract (e.g. some context may only be relevant at the DEBUG logging
+ * level, while the error message may be user-facing).
+ *
+ * Since 'what()' is marked as noexcept, derived classes should format their generic message during
+ * their construction and pass it to the runtime_error constructor.
+ */
+class runtime_error : public std::runtime_error {
+public:
+	runtime_error(const std::string& msg, const lttng::source_location& source_location);
+
+	lttng::source_location source_location;
+};
+
+/**
+ * @class unsupported_error
+ * @brief Represents an error for unsupported features.
+ *
+ * This error may occur due to the current configuration making a feature unavailable
+ * (e.g. when using an older kernel or tracer release).
+ */
+class unsupported_error : public lttng::runtime_error {
 public:
 	explicit unsupported_error(const std::string& msg,
-				   const char *file_name,
-				   const char *function_name,
-				   unsigned int line_number);
+				   const lttng::source_location& source_location);
 };
 
 namespace ctl {
-/* Wrap lttng_error_code errors which may be reported through liblttng-ctl's interface. */
+/**
+ * @class error
+ * @brief Wraps lttng_error_code errors for reporting through liblttng-ctl's interface.
+ *
+ * There is typically a better way to report errors than using this type of exception. However, it
+ * is sometimes useful to transition legacy code to use RAII facilities and exceptions without
+ * revisiting every caller.
+ */
 class error : public runtime_error {
 public:
 	explicit error(const std::string& msg,
 		       lttng_error_code error_code,
-		       const char *file_name,
-		       const char *function_name,
-		       unsigned int line_number);
+		       const lttng::source_location& source_location);
 
 	lttng_error_code code() const noexcept
 	{
@@ -65,39 +130,69 @@ private:
 };
 } /* namespace ctl */
 
-class posix_error : public std::system_error {
+/**
+ * @class posix_error
+ * @brief Wraps a POSIX system error, including the location where the error occurred.
+ */
+class posix_error : public std::system_error, lttng::runtime_error {
 public:
 	explicit posix_error(const std::string& msg,
-			     int errno_code,
-			     const char *file_name,
-			     const char *function_name,
-			     unsigned int line_number);
+			     unsigned int errno_code,
+			     const lttng::source_location& source_location);
 };
 
-class communication_error : public runtime_error {
+/**
+ * @class communication_error
+ * @brief Base class for communication errors between components.
+ */
+class communication_error : public lttng::runtime_error {
 public:
 	explicit communication_error(const std::string& msg,
-				     const char *file_name,
-				     const char *function_name,
-				     unsigned int line_number);
+				     const lttng::source_location& source_location);
 };
 
+/**
+ * @class protocol_error
+ * @brief Base class for protocol layer communication errors (encoding or decoding problems).
+ */
 class protocol_error : public communication_error {
 public:
 	explicit protocol_error(const std::string& msg,
-				const char *file_name,
-				const char *function_name,
-				unsigned int line_number);
+				const lttng::source_location& source_location);
 };
 
-class invalid_argument_error : public runtime_error {
+/**
+ * @class invalid_argument_error
+ * @brief Represents an error for invalid arguments.
+ */
+class invalid_argument_error : public lttng::runtime_error {
 public:
 	explicit invalid_argument_error(const std::string& msg,
-					const char *file_name,
-					const char *function_name,
-					unsigned int line_number);
+					const lttng::source_location& source_location);
 };
 
-}; /* namespace lttng */
+} /* namespace lttng */
+
+/*
+ * Specialize fmt::formatter for lttng::source_location
+ *
+ * Due to a bug in g++ < 7.1, this specialization must be enclosed in the fmt namespace,
+ * see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480.
+ */
+namespace fmt {
+template <>
+struct formatter<lttng::source_location> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const lttng::source_location& location,
+						    FormatContextType& ctx)
+	{
+		return format_to(ctx.out(),
+				 "{}() {}:{}",
+				 location.function_name.data(),
+				 location.file_name.data(),
+				 location.line_number);
+	}
+};
+} /* namespace fmt */
 
 #endif /* LTTNG_EXCEPTION_H_ */

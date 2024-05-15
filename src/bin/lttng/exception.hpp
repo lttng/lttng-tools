@@ -15,16 +15,15 @@
 #include <stdexcept>
 #include <string>
 
-#define LTTNG_THROW_CLI_NO_DEFAULT_SESSION() \
-	throw lttng::cli::no_default_session_error(__FILE__, __func__, __LINE__)
+#define LTTNG_THROW_CLI_NO_DEFAULT_SESSION()        \
+	throw lttng::cli::no_default_session_error( \
+		LTTNG_SOURCE_LOCATION())
 
 namespace lttng {
 namespace cli {
 class no_default_session_error : public runtime_error {
 public:
-	explicit no_default_session_error(const char *file_name,
-					  const char *function_name,
-					  unsigned int line_number);
+	explicit no_default_session_error(const lttng::source_location& source_location);
 };
 } /* namespace cli */
 }; /* namespace lttng */
