@@ -226,6 +226,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 	} while (0);
 
 #define _PERROR(fmt, args...) _ERRMSG("PERROR", PRINT_ERR, fmt, ##args)
+#define _PWARN(fmt, args...)  _ERRMSG("PWARN", PRINT_WARN, fmt, ##args)
 
 #if !defined(__GLIBC__) || \
 	((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
@@ -239,6 +240,13 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 		strerror_r(errno, _perror_buf, sizeof(_perror_buf)); \
 		_PERROR(call ": %s", ##args, _perror_buf);           \
 	} while (0);
+
+#define PWARN(call, args...)                                         \
+	do {                                                         \
+		char _perror_buf[200];                               \
+		strerror_r(errno, _perror_buf, sizeof(_perror_buf)); \
+		_PWARN(call ": %s", ##args, _perror_buf);            \
+	} while (0);
 #else
 /*
  * Version using GNU strerror_r, for linux with appropriate defines.
@@ -249,6 +257,13 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 		char _perror_tmp[200];                                             \
 		_perror_buf = strerror_r(errno, _perror_tmp, sizeof(_perror_tmp)); \
 		_PERROR(call ": %s", ##args, _perror_buf);                         \
+	} while (0);
+#define PWARN(call, args...)                                                       \
+	do {                                                                       \
+		char *_perror_buf;                                                 \
+		char _perror_tmp[200];                                             \
+		_perror_buf = strerror_r(errno, _perror_tmp, sizeof(_perror_tmp)); \
+		_PWARN(call ": %s", ##args, _perror_buf);                          \
 	} while (0);
 #endif
 
