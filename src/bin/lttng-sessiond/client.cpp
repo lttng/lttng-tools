@@ -979,6 +979,12 @@ end:
 	return ret;
 }
 
+static void command_ctx_set_status_code(command_ctx& cmd_ctx, enum lttng_error_code status_code)
+{
+	LTTNG_ASSERT(cmd_ctx.reply_payload.buffer.size >= sizeof(lttcomm_lttng_msg));
+	((struct lttcomm_lttng_msg *) (cmd_ctx.reply_payload.buffer.data))->ret_code = status_code;
+}
+
 /*
  * Process the command requested by the lttng client within the command
  * context structure. This function make sure that the return structure (llm)
@@ -1121,6 +1127,12 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		need_tracing_session = false;
 		break;
 	default:
+		if (strnlen(cmd_ctx->lsm.session.name, sizeof(cmd_ctx->lsm.session.name)) ==
+		    sizeof(cmd_ctx->lsm.session.name)) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+				"Session name received from lttng-ctl client is not null-terminated");
+		}
+
 		DBG("Getting session %s by name", cmd_ctx->lsm.session.name);
 		/*
 		 * We keep the session list lock across _all_ commands
@@ -2363,8 +2375,9 @@ error:
 			goto setup_error;
 		}
 	}
-	/* Set return code */
-	((struct lttcomm_lttng_msg *) (cmd_ctx->reply_payload.buffer.data))->ret_code = ret;
+
+	command_ctx_set_status_code(*cmd_ctx, static_cast<lttng_error_code>(ret));
+
 setup_error:
 	if (cmd_ctx->session) {
 		session_unlock(cmd_ctx->session);
@@ -2628,13 +2641,28 @@ static void *thread_manage_clients(void *data)
 		} catch (const std::bad_alloc& ex) {
 			WARN_FMT("Failed to allocate memory while handling client request: {}",
 				 ex.what());
-			ret = LTTNG_ERR_NOMEM;
+
+			/*
+			 * Reset the payload contents as the command may have left them in an
+			 * inconsistent state.
+			 */
+			(void) setup_empty_lttng_msg(&cmd_ctx);
+			command_ctx_set_status_code(cmd_ctx, LTTNG_ERR_NOMEM);
 		} catch (const lttng::ctl::error& ex) {
 			WARN_FMT("Client request failed: {}", ex.what());
-			ret = ex.code();
+
+			(void) setup_empty_lttng_msg(&cmd_ctx);
+			command_ctx_set_status_code(cmd_ctx, ex.code());
+		} catch (const lttng::invalid_argument_error& ex) {
+			WARN_FMT("Client request failed: {}", ex.what());
+
+			(void) setup_empty_lttng_msg(&cmd_ctx);
+			command_ctx_set_status_code(cmd_ctx, LTTNG_ERR_INVALID);
 		} catch (const std::exception& ex) {
 			WARN_FMT("Client request failed: {}", ex.what());
-			ret = LTTNG_ERR_UNK;
+
+			(void) setup_empty_lttng_msg(&cmd_ctx);
+			command_ctx_set_status_code(cmd_ctx, LTTNG_ERR_UNK);
 		}
 
 		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
