@@ -15,7 +15,7 @@ channels:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context*
-      (option:--kernel | option:--userspace | option:--jul | option:--log4j)
+      (option:--kernel | option:--userspace | option:--jul | option:--log4j | option:--log4j2)
       [option:--session='SESSION'] [option:--channel='CHANNEL']
       option:--type='TYPE' [option:--type='TYPE']...
 
@@ -68,14 +68,14 @@ Only available with the option:--kernel option.
 Per-thread::
     Prefix: `perf:thread:`
 +
-Only available with the option:--userspace, option:--jul, or
-option:--log4j option.
+Only available with the option:--userspace, option:--jul,
+option:--log4j, or option:--log4j2 option.
 --
 +
 Add Performance Monitoring Unit (PMU) counter context fields by raw ID
 with the ++perf:cpu:raw:r++__N__++:++__NAME__ (option:--kernel option)
 or ++perf:thread:raw:r++__N__++:++__NAME__ (option:--userspace,
-option:--jul, or option:--log4j option) types, with:
+option:--jul, option:--log4j, or option:--log4j2 option) types, with:
 +
 --
 'N'::
@@ -102,7 +102,7 @@ $app.'PROVIDER':__TYPE__
     Context type name.
 --
 +
-Only available with the option:--jul and option:--log4j options.
+Only available with the option:--jul, option:--log4j and option:--log4j2 options.
 
 IMPORTANT: Make sure to **single-quote** 'TYPE' when you run the
 `add-context` command from a shell, as `$` is a special character for
@@ -133,7 +133,11 @@ option:-k, option:--kernel::
 
 option:-l, option:--log4j::
     Add context fields to be recorded to the event records of one or
-    more channels of the Apache log4j tracing domain.
+    more channels of the Apache Log4j 1.x tracing domain.
+
+option:--log4j2::
+    Add context fields to be recorded to the event records of one or
+    more channels of the Apache Log4j 2 tracing domain.
 
 option:-u, option:--userspace::
     Add context fields to be recorded to the event records of one or

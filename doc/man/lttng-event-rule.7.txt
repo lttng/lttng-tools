@@ -33,7 +33,7 @@ pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='E
 Specify an event rule to match Java/Python logging events:
 
 [verse]
-option:--type=(**jul** | **log4j** | **python**)**:logging** [option:--name='NAME']
+option:--type=(**jul** | **log4j** | **log4j2** | **python**)**:logging** [option:--name='NAME']
 pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='EXPR']
 
 
@@ -158,9 +158,15 @@ List the available `java.util.logging` loggers with `lttng list --jul`
 See man:lttng-list(1) to learn more.
 
 `log4j:logging`::
-    An Apache log4j logging statement.
+    An Apache Log4j 1.x logging statement.
 +
-List the available Apache log4j loggers with `lttng list --log4j`
+List the available Apache Log4j 1.x loggers with `lttng list --log4j`
+See man:lttng-list(1) to learn more.
+
+`log4j2:logging`::
+    An Apache Log4j 2 logging statement.
++
+List the available Apache Log4j 2 loggers with `lttng list --log4j2`
 See man:lttng-list(1) to learn more.
 
 `python:logging`::
@@ -192,6 +198,7 @@ name and __NAME__ is the tracepoint name.
 
 `jul:logging`::
 `log4j:logging`::
+`log4j2:logging`::
 `python:logging`::
     The name of the Java or Python logger from which LTTng
     creates{nbsp}__E__.
@@ -298,6 +305,17 @@ the option:--type option, from the most to the least severe:
 * `DEBUG` (10000)
 * `TRACE` (5000)
 * `ALL` (`INT32_MIN`)
+
+`log4j2:logging`::
++
+* `OFF` (`0`)
+* `FATAL` (100)
+* `ERROR` (200)
+* `WARN` (300)
+* `INFO` (400)
+* `DEBUG` (500)
+* `TRACE` (600)
+* `ALL` (`INT32_MAX`)
 
 `python:logging`::
 +
@@ -502,6 +520,9 @@ option:--event-name='RECORDNAME'
 |nloption:--log4j and nloption:--tracepoint
 |option:--type=++log4j:logging++
 
+|nloption:--log4j2 and nloption:--tracepoint
+|option:--type=++log4j2:logging++
+
 |nloption:--python and nloption:--tracepoint
 |option:--type=++python:logging++
 
@@ -688,9 +709,15 @@ As of LTTng{nbsp}{lttng_version}, `jul` is an alias, but this may change
 in the future.
 
 `log4j:logging`:::
-    Apache log4j logging statement.
+    Apache Log4j 1.x logging statement.
 +
 As of LTTng{nbsp}{lttng_version}, `log4j` is an alias, but this may
+change in the future.
+
+`log4j2:logging`:::
+    Apache Log4j 2 logging statement.
++
+As of LTTng{nbsp}{lttng_version}, `log4j2` is an alias, but this may
 change in the future.
 
 `python:logging`:::
@@ -715,6 +742,7 @@ option:-n 'NAME', option:--name='NAME'::
 
 `jul:logging`::
 `log4j:logging`::
+`log4j2:logging`::
 `python:logging`::
     The Java or Python logger name.
 

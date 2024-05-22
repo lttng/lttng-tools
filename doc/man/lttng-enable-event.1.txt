@@ -39,7 +39,7 @@ Create or enable one or more recording event rules to match
 Java/Python logging events:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* (option:--jul | option:--log4j | option:--python)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* (option:--jul | option:--log4j | option:--log4j2 | option:--python)
       [option:--tracepoint] (option:--all | 'NAME'[,'NAME']...)
       [option:--loglevel='LOGLEVEL' | option:--loglevel-only='LOGLEVEL'] [option:--filter='EXPR']
       [option:--session='SESSION'] [option:--channel='CHANNEL']
@@ -243,17 +243,17 @@ may change in the future.
 List the available user space tracepoints with `lttng list --userspace`.
 See man:lttng-list(1) to learn more.
 
-For the `java.util.logging` (option:--jul option), Apache log4j (option:--log4j option), and Python (option:--python option) tracing domains::
+For the `java.util.logging` (option:--jul option), Apache 1.x log4j (option:--log4j option), Apache 2.x log4j (option:--log4j2 option), and Python (option:--python option) tracing domains::
     With or without the option:--tracepoint option:::
         A logging statement.
 +
 As of LTTng{nbsp}{lttng_version}, this is the default and sole
-instrumentation point type of the `java.util.logging`, Apache log4j, and
-Python tracing domains, but this may change in the future.
+instrumentation point type of the `java.util.logging`, Apache Log4j 1.x, Apache
+log4j 2.x, and Python tracing domains, but this may change in the future.
 +
 List the available Java and Python loggers with `lttng list --jul`,
-`lttng list --log4j`, and `lttng list --python`. See man:lttng-list(1)
-to learn more.
+`lttng list --log4j`, `lttng list --log4j2`, and `lttng list --python`.
+See man:lttng-list(1) to learn more.
 
 
 [[event-name-cond]]
@@ -366,7 +366,7 @@ User space (option:--userspace option)::
 * `FINEST` (300)
 * `ALL` (`INT32_MIN`)
 
-Apache log4j (option:--log4j option)::
+Apache Log4j 1.x (option:--log4j option)::
 +
 * `OFF` (`INT32_MAX`)
 * `FATAL` (50000)
@@ -376,6 +376,17 @@ Apache log4j (option:--log4j option)::
 * `DEBUG` (10000)
 * `TRACE` (5000)
 * `ALL` (`INT32_MIN`)
+
+Apache Log4j 2 (option:--log4j2 option)::
++
+* `OFF` (`0`)
+* `FATAL` (100)
+* `ERROR` (200)
+* `WARN` (300)
+* `INFO` (400)
+* `DEBUG` (500)
+* `TRACE` (600)
+* `ALL` (`INT32_MAX`)
 
 Python (option:--python option)::
 +
@@ -570,11 +581,17 @@ Such an event record has a string field `logger_name` which contains the
 name of the `java.util.logging` logger from which LTTng
 creates{nbsp}__E__.
 
-Apache log4j logging statement (option:--log4j and option:--tracepoint options)::
+Apache Log4j 1.x logging statement (option:--log4j and option:--tracepoint options)::
     `lttng_log4j:event`
 +
 Such an event record has a string field `logger_name` which contains the
-name of the Apache log4j logger from which LTTng creates{nbsp}__E__.
+name of the Apache Log4j 1.x logger from which LTTng creates{nbsp}__E__.
+
+Apache Log4j 2 logging statement (option:--log4j2 and option:--tracepoint options)::
+    `lttng_log4j2:event`
++
+Such an event record has a string field `logger_name` which contains the
+name of the Apache Log4j 2 logger from which LTTng creates{nbsp}__E__.
 
 Python logging statement (option:--python and option:--tracepoint options)::
     `lttng_python:event`
@@ -637,7 +654,11 @@ option:-k, option:--kernel::
     domain.
 
 option:-l, option:--log4j::
-    Create or enable recording event rules in the Apache log4j tracing
+    Create or enable recording event rules in the Apache Log4j 1.x tracing
+    domain.
+
+option:--log4j2::
+    Create or enable recording event rules in the Apache Log4j 2 tracing
     domain.
 
 option:-p, option:--python::
@@ -785,14 +806,14 @@ option:--tracepoint::
 +
 With the option:--kernel or option:--userspace option:::
     LTTng tracepoint events.
-With the option:--jul, option:--log4j, or option:--python option:::
+With the option:--jul, option:--log4j, option:--log4j2, or option:--python option:::
     Logging events.
 
 With the option:--kernel, not specifying any of the instrumentation
 point type options is equivalent to specifying the option:--tracepoint
 option, but this default may change in the future.
 
-With the option:--userspace, option:--jul, option:--log4j, and
+With the option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
 option:--python options, not specifying the option:--tracepoint option
 is equivalent to specifying it, but this default may change in the
 future.
@@ -889,13 +910,24 @@ $ lttng enable-event --python server3,ui.window,user-mgmt
 ----
 ====
 
-.Create a recording event rule which matches Apache log4j logging events with a specific log level range (current recording session, specific channel).
+.Create a recording event rule which matches Apache Log4j 1.x logging events with a specific log level range (current recording session, specific channel).
 ====
 See the option:--channel, option:--all, and option:--loglevel options.
 
 [role="term"]
 ----
 $ lttng enable-event --log4j --channel=my-loggers \
+                     --all --loglevel=INFO
+----
+====
+
+.Create a recording event rule which matches Apache Log4j 2 logging events with a specific log level range (current recording session, specific channel).
+====
+See the option:--channel, option:--all, and option:--loglevel options.
+
+[role="term"]
+----
+$ lttng enable-event --log4j2 --channel=my-loggers \
                      --all --loglevel=INFO
 ----
 ====

@@ -774,8 +774,11 @@ There are currently five available tracing domains:
     <td><a href="https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html"><code>java.util.logging</code></a> (JUL)
     <td>#LTTNG_DOMAIN_JUL
   <tr>
-    <td><a href="https://logging.apache.org/log4j/1.2/">Apache log4j</a>
+    <td><a href="https://logging.apache.org/log4j/1.x/">Apache Log4j 1.x</a>
     <td>#LTTNG_DOMAIN_LOG4J
+  <tr>
+    <td><a href="https://logging.apache.org/log4j/2.x/">Apache Log4j 2</a>
+    <td>#LTTNG_DOMAIN_LOG4J2
   <tr>
     <td><a href="https://docs.python.org/3/library/logging.html">Python logging</a>
     <td>#LTTNG_DOMAIN_PYTHON
@@ -806,7 +809,8 @@ sub-buffers of one or more channels.
 
 A channel is always associated to a \lt_obj_domain.
 The \link #LTTNG_DOMAIN_JUL <code>java.util.logging</code>\endlink,
-\link #LTTNG_DOMAIN_LOG4J Apache log4j\endlink, and
+\link #LTTNG_DOMAIN_LOG4J Apache Log4j 1.x\endlink,
+\link #LTTNG_DOMAIN_LOG4J2 Apache Log4j 2\endlink, and
 \link #LTTNG_DOMAIN_PYTHON Python\endlink tracing
 domains each have a default channel which you can't configure.
 
@@ -2175,7 +2179,16 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       <code>lttng_log4j:event</code>
 
       Such an event record has a string field <code>logger_name</code>
-      which contains the name of the Apache log4j logger from which
+      which contains the name of the Apache Log4j 1.x logger from which
+      LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_DOMAIN_LOG4J2
+    <td>#LTTNG_EVENT_TRACEPOINT
+    <td>
+      <code>lttng_log4j2:event</code>
+
+      Such an event record has a string field <code>logger_name</code>
+      which contains the name of the Apache Log4j 2 logger from which
       LTTng creates&nbsp;\lt_var{E}.
   <tr>
     <td>#LTTNG_DOMAIN_PYTHON

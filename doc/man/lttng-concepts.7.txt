@@ -200,14 +200,14 @@ User space::
 List the available Linux kernel tracepoints with
 `lttng list --userspace`. See man:lttng-list(1) to learn more.
 
-`java.util.logging`, Apache log4j, and Python::
+`java.util.logging`, Apache Log4j 1.x, Apache Log4j 2, and Python::
     Java or Python logging statement:::
         A method call on a Java or Python logger attached to an
         LTTng-UST handler.
 +
 List the available Java and Python loggers with `lttng list --jul`,
-`lttng list --log4j`, and `lttng list --python`. See man:lttng-list(1)
-to learn more.
+`lttng list --log4j`, `lttng list --log4j2`, and `lttng list --python`. See
+man:lttng-list(1) to learn more.
 
 
 [[trigger]]
@@ -534,9 +534,13 @@ There are currently five available tracing domains:
 |nloption:--type option starts with `jul:`
 |nloption:--jul
 
-|Apache log4j
+|Apache Log4j 1.x
 |nloption:--type option starts with `log4j:`
 |nloption:--log4j
+
+|Apache Log4j 2
+|nloption:--type option starts with `log4j2:`
+|nloption:--log4j2
 
 |Python
 |nloption:--type option starts with `python:`
@@ -613,7 +617,7 @@ provided tracing domain.
 
 A channel is always associated to a tracing domain (see the
 ``<<domain,{sect-domain}>>'' section below). The `java.util.logging`
-(JUL), log4j, and Python tracing domains each have a default channel
+(JUL), log4j, log4j2 and Python tracing domains each have a default channel
 which you can't configure.
 
 A channel owns recording event rules.

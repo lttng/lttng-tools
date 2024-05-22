@@ -24,7 +24,7 @@ tracepoint or Java/Python logging events:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-event*
-      (option:--userspace | option:--jul | option:--log4j | option:--python) [option:--tracepoint]
+      (option:--userspace | option:--jul | option:--log4j | option:--log4j2 |option:--python) [option:--tracepoint]
       (option:--all-events | 'NAME'[,'NAME']...)
       [option:--session='SESSION'] [option:--channel='CHANNEL']
 
@@ -95,7 +95,10 @@ option:-k, option:--kernel::
     Disable recording event rules in the Linux kernel domain.
 
 option:-l, option:--log4j::
-    Disable recording event rules in the Apache log4j domain.
+    Disable recording event rules in the Apache Log4j 1.x domain.
+
+option:--log4j2::
+    Disable recording event rules in the Apache Log4j 2 domain.
 
 option:-p, option:--python::
     Disable recording event rules in the Python domain.
@@ -142,7 +145,7 @@ option:--tracepoint::
 --
 With the option:--kernel or option:--userspace option:::
     LTTng tracepoint events.
-With the option:--jul, option:--log4j, or option:--python option:::
+With the option:--jul, option:--log4j, option:--log4j2, or option:--python option:::
     Logging events.
 --
 
@@ -173,7 +176,7 @@ $ lttng disable-event --kernel --tracepoint --all-events
 ----
 ====
 
-.Disable specific Apache log4j recording event rules in the default channel of a specific recording session.
+.Disable specific Apache Log4j 1.x recording event rules in the default channel of a specific recording session.
 ====
 See the option:--session option.
 

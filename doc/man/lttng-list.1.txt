@@ -25,14 +25,14 @@ List the channels and recording event rules of a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
-      [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--python]
+      [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
 
 List the available LTTng tracepoints, Linux system calls, and/or
 Java/Python loggers:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--fields]
-      [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul] [option:--log4j] [option:--python]
+      [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
 
 
 DESCRIPTION
@@ -64,8 +64,8 @@ With the 'SESSION' argument::
             their recording event rules.
 +
 Use the dedicated tracing domain options (option:--kernel,
-option:--userspace, option:--jul, option:--log4j, and option:--python)
-to only show specific channels.
+option:--userspace, option:--jul, option:--log4j, option:--log4j2, and
+option:--python) to only show specific channels.
 
 Without the 'SESSION' argument and with at least one dedicated tracing domain option::
 +
@@ -77,8 +77,8 @@ With the option:--kernel option::
         The available, instrumented Linux system calls.
 With the option:--userspace option::
     The available LTTng user space tracepoints.
-With the option:--jul, option:--log4j, and/or option:--python options::
-    The available `java.util.logging`, Apache log4j, and/or Python
+With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python options::
+    The available `java.util.logging`, Apache Log4j 1.x, Apache Log4j 2 and/or Python
     logger names.
 --
 +
@@ -116,9 +116,16 @@ option:-k, option:--kernel::
 
 option:-l, option:--log4j::
     Without the 'SESSION' argument:::
-        List the Apache log4j logger names.
+        List the Apache Log4j 1.x logger names.
     With the 'SESSION' argument:::
-        Only list the Apache log4j channels and their recording event
+        Only list the Apache Log4j 1.x channels and their recording event
+        rules.
+
+option:--log4j2::
+    Without the 'SESSION' argument:::
+        List the Apache Log4j 2 logger names.
+    With the 'SESSION' argument:::
+        Only list the Apache Log4j 2 channels and their recording event
         rules.
 
 option:-p, option:--python::
