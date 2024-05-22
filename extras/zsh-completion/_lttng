@@ -171,11 +171,18 @@ __lttng_jul_domain_opt_is_set() {
     $+opt_args[domain--j] || $+opt_args[domain---jul]))
 }
 
-# Returns 0 if an Apache log4j tracing domain option is set in
+# Returns 0 if an Apache Log4j 1.x tracing domain option is set in
 # `$opt_args`, or `1` otherwise.
 __lttng_log4j_domain_opt_is_set() {
   (($+opt_args[-l] || $+opt_args[--log4j] ||
     $+opt_args[domain--l] || $+opt_args[domain---log4j]))
+}
+
+# Returns 0 if an Apache Log4j 2 tracing domain option is set in
+# `$opt_args`, or `1` otherwise.
+__lttng_log4j2_domain_opt_is_set() {
+  (($+opt_args[-L] || $+opt_args[--log4j2] ||
+    $+opt_args[domain--L] || $+opt_args[domain---log4j2]))
 }
 
 # Returns 0 if a Python tracing domain option is set in `$opt_args`,
@@ -976,8 +983,11 @@ __lttng_complete_ip_name() {
     msg='`java.util.logging` logger name'
     list_opts=(-j)
   elif __lttng_log4j_domain_opt_is_set; then
-    msg='Apache log4j logger name'
+    msg='Apache Log4j 1.x logger name'
     list_opts=(-l)
+  elif __lttng_log4j2_domain_opt_is_set; then
+    msg='Apache Log4j 2 logger name'
+    list_opts=(-L)
   elif __lttng_python_domain_opt_is_set; then
     msg='Python logger name'
     list_opts=(-p)
@@ -1042,7 +1052,14 @@ __lttng_complete_add_context_cmd() {
   if ((minor_version >= 8)); then
     specs+=(
       '(--list)'{-j,--jul}'[select the `java.util.logging` tracing domain]'
-      '(--list)'{-l,--log4j}'[select the Apache log4j tracing domain]'
+      '(--list)'{-l,--log4j}'[select the Apache Log4j 1.x tracing domain]'
+      '(--list)'{-L,--log4j2}'[select the Apache Log4j 2 tracing domain]'
+    )
+  fi
+
+  if ((minor_version >= 14)); then
+    specs+=(
+      '(--list)'{-L,--log4j2}'[select the Apache Log4j 2 tracing domain]'
     )
   fi
 
@@ -1089,6 +1106,17 @@ __lttng_complete_log_level() {
       ALL
     )
   elif __lttng_log4j_domain_opt_is_set; then
+    log_levels=(
+      OFF
+      FATAL
+      ERROR
+      WARN
+      INFO
+      DEBUG
+      TRACE
+      ALL
+    )
+  elif __lttng_log4j2_domain_opt_is_set; then
     log_levels=(
       OFF
       FATAL
@@ -1265,6 +1293,8 @@ __lttng_xml_domain_name_from_opt() {
     echo -n JUL
   elif __lttng_log4j_domain_opt_is_set; then
     echo -n LOG4J
+  elif __lttng_log4j2_domain_opt_is_set; then
+    echo -n LOG4J2
   elif __lttng_python_domain_opt_is_set; then
     echo -n PYTHON
   else
@@ -1389,7 +1419,13 @@ __lttng_complete_disable_event_cmd() {
   # of LTTng-tools.
   if ((minor_version >= 6)); then
     specs+=(
-      "($kernel_ip_opt_excl)"{-l,--log4j}'[select the Apache log4j tracing domain]'
+      "($kernel_ip_opt_excl)"{-l,--log4j}'[select the Apache Log4j 1.x tracing domain]'
+    )
+  fi
+
+  if ((minor_version >= 14)); then
+    specs+=(
+      "($kernel_ip_opt_excl)"{-L,--log4j2}'[select the Apache Log4j 2 tracing domain]'
     )
   fi
 
@@ -1550,6 +1586,7 @@ __lttng_complete_enable_event_cmd() {
     $kernel_opts_excl
     -j --jul
     -l --log4j
+    -L --log4j2
     -p --python
     -x --exclude
   )
@@ -1565,10 +1602,17 @@ __lttng_complete_enable_event_cmd() {
     "($kernel_opts_excl -x --exclude)"{-j,--jul}'[select the `java.util.logging` tracing domain]'
   )
 
-  # The Apache log4j tracing domain options require LTTng-tools ≥ 2.6
+  # The Apache Log4j tracing domain options require LTTng-tools ≥ 2.6
   if ((minor_version >= 6)); then
     domain_specs+=(
-      "($kernel_opts_excl -x --exclude)"{-l,--log4j}'[select the Apache log4j tracing domain]'
+      "($kernel_opts_excl -x --exclude)"{-l,--log4j}'[select the Apache Log4j 1.x tracing domain]'
+    )
+  fi
+
+  # The Apache Log4j tracing domain options require LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    domain_specs+=(
+      "($kernel_opts_excl -x --exclude)"{-L,--log4j2}'[select the Apache Log4j 2 tracing domain]'
     )
   fi
 
@@ -1658,6 +1702,7 @@ __lttng_complete_list_cmd() {
     -u --userspace
     -j --jul
     -l --log4j
+    -L --log4j2
     -p --python
     --syscall
   )
@@ -1672,12 +1717,19 @@ __lttng_complete_list_cmd() {
     '(-d --domain -j --jul)'{-j,--jul}'[list `java.util.logging` tracing domain objects]'
   )
 
-  # The Apache log4j tracing domain and `--syscall` options require
+  # The Apache Log4j 1.x tracing domain and `--syscall` options require
   # LTTng-tools ≥ 2.6.
   if ((minor_version >= 6)); then
     specs+=(
-      '(-d --domain -l --log4j)'{-l,--log4j}'[list Apache log4j tracing domain objects]'
+      '(-d --domain -l --log4j)'{-l,--log4j}'[list Apache Log4j 1.x tracing domain objects]'
       '(-d --domain)--syscall[list Linux kernel system calls]'
+    )
+  fi
+
+  # The Apache Log4j 2 tracing domain requires LTTng-tools ≥ 2.14.
+  if ((minor_version >= 14)); then
+    specs+=(
+      '(-d --domain -L --log4j2)'{-L,--log4j2}'[list Apache Log4j 2 tracing domain objects]'
     )
   fi
 
@@ -1988,7 +2040,7 @@ local -r help_opt_specs=(
 )
 
 # Common non Linux kernel tracing domain option exclusions
-local -r non_kernel_domain_opt_excl=(-u --userspace -j --jul -l --log4j -p --python)
+local -r non_kernel_domain_opt_excl=(-u --userspace -j --jul -l --log4j -L --log4j2 -p --python)
 
 # General option specifications
 local gen_opt_specs=(
