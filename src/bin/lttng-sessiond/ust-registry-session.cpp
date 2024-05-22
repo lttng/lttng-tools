@@ -432,10 +432,10 @@ lsu::registry_session::~registry_session()
 	}
 }
 
-lsu::registry_session::locked_ptr lsu::registry_session::lock() noexcept
+lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
 {
 	pthread_mutex_lock(&_lock);
-	return locked_ptr(this);
+	return locked_ref(this);
 }
 
 /*

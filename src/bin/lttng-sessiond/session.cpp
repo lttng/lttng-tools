@@ -1437,7 +1437,7 @@ void ls::details::locked_session_release(ltt_session *session)
 	session_put(session);
 }
 
-ltt_session::locked_ptr ls::find_locked_session_by_id(ltt_session::id_t id)
+ltt_session::locked_ref ls::find_locked_session_by_id(ltt_session::id_t id)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_id(id);
@@ -1451,7 +1451,7 @@ ltt_session::locked_ptr ls::find_locked_session_by_id(ltt_session::id_t id)
 	 * session.
 	 */
 	session_lock(session);
-	return ltt_session::locked_ptr(session);
+	return ltt_session::locked_ref(session);
 }
 
 ltt_session::sptr ls::find_session_by_id(ltt_session::id_t id)

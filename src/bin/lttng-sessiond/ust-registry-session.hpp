@@ -37,14 +37,14 @@ void locked_registry_session_release(registry_session *session);
 
 class registry_session : public lttng::sessiond::trace::trace_class {
 public:
-	using locked_ptr =
+	using locked_ref =
 		std::unique_ptr<registry_session,
 				lttng::memory::create_deleter_class<
 					registry_session,
 					details::locked_registry_session_release>::deleter>;
 
 	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
-	locked_ptr lock() noexcept;
+	locked_ref lock() noexcept;
 
 	void add_channel(uint64_t channel_key);
 

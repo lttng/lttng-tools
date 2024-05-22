@@ -403,7 +403,7 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ptr& registry,
+ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ref& registry,
 			      struct consumer_socket *socket,
 			      int send_zero_data);
 enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,

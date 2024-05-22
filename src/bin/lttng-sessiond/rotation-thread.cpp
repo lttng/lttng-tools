@@ -543,9 +543,9 @@ void ls::rotation_thread::_handle_job_queue()
 		const auto unlock_list =
 			lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
 
-		/* locked_ptr will unlock the session and release the ref held by the job. */
+		/* locked_ref will unlock the session and release the ref held by the job. */
 		session_lock(job->session);
-		auto session = ltt_session::locked_ptr(job->session);
+		auto session = ltt_session::locked_ref(job->session);
 
 		if (run_job(*job, *session, _notification_thread_handle)) {
 			return;
@@ -588,7 +588,7 @@ void ls::rotation_thread::_handle_notification(const lttng_notification& notific
 	session_lock_list();
 	const auto unlock_list = lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
 
-	ltt_session::locked_ptr session{ [&condition_session_name]() {
+	ltt_session::locked_ref session{ [&condition_session_name]() {
 		auto raw_session_ptr = session_find_by_name(condition_session_name);
 
 		if (raw_session_ptr) {

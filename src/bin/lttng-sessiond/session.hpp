@@ -77,7 +77,7 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	using id_t = uint64_t;
-	using locked_ptr =
+	using locked_ref =
 		std::unique_ptr<ltt_session,
 				lttng::memory::create_deleter_class<
 					ltt_session,
@@ -317,7 +317,7 @@ namespace sessiond {
  * for longer than strictly necessary. If your intention is to acquire
  * a reference to an ltt_session, see `find_session_by_id()`.
  */
-ltt_session::locked_ptr find_locked_session_by_id(ltt_session::id_t id);
+ltt_session::locked_ref find_locked_session_by_id(ltt_session::id_t id);
 
 ltt_session::sptr find_session_by_id(ltt_session::id_t id);
 
