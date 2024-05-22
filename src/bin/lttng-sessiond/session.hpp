@@ -319,12 +319,6 @@ namespace sessiond {
  */
 ltt_session::locked_ptr find_locked_session_by_id(ltt_session::id_t id);
 
-/*
- * Session list lock must be acquired by the caller.
- * The caller must not keep the ownership of the returned locked session
- * for longer than strictly necessary. If your intention is to acquire
- * a reference to an ltt_session, see `find_session_by_id()`.
- */
 ltt_session::sptr find_session_by_id(ltt_session::id_t id);
 
 } /* namespace sessiond */
