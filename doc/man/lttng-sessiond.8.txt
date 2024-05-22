@@ -232,7 +232,7 @@ See also the `LTTNG_CONSUMERD64_LIBDIR` environment variable.
 option:--consumerd64-path='PATH'::
     Set the 64-bit consumer daemon binary path to 'PATH'.
 +
-See also the `LTTNG_CONSUMERD32_BIN` environment variable.
+See also the `LTTNG_CONSUMERD64_BIN` environment variable.
 
 option:--kconsumerd-cmd-sock='PATH'::
     Set the command Unix socket path of the Linux kernel consumer daemon
