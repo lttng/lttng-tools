@@ -14,6 +14,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[3] / "utils"
 sys.path.append(str(test_utils_import_path))
@@ -22,7 +23,7 @@ import lttngtest
 
 
 def get_consumerd_pid(tap, parent, match_string):
-    pid = 0
+    pid = None
     try:
         process = subprocess.Popen(
             ["pgrep", "-P", str(parent), "-f", match_string],
@@ -30,13 +31,14 @@ def get_consumerd_pid(tap, parent, match_string):
         )
         process.wait()
         output = str(process.stdout.read(), encoding="UTF-8").splitlines()
-        if len(output) != 1:
+        if len(output) > 1:
             raise Exception(
                 "Unexpected number of output lines (got {}): {}".format(
                     len(output), output
                 )
             )
-        pid = int(output[0])
+        elif len(output) == 1:
+            pid = int(output[0])
     except Exception as e:
         tap.diagnostic(
             "Failed to find child process of '{}' matching '{}': '{}'".format(
@@ -48,19 +50,23 @@ def get_consumerd_pid(tap, parent, match_string):
 
 def count_process_dev_shm_fds(pid):
     count = 0
-    if pid == 0:
+    if pid is None:
         return count
     dir = os.path.join("/proc", str(pid), "fd")
     for root, dirs, files in os.walk(dir):
         for f in files:
             filename = pathlib.Path(os.path.join(root, f))
             try:
+                # The symlink in /proc/PID may exist, but point to an unlinked
+                # file - shm_unlink is called but either the kernel hasn't yet
+                # finished the clean-up or the consumer hasn't called close()
+                # on the FD yet.
                 if filename.is_symlink() and str(filename.resolve()).startswith(
                     "/dev/shm/shm-ust-consumer"
                 ):
                     count += 1
             except FileNotFoundError:
-                # As we're walking /proc/XX/fd/, fds may be added or removed
+                # As /proc/XX/fd/ is being walked, fds may be added or removed
                 continue
     return count
 
@@ -112,7 +118,18 @@ def test_fd_leak(tap, test_env, buffer_sharing_policy, kill_relayd=True):
     session.stop()
     session.destroy()
 
-    count_post_destroy = count_dev_shm_fds(tap, test_env)
+    # As there is not method to know exactly when the final close of the
+    # shm happens (it is timing dependant from an external point of view),
+    # this test iterates waiting for the post-destroy count to reach the
+    # post-start count. In a failure, this will loop infinitely.
+    tap.diagnostic(
+        "Waiting for post-destroy shm count to drop back to post-start level"
+    )
+    while True:
+        count_post_destroy = count_dev_shm_fds(tap, test_env)
+        if count_post_destroy == count_post_start:
+            break
+        time.sleep(0.1)
 
     tap.diagnostic(
         "FD counts post-start: {}, post-destroy: {}".format(
