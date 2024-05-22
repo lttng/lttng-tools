@@ -38,6 +38,12 @@
                 {
                     "name": "LTTNG_SESSION_CONFIG_XSD_PATH",
                     "value": "${workspaceFolder}/src/common/"
+                },
+                // Assumes the 64-bit consumer was built. Point to the in-tree
+                // binary.
+                {
+                    "name": "LTTNG_CONSUMERD64_BIN",
+                    "value": "${workspaceFolder}/src/bin/lttng-consumerd/lttng-consumerd"
                 }
             ],
             "externalConsole": false,
