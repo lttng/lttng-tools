@@ -277,7 +277,6 @@ static void wait_consumer(struct consumer_data *consumer_data)
 static void sessiond_cleanup()
 {
 	int ret;
-	struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Cleanup sessiond");
 
@@ -326,8 +325,6 @@ static void sessiond_cleanup()
 
 	DBG("Removing directory %s", the_config.consumerd64_path.value);
 	(void) rmdir(the_config.consumerd64_path.value);
-
-	pthread_mutex_destroy(&session_list->lock);
 
 	DBG("Cleaning up all per-event notifier domain agents");
 	agent_by_event_notifier_domain_ht_destroy();

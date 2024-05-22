@@ -68,12 +68,7 @@ struct lttng_ht *ltt_sessions_ht_by_name = nullptr;
  *
  * Please see session.h for more explanation and correct usage of the list.
  */
-struct ltt_session_list the_session_list = {
-	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.removal_cond = PTHREAD_COND_INITIALIZER,
-	.next_uuid = 0,
-	.head = CDS_LIST_HEAD_INIT(the_session_list.head),
-};
+struct ltt_session_list the_session_list;
 } /* namespace */
 
 /*
@@ -148,11 +143,11 @@ struct ltt_session_list *session_get_list()
  */
 void session_list_wait_empty()
 {
-	pthread_mutex_lock(&the_session_list.lock);
-	while (!cds_list_empty(&the_session_list.head)) {
-		pthread_cond_wait(&the_session_list.removal_cond, &the_session_list.lock);
-	}
-	pthread_mutex_unlock(&the_session_list.lock);
+	std::unique_lock<std::mutex> list_lock(the_session_list.lock);
+
+	/* Keep waiting until the session list is empty. */
+	the_session_list.removal_cond.wait(list_lock,
+					   [] { return cds_list_empty(&the_session_list.head); });
 }
 
 /*
@@ -160,7 +155,7 @@ void session_list_wait_empty()
  */
 void session_lock_list() noexcept
 {
-	pthread_mutex_lock(&the_session_list.lock);
+	the_session_list.lock.lock();
 }
 
 /*
@@ -168,7 +163,8 @@ void session_lock_list() noexcept
  */
 int session_trylock_list() noexcept
 {
-	return pthread_mutex_trylock(&the_session_list.lock);
+	/* Return 0 if successfully acquired. */
+	return the_session_list.lock.try_lock() ? 0 : 1;
 }
 
 /*
@@ -176,7 +172,7 @@ int session_trylock_list() noexcept
  */
 void session_unlock_list() noexcept
 {
-	pthread_mutex_unlock(&the_session_list.lock);
+	the_session_list.lock.unlock();
 }
 
 /*
@@ -990,7 +986,7 @@ static void session_release(struct urcu_ref *ref)
 	pthread_mutex_destroy(&session->lock);
 
 	if (session_published) {
-		ASSERT_LOCKED(the_session_list.lock);
+		ASSERT_SESSION_LIST_LOCKED();
 		del_session_list(session);
 		del_session_ht(session);
 	}
@@ -1011,11 +1007,12 @@ static void session_release(struct urcu_ref *ref)
 	free(session);
 	if (session_published) {
 		/*
-		 * Broadcast after free-ing to ensure the memory is
-		 * reclaimed before the main thread exits.
+		 * Notify after free-ing to ensure the memory is
+		 * reclaimed before the main thread exits (and prevent memory leak
+		 * reports).
 		 */
-		ASSERT_LOCKED(the_session_list.lock);
-		pthread_cond_broadcast(&the_session_list.removal_cond);
+		ASSERT_SESSION_LIST_LOCKED();
+		the_session_list.removal_cond.notify_all();
 	}
 }
 
@@ -1040,7 +1037,7 @@ void session_put(struct ltt_session *session)
 	 * The session list lock must be held as any session_put()
 	 * may cause the removal of the session from the session_list.
 	 */
-	ASSERT_LOCKED(the_session_list.lock);
+	ASSERT_SESSION_LIST_LOCKED();
 	LTTNG_ASSERT(session->ref.refcount);
 	urcu_ref_put(&session->ref, session_release);
 }
@@ -1109,7 +1106,7 @@ struct ltt_session *session_find_by_name(const char *name)
 	struct ltt_session *iter;
 
 	LTTNG_ASSERT(name);
-	ASSERT_LOCKED(the_session_list.lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	DBG2("Trying to find session by name %s", name);
 
@@ -1136,7 +1133,7 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	struct ltt_session *ls;
 
 	ASSERT_RCU_READ_LOCKED();
-	ASSERT_LOCKED(the_session_list.lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	if (!ltt_sessions_ht_by_id) {
 		goto end;
@@ -1168,7 +1165,7 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 	enum lttng_error_code ret_code;
 	struct ltt_session *new_session = nullptr;
 
-	ASSERT_LOCKED(the_session_list.lock);
+	ASSERT_SESSION_LIST_LOCKED();
 	if (name) {
 		struct ltt_session *clashing_session;
 
@@ -1363,7 +1360,7 @@ int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state
 {
 	int ret = 0;
 
-	ASSERT_LOCKED(the_session_list.lock);
+	ASSERT_SESSION_LIST_LOCKED();
 	ASSERT_LOCKED(session.lock);
 
 	session.rotation_state = result;

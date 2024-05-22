@@ -21,7 +21,9 @@
 #include <lttng/lttng-error.h>
 #include <lttng/rotation.h>
 
+#include <condition_variable>
 #include <limits.h>
+#include <mutex>
 #include <stdbool.h>
 #include <urcu/list.h>
 
@@ -54,21 +56,21 @@ struct ltt_session_list {
 	 * functions are used, the lock MUST be acquired in order to
 	 * iterate or/and do any actions on that list.
 	 */
-	pthread_mutex_t lock;
+	std::mutex lock;
 	/*
 	 * This condition variable is signaled on every removal from
 	 * the session list.
 	 */
-	pthread_cond_t removal_cond;
+	std::condition_variable removal_cond;
 
 	/*
 	 * Session unique ID generator. The session list lock MUST be
 	 * upon update and read of this counter.
 	 */
-	uint64_t next_uuid;
+	uint64_t next_uuid = 0;
 
 	/* Linked list head */
-	struct cds_list_head head;
+	struct cds_list_head head = CDS_LIST_HEAD_INIT(head);
 };
 
 /*
