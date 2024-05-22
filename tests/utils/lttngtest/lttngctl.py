@@ -81,7 +81,8 @@ class TracingDomain(enum.Enum):
 
     User = "User space tracing domain"
     Kernel = "Linux kernel tracing domain."
-    Log4j = "Log4j tracing back-end."
+    Log4j = "Log4j 1.x tracing back-end."
+    Log4j2 = "Log4j 2.x tracing back-end."
     JUL = "Java Util Logging tracing back-end."
     Python = "Python logging module tracing back-end."
 
@@ -162,6 +163,18 @@ class Log4jLogLevel(LogLevel):
     DEBUG = 10000
     TRACE = 5000
     ALL = -2147483648
+
+
+@enum.unique
+class Log4j2LogLevel(LogLevel):
+    OFF = 0
+    FATAL = 100
+    ERROR = 200
+    WARN = 300
+    INFO = 400
+    DEBUG = 500
+    TRACE = 600
+    ALL = 2147483647
 
 
 @enum.unique
@@ -285,6 +298,41 @@ class Log4jTracepointEventRule(TracepointEventRule):
 
         if log_level_rule and not isinstance(log_level_rule.level, Log4jLogLevel):
             raise ValueError("Log level rule must use a Log4jLogLevel as its value")
+
+    def _equals(self, other):
+        # type (Log4jTracepointEventRule) -> bool
+        return (
+            self.log_level_rule == other.log_level_rule
+            and self.name_pattern_exclusions == other.name_pattern_exclusions
+        )
+
+    @property
+    def log_level_rule(self):
+        # type: () -> Optional[LogLevelRule]
+        return self._log_level_rule
+
+    @property
+    def name_pattern_exclusions(self):
+        # type: () -> Optional[List[str]]
+        return self._name_pattern_exclusions
+
+
+class Log4j2TracepointEventRule(TracepointEventRule):
+    def __init__(
+        self,
+        name_pattern=None,  # type: Optional[str]
+        filter_expression=None,  # type: Optional[str]
+        log_level_rule=None,  # type: Optional[LogLevelRule]
+        name_pattern_exclusions=None,  # type: Optional[List[str]]
+    ):
+        TracepointEventRule.__init__(self, name_pattern, filter_expression)
+        self._log_level_rule = log_level_rule  # type: Optional[LogLevelRule]
+        self._name_pattern_exclusions = (
+            name_pattern_exclusions
+        )  # type: Optional[List[str]]
+
+        if log_level_rule and not isinstance(log_level_rule.level, Log4j2LogLevel):
+            raise ValueError("Log level rule must use a Log4j2LogLevel as its value")
 
     def _equals(self, other):
         # type (Log4jTracepointEventRule) -> bool

@@ -42,6 +42,7 @@ def _get_domain_option_name(domain):
         lttngctl.TracingDomain.User: "userspace",
         lttngctl.TracingDomain.Kernel: "kernel",
         lttngctl.TracingDomain.Log4j: "log4j",
+        lttngctl.TracingDomain.Log4j2: "log4j2",
         lttngctl.TracingDomain.Python: "python",
         lttngctl.TracingDomain.JUL: "jul",
     }[domain]
@@ -53,6 +54,7 @@ def _get_domain_xml_mi_name(domain):
         lttngctl.TracingDomain.User: "UST",
         lttngctl.TracingDomain.Kernel: "KERNEL",
         lttngctl.TracingDomain.Log4j: "LOG4J",
+        lttngctl.TracingDomain.Log4j2: "LOG4J2",
         lttngctl.TracingDomain.Python: "PYTHON",
         lttngctl.TracingDomain.JUL: "JUL",
     }[domain]
@@ -121,6 +123,17 @@ def _get_log_level_argument_name(log_level):
             lttngctl.Log4jLogLevel.TRACE: "TRACE",
             lttngctl.Log4jLogLevel.ALL: "ALL",
         }[log_level]
+    elif isinstance(log_level, lttngctl.Log4j2LogLevel):
+        return {
+            lttngctl.Log4j2LogLevel.OFF: "OFF",
+            lttngctl.Log4j2LogLevel.FATAL: "FATAL",
+            lttngctl.Log4j2LogLevel.ERROR: "ERROR",
+            lttngctl.Log4j2LogLevel.WARN: "WARN",
+            lttngctl.Log4j2LogLevel.INFO: "INFO",
+            lttngctl.Log4j2LogLevel.DEBUG: "DEBUG",
+            lttngctl.Log4j2LogLevel.TRACE: "TRACE",
+            lttngctl.Log4j2LogLevel.ALL: "ALL",
+        }[log_level]
     elif isinstance(log_level, lttngctl.PythonLogLevel):
         return {
             lttngctl.PythonLogLevel.CRITICAL: "CRITICAL",
@@ -169,6 +182,14 @@ def _get_log_level_from_mi_log_level_name(mi_log_level_name):
         "LOG4J_DEBUG": lttngctl.Log4jLogLevel.DEBUG,
         "LOG4J_TRACE": lttngctl.Log4jLogLevel.TRACE,
         "LOG4J_ALL": lttngctl.Log4jLogLevel.ALL,
+        "LOG4J2_OFF": lttngctl.Log4j2LogLevel.OFF,
+        "LOG4J2_FATAL": lttngctl.Log4j2LogLevel.FATAL,
+        "LOG4J2_ERROR": lttngctl.Log4j2LogLevel.ERROR,
+        "LOG4J2_WARN": lttngctl.Log4j2LogLevel.WARN,
+        "LOG4J2_INFO": lttngctl.Log4j2LogLevel.INFO,
+        "LOG4J2_DEBUG": lttngctl.Log4j2LogLevel.DEBUG,
+        "LOG4J2_TRACE": lttngctl.Log4j2LogLevel.TRACE,
+        "LOG4J2_ALL": lttngctl.Log4j2LogLevel.ALL,
         "PYTHON_CRITICAL": lttngctl.PythonLogLevel.CRITICAL,
         "PYTHON_ERROR": lttngctl.PythonLogLevel.ERROR,
         "PYTHON_WARNING": lttngctl.PythonLogLevel.WARNING,
@@ -179,11 +200,12 @@ def _get_log_level_from_mi_log_level_name(mi_log_level_name):
 
 
 def _get_tracepoint_event_rule_class_from_domain_type(domain_type):
-    # type: (lttngctl.TracingDomain) -> Type[lttngctl.UserTracepointEventRule] | Type[lttngctl.Log4jTracepointEventRule] | Type[lttngctl.JULTracepointEventRule] | Type[lttngctl.PythonTracepointEventRule] | Type[lttngctl.KernelTracepointEventRule]
+    # type: (lttngctl.TracingDomain) -> Type[lttngctl.UserTracepointEventRule] | Type[lttngctl.Log4jTracepointEventRule] | Type[lttngctl.Log4j2TracepointEventRule] | Type[lttngctl.JULTracepointEventRule] | Type[lttngctl.PythonTracepointEventRule] | Type[lttngctl.KernelTracepointEventRule]
     return {
         lttngctl.TracingDomain.User: lttngctl.UserTracepointEventRule,
         lttngctl.TracingDomain.JUL: lttngctl.JULTracepointEventRule,
         lttngctl.TracingDomain.Log4j: lttngctl.Log4jTracepointEventRule,
+        lttngctl.TracingDomain.Log4j2: lttngctl.Log4j2TracepointEventRule,
         lttngctl.TracingDomain.Python: lttngctl.PythonTracepointEventRule,
         lttngctl.TracingDomain.Kernel: lttngctl.KernelTracepointEventRule,
     }[domain_type]

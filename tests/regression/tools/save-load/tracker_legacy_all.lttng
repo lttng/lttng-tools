@@ -45,6 +45,11 @@
 				<channels/>
 			</domain>
 			<domain>
+				<type>LOG4J2</type>
+				<buffer_type>PER_UID</buffer_type>
+				<channels/>
+			</domain>
+			<domain>
 				<type>PYTHON</type>
 				<buffer_type>PER_UID</buffer_type>
 				<channels/>
