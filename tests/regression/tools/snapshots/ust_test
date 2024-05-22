@@ -16,7 +16,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 APPS_PID=()
 
-NUM_TESTS=106
+NUM_TESTS=201
 
 TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_ust_trace_path.XXXXXX)
 
@@ -39,9 +39,22 @@ function start_test_app()
 {
 	local tmp_file
 	tmp_file=$(mktemp -u -t "tmp.${FUNCNAME[0]}_tmp_file.XXXXXX")
-
+	TESTAPP_ARGS=(
+		"-i"
+		"${NR_ITER}"
+		"-w"
+		"${NR_USEC_WAIT}"
+		"--sync-after-first-event"
+		"${tmp_file}"
+	)
+	if [ -n "${TESTAPP_ITER_WAIT_FILE}" ] ; then
+		TESTAPP_ARGS+=(
+			"--sync-after-each-iter"
+			"${TESTAPP_ITER_WAIT_FILE}"
+		)
+	fi
 	# Start application with a temporary file.
-	$TESTAPP_BIN -i "$NR_ITER" -w "$NR_USEC_WAIT" --sync-after-first-event "$tmp_file" &
+	$TESTAPP_BIN "${TESTAPP_ARGS[@]}" &
 	ret=$?
 	APPS_PID+=(${!})
 	ok $ret "Start application to trace"
@@ -49,7 +62,7 @@ function start_test_app()
 	# Wait for the application file to appear indicating that at least one
 	# tracepoint has been fired.
 	while [ ! -f "$tmp_file" ]; do
-		sleep 0.5
+		sleep 0.1
 	done
 	diag "Removing test app temporary file $tmp_file"
 	rm -f "$tmp_file"
@@ -488,6 +501,218 @@ function test_ust_local_snapshots ()
 	stop_test_apps
 }
 
+function test_ust_local_snapshot_consecutive_no_new_events_discard
+{
+	NR_ITER=10000
+	NR_USEC_WAIT=0
+
+	# When a flush with SWITCH_FLUSH forces delivery of a packet even if it
+	# contains no events, this test should fail. The number of iterations should
+	# exceed the number of sub-buffers for the channel.
+	diag "Test local UST snapshots with consecutive snapshots and no new events on a discard channel"
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_mmap_small_discard_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
+
+	start_test_app
+	wait_test_apps
+	FIRST_LINES=()
+	COUNTS=()
+	for i in $(seq 0 4); do
+		# Take first snapshot, remember first line.
+		lttng_snapshot_record "$SESSION_NAME"
+		FIRST_LINES+=("$(trace_first_line "$TRACE_PATH/")")
+		COUNTS+=("$($BABELTRACE_BIN "${TRACE_PATH}" | grep -c "${EVENT_NAME}")")
+		rm -rf "${TRACE_PATH:?}/"
+	done
+	for x in $(seq 1 3); do
+		[[ "${FIRST_LINES[0]}" == "${FIRST_LINES[${x}]}" ]]
+		ok "${?}" "First lines of snapshot 0 and ${x} match"
+		[[ "${COUNTS[0]}" == "${COUNTS[${x}]}" ]]
+		ok "${?}" "Event counts in snapshot 0 and ${x} match"
+	done
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
+}
+
+function test_ust_local_snapshot_consecutive_no_new_events_overwrite
+{
+	NR_ITER=10000
+	NR_USEC_WAIT=0
+
+	# When a flush with SWITCH_FLUSH forces delivery of a packet even if it
+	# contains no events, this test should fail. The number of iterations should
+	# exceed the number of sub-buffers for the channel.
+	diag "Test local UST snapshots with consecutive snapshots and no new events on an overwrite channel"
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_mmap_small_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
+
+	start_test_app
+	wait_test_apps
+	FIRST_LINES=()
+	COUNTS=()
+	for i in $(seq 1 10); do
+		# Take first snapshot, remember first line.
+		lttng_snapshot_record "$SESSION_NAME"
+		FIRST_LINES+=("$(trace_first_line "$TRACE_PATH/")")
+		COUNTS+=("$($BABELTRACE_BIN "${TRACE_PATH}" | grep -c "${EVENT_NAME}")")
+		rm -rf "${TRACE_PATH:?}/"
+	done
+	for x in $(seq 1 9); do
+		[[ "${FIRST_LINES[0]}" == "${FIRST_LINES[${x}]}" ]]
+		ok "${?}" "First line of snapshot 0 and ${x} match"
+		[[ "${COUNTS[0]}" == "${COUNTS[${x}]}" ]]
+		ok "${?}" "Event counts in snapshot 0 and ${x} match"
+	done
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
+}
+
+function test_ust_local_snapshot_duplicate_seq_num
+{
+	NR_ITER=5
+	NR_USEC_WAIT=0
+	TESTAPP_ITER_WAIT_FILE="$(mktemp -t "tmp.${FUNCNAME[0]}_tmp_file.XXXXXX")"
+
+	local CPU_A=""
+	local CPU_B=""
+	local IS_X86_64=""
+	local XXD="$(command -v xxd)"
+	local TEST_SEQNUM=""
+	local OLDCPUSET="$(taskset -p $$)"
+	local PAGE_SIZE="$(getconf PAGE_SIZE)"
+	if file $(command -v bash) | grep -q '64-bit' && uname -a | grep -q 'x86_64' ; then
+		IS_X86_64="1"
+	fi
+
+	if [[ "${IS_X86_64}" && "${XXD}" ]] ; then
+		TEST_SEQNUM="1"
+	fi
+
+	for CPU in $(get_online_cpus) ; do
+		if [ -z "${CPU_A}" ] ; then
+			CPU_A="${CPU}"
+			continue
+		fi
+		if [ -z "${CPU_B}" ] ; then
+			CPU_B="${CPU}"
+		fi
+	done
+	if [[ "${CPU_A}" == "${CPU_B}" ]] || [ -z "${CPU_B}" ] ; then
+		# todo
+		skip 0 "Need at least two online CPUs to have a quiet channel for testing" 42
+	fi
+
+	diag "Test local UST snapshots that should contain packets with duplicate sequence numbers"
+	taskset -cp "${CPU_A}" $$ 1>/dev/null 2>&1
+	ok $? "Set current process CPU affinity"
+	create_lttng_session_no_output "$SESSION_NAME"
+	enable_lttng_mmap_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok "$SESSION_NAME"
+	lttng_snapshot_add_output_ok "$SESSION_NAME" "file://$TRACE_PATH"
+
+	# This will produce a set of snapshots.
+	# For the cpu that is currently active, the snapshots will contain the following:
+	#  snapchan_0: events in one or more packets, possibly with a terminal packet
+	#  snapchan_1 to snapchan_N: 1 event in 1 packet + terminal packet
+	start_test_app
+	for i in $(seq 0 3) ; do
+		touch "${TESTAPP_ITER_WAIT_FILE}"
+		# Wait until file disappears
+		while [ -f "${TESTAPP_ITER_WAIT_FILE}" ] ; do
+			sleep 0.1
+		done
+		lttng_snapshot_record "${SESSION_NAME}"
+	done
+	rm "${TESTAPP_ITER_WAIT_FILE}"
+
+	lttng_snapshot_record "${SESSION_NAME}"
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+	destroy_lttng_session_ok "$SESSION_NAME"
+
+	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
+	if validate_trace $EVENT_NAME "$TRACE_PATH/" ; then
+		CPU_A_FILES=()
+		while read -r f ; do
+			CPU_A_FILES+=("${f}")
+		done < <(find "${TRACE_PATH}" -iname "snapchan_${CPU_A}" | sort)
+
+		CPU_B_FILES=()
+		while read -r f ; do
+			CPU_B_FILES+=("${f}")
+		done < <(find "${TRACE_PATH}" -iname "snapchan_${CPU_B}" | sort)
+
+		for i in $(seq 0 3); do
+			A_SIZE="$(du -b "${CPU_A_FILES[${i}]}" | cut -f1)"
+			B_SIZE="$(du -b "${CPU_B_FILES[${i}]}" | cut -f1)"
+			if [[ "${TEST_SEQNUM}" ]] ; then
+				SEQNUM_A1="$(xxd -g 0 -s 0x40 -l 8 "${CPU_A_FILES[${i}]}" | cut -d' ' -f2)"
+				SEQNUM_A2="$(xxd -g 0 -s $((0x40 + PAGE_SIZE)) -l 8 "${CPU_A_FILES[${i}]}" | cut -d' ' -f2)"
+				SEQNUM_B1="$(xxd -g 0 -s 0x40 -l 8 "${CPU_B_FILES[${i}]}" | cut -d' ' -f2)"
+				SEQNUM_B2="$(xxd -g 0 -s $((0x40 + PAGE_SIZE)) -l 8 "${CPU_B_FILES[${i}]}" | cut -d' ' -f2)"
+			fi
+
+			diag "Snapshot #${i}"
+			if [[ "${i}" == "0" ]] ;then
+				# On the first iteration, the snapshot on the channel
+				# for CPU should have just a single packet
+				[[ "${A_SIZE}" -eq "$((PAGE_SIZE))" ]]
+				ok $? "CPU_A stream file is one packet large"
+				[[ "${B_SIZE}" -eq "$((PAGE_SIZE))" ]]
+				ok $? "CPU_B stream file is one packet large"
+				if [[ "${TEST_SEQNUM}" ]] ; then
+					[[ "${SEQNUM_A1}" == "0000000000000000" ]]
+					ok $? "First packet of CPU_A stream file has sequence number 0"
+					[[ "${SEQNUM_A2}" == "" ]]
+					ok $? "There is no second packet sequence number for CPU_A stream file"
+					[[ "${SEQNUM_B1}" == "0000000000000000" ]]
+					ok $? "First packet of CPU_B stream file has sequence number 0"
+					[[ "${SEQNUM_B2}" == "" ]]
+					ok $? "There is no second packet sequence number for CPU_B stream file"
+				else
+				   skip 0 "Sequence number testing not available" 4
+				fi
+			else
+				# On subsequent iterations, the terminal packet
+				# should be present, so there will be 2 packets.
+				[[ "${A_SIZE}" -ge "$((PAGE_SIZE))" ]]
+				ok $? "CPU_A stream file is greater or equal to one packet large"
+				[[ "${B_SIZE}" -eq "$((PAGE_SIZE * 2 ))" ]]
+				ok $? "CPU_B stream file is two packets large"
+				if [[ "${TEST_SEQNUM}" ]] ; then
+					[[ "${SEQNUM_A1}" == "0000000000000000" ]]
+					ok $? "First packet of CPU_A stream file has sequence number 0"
+					[[ "${SEQNUM_A2}" == "0100000000000000" ]]
+					ok $? "Second packet of CPU_A stream file has sequence number 1"
+					[[ "${SEQNUM_B1}" == "0000000000000000" ]]
+					ok $? "First packet of CPU_B stream file has sequence number 0"
+					[[ "${SEQNUM_B2}" == "0100000000000000" ]]
+					ok $? "Second packet of CPU_B stream file has sequence number 1"
+				else
+				   skip 0 "Sequence number testing not available" 4
+				fi
+			fi
+		done
+
+		rm -rf "${TRACE_PATH:?}/"
+	else
+		skip 0 "Need a valid trace" 24
+	fi
+
+	stop_test_apps
+	taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -496,7 +721,8 @@ bail_out_if_no_babeltrace
 
 # shellcheck disable=SC2119
 start_lttng_sessiond
-tests=( test_ust_list_output
+tests=(
+	test_ust_list_output
 	test_ust_local_snapshot
 	test_ust_local_snapshot_max_size
 	test_ust_per_uid_local_snapshot
@@ -505,6 +731,9 @@ tests=( test_ust_list_output
 	test_ust_local_snapshots
 	test_ust_local_snapshot_small_discard_buffers
 	test_ust_local_snapshot_small_overwrite_buffers
+	test_ust_local_snapshot_consecutive_no_new_events_discard
+	test_ust_local_snapshot_consecutive_no_new_events_overwrite
+	test_ust_local_snapshot_duplicate_seq_num
 )
 
 for fct_test in "${tests[@]}";

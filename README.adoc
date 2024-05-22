@@ -112,6 +112,10 @@ the `lttng`, `lttng{nbh}sessiond`, `lttng{nbh}relayd`, and
 +
 Debian/Ubuntu package: `libpfm4-dev`
 
+* **xxd**: `make{nbsp}check` and certain tests.
++
+Debian/Ubuntu package: `xxd`
+
 {lt} supports both the LTTng Linux kernel tracer and LTTng user space
 tracer sharing the same _minor_ version. While some minor releases do
 not change the tracer ABIs and _could_ work, no testing is performed to
