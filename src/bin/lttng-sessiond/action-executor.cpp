@@ -284,10 +284,8 @@ static int action_executor_start_session_handler(struct action_executor *executo
 						 const struct action_work_item *work_item,
 						 struct action_work_subitem *item)
 {
-	int ret = 0;
 	const char *session_name;
 	enum lttng_action_status action_status;
-	struct ltt_session *session;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
@@ -296,8 +294,7 @@ static int action_executor_start_session_handler(struct action_executor *executo
 	action_status = lttng_action_start_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get session name from `%s` action", get_action_name(action));
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
 	/*
@@ -310,21 +307,33 @@ static int action_executor_start_session_handler(struct action_executor *executo
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		goto end;
+		return 0;
 	}
 
-	session_lock_list();
-	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
-	if (!session) {
-		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-		    session_name,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
+	/*
+	 * Mind the order of the declaration of list_lock vs target_session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::locked_ref session;
+
+	try {
+		session = ltt_session::find_locked_session(
+			LTTNG_OPTIONAL_GET(item->context.session_id));
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
+			ex.what(),
+			session_name,
+			get_action_name(action),
+			get_trigger_name(work_item->trigger),
+			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		goto error_unlock_list;
+		return 0;
 	}
 
-	session_lock(session);
 	if (session->destroyed) {
 		DBG("Session `%s` with id = %" PRIu64
 		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
@@ -332,14 +341,14 @@ static int action_executor_start_session_handler(struct action_executor *executo
 		    session->id,
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
-		goto error_unlock_session;
+		return 0;
 	}
 
-	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_unlock_session;
+	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
+		return 0;
 	}
 
-	cmd_ret = (lttng_error_code) cmd_start_trace(session);
+	cmd_ret = (lttng_error_code) cmd_start_trace(session.get());
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully started session `%s` on behalf of trigger `%s`",
@@ -360,13 +369,7 @@ static int action_executor_start_session_handler(struct action_executor *executo
 		break;
 	}
 
-error_unlock_session:
-	session_unlock(session);
-	session_put(session);
-error_unlock_list:
-	session_unlock_list();
-end:
-	return ret;
+	return 0;
 }
 
 static int action_executor_stop_session_handler(struct action_executor *executor
@@ -374,10 +377,8 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 						const struct action_work_item *work_item,
 						struct action_work_subitem *item)
 {
-	int ret = 0;
 	const char *session_name;
 	enum lttng_action_status action_status;
-	struct ltt_session *session;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
@@ -386,8 +387,7 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 	action_status = lttng_action_stop_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get session name from `%s` action", get_action_name(action));
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
 	/*
@@ -400,21 +400,33 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		goto end;
+		return 0;
 	}
 
-	session_lock_list();
-	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
-	if (!session) {
-		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-		    session_name,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
+	/*
+	 * Mind the order of the declaration of list_lock vs target_session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::locked_ref session;
+
+	try {
+		session = ltt_session::find_locked_session(
+			LTTNG_OPTIONAL_GET(item->context.session_id));
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
+			ex.what(),
+			session_name,
+			get_action_name(action),
+			get_trigger_name(work_item->trigger),
+			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		goto error_unlock_list;
+		return 0;
 	}
 
-	session_lock(session);
 	if (session->destroyed) {
 		DBG("Session `%s` with id = %" PRIu64
 		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
@@ -422,14 +434,14 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 		    session->id,
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
-		goto error_unlock_session;
+		return 0;
 	}
 
-	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_unlock_session;
+	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
+		return 0;
 	}
 
-	cmd_ret = (lttng_error_code) cmd_stop_trace(session);
+	cmd_ret = (lttng_error_code) cmd_stop_trace(session.get());
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully stopped session `%s` on behalf of trigger `%s`",
@@ -450,13 +462,7 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 		break;
 	}
 
-error_unlock_session:
-	session_unlock(session);
-	session_put(session);
-error_unlock_list:
-	session_unlock_list();
-end:
-	return ret;
+	return 0;
 }
 
 static int action_executor_rotate_session_handler(struct action_executor *executor
@@ -464,10 +470,8 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 						  const struct action_work_item *work_item,
 						  struct action_work_subitem *item)
 {
-	int ret = 0;
 	const char *session_name;
 	enum lttng_action_status action_status;
-	struct ltt_session *session;
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
@@ -476,8 +480,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	action_status = lttng_action_rotate_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get session name from `%s` action", get_action_name(action));
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
 	/*
@@ -490,21 +493,33 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		goto end;
+		return 0;
 	}
 
-	session_lock_list();
-	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
-	if (!session) {
-		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-		    session_name,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
+	/*
+	 * Mind the order of the declaration of list_lock vs target_session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::locked_ref session;
+
+	try {
+		session = ltt_session::find_locked_session(
+			LTTNG_OPTIONAL_GET(item->context.session_id));
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
+			ex.what(),
+			session_name,
+			get_action_name(action),
+			get_trigger_name(work_item->trigger),
+			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		goto error_unlock_list;
+		return 0;
 	}
 
-	session_lock(session);
 	if (session->destroyed) {
 		DBG("Session `%s` with id = %" PRIu64
 		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
@@ -512,15 +527,15 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 		    session->id,
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
-		goto error_unlock_session;
+		return 0;
 	}
 
-	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_unlock_session;
+	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
+		return 0;
 	}
 
 	cmd_ret = (lttng_error_code) cmd_rotate_session(
-		session, nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		session.get(), nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully started rotation of session `%s` on behalf of trigger `%s`",
@@ -548,13 +563,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 		break;
 	}
 
-error_unlock_session:
-	session_unlock(session);
-	session_put(session);
-error_unlock_list:
-	session_unlock_list();
-end:
-	return ret;
+	return 0;
 }
 
 static int action_executor_snapshot_session_handler(struct action_executor *executor
@@ -562,10 +571,8 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 						    const struct action_work_item *work_item,
 						    struct action_work_subitem *item)
 {
-	int ret = 0;
 	const char *session_name;
 	enum lttng_action_status action_status;
-	struct ltt_session *session;
 	lttng_snapshot_output default_snapshot_output;
 	const struct lttng_snapshot_output *snapshot_output = &default_snapshot_output;
 	enum lttng_error_code cmd_ret;
@@ -584,35 +591,45 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
-		goto end;
+		return 0;
 	}
 
 	action_status = lttng_action_snapshot_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
 		ERR("Failed to get session name from `%s` action", get_action_name(action));
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
 	action_status = lttng_action_snapshot_session_get_output(action, &snapshot_output);
 	if (action_status != LTTNG_ACTION_STATUS_OK && action_status != LTTNG_ACTION_STATUS_UNSET) {
 		ERR("Failed to get output from `%s` action", get_action_name(action));
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	session_lock_list();
-	session = session_find_by_id(LTTNG_OPTIONAL_GET(item->context.session_id));
-	if (!session) {
-		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
-		    session_name,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
+	/*
+	 * Mind the order of the declaration of list_lock vs session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::locked_ref session;
+
+	try {
+		session = ltt_session::find_locked_session(
+			LTTNG_OPTIONAL_GET(item->context.session_id));
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
+			ex.what(),
+			session_name,
+			get_action_name(action),
+			get_trigger_name(work_item->trigger),
+			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		goto error_unlock_list;
+		return 0;
 	}
 
-	session_lock(session);
 	if (session->destroyed) {
 		DBG("Session `%s` with id = %" PRIu64
 		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
@@ -620,14 +637,14 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 		    session->id,
 		    get_action_name(action),
 		    get_trigger_name(work_item->trigger));
-		goto error_unlock_session;
+		return 0;
 	}
 
-	if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
-		goto error_unlock_session;
+	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
+		return 0;
 	}
 
-	cmd_ret = (lttng_error_code) cmd_snapshot_record(session, snapshot_output, 0);
+	cmd_ret = (lttng_error_code) cmd_snapshot_record(session.get(), snapshot_output, 0);
 	switch (cmd_ret) {
 	case LTTNG_OK:
 		DBG("Successfully recorded snapshot of session `%s` on behalf of trigger `%s`",
@@ -643,13 +660,7 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 		break;
 	}
 
-error_unlock_session:
-	session_unlock(session);
-	session_put(session);
-error_unlock_list:
-	session_unlock_list();
-end:
-	return ret;
+	return 0;
 }
 
 static int action_executor_list_handler(struct action_executor *executor __attribute__((unused)),

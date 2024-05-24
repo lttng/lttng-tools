@@ -378,7 +378,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * registration done message, no thread can see the application
 				 * and change its state.
 				 */
-				session_lock_list();
+				const auto list_lock = lttng::sessiond::lock_session_list();
 				lttng::urcu::read_lock_guard read_lock;
 
 				/*
@@ -397,7 +397,6 @@ static void *thread_dispatch_ust_registration(void *data)
 				ret = send_socket_to_thread(
 					notifiers->apps_cmd_notify_pipe_write_fd, app->notify_sock);
 				if (ret < 0) {
-					session_unlock_list();
 					/*
 					 * No notify thread, stop the UST tracing. However, this is
 					 * not an internal error of the this thread thus setting
@@ -427,7 +426,6 @@ static void *thread_dispatch_ust_registration(void *data)
 				ret = send_socket_to_thread(notifiers->apps_cmd_pipe_write_fd,
 							    app->sock);
 				if (ret < 0) {
-					session_unlock_list();
 					/*
 					 * No apps. thread, stop the UST tracing. However, this is
 					 * not an internal error of the this thread thus setting
@@ -437,7 +435,6 @@ static void *thread_dispatch_ust_registration(void *data)
 					goto error;
 				}
 
-				session_unlock_list();
 			}
 		} while (node != nullptr);
 

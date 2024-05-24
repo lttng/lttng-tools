@@ -23,6 +23,8 @@
 #define LTTNG_THROW_POSIX(msg, errno_code) \
 	throw lttng::posix_error(msg, errno_code, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_ALLOCATION_FAILURE_ERROR(msg, allocation_size) \
+	throw lttng::allocation_failure(msg, allocation_size, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
 	throw lttng::unsupported_error(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_COMMUNICATION_ERROR(msg) \
@@ -90,6 +92,22 @@ public:
 	runtime_error(const std::string& msg, const lttng::source_location& source_location);
 
 	lttng::source_location source_location;
+};
+
+/**
+ * @class allocation_failure
+ * @brief Represents an allocation failure.
+ *
+ * Thrown when an allocation fails. Differs from bad_alloc in that it offers a message and a
+ * source location.
+ */
+class allocation_failure : public lttng::runtime_error {
+public:
+	explicit allocation_failure(const std::string& msg,
+				    std::size_t allocation_size,
+				    const lttng::source_location& source_location);
+
+	std::size_t allocation_size;
 };
 
 /**

@@ -13,6 +13,7 @@
 #include "trace-kernel.hpp"
 
 #include <common/dynamic-array.hpp>
+#include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
@@ -34,13 +35,102 @@ struct ltt_ust_session;
 using ltt_session_destroy_notifier = void (*)(const struct ltt_session *, void *);
 using ltt_session_clear_notifier = void (*)(const struct ltt_session *, void *);
 
-namespace lttng {
-namespace sessiond {
-namespace details {
-void locked_session_release(ltt_session *session);
-} /* namespace details */
-} /* namespace sessiond */
-} /* namespace lttng */
+struct ltt_session;
+struct ltt_session_list;
+
+enum lttng_error_code
+session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_session);
+void session_lock(struct ltt_session *session);
+void session_unlock(struct ltt_session *session);
+
+bool session_get(struct ltt_session *session);
+void session_put(struct ltt_session *session);
+
+/*
+ * The session list lock covers more ground than its name implies. While
+ * it does protect against concurent mutations of the session list, it is
+ * also used as a multi-session lock when synchronizing newly-registered
+ * 'user space tracer' and 'agent' applications.
+ *
+ * In other words, it prevents tracer configurations from changing while they
+ * are being transmitted to the various applications.
+ */
+int session_trylock_list() noexcept;
+
+#define LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(session_name)                \
+	throw lttng::sessiond::exceptions::session_not_found_error(session_name, \
+								   LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id) \
+	throw lttng::sessiond::exceptions::session_not_found_error(id, LTTNG_SOURCE_LOCATION())
+
+void session_destroy(struct ltt_session *session);
+int session_add_destroy_notifier(struct ltt_session *session,
+				 ltt_session_destroy_notifier notifier,
+				 void *user_data);
+
+int session_add_clear_notifier(struct ltt_session *session,
+			       ltt_session_clear_notifier notifier,
+			       void *user_data);
+void session_notify_clear(ltt_session& session);
+
+enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session);
+const char *session_get_net_consumer_hostname(const struct ltt_session *session);
+void session_get_net_consumer_ports(const struct ltt_session *session,
+				    uint16_t *control_port,
+				    uint16_t *data_port);
+struct lttng_trace_archive_location *
+session_get_trace_archive_location(const struct ltt_session *session);
+
+struct ltt_session_list *session_get_list();
+void session_list_wait_empty(std::unique_lock<std::mutex> list_lock);
+
+bool session_access_ok(struct ltt_session *session, uid_t uid);
+
+int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result);
+
+/* Create a new trace chunk object from the session's configuration. */
+struct lttng_trace_chunk *
+session_create_new_trace_chunk(const struct ltt_session *session,
+			       const struct consumer_output *consumer_output_override,
+			       const char *session_base_path_override,
+			       const char *chunk_name_override);
+
+/*
+ * Set `new_trace_chunk` as the session's current trace chunk. A reference
+ * to `new_trace_chunk` is acquired by the session. The chunk is created
+ * on remote peers (consumer and relay daemons).
+ *
+ * A reference to the session's current trace chunk is returned through
+ * `current_session_trace_chunk` on success.
+ */
+int session_set_trace_chunk(struct ltt_session *session,
+			    struct lttng_trace_chunk *new_trace_chunk,
+			    struct lttng_trace_chunk **current_session_trace_chunk);
+
+/*
+ * Close a chunk on the remote peers of a session. Has no effect on the
+ * ltt_session itself.
+ */
+int session_close_trace_chunk(struct ltt_session *session,
+			      struct lttng_trace_chunk *trace_chunk,
+			      enum lttng_trace_chunk_command_type close_command,
+			      char *path);
+
+/* Open a packet in all channels of a given session. */
+enum lttng_error_code session_open_packets(struct ltt_session *session);
+
+bool session_output_supports_trace_chunks(const struct ltt_session *session);
+
+/*
+ * Sample the id of a session looked up via its name.
+ * Here the term "sampling" hint the caller that this return the id at a given
+ * point in time with no guarantee that the session for which the id was
+ * sampled still exist at that point.
+ *
+ * Return 0 when the session is not found,
+ * Return 1 when the session is found and set `id`.
+ */
+bool sample_session_id_by_name(const char *name, uint64_t *id);
 
 /*
  * Tracing session list
@@ -79,12 +169,50 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	using id_t = uint64_t;
+
+private:
+	static void _locked_session_release(ltt_session *session);
+	static void _locked_const_session_release(const ltt_session *session);
+	static void _const_session_put(const ltt_session *session);
+	static void _const_session_unlock(const ltt_session &session);
+
+public:
 	using locked_ref =
 		std::unique_ptr<ltt_session,
 				lttng::memory::create_deleter_class<
 					ltt_session,
-					lttng::sessiond::details::locked_session_release>::deleter>;
-	using sptr = std::shared_ptr<ltt_session>;
+					ltt_session::_locked_session_release>::deleter>;
+	using ref = std::unique_ptr<
+		ltt_session,
+		lttng::memory::create_deleter_class<ltt_session, session_put>::deleter>;
+	using const_locked_ref =
+		std::unique_ptr<const ltt_session,
+				lttng::memory::create_deleter_class<
+					const ltt_session,
+					ltt_session::_locked_const_session_release>::deleter>;
+	using const_ref = std::unique_ptr<
+		const ltt_session,
+		lttng::memory::create_deleter_class<const ltt_session, ltt_session::_const_session_put>::deleter>;
+
+	void lock() const noexcept;
+	void unlock() const noexcept;
+
+	/*
+	 * Session list lock must be acquired by the caller.
+	 *
+	 * The caller must not keep the ownership of the returned locked session
+	 * for longer than strictly necessary. If your intention is to acquire
+	 * a reference to an ltt_session, see `find_session()`.
+	 */
+	static locked_ref find_locked_session(ltt_session::id_t id);
+	static locked_ref find_locked_session(lttng::c_string_view name);
+	static const_locked_ref find_locked_const_session(ltt_session::id_t id);
+	static const_locked_ref find_locked_const_session(lttng::c_string_view name);
+
+	static ref find_session(ltt_session::id_t id);
+	static ref find_session(lttng::c_string_view name);
+	static const_ref find_const_session(ltt_session::id_t id);
+	static const_ref find_const_session(lttng::c_string_view name);
 
 	char name[NAME_MAX];
 	bool has_auto_generated_name;
@@ -95,13 +223,13 @@ struct ltt_session {
 	time_t creation_time;
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
-	struct urcu_ref ref;
+	mutable struct urcu_ref ref_count;
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use
 	 * session_lock() and session_unlock() for that.
 	 */
-	pthread_mutex_t lock;
+	mutable pthread_mutex_t _lock;
 	struct cds_list_head list;
 	/* session unique identifier */
 	id_t id;
@@ -215,114 +343,113 @@ struct ltt_session {
 	struct lttng_dynamic_array clear_notifiers;
 	/* Session base path override. Set non-null. */
 	char *base_path;
+
+
 };
-
-enum lttng_error_code
-session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_session);
-void session_lock(struct ltt_session *session);
-void session_unlock(struct ltt_session *session);
-
-/*
- * The session list lock covers more ground than its name implies. While
- * it does protect against concurent mutations of the session list, it is
- * also used as a multi-session lock when synchronizing newly-registered
- * 'user space tracer' and 'agent' applications.
- *
- * In other words, it prevents tracer configurations from changing while they
- * are being transmitted to the various applications.
- */
-void session_lock_list() noexcept;
-int session_trylock_list() noexcept;
-void session_unlock_list() noexcept;
-
-void session_destroy(struct ltt_session *session);
-int session_add_destroy_notifier(struct ltt_session *session,
-				 ltt_session_destroy_notifier notifier,
-				 void *user_data);
-
-int session_add_clear_notifier(struct ltt_session *session,
-			       ltt_session_clear_notifier notifier,
-			       void *user_data);
-void session_notify_clear(ltt_session& session);
-
-bool session_get(struct ltt_session *session);
-void session_put(struct ltt_session *session);
-
-enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session);
-const char *session_get_net_consumer_hostname(const struct ltt_session *session);
-void session_get_net_consumer_ports(const struct ltt_session *session,
-				    uint16_t *control_port,
-				    uint16_t *data_port);
-struct lttng_trace_archive_location *
-session_get_trace_archive_location(const struct ltt_session *session);
-
-struct ltt_session *session_find_by_name(const char *name);
-struct ltt_session *session_find_by_id(ltt_session::id_t id);
-
-struct ltt_session_list *session_get_list();
-void session_list_wait_empty();
-
-bool session_access_ok(struct ltt_session *session, uid_t uid);
-
-int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result);
-
-/* Create a new trace chunk object from the session's configuration. */
-struct lttng_trace_chunk *
-session_create_new_trace_chunk(const struct ltt_session *session,
-			       const struct consumer_output *consumer_output_override,
-			       const char *session_base_path_override,
-			       const char *chunk_name_override);
-
-/*
- * Set `new_trace_chunk` as the session's current trace chunk. A reference
- * to `new_trace_chunk` is acquired by the session. The chunk is created
- * on remote peers (consumer and relay daemons).
- *
- * A reference to the session's current trace chunk is returned through
- * `current_session_trace_chunk` on success.
- */
-int session_set_trace_chunk(struct ltt_session *session,
-			    struct lttng_trace_chunk *new_trace_chunk,
-			    struct lttng_trace_chunk **current_session_trace_chunk);
-
-/*
- * Close a chunk on the remote peers of a session. Has no effect on the
- * ltt_session itself.
- */
-int session_close_trace_chunk(struct ltt_session *session,
-			      struct lttng_trace_chunk *trace_chunk,
-			      enum lttng_trace_chunk_command_type close_command,
-			      char *path);
-
-/* Open a packet in all channels of a given session. */
-enum lttng_error_code session_open_packets(struct ltt_session *session);
-
-bool session_output_supports_trace_chunks(const struct ltt_session *session);
-
-/*
- * Sample the id of a session looked up via its name.
- * Here the term "sampling" hint the caller that this return the id at a given
- * point in time with no guarantee that the session for which the id was
- * sampled still exist at that point.
- *
- * Return 0 when the session is not found,
- * Return 1 when the session is found and set `id`.
- */
-bool sample_session_id_by_name(const char *name, uint64_t *id);
 
 namespace lttng {
 namespace sessiond {
 
-/*
- * Session list lock must be acquired by the caller.
- * The caller must not keep the ownership of the returned locked session
- * for longer than strictly necessary. If your intention is to acquire
- * a reference to an ltt_session, see `find_session_by_id()`.
+std::unique_lock<std::mutex> lock_session_list();
+
+namespace exceptions {
+/**
+ * @class session_not_found_error
+ * @brief Represents a session-not-found error and provides the parameters used to query the session
+ * for use by error-reporting code.
  */
-ltt_session::locked_ref find_locked_session_by_id(ltt_session::id_t id);
+class session_not_found_error : public lttng::runtime_error {
+public:
+	class query_parameter {
+	public:
+		enum class query_type : std::uint8_t { BY_NAME, BY_ID };
 
-ltt_session::sptr find_session_by_id(ltt_session::id_t id);
+		/*
+		 * Intentionally not explicit to allow construction from c-style strings,
+		 * std::string, and lttng::c_string_view.
+		 *
+		 * NOLINTBEGIN(google-explicit-constructor)
+		 */
+		query_parameter(const std::string& session_name) :
+			type(query_type::BY_NAME), parameter(session_name)
+		{
+		}
+		/* NOLINTEND(google-explicit-constructor) */
 
+		explicit query_parameter(ltt_session::id_t id_) : type(query_type::BY_ID), parameter(id_)
+		{
+		}
+
+		query_parameter(const query_parameter& other) : type(other.type)
+		{
+			if (type == query_type::BY_NAME) {
+				new (&parameter.name) std::string(other.parameter.name);
+			} else {
+				parameter.id = other.parameter.id;
+			}
+		}
+
+		~query_parameter()
+		{
+			if (type == query_type::BY_NAME) {
+				parameter.name.~basic_string();
+			}
+		}
+
+		query_type type;
+		union parameter {
+			explicit parameter(std::string name_) : name(std::move(name_))
+			{
+			}
+
+			explicit parameter(ltt_session::id_t id_) : id(id_)
+			{
+			}
+
+			/*
+			 * parameter doesn't have enough information to do this safely; it it
+			 * delegated to its parent which uses placement new.
+			 */
+			parameter()
+			{
+			}
+
+			parameter(const parameter&) = delete;
+			parameter(const parameter&&) = delete;
+			parameter& operator=(parameter&) = delete;
+			parameter& operator=(parameter&&) = delete;
+
+			~parameter()
+			{
+			}
+
+			std::string name;
+			ltt_session::id_t id;
+		} parameter;
+	};
+
+	session_not_found_error(const std::string& session_name,
+				const lttng::source_location& source_location_) :
+		lttng::runtime_error(fmt::format("Session not found: name=`{}`", session_name),
+				     source_location_),
+		query_parameter(session_name)
+	{
+	}
+
+	session_not_found_error(ltt_session::id_t session_id,
+				const lttng::source_location& source_location_) :
+		lttng::runtime_error("Session not found: id=" + std::to_string(session_id),
+				     source_location_),
+		query_parameter(session_id)
+	{
+	}
+
+	session_not_found_error(const session_not_found_error& other) = default;
+	~session_not_found_error() noexcept override = default;
+
+	query_parameter query_parameter;
+};
+} // namespace exceptions
 } /* namespace sessiond */
 } /* namespace lttng */
 

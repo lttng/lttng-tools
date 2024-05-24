@@ -69,6 +69,65 @@ struct lttng_ht *ltt_sessions_ht_by_name = nullptr;
  * Please see session.h for more explanation and correct usage of the list.
  */
 struct ltt_session_list the_session_list;
+
+/*
+ * Return a ltt_session structure ptr that matches name. If no session found,
+ * NULL is returned. This must be called with the session list lock held using
+ * session_lock_list and session_unlock_list.
+ * A reference to the session is implicitly acquired by this function.
+ */
+struct ltt_session *session_find_by_name(const char *name)
+{
+	struct ltt_session *iter;
+
+	LTTNG_ASSERT(name);
+	ASSERT_SESSION_LIST_LOCKED();
+
+	DBG2("Trying to find session by name %s", name);
+
+	cds_list_for_each_entry (iter, &the_session_list.head, list) {
+		if (!strncmp(iter->name, name, NAME_MAX) && !iter->destroyed) {
+			goto found;
+		}
+	}
+
+	return nullptr;
+found:
+	return session_get(iter) ? iter : nullptr;
+}
+
+/*
+ * Return an ltt_session that matches the id. If no session is found,
+ * NULL is returned. This must be called with rcu_read_lock and
+ * session list lock held (to guarantee the lifetime of the session).
+ */
+struct ltt_session *session_find_by_id(uint64_t id)
+{
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	struct ltt_session *ls;
+
+	ASSERT_RCU_READ_LOCKED();
+	ASSERT_SESSION_LIST_LOCKED();
+
+	if (!ltt_sessions_ht_by_id) {
+		goto end;
+	}
+
+	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (node == nullptr) {
+		goto end;
+	}
+	ls = lttng::utils::container_of(node, &ltt_session::node);
+
+	DBG3("Session %" PRIu64 " found by id.", id);
+	return session_get(ls) ? ls : nullptr;
+
+end:
+	DBG3("Session %" PRIu64 " NOT found by id", id);
+	return nullptr;
+}
 } /* namespace */
 
 /*
@@ -141,21 +200,11 @@ struct ltt_session_list *session_get_list()
 /*
  * Returns once the session list is empty.
  */
-void session_list_wait_empty()
+void session_list_wait_empty(std::unique_lock<std::mutex> list_lock)
 {
-	std::unique_lock<std::mutex> list_lock(the_session_list.lock);
-
 	/* Keep waiting until the session list is empty. */
 	the_session_list.removal_cond.wait(list_lock,
 					   [] { return cds_list_empty(&the_session_list.head); });
-}
-
-/*
- * Acquire session list lock
- */
-void session_lock_list() noexcept
-{
-	the_session_list.lock.lock();
 }
 
 /*
@@ -165,14 +214,6 @@ int session_trylock_list() noexcept
 {
 	/* Return 0 if successfully acquired. */
 	return the_session_list.lock.try_lock() ? 0 : 1;
-}
-
-/*
- * Release session list lock
- */
-void session_unlock_list() noexcept
-{
-	the_session_list.lock.unlock();
 }
 
 /*
@@ -445,8 +486,17 @@ static void del_session_ht(struct ltt_session *ls)
 void session_lock(struct ltt_session *session)
 {
 	LTTNG_ASSERT(session);
+	session->lock();
+}
 
-	pthread_mutex_lock(&session->lock);
+void ltt_session::lock() const noexcept
+{
+	pthread_mutex_lock(&_lock);
+}
+
+void ltt_session::unlock() const noexcept
+{
+	ltt_session::_const_session_unlock(*this);
 }
 
 /*
@@ -455,8 +505,12 @@ void session_lock(struct ltt_session *session)
 void session_unlock(struct ltt_session *session)
 {
 	LTTNG_ASSERT(session);
+	session->unlock();
+}
 
-	pthread_mutex_unlock(&session->lock);
+void ltt_session::_const_session_unlock(const ltt_session &session)
+{
+	pthread_mutex_unlock(&session._lock);
 }
 
 static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
@@ -902,7 +956,7 @@ int session_set_trace_chunk(struct ltt_session *session,
 			    struct lttng_trace_chunk *new_trace_chunk,
 			    struct lttng_trace_chunk **current_trace_chunk)
 {
-	ASSERT_LOCKED(session->lock);
+	ASSERT_LOCKED(session->_lock);
 	return _session_set_trace_chunk_no_lock_check(
 		session, new_trace_chunk, current_trace_chunk);
 }
@@ -944,7 +998,7 @@ static void session_release(struct urcu_ref *ref)
 	int ret;
 	struct ltt_ust_session *usess;
 	struct ltt_kernel_session *ksess;
-	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref);
+	struct ltt_session *session = lttng::utils::container_of(ref, &ltt_session::ref_count);
 	const bool session_published = session->published;
 
 	LTTNG_ASSERT(!session->chunk_being_archived);
@@ -983,7 +1037,7 @@ static void session_release(struct urcu_ref *ref)
 
 	snapshot_destroy(&session->snapshot);
 
-	pthread_mutex_destroy(&session->lock);
+	pthread_mutex_destroy(&session->_lock);
 
 	if (session_published) {
 		ASSERT_SESSION_LIST_LOCKED();
@@ -1022,7 +1076,7 @@ static void session_release(struct urcu_ref *ref)
  */
 bool session_get(struct ltt_session *session)
 {
-	return urcu_ref_get_unless_zero(&session->ref);
+	return urcu_ref_get_unless_zero(&session->ref_count);
 }
 
 /*
@@ -1038,8 +1092,8 @@ void session_put(struct ltt_session *session)
 	 * may cause the removal of the session from the session_list.
 	 */
 	ASSERT_SESSION_LIST_LOCKED();
-	LTTNG_ASSERT(session->ref.refcount);
-	urcu_ref_put(&session->ref, session_release);
+	LTTNG_ASSERT(session->ref_count.refcount);
+	urcu_ref_put(&session->ref_count, session_release);
 }
 
 /*
@@ -1096,65 +1150,6 @@ int session_add_clear_notifier(struct ltt_session *session,
 }
 
 /*
- * Return a ltt_session structure ptr that matches name. If no session found,
- * NULL is returned. This must be called with the session list lock held using
- * session_lock_list and session_unlock_list.
- * A reference to the session is implicitly acquired by this function.
- */
-struct ltt_session *session_find_by_name(const char *name)
-{
-	struct ltt_session *iter;
-
-	LTTNG_ASSERT(name);
-	ASSERT_SESSION_LIST_LOCKED();
-
-	DBG2("Trying to find session by name %s", name);
-
-	cds_list_for_each_entry (iter, &the_session_list.head, list) {
-		if (!strncmp(iter->name, name, NAME_MAX) && !iter->destroyed) {
-			goto found;
-		}
-	}
-
-	return nullptr;
-found:
-	return session_get(iter) ? iter : nullptr;
-}
-
-/*
- * Return an ltt_session that matches the id. If no session is found,
- * NULL is returned. This must be called with rcu_read_lock and
- * session list lock held (to guarantee the lifetime of the session).
- */
-struct ltt_session *session_find_by_id(uint64_t id)
-{
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-	struct ltt_session *ls;
-
-	ASSERT_RCU_READ_LOCKED();
-	ASSERT_SESSION_LIST_LOCKED();
-
-	if (!ltt_sessions_ht_by_id) {
-		goto end;
-	}
-
-	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
-	if (node == nullptr) {
-		goto end;
-	}
-	ls = lttng::utils::container_of(node, &ltt_session::node);
-
-	DBG3("Session %" PRIu64 " found by id.", id);
-	return session_get(ls) ? ls : nullptr;
-
-end:
-	DBG3("Session %" PRIu64 " NOT found by id", id);
-	return nullptr;
-}
-
-/*
  * Create a new session and add it to the session list.
  * Session list lock must be held by the caller.
  */
@@ -1189,8 +1184,8 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 	lttng_dynamic_array_init(&new_session->clear_notifiers,
 				 sizeof(struct ltt_session_clear_notifier_element),
 				 nullptr);
-	urcu_ref_init(&new_session->ref);
-	pthread_mutex_init(&new_session->lock, nullptr);
+	urcu_ref_init(&new_session->ref_count);
+	pthread_mutex_init(&new_session->_lock, nullptr);
 
 	new_session->creation_time = time(nullptr);
 	if (new_session->creation_time == (time_t) -1) {
@@ -1361,7 +1356,7 @@ int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state
 	int ret = 0;
 
 	ASSERT_SESSION_LIST_LOCKED();
-	ASSERT_LOCKED(session.lock);
+	ASSERT_LOCKED(session._lock);
 
 	session.rotation_state = result;
 	if (session.rotation_pending_check_timer_enabled) {
@@ -1424,7 +1419,7 @@ end:
 	return found;
 }
 
-void ls::details::locked_session_release(ltt_session *session)
+void ltt_session::_locked_session_release(ltt_session *session)
 {
 	if (!session) {
 		return;
@@ -1434,13 +1429,23 @@ void ls::details::locked_session_release(ltt_session *session)
 	session_put(session);
 }
 
-ltt_session::locked_ref ls::find_locked_session_by_id(ltt_session::id_t id)
+void ltt_session::_locked_const_session_release(const ltt_session *session)
+{
+	if (!session) {
+		return;
+	}
+
+	ltt_session::_const_session_unlock(*session);
+	ltt_session::_const_session_put(session);
+}
+
+ltt_session::locked_ref ltt_session::find_locked_session(ltt_session::id_t id)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_id(id);
 
 	if (!session) {
-		return nullptr;
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
 	/*
@@ -1451,14 +1456,105 @@ ltt_session::locked_ref ls::find_locked_session_by_id(ltt_session::id_t id)
 	return ltt_session::locked_ref(session);
 }
 
-ltt_session::sptr ls::find_session_by_id(ltt_session::id_t id)
+ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view name)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_name(name.data());
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
+	}
+
+	session_lock(session);
+	return ltt_session::locked_ref(session);
+}
+
+ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session::id_t id)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_id(id);
 
 	if (!session) {
-		return nullptr;
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
-	return { session, session_put };
+	session_lock(session);
+	return ltt_session::const_locked_ref(session);
+}
+
+ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_string_view name)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_name(name.data());
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
+	}
+
+	session_lock(session);
+	return ltt_session::const_locked_ref(session);
+}
+
+ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_id(id);
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
+	}
+
+	return ltt_session::ref(session);
+}
+
+ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_name(name.data());
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
+	}
+
+	return ltt_session::ref(session);
+}
+
+ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_id(id);
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
+	}
+
+	return ltt_session::const_ref(session);
+}
+
+ltt_session::const_ref ltt_session::find_const_session(lttng::c_string_view name)
+{
+	lttng::urcu::read_lock_guard rcu_lock;
+	auto session = session_find_by_name(name.data());
+
+	if (!session) {
+		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
+	}
+
+	return ltt_session::const_ref(session);
+}
+
+void ltt_session::_const_session_put(const ltt_session *session)
+{
+	/*
+	 * The session list lock must be held as any session_put()
+	 * may cause the removal of the session from the session_list.
+	 */
+	ASSERT_SESSION_LIST_LOCKED();
+	LTTNG_ASSERT(session->ref_count.refcount);
+	urcu_ref_put(&session->ref_count, session_release);
+}
+
+std::unique_lock<std::mutex> ls::lock_session_list()
+{
+	return std::unique_lock<std::mutex>(the_session_list.lock);
 }

@@ -539,10 +539,8 @@ void lsu::registry_session::accept(
 	{
 		/* The caller already holds the session and session list locks. */
 		ASSERT_SESSION_LIST_LOCKED();
-		const auto session = lttng::sessiond::find_session_by_id(_tracing_id);
-
-		LTTNG_ASSERT(session);
-		ASSERT_LOCKED(session->lock);
+		const auto session = ltt_session::find_session(_tracing_id);
+		ASSERT_LOCKED(session->_lock);
 
 		visitor.visit(lst::environment_field<const char *>(
 			"trace_name",

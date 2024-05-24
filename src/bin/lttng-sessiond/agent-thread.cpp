@@ -486,7 +486,7 @@ static void *thread_agent_management(void *data)
 				 * the agent application's configuration is
 				 * updated.
 				 */
-				session_lock_list();
+				const auto list_lock = lttng::sessiond::lock_session_list();
 
 				/*
 				 * Update the newly registered applications's
@@ -500,7 +500,6 @@ static void *thread_agent_management(void *data)
 					/* Removing from the poll set. */
 					ret = lttng_poll_del(&events, new_app_socket_fd);
 					if (ret < 0) {
-						session_unlock_list();
 						goto error;
 					}
 					continue;
@@ -508,8 +507,6 @@ static void *thread_agent_management(void *data)
 
 				/* Publish the new agent app. */
 				agent_add_app(new_app);
-
-				session_unlock_list();
 			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				/* Removing from the poll set */
 				ret = lttng_poll_del(&events, pollfd);

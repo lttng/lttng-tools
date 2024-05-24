@@ -77,7 +77,6 @@ extern lttng::sessiond::rotation_thread::uptr the_rotation_thread_handle;
  */
 struct command_ctx {
 	unsigned int lttng_msg_size;
-	struct ltt_session *session;
 	/* Input message */
 	struct lttcomm_session_msg lsm;
 	/* Reply content, starts with an lttcomm_lttng_msg header. */

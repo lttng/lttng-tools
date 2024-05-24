@@ -315,7 +315,7 @@ int launch_session_rotation(ltt_session& session)
 	DBG("Launching scheduled time-based rotation on session \"%s\"", session.name);
 
 	ASSERT_SESSION_LIST_LOCKED();
-	ASSERT_LOCKED(session.lock);
+	ASSERT_LOCKED(session._lock);
 
 	ret = cmd_rotate_session(&session,
 				 &rotation_return,
@@ -539,9 +539,7 @@ void ls::rotation_thread::_handle_job_queue()
 			cds_list_del(&job->head);
 		}
 
-		session_lock_list();
-		const auto unlock_list =
-			lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
+		const auto list_lock = lttng::sessiond::lock_session_list();
 
 		/* locked_ref will unlock the session and release the ref held by the job. */
 		session_lock(job->session);
@@ -585,19 +583,18 @@ void ls::rotation_thread::_handle_notification(const lttng_notification& notific
 		condition_session_name,
 		consumed);
 
-	session_lock_list();
-	const auto unlock_list = lttng::make_scope_exit([]() noexcept { session_unlock_list(); });
-
-	ltt_session::locked_ref session{ [&condition_session_name]() {
-		auto raw_session_ptr = session_find_by_name(condition_session_name);
-
-		if (raw_session_ptr) {
-			session_lock(raw_session_ptr);
-		}
-
-		return raw_session_ptr;
-	}() };
-	if (!session) {
+	/*
+	 * Mind the order of the declaration of list_lock vs session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::locked_ref session;
+	try {
+		session = ltt_session::find_locked_session(condition_session_name);
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to find session while handling notification: notification_type={}, session name=`{}`",
 			lttng_condition_type_str(condition_type),
 			condition_session_name);
@@ -839,7 +836,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 		.gid = LTTNG_OPTIONAL_INIT_VALUE(session.gid),
 	};
 
-	ASSERT_LOCKED(session.lock);
+	ASSERT_LOCKED(session._lock);
 
 	auto rotate_condition = lttng::make_unique_wrapper<lttng_condition, lttng_condition_put>(
 		lttng_condition_session_consumed_size_create());

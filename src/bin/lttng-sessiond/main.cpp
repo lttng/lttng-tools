@@ -1282,14 +1282,15 @@ static void destroy_all_sessions_and_wait()
 	struct ltt_session *session, *tmp;
 	struct ltt_session_list *session_list;
 
-	session_list = session_get_list();
 	DBG("Initiating destruction of all sessions");
 
+	auto list_lock = lttng::sessiond::lock_session_list();
+
+	session_list = session_get_list();
 	if (!session_list) {
 		return;
 	}
 
-	session_lock_list();
 	/* Initiate the destruction of all sessions. */
 	cds_list_for_each_entry_safe (session, tmp, &session_list->head, list) {
 		if (!session_get(session)) {
@@ -1306,11 +1307,10 @@ static void destroy_all_sessions_and_wait()
 		session_unlock(session);
 		session_put(session);
 	}
-	session_unlock_list();
 
 	/* Wait for the destruction of all sessions to complete. */
 	DBG("Waiting for the destruction of all sessions to complete");
-	session_list_wait_empty();
+	session_list_wait_empty(std::move(list_lock));
 	DBG("Destruction of all sessions completed");
 }
 

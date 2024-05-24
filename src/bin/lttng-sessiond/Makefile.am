@@ -57,6 +57,7 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        event-notifier-error-accounting.cpp event-notifier-error-accounting.hpp \
                        action-executor.cpp action-executor.hpp\
                        trigger-error-query.cpp \
+                       ctl-utils.hpp \
                        field.hpp field.cpp \
                        clock-class.hpp clock-class.cpp \
                        event-class.hpp event-class.cpp \

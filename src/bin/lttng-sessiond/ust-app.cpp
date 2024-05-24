@@ -497,7 +497,6 @@ static void delete_ust_app_channel_rcu(struct rcu_head *head)
 static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 {
 	uint64_t discarded = 0, lost = 0;
-	struct ltt_session *session;
 	struct ltt_ust_channel *uchan;
 
 	if (ua_chan->attr.type != LTTNG_UST_ABI_CHAN_PER_CPU) {
@@ -505,7 +504,16 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 	}
 
 	lttng::urcu::read_lock_guard read_lock;
-	session = session_find_by_id(ua_chan->session->tracing_id);
+
+	ltt_session::ref session;
+	try {
+		session = ltt_session::find_session(ua_chan->session->tracing_id);
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
+			ex.what(),
+			ex.source_location);
+	}
+
 	if (!session || !session->ust_session) {
 		/*
 		 * Not finding the session is not an error because there are
@@ -522,7 +530,7 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 		 * events is done exactly once. The session is then unpublished
 		 * from the session list, resulting in this condition.
 		 */
-		goto end;
+		return;
 	}
 
 	if (ua_chan->attr.overwrite) {
@@ -540,16 +548,11 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 					       ua_chan->name);
 	if (!uchan) {
 		ERR("Missing UST channel to store discarded counters");
-		goto end;
+		return;
 	}
 
 	uchan->per_pid_closed_app_discarded += discarded;
 	uchan->per_pid_closed_app_lost += lost;
-
-end:
-	if (session) {
-		session_put(session);
-	}
 }
 
 /*
@@ -1024,7 +1027,7 @@ static void delete_ust_app(struct ust_app *app)
 	 * The session list lock must be held during this function to guarantee
 	 * the existence of ua_sess.
 	 */
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	/* Delete ust app sessions info */
 	sock = app->sock;
 	app->sock = -1;
@@ -1114,7 +1117,6 @@ static void delete_ust_app(struct ust_app *app)
 
 	DBG2("UST app pid %d deleted", app->pid);
 	free(app);
-	session_unlock_list();
 }
 
 /*
@@ -3444,7 +3446,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *buf_reg_chan;
-	struct ltt_session *session = nullptr;
+	ltt_session::ref session;
 	enum lttng_error_code notification_ret;
 
 	LTTNG_ASSERT(app);
@@ -3475,9 +3477,9 @@ static int create_channel_per_uid(struct ust_app *app,
 		goto error;
 	}
 
-	session = session_find_by_id(ua_sess->tracing_id);
-	LTTNG_ASSERT(session);
-	ASSERT_LOCKED(session->lock);
+	/* Guaranteed to exist; will not throw. */
+	session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
@@ -3545,9 +3547,6 @@ send_channel:
 	}
 
 error:
-	if (session) {
-		session_put(session);
-	}
 	return ret;
 }
 
@@ -3567,7 +3566,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	int ret;
 	lsu::registry_session *registry;
 	enum lttng_error_code cmd_ret;
-	struct ltt_session *session = nullptr;
+	ltt_session::ref session;
 	uint64_t chan_reg_key;
 
 	LTTNG_ASSERT(app);
@@ -3594,9 +3593,9 @@ static int create_channel_per_pid(struct ust_app *app,
 		goto error;
 	}
 
-	session = session_find_by_id(ua_sess->tracing_id);
-	LTTNG_ASSERT(session);
-	ASSERT_LOCKED(session->lock);
+	/* Guaranteed to exist; will not throw. */
+	session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 
 	/* Create and get channel on the consumer side. */
@@ -3645,9 +3644,6 @@ error_remove_from_registry:
 		}
 	}
 error:
-	if (session) {
-		session_put(session);
-	}
 	return ret;
 }
 
@@ -3894,7 +3890,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	int ret = 0;
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
-	struct ltt_session *session = nullptr;
+	ltt_session::ref session;
 
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
@@ -3943,9 +3939,9 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 */
 	locked_registry->_metadata_key = metadata->key;
 
-	session = session_find_by_id(ua_sess->tracing_id);
-	LTTNG_ASSERT(session);
-	ASSERT_LOCKED(session->lock);
+	/* Guaranteed to exist; will not throw. */
+	session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
@@ -3985,9 +3981,6 @@ error_consumer:
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 	delete_ust_app_channel(-1, metadata, app, locked_registry);
 error:
-	if (session) {
-		session_put(session);
-	}
 	return ret;
 }
 

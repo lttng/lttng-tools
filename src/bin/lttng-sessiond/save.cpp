@@ -2737,27 +2737,36 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *cre
 {
 	int ret;
 	const char *session_name;
-	struct ltt_session *session;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 
 	session_name = lttng_save_session_attr_get_session_name(attr);
 	if (session_name) {
-		session = session_find_by_name(session_name);
-		if (!session) {
+
+		/*
+		* Mind the order of the declaration of list_lock vs session:
+		* the session list lock must always be released _after_ the release of
+		* a session's reference (the destruction of a ref/locked_ref) to ensure
+		* since the reference's release may unpublish the session from the list of
+		* sessions.
+		*/
+		ltt_session::locked_ref session;
+
+		try {
+			session = ltt_session::find_locked_session(session_name);
+		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+			WARN_FMT("Failed to save session: {} {}", ex.what(), ex.source_location);
 			ret = LTTNG_ERR_SESS_NOT_FOUND;
-			goto end;
+			return ret;
 		}
 
-		session_lock(session);
-		ret = save_session(session, attr, creds);
-		session_unlock(session);
-		session_put(session);
+		ret = save_session(session.get(), attr, creds);
 		if (ret != LTTNG_OK) {
-			goto end;
+			return ret;
 		}
 	} else {
 		struct ltt_session_list *list = session_get_list();
+		struct ltt_session *session;
 
 		cds_list_for_each_entry (session, &list->head, list) {
 			if (!session_get(session)) {
@@ -2769,13 +2778,10 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *cre
 			session_put(session);
 			/* Don't abort if we don't have the required permissions. */
 			if (ret != LTTNG_OK && ret != LTTNG_ERR_EPERM) {
-				goto end;
+				return ret;
 			}
 		}
 	}
-	ret = LTTNG_OK;
 
-end:
-	session_unlock_list();
-	return ret;
+	return LTTNG_OK;
 }

@@ -9,6 +9,7 @@
 #define CMD_H
 
 #include "context.hpp"
+#include "ctl-utils.hpp"
 #include "lttng-sessiond.hpp"
 #include "lttng/tracker.h"
 #include "session.hpp"
@@ -50,7 +51,10 @@ int cmd_destroy_session(struct ltt_session *session, int *sock_fd);
 int cmd_disable_channel(struct ltt_session *session,
 			enum lttng_domain_type domain,
 			char *channel_name);
-int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe);
+int cmd_enable_channel(struct command_ctx *cmd_ctx,
+		       ltt_session::locked_ref& session,
+		       int sock,
+		       int wpipe);
 
 /* Process attribute tracker commands */
 enum lttng_error_code
@@ -81,11 +85,13 @@ cmd_process_attr_tracker_get_inclusion_set(struct ltt_session *session,
 
 /* Event commands */
 int cmd_disable_event(struct command_ctx *cmd_ctx,
+		      ltt_session::locked_ref& locked_session,
 		      struct lttng_event *event,
 		      char *filter_expression,
 		      struct lttng_bytecode *filter,
 		      struct lttng_event_exclusion *exclusion);
 int cmd_add_context(struct command_ctx *cmd_ctx,
+		    ltt_session::locked_ref& locked_session,
 		    const struct lttng_event_context *event_context,
 		    int kwpipe);
 int cmd_set_filter(struct ltt_session *session,
@@ -94,6 +100,7 @@ int cmd_set_filter(struct ltt_session *session,
 		   struct lttng_event *event,
 		   struct lttng_bytecode *bytecode);
 int cmd_enable_event(struct command_ctx *cmd_ctx,
+		     ltt_session::locked_ref& session,
 		     struct lttng_event *event,
 		     char *filter_expression,
 		     struct lttng_event_exclusion *exclusion,
@@ -150,12 +157,11 @@ int cmd_set_session_shm_path(struct ltt_session *session, const char *shm_path);
 int cmd_regenerate_metadata(struct ltt_session *session);
 int cmd_regenerate_statedump(struct ltt_session *session);
 
-enum lttng_error_code
+lttng::ctl::trigger
 cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 		     struct lttng_trigger *trigger,
 		     bool is_anonymous_trigger,
-		     struct notification_thread_handle *notification_thread_handle,
-		     struct lttng_trigger **return_trigger);
+		     struct notification_thread_handle *notification_thread_handle);
 enum lttng_error_code
 cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
 		       const struct lttng_trigger *trigger,

@@ -37,11 +37,12 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 	int ret;
 	struct ltt_kernel_channel *channel;
 	struct ltt_session *session;
-	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Updating kernel poll set");
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	const struct ltt_session_list *session_list = session_get_list();
+
 	cds_list_for_each_entry (session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
@@ -60,20 +61,15 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			if (ret < 0) {
 				session_unlock(session);
 				session_put(session);
-				goto error;
+				return -1;
 			}
 			DBG("Channel fd %d added to kernel set", channel->fd);
 		}
 		session_unlock(session);
 		session_put(session);
 	}
-	session_unlock_list();
 
 	return 0;
-
-error:
-	session_unlock_list();
-	return -1;
 }
 
 /*
@@ -88,11 +84,12 @@ static int update_kernel_stream(int fd)
 	struct ltt_session *session;
 	struct ltt_kernel_session *ksess;
 	struct ltt_kernel_channel *channel;
-	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Updating kernel streams for channel fd %d", fd);
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	const struct ltt_session_list *session_list = session_get_list();
+
 	cds_list_for_each_entry (session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
@@ -154,13 +151,12 @@ static int update_kernel_stream(int fd)
 		session_unlock(session);
 		session_put(session);
 	}
-	session_unlock_list();
+
 	return ret;
 
 error:
 	session_unlock(session);
 	session_put(session);
-	session_unlock_list();
 	return ret;
 }
 

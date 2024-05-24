@@ -32,6 +32,13 @@ lttng::runtime_error::runtime_error(const std::string& msg,
 {
 }
 
+lttng::allocation_failure::allocation_failure(const std::string& msg,
+std::size_t allocation_size_,
+					    const lttng::source_location& location) :
+	lttng::runtime_error(msg, location), allocation_size(allocation_size_)
+{
+}
+
 lttng::unsupported_error::unsupported_error(const std::string& msg,
 					    const lttng::source_location& location) :
 	lttng::runtime_error(msg, location)

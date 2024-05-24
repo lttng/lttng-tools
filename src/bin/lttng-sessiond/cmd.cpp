@@ -116,7 +116,7 @@ uint64_t relayd_net_seq_idx;
 
 static struct cmd_completion_handler *current_completion_handler;
 static int validate_ust_event_name(const char *);
-static int cmd_enable_event_internal(struct ltt_session *session,
+static int cmd_enable_event_internal(ltt_session::locked_ref& session,
 				     const struct lttng_domain *domain,
 				     char *channel_name,
 				     struct lttng_event *event,
@@ -124,7 +124,7 @@ static int cmd_enable_event_internal(struct ltt_session *session,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
 				     int wpipe);
-static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *session,
+static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
 							 const struct lttng_channel *_attr,
 							 int wpipe);
@@ -1281,7 +1281,7 @@ error:
  *
  * The wpipe arguments is used as a notifier for the kernel thread.
  */
-int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe)
+int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock, int wpipe)
 {
 	int ret;
 	size_t channel_len;
@@ -1318,7 +1318,7 @@ int cmd_enable_channel(struct command_ctx *cmd_ctx, int sock, int wpipe)
 		goto end;
 	}
 
-	ret = cmd_enable_channel_internal(cmd_ctx->session, &command_domain, channel, wpipe);
+	ret = cmd_enable_channel_internal(session, &command_domain, channel, wpipe);
 
 end:
 	lttng_dynamic_buffer_reset(&channel_buffer);
@@ -1326,18 +1326,17 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *session,
+static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
 							 const struct lttng_channel *_attr,
 							 int wpipe)
 {
 	enum lttng_error_code ret_code;
-	struct ltt_ust_session *usess = session->ust_session;
+	struct ltt_ust_session *usess = session.get()->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
 	struct lttng_channel *attr = nullptr;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(_attr);
 	LTTNG_ASSERT(domain);
 
@@ -1364,8 +1363,8 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 	 * live timer does the same thing but sends also synchronisation
 	 * beacons for inactive streams.
 	 */
-	if (session->live_timer > 0) {
-		attr->attr.live_timer_interval = session->live_timer;
+	if (session.get()->live_timer > 0) {
+		attr->attr.live_timer_interval = session.get()->live_timer;
 		attr->attr.switch_timer_interval = 0;
 	}
 
@@ -1379,7 +1378,7 @@ static enum lttng_error_code cmd_enable_channel_internal(struct ltt_session *ses
 			     "Setting the monitor interval timer to 0 "
 			     "(disabled) for channel '%s' of session '%s'",
 			     attr->name,
-			     session->name);
+			     session.get()->name);
 			lttng_channel_set_monitor_timer_interval(attr, 0);
 		}
 		break;
@@ -1714,14 +1713,15 @@ end:
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
  */
 int cmd_disable_event(struct command_ctx *cmd_ctx,
+		      ltt_session::locked_ref& locked_session,
 		      struct lttng_event *event,
 		      char *filter_expression,
 		      struct lttng_bytecode *bytecode,
 		      struct lttng_event_exclusion *exclusion)
 {
 	int ret;
+	ltt_session& session = *locked_session.get();
 	const char *event_name;
-	const struct ltt_session *session = cmd_ctx->session;
 	const char *channel_name = cmd_ctx->lsm.u.disable.channel_name;
 	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
 
@@ -1757,7 +1757,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		struct ltt_kernel_channel *kchan;
 		struct ltt_kernel_session *ksess;
 
-		ksess = session->kernel_session;
+		ksess = session.kernel_session;
 
 		/*
 		 * If a non-default channel has been created in the
@@ -1804,7 +1804,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		struct ltt_ust_channel *uchan;
 		struct ltt_ust_session *usess;
 
-		usess = session->ust_session;
+		usess = session.ust_session;
 
 		if (validate_ust_event_name(event_name)) {
 			ret = LTTNG_ERR_INVALID_EVENT_NAME;
@@ -1855,7 +1855,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 	case LTTNG_DOMAIN_PYTHON:
 	{
 		struct agent *agt;
-		struct ltt_ust_session *usess = session->ust_session;
+		struct ltt_ust_session *usess = session.ust_session;
 
 		LTTNG_ASSERT(usess);
 
@@ -1906,12 +1906,13 @@ error:
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
 int cmd_add_context(struct command_ctx *cmd_ctx,
+		    ltt_session::locked_ref& locked_session,
 		    const struct lttng_event_context *event_context,
 		    int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
-	const struct ltt_session *session = cmd_ctx->session;
+	const struct ltt_session& session = *locked_session.get();
 	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
 
 	/*
@@ -1919,25 +1920,25 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	 * some point in time before. The tracer does not allow it and would
 	 * result in a corrupted trace.
 	 */
-	if (cmd_ctx->session->has_been_started) {
+	if (session.has_been_started) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
 		goto end;
 	}
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		LTTNG_ASSERT(session->kernel_session);
+		LTTNG_ASSERT(session.kernel_session);
 
-		if (session->kernel_session->channel_count == 0) {
+		if (session.kernel_session->channel_count == 0) {
 			/* Create default channel */
-			ret = channel_kernel_create(session->kernel_session, nullptr, kwpipe);
+			ret = channel_kernel_create(session.kernel_session, nullptr, kwpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
 			chan_kern_created = 1;
 		}
 		/* Add kernel context to kernel tracer */
-		ret = context_kernel_add(session->kernel_session, event_context, channel_name);
+		ret = context_kernel_add(session.kernel_session, event_context, channel_name);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1965,7 +1966,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 	/* fall through */
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_session *usess = session->ust_session;
+		struct ltt_ust_session *usess = session.ust_session;
 		unsigned int chan_count;
 
 		LTTNG_ASSERT(usess);
@@ -2006,7 +2007,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 error:
 	if (chan_kern_created) {
 		struct ltt_kernel_channel *kchan = trace_kernel_get_channel_by_name(
-			DEFAULT_CHANNEL_NAME, session->kernel_session);
+			DEFAULT_CHANNEL_NAME, session.kernel_session);
 		/* Created previously, this should NOT fail. */
 		LTTNG_ASSERT(kchan);
 		kernel_destroy_channel(kchan);
@@ -2014,11 +2015,11 @@ error:
 
 	if (chan_ust_created) {
 		struct ltt_ust_channel *uchan = trace_ust_find_channel_by_name(
-			session->ust_session->domain_global.channels, DEFAULT_CHANNEL_NAME);
+			session.ust_session->domain_global.channels, DEFAULT_CHANNEL_NAME);
 		/* Created previously, this should NOT fail. */
 		LTTNG_ASSERT(uchan);
 		/* Remove from the channel list of the session. */
-		trace_ust_delete_channel(session->ust_session->domain_global.channels, uchan);
+		trace_ust_delete_channel(session.ust_session->domain_global.channels, uchan);
 		trace_ust_destroy_channel(uchan);
 	}
 end:
@@ -2062,7 +2063,7 @@ end:
  * be hidden from clients. Such events are used in the agent implementation to
  * enable the events through which all "agent" events are funeled.
  */
-static int _cmd_enable_event(struct ltt_session *session,
+static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			     const struct lttng_domain *domain,
 			     char *channel_name,
 			     struct lttng_event *event,
@@ -2074,8 +2075,8 @@ static int _cmd_enable_event(struct ltt_session *session,
 {
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = nullptr;
+	ltt_session& session = *locked_session.get();
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
 
@@ -2108,12 +2109,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 		 * session, explicitely require that -c chan_name needs
 		 * to be provided.
 		 */
-		if (session->kernel_session->has_non_default_channel && channel_name[0] == '\0') {
+		if (session.kernel_session->has_non_default_channel && channel_name[0] == '\0') {
 			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
 			goto error;
 		}
 
-		kchan = trace_kernel_get_channel_by_name(channel_name, session->kernel_session);
+		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
 		if (kchan == nullptr) {
 			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
 			if (attr == nullptr) {
@@ -2125,7 +2126,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = cmd_enable_channel_internal(session, domain, attr, wpipe);
+			ret = cmd_enable_channel_internal(locked_session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2133,7 +2134,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		}
 
 		/* Get the newly created kernel channel pointer */
-		kchan = trace_kernel_get_channel_by_name(channel_name, session->kernel_session);
+		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
 		if (kchan == nullptr) {
 			/* This sould not happen... */
 			ret = LTTNG_ERR_FATAL;
@@ -2229,7 +2230,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_channel *uchan;
-		struct ltt_ust_session *usess = session->ust_session;
+		struct ltt_ust_session *usess = session.ust_session;
 
 		LTTNG_ASSERT(usess);
 
@@ -2257,7 +2258,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 				goto error;
 			}
 
-			ret = cmd_enable_channel_internal(session, domain, attr, wpipe);
+			ret = cmd_enable_channel_internal(locked_session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2313,7 +2314,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct agent *agt;
 		struct lttng_event uevent;
 		struct lttng_domain tmp_dom;
-		struct ltt_ust_session *usess = session->ust_session;
+		struct ltt_ust_session *usess = session.ust_session;
 
 		LTTNG_ASSERT(usess);
 
@@ -2396,7 +2397,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 				}
 			}
 
-			ret = cmd_enable_event_internal(session,
+			ret = cmd_enable_event_internal(locked_session,
 							&tmp_dom,
 							(char *) default_chan_name,
 							&uevent,
@@ -2447,6 +2448,7 @@ error:
  * We own filter, exclusion, and filter_expression.
  */
 int cmd_enable_event(struct command_ctx *cmd_ctx,
+		     ltt_session::locked_ref& locked_session,
 		     struct lttng_event *event,
 		     char *filter_expression,
 		     struct lttng_event_exclusion *exclusion,
@@ -2467,7 +2469,7 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 	 *  - bytecode,
 	 *  - exclusion
 	 */
-	ret = _cmd_enable_event(cmd_ctx->session,
+	ret = _cmd_enable_event(locked_session,
 				&command_domain,
 				cmd_ctx->lsm.u.enable.channel_name,
 				event,
@@ -2487,7 +2489,7 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
  * never be made visible to clients and are immune to checks such as
  * reserved names.
  */
-static int cmd_enable_event_internal(struct ltt_session *session,
+static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				     const struct lttng_domain *domain,
 				     char *channel_name,
 				     struct lttng_event *event,
@@ -2496,7 +2498,7 @@ static int cmd_enable_event_internal(struct ltt_session *session,
 				     struct lttng_event_exclusion *exclusion,
 				     int wpipe)
 {
-	return _cmd_enable_event(session,
+	return _cmd_enable_event(locked_session,
 				 domain,
 				 channel_name,
 				 event,
@@ -3122,7 +3124,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 	struct ltt_session *new_session = nullptr;
 	enum lttng_session_descriptor_status descriptor_status;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	if (home_path) {
 		if (*home_path != '/') {
 			ERR("Home path provided by client is not absolute");
@@ -3223,7 +3225,7 @@ end:
 		/* Release the global reference on error. */
 		session_destroy(new_session);
 	}
-	session_unlock_list();
+
 	return ret_code;
 }
 
@@ -3955,8 +3957,7 @@ end:
  * Using the session list, filled a lttng_session array to send back to the
  * client for session listing.
  *
- * The session list lock MUST be acquired before calling this function. Use
- * session_lock_list() and session_unlock_list().
+ * The session list lock MUST be acquired before calling this function.
  */
 void cmd_list_lttng_sessions(struct lttng_session *sessions,
 			     size_t session_count,
@@ -4470,7 +4471,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	switch (trigger_domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -4490,7 +4491,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 				    ret_code);
 			}
 
-			goto end_unlock_session_list;
+			return ret_code;
 		}
 		break;
 	}
@@ -4508,7 +4509,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 			agt = agent_create(trigger_domain);
 			if (!agt) {
 				ret_code = LTTNG_ERR_NOMEM;
-				goto end_unlock_session_list;
+				return ret_code;
 			}
 
 			agent_add(agt, the_trigger_agents_ht_by_domain);
@@ -4516,7 +4517,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 
 		ret_code = (lttng_error_code) trigger_agent_enable(trigger, agt);
 		if (ret_code != LTTNG_OK) {
-			goto end_unlock_session_list;
+			return ret_code;
 		}
 
 		break;
@@ -4526,17 +4527,13 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 		abort();
 	}
 
-	ret_code = LTTNG_OK;
-end_unlock_session_list:
-	session_unlock_list();
-	return ret_code;
+	return LTTNG_OK;
 }
 
-enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_creds,
-					   struct lttng_trigger *trigger,
-					   bool is_trigger_anonymous,
-					   struct notification_thread_handle *notification_thread,
-					   struct lttng_trigger **return_trigger)
+lttng::ctl::trigger cmd_register_trigger(const struct lttng_credentials *cmd_creds,
+					 struct lttng_trigger *trigger,
+					 bool is_trigger_anonymous,
+					 struct notification_thread_handle *notification_thread)
 {
 	enum lttng_error_code ret_code;
 	const char *trigger_name;
@@ -4561,12 +4558,13 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 */
 	if (!lttng_credentials_is_equal_uid(lttng_trigger_get_credentials(trigger), cmd_creds)) {
 		if (lttng_credentials_get_uid(cmd_creds) != 0) {
-			ERR("Trigger credentials do not match the command credentials: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
-			    trigger_name,
-			    (int) trigger_owner,
-			    (int) lttng_credentials_get_uid(cmd_creds));
-			ret_code = LTTNG_ERR_INVALID_TRIGGER;
-			goto end;
+			LTTNG_THROW_CTL(
+				fmt::format(
+					"Trigger credentials do not match the command credentials: trigger_name = `{}`, trigger_owner_uid={}, command_creds_uid={}",
+					trigger_name,
+					trigger_owner,
+					lttng_credentials_get_uid(cmd_creds)),
+				LTTNG_ERR_INVALID_TRIGGER);
 		}
 	}
 
@@ -4576,11 +4574,12 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 */
 	ret_code = lttng_trigger_generate_bytecode(trigger, cmd_creds);
 	if (ret_code != LTTNG_OK) {
-		ERR("Failed to generate bytecode of trigger: trigger name = '%s', trigger owner uid = %d, error code = %d",
-		    trigger_name,
-		    (int) trigger_owner,
-		    ret_code);
-		goto end;
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Failed to generate bytecode of trigger: trigger_name=`{}`, trigger_owner_uid={}",
+				trigger_name,
+				trigger_owner),
+			ret_code);
 	}
 
 	/*
@@ -4596,11 +4595,12 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	ret_code = notification_thread_command_register_trigger(
 		notification_thread, trigger, is_trigger_anonymous);
 	if (ret_code != LTTNG_OK) {
-		DBG("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
-		    trigger_name,
-		    (int) trigger_owner,
-		    ret_code);
-		goto end;
+		LTTNG_THROW_CTL(
+			fmt::format(
+				"Failed to register trigger to notification thread: trigger_name=`{}`, trigger_owner_uid={}",
+				trigger_name,
+				trigger_owner),
+			ret_code);
 	}
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
@@ -4613,8 +4613,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 		ret_code = synchronize_tracer_notifier_register(
 			notification_thread, trigger, cmd_creds);
 		if (ret_code != LTTNG_OK) {
-			ERR("Error registering tracer notifier: %s", lttng_strerror(-ret_code));
-			goto end;
+			LTTNG_THROW_CTL("Failed to register tracer notifier", ret_code);
 		}
 	}
 
@@ -4625,14 +4624,9 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 * reference to the trigger so the caller doesn't have to care if those
 	 * are distinct instances or not.
 	 */
-	if (ret_code == LTTNG_OK) {
-		lttng_trigger_get(trigger);
-		*return_trigger = trigger;
-		/* Ownership of trigger was transferred to caller. */
-		trigger = nullptr;
-	}
-end:
-	return ret_code;
+	LTTNG_ASSERT(ret_code == LTTNG_OK);
+	lttng_trigger_get(trigger);
+	return lttng::ctl::trigger(trigger);
 }
 
 static enum lttng_error_code
@@ -4647,12 +4641,12 @@ synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 	LTTNG_ASSERT(lttng_condition_get_type(condition) ==
 		     LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	switch (trigger_domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		ret_code = kernel_unregister_event_notifier(trigger);
 		if (ret_code != LTTNG_OK) {
-			goto end_unlock_session_list;
+			return ret_code;
 		}
 
 		break;
@@ -4673,7 +4667,7 @@ synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 		LTTNG_ASSERT(agt);
 		ret_code = (lttng_error_code) trigger_agent_disable(trigger, agt);
 		if (ret_code != LTTNG_OK) {
-			goto end_unlock_session_list;
+			return ret_code;
 		}
 
 		break;
@@ -4683,11 +4677,7 @@ synchronize_tracer_notifier_unregister(const struct lttng_trigger *trigger)
 		abort();
 	}
 
-	ret_code = LTTNG_OK;
-
-end_unlock_session_list:
-	session_unlock_list();
-	return ret_code;
+	return LTTNG_OK;
 }
 
 enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,

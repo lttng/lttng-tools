@@ -92,11 +92,11 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 	enum lttng_error_code status;
-	struct ltt_session *session = nullptr;
 	struct lttng_channel_extended *channel_attr_extended;
 	bool is_local_trace;
 	size_t consumer_path_offset = 0;
 	lttng::urcu::read_lock_guard read_lock;
+	ltt_session::ref session;
 
 	/* Safety net */
 	LTTNG_ASSERT(channel);
@@ -166,9 +166,17 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	}
 
 	health_code_update();
-	session = session_find_by_id(ksession->id);
-	LTTNG_ASSERT(session);
-	ASSERT_LOCKED(session->lock);
+
+	try {
+		session = ltt_session::find_session(ksession->id);
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		ERR_FMT("Fatal error during the creation of a kernel channel: {}, location='{}'",
+			ex.what(),
+			ex.source_location);
+		abort();
+	}
+
+	ASSERT_LOCKED(session->_lock);
 	ASSERT_SESSION_LIST_LOCKED();
 
 	status = notification_thread_command_add_channel(the_notification_thread_handle,
@@ -186,9 +194,6 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	channel->published_to_notification_thread = true;
 
 error:
-	if (session) {
-		session_put(session);
-	}
 	free(pathname);
 	return ret;
 }

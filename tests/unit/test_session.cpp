@@ -88,11 +88,10 @@ static void empty_session_list()
 {
 	struct ltt_session *iter, *tmp;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
 		session_destroy(iter);
 	}
-	session_unlock_list();
 
 	/* Session list must be 0 */
 	LTTNG_ASSERT(!session_list_count());
@@ -107,7 +106,7 @@ static int create_one_session(const char *name)
 	enum lttng_error_code ret_code;
 	struct ltt_session *session = nullptr;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	ret_code = session_create(name, geteuid(), getegid(), &session);
 	session_put(session);
 	if (ret_code == LTTNG_OK) {
@@ -128,7 +127,6 @@ static int create_one_session(const char *name)
 		ret = -1;
 	}
 
-	session_unlock_list();
 	return ret;
 }
 
@@ -154,6 +152,7 @@ static int destroy_one_session(struct ltt_session *session)
 		/* Fail */
 		ret = -1;
 	}
+
 	return ret;
 }
 
@@ -163,33 +162,28 @@ static int destroy_one_session(struct ltt_session *session)
  */
 static int two_session_same_name()
 {
-	int ret;
-	struct ltt_session *sess;
-
-	ret = create_one_session(SESSION1);
+	const auto ret = create_one_session(SESSION1);
 	if (ret < 0) {
 		/* Fail */
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	session_lock_list();
-	sess = session_find_by_name(SESSION1);
-	if (sess) {
+	/*
+	 * Mind the order of the declaration of list_lock vs session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	try {
+		const auto session = ltt_session::find_session(SESSION1);
 		/* Success */
-		session_put(sess);
-		session_unlock_list();
-		ret = 0;
-		goto end_unlock;
-	} else {
+		return 0;
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		/* Fail */
-		ret = -1;
-		goto end_unlock;
+		return -1;
 	}
-end_unlock:
-	session_unlock_list();
-end:
-	return ret;
 }
 
 static void test_session_list()
@@ -205,43 +199,61 @@ static void test_create_one_session()
 
 static void test_validate_session()
 {
-	struct ltt_session *tmp;
+	/*
+	 * Mind the order of the declaration of list_lock vs session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::ref session;
 
-	session_lock_list();
-	tmp = session_find_by_name(SESSION1);
+	try {
+		session = ltt_session::find_session(SESSION1);
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+	}
 
-	ok(tmp != nullptr, "Validating session: session found");
+	ok(session, "Validating session: session found");
 
-	if (tmp) {
-		ok(tmp->kernel_session == nullptr && strlen(tmp->name),
+	if (session) {
+		ok(session->kernel_session == nullptr && strlen(session->name),
 		   "Validating session: basic sanity check");
 	} else {
 		skip(1, "Skipping session validation check as session was not found");
-		goto end;
+		return;
 	}
 
-	session_lock(tmp);
-	session_unlock(tmp);
-	session_put(tmp);
-end:
-	session_unlock_list();
+	session->lock();
+	session->unlock();
 }
 
 static void test_destroy_session()
 {
-	struct ltt_session *tmp;
+	/*
+	 * Mind the order of the declaration of list_lock vs session:
+	 * the session list lock must always be released _after_ the release of
+	 * a session's reference (the destruction of a ref/locked_ref) to ensure
+	 * since the reference's release may unpublish the session from the list of
+	 * sessions.
+	 */
+	const auto list_lock = lttng::sessiond::lock_session_list();
+	ltt_session::ref session;
 
-	session_lock_list();
-	tmp = session_find_by_name(SESSION1);
+	try {
+		session = ltt_session::find_session(SESSION1);
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+	}
 
-	ok(tmp != nullptr, "Destroying session: session found");
+	ok(session, "Destroying session: session found");
 
-	if (tmp) {
-		ok(destroy_one_session(tmp) == 0, "Destroying session: %s destroyed", SESSION1);
+	if (session) {
+		ok(destroy_one_session(session.release()) == 0,
+		   "Destroying session: %s destroyed",
+		   SESSION1);
 	} else {
 		skip(1, "Skipping session destruction as it was not found");
 	}
-	session_unlock_list();
 }
 
 static void test_duplicate_session()
@@ -255,7 +267,8 @@ static void test_session_name_generation()
 	enum lttng_error_code ret_code;
 	const char *expected_session_name_prefix = DEFAULT_SESSION_NAME;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
+
 	ret_code = session_create(nullptr, geteuid(), getegid(), &session);
 	ok(ret_code == LTTNG_OK, "Create session with a NULL name (auto-generate a name)");
 	if (!session) {
@@ -271,7 +284,6 @@ static void test_session_name_generation()
 	   DEFAULT_SESSION_NAME);
 end:
 	session_put(session);
-	session_unlock_list();
 }
 
 static void test_large_session_number()
@@ -292,7 +304,7 @@ static void test_large_session_number()
 
 	failed = 0;
 
-	session_lock_list();
+	const auto list_lock = lttng::sessiond::lock_session_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
 			LTTNG_ASSERT(session_get(iter));
@@ -303,7 +315,6 @@ static void test_large_session_number()
 			}
 		}
 	}
-	session_unlock_list();
 
 	ok(failed == 0 && session_list_count() == 0,
 	   "Large sessions number: destroyed %u sessions",
