@@ -8,6 +8,7 @@
 #ifndef _CONSUMER_H
 #define _CONSUMER_H
 
+#include "consumer-destination-type.hpp"
 #include "snapshot.hpp"
 
 #include <common/consumer/consumer.hpp>
@@ -20,7 +21,6 @@
 
 struct snapshot;
 struct snapshot_output;
-struct ltt_session;
 
 /*
  * Needed until we use C++14, where std::max is constexpr.
@@ -34,11 +34,6 @@ constexpr NumericalType max_constexpr(NumericalType l, NumericalType r)
 {
 	return l > r ? l : r;
 }
-
-enum consumer_dst_type {
-	CONSUMER_DST_LOCAL,
-	CONSUMER_DST_NET,
-};
 
 enum consumer_trace_chunk_exists_status {
 	CONSUMER_TRACE_CHUNK_EXISTS_STATUS_EXISTS_LOCAL,
@@ -210,9 +205,7 @@ struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
 void consumer_output_get(struct consumer_output *obj);
 void consumer_output_put(struct consumer_output *obj);
-int consumer_set_network_uri(const struct ltt_session *session,
-			     struct consumer_output *obj,
-			     struct lttng_uri *uri);
+
 int consumer_send_fds(struct consumer_socket *sock, const int *fds, size_t nb_fd);
 int consumer_send_msg(struct consumer_socket *sock, const struct lttcomm_consumer_msg *msg);
 int consumer_send_stream(struct consumer_socket *sock,

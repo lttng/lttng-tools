@@ -21,8 +21,7 @@ lttng::ctl::error::error(const std::string& msg,
 lttng::posix_error::posix_error(const std::string& msg,
 				unsigned int errno_code,
 				const lttng::source_location& location) :
-	std::system_error(errno_code, std::generic_category()),
-	lttng::runtime_error(msg, location)
+	std::system_error(errno_code, std::generic_category()), lttng::runtime_error(msg, location)
 {
 }
 
@@ -33,8 +32,8 @@ lttng::runtime_error::runtime_error(const std::string& msg,
 }
 
 lttng::allocation_failure::allocation_failure(const std::string& msg,
-std::size_t allocation_size_,
-					    const lttng::source_location& location) :
+					      std::size_t allocation_size_,
+					      const lttng::source_location& location) :
 	lttng::runtime_error(msg, location), allocation_size(allocation_size_)
 {
 }

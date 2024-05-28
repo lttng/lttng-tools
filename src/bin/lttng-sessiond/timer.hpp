@@ -22,16 +22,16 @@ struct timer_thread_parameters {
 int timer_signal_init();
 
 /* Start a session's rotation pending check timer (one-shot mode). */
-int timer_session_rotation_pending_check_start(struct ltt_session *session,
+int timer_session_rotation_pending_check_start(const ltt_session::locked_ref& session,
 					       unsigned int interval_us);
 /* Stop a session's rotation pending check timer. */
-int timer_session_rotation_pending_check_stop(ltt_session& session);
+int timer_session_rotation_pending_check_stop(const ltt_session::locked_ref& session);
 
 /* Start a session's rotation schedule timer. */
-int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
+int timer_session_rotation_schedule_timer_start(const ltt_session::locked_ref& session,
 						unsigned int interval_us);
 /* Stop a session's rotation schedule timer. */
-int timer_session_rotation_schedule_timer_stop(struct ltt_session *session);
+int timer_session_rotation_schedule_timer_stop(const ltt_session::locked_ref& session);
 
 bool launch_timer_thread(struct timer_thread_parameters *timer_thread_parameters);
 

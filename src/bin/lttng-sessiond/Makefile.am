@@ -62,7 +62,10 @@ liblttng_sessiond_common_la_SOURCES = utils.cpp utils.hpp \
                        clock-class.hpp clock-class.cpp \
                        event-class.hpp event-class.cpp \
                        stream-class.hpp stream-class.cpp \
-                       trace-class.hpp trace-class.cpp
+                       trace-class.hpp trace-class.cpp \
+                       consumer-destination-type.hpp \
+                       consumer-output.hpp \
+                       snapshot-output.hpp
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cpp \

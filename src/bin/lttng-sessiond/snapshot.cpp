@@ -6,6 +6,8 @@
  */
 
 #define _LGPL_SOURCE
+#include "consumer-output.hpp"
+#include "snapshot-output.hpp"
 #include "snapshot.hpp"
 #include "utils.hpp"
 
@@ -29,7 +31,7 @@ static inline unsigned long get_next_output_id(struct snapshot *snapshot)
  *
  * Return 0 on success or else a negative value.
  */
-static int output_init(const struct ltt_session *session,
+static int output_init(const ltt_session::locked_ref& session,
 		       uint64_t max_size,
 		       const char *name,
 		       struct lttng_uri *uris,
@@ -130,7 +132,7 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-int snapshot_output_init_with_uri(const struct ltt_session *session,
+int snapshot_output_init_with_uri(const ltt_session::locked_ref& session,
 				  uint64_t max_size,
 				  const char *name,
 				  struct lttng_uri *uris,
@@ -148,7 +150,7 @@ int snapshot_output_init_with_uri(const struct ltt_session *session,
  *
  * Return 0 on success or else a negative value.
  */
-int snapshot_output_init(const struct ltt_session *session,
+int snapshot_output_init(const ltt_session::locked_ref& session,
 			 uint64_t max_size,
 			 const char *name,
 			 const char *ctrl_url,

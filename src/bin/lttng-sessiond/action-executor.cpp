@@ -174,7 +174,7 @@ static const char *get_action_name(const struct lttng_action *action)
 
 /* Check if this trigger allowed to interect with a given session. */
 static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
-					   struct ltt_session *session)
+					   const ltt_session::locked_ref& session)
 {
 	bool is_allowed = false;
 	const struct lttng_credentials session_creds = {
@@ -311,18 +311,51 @@ static int action_executor_start_session_handler(struct action_executor *executo
 	}
 
 	/*
-	 * Mind the order of the declaration of list_lock vs target_session:
+	 * Mind the order of the declaration of list_lock vs session:
 	 * the session list lock must always be released _after_ the release of
 	 * a session's reference (the destruction of a ref/locked_ref) to ensure
 	 * since the reference's release may unpublish the session from the list of
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::locked_ref session;
-
 	try {
-		session = ltt_session::find_locked_session(
+		const auto session = ltt_session::find_locked_session(
 			LTTNG_OPTIONAL_GET(item->context.session_id));
+
+		if (session->destroyed) {
+			DBG("Session `%s` with id = %" PRIu64
+			    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+			    session->name,
+			    session->id,
+			    get_action_name(action),
+			    get_trigger_name(work_item->trigger));
+			return 0;
+		}
+
+		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+			return 0;
+		}
+
+		cmd_ret = (lttng_error_code) cmd_start_trace(session);
+		switch (cmd_ret) {
+		case LTTNG_OK:
+			DBG("Successfully started session `%s` on behalf of trigger `%s`",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		case LTTNG_ERR_TRACE_ALREADY_STARTED:
+			DBG("Attempted to start session `%s` on behalf of trigger `%s` but it was already started",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		default:
+			WARN("Failed to start session `%s` on behalf of trigger `%s`: %s",
+			     session_name,
+			     get_trigger_name(work_item->trigger),
+			     lttng_strerror(-cmd_ret));
+			lttng_action_increase_execution_failure_count(action);
+			break;
+		}
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
 			ex.what(),
@@ -331,42 +364,6 @@ static int action_executor_start_session_handler(struct action_executor *executo
 			get_trigger_name(work_item->trigger),
 			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		return 0;
-	}
-
-	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64
-		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-		    session->name,
-		    session->id,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
-		return 0;
-	}
-
-	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
-		return 0;
-	}
-
-	cmd_ret = (lttng_error_code) cmd_start_trace(session.get());
-	switch (cmd_ret) {
-	case LTTNG_OK:
-		DBG("Successfully started session `%s` on behalf of trigger `%s`",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	case LTTNG_ERR_TRACE_ALREADY_STARTED:
-		DBG("Attempted to start session `%s` on behalf of trigger `%s` but it was already started",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	default:
-		WARN("Failed to start session `%s` on behalf of trigger `%s`: %s",
-		     session_name,
-		     get_trigger_name(work_item->trigger),
-		     lttng_strerror(-cmd_ret));
-		lttng_action_increase_execution_failure_count(action);
-		break;
 	}
 
 	return 0;
@@ -404,18 +401,52 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 	}
 
 	/*
-	 * Mind the order of the declaration of list_lock vs target_session:
+	 * Mind the order of the declaration of list_lock vs session:
 	 * the session list lock must always be released _after_ the release of
 	 * a session's reference (the destruction of a ref/locked_ref) to ensure
 	 * since the reference's release may unpublish the session from the list of
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::locked_ref session;
 
 	try {
-		session = ltt_session::find_locked_session(
+		const auto session = ltt_session::find_locked_session(
 			LTTNG_OPTIONAL_GET(item->context.session_id));
+
+		if (session->destroyed) {
+			DBG("Session `%s` with id = %" PRIu64
+			    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+			    session->name,
+			    session->id,
+			    get_action_name(action),
+			    get_trigger_name(work_item->trigger));
+			return 0;
+		}
+
+		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+			return 0;
+		}
+
+		cmd_ret = (lttng_error_code) cmd_stop_trace(session);
+		switch (cmd_ret) {
+		case LTTNG_OK:
+			DBG("Successfully stopped session `%s` on behalf of trigger `%s`",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		case LTTNG_ERR_TRACE_ALREADY_STOPPED:
+			DBG("Attempted to stop session `%s` on behalf of trigger `%s` but it was already stopped",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		default:
+			WARN("Failed to stop session `%s` on behalf of trigger `%s`: %s",
+			     session_name,
+			     get_trigger_name(work_item->trigger),
+			     lttng_strerror(-cmd_ret));
+			lttng_action_increase_execution_failure_count(action);
+			break;
+		}
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
 			ex.what(),
@@ -424,42 +455,6 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 			get_trigger_name(work_item->trigger),
 			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		return 0;
-	}
-
-	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64
-		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-		    session->name,
-		    session->id,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
-		return 0;
-	}
-
-	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
-		return 0;
-	}
-
-	cmd_ret = (lttng_error_code) cmd_stop_trace(session.get());
-	switch (cmd_ret) {
-	case LTTNG_OK:
-		DBG("Successfully stopped session `%s` on behalf of trigger `%s`",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	case LTTNG_ERR_TRACE_ALREADY_STOPPED:
-		DBG("Attempted to stop session `%s` on behalf of trigger `%s` but it was already stopped",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	default:
-		WARN("Failed to stop session `%s` on behalf of trigger `%s`: %s",
-		     session_name,
-		     get_trigger_name(work_item->trigger),
-		     lttng_strerror(-cmd_ret));
-		lttng_action_increase_execution_failure_count(action);
-		break;
 	}
 
 	return 0;
@@ -497,18 +492,59 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	}
 
 	/*
-	 * Mind the order of the declaration of list_lock vs target_session:
+	 * Mind the order of the declaration of list_lock vs session:
 	 * the session list lock must always be released _after_ the release of
 	 * a session's reference (the destruction of a ref/locked_ref) to ensure
 	 * since the reference's release may unpublish the session from the list of
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::locked_ref session;
-
 	try {
-		session = ltt_session::find_locked_session(
+		const auto session = ltt_session::find_locked_session(
 			LTTNG_OPTIONAL_GET(item->context.session_id));
+
+		if (session->destroyed) {
+			DBG("Session `%s` with id = %" PRIu64
+			    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+			    session->name,
+			    session->id,
+			    get_action_name(action),
+			    get_trigger_name(work_item->trigger));
+			return 0;
+		}
+
+		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+			return 0;
+		}
+
+		cmd_ret = (lttng_error_code) cmd_rotate_session(
+			session, nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
+		switch (cmd_ret) {
+		case LTTNG_OK:
+			DBG("Successfully started rotation of session `%s` on behalf of trigger `%s`",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		case LTTNG_ERR_ROTATION_PENDING:
+			DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation is already ongoing",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			lttng_action_increase_execution_failure_count(action);
+			break;
+		case LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP:
+		case LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR:
+			DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation has already been completed since the last stop or clear",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		default:
+			WARN("Failed to start a rotation of session `%s` on behalf of trigger `%s`: %s",
+			     session_name,
+			     get_trigger_name(work_item->trigger),
+			     lttng_strerror(-cmd_ret));
+			lttng_action_increase_execution_failure_count(action);
+			break;
+		}
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
 			ex.what(),
@@ -517,50 +553,6 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 			get_trigger_name(work_item->trigger),
 			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		return 0;
-	}
-
-	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64
-		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-		    session->name,
-		    session->id,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
-		return 0;
-	}
-
-	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
-		return 0;
-	}
-
-	cmd_ret = (lttng_error_code) cmd_rotate_session(
-		session.get(), nullptr, false, LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
-	switch (cmd_ret) {
-	case LTTNG_OK:
-		DBG("Successfully started rotation of session `%s` on behalf of trigger `%s`",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	case LTTNG_ERR_ROTATION_PENDING:
-		DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation is already ongoing",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		lttng_action_increase_execution_failure_count(action);
-		break;
-	case LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP:
-	case LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR:
-		DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation has already been completed since the last stop or clear",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	default:
-		WARN("Failed to start a rotation of session `%s` on behalf of trigger `%s`: %s",
-		     session_name,
-		     get_trigger_name(work_item->trigger),
-		     lttng_strerror(-cmd_ret));
-		lttng_action_increase_execution_failure_count(action);
-		break;
 	}
 
 	return 0;
@@ -614,11 +606,40 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::locked_ref session;
-
 	try {
-		session = ltt_session::find_locked_session(
+		const auto session = ltt_session::find_locked_session(
 			LTTNG_OPTIONAL_GET(item->context.session_id));
+
+		if (session->destroyed) {
+			DBG("Session `%s` with id = %" PRIu64
+			    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
+			    session->name,
+			    session->id,
+			    get_action_name(action),
+			    get_trigger_name(work_item->trigger));
+			return 0;
+		}
+
+		if (!is_trigger_allowed_for_session(work_item->trigger, session)) {
+			return 0;
+		}
+
+		cmd_ret = (lttng_error_code) cmd_snapshot_record(session, snapshot_output, 0);
+		switch (cmd_ret) {
+		case LTTNG_OK:
+			DBG("Successfully recorded snapshot of session `%s` on behalf of trigger `%s`",
+			    session_name,
+			    get_trigger_name(work_item->trigger));
+			break;
+		default:
+			WARN("Failed to record snapshot of session `%s` on behalf of trigger `%s`: %s",
+			     session_name,
+			     get_trigger_name(work_item->trigger),
+			     lttng_strerror(-cmd_ret));
+			lttng_action_increase_execution_failure_count(action);
+			break;
+		}
+
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to execution trigger action: {}, action=`{}`, trigger_name=`{}`, location='{}'",
 			ex.what(),
@@ -627,37 +648,6 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 			get_trigger_name(work_item->trigger),
 			ex.source_location);
 		lttng_action_increase_execution_failure_count(action);
-		return 0;
-	}
-
-	if (session->destroyed) {
-		DBG("Session `%s` with id = %" PRIu64
-		    " is flagged as destroyed. Skipping: action = `%s`, trigger = `%s`",
-		    session->name,
-		    session->id,
-		    get_action_name(action),
-		    get_trigger_name(work_item->trigger));
-		return 0;
-	}
-
-	if (!is_trigger_allowed_for_session(work_item->trigger, session.get())) {
-		return 0;
-	}
-
-	cmd_ret = (lttng_error_code) cmd_snapshot_record(session.get(), snapshot_output, 0);
-	switch (cmd_ret) {
-	case LTTNG_OK:
-		DBG("Successfully recorded snapshot of session `%s` on behalf of trigger `%s`",
-		    session_name,
-		    get_trigger_name(work_item->trigger));
-		break;
-	default:
-		WARN("Failed to record snapshot of session `%s` on behalf of trigger `%s`: %s",
-		     session_name,
-		     get_trigger_name(work_item->trigger),
-		     lttng_strerror(-cmd_ret));
-		lttng_action_increase_execution_failure_count(action);
-		break;
 	}
 
 	return 0;

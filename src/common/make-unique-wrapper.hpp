@@ -9,6 +9,7 @@
 #define LTTNG_MAKE_UNIQUE_WRAPPER_H
 
 #include <common/macros.hpp>
+#include <common/meta-helpers.hpp>
 
 #include <memory>
 
@@ -39,21 +40,6 @@ namespace lttng {
  */
 
 namespace memory {
-template <typename WrappedType, void (*DeleterFunction)(WrappedType *)>
-struct create_deleter_class {
-	struct deleter {
-		void operator()(WrappedType *instance) const
-		{
-			DeleterFunction(instance);
-		}
-	};
-
-	std::unique_ptr<WrappedType, deleter> operator()(WrappedType *instance) const
-	{
-		return std::unique_ptr<WrappedType, deleter>(instance);
-	}
-};
-
 /*
  * 'free' is a utility function for use with make_unique_wrapper. It makes it easier to
  * wrap raw pointers that have to be deleted with `free`. Using libc's 'free' as

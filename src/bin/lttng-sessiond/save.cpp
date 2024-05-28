@@ -1670,13 +1670,12 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_kernel_session(struct config_writer *writer, struct ltt_session *session)
+static int save_kernel_session(struct config_writer *writer, const ltt_session::locked_ref& session)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
 
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(session);
 
 	ret = config_writer_write_element_string(
 		writer, config_element_type, config_domain_type_kernel);
@@ -1746,7 +1745,7 @@ static const char *get_config_domain_str(enum lttng_domain_type domain)
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_process_attr_tracker(struct config_writer *writer,
-				     struct ltt_session *sess,
+				     const ltt_session::locked_ref& session,
 				     int domain,
 				     enum lttng_process_attr process_attr)
 {
@@ -1795,13 +1794,13 @@ static int save_process_attr_tracker(struct config_writer *writer,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		tracker = kernel_get_process_attr_tracker(sess->kernel_session, process_attr);
+		tracker = kernel_get_process_attr_tracker(session->kernel_session, process_attr);
 		LTTNG_ASSERT(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		tracker = trace_ust_get_process_attr_tracker(sess->ust_session, process_attr);
+		tracker = trace_ust_get_process_attr_tracker(session->ust_session, process_attr);
 		LTTNG_ASSERT(tracker);
 		break;
 	}
@@ -1922,55 +1921,58 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int
-save_process_attr_trackers(struct config_writer *writer, struct ltt_session *sess, int domain)
+static int save_process_attr_trackers(struct config_writer *writer,
+				      const ltt_session::locked_ref& session,
+				      int domain)
 {
 	int ret;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_PROCESS_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
-		ret = save_process_attr_tracker(writer, sess, domain, LTTNG_PROCESS_ATTR_USER_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
-		if (ret != LTTNG_OK) {
-			goto end;
-		}
-		ret = save_process_attr_tracker(writer, sess, domain, LTTNG_PROCESS_ATTR_GROUP_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_USER_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(
+			writer, session, domain, LTTNG_PROCESS_ATTR_GROUP_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
 		ret = save_process_attr_tracker(
-			writer, sess, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+			writer, session, domain, LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -1986,7 +1988,7 @@ end:
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_ust_domain(struct config_writer *writer,
-			   struct ltt_session *session,
+			   const ltt_session::locked_ref& session,
 			   enum lttng_domain_type domain)
 {
 	int ret;
@@ -1997,7 +1999,6 @@ static int save_ust_domain(struct config_writer *writer,
 	const char *config_domain_name;
 
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(session);
 
 	ret = config_writer_open_element(writer, config_element_domain);
 	if (ret) {
@@ -2092,12 +2093,11 @@ end:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_domains(struct config_writer *writer, struct ltt_session *session)
+static int save_domains(struct config_writer *writer, const ltt_session::locked_ref& session)
 {
 	int ret = LTTNG_OK;
 
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(session);
 
 	if (!session->kernel_session && !session->ust_session) {
 		goto end;
@@ -2371,12 +2371,11 @@ end_unlock:
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_session_output(struct config_writer *writer, struct ltt_session *session)
+static int save_session_output(struct config_writer *writer, const ltt_session::locked_ref& session)
 {
 	int ret;
 
 	LTTNG_ASSERT(writer);
-	LTTNG_ASSERT(session);
 
 	if ((session->snapshot_mode && session->snapshot.nb_output == 0) ||
 	    (!session->snapshot_mode && !session->consumer)) {
@@ -2458,7 +2457,7 @@ end:
 }
 
 static int save_session_rotation_schedules(struct config_writer *writer,
-					   struct ltt_session *session)
+					   const ltt_session::locked_ref& session)
 {
 	int ret;
 
@@ -2497,7 +2496,7 @@ end:
  *
  * Return LTTNG_OK on success else a LTTNG_ERR* code.
  */
-static int save_session(struct ltt_session *session,
+static int save_session(const ltt_session::locked_ref& session,
 			struct lttng_save_session_attr *attr,
 			lttng_sock_cred *creds)
 {
@@ -2509,7 +2508,6 @@ static int save_session(struct ltt_session *session,
 	const char *provided_path;
 	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(attr);
 	LTTNG_ASSERT(creds);
 
@@ -2735,50 +2733,42 @@ end:
 
 int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
 {
-	int ret;
-	const char *session_name;
-
 	const auto list_lock = lttng::sessiond::lock_session_list();
+	const auto session_name = lttng_save_session_attr_get_session_name(attr);
 
-	session_name = lttng_save_session_attr_get_session_name(attr);
 	if (session_name) {
-
 		/*
-		* Mind the order of the declaration of list_lock vs session:
-		* the session list lock must always be released _after_ the release of
-		* a session's reference (the destruction of a ref/locked_ref) to ensure
-		* since the reference's release may unpublish the session from the list of
-		* sessions.
-		*/
-		ltt_session::locked_ref session;
-
+		 * Mind the order of the declaration of list_lock vs session:
+		 * the session list lock must always be released _after_ the release of
+		 * a session's reference (the destruction of a ref/locked_ref) to ensure
+		 * since the reference's release may unpublish the session from the list of
+		 * sessions.
+		 */
 		try {
-			session = ltt_session::find_locked_session(session_name);
+			const auto session = ltt_session::find_locked_session(session_name);
+			const auto save_ret = save_session(session, attr, creds);
+			if (save_ret != LTTNG_OK) {
+				return save_ret;
+			}
 		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 			WARN_FMT("Failed to save session: {} {}", ex.what(), ex.source_location);
-			ret = LTTNG_ERR_SESS_NOT_FOUND;
-			return ret;
-		}
-
-		ret = save_session(session.get(), attr, creds);
-		if (ret != LTTNG_OK) {
-			return ret;
+			return LTTNG_ERR_SESS_NOT_FOUND;
 		}
 	} else {
 		struct ltt_session_list *list = session_get_list();
-		struct ltt_session *session;
+		struct ltt_session *raw_session_ptr;
 
-		cds_list_for_each_entry (session, &list->head, list) {
-			if (!session_get(session)) {
-				continue;
-			}
-			session_lock(session);
-			ret = save_session(session, attr, creds);
-			session_unlock(session);
-			session_put(session);
+		cds_list_for_each_entry (raw_session_ptr, &list->head, list) {
+			auto session = [raw_session_ptr]() {
+				session_get(raw_session_ptr);
+				raw_session_ptr->lock();
+				return ltt_session::locked_ref(*raw_session_ptr);
+			}();
+			const auto save_ret = save_session(session, attr, creds);
+
 			/* Don't abort if we don't have the required permissions. */
-			if (ret != LTTNG_OK && ret != LTTNG_ERR_EPERM) {
-				return ret;
+			if (save_ret != LTTNG_OK && save_ret != LTTNG_ERR_EPERM) {
+				return save_ret;
 			}
 		}
 	}

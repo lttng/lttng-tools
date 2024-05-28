@@ -505,49 +505,49 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 
 	lttng::urcu::read_lock_guard read_lock;
 
-	ltt_session::ref session;
 	try {
-		session = ltt_session::find_session(ua_chan->session->tracing_id);
+		const auto session = ltt_session::find_session(ua_chan->session->tracing_id);
+
+		if (!session->ust_session) {
+			/*
+			 * Not finding the session is not an error because there are
+			 * multiple ways the channels can be torn down.
+			 *
+			 * 1) The session daemon can initiate the destruction of the
+			 *    ust app session after receiving a destroy command or
+			 *    during its shutdown/teardown.
+			 * 2) The application, since we are in per-pid tracing, is
+			 *    unregistering and tearing down its ust app session.
+			 *
+			 * Both paths are protected by the session list lock which
+			 * ensures that the accounting of lost packets and discarded
+			 * events is done exactly once. The session is then unpublished
+			 * from the session list, resulting in this condition.
+			 */
+			return;
+		}
+
+		if (ua_chan->attr.overwrite) {
+			consumer_get_lost_packets(ua_chan->session->tracing_id,
+						  ua_chan->key,
+						  session->ust_session->consumer,
+						  &lost);
+		} else {
+			consumer_get_discarded_events(ua_chan->session->tracing_id,
+						      ua_chan->key,
+						      session->ust_session->consumer,
+						      &discarded);
+		}
+		uchan = trace_ust_find_channel_by_name(session->ust_session->domain_global.channels,
+						       ua_chan->name);
+		if (!uchan) {
+			ERR("Missing UST channel to store discarded counters");
+			return;
+		}
 	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 		DBG_FMT("Failed to save per-pid lost/discarded counters: {}, location='{}'",
 			ex.what(),
 			ex.source_location);
-	}
-
-	if (!session || !session->ust_session) {
-		/*
-		 * Not finding the session is not an error because there are
-		 * multiple ways the channels can be torn down.
-		 *
-		 * 1) The session daemon can initiate the destruction of the
-		 *    ust app session after receiving a destroy command or
-		 *    during its shutdown/teardown.
-		 * 2) The application, since we are in per-pid tracing, is
-		 *    unregistering and tearing down its ust app session.
-		 *
-		 * Both paths are protected by the session list lock which
-		 * ensures that the accounting of lost packets and discarded
-		 * events is done exactly once. The session is then unpublished
-		 * from the session list, resulting in this condition.
-		 */
-		return;
-	}
-
-	if (ua_chan->attr.overwrite) {
-		consumer_get_lost_packets(ua_chan->session->tracing_id,
-					  ua_chan->key,
-					  session->ust_session->consumer,
-					  &lost);
-	} else {
-		consumer_get_discarded_events(ua_chan->session->tracing_id,
-					      ua_chan->key,
-					      session->ust_session->consumer,
-					      &discarded);
-	}
-	uchan = trace_ust_find_channel_by_name(session->ust_session->domain_global.channels,
-					       ua_chan->name);
-	if (!uchan) {
-		ERR("Missing UST channel to store discarded counters");
 		return;
 	}
 
@@ -3446,7 +3446,6 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *buf_reg_chan;
-	ltt_session::ref session;
 	enum lttng_error_code notification_ret;
 
 	LTTNG_ASSERT(app);
@@ -3456,6 +3455,10 @@ static int create_channel_per_uid(struct ust_app *app,
 	ASSERT_RCU_READ_LOCKED();
 
 	DBG("UST app creating channel %s with per UID buffers", ua_chan->name);
+
+	/* Guaranteed to exist; will not throw. */
+	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	reg_uid = buffer_reg_uid_find(usess->id, app->abi.bits_per_long, app->uid);
 	/*
@@ -3476,11 +3479,6 @@ static int create_channel_per_uid(struct ust_app *app,
 		ERR("Error creating the UST channel \"%s\" registry instance", ua_chan->name);
 		goto error;
 	}
-
-	/* Guaranteed to exist; will not throw. */
-	session = ltt_session::find_session(ua_sess->tracing_id);
-	ASSERT_LOCKED(session->_lock);
-	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
 	 * Create the buffers on the consumer side. This call populates the
@@ -3566,7 +3564,6 @@ static int create_channel_per_pid(struct ust_app *app,
 	int ret;
 	lsu::registry_session *registry;
 	enum lttng_error_code cmd_ret;
-	ltt_session::ref session;
 	uint64_t chan_reg_key;
 
 	LTTNG_ASSERT(app);
@@ -3582,6 +3579,11 @@ static int create_channel_per_pid(struct ust_app *app,
 	/* The UST app session lock is held, registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
+	/* Guaranteed to exist; will not throw. */
+	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_LOCKED(session->_lock);
+	ASSERT_SESSION_LIST_LOCKED();
+
 	/* Create and add a new channel registry to session. */
 	try {
 		registry->add_channel(ua_chan->key);
@@ -3592,11 +3594,6 @@ static int create_channel_per_pid(struct ust_app *app,
 		ret = -1;
 		goto error;
 	}
-
-	/* Guaranteed to exist; will not throw. */
-	session = ltt_session::find_session(ua_sess->tracing_id);
-	ASSERT_LOCKED(session->_lock);
-	ASSERT_SESSION_LIST_LOCKED();
 
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan, app->abi.bits_per_long, registry);
@@ -3890,7 +3887,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	int ret = 0;
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
-	ltt_session::ref session;
 
 	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
@@ -3900,6 +3896,11 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	auto locked_registry = get_locked_session_registry(ua_sess);
 	/* The UST app session is held registry shall not be null. */
 	LTTNG_ASSERT(locked_registry);
+
+	/* Guaranteed to exist; will not throw. */
+	const auto session = ltt_session::find_session(ua_sess->tracing_id);
+	ASSERT_LOCKED(session->_lock);
+	ASSERT_SESSION_LIST_LOCKED();
 
 	/* Metadata already exists for this registry or it was closed previously */
 	if (locked_registry->_metadata_key || locked_registry->_metadata_closed) {
@@ -3938,11 +3939,6 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 * did not returned yet.
 	 */
 	locked_registry->_metadata_key = metadata->key;
-
-	/* Guaranteed to exist; will not throw. */
-	session = ltt_session::find_session(ua_sess->tracing_id);
-	ASSERT_LOCKED(session->_lock);
-	ASSERT_SESSION_LIST_LOCKED();
 
 	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
@@ -7560,7 +7556,7 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
+enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
@@ -7821,7 +7817,7 @@ error:
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
+enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
@@ -7984,7 +7980,7 @@ end:
  * daemon as the same "offset" in a metadata stream will no longer point
  * to the same content.
  */
-enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
+enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	struct lttng_ht_iter iter;

@@ -434,7 +434,6 @@ static void *thread_dispatch_ust_registration(void *data)
 					err = 0;
 					goto error;
 				}
-
 			}
 		} while (node != nullptr);
 

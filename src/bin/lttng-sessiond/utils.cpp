@@ -64,7 +64,7 @@ int loglevels_match(int a_loglevel_type,
 	return match;
 }
 
-const char *session_get_base_path(const struct ltt_session *session)
+const char *session_get_base_path(const ltt_session::locked_ref& session)
 {
 	return consumer_output_get_base_path(session->consumer);
 }

@@ -218,10 +218,8 @@ int session_trylock_list() noexcept
 
 /*
  * Get the session's consumer destination type.
- *
- * The caller must hold the session lock.
  */
-enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session)
+enum consumer_dst_type session_get_consumer_destination_type(const ltt_session::locked_ref& session)
 {
 	/*
 	 * The output information is duplicated in both of those session types.
@@ -235,10 +233,8 @@ enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_se
 /*
  * Get the session's consumer network hostname.
  * The caller must ensure that the destination is of type "net".
- *
- * The caller must hold the session lock.
  */
-const char *session_get_net_consumer_hostname(const struct ltt_session *session)
+const char *session_get_net_consumer_hostname(const ltt_session::locked_ref& session)
 {
 	const char *hostname = nullptr;
 	const struct consumer_output *output;
@@ -266,10 +262,8 @@ const char *session_get_net_consumer_hostname(const struct ltt_session *session)
 /*
  * Get the session's consumer network control and data ports.
  * The caller must ensure that the destination is of type "net".
- *
- * The caller must hold the session lock.
  */
-void session_get_net_consumer_ports(const struct ltt_session *session,
+void session_get_net_consumer_ports(const ltt_session::locked_ref& session,
 				    uint16_t *control_port,
 				    uint16_t *data_port)
 {
@@ -283,11 +277,9 @@ void session_get_net_consumer_ports(const struct ltt_session *session,
 
 /*
  * Get the location of the latest trace archive produced by a rotation.
- *
- * The caller must hold the session lock.
  */
 struct lttng_trace_archive_location *
-session_get_trace_archive_location(const struct ltt_session *session)
+session_get_trace_archive_location(const ltt_session::locked_ref& session)
 {
 	int ret;
 	struct lttng_trace_archive_location *location = nullptr;
@@ -508,12 +500,12 @@ void session_unlock(struct ltt_session *session)
 	session->unlock();
 }
 
-void ltt_session::_const_session_unlock(const ltt_session &session)
+void ltt_session::_const_session_unlock(const ltt_session& session)
 {
 	pthread_mutex_unlock(&session._lock);
 }
 
-static int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
+static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref& session,
 						  struct lttng_trace_chunk *new_trace_chunk,
 						  struct lttng_trace_chunk **_current_trace_chunk)
 {
@@ -652,7 +644,7 @@ error:
 }
 
 struct lttng_trace_chunk *
-session_create_new_trace_chunk(const struct ltt_session *session,
+session_create_new_trace_chunk(const ltt_session::locked_ref& session,
 			       const struct consumer_output *consumer_output_override,
 			       const char *session_base_path_override,
 			       const char *chunk_name_override)
@@ -759,7 +751,7 @@ error:
 	goto end;
 }
 
-int session_close_trace_chunk(struct ltt_session *session,
+int session_close_trace_chunk(const ltt_session::locked_ref& session,
 			      struct lttng_trace_chunk *trace_chunk,
 			      enum lttng_trace_chunk_command_type close_command,
 			      char *closed_trace_chunk_path)
@@ -886,7 +878,7 @@ end:
  * daemon as the same "offset" in a metadata stream will no longer point
  * to the same content.
  */
-static enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
+static enum lttng_error_code session_kernel_open_packets(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 	struct consumer_socket *socket;
@@ -921,7 +913,7 @@ end:
 	return ret;
 }
 
-enum lttng_error_code session_open_packets(struct ltt_session *session)
+enum lttng_error_code session_open_packets(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
 
@@ -952,7 +944,7 @@ end:
  *
  * Must be called with the session lock held.
  */
-int session_set_trace_chunk(struct ltt_session *session,
+int session_set_trace_chunk(const ltt_session::locked_ref& session,
 			    struct lttng_trace_chunk *new_trace_chunk,
 			    struct lttng_trace_chunk **current_trace_chunk)
 {
@@ -961,10 +953,10 @@ int session_set_trace_chunk(struct ltt_session *session,
 		session, new_trace_chunk, current_trace_chunk);
 }
 
-static void session_notify_destruction(const struct ltt_session *session)
+static void session_notify_destruction(const ltt_session::locked_ref& session)
 {
 	size_t i;
-	const size_t count = lttng_dynamic_array_get_count(&session->destroy_notifiers);
+	const auto count = lttng_dynamic_array_get_count(&session->destroy_notifiers);
 
 	for (i = 0; i < count; i++) {
 		const struct ltt_session_destroy_notifier_element *element =
@@ -978,19 +970,19 @@ static void session_notify_destruction(const struct ltt_session *session)
 /*
  * Fire each clear notifier once, and remove them from the array.
  */
-void session_notify_clear(ltt_session& session)
+void session_notify_clear(const ltt_session::locked_ref& session)
 {
 	size_t i;
-	const size_t count = lttng_dynamic_array_get_count(&session.clear_notifiers);
+	const auto count = lttng_dynamic_array_get_count(&session->clear_notifiers);
 
 	for (i = 0; i < count; i++) {
 		const struct ltt_session_clear_notifier_element *element =
 			(ltt_session_clear_notifier_element *) lttng_dynamic_array_get_element(
-				&session.clear_notifiers, i);
+				&session->clear_notifiers, i);
 
-		element->notifier(&session, element->user_data);
+		element->notifier(session, element->user_data);
 	}
-	lttng_dynamic_array_clear(&session.clear_notifiers);
+	lttng_dynamic_array_clear(&session->clear_notifiers);
 }
 
 static void session_release(struct urcu_ref *ref)
@@ -1037,14 +1029,26 @@ static void session_release(struct urcu_ref *ref)
 
 	snapshot_destroy(&session->snapshot);
 
-	pthread_mutex_destroy(&session->_lock);
-
 	if (session_published) {
 		ASSERT_SESSION_LIST_LOCKED();
 		del_session_list(session);
 		del_session_ht(session);
 	}
-	session_notify_destruction(session);
+
+	/*
+	 * The notifiers make use of free-functions that expect a locked reference to a session.
+	 * To create such a reference, we need to acquire the lock and acquire a reference (increase
+	 * the ref-count). To ensure the release of the reference does not re-cross the zero value,
+	 * set the refcount to a tombstone value.
+	 */
+	session->ref_count.refcount = 0xDEAD5E55;
+	session_notify_destruction([session]() {
+		session_lock(session);
+		session_get(session);
+		return ltt_session::locked_ref(*session);
+	}());
+
+	pthread_mutex_destroy(&session->_lock);
 
 	consumer_output_put(session->consumer);
 	kernel_free_session(ksess);
@@ -1129,7 +1133,7 @@ void session_destroy(struct ltt_session *session)
 	session_put(session);
 }
 
-int session_add_destroy_notifier(struct ltt_session *session,
+int session_add_destroy_notifier(const ltt_session::locked_ref& session,
 				 ltt_session_destroy_notifier notifier,
 				 void *user_data)
 {
@@ -1139,7 +1143,7 @@ int session_add_destroy_notifier(struct ltt_session *session,
 	return lttng_dynamic_array_add_element(&session->destroy_notifiers, &element);
 }
 
-int session_add_clear_notifier(struct ltt_session *session,
+int session_add_clear_notifier(const ltt_session::locked_ref& session,
 			       ltt_session_clear_notifier notifier,
 			       void *user_data)
 {
@@ -1330,9 +1334,8 @@ error:
  * Check if the UID matches the session. Root user has access to all
  * sessions.
  */
-bool session_access_ok(struct ltt_session *session, uid_t uid)
+bool session_access_ok(const ltt_session::locked_ref& session, uid_t uid)
 {
-	LTTNG_ASSERT(session);
 	return (uid == session->uid) || uid == 0;
 }
 
@@ -1351,26 +1354,26 @@ bool session_access_ok(struct ltt_session *session, uid_t uid)
  *
  * Must be called with the session and session_list locks held.
  */
-int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result)
+int session_reset_rotation_state(const ltt_session::locked_ref& session,
+				 enum lttng_rotation_state result)
 {
 	int ret = 0;
 
 	ASSERT_SESSION_LIST_LOCKED();
-	ASSERT_LOCKED(session._lock);
 
-	session.rotation_state = result;
-	if (session.rotation_pending_check_timer_enabled) {
+	session->rotation_state = result;
+	if (session->rotation_pending_check_timer_enabled) {
 		ret = timer_session_rotation_pending_check_stop(session);
 	}
-	if (session.chunk_being_archived) {
+	if (session->chunk_being_archived) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
 
-		chunk_status = lttng_trace_chunk_get_id(session.chunk_being_archived, &chunk_id);
+		chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived, &chunk_id);
 		LTTNG_ASSERT(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-		LTTNG_OPTIONAL_SET(&session.last_archived_chunk_id, chunk_id);
-		lttng_trace_chunk_put(session.chunk_being_archived);
-		session.chunk_being_archived = nullptr;
+		LTTNG_OPTIONAL_SET(&session->last_archived_chunk_id, chunk_id);
+		lttng_trace_chunk_put(session->chunk_being_archived);
+		session->chunk_being_archived = nullptr;
 		/*
 		 * Fire the clear reply notifiers if we are completing a clear
 		 * rotation.
@@ -1453,7 +1456,7 @@ ltt_session::locked_ref ltt_session::find_locked_session(ltt_session::id_t id)
 	 * session.
 	 */
 	session_lock(session);
-	return ltt_session::locked_ref(session);
+	return ltt_session::locked_ref(*session);
 }
 
 ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view name)
@@ -1466,7 +1469,7 @@ ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view na
 	}
 
 	session_lock(session);
-	return ltt_session::locked_ref(session);
+	return ltt_session::locked_ref(*session);
 }
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session::id_t id)
@@ -1479,7 +1482,7 @@ ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session
 	}
 
 	session_lock(session);
-	return ltt_session::const_locked_ref(session);
+	return ltt_session::const_locked_ref(*session);
 }
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_string_view name)
@@ -1492,7 +1495,7 @@ ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_st
 	}
 
 	session_lock(session);
-	return ltt_session::const_locked_ref(session);
+	return ltt_session::const_locked_ref(*session);
 }
 
 ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
@@ -1504,7 +1507,7 @@ ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
-	return ltt_session::ref(session);
+	return ltt_session::ref(*session);
 }
 
 ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
@@ -1516,7 +1519,7 @@ ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
 	}
 
-	return ltt_session::ref(session);
+	return ltt_session::ref(*session);
 }
 
 ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
@@ -1528,7 +1531,7 @@ ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
-	return ltt_session::const_ref(session);
+	return ltt_session::const_ref(*session);
 }
 
 ltt_session::const_ref ltt_session::find_const_session(lttng::c_string_view name)
@@ -1540,7 +1543,7 @@ ltt_session::const_ref ltt_session::find_const_session(lttng::c_string_view name
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
 	}
 
-	return ltt_session::const_ref(session);
+	return ltt_session::const_ref(*session);
 }
 
 void ltt_session::_const_session_put(const ltt_session *session)

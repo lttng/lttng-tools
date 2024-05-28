@@ -15,9 +15,8 @@
 #include <stdexcept>
 #include <string>
 
-#define LTTNG_THROW_CLI_NO_DEFAULT_SESSION()        \
-	throw lttng::cli::no_default_session_error( \
-		LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_CLI_NO_DEFAULT_SESSION() \
+	throw lttng::cli::no_default_session_error(LTTNG_SOURCE_LOCATION())
 
 namespace lttng {
 namespace cli {

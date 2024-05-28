@@ -17,6 +17,7 @@
 #include <common/hashtable/hashtable.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
+#include <common/reference.hpp>
 
 #include <lttng/location.h>
 #include <lttng/lttng-error.h>
@@ -31,9 +32,6 @@
 #define ASSERT_SESSION_LIST_LOCKED() LTTNG_ASSERT(session_trylock_list())
 
 struct ltt_ust_session;
-
-using ltt_session_destroy_notifier = void (*)(const struct ltt_session *, void *);
-using ltt_session_clear_notifier = void (*)(const struct ltt_session *, void *);
 
 struct ltt_session;
 struct ltt_session_list;
@@ -62,75 +60,6 @@ int session_trylock_list() noexcept;
 								   LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id) \
 	throw lttng::sessiond::exceptions::session_not_found_error(id, LTTNG_SOURCE_LOCATION())
-
-void session_destroy(struct ltt_session *session);
-int session_add_destroy_notifier(struct ltt_session *session,
-				 ltt_session_destroy_notifier notifier,
-				 void *user_data);
-
-int session_add_clear_notifier(struct ltt_session *session,
-			       ltt_session_clear_notifier notifier,
-			       void *user_data);
-void session_notify_clear(ltt_session& session);
-
-enum consumer_dst_type session_get_consumer_destination_type(const struct ltt_session *session);
-const char *session_get_net_consumer_hostname(const struct ltt_session *session);
-void session_get_net_consumer_ports(const struct ltt_session *session,
-				    uint16_t *control_port,
-				    uint16_t *data_port);
-struct lttng_trace_archive_location *
-session_get_trace_archive_location(const struct ltt_session *session);
-
-struct ltt_session_list *session_get_list();
-void session_list_wait_empty(std::unique_lock<std::mutex> list_lock);
-
-bool session_access_ok(struct ltt_session *session, uid_t uid);
-
-int session_reset_rotation_state(ltt_session& session, enum lttng_rotation_state result);
-
-/* Create a new trace chunk object from the session's configuration. */
-struct lttng_trace_chunk *
-session_create_new_trace_chunk(const struct ltt_session *session,
-			       const struct consumer_output *consumer_output_override,
-			       const char *session_base_path_override,
-			       const char *chunk_name_override);
-
-/*
- * Set `new_trace_chunk` as the session's current trace chunk. A reference
- * to `new_trace_chunk` is acquired by the session. The chunk is created
- * on remote peers (consumer and relay daemons).
- *
- * A reference to the session's current trace chunk is returned through
- * `current_session_trace_chunk` on success.
- */
-int session_set_trace_chunk(struct ltt_session *session,
-			    struct lttng_trace_chunk *new_trace_chunk,
-			    struct lttng_trace_chunk **current_session_trace_chunk);
-
-/*
- * Close a chunk on the remote peers of a session. Has no effect on the
- * ltt_session itself.
- */
-int session_close_trace_chunk(struct ltt_session *session,
-			      struct lttng_trace_chunk *trace_chunk,
-			      enum lttng_trace_chunk_command_type close_command,
-			      char *path);
-
-/* Open a packet in all channels of a given session. */
-enum lttng_error_code session_open_packets(struct ltt_session *session);
-
-bool session_output_supports_trace_chunks(const struct ltt_session *session);
-
-/*
- * Sample the id of a session looked up via its name.
- * Here the term "sampling" hint the caller that this return the id at a given
- * point in time with no guarantee that the session for which the id was
- * sampled still exist at that point.
- *
- * Return 0 when the session is not found,
- * Return 1 when the session is found and set `id`.
- */
-bool sample_session_id_by_name(const char *name, uint64_t *id);
 
 /*
  * Tracing session list
@@ -174,25 +103,25 @@ private:
 	static void _locked_session_release(ltt_session *session);
 	static void _locked_const_session_release(const ltt_session *session);
 	static void _const_session_put(const ltt_session *session);
-	static void _const_session_unlock(const ltt_session &session);
+	static void _const_session_unlock(const ltt_session& session);
 
 public:
-	using locked_ref =
-		std::unique_ptr<ltt_session,
-				lttng::memory::create_deleter_class<
-					ltt_session,
-					ltt_session::_locked_session_release>::deleter>;
-	using ref = std::unique_ptr<
+	using locked_ref = lttng::non_copyable_reference<
+		ltt_session,
+		lttng::memory::create_deleter_class<ltt_session,
+						    ltt_session::_locked_session_release>::deleter>;
+	using ref = lttng::non_copyable_reference<
 		ltt_session,
 		lttng::memory::create_deleter_class<ltt_session, session_put>::deleter>;
-	using const_locked_ref =
-		std::unique_ptr<const ltt_session,
-				lttng::memory::create_deleter_class<
-					const ltt_session,
-					ltt_session::_locked_const_session_release>::deleter>;
-	using const_ref = std::unique_ptr<
+	using const_locked_ref = lttng::non_copyable_reference<
 		const ltt_session,
-		lttng::memory::create_deleter_class<const ltt_session, ltt_session::_const_session_put>::deleter>;
+		lttng::memory::create_deleter_class<
+			const ltt_session,
+			ltt_session::_locked_const_session_release>::deleter>;
+	using const_ref = lttng::non_copyable_reference<
+		const ltt_session,
+		lttng::memory::create_deleter_class<const ltt_session,
+						    ltt_session::_const_session_put>::deleter>;
 
 	void lock() const noexcept;
 	void unlock() const noexcept;
@@ -343,9 +272,14 @@ public:
 	struct lttng_dynamic_array clear_notifiers;
 	/* Session base path override. Set non-null. */
 	char *base_path;
-
-
 };
+
+/*
+ * Destruction notifiers are invoked in an exclusive context. There is no need for the session to be
+ * locked nor for a reference to be acquired.
+ */
+using ltt_session_destroy_notifier = void (*)(const ltt_session::locked_ref&, void *);
+using ltt_session_clear_notifier = void (*)(const ltt_session::locked_ref&, void *);
 
 namespace lttng {
 namespace sessiond {
@@ -376,7 +310,8 @@ public:
 		}
 		/* NOLINTEND(google-explicit-constructor) */
 
-		explicit query_parameter(ltt_session::id_t id_) : type(query_type::BY_ID), parameter(id_)
+		explicit query_parameter(ltt_session::id_t id_) :
+			type(query_type::BY_ID), parameter(id_)
 		{
 		}
 
@@ -452,5 +387,76 @@ public:
 } // namespace exceptions
 } /* namespace sessiond */
 } /* namespace lttng */
+
+void session_destroy(struct ltt_session *session);
+int session_add_destroy_notifier(const ltt_session::locked_ref& session,
+				 ltt_session_destroy_notifier notifier,
+				 void *user_data);
+
+int session_add_clear_notifier(const ltt_session::locked_ref& session,
+			       ltt_session_clear_notifier notifier,
+			       void *user_data);
+void session_notify_clear(const ltt_session::locked_ref& session);
+
+enum consumer_dst_type
+session_get_consumer_destination_type(const ltt_session::locked_ref& session);
+const char *session_get_net_consumer_hostname(const ltt_session::locked_ref& session);
+void session_get_net_consumer_ports(const ltt_session::locked_ref& session,
+				    uint16_t *control_port,
+				    uint16_t *data_port);
+struct lttng_trace_archive_location *
+session_get_trace_archive_location(const ltt_session::locked_ref& session);
+
+struct ltt_session_list *session_get_list();
+void session_list_wait_empty(std::unique_lock<std::mutex> list_lock);
+
+bool session_access_ok(const ltt_session::locked_ref& session, uid_t uid);
+
+int session_reset_rotation_state(const ltt_session::locked_ref& session,
+				 enum lttng_rotation_state result);
+
+/* Create a new trace chunk object from the session's configuration. */
+struct lttng_trace_chunk *
+session_create_new_trace_chunk(const ltt_session::locked_ref& session,
+			       const struct consumer_output *consumer_output_override,
+			       const char *session_base_path_override,
+			       const char *chunk_name_override);
+
+/*
+ * Set `new_trace_chunk` as the session's current trace chunk. A reference
+ * to `new_trace_chunk` is acquired by the session. The chunk is created
+ * on remote peers (consumer and relay daemons).
+ *
+ * A reference to the session's current trace chunk is returned through
+ * `current_session_trace_chunk` on success.
+ */
+int session_set_trace_chunk(const ltt_session::locked_ref& session,
+			    struct lttng_trace_chunk *new_trace_chunk,
+			    struct lttng_trace_chunk **current_session_trace_chunk);
+
+/*
+ * Close a chunk on the remote peers of a session. Has no effect on the
+ * ltt_session itself.
+ */
+int session_close_trace_chunk(const ltt_session::locked_ref& session,
+			      struct lttng_trace_chunk *trace_chunk,
+			      enum lttng_trace_chunk_command_type close_command,
+			      char *path);
+
+/* Open a packet in all channels of a given session. */
+enum lttng_error_code session_open_packets(const ltt_session::locked_ref& session);
+
+bool session_output_supports_trace_chunks(const struct ltt_session *session);
+
+/*
+ * Sample the id of a session looked up via its name.
+ * Here the term "sampling" hint the caller that this return the id at a given
+ * point in time with no guarantee that the session for which the id was
+ * sampled still exist at that point.
+ *
+ * Return 0 when the session is not found,
+ * Return 1 when the session is found and set `id`.
+ */
+bool sample_session_id_by_name(const char *name, uint64_t *id);
 
 #endif /* _LTT_SESSION_H */

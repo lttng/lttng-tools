@@ -199,15 +199,16 @@ end:
 	return ret;
 }
 
-int timer_session_rotation_pending_check_start(struct ltt_session *session,
+int timer_session_rotation_pending_check_start(const ltt_session::locked_ref& session,
 					       unsigned int interval_us)
 {
 	int ret;
 
-	if (!session_get(session)) {
+	if (!session_get(&session.get())) {
 		ret = -1;
 		goto end;
 	}
+
 	DBG("Enabling session rotation pending check timer on session %" PRIu64, session->id);
 	/*
 	 * We arm this timer in a one-shot mode so we don't have to disable it
@@ -219,7 +220,7 @@ int timer_session_rotation_pending_check_start(struct ltt_session *session,
 	 * no need to go through the whole signal teardown scheme everytime.
 	 */
 	ret = timer_start(&session->rotation_pending_check_timer,
-			  session,
+			  &session.get(),
 			  interval_us,
 			  LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK,
 			  /* one-shot */ true);
@@ -231,39 +232,39 @@ end:
 }
 
 /*
- * Call with session and session_list locks held.
+ * Call with session_list lock held.
  */
-int timer_session_rotation_pending_check_stop(ltt_session& session)
+int timer_session_rotation_pending_check_stop(const ltt_session::locked_ref& session)
 {
 	int ret;
 
-	LTTNG_ASSERT(session.rotation_pending_check_timer_enabled);
+	LTTNG_ASSERT(session->rotation_pending_check_timer_enabled);
 
-	DBG("Disabling session rotation pending check timer on session %" PRIu64, session.id);
-	ret = timer_stop(&session.rotation_pending_check_timer,
+	DBG("Disabling session rotation pending check timer on session %" PRIu64, session->id);
+	ret = timer_stop(&session->rotation_pending_check_timer,
 			 LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK);
 	if (ret == -1) {
 		ERR("Failed to stop rotate_pending_check timer");
 	} else {
-		session.rotation_pending_check_timer_enabled = false;
+		session->rotation_pending_check_timer_enabled = false;
 		/*
 		 * The timer's reference to the session can be released safely.
 		 */
-		session_put(&session);
+		session_put(&session.get());
 	}
 
 	return ret;
 }
 
 /*
- * Call with session and session_list locks held.
+ * Call with session_list lock held.
  */
-int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
+int timer_session_rotation_schedule_timer_start(const ltt_session::locked_ref& session,
 						unsigned int interval_us)
 {
 	int ret;
 
-	if (!session_get(session)) {
+	if (!session_get(&session.get())) {
 		ret = -1;
 		goto end;
 	}
@@ -272,7 +273,7 @@ int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 	    interval_us,
 	    USEC_UNIT);
 	ret = timer_start(&session->rotation_schedule_timer,
-			  session,
+			  &session.get(),
 			  interval_us,
 			  LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION,
 			  /* one-shot */ false);
@@ -287,11 +288,9 @@ end:
 /*
  * Call with session and session_list locks held.
  */
-int timer_session_rotation_schedule_timer_stop(struct ltt_session *session)
+int timer_session_rotation_schedule_timer_stop(const ltt_session::locked_ref& session)
 {
 	int ret = 0;
-
-	LTTNG_ASSERT(session);
 
 	if (!session->rotation_schedule_timer_enabled) {
 		goto end;
@@ -306,7 +305,7 @@ int timer_session_rotation_schedule_timer_stop(struct ltt_session *session)
 
 	session->rotation_schedule_timer_enabled = false;
 	/* The timer's reference to the session can be released safely. */
-	session_put(session);
+	session_put(&session.get());
 	ret = 0;
 end:
 	return ret;

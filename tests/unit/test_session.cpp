@@ -133,7 +133,7 @@ static int create_one_session(const char *name)
 /*
  * Test deletion of 1 session
  */
-static int destroy_one_session(struct ltt_session *session)
+static int destroy_one_session(ltt_session::ref session)
 {
 	int ret;
 	char session_name[NAME_MAX];
@@ -141,8 +141,14 @@ static int destroy_one_session(struct ltt_session *session)
 	strncpy(session_name, session->name, sizeof(session_name));
 	session_name[sizeof(session_name) - 1] = '\0';
 
-	session_destroy(session);
-	session_put(session);
+	/* Reference of the session list. */
+	ltt_session *weak_session_ptr = &session.get();
+	{
+		/* Drop the reference that stems from the look-up. */
+		const ltt_session::ref reference_to_drop = std::move(session);
+	}
+
+	session_destroy(weak_session_ptr);
 
 	ret = find_session_name(session_name);
 	if (ret < 0) {
@@ -207,25 +213,20 @@ static void test_validate_session()
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::ref session;
 
 	try {
-		session = ltt_session::find_session(SESSION1);
-	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
-	}
+		const auto session = ltt_session::find_session(SESSION1);
+		pass("Validating session: session found");
 
-	ok(session, "Validating session: session found");
-
-	if (session) {
 		ok(session->kernel_session == nullptr && strlen(session->name),
 		   "Validating session: basic sanity check");
-	} else {
-		skip(1, "Skipping session validation check as session was not found");
-		return;
-	}
 
-	session->lock();
-	session->unlock();
+		session->lock();
+		session->unlock();
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		fail("Validating session: session found");
+		skip(1, "Skipping session validation check as session was not found");
+	}
 }
 
 static void test_destroy_session()
@@ -238,20 +239,18 @@ static void test_destroy_session()
 	 * sessions.
 	 */
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	ltt_session::ref session;
 
 	try {
-		session = ltt_session::find_session(SESSION1);
-	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
-	}
+		auto session = ltt_session::find_session(SESSION1);
 
-	ok(session, "Destroying session: session found");
+		pass("Destroying session: session found");
 
-	if (session) {
-		ok(destroy_one_session(session.release()) == 0,
+		ok(destroy_one_session(std::move(session)) == 0,
 		   "Destroying session: %s destroyed",
 		   SESSION1);
-	} else {
+
+	} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
+		fail("Destroying session: session found");
 		skip(1, "Skipping session destruction as it was not found");
 	}
 }
@@ -307,8 +306,11 @@ static void test_large_session_number()
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
-			LTTNG_ASSERT(session_get(iter));
-			ret = destroy_one_session(iter);
+			ret = destroy_one_session([iter]() {
+				session_get(iter);
+				return ltt_session::ref(*iter);
+			}());
+
 			if (ret < 0) {
 				diag("session %d destroy failed", i);
 				++failed;

@@ -163,12 +163,10 @@ error:
  * Create a new kernel session, register it to the kernel tracer and add it to
  * the session daemon session.
  */
-int kernel_create_session(struct ltt_session *session)
+int kernel_create_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 	struct ltt_kernel_session *lks;
-
-	LTTNG_ASSERT(session);
 
 	/* Allocate data structure */
 	lks = trace_kernel_create_session();
@@ -1898,7 +1896,7 @@ int kernel_supports_event_notifiers()
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
+enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
@@ -2243,7 +2241,7 @@ bool kernel_tracer_is_initialized()
  *
  * Return LTTNG_OK on success or else an LTTng error code.
  */
-enum lttng_error_code kernel_clear_session(struct ltt_session *session)
+enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;

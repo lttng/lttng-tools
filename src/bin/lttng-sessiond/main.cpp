@@ -1279,7 +1279,7 @@ end:
 
 static void destroy_all_sessions_and_wait()
 {
-	struct ltt_session *session, *tmp;
+	struct ltt_session *raw_session_ptr, *tmp;
 	struct ltt_session_list *session_list;
 
 	DBG("Initiating destruction of all sessions");
@@ -1292,20 +1292,19 @@ static void destroy_all_sessions_and_wait()
 	}
 
 	/* Initiate the destruction of all sessions. */
-	cds_list_for_each_entry_safe (session, tmp, &session_list->head, list) {
-		if (!session_get(session)) {
+	cds_list_for_each_entry_safe (raw_session_ptr, tmp, &session_list->head, list) {
+		const auto session = [raw_session_ptr]() {
+			session_get(raw_session_ptr);
+			raw_session_ptr->lock();
+			return ltt_session::locked_ref(*raw_session_ptr);
+		}();
+
+		if (session->destroyed) {
 			continue;
 		}
 
-		session_lock(session);
-		if (session->destroyed) {
-			goto unlock_session;
-		}
 		(void) cmd_stop_trace(session);
 		(void) cmd_destroy_session(session, nullptr);
-	unlock_session:
-		session_unlock(session);
-		session_put(session);
 	}
 
 	/* Wait for the destruction of all sessions to complete. */

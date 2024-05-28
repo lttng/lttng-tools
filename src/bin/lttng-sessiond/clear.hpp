@@ -10,6 +10,6 @@
 
 #include "session.hpp"
 
-int cmd_clear_session(struct ltt_session *session, int *sock_fd);
+int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd);
 
 #endif /* CLEAT_H */

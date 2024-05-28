@@ -99,6 +99,7 @@ libcommon_lgpl_la_SOURCES = \
 	log-level-rule.cpp \
 	make-unique.hpp \
 	make-unique-wrapper.hpp \
+	meta-helpers.hpp \
 	mi-lttng.cpp mi-lttng.hpp \
 	notification.cpp \
 	payload.cpp payload.hpp \
@@ -106,6 +107,7 @@ libcommon_lgpl_la_SOURCES = \
 	pthread-lock.hpp \
 	random.cpp random.hpp \
 	readwrite.cpp readwrite.hpp \
+	reference.hpp \
 	runas.cpp runas.hpp \
 	scope-exit.hpp \
 	session-descriptor.cpp \

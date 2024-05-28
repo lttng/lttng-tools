@@ -421,13 +421,12 @@ error:
  * function also applies the right modification on a per domain basis for the
  * trace files destination directory.
  */
-static int copy_session_consumer(int domain, struct ltt_session *session)
+static int copy_session_consumer(int domain, const ltt_session::locked_ref& session)
 {
 	int ret;
 	const char *dir_name;
 	struct consumer_output *consumer;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(session->consumer);
 
 	switch (domain) {
@@ -481,12 +480,12 @@ error:
 /*
  * Create an UST session and add it to the session ust list.
  */
-static int create_ust_session(struct ltt_session *session, const struct lttng_domain *domain)
+static int create_ust_session(const ltt_session::locked_ref& session,
+			      const struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus = nullptr;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(domain);
 	LTTNG_ASSERT(session->consumer);
 
@@ -540,7 +539,7 @@ error:
 /*
  * Create a kernel tracer session then create the default channel.
  */
-static int create_kernel_session(struct ltt_session *session)
+static int create_kernel_session(const ltt_session::locked_ref& session)
 {
 	int ret;
 
@@ -582,22 +581,23 @@ error_create:
 static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
 {
 	unsigned int i = 0;
-	struct ltt_session *session;
+	struct ltt_session *raw_session_ptr;
 	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Counting number of available session for UID %d", uid);
-	cds_list_for_each_entry (session, &session_list->head, list) {
-		if (!session_get(session)) {
-			continue;
-		}
-		session_lock(session);
+	cds_list_for_each_entry (raw_session_ptr, &session_list->head, list) {
+		auto session = [raw_session_ptr]() {
+			session_get(raw_session_ptr);
+			raw_session_ptr->lock();
+			return ltt_session::locked_ref(*raw_session_ptr);
+		}();
+
 		/* Only count the sessions the user can control. */
 		if (session_access_ok(session, uid) && !session->destroyed) {
 			i++;
 		}
-		session_unlock(session);
-		session_put(session);
 	}
+
 	return i;
 }
 
@@ -1111,10 +1111,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 	std::unique_lock<std::mutex> list_lock;
 	/*
 	 * A locked_ref is typically "never null" (hence its name). However, due to the
-	 * structure of this function, target_session remains null for commands that don't
+	 * structure of this function, target_session remains unset for commands that don't
 	 * have a target session.
 	 */
-	ltt_session::locked_ref target_session;
+	nonstd::optional<ltt_session::locked_ref> target_session;
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm.cmd_type) {
@@ -1146,8 +1146,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		 */
 		list_lock = lttng::sessiond::lock_session_list();
 		try {
-			target_session =
-				ltt_session::find_locked_session(cmd_ctx->lsm.session.name);
+			target_session.emplace(
+				ltt_session::find_locked_session(cmd_ctx->lsm.session.name));
 		} catch (...) {
 			std::throw_with_nested(lttng::ctl::error(
 				fmt::format(
@@ -1173,7 +1173,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT:
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			if (!target_session->kernel_session) {
+			if (!(*target_session)->kernel_session) {
 				return LTTNG_ERR_NO_CHANNEL;
 			}
 			break;
@@ -1181,7 +1181,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		case LTTNG_DOMAIN_LOG4J:
 		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
-			if (!target_session->ust_session) {
+			if (!(*target_session)->ust_session) {
 				return LTTNG_ERR_NO_CHANNEL;
 				goto error;
 			}
@@ -1225,8 +1225,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 
 		/* Need a session for kernel command */
 		if (need_tracing_session) {
-			if (target_session->kernel_session == nullptr) {
-				ret = create_kernel_session(target_session.get());
+			if ((*target_session)->kernel_session == nullptr) {
+				ret = create_kernel_session(*target_session);
 				if (ret != LTTNG_OK) {
 					ret = LTTNG_ERR_KERN_SESS_FAIL;
 					goto error;
@@ -1253,7 +1253,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 			 * the consumer output of the session if exist.
 			 */
 			ret = consumer_create_socket(&the_kconsumer_data,
-						     target_session->kernel_session->consumer);
+						     (*target_session)->kernel_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1283,9 +1283,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 
 		if (need_tracing_session) {
 			/* Create UST session if none exist. */
-			if (target_session->ust_session == nullptr) {
+			if ((*target_session)->ust_session == nullptr) {
 				lttng_domain domain = cmd_ctx->lsm.domain;
-				ret = create_ust_session(target_session.get(), &domain);
+				ret = create_ust_session(*target_session, &domain);
 				if (ret != LTTNG_OK) {
 					goto error;
 				}
@@ -1317,7 +1317,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 			 * since it was set above and can ONLY be set in this thread.
 			 */
 			ret = consumer_create_socket(&the_ustconsumer64_data,
-						     target_session->ust_session->consumer);
+						     (*target_session)->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1347,7 +1347,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 			 * since it was set above and can ONLY be set in this thread.
 			 */
 			ret = consumer_create_socket(&the_ustconsumer32_data,
-						     target_session->ust_session->consumer);
+						     (*target_session)->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
@@ -1391,9 +1391,8 @@ skip_domain:
 	 * The root user can interact with all sessions.
 	 */
 	if (need_tracing_session) {
-		if (!session_access_ok(target_session.get(),
-				       LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds)) ||
-		    target_session->destroyed) {
+		if (!session_access_ok(*target_session, LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds)) ||
+		    (*target_session)->destroyed) {
 			ret = LTTNG_ERR_EPERM;
 			goto error;
 		}
@@ -1408,7 +1407,7 @@ skip_domain:
 		 * Setup relayd if not done yet. If the relayd information was already
 		 * sent to the consumer, this call will gracefully return.
 		 */
-		ret = cmd_setup_relayd(target_session.get());
+		ret = cmd_setup_relayd(*target_session);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1428,20 +1427,20 @@ skip_domain:
 		}
 
 		ret = cmd_add_context(
-			cmd_ctx, target_session, event_context, the_kernel_poll_pipe[1]);
+			cmd_ctx, *target_session, event_context, the_kernel_poll_pipe[1]);
 		lttng_event_context_destroy(event_context);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:
 	{
-		ret = cmd_disable_channel(target_session.get(),
+		ret = cmd_disable_channel(*target_session,
 					  cmd_ctx->lsm.domain.type,
 					  cmd_ctx->lsm.u.disable.channel_name);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL:
 	{
-		ret = cmd_enable_channel(cmd_ctx, target_session, *sock, the_kernel_poll_pipe[1]);
+		ret = cmd_enable_channel(cmd_ctx, *target_session, *sock, the_kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1538,10 +1537,10 @@ skip_domain:
 
 		if (add_value) {
 			ret = cmd_process_attr_tracker_inclusion_set_add_value(
-				target_session.get(), domain_type, process_attr, value);
+				*target_session, domain_type, process_attr, value);
 		} else {
 			ret = cmd_process_attr_tracker_inclusion_set_remove_value(
-				target_session.get(), domain_type, process_attr, value);
+				*target_session, domain_type, process_attr, value);
 		}
 		process_attr_value_destroy(value);
 	error_add_remove_tracker_value:
@@ -1558,7 +1557,7 @@ skip_domain:
 				.process_attr_tracker_get_tracking_policy.process_attr;
 
 		ret = cmd_process_attr_tracker_get_tracking_policy(
-			target_session.get(), domain_type, process_attr, &tracking_policy);
+			*target_session, domain_type, process_attr, &tracking_policy);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1581,7 +1580,7 @@ skip_domain:
 				.process_attr_tracker_set_tracking_policy.process_attr;
 
 		ret = cmd_process_attr_tracker_set_tracking_policy(
-			target_session.get(), domain_type, process_attr, tracking_policy);
+			*target_session, domain_type, process_attr, tracking_policy);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1598,7 +1597,7 @@ skip_domain:
 				cmd_ctx->lsm.u.process_attr_tracker_get_inclusion_set.process_attr;
 
 		ret = cmd_process_attr_tracker_get_inclusion_set(
-			target_session.get(), domain_type, process_attr, &values);
+			*target_session, domain_type, process_attr, &values);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1643,14 +1642,14 @@ skip_domain:
 		 */
 		ret = cmd_ctx->lsm.cmd_type == LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT ?
 			cmd_enable_event(cmd_ctx,
-					 target_session,
+					 *target_session,
 					 event,
 					 filter_expression,
 					 exclusions,
 					 bytecode,
 					 the_kernel_poll_pipe[1]) :
 			cmd_disable_event(cmd_ctx,
-					  target_session,
+					  *target_session,
 					  event,
 					  filter_expression,
 					  bytecode,
@@ -1764,7 +1763,7 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_set_consumer_uri(target_session.get(), nb_uri, uris);
+		ret = cmd_set_consumer_uri(*target_session, nb_uri, uris);
 		free(uris);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -1779,24 +1778,24 @@ skip_domain:
 		 * enabled time or size-based rotations, we have to make sure
 		 * the kernel tracer supports it.
 		 */
-		if (!target_session->has_been_started && target_session->kernel_session &&
-		    (target_session->rotate_timer_period || target_session->rotate_size) &&
+		if (!(*target_session)->has_been_started && (*target_session)->kernel_session &&
+		    ((*target_session)->rotate_timer_period || (*target_session)->rotate_size) &&
 		    !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
 		}
-		ret = cmd_start_trace(target_session.get());
+		ret = cmd_start_trace(*target_session);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_STOP_TRACE:
 	{
-		ret = cmd_stop_trace(target_session.get());
+		ret = cmd_stop_trace(*target_session);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DESTROY_SESSION:
 	{
-		ret = cmd_destroy_session(target_session.get(), sock);
+		ret = cmd_destroy_session(*target_session, sock);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_LIST_DOMAINS:
@@ -1804,7 +1803,7 @@ skip_domain:
 		ssize_t nb_dom;
 		struct lttng_domain *domains = nullptr;
 
-		nb_dom = cmd_list_domains(target_session.get(), &domains);
+		nb_dom = cmd_list_domains(*target_session, &domains);
 		if (nb_dom < 0) {
 			/* Return value is a negative lttng_error_code. */
 			ret = -nb_dom;
@@ -1830,7 +1829,7 @@ skip_domain:
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		ret_code = cmd_list_channels(
-			cmd_ctx->lsm.domain.type, target_session.get(), &cmd_ctx->reply_payload);
+			cmd_ctx->lsm.domain.type, *target_session, &cmd_ctx->reply_payload);
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
 			goto error;
@@ -1855,7 +1854,7 @@ skip_domain:
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		ret_code = cmd_list_events(cmd_ctx->lsm.domain.type,
-					   target_session.get(),
+					   *target_session,
 					   cmd_ctx->lsm.u.list.channel_name,
 					   &cmd_ctx->reply_payload);
 		if (ret_code != LTTNG_OK) {
@@ -1915,10 +1914,8 @@ skip_domain:
 			goto error;
 		}
 
-		ret = cmd_register_consumer(target_session.get(),
-					    cmd_ctx->lsm.domain.type,
-					    cmd_ctx->lsm.u.reg.path,
-					    cdata);
+		ret = cmd_register_consumer(
+			*target_session, cmd_ctx->lsm.domain.type, cmd_ctx->lsm.u.reg.path, cdata);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_KERNEL_TRACER_STATUS:
@@ -1942,7 +1939,7 @@ skip_domain:
 		int pending_ret;
 		uint8_t pending_ret_byte;
 
-		pending_ret = cmd_data_pending(target_session.get());
+		pending_ret = cmd_data_pending(*target_session);
 
 		/*
 		 * FIXME
@@ -1980,7 +1977,7 @@ skip_domain:
 		struct lttcomm_lttng_output_id reply;
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
 
-		ret = cmd_snapshot_add_output(target_session.get(), &output, &snapshot_id);
+		ret = cmd_snapshot_add_output(*target_session, &output, &snapshot_id);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1995,7 +1992,7 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
-		ret = cmd_snapshot_del_output(target_session.get(), &output);
+		ret = cmd_snapshot_del_output(*target_session, &output);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_LIST_OUTPUT:
@@ -2003,7 +2000,7 @@ skip_domain:
 		ssize_t nb_output;
 		struct lttng_snapshot_output *outputs = nullptr;
 
-		nb_output = cmd_snapshot_list_outputs(target_session.get(), &outputs);
+		nb_output = cmd_snapshot_list_outputs(*target_session, &outputs);
 		if (nb_output < 0) {
 			ret = -nb_output;
 			goto error;
@@ -2020,10 +2017,10 @@ skip_domain:
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
 	{
 		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
-		ret = cmd_snapshot_record(target_session.get(), &output, 0); // RFC: set to zero
-									     // since it's ignored
-									     // by
-									     // cmd_snapshot_record
+		ret = cmd_snapshot_record(*target_session, &output, 0); // RFC: set to zero
+									// since it's ignored
+									// by
+									// cmd_snapshot_record
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_CREATE_SESSION_EXT:
@@ -2062,18 +2059,18 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SET_SESSION_SHM_PATH:
 	{
-		ret = cmd_set_session_shm_path(target_session.get(),
+		ret = cmd_set_session_shm_path(*target_session,
 					       cmd_ctx->lsm.u.set_shm_path.shm_path);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_METADATA:
 	{
-		ret = cmd_regenerate_metadata(target_session.get());
+		ret = cmd_regenerate_metadata(*target_session);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGENERATE_STATEDUMP:
 	{
-		ret = cmd_regenerate_statedump(target_session.get());
+		ret = cmd_regenerate_statedump(*target_session);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_REGISTER_TRIGGER:
@@ -2132,16 +2129,16 @@ skip_domain:
 	{
 		struct lttng_rotate_session_return rotate_return;
 
-		DBG("Client rotate session \"%s\"", target_session->name);
+		DBG("Client rotate session \"%s\"", (*target_session)->name);
 
 		memset(&rotate_return, 0, sizeof(rotate_return));
-		if (target_session->kernel_session && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_session && !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
 		}
 
-		ret = cmd_rotate_session(target_session.get(),
+		ret = cmd_rotate_session(*target_session,
 					 &rotate_return,
 					 false,
 					 LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
@@ -2160,7 +2157,7 @@ skip_domain:
 		struct lttng_rotation_get_info_return get_info_return;
 
 		memset(&get_info_return, 0, sizeof(get_info_return));
-		ret = cmd_rotate_get_info(target_session.get(),
+		ret = cmd_rotate_get_info(*target_session,
 					  &get_info_return,
 					  cmd_ctx->lsm.u.get_rotation_info.rotation_id);
 		if (ret < 0) {
@@ -2179,7 +2176,7 @@ skip_domain:
 		enum lttng_rotation_schedule_type schedule_type;
 		uint64_t value;
 
-		if (target_session->kernel_session && !check_rotate_compatible()) {
+		if ((*target_session)->kernel_session && !check_rotate_compatible()) {
 			DBG("Kernel tracer version does not support session rotations");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
@@ -2191,7 +2188,7 @@ skip_domain:
 		value = cmd_ctx->lsm.u.rotation_set_schedule.value;
 
 		ret = cmd_rotation_set_schedule(
-			target_session.get(), set_schedule, schedule_type, value);
+			*target_session, set_schedule, schedule_type, value);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2202,10 +2199,10 @@ skip_domain:
 	{
 		lttng_session_list_schedules_return schedules;
 
-		schedules.periodic.set = !!target_session->rotate_timer_period;
-		schedules.periodic.value = target_session->rotate_timer_period;
-		schedules.size.set = !!target_session->rotate_size;
-		schedules.size.value = target_session->rotate_size;
+		schedules.periodic.set = !!(*target_session)->rotate_timer_period;
+		schedules.periodic.value = (*target_session)->rotate_timer_period;
+		schedules.size.set = !!(*target_session)->rotate_size;
+		schedules.size.value = (*target_session)->rotate_size;
 
 		setup_lttng_msg_no_cmd_header(cmd_ctx, &schedules, sizeof(schedules));
 
@@ -2214,7 +2211,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_CLEAR_SESSION:
 	{
-		ret = cmd_clear_session(target_session.get(), sock);
+		ret = cmd_clear_session(*target_session, sock);
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_LIST_TRIGGERS:

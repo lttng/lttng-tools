@@ -7,6 +7,7 @@
  */
 
 #define _LGPL_SOURCE
+#include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "health-sessiond.hpp"
 #include "lttng-sessiond.hpp"
@@ -674,7 +675,7 @@ error:
  * Return 0 on success. Return 1 if the URI were equal. Else, negative value on
  * error.
  */
-int consumer_set_network_uri(const struct ltt_session *session,
+int consumer_set_network_uri(const ltt_session::locked_ref& session,
 			     struct consumer_output *output,
 			     struct lttng_uri *uri)
 {

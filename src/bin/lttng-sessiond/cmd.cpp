@@ -12,6 +12,7 @@
 #include "buffer-registry.hpp"
 #include "channel.hpp"
 #include "cmd.hpp"
+#include "consumer-output.hpp"
 #include "consumer.hpp"
 #include "event-notifier-error-accounting.hpp"
 #include "event.hpp"
@@ -133,13 +134,13 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
  * Create a session path used by list_lttng_sessions for the case that the
  * session consumer is on the network.
  */
-static int build_network_session_path(char *dst, size_t size, struct ltt_session *session)
+static int
+build_network_session_path(char *dst, size_t size, const ltt_session::locked_ref& session)
 {
 	int ret, kdata_port, udata_port;
 	struct lttng_uri *kuri = nullptr, *uuri = nullptr, *uri = nullptr;
 	char tmp_uurl[PATH_MAX], tmp_urls[PATH_MAX];
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(dst);
 
 	memset(tmp_urls, 0, sizeof(tmp_urls));
@@ -215,7 +216,7 @@ error:
  * Get run-time attributes if the session has been started (discarded events,
  * lost packets).
  */
-static int get_kernel_runtime_stats(struct ltt_session *session,
+static int get_kernel_runtime_stats(const ltt_session::locked_ref& session,
 				    struct ltt_kernel_channel *kchan,
 				    uint64_t *discarded_events,
 				    uint64_t *lost_packets)
@@ -249,7 +250,7 @@ end:
  * Get run-time attributes if the session has been started (discarded events,
  * lost packets).
  */
-static int get_ust_runtime_stats(struct ltt_session *session,
+static int get_ust_runtime_stats(const ltt_session::locked_ref& session,
 				 struct ltt_ust_channel *uchan,
 				 uint64_t *discarded_events,
 				 uint64_t *lost_packets)
@@ -645,7 +646,7 @@ end:
  * Add URI so the consumer output object. Set the correct path depending on the
  * domain adding the default trace directory.
  */
-static enum lttng_error_code add_uri_to_consumer(const struct ltt_session *session,
+static enum lttng_error_code add_uri_to_consumer(const ltt_session::locked_ref& session,
 						 struct consumer_output *consumer,
 						 struct lttng_uri *uri,
 						 enum lttng_domain_type domain)
@@ -1013,7 +1014,7 @@ error:
  * the relayd and send them to the right domain consumer. Consumer type MUST be
  * network.
  */
-int cmd_setup_relayd(struct ltt_session *session)
+int cmd_setup_relayd(const ltt_session::locked_ref& session)
 {
 	int ret = LTTNG_OK;
 	struct ltt_ust_session *usess;
@@ -1021,8 +1022,6 @@ int cmd_setup_relayd(struct ltt_session *session)
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
-
-	LTTNG_ASSERT(session);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
@@ -1224,7 +1223,7 @@ error:
 /*
  * Command LTTNG_DISABLE_CHANNEL processed by the client thread.
  */
-int cmd_disable_channel(struct ltt_session *session,
+int cmd_disable_channel(const ltt_session::locked_ref& session,
 			enum lttng_domain_type domain,
 			char *channel_name)
 {
@@ -1332,7 +1331,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 							 int wpipe)
 {
 	enum lttng_error_code ret_code;
-	struct ltt_ust_session *usess = session.get()->ust_session;
+	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
 	struct lttng_channel *attr = nullptr;
@@ -1363,8 +1362,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	 * live timer does the same thing but sends also synchronisation
 	 * beacons for inactive streams.
 	 */
-	if (session.get()->live_timer > 0) {
-		attr->attr.live_timer_interval = session.get()->live_timer;
+	if (session->live_timer > 0) {
+		attr->attr.live_timer_interval = session->live_timer;
 		attr->attr.switch_timer_interval = 0;
 	}
 
@@ -1378,7 +1377,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			     "Setting the monitor interval timer to 0 "
 			     "(disabled) for channel '%s' of session '%s'",
 			     attr->name,
-			     session.get()->name);
+			     session->name);
 			lttng_channel_set_monitor_timer_interval(attr, 0);
 		}
 		break;
@@ -1509,7 +1508,7 @@ end:
 }
 
 enum lttng_error_code
-cmd_process_attr_tracker_get_tracking_policy(struct ltt_session *session,
+cmd_process_attr_tracker_get_tracking_policy(const ltt_session::locked_ref& session,
 					     enum lttng_domain_type domain,
 					     enum lttng_process_attr process_attr,
 					     enum lttng_tracking_policy *policy)
@@ -1546,7 +1545,7 @@ end:
 }
 
 enum lttng_error_code
-cmd_process_attr_tracker_set_tracking_policy(struct ltt_session *session,
+cmd_process_attr_tracker_set_tracking_policy(const ltt_session::locked_ref& session,
 					     enum lttng_domain_type domain,
 					     enum lttng_process_attr process_attr,
 					     enum lttng_tracking_policy policy)
@@ -1589,7 +1588,7 @@ end:
 }
 
 enum lttng_error_code
-cmd_process_attr_tracker_inclusion_set_add_value(struct ltt_session *session,
+cmd_process_attr_tracker_inclusion_set_add_value(const ltt_session::locked_ref& session,
 						 enum lttng_domain_type domain,
 						 enum lttng_process_attr process_attr,
 						 const struct process_attr_value *value)
@@ -1622,7 +1621,7 @@ end:
 }
 
 enum lttng_error_code
-cmd_process_attr_tracker_inclusion_set_remove_value(struct ltt_session *session,
+cmd_process_attr_tracker_inclusion_set_remove_value(const ltt_session::locked_ref& session,
 						    enum lttng_domain_type domain,
 						    enum lttng_process_attr process_attr,
 						    const struct process_attr_value *value)
@@ -1655,7 +1654,7 @@ end:
 }
 
 enum lttng_error_code
-cmd_process_attr_tracker_get_inclusion_set(struct ltt_session *session,
+cmd_process_attr_tracker_get_inclusion_set(const ltt_session::locked_ref& session,
 					   enum lttng_domain_type domain,
 					   enum lttng_process_attr process_attr,
 					   struct lttng_process_attr_values **values)
@@ -1720,7 +1719,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		      struct lttng_event_exclusion *exclusion)
 {
 	int ret;
-	ltt_session& session = *locked_session.get();
+	const ltt_session& session = *locked_session;
 	const char *event_name;
 	const char *channel_name = cmd_ctx->lsm.u.disable.channel_name;
 	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
@@ -1912,7 +1911,7 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
-	const struct ltt_session& session = *locked_session.get();
+	const struct ltt_session& session = *locked_session;
 	const char *channel_name = cmd_ctx->lsm.u.context.channel_name;
 
 	/*
@@ -2075,7 +2074,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 {
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = nullptr;
-	ltt_session& session = *locked_session.get();
+	ltt_session& session = *locked_session;
 
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
@@ -2716,10 +2715,8 @@ end:
 
 /*
  * Command LTTNG_START_TRACE processed by the client thread.
- *
- * Called with session mutex held.
  */
-int cmd_start_trace(struct ltt_session *session)
+int cmd_start_trace(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret;
 	unsigned long nb_chan = 0;
@@ -2727,8 +2724,6 @@ int cmd_start_trace(struct ltt_session *session)
 	struct ltt_ust_session *usess;
 	const bool session_rotated_after_last_stop = session->rotated_after_last_stop;
 	const bool session_cleared_after_last_stop = session->cleared_after_last_stop;
-
-	LTTNG_ASSERT(session);
 
 	/* Ease our life a bit ;) */
 	ksession = session->kernel_session;
@@ -2880,13 +2875,11 @@ end:
 /*
  * Command LTTNG_STOP_TRACE processed by the client thread.
  */
-int cmd_stop_trace(struct ltt_session *session)
+int cmd_stop_trace(const ltt_session::locked_ref& session)
 {
 	int ret;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
-
-	LTTNG_ASSERT(session);
 
 	DBG("Begin stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
 	/* Short cut */
@@ -2925,8 +2918,9 @@ error:
  * Set the base_path of the session only if subdir of a control uris is set.
  * Return LTTNG_OK on success, otherwise LTTNG_ERR_*.
  */
-static int
-set_session_base_path_from_uris(struct ltt_session *session, size_t nb_uri, struct lttng_uri *uris)
+static int set_session_base_path_from_uris(const ltt_session::locked_ref& session,
+					   size_t nb_uri,
+					   struct lttng_uri *uris)
 {
 	int ret;
 	size_t i;
@@ -2963,13 +2957,14 @@ error:
 /*
  * Command LTTNG_SET_CONSUMER_URI processed by the client thread.
  */
-int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri, struct lttng_uri *uris)
+int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
+			 size_t nb_uri,
+			 struct lttng_uri *uris)
 {
 	int ret, i;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(uris);
 	LTTNG_ASSERT(nb_uri > 0);
 
@@ -3044,7 +3039,7 @@ error:
 }
 
 static enum lttng_error_code
-set_session_output_from_descriptor(struct ltt_session *session,
+set_session_output_from_descriptor(const ltt_session::locked_ref& session,
 				   const struct lttng_session_descriptor *descriptor)
 {
 	int ret;
@@ -3161,8 +3156,13 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 
 	/* Announce the session's destruction to the notification thread when it is destroyed. */
 	ret = session_add_destroy_notifier(
-		new_session,
-		[](const struct ltt_session *session, void *user_data __attribute__((unused))) {
+		[new_session]() {
+			session_get(new_session);
+			new_session->lock();
+			return ltt_session::locked_ref(*new_session);
+		}(),
+		[](const ltt_session::locked_ref& session,
+		   void *user_data __attribute__((unused))) {
 			(void) notification_thread_command_remove_session(
 				the_notification_thread_handle, session->id);
 		},
@@ -3212,7 +3212,13 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 		break;
 	}
 
-	ret_code = set_session_output_from_descriptor(new_session, descriptor);
+	ret_code = set_session_output_from_descriptor(
+		[new_session]() {
+			session_get(new_session);
+			new_session->lock();
+			return ltt_session::locked_ref(*new_session);
+		}(),
+		descriptor);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
@@ -3315,7 +3321,7 @@ error:
 	return ret_code;
 }
 
-static void cmd_destroy_session_reply(const struct ltt_session *session, void *_reply_context)
+static void cmd_destroy_session_reply(const ltt_session::locked_ref& session, void *_reply_context)
 {
 	int ret;
 	ssize_t comm_ret;
@@ -3400,7 +3406,7 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_destroy_session(struct ltt_session *session, int *sock_fd)
+int cmd_destroy_session(const ltt_session::locked_ref& session, int *sock_fd)
 {
 	int ret;
 	enum lttng_error_code destruction_last_error = LTTNG_OK;
@@ -3415,9 +3421,6 @@ int cmd_destroy_session(struct ltt_session *session, int *sock_fd)
 
 		reply_context->reply_sock_fd = *sock_fd;
 	}
-
-	/* Safety net */
-	LTTNG_ASSERT(session);
 
 	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name, session->id);
 	if (session->active) {
@@ -3556,7 +3559,7 @@ int cmd_destroy_session(struct ltt_session *session, int *sock_fd)
 	 * still holds a reference to the session, thus delaying its destruction
 	 * _at least_ up to the point when that reference is released.
 	 */
-	session_destroy(session);
+	session_destroy(&session.get());
 	if (reply_context) {
 		reply_context->destruction_status = destruction_last_error;
 		ret = session_add_destroy_notifier(
@@ -3576,7 +3579,7 @@ end:
 /*
  * Command LTTNG_REGISTER_CONSUMER processed by the client thread.
  */
-int cmd_register_consumer(struct ltt_session *session,
+int cmd_register_consumer(const ltt_session::locked_ref& session,
 			  enum lttng_domain_type domain,
 			  const char *sock_path,
 			  struct consumer_data *cdata)
@@ -3584,7 +3587,6 @@ int cmd_register_consumer(struct ltt_session *session,
 	int ret, sock;
 	struct consumer_socket *socket = nullptr;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(cdata);
 	LTTNG_ASSERT(sock_path);
 
@@ -3656,7 +3658,7 @@ error:
 /*
  * Command LTTNG_LIST_DOMAINS processed by the client thread.
  */
-ssize_t cmd_list_domains(struct ltt_session *session, struct lttng_domain **domains)
+ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_domain **domains)
 {
 	int ret, index = 0;
 	ssize_t nb_dom = 0;
@@ -3732,7 +3734,7 @@ error:
  * Command LTTNG_LIST_CHANNELS processed by the client thread.
  */
 enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
-					struct ltt_session *session,
+					const ltt_session::locked_ref& session,
 					struct lttng_payload *payload)
 {
 	int ret = 0;
@@ -3741,8 +3743,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	size_t cmd_header_offset;
 	enum lttng_error_code ret_code;
 
-	assert(session);
-	assert(payload);
+	LTTNG_ASSERT(payload);
 
 	DBG("Listing channels for session %s", session->name);
 
@@ -3872,7 +3873,7 @@ end:
  * Command LTTNG_LIST_EVENTS processed by the client thread.
  */
 enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
-				      struct ltt_session *session,
+				      const ltt_session::locked_ref& session,
 				      char *channel_name,
 				      struct lttng_payload *reply_payload)
 {
@@ -3966,7 +3967,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 {
 	int ret;
 	unsigned int i = 0;
-	struct ltt_session *session;
+	struct ltt_session *raw_session_ptr;
 	struct ltt_session_list *list = session_get_list();
 	struct lttng_session_extended *extended = (typeof(extended)) (&sessions[session_count]);
 
@@ -3975,15 +3976,17 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 	 * Iterate over session list and append data after the control struct in
 	 * the buffer.
 	 */
-	cds_list_for_each_entry (session, &list->head, list) {
-		if (!session_get(session)) {
-			continue;
-		}
+	cds_list_for_each_entry (raw_session_ptr, &list->head, list) {
+		auto session = [raw_session_ptr]() {
+			session_get(raw_session_ptr);
+			raw_session_ptr->lock();
+			return ltt_session::locked_ref(*raw_session_ptr);
+		}();
+
 		/*
 		 * Only list the sessions the user can control.
 		 */
 		if (!session_access_ok(session, uid) || session->destroyed) {
-			session_put(session);
 			continue;
 		}
 
@@ -4003,7 +4006,6 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		}
 		if (ret < 0) {
 			PERROR("snprintf session path");
-			session_put(session);
 			continue;
 		}
 
@@ -4015,7 +4017,6 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		extended[i].creation_time.value = (uint64_t) session->creation_time;
 		extended[i].creation_time.is_set = 1;
 		i++;
-		session_put(session);
 	}
 }
 
@@ -4036,13 +4037,11 @@ enum lttng_error_code cmd_kernel_tracer_status(enum lttng_kernel_tracer_status *
  * Command LTTNG_DATA_PENDING returning 0 if the data is NOT pending meaning
  * ready for trace analysis (or any kind of reader) or else 1 for pending data.
  */
-int cmd_data_pending(struct ltt_session *session)
+int cmd_data_pending(const ltt_session::locked_ref& session)
 {
 	int ret;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 	struct ltt_ust_session *usess = session->ust_session;
-
-	LTTNG_ASSERT(session);
 
 	DBG("Data pending for session %s", session->name);
 
@@ -4102,14 +4101,13 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_snapshot_add_output(struct ltt_session *session,
+int cmd_snapshot_add_output(const ltt_session::locked_ref& session,
 			    const struct lttng_snapshot_output *output,
 			    uint32_t *id)
 {
 	int ret;
 	struct snapshot_output *new_output;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
 
 	DBG("Cmd snapshot add output for session %s", session->name);
@@ -4174,12 +4172,12 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_snapshot_del_output(struct ltt_session *session, const struct lttng_snapshot_output *output)
+int cmd_snapshot_del_output(const ltt_session::locked_ref& session,
+			    const struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct snapshot_output *sout = nullptr;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
 
 	lttng::urcu::read_lock_guard read_lock;
@@ -4222,7 +4220,7 @@ error:
  *
  * Return the size of the newly allocated outputs or a negative LTTNG_ERR code.
  */
-ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
+ssize_t cmd_snapshot_list_outputs(const ltt_session::locked_ref& session,
 				  struct lttng_snapshot_output **outputs)
 {
 	int ret, idx = 0;
@@ -4230,7 +4228,6 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(outputs);
 
 	DBG("Cmd snapshot list outputs for session %s", session->name);
@@ -4315,11 +4312,9 @@ end:
  *
  * Return 0 if the metadata can be generated, a LTTNG_ERR code otherwise.
  */
-static int check_regenerate_metadata_support(struct ltt_session *session)
+static int check_regenerate_metadata_support(const ltt_session::locked_ref& session)
 {
 	int ret;
-
-	LTTNG_ASSERT(session);
 
 	if (session->live_timer != 0) {
 		ret = LTTNG_ERR_LIVE_SESSION;
@@ -4362,11 +4357,9 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_regenerate_metadata(struct ltt_session *session)
+int cmd_regenerate_metadata(const ltt_session::locked_ref& session)
 {
 	int ret;
-
-	LTTNG_ASSERT(session);
 
 	ret = check_regenerate_metadata_support(session);
 	if (ret) {
@@ -4402,11 +4395,9 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_regenerate_statedump(struct ltt_session *session)
+int cmd_regenerate_statedump(const ltt_session::locked_ref& session)
 {
 	int ret;
-
-	LTTNG_ASSERT(session);
 
 	if (!session->active) {
 		ret = LTTNG_ERR_SESSION_NOT_STARTED;
@@ -4940,7 +4931,7 @@ end:
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
 static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *output,
-						     const struct ltt_session *session)
+						     const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
@@ -4949,7 +4940,6 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 	const char *base_path;
 
 	LTTNG_ASSERT(output);
-	LTTNG_ASSERT(session);
 
 	DBG2("Set relayd object from snapshot output");
 
@@ -5019,14 +5009,12 @@ error:
  */
 static enum lttng_error_code record_kernel_snapshot(struct ltt_kernel_session *ksess,
 						    const struct consumer_output *output,
-						    const struct ltt_session *session,
 						    uint64_t nb_packets_per_stream)
 {
 	enum lttng_error_code status;
 
 	LTTNG_ASSERT(ksess);
 	LTTNG_ASSERT(output);
-	LTTNG_ASSERT(session);
 
 	status = kernel_snapshot_record(ksess, output, nb_packets_per_stream);
 	return status;
@@ -5039,20 +5027,18 @@ static enum lttng_error_code record_kernel_snapshot(struct ltt_kernel_session *k
  */
 static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 						 const struct consumer_output *output,
-						 const struct ltt_session *session,
 						 uint64_t nb_packets_per_stream)
 {
 	enum lttng_error_code status;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(output);
-	LTTNG_ASSERT(session);
 
 	status = ust_app_snapshot_record(usess, output, nb_packets_per_stream);
 	return status;
 }
 
-static uint64_t get_session_size_one_more_packet_per_stream(const struct ltt_session *session,
+static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::locked_ref& session,
 							    uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
@@ -5102,7 +5088,7 @@ static uint64_t get_session_size_one_more_packet_per_stream(const struct ltt_ses
  * an approximation: for instance, applications could appear/disappear
  * in between this call and actually grabbing data.
  */
-static int64_t get_session_nb_packets_per_stream(const struct ltt_session *session,
+static int64_t get_session_nb_packets_per_stream(const ltt_session::locked_ref& session,
 						 uint64_t max_size)
 {
 	int64_t size_left;
@@ -5135,7 +5121,7 @@ static int64_t get_session_nb_packets_per_stream(const struct ltt_session *sessi
 	return cur_nb_packets;
 }
 
-static enum lttng_error_code snapshot_record(struct ltt_session *session,
+static enum lttng_error_code snapshot_record(const ltt_session::locked_ref& session,
 					     const struct snapshot_output *snapshot_output)
 {
 	int64_t nb_packets_per_stream;
@@ -5248,7 +5234,6 @@ static enum lttng_error_code snapshot_record(struct ltt_session *session,
 	if (session->kernel_session) {
 		ret_code = record_kernel_snapshot(session->kernel_session,
 						  snapshot_kernel_consumer_output,
-						  session,
 						  nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
 			goto error_close_trace_chunk;
@@ -5256,10 +5241,8 @@ static enum lttng_error_code snapshot_record(struct ltt_session *session,
 	}
 
 	if (session->ust_session) {
-		ret_code = record_ust_snapshot(session->ust_session,
-					       snapshot_ust_consumer_output,
-					       session,
-					       nb_packets_per_stream);
+		ret_code = record_ust_snapshot(
+			session->ust_session, snapshot_ust_consumer_output, nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
 			goto error_close_trace_chunk;
 		}
@@ -5305,7 +5288,7 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
-int cmd_snapshot_record(struct ltt_session *session,
+int cmd_snapshot_record(const ltt_session::locked_ref& session,
 			const struct lttng_snapshot_output *output,
 			int wait __attribute__((unused)))
 {
@@ -5315,7 +5298,6 @@ int cmd_snapshot_record(struct ltt_session *session,
 	char datetime[16];
 	struct snapshot_output *tmp_output = nullptr;
 
-	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(output);
 
 	DBG("Cmd snapshot record for session %s", session->name);
@@ -5436,11 +5418,8 @@ error:
 /*
  * Command LTTNG_SET_SESSION_SHM_PATH processed by the client thread.
  */
-int cmd_set_session_shm_path(struct ltt_session *session, const char *shm_path)
+int cmd_set_session_shm_path(const ltt_session::locked_ref& session, const char *shm_path)
 {
-	/* Safety net */
-	LTTNG_ASSERT(session);
-
 	/*
 	 * Can only set shm path before session is started.
 	 */
@@ -5462,7 +5441,7 @@ int cmd_set_session_shm_path(struct ltt_session *session, const char *shm_path)
  *
  * Returns LTTNG_OK on success or else a negative LTTng error code.
  */
-int cmd_rotate_session(struct ltt_session *session,
+int cmd_rotate_session(const ltt_session::locked_ref& session,
 		       struct lttng_rotate_session_return *rotate_return,
 		       bool quiet_rotation,
 		       enum lttng_trace_chunk_command_type command)
@@ -5475,8 +5454,6 @@ int cmd_rotate_session(struct ltt_session *session,
 	enum lttng_trace_chunk_status chunk_status;
 	bool failed_to_rotate = false;
 	enum lttng_error_code rotation_fail_code = LTTNG_OK;
-
-	LTTNG_ASSERT(session);
 
 	if (!session->has_been_started) {
 		cmd_ret = LTTNG_ERR_START_SESSION_ONCE;
@@ -5637,7 +5614,7 @@ end:
 	ret = (cmd_ret == LTTNG_OK) ? cmd_ret : -((int) cmd_ret);
 	return ret;
 error:
-	if (session_reset_rotation_state(*session, LTTNG_ROTATION_STATE_ERROR)) {
+	if (session_reset_rotation_state(session, LTTNG_ROTATION_STATE_ERROR)) {
 		ERR("Failed to reset rotation state of session \"%s\"", session->name);
 	}
 	goto end;
@@ -5650,7 +5627,7 @@ error:
  *
  * Return LTTNG_OK on success or else an LTTNG_ERR code.
  */
-int cmd_rotate_get_info(struct ltt_session *session,
+int cmd_rotate_get_info(const ltt_session::locked_ref& session,
 			struct lttng_rotation_get_info_return *info_return,
 			uint64_t rotation_id)
 {
@@ -5801,15 +5778,13 @@ end:
  *
  * Return LTTNG_OK on success or else a positive LTTNG_ERR code.
  */
-int cmd_rotation_set_schedule(struct ltt_session *session,
+int cmd_rotation_set_schedule(const ltt_session::locked_ref& session,
 			      bool activate,
 			      enum lttng_rotation_schedule_type schedule_type,
 			      uint64_t new_value)
 {
 	int ret;
 	uint64_t *parameter_value;
-
-	LTTNG_ASSERT(session);
 
 	DBG("Cmd rotate set schedule session %s", session->name);
 
