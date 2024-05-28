@@ -163,9 +163,9 @@ end:
 static bool loglevel_parse_range_string_common(const char *str,
 					       const struct loglevel_name_value *nvs,
 					       size_t nvs_count,
-					       int default_max,
-					       int *min,
-					       int *max)
+					       int default_most_severe,
+					       int *least_severe,
+					       int *most_severe)
 {
 	bool ret;
 	int i;
@@ -190,18 +190,18 @@ static bool loglevel_parse_range_string_common(const char *str,
 	}
 
 	/*
-	 * Record the min value and skip over the loglevel name found
+	 * Record the least_severe value and skip over the loglevel name found
 	 * previously.
 	 */
-	*min = nv->value;
+	*least_severe = nv->value;
 	str += strlen(nv->name);
 
 	/*
 	 * If we are at the end of 'str', only one loglevel name was specified,
-	 * it is also the max.
+	 * it is also the most_severe.
 	 */
 	if (*str == '\0') {
-		*max = nv->value;
+		*most_severe = nv->value;
 		ret = true;
 		goto end;
 	}
@@ -216,11 +216,11 @@ static bool loglevel_parse_range_string_common(const char *str,
 	str += strlen("..");
 
 	/*
-	 * If we are at the end of 'str' after the separator, set
-	 * the default max value for the domain as the max.
+	 * If we are at the end of 'str' after the separator, set the default
+	 * most_severe value for the domain as the most_severe.
 	 */
 	if (*str == '\0') {
-		*max = default_max;
+		*most_severe = default_most_severe;
 		ret = true;
 		goto end;
 	}
@@ -244,9 +244,9 @@ static bool loglevel_parse_range_string_common(const char *str,
 	}
 
 	/*
-	 * Record the max value for the loglevel found in 'str'.
+	 * Record the most_severe value for the loglevel found in 'str'.
 	 */
-	*max = nv->value;
+	*most_severe = nv->value;
 
 	ret = true;
 	goto end;
@@ -271,19 +271,19 @@ int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel)
 }
 
 bool loglevel_parse_range_string(const char *str,
-				 enum lttng_loglevel *min,
-				 enum lttng_loglevel *max)
+				 enum lttng_loglevel *least_severe,
+				 enum lttng_loglevel *most_severe)
 {
-	int min_int, max_int;
+	int least_severe_int, most_severe_int;
 	const bool ret = loglevel_parse_range_string_common(str,
 							    loglevel_values,
 							    ARRAY_SIZE(loglevel_values),
 							    LTTNG_LOGLEVEL_EMERG,
-							    &min_int,
-							    &max_int);
+							    &least_severe_int,
+							    &most_severe_int);
 
-	*min = (lttng_loglevel) min_int;
-	*max = (lttng_loglevel) max_int;
+	*least_severe = (lttng_loglevel) least_severe_int;
+	*most_severe = (lttng_loglevel) most_severe_int;
 
 	return ret;
 }
@@ -302,19 +302,19 @@ int loglevel_log4j_name_to_value(const char *name, enum lttng_loglevel_log4j *lo
 }
 
 bool loglevel_log4j_parse_range_string(const char *str,
-				       enum lttng_loglevel_log4j *min,
-				       enum lttng_loglevel_log4j *max)
+				       enum lttng_loglevel_log4j *least_severe,
+				       enum lttng_loglevel_log4j *most_severe)
 {
-	int min_int, max_int;
+	int least_severe_int, most_severe_int;
 	const bool ret = loglevel_parse_range_string_common(str,
 							    loglevel_log4j_values,
 							    ARRAY_SIZE(loglevel_log4j_values),
 							    LTTNG_LOGLEVEL_LOG4J_FATAL,
-							    &min_int,
-							    &max_int);
+							    &least_severe_int,
+							    &most_severe_int);
 
-	*min = (lttng_loglevel_log4j) min_int;
-	*max = (lttng_loglevel_log4j) max_int;
+	*least_severe = (lttng_loglevel_log4j) least_severe_int;
+	*most_severe = (lttng_loglevel_log4j) most_severe_int;
 
 	return ret;
 }
@@ -333,19 +333,19 @@ int loglevel_log4j2_name_to_value(const char *name, enum lttng_loglevel_log4j2 *
 }
 
 bool loglevel_log4j2_parse_range_string(const char *str,
-					enum lttng_loglevel_log4j2 *min,
-					enum lttng_loglevel_log4j2 *max)
+					enum lttng_loglevel_log4j2 *least_severe,
+					enum lttng_loglevel_log4j2 *most_severe)
 {
-	int min_int, max_int;
+	int least_severe_int, most_severe_int;
 	bool ret = loglevel_parse_range_string_common(str,
 						      loglevel_log4j2_values,
 						      ARRAY_SIZE(loglevel_log4j2_values),
 						      LTTNG_LOGLEVEL_LOG4J2_FATAL,
-						      &min_int,
-						      &max_int);
+						      &least_severe_int,
+						      &most_severe_int);
 
-	*min = (lttng_loglevel_log4j2) min_int;
-	*max = (lttng_loglevel_log4j2) max_int;
+	*least_severe = (lttng_loglevel_log4j2) least_severe_int;
+	*most_severe = (lttng_loglevel_log4j2) most_severe_int;
 
 	return ret;
 }
@@ -364,19 +364,19 @@ int loglevel_jul_name_to_value(const char *name, enum lttng_loglevel_jul *loglev
 }
 
 bool loglevel_jul_parse_range_string(const char *str,
-				     enum lttng_loglevel_jul *min,
-				     enum lttng_loglevel_jul *max)
+				     enum lttng_loglevel_jul *least_severe,
+				     enum lttng_loglevel_jul *most_severe)
 {
-	int min_int, max_int;
+	int least_severe_int, most_severe_int;
 	const bool ret = loglevel_parse_range_string_common(str,
 							    loglevel_jul_values,
 							    ARRAY_SIZE(loglevel_jul_values),
 							    LTTNG_LOGLEVEL_JUL_SEVERE,
-							    &min_int,
-							    &max_int);
+							    &least_severe_int,
+							    &most_severe_int);
 
-	*min = (lttng_loglevel_jul) min_int;
-	*max = (lttng_loglevel_jul) max_int;
+	*least_severe = (lttng_loglevel_jul) least_severe_int;
+	*most_severe = (lttng_loglevel_jul) most_severe_int;
 
 	return ret;
 }
@@ -395,19 +395,19 @@ int loglevel_python_name_to_value(const char *name, enum lttng_loglevel_python *
 }
 
 bool loglevel_python_parse_range_string(const char *str,
-					enum lttng_loglevel_python *min,
-					enum lttng_loglevel_python *max)
+					enum lttng_loglevel_python *least_severe,
+					enum lttng_loglevel_python *most_severe)
 {
-	int min_int, max_int;
+	int least_severe_int, most_severe_int;
 	const bool ret = loglevel_parse_range_string_common(str,
 							    loglevel_python_values,
 							    ARRAY_SIZE(loglevel_python_values),
 							    LTTNG_LOGLEVEL_PYTHON_CRITICAL,
-							    &min_int,
-							    &max_int);
+							    &least_severe_int,
+							    &most_severe_int);
 
-	*min = (lttng_loglevel_python) min_int;
-	*max = (lttng_loglevel_python) max_int;
+	*least_severe = (lttng_loglevel_python) least_severe_int;
+	*most_severe = (lttng_loglevel_python) most_severe_int;
 
 	return ret;
 }

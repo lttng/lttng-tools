@@ -238,84 +238,92 @@ static bool parse_log_level_string(const char *str,
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 	{
-		enum lttng_loglevel log_level_min, log_level_max;
-		if (!loglevel_parse_range_string(str, &log_level_min, &log_level_max)) {
+		enum lttng_loglevel log_level_least_severe, log_level_most_severe;
+		if (!loglevel_parse_range_string(
+			    str, &log_level_least_severe, &log_level_most_severe)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_EMERG) {
+		if (log_level_least_severe != log_level_most_severe &&
+		    log_level_most_severe != LTTNG_LOGLEVEL_EMERG) {
 			goto error;
 		}
 
-		*log_level = (int) log_level_min;
-		*log_level_only = log_level_min == log_level_max;
+		*log_level = (int) log_level_least_severe;
+		*log_level_only = log_level_least_severe == log_level_most_severe;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 	{
-		enum lttng_loglevel_log4j log_level_min, log_level_max;
-		if (!loglevel_log4j_parse_range_string(str, &log_level_min, &log_level_max)) {
+		enum lttng_loglevel_log4j log_level_least_severe, log_level_most_severe;
+		if (!loglevel_log4j_parse_range_string(
+			    str, &log_level_least_severe, &log_level_most_severe)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_LOG4J_FATAL) {
+		if (log_level_least_severe != log_level_most_severe &&
+		    log_level_most_severe != LTTNG_LOGLEVEL_LOG4J_FATAL) {
 			goto error;
 		}
 
-		*log_level = (int) log_level_min;
-		*log_level_only = log_level_min == log_level_max;
+		*log_level = (int) log_level_least_severe;
+		*log_level_only = log_level_least_severe == log_level_most_severe;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
 	{
-		enum lttng_loglevel_log4j2 log_level_min, log_level_max;
-		if (!loglevel_log4j2_parse_range_string(str, &log_level_min, &log_level_max)) {
+		enum lttng_loglevel_log4j2 log_level_least_severe, log_level_most_severe;
+		if (!loglevel_log4j2_parse_range_string(
+			    str, &log_level_least_severe, &log_level_most_severe)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max &&
-		    log_level_max != LTTNG_LOGLEVEL_LOG4J2_FATAL) {
+		if (log_level_least_severe != log_level_most_severe &&
+		    log_level_most_severe != LTTNG_LOGLEVEL_LOG4J2_FATAL) {
 			goto error;
 		}
 
-		*log_level = (int) log_level_min;
-		*log_level_only = log_level_min == log_level_max;
+		*log_level = (int) log_level_least_severe;
+		*log_level_only = log_level_least_severe == log_level_most_severe;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	{
-		enum lttng_loglevel_jul log_level_min, log_level_max;
-		if (!loglevel_jul_parse_range_string(str, &log_level_min, &log_level_max)) {
+		enum lttng_loglevel_jul log_level_least_severe, log_level_most_severe;
+		if (!loglevel_jul_parse_range_string(
+			    str, &log_level_least_severe, &log_level_most_severe)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max && log_level_max != LTTNG_LOGLEVEL_JUL_SEVERE) {
+		if (log_level_least_severe != log_level_most_severe &&
+		    log_level_most_severe != LTTNG_LOGLEVEL_JUL_SEVERE) {
 			goto error;
 		}
 
-		*log_level = (int) log_level_min;
-		*log_level_only = log_level_min == log_level_max;
+		*log_level = (int) log_level_least_severe;
+		*log_level_only = log_level_least_severe == log_level_most_severe;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	{
-		enum lttng_loglevel_python log_level_min, log_level_max;
-		if (!loglevel_python_parse_range_string(str, &log_level_min, &log_level_max)) {
+		enum lttng_loglevel_python log_level_least_severe, log_level_most_severe;
+		if (!loglevel_python_parse_range_string(
+			    str, &log_level_least_severe, &log_level_most_severe)) {
 			goto error;
 		}
 
 		/* Only support VAL and VAL.. for now. */
-		if (log_level_min != log_level_max &&
-		    log_level_max != LTTNG_LOGLEVEL_PYTHON_CRITICAL) {
+		if (log_level_least_severe != log_level_most_severe &&
+		    log_level_most_severe != LTTNG_LOGLEVEL_PYTHON_CRITICAL) {
 			goto error;
 		}
 
-		*log_level = (int) log_level_min;
-		*log_level_only = log_level_min == log_level_max;
+		*log_level = (int) log_level_least_severe;
+		*log_level_only = log_level_least_severe == log_level_most_severe;
 		break;
 	}
 	default:
