@@ -163,6 +163,7 @@ end:
 static bool loglevel_parse_range_string_common(const char *str,
 					       const struct loglevel_name_value *nvs,
 					       size_t nvs_count,
+					       int default_max,
 					       int *min,
 					       int *max)
 {
@@ -170,6 +171,9 @@ static bool loglevel_parse_range_string_common(const char *str,
 	int i;
 	const struct loglevel_name_value *nv;
 
+	/*
+	 * Look for a valid loglevel name value at the beginning of 'str'.
+	 */
 	for (i = 0; i < nvs_count; i++) {
 		nv = &nvs[i];
 
@@ -178,31 +182,52 @@ static bool loglevel_parse_range_string_common(const char *str,
 		}
 	}
 
+	/*
+	 * Found no valid loglevel name value at the beginning of 'str'.
+	 */
 	if (i == nvs_count) {
 		goto error;
 	}
 
+	/*
+	 * Record the min value and skip over the loglevel name found
+	 * previously.
+	 */
 	*min = nv->value;
 	str += strlen(nv->name);
 
+	/*
+	 * If we are at the end of 'str', only one loglevel name was specified,
+	 * it is also the max.
+	 */
 	if (*str == '\0') {
 		*max = nv->value;
 		ret = true;
 		goto end;
 	}
 
+	/*
+	 * Invalid 'str', no loglevel name separator.
+	 */
 	if (strncmp(str, "..", strlen("..")) != 0) {
 		goto error;
 	}
 
 	str += strlen("..");
 
+	/*
+	 * If we are at the end of 'str' after the separator, set
+	 * the default max value for the domain as the max.
+	 */
 	if (*str == '\0') {
-		*max = LTTNG_LOGLEVEL_EMERG;
+		*max = default_max;
 		ret = true;
 		goto end;
 	}
 
+	/*
+	 * Look for a valid loglevel name value after the separator in 'str'.
+	 */
 	for (i = 0; i < nvs_count; i++) {
 		nv = &nvs[i];
 
@@ -211,10 +236,16 @@ static bool loglevel_parse_range_string_common(const char *str,
 		}
 	}
 
+	/*
+	 * Found no valid loglevel name value after the separator.
+	 */
 	if (i == nvs_count) {
 		goto error;
 	}
 
+	/*
+	 * Record the max value for the loglevel found in 'str'.
+	 */
 	*max = nv->value;
 
 	ret = true;
@@ -244,8 +275,12 @@ bool loglevel_parse_range_string(const char *str,
 				 enum lttng_loglevel *max)
 {
 	int min_int, max_int;
-	const bool ret = loglevel_parse_range_string_common(
-		str, loglevel_values, ARRAY_SIZE(loglevel_values), &min_int, &max_int);
+	const bool ret = loglevel_parse_range_string_common(str,
+							    loglevel_values,
+							    ARRAY_SIZE(loglevel_values),
+							    LTTNG_LOGLEVEL_EMERG,
+							    &min_int,
+							    &max_int);
 
 	*min = (lttng_loglevel) min_int;
 	*max = (lttng_loglevel) max_int;
@@ -271,8 +306,12 @@ bool loglevel_log4j_parse_range_string(const char *str,
 				       enum lttng_loglevel_log4j *max)
 {
 	int min_int, max_int;
-	const bool ret = loglevel_parse_range_string_common(
-		str, loglevel_log4j_values, ARRAY_SIZE(loglevel_log4j_values), &min_int, &max_int);
+	const bool ret = loglevel_parse_range_string_common(str,
+							    loglevel_log4j_values,
+							    ARRAY_SIZE(loglevel_log4j_values),
+							    LTTNG_LOGLEVEL_LOG4J_FATAL,
+							    &min_int,
+							    &max_int);
 
 	*min = (lttng_loglevel_log4j) min_int;
 	*max = (lttng_loglevel_log4j) max_int;
@@ -301,6 +340,7 @@ bool loglevel_log4j2_parse_range_string(const char *str,
 	bool ret = loglevel_parse_range_string_common(str,
 						      loglevel_log4j2_values,
 						      ARRAY_SIZE(loglevel_log4j2_values),
+						      LTTNG_LOGLEVEL_LOG4J2_FATAL,
 						      &min_int,
 						      &max_int);
 
@@ -328,8 +368,12 @@ bool loglevel_jul_parse_range_string(const char *str,
 				     enum lttng_loglevel_jul *max)
 {
 	int min_int, max_int;
-	const bool ret = loglevel_parse_range_string_common(
-		str, loglevel_jul_values, ARRAY_SIZE(loglevel_jul_values), &min_int, &max_int);
+	const bool ret = loglevel_parse_range_string_common(str,
+							    loglevel_jul_values,
+							    ARRAY_SIZE(loglevel_jul_values),
+							    LTTNG_LOGLEVEL_JUL_SEVERE,
+							    &min_int,
+							    &max_int);
 
 	*min = (lttng_loglevel_jul) min_int;
 	*max = (lttng_loglevel_jul) max_int;
@@ -358,6 +402,7 @@ bool loglevel_python_parse_range_string(const char *str,
 	const bool ret = loglevel_parse_range_string_common(str,
 							    loglevel_python_values,
 							    ARRAY_SIZE(loglevel_python_values),
+							    LTTNG_LOGLEVEL_PYTHON_CRITICAL,
 							    &min_int,
 							    &max_int);
 
