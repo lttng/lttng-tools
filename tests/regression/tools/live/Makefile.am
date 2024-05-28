@@ -9,7 +9,10 @@ noinst_PROGRAMS = live_test
 EXTRA_DIST = test_kernel test_lttng_kernel test_per_application_leaks.py
 
 if HAVE_LIBLTTNG_UST_CTL
-EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust
+EXTRA_DIST += test_lttng_ust \
+	test_miss_short_lived_app.py \
+	test_ust \
+	test_ust_tracefile_count
 endif
 
 live_test_SOURCES = live_test.cpp
