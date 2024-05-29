@@ -85,7 +85,7 @@ namespace {
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-static lsu::registry_session *get_session_registry(const struct ust_app_session *ua_sess)
+lsu::registry_session *get_session_registry(const struct ust_app_session *ua_sess)
 {
 	lsu::registry_session *registry = nullptr;
 
