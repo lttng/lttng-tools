@@ -47,7 +47,7 @@ public:
 	c_string_view(const std::string& str) noexcept : _str{ str.c_str() }
 	{
 	}
-	/* NOLINTEND */
+	/* NOLINTEND(google-explicit-constructor) */
 
 	/*
 	 * Makes this view view the C string `str` (may be `nullptr`).
