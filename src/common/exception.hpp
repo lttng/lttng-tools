@@ -22,7 +22,8 @@
 	throw lttng::ctl::error(msg, error_code, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_POSIX(msg, errno_code) \
 	throw lttng::posix_error(msg, errno_code, LTTNG_SOURCE_LOCATION())
-#define LTTNG_THROW_ERROR(msg) throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_ERROR(msg)	      throw lttng::runtime_error(msg, LTTNG_SOURCE_LOCATION())
+#define LTTNG_THROW_OUT_OF_RANGE(msg) throw lttng::out_of_range(msg, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_ALLOCATION_FAILURE_ERROR(msg, allocation_size) \
 	throw lttng::allocation_failure(msg, allocation_size, LTTNG_SOURCE_LOCATION())
 #define LTTNG_THROW_UNSUPPORTED_ERROR(msg) \
@@ -108,6 +109,19 @@ public:
 				    const lttng::source_location& source_location);
 
 	std::size_t allocation_size;
+};
+
+/**
+ * @class out_of_range
+ * @brief Represents an out of range access error.
+ *
+ * Thrown when attempting to access a container out of its valid range (e.g., advancing an iterator
+ * past end()).
+ */
+class out_of_range : public lttng::runtime_error {
+public:
+	explicit out_of_range(const std::string& msg,
+			      const lttng::source_location& source_location);
 };
 
 /**

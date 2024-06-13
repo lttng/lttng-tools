@@ -38,6 +38,11 @@ lttng::allocation_failure::allocation_failure(const std::string& msg,
 {
 }
 
+lttng::out_of_range::out_of_range(const std::string& msg, const lttng::source_location& location) :
+	lttng::runtime_error(msg, location)
+{
+}
+
 lttng::unsupported_error::unsupported_error(const std::string& msg,
 					    const lttng::source_location& location) :
 	lttng::runtime_error(msg, location)

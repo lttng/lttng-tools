@@ -5,7 +5,11 @@
  *
  */
 
-#include "ust-field-convert.hpp"
+#include "field.hpp"
+#include "ust-app.hpp"
+#include "ust-field-quirks.hpp"
+#include "ust-registry-session.hpp"
+#include "ust-registry.hpp"
 
 #include <common/exception.hpp>
 #include <common/make-unique.hpp>

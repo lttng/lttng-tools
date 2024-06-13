@@ -206,4 +206,18 @@ private:
 } /* namespace sessiond */
 } /* namespace lttng */
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
+ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ref& registry,
+			      struct consumer_socket *socket,
+			      int send_zero_data);
+#else /* HAVE_LIBLTTNG_UST_CTL */
+static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_session *registry
+					    __attribute__((unused)),
+					    struct consumer_socket *socket __attribute__((unused)),
+					    int send_zero_data __attribute__((unused)))
+{
+	return 0;
+}
+#endif /* HAVE_LIBLTTNG_UST_CTL */
+
 #endif /* LTTNG_UST_REGISTRY_SESSION_H */

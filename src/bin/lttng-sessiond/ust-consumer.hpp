@@ -15,6 +15,14 @@
 
 #include <stdint.h>
 
+namespace lttng {
+namespace sessiond {
+namespace ust {
+class registry_session;
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
+
 int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 			     struct ust_app_channel *ua_chan,
 			     struct consumer_output *consumer,

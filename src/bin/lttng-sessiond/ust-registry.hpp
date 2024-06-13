@@ -12,10 +12,10 @@
 #include "event-class.hpp"
 #include "field.hpp"
 #include "lttng-ust-ctl.hpp"
-#include "session.hpp"
 #include "stream-class.hpp"
 #include "trace-class.hpp"
 #include "ust-clock-class.hpp"
+#include "ust-field-quirks.hpp"
 #include "ust-registry-channel.hpp"
 #include "ust-registry-event.hpp"
 
@@ -262,5 +262,18 @@ static inline int ust_metadata_event_statedump(lttng::sessiond::ust::registry_se
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+std::vector<trace::field::cuptr>
+create_trace_fields_from_ust_ctl_fields(const lttng::sessiond::ust::registry_session& session,
+					const lttng_ust_ctl_field *fields,
+					std::size_t field_count,
+					trace::field_location::root lookup_root,
+					ctl_field_quirks quirks = ctl_field_quirks::NONE);
+} // namespace ust
+} /* namespace sessiond */
+} /* namespace lttng */
 
 #endif /* LTTNG_UST_REGISTRY_H */

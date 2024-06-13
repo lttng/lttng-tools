@@ -9,14 +9,13 @@
 #ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
-#include "session.hpp"
+#include "trace-class.hpp"
 #include "trace-ust.hpp"
-#include "ust-field-convert.hpp"
-#include "ust-registry-session.hpp"
-#include "ust-registry.hpp"
+#include "ust-field-quirks.hpp"
 
 #include <common/format.hpp>
 #include <common/index-allocator.hpp>
+#include <common/reference.hpp>
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
@@ -29,6 +28,14 @@
 
 struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
+
+namespace lttng {
+namespace sessiond {
+namespace ust {
+class registry_session;
+} /* namespace ust */
+} /* namespace sessiond */
+} /* namespace lttng */
 
 extern int the_ust_consumerd64_fd, the_ust_consumerd32_fd;
 
@@ -192,8 +199,15 @@ struct ust_app_channel {
 
 struct ust_app_session {
 private:
-	static void _session_unlock(ust_app_session *session);
-	static void _const_session_unlock(const ust_app_session *session);
+	static void _session_unlock(ust_app_session *session)
+	{
+		_const_session_unlock(session);
+	}
+
+	static void _const_session_unlock(const ust_app_session *session)
+	{
+		pthread_mutex_unlock(&session->_lock);
+	}
 
 public:
 	using locked_weak_ref = lttng::non_copyable_reference<
@@ -205,8 +219,80 @@ public:
 		lttng::memory::create_deleter_class<const ust_app_session,
 						    ust_app_session::_const_session_unlock>::deleter>;
 
-	ust_app_session::const_locked_weak_ref lock() const noexcept;
-	ust_app_session::locked_weak_ref lock() noexcept;
+	static locked_weak_ref make_locked_weak_ref(ust_app_session& ua_session)
+	{
+		return lttng::make_non_copyable_reference<locked_weak_ref::referenced_type,
+							  locked_weak_ref::deleter>(ua_session);
+	}
+
+	static const_locked_weak_ref make_locked_weak_ref(const ust_app_session& ua_session)
+	{
+		return lttng::make_non_copyable_reference<const_locked_weak_ref::referenced_type,
+							  const_locked_weak_ref::deleter>(
+			ua_session);
+	}
+
+	ust_app_session::const_locked_weak_ref lock() const noexcept
+	{
+		pthread_mutex_lock(&_lock);
+		return ust_app_session::make_locked_weak_ref(*this);
+	}
+
+	ust_app_session::locked_weak_ref lock() noexcept
+	{
+		pthread_mutex_lock(&_lock);
+		return ust_app_session::make_locked_weak_ref(*this);
+	}
+
+	struct identifier {
+		enum class application_abi : std::uint8_t { ABI_32 = 32, ABI_64 = 64 };
+		enum class buffer_allocation_policy : std::uint8_t { PER_PID, PER_UID };
+
+		/* Unique identifier of the ust_app_session. */
+		std::uint64_t id;
+		/* Unique identifier of the ltt_session. */
+		std::uint64_t session_id;
+		/* Credentials of the application which owns the ust_app_session. */
+		lttng_credentials app_credentials;
+		application_abi abi;
+		buffer_allocation_policy allocation_policy;
+	};
+
+	identifier get_identifier() const noexcept
+	{
+		/*
+		 * To work around synchro design issues, this method allows the sampling
+		 * of a ust_app_session's identifying properties without taking its lock.
+		 *
+		 * Since those properties are immutable, it is safe to sample them without
+		 * holding the lock (as long as the existence of the instance is somehow
+		 * guaranteed).
+		 *
+		 * The locking issue that motivates this method is that the application
+		 * notitication handling thread needs to access the registry_session in response to
+		 * a message from the application. The ust_app_session's ID is needed to look-up the
+		 * registry session.
+		 *
+		 * The application's message can be emited in response to a command from the
+		 * session daemon that is emited by the client thread.
+		 *
+		 * During that command, the client thread holds the ust_app_session lock until
+		 * the application replies to the command. This causes the notification thread
+		 * to block when it attempts to sample the ust_app_session's ID properties.
+		 */
+		LTTNG_ASSERT(bits_per_long == 32 || bits_per_long == 64);
+		LTTNG_ASSERT(buffer_type == LTTNG_BUFFER_PER_PID ||
+			     buffer_type == LTTNG_BUFFER_PER_UID);
+
+		return { .id = id,
+			 .session_id = tracing_id,
+			 .app_credentials = real_credentials,
+			 .abi = bits_per_long == 32 ? identifier::application_abi::ABI_32 :
+						      identifier::application_abi::ABI_64,
+			 .allocation_policy = buffer_type == LTTNG_BUFFER_PER_PID ?
+				 identifier::buffer_allocation_policy::PER_PID :
+				 identifier::buffer_allocation_policy::PER_UID };
+	}
 
 	bool enabled = false;
 	/* started: has the session been in started state at any time ? */
@@ -421,9 +507,7 @@ int ust_app_recv_notify(int sock);
 void ust_app_add(struct ust_app *app);
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock);
 void ust_app_notify_sock_unregister(int sock);
-ssize_t ust_app_push_metadata(const lttng::sessiond::ust::registry_session::locked_ref& registry,
-			      struct consumer_socket *socket,
-			      int send_zero_data);
+
 enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *usess,
 					      const struct consumer_output *output,
 					      uint64_t nb_packets_per_stream);
@@ -444,11 +528,8 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 					  uint64_t *discarded,
 					  uint64_t *lost);
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
-enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session);
 enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust_session *session);
 int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data);
-enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session);
-enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session);
 
 int ust_app_setup_event_notifier_group(struct ust_app *app);
 
@@ -456,6 +537,13 @@ static inline int ust_app_supported()
 {
 	return 1;
 }
+
+ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
+					    const struct ust_app *app);
+lttng::sessiond::ust::registry_session *
+ust_app_get_session_registry(const ust_app_session::identifier& identifier);
+
+lttng_ht *ust_app_get_all();
 
 bool ust_app_supports_notifiers(const struct ust_app *app);
 bool ust_app_supports_counters(const struct ust_app *app);
@@ -631,14 +719,6 @@ static inline void ust_app_notify_sock_unregister(int sock __attribute__((unused
 {
 }
 
-static inline ssize_t ust_app_push_metadata(lttng::sessiond::ust::registry_session *registry
-					    __attribute__((unused)),
-					    struct consumer_socket *socket __attribute__((unused)),
-					    int send_zero_data __attribute__((unused)))
-{
-	return 0;
-}
-
 static inline enum lttng_error_code
 ust_app_snapshot_record(struct ltt_ust_session *usess __attribute__((unused)),
 			const struct consumer_output *output __attribute__((unused)),
@@ -723,16 +803,26 @@ static inline int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess
 	return 0;
 }
 
-static inline enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session
-							   __attribute__((unused)))
-{
-	return LTTNG_ERR_UNK;
-}
-
 static inline enum lttng_error_code
 ust_app_create_channel_subdirectories(const struct ltt_ust_session *session __attribute__((unused)))
 {
 	return LTTNG_ERR_UNK;
+}
+
+static inline ust_app_session *ust_app_lookup_app_session(const ltt_ust_session *, const ust_app *)
+{
+	return nullptr;
+}
+
+static inline lttng::sessiond::ust::registry_session *
+ust_app_get_session_registry(const ust_app_session::identifier&)
+{
+	return nullptr;
+}
+
+static inline lttng_ht *ust_app_get_all()
+{
+	return nullptr;
 }
 
 static inline int ust_app_release_object(struct ust_app *app __attribute__((unused)),
@@ -740,18 +830,6 @@ static inline int ust_app_release_object(struct ust_app *app __attribute__((unus
 					 __attribute__((unused)))
 {
 	return 0;
-}
-
-static inline enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session
-							  __attribute__((unused)))
-{
-	return LTTNG_ERR_UNK;
-}
-
-static inline enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session
-							 __attribute__((unused)))
-{
-	return LTTNG_ERR_UNK;
 }
 
 static inline void ust_app_get(ust_app& app __attribute__((unused)))

@@ -548,7 +548,7 @@ void ls::rotation_thread::_handle_job_queue()
 
 		/* locked_ref will unlock the session and release the ref held by the job. */
 		session_lock(job->session);
-		auto session = ltt_session::locked_ref(*job->session);
+		auto session = ltt_session::make_locked_ref(*job->session);
 
 		if (run_job(*job, session, _notification_thread_handle)) {
 			return;

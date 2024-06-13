@@ -2762,7 +2762,7 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *cre
 			auto session = [raw_session_ptr]() {
 				session_get(raw_session_ptr);
 				raw_session_ptr->lock();
-				return ltt_session::locked_ref(*raw_session_ptr);
+				return ltt_session::make_locked_ref(*raw_session_ptr);
 			}();
 			const auto save_ret = save_session(session, attr, creds);
 

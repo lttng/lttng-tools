@@ -589,7 +589,7 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unu
 		auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
-			return ltt_session::locked_ref(*raw_session_ptr);
+			return ltt_session::make_locked_ref(*raw_session_ptr);
 		}();
 
 		/* Only count the sessions the user can control. */

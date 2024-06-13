@@ -78,7 +78,7 @@ struct buffer_reg_uid {
 
 	/* Indexed by session id. */
 	struct lttng_ht_node_u64 node;
-	/* Node of a linked list used to teardown object at a destroy session. */
+	/* Node of the ust session's buffer_reg_uid_list. */
 	struct cds_list_head lnode;
 
 	char root_shm_path[PATH_MAX];

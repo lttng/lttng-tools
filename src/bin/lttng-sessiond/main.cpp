@@ -1296,7 +1296,7 @@ static void destroy_all_sessions_and_wait()
 		const auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
-			return ltt_session::locked_ref(*raw_session_ptr);
+			return ltt_session::make_locked_ref(*raw_session_ptr);
 		}();
 
 		if (session->destroyed) {

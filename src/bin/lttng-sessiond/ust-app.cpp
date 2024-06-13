@@ -22,7 +22,7 @@
 #include "session.hpp"
 #include "ust-app.hpp"
 #include "ust-consumer.hpp"
-#include "ust-field-convert.hpp"
+#include "ust-field-quirks.hpp"
 #include "utils.hpp"
 
 #include <common/bytecode/bytecode.hpp>
@@ -76,8 +76,6 @@ static pthread_mutex_t next_channel_key_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t _next_session_id;
 static pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
-namespace {
-
 /*
  * Return the session registry according to the buffer type of the given
  * session.
@@ -85,28 +83,28 @@ namespace {
  * A registry per UID object MUST exists before calling this function or else
  * it LTTNG_ASSERT() if not found. RCU read side lock must be acquired.
  */
-lsu::registry_session *get_session_registry(const struct ust_app_session *ua_sess)
+lsu::registry_session *ust_app_get_session_registry(const ust_app_session::identifier& ua_sess_id)
 {
 	lsu::registry_session *registry = nullptr;
 
-	LTTNG_ASSERT(ua_sess);
-
-	switch (ua_sess->buffer_type) {
-	case LTTNG_BUFFER_PER_PID:
+	switch (ua_sess_id.allocation_policy) {
+	case ust_app_session::identifier::buffer_allocation_policy::PER_PID:
 	{
-		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess->id);
+		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess_id.id);
 		if (!reg_pid) {
 			goto error;
 		}
 		registry = reg_pid->registry->reg.ust;
 		break;
 	}
-	case LTTNG_BUFFER_PER_UID:
+	case ust_app_session::identifier::buffer_allocation_policy::PER_UID:
 	{
-		struct buffer_reg_uid *reg_uid =
-			buffer_reg_uid_find(ua_sess->tracing_id,
-					    ua_sess->bits_per_long,
-					    lttng_credentials_get_uid(&ua_sess->real_credentials));
+		struct buffer_reg_uid *reg_uid = buffer_reg_uid_find(
+			ua_sess_id.session_id,
+			ua_sess_id.abi == ust_app_session::identifier::application_abi::ABI_32 ?
+				32 :
+				64,
+			lttng_credentials_get_uid(&ua_sess_id.app_credentials));
 		if (!reg_uid) {
 			goto error;
 		}
@@ -121,9 +119,11 @@ error:
 	return registry;
 }
 
-lsu::registry_session::locked_ref get_locked_session_registry(const struct ust_app_session *ua_sess)
+namespace {
+lsu::registry_session::locked_ref
+get_locked_session_registry(const ust_app_session::identifier& identifier)
 {
-	auto session = get_session_registry(ua_sess);
+	auto session = ust_app_get_session_registry(identifier);
 	if (session) {
 		pthread_mutex_lock(&session->_lock);
 	}
@@ -931,7 +931,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 	LTTNG_ASSERT(!ua_sess->deleted);
 	ua_sess->deleted = true;
 
-	auto locked_registry = get_locked_session_registry(ua_sess);
+	auto locked_registry = get_locked_session_registry(locked_ua_sess->get_identifier());
 	/* Registry can be null on error path during initialization. */
 	if (locked_registry) {
 		/* Push metadata for application before freeing the application. */
@@ -1185,9 +1185,10 @@ error_free:
 /*
  * Alloc new UST app channel.
  */
-static struct ust_app_channel *alloc_ust_app_channel(const char *name,
-						     struct ust_app_session *ua_sess,
-						     struct lttng_ust_abi_channel_attr *attr)
+static struct ust_app_channel *
+alloc_ust_app_channel(const char *name,
+		      const ust_app_session::locked_weak_ref& ua_sess,
+		      struct lttng_ust_abi_channel_attr *attr)
 {
 	struct ust_app_channel *ua_chan;
 
@@ -1204,7 +1205,7 @@ static struct ust_app_channel *alloc_ust_app_channel(const char *name,
 
 	ua_chan->enabled = true;
 	ua_chan->handle = -1;
-	ua_chan->session = ua_sess;
+	ua_chan->session = &ua_sess.get();
 	ua_chan->key = get_next_channel_key();
 	ua_chan->ctx = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	ua_chan->events = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
@@ -1832,7 +1833,7 @@ error:
  * Disable the specified channel on to UST tracer for the UST session.
  */
 static int disable_ust_channel(struct ust_app *app,
-			       struct ust_app_session *ua_sess,
+			       const ust_app_session::locked_weak_ref& ua_sess,
 			       struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -1875,7 +1876,7 @@ error:
  * Enable the specified channel on to UST tracer for the UST session.
  */
 static int enable_ust_channel(struct ust_app *app,
-			      struct ust_app_session *ua_sess,
+			      const ust_app_session::locked_weak_ref& ua_sess,
 			      struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -2518,9 +2519,8 @@ error:
 /*
  * Lookup sesison wrapper.
  */
-static void __lookup_session_by_app(const struct ltt_ust_session *usess,
-				    struct ust_app *app,
-				    struct lttng_ht_iter *iter)
+static void
+__lookup_session_by_app(const ltt_ust_session *usess, const ust_app *app, lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
 	lttng_ht_lookup(app->sessions, &usess->id, iter);
@@ -2530,8 +2530,8 @@ static void __lookup_session_by_app(const struct ltt_ust_session *usess,
  * Return ust app session from the app session hashtable using the UST session
  * id.
  */
-static struct ust_app_session *lookup_session_by_app(const struct ltt_ust_session *usess,
-						     struct ust_app *app)
+ust_app_session *ust_app_lookup_app_session(const struct ltt_ust_session *usess,
+					    const struct ust_app *app)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -2716,7 +2716,7 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 
 	health_code_update();
 
-	ua_sess = lookup_session_by_app(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess, app);
 	if (ua_sess == nullptr) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 		     app->pid,
@@ -2976,7 +2976,7 @@ error:
 /*
  * Lookup ust app channel for session and disable it on the tracer side.
  */
-static int disable_ust_app_channel(struct ust_app_session *ua_sess,
+static int disable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_sess,
 				   struct ust_app_channel *ua_chan,
 				   struct ust_app *app)
 {
@@ -2997,7 +2997,7 @@ error:
  * Lookup ust app channel for session and enable it on the tracer side. This
  * MUST be called with a RCU read side lock acquired.
  */
-static int enable_ust_app_channel(struct ust_app_session *ua_sess,
+static int enable_ust_app_channel(const ust_app_session::locked_weak_ref& ua_sess,
 				  struct ltt_ust_channel *uchan,
 				  struct ust_app *app)
 {
@@ -3555,7 +3555,7 @@ error:
  */
 static int create_channel_per_pid(struct ust_app *app,
 				  struct ltt_ust_session *usess,
-				  struct ust_app_session *ua_sess,
+				  const ust_app_session::locked_weak_ref& ua_sess,
 				  struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -3565,14 +3565,13 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 
 	DBG("UST app creating channel %s with per PID buffers", ua_chan->name);
 
 	lttng::urcu::read_lock_guard read_lock;
 
-	registry = get_session_registry(ua_sess);
+	registry = ust_app_get_session_registry(ua_sess->get_identifier());
 	/* The UST app session lock is held, registry shall not be null. */
 	LTTNG_ASSERT(registry);
 
@@ -3593,13 +3592,14 @@ static int create_channel_per_pid(struct ust_app *app,
 	}
 
 	/* Create and get channel on the consumer side. */
-	ret = do_consumer_create_channel(usess, ua_sess, ua_chan, app->abi.bits_per_long, registry);
+	ret = do_consumer_create_channel(
+		usess, &ua_sess.get(), ua_chan, app->abi.bits_per_long, registry);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon", ua_chan->name);
 		goto error_remove_from_registry;
 	}
 
-	ret = send_channel_pid_to_ust(app, ua_sess, ua_chan);
+	ret = send_channel_pid_to_ust(app, &ua_sess.get(), ua_chan);
 	if (ret < 0) {
 		if (ret != -ENOTCONN) {
 			ERR("Error sending channel to application");
@@ -3653,7 +3653,7 @@ error:
  */
 static int ust_app_channel_send(struct ust_app *app,
 				struct ltt_ust_session *usess,
-				struct ust_app_session *ua_sess,
+				const ust_app_session::locked_weak_ref& ua_sess,
 				struct ust_app_channel *ua_chan)
 {
 	int ret;
@@ -3661,7 +3661,6 @@ static int ust_app_channel_send(struct ust_app *app,
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(usess->active);
-	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
 
@@ -3669,7 +3668,7 @@ static int ust_app_channel_send(struct ust_app *app,
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		ret = create_channel_per_uid(app, usess, ua_sess, ua_chan);
+		ret = create_channel_per_uid(app, usess, &ua_sess.get(), ua_chan);
 		if (ret < 0) {
 			goto error;
 		}
@@ -3712,7 +3711,7 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
+static int ust_app_channel_allocate(const ust_app_session::locked_weak_ref& ua_sess,
 				    struct ltt_ust_channel *uchan,
 				    enum lttng_ust_abi_chan_type type,
 				    struct ltt_ust_session *usess __attribute__((unused)),
@@ -3877,7 +3876,7 @@ end:
  *
  * Called with UST app session lock held and RCU read side lock.
  */
-static int create_ust_app_metadata(struct ust_app_session *ua_sess,
+static int create_ust_app_metadata(const ust_app_session::locked_weak_ref& ua_sess,
 				   struct ust_app *app,
 				   struct consumer_output *consumer)
 {
@@ -3885,12 +3884,11 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
 
-	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(consumer);
 	ASSERT_RCU_READ_LOCKED();
 
-	auto locked_registry = get_locked_session_registry(ua_sess);
+	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
 	/* The UST app session is held registry shall not be null. */
 	LTTNG_ASSERT(locked_registry);
 
@@ -3943,7 +3941,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 * never added or monitored until we do a first push metadata to the
 	 * consumer.
 	 */
-	ret = ust_consumer_ask_channel(ua_sess,
+	ret = ust_consumer_ask_channel(&ua_sess.get(),
 				       metadata,
 				       consumer,
 				       socket,
@@ -4361,7 +4359,8 @@ static void ust_app_unregister(ust_app& app)
 		 * The close metadata below nullifies the metadata pointer in the
 		 * session so the delete session will NOT push/close a second time.
 		 */
-		auto locked_registry = get_locked_session_registry(ua_sess);
+		auto locked_registry =
+			get_locked_session_registry(locked_ua_sess->get_identifier());
 		if (locked_registry) {
 			/* Push metadata for application before freeing the application. */
 			(void) push_metadata(locked_registry, ua_sess->consumer);
@@ -4863,7 +4862,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 				 */
 				continue;
 			}
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -4879,7 +4878,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 			LTTNG_ASSERT(ua_chan->enabled);
 
 			/* Disable channel onto application */
-			ret = disable_ust_app_channel(ua_sess, ua_chan, app);
+			ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
 			if (ret < 0) {
 				/* XXX: We might want to report this error at some point... */
 				continue;
@@ -4917,13 +4916,13 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 				 */
 				continue;
 			}
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
 
 			/* Enable channel onto application */
-			ret = enable_ust_app_channel(ua_sess, uchan, app);
+			ret = enable_ust_app_channel(ua_sess->lock(), uchan, app);
 			if (ret < 0) {
 				/* XXX: We might want to report this error at some point... */
 				continue;
@@ -4968,7 +4967,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 				 */
 				continue;
 			}
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				/* Next app */
 				continue;
@@ -5017,15 +5016,13 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 
 /* The ua_sess lock must be held by the caller.  */
 static int ust_app_channel_create(struct ltt_ust_session *usess,
-				  struct ust_app_session *ua_sess,
+				  const ust_app_session::locked_weak_ref& ua_sess,
 				  struct ltt_ust_channel *uchan,
 				  struct ust_app *app,
 				  struct ust_app_channel **_ua_chan)
 {
 	int ret = 0;
 	struct ust_app_channel *ua_chan = nullptr;
-
-	LTTNG_ASSERT(ua_sess);
 
 	if (!strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name))) {
 		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
@@ -5123,7 +5120,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 				 */
 				continue;
 			}
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* The application has problem or is probably dead. */
 				continue;
@@ -5207,7 +5204,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 				continue;
 			}
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* The application has problem or is probably dead. */
 				continue;
@@ -5266,7 +5263,7 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 		return 0;
 	}
 
-	ua_sess = lookup_session_by_app(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -5356,7 +5353,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 		return 0;
 	}
 
-	ua_sess = lookup_session_by_app(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess, app);
 	if (ua_sess == nullptr) {
 		return 0;
 	}
@@ -5432,7 +5429,8 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 	health_code_update();
 
 	{
-		auto locked_registry = get_locked_session_registry(ua_sess);
+		auto locked_registry =
+			get_locked_session_registry(locked_ua_sess->get_identifier());
 
 		/* The UST app session is held registry shall not be null. */
 		LTTNG_ASSERT(locked_registry);
@@ -5556,7 +5554,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 		lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -5690,7 +5688,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 		lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -5863,7 +5861,7 @@ int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 
 /* The ua_sess lock must be held by the caller. */
 static int find_or_create_ust_app_channel(struct ltt_ust_session *usess,
-					  struct ust_app_session *ua_sess,
+					  const ust_app_session::locked_weak_ref& ua_sess,
 					  struct ust_app *app,
 					  struct ltt_ust_channel *uchan,
 					  struct ust_app_channel **ua_chan)
@@ -6066,7 +6064,7 @@ end:
  * RCU read lock must be held by the caller.
  */
 static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
-					     struct ust_app_session *ua_sess,
+					     const ust_app_session::locked_weak_ref& ua_sess,
 					     struct ust_app *app)
 {
 	int ret = 0;
@@ -6074,7 +6072,6 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan;
 
 	LTTNG_ASSERT(usess);
-	LTTNG_ASSERT(ua_sess);
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
@@ -6151,7 +6148,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 	{
 		lttng::urcu::read_lock_guard read_lock;
 
-		ust_app_synchronize_all_channels(usess, ua_sess, app);
+		ust_app_synchronize_all_channels(usess, locked_ua_sess, app);
 
 		/*
 		 * Create the metadata for the application. This returns gracefully if a
@@ -6162,7 +6159,7 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 		 * daemon, the consumer will use this assumption to send the
 		 * "STREAMS_SENT" message to the relay daemon.
 		 */
-		ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
+		ret = create_ust_app_metadata(locked_ua_sess, app, usess->consumer);
 		if (ret < 0) {
 			ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
 			    app->sock,
@@ -6175,7 +6172,7 @@ static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app
 {
 	struct ust_app_session *ua_sess;
 
-	ua_sess = lookup_session_by_app(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess, app);
 	if (ua_sess == nullptr) {
 		return;
 	}
@@ -6295,7 +6292,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				 */
 				continue;
 			}
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -6476,7 +6473,15 @@ static int handle_app_register_channel_notification(int sock,
 	ua_sess = ua_chan->session;
 
 	/* Get right session registry depending on the session buffer type. */
-	auto locked_registry_session = get_locked_session_registry(ua_sess);
+
+	/*
+	 * HACK: ua_sess is already locked by the client thread. This is called
+	 * in the context of the handling of a notification from the application.
+	 */
+	auto locked_ua_sess = ust_app_session::make_locked_weak_ref(*ua_sess);
+	auto locked_registry_session =
+		get_locked_session_registry(locked_ua_sess->get_identifier());
+	locked_ua_sess.release();
 	if (!locked_registry_session) {
 		DBG("Application session is being torn down. Abort event notify");
 		return 0;
@@ -6648,7 +6653,7 @@ static int add_event_ust_registry(int sock,
 	}
 
 	{
-		auto locked_registry = get_locked_session_registry(ua_sess);
+		auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
 		if (locked_registry) {
 			/*
 			 * From this point on, this call acquires the ownership of the signature,
@@ -6763,7 +6768,7 @@ static int add_enum_ust_registry(int sock,
 		return 0;
 	}
 
-	auto locked_registry = get_locked_session_registry(ua_sess);
+	auto locked_registry = get_locked_session_registry(ua_sess->get_identifier());
 	if (!locked_registry) {
 		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
 		return 0;
@@ -7184,7 +7189,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7232,7 +7237,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				}
 			}
 
-			registry = get_session_registry(ua_sess);
+			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				continue;
@@ -7309,7 +7314,7 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 			struct ust_app_session *ua_sess;
 			struct lttng_ht_iter chan_iter;
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7396,7 +7401,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 	cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		struct lttng_ht_iter uiter;
 
-		ua_sess = lookup_session_by_app(usess, app);
+		ua_sess = ust_app_lookup_app_session(usess, app);
 		if (ua_sess == nullptr) {
 			continue;
 		}
@@ -7443,7 +7448,7 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 	const auto update_health_code_on_exit =
 		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
-	ua_sess = lookup_session_by_app(usess, app);
+	ua_sess = ust_app_lookup_app_session(usess, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
 		return 0;
@@ -7585,7 +7590,7 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 			ust_app_reference app(raw_app);
 			raw_app = nullptr;
 
-			ua_sess = lookup_session_by_app(usess, app.get());
+			ua_sess = ust_app_lookup_app_session(usess, app.get());
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7599,7 +7604,7 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 				goto error;
 			}
 
-			registry = get_session_registry(ua_sess);
+			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			LTTNG_ASSERT(registry);
 
 			/* Rotate the data channels. */
@@ -7706,13 +7711,13 @@ enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
 			}
 
-			registry = get_session_registry(ua_sess);
+			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				continue;
@@ -7825,7 +7830,7 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7839,7 +7844,7 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
 				goto error_socket;
 			}
 
-			registry = get_session_registry(ua_sess);
+			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				continue;
@@ -7967,7 +7972,7 @@ enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& sessio
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
 
-			ua_sess = lookup_session_by_app(usess, app);
+			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
@@ -7981,7 +7986,7 @@ enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& sessio
 				goto error;
 			}
 
-			registry = get_session_registry(ua_sess);
+			registry = ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				continue;
@@ -8066,24 +8071,7 @@ void ust_app_put(struct ust_app *app)
 	urcu_ref_put(&app->ref, ust_app_release);
 }
 
-ust_app_session::const_locked_weak_ref ust_app_session::lock() const noexcept
+lttng_ht *ust_app_get_all()
 {
-	pthread_mutex_lock(&_lock);
-	return ust_app_session::const_locked_weak_ref(*this);
-}
-
-ust_app_session::locked_weak_ref ust_app_session::lock() noexcept
-{
-	pthread_mutex_lock(&_lock);
-	return ust_app_session::locked_weak_ref(*this);
-}
-
-void ust_app_session::_const_session_unlock(const ust_app_session *session)
-{
-	pthread_mutex_unlock(&session->_lock);
-}
-
-void ust_app_session::_session_unlock(ust_app_session *session)
-{
-	pthread_mutex_unlock(&session->_lock);
+	return ust_app_ht;
 }

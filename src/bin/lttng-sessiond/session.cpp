@@ -6,15 +6,18 @@
  */
 
 #define _LGPL_SOURCE
+#include "buffer-registry.hpp"
 #include "cmd.hpp"
 #include "kernel.hpp"
 #include "lttng-sessiond.hpp"
 #include "session.hpp"
 #include "timer.hpp"
 #include "trace-ust.hpp"
+#include "ust-app.hpp"
 #include "utils.hpp"
 
 #include <common/common.hpp>
+#include <common/ctl/format.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk.hpp>
 #include <common/urcu.hpp>
@@ -475,7 +478,7 @@ static void del_session_ht(struct ltt_session *ls)
 /*
  * Acquire session lock
  */
-void session_lock(struct ltt_session *session)
+void session_lock(const ltt_session *session)
 {
 	LTTNG_ASSERT(session);
 	session->lock();
@@ -494,7 +497,7 @@ void ltt_session::unlock() const noexcept
 /*
  * Release session lock
  */
-void session_unlock(struct ltt_session *session)
+void session_unlock(const ltt_session *session)
 {
 	LTTNG_ASSERT(session);
 	session->unlock();
@@ -1045,7 +1048,7 @@ static void session_release(struct urcu_ref *ref)
 	session_notify_destruction([session]() {
 		session_lock(session);
 		session_get(session);
-		return ltt_session::locked_ref(*session);
+		return ltt_session::make_locked_ref(*session);
 	}());
 
 	pthread_mutex_destroy(&session->_lock);
@@ -1456,7 +1459,7 @@ ltt_session::locked_ref ltt_session::find_locked_session(ltt_session::id_t id)
 	 * session.
 	 */
 	session_lock(session);
-	return ltt_session::locked_ref(*session);
+	return ltt_session::make_locked_ref(*session);
 }
 
 ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view name)
@@ -1469,33 +1472,33 @@ ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view na
 	}
 
 	session_lock(session);
-	return ltt_session::locked_ref(*session);
+	return ltt_session::make_locked_ref(*session);
 }
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session::id_t id)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
-	auto session = session_find_by_id(id);
+	const auto *session = session_find_by_id(id);
 
 	if (!session) {
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
 	session_lock(session);
-	return ltt_session::const_locked_ref(*session);
+	return ltt_session::make_locked_ref(*session);
 }
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_string_view name)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
-	auto session = session_find_by_name(name.data());
+	const auto *session = session_find_by_name(name.data());
 
 	if (!session) {
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
 	}
 
 	session_lock(session);
-	return ltt_session::const_locked_ref(*session);
+	return ltt_session::make_locked_ref(*session);
 }
 
 ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
@@ -1507,7 +1510,7 @@ ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
-	return ltt_session::ref(*session);
+	return ltt_session::make_ref(*session);
 }
 
 ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
@@ -1519,31 +1522,31 @@ ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
 	}
 
-	return ltt_session::ref(*session);
+	return ltt_session::make_ref(*session);
 }
 
 ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
-	auto session = session_find_by_id(id);
+	const auto *session = session_find_by_id(id);
 
 	if (!session) {
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_ID_ERROR(id);
 	}
 
-	return ltt_session::const_ref(*session);
+	return ltt_session::make_ref(*session);
 }
 
 ltt_session::const_ref ltt_session::find_const_session(lttng::c_string_view name)
 {
 	lttng::urcu::read_lock_guard rcu_lock;
-	auto session = session_find_by_name(name.data());
+	const auto *session = session_find_by_name(name.data());
 
 	if (!session) {
 		LTTNG_THROW_SESSION_NOT_FOUND_BY_NAME_ERROR(name.data());
 	}
 
-	return ltt_session::const_ref(*session);
+	return ltt_session::make_ref(*session);
 }
 
 void ltt_session::_const_session_put(const ltt_session *session)
@@ -1560,4 +1563,315 @@ void ltt_session::_const_session_put(const ltt_session *session)
 std::unique_lock<std::mutex> ls::lock_session_list()
 {
 	return std::unique_lock<std::mutex>(the_session_list.lock);
+}
+
+lttng::sessiond::user_space_consumer_channel_keys
+ltt_session::user_space_consumer_channel_keys() const
+{
+	switch (ust_session->buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+		return lttng::sessiond::user_space_consumer_channel_keys(*ust_session,
+									 *ust_app_get_all());
+	case LTTNG_BUFFER_PER_UID:
+		return lttng::sessiond::user_space_consumer_channel_keys(
+			*ust_session, ust_session->buffer_reg_uid_list);
+	default:
+		abort();
+	}
+}
+
+ls::user_space_consumer_channel_keys::iterator
+ls::user_space_consumer_channel_keys::begin() const noexcept
+{
+	return ls::user_space_consumer_channel_keys::iterator(_creation_context);
+}
+
+ls::user_space_consumer_channel_keys::iterator
+ls::user_space_consumer_channel_keys::end() const noexcept
+{
+	return ls::user_space_consumer_channel_keys::iterator(_creation_context, true);
+}
+
+ls::user_space_consumer_channel_keys::iterator&
+ls::user_space_consumer_channel_keys::iterator::operator++()
+{
+	if (_is_end) {
+		LTTNG_THROW_OUT_OF_RANGE(fmt::format(
+			"Attempted to advance channel key iterator past the end of channel keys: iteration_mode={}",
+			_creation_context._session.buffer_type));
+	}
+
+	switch (_creation_context._session.buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+		_advance_one_per_pid();
+		break;
+	case LTTNG_BUFFER_PER_UID:
+		_advance_one_per_uid();
+		break;
+	default:
+		abort();
+	}
+
+	return *this;
+}
+
+namespace {
+bool is_list_empty(const cds_list_head *head)
+{
+	return head == head->next;
+}
+
+bool is_last_element_of_list(const cds_list_head *head)
+{
+	return head->next == head->prev;
+}
+} /* namespace */
+
+ls::user_space_consumer_channel_keys::iterator::iterator(
+	const _iterator_creation_context& creation_context, bool is_end) :
+	_creation_context(creation_context), _is_end(is_end)
+{
+	if (_is_end) {
+		return;
+	}
+
+	switch (_creation_context._mode) {
+	case _iteration_mode::PER_PID:
+		_init_per_pid();
+		break;
+	case _iteration_mode::PER_UID:
+		_init_per_uid();
+		break;
+	}
+}
+
+void ls::user_space_consumer_channel_keys::iterator::_skip_to_next_app_per_pid(
+	bool try_current) noexcept
+{
+	auto& position = _position._per_pid;
+
+	while (true) {
+		if (!try_current) {
+			lttng_ht_get_next(_creation_context._container.apps,
+					  &position.app_iterator);
+		} else {
+			try_current = false;
+		}
+
+		const auto app_node =
+			lttng_ht_iter_get_node<lttng_ht_node_ulong>(&position.app_iterator);
+		if (!app_node) {
+			_is_end = true;
+			return;
+		}
+
+		const auto& app = *lttng::utils::container_of(app_node, &ust_app::pid_n);
+		auto app_session = ust_app_lookup_app_session(&_creation_context._session, &app);
+
+		if (!app_session) {
+			/* This app is not traced by the target session. */
+			continue;
+		}
+
+		position.current_app_session = app_session->lock();
+
+		auto *registry = ust_app_get_session_registry(
+			(*_position._per_pid.current_app_session)->get_identifier());
+		if (!registry) {
+			DBG_FMT("Application session is being torn down: skipping application: app={}",
+				app);
+			continue;
+		}
+
+		position.current_registry_session = registry;
+		lttng_ht_get_first((*position.current_app_session)->channels,
+				   &_position.channel_iterator);
+		break;
+	}
+}
+
+void ls::user_space_consumer_channel_keys::iterator::_init_per_pid() noexcept
+{
+	auto& position = _position._per_pid;
+
+	lttng_ht_get_first(_creation_context._container.apps, &position.app_iterator);
+	_skip_to_next_app_per_pid(true);
+}
+
+void ls::user_space_consumer_channel_keys::iterator::_init_per_uid() noexcept
+{
+	auto& position = _position._per_uid;
+
+	/* Start the iteration: get the first registry and point to its first channel. */
+	if (is_list_empty(&_creation_context._session.buffer_reg_uid_list)) {
+		_is_end = true;
+		return;
+	}
+
+	position.current_registry = lttng::utils::container_of(
+		_creation_context._session.buffer_reg_uid_list.next, &buffer_reg_uid::lnode);
+	lttng_ht_get_first(position.current_registry->registry->channels,
+			   &_position.channel_iterator);
+}
+
+void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_pid()
+{
+	auto& position = _position._per_pid;
+
+	if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
+		/* Reached the last channel. Move on to the next app. */
+		_skip_to_next_app_per_pid(false);
+		return;
+	}
+
+	const auto current_app_node =
+		lttng_ht_iter_get_node<lttng_ht_node_ulong>(&position.app_iterator);
+	LTTNG_ASSERT(current_app_node);
+
+	lttng_ht_get_next((*position.current_app_session)->channels, &_position.channel_iterator);
+}
+
+void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_uid()
+{
+	auto& position = _position._per_uid;
+
+	if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
+		/* Reached the last channel of the registry. Move on to the next registry. */
+		if (is_last_element_of_list(&position.current_registry->lnode)) {
+			_is_end = true;
+			return;
+		}
+
+		position.current_registry = lttng::utils::container_of(
+			position.current_registry->lnode.next, &buffer_reg_uid::lnode);
+		cds_lfht_first(position.current_registry->registry->channels->ht,
+			       &_position.channel_iterator.iter);
+
+		/* Assumes a registry can't be empty. */
+		LTTNG_ASSERT(cds_lfht_iter_get_node(&_position.channel_iterator.iter));
+	}
+
+	cds_lfht_next(position.current_registry->registry->channels->ht,
+		      &_position.channel_iterator.iter);
+}
+
+bool ls::user_space_consumer_channel_keys::iterator::operator==(const iterator& other) const noexcept
+{
+	if (_is_end && other._is_end) {
+		return true;
+	}
+
+	/* Channel keys are unique; use them to compare the iterators. */
+	return !_is_end && !other._is_end && **this == *other;
+}
+
+bool ls::user_space_consumer_channel_keys::iterator::operator!=(const iterator& other) const noexcept
+{
+	return !(*this == other);
+}
+
+ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_pid() const noexcept
+{
+	auto& position = _position._per_pid;
+
+	const auto *channel_node =
+		lttng_ht_iter_get_node<lttng_ht_node_str>(&_position.channel_iterator);
+	const auto current_app_node =
+		lttng_ht_iter_get_node<lttng_ht_node_ulong>(&position.app_iterator);
+	LTTNG_ASSERT(current_app_node);
+
+	const auto& app = *lttng::utils::container_of(current_app_node, &ust_app::pid_n);
+
+	if (channel_node) {
+		const auto& channel =
+			*lttng::utils::container_of(channel_node, &ust_app_channel::node);
+
+		return { static_cast<consumer_bitness>(app.abi.bits_per_long),
+			 channel.key,
+			 ls::user_space_consumer_channel_keys::channel_type::DATA };
+	} else {
+		LTTNG_ASSERT(position.current_registry_session);
+
+		/*
+		 * Once the last data channel is delivered (iter points to the 'end' of the ht),
+		 * deliver the metadata channel's key.
+		 */
+		return { static_cast<consumer_bitness>(app.abi.bits_per_long),
+			 position.current_registry_session->_metadata_key,
+			 ls::user_space_consumer_channel_keys::channel_type::METADATA };
+	}
+}
+
+ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::iterator::_get_current_value_per_uid() const noexcept
+{
+	const auto *channel_node =
+		lttng_ht_iter_get_node<lttng_ht_node_u64>(&_position.channel_iterator);
+
+	if (channel_node) {
+		const auto& channel =
+			*lttng::utils::container_of(channel_node, &buffer_reg_channel::node);
+
+		return { static_cast<consumer_bitness>(
+				 _position._per_uid.current_registry->bits_per_long),
+			 channel.consumer_key,
+			 ls::user_space_consumer_channel_keys::channel_type::DATA };
+	} else {
+		/*
+		 * Once the last data channel is delivered (iter points to the 'end' of the ht),
+		 * deliver the metadata channel's key.
+		 */
+		return { static_cast<consumer_bitness>(
+				 _position._per_uid.current_registry->bits_per_long),
+			 _position._per_uid.current_registry->registry->reg.ust->_metadata_key,
+			 ls::user_space_consumer_channel_keys::channel_type::METADATA };
+	}
+}
+
+ls::user_space_consumer_channel_keys::iterator::key
+ls::user_space_consumer_channel_keys::iterator::operator*() const
+{
+	if (_is_end) {
+		LTTNG_THROW_OUT_OF_RANGE(
+			"Attempt to use operator* on user_space_consumer_channel_keys iterator at the end position");
+	}
+
+	switch (_creation_context._mode) {
+	case _iteration_mode::PER_PID:
+		return _get_current_value_per_pid();
+	case _iteration_mode::PER_UID:
+		return _get_current_value_per_uid();
+	}
+
+	std::abort();
+}
+
+ls::ust::registry_session *ls::user_space_consumer_channel_keys::iterator::get_registry_session()
+{
+	if (_is_end) {
+		LTTNG_THROW_OUT_OF_RANGE(
+			"Attempt to get registry session on user_space_consumer_channel_keys iterator at the end position");
+	}
+
+	switch (_creation_context._mode) {
+	case _iteration_mode::PER_PID:
+		return _get_registry_session_per_pid();
+	case _iteration_mode::PER_UID:
+		return _get_registry_session_per_uid();
+	}
+
+	std::abort();
+}
+
+ls::ust::registry_session *
+ls::user_space_consumer_channel_keys::iterator::_get_registry_session_per_pid()
+{
+	return _position._per_pid.current_registry_session;
+}
+
+ls::ust::registry_session *
+ls::user_space_consumer_channel_keys::iterator::_get_registry_session_per_uid()
+{
+	return _position._per_uid.current_registry->registry->reg.ust;
 }

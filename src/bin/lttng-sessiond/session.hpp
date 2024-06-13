@@ -11,6 +11,8 @@
 #include "consumer.hpp"
 #include "snapshot.hpp"
 #include "trace-kernel.hpp"
+#include "trace-ust.hpp"
+#include "ust-app.hpp"
 
 #include <common/dynamic-array.hpp>
 #include <common/exception.hpp>
@@ -18,6 +20,7 @@
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/reference.hpp>
+#include <common/urcu.hpp>
 
 #include <lttng/location.h>
 #include <lttng/lttng-error.h>
@@ -35,11 +38,12 @@ struct ltt_ust_session;
 
 struct ltt_session;
 struct ltt_session_list;
+struct buffer_reg_uid;
 
 enum lttng_error_code
 session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_session);
-void session_lock(struct ltt_session *session);
-void session_unlock(struct ltt_session *session);
+void session_lock(const ltt_session *session);
+void session_unlock(const ltt_session *session);
 
 bool session_get(struct ltt_session *session);
 void session_put(struct ltt_session *session);
@@ -92,12 +96,165 @@ struct ltt_session_list {
 	struct cds_list_head head = CDS_LIST_HEAD_INIT(head);
 };
 
+namespace lttng {
+namespace sessiond {
+class user_space_consumer_channel_keys {
+	friend ltt_session;
+
+public:
+	class iterator;
+
+	enum class consumer_bitness : std::uint8_t {
+		ABI_32 = 32,
+		ABI_64 = 64,
+	};
+
+	enum class channel_type : std::uint8_t {
+		METADATA,
+		DATA,
+	};
+
+	iterator begin() const noexcept;
+	iterator end() const noexcept;
+
+private:
+	enum class _iteration_mode : std::uint8_t {
+		PER_PID,
+		PER_UID,
+
+	};
+
+	struct _iterator_creation_context {
+		const _iteration_mode _mode;
+		const ltt_ust_session& _session;
+		union {
+			lttng_ht *apps;
+			const cds_list_head *buffer_registry;
+		} _container;
+	};
+
+public:
+	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
+		friend user_space_consumer_channel_keys;
+
+	public:
+		struct key {
+			/* Bitness is needed to query the appropriate consumer daemon. */
+			consumer_bitness bitness;
+			std::uint64_t key_value;
+			channel_type type;
+
+			bool operator==(const key& other)
+			{
+				return bitness == other.bitness && key_value == other.key_value &&
+					type == other.type;
+			}
+		};
+
+		/*
+		 * Copy constructor disabled since it would require handling the copy of locked
+		 * references.
+		 */
+		iterator(const iterator& other) = delete;
+		iterator(iterator&& other) = default;
+		~iterator() = default;
+
+		iterator& operator++();
+		bool operator==(const iterator& other) const noexcept;
+		bool operator!=(const iterator& other) const noexcept;
+		key operator*() const;
+
+		/*
+		 * Get the session registry of the channel currently
+		 * pointed by the iterator. Never returns nullptr.
+		 */
+		lttng::sessiond::ust::registry_session *get_registry_session();
+
+	private:
+		struct _iterator_position {
+			struct {
+				lttng_ht_iter app_iterator = {};
+				nonstd::optional<ust_app_session::locked_weak_ref>
+					current_app_session;
+				lttng::sessiond::ust::registry_session *current_registry_session =
+					nullptr;
+			} _per_pid;
+			struct {
+				buffer_reg_uid *current_registry = nullptr;
+			} _per_uid;
+
+			lttng_ht_iter channel_iterator = {};
+		};
+
+		explicit iterator(const _iterator_creation_context& creation_context,
+				  bool is_end = false);
+
+		void _init_per_pid() noexcept;
+		void _skip_to_next_app_per_pid(bool try_current) noexcept;
+		void _advance_one_per_pid();
+		key _get_current_value_per_pid() const noexcept;
+		lttng::sessiond::ust::registry_session *_get_registry_session_per_pid();
+
+		void _init_per_uid() noexcept;
+		void _advance_one_per_uid();
+		key _get_current_value_per_uid() const noexcept;
+		lttng::sessiond::ust::registry_session *_get_registry_session_per_uid();
+
+		const _iterator_creation_context& _creation_context;
+		_iterator_position _position;
+		bool _is_end;
+	};
+
+private:
+	user_space_consumer_channel_keys(const ltt_ust_session& ust_session, lttng_ht& apps) :
+		_creation_context{ _iteration_mode::PER_PID, ust_session, { .apps = &apps } }
+	{
+	}
+
+	user_space_consumer_channel_keys(const ltt_ust_session& ust_session,
+					 const cds_list_head& buffer_registry) :
+		_creation_context{ _iteration_mode::PER_UID,
+				   ust_session,
+				   { .buffer_registry = &buffer_registry } }
+	{
+	}
+
+	class _scoped_rcu_read_lock {
+	public:
+		_scoped_rcu_read_lock()
+		{
+			rcu_read_lock();
+		}
+
+		~_scoped_rcu_read_lock()
+		{
+			if (_armed) {
+				rcu_read_unlock();
+			}
+		}
+
+		_scoped_rcu_read_lock(_scoped_rcu_read_lock&& other)
+		{
+			other._armed = false;
+		}
+
+	private:
+		bool _armed = true;
+	};
+
+	_scoped_rcu_read_lock _read_lock;
+	_iterator_creation_context _creation_context;
+};
+} /* namespace sessiond */
+} /* namespace lttng */
+
 /*
  * This data structure contains information needed to identify a tracing
  * session for both LTTng and UST.
  */
 struct ltt_session {
 	using id_t = uint64_t;
+	friend lttng::sessiond::user_space_consumer_channel_keys::iterator;
 
 private:
 	static void _locked_session_release(ltt_session *session);
@@ -123,8 +280,34 @@ public:
 		lttng::memory::create_deleter_class<const ltt_session,
 						    ltt_session::_const_session_put>::deleter>;
 
+	static locked_ref make_locked_ref(ltt_session& session)
+	{
+		return lttng::make_non_copyable_reference<locked_ref::referenced_type,
+							  locked_ref::deleter>(session);
+	}
+
+	static const_locked_ref make_locked_ref(const ltt_session& session)
+	{
+		return lttng::make_non_copyable_reference<const_locked_ref::referenced_type,
+							  const_locked_ref::deleter>(session);
+	}
+
+	static ref make_ref(ltt_session& session)
+	{
+		return lttng::make_non_copyable_reference<ref::referenced_type, ref::deleter>(
+			session);
+	}
+
+	static const_ref make_ref(const ltt_session& session)
+	{
+		return lttng::make_non_copyable_reference<const_ref::referenced_type,
+							  const_ref::deleter>(session);
+	}
+
 	void lock() const noexcept;
 	void unlock() const noexcept;
+
+	lttng::sessiond::user_space_consumer_channel_keys user_space_consumer_channel_keys() const;
 
 	/*
 	 * Session list lock must be acquired by the caller.
@@ -458,5 +641,35 @@ bool session_output_supports_trace_chunks(const struct ltt_session *session);
  * Return 1 when the session is found and set `id`.
  */
 bool sample_session_id_by_name(const char *name, uint64_t *id);
+
+const char *session_get_base_path(const ltt_session::locked_ref& session);
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
+
+enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session);
+enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session);
+enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session);
+
+#else /* HAVE_LIBLTTNG_UST_CTL */
+
+static inline enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& session
+							   __attribute__((unused)))
+{
+	return LTTNG_ERR_UNK;
+}
+
+static inline enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& session
+							  __attribute__((unused)))
+{
+	return LTTNG_ERR_UNK;
+}
+
+static inline enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session
+							 __attribute__((unused)))
+{
+	return LTTNG_ERR_UNK;
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_SESSION_H */

@@ -3159,7 +3159,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 		[new_session]() {
 			session_get(new_session);
 			new_session->lock();
-			return ltt_session::locked_ref(*new_session);
+			return ltt_session::make_locked_ref(*new_session);
 		}(),
 		[](const ltt_session::locked_ref& session,
 		   void *user_data __attribute__((unused))) {
@@ -3216,7 +3216,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 		[new_session]() {
 			session_get(new_session);
 			new_session->lock();
-			return ltt_session::locked_ref(*new_session);
+			return ltt_session::make_locked_ref(*new_session);
 		}(),
 		descriptor);
 	if (ret_code != LTTNG_OK) {
@@ -3980,7 +3980,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
-			return ltt_session::locked_ref(*raw_session_ptr);
+			return ltt_session::make_locked_ref(*raw_session_ptr);
 		}();
 
 		/*

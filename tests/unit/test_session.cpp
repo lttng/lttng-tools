@@ -308,7 +308,7 @@ static void test_large_session_number()
 		cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
 			ret = destroy_one_session([iter]() {
 				session_get(iter);
-				return ltt_session::ref(*iter);
+				return ltt_session::make_ref(*iter);
 			}());
 
 			if (ret < 0) {

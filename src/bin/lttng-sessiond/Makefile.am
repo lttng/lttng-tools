@@ -72,7 +72,7 @@ liblttng_sessiond_common_la_SOURCES += trace-ust.cpp ust-registry.cpp ust-app.cp
 			ust-consumer.cpp ust-consumer.hpp notify-apps.cpp \
 			ust-clock-class.hpp ust-clock-class.cpp \
 			agent-thread.cpp agent-thread.hpp \
-			ust-field-convert.cpp ust-field-convert.hpp \
+			ust-field-convert.cpp ust-field-quirks.hpp \
 			ust-sigbus.cpp \
 			ust-registry-session.cpp ust-registry-session.hpp \
 			ust-registry-event.cpp ust-registry-event.hpp \
