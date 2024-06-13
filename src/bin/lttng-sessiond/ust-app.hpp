@@ -298,8 +298,7 @@ struct ust_app {
 	uint32_t v_minor; /* Version minor number */
 	/* Extra for the NULL byte. */
 	char name[UST_APP_PROCNAME_LEN + 1];
-	/* Type of buffer this application uses. */
-	enum lttng_buffer_type buffer_type;
+
 	struct lttng_ht *sessions;
 	struct lttng_ht_node_ulong pid_n;
 	struct lttng_ht_node_ulong sock_n;
