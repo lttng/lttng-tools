@@ -907,7 +907,7 @@ static void delete_ust_app_session_rcu(struct rcu_head *head)
 		lttng::utils::container_of(head, &ust_app_session::rcu_head);
 
 	lttng_ht_destroy(ua_sess->channels);
-	free(ua_sess);
+	delete ua_sess;
 }
 
 /*
@@ -925,7 +925,8 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
 
-	pthread_mutex_lock(&ua_sess->lock);
+	/* Locked for the duration of the function. */
+	auto locked_ua_sess = ua_sess->lock();
 
 	LTTNG_ASSERT(!ua_sess->deleted);
 	ua_sess->deleted = true;
@@ -1004,10 +1005,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		LTTNG_ASSERT(!ret);
 	}
 
-	pthread_mutex_unlock(&ua_sess->lock);
-
 	consumer_output_put(ua_sess->consumer);
-
 	call_rcu(&ua_sess->rcu_head, delete_ust_app_session_rcu);
 }
 
@@ -1168,7 +1166,7 @@ static struct ust_app_session *alloc_ust_app_session()
 	struct ust_app_session *ua_sess;
 
 	/* Init most of the default value by allocating and zeroing */
-	ua_sess = zmalloc<ust_app_session>();
+	ua_sess = new ust_app_session;
 	if (ua_sess == nullptr) {
 		PERROR("malloc");
 		goto error_free;
@@ -1177,7 +1175,6 @@ static struct ust_app_session *alloc_ust_app_session()
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	ua_sess->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
-	pthread_mutex_init(&ua_sess->lock, nullptr);
 
 	return ua_sess;
 
@@ -4347,7 +4344,7 @@ static void ust_app_unregister(ust_app& app)
 		 * Add session to list for teardown. This is safe since at this point we
 		 * are the only one using this list.
 		 */
-		lttng::pthread::lock_guard ust_app_session_lock(ua_sess->lock);
+		auto locked_ua_sess = ua_sess->lock();
 
 		if (ua_sess->deleted) {
 			continue;
@@ -5029,7 +5026,6 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan = nullptr;
 
 	LTTNG_ASSERT(ua_sess);
-	ASSERT_LOCKED(ua_sess->lock);
 
 	if (!strncmp(uchan->name, DEFAULT_METADATA_NAME, sizeof(uchan->name))) {
 		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
@@ -5133,10 +5129,8 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 				continue;
 			}
 
-			pthread_mutex_lock(&ua_sess->lock);
-
+			auto locked_ua_sess = ua_sess->lock();
 			if (ua_sess->deleted) {
-				pthread_mutex_unlock(&ua_sess->lock);
 				continue;
 			}
 
@@ -5149,7 +5143,6 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			 * an application exit.
 			 */
 			if (!ua_chan_node) {
-				pthread_mutex_unlock(&ua_sess->lock);
 				continue;
 			}
 
@@ -5168,16 +5161,13 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 				     "Skipping app",
 				     uevent->attr.name,
 				     app->pid);
-				goto next_app;
+				continue;
 			}
 
 			ret = enable_ust_app_event(ua_event, app);
 			if (ret < 0) {
-				pthread_mutex_unlock(&ua_sess->lock);
 				goto error;
 			}
-		next_app:
-			pthread_mutex_unlock(&ua_sess->lock);
 		}
 	}
 error:
@@ -5223,10 +5213,9 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 				continue;
 			}
 
-			pthread_mutex_lock(&ua_sess->lock);
+			auto locked_ua_sess = ua_sess->lock();
 
-			if (ua_sess->deleted) {
-				pthread_mutex_unlock(&ua_sess->lock);
+			if (locked_ua_sess->deleted) {
 				continue;
 			}
 
@@ -5239,7 +5228,6 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
 			ret = create_ust_app_event(ua_chan, uevent, app);
-			pthread_mutex_unlock(&ua_sess->lock);
 			if (ret < 0) {
 				if (ret != -LTTNG_UST_ERR_EXIST) {
 					/* Possible value at this point: -ENOMEM. If so, we stop! */
@@ -5271,37 +5259,29 @@ static int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *ap
 	DBG("Starting tracing for ust app pid %d", app->pid);
 
 	lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		goto end;
+		return 0;
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
-		goto end;
+		return 0;
 	}
 
-	pthread_mutex_lock(&ua_sess->lock);
+	auto locked_ua_sess = ua_sess->lock();
 
-	if (ua_sess->deleted) {
-		pthread_mutex_unlock(&ua_sess->lock);
-		goto end;
+	if (locked_ua_sess->deleted) {
+		return 0;
 	}
 
-	if (ua_sess->enabled) {
-		pthread_mutex_unlock(&ua_sess->lock);
-		goto end;
+	if (locked_ua_sess->enabled) {
+		return 0;
 	}
 
-	/* Upon restart, we skip the setup, already done */
-	if (ua_sess->started) {
-		goto skip_setup;
-	}
-
-	health_code_update();
-
-skip_setup:
 	/* This starts the UST tracing */
 	pthread_mutex_lock(&app->sock_lock);
 	ret = lttng_ust_ctl_start_session(app->sock, ua_sess->handle);
@@ -5311,14 +5291,12 @@ skip_setup:
 			DBG3("UST app start session failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
 			     app->sock);
-			pthread_mutex_unlock(&ua_sess->lock);
-			goto end;
+			return 0;
 		} else if (ret == -EAGAIN) {
 			WARN("UST app start session failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
 			     app->sock);
-			pthread_mutex_unlock(&ua_sess->lock);
-			goto end;
+			return 0;
 
 		} else {
 			ERR("UST app start session failed with ret %d: pid = %d, sock = %d",
@@ -5326,14 +5304,13 @@ skip_setup:
 			    app->pid,
 			    app->sock);
 		}
-		goto error_unlock;
+
+		return -1;
 	}
 
 	/* Indicate that the session has been started once */
 	ua_sess->started = true;
 	ua_sess->enabled = true;
-
-	pthread_mutex_unlock(&ua_sess->lock);
 
 	health_code_update();
 
@@ -5358,14 +5335,7 @@ skip_setup:
 		}
 	}
 
-end:
-	health_code_update();
 	return 0;
-
-error_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-	health_code_update();
-	return -1;
 }
 
 /*
@@ -5379,21 +5349,22 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 	DBG("Stopping tracing for ust app pid %d", app->pid);
 
 	lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		goto end_no_session;
+		return 0;
 	}
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == nullptr) {
-		goto end_no_session;
+		return 0;
 	}
 
-	pthread_mutex_lock(&ua_sess->lock);
+	auto locked_ua_sess = ua_sess->lock();
 
 	if (ua_sess->deleted) {
-		pthread_mutex_unlock(&ua_sess->lock);
-		goto end_no_session;
+		return 0;
 	}
 
 	/*
@@ -5403,7 +5374,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 	 * indicate that this is a stop error.
 	 */
 	if (!ua_sess->started) {
-		goto error_rcu_unlock;
+		return -1;
 	}
 
 	health_code_update();
@@ -5417,12 +5388,12 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 			DBG3("UST app stop session failed. Application is dead: pid = %d, sock = %d",
 			     app->pid,
 			     app->sock);
-			goto end_unlock;
+			return 0;
 		} else if (ret == -EAGAIN) {
 			WARN("UST app stop session failed. Communication time out: pid = %d, sock = %d",
 			     app->pid,
 			     app->sock);
-			goto end_unlock;
+			return 0;
 
 		} else {
 			ERR("UST app stop session failed with ret %d: pid = %d, sock = %d",
@@ -5430,7 +5401,8 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 			    app->pid,
 			    app->sock);
 		}
-		goto error_rcu_unlock;
+
+		return -1;
 	}
 
 	health_code_update();
@@ -5469,16 +5441,7 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 		(void) push_metadata(locked_registry, ua_sess->consumer);
 	}
 
-end_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-end_no_session:
-	health_code_update();
 	return 0;
-
-error_rcu_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-	health_code_update();
-	return -1;
 }
 
 static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
@@ -5488,16 +5451,18 @@ static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
 	struct ust_app_channel *ua_chan;
 	struct consumer_socket *socket;
 
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
+
 	DBG("Flushing app session buffers for ust app pid %d", app.pid);
 
 	if (!app.compatible) {
-		goto end_not_compatible;
+		return 0;
 	}
 
-	pthread_mutex_lock(&ua_sess.lock);
-
-	if (ua_sess.deleted) {
-		goto end_deleted;
+	const auto locked_ua_sess = ua_sess.lock();
+	if (locked_ua_sess->deleted) {
+		return 0;
 	}
 
 	health_code_update();
@@ -5529,13 +5494,6 @@ static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
 		break;
 	}
 
-	health_code_update();
-
-end_deleted:
-	pthread_mutex_unlock(&ua_sess.lock);
-
-end_not_compatible:
-	health_code_update();
 	return retval;
 }
 
@@ -5628,15 +5586,16 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
 	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
 
 	lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	if (!app->compatible) {
-		goto end_not_compatible;
+		return 0;
 	}
 
-	pthread_mutex_lock(&ua_sess->lock);
-
-	if (ua_sess->deleted) {
-		goto end_unlock;
+	const auto locked_ua_sess = ua_sess->lock();
+	if (locked_ua_sess->deleted) {
+		return 0;
 	}
 
 	health_code_update();
@@ -5644,8 +5603,7 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
 	socket = consumer_find_socket_by_bitness(app->abi.bits_per_long, ua_sess->consumer);
 	if (!socket) {
 		ERR("Failed to find consumer (%" PRIu32 ") socket", app->abi.bits_per_long);
-		ret = -1;
-		goto end_unlock;
+		return -1;
 	}
 
 	/* Clear quiescent state. */
@@ -5668,13 +5626,6 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
 		break;
 	}
 
-	health_code_update();
-
-end_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-
-end_not_compatible:
-	health_code_update();
 	return ret;
 }
 
@@ -6187,14 +6138,14 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 	ret = find_or_create_ust_app_session(usess, app, &ua_sess, nullptr);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
-		goto end;
+		return;
 	}
 
 	LTTNG_ASSERT(ua_sess);
 
-	pthread_mutex_lock(&ua_sess->lock);
-	if (ua_sess->deleted) {
-		goto deleted_session;
+	const auto locked_ua_sess = ua_sess->lock();
+	if (locked_ua_sess->deleted) {
+		return;
 	}
 
 	{
@@ -6218,11 +6169,6 @@ static void ust_app_synchronize(struct ltt_ust_session *usess, struct ust_app *a
 			    usess->id);
 		}
 	}
-
-deleted_session:
-	pthread_mutex_unlock(&ua_sess->lock);
-end:
-	return;
 }
 
 static void ust_app_global_destroy(struct ltt_ust_session *usess, struct ust_app *app)
@@ -6354,10 +6300,8 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 				continue;
 			}
 
-			pthread_mutex_lock(&ua_sess->lock);
-
-			if (ua_sess->deleted) {
-				pthread_mutex_unlock(&ua_sess->lock);
+			const auto locked_ua_sess = ua_sess->lock();
+			if (locked_ua_sess->deleted) {
 				continue;
 			}
 
@@ -6365,15 +6309,13 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			if (ua_chan_node == nullptr) {
-				goto next_app;
+				continue;
 			}
 			ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 			ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
 			if (ret < 0) {
-				goto next_app;
+				continue;
 			}
-		next_app:
-			pthread_mutex_unlock(&ua_sess->lock);
 		}
 	}
 
@@ -7498,28 +7440,23 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
 	DBG("Regenerating the metadata for ust app pid %d", app->pid);
 
 	lttng::urcu::read_lock_guard read_lock;
+	const auto update_health_code_on_exit =
+		lttng::make_scope_exit([]() noexcept { health_code_update(); });
 
 	ua_sess = lookup_session_by_app(usess, app);
 	if (ua_sess == nullptr) {
 		/* The session is in teardown process. Ignore and continue. */
-		goto end;
+		return 0;
 	}
 
-	pthread_mutex_lock(&ua_sess->lock);
-
-	if (ua_sess->deleted) {
-		goto end_unlock;
+	const auto locked_ua_sess = ua_sess->lock();
+	if (locked_ua_sess->deleted) {
+		return 0;
 	}
 
 	pthread_mutex_lock(&app->sock_lock);
 	ret = lttng_ust_ctl_regenerate_statedump(app->sock, ua_sess->handle);
 	pthread_mutex_unlock(&app->sock_lock);
-
-end_unlock:
-	pthread_mutex_unlock(&ua_sess->lock);
-
-end:
-	health_code_update();
 	return ret;
 }
 
@@ -8127,4 +8064,26 @@ void ust_app_put(struct ust_app *app)
 	}
 
 	urcu_ref_put(&app->ref, ust_app_release);
+}
+
+ust_app_session::const_locked_weak_ref ust_app_session::lock() const noexcept
+{
+	pthread_mutex_lock(&_lock);
+	return ust_app_session::const_locked_weak_ref(*this);
+}
+
+ust_app_session::locked_weak_ref ust_app_session::lock() noexcept
+{
+	pthread_mutex_lock(&_lock);
+	return ust_app_session::locked_weak_ref(*this);
+}
+
+void ust_app_session::_const_session_unlock(const ust_app_session *session)
+{
+	pthread_mutex_unlock(&session->_lock);
+}
+
+void ust_app_session::_session_unlock(ust_app_session *session)
+{
+	pthread_mutex_unlock(&session->_lock);
 }

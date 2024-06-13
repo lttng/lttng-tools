@@ -17,6 +17,7 @@
 
 #include <common/format.hpp>
 #include <common/index-allocator.hpp>
+#include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
 #include <stdint.h>
@@ -190,59 +191,77 @@ struct ust_app_channel {
 };
 
 struct ust_app_session {
-	/*
-	 * Lock protecting this session's ust app interaction. Held
-	 * across command send/recv to/from app. Never nests within the
-	 * session registry lock.
-	 */
-	pthread_mutex_t lock;
+private:
+	static void _session_unlock(ust_app_session *session);
+	static void _const_session_unlock(const ust_app_session *session);
 
-	bool enabled;
+public:
+	using locked_weak_ref = lttng::non_copyable_reference<
+		ust_app_session,
+		lttng::memory::create_deleter_class<ust_app_session,
+						    ust_app_session::_session_unlock>::deleter>;
+	using const_locked_weak_ref = lttng::non_copyable_reference<
+		const ust_app_session,
+		lttng::memory::create_deleter_class<const ust_app_session,
+						    ust_app_session::_const_session_unlock>::deleter>;
+
+	ust_app_session::const_locked_weak_ref lock() const noexcept;
+	ust_app_session::locked_weak_ref lock() noexcept;
+
+	bool enabled = false;
 	/* started: has the session been in started state at any time ? */
-	bool started; /* allows detection of start vs restart. */
-	int handle; /* used has unique identifier for app session */
+	bool started = false; /* allows detection of start vs restart. */
+	int handle = 0; /* used has unique identifier for app session */
 
-	bool deleted; /* Session deleted flag. Check with lock held. */
+	bool deleted = false; /* Session deleted flag. Check with lock held. */
 
 	/*
 	 * Tracing session ID. Multiple ust app session can have the same tracing
 	 * session id making this value NOT unique to the object.
 	 */
-	uint64_t tracing_id;
-	uint64_t id; /* Unique session identifier */
-	struct lttng_ht *channels; /* Registered channels */
-	struct lttng_ht_node_u64 node;
+	uint64_t tracing_id = 0;
+	uint64_t id = 0; /* Unique session identifier */
+	struct lttng_ht *channels = nullptr; /* Registered channels */
+	struct lttng_ht_node_u64 node = {};
 	/*
 	 * Node indexed by UST session object descriptor (handle). Stored in the
 	 * ust_sessions_objd hash table in the ust_app object.
 	 */
-	struct lttng_ht_node_ulong ust_objd_node;
+	struct lttng_ht_node_ulong ust_objd_node = {};
 	/* Starts with 'ust'; no leading slash. */
-	char path[PATH_MAX];
+	char path[PATH_MAX] = {};
 	/* UID/GID of the application owning the session */
-	struct lttng_credentials real_credentials;
+	struct lttng_credentials real_credentials = {};
 	/* Effective UID and GID. Same as the tracing session. */
-	struct lttng_credentials effective_credentials;
-	struct cds_list_head teardown_node;
+	struct lttng_credentials effective_credentials = {};
+	struct cds_list_head teardown_node = {};
 	/*
 	 * Once at least *one* session is created onto the application, the
 	 * corresponding consumer is set so we can use it on unregistration.
 	 */
-	struct consumer_output *consumer;
-	enum lttng_buffer_type buffer_type;
+	struct consumer_output *consumer = nullptr;
+	enum lttng_buffer_type buffer_type = LTTNG_BUFFER_PER_PID;
 	/* ABI of the session. Same value as the application. */
-	uint32_t bits_per_long;
+	uint32_t bits_per_long = 0;
 	/* For delayed reclaim */
-	struct rcu_head rcu_head;
+	struct rcu_head rcu_head = {};
 	/* If the channel's streams have to be outputed or not. */
-	unsigned int output_traces;
-	unsigned int live_timer_interval; /* usec */
+	unsigned int output_traces = 0;
+	unsigned int live_timer_interval = 0; /* usec */
 
 	/* Metadata channel attributes. */
-	struct lttng_ust_ctl_consumer_channel_attr metadata_attr;
+	struct lttng_ust_ctl_consumer_channel_attr metadata_attr = {};
 
-	char root_shm_path[PATH_MAX];
-	char shm_path[PATH_MAX];
+	char root_shm_path[PATH_MAX] = {};
+	char shm_path[PATH_MAX] = {};
+
+private:
+	/*
+	 * Lock protecting this session's ust app interaction. Held
+	 * across command send/recv to/from app. Never nests within the
+	 * session registry lock.
+	 */
+	mutable pthread_mutex_t _lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 /*
