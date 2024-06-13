@@ -277,7 +277,7 @@ struct snapshot_output *snapshot_find_output_by_id(uint32_t id, struct snapshot 
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(snapshot->output_ht, (void *) ((unsigned long) id), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (!node) {
 		DBG3("Snapshot output not found with id %" PRId32, id);
 		goto error;

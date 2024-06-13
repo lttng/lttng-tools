@@ -115,7 +115,7 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	}
 
 	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		goto end;
 	}
@@ -1407,7 +1407,7 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 	}
 
 	lttng_ht_lookup(ltt_sessions_ht_by_name, name, &iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		found = false;
 		goto end;

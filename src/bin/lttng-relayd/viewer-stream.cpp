@@ -265,7 +265,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(viewer_streams_ht, &id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		DBG("Relay viewer stream %" PRIu64 " not found", id);
 		goto end;

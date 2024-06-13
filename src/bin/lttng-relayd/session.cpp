@@ -457,7 +457,7 @@ struct relay_session *session_get_by_id(uint64_t id)
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(sessions_ht, &id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		DBG("Session find by ID %" PRIu64 " id NOT found", id);
 		goto end;

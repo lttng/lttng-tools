@@ -406,7 +406,7 @@ struct consumer_socket *consumer_find_socket(int key, const struct consumer_outp
 	}
 
 	lttng_ht_lookup(consumer->socks, (void *) ((unsigned long) key), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node != nullptr) {
 		socket = lttng::utils::container_of(node, &consumer_socket::node);
 	}

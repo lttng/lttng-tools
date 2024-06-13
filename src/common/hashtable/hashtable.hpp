@@ -113,9 +113,17 @@ void lttng_ht_get_next(struct lttng_ht *ht, struct lttng_ht_iter *iter);
 
 unsigned long lttng_ht_get_count(struct lttng_ht *ht);
 
-struct lttng_ht_node_str *lttng_ht_iter_get_node_str(struct lttng_ht_iter *iter);
-struct lttng_ht_node_ulong *lttng_ht_iter_get_node_ulong(struct lttng_ht_iter *iter);
-struct lttng_ht_node_u64 *lttng_ht_iter_get_node_u64(struct lttng_ht_iter *iter);
-struct lttng_ht_node_two_u64 *lttng_ht_iter_get_node_two_u64(struct lttng_ht_iter *iter);
+template <class NodeType>
+NodeType *lttng_ht_iter_get_node(const lttng_ht_iter *iter)
+{
+	LTTNG_ASSERT(iter);
+
+	auto node = iter->iter.node;
+	if (!node) {
+		return nullptr;
+	}
+
+	return lttng::utils::container_of(node, &NodeType::node);
+}
 
 #endif /* _LTT_HT_H */

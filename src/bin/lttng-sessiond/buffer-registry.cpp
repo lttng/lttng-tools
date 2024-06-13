@@ -205,7 +205,7 @@ struct buffer_reg_uid *buffer_reg_uid_find(uint64_t session_id, uint32_t bits_pe
 
 	/* Custom lookup function since it's a different key. */
 	cds_lfht_lookup(ht->ht, ht->hash_fct(&key, lttng_ht_seed), ht->match_fct, &key, &iter.iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -318,7 +318,7 @@ struct buffer_reg_pid *buffer_reg_pid_find(uint64_t session_id)
 	DBG3("Buffer registry per PID find id: %" PRIu64, session_id);
 
 	lttng_ht_lookup(ht, &session_id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -473,7 +473,7 @@ struct buffer_reg_channel *buffer_reg_channel_find(uint64_t key, struct buffer_r
 	}
 
 	lttng_ht_lookup(ht, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		goto end;
 	}

@@ -50,7 +50,7 @@ struct relay_stream *stream_get_by_id(uint64_t stream_id)
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(relay_streams_ht, &stream_id, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		DBG("Relay stream %" PRIu64 " not found", stream_id);
 		goto end;

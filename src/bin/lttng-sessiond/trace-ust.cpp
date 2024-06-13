@@ -174,7 +174,7 @@ struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht, cons
 		name = DEFAULT_CHANNEL_NAME;
 
 	lttng_ht_lookup(ht, (void *) name, &iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		goto error;
 	}
@@ -218,7 +218,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 			trace_ust_ht_match_event,
 			&key,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		goto error;
 	}
@@ -254,7 +254,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 	key = domain_type;
 
 	lttng_ht_lookup(session->agents, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -785,7 +785,7 @@ id_tracker_lookup(struct ust_id_tracker *id_tracker, int id, struct lttng_ht_ite
 	struct lttng_ht_node_ulong *node;
 
 	lttng_ht_lookup(id_tracker->ht, (void *) _id, iter);
-	node = lttng_ht_iter_get_node_ulong(iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(iter);
 	if (node) {
 		return lttng::utils::container_of(node, &ust_id_tracker_node::node);
 	} else {

@@ -1004,7 +1004,7 @@ struct agent_app *agent_find_app_by_sock(int sock)
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(the_agent_apps_ht_by_sock, (void *) ((unsigned long) sock), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		goto error;
 	}
@@ -1375,7 +1375,7 @@ struct agent_event *agent_find_event(const char *name,
 			ht_match_event,
 			&key,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		goto error;
 	}
@@ -1624,7 +1624,7 @@ struct agent *agent_find_by_event_notifier_domain(enum lttng_domain_type domain_
 	     lttng_domain_type_str(domain_type));
 
 	lttng_ht_lookup(the_trigger_agents_ht_by_domain, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		goto end;
 	}

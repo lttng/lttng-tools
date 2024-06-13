@@ -407,7 +407,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 	lttng::urcu::read_lock_guard read_lock;
 
 	lttng_ht_lookup(ust_global->channels, (void *) channel_name, &iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		ret_code = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		goto error;

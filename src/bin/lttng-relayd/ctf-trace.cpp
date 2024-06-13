@@ -152,7 +152,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(session->ctf_traces_ht, subpath, &iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (!node) {
 		DBG("CTF Trace path %s not found", subpath);
 		goto end;

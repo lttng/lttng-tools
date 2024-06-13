@@ -274,7 +274,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 			trace_ust_ht_match_event_by_name,
 			event_name,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		DBG2("Trace UST event NOT found by name %s", event_name);
 		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
@@ -304,7 +304,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 		/* Get next duplicate event by name. */
 		cds_lfht_next_duplicate(
 			ht->ht, trace_ust_ht_match_event_by_name, event_name, &iter.iter);
-		node = lttng_ht_iter_get_node_str(&iter);
+		node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	} while (node);
 
 	ret = LTTNG_OK;
@@ -877,7 +877,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 	lttng::urcu::read_lock_guard read_lock;
 	agent_find_events_by_name(event_name, agt, &iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 
 	if (node == nullptr) {
 		DBG2("Event agent NOT found by name %s", event_name);
@@ -895,7 +895,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 		/* Get next duplicate agent event by name. */
 		agent_event_next_duplicate(event_name, agt, &iter);
-		node = lttng_ht_iter_get_node_str(&iter);
+		node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	} while (node);
 end:
 	return ret;

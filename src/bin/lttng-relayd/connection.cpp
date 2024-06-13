@@ -32,7 +32,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(relay_connections_ht, (void *) ((unsigned long) sock), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (!node) {
 		DBG2("Relay connection by sock %d not found", sock);
 		goto end;

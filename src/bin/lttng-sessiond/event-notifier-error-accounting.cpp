@@ -307,7 +307,7 @@ static enum event_notifier_error_accounting_status get_error_counter_index_for_t
 	lttng::urcu::read_lock_guard read_guard;
 
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node) {
 		index_entry = lttng::utils::container_of(node, &index_ht_entry::node);
 		*error_counter_index = index_entry->error_counter_index;
@@ -333,7 +333,7 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
 	uint64_t key = app->uid;
 
 	lttng_ht_lookup(uid_ht, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		entry = nullptr;
 	} else {
@@ -1302,7 +1302,7 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 	}
 
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node) {
 		int del_ret;
 		struct index_ht_entry *index_entry =

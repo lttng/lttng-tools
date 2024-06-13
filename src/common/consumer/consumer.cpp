@@ -202,7 +202,7 @@ static struct lttng_consumer_stream *find_stream(uint64_t key, struct lttng_ht *
 	lttng::urcu::read_lock_guard read_lock;
 
 	lttng_ht_lookup(ht, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node != nullptr) {
 		stream = lttng::utils::container_of(node, &lttng_consumer_stream::node);
 	}
@@ -247,7 +247,7 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 	}
 
 	lttng_ht_lookup(the_consumer_data.channel_ht, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node != nullptr) {
 		channel = lttng::utils::container_of(node, &lttng_consumer_channel::node);
 	}
@@ -629,7 +629,7 @@ static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &relayd->net_seq_idx, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node != nullptr) {
 		goto end;
 	}
@@ -690,7 +690,7 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 	}
 
 	lttng_ht_lookup(the_consumer_data.relayd_ht, &key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node != nullptr) {
 		relayd = lttng::utils::container_of(node, &consumer_relayd_sock_pair::node);
 	}
@@ -2185,7 +2185,7 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 	 * state. This should NEVER happen.
 	 */
 	lttng_ht_lookup(ht, &stream->key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	LTTNG_ASSERT(!node);
 
 	/*
@@ -2411,7 +2411,7 @@ void *consumer_thread_metadata_poll(void *data)
 
 				lttng_ht_lookup(metadata_ht, &tmp_id, &iter);
 			}
-			node = lttng_ht_iter_get_node_u64(&iter);
+			node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 			LTTNG_ASSERT(node);
 
 			stream = caa_container_of(node, struct lttng_consumer_stream, node);
@@ -3067,7 +3067,7 @@ void *consumer_thread_channel_poll(void *data)
 
 				lttng_ht_lookup(channel_ht, &tmp_id, &iter);
 			}
-			node = lttng_ht_iter_get_node_u64(&iter);
+			node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 			LTTNG_ASSERT(node);
 
 			chan = caa_container_of(node, struct lttng_consumer_channel, wait_fd_node);

@@ -1456,7 +1456,7 @@ struct ust_app *ust_app_find_by_sock(int sock)
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ust_app_ht_by_sock, (void *) ((unsigned long) sock), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by sock %d not found", sock);
 		goto error;
@@ -1480,7 +1480,7 @@ static struct ust_app *find_app_by_notify_sock(int sock)
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ust_app_ht_by_notify_sock, (void *) ((unsigned long) sock), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app find by notify sock %d not found", sock);
 		goto error;
@@ -1527,7 +1527,7 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 			ht_match_ust_app_event,
 			&key,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (node == nullptr) {
 		goto end;
 	}
@@ -1555,7 +1555,7 @@ static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(stru
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ht, &token, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app event notifier rule token not found: token = %" PRIu64, token);
 		goto end;
@@ -2540,7 +2540,7 @@ static struct ust_app_session *lookup_session_by_app(const struct ltt_ust_sessio
 	struct lttng_ht_node_u64 *node;
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		goto error;
 	}
@@ -2885,7 +2885,7 @@ static struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
 			ht_match_ust_app_ctx,
 			uctx,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (!node) {
 		goto end;
 	}
@@ -3012,7 +3012,7 @@ static int enable_ust_app_channel(struct ust_app_session *ua_sess,
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
-	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
+	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node == nullptr) {
 		DBG2("Unable to find channel %s in ust session id %" PRIu64,
 		     uchan->name,
@@ -3730,7 +3730,7 @@ static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 
 	/* Lookup channel in the ust app session */
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
-	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
+	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node != nullptr) {
 		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
@@ -3991,7 +3991,7 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 	struct lttng_ht_iter iter;
 
 	lttng_ht_lookup(ust_app_ht, (void *) ((unsigned long) pid), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app no found with pid %d", pid);
 		goto error;
@@ -4433,7 +4433,7 @@ void ust_app_unregister_by_socket(int sock_fd)
 
 	/* Get the node reference for a call_rcu */
 	lttng_ht_lookup(ust_app_ht_by_sock, (void *) ((unsigned long) sock_fd), &ust_app_sock_iter);
-	node = lttng_ht_iter_get_node_ulong(&ust_app_sock_iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&ust_app_sock_iter);
 	assert(node);
 
 	app = caa_container_of(node, struct ust_app, sock_n);
@@ -4873,7 +4873,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 
 			/* Get channel */
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			/* If the session if found for the app, the channel must be there */
 			LTTNG_ASSERT(ua_chan_node);
 
@@ -4979,7 +4979,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 
 			/* Lookup channel in the ust app session */
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			if (ua_chan_node == nullptr) {
 				DBG2("Channel %s not found in session id %" PRIu64
 				     " for app pid %d."
@@ -5142,7 +5142,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 			/* Lookup channel in the ust app session */
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			/*
 			 * It is possible that the channel cannot be found is
 			 * the channel/event creation occurs concurrently with
@@ -5232,7 +5232,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 			/* Lookup channel in the ust app session */
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			/* If the channel is not found, there is a code flow error */
 			LTTNG_ASSERT(ua_chan_node);
 
@@ -5777,7 +5777,7 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	__lookup_session_by_app(usess, app, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node == nullptr) {
 		/* Session is being or is deleted. */
 		goto end;
@@ -5922,7 +5922,7 @@ static int find_or_create_ust_app_channel(struct ltt_ust_session *usess,
 	struct lttng_ht_node_str *ua_chan_node;
 
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
-	ua_chan_node = lttng_ht_iter_get_node_str(&iter);
+	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node) {
 		*ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 		goto end;
@@ -6363,7 +6363,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 
 			/* Lookup channel in the ust app session */
 			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 			if (ua_chan_node == nullptr) {
 				goto next_app;
 			}
@@ -6452,7 +6452,7 @@ static struct ust_app_session *find_session_by_objd(struct ust_app *app, int obj
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_sessions_objd, (void *) ((unsigned long) objd), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app session find by objd %d not found", objd);
 		goto error;
@@ -6479,7 +6479,7 @@ static struct ust_app_channel *find_channel_by_objd(struct ust_app *app, int obj
 	ASSERT_RCU_READ_LOCKED();
 
 	lttng_ht_lookup(app->ust_objd, (void *) ((unsigned long) objd), &iter);
-	node = lttng_ht_iter_get_node_ulong(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (node == nullptr) {
 		DBG2("UST app channel find by objd %d not found", objd);
 		goto error;
@@ -7461,7 +7461,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 
 		/* Get channel */
 		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
 		/* If the session is found for the app, the channel must be there */
 		LTTNG_ASSERT(ua_chan_node);
 

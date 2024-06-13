@@ -494,7 +494,7 @@ lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t 
 	ASSERT_LOCKED(_lock);
 
 	lttng_ht_lookup(_channels.get(), &channel_key, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
 		LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
 			"Invalid channel key provided: channel key = {}", channel_key));
@@ -718,7 +718,7 @@ lsu::registry_session::enumeration(const char *enum_name, uint64_t enum_id) cons
 			ht_match_enum_id,
 			&reg_enum_lookup,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (!node) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Unknown enumeration referenced by application event field: enum name = `{}`, enum id = {}",
@@ -752,7 +752,7 @@ lsu::registry_session::_lookup_enum(const lsu::registry_enum *reg_enum_lookup) c
 			ht_match_enum,
 			reg_enum_lookup,
 			&iter.iter);
-	node = lttng_ht_iter_get_node_str(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (!node) {
 		goto end;
 	}

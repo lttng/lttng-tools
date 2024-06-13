@@ -122,7 +122,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 
 	lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(stream->indexes_ht, &net_seq_num, &iter);
-	node = lttng_ht_iter_get_node_u64(&iter);
+	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node) {
 		index = lttng::utils::container_of(node, &relay_index::index_n);
 	} else {
