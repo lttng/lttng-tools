@@ -318,7 +318,7 @@ static DIR *lttng_directory_handle_opendir(const struct lttng_directory_handle *
 					   const char *path)
 {
 	DIR *dir_stream = nullptr;
-	int fd = openat(handle->dirfd, path, O_RDONLY);
+	const int fd = openat(handle->dirfd, path, O_RDONLY);
 
 	if (fd < 0) {
 		goto end;
@@ -343,7 +343,7 @@ end:
 static int lttng_directory_handle_rmdir(const struct lttng_directory_handle *handle,
 					const char *name)
 {
-	int ret = unlinkat(handle->dirfd, name, AT_REMOVEDIR);
+	const int ret = unlinkat(handle->dirfd, name, AT_REMOVEDIR);
 	if (ret) {
 		PERROR("Failed to remove directory `%s`", name);
 	}

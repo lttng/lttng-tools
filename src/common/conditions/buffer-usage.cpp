@@ -22,7 +22,7 @@
 
 static bool is_usage_evaluation(const struct lttng_evaluation *evaluation)
 {
-	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
+	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
 	return type == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW ||
 		type == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH;

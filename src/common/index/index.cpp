@@ -99,7 +99,7 @@ _lttng_index_file_create_from_trace_chunk(struct lttng_trace_chunk *chunk,
 		chunk_status = (lttng_trace_chunk_status) lttng_trace_chunk_unlink_file(
 			chunk, index_file_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK &&
-		    !(chunk_status == LTTNG_TRACE_CHUNK_STATUS_ERROR && errno == ENOENT)) {
+		    (chunk_status != LTTNG_TRACE_CHUNK_STATUS_ERROR || errno != ENOENT)) {
 			goto error;
 		}
 	}

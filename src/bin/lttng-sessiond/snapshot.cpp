@@ -194,7 +194,7 @@ void snapshot_delete_output(struct snapshot *snapshot, struct snapshot_output *o
 	LTTNG_ASSERT(output);
 
 	iter.iter.node = &output->node.node;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	ret = lttng_ht_del(snapshot->output_ht, &iter);
 	LTTNG_ASSERT(!ret);
 	/*
@@ -213,7 +213,7 @@ void snapshot_add_output(struct snapshot *snapshot, struct snapshot_output *outp
 	LTTNG_ASSERT(snapshot->output_ht);
 	LTTNG_ASSERT(output);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_ulong(snapshot->output_ht, &output->node);
 	/*
 	 * This is safe because the ownership of a snapshot object is in a session
@@ -327,7 +327,7 @@ void snapshot_destroy(struct snapshot *obj)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (obj->output_ht->ht, &iter.iter, output, node.node) {
 			snapshot_delete_output(obj, output);

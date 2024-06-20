@@ -102,7 +102,7 @@ static int connect_no_timeout(struct lttcomm_sock *sock)
 
 static int connect_with_timeout(struct lttcomm_sock *sock)
 {
-	unsigned long timeout = lttcomm_get_network_timeout();
+	const unsigned long timeout = lttcomm_get_network_timeout();
 	int ret, flags, connect_ret;
 	struct timespec orig_time, cur_time;
 	unsigned long diff_ms;

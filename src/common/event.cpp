@@ -142,7 +142,7 @@ lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
 	ssize_t ret, offset = 0;
 	const struct lttng_event_probe_attr_comm *comm;
 	struct lttng_event_probe_attr *local_attr = nullptr;
-	struct lttng_payload_view comm_view =
+	const lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, offset, sizeof(*comm));
 
 	if (!lttng_payload_view_is_valid(&comm_view)) {
@@ -164,7 +164,7 @@ lttng_event_probe_attr_create_from_payload(struct lttng_payload_view *view,
 
 	{
 		const char *name;
-		struct lttng_payload_view name_view =
+		const lttng_payload_view name_view =
 			lttng_payload_view_from_view(view, offset, comm->symbol_name_len);
 
 		if (!lttng_payload_view_is_valid(&name_view)) {
@@ -204,7 +204,7 @@ lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 	ssize_t ret, offset = 0;
 	const struct lttng_event_function_attr_comm *comm;
 	struct lttng_event_function_attr *local_attr = nullptr;
-	struct lttng_payload_view comm_view =
+	const lttng_payload_view comm_view =
 		lttng_payload_view_from_view(view, offset, sizeof(*comm));
 
 	if (!lttng_payload_view_is_valid(&comm_view)) {
@@ -223,7 +223,7 @@ lttng_event_function_attr_create_from_payload(struct lttng_payload_view *view,
 
 	{
 		const char *name;
-		struct lttng_payload_view name_view =
+		const lttng_payload_view name_view =
 			lttng_payload_view_from_view(view, offset, comm->symbol_name_len);
 
 		if (!lttng_payload_view_is_valid(&name_view)) {
@@ -346,7 +346,7 @@ ssize_t lttng_event_create_from_payload(struct lttng_payload_view *view,
 	assert(view);
 
 	{
-		struct lttng_payload_view comm_view =
+		const lttng_payload_view comm_view =
 			lttng_payload_view_from_view(view, offset, sizeof(*event_comm));
 
 		if (!lttng_payload_view_is_valid(&comm_view)) {
@@ -441,7 +441,7 @@ deserialize_filter_expression:
 
 	{
 		const char *filter_expression_buffer;
-		struct lttng_buffer_view filter_expression_view = lttng_buffer_view_from_view(
+		const lttng_buffer_view filter_expression_view = lttng_buffer_view_from_view(
 			&view->buffer, offset, event_comm->filter_expression_len);
 
 		if (!lttng_buffer_view_is_valid(&filter_expression_view)) {
@@ -480,7 +480,7 @@ deserialize_filter_expression:
 
 	/* Bytecode */
 	{
-		struct lttng_payload_view bytecode_view =
+		const lttng_payload_view bytecode_view =
 			lttng_payload_view_from_view(view, offset, event_comm->bytecode_len);
 
 		if (!lttng_payload_view_is_valid(&bytecode_view)) {
@@ -1019,7 +1019,7 @@ ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
 	ssize_t ret, offset = 0;
 	const struct lttng_event_context_comm *comm;
 	struct lttng_event_context *local_context = nullptr;
-	struct lttng_buffer_view comm_view =
+	const lttng_buffer_view comm_view =
 		lttng_buffer_view_from_view(&view->buffer, offset, sizeof(*comm));
 
 	assert(event_ctx);
@@ -1042,7 +1042,7 @@ ssize_t lttng_event_context_create_from_payload(struct lttng_payload_view *view,
 	local_context->ctx = (lttng_event_context_type) comm->type;
 
 	{
-		struct lttng_payload_view subtype_view =
+		const lttng_payload_view subtype_view =
 			lttng_payload_view_from_view(view, offset, -1);
 
 		switch (local_context->ctx) {

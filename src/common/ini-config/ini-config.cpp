@@ -36,7 +36,7 @@ static int config_entry_handler_filter(struct handler_filter_args *args,
 				       const char *value)
 {
 	int ret = 0;
-	struct config_entry entry = { section, name, value };
+	const config_entry entry = { section, name, value };
 
 	LTTNG_ASSERT(args);
 

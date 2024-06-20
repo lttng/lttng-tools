@@ -101,7 +101,7 @@ static void print_one_event_expr(const struct lttng_event_expr *event_expr)
 static bool action_group_contains_notify(const struct lttng_action *action_group)
 {
 	unsigned int i, count;
-	enum lttng_action_status status = lttng_action_list_get_count(action_group, &count);
+	const lttng_action_status status = lttng_action_list_get_count(action_group, &count);
 
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		printf("Failed to get action count from action group\n");
@@ -434,9 +434,9 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (!((action_type == LTTNG_ACTION_TYPE_LIST &&
-		       action_group_contains_notify(action)) ||
-		      action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
+		if ((action_type != LTTNG_ACTION_TYPE_LIST ||
+		     !action_group_contains_notify(action)) &&
+		    action_type != LTTNG_ACTION_TYPE_NOTIFY) {
 			printf("The action of trigger \"%s\" is not \"notify\", skipping.\n",
 			       trigger_name);
 			continue;

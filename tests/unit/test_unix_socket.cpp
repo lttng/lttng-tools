@@ -70,7 +70,7 @@ static void test_high_fd_count(unsigned int fd_count)
 
 	for (i = 0; i < fd_count; i++) {
 		struct fd_handle *handle;
-		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+		const int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 
 		if (fd < 0) {
 			PERROR("Failed to create fd while creating test payload");

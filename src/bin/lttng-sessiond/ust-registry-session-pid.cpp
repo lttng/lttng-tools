@@ -28,7 +28,7 @@ lsu::registry_session_per_pid::registry_session_per_pid(const struct ust_app& ap
 	_procname{ app.name },
 	_app_creation_time{ app.registration_time }
 {
-	lttng::pthread::lock_guard registry_lock(_lock);
+	const lttng::pthread::lock_guard registry_lock(_lock);
 	_generate_metadata();
 }
 

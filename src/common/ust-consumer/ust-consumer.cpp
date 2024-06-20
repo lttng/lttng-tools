@@ -667,7 +667,7 @@ static int flush_channel(uint64_t chan_key)
 
 	DBG("UST consumer flush channel key %" PRIu64, chan_key);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
 		ERR("UST consumer flush channel %" PRIu64 " not found", chan_key);
@@ -741,7 +741,7 @@ static int clear_quiescent_channel(uint64_t chan_key)
 
 	DBG("UST consumer clear quiescent channel key %" PRIu64, chan_key);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	channel = consumer_find_channel(chan_key);
 	if (!channel) {
 		ERR("UST consumer clear quiescent channel %" PRIu64 " not found", chan_key);
@@ -959,7 +959,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 
 	DBG("UST consumer snapshot metadata with key %" PRIu64 " at path %s", key, path);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(!metadata_channel->monitor);
 
@@ -1068,7 +1068,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(ctx);
 	ASSERT_RCU_READ_LOCKED();
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	if (relayd_id != (uint64_t) -1ULL) {
 		use_relayd = 1;
@@ -1395,14 +1395,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* relayd needs RCU read-side lock */
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
 	{
-		uint32_t major = msg.u.relayd_sock.major;
-		uint32_t minor = msg.u.relayd_sock.minor;
-		enum lttcomm_sock_proto protocol =
+		const uint32_t major = msg.u.relayd_sock.major;
+		const uint32_t minor = msg.u.relayd_sock.minor;
+		const lttcomm_sock_proto protocol =
 			(enum lttcomm_sock_proto) msg.u.relayd_sock.relayd_socket_protocol;
 
 		/* Session daemon status message are handled in the following call. */
@@ -1420,7 +1420,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
 	{
-		uint64_t index = msg.u.destroy_relayd.net_seq_idx;
+		const uint64_t index = msg.u.destroy_relayd.net_seq_idx;
 		struct consumer_relayd_sock_pair *relayd;
 
 		DBG("UST consumer destroying relayd %" PRIu64, index);
@@ -1456,7 +1456,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		int is_data_pending;
 		ssize_t ret_send;
-		uint64_t id = msg.u.data_pending.session_id;
+		const uint64_t id = msg.u.data_pending.session_id;
 
 		DBG("UST consumer data pending command for id %" PRIu64, id);
 
@@ -1629,7 +1629,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_GET_CHANNEL:
 	{
 		int ret, relayd_err = 0;
-		uint64_t key = msg.u.get_channel.key;
+		const uint64_t key = msg.u.get_channel.key;
 		struct lttng_consumer_channel *found_channel;
 
 		found_channel = consumer_find_channel(key);
@@ -1689,7 +1689,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DESTROY_CHANNEL:
 	{
-		uint64_t key = msg.u.destroy_channel.key;
+		const uint64_t key = msg.u.destroy_channel.key;
 
 		/*
 		 * Only called if streams have not been sent to stream
@@ -1735,10 +1735,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_PUSH_METADATA:
 	{
 		int ret;
-		uint64_t len = msg.u.push_metadata.len;
-		uint64_t key = msg.u.push_metadata.key;
-		uint64_t offset = msg.u.push_metadata.target_offset;
-		uint64_t version = msg.u.push_metadata.version;
+		const uint64_t len = msg.u.push_metadata.len;
+		const uint64_t key = msg.u.push_metadata.key;
+		const uint64_t offset = msg.u.push_metadata.target_offset;
+		const uint64_t version = msg.u.push_metadata.version;
 		struct lttng_consumer_channel *found_channel;
 
 		DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key, len);
@@ -1814,7 +1814,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
 		struct lttng_consumer_channel *found_channel;
-		uint64_t key = msg.u.snapshot_channel.key;
+		const uint64_t key = msg.u.snapshot_channel.key;
 		int ret_send;
 
 		found_channel = consumer_find_channel(key);
@@ -1867,7 +1867,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		struct lttng_ht *ht;
 		struct lttng_consumer_stream *stream;
 		uint64_t id = msg.u.discarded_events.session_id;
-		uint64_t key = msg.u.discarded_events.channel_key;
+		const uint64_t key = msg.u.discarded_events.channel_key;
 
 		DBG("UST consumer discarded events command for session id %" PRIu64, id);
 		pthread_mutex_lock(&the_consumer_data.lock);
@@ -1921,7 +1921,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		struct lttng_ht *ht;
 		struct lttng_consumer_stream *stream;
 		uint64_t id = msg.u.lost_packets.session_id;
-		uint64_t key = msg.u.lost_packets.channel_key;
+		const uint64_t key = msg.u.lost_packets.channel_key;
 
 		DBG("UST consumer lost packets command for session id %" PRIu64, id);
 		pthread_mutex_lock(&the_consumer_data.lock);
@@ -2014,7 +2014,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ROTATE_CHANNEL:
 	{
 		struct lttng_consumer_channel *found_channel;
-		uint64_t key = msg.u.rotate_channel.key;
+		const uint64_t key = msg.u.rotate_channel.key;
 		int ret_send_status;
 
 		found_channel = consumer_find_channel(key);
@@ -2067,7 +2067,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_CLEAR_CHANNEL:
 	{
 		struct lttng_consumer_channel *found_channel;
-		uint64_t key = msg.u.clear_channel.key;
+		const uint64_t key = msg.u.clear_channel.key;
 		int ret_send_status;
 
 		found_channel = consumer_find_channel(key);
@@ -3204,7 +3204,7 @@ void lttng_ustconsumer_close_all_metadata(struct lttng_ht *metadata_ht)
 	DBG("UST consumer closing all metadata streams");
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
 			health_code_update();
@@ -3243,7 +3243,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 {
 	struct lttcomm_metadata_request_msg request;
 	struct lttcomm_consumer_msg msg;
-	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+	const lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	uint64_t len, key, offset, version;
 	int ret;
 

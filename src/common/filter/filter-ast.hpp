@@ -28,7 +28,7 @@
 
 // the parameter name (of the reentrant 'yyparse' function)
 // data is a pointer to a 'SParserParam' structure
-//#define YYPARSE_PARAM	parser_ctx
+// #define YYPARSE_PARAM	parser_ctx
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T

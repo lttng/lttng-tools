@@ -93,7 +93,7 @@ static void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
@@ -167,7 +167,7 @@ process_attr_tracker_lookup(const struct process_attr_tracker *tracker,
 
 	LTTNG_ASSERT(tracker->policy == LTTNG_TRACKING_POLICY_INCLUDE_SET);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(tracker->inclusion_set_ht,
 			process_attr_value_hash(value),
 			match_inclusion_set_value,
@@ -189,7 +189,7 @@ process_attr_tracker_inclusion_set_add_value(struct process_attr_tracker *tracke
 	struct process_attr_value *value_copy = nullptr;
 	struct process_attr_tracker_value_node *value_node = nullptr;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	if (tracker->policy != LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		status = PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY;
 		goto end;
@@ -236,7 +236,7 @@ process_attr_tracker_inclusion_set_remove_value(struct process_attr_tracker *tra
 	struct process_attr_tracker_value_node *value_node;
 	enum process_attr_tracker_status status = PROCESS_ATTR_TRACKER_STATUS_OK;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	if (tracker->policy != LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		status = PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY;
 		goto end;
@@ -275,7 +275,7 @@ process_attr_tracker_get_inclusion_set(const struct process_attr_tracker *tracke
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {

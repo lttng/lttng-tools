@@ -172,7 +172,7 @@ void buffer_reg_uid_add(struct buffer_reg_uid *reg)
 	DBG3("Buffer registry per UID adding to global registry with id: %" PRIu64,
 	     reg->session_id);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	nodep = cds_lfht_add_unique(
 		ht->ht, ht->hash_fct(reg, lttng_ht_seed), ht->match_fct, reg, &reg->node.node);
 	LTTNG_ASSERT(nodep == &reg->node.node);
@@ -298,7 +298,7 @@ void buffer_reg_pid_add(struct buffer_reg_pid *reg)
 	DBG3("Buffer registry per PID adding to global registry with id: %" PRIu64,
 	     reg->session_id);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_u64(buffer_registry_pid, &reg->node);
 }
 
@@ -344,7 +344,7 @@ int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_lis
 	int ret = -1;
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		/*
 		 * For the per-uid registry, we have to iterate since we don't have the
@@ -443,7 +443,7 @@ void buffer_reg_channel_add(struct buffer_reg_session *session, struct buffer_re
 	LTTNG_ASSERT(session);
 	LTTNG_ASSERT(channel);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_add_unique_u64(session->channels, &channel->node);
 }
 
@@ -591,7 +591,7 @@ static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 
 	/* Destroy all channels. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (regp->channels->ht, &iter.iter, reg_chan, node.node) {
 			ret = lttng_ht_del(regp->channels, &iter);
@@ -624,7 +624,7 @@ void buffer_reg_uid_remove(struct buffer_reg_uid *regp)
 
 	LTTNG_ASSERT(regp);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	iter.iter.node = &regp->node.node;
 	ret = lttng_ht_del(buffer_registry_uid, &iter);
 	LTTNG_ASSERT(!ret);
@@ -671,7 +671,7 @@ void buffer_reg_uid_destroy(struct buffer_reg_uid *regp, struct consumer_output 
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		/* Get the right socket from the consumer object. */
 		socket = consumer_find_socket_by_bitness(regp->bits_per_long, consumer);
 		if (!socket) {

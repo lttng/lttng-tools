@@ -75,7 +75,7 @@ std::string escape_tsdl_identifier(const std::string& original_identifier)
 	new_identifier = "_";
 
 	/* Replace illegal characters by '_'. */
-	std::locale c_locale{ "C" };
+	const std::locale c_locale{ "C" };
 	for (const auto current_char : original_identifier) {
 		if (!std::isalnum(current_char, c_locale) && current_char != '_') {
 			new_identifier += '_';

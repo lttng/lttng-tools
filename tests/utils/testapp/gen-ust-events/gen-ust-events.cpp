@@ -51,8 +51,8 @@ int main(int argc, char **argv)
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
 	char escape[10] = "\\*";
-	double dbl = 2.0;
-	float flt = 2222.0;
+	const double dbl = 2.0;
+	const float flt = 2222.0;
 	uint32_t net_values[] = { 1, 2, 3 };
 	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;

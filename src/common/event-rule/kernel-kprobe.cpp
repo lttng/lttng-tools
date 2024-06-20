@@ -339,7 +339,7 @@ ssize_t lttng_event_rule_kernel_kprobe_create_from_payload(struct lttng_payload_
 
 	{
 		/* Map the name. */
-		struct lttng_payload_view current_payload_view =
+		const lttng_payload_view current_payload_view =
 			lttng_payload_view_from_view(view, offset, kprobe_comm->name_len);
 
 		if (!lttng_payload_view_is_valid(&current_payload_view)) {

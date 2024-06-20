@@ -427,7 +427,7 @@ void fd_tracker_log(struct fd_tracker *tracker)
 	DBG_NO_LOC("  Tracked unsuspendable file descriptors");
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			tracker->unsuspendable_fds, &iter, unsuspendable_fd, tracker_node) {
@@ -604,7 +604,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 	int ret, user_ret, i, fds_to_suspend;
 	unsigned int active_fds;
 	struct unsuspendable_fd **entries;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	entries = calloc<unsuspendable_fd *>(fd_count);
 	if (!entries) {
@@ -695,7 +695,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 {
 	int i, ret, user_ret;
 	int *fds = nullptr;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Maintain a local copy of fds_in as the user's callback may modify its

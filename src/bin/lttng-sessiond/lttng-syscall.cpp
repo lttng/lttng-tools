@@ -165,7 +165,7 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (ht->ht, &iter.iter, ksyscall, node.node) {
 			int ret;
@@ -313,7 +313,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 		}
 
 		{
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 			struct syscall *ksyscall;
 
 			ksyscall = lookup_syscall(syscalls_ht, syscall_table[i].name);

@@ -155,7 +155,7 @@ static void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
 	struct ust_error_accounting_entry *entry =
 		lttng::utils::container_of(entry_ref, &ust_error_accounting_entry::ref);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(error_counter_uid_ht->ht, &entry->node.node);
 	call_rcu(&entry->rcu_head, free_ust_error_accounting_entry);
 }
@@ -180,7 +180,7 @@ static void put_ref_all_ust_error_accounting_entry()
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
@@ -200,7 +200,7 @@ static void get_ref_all_ust_error_accounting_entry()
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
@@ -304,7 +304,7 @@ static enum event_notifier_error_accounting_status get_error_counter_index_for_t
 	struct lttng_ht_iter iter;
 	const struct index_ht_entry *index_entry;
 	enum event_notifier_error_accounting_status status;
-	lttng::urcu::read_lock_guard read_guard;
+	const lttng::urcu::read_lock_guard read_guard;
 
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
@@ -594,7 +594,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	struct ust_error_accounting_entry *entry;
 	enum event_notifier_error_accounting_status status;
 	struct lttng_ust_abi_object_data **cpu_counters;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	if (!ust_app_supports_counters(app)) {
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED;
@@ -746,7 +746,7 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 	struct ust_error_accounting_entry *entry;
 	int i;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* If an error occurred during app registration no entry was created. */
 	if (!app->event_notifier_group.counter) {
@@ -797,7 +797,7 @@ event_notifier_error_accounting_ust_get_count(const struct lttng_trigger *trigge
 	uid_t trigger_owner_uid;
 	const char *trigger_name;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
@@ -870,7 +870,7 @@ event_notifier_error_accounting_ust_clear(const struct lttng_trigger *trigger)
 	size_t dimension_index;
 	const uint64_t tracer_token = lttng_trigger_get_tracer_token(trigger);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	status = get_error_counter_index_for_token(&ust_state, tracer_token, &error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
@@ -1261,7 +1261,7 @@ void event_notifier_error_accounting_unregister_event_notifier(const struct lttn
 	enum event_notifier_error_accounting_status status;
 	struct error_accounting_state *state;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	status = event_notifier_error_accounting_clear(trigger);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {

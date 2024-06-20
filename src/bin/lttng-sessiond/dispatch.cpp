@@ -48,7 +48,7 @@ static void update_ust_app(int app_sock)
 		return;
 	}
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(app_sock >= 0);
 	app = ust_app_find_by_sock(app_sock);
 	if (app == nullptr) {
@@ -133,8 +133,8 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 
 	for (i = 0; i < nb_fd; i++) {
 		/* Get faulty FD. */
-		uint32_t revents = LTTNG_POLL_GETEV(&events, i);
-		int pollfd = LTTNG_POLL_GETFD(&events, i);
+		const uint32_t revents = LTTNG_POLL_GETEV(&events, i);
+		const int pollfd = LTTNG_POLL_GETFD(&events, i);
 
 		cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue->head, head) {
 			if (pollfd == wait_node->app->sock && (revents & (LPOLLHUP | LPOLLERR))) {
@@ -379,7 +379,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * and change its state.
 				 */
 				const auto list_lock = lttng::sessiond::lock_session_list();
-				lttng::urcu::read_lock_guard read_lock;
+				const lttng::urcu::read_lock_guard read_lock;
 
 				/*
 				 * Add application to the global hash table. This needs to be

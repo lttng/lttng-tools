@@ -52,7 +52,7 @@ ssize_t lttng_evaluation_create_from_payload(const struct lttng_condition *condi
 {
 	ssize_t ret, evaluation_size = 0;
 	const struct lttng_evaluation_comm *evaluation_comm;
-	struct lttng_payload_view evaluation_comm_view =
+	const lttng_payload_view evaluation_comm_view =
 		lttng_payload_view_from_view(src_view, 0, sizeof(*evaluation_comm));
 	struct lttng_payload_view evaluation_view =
 		lttng_payload_view_from_view(src_view, sizeof(*evaluation_comm), -1);

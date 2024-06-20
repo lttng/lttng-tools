@@ -595,7 +595,7 @@ enum class type {
   custom_type
 };
 
-// Maps core type T to the corresponding type enum constant.
+// Maps core type T to the corresponding type constant.
 template <typename T, typename Char>
 struct type_constant : std::integral_constant<type, type::custom_type> {};
 

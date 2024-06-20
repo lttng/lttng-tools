@@ -33,9 +33,9 @@ public:
 	~mutex() = default;
 
 	/* "Not copyable" and "not moveable" Mutex requirements. */
-	mutex(mutex const&) = delete;
+	mutex(const mutex&) = delete;
 	mutex(mutex&&) = delete;
-	mutex& operator=(mutex const&) = delete;
+	mutex& operator=(const mutex&) = delete;
 	mutex& operator=(mutex&&) = delete;
 
 	void lock()

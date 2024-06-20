@@ -167,8 +167,8 @@ static void untrack_std_fds(struct fd_tracker *tracker)
 	};
 
 	for (i = 0; i < sizeof(files) / sizeof(*files); i++) {
-		int fd = files[i].fd;
-		int ret = fd_tracker_close_unsuspendable_fd(
+		const int fd = files[i].fd;
+		const int ret = fd_tracker_close_unsuspendable_fd(
 			tracker, &files[i].fd, 1, noop_close, nullptr);
 
 		ok(ret == 0, "Untrack unsuspendable fd %d (%s)", fd, files[i].name);
@@ -299,7 +299,7 @@ static int open_pipes(void *data __attribute__((unused)), int *out_fds)
 	const unsigned int pipe_count = TRACKER_FD_LIMIT / 2;
 
 	for (i = 0; i < pipe_count; i++) {
-		int ret = pipe(&out_fds[i * 2]);
+		const int ret = pipe(&out_fds[i * 2]);
 
 		if (ret) {
 			return -errno;
@@ -314,7 +314,7 @@ static int close_pipes(void *data __attribute__((unused)), int *fds)
 	int *pipes = fds;
 
 	for (i = 0; i < TRACKER_FD_LIMIT; i++) {
-		int ret = close(pipes[i]);
+		const int ret = close(pipes[i]);
 
 		if (ret) {
 			return -errno;

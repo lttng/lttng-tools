@@ -74,7 +74,7 @@ static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_err
 	{
 		bool is_short;
 		const struct argpar_opt_descr *descr = argpar_error_opt_descr(error, &is_short);
-		int orig_index = argpar_error_orig_index(error);
+		const int orig_index = argpar_error_orig_index(error);
 		const char *arg = argv[orig_index];
 
 		if (is_short) {
@@ -101,7 +101,7 @@ static ATTR_FORMAT_PRINTF(4, 0) char *format_arg_error_v(const struct argpar_err
 	}
 	case ARGPAR_ERROR_TYPE_UNKNOWN_OPT:
 	{
-		int orig_index = argpar_error_orig_index(error);
+		const int orig_index = argpar_error_orig_index(error);
 		const char *unknown_opt = argpar_error_unknown_opt_name(error);
 
 		ret = strutils_appendf(&str,

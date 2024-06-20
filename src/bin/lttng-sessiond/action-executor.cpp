@@ -289,7 +289,7 @@ static int action_executor_start_session_handler(struct action_executor *executo
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	action_status = lttng_action_start_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -379,7 +379,7 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	action_status = lttng_action_stop_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -470,7 +470,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	enum lttng_error_code cmd_ret;
 	struct lttng_action *action = item->action;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	action_status = lttng_action_rotate_session_get_session_name(action, &session_name);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -572,7 +572,7 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 
 	default_snapshot_output.max_size = UINT64_MAX;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Validate if, at the moment the action was queued, the target session
@@ -979,7 +979,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 				       struct lttng_dynamic_array *subitems)
 {
 	int ret = 0;
-	enum lttng_action_type type = lttng_action_get_type(action);
+	const lttng_action_type type = lttng_action_get_type(action);
 	const char *session_name = nullptr;
 	enum lttng_action_status status;
 	struct action_work_subitem subitem = {

@@ -523,7 +523,7 @@ static int spawn_sessiond(const char *pathname)
 		 */
 		for (;;) {
 			int status;
-			pid_t wait_pid_ret = waitpid(pid, &status, 0);
+			const pid_t wait_pid_ret = waitpid(pid, &status, 0);
 
 			if (wait_pid_ret < 0) {
 				if (errno == EINTR) {

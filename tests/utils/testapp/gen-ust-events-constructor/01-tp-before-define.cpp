@@ -7,14 +7,14 @@
 #include "obj.h"
 #include "tp.h"
 
-void test_constructor1(void) __attribute__((constructor));
-void test_constructor1(void)
+void test_constructor1() __attribute__((constructor));
+void test_constructor1()
 {
 	tracepoint(tp, constructor_c_across_units_before_define);
 }
 
-void test_destructor1(void) __attribute__((destructor));
-void test_destructor1(void)
+void test_destructor1() __attribute__((destructor));
+void test_destructor1()
 {
 	tracepoint(tp, destructor_c_across_units_before_define);
 }

@@ -410,7 +410,7 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
-	unsigned int sizeof_fds = nb_fd * sizeof(int);
+	const unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
@@ -534,7 +534,7 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	struct cmsghdr *cmptr;
 	struct iovec iov[1];
 	ssize_t ret = -1;
-	unsigned int sizeof_fds = nb_fd * sizeof(int);
+	const unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
@@ -620,7 +620,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	struct iovec iov[1];
 	ssize_t ret = 0;
 	struct cmsghdr *cmsg;
-	size_t sizeof_fds = nb_fd * sizeof(int);
+	const size_t sizeof_fds = nb_fd * sizeof(int);
 
 #ifdef __linux__
 /* Account for the struct ucred cmsg in the buffer size */
@@ -846,7 +846,7 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	struct iovec iov[1];
 	ssize_t ret = 0;
 	struct cmsghdr *cmsg;
-	size_t sizeof_fds = nb_fd * sizeof(int);
+	const size_t sizeof_fds = nb_fd * sizeof(int);
 
 	LTTNG_ASSERT(sock);
 	LTTNG_ASSERT(fds);
@@ -983,7 +983,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 	ssize_t ret = -1;
 #if defined(__linux__) || defined(__CYGWIN__)
 	struct cmsghdr *cmptr;
-	size_t sizeof_cred = sizeof(lttng_sock_cred);
+	const size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 	lttng_sock_cred *creds;
 
@@ -1048,7 +1048,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len, lttng_sock
 	size_t len_last;
 #if defined(__linux__) || defined(__CYGWIN__)
 	struct cmsghdr *cmptr;
-	size_t sizeof_cred = sizeof(lttng_sock_cred);
+	const size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 #endif /* __linux__, __CYGWIN__ */
 

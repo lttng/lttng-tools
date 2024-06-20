@@ -212,7 +212,7 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 		return;
 	}
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(inode->registry_ht, &inode->registry_node);
 
 	if (inode->unlink_pending) {
@@ -476,7 +476,7 @@ void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
 		return;
 	}
 	if (registry->inodes) {
-		int ret = cds_lfht_destroy(registry->inodes, nullptr);
+		const int ret = cds_lfht_destroy(registry->inodes, nullptr);
 
 		LTTNG_ASSERT(!ret);
 	}
@@ -496,7 +496,7 @@ lttng_inode_registry_get_inode(struct lttng_inode_registry *registry,
 	struct cds_lfht_iter iter;
 	struct cds_lfht_node *node;
 	struct lttng_inode *inode = nullptr;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	ret = fstat(fd, &statbuf);
 	if (ret < 0) {

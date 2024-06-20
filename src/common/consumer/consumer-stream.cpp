@@ -373,7 +373,7 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx, uint64_
 	/* Ease our life a bit. */
 	ht = the_consumer_data.stream_list_ht;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Search the metadata associated with the session id of the given stream. */
 
@@ -643,7 +643,7 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	stream = zmalloc<lttng_consumer_stream>();
 	if (stream == nullptr) {
@@ -851,7 +851,7 @@ void consumer_stream_close_output(struct lttng_consumer_stream *stream)
 	stream->trace_chunk = nullptr;
 
 	/* Check and cleanup relayd if needed. */
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	relayd = consumer_find_relayd(stream->net_seq_idx);
 	if (relayd != nullptr) {
 		consumer_stream_relayd_close(stream, relayd);
@@ -874,7 +874,7 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream, struct lttng_h
 	/* Should NEVER be called not in monitor mode. */
 	LTTNG_ASSERT(stream->chan->monitor);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	if (ht) {
 		iter.iter.node = &stream->node.node;
@@ -1093,7 +1093,7 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(element);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
 		struct consumer_relayd_sock_pair *relayd;
 		relayd = consumer_find_relayd(stream->net_seq_idx);

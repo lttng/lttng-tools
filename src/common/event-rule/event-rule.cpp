@@ -283,7 +283,7 @@ struct lttng_event *lttng_event_rule_generate_lttng_event(const struct lttng_eve
 bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule)
 {
 	bool targets_agent_domain = false;
-	enum lttng_domain_type type = lttng_event_rule_get_domain_type(rule);
+	const lttng_domain_type type = lttng_event_rule_get_domain_type(rule);
 
 	switch (type) {
 	case LTTNG_DOMAIN_JUL:

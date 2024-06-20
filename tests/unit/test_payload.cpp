@@ -29,7 +29,7 @@ static void test_fd_push_pop_order()
 
 	diag("Validating fd push/pop order");
 	for (i = 0; i < 3; i++) {
-		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+		const int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 		struct fd_handle *handle;
 
 		LTTNG_ASSERT(fd >= 0);
@@ -77,7 +77,7 @@ static void test_fd_push_pop_imbalance()
 	diag("Validating fd pop imbalance");
 	for (i = 0; i < 10; i++) {
 		struct fd_handle *handle;
-		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+		const int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 
 		LTTNG_ASSERT(fd >= 0);
 
@@ -118,7 +118,7 @@ fail:
 static void test_fd_pop_fd_root_views()
 {
 	int ret, i;
-	int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+	const int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 	struct fd_handle *handle;
 	struct lttng_payload payload;
 	const char *const test_description =

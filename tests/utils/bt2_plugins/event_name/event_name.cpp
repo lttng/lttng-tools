@@ -56,15 +56,15 @@ public:
 	{
 	}
 
-	event_name_set(event_name_set&& original) :
+	event_name_set(event_name_set&& original) noexcept :
 		lttng::utils::random_access_container_wrapper<const bt_value *,
 							      const char *,
 							      event_name_set_operations>(
-			std::move(original._container))
+			original._container)
 	{
 	}
 
-	event_name_set(const bt_value *names) :
+	explicit event_name_set(const bt_value *names) :
 		lttng::utils::random_access_container_wrapper<const bt_value *,
 							      const char *,
 							      event_name_set_operations>(names)
@@ -102,9 +102,7 @@ struct event_name_iterator_data {
 	{
 	}
 
-	~event_name_iterator_data()
-	{
-	}
+	~event_name_iterator_data() = default;
 
 	const lttng::bt2::message_iterator_ref upstream_iterator;
 	const class event_name_filter& event_name_filter;
@@ -161,7 +159,7 @@ event_name_initialize(bt_self_component_filter *self_comp,
 	}
 
 	try {
-		event_name_set event_names{ names_param };
+		const event_name_set event_names{ names_param };
 		if (event_names.empty()) {
 			BT_CURRENT_THREAD_ERROR_APPEND_CAUSE_FROM_COMPONENT(
 				bt_self_component_filter_as_self_component(self_comp),

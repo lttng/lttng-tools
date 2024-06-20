@@ -455,7 +455,7 @@ struct relay_session *session_get_by_id(uint64_t id)
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(sessions_ht, &id, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
@@ -503,7 +503,7 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 	 * originate from the same session daemon session.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			sessions_ht->ht, &iter.iter, iterated_session, session_n.node) {
@@ -614,7 +614,7 @@ void session_put(struct relay_session *session)
 	if (!session) {
 		return;
 	}
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&session->ref, session_release);
 }
 
@@ -633,7 +633,7 @@ int session_close(struct relay_session *session)
 	pthread_mutex_unlock(&session->lock);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (session->ctf_traces_ht->ht, &iter.iter, trace, node.node) {
 			ret = ctf_trace_close(trace);
@@ -661,7 +661,7 @@ end:
 
 int session_abort(struct relay_session *session)
 {
-	int ret = 0;
+	const int ret = 0;
 
 	if (!session) {
 		return 0;
@@ -684,7 +684,7 @@ void print_sessions()
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
 			if (!session_get(session)) {

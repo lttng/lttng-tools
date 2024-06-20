@@ -24,18 +24,18 @@
 
 static struct option long_options[] = {
 	/* These options set a flag. */
-	{ "trigger", required_argument, 0, 't' },
-	{ "sync-after-notif-register", required_argument, 0, 'a' },
+	{ "trigger", required_argument, nullptr, 't' },
+	{ "sync-after-notif-register", required_argument, nullptr, 'a' },
 	/* Default alue for count is 1 */
-	{ "count", required_argument, 0, 'b' },
+	{ "count", required_argument, nullptr, 'b' },
 	/*
 	 * When end-trigger is present the reception loop is exited only when a
 	 * notification matching the end trigger is received.
 	 * Otherwise the loop is exited when the count of notification received
 	 * for `trigger` math the `count` argument.
 	 */
-	{ "end-trigger", required_argument, 0, 'c' },
-	{ 0, 0, 0, 0 }
+	{ "end-trigger", required_argument, nullptr, 'c' },
+	{ nullptr, 0, nullptr, 0 }
 };
 
 static bool action_list_contains_notify(const struct lttng_action *action_list)
@@ -53,7 +53,7 @@ static bool action_list_contains_notify(const struct lttng_action *action_list)
 static bool is_trigger_name(const char *expected_trigger_name,
 			    struct lttng_notification *notification)
 {
-	const char *trigger_name = NULL;
+	const char *trigger_name = nullptr;
 	enum lttng_trigger_status trigger_status;
 	const struct lttng_trigger *trigger;
 	bool names_match;
@@ -88,13 +88,13 @@ static int _main(int argc, char **argv)
 	int ret;
 	int option;
 	int option_index;
-	char *expected_trigger_name = NULL;
-	char *end_trigger_name = NULL;
-	struct lttng_triggers *triggers = NULL;
+	char *expected_trigger_name = nullptr;
+	char *end_trigger_name = nullptr;
+	struct lttng_triggers *triggers = nullptr;
 	unsigned int count, i, subcription_count = 0;
 	enum lttng_trigger_status trigger_status;
-	char *after_notif_register_file_path = NULL;
-	struct lttng_notification_channel *notification_channel = NULL;
+	char *after_notif_register_file_path = nullptr;
+	struct lttng_notification_channel *notification_channel = nullptr;
 	int expected_notifications = 1, notification_count = 0;
 
 	while ((option = getopt_long(argc, argv, "a:b:c:t:", long_options, &option_index)) != -1) {
@@ -154,19 +154,19 @@ static int _main(int argc, char **argv)
 		const struct lttng_action *action = lttng_trigger_get_const_action(trigger);
 		const enum lttng_action_type action_type = lttng_action_get_type(action);
 		enum lttng_notification_channel_status channel_status;
-		const char *trigger_name = NULL;
+		const char *trigger_name = nullptr;
 
 		lttng_trigger_get_name(trigger, &trigger_name);
 		if (strcmp(trigger_name, expected_trigger_name) != 0) {
 			/* Might match the end event trigger */
-			if (end_trigger_name != NULL &&
+			if (end_trigger_name != nullptr &&
 			    strcmp(trigger_name, end_trigger_name) != 0) {
 				continue;
 			}
 		}
-		if (!((action_type == LTTNG_ACTION_TYPE_LIST &&
-		       action_list_contains_notify(action)) ||
-		      action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
+		if ((action_type != LTTNG_ACTION_TYPE_LIST ||
+		     !action_list_contains_notify(action)) &&
+		    action_type != LTTNG_ACTION_TYPE_NOTIFY) {
 			/* "The action of trigger is not notify, skipping. */
 			continue;
 		}
@@ -190,7 +190,7 @@ static int _main(int argc, char **argv)
 		goto end;
 	}
 
-	if (end_trigger_name != NULL && subcription_count != 2) {
+	if (end_trigger_name != nullptr && subcription_count != 2) {
 		fprintf(stderr, "No matching end event trigger with a notify action found.\n");
 		ret = -1;
 		goto end;
@@ -232,7 +232,8 @@ static int _main(int argc, char **argv)
 		}
 
 		/* Early exit check. */
-		if (end_trigger_name != NULL && is_trigger_name(end_trigger_name, notification)) {
+		if (end_trigger_name != nullptr &&
+		    is_trigger_name(end_trigger_name, notification)) {
 			/* Exit the loop immediately. */
 			printf("Received end event notification from trigger %s\n",
 			       end_trigger_name);
@@ -249,7 +250,7 @@ static int _main(int argc, char **argv)
 
 		printf("Received event notification from trigger %s\n", expected_trigger_name);
 		notification_count++;
-		if (end_trigger_name == NULL && expected_notifications == notification_count) {
+		if (end_trigger_name == nullptr && expected_notifications == notification_count) {
 			/*
 			 * Here the loop exit is controlled by the number of
 			 * notification and not by the reception of the end

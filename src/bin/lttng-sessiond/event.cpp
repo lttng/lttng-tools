@@ -173,7 +173,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(uchan);
 	LTTNG_ASSERT(event);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	uevent = trace_ust_find_event(uchan->events,
 				      event->name,
@@ -263,7 +263,7 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 
 	ht = uchan->events;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * We use a custom lookup since we need the iterator for the next_duplicate
@@ -328,7 +328,7 @@ int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_
 
 	/* Disabling existing events */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (uchan->events->ht, &iter.iter, uevent, node.node) {
 			if (uevent->enabled) {
@@ -370,7 +370,7 @@ static void agent_enable_all(struct agent *agt)
 
 	{
 		/* Flag every event as enabled. */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, aevent, node.node) {
 			aevent->enabled_count++;
@@ -482,7 +482,7 @@ static int agent_enable(struct agent *agt,
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(agt);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	aevent = agent_find_event(
 		event->name, event->loglevel_type, event->loglevel, filter_expression, agt);
 	if (!aevent) {
@@ -837,7 +837,7 @@ int trigger_agent_disable(const struct lttng_trigger *trigger, struct agent *agt
 
 	DBG("Event agent disabling for trigger %" PRIu64, lttng_trigger_get_tracer_token(trigger));
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	aevent = agent_find_event_by_trigger(trigger, agt);
 
 	if (aevent == nullptr) {
@@ -875,7 +875,7 @@ int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt, const 
 
 	DBG("Event agent disabling %s (all loglevels) for session %" PRIu64, event_name, usess->id);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	agent_find_events_by_name(event_name, agt, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 
@@ -925,7 +925,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 
 	/* Disable every event. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, aevent, node.node) {
 			if (!AGENT_EVENT_IS_ENABLED(aevent)) {

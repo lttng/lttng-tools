@@ -72,7 +72,7 @@ enum lttng_crash_type {
 
 /* LTTng ring buffer defines (copied) */
 
-#define HALF_ULONG_BITS(wl) (((wl) *CHAR_BIT) >> 1)
+#define HALF_ULONG_BITS(wl) (((wl) * CHAR_BIT) >> 1)
 
 #define SB_ID_OFFSET_SHIFT(wl) (HALF_ULONG_BITS(wl) + 1)
 #define SB_ID_OFFSET_COUNT(wl) (1UL << SB_ID_OFFSET_SHIFT(wl))
@@ -197,7 +197,7 @@ static struct option long_options[] = {
 
 static void usage()
 {
-	int ret = utils_show_help(1, "lttng-crash", help_msg);
+	const int ret = utils_show_help(1, "lttng-crash", help_msg);
 
 	if (ret) {
 		ERR("Cannot show --help for `lttng-crash`");

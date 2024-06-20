@@ -95,7 +95,7 @@ static int kernel_consumer_add_channel(struct consumer_socket *sock,
 	struct lttng_channel_extended *channel_attr_extended;
 	bool is_local_trace;
 	size_t consumer_path_offset = 0;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Safety net */
 	LTTNG_ASSERT(channel);
@@ -210,7 +210,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Safety net */
 	LTTNG_ASSERT(ksession);
@@ -364,7 +364,7 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 	LTTNG_ASSERT(ksession->consumer);
 	LTTNG_ASSERT(sock);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Bail out if consumer is disabled */
 	if (!ksession->consumer->enabled) {

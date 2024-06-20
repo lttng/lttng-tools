@@ -76,7 +76,7 @@ static int create_lttng_rundir_with_perm(const char *rundir)
 			ret = 0;
 		}
 	} else if (ret == 0) {
-		int is_root = !getuid();
+		const int is_root = !getuid();
 
 		if (is_root) {
 			gid_t gid;
@@ -210,7 +210,7 @@ end:
 static int accept_unix_socket(void *data, int *out_fd)
 {
 	int ret;
-	int accepting_sock = *((int *) data);
+	const int accepting_sock = *((int *) data);
 
 	ret = lttcomm_accept_unix_sock(accepting_sock);
 	if (ret < 0) {

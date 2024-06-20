@@ -520,7 +520,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 	uint64_t chunk_id;
 	enum lttng_trace_chunk_status chunk_status;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	/*
 	 * Ownership of current trace chunk is transferred to
 	 * `current_trace_chunk`.
@@ -889,7 +889,7 @@ static enum lttng_error_code session_kernel_open_packets(const ltt_session::lock
 	struct cds_lfht_node *node;
 	struct ltt_kernel_channel *chan;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
 	node = cds_lfht_iter_get_node(&iter.iter);
@@ -1402,7 +1402,7 @@ bool sample_session_id_by_name(const char *name, uint64_t *id)
 	struct lttng_ht_iter iter;
 	struct ltt_session *ls;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	if (!ltt_sessions_ht_by_name) {
 		found = false;
@@ -1447,7 +1447,7 @@ void ltt_session::_locked_const_session_release(const ltt_session *session)
 
 ltt_session::locked_ref ltt_session::find_locked_session(ltt_session::id_t id)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_id(id);
 
 	if (!session) {
@@ -1464,7 +1464,7 @@ ltt_session::locked_ref ltt_session::find_locked_session(ltt_session::id_t id)
 
 ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view name)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_name(name.data());
 
 	if (!session) {
@@ -1477,7 +1477,7 @@ ltt_session::locked_ref ltt_session::find_locked_session(lttng::c_string_view na
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session::id_t id)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	const auto *session = session_find_by_id(id);
 
 	if (!session) {
@@ -1490,7 +1490,7 @@ ltt_session::const_locked_ref ltt_session::find_locked_const_session(ltt_session
 
 ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_string_view name)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	const auto *session = session_find_by_name(name.data());
 
 	if (!session) {
@@ -1503,7 +1503,7 @@ ltt_session::const_locked_ref ltt_session::find_locked_const_session(lttng::c_st
 
 ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_id(id);
 
 	if (!session) {
@@ -1515,7 +1515,7 @@ ltt_session::ref ltt_session::find_session(ltt_session::id_t id)
 
 ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	auto session = session_find_by_name(name.data());
 
 	if (!session) {
@@ -1527,7 +1527,7 @@ ltt_session::ref ltt_session::find_session(lttng::c_string_view name)
 
 ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	const auto *session = session_find_by_id(id);
 
 	if (!session) {
@@ -1539,7 +1539,7 @@ ltt_session::const_ref ltt_session::find_const_session(ltt_session::id_t id)
 
 ltt_session::const_ref ltt_session::find_const_session(lttng::c_string_view name)
 {
-	lttng::urcu::read_lock_guard rcu_lock;
+	const lttng::urcu::read_lock_guard rcu_lock;
 	const auto *session = session_find_by_name(name.data());
 
 	if (!session) {

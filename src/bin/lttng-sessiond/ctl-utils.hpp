@@ -29,7 +29,7 @@ using session_descriptor = std::unique_ptr<
  */
 using trigger = std::unique_ptr<
 	lttng_trigger,
-	lttng::memory::create_deleter_class<lttng_trigger, lttng_trigger_put>::deleter>;
+	lttng::memory::create_deleter_class<lttng_trigger, lttng_trigger_destroy>::deleter>;
 
 } /* namespace ctl */
 } /* namespace lttng */

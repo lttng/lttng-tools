@@ -33,8 +33,8 @@ static void test_rate_policy_every_n()
 	struct lttng_rate_policy *policy_b = nullptr; /* Interval of 100 */
 	struct lttng_rate_policy *policy_c = nullptr; /* Interval of 1 */
 	struct lttng_rate_policy *policy_from_buffer = nullptr;
-	uint64_t interval_a_b = 100;
-	uint64_t interval_c = 1;
+	const uint64_t interval_a_b = 100;
+	const uint64_t interval_c = 1;
 	uint64_t interval_query = 0;
 	struct lttng_payload payload;
 
@@ -117,8 +117,8 @@ static void test_rate_policy_once_after_n()
 	struct lttng_rate_policy *policy_b = nullptr; /* threshold of 100 */
 	struct lttng_rate_policy *policy_c = nullptr; /* threshold of 1 */
 	struct lttng_rate_policy *policy_from_buffer = nullptr;
-	uint64_t threshold_a_b = 100;
-	uint64_t threshold_c = 1;
+	const uint64_t threshold_a_b = 100;
+	const uint64_t threshold_c = 1;
 	uint64_t threshold_query = 0;
 	struct lttng_payload payload;
 

@@ -48,7 +48,7 @@ static const struct lttng_evaluation rotation_evaluation_template = {
 
 static bool is_rotation_condition(const struct lttng_condition *condition)
 {
-	enum lttng_condition_type type = lttng_condition_get_type(condition);
+	const lttng_condition_type type = lttng_condition_get_type(condition);
 
 	return type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING ||
 		type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED;
@@ -56,7 +56,7 @@ static bool is_rotation_condition(const struct lttng_condition *condition)
 
 static bool is_rotation_evaluation(const struct lttng_evaluation *evaluation)
 {
-	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
+	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
 	return type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING ||
 		type == LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED;
@@ -187,7 +187,7 @@ static ssize_t init_condition_from_payload(struct lttng_condition *condition,
 	const char *session_name;
 	struct lttng_buffer_view name_view;
 	const struct lttng_condition_session_rotation_comm *condition_comm;
-	struct lttng_payload_view condition_comm_view =
+	const lttng_payload_view condition_comm_view =
 		lttng_payload_view_from_view(src_view, 0, sizeof(*condition_comm));
 
 	if (!lttng_payload_view_is_valid(&condition_comm_view)) {
@@ -318,7 +318,8 @@ static ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
 	struct lttng_evaluation *evaluation = nullptr;
 	struct lttng_trace_archive_location *location = nullptr;
 	const struct lttng_evaluation_session_rotation_comm *comm;
-	struct lttng_payload_view comm_view = lttng_payload_view_from_view(view, 0, sizeof(*comm));
+	const lttng_payload_view comm_view =
+		lttng_payload_view_from_view(view, 0, sizeof(*comm));
 
 	if (!lttng_payload_view_is_valid(&comm_view)) {
 		goto error;

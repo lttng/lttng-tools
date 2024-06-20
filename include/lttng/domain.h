@@ -65,7 +65,7 @@ enum lttng_buffer_type {
  * The structures should be initialized to zero before use.
  */
 #define LTTNG_DOMAIN_PADDING1 12
-#define LTTNG_DOMAIN_PADDING2 LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_DOMAIN_PADDING2 (LTTNG_SYMBOL_NAME_LEN + 32)
 
 /*!
 @brief

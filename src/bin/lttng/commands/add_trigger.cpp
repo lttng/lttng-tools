@@ -980,7 +980,7 @@ static struct parse_event_rule_res parse_event_rule(int *argc, const char ***arg
 		/* Set exclusion list. */
 		if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 			int n;
-			int count = lttng_dynamic_pointer_array_get_count(&exclude_names);
+			const int count = lttng_dynamic_pointer_array_get_count(&exclude_names);
 
 			for (n = 0; n < count; n++) {
 				const char *exclude_name =
@@ -1628,7 +1628,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(
 			}
 		} else {
 			const char *arg = argpar_item_non_opt_arg(argpar_item);
-			unsigned int idx = argpar_item_non_opt_non_opt_index(argpar_item);
+			const unsigned int idx = argpar_item_non_opt_non_opt_index(argpar_item);
 
 			switch (idx) {
 			case 0:
@@ -2177,7 +2177,8 @@ int cmd_add_trigger(int argc, const char **argv)
 					 nullptr);
 		if (status == PARSE_NEXT_ITEM_STATUS_ERROR) {
 			if (argpar_error_type(argpar_error) == ARGPAR_ERROR_TYPE_MISSING_OPT_ARG) {
-				int opt_id = argpar_error_opt_descr(argpar_error, nullptr)->id;
+				const int opt_id =
+					argpar_error_opt_descr(argpar_error, nullptr)->id;
 
 				if (opt_id == OPT_CONDITION) {
 					print_valid_condition_names();

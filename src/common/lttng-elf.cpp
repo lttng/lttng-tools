@@ -610,7 +610,7 @@ static int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
 
 	for (i = 0; i < elf->ehdr->e_shnum; ++i) {
 		bool name_equal;
-		int ret = lttng_elf_get_section_hdr(elf, i, section_hdr);
+		const int ret = lttng_elf_get_section_hdr(elf, i, section_hdr);
 
 		if (ret) {
 			break;
@@ -823,10 +823,10 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 
 		/* Get the symbol at the current index. */
 		if (is_elf_32_bit(elf)) {
-			Elf32_Sym tmp = ((Elf32_Sym *) symbol_table_data)[sym_idx];
+			const Elf32_Sym tmp = ((Elf32_Sym *) symbol_table_data)[sym_idx];
 			copy_sym(tmp, curr_sym);
 		} else {
-			Elf64_Sym tmp = ((Elf64_Sym *) symbol_table_data)[sym_idx];
+			const Elf64_Sym tmp = ((Elf64_Sym *) symbol_table_data)[sym_idx];
 			copy_sym(tmp, curr_sym);
 		}
 

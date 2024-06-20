@@ -40,10 +40,10 @@ int bytecode_init(struct lttng_bytecode_alloc **fb)
 static int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;
-	uint32_t padding = lttng_offset_align((*fb)->b.len, align);
-	uint32_t new_len = (*fb)->b.len + padding + len;
+	const uint32_t padding = lttng_offset_align((*fb)->b.len, align);
+	const uint32_t new_len = (*fb)->b.len + padding + len;
 	uint32_t new_alloc_len = sizeof(struct lttng_bytecode_alloc) + new_len;
-	uint32_t old_alloc_len = (*fb)->alloc_len;
+	const uint32_t old_alloc_len = (*fb)->alloc_len;
 
 	if (new_len > LTTNG_FILTER_MAX_LEN)
 		return -EINVAL;

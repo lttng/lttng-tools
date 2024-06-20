@@ -76,7 +76,7 @@ static void update_agent_app(const struct agent_app *app)
 		if (session->ust_session) {
 			const struct agent *agt;
 
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 			agt = trace_ust_find_agent(session->ust_session, app->domain);
 			if (agt) {
 				agent_update(agt, app);
@@ -91,7 +91,7 @@ static void update_agent_app(const struct agent_app *app)
 		 * We are protected against the addition of new events by the session
 		 * list lock being held.
 		 */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_trigger_agents_ht_by_domain->ht, &iter.iter, trigger_agent, node.node) {

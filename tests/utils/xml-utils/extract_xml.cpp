@@ -180,7 +180,7 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 	LTTNG_ASSERT(xml_path);
 	LTTNG_ASSERT(xpath);
 
-	ll::parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
+	const ll::parser_ctx_uptr parserCtx{ xmlNewParserCtxt() };
 
 	if (!parserCtx) {
 		fprintf(stderr, "ERR: could not allocate an XML parser context\n");

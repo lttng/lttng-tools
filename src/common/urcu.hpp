@@ -30,7 +30,7 @@ public:
 	~read_lock() = default;
 
 	/* "Not copyable" and "not moveable" Mutex requirements. */
-	read_lock(read_lock const&) = delete;
+	read_lock(const read_lock&) = delete;
 	read_lock(read_lock&&) = delete;
 	read_lock& operator=(read_lock&&) = delete;
 	read_lock& operator=(const read_lock&) = delete;

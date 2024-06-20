@@ -6,17 +6,17 @@
 
 #include "obj.h"
 
-static void fct_constructor4(void);
-static void fct_destructor4(void);
+static void fct_constructor4();
+static void fct_destructor4();
 
-void test_constructor4_same_unit_before(void) __attribute__((constructor));
-void test_constructor4_same_unit_before(void)
+void test_constructor4_same_unit_before() __attribute__((constructor));
+void test_constructor4_same_unit_before()
 {
 	fct_constructor4();
 }
 
-void test_destructor4_same_unit_before(void) __attribute__((destructor));
-void test_destructor4_same_unit_before(void)
+void test_destructor4_same_unit_before() __attribute__((destructor));
+void test_destructor4_same_unit_before()
 {
 	fct_destructor4();
 }
@@ -28,24 +28,24 @@ Obj g_obj_same_unit_before_provider("global - same unit before provider");
 
 Obj g_obj_same_unit_after_provider("global - same unit after provider");
 
-static void fct_constructor4(void)
+static void fct_constructor4()
 {
 	tracepoint(tp, constructor_c_same_unit_before_provider);
 }
 
-static void fct_destructor4(void)
+static void fct_destructor4()
 {
 	tracepoint(tp, destructor_c_same_unit_before_provider);
 }
 
-void test_constructor4_same_unit_after(void) __attribute__((constructor));
-void test_constructor4_same_unit_after(void)
+void test_constructor4_same_unit_after() __attribute__((constructor));
+void test_constructor4_same_unit_after()
 {
 	tracepoint(tp, constructor_c_same_unit_after_provider);
 }
 
-void test_destructor4_same_unit_after(void) __attribute__((destructor));
-void test_destructor4_same_unit_after(void)
+void test_destructor4_same_unit_after() __attribute__((destructor));
+void test_destructor4_same_unit_after()
 {
 	tracepoint(tp, destructor_c_same_unit_after_provider);
 }

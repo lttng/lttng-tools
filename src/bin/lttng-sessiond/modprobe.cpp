@@ -787,7 +787,7 @@ int modprobe_lttng_data()
 		}
 	} else {
 		/* Default probes. */
-		int def_len = ARRAY_SIZE(kern_modules_probes_default);
+		const int def_len = ARRAY_SIZE(kern_modules_probes_default);
 
 		probes = calloc<kern_modules_param>(def_len);
 		if (!probes) {

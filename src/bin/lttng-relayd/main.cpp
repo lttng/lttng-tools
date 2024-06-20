@@ -1519,7 +1519,7 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	 * session lock.
 	 */
 	pthread_mutex_lock(&session->lock);
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
 	{
 		stream_publish(stream);
@@ -2227,7 +2227,7 @@ static int relay_begin_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 	 * the right session_id.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (relay_streams_ht->ht, &iter.iter, stream, node.node) {
 			if (!stream_get(stream)) {
@@ -2306,7 +2306,7 @@ static int relay_end_data_pending(const struct lttcomm_relayd_hdr *recv_hdr __at
 	 * flag is set.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (relay_streams_ht->ht, &iter.iter, stream, node.node) {
 			if (!stream_get(stream)) {
@@ -4079,7 +4079,7 @@ restart:
 
 		if (last_seen_data_fd >= 0) {
 			for (i = 0; i < nb_fd; i++) {
-				int pollfd = LTTNG_POLL_GETFD(&events, i);
+				const int pollfd = LTTNG_POLL_GETFD(&events, i);
 
 				health_code_update();
 
@@ -4093,8 +4093,8 @@ restart:
 		/* Process data connection. */
 		for (i = idx + 1; i < nb_fd; i++) {
 			/* Fetch the poll data. */
-			uint32_t revents = LTTNG_POLL_GETEV(&events, i);
-			int pollfd = LTTNG_POLL_GETFD(&events, i);
+			const uint32_t revents = LTTNG_POLL_GETEV(&events, i);
+			const int pollfd = LTTNG_POLL_GETFD(&events, i);
 			struct relay_connection *data_conn;
 
 			health_code_update();
@@ -4174,7 +4174,7 @@ exit:
 error:
 	/* Cleanup remaining connection object. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			relay_connections_ht->ht, &iter.iter, destroy_conn, sock_n.node) {

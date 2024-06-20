@@ -23,7 +23,7 @@ extern "C" {
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_CHANNEL_ATTR_PADDING1 LTTNG_SYMBOL_NAME_LEN + 12
+#define LTTNG_CHANNEL_ATTR_PADDING1 (LTTNG_SYMBOL_NAME_LEN + 12)
 
 /*!
 @brief

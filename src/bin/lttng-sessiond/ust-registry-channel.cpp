@@ -381,7 +381,7 @@ void lsu::registry_channel::add_event(int session_objd,
 {
 	uint32_t event_id;
 	struct cds_lfht_node *nptr;
-	lttng::urcu::read_lock_guard read_lock_guard;
+	const lttng::urcu::read_lock_guard read_lock_guard;
 
 	/*
 	 * This should not happen but since it comes from the UST tracer, an
@@ -500,7 +500,7 @@ void lsu::registry_channel::_accept_on_event_classes(
 	std::vector<const lttng::sessiond::ust::registry_event *> sorted_event_classes;
 
 	{
-		lttng::urcu::read_lock_guard read_lock_guard;
+		const lttng::urcu::read_lock_guard read_lock_guard;
 		struct lttng_ht_iter iter;
 		const lttng::sessiond::ust::registry_event *event;
 

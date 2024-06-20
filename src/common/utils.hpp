@@ -38,8 +38,8 @@ int utils_stream_file_path(const char *path_name,
 			   const char *suffix,
 			   char *out_stream_path,
 			   size_t stream_path_len);
-int utils_parse_size_suffix(char const *const str, uint64_t *const size);
-int utils_parse_time_suffix(char const *const str, uint64_t *const time_us);
+int utils_parse_size_suffix(const char *const str, uint64_t *const size);
+int utils_parse_time_suffix(const char *const str, uint64_t *const time_us);
 int utils_get_count_order_u32(uint32_t x);
 int utils_get_count_order_u64(uint64_t x);
 const char *utils_get_home_dir();

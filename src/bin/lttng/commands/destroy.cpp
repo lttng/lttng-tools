@@ -349,7 +349,7 @@ int cmd_destroy(int argc, const char **argv)
 	static poptContext pc;
 	const char *leftover = nullptr;
 	lttng::cli::session_spec spec(lttng::cli::session_spec::type::NAME);
-	lttng::cli::session_list const sessions;
+	const lttng::cli::session_list sessions;
 
 	pc = poptGetContext(nullptr, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);

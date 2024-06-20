@@ -75,7 +75,7 @@ static char *find_char_or_comment(const char *s, char c)
 {
 	int was_whitespace = 0;
 
-	while (*s && *s != c && !(was_whitespace && *s == ';')) {
+	while (*s && *s != c && (!was_whitespace || *s != ';')) {
 		was_whitespace = isspace((unsigned char) (*s));
 		s++;
 	}

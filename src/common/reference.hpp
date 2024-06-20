@@ -76,7 +76,7 @@ private:
 			return;
 		}
 
-		typename CustomDeleter::deleter del;
+		const typename CustomDeleter::deleter del;
 		del(_value);
 		release();
 	}

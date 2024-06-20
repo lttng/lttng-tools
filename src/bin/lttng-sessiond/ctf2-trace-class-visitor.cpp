@@ -311,7 +311,7 @@ private:
 		auto member_classes_value = json::json::array();
 		for (const auto& field : type.fields_) {
 			::ctf2::field_visitor member_visitor;
-			json::json member_class;
+			const json::json member_class;
 
 			field->accept(member_visitor);
 			member_classes_value.emplace_back(member_visitor.move_fragment());

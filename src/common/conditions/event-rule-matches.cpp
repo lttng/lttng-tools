@@ -30,7 +30,7 @@
 
 static bool is_event_rule_matches_evaluation(const struct lttng_evaluation *evaluation)
 {
-	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
+	const lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
 	return type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES;
 }

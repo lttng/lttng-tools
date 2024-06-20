@@ -120,7 +120,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 	     stream->stream_handle,
 	     net_seq_num);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(stream->indexes_ht, &net_seq_num, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (node) {
@@ -249,7 +249,7 @@ void relay_index_put(struct relay_index *index)
 	/*
 	 * Ensure existence of index->lock for index unlock.
 	 */
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	/*
 	 * Index lock ensures that concurrent test and update of stream
 	 * ref is atomic.
@@ -305,7 +305,7 @@ void relay_index_close_all(struct relay_stream *stream)
 	struct lttng_ht_iter iter;
 	struct relay_index *index;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		/* Put self-ref from index. */
@@ -318,7 +318,7 @@ void relay_index_close_partial_fd(struct relay_stream *stream)
 	struct lttng_ht_iter iter;
 	struct relay_index *index;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		if (!index->index_file) {
@@ -339,7 +339,7 @@ uint64_t relay_index_find_last(struct relay_stream *stream)
 	struct relay_index *index;
 	uint64_t net_seq_num = -1ULL;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		if (net_seq_num == -1ULL || index->index_n.key > net_seq_num) {
@@ -390,7 +390,7 @@ int relay_index_switch_all_files(struct relay_stream *stream)
 	struct relay_index *index;
 	int ret = 0;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 		ret = relay_index_switch_file(
@@ -424,7 +424,7 @@ int relay_index_set_control_data(struct relay_index *index,
 		index->index_data.stream_instance_id = htobe64(data->stream_instance_id);
 		index->index_data.packet_seq_num = htobe64(data->packet_seq_num);
 	} else {
-		uint64_t unset_value = -1ULL;
+		const uint64_t unset_value = -1ULL;
 
 		index->index_data.stream_instance_id = htobe64(unset_value);
 		index->index_data.packet_seq_num = htobe64(unset_value);

@@ -257,7 +257,7 @@ static int fs_handle_untracked_close(struct fs_handle *_handle)
 {
 	struct fs_handle_untracked *handle =
 		lttng::utils::container_of(_handle, &fs_handle_untracked::parent);
-	int ret = close(handle->fd);
+	const int ret = close(handle->fd);
 
 	fs_handle_untracked_destroy(handle);
 	return ret;
@@ -1828,7 +1828,7 @@ static void lttng_trace_chunk_release(struct urcu_ref *ref)
 		element = lttng::utils::container_of(chunk,
 						     &lttng_trace_chunk_registry_element::chunk);
 		if (element->registry) {
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 			cds_lfht_del(element->registry->ht, &element->trace_chunk_registry_ht_node);
 			call_rcu(&element->rcu_node, free_lttng_trace_chunk_registry_element);
 		} else {
@@ -1878,7 +1878,7 @@ void lttng_trace_chunk_registry_destroy(struct lttng_trace_chunk_registry *regis
 		return;
 	}
 	if (registry->ht) {
-		int ret = cds_lfht_destroy(registry->ht, nullptr);
+		const int ret = cds_lfht_destroy(registry->ht, nullptr);
 		LTTNG_ASSERT(!ret);
 	}
 	free(registry);
@@ -1944,7 +1944,7 @@ lttng_trace_chunk_registry_publish_chunk(struct lttng_trace_chunk_registry *regi
 	element = lttng_trace_chunk_registry_element_create_from_chunk(chunk, session_id);
 	pthread_mutex_unlock(&chunk->lock);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	if (!element) {
 		goto end;
 	}
@@ -2034,7 +2034,7 @@ static struct lttng_trace_chunk *_lttng_trace_chunk_registry_find_chunk(
 	struct lttng_trace_chunk *published_chunk = nullptr;
 	struct cds_lfht_iter iter;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(registry->ht,
 			element_hash,
 			lttng_trace_chunk_registry_element_match,
@@ -2065,7 +2065,7 @@ int lttng_trace_chunk_registry_chunk_exists(const struct lttng_trace_chunk_regis
 					    uint64_t chunk_id,
 					    bool *chunk_exists)
 {
-	int ret = 0;
+	const int ret = 0;
 	lttng_trace_chunk_registry_element target_element;
 
 	target_element.chunk.id.is_set = true;
@@ -2076,7 +2076,7 @@ int lttng_trace_chunk_registry_chunk_exists(const struct lttng_trace_chunk_regis
 	struct cds_lfht_node *published_node;
 	struct cds_lfht_iter iter;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(registry->ht,
 			element_hash,
 			lttng_trace_chunk_registry_element_match,
@@ -2110,7 +2110,7 @@ lttng_trace_chunk_registry_put_each_chunk(const struct lttng_trace_chunk_registr
 	DBG("Releasing trace chunk registry to all trace chunks");
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			registry->ht, &iter, chunk_element, trace_chunk_registry_ht_node) {

@@ -156,7 +156,7 @@ error:
 static char *get_notification_channel_sock_path()
 {
 	int ret;
-	bool is_root = !getuid();
+	const bool is_root = !getuid();
 	char *sock_path;
 
 	sock_path = calloc<char>(LTTNG_PATH_MAX);
@@ -662,8 +662,8 @@ static void *thread_notification(void *data)
 
 		fd_count = ret;
 		for (i = 0; i < fd_count; i++) {
-			int fd = LTTNG_POLL_GETFD(&state.events, i);
-			uint32_t revents = LTTNG_POLL_GETEV(&state.events, i);
+			const int fd = LTTNG_POLL_GETFD(&state.events, i);
+			const uint32_t revents = LTTNG_POLL_GETEV(&state.events, i);
 
 			DBG("Handling fd (%i) activity (%u)", fd, revents);
 

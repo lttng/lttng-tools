@@ -375,7 +375,7 @@ int context_ust_add(struct ltt_ust_session *usess,
 	LTTNG_ASSERT(ctx);
 	LTTNG_ASSERT(channel_name);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	chan_ht = usess->domain_global.channels;
 

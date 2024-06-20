@@ -12,24 +12,24 @@ extern "C" {
 #include "tp.h"
 
 /* Use tracepoints defined and provided by static archive. */
-void test_constructor_a(void) __attribute__((constructor));
-void test_constructor_a(void)
+void test_constructor_a() __attribute__((constructor));
+void test_constructor_a()
 {
 	tracepoint(tp_a_c, constructor_c_provider_static_archive);
 }
 
-void test_destructor_a(void) __attribute__((destructor));
-void test_destructor_a(void)
+void test_destructor_a() __attribute__((destructor));
+void test_destructor_a()
 {
 	tracepoint(tp_a_c, destructor_c_provider_static_archive);
 }
 
 Obja g_obja_static_archive("global - static archive define and provider");
 
-int main(void)
+int main()
 {
-	Obj l_obj("main() local");
-	Obja l_obja("main() local - static archive define and provider");
+	const Obj l_obj("main() local");
+	const Obja l_obja("main() local - static archive define and provider");
 
 	tracepoint(tp, main);
 	return 0;

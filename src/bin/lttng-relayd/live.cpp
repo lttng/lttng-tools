@@ -245,7 +245,7 @@ static int check_new_streams(struct relay_connection *conn)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		cds_list_for_each_entry_rcu(
 			session, &conn->viewer_session->session_list, viewer_session_node)
 		{
@@ -282,7 +282,7 @@ send_viewer_streams(struct lttcomm_sock *sock, uint64_t session_id, unsigned int
 	struct relay_viewer_stream *vstream;
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
@@ -379,7 +379,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 	 * used for a the given session id only.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			relay_session->ctf_traces_ht->ht, &iter.iter, ctf_trace, node.node) {
@@ -1061,7 +1061,7 @@ static int viewer_list_sessions(struct relay_connection *conn)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
 			struct lttng_viewer_session *send_session;
@@ -1076,7 +1076,7 @@ static int viewer_list_sessions(struct relay_connection *conn)
 
 			if (count >= buf_count) {
 				struct lttng_viewer_session *newbuf;
-				uint32_t new_buf_count = buf_count << 1;
+				const uint32_t new_buf_count = buf_count << 1;
 
 				newbuf = (lttng_viewer_session *) realloc(
 					send_session_buf,
@@ -2531,7 +2531,7 @@ static void live_relay_unknown_command(struct relay_connection *conn)
 static int process_control(struct lttng_viewer_cmd *recv_hdr, struct relay_connection *conn)
 {
 	int ret = 0;
-	lttng_viewer_command cmd = (lttng_viewer_command) be32toh(recv_hdr->cmd);
+	const lttng_viewer_command cmd = (lttng_viewer_command) be32toh(recv_hdr->cmd);
 
 	/*
 	 * Make sure we've done the version check before any command other then
@@ -2763,7 +2763,7 @@ error:
 
 	/* Cleanup remaining connection object. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			viewer_connections_ht->ht, &iter.iter, destroy_conn, sock_n.node) {

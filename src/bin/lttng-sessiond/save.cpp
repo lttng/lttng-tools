@@ -1108,7 +1108,7 @@ static int save_ust_events(struct config_writer *writer, struct lttng_ht *events
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
 			event = lttng::utils::container_of(node, &ltt_ust_event::node);
@@ -1189,7 +1189,7 @@ static int save_agent_events(struct config_writer *writer, struct agent *agent)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agent->events->ht, &iter.iter, node, node) {
 			struct agent_event *agent_event;
@@ -1833,7 +1833,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 
 	if (tracking_policy == LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		unsigned int i, count;
-		enum process_attr_tracker_status status =
+		const process_attr_tracker_status status =
 			process_attr_tracker_get_inclusion_set(tracker, &values);
 
 		if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
@@ -2039,7 +2039,7 @@ static int save_ust_domain(struct config_writer *writer,
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			session->ust_session->domain_global.channels->ht, &iter.iter, node, node) {
@@ -2319,7 +2319,7 @@ static int save_snapshot_outputs(struct config_writer *writer, struct snapshot *
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (snapshot->output_ht->ht, &iter.iter, output, node.node) {
 			ret = config_writer_open_element(writer, config_element_output);

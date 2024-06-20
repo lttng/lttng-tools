@@ -113,7 +113,7 @@ static void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 	DBG("Destroying trace chunk registry associated to sessiond {%s}", uuid_str);
 	if (element->sessiond_trace_chunk_registry) {
 		/* Unpublish. */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		cds_lfht_del(element->sessiond_trace_chunk_registry->ht, &element->ht_node);
 		element->sessiond_trace_chunk_registry = nullptr;
 	}
@@ -146,7 +146,7 @@ trace_chunk_registry_ht_element_find(struct sessiond_trace_chunk_registry *sessi
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_lookup(sessiond_registry->ht,
 			trace_chunk_registry_ht_key_hash(key),
 			trace_chunk_registry_ht_key_match,
@@ -202,7 +202,7 @@ trace_chunk_registry_ht_element_create(struct sessiond_trace_chunk_registry *ses
 		 * Keep the rcu read lock is held accross all attempts
 		 * purely for efficiency reasons.
 		 */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		while (true) {
 			struct cds_lfht_node *published_node;
 			struct trace_chunk_registry_ht_element *published_element;
@@ -274,7 +274,7 @@ error:
 
 void sessiond_trace_chunk_registry_destroy(struct sessiond_trace_chunk_registry *sessiond_registry)
 {
-	int ret = cds_lfht_destroy(sessiond_registry->ht, nullptr);
+	const int ret = cds_lfht_destroy(sessiond_registry->ht, nullptr);
 
 	LTTNG_ASSERT(!ret);
 	free(sessiond_registry);

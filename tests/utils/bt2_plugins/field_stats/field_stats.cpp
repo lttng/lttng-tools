@@ -19,14 +19,15 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <utility>
 
 class bad_alloc_with_msg : public std::bad_alloc {
 public:
-	explicit bad_alloc_with_msg(const std::string& msg) : _msg(msg)
+	explicit bad_alloc_with_msg(std::string msg) : _msg(std::move(msg))
 	{
 	}
 
-	virtual const char *what() const noexcept override
+	const char *what() const noexcept override
 	{
 		return _msg.c_str();
 	}
@@ -45,9 +46,7 @@ public:
 		}
 	}
 
-	~field_stats()
-	{
-	}
+	~field_stats() = default;
 
 	lttng::bt2::message_iterator_ref upstream_iterator;
 	lttng::bt2::event_class_const_ref event_class;

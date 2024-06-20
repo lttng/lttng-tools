@@ -994,7 +994,7 @@ struct lttng_event_perf_counter_ctx {
 };
 
 #define LTTNG_EVENT_CONTEXT_PADDING1 16
-#define LTTNG_EVENT_CONTEXT_PADDING2 LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_EVENT_CONTEXT_PADDING2 (LTTNG_SYMBOL_NAME_LEN + 32)
 
 /*!
 @brief
@@ -1155,7 +1155,7 @@ struct lttng_event_function_attr {
  * The structures should be initialized to zero before use.
  */
 #define LTTNG_EVENT_PADDING1 12
-#define LTTNG_EVENT_PADDING2 LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_EVENT_PADDING2 (LTTNG_SYMBOL_NAME_LEN + 32)
 
 /*!
 @brief
@@ -1393,7 +1393,7 @@ struct lttng_event {
 	attr;
 };
 
-#define LTTNG_EVENT_FIELD_PADDING LTTNG_SYMBOL_NAME_LEN + 32
+#define LTTNG_EVENT_FIELD_PADDING (LTTNG_SYMBOL_NAME_LEN + 32)
 
 /*!
 @brief

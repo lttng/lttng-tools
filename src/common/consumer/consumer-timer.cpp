@@ -284,7 +284,7 @@ static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 	DBG("Live timer for channel %" PRIu64, channel->key);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		cds_lfht_for_each_entry_duplicate(ht->ht,
 						  ht->hash_fct(&channel->key, lttng_ht_seed),
 						  ht->match_fct,
@@ -576,7 +576,7 @@ static int sample_channel_positions(struct lttng_consumer_channel *channel,
 
 	*_total_consumed = 0;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 					  ht->hash_fct(&channel->key, lttng_ht_seed),
@@ -644,7 +644,7 @@ end:
 void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel)
 {
 	int ret;
-	int channel_monitor_pipe = consumer_timer_thread_get_channel_monitor_pipe();
+	const int channel_monitor_pipe = consumer_timer_thread_get_channel_monitor_pipe();
 	struct lttcomm_consumer_channel_monitor_msg msg = {
 		.key = channel->key,
 		.session_id = channel->session_id,

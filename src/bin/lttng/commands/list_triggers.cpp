@@ -250,7 +250,7 @@ static void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *ev
 static void print_event_rule_logging(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_event_rule_type event_rule_type = lttng_event_rule_get_type(event_rule);
+	const lttng_event_rule_type event_rule_type = lttng_event_rule_get_type(event_rule);
 	const char *pattern;
 	const char *filter;
 	int log_level;

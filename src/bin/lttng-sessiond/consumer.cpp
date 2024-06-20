@@ -293,7 +293,7 @@ void consumer_output_send_destroy_relayd(struct consumer_output *consumer)
 
 	/* Destroy any relayd connection */
 	if (consumer->type == CONSUMER_DST_NET) {
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (consumer->socks->ht, &iter.iter, socket, node.node) {
 			/* Send destroy relayd command. */
@@ -320,7 +320,7 @@ int consumer_create_socket(struct consumer_data *data, struct consumer_output *o
 
 	LTTNG_ASSERT(data);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	if (output == nullptr || data->cmd_sock < 0) {
 		/*
@@ -544,7 +544,7 @@ void consumer_destroy_output_sockets(struct consumer_output *obj)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (obj->socks->ht, &iter.iter, socket, node.node) {
 			consumer_del_socket(socket, obj);
@@ -638,7 +638,7 @@ int consumer_copy_sockets(struct consumer_output *dst, struct consumer_output *s
 	LTTNG_ASSERT(src);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (src->socks->ht, &iter.iter, socket, node.node) {
 			/* Ignore socket that are already there. */
@@ -1272,7 +1272,7 @@ int consumer_is_data_pending(uint64_t session_id, struct consumer_output *consum
 
 	{
 		/* Send command for each consumer. */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (consumer->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -1585,7 +1585,7 @@ int consumer_get_discarded_events(uint64_t session_id,
 
 	/* Send command for each consumer. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (consumer->socks->ht, &iter.iter, socket, node.node) {
 			uint64_t consumer_discarded = 0;
@@ -1647,7 +1647,7 @@ int consumer_get_lost_packets(uint64_t session_id,
 
 	/* Send command for each consumer. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (consumer->socks->ht, &iter.iter, socket, node.node) {
 			uint64_t consumer_lost = 0;

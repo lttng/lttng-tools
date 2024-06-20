@@ -325,7 +325,7 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 	struct lttng_channel *defattr = nullptr;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 	bool chan_published = false;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(usess);
 

@@ -225,7 +225,7 @@ bool loglevel_parse_range_string(const char *str,
 				 enum lttng_loglevel *max)
 {
 	int min_int, max_int;
-	bool ret = loglevel_parse_range_string_common(
+	const bool ret = loglevel_parse_range_string_common(
 		str, loglevel_values, ARRAY_SIZE(loglevel_values), &min_int, &max_int);
 
 	*min = (lttng_loglevel) min_int;
@@ -252,7 +252,7 @@ bool loglevel_log4j_parse_range_string(const char *str,
 				       enum lttng_loglevel_log4j *max)
 {
 	int min_int, max_int;
-	bool ret = loglevel_parse_range_string_common(
+	const bool ret = loglevel_parse_range_string_common(
 		str, loglevel_log4j_values, ARRAY_SIZE(loglevel_log4j_values), &min_int, &max_int);
 
 	*min = (lttng_loglevel_log4j) min_int;
@@ -279,7 +279,7 @@ bool loglevel_jul_parse_range_string(const char *str,
 				     enum lttng_loglevel_jul *max)
 {
 	int min_int, max_int;
-	bool ret = loglevel_parse_range_string_common(
+	const bool ret = loglevel_parse_range_string_common(
 		str, loglevel_jul_values, ARRAY_SIZE(loglevel_jul_values), &min_int, &max_int);
 
 	*min = (lttng_loglevel_jul) min_int;
@@ -306,11 +306,11 @@ bool loglevel_python_parse_range_string(const char *str,
 					enum lttng_loglevel_python *max)
 {
 	int min_int, max_int;
-	bool ret = loglevel_parse_range_string_common(str,
-						      loglevel_python_values,
-						      ARRAY_SIZE(loglevel_python_values),
-						      &min_int,
-						      &max_int);
+	const bool ret = loglevel_parse_range_string_common(str,
+							    loglevel_python_values,
+							    ARRAY_SIZE(loglevel_python_values),
+							    &min_int,
+							    &max_int);
 
 	*min = (lttng_loglevel_python) min_int;
 	*max = (lttng_loglevel_python) max_int;

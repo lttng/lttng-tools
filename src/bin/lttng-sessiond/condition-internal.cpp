@@ -53,7 +53,8 @@ static unsigned long
 lttng_condition_session_consumed_size_hash(const struct lttng_condition *_condition)
 {
 	unsigned long hash;
-	unsigned long condition_type = (unsigned long) LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE;
+	const unsigned long condition_type =
+		(unsigned long) LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE;
 	struct lttng_condition_session_consumed_size *condition;
 	uint64_t val;
 

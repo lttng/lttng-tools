@@ -282,7 +282,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 
 	/* Init data structure */
 	lus->id = session_id;
-	lus->active = 0;
+	lus->active = false;
 
 	/* Set default metadata channel attribute. */
 	lus->metadata_attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
@@ -764,10 +764,10 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node, node.node) {
-			int ret = lttng_ht_del(id_tracker->ht, &iter);
+			const int ret = lttng_ht_del(id_tracker->ht, &iter);
 
 			LTTNG_ASSERT(!ret);
 			destroy_id_tracker_node(tracker_node);
@@ -781,7 +781,7 @@ static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 static struct ust_id_tracker_node *
 id_tracker_lookup(struct ust_id_tracker *id_tracker, int id, struct lttng_ht_iter *iter)
 {
-	unsigned long _id = (unsigned long) id;
+	const unsigned long _id = (unsigned long) id;
 	struct lttng_ht_node_ulong *node;
 
 	lttng_ht_lookup(id_tracker->ht, (void *) _id, iter);
@@ -1208,7 +1208,7 @@ static void destroy_contexts(struct lttng_ht *ht)
 	LTTNG_ASSERT(ht);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (ht->ht, &iter.iter, node, node) {
 			/* Remove from ordered list. */
@@ -1276,7 +1276,7 @@ static void destroy_events(struct lttng_ht *events)
 	LTTNG_ASSERT(events);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
 			ret = lttng_ht_del(events, &iter);
@@ -1345,7 +1345,7 @@ int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 	struct buffer_reg_uid *uid_reg = nullptr;
 	struct buffer_reg_session *session_reg = nullptr;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_list_for_each_entry (uid_reg, &usess->buffer_reg_uid_list, lnode) {
 		lsu::registry_session *registry;
 
@@ -1376,7 +1376,7 @@ static void destroy_channels(struct lttng_ht *channels)
 	LTTNG_ASSERT(channels);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (channels->ht, &iter.iter, node, node) {
 			struct ltt_ust_channel *chan =
@@ -1418,10 +1418,10 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	destroy_domain_global(&session->domain_global);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (session->agents->ht, &iter.iter, agt, node.node) {
-			int ret = lttng_ht_del(session->agents, &iter);
+			const int ret = lttng_ht_del(session->agents, &iter);
 
 			LTTNG_ASSERT(!ret);
 			agent_destroy(agt);

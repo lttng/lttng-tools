@@ -66,7 +66,7 @@ static void epoll_pwait_int_max(FILE *validation_output_file);
 static void ppoll_concurrent_write(FILE *validation_output_file);
 static void epoll_pwait_concurrent_munmap(FILE *validation_output_file);
 
-typedef void (*test_case_cb)(FILE *output_file);
+using test_case_cb = void (*)(FILE *);
 
 namespace {
 const struct test_case {
@@ -142,7 +142,7 @@ struct ppoll_thread_data {
 };
 } /* namespace */
 
-static void test_select_big(void)
+static void test_select_big()
 {
 	fd_set rfds, wfds, exfds;
 	struct timeval tv;
@@ -167,7 +167,7 @@ static void test_select_big(void)
 	if (timeout > 0) {
 		ret = select(fd2 + 1, &rfds, &wfds, &exfds, &tv);
 	} else {
-		ret = select(fd2 + 1, &rfds, &wfds, &exfds, NULL);
+		ret = select(fd2 + 1, &rfds, &wfds, &exfds, nullptr);
 	}
 
 	if (ret == -1) {
@@ -217,12 +217,12 @@ static void test_pselect_generic(long int syscall_id)
 	}
 }
 
-static void test_pselect(void)
+static void test_pselect()
 {
 	test_pselect_generic(SYS_pselect6);
 }
 
-static void test_select(void)
+static void test_select()
 {
 	fd_set rfds;
 	struct timeval tv;
@@ -236,9 +236,9 @@ static void test_select(void)
 	tv.tv_usec = timeout * MSEC_PER_USEC;
 
 	if (timeout > 0) {
-		ret = select(1, &rfds, NULL, NULL, &tv);
+		ret = select(1, &rfds, nullptr, nullptr, &tv);
 	} else {
-		ret = select(1, &rfds, NULL, NULL, NULL);
+		ret = select(1, &rfds, nullptr, nullptr, nullptr);
 	}
 
 	if (ret == -1) {
@@ -251,7 +251,7 @@ static void test_select(void)
 	}
 }
 
-static void test_poll(void)
+static void test_poll()
 {
 	struct pollfd ufds[NB_FD];
 	char buf[BUF_SIZE];
@@ -300,7 +300,7 @@ static void test_ppoll_generic(long int syscall_id)
 	}
 }
 
-static void test_ppoll(void)
+static void test_ppoll()
 {
 	test_ppoll_generic(SYS_ppoll);
 }
@@ -320,7 +320,7 @@ static void test_ppoll_big(FILE *validation_output_file __attribute__((unused)))
 		ufds[i].events = POLLIN | POLLPRI;
 	}
 
-	ret = ppoll(ufds, MAX_FDS, NULL, NULL);
+	ret = ppoll(ufds, MAX_FDS, nullptr, nullptr);
 
 	if (ret < 0) {
 		PERROR("ppoll");
@@ -418,9 +418,9 @@ static void test_epoll_pwait(FILE *validation_output_file)
 	}
 
 	if (timeout > 0) {
-		ret = epoll_pwait(epollfd, &epoll_event, 1, timeout, NULL);
+		ret = epoll_pwait(epollfd, &epoll_event, 1, timeout, nullptr);
 	} else {
-		ret = epoll_pwait(epollfd, &epoll_event, 1, -1, NULL);
+		ret = epoll_pwait(epollfd, &epoll_event, 1, -1, nullptr);
 	}
 
 	if (ret == 1) {
@@ -773,7 +773,7 @@ static void *ppoll_writer(void *arg)
 		usleep(100);
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 static void do_ppoll(int *fds, struct pollfd *ufds)
@@ -790,7 +790,7 @@ static void do_ppoll(int *fds, struct pollfd *ufds)
 		ufds[i].events = POLLIN | POLLPRI;
 	}
 
-	ret = ppoll(ufds, MAX_FDS, &ts, NULL);
+	ret = ppoll(ufds, MAX_FDS, &ts, nullptr);
 
 	if (ret < 0) {
 		PERROR("ppoll");
@@ -813,7 +813,7 @@ static void stress_ppoll(int *fds, int value)
 	thread_data.value = value;
 
 	stop_thread = 0;
-	ret = pthread_create(&writer, NULL, &ppoll_writer, (void *) &thread_data);
+	ret = pthread_create(&writer, nullptr, &ppoll_writer, (void *) &thread_data);
 	if (ret != 0) {
 		fprintf(stderr, "[error] pthread_create\n");
 		goto end;
@@ -822,7 +822,7 @@ static void stress_ppoll(int *fds, int value)
 		do_ppoll(fds, ufds);
 	}
 	stop_thread = 1;
-	ret = pthread_join(writer, NULL);
+	ret = pthread_join(writer, nullptr);
 	if (ret) {
 		fprintf(stderr, "[error] pthread_join\n");
 		goto end;
@@ -870,14 +870,14 @@ static void ppoll_concurrent_write(FILE *validation_output_file __attribute__((u
 
 static void *epoll_pwait_writer(void *addr)
 {
-	srand(time(NULL));
+	srand(time(nullptr));
 
 	while (!stop_thread) {
 		usleep(rand() % 30);
 		munmap(addr, MAX_FDS * sizeof(struct epoll_event));
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -907,7 +907,7 @@ static void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 		goto error;
 	}
 
-	epoll_event = (struct epoll_event *) mmap(NULL,
+	epoll_event = (struct epoll_event *) mmap(nullptr,
 						  MAX_FDS * sizeof(struct epoll_event),
 						  PROT_READ | PROT_WRITE,
 						  MAP_PRIVATE | MAP_ANONYMOUS,
@@ -932,13 +932,13 @@ static void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 		}
 	}
 	stop_thread = 0;
-	ret = pthread_create(&writer, NULL, &epoll_pwait_writer, (void *) epoll_event);
+	ret = pthread_create(&writer, nullptr, &epoll_pwait_writer, (void *) epoll_event);
 	if (ret != 0) {
 		fprintf(stderr, "[error] pthread_create\n");
 		goto error_unmap;
 	}
 
-	ret = epoll_pwait(epollfd, epoll_event, 1, 1, NULL);
+	ret = epoll_pwait(epollfd, epoll_event, 1, 1, nullptr);
 
 	if (ret == 1) {
 		ret = read(wait_fd, buf, BUF_SIZE);
@@ -950,7 +950,7 @@ static void epoll_pwait_concurrent_munmap(FILE *validation_output_file)
 	}
 
 	stop_thread = 1;
-	ret = pthread_join(writer, NULL);
+	ret = pthread_join(writer, nullptr);
 	if (ret) {
 		fprintf(stderr, "[error] pthread_join\n");
 		goto error_unmap;
@@ -977,7 +977,7 @@ end:
 	return;
 }
 
-static void print_list(void)
+static void print_list()
 {
 	printf("Test list (-t X):\n");
 
@@ -989,7 +989,7 @@ static void print_list(void)
 	}
 }
 
-static void print_test_syscalls(void)
+static void print_test_syscalls()
 {
 	const char *supported_syscalls[] = {
 #ifdef SYS_select
@@ -1033,31 +1033,31 @@ int main(int argc, const char **argv)
 	const char *test_name;
 	poptContext optCon;
 	struct rlimit open_lim;
-	FILE *test_validation_output_file = NULL;
-	const char *test_validation_output_file_path = NULL;
+	FILE *test_validation_output_file = nullptr;
+	const char *test_validation_output_file_path = nullptr;
 	struct poptOption optionsTable[] = {
-		{ "test", 't', POPT_ARG_STRING, &test_name, 0, "Name of test to run", NULL },
-		{ "list-tests", 'l', 0, 0, 'l', "List tests (-t X)", NULL },
+		{ "test", 't', POPT_ARG_STRING, &test_name, 0, "Name of test to run", nullptr },
+		{ "list-tests", 'l', 0, nullptr, 'l', "List tests (-t X)", nullptr },
 		{ "list-supported-test-syscalls",
 		  's',
 		  0,
-		  0,
+		  nullptr,
 		  's',
 		  "List supported test syscalls",
-		  NULL },
+		  nullptr },
 		{ "validation-file",
 		  'o',
 		  POPT_ARG_STRING,
 		  &test_validation_output_file_path,
 		  0,
 		  "Test case output",
-		  NULL },
-		POPT_AUTOHELP{ NULL, 0, 0, NULL, 0, NULL, NULL }
+		  nullptr },
+		POPT_AUTOHELP{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 	};
 	const struct test_case *test_case;
 	size_t test_case_id;
 
-	optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
+	optCon = poptGetContext(nullptr, argc, argv, optionsTable, 0);
 
 	if (argc < 2) {
 		poptPrintUsage(optCon, stderr, 0);
@@ -1106,7 +1106,7 @@ int main(int argc, const char **argv)
 	 * for the validation, disabling the buffering on the validation file
 	 * works.
 	 */
-	setbuf(test_validation_output_file, NULL);
+	setbuf(test_validation_output_file, nullptr);
 	wait_fd = STDIN_FILENO;
 
 	/* Test case id is 1-based. */

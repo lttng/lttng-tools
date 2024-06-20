@@ -758,36 +758,36 @@ void print_kernel_tracer_status_error()
 		case LTTNG_KERNEL_TRACER_STATUS_INITIALIZED:
 			return;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN:
-			std::cerr << "\tKernel module loading failed" << std::endl;
+			std::cerr << "\tKernel module loading failed" << '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING:
-			std::cerr << "\tMissing one or more required kernel modules" << std::endl;
+			std::cerr << "\tMissing one or more required kernel modules" << '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE:
 			std::cerr
 				<< "\tKernel module signature error prevented loading of one or more required kernel modules"
-				<< std::endl;
+				<< '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT:
-			std::cerr << "\tlttng-sessiond isn't running as root" << std::endl;
+			std::cerr << "\tlttng-sessiond isn't running as root" << '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER:
-			std::cerr << "\tFailed to setup notifiers" << std::endl;
+			std::cerr << "\tFailed to setup notifiers" << '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG:
-			std::cerr << "\tlttng-sessiond failed to open /proc/lttng" << std::endl;
+			std::cerr << "\tlttng-sessiond failed to open /proc/lttng" << '\n';
 			break;
 		case LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH:
 			std::cerr << "\tVersion mismatch between kernel tracer and kernel tracer ABI"
-				  << std::endl;
+				  << '\n';
 			break;
 		default:
 			std::cerr << lttng::format("\t\tUnknown kernel tracer status (%d)",
 						   static_cast<int>(kernel_tracer_status))
-				  << std::endl;
+				  << '\n';
 			break;
 		}
 
-		std::cerr << "\tConsult lttng-sessiond logs for more information" << std::endl;
+		std::cerr << "\tConsult lttng-sessiond logs for more information" << '\n';
 	}
 }

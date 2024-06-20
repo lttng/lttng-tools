@@ -462,7 +462,7 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 
 	LTTNG_ASSERT(socket);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	health_code_update();
 
 	/* Wait for a metadata request */

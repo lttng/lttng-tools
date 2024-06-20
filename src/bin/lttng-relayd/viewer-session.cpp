@@ -151,7 +151,7 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 	 * vstream per session.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_guard;
+		const lttng::urcu::read_lock_guard read_guard;
 
 		cds_lfht_for_each_entry (
 			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
@@ -183,7 +183,7 @@ void viewer_session_close(struct relay_viewer_session *vsession)
 	struct relay_session *session;
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_list_for_each_entry_rcu(session, &vsession->session_list, viewer_session_node)
 		{
@@ -210,7 +210,7 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession, struct rel
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		cds_list_for_each_entry_rcu(iter, &vsession->session_list, viewer_session_node)
 		{
 			if (session == iter) {

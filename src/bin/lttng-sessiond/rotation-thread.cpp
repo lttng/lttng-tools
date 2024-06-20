@@ -122,7 +122,7 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 	uint64_t relayd_id;
 	bool chunk_exists_on_peer = false;
 	enum lttng_trace_chunk_status chunk_status;
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	LTTNG_ASSERT(session->chunk_being_archived);
 
@@ -140,7 +140,7 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 			-1ULL :
 			session->ust_session->consumer->net_seq_index;
 
-		lttng::pthread::lock_guard socket_lock(*socket->lock);
+		const lttng::pthread::lock_guard socket_lock(*socket->lock);
 		ret = consumer_trace_chunk_exists(socket,
 						  relayd_id,
 						  session->id,
@@ -164,7 +164,7 @@ skip_ust:
 
 	cds_lfht_for_each_entry (
 		session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
-		lttng::pthread::lock_guard socket_lock(*socket->lock);
+		const lttng::pthread::lock_guard socket_lock(*socket->lock);
 
 		relayd_id = session->kernel_session->consumer->type == CONSUMER_DST_LOCAL ?
 			-1ULL :
@@ -391,7 +391,7 @@ void ls::rotation_thread_timer_queue_destroy(struct rotation_thread_timer_queue 
 	lttng_pipe_destroy(queue->event_pipe);
 
 	{
-		lttng::pthread::lock_guard queue_lock(queue->lock);
+		const lttng::pthread::lock_guard queue_lock(queue->lock);
 
 		LTTNG_ASSERT(cds_list_empty(&queue->list));
 	}
@@ -472,7 +472,7 @@ void ls::rotation_thread_enqueue_job(ls::rotation_thread_timer_queue *queue,
 	const char dummy = '!';
 	struct rotation_thread_job *job = nullptr;
 	const char *job_type_str = get_job_type_str(job_type);
-	lttng::pthread::lock_guard queue_lock(queue->lock);
+	const lttng::pthread::lock_guard queue_lock(queue->lock);
 
 	if (timer_job_exists(queue, job_type, session)) {
 		/*
@@ -533,7 +533,7 @@ void ls::rotation_thread::_handle_job_queue()
 
 		{
 			/* Take the queue lock only to pop an element from the list. */
-			lttng::pthread::lock_guard rotation_timer_queue_lock(
+			const lttng::pthread::lock_guard rotation_timer_queue_lock(
 				_rotation_timer_queue.lock);
 			if (cds_list_empty(&_rotation_timer_queue.list)) {
 				break;

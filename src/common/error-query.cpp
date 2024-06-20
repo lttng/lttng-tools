@@ -452,7 +452,7 @@ ssize_t lttng_error_query_result_create_from_payload(struct lttng_payload_view *
 {
 	ssize_t used_size = 0;
 	struct lttng_error_query_result_comm *header;
-	struct lttng_payload_view header_view =
+	const lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
 	const char *name;
 	const char *description;
@@ -466,7 +466,7 @@ ssize_t lttng_error_query_result_create_from_payload(struct lttng_payload_view *
 	used_size += sizeof(*header);
 
 	{
-		struct lttng_payload_view name_view =
+		const lttng_payload_view name_view =
 			lttng_payload_view_from_view(view, used_size, header->name_len);
 
 		if (!lttng_payload_view_is_valid(&name_view) ||
@@ -481,7 +481,7 @@ ssize_t lttng_error_query_result_create_from_payload(struct lttng_payload_view *
 	}
 
 	{
-		struct lttng_payload_view description_view =
+		const lttng_payload_view description_view =
 			lttng_payload_view_from_view(view, used_size, header->description_len);
 
 		if (!lttng_payload_view_is_valid(&description_view) ||
@@ -500,7 +500,7 @@ ssize_t lttng_error_query_result_create_from_payload(struct lttng_payload_view *
 	case LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER:
 	{
 		struct lttng_error_query_result_counter_comm *counter;
-		struct lttng_payload_view counter_payload_view =
+		const lttng_payload_view counter_payload_view =
 			lttng_payload_view_from_view(view, used_size, sizeof(*counter));
 
 		if (!lttng_payload_view_is_valid(&counter_payload_view)) {
@@ -567,7 +567,7 @@ ssize_t lttng_error_query_results_create_from_payload(struct lttng_payload_view 
 	size_t result_index;
 	ssize_t total_used_size = 0;
 	struct lttng_error_query_results_comm *header;
-	struct lttng_payload_view header_view =
+	const lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
 	struct lttng_error_query_results *results = nullptr;
 
@@ -778,7 +778,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	ssize_t used_size = 0;
 	struct lttng_error_query_comm *header;
 	struct lttng_trigger *trigger = nullptr;
-	struct lttng_payload_view header_view =
+	const lttng_payload_view header_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*header));
 
 	if (!lttng_payload_view_is_valid(&header_view)) {

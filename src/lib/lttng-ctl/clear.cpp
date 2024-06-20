@@ -180,7 +180,7 @@ lttng_clear_handle_wait_for_completion(struct lttng_clear_handle *handle, int ti
 		goto end;
 	}
 	if (has_timeout) {
-		int ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
+		const int ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
 		if (ret) {
 			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;

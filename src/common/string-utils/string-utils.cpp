@@ -275,7 +275,7 @@ int strutils_split(const char *input,
 		}
 
 		if (*s == delim) {
-			size_t last_len = s - last - 1;
+			const size_t last_len = s - last - 1;
 			last = s;
 			number_of_substrings++;
 
@@ -375,8 +375,8 @@ int strutils_append_str(char **s, const char *append)
 {
 	char *old = *s;
 	char *new_str;
-	size_t oldlen = (old == nullptr) ? 0 : strlen(old);
-	size_t appendlen = strlen(append);
+	const size_t oldlen = (old == nullptr) ? 0 : strlen(old);
+	const size_t appendlen = strlen(append);
 
 	new_str = zmalloc<char>(oldlen + appendlen + 1);
 	if (!new_str) {
@@ -394,7 +394,7 @@ int strutils_append_str(char **s, const char *append)
 int strutils_appendf(char **s, const char *fmt, ...)
 {
 	char *new_str;
-	size_t oldlen = (*s) ? strlen(*s) : 0;
+	const size_t oldlen = (*s) ? strlen(*s) : 0;
 	size_t addlen = 0;
 	int ret;
 	va_list args;

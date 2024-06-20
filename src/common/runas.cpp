@@ -788,9 +788,9 @@ send_fds_to_master(run_as_worker_data *worker, enum run_as_cmd cmd, struct run_a
 	}
 
 	for (i = 0; i < COMMAND_OUT_FD_COUNT(cmd); i++) {
-		int fd = COMMAND_OUT_FDS(cmd, run_as_ret)[i];
+		const int fd = COMMAND_OUT_FDS(cmd, run_as_ret)[i];
 		if (fd >= 0) {
-			int ret_close = close(fd);
+			const int ret_close = close(fd);
 
 			if (ret_close < 0) {
 				PERROR("Failed to close result file descriptor (fd = %i)", fd);

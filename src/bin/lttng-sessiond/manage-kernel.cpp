@@ -130,7 +130,7 @@ static int update_kernel_stream(int fd)
 			}
 
 			{
-				lttng::urcu::read_lock_guard read_lock;
+				const lttng::urcu::read_lock_guard read_lock;
 
 				cds_lfht_for_each_entry (
 					ksess->consumer->socks->ht, &iter.iter, socket, node.node) {

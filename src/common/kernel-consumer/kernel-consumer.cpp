@@ -52,7 +52,7 @@ extern int consumer_poll_timeout;
 int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
-	int infd = stream->wait_fd;
+	const int infd = stream->wait_fd;
 
 	ret = kernctl_snapshot(infd);
 	/*
@@ -86,7 +86,7 @@ int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stre
 int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos)
 {
 	int ret;
-	int infd = stream->wait_fd;
+	const int infd = stream->wait_fd;
 
 	ret = kernctl_snapshot_get_produced(infd, pos);
 	if (ret != 0) {
@@ -104,7 +104,7 @@ int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream, 
 int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos)
 {
 	int ret;
-	int infd = stream->wait_fd;
+	const int infd = stream->wait_fd;
 
 	ret = kernctl_snapshot_get_consumed(infd, pos);
 	if (ret != 0) {
@@ -152,7 +152,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 	/* Prevent channel modifications while we perform the snapshot.*/
 	pthread_mutex_lock(&channel->lock);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Splice is not supported yet for channel snapshot. */
 	if (channel->output != CONSUMER_CHANNEL_MMAP) {
@@ -354,7 +354,7 @@ static int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *meta
 
 	DBG("Kernel consumer snapshot metadata with key %" PRIu64 " at path %s", key, path);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	metadata_stream = metadata_channel->metadata_stream;
 	LTTNG_ASSERT(metadata_stream);
@@ -454,14 +454,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* relayd needs RCU read-side protection */
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	switch (msg.cmd_type) {
 	case LTTNG_CONSUMER_ADD_RELAYD_SOCKET:
 	{
-		uint32_t major = msg.u.relayd_sock.major;
-		uint32_t minor = msg.u.relayd_sock.minor;
-		enum lttcomm_sock_proto protocol =
+		const uint32_t major = msg.u.relayd_sock.major;
+		const uint32_t minor = msg.u.relayd_sock.minor;
+		const lttcomm_sock_proto protocol =
 			(enum lttcomm_sock_proto) msg.u.relayd_sock.relayd_socket_protocol;
 
 		/* Session daemon status message are handled in the following call. */
@@ -542,7 +542,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		if (ctx->on_recv_channel != nullptr) {
-			int ret_recv_channel = ctx->on_recv_channel(new_channel);
+			const int ret_recv_channel = ctx->on_recv_channel(new_channel);
 			if (ret_recv_channel == 0) {
 				ret_add_channel = consumer_add_channel(new_channel, ctx);
 			} else if (ret_recv_channel < 0) {
@@ -709,7 +709,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		pthread_mutex_lock(&new_stream->lock);
 		if (ctx->on_recv_stream) {
-			int ret_recv_stream = ctx->on_recv_stream(new_stream);
+			const int ret_recv_stream = ctx->on_recv_stream(new_stream);
 			if (ret_recv_stream < 0) {
 				pthread_mutex_unlock(&new_stream->lock);
 				pthread_mutex_unlock(&channel->lock);
@@ -875,7 +875,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DESTROY_RELAYD:
 	{
-		uint64_t index = msg.u.destroy_relayd.net_seq_idx;
+		const uint64_t index = msg.u.destroy_relayd.net_seq_idx;
 		struct consumer_relayd_sock_pair *relayd;
 		int ret_send_status;
 
@@ -915,7 +915,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_DATA_PENDING:
 	{
 		int32_t ret_data_pending;
-		uint64_t id = msg.u.data_pending.session_id;
+		const uint64_t id = msg.u.data_pending.session_id;
 		ssize_t ret_send;
 
 		DBG("Kernel consumer data pending command for id %" PRIu64, id);
@@ -941,7 +941,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
 		struct lttng_consumer_channel *channel;
-		uint64_t key = msg.u.snapshot_channel.key;
+		const uint64_t key = msg.u.snapshot_channel.key;
 		int ret_send_status;
 
 		channel = consumer_find_channel(key);
@@ -988,7 +988,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DESTROY_CHANNEL:
 	{
-		uint64_t key = msg.u.destroy_channel.key;
+		const uint64_t key = msg.u.destroy_channel.key;
 		struct lttng_consumer_channel *channel;
 		int ret_send_status;
 
@@ -1034,8 +1034,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ssize_t ret;
 		uint64_t count;
 		struct lttng_consumer_channel *channel;
-		uint64_t id = msg.u.discarded_events.session_id;
-		uint64_t key = msg.u.discarded_events.channel_key;
+		const uint64_t id = msg.u.discarded_events.session_id;
+		const uint64_t key = msg.u.discarded_events.channel_key;
 
 		DBG("Kernel consumer discarded events command for session id %" PRIu64
 		    ", channel key %" PRIu64,
@@ -1066,8 +1066,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ssize_t ret;
 		uint64_t count;
 		struct lttng_consumer_channel *channel;
-		uint64_t id = msg.u.lost_packets.session_id;
-		uint64_t key = msg.u.lost_packets.channel_key;
+		const uint64_t id = msg.u.lost_packets.session_id;
+		const uint64_t key = msg.u.lost_packets.channel_key;
 
 		DBG("Kernel consumer lost packets command for session id %" PRIu64
 		    ", channel key %" PRIu64,
@@ -1146,7 +1146,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ROTATE_CHANNEL:
 	{
 		struct lttng_consumer_channel *channel;
-		uint64_t key = msg.u.rotate_channel.key;
+		const uint64_t key = msg.u.rotate_channel.key;
 		int ret_send_status;
 
 		DBG("Consumer rotate channel %" PRIu64, key);
@@ -1192,7 +1192,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_CLEAR_CHANNEL:
 	{
 		struct lttng_consumer_channel *channel;
-		uint64_t key = msg.u.clear_channel.key;
+		const uint64_t key = msg.u.clear_channel.key;
 		int ret_send_status;
 
 		channel = consumer_find_channel(key);

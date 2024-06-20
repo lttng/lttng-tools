@@ -212,7 +212,7 @@ static ssize_t init_condition_from_payload(struct lttng_condition *condition,
 	const char *session_name;
 	struct lttng_buffer_view session_name_view;
 	const struct lttng_condition_session_consumed_size_comm *condition_comm;
-	struct lttng_payload_view condition_comm_view =
+	const lttng_payload_view condition_comm_view =
 		lttng_payload_view_from_view(src_view, 0, sizeof(*condition_comm));
 
 	if (!lttng_payload_view_is_valid(&condition_comm_view)) {

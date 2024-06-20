@@ -85,7 +85,7 @@ struct tree_symlink tree_symlinks[] = {
 };
 const int num_tree_symlinks = sizeof(tree_symlinks) / sizeof(tree_symlinks[0]);
 
-static struct symlink_test_input symlink_tests_inputs[] = {
+struct symlink_test_input symlink_tests_inputs[] = {
 	{ "a/g/../l/.", "a/b/l" },  { "a/g/../l/./", "a/b/l/" }, { "a/g/../l/..", "a/b" },
 	{ "a/g/../l/../", "a/b/" }, { "a/b/h/g/", "" },
 };

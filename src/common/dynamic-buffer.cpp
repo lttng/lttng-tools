@@ -132,7 +132,7 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer, size_
 {
 	int ret = 0;
 	void *new_buf;
-	size_t new_capacity = demanded_capacity ? round_to_power_of_2(demanded_capacity) : 0;
+	const size_t new_capacity = demanded_capacity ? round_to_power_of_2(demanded_capacity) : 0;
 
 	if (!buffer || demanded_capacity < buffer->size) {
 		/*

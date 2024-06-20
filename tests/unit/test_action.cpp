@@ -100,12 +100,12 @@ static void test_action_notify()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_list(void)
+static void test_action_list()
 {
 	int ret, action_idx;
-	struct lttng_action *list_action = NULL, *list_action_from_buffer = NULL,
-			    *stop_session_action = NULL, *notify_action = NULL,
-			    *start_session_action = NULL;
+	struct lttng_action *list_action = nullptr, *list_action_from_buffer = nullptr,
+			    *stop_session_action = nullptr, *notify_action = nullptr,
+			    *start_session_action = nullptr;
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
@@ -140,7 +140,7 @@ static void test_action_list(void)
 
 	action_idx = 0;
 	for (auto action : lttng::ctl::const_action_list_view(list_action)) {
-		enum lttng_action_type inner_action_type = lttng_action_get_type(action);
+		const lttng_action_type inner_action_type = lttng_action_get_type(action);
 		switch (action_idx) {
 		case 0:
 			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,
@@ -160,7 +160,7 @@ static void test_action_list(void)
 
 	action_idx = 0;
 	for (auto action : lttng::ctl::action_list_view(list_action)) {
-		enum lttng_action_type inner_action_type = lttng_action_get_type(action);
+		const lttng_action_type inner_action_type = lttng_action_get_type(action);
 		switch (action_idx) {
 		case 0:
 			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,
@@ -186,7 +186,7 @@ static void test_action_list(void)
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_rotate_session(void)
+static void test_action_rotate_session()
 {
 	int ret;
 	enum lttng_action_status status;

@@ -263,7 +263,7 @@ struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream = nullptr;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(viewer_streams_ht, &id, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
@@ -280,7 +280,7 @@ end:
 
 void viewer_stream_put(struct relay_viewer_stream *vstream)
 {
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&vstream->ref, viewer_stream_release);
 }
 
@@ -348,7 +348,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 	if (tracefile_array_seq_in_file(stream->tfa, new_id, vstream->index_sent_seqcount)) {
 		vstream->current_tracefile_id = new_id;
 	} else {
-		uint64_t seq_tail = tracefile_array_get_seq_tail(stream->tfa);
+		const uint64_t seq_tail = tracefile_array_get_seq_tail(stream->tfa);
 
 		/*
 		 * This can only be reached on overwrite, which implies there
@@ -378,7 +378,7 @@ void print_viewer_streams()
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {

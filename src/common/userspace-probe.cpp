@@ -1436,7 +1436,7 @@ int lttng_userspace_probe_location_create_from_payload(
 	int consumed = 0;
 	int ret;
 	struct lttng_userspace_probe_location_comm *probe_location_comm;
-	struct lttng_payload_view probe_location_comm_view =
+	const lttng_payload_view probe_location_comm_view =
 		lttng_payload_view_from_view(view, 0, sizeof(*probe_location_comm));
 
 	LTTNG_ASSERT(view);
@@ -1512,7 +1512,7 @@ end:
 static int lttng_userspace_probe_location_function_set_binary_fd_handle(
 	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd)
 {
-	int ret = 0;
+	const int ret = 0;
 	struct lttng_userspace_probe_location_function *function_location;
 
 	LTTNG_ASSERT(location);
@@ -1529,7 +1529,7 @@ static int lttng_userspace_probe_location_function_set_binary_fd_handle(
 static int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 	struct lttng_userspace_probe_location *location, struct fd_handle *binary_fd)
 {
-	int ret = 0;
+	const int ret = 0;
 	struct lttng_userspace_probe_location_tracepoint *tracepoint_location;
 
 	LTTNG_ASSERT(location);

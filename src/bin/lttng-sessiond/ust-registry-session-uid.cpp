@@ -22,7 +22,7 @@ lsu::registry_session_per_uid::registry_session_per_uid(const struct lst::abi& i
 	registry_session{ in_abi, major, minor, root_shm_path, shm_path, euid, egid, tracing_id },
 	_tracing_uid{ tracing_uid }
 {
-	lttng::pthread::lock_guard registry_lock(_lock);
+	const lttng::pthread::lock_guard registry_lock(_lock);
 	_generate_metadata();
 }
 

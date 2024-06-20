@@ -30,7 +30,7 @@ struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connectio
 
 	LTTNG_ASSERT(sock >= 0);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(relay_connections_ht, (void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&iter);
 	if (!node) {
@@ -150,7 +150,7 @@ static void connection_release(struct urcu_ref *ref)
 
 void connection_put(struct relay_connection *conn)
 {
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&conn->ref, connection_release);
 }
 

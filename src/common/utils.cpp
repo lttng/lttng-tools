@@ -475,7 +475,7 @@ end:
  *
  * @return 0 on success, -1 on failure.
  */
-int utils_parse_time_suffix(char const *const str, uint64_t *const time_us)
+int utils_parse_time_suffix(const char *const str, uint64_t *const time_us)
 {
 	int ret;
 	uint64_t base_time;

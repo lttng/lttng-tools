@@ -175,7 +175,7 @@ end:
 int main()
 {
 	int i;
-	int num_test = sizeof(tests) / sizeof(struct test);
+	const int num_test = sizeof(tests) / sizeof(struct test);
 	const time_t test_time = time(nullptr);
 
 	plan_tests(NUM_TESTS_PER_TEST * num_test);

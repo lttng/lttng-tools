@@ -150,7 +150,7 @@ struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
 	struct lttng_ht_iter iter;
 	struct ctf_trace *trace = nullptr;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(session->ctf_traces_ht, subpath, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (!node) {
@@ -171,7 +171,7 @@ end:
 
 void ctf_trace_put(struct ctf_trace *trace)
 {
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	urcu_ref_put(&trace->ref, ctf_trace_release);
 }
 
@@ -179,7 +179,7 @@ int ctf_trace_close(struct ctf_trace *trace)
 {
 	struct relay_stream *stream;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_list_for_each_entry_rcu(stream, &trace->stream_list, stream_node)
 	{
 		/*
@@ -199,7 +199,7 @@ struct relay_viewer_stream *ctf_trace_get_viewer_metadata_stream(struct ctf_trac
 {
 	struct relay_viewer_stream *vstream;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	vstream = rcu_dereference(trace->viewer_metadata_stream);
 	if (!vstream) {
 		goto end;

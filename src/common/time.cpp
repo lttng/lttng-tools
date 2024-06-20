@@ -47,9 +47,9 @@ int timespec_to_ms(struct timespec ts, unsigned long *ms)
 
 struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 {
-	uint64_t ts1 = (uint64_t) t1.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t1.tv_nsec;
-	uint64_t ts2 = (uint64_t) t2.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t2.tv_nsec;
-	uint64_t diff = std::max(ts1, ts2) - std::min(ts1, ts2);
+	const uint64_t ts1 = (uint64_t) t1.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t1.tv_nsec;
+	const uint64_t ts2 = (uint64_t) t2.tv_sec * (uint64_t) NSEC_PER_SEC + (uint64_t) t2.tv_nsec;
+	const uint64_t diff = std::max(ts1, ts2) - std::min(ts1, ts2);
 	struct timespec res;
 
 	res.tv_sec = diff / (uint64_t) NSEC_PER_SEC;

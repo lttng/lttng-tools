@@ -109,7 +109,7 @@ static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 	return raw_offset &= ~0b1;
 }
 #else /* defined(__arm__) || defined(__aarch64__) */
-static inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
+inline uint64_t sanitize_uprobe_offset(uint64_t raw_offset)
 {
 	return raw_offset;
 }
@@ -848,7 +848,7 @@ static int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_r
 
 	LTTNG_ASSERT(event);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	cds_lfht_del(kernel_token_to_event_notifier_rule_ht, &event->ht_node);
 
 	ret = kernctl_disable(event->fd);
@@ -1296,7 +1296,7 @@ error:
 void kernel_wait_quiescent()
 {
 	int ret;
-	int fd = kernel_tracer_fd;
+	const int fd = kernel_tracer_fd;
 
 	DBG("Kernel quiescent wait on %d", fd);
 
@@ -1641,7 +1641,7 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 		struct lttng_ht_iter iter;
 
 		/* For each consumer socket. */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -1751,7 +1751,7 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 	{
 		/* Send metadata to consumer and snapshot everything. */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
 			struct ltt_kernel_channel *chan;
@@ -1914,7 +1914,7 @@ enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& sessi
 		 * Note that this loop will end after one iteration given that there is
 		 * only one kernel consumer.
 		 */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -1958,7 +1958,7 @@ enum lttng_error_code kernel_create_channel_subdirectories(const struct ltt_kern
 	enum lttng_error_code ret = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(ksess->current_trace_chunk);
 
 	/*
@@ -2023,7 +2023,7 @@ void set_kernel_tracer_status_from_modules_ret(int code)
 int init_kernel_tracer()
 {
 	int ret;
-	bool is_root = !getuid();
+	const bool is_root = !getuid();
 
 	const auto log_status_on_exit = lttng::make_scope_exit([]() noexcept {
 		DBG_FMT("Kernel tracer status set to `{}`",
@@ -2265,7 +2265,7 @@ enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& sessio
 		 * Note that this loop will end after one iteration given that there is
 		 * only one kernel consumer.
 		 */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -2364,7 +2364,7 @@ error:
 enum lttng_error_code
 kernel_destroy_event_notifier_group_notification_fd(int event_notifier_group_notification_fd)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
+	const lttng_error_code ret_code = LTTNG_OK;
 
 	DBG("Closing event notifier group notification file descriptor: fd = %d",
 	    event_notifier_group_notification_fd);
@@ -2547,7 +2547,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 
 	/* Add trigger to kernel token mapping in the hash table. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		cds_lfht_add(kernel_token_to_event_notifier_rule_ht,
 			     hash_trigger(trigger),
 			     &event_notifier_rule->ht_node);
@@ -2613,7 +2613,7 @@ enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigge
 	enum lttng_error_code error_code_ret;
 	int ret;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	cds_lfht_lookup(kernel_token_to_event_notifier_rule_ht,
 			hash_trigger(trigger),

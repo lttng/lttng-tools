@@ -340,7 +340,7 @@ static enum lttng_error_code list_lttng_agent_events(struct agent *agt,
 	local_nb_events = (unsigned int) agent_event_count;
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, event, node.node) {
 			struct lttng_event *tmp_event = lttng_event_create();
@@ -404,7 +404,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 
 	DBG("Listing UST global events for channel %s", channel_name);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	lttng_ht_lookup(ust_global->channels, (void *) channel_name, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
@@ -754,7 +754,7 @@ static int init_kernel_tracing(struct ltt_kernel_session *session)
 	LTTNG_ASSERT(session);
 
 	if (session->consumer_fds_sent == 0 && session->consumer != nullptr) {
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			session->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -1029,7 +1029,7 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 	DBG("Setting relayd for session %s", session->name);
 
 	if (session->current_trace_chunk) {
-		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
+		const lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
 			session->current_trace_chunk, &current_chunk_id.value);
 
 		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -1044,7 +1044,7 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET &&
 	    usess->consumer->enabled) {
 		/* For each consumer socket, send relayd sockets */
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			usess->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -1075,7 +1075,7 @@ int cmd_setup_relayd(const ltt_session::locked_ref& session)
 
 	if (ksess && ksess->consumer && ksess->consumer->type == CONSUMER_DST_NET &&
 	    ksess->consumer->enabled) {
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
@@ -1232,7 +1232,7 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 
 	usess = session->ust_session;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1339,7 +1339,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	LTTNG_ASSERT(_attr);
 	LTTNG_ASSERT(domain);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	attr = lttng_channel_copy(_attr);
 	if (!attr) {
@@ -1741,7 +1741,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 
 	event_name = event->name;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Error out on unhandled search criteria */
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled || event->pid ||
@@ -2074,7 +2074,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 {
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = nullptr;
-	ltt_session& session = *locked_session;
+	const ltt_session& session = *locked_session;
 
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
@@ -2096,7 +2096,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		}
 	}
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2821,7 +2821,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 
 	/* Flag session that trace should start automatically */
 	if (usess) {
-		int int_ret = ust_app_start_trace_all(usess);
+		const int int_ret = ust_app_start_trace_all(usess);
 
 		if (int_ret < 0) {
 			ret = LTTNG_ERR_UST_START_FAIL;
@@ -2846,7 +2846,7 @@ int cmd_start_trace(const ltt_session::locked_ref& session)
 	session->rotated_after_last_stop = false;
 
 	if (session->rotate_timer_period && !session->rotation_schedule_timer_enabled) {
-		int int_ret = timer_session_rotation_schedule_timer_start(
+		const int int_ret = timer_session_rotation_schedule_timer_start(
 			session, session->rotate_timer_period);
 
 		if (int_ret < 0) {
@@ -3044,9 +3044,9 @@ set_session_output_from_descriptor(const ltt_session::locked_ref& session,
 {
 	int ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
-	enum lttng_session_descriptor_type session_type =
+	const lttng_session_descriptor_type session_type =
 		lttng_session_descriptor_get_type(descriptor);
-	enum lttng_session_descriptor_output_type output_type =
+	const lttng_session_descriptor_output_type output_type =
 		lttng_session_descriptor_get_output_type(descriptor);
 	struct lttng_uri uris[2] = {};
 	size_t uri_count = 0;
@@ -3631,7 +3631,7 @@ int cmd_register_consumer(const ltt_session::locked_ref& session,
 		pthread_mutex_init(socket->lock, nullptr);
 		socket->registered = 1;
 
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 		consumer_add_socket(socket, ksess->consumer);
 
 		pthread_mutex_lock(&cdata->pid_mutex);
@@ -3674,7 +3674,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		DBG3("Listing domains found UST global domain");
 		nb_dom++;
 
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			session->ust_session->agents->ht, &iter.iter, agt, node.node) {
@@ -3709,7 +3709,7 @@ ssize_t cmd_list_domains(const ltt_session::locked_ref& session, struct lttng_do
 		index++;
 
 		{
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 
 			cds_lfht_for_each_entry (
 				session->ust_session->agents->ht, &iter.iter, agt, node.node) {
@@ -3804,7 +3804,7 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_ust_channel *uchan;
 
 		{
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 
 			cds_lfht_for_each_entry (session->ust_session->domain_global.channels->ht,
 						 &iter.iter,
@@ -3922,7 +3922,7 @@ enum lttng_error_code cmd_list_events(enum lttng_domain_type domain,
 			struct lttng_ht_iter iter;
 			struct agent *agt;
 
-			lttng::urcu::read_lock_guard read_lock;
+			const lttng::urcu::read_lock_guard read_lock;
 
 			cds_lfht_for_each_entry (
 				session->ust_session->agents->ht, &iter.iter, agt, node.node) {
@@ -4180,7 +4180,7 @@ int cmd_snapshot_del_output(const ltt_session::locked_ref& session,
 
 	LTTNG_ASSERT(output);
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 
 	/*
 	 * Permission denied to create an output if the session is not
@@ -4254,7 +4254,7 @@ ssize_t cmd_snapshot_list_outputs(const ltt_session::locked_ref& session,
 
 	/* Copy list from session to the new list object. */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			session->snapshot.output_ht->ht, &iter.iter, output, node.node) {
@@ -4944,7 +4944,7 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 	DBG2("Set relayd object from snapshot output");
 
 	if (session->current_trace_chunk) {
-		enum lttng_trace_chunk_status chunk_status = lttng_trace_chunk_get_id(
+		const lttng_trace_chunk_status chunk_status = lttng_trace_chunk_get_id(
 			session->current_trace_chunk, &current_chunk_id.value);
 
 		if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -4976,7 +4976,7 @@ static enum lttng_error_code set_relayd_for_snapshot(struct consumer_output *out
 	 * snapshot output.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
@@ -5362,7 +5362,7 @@ int cmd_snapshot_record(const ltt_session::locked_ref& session,
 		struct snapshot_output *sout;
 		struct lttng_ht_iter iter;
 
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			session->snapshot.output_ht->ht, &iter.iter, sout, node.node) {

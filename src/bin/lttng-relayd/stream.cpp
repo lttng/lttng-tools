@@ -48,7 +48,7 @@ struct relay_stream *stream_get_by_id(uint64_t stream_id)
 	struct lttng_ht_iter iter;
 	struct relay_stream *stream = nullptr;
 
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	lttng_ht_lookup(relay_streams_ht, &stream_id, &iter);
 	node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 	if (!node) {
@@ -473,7 +473,7 @@ end:
  */
 static int try_rotate_stream_index(struct relay_stream *stream)
 {
-	int ret = 0;
+	const int ret = 0;
 
 	if (!stream->ongoing_rotation.is_set) {
 		/* No rotation expected. */
@@ -807,7 +807,7 @@ static void stream_release(struct urcu_ref *ref)
 
 void stream_put(struct relay_stream *stream)
 {
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	LTTNG_ASSERT(stream->ref.refcount != 0);
 	/*
 	 * Wait until we have processed all the stream packets before
@@ -1312,7 +1312,7 @@ static void print_stream_indexes(struct relay_stream *stream)
 	struct relay_index *index;
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
 			DBG("index %p net_seq_num %" PRIu64 " refcount %ld"
@@ -1368,7 +1368,7 @@ void print_relay_streams()
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (relay_streams_ht->ht, &iter.iter, stream, node.node) {
 			if (!stream_get(stream)) {

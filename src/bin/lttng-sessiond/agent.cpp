@@ -684,7 +684,7 @@ int agent_enable_event(struct agent_event *event, enum lttng_domain_type domain)
 	LTTNG_ASSERT(event);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
@@ -757,7 +757,7 @@ int agent_enable_context(const struct lttng_event_context *ctx, enum lttng_domai
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
@@ -817,7 +817,7 @@ int agent_disable_event(struct agent_event *event, enum lttng_domain_type domain
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
@@ -857,7 +857,7 @@ static int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type dom
 	DBG2("Disabling agent application context %s:%s", ctx->provider_name, ctx->ctx_name);
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
@@ -902,7 +902,7 @@ int agent_list_events(struct lttng_event **events, enum lttng_domain_type domain
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
@@ -1424,7 +1424,7 @@ void agent_destroy(struct agent *agt)
 	DBG3("Agent destroy");
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, node, node) {
 			int ret;
@@ -1479,7 +1479,7 @@ void agent_destroy_app_by_sock(int sock)
 	 * happen. The hash table deletion is ONLY done through this call when the
 	 * main sessiond thread is torn down.
 	 */
-	lttng::urcu::read_lock_guard read_lock;
+	const lttng::urcu::read_lock_guard read_lock;
 	app = agent_find_app_by_sock(sock);
 	LTTNG_ASSERT(app);
 
@@ -1503,7 +1503,7 @@ void agent_app_ht_clean()
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (the_agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
 			struct agent_app *app;
@@ -1539,7 +1539,7 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
 	 * there is a serious code flow error.
 	 */
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, event, node.node) {
 			/* Skip event if disabled. */
@@ -1596,7 +1596,7 @@ void agent_by_event_notifier_domain_ht_destroy()
 	}
 
 	{
-		lttng::urcu::read_lock_guard read_lock;
+		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_lfht_for_each_entry (
 			the_trigger_agents_ht_by_domain->ht, &iter.iter, node, node) {

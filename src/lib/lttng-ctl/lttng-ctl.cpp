@@ -1214,7 +1214,7 @@ serialize:
 
 	{
 		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
-		int fd_count = lttng_payload_view_get_fd_handle_count(&view);
+		const int fd_count = lttng_payload_view_get_fd_handle_count(&view);
 		int fd_to_send;
 
 		if (fd_count < 0) {
@@ -1397,7 +1397,7 @@ serialize:
 
 	{
 		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
-		int fd_count = lttng_payload_view_get_fd_handle_count(&view);
+		const int fd_count = lttng_payload_view_get_fd_handle_count(&view);
 		int fd_to_send;
 
 		if (fd_count < 0) {
@@ -1702,7 +1702,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle, struct lttng_event **eve
 	nb_events = (unsigned int) cmd_header->count;
 
 	{
-		struct lttng_buffer_view events_view =
+		const lttng_buffer_view events_view =
 			lttng_buffer_view_init(reception_buffer, 0, total_payload_received);
 		struct lttng_payload_view events_payload_view =
 			lttng_payload_view_from_buffer_view(&events_view, 0, -1);
@@ -1912,7 +1912,7 @@ enum lttng_error_code lttng_create_session_ext(struct lttng_session_descriptor *
 		!lttng_session_descriptor_is_output_destination_initialized(session_descriptor);
 	if (sessiond_must_generate_ouput) {
 		const char *home_dir = utils_get_home_dir();
-		size_t home_dir_len = home_dir ? strlen(home_dir) + 1 : 0;
+		const size_t home_dir_len = home_dir ? strlen(home_dir) + 1 : 0;
 
 		if (!home_dir || home_dir_len > LTTNG_PATH_MAX) {
 			ret_code = LTTNG_ERR_FATAL;

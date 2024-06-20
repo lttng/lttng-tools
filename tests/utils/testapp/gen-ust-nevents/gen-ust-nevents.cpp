@@ -37,8 +37,8 @@ int main(int argc, char **argv)
 	int i, netint, ret = 0, option_index, option;
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
-	double dbl = 2.0;
-	float flt = 2222.0;
+	const double dbl = 2.0;
+	const float flt = 2222.0;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
 	char *wait_before_first_event_file_path = nullptr;

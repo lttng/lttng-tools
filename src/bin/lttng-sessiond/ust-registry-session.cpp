@@ -123,7 +123,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 	}
 
 	if (chan->_events) {
-		lttng::urcu::read_lock_guard read_lock_guard;
+		const lttng::urcu::read_lock_guard read_lock_guard;
 
 		/* Destroy all event associated with this registry. */
 		DIAGNOSTIC_PUSH
@@ -359,7 +359,7 @@ const lst::type *lsu::registry_session::packet_header() const noexcept
 void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
 {
 	int ret;
-	lttng::urcu::read_lock_guard read_lock_guard;
+	const lttng::urcu::read_lock_guard read_lock_guard;
 
 	LTTNG_ASSERT(reg_enum);
 	ASSERT_RCU_READ_LOCKED();
@@ -384,7 +384,7 @@ lsu::registry_session::~registry_session()
 	LTTNG_ASSERT(!ret);
 
 	if (_channels) {
-		lttng::urcu::read_lock_guard read_lock_guard;
+		const lttng::urcu::read_lock_guard read_lock_guard;
 
 		/* Destroy all event associated with this registry. */
 		DIAGNOSTIC_PUSH
@@ -421,7 +421,7 @@ lsu::registry_session::~registry_session()
 
 	/* Destroy the enum hash table */
 	if (_enums) {
-		lttng::urcu::read_lock_guard read_lock_guard;
+		const lttng::urcu::read_lock_guard read_lock_guard;
 
 		/* Destroy all enum entries associated with this registry. */
 		DIAGNOSTIC_PUSH
@@ -444,7 +444,7 @@ lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
  */
 void lsu::registry_session::add_channel(uint64_t key)
 {
-	lttng::pthread::lock_guard session_lock_guard(_lock);
+	const lttng::pthread::lock_guard session_lock_guard(_lock);
 
 	/*
 	 * Assign a channel ID right now since the event notification comes
@@ -481,14 +481,14 @@ void lsu::registry_session::add_channel(uint64_t key)
 			}
 		});
 
-	lttng::urcu::read_lock_guard rcu_read_lock_guard;
+	const lttng::urcu::read_lock_guard rcu_read_lock_guard;
 	lttng_ht_node_init_u64(&chan->_node, key);
 	lttng_ht_add_unique_u64(_channels.get(), &chan->_node);
 }
 
 lttng::sessiond::ust::registry_channel& lsu::registry_session::channel(uint64_t channel_key) const
 {
-	lttng::urcu::read_lock_guard read_lock_guard;
+	const lttng::urcu::read_lock_guard read_lock_guard;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
@@ -512,7 +512,7 @@ void lsu::registry_session::remove_channel(uint64_t channel_key, bool notify)
 {
 	struct lttng_ht_iter iter;
 	int ret;
-	lttng::urcu::read_lock_guard read_lock_guard;
+	const lttng::urcu::read_lock_guard read_lock_guard;
 
 	ASSERT_LOCKED(_lock);
 	auto& channel_to_remove = channel(channel_key);
@@ -566,7 +566,7 @@ void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& 
 	std::vector<const lttng::sessiond::ust::registry_channel *> sorted_stream_classes;
 
 	{
-		lttng::urcu::read_lock_guard rcu_lock_guard;
+		const lttng::urcu::read_lock_guard rcu_lock_guard;
 		const lsu::registry_channel *channel;
 		lttng_ht_iter channel_it;
 
@@ -680,7 +680,7 @@ void lsu::registry_session::_generate_metadata()
 
 void lsu::registry_session::regenerate_metadata()
 {
-	lttng::pthread::lock_guard registry_lock(_lock);
+	const lttng::pthread::lock_guard registry_lock(_lock);
 
 	/* Resample the clock */
 	_clock = lttng::make_unique<lsu::clock_class>();
@@ -783,7 +783,7 @@ void lsu::registry_session::create_or_find_enum(int session_objd,
 {
 	struct cds_lfht_node *nodep;
 	lsu::registry_enum *reg_enum = nullptr, *old_reg_enum;
-	lttng::urcu::read_lock_guard read_lock_guard;
+	const lttng::urcu::read_lock_guard read_lock_guard;
 	auto entries = lttng::make_unique_wrapper<lttng_ust_ctl_enum_entry, lttng::memory::free>(
 		raw_entries);
 

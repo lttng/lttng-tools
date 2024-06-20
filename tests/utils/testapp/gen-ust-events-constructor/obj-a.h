@@ -10,13 +10,13 @@
 
 struct Obj {
 	const char *msg;
-	Obj(const char *msg);
+	explicit Obj(const char *msg);
 	~Obj();
 };
 
 struct Obja {
 	const char *msg;
-	Obja(const char *msg);
+	explicit Obja(const char *msg);
 	~Obja();
 };
 

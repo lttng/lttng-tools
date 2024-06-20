@@ -236,7 +236,7 @@ end:
 int sessiond_config_init(struct sessiond_config *config)
 {
 	int ret;
-	bool is_root = (getuid() == 0);
+	const bool is_root = (getuid() == 0);
 	char *str;
 
 	LTTNG_ASSERT(config);

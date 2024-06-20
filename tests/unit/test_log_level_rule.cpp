@@ -145,7 +145,7 @@ static void test_log_level_rule_is_equal_at_least_as_severe_as()
 
 static void test_log_level_rule_exactly()
 {
-	int level = 9000;
+	const int level = 9000;
 	int _level;
 	struct lttng_log_level_rule *exactly = nullptr;
 	enum lttng_log_level_rule_status status;
@@ -167,7 +167,7 @@ static void test_log_level_rule_exactly()
 
 static void test_log_level_rule_at_least_as_severe_as()
 {
-	int level = 9000;
+	const int level = 9000;
 	int _level;
 	struct lttng_log_level_rule *at_least_as_severe_as = nullptr;
 	enum lttng_log_level_rule_status status;

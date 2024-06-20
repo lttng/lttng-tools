@@ -182,7 +182,7 @@ int cmd_clear_session(const ltt_session::locked_ref& session, int *sock_fd)
 
 		/* Flag session that trace should start automatically */
 		if (usess) {
-			int int_ret = ust_app_start_trace_all(usess);
+			const int int_ret = ust_app_start_trace_all(usess);
 
 			if (int_ret < 0) {
 				ret = LTTNG_ERR_UST_START_FAIL;

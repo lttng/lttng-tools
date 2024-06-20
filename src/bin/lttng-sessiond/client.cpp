@@ -1284,7 +1284,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock, int *sock_
 		if (need_tracing_session) {
 			/* Create UST session if none exist. */
 			if ((*target_session)->ust_session == nullptr) {
-				lttng_domain domain = cmd_ctx->lsm.domain;
+				const lttng_domain domain = cmd_ctx->lsm.domain;
 				ret = create_ust_session(*target_session, &domain);
 				if (ret != LTTNG_OK) {
 					goto error;
@@ -1975,7 +1975,7 @@ skip_domain:
 	{
 		uint32_t snapshot_id;
 		struct lttcomm_lttng_output_id reply;
-		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
+		const lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
 
 		ret = cmd_snapshot_add_output(*target_session, &output, &snapshot_id);
 		if (ret != LTTNG_OK) {
@@ -1991,7 +1991,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_DEL_OUTPUT:
 	{
-		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
+		const lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_output.output;
 		ret = cmd_snapshot_del_output(*target_session, &output);
 		break;
 	}
@@ -2016,7 +2016,7 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_SNAPSHOT_RECORD:
 	{
-		lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
+		const lttng_snapshot_output output = cmd_ctx->lsm.u.snapshot_record.output;
 		ret = cmd_snapshot_record(*target_session, &output, 0); // RFC: set to zero
 									// since it's ignored
 									// by
@@ -2029,7 +2029,7 @@ skip_domain:
 
 		lttng_dynamic_buffer_init(&payload);
 
-		lttng::ctl::session_descriptor reply_session_descriptor = [cmd_ctx, sock]() {
+		const lttng::ctl::session_descriptor reply_session_descriptor = [cmd_ctx, sock]() {
 			lttng_session_descriptor *raw_descriptor;
 			const auto create_ret = cmd_create_session(cmd_ctx, *sock, &raw_descriptor);
 			if (create_ret != LTTNG_OK) {
