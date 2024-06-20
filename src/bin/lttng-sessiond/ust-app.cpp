@@ -7821,102 +7821,35 @@ enum lttng_error_code ust_app_clear_session(const ltt_session::locked_ref& sessi
  */
 enum lttng_error_code ust_app_open_packets(const ltt_session::locked_ref& session)
 {
-	enum lttng_error_code ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_session *usess = session->ust_session;
+	const ltt_ust_session& usess = *session->ust_session;
 
-	LTTNG_ASSERT(usess);
-
-	switch (usess->buffer_type) {
-	case LTTNG_BUFFER_PER_UID:
-	{
-		struct buffer_reg_uid *reg;
-
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *buf_reg_chan;
-			struct consumer_socket *socket;
-			const lttng::urcu::read_lock_guard read_lock;
-
-			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
-				const int open_ret = consumer_open_channel_packets(
-					socket, buf_reg_chan->consumer_key);
-
-				if (open_ret < 0) {
-					ret = LTTNG_ERR_UNK;
-					goto error;
-				}
-			}
+	for (const auto key : session->user_space_consumer_channel_keys()) {
+		if (key.type !=
+		    lttng::sessiond::user_space_consumer_channel_keys::channel_type::DATA) {
+			continue;
 		}
-		break;
-	}
-	case LTTNG_BUFFER_PER_PID:
-	{
-		struct ust_app *app;
-		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			struct consumer_socket *socket;
-			struct lttng_ht_iter chan_iter;
-			struct ust_app_channel *ua_chan;
-			struct ust_app_session *ua_sess;
-			lsu::registry_session *registry;
+		const auto socket = consumer_find_socket_by_bitness(
+			key.bitness ==
+					lttng::sessiond::user_space_consumer_channel_keys::
+						consumer_bitness::ABI_32 ?
+				32 :
+				64,
+			usess.consumer);
 
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (!ua_sess) {
-				/* Session not associated with this app. */
+		const auto open_ret = consumer_open_channel_packets(socket, key.key_value);
+		if (open_ret < 0) {
+			/* Per-PID buffer and application going away. */
+			if (open_ret == -LTTCOMM_CONSUMERD_CHAN_NOT_FOUND &&
+			    usess.buffer_type == LTTNG_BUFFER_PER_PID) {
 				continue;
 			}
 
-			/* Get the right consumer socket for the application. */
-			socket = consumer_find_socket_by_bitness(app->abi.bits_per_long,
-								 usess->consumer);
-			if (!socket) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-
-			registry = ust_app_get_session_registry(ua_sess->get_identifier());
-			if (!registry) {
-				DBG("Application session is being torn down. Skip application.");
-				continue;
-			}
-
-			cds_lfht_for_each_entry (
-				ua_sess->channels->ht, &chan_iter.iter, ua_chan, node.node) {
-				const int open_ret =
-					consumer_open_channel_packets(socket, ua_chan->key);
-
-				if (open_ret < 0) {
-					/*
-					 * Per-PID buffer and application going
-					 * away.
-					 */
-					if (open_ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
-						continue;
-					}
-
-					ret = LTTNG_ERR_UNK;
-					goto error;
-				}
-			}
+			return LTTNG_ERR_UNK;
 		}
-		break;
-	}
-	default:
-		abort();
-		break;
 	}
 
-error:
-	return ret;
+	return LTTNG_OK;
 }
 
 lsu::ctl_field_quirks ust_app::ctl_field_quirks() const
