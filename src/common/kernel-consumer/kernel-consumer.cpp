@@ -42,6 +42,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <vector>
 
 extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;
@@ -147,6 +148,8 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 					    uint64_t nb_packets_per_stream)
 {
 	int ret;
+	std::vector<uint8_t> packet_buffer;
+	static bool warn_flush_or_populate_packet = false, warn_flush = false;
 
 	DBG("Kernel consumer snapshot channel %" PRIu64, key);
 
@@ -165,7 +168,8 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
 							       &lttng_consumer_stream::send_node>(
 		     channel->streams.head)) {
-		unsigned long consumed_pos, produced_pos;
+		unsigned long consumed_pos, produced_pos, max_subbuf_size;
+		lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args packet_args = {};
 
 		health_code_update();
 
@@ -213,21 +217,58 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			DBG("Kernel consumer snapshot stream (%" PRIu64 ")", stream->key);
 		}
 
-		ret = kernctl_buffer_flush_empty(stream->wait_fd);
+		ret = kernctl_get_max_subbuf_size(stream->wait_fd, &max_subbuf_size);
 		if (ret < 0) {
-			/*
-			 * Doing a buffer flush which does not take into
-			 * account empty packets. This is not perfect
-			 * for stream intersection, but required as a
-			 * fall-back when "flush_empty" is not
-			 * implemented by lttng-modules.
-			 */
-			ret = kernctl_buffer_flush(stream->wait_fd);
-			if (ret < 0) {
-				ERR("Failed to flush kernel stream");
+			ERR("Failed to get max subbuf_size: %d", ret);
+			return ret;
+		}
+
+		try {
+			packet_buffer.resize(static_cast<size_t>(max_subbuf_size));
+		} catch (const std::bad_alloc& e) {
+			ERR("Failed to allocate `%ld` bytes for packet", max_subbuf_size);
+			return -ENOMEM;
+		}
+
+		packet_args.packet =
+			static_cast<uint64_t>(reinterpret_cast<uintptr_t>(packet_buffer.data()));
+
+		ret = kernctl_buffer_flush_or_populate_packet(stream->wait_fd, &packet_args);
+		if (ret < 0) {
+			if (ret != -ENOTTY) {
+				/* kernctl_buffer_flush_or_poopulate_packet is supported, but failed
+				 */
+				ERR("kernctl_buffer_flush_or_populate_packet failed (%d)", ret);
+				return ret;
 			}
 
-			return ret;
+			if (!warn_flush_or_populate_packet) {
+				DBG("kernctl_buffer_flush_or_populate_packet failed (%d)", ret);
+				WARN("kernctl_buffer_flush_or_populate_packet is not available: older flushes will be used. Multiple subsequent snapshots may overwrite buffers for streams with no new events.");
+				warn_flush_or_populate_packet = true;
+			}
+
+			ret = kernctl_buffer_flush_empty(stream->wait_fd);
+			if (ret < 0) {
+				if (!warn_flush) {
+					DBG("Failed to perform kernctl_buffer_flush_empty: %d",
+					    ret);
+					WARN("kernctl_buffer_flush_empty is not available. Older flush will be used. Clients reading produced traces will not be able to do stream intersection on streams with no new events.");
+					warn_flush = true;
+				}
+				/*
+				 * Doing a buffer flush which does not take into
+				 * account empty packets. This is not perfect
+				 * for stream intersection, but required as a
+				 * fall-back when "flush_empty" is not
+				 * implemented by lttng-modules.
+				 */
+				ret = kernctl_buffer_flush(stream->wait_fd);
+				if (ret < 0) {
+					ERR("Failed to flush kernel stream");
+					return ret;
+				}
+			}
 		}
 
 		ret = lttng_kconsumer_take_snapshot(stream);
@@ -321,6 +362,37 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			}
 
 			consumed_pos += stream->max_sb_size;
+		}
+
+		if (packet_args.packet_populated) {
+			health_code_update();
+
+			const auto subbuf_view = lttng_buffer_view_init(
+				(char *) packet_buffer.data(), 0, packet_args.packet_length_padded);
+			const auto read_len = lttng_consumer_on_read_subbuffer_mmap(
+				stream,
+				&subbuf_view,
+				packet_args.packet_length_padded - packet_args.packet_length);
+
+			/*
+			 * We write the padded len in local tracefiles but the data len
+			 * when using a relay. Display the error but continue processing.
+			 */
+			if (relayd_id != (uint64_t) -1ULL) {
+				if (read_len != packet_args.packet_length) {
+					ERR("Error sending to the relay (ret: %zd != len: %lu)",
+					    read_len,
+					    packet_args.packet_length);
+					return -1;
+				}
+			} else {
+				if (read_len != packet_args.packet_length_padded) {
+					ERR("Error writing to tracefile (ret: %zd != len: %lu)",
+					    read_len,
+					    packet_args.packet_length_padded);
+					return -1;
+				}
+			}
 		}
 	}
 

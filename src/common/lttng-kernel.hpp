@@ -304,6 +304,17 @@ struct lttng_kernel_abi_filter_bytecode {
 	char data[0];
 } LTTNG_PACKED;
 
+struct lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args {
+	/* Input fields */
+	uint64_t packet; /* pointer to a memory region cast to uint64_t */
+
+	/* Output fields */
+	uint64_t packet_length;
+	uint64_t packet_length_padded;
+	uint8_t flush_done;
+	uint8_t packet_populated;
+} LTTNG_PACKED;
+
 /*
  * kernel session name
  */

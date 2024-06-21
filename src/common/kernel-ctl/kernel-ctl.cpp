@@ -591,6 +591,12 @@ int kernctl_buffer_flush_empty(int fd)
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_FLUSH_EMPTY);
 }
 
+int kernctl_buffer_flush_or_populate_packet(
+	int fd, struct lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args *args)
+{
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_FLUSH_OR_POPULATE_PACKET, args);
+}
+
 int kernctl_buffer_clear(int fd)
 {
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_RING_BUFFER_CLEAR);

@@ -108,6 +108,8 @@ int kernctl_put_subbuf(int fd);
 
 int kernctl_buffer_flush(int fd);
 int kernctl_buffer_flush_empty(int fd);
+int kernctl_buffer_flush_or_populate_packet(
+	int fd, struct lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args *args);
 int kernctl_buffer_clear(int fd);
 int kernctl_get_metadata_version(int fd, uint64_t *version);
 int kernctl_metadata_cache_dump(int fd);

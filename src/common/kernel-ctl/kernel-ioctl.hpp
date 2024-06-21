@@ -10,7 +10,7 @@
 #define _LTT_KERNEL_IOCTL_H
 
 #define LTTNG_KERNEL_ABI_MAJOR_VERSION 2
-#define LTTNG_KERNEL_ABI_MINOR_VERSION 6
+#define LTTNG_KERNEL_ABI_MINOR_VERSION 7
 
 /* Get a snapshot of the current ring buffer producer and consumer positions */
 #define LTTNG_KERNEL_ABI_RING_BUFFER_SNAPSHOT _IO(0xF6, 0x00)
@@ -57,6 +57,11 @@
 /* Clear ring buffer content */
 #define LTTNG_KERNEL_ABI_RING_BUFFER_CLEAR			    _IO(0xF6, 0x11)
 #define LTTNG_KERNEL_ABI_RING_BUFFER_GET_NEXT_SUBBUF_METADATA_CHECK _IOR(0xF6, 0x12, uint32_t)
+/*
+ * Flush the current sub-buffer or populate a packet.
+ */
+#define LTTNG_KERNEL_ABI_RING_BUFFER_FLUSH_OR_POPULATE_PACKET \
+	_IOWR(0xF6, 0x13, struct lttng_kernel_abi_ring_buffer_packet_flush_or_populate_packet_args)
 
 /* returns the timestamp begin of the current sub-buffer */
 #define LTTNG_KERNEL_ABI_RING_BUFFER_GET_TIMESTAMP_BEGIN _IOR(0xF6, 0x20, uint64_t)
