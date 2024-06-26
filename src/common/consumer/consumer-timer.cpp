@@ -687,7 +687,8 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 
 	msg.highest = highest;
 	msg.lowest = lowest;
-	msg.consumed_since_last_sample = total_consumed - channel->last_consumed_size_sample_sent;
+	msg.consumed_since_last_sample =
+		total_consumed - channel->consumed_size_as_of_last_sample_sent;
 
 	/*
 	 * Writes performed here are assumed to be atomic which is only
@@ -712,7 +713,7 @@ void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel
 		    channel->key,
 		    msg.highest,
 		    msg.lowest);
-		channel->last_consumed_size_sample_sent = msg.consumed_since_last_sample;
+		channel->consumed_size_as_of_last_sample_sent = total_consumed;
 	}
 }
 
