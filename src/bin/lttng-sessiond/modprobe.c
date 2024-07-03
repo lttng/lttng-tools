@@ -29,22 +29,37 @@
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {
 	{
-		.name = (char *) "lttng-wrapper",
-		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.name = (char *) "lttng_wrapper",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 		.loaded = false,
 	},
 	{
-		.name = (char *) "lttng-statedump",
-		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.name = (char *) "lttng_statedump",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 		.loaded = false,
 	},
 	{
-		.name = (char *) "lttng-clock",
-		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.name = (char *) "lttng_uprobes",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 		.loaded = false,
 	},
 	{
-		.name = (char *) "lttng-lib-ring-buffer",
+		.name = (char *) "lttng_kprobes",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng_kretprobes",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng_clock",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng_lib_ring_buffer",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
 		.loaded = false,
 	},
