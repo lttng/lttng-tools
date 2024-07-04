@@ -470,6 +470,38 @@ function _run_babeltrace_cmd ()
 	fi
 }
 
+function _lttng_modules_loaded_opt
+{
+	local fail_when_present="${1}"
+	local module_count
+	local ret
+	local message="%d LTTng modules loaded, expected count "
+
+	if [[ "${fail_when_present}" -eq "1" ]] ; then
+		message+="= 0"
+	else
+		message+="> 0"
+	fi
+
+	grep -q -E '^lttng' '/proc/modules'
+	ret="${?}"
+	module_count="$(grep -E '^lttng' '/proc/modules' | wc -l)"
+
+	is "${ret}" "${fail_when_present}" "$(printf "${message}" "${module_count}")"
+}
+
+# Pass if any lttng modules are loaded
+function lttng_modules_loaded_ok()
+{
+	_lttng_modules_loaded_opt 0
+}
+
+# Fail if any lttng modules are loaded
+function lttng_modules_loaded_fail()
+{
+	_lttng_modules_loaded_opt 1
+}
+
 # Run the lttng binary.
 #
 # The first two arguments are stdout and stderr redirect paths, respectively.
