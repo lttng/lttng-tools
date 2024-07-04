@@ -66,8 +66,11 @@ error:
 /*
  *  get_session_name
  *
- *  Return allocated string with the session name found in the config
- *  directory.
+ *  Return allocated string with the implicit session name (found in
+ *  the config directory).
+ *
+ *  The caller must explicitly free the memory associated with the
+ *  returned string.
  */
 char *get_session_name()
 {
