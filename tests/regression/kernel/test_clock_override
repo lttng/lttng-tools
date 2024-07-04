@@ -12,7 +12,7 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
 SESSION_NAME="clock_override"
 
-NUM_TESTS=30
+NUM_TESTS=32
 EVENT_NAME="lttng_test_filter_event"
 
 TESTCMD="echo -n 10 > /proc/lttng-test-filter-event"
@@ -148,8 +148,9 @@ function test_clock_override_timestamp()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
+	modprobe --remove lttng-test
 	stop_lttng_sessiond
-	modprobe --remove lttng-test lttng-clock-plugin-test lttng-clock
+	modprobe --remove lttng-clock-plugin-test lttng-clock
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
@@ -176,6 +177,7 @@ i=0
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	trap signal_cleanup SIGTERM SIGINT
 
@@ -190,4 +192,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 
 		let "i++"
 	done
+	lttng_modules_loaded_fail
 }

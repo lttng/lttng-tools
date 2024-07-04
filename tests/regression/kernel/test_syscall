@@ -10,7 +10,7 @@ TEST_DESC="Kernel tracer - System calls"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=214
+NUM_TESTS=216
 
 # `gen-syscall-event` starts and waits for the creation a file passed by
 # arguments to start executing 3 syscalls (open,read,close) and returning.
@@ -666,6 +666,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	start_lttng_sessiond
 
@@ -695,4 +696,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	test_syscall_enable_channel_disable_one
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }

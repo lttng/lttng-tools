@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - Namespace contexts"
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
 
-TESTS_PER_NS=11
+TESTS_PER_NS=13
 
 NUM_TESTS=$((TESTS_PER_NS * 8))
 
@@ -75,6 +75,7 @@ function test_ns()
 
 	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
+	lttng_modules_loaded_fail
 	start_lttng_sessiond
 
 	create_lttng_session_ok "$session_name" "$trace_path"
@@ -95,6 +96,7 @@ function test_ns()
 
 	destroy_lttng_session_ok "$session_name"
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 
 	rm -rf "$trace_path"
 }

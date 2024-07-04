@@ -12,7 +12,7 @@ EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp -d -t tmp.rotation_kernel_tracing.XXXXXX)
 
-NUM_TESTS=66
+NUM_TESTS=68
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -109,6 +109,7 @@ bail_out_if_no_babeltrace
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
 	start_lttng_relayd "-o $TRACE_PATH"
@@ -127,6 +128,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	modprobe --remove lttng-test
 	stop_lttng_sessiond
 	stop_lttng_relayd
+	lttng_modules_loaded_fail
 }
 
 rm -rf $TRACE_PATH

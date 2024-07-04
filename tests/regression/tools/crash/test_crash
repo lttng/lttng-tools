@@ -23,7 +23,7 @@ OUTPUT_DIR=$(mktemp -d -t tmp.test_crash_shm.XXXXXX)
 
 LAST_APP_PID=
 
-NUM_TESTS=76
+NUM_TESTS=77
 
 source $TESTDIR/utils/utils.sh
 
@@ -405,6 +405,7 @@ TESTS=(
 
 trap interrupt_cleanup SIGTERM SIGINT
 
+
 for fct_test in ${TESTS[@]};
 do
 	${fct_test}
@@ -412,6 +413,12 @@ do
 		break;
 	fi
 done
+
+# Start and stop to clean up kernel modules
+start_lttng_sessiond_notap
+stop_lttng_sessiond_notap
+lttng_modules_loaded_fail
+
 rm -rf $OUTPUT_DIR
 
 OUTPUT_DEST=/dev/null 2>&1

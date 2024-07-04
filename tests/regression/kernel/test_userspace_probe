@@ -22,7 +22,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 ELF_SYMBOL="test_function"
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=93
+NUM_TESTS=95
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -817,6 +817,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	start_lttng_sessiond
 
@@ -880,4 +881,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	fi
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }

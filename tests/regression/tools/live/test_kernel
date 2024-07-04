@@ -60,6 +60,5 @@ $TESTDIR/regression/tools/live/live_test
 clean_live_tracing
 
 stop_lttng_relayd_notap
-stop_lttng_sessiond_notap
-
 modprobe --remove lttng-test
+stop_lttng_sessiond_notap

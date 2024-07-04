@@ -13,7 +13,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ns-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-TESTS_PER_NS=19
+TESTS_PER_NS=21
 
 NUM_TESTS=$((TESTS_PER_NS * 6))
 
@@ -93,6 +93,7 @@ function test_ns()
 	app_ns_inode=$(stat -c '%i' -L "/proc/$app_pid/ns/$ns")
 	ok $? "Get app current $ns namespace inode: $app_ns_inode" || app_ns_inode="invalid"
 
+	lttng_modules_loaded_fail
 	start_lttng_sessiond
 
 	create_lttng_session_ok "$session_name" "$trace_path"
@@ -147,6 +148,7 @@ function test_ns()
 	# stop and destroy
 	destroy_lttng_session_ok "$session_name"
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 
 	rm -rf "$trace_path"
 	rm -f "$file_sync_wait_after_unshare"

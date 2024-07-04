@@ -12,7 +12,7 @@ EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp -d -t tmp.test_metadata_env_kernel_trace_path.XXXXXX)
 
-NUM_TESTS=13
+NUM_TESTS=15
 
 source "$TESTDIR/utils/utils.sh"
 
@@ -100,6 +100,7 @@ bail_out_if_no_babeltrace
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping kernel metadata tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	modprobe lttng-test
 
@@ -119,6 +120,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping kernel metadata tests." ||
 	modprobe --remove lttng-test
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 	unset LTTNG_HOME
 }
 

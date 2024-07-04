@@ -13,7 +13,7 @@ TESTDIR=$CURDIR/../..
 SESSION_NAME="rotation_destroy_flush"
 
 NR_ITER=10
-NUM_TESTS=$((13*$NR_ITER))
+NUM_TESTS=$((15*$NR_ITER))
 EVENT_NAME="lttng_test_filter_event"
 CHANNEL_NAME="testchan"
 PAGE_SIZE=$(getconf PAGE_SIZE)
@@ -70,6 +70,7 @@ function enable_kernel_lttng_event_per_channel ()
 
 function test_rotation_destroy_flush_single()
 {
+	lttng_modules_loaded_fail
 	start_lttng_sessiond
 	modprobe lttng-test
 
@@ -100,6 +101,7 @@ function test_rotation_destroy_flush_single()
 
 	modprobe --remove lttng-test
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }
 
 function test_rotation_destroy_flush()

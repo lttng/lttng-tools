@@ -13,7 +13,7 @@ EVENT_NAME="lttng_test_filter_event"
 PAGE_SIZE=$(getconf PAGE_SIZE)
 TRACE_PATH=$(mktemp -d -t tmp.test_clear_kernel_trace_path.XXXXXX)
 
-NUM_TESTS=837
+NUM_TESTS=839
 
 # shellcheck source=../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
@@ -563,6 +563,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping kernel streaming tests." ||
 {
 	trap signal_cleanup SIGTERM SIGINT
 
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
 	start_lttng_relayd "-o $TRACE_PATH"
@@ -620,6 +621,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping kernel streaming tests." ||
 	modprobe --remove lttng-test
 	stop_lttng_sessiond
 	stop_lttng_relayd
+	lttng_modules_loaded_fail
 
 	test_kernel_disallow_clear
 }

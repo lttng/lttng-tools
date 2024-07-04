@@ -13,7 +13,7 @@ SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d -t tmp.test_streaming_kernel_trace_path.XXXXXX)
 
-NUM_TESTS=11
+NUM_TESTS=13
 
 source $TESTDIR/utils/utils.sh
 
@@ -49,6 +49,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
 	start_lttng_relayd "-o $TRACE_PATH"
@@ -74,4 +75,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 
 	stop_lttng_sessiond
 	stop_lttng_relayd
+	lttng_modules_loaded_fail
 }

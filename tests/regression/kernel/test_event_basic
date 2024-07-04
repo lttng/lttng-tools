@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - Basic event"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=21
+NUM_TESTS=23
 
 TESTCMD="/bin/true"
 
@@ -75,6 +75,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test $NUM_TESTS "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	start_lttng_sessiond
 
@@ -82,4 +83,5 @@ check_skip_kernel_test $NUM_TESTS "Skipping all tests." ||
 	test_enable_after_start
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }

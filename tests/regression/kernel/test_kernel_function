@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - function event"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=7
+NUM_TESTS=9
 
 source $TESTDIR/utils/utils.sh
 
@@ -45,6 +45,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	start_lttng_sessiond_notap
 	validate_lttng_modules_present
 	modprobe lttng-test
@@ -53,4 +54,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 
 	modprobe --remove lttng-test
 	stop_lttng_sessiond_notap
+	lttng_modules_loaded_fail
 }

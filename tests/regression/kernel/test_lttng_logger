@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - lttng-logger"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=30
+NUM_TESTS=32
 PAYLOAD="test_logger"
 SESSION_NAME="kernel_event_basic"
 
@@ -112,6 +112,7 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	start_lttng_sessiond
 
@@ -120,4 +121,5 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	test_payload_limit
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }

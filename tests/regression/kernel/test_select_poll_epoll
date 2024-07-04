@@ -30,7 +30,7 @@ SUPPORTED_SYSCALLS_LIST=$("$CURDIR"/select_poll_epoll --list-supported-test-sysc
 SUPPORTED_SYSCALLS_COUNT=$(echo $SUPPORTED_SYSCALLS_LIST | awk -F '[\t,]' '{print NF}')
 
 # Two tests validate their trace for every supported syscall
-NUM_TESTS=$((88+(2*SUPPORTED_SYSCALLS_COUNT)))
+NUM_TESTS=$((90+(2*SUPPORTED_SYSCALLS_COUNT)))
 
 # shellcheck source=../../utils/utils.sh
 source $TESTDIR/utils/utils.sh
@@ -367,6 +367,7 @@ diag "Supported syscalls are $SUPPORTED_SYSCALLS_LIST"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 
 	start_lttng_sessiond
@@ -384,6 +385,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	test_epoll_pwait_concurrent_unmap
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 
 	NEW_WARNING=$(dmesg | grep " WARNING:" | cut -d' ' -f1 | tail -1)
 	NEW_OOPS=$(dmesg | grep " OOPS:" | cut -d' ' -f1 | tail -1)

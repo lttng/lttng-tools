@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - All events"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=8
+NUM_TESTS=10
 
 TESTCMD="/bin/true"
 
@@ -45,10 +45,12 @@ print_test_banner "$TEST_DESC"
 
 check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 {
+	lttng_modules_loaded_fail
 	validate_lttng_modules_present
 	start_lttng_sessiond
 
 	test_all_event
 
 	stop_lttng_sessiond
+	lttng_modules_loaded_fail
 }

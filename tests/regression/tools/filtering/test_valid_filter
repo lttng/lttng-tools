@@ -13,7 +13,7 @@ BT2_PLUGINS_DIR="${TESTDIR}/utils/bt2_plugins"
 
 SESSION_NAME="valid_filter"
 NR_ITER=100
-NUM_GLOBAL_TESTS=2
+NUM_GLOBAL_TESTS=4
 NUM_UST_TESTS=1122
 NUM_KERNEL_TESTS=1056
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
@@ -406,6 +406,7 @@ issue_356_filter+="intfield > 4 && intfield > 5 && "
 issue_356_filter+="intfield > 6 && intfield > 7 && "
 issue_356_filter+="intfield > 8 || intfield > 0"
 
+lttng_modules_loaded_fail
 start_lttng_sessiond
 
 ### UST TESTS
@@ -1470,6 +1471,11 @@ check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel valid filter tests."
 		test_valid_filter kernel -k "lttng_test_filter_event" "$filter" "validator_$validator"
 
 		if [ $? -eq 1 ]; then
+			# The module removal will fail if events are
+			# still being produced
+			while ! modprobe --remove lttng-test ; do
+				sleep 1
+			done
 			stop_lttng_sessiond
 			exit 1
 		fi
@@ -1477,7 +1483,11 @@ check_skip_kernel_test "$NUM_KERNEL_TESTS" "Skipping kernel valid filter tests."
 		i=$(( i + 2 ))
 	done
 
-	modprobe --remove lttng-test
+	# The module removal will fail if events are still being produced
+	while ! modprobe --remove lttng-test ; do
+		sleep 1
+	done
 }
 
 stop_lttng_sessiond
+lttng_modules_loaded_fail
