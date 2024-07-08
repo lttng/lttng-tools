@@ -8,8 +8,6 @@
 #ifndef COMMON_LOCKFILE_H
 #define COMMON_LOCKFILE_H
 
-#include <common/macros.h>
-
 /*
  * Create lock file to the given path and filename.
  * Returns the associated file descriptor, -1 on error.
@@ -22,7 +20,6 @@
  * forks+execve as the child process closes a file descriptor referencing
  * the file description of 'filepath'.
  */
-LTTNG_HIDDEN
 int utils_create_lock_file(const char *filepath);
 
 #endif /* COMMON_LOCKFILE_H */
