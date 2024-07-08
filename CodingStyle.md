@@ -141,6 +141,17 @@ ffc::grapefruit::grapefruit()
 }
 ```
 
+### Error management
+
+* Use RAII wrappers when managing system resources or interacting with C libraries.
+
+  In other words, don't rely on ``goto``s and error labels to clean up as you would do in C.
+
+* Throw an exception when there's an unexpected, exceptional condition,
+  [including from a constructor](https://isocpp.org/wiki/faq/exceptions#ctors-can-throw), instead of returning a status code.
+
+  However, be mindful of the exception-safety of your users. For instance, `liblttng-ctl` exposes a C interface meaning that is must catch and handle all exceptions, most likely by returning a suitable error code.
+
 ### File layout example
 
 ```cpp
@@ -251,15 +262,6 @@ Here are a couple of reminders:
 * Define overloaded operators only if their meaning is obvious, unsurprising, and consistent with the corresponding built-in operators.
 
   For example, use `|` as a bitwise or logical-or, not as a shell-style pipe.
-
-* Use RAII wrappers when managing system resources or interacting with C libraries.
-
-  In other words, don't rely on ``goto``s and error labels to clean up as you would do in C.
-
-* Throw an exception when there's an unexpected, exceptional condition,
-  [including from a constructor](https://isocpp.org/wiki/faq/exceptions#ctors-can-throw), instead of returning a status code.
-
-  However, be mindful of the exception-safety of your users. For instance, `liblttng-ctl` exposes a C interface meaning that is must catch and handle all exceptions, most likely by returning a suitable error code.
 
 * Accept a by-value parameter and move it (when it's moveable) when you intend to copy it anyway. You can do this with most STL containers.
 
