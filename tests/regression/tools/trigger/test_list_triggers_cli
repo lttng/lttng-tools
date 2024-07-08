@@ -2699,3 +2699,4 @@ stop_lttng_sessiond_notap
 
 # Cleanup
 rm -f "${tmp_expected_stdout}"
+rm -f "${tmp_expected_stdout_mi}"
