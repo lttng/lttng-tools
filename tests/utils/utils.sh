@@ -521,6 +521,12 @@ function _run_lttng_cmd
 	local stderr_dest="$2"
 	shift 2
 
+	if [ "$stdout_dest" = "$stderr_dest" ]; then
+		# The redirection of stderr would overwrite the redirection of
+		# stdout. We cannot proceed.
+		LTTNG_BAIL_OUT "The current \`_run_lttng_cmd\` implementation does not support redirecting stdout and stderr to the same file."
+	fi
+
 	opts=("${@}")
 	if [[ -n "${LTTNG_TEST_VERBOSE_CLIENT}" ]] ; then
 		opts=('-vvv' "${opts[@]}")
