@@ -213,7 +213,7 @@ function test_rate_policy_once_after_n()
 	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
 }
 
- # MUST set TESTDIR before calling those functions
+# MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
