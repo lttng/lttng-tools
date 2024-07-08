@@ -5427,10 +5427,9 @@ int cmd_set_session_shm_path(const ltt_session::locked_ref& session, const char 
 		return LTTNG_ERR_SESSION_STARTED;
 	}
 
-	strncpy(session->shm_path, shm_path, sizeof(session->shm_path));
-	session->shm_path[sizeof(session->shm_path) - 1] = '\0';
-
-	return LTTNG_OK;
+	/* Report an error if shm_path is too long or not null-terminated. */
+	const auto copy_ret = lttng_strncpy(session->shm_path, shm_path, sizeof(session->shm_path));
+	return copy_ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID;
 }
 
 /*
