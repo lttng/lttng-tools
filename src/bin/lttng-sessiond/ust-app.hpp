@@ -20,6 +20,7 @@
 #include <common/uuid.hpp>
 
 #include <stdint.h>
+#include <list>
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
@@ -320,7 +321,6 @@ public:
 	struct lttng_credentials real_credentials = {};
 	/* Effective UID and GID. Same as the tracing session. */
 	struct lttng_credentials effective_credentials = {};
-	struct cds_list_head teardown_node = {};
 	/*
 	 * Once at least *one* session is created onto the application, the
 	 * corresponding consumer is set so we can use it on unregistration.
@@ -398,7 +398,7 @@ struct ust_app {
 	 * ht_del of ust_app_session associated to this app. This list is NOT used
 	 * when a session is destroyed.
 	 */
-	struct cds_list_head teardown_head;
+	std::list<ust_app_session *> sessions_to_teardown;
 	/*
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */

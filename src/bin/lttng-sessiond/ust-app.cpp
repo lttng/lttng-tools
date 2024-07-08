@@ -1016,7 +1016,6 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 static void delete_ust_app(struct ust_app *app)
 {
 	int ret, sock;
-	struct ust_app_session *ua_sess, *tmp_ua_sess;
 	struct lttng_ht_iter iter;
 	struct ust_app_event_notifier_rule *event_notifier_rule;
 	bool event_notifier_write_fd_is_open;
@@ -1031,10 +1030,13 @@ static void delete_ust_app(struct ust_app *app)
 	app->sock = -1;
 
 	/* Wipe sessions */
-	cds_list_for_each_entry_safe (ua_sess, tmp_ua_sess, &app->teardown_head, teardown_node) {
-		/* Free every object in the session and the session. */
+	{
 		const lttng::urcu::read_lock_guard read_lock;
-		delete_ust_app_session(sock, ua_sess, app);
+
+		for (const auto ua_sess : app->sessions_to_teardown) {
+			/* Free every object in the session and the session. */
+			delete_ust_app_session(sock, ua_sess, app);
+		}
 	}
 
 	/* Remove the event notifier rules associated with this app. */
@@ -1114,7 +1116,7 @@ static void delete_ust_app(struct ust_app *app)
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	DBG2("UST app pid %d deleted", app->pid);
-	free(app);
+	delete app;
 }
 
 /*
@@ -4049,9 +4051,13 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 		goto error;
 	}
 
-	lta = zmalloc<ust_app>();
-	if (lta == nullptr) {
-		PERROR("malloc");
+	try {
+		lta = new ust_app;
+	} catch (const std::bad_alloc&) {
+		ERR_FMT("Failed to allocate ust application instance: name=`{}`, pid={}, uid={}",
+			msg->name,
+			msg->pid,
+			msg->uid);
 		goto error_free_pipe;
 	}
 
@@ -4100,7 +4106,6 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	pthread_mutex_init(&lta->sock_lock, nullptr);
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->sock);
 
-	CDS_INIT_LIST_HEAD(&lta->teardown_head);
 	return lta;
 
 error_free_pipe:
@@ -4389,7 +4394,7 @@ static void ust_app_unregister(ust_app& app)
 			}
 		}
 
-		cds_list_add(&ua_sess->teardown_node, &app.teardown_head);
+		app.sessions_to_teardown.emplace_back(ua_sess);
 	}
 
 	/*
@@ -4420,7 +4425,6 @@ static void ust_app_unregister(ust_app& app)
  */
 void ust_app_unregister_by_socket(int sock_fd)
 {
-	struct ust_app *app;
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter ust_app_sock_iter;
 	int ret;
@@ -4432,10 +4436,10 @@ void ust_app_unregister_by_socket(int sock_fd)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&ust_app_sock_iter);
 	assert(node);
 
-	app = caa_container_of(node, struct ust_app, sock_n);
+	const auto app = lttng::utils::container_of(node, &ust_app::sock_n);
 
-	DBG_FMT("Application unregistering after socket activity: pid={}, socket_fd={}",
-		app->pid,
+	DBG_FMT("Application unregistering after socket activity: app={}, socket_fd={}",
+		*app,
 		sock_fd);
 
 	/* Remove application from socket hash table */
