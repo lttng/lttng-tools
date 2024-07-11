@@ -42,6 +42,7 @@ extern "C" {
 
 int usleep_safe(useconds_t usec);
 int create_file(const char *path);
+int delete_file(const char *path);
 int wait_on_file(const char *path);
 int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2);
 #if defined(__cplusplus)

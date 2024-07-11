@@ -40,6 +40,7 @@ static struct option long_options[] = {
 	{ "sync-before-exit", required_argument, nullptr, 'f' },
 	{ "sync-before-exit-touch", required_argument, nullptr, 'g' },
 	{ "emit-end-event", no_argument, nullptr, 'h' },
+	{ "sync-after-each-iter", required_argument, nullptr, 'j' },
 	{ nullptr, 0, nullptr, 0 }
 };
 
@@ -60,6 +61,8 @@ int main(int argc, char **argv)
 	char *before_first_event_file_path = nullptr;
 	char *after_first_event_file_path = nullptr;
 	char *before_last_event_file_path = nullptr;
+	char *after_each_iter_file_path = nullptr;
+
 	/*
 	 * Touch a file to indicate that all events except one were
 	 * generated.
@@ -77,7 +80,7 @@ int main(int argc, char **argv)
 	}
 
 	while ((option = getopt_long(
-			argc, argv, "i:w:a:b:c:d:e:f:g:h", long_options, &option_index)) != -1) {
+			argc, argv, "i:w:a:b:c:d:e:f:g:h:j", long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'a':
 			application_in_main_file_path = strdup(optarg);
@@ -105,6 +108,9 @@ int main(int argc, char **argv)
 			break;
 		case 'i':
 			nr_iter = atoi(optarg);
+			break;
+		case 'j':
+			after_each_iter_file_path = strdup(optarg);
 			break;
 		case 'w':
 			nr_usec = atoi(optarg);
@@ -200,6 +206,19 @@ int main(int argc, char **argv)
 				goto end;
 			}
 		}
+
+		if (after_each_iter_file_path) {
+			ret = wait_on_file(after_each_iter_file_path);
+			if (ret != 0) {
+				goto end;
+			}
+
+			ret = delete_file(after_each_iter_file_path);
+			if (ret != 0) {
+				goto end;
+			}
+		}
+
 		if (should_quit) {
 			break;
 		}
@@ -222,6 +241,7 @@ int main(int argc, char **argv)
 		}
 	}
 end:
+	free(after_each_iter_file_path);
 	free(application_in_main_file_path);
 	free(before_first_event_file_path);
 	free(after_first_event_file_path);

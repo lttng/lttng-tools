@@ -87,6 +87,23 @@ int create_file(const char *path)
 	return 0;
 }
 
+int delete_file(const char *path)
+{
+	int ret;
+
+	if (!path) {
+		return -1;
+	}
+
+	ret = unlink(path);
+	if (ret < 0) {
+		perror("unlink");
+		return -1;
+	}
+
+	return 0;
+}
+
 int wait_on_file(const char *path)
 {
 	int ret;
