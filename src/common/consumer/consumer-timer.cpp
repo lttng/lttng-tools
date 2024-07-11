@@ -82,6 +82,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx, siginfo
 
 	channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(!channel->is_deleted);
 
 	if (channel->switch_timer_error) {
 		return;
@@ -273,6 +274,7 @@ static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 
 	auto *channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(!channel->is_deleted);
 
 	if (channel->switch_timer_error) {
 		return;
@@ -363,6 +365,7 @@ static int consumer_channel_timer_start(timer_t *timer_id,
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->is_deleted);
 
 	if (timer_interval_us == 0) {
 		/* No creation needed; not an error. */
@@ -425,6 +428,7 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->is_deleted);
 
 	ret = consumer_channel_timer_start(&channel->switch_timer,
 					   channel,
@@ -461,6 +465,7 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->is_deleted);
 
 	ret = consumer_channel_timer_start(
 		&channel->live_timer, channel, live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
@@ -498,6 +503,7 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->is_deleted);
 	LTTNG_ASSERT(!channel->monitor_timer_enabled);
 
 	ret = consumer_channel_timer_start(&channel->monitor_timer,
