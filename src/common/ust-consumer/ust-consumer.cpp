@@ -2348,14 +2348,6 @@ end:
 	return ret_func;
 }
 
-int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream, int producer_active)
-{
-	LTTNG_ASSERT(stream);
-	LTTNG_ASSERT(stream->ustream);
-
-	return lttng_ust_ctl_flush_buffer(stream->ustream, producer_active);
-}
-
 /*
  * Take a snapshot for a specific stream.
  *
