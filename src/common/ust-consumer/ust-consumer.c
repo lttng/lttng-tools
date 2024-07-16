@@ -101,6 +101,7 @@ static int add_channel(struct lttng_consumer_channel *channel,
 	int ret = 0;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(ctx);
 
 	if (ctx->on_recv_channel != NULL) {
@@ -136,6 +137,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 	struct lttng_consumer_stream *stream = NULL;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(ctx);
 
 	stream = consumer_stream_create(
@@ -258,6 +260,7 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 	pthread_mutex_t *current_stream_lock = NULL;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(ctx);
 
 	/*
@@ -393,6 +396,7 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 	struct lttng_ust_ctl_consumer_channel *ust_channel;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(attr);
 	assert(ust_chanp);
 	assert(channel->buffer_credentials.is_set);
@@ -511,6 +515,7 @@ static int send_channel_to_sessiond_and_relayd(int sock,
 	uint64_t net_seq_idx = -1ULL;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(ctx);
 	assert(sock >= 0);
 
@@ -607,6 +612,7 @@ static int ask_channel(struct lttng_consumer_local_data *ctx,
 
 	assert(ctx);
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(attr);
 
 	/*
@@ -665,6 +671,7 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 	struct lttng_consumer_stream *stream, *stmp;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(ctx);
 
 	/* Send streams to the corresponding thread. */
@@ -3322,6 +3329,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	int ret;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(channel->metadata_cache);
 
 	memset(&request, 0, sizeof(request));
