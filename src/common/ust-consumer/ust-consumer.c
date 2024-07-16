@@ -3211,7 +3211,9 @@ void lttng_ustconsumer_close_all_metadata(struct lttng_ht *metadata_ht)
 		health_code_update();
 
 		pthread_mutex_lock(&stream->chan->lock);
+		pthread_mutex_lock(&stream->lock);
 		lttng_ustconsumer_close_metadata(stream->chan);
+		pthread_mutex_unlock(&stream->lock);
 		pthread_mutex_unlock(&stream->chan->lock);
 
 	}
