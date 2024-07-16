@@ -169,6 +169,7 @@ int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel)
 	int ret;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 
 	channel->metadata_cache = zmalloc(
 			sizeof(struct consumer_metadata_cache));
@@ -233,6 +234,7 @@ int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 	struct lttng_consumer_stream *metadata_stream;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(channel->metadata_cache);
 
 	/*

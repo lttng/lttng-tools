@@ -85,6 +85,7 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
 
 	channel = si->si_value.sival_ptr;
 	assert(channel);
+	assert(!channel->is_deleted);
 
 	if (channel->switch_timer_error) {
 		return;
@@ -279,6 +280,7 @@ static void live_timer(struct lttng_consumer_local_data *ctx,
 
 	channel = si->si_value.sival_ptr;
 	assert(channel);
+	assert(!channel->is_deleted);
 
 	if (channel->switch_timer_error) {
 		goto error;
@@ -372,6 +374,7 @@ int consumer_channel_timer_start(timer_t *timer_id,
 	struct itimerspec its;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(channel->key);
 
 	if (timer_interval_us == 0) {
@@ -435,6 +438,7 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 	int ret;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(channel->key);
 
 	ret = consumer_channel_timer_start(&channel->switch_timer, channel,
@@ -508,6 +512,7 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 	int ret;
 
 	assert(channel);
+	assert(!channel->is_deleted);
 	assert(channel->key);
 	assert(!channel->monitor_timer_enabled);
 

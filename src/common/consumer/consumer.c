@@ -2178,7 +2178,6 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		/* Go for channel deletion! */
 		free_channel = true;
 	}
-	stream->chan = NULL;
 
 	/*
 	 * Nullify the stream reference so it is not used after deletion. The
