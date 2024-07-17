@@ -1195,7 +1195,6 @@ static int save_agent_events(struct config_writer *writer, struct agent *agent)
 			struct agent_event *agent_event;
 			struct ltt_ust_event fake_event;
 
-			memset(&fake_event, 0, sizeof(fake_event));
 			agent_event = lttng::utils::container_of(node, &agent_event::node);
 
 			/*

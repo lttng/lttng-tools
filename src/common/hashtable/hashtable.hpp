@@ -42,21 +42,22 @@ struct lttng_ht_iter {
 	struct cds_lfht_iter iter;
 };
 
-struct lttng_ht_node_str {
+struct lttng_ht_node {
+	struct cds_lfht_node node;
+};
+
+struct lttng_ht_node_str : public lttng_ht_node {
 	char *key;
-	struct cds_lfht_node node;
 	struct rcu_head head;
 };
 
-struct lttng_ht_node_ulong {
+struct lttng_ht_node_ulong : public lttng_ht_node {
 	unsigned long key;
-	struct cds_lfht_node node;
 	struct rcu_head head;
 };
 
-struct lttng_ht_node_u64 {
+struct lttng_ht_node_u64 : public lttng_ht_node {
 	uint64_t key;
-	struct cds_lfht_node node;
 	struct rcu_head head;
 };
 
@@ -65,9 +66,8 @@ struct lttng_ht_two_u64 {
 	uint64_t key2;
 };
 
-struct lttng_ht_node_two_u64 {
+struct lttng_ht_node_two_u64 : public lttng_ht_node {
 	struct lttng_ht_two_u64 key;
-	struct cds_lfht_node node;
 	struct rcu_head head;
 };
 
@@ -123,7 +123,20 @@ NodeType *lttng_ht_iter_get_node(const lttng_ht_iter *iter)
 		return nullptr;
 	}
 
-	return lttng::utils::container_of(node, &NodeType::node);
+	return reinterpret_cast<NodeType *>(lttng::utils::container_of(node, &NodeType::node));
+}
+
+template <class ParentType, class NodeType>
+ParentType *lttng_ht_node_container_of(cds_lfht_node *node, const NodeType ParentType::*Member)
+{
+	/*
+	 * The node member is within lttng_ht_node, the parent class of all ht wrapper nodes. We
+	 * compute the address of the ht wrapper node from the native lfht node.
+	 */
+	auto *wrapper_node = lttng::utils::container_of(node, &NodeType::node);
+
+	/* Knowing the address of the wrapper node, we can get that of the contained type. */
+	return lttng::utils::container_of(static_cast<NodeType *>(wrapper_node), Member);
 }
 
 #endif /* _LTT_HT_H */

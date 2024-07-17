@@ -42,8 +42,6 @@ static int output_init(const ltt_session::locked_ref& session,
 {
 	int ret = 0, i;
 
-	memset(output, 0, sizeof(struct snapshot_output));
-
 	/*
 	 * max_size of -1ULL means unset. Set to default (unlimited).
 	 */
@@ -178,7 +176,7 @@ error:
 
 struct snapshot_output *snapshot_output_alloc()
 {
-	return zmalloc<snapshot_output>();
+	return new snapshot_output;
 }
 
 /*
@@ -233,7 +231,8 @@ void snapshot_output_destroy(struct snapshot_output *obj)
 		consumer_output_send_destroy_relayd(obj->consumer);
 		consumer_output_put(obj->consumer);
 	}
-	free(obj);
+
+	delete obj;
 }
 
 /*

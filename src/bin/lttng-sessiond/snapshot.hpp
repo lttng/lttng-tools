@@ -20,23 +20,23 @@
 struct consumer_output;
 
 struct snapshot_output {
-	uint32_t id;
-	uint64_t max_size;
+	uint32_t id = 0;
+	uint64_t max_size = 0;
 	/* Number of snapshot taken with that output. */
-	uint64_t nb_snapshot;
-	char name[NAME_MAX];
-	struct consumer_output *consumer;
-	int kernel_sockets_copied;
-	int ust_sockets_copied;
+	uint64_t nb_snapshot = 0;
+	char name[NAME_MAX] = {};
+	struct consumer_output *consumer = nullptr;
+	bool kernel_sockets_copied = false;
+	bool ust_sockets_copied = false;
 	/*
 	 * Contains the string with "<date>-<time>" for when the snapshot command
 	 * is triggered. This is to make sure every streams will use the same time
 	 * for the directory output.
 	 */
-	char datetime[16];
+	char datetime[16] = {};
 
 	/* Indexed by ID. */
-	struct lttng_ht_node_ulong node;
+	struct lttng_ht_node_ulong node = {};
 };
 
 struct snapshot {

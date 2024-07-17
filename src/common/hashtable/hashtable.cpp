@@ -36,8 +36,8 @@ static unsigned long max_hash_buckets_size = 0;
  */
 static int match_str(struct cds_lfht_node *node, const void *key)
 {
-	struct lttng_ht_node_str *match_node =
-		lttng::utils::container_of(node, &lttng_ht_node_str::node);
+	auto *match_node = reinterpret_cast<lttng_ht_node_str *>(
+		lttng::utils::container_of(node, &lttng_ht_node_str::node));
 
 	return hash_match_key_str(match_node->key, (void *) key);
 }
@@ -47,8 +47,8 @@ static int match_str(struct cds_lfht_node *node, const void *key)
  */
 static int match_ulong(struct cds_lfht_node *node, const void *key)
 {
-	struct lttng_ht_node_ulong *match_node =
-		lttng::utils::container_of(node, &lttng_ht_node_ulong::node);
+	auto *match_node = reinterpret_cast<lttng_ht_node_ulong *>(
+		lttng::utils::container_of(node, &lttng_ht_node_ulong::node));
 
 	return hash_match_key_ulong((void *) match_node->key, (void *) key);
 }
@@ -58,8 +58,8 @@ static int match_ulong(struct cds_lfht_node *node, const void *key)
  */
 static int match_u64(struct cds_lfht_node *node, const void *key)
 {
-	struct lttng_ht_node_u64 *match_node =
-		lttng::utils::container_of(node, &lttng_ht_node_u64::node);
+	auto *match_node = reinterpret_cast<lttng_ht_node_u64 *>(
+		lttng::utils::container_of(node, &lttng_ht_node_u64::node));
 
 	return hash_match_key_u64(&match_node->key, (void *) key);
 }
@@ -69,8 +69,8 @@ static int match_u64(struct cds_lfht_node *node, const void *key)
  */
 static int match_two_u64(struct cds_lfht_node *node, const void *key)
 {
-	struct lttng_ht_node_two_u64 *match_node =
-		lttng::utils::container_of(node, &lttng_ht_node_two_u64::node);
+	auto *match_node = reinterpret_cast<lttng_ht_node_two_u64 *>(
+		lttng::utils::container_of(node, &lttng_ht_node_two_u64::node));
 
 	return hash_match_key_two_u64((void *) &match_node->key, (void *) key);
 }
@@ -405,7 +405,8 @@ struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,
 	if (!node_ptr) {
 		return nullptr;
 	} else {
-		return lttng::utils::container_of(node_ptr, &lttng_ht_node_ulong::node);
+		return reinterpret_cast<lttng_ht_node_ulong *>(
+			lttng::utils::container_of(node_ptr, &lttng_ht_node_ulong::node));
 	}
 }
 
@@ -431,7 +432,8 @@ struct lttng_ht_node_u64 *lttng_ht_add_replace_u64(struct lttng_ht *ht,
 		return nullptr;
 	} else {
 		LTTNG_ASSERT(node_ptr == &node->node);
-		return lttng::utils::container_of(node_ptr, &lttng_ht_node_u64::node);
+		return reinterpret_cast<lttng_ht_node_u64 *>(
+			lttng::utils::container_of(node_ptr, &lttng_ht_node_u64::node));
 	}
 }
 
