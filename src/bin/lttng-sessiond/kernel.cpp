@@ -2228,7 +2228,6 @@ void cleanup_kernel_tracer()
 	}
 
 	kernel_tracer_status = nonstd::nullopt;
-	free(syscall_table);
 }
 
 bool kernel_tracer_is_initialized()

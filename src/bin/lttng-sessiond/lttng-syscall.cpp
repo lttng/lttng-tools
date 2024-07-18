@@ -18,10 +18,7 @@
 #include <stdbool.h>
 
 /* Global syscall table. */
-struct syscall *syscall_table;
-
-/* Number of entry in the syscall table. */
-static size_t syscall_table_nb_entry;
+std::vector<struct syscall> syscall_table;
 
 /*
  * Populate the system call table using the kernel tracer.
@@ -32,11 +29,9 @@ static size_t syscall_table_nb_entry;
 int syscall_init_table(int tracer_fd)
 {
 	int ret, fd, err;
-	size_t nbmem;
 	FILE *fp;
 	/* Syscall data from the kernel. */
 	size_t index = 0;
-	bool at_least_one_syscall = false;
 	uint32_t bitness;
 	char name[SYSCALL_NAME_LEN];
 
@@ -60,14 +55,6 @@ int syscall_init_table(int tracer_fd)
 		goto error_fp;
 	}
 
-	nbmem = SYSCALL_TABLE_INIT_SIZE;
-	syscall_table = calloc<struct syscall>(nbmem);
-	if (!syscall_table) {
-		ret = -errno;
-		PERROR("syscall list zmalloc");
-		goto error;
-	}
-
 	while (fscanf(fp,
 		      "syscall { index = %zu; \
 				name = %" SYSCALL_NAME_LEN_SCANF_IS_A_BROKEN_API "[^;]; \
@@ -75,56 +62,22 @@ int syscall_init_table(int tracer_fd)
 		      &index,
 		      name,
 		      &bitness) == 3) {
-		at_least_one_syscall = true;
-		if (index >= nbmem) {
-			struct syscall *new_list;
-			size_t new_nbmem;
-
-			/* Double memory size. */
-			new_nbmem = std::max(index + 1, nbmem << 1);
-			if (new_nbmem > (SIZE_MAX / sizeof(*new_list))) {
-				/* Overflow, stop everything, something went really wrong. */
-				ERR("Syscall listing memory size overflow. Stopping");
-				free(syscall_table);
-				syscall_table = nullptr;
-				ret = -EINVAL;
-				goto error;
-			}
-
-			DBG("Reallocating syscall table from %zu to %zu entries", nbmem, new_nbmem);
-			new_list = (struct syscall *) realloc(syscall_table,
-							      new_nbmem * sizeof(*new_list));
-			if (!new_list) {
-				ret = -errno;
-				PERROR("syscall list realloc");
-				goto error;
-			}
-
-			/* Zero out the new memory. */
-			memset(new_list + nbmem, 0, (new_nbmem - nbmem) * sizeof(*new_list));
-			nbmem = new_nbmem;
-			syscall_table = new_list;
-		}
-		syscall_table[index].index = index;
-		syscall_table[index].bitness = bitness;
-		if (lttng_strncpy(
-			    syscall_table[index].name, name, sizeof(syscall_table[index].name))) {
-			ret = -EINVAL;
-			free(syscall_table);
-			syscall_table = nullptr;
+		try {
+			syscall_table.emplace_back(index, bitness, name);
+		} catch (const std::bad_alloc&) {
+			ERR_FMT("Failed to add syscall to syscall table: table_current_element_count={}, syscall_name=`{}`",
+				syscall_table.size(),
+				name);
+			ret = ENOMEM;
+			goto error;
+		} catch (const lttng::invalid_argument_error& ex) {
+			ERR_FMT("Failed to add syscall to syscall table: table_current_element_count={}, reason=`{}`",
+				syscall_table.size(),
+				name,
+				ex.what());
+			ret = EINVAL;
 			goto error;
 		}
-		/*
-		DBG("Syscall name '%s' at index %" PRIu32 " of bitness %u",
-				syscall_table[index].name,
-				syscall_table[index].index,
-				syscall_table[index].bitness);
-		*/
-	}
-
-	/* Index starts at 0. */
-	if (at_least_one_syscall) {
-		syscall_table_nb_entry = index + 1;
 	}
 
 	ret = 0;
@@ -172,7 +125,7 @@ static void destroy_syscall_ht(struct lttng_ht *ht)
 
 			ret = lttng_ht_del(ht, &iter);
 			LTTNG_ASSERT(!ret);
-			free(ksyscall);
+			delete ksyscall;
 		}
 	}
 
@@ -254,16 +207,16 @@ static int add_syscall_to_ht(struct lttng_ht *ht, unsigned int index, unsigned i
 
 	LTTNG_ASSERT(ht);
 
-	ksyscall = zmalloc<struct syscall>();
-	if (!ksyscall) {
+	try {
+		ksyscall = new struct syscall(
+			syscall_index, syscall_table[index].bitness, syscall_table[index].name);
+	} catch (const std::bad_alloc& ex) {
+		ERR_FMT("Failed to allocate syscall entry when adding it to the global syscall hash table: syscall name=`{}`",
+			syscall_table[index].name);
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
-	strncpy(ksyscall->name, syscall_table[index].name, sizeof(ksyscall->name));
-	ksyscall->bitness = syscall_table[index].bitness;
-	ksyscall->index = syscall_index;
-	lttng_ht_node_init_str(&ksyscall->node, ksyscall->name);
 	lttng_ht_add_unique_str(ht, &ksyscall->node);
 	ret = 0;
 
@@ -294,7 +247,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 	 * them might not be valid. The count below will make sure to return the
 	 * right size of the events array.
 	 */
-	events = calloc<lttng_event>(syscall_table_nb_entry);
+	events = calloc<lttng_event>(syscall_table.size());
 	if (!events) {
 		PERROR("syscall table list zmalloc");
 		ret = -LTTNG_ERR_NOMEM;
@@ -306,7 +259,7 @@ ssize_t syscall_table_list(struct lttng_event **_events)
 		goto error;
 	}
 
-	for (i = 0; i < syscall_table_nb_entry; i++) {
+	for (i = 0; i < syscall_table.size(); i++) {
 		/* Skip empty syscalls. */
 		if (*syscall_table[i].name == '\0') {
 			continue;
