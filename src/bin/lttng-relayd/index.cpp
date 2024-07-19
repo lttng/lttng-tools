@@ -75,9 +75,9 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
 	     index->index_n.key);
 
 	node_ptr = cds_lfht_add_unique(stream->indexes_ht->ht,
-				       stream->indexes_ht->hash_fct(&index->index_n, lttng_ht_seed),
+				       stream->indexes_ht->hash_fct(&index->index_n.key, lttng_ht_seed),
 				       stream->indexes_ht->match_fct,
-				       &index->index_n,
+				       &index->index_n.key,
 				       &index->index_n.node);
 	if (node_ptr != &index->index_n.node) {
 		_index = caa_container_of(node_ptr, struct relay_index, index_n.node);
