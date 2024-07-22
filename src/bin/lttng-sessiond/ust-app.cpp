@@ -4435,7 +4435,7 @@ void ust_app_unregister_by_socket(int sock_fd)
 	node = lttng_ht_iter_get_node<lttng_ht_node_ulong>(&ust_app_sock_iter);
 	assert(node);
 
-	const auto app = lttng::utils::container_of(node, &ust_app::sock_n);
+	auto *app = lttng::utils::container_of(node, &ust_app::sock_n);
 
 	DBG_FMT("Application unregistering after socket activity: app={}, socket_fd={}",
 		*app,
@@ -4459,8 +4459,6 @@ int ust_app_list_events(struct lttng_event **events)
 {
 	int ret, handle;
 	size_t nbmem, count = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
 	struct lttng_event *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
@@ -4471,49 +4469,79 @@ int ust_app_list_events(struct lttng_event **events)
 		goto error;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		struct lttng_ust_abi_tracepoint_iter uiter;
 
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			struct lttng_ust_abi_tracepoint_iter uiter;
+		health_code_update();
+
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+
+		pthread_mutex_lock(&app->sock_lock);
+		handle = lttng_ust_ctl_tracepoint_list(app->sock);
+		if (handle < 0) {
+			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app list events getting handle failed for app pid %d",
+				    app->pid);
+			}
+			pthread_mutex_unlock(&app->sock_lock);
+			continue;
+		}
+
+		while ((ret = lttng_ust_ctl_tracepoint_list_get(app->sock, handle, &uiter)) !=
+		       -LTTNG_UST_ERR_NOENT) {
+			/* Handle ustctl error. */
+			if (ret < 0) {
+				int release_ret;
+
+				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+					ERR("UST app tp list get failed for app %d with ret %d",
+					    app->sock,
+					    ret);
+				} else {
+					DBG3("UST app tp list get failed. Application is dead");
+					break;
+				}
+
+				free(tmp_event);
+				release_ret = lttng_ust_ctl_release_handle(app->sock, handle);
+				if (release_ret < 0 && release_ret != -LTTNG_UST_ERR_EXITING &&
+				    release_ret != -EPIPE) {
+					ERR("Error releasing app handle for app %d with ret %d",
+					    app->sock,
+					    release_ret);
+				}
+
+				pthread_mutex_unlock(&app->sock_lock);
+				goto rcu_error;
+			}
 
 			health_code_update();
+			if (count >= nbmem) {
+				/* In case the realloc fails, we free the memory */
+				struct lttng_event *new_tmp_event;
+				size_t new_nbmem;
 
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-
-			pthread_mutex_lock(&app->sock_lock);
-			handle = lttng_ust_ctl_tracepoint_list(app->sock);
-			if (handle < 0) {
-				if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
-					ERR("UST app list events getting handle failed for app pid %d",
-					    app->pid);
-				}
-				pthread_mutex_unlock(&app->sock_lock);
-				continue;
-			}
-
-			while ((ret = lttng_ust_ctl_tracepoint_list_get(
-					app->sock, handle, &uiter)) != -LTTNG_UST_ERR_NOENT) {
-				/* Handle ustctl error. */
-				if (ret < 0) {
+				new_nbmem = nbmem << 1;
+				DBG2("Reallocating event list from %zu to %zu entries",
+				     nbmem,
+				     new_nbmem);
+				new_tmp_event = (lttng_event *) realloc(
+					tmp_event, new_nbmem * sizeof(struct lttng_event));
+				if (new_tmp_event == nullptr) {
 					int release_ret;
 
-					if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-						ERR("UST app tp list get failed for app %d with ret %d",
-						    app->sock,
-						    ret);
-					} else {
-						DBG3("UST app tp list get failed. Application is dead");
-						break;
-					}
-
+					PERROR("realloc ust app events");
 					free(tmp_event);
+					ret = -ENOMEM;
 					release_ret =
 						lttng_ust_ctl_release_handle(app->sock, handle);
 					if (release_ret < 0 &&
@@ -4527,74 +4555,38 @@ int ust_app_list_events(struct lttng_event **events)
 					pthread_mutex_unlock(&app->sock_lock);
 					goto rcu_error;
 				}
-
-				health_code_update();
-				if (count >= nbmem) {
-					/* In case the realloc fails, we free the memory */
-					struct lttng_event *new_tmp_event;
-					size_t new_nbmem;
-
-					new_nbmem = nbmem << 1;
-					DBG2("Reallocating event list from %zu to %zu entries",
-					     nbmem,
-					     new_nbmem);
-					new_tmp_event = (lttng_event *) realloc(
-						tmp_event, new_nbmem * sizeof(struct lttng_event));
-					if (new_tmp_event == nullptr) {
-						int release_ret;
-
-						PERROR("realloc ust app events");
-						free(tmp_event);
-						ret = -ENOMEM;
-						release_ret = lttng_ust_ctl_release_handle(
-							app->sock, handle);
-						if (release_ret < 0 &&
-						    release_ret != -LTTNG_UST_ERR_EXITING &&
-						    release_ret != -EPIPE) {
-							ERR("Error releasing app handle for app %d with ret %d",
-							    app->sock,
-							    release_ret);
-						}
-
-						pthread_mutex_unlock(&app->sock_lock);
-						goto rcu_error;
-					}
-					/* Zero the new memory */
-					memset(new_tmp_event + nbmem,
-					       0,
-					       (new_nbmem - nbmem) * sizeof(struct lttng_event));
-					nbmem = new_nbmem;
-					tmp_event = new_tmp_event;
-				}
-
-				memcpy(tmp_event[count].name,
-				       uiter.name,
-				       LTTNG_UST_ABI_SYM_NAME_LEN);
-				tmp_event[count].loglevel = uiter.loglevel;
-				tmp_event[count].type =
-					(enum lttng_event_type) LTTNG_UST_ABI_TRACEPOINT;
-				tmp_event[count].pid = app->pid;
-				tmp_event[count].enabled = -1;
-				count++;
+				/* Zero the new memory */
+				memset(new_tmp_event + nbmem,
+				       0,
+				       (new_nbmem - nbmem) * sizeof(struct lttng_event));
+				nbmem = new_nbmem;
+				tmp_event = new_tmp_event;
 			}
 
-			ret = lttng_ust_ctl_release_handle(app->sock, handle);
-			pthread_mutex_unlock(&app->sock_lock);
-			if (ret < 0) {
-				if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-					DBG3("Error releasing app handle. Application died: pid = %d, sock = %d",
-					     app->pid,
-					     app->sock);
-				} else if (ret == -EAGAIN) {
-					WARN("Error releasing app handle. Communication time out: pid = %d, sock = %d",
-					     app->pid,
-					     app->sock);
-				} else {
-					ERR("Error releasing app handle with ret %d: pid = %d, sock = %d",
-					    ret,
-					    app->pid,
-					    app->sock);
-				}
+			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_ABI_SYM_NAME_LEN);
+			tmp_event[count].loglevel = uiter.loglevel;
+			tmp_event[count].type = (enum lttng_event_type) LTTNG_UST_ABI_TRACEPOINT;
+			tmp_event[count].pid = app->pid;
+			tmp_event[count].enabled = -1;
+			count++;
+		}
+
+		ret = lttng_ust_ctl_release_handle(app->sock, handle);
+		pthread_mutex_unlock(&app->sock_lock);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("Error releasing app handle. Application died: pid = %d, sock = %d",
+				     app->pid,
+				     app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("Error releasing app handle. Communication time out: pid = %d, sock = %d",
+				     app->pid,
+				     app->sock);
+			} else {
+				ERR("Error releasing app handle with ret %d: pid = %d, sock = %d",
+				    ret,
+				    app->pid,
+				    app->sock);
 			}
 		}
 	}
@@ -4617,8 +4609,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 {
 	int ret, handle;
 	size_t nbmem, count = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
 	struct lttng_event_field *tmp_event;
 
 	nbmem = UST_APP_EVENT_LIST_SIZE;
@@ -4629,54 +4619,83 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 		goto error;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		struct lttng_ust_abi_field_iter uiter;
 
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			struct lttng_ust_abi_field_iter uiter;
+		health_code_update();
+
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+
+		pthread_mutex_lock(&app->sock_lock);
+		handle = lttng_ust_ctl_tracepoint_field_list(app->sock);
+		if (handle < 0) {
+			if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app list field getting handle failed for app pid %d",
+				    app->pid);
+			}
+			pthread_mutex_unlock(&app->sock_lock);
+			continue;
+		}
+
+		while ((ret = lttng_ust_ctl_tracepoint_field_list_get(app->sock, handle, &uiter)) !=
+		       -LTTNG_UST_ERR_NOENT) {
+			/* Handle ustctl error. */
+			if (ret < 0) {
+				int release_ret;
+
+				if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+					ERR("UST app tp list field failed for app %d with ret %d",
+					    app->sock,
+					    ret);
+				} else {
+					DBG3("UST app tp list field failed. Application is dead");
+					break;
+				}
+
+				free(tmp_event);
+				release_ret = lttng_ust_ctl_release_handle(app->sock, handle);
+				pthread_mutex_unlock(&app->sock_lock);
+				if (release_ret < 0 && release_ret != -LTTNG_UST_ERR_EXITING &&
+				    release_ret != -EPIPE) {
+					ERR("Error releasing app handle for app %d with ret %d",
+					    app->sock,
+					    release_ret);
+				}
+
+				goto rcu_error;
+			}
 
 			health_code_update();
+			if (count >= nbmem) {
+				/* In case the realloc fails, we free the memory */
+				struct lttng_event_field *new_tmp_event;
+				size_t new_nbmem;
 
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-
-			pthread_mutex_lock(&app->sock_lock);
-			handle = lttng_ust_ctl_tracepoint_field_list(app->sock);
-			if (handle < 0) {
-				if (handle != -EPIPE && handle != -LTTNG_UST_ERR_EXITING) {
-					ERR("UST app list field getting handle failed for app pid %d",
-					    app->pid);
-				}
-				pthread_mutex_unlock(&app->sock_lock);
-				continue;
-			}
-
-			while ((ret = lttng_ust_ctl_tracepoint_field_list_get(
-					app->sock, handle, &uiter)) != -LTTNG_UST_ERR_NOENT) {
-				/* Handle ustctl error. */
-				if (ret < 0) {
+				new_nbmem = nbmem << 1;
+				DBG2("Reallocating event field list from %zu to %zu entries",
+				     nbmem,
+				     new_nbmem);
+				new_tmp_event = (lttng_event_field *) realloc(
+					tmp_event, new_nbmem * sizeof(struct lttng_event_field));
+				if (new_tmp_event == nullptr) {
 					int release_ret;
 
-					if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-						ERR("UST app tp list field failed for app %d with ret %d",
-						    app->sock,
-						    ret);
-					} else {
-						DBG3("UST app tp list field failed. Application is dead");
-						break;
-					}
-
+					PERROR("realloc ust app event fields");
 					free(tmp_event);
+					ret = -ENOMEM;
 					release_ret =
 						lttng_ust_ctl_release_handle(app->sock, handle);
 					pthread_mutex_unlock(&app->sock_lock);
-					if (release_ret < 0 &&
-					    release_ret != -LTTNG_UST_ERR_EXITING &&
+					if (release_ret && release_ret != -LTTNG_UST_ERR_EXITING &&
 					    release_ret != -EPIPE) {
 						ERR("Error releasing app handle for app %d with ret %d",
 						    app->sock,
@@ -4686,72 +4705,35 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 					goto rcu_error;
 				}
 
-				health_code_update();
-				if (count >= nbmem) {
-					/* In case the realloc fails, we free the memory */
-					struct lttng_event_field *new_tmp_event;
-					size_t new_nbmem;
-
-					new_nbmem = nbmem << 1;
-					DBG2("Reallocating event field list from %zu to %zu entries",
-					     nbmem,
-					     new_nbmem);
-					new_tmp_event = (lttng_event_field *) realloc(
-						tmp_event,
-						new_nbmem * sizeof(struct lttng_event_field));
-					if (new_tmp_event == nullptr) {
-						int release_ret;
-
-						PERROR("realloc ust app event fields");
-						free(tmp_event);
-						ret = -ENOMEM;
-						release_ret = lttng_ust_ctl_release_handle(
-							app->sock, handle);
-						pthread_mutex_unlock(&app->sock_lock);
-						if (release_ret &&
-						    release_ret != -LTTNG_UST_ERR_EXITING &&
-						    release_ret != -EPIPE) {
-							ERR("Error releasing app handle for app %d with ret %d",
-							    app->sock,
-							    release_ret);
-						}
-
-						goto rcu_error;
-					}
-
-					/* Zero the new memory */
-					memset(new_tmp_event + nbmem,
-					       0,
-					       (new_nbmem - nbmem) *
-						       sizeof(struct lttng_event_field));
-					nbmem = new_nbmem;
-					tmp_event = new_tmp_event;
-				}
-
-				memcpy(tmp_event[count].field_name,
-				       uiter.field_name,
-				       LTTNG_UST_ABI_SYM_NAME_LEN);
-				/* Mapping between these enums matches 1 to 1. */
-				tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
-				tmp_event[count].nowrite = uiter.nowrite;
-
-				memcpy(tmp_event[count].event.name,
-				       uiter.event_name,
-				       LTTNG_UST_ABI_SYM_NAME_LEN);
-				tmp_event[count].event.loglevel = uiter.loglevel;
-				tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
-				tmp_event[count].event.pid = app->pid;
-				tmp_event[count].event.enabled = -1;
-				count++;
+				/* Zero the new memory */
+				memset(new_tmp_event + nbmem,
+				       0,
+				       (new_nbmem - nbmem) * sizeof(struct lttng_event_field));
+				nbmem = new_nbmem;
+				tmp_event = new_tmp_event;
 			}
 
-			ret = lttng_ust_ctl_release_handle(app->sock, handle);
-			pthread_mutex_unlock(&app->sock_lock);
-			if (ret < 0 && ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-				ERR("Error releasing app handle for app %d with ret %d",
-				    app->sock,
-				    ret);
-			}
+			memcpy(tmp_event[count].field_name,
+			       uiter.field_name,
+			       LTTNG_UST_ABI_SYM_NAME_LEN);
+			/* Mapping between these enums matches 1 to 1. */
+			tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
+			tmp_event[count].nowrite = uiter.nowrite;
+
+			memcpy(tmp_event[count].event.name,
+			       uiter.event_name,
+			       LTTNG_UST_ABI_SYM_NAME_LEN);
+			tmp_event[count].event.loglevel = uiter.loglevel;
+			tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
+			tmp_event[count].event.pid = app->pid;
+			tmp_event[count].event.enabled = -1;
+			count++;
+		}
+
+		ret = lttng_ust_ctl_release_handle(app->sock, handle);
+		pthread_mutex_unlock(&app->sock_lock);
+		if (ret < 0 && ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
+			ERR("Error releasing app handle for app %d with ret %d", app->sock, ret);
 		}
 	}
 
@@ -4841,9 +4823,7 @@ int ust_app_ht_alloc()
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
@@ -4852,40 +4832,38 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 	     uchan->name,
 	     usess->id);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		struct lttng_ht_iter uiter;
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (ua_sess == nullptr) {
+			continue;
+		}
 
-		/* For every registered applications */
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			struct lttng_ht_iter uiter;
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (ua_sess == nullptr) {
-				continue;
-			}
+		/* Get channel */
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		/* If the session if found for the app, the channel must be there */
+		LTTNG_ASSERT(ua_chan_node);
 
-			/* Get channel */
-			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-			/* If the session if found for the app, the channel must be there */
-			LTTNG_ASSERT(ua_chan_node);
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		/* The channel must not be already disabled */
+		LTTNG_ASSERT(ua_chan->enabled);
 
-			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-			/* The channel must not be already disabled */
-			LTTNG_ASSERT(ua_chan->enabled);
-
-			/* Disable channel onto application */
-			ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
-			if (ret < 0) {
-				/* XXX: We might want to report this error at some point... */
-				continue;
-			}
+		/* Disable channel onto application */
+		ret = disable_ust_app_channel(ua_sess->lock(), ua_chan, app);
+		if (ret < 0) {
+			/* XXX: We might want to report this error at some point... */
+			continue;
 		}
 	}
 
@@ -4898,8 +4876,6 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_ch
 int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 
 	LTTNG_ASSERT(usess->active);
@@ -4907,29 +4883,27 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess, struct ltt_ust_cha
 	     uchan->name,
 	     usess->id);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* For every registered applications */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (ua_sess == nullptr) {
+			continue;
+		}
 
-		/* For every registered applications */
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (ua_sess == nullptr) {
-				continue;
-			}
-
-			/* Enable channel onto application */
-			ret = enable_ust_app_channel(ua_sess->lock(), uchan, app);
-			if (ret < 0) {
-				/* XXX: We might want to report this error at some point... */
-				continue;
-			}
+		/* Enable channel onto application */
+		ret = enable_ust_app_channel(ua_sess->lock(), uchan, app);
+		if (ret < 0) {
+			/* XXX: We might want to report this error at some point... */
+			continue;
 		}
 	}
 
@@ -4944,9 +4918,8 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 			      struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
@@ -4958,59 +4931,51 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	    uchan->name,
 	    usess->id);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		if (!app->compatible) {
+			continue;
+		}
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (ua_sess == nullptr) {
+			/* Next app */
+			continue;
+		}
 
-		/* For all registered applications */
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (ua_sess == nullptr) {
-				/* Next app */
-				continue;
-			}
+		/* Lookup channel in the ust app session */
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		if (ua_chan_node == nullptr) {
+			DBG2("Channel %s not found in session id %" PRIu64 " for app pid %d."
+			     "Skipping",
+			     uchan->name,
+			     usess->id,
+			     app->pid);
+			continue;
+		}
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 
-			/* Lookup channel in the ust app session */
-			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-			if (ua_chan_node == nullptr) {
-				DBG2("Channel %s not found in session id %" PRIu64
-				     " for app pid %d."
-				     "Skipping",
-				     uchan->name,
-				     usess->id,
-				     app->pid);
-				continue;
-			}
-			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		ua_event = find_ust_app_event(
+			ua_chan->events,
+			uevent->attr.name,
+			uevent->filter,
+			(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
+			uevent->attr.loglevel,
+			uevent->exclusion);
+		if (ua_event == nullptr) {
+			DBG2("Event %s not found in channel %s for app pid %d."
+			     "Skipping",
+			     uevent->attr.name,
+			     uchan->name,
+			     app->pid);
+			continue;
+		}
 
-			ua_event = find_ust_app_event(
-				ua_chan->events,
-				uevent->attr.name,
-				uevent->filter,
-				(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
-				uevent->attr.loglevel,
-				uevent->exclusion);
-			if (ua_event == nullptr) {
-				DBG2("Event %s not found in channel %s for app pid %d."
-				     "Skipping",
-				     uevent->attr.name,
-				     uchan->name,
-				     app->pid);
-				continue;
-			}
-
-			ret = disable_ust_app_event(ua_event, app);
-			if (ret < 0) {
-				/* XXX: Report error someday... */
-				continue;
-			}
+		ret = disable_ust_app_event(ua_event, app);
+		if (ret < 0) {
+			continue;
 		}
 	}
 
@@ -5093,9 +5058,8 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 			     struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 	struct ust_app_event *ua_event;
@@ -5111,63 +5075,61 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 	 * tracer also.
 	 */
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		/* For all registered applications */
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (!ua_sess) {
-				/* The application has problem or is probably dead. */
-				continue;
-			}
-
-			auto locked_ua_sess = ua_sess->lock();
-			if (ua_sess->deleted) {
-				continue;
-			}
-
-			/* Lookup channel in the ust app session */
-			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		if (!app->compatible) {
 			/*
-			 * It is possible that the channel cannot be found is
-			 * the channel/event creation occurs concurrently with
-			 * an application exit.
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
 			 */
-			if (!ua_chan_node) {
-				continue;
-			}
+			continue;
+		}
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (!ua_sess) {
+			/* The application has problem or is probably dead. */
+			continue;
+		}
 
-			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		auto locked_ua_sess = ua_sess->lock();
+		if (ua_sess->deleted) {
+			continue;
+		}
 
-			/* Get event node */
-			ua_event = find_ust_app_event(
-				ua_chan->events,
-				uevent->attr.name,
-				uevent->filter,
-				(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
-				uevent->attr.loglevel,
-				uevent->exclusion);
-			if (ua_event == nullptr) {
-				DBG3("UST app enable event %s not found for app PID %d."
-				     "Skipping app",
-				     uevent->attr.name,
-				     app->pid);
-				continue;
-			}
+		/* Lookup channel in the ust app session */
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		/*
+		 * It is possible that the channel cannot be found is
+		 * the channel/event creation occurs concurrently with
+		 * an application exit.
+		 */
+		if (!ua_chan_node) {
+			continue;
+		}
 
-			ret = enable_ust_app_event(ua_event, app);
-			if (ret < 0) {
-				goto error;
-			}
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		/* Get event node */
+		ua_event = find_ust_app_event(
+			ua_chan->events,
+			uevent->attr.name,
+			uevent->filter,
+			(enum lttng_ust_abi_loglevel_type) uevent->attr.loglevel_type,
+			uevent->attr.loglevel,
+			uevent->exclusion);
+		if (ua_event == nullptr) {
+			DBG3("UST app enable event %s not found for app PID %d."
+			     "Skipping app",
+			     uevent->attr.name,
+			     app->pid);
+			continue;
+		}
+
+		ret = enable_ust_app_event(ua_event, app);
+		if (ret < 0) {
+			goto error;
 		}
 	}
 error:
@@ -5183,9 +5145,8 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 			     struct ltt_ust_event *uevent)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter uiter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
@@ -5194,51 +5155,49 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	    uevent->attr.name,
 	    usess->id);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
 
-		/* For all registered applications */
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (!ua_sess) {
+			/* The application has problem or is probably dead. */
+			continue;
+		}
+
+		auto locked_ua_sess = ua_sess->lock();
+
+		if (locked_ua_sess->deleted) {
+			continue;
+		}
+
+		/* Lookup channel in the ust app session */
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		/* If the channel is not found, there is a code flow error */
+		LTTNG_ASSERT(ua_chan_node);
+
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+
+		ret = create_ust_app_event(ua_chan, uevent, app);
+		if (ret < 0) {
+			if (ret != -LTTNG_UST_ERR_EXIST) {
+				/* Possible value at this point: -ENOMEM. If so, we stop! */
+				break;
 			}
 
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (!ua_sess) {
-				/* The application has problem or is probably dead. */
-				continue;
-			}
-
-			auto locked_ua_sess = ua_sess->lock();
-
-			if (locked_ua_sess->deleted) {
-				continue;
-			}
-
-			/* Lookup channel in the ust app session */
-			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-			/* If the channel is not found, there is a code flow error */
-			LTTNG_ASSERT(ua_chan_node);
-
-			ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
-
-			ret = create_ust_app_event(ua_chan, uevent, app);
-			if (ret < 0) {
-				if (ret != -LTTNG_UST_ERR_EXIST) {
-					/* Possible value at this point: -ENOMEM. If so, we stop! */
-					break;
-				}
-
-				DBG2("UST app event %s already exist on app PID %d",
-				     uevent->attr.name,
-				     app->pid);
-				continue;
-			}
+			DBG2("UST app event %s already exist on app PID %d",
+			     uevent->attr.name,
+			     app->pid);
+			continue;
 		}
 	}
 
@@ -5551,13 +5510,12 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		struct ust_app_session *ua_sess;
-		struct lttng_ht_iter iter;
-		struct ust_app *app;
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ua_sess = ust_app_lookup_app_session(usess, app);
+		/* Iterate on all apps. */
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
@@ -5686,11 +5644,13 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	case LTTNG_BUFFER_PER_PID:
 	{
 		struct ust_app_session *ua_sess;
-		struct lttng_ht_iter iter;
-		struct ust_app *app;
 		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		/* Iterate on all apps. */
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
@@ -5771,9 +5731,6 @@ end:
  */
 int ust_app_start_trace_all(struct ltt_ust_session *usess)
 {
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
 	DBG("Starting all UST traces");
 
 	/*
@@ -5790,12 +5747,11 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 	 */
 	(void) ust_app_clear_quiescent_session(usess);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ust_app_global_update(usess, app);
-		}
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		ust_app_global_update(usess, app);
 	}
 
 	return 0;
@@ -5808,8 +5764,6 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
 
 	DBG("Stopping all UST traces");
 
@@ -5819,15 +5773,14 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 	 */
 	usess->active = false;
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ret = ust_app_stop_trace(usess, app);
-			if (ret < 0) {
-				/* Continue to next apps even on error */
-				continue;
-			}
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		ret = ust_app_stop_trace(usess, app);
+		if (ret < 0) {
+			/* Continue to next apps even on error */
+			continue;
 		}
 	}
 
@@ -5841,22 +5794,13 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
  */
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess)
 {
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
 	DBG("Destroy all UST traces");
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ret = destroy_trace(usess, app);
-			if (ret < 0) {
-				/* Continue to next apps even on error */
-				continue;
-			}
-		}
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		(void) destroy_trace(usess, app);
 	}
 
 	return 0;
@@ -6246,25 +6190,20 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
  */
 void ust_app_global_update_all(struct ltt_ust_session *usess)
 {
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			ust_app_global_update(usess, app);
-		}
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		ust_app_global_update(usess, app);
 	}
 }
 
 void ust_app_global_update_all_event_notifier_rules()
 {
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
-	const lttng::urcu::read_lock_guard read_lock;
-	cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
 		ust_app_global_update_event_notifier_rules(app);
 	}
 }
@@ -6278,44 +6217,43 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 {
 	int ret = 0;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct lttng_ht_iter iter, uiter;
+	struct lttng_ht_iter uiter;
 	struct ust_app_channel *ua_chan = nullptr;
 	struct ust_app_session *ua_sess;
-	struct ust_app *app;
 
 	LTTNG_ASSERT(usess->active);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			if (!app->compatible) {
-				/*
-				 * TODO: In time, we should notice the caller of this error by
-				 * telling him that this is a version error.
-				 */
-				continue;
-			}
-			ua_sess = ust_app_lookup_app_session(usess, app);
-			if (ua_sess == nullptr) {
-				continue;
-			}
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
+		if (!app->compatible) {
+			/*
+			 * TODO: In time, we should notice the caller of this error by
+			 * telling him that this is a version error.
+			 */
+			continue;
+		}
+		ua_sess = ust_app_lookup_app_session(usess, app);
+		if (ua_sess == nullptr) {
+			continue;
+		}
 
-			const auto locked_ua_sess = ua_sess->lock();
-			if (locked_ua_sess->deleted) {
-				continue;
-			}
+		const auto locked_ua_sess = ua_sess->lock();
+		if (locked_ua_sess->deleted) {
+			continue;
+		}
 
-			/* Lookup channel in the ust app session */
-			lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
-			ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
-			if (ua_chan_node == nullptr) {
-				continue;
-			}
-			ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
-			ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
-			if (ret < 0) {
-				continue;
-			}
+		/* Lookup channel in the ust app session */
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
+		ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&uiter);
+		if (ua_chan_node == nullptr) {
+			continue;
+		}
+		ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
+		ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
+		if (ret < 0) {
+			continue;
 		}
 	}
 
@@ -7110,7 +7048,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 	int ret = 0;
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
-	struct ust_app *app;
 	char *trace_path = nullptr;
 
 	LTTNG_ASSERT(usess);
@@ -7190,9 +7127,11 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		/* Iterate on all apps. */
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
@@ -7288,7 +7227,6 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 						     uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
-	struct ust_app *app;
 	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(usess);
@@ -7319,9 +7257,11 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		/* Iterate on all apps. */
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
 			struct lttng_ht_iter chan_iter;
@@ -7395,9 +7335,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 					  uint64_t *lost)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
 	struct lttng_ht_node_str *ua_chan_node;
-	struct ust_app *app;
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
@@ -7408,9 +7346,9 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 	 * Iterate over every registered applications. Sum counters for
 	 * all applications containing requested session and channel.
 	 */
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
 		struct lttng_ht_iter uiter;
 
 		ua_sess = ust_app_lookup_app_session(usess, app);
@@ -7482,24 +7420,17 @@ static int ust_app_regenerate_statedump(struct ltt_ust_session *usess, struct us
  */
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 {
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
 	DBG("Regenerating the metadata for all UST apps");
 
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+	/* Iterate on all apps. */
+	for (auto *app :
+	     lttng::urcu::lfht_iteration_adapter<ust_app, decltype(ust_app::pid_n), &ust_app::pid_n>(
+		     *ust_app_ht->ht)) {
 		if (!app->compatible) {
 			continue;
 		}
 
-		ret = ust_app_regenerate_statedump(usess, app);
-		if (ret < 0) {
-			/* Continue to the next app even on error */
-			continue;
-		}
+		(void) ust_app_regenerate_statedump(usess, app);
 	}
 
 	return 0;
@@ -7581,10 +7512,11 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-		ust_app *raw_app;
-
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, raw_app, pid_n.node) {
+		/* Iterate on all apps. */
+		for (auto raw_app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
 			struct lttng_ht_iter chan_iter;
 			struct ust_app_channel *ua_chan;
@@ -7665,7 +7597,6 @@ error:
 enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust_session *usess)
 {
 	enum lttng_error_code ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
 	enum lttng_trace_chunk_status chunk_status;
 	char *pathname_index;
 	int fmt_ret;
@@ -7706,9 +7637,6 @@ enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		struct ust_app *app;
-		const lttng::urcu::read_lock_guard read_lock;
-
 		/*
 		 * Create the toplevel ust/ directory in case no apps are running.
 		 */
@@ -7719,17 +7647,19 @@ enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust
 			goto error;
 		}
 
-		cds_lfht_for_each_entry (ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-			struct ust_app_session *ua_sess;
-			lsu::registry_session *registry;
-
-			ua_sess = ust_app_lookup_app_session(usess, app);
+		/* Iterate on all apps. */
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::pid_n),
+							 &ust_app::pid_n>(*ust_app_ht->ht)) {
+			const auto ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
 			}
 
-			registry = ust_app_get_session_registry(ua_sess->get_identifier());
+			const auto registry =
+				ust_app_get_session_registry(ua_sess->get_identifier());
 			if (!registry) {
 				DBG("Application session is being torn down. Skip application.");
 				continue;
