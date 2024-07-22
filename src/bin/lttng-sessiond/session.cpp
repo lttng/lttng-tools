@@ -884,7 +884,6 @@ end:
 static enum lttng_error_code session_kernel_open_packets(const ltt_session::locked_ref& session)
 {
 	enum lttng_error_code ret = LTTNG_OK;
-	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct cds_lfht_node *node;
 	struct ltt_kernel_channel *chan;
@@ -893,7 +892,7 @@ static enum lttng_error_code session_kernel_open_packets(const ltt_session::lock
 
 	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
 	node = cds_lfht_iter_get_node(&iter.iter);
-	socket = caa_container_of(node, typeof(*socket), node.node);
+	auto *socket = lttng_ht_node_container_of(node, &consumer_socket::node);
 
 	cds_list_for_each_entry (chan, &session->kernel_session->channel_list.head, list) {
 		int open_ret;
