@@ -721,8 +721,9 @@ error:
 
 static void destroy_id_tracker_node_rcu(struct rcu_head *head)
 {
-	struct ust_id_tracker_node *tracker_node =
-		caa_container_of(head, struct ust_id_tracker_node, node.head);
+	auto *wrapper_node = lttng::utils::container_of(head, &lttng_ht_node_ulong::head);
+	auto *tracker_node = lttng::utils::container_of(wrapper_node, &ust_id_tracker_node::node);
+
 	free(tracker_node);
 }
 
