@@ -5876,7 +5876,7 @@ static int find_or_create_ust_app_channel(struct ltt_ust_session *usess,
 	lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &iter);
 	ua_chan_node = lttng_ht_iter_get_node<lttng_ht_node_str>(&iter);
 	if (ua_chan_node) {
-		*ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
+		*ua_chan = lttng::utils::container_of(ua_chan_node, &ust_app_channel::node);
 		goto end;
 	}
 
