@@ -339,7 +339,7 @@ static struct ust_error_accounting_entry *ust_error_accounting_entry_find(struct
 	} else {
 		bool got_ref;
 
-		entry = caa_container_of(node, struct ust_error_accounting_entry, node);
+		entry = lttng::utils::container_of(node, &ust_error_accounting_entry::node);
 
 		got_ref = ust_error_accounting_entry_get(entry);
 		if (!got_ref) {
