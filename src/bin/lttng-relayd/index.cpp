@@ -302,12 +302,10 @@ skip:
  */
 void relay_index_close_all(struct relay_stream *stream)
 {
-	struct lttng_ht_iter iter;
-	struct relay_index *index;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
+	for (auto *index :
+	     lttng::urcu::lfht_iteration_adapter<relay_index,
+						 decltype(relay_index::index_n),
+						 &relay_index::index_n>(*stream->indexes_ht->ht)) {
 		/* Put self-ref from index. */
 		relay_index_put(index);
 	}
@@ -315,12 +313,10 @@ void relay_index_close_all(struct relay_stream *stream)
 
 void relay_index_close_partial_fd(struct relay_stream *stream)
 {
-	struct lttng_ht_iter iter;
-	struct relay_index *index;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
+	for (auto *index :
+	     lttng::urcu::lfht_iteration_adapter<relay_index,
+						 decltype(relay_index::index_n),
+						 &relay_index::index_n>(*stream->indexes_ht->ht)) {
 		if (!index->index_file) {
 			continue;
 		}
@@ -335,13 +331,12 @@ void relay_index_close_partial_fd(struct relay_stream *stream)
 
 uint64_t relay_index_find_last(struct relay_stream *stream)
 {
-	struct lttng_ht_iter iter;
-	struct relay_index *index;
 	uint64_t net_seq_num = -1ULL;
 
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
+	for (auto *index :
+	     lttng::urcu::lfht_iteration_adapter<relay_index,
+						 decltype(relay_index::index_n),
+						 &relay_index::index_n>(*stream->indexes_ht->ht)) {
 		if (net_seq_num == -1ULL || index->index_n.key > net_seq_num) {
 			net_seq_num = index->index_n.key;
 		}
@@ -386,21 +381,18 @@ end:
  */
 int relay_index_switch_all_files(struct relay_stream *stream)
 {
-	struct lttng_ht_iter iter;
-	struct relay_index *index;
-	int ret = 0;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
-		ret = relay_index_switch_file(
+	for (auto *index :
+	     lttng::urcu::lfht_iteration_adapter<relay_index,
+						 decltype(relay_index::index_n),
+						 &relay_index::index_n>(*stream->indexes_ht->ht)) {
+		const auto ret = relay_index_switch_file(
 			index, stream->index_file, stream->pos_after_last_complete_data_index);
 		if (ret) {
 			return ret;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 /*
