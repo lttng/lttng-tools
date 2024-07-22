@@ -564,9 +564,6 @@ static void delete_ust_app_channel(int sock,
 				   const lsu::registry_session::locked_ref& locked_registry)
 {
 	int ret;
-	struct lttng_ht_iter iter;
-	struct ust_app_event *ua_event;
-	struct ust_app_ctx *ua_ctx;
 	struct ust_app_stream *stream, *stmp;
 
 	LTTNG_ASSERT(ua_chan);
@@ -581,16 +578,22 @@ static void delete_ust_app_channel(int sock,
 	}
 
 	/* Wipe context */
-	cds_lfht_for_each_entry (ua_chan->ctx->ht, &iter.iter, ua_ctx, node.node) {
+	for (auto ua_ctx :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_ctx,
+						 decltype(ust_app_ctx::node),
+						 &ust_app_ctx::node>(*ua_chan->ctx->ht)) {
 		cds_list_del(&ua_ctx->list);
-		ret = lttng_ht_del(ua_chan->ctx, &iter);
+		ret = cds_lfht_del(ua_chan->ctx->ht, &ua_ctx->node.node);
 		LTTNG_ASSERT(!ret);
 		delete_ust_app_ctx(sock, ua_ctx, app);
 	}
 
 	/* Wipe events */
-	cds_lfht_for_each_entry (ua_chan->events->ht, &iter.iter, ua_event, node.node) {
-		ret = lttng_ht_del(ua_chan->events, &iter);
+	for (auto ua_event :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_event,
+						 decltype(ust_app_event::node),
+						 &ust_app_event::node>(*ua_chan->events->ht)) {
+		ret = cds_lfht_del(ua_chan->events->ht, &ua_event->node.node);
 		LTTNG_ASSERT(!ret);
 		delete_ust_app_event(sock, ua_event, app);
 	}
@@ -616,6 +619,8 @@ static void delete_ust_app_channel(int sock,
 	}
 
 	if (ua_chan->obj != nullptr) {
+		lttng_ht_iter iter;
+
 		/* Remove channel from application UST object descriptor. */
 		iter.iter.node = &ua_chan->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_objd, &iter);
