@@ -179,14 +179,11 @@ static void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_at
  */
 static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 {
-	struct ust_app_event *event;
-	const struct ust_app_ht_key *key;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = caa_container_of(node, struct ust_app_event, node.node);
-	key = (ust_app_ht_key *) _key;
+	auto *event = lttng_ht_node_container_of(node, &ust_app_event::node);
+	const auto *key = (ust_app_ht_key *) _key;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions */
 
