@@ -235,8 +235,7 @@ static void viewer_stream_unpublish(struct relay_viewer_stream *vstream)
 
 static void viewer_stream_release(struct urcu_ref *ref)
 {
-	struct relay_viewer_stream *vstream =
-		caa_container_of(ref, struct relay_viewer_stream, ref);
+	auto *vstream = lttng::utils::container_of(ref, &relay_viewer_stream::ref);
 
 	if (vstream->stream->is_metadata) {
 		rcu_assign_pointer(vstream->stream->trace->viewer_metadata_stream, NULL);
