@@ -1248,7 +1248,7 @@ event_notifier_error_accounting_clear(const struct lttng_trigger *trigger)
 
 static void free_index_ht_entry(struct rcu_head *head)
 {
-	struct index_ht_entry *entry = caa_container_of(head, struct index_ht_entry, rcu_head);
+	auto *entry = lttng::utils::container_of(head, &index_ht_entry::rcu_head);
 
 	free(entry);
 }
