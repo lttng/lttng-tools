@@ -2414,7 +2414,7 @@ void *consumer_thread_metadata_poll(void *data)
 			node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 			LTTNG_ASSERT(node);
 
-			stream = caa_container_of(node, struct lttng_consumer_stream, node);
+			stream = lttng::utils::container_of(node, &lttng_consumer_stream::node);
 
 			if (revents & (LPOLLIN | LPOLLPRI)) {
 				/* Get the data out of the metadata file descriptor */
