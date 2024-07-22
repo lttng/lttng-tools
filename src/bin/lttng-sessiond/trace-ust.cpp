@@ -449,8 +449,8 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 					     bool internal_event,
 					     struct ltt_ust_event **ust_event)
 {
-	struct ltt_ust_event *local_ust_event;
 	enum lttng_error_code ret = LTTNG_OK;
+	std::unique_ptr<ltt_ust_event> local_ust_event;
 
 	LTTNG_ASSERT(ev);
 
@@ -459,9 +459,10 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		goto error;
 	}
 
-	local_ust_event = zmalloc<ltt_ust_event>();
-	if (local_ust_event == nullptr) {
-		PERROR("ust event zmalloc");
+	try {
+		local_ust_event = lttng::make_unique<ltt_ust_event>();
+	} catch (const std::bad_alloc &ex) {
+		ERR_FMT("Failed to allocate ltt_ust_event");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
@@ -484,7 +485,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
 		ret = LTTNG_ERR_INVALID;
-		goto error_free_event;
+		goto error;
 	}
 
 	/* Copy event name */
@@ -507,7 +508,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	default:
 		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
 		ret = LTTNG_ERR_INVALID;
-		goto error_free_event;
+		goto error;
 	}
 
 	/* Same layout. */
@@ -523,12 +524,10 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	     local_ust_event->attr.loglevel_type,
 	     local_ust_event->attr.loglevel);
 
-	*ust_event = local_ust_event;
+	*ust_event = local_ust_event.release();
 
 	return ret;
 
-error_free_event:
-	free(local_ust_event);
 error:
 	free(filter_expression);
 	free(filter);
@@ -1231,7 +1230,7 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 	free(event->filter_expression);
 	free(event->filter);
 	free(event->exclusion);
-	free(event);
+	delete event;
 }
 
 /*

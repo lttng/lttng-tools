@@ -40,19 +40,19 @@ struct ltt_ust_context {
 
 /* UST event */
 struct ltt_ust_event {
-	bool enabled;
-	struct lttng_ust_abi_event attr;
-	struct lttng_ht_node_str node;
-	char *filter_expression;
-	struct lttng_bytecode *filter;
-	struct lttng_event_exclusion *exclusion;
+	bool enabled = false;
+	struct lttng_ust_abi_event attr = {};
+	struct lttng_ht_node_str node = {};
+	char *filter_expression = nullptr;
+	struct lttng_bytecode *filter = nullptr;
+	struct lttng_event_exclusion *exclusion = nullptr;
 	/*
 	 * An internal event is an event which was created by the session daemon
 	 * through which, for example, events emitted in Agent domains are
 	 * "funelled". This is used to hide internal events from external
 	 * clients as they should never be modified by the external world.
 	 */
-	bool internal;
+	bool internal = false;
 };
 
 /* UST channel */
