@@ -39,15 +39,11 @@ static struct lttng_ht *buffer_registry_pid;
  */
 static int ht_match_reg_uid(struct cds_lfht_node *node, const void *_key)
 {
-	struct buffer_reg_uid *reg;
-	const struct buffer_reg_uid *key;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	reg = caa_container_of(node, struct buffer_reg_uid, node.node);
-	LTTNG_ASSERT(reg);
-	key = (buffer_reg_uid *) _key;
+	auto *reg = lttng_ht_node_container_of(node, &buffer_reg_uid::node);
+	const auto *key = (buffer_reg_uid *) _key;
 
 	if (key->session_id != reg->session_id || key->bits_per_long != reg->bits_per_long ||
 	    key->uid != reg->uid) {
