@@ -559,7 +559,7 @@ end:
 
 static void rcu_destroy_session(struct rcu_head *rcu_head)
 {
-	struct relay_session *session = caa_container_of(rcu_head, struct relay_session, rcu_node);
+	auto *session = lttng::utils::container_of(rcu_head, &relay_session::rcu_node);
 	/*
 	 * Since each trace has a reference on the session, it means
 	 * that if we are at the point where we teardown the session, no
