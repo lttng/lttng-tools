@@ -34,14 +34,11 @@ namespace lsu = lttng::sessiond::ust;
  */
 int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
 {
-	struct ltt_ust_event *event;
-	const char *name;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = caa_container_of(node, struct ltt_ust_event, node.node);
-	name = (const char *) _key;
+	auto *event = lttng_ht_node_container_of(node, &ltt_ust_event::node);
+	const auto *name = (const char *) _key;
 
 	/* Event name */
 	if (strncmp(event->attr.name, name, sizeof(event->attr.name)) != 0) {
@@ -63,16 +60,14 @@ no_match:
  */
 int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
-	struct ltt_ust_event *event;
-	const struct ltt_ust_ht_key *key;
 	int ev_loglevel_value;
-	int ll_match;
+	bool ll_match;
 
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = caa_container_of(node, struct ltt_ust_event, node.node);
-	key = (ltt_ust_ht_key *) _key;
+	auto *event = lttng_ht_node_container_of(node, &ltt_ust_event::node);
+	const auto *key = (ltt_ust_ht_key *) _key;
 	ev_loglevel_value = event->attr.loglevel;
 
 	/* Match the 4 elements of the key: name, filter, loglevel, exclusions. */
