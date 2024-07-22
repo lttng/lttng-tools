@@ -94,14 +94,11 @@ static void log_reply_code(uint32_t in_reply_ret_code)
  */
 static int ht_match_event_by_name(struct cds_lfht_node *node, const void *_key)
 {
-	struct agent_event *event;
-	const struct agent_ht_key *key;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = caa_container_of(node, struct agent_event, node.node);
-	key = (agent_ht_key *) _key;
+	auto *event = lttng_ht_node_container_of(node, &agent_event::node);
+	const auto *key = static_cast<const agent_ht_key *>(_key);
 
 	/* Match 1 elements of the key: name. */
 
@@ -122,15 +119,12 @@ no_match:
  */
 static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
-	struct agent_event *event;
-	const struct agent_ht_key *key;
-	int ll_match;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	event = caa_container_of(node, struct agent_event, node.node);
-	key = (agent_ht_key *) _key;
+	const auto *event = lttng_ht_node_container_of(node, &agent_event::node);
+	const auto *key = (agent_ht_key *) _key;
+	bool ll_match;
 
 	/* Match 2 elements of the key: name and loglevel. */
 
