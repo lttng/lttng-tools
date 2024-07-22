@@ -2824,14 +2824,11 @@ error:
  */
 static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 {
-	struct ust_app_ctx *ctx;
-	const struct lttng_ust_context_attr *key;
-
 	LTTNG_ASSERT(node);
 	LTTNG_ASSERT(_key);
 
-	ctx = caa_container_of(node, struct ust_app_ctx, node.node);
-	key = (lttng_ust_context_attr *) _key;
+	auto *ctx = lttng_ht_node_container_of(node, &ust_app_ctx::node);
+	const auto *key = (lttng_ust_context_attr *) _key;
 
 	/* Context type */
 	if (ctx->ctx.ctx != key->ctx) {
