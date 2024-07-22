@@ -3070,7 +3070,7 @@ void *consumer_thread_channel_poll(void *data)
 			node = lttng_ht_iter_get_node<lttng_ht_node_u64>(&iter);
 			LTTNG_ASSERT(node);
 
-			chan = caa_container_of(node, struct lttng_consumer_channel, wait_fd_node);
+			chan = lttng::utils::container_of(node, &lttng_consumer_channel::wait_fd_node);
 
 			/* Check for error event */
 			if (revents & (LPOLLERR | LPOLLHUP)) {
