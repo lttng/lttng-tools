@@ -413,7 +413,7 @@ static enum lttng_error_code list_lttng_ust_global_events(char *channel_name,
 		goto error;
 	}
 
-	uchan = caa_container_of(&node->node, struct ltt_ust_channel, node.node);
+	uchan = lttng::utils::container_of(node, &ltt_ust_channel::node);
 
 	channel_event_count = lttng_ht_get_count(uchan->events);
 	if (channel_event_count == 0) {
