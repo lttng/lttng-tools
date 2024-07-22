@@ -80,7 +80,7 @@ static struct relay_index *relay_index_add_unique(struct relay_stream *stream,
 				       &index->index_n.key,
 				       &index->index_n.node);
 	if (node_ptr != &index->index_n.node) {
-		_index = caa_container_of(node_ptr, struct relay_index, index_n.node);
+		_index = lttng_ht_node_container_of(node_ptr, &relay_index::index_n);
 	} else {
 		_index = nullptr;
 	}
