@@ -158,6 +158,8 @@ public:
 		iterator(const iterator& other) = delete;
 		iterator(iterator&& other) = default;
 		~iterator() = default;
+		iterator& operator=(const iterator&) = delete;
+		iterator& operator=(iterator&&) noexcept = delete;
 
 		iterator& operator++();
 		bool operator==(const iterator& other) const noexcept;
@@ -233,10 +235,14 @@ private:
 			}
 		}
 
-		_scoped_rcu_read_lock(_scoped_rcu_read_lock&& other)
+		_scoped_rcu_read_lock(_scoped_rcu_read_lock&& other) noexcept
 		{
 			other._armed = false;
 		}
+
+		_scoped_rcu_read_lock(_scoped_rcu_read_lock& other) = delete;
+		_scoped_rcu_read_lock& operator=(const _scoped_rcu_read_lock&) = delete;
+		_scoped_rcu_read_lock& operator=(_scoped_rcu_read_lock&&) noexcept = delete;
 
 	private:
 		bool _armed = true;
@@ -514,6 +520,10 @@ public:
 			}
 		}
 
+		query_parameter(query_parameter&& other) noexcept;
+		query_parameter& operator=(const query_parameter&) = delete;
+		query_parameter& operator=(query_parameter&&) noexcept = delete;
+
 		query_type type;
 		union parameter {
 			explicit parameter(std::string name_) : name(std::move(name_))
@@ -564,6 +574,9 @@ public:
 
 	session_not_found_error(const session_not_found_error& other) = default;
 	~session_not_found_error() noexcept override = default;
+	session_not_found_error(session_not_found_error&& other) noexcept = default;
+	session_not_found_error& operator=(const session_not_found_error&) = delete;
+	session_not_found_error& operator=(session_not_found_error&&) noexcept = delete;
 
 	query_parameter query_parameter;
 };

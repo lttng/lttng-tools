@@ -118,6 +118,8 @@ public:
 		iterator(const iterator& other) = default;
 		iterator(iterator&& other) noexcept = default;
 		~iterator() = default;
+		iterator& operator=(const iterator&) = delete;
+		iterator& operator=(iterator&&) noexcept = delete;
 
 		/* Move to the next element in the hash table. */
 		iterator& operator++()
