@@ -91,6 +91,7 @@ Checks:          '-*,
                   modernize-use-using,
                   performance-*,
                   -performance-no-int-to-ptr,
+                  -performance-enum-size,
                   readability-redundant-member-init,
                   readability-simplify-boolean-expr,
                   readability-static-definition-in-anonymous-namespace'
