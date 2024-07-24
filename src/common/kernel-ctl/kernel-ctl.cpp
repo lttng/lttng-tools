@@ -22,17 +22,17 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-#define LTTNG_IOCTL_CHECK(fildes, request, ...)                         \
-	({                                                              \
-		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
-		LTTNG_ASSERT(_ioctl_ret <= 0);                          \
-		!_ioctl_ret ? 0 : -errno;                               \
+#define LTTNG_IOCTL_CHECK(fildes, request, ...)                               \
+	({                                                                    \
+		const int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
+		LTTNG_ASSERT(_ioctl_ret <= 0);                                \
+		!_ioctl_ret ? 0 : -errno;                                     \
 	})
 
-#define LTTNG_IOCTL_NO_CHECK(fildes, request, ...)                      \
-	({                                                              \
-		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
-		_ioctl_ret >= 0 ? _ioctl_ret : -errno;                  \
+#define LTTNG_IOCTL_NO_CHECK(fildes, request, ...)                            \
+	({                                                                    \
+		const int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
+		_ioctl_ret >= 0 ? _ioctl_ret : -errno;                        \
 	})
 
 /*
