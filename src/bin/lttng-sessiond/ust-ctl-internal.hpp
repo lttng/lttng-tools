@@ -11,6 +11,8 @@
 
 #include "lttng-ust-abi.hpp"
 
+#include <common/macros.hpp>
+
 #include <limits.h>
 #include <sys/types.h>
 
