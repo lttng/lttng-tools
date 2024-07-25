@@ -312,7 +312,7 @@ static int parse_args(int argc, char **argv)
 			}
 			goto end;
 		case 'v':
-			/* There is only 3 possible level of verbosity. (-vvv) */
+			/* There are only 3 possible levels of verbosity. (-vvv) */
 			if (lttng_opt_verbose < 3) {
 				lttng_opt_verbose += 1;
 			}
