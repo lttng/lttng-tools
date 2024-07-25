@@ -321,6 +321,7 @@ static int parse_args(int argc, char **argv)
 			lttng_opt_quiet = 1;
 			break;
 		case 'm':
+			/* Machine interface */
 			lttng_opt_mi = mi_output_type(optarg);
 			if (lttng_opt_mi < 0) {
 				ret = lttng_opt_mi;
