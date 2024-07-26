@@ -1308,22 +1308,18 @@ end:
 
 static void print_stream_indexes(struct relay_stream *stream)
 {
-	struct lttng_ht_iter iter;
-	struct relay_index *index;
-
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (stream->indexes_ht->ht, &iter.iter, index, index_n.node) {
-			DBG("index %p net_seq_num %" PRIu64 " refcount %ld"
-			    " stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
-			    index,
-			    index->index_n.key,
-			    stream->ref.refcount,
-			    index->stream->stream_handle,
-			    index->stream->trace->id,
-			    index->stream->trace->session->id);
-		}
+	for (auto *index :
+	     lttng::urcu::lfht_iteration_adapter<relay_index,
+						 decltype(relay_index::index_n),
+						 &relay_index::index_n>(*stream->indexes_ht->ht)) {
+		DBG("index %p net_seq_num %" PRIu64 " refcount %ld"
+		    " stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
+		    index,
+		    index->index_n.key,
+		    stream->ref.refcount,
+		    index->stream->stream_handle,
+		    index->stream->trace->id,
+		    index->stream->trace->session->id);
 	}
 }
 
@@ -1360,30 +1356,25 @@ int stream_reset_file(struct relay_stream *stream)
 
 void print_relay_streams()
 {
-	struct lttng_ht_iter iter;
-	struct relay_stream *stream;
-
 	if (!relay_streams_ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (relay_streams_ht->ht, &iter.iter, stream, node.node) {
-			if (!stream_get(stream)) {
-				continue;
-			}
-
-			DBG("stream %p refcount %ld stream %" PRIu64 " trace %" PRIu64
-			    " session %" PRIu64,
-			    stream,
-			    stream->ref.refcount,
-			    stream->stream_handle,
-			    stream->trace->id,
-			    stream->trace->session->id);
-			print_stream_indexes(stream);
-			stream_put(stream);
+	for (auto *stream :
+	     lttng::urcu::lfht_iteration_adapter<relay_stream,
+						 decltype(relay_stream::node),
+						 &relay_stream::node>(*relay_streams_ht->ht)) {
+		if (!stream_get(stream)) {
+			continue;
 		}
+
+		DBG("stream %p refcount %ld stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
+		    stream,
+		    stream->ref.refcount,
+		    stream->stream_handle,
+		    stream->trace->id,
+		    stream->trace->session->id);
+		print_stream_indexes(stream);
+		stream_put(stream);
 	}
 }
