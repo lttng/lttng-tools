@@ -116,8 +116,6 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 						 bool& _rotation_completed)
 {
 	int ret = 0;
-	struct consumer_socket *socket;
-	struct cds_lfht_iter iter;
 	enum consumer_trace_chunk_exists_status exists_status;
 	uint64_t relayd_id;
 	bool chunk_exists_on_peer = false;
@@ -134,8 +132,10 @@ void check_session_rotation_pending_on_consumers(const ltt_session::locked_ref& 
 		goto skip_ust;
 	}
 
-	cds_lfht_for_each_entry (
-		session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
+	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								decltype(consumer_socket::node),
+								&consumer_socket::node>(
+		     *session->ust_session->consumer->socks->ht)) {
 		relayd_id = session->ust_session->consumer->type == CONSUMER_DST_LOCAL ?
 			-1ULL :
 			session->ust_session->consumer->net_seq_index;
@@ -162,8 +162,10 @@ skip_ust:
 		goto skip_kernel;
 	}
 
-	cds_lfht_for_each_entry (
-		session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
+	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								decltype(consumer_socket::node),
+								&consumer_socket::node>(
+		     *session->kernel_session->consumer->socks->ht)) {
 		const lttng::pthread::lock_guard socket_lock(*socket->lock);
 
 		relayd_id = session->kernel_session->consumer->type == CONSUMER_DST_LOCAL ?
