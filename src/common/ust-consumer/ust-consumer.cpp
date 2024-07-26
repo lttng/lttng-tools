@@ -3195,24 +3195,20 @@ end:
  */
 void lttng_ustconsumer_close_all_metadata(struct lttng_ht *metadata_ht)
 {
-	struct lttng_ht_iter iter;
-	struct lttng_consumer_stream *stream;
-
 	LTTNG_ASSERT(metadata_ht);
 	LTTNG_ASSERT(metadata_ht->ht);
 
 	DBG("UST consumer closing all metadata streams");
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *stream :
+	     lttng::urcu::lfht_iteration_adapter<lttng_consumer_stream,
+						 decltype(lttng_consumer_stream::node),
+						 &lttng_consumer_stream::node>(*metadata_ht->ht)) {
+		health_code_update();
 
-		cds_lfht_for_each_entry (metadata_ht->ht, &iter.iter, stream, node.node) {
-			health_code_update();
-
-			pthread_mutex_lock(&stream->chan->lock);
-			lttng_ustconsumer_close_metadata(stream->chan);
-			pthread_mutex_unlock(&stream->chan->lock);
-		}
+		pthread_mutex_lock(&stream->chan->lock);
+		lttng_ustconsumer_close_metadata(stream->chan);
+		pthread_mutex_unlock(&stream->chan->lock);
 	}
 }
 
