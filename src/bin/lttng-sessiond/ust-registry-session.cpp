@@ -108,14 +108,10 @@ void destroy_channel_rcu(struct rcu_head *head)
  */
 void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 {
-	struct lttng_ht_iter iter;
-	lttng::sessiond::ust::registry_event *event;
-	enum lttng_error_code cmd_ret;
-
 	LTTNG_ASSERT(chan);
 
 	if (notify) {
-		cmd_ret = notification_thread_command_remove_channel(
+		const auto cmd_ret = notification_thread_command_remove_channel(
 			the_notification_thread_handle, chan->_consumer_key, LTTNG_DOMAIN_UST);
 		if (cmd_ret != LTTNG_OK) {
 			ERR("Failed to remove channel from notification thread");
@@ -123,16 +119,15 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 	}
 
 	if (chan->_events) {
-		const lttng::urcu::read_lock_guard read_lock_guard;
-
 		/* Destroy all event associated with this registry. */
-		DIAGNOSTIC_PUSH
-		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry (chan->_events->ht, &iter.iter, event, _node) {
+		for (auto *event :
+		     lttng::urcu::lfht_iteration_adapter<lsu::registry_event,
+							 decltype(lsu::registry_event::_node),
+							 &lsu::registry_event::_node>(
+			     *chan->_events->ht)) {
 			/* Delete the node from the ht and free it. */
 			ust_registry_channel_destroy_event(chan, event);
 		}
-		DIAGNOSTIC_POP
 	}
 
 	call_rcu(&chan->_rcu_head, destroy_channel_rcu);
@@ -375,27 +370,23 @@ void lsu::registry_session::_destroy_enum(lsu::registry_enum *reg_enum) noexcept
 lsu::registry_session::~registry_session()
 {
 	int ret;
-	struct lttng_ht_iter iter;
-	lsu::registry_channel *chan;
-	lsu::registry_enum *reg_enum;
 
 	/* On error, EBUSY can be returned if lock. Code flow error. */
 	ret = pthread_mutex_destroy(&_lock);
 	LTTNG_ASSERT(!ret);
 
 	if (_channels) {
-		const lttng::urcu::read_lock_guard read_lock_guard;
-
 		/* Destroy all event associated with this registry. */
-		DIAGNOSTIC_PUSH
-		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry (_channels->ht, &iter.iter, chan, _node.node) {
+		for (auto *chan :
+		     lttng::urcu::lfht_iteration_adapter<lsu::registry_channel,
+							 decltype(lsu::registry_channel::_node),
+							 &lsu::registry_channel::_node>(
+			     *_channels->ht)) {
 			/* Delete the node from the ht and free it. */
-			ret = lttng_ht_del(_channels.get(), &iter);
+			ret = cds_lfht_del(_channels.get()->ht, &chan->_node.node);
 			LTTNG_ASSERT(!ret);
 			destroy_channel(chan, true);
 		}
-		DIAGNOSTIC_POP
 	}
 
 	free(_metadata);
@@ -421,15 +412,13 @@ lsu::registry_session::~registry_session()
 
 	/* Destroy the enum hash table */
 	if (_enums) {
-		const lttng::urcu::read_lock_guard read_lock_guard;
-
 		/* Destroy all enum entries associated with this registry. */
-		DIAGNOSTIC_PUSH
-		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry (_enums->ht, &iter.iter, reg_enum, node.node) {
+		for (auto *reg_enum :
+		     lttng::urcu::lfht_iteration_adapter<lsu::registry_enum,
+							 decltype(lsu::registry_enum::node),
+							 &lsu::registry_enum::node>(*_enums->ht)) {
 			_destroy_enum(reg_enum);
 		}
-		DIAGNOSTIC_POP
 	}
 }
 
@@ -563,27 +552,19 @@ void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& 
 {
 	ASSERT_LOCKED(_lock);
 
-	std::vector<const lttng::sessiond::ust::registry_channel *> sorted_stream_classes;
-
-	{
-		const lttng::urcu::read_lock_guard rcu_lock_guard;
-		const lsu::registry_channel *channel;
-		lttng_ht_iter channel_it;
-
-		DIAGNOSTIC_PUSH
-		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry (_channels->ht, &channel_it.iter, channel, _node.node) {
-			sorted_stream_classes.emplace_back(channel);
-		}
-		DIAGNOSTIC_POP
-	}
+	const lttng::urcu::lfht_iteration_adapter<lsu::registry_channel,
+					    decltype(lsu::registry_channel::_node),
+					    &lsu::registry_channel::_node>
+		channels_ht_view(*_channels->ht);
+	std::vector<const lttng::sessiond::ust::registry_channel *> sorted_stream_classes(
+		channels_ht_view.begin(), channels_ht_view.end());
 
 	std::sort(sorted_stream_classes.begin(),
 		  sorted_stream_classes.end(),
 		  [](const lttng::sessiond::ust::registry_channel *a,
 		     const lttng::sessiond::ust::registry_channel *b) { return a->id < b->id; });
 
-	for (const auto stream_class : sorted_stream_classes) {
+	for (const auto *stream_class : sorted_stream_classes) {
 		stream_class->accept(visitor);
 	}
 }
