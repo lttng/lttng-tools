@@ -333,28 +333,24 @@ int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_lis
 					uint64_t chan_key,
 					uint64_t *consumer_chan_key)
 {
-	struct lttng_ht_iter iter;
-	struct buffer_reg_uid *uid_reg = nullptr;
-	struct buffer_reg_session *session_reg = nullptr;
-	struct buffer_reg_channel *reg_chan;
 	int ret = -1;
+	buffer_reg_uid *uid_reg = nullptr;
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		/*
-		 * For the per-uid registry, we have to iterate since we don't have the
-		 * uid and bitness key.
-		 */
-		cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
-			session_reg = uid_reg->registry;
-			cds_lfht_for_each_entry (
-				session_reg->channels->ht, &iter.iter, reg_chan, node.node) {
-				if (reg_chan->key == chan_key) {
-					*consumer_chan_key = reg_chan->consumer_key;
-					ret = 0;
-					goto end;
-				}
+	/*
+	 * For the per-uid registry, we have to iterate since we don't have the
+	 * uid and bitness key.
+	 */
+	cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
+		auto *session_reg = uid_reg->registry;
+		for (auto *reg_chan :
+		     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+							 decltype(buffer_reg_channel::node),
+							 &buffer_reg_channel::node>(
+			     *session_reg->channels->ht)) {
+			if (reg_chan->key == chan_key) {
+				*consumer_chan_key = reg_chan->consumer_key;
+				ret = 0;
+				goto end;
 			}
 		}
 	}
@@ -579,21 +575,16 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 				       enum lttng_domain_type domain)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-	struct buffer_reg_channel *reg_chan;
-
 	DBG3("Buffer registry session destroy");
 
 	/* Destroy all channels. */
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (regp->channels->ht, &iter.iter, reg_chan, node.node) {
-			ret = lttng_ht_del(regp->channels, &iter);
-			LTTNG_ASSERT(!ret);
-			buffer_reg_channel_destroy(reg_chan, domain);
-		}
+	for (auto *reg_chan :
+	     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+						 decltype(buffer_reg_channel::node),
+						 &buffer_reg_channel::node>(*regp->channels->ht)) {
+		const auto ret = cds_lfht_del(regp->channels->ht, &reg_chan->node.node);
+		LTTNG_ASSERT(!ret);
+		buffer_reg_channel_destroy(reg_chan, domain);
 	}
 
 	lttng_ht_destroy(regp->channels);
