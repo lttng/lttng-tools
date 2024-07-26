@@ -143,34 +143,30 @@ void viewer_session_destroy(struct relay_viewer_session *vsession)
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 				      struct relay_session *session)
 {
-	struct lttng_ht_iter iter;
-	struct relay_viewer_stream *vstream;
-
 	/*
 	 * TODO: improvement: create more efficient list of
 	 * vstream per session.
 	 */
-	{
-		const lttng::urcu::read_lock_guard read_guard;
-
-		cds_lfht_for_each_entry (
-			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
-			if (!viewer_stream_get(vstream)) {
-				continue;
-			}
-			if (vstream->stream->trace->session != session) {
-				viewer_stream_put(vstream);
-				continue;
-			}
-			/* Put local reference. */
-			viewer_stream_put(vstream);
-			/*
-			 * We have reached one of the viewer stream's lifetime
-			 * end condition. This "put" will cause the proper
-			 * teardown of the viewer stream.
-			 */
-			viewer_stream_put(vstream);
+	for (auto *vstream :
+	     lttng::urcu::lfht_iteration_adapter<relay_viewer_stream,
+						 decltype(relay_viewer_stream::stream_n),
+						 &relay_viewer_stream::stream_n>(
+		     *viewer_streams_ht->ht)) {
+		if (!viewer_stream_get(vstream)) {
+			continue;
 		}
+		if (vstream->stream->trace->session != session) {
+			viewer_stream_put(vstream);
+			continue;
+		}
+		/* Put local reference. */
+		viewer_stream_put(vstream);
+		/*
+		 * We have reached one of the viewer stream's lifetime
+		 * end condition. This "put" will cause the proper
+		 * teardown of the viewer stream.
+		 */
+		viewer_stream_put(vstream);
 	}
 
 	lttng_trace_chunk_put(vsession->current_trace_chunk);
