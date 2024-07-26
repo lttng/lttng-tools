@@ -369,29 +369,25 @@ end:
 
 void print_viewer_streams()
 {
-	struct lttng_ht_iter iter;
-	struct relay_viewer_stream *vstream;
-
 	if (!viewer_streams_ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			viewer_streams_ht->ht, &iter.iter, vstream, stream_n.node) {
-			if (!viewer_stream_get(vstream)) {
-				continue;
-			}
-			DBG("vstream %p refcount %ld stream %" PRIu64 " trace %" PRIu64
-			    " session %" PRIu64,
-			    vstream,
-			    vstream->ref.refcount,
-			    vstream->stream->stream_handle,
-			    vstream->stream->trace->id,
-			    vstream->stream->trace->session->id);
-			viewer_stream_put(vstream);
+	for (auto *vstream :
+	     lttng::urcu::lfht_iteration_adapter<relay_viewer_stream,
+						 decltype(relay_viewer_stream::stream_n),
+						 &relay_viewer_stream::stream_n>(
+		     *viewer_streams_ht->ht)) {
+		if (!viewer_stream_get(vstream)) {
+			continue;
 		}
+
+		DBG("vstream %p refcount %ld stream %" PRIu64 " trace %" PRIu64 " session %" PRIu64,
+		    vstream,
+		    vstream->ref.refcount,
+		    vstream->stream->stream_handle,
+		    vstream->stream->trace->id,
+		    vstream->stream->trace->session->id);
+		viewer_stream_put(vstream);
 	}
 }
