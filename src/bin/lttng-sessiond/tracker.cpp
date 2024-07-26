@@ -84,24 +84,19 @@ process_attr_tracker_remove_value_node(struct process_attr_tracker *tracker,
 
 static void process_attr_tracker_clear_inclusion_set(struct process_attr_tracker *tracker)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-	struct process_attr_tracker_value_node *value_node;
-
 	if (!tracker->inclusion_set_ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
-			process_attr_tracker_remove_value_node(tracker, value_node);
-		}
+	for (auto *value_node : lttng::urcu::lfht_iteration_adapter<
+		     process_attr_tracker_value_node,
+		     decltype(process_attr_tracker_value_node::inclusion_set_ht_node),
+		     &process_attr_tracker_value_node::inclusion_set_ht_node>(
+		     *tracker->inclusion_set_ht)) {
+		process_attr_tracker_remove_value_node(tracker, value_node);
 	}
 
-	ret = cds_lfht_destroy(tracker->inclusion_set_ht, nullptr);
+	const auto ret = cds_lfht_destroy(tracker->inclusion_set_ht, nullptr);
 	LTTNG_ASSERT(ret == 0);
 	tracker->inclusion_set_ht = nullptr;
 }
@@ -257,8 +252,6 @@ enum process_attr_tracker_status
 process_attr_tracker_get_inclusion_set(const struct process_attr_tracker *tracker,
 				       struct lttng_process_attr_values **_values)
 {
-	struct lttng_ht_iter iter;
-	struct process_attr_tracker_value_node *value_node;
 	enum process_attr_tracker_status status = PROCESS_ATTR_TRACKER_STATUS_OK;
 	struct lttng_process_attr_values *values;
 	struct process_attr_value *new_value = nullptr;
@@ -274,27 +267,26 @@ process_attr_tracker_get_inclusion_set(const struct process_attr_tracker *tracke
 		goto error;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *value_node : lttng::urcu::lfht_iteration_adapter<
+		     process_attr_tracker_value_node,
+		     decltype(process_attr_tracker_value_node::inclusion_set_ht_node),
+		     &process_attr_tracker_value_node::inclusion_set_ht_node>(
+		     *tracker->inclusion_set_ht)) {
+		int ret;
 
-		cds_lfht_for_each_entry (
-			tracker->inclusion_set_ht, &iter.iter, value_node, inclusion_set_ht_node) {
-			int ret;
-
-			new_value = process_attr_value_copy(value_node->value);
-			if (!new_value) {
-				status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
-				goto error_unlock;
-			}
-
-			ret = lttng_dynamic_pointer_array_add_pointer(&values->array, new_value);
-			if (ret) {
-				status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
-				goto error_unlock;
-			}
-
-			new_value = nullptr;
+		new_value = process_attr_value_copy(value_node->value);
+		if (!new_value) {
+			status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
+			goto error_unlock;
 		}
+
+		ret = lttng_dynamic_pointer_array_add_pointer(&values->array, new_value);
+		if (ret) {
+			status = PROCESS_ATTR_TRACKER_STATUS_ERROR;
+			goto error_unlock;
+		}
+
+		new_value = nullptr;
 	}
 
 	*_values = values;
