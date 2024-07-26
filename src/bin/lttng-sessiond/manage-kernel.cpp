@@ -105,9 +105,6 @@ static int update_kernel_stream(int fd)
 		ksess = session->kernel_session;
 
 		cds_list_for_each_entry (channel, &ksess->channel_list.head, list) {
-			struct lttng_ht_iter iter;
-			struct consumer_socket *socket;
-
 			if (channel->fd != fd) {
 				continue;
 			}
@@ -129,21 +126,17 @@ static int update_kernel_stream(int fd)
 				goto error;
 			}
 
-			{
-				const lttng::urcu::read_lock_guard read_lock;
-
-				cds_lfht_for_each_entry (
-					ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-					pthread_mutex_lock(socket->lock);
-					ret = kernel_consumer_send_channel_streams(
-						socket,
-						channel,
-						ksess,
-						session->output_traces ? 1 : 0);
-					pthread_mutex_unlock(socket->lock);
-					if (ret < 0) {
-						goto error;
-					}
+			for (auto *socket :
+			     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								 decltype(consumer_socket::node),
+								 &consumer_socket::node>(
+				     *ksess->consumer->socks->ht)) {
+				pthread_mutex_lock(socket->lock);
+				ret = kernel_consumer_send_channel_streams(
+					socket, channel, ksess, session->output_traces ? 1 : 0);
+				pthread_mutex_unlock(socket->lock);
+				if (ret < 0) {
+					goto error;
 				}
 			}
 		}
