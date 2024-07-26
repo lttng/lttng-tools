@@ -319,24 +319,21 @@ error:
 int event_ust_disable_all_tracepoints(struct ltt_ust_session *usess, struct ltt_ust_channel *uchan)
 {
 	int ret, i, size, error = 0;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_event *uevent = nullptr;
 	struct lttng_event *events = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
 
 	/* Disabling existing events */
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (uchan->events->ht, &iter.iter, uevent, node.node) {
-			if (uevent->enabled) {
-				ret = event_ust_disable_tracepoint(usess, uchan, uevent->attr.name);
-				if (ret < 0) {
-					error = LTTNG_ERR_UST_DISABLE_FAIL;
-					continue;
-				}
+	for (auto *uevent :
+	     lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
+						 decltype(ltt_ust_event::node),
+						 &ltt_ust_event::node>(*uchan->events->ht)) {
+		if (uevent->enabled) {
+			ret = event_ust_disable_tracepoint(usess, uchan, uevent->attr.name);
+			if (ret < 0) {
+				error = LTTNG_ERR_UST_DISABLE_FAIL;
+				continue;
 			}
 		}
 	}
@@ -365,16 +362,11 @@ error:
 
 static void agent_enable_all(struct agent *agt)
 {
-	struct agent_event *aevent;
-	struct lttng_ht_iter iter;
-
-	{
-		/* Flag every event as enabled. */
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, aevent, node.node) {
-			aevent->enabled_count++;
-		}
+	for (auto *aevent :
+	     lttng::urcu::lfht_iteration_adapter<agent_event,
+						 decltype(agent_event::node),
+						 &agent_event::node>(*agt->events->ht)) {
+		aevent->enabled_count++;
 	}
 }
 
@@ -908,8 +900,6 @@ end:
 int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 {
 	int ret;
-	struct agent_event *aevent;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(agt);
 	LTTNG_ASSERT(usess);
@@ -924,18 +914,17 @@ int event_agent_disable_all(struct ltt_ust_session *usess, struct agent *agt)
 	}
 
 	/* Disable every event. */
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *aevent :
+	     lttng::urcu::lfht_iteration_adapter<agent_event,
+						 decltype(agent_event::node),
+						 &agent_event::node>(*agt->events->ht)) {
+		if (!AGENT_EVENT_IS_ENABLED(aevent)) {
+			continue;
+		}
 
-		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, aevent, node.node) {
-			if (!AGENT_EVENT_IS_ENABLED(aevent)) {
-				continue;
-			}
-
-			ret = event_agent_disable(usess, agt, aevent->name);
-			if (ret != LTTNG_OK) {
-				goto error_unlock;
-			}
+		ret = event_agent_disable(usess, agt, aevent->name);
+		if (ret != LTTNG_OK) {
+			goto error_unlock;
 		}
 	}
 
