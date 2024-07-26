@@ -514,8 +514,6 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 {
 	int ret = 0;
 	unsigned int i, refs_to_acquire = 0, refs_acquired = 0, refs_to_release = 0;
-	struct cds_lfht_iter iter;
-	struct consumer_socket *socket;
 	struct lttng_trace_chunk *current_trace_chunk;
 	uint64_t chunk_id;
 	enum lttng_trace_chunk_status chunk_status;
@@ -569,8 +567,12 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 				goto error;
 			}
 		}
-		cds_lfht_for_each_entry (
-			session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
+
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *session->ust_session->consumer->socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 							  relayd_id,
@@ -583,6 +585,7 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 			}
 		}
 	}
+
 	if (session->kernel_session) {
 		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
 		const bool is_local_trace = session->kernel_session->consumer->type ==
@@ -598,8 +601,12 @@ static int _session_set_trace_chunk_no_lock_check(const ltt_session::locked_ref&
 				goto error;
 			}
 		}
-		cds_lfht_for_each_entry (
-			session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
+
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *session->kernel_session->consumer->socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 							  relayd_id,
@@ -761,8 +768,6 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 {
 	int ret = 0;
 	bool error_occurred = false;
-	struct cds_lfht_iter iter;
-	struct consumer_socket *socket;
 	enum lttng_trace_chunk_status chunk_status;
 	const time_t chunk_close_timestamp = time(nullptr);
 	const char *new_path;
@@ -827,8 +832,11 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 	if (session->ust_session) {
 		const uint64_t relayd_id = session->ust_session->consumer->net_seq_index;
 
-		cds_lfht_for_each_entry (
-			session->ust_session->consumer->socks->ht, &iter, socket, node.node) {
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *session->ust_session->consumer->socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
 							 relayd_id,
@@ -845,8 +853,11 @@ int session_close_trace_chunk(const ltt_session::locked_ref& session,
 	if (session->kernel_session) {
 		const uint64_t relayd_id = session->kernel_session->consumer->net_seq_index;
 
-		cds_lfht_for_each_entry (
-			session->kernel_session->consumer->socks->ht, &iter, socket, node.node) {
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *session->kernel_session->consumer->socks->ht)) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
 							 relayd_id,
