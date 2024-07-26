@@ -367,9 +367,8 @@ int context_ust_add(struct ltt_ust_session *usess,
 		    const char *channel_name)
 {
 	int ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
 	struct lttng_ht *chan_ht;
-	struct ltt_ust_channel *uchan = nullptr;
+	ltt_ust_channel *uchan = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(ctx);
@@ -393,10 +392,13 @@ int context_ust_add(struct ltt_ust_session *usess,
 		ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 	} else {
 		/* Add ctx all events, all channels */
-		cds_lfht_for_each_entry (chan_ht->ht, &iter.iter, uchan, node.node) {
-			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
+		for (auto *iterated_uchan :
+		     lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
+							 decltype(ltt_ust_channel::node),
+							 &ltt_ust_channel::node>(*chan_ht->ht)) {
+			ret = add_uctx_to_channel(usess, domain, iterated_uchan, ctx);
 			if (ret) {
-				ERR("Failed to add context to channel %s", uchan->name);
+				ERR("Failed to add context to channel %s", iterated_uchan->name);
 				continue;
 			}
 		}
