@@ -243,14 +243,13 @@ void snapshot_output_destroy(struct snapshot_output *obj)
  */
 struct snapshot_output *snapshot_find_output_by_name(const char *name, struct snapshot *snapshot)
 {
-	struct lttng_ht_iter iter;
-	struct snapshot_output *output = nullptr;
-
 	LTTNG_ASSERT(snapshot);
 	LTTNG_ASSERT(name);
-	ASSERT_RCU_READ_LOCKED();
 
-	cds_lfht_for_each_entry (snapshot->output_ht->ht, &iter.iter, output, node.node) {
+	for (auto *output : lttng::urcu::lfht_iteration_adapter<snapshot_output,
+								decltype(snapshot_output::node),
+								&snapshot_output::node>(
+		     *snapshot->output_ht->ht)) {
 		if (!strncmp(output->name, name, strlen(name))) {
 			return output;
 		}
@@ -318,20 +317,16 @@ error:
  */
 void snapshot_destroy(struct snapshot *obj)
 {
-	struct lttng_ht_iter iter;
-	struct snapshot_output *output;
-
 	if (!obj->output_ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (obj->output_ht->ht, &iter.iter, output, node.node) {
-			snapshot_delete_output(obj, output);
-			snapshot_output_destroy(output);
-		}
+	for (auto *output :
+	     lttng::urcu::lfht_iteration_adapter<snapshot_output,
+						 decltype(snapshot_output::node),
+						 &snapshot_output::node>(*obj->output_ht->ht)) {
+		snapshot_delete_output(obj, output);
+		snapshot_output_destroy(output);
 	}
 
 	lttng_ht_destroy(obj->output_ht);
