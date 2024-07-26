@@ -397,8 +397,6 @@ error:
 void fd_tracker_log(struct fd_tracker *tracker)
 {
 	struct fs_handle_tracked *handle;
-	struct unsuspendable_fd *unsuspendable_fd;
-	struct cds_lfht_iter iter;
 
 	pthread_mutex_lock(&tracker->lock);
 	DBG_NO_LOC("File descriptor tracker");
@@ -426,15 +424,14 @@ void fd_tracker_log(struct fd_tracker *tracker)
 
 	DBG_NO_LOC("  Tracked unsuspendable file descriptors");
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			tracker->unsuspendable_fds, &iter, unsuspendable_fd, tracker_node) {
-			DBG_NO_LOC("    %s [active, fd %d]",
-				   unsuspendable_fd->name ?: "Unnamed",
-				   unsuspendable_fd->fd);
-		}
+	for (auto *unsuspendable_fd :
+	     lttng::urcu::lfht_iteration_adapter<struct unsuspendable_fd,
+						 decltype(unsuspendable_fd::tracker_node),
+						 &unsuspendable_fd::tracker_node>(
+		     *tracker->unsuspendable_fds)) {
+		DBG_NO_LOC("    %s [active, fd %d]",
+			   unsuspendable_fd->name ?: "Unnamed",
+			   unsuspendable_fd->fd);
 	}
 
 	if (!UNSUSPENDABLE_COUNT(tracker)) {
