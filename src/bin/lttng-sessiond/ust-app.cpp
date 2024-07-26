@@ -920,10 +920,6 @@ static void delete_ust_app_session_rcu(struct rcu_head *head)
  */
 static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, struct ust_app *app)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-	struct ust_app_channel *ua_chan;
-
 	LTTNG_ASSERT(ua_sess);
 	ASSERT_RCU_READ_LOCKED();
 
@@ -940,9 +936,12 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		(void) push_metadata(locked_registry, ua_sess->consumer);
 	}
 
-	cds_lfht_for_each_entry (ua_sess->channels->ht, &iter.iter, ua_chan, node.node) {
-		ret = lttng_ht_del(ua_sess->channels, &iter);
-		LTTNG_ASSERT(!ret);
+	for (auto *ua_chan :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+						 decltype(ust_app_channel::node),
+						 &ust_app_channel::node>(*ua_sess->channels->ht)) {
+		const auto ret = cds_lfht_del(ua_sess->channels->ht, &ua_chan->node.node);
+		LTTNG_ASSERT(ret == 0);
 		delete_ust_app_channel(sock, ua_chan, app, locked_registry);
 	}
 
@@ -982,7 +981,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 
 	if (ua_sess->handle != -1) {
 		pthread_mutex_lock(&app->sock_lock);
-		ret = lttng_ust_ctl_release_handle(sock, ua_sess->handle);
+		auto ret = lttng_ust_ctl_release_handle(sock, ua_sess->handle);
 		pthread_mutex_unlock(&app->sock_lock);
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
@@ -1002,8 +1001,7 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 		}
 
 		/* Remove session from application UST object descriptor. */
-		iter.iter.node = &ua_sess->ust_objd_node.node;
-		ret = lttng_ht_del(app->ust_sessions_objd, &iter);
+		ret = cds_lfht_del(app->ust_sessions_objd->ht, &ua_sess->ust_objd_node.node);
 		LTTNG_ASSERT(!ret);
 	}
 
@@ -1018,8 +1016,6 @@ static void delete_ust_app_session(int sock, struct ust_app_session *ua_sess, st
 static void delete_ust_app(struct ust_app *app)
 {
 	int ret, sock;
-	struct lttng_ht_iter iter;
-	struct ust_app_event_notifier_rule *event_notifier_rule;
 	bool event_notifier_write_fd_is_open;
 
 	/*
@@ -1045,11 +1041,13 @@ static void delete_ust_app(struct ust_app *app)
 	{
 		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_lfht_for_each_entry (app->token_to_event_notifier_rule_ht->ht,
-					 &iter.iter,
-					 event_notifier_rule,
-					 node.node) {
-			ret = lttng_ht_del(app->token_to_event_notifier_rule_ht, &iter);
+		for (auto *event_notifier_rule :
+		     lttng::urcu::lfht_iteration_adapter<ust_app_event_notifier_rule,
+							 decltype(ust_app_event_notifier_rule::node),
+							 &ust_app_event_notifier_rule::node>(
+			     *app->token_to_event_notifier_rule_ht->ht)) {
+			ret = cds_lfht_del(app->token_to_event_notifier_rule_ht->ht,
+					   &event_notifier_rule->node.node);
 			LTTNG_ASSERT(!ret);
 
 			delete_ust_app_event_notifier_rule(app->sock, event_notifier_rule, app);
@@ -4320,9 +4318,6 @@ error:
 
 static void ust_app_unregister(ust_app& app)
 {
-	struct lttng_ht_iter iter;
-	struct ust_app_session *ua_sess;
-
 	const lttng::urcu::read_lock_guard read_lock;
 
 	/*
@@ -4331,8 +4326,11 @@ static void ust_app_unregister(ust_app& app)
 	 * ensuring proper behavior of data_pending check.
 	 * Remove sessions so they are not visible during deletion.
 	 */
-	cds_lfht_for_each_entry (app.sessions->ht, &iter.iter, ua_sess, node.node) {
-		const auto del_ret = lttng_ht_del(app.sessions, &iter);
+	for (auto *ua_sess :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_session,
+						 decltype(ust_app_session::node),
+						 &ust_app_session::node>(*app.sessions->ht)) {
+		const auto del_ret = cds_lfht_del(app.sessions->ht, &ua_sess->node.node);
 		if (del_ret) {
 			/* The session was already removed so scheduled for teardown. */
 			continue;
@@ -4402,16 +4400,14 @@ static void ust_app_unregister(ust_app& app)
 	 * either way it's valid. The close of that socket is handled by the
 	 * apps_notify_thread.
 	 */
-	iter.iter.node = &app.notify_sock_n.node;
-	(void) lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
+	(void) cds_lfht_del(ust_app_ht_by_notify_sock->ht, &app.notify_sock_n.node);
 
 	/*
 	 * Ignore return value since the node might have been removed before by an
 	 * add replace during app registration because the PID can be reassigned by
 	 * the OS.
 	 */
-	iter.iter.node = &app.pid_n.node;
-	if (lttng_ht_del(ust_app_ht, &iter)) {
+	if (cds_lfht_del(ust_app_ht->ht, &app.pid_n.node)) {
 		DBG3("Unregister app by PID %d failed. This can happen on pid reuse", app.pid);
 	}
 }
@@ -4754,17 +4750,15 @@ error:
 void ust_app_clean_list()
 {
 	int ret;
-	struct ust_app *app;
-	struct lttng_ht_iter iter;
-
 	DBG2("UST app cleaning registered apps hash table");
 
 	/* Cleanup notify socket hash table */
 	if (ust_app_ht_by_notify_sock) {
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			ust_app_ht_by_notify_sock->ht, &iter.iter, app, notify_sock_n.node) {
+		for (auto *app :
+		     lttng::urcu::lfht_iteration_adapter<ust_app,
+							 decltype(ust_app::notify_sock_n),
+							 &ust_app::notify_sock_n>(
+			     *ust_app_ht_by_notify_sock->ht)) {
 			/*
 			 * Assert that all notifiers are gone as all triggers
 			 * are unregistered prior to this clean-up.
@@ -4778,8 +4772,11 @@ void ust_app_clean_list()
 	if (ust_app_ht_by_sock) {
 		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_lfht_for_each_entry (ust_app_ht_by_sock->ht, &iter.iter, app, sock_n.node) {
-			ret = lttng_ht_del(ust_app_ht_by_sock, &iter);
+		for (auto *app : lttng::urcu::lfht_iteration_adapter<ust_app,
+								     decltype(ust_app::sock_n),
+								     &ust_app::sock_n>(
+			     *ust_app_ht_by_sock->ht)) {
+			ret = cds_lfht_del(ust_app_ht_by_sock->ht, &app->sock_n.node);
 			LTTNG_ASSERT(!ret);
 			ust_app_put(app);
 		}
@@ -5407,8 +5404,6 @@ static int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app
 static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
 {
 	int ret, retval = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app_channel *ua_chan;
 	struct consumer_socket *socket;
 
 	const auto update_health_code_on_exit =
@@ -5434,9 +5429,11 @@ static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess)
 	switch (ua_sess.buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ua_sess.channels->ht, &iter.iter, ua_chan, node.node) {
+		for (auto *ua_chan :
+		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+							 decltype(ust_app_channel::node),
+							 &ust_app_channel::node>(
+			     *ua_sess.channels->ht)) {
 			health_code_update();
 			ret = consumer_flush_channel(socket, ua_chan->key);
 			if (ret) {
@@ -5473,13 +5470,11 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 	case LTTNG_BUFFER_PER_UID:
 	{
 		struct buffer_reg_uid *reg;
-		struct lttng_ht_iter iter;
 
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
 			const lttng::urcu::read_lock_guard read_lock;
 			lsu::registry_session *ust_session_reg;
-			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
 			/* Get consumer socket to use to push the metadata.*/
@@ -5490,8 +5485,11 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 				continue;
 			}
 
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
+			for (auto *buf_reg_chan :
+			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+								 decltype(buffer_reg_channel::node),
+								 &buffer_reg_channel::node>(
+				     *reg->registry->channels->ht)) {
 				/*
 				 * The following call will print error values so the return
 				 * code is of little importance because whatever happens, we
@@ -5538,8 +5536,6 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_app_session *ua_sess)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app_channel *ua_chan;
 	struct consumer_socket *socket;
 
 	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
@@ -5568,7 +5564,11 @@ static int ust_app_clear_quiescent_app_session(struct ust_app *app, struct ust_a
 	/* Clear quiescent state. */
 	switch (ua_sess->buffer_type) {
 	case LTTNG_BUFFER_PER_PID:
-		cds_lfht_for_each_entry (ua_sess->channels->ht, &iter.iter, ua_chan, node.node) {
+		for (auto *ua_chan :
+		     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+							 decltype(ust_app_channel::node),
+							 &ust_app_channel::node>(
+			     *ua_sess->channels->ht)) {
 			health_code_update();
 			ret = consumer_clear_quiescent_channel(socket, ua_chan->key);
 			if (ret) {
@@ -5603,7 +5603,6 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct lttng_ht_iter iter;
 		struct buffer_reg_uid *reg;
 
 		/*
@@ -5612,7 +5611,6 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 		 */
 		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
 			struct consumer_socket *socket;
-			struct buffer_reg_channel *buf_reg_chan;
 			const lttng::urcu::read_lock_guard read_lock;
 
 			/* Get associated consumer socket.*/
@@ -5626,8 +5624,11 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 				continue;
 			}
 
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
+			for (auto *buf_reg_chan :
+			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+								 decltype(buffer_reg_channel::node),
+								 &buffer_reg_channel::node>(
+				     *reg->registry->channels->ht)) {
 				/*
 				 * The following call will print error values so
 				 * the return code is of little importance
@@ -5643,18 +5644,16 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	}
 	case LTTNG_BUFFER_PER_PID:
 	{
-		struct ust_app_session *ua_sess;
-		const lttng::urcu::read_lock_guard read_lock;
-
 		/* Iterate on all apps. */
 		for (auto *app :
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			ua_sess = ust_app_lookup_app_session(usess, app);
+			auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (ua_sess == nullptr) {
 				continue;
 			}
+
 			(void) ust_app_clear_quiescent_app_session(app, ua_sess);
 		}
 
@@ -5867,9 +5866,7 @@ static void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 	int ret = 0;
 	enum lttng_error_code ret_code;
 	enum lttng_trigger_status t_status;
-	struct lttng_ht_iter app_trigger_iter;
 	struct lttng_triggers *triggers = nullptr;
-	struct ust_app_event_notifier_rule *event_notifier_rule;
 	unsigned int count, i;
 
 	ASSERT_RCU_READ_LOCKED();
@@ -5953,53 +5950,50 @@ static void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		}
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	/* Remove all unknown event sources from the app. */
+	for (auto *event_notifier_rule :
+	     lttng::urcu::lfht_iteration_adapter<ust_app_event_notifier_rule,
+						 decltype(ust_app_event_notifier_rule::node),
+						 &ust_app_event_notifier_rule::node>(
+		     *app->token_to_event_notifier_rule_ht->ht)) {
+		const uint64_t app_token = event_notifier_rule->token;
+		bool found = false;
 
-		/* Remove all unknown event sources from the app. */
-		cds_lfht_for_each_entry (app->token_to_event_notifier_rule_ht->ht,
-					 &app_trigger_iter.iter,
-					 event_notifier_rule,
-					 node.node) {
-			const uint64_t app_token = event_notifier_rule->token;
-			bool found = false;
+		/*
+		 * Check if the app event trigger still exists on the
+		 * notification side.
+		 */
+		for (i = 0; i < count; i++) {
+			uint64_t notification_thread_token;
+			const struct lttng_trigger *trigger =
+				lttng_triggers_get_at_index(triggers, i);
 
-			/*
-			 * Check if the app event trigger still exists on the
-			 * notification side.
-			 */
-			for (i = 0; i < count; i++) {
-				uint64_t notification_thread_token;
-				const struct lttng_trigger *trigger =
-					lttng_triggers_get_at_index(triggers, i);
+			LTTNG_ASSERT(trigger);
 
-				LTTNG_ASSERT(trigger);
+			notification_thread_token = lttng_trigger_get_tracer_token(trigger);
 
-				notification_thread_token = lttng_trigger_get_tracer_token(trigger);
-
-				if (notification_thread_token == app_token) {
-					found = true;
-					break;
-				}
+			if (notification_thread_token == app_token) {
+				found = true;
+				break;
 			}
-
-			if (found) {
-				/* Still valid. */
-				continue;
-			}
-
-			/*
-			 * This trigger was unregistered, disable it on the tracer's
-			 * side.
-			 */
-			ret = lttng_ht_del(app->token_to_event_notifier_rule_ht, &app_trigger_iter);
-			LTTNG_ASSERT(ret == 0);
-
-			/* Callee logs errors. */
-			(void) disable_ust_object(app, event_notifier_rule->obj);
-
-			delete_ust_app_event_notifier_rule(app->sock, event_notifier_rule, app);
 		}
+
+		if (found) {
+			/* Still valid. */
+			continue;
+		}
+
+		/*
+		 * This trigger was unregistered, disable it on the tracer's
+		 * side.
+		 */
+		ret = cds_lfht_del(app->token_to_event_notifier_rule_ht->ht,
+				   &event_notifier_rule->node.node);
+		LTTNG_ASSERT(ret == 0);
+
+		/* Callee logs errors. */
+		(void) disable_ust_object(app, event_notifier_rule->obj);
+		delete_ust_app_event_notifier_rule(app->sock, event_notifier_rule, app);
 	}
 
 end:
@@ -6014,18 +6008,15 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 					     const ust_app_session::locked_weak_ref& ua_sess,
 					     struct ust_app *app)
 {
-	int ret = 0;
-	struct cds_lfht_iter uchan_iter;
-	struct ltt_ust_channel *uchan;
-
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(app);
 	ASSERT_RCU_READ_LOCKED();
 
-	cds_lfht_for_each_entry (usess->domain_global.channels->ht, &uchan_iter, uchan, node.node) {
+	for (auto *uchan : lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
+							       decltype(ltt_ust_channel::node),
+							       &ltt_ust_channel::node>(
+		     *usess->domain_global.channels->ht)) {
 		struct ust_app_channel *ua_chan;
-		struct cds_lfht_iter uevent_iter;
-		struct ltt_ust_event *uevent;
 
 		/*
 		 * Search for a matching ust_app_channel. If none is found,
@@ -6034,7 +6025,7 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-		ret = find_or_create_ust_app_channel(usess, ua_sess, app, uchan, &ua_chan);
+		int ret = find_or_create_ust_app_channel(usess, ua_sess, app, uchan, &ua_chan);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
 			goto end;
@@ -6045,7 +6036,11 @@ static void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
 			continue;
 		}
 
-		cds_lfht_for_each_entry (uchan->events->ht, &uevent_iter, uevent, node.node) {
+		for (auto *uevent :
+		     lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
+							 decltype(ltt_ust_event::node),
+							 &ltt_ust_event::node>(
+			     *uchan->events->ht)) {
 			ret = ust_app_channel_synchronize_event(ua_chan, uevent, app);
 			if (ret) {
 				goto end;
@@ -7047,7 +7042,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 {
 	int ret = 0;
 	enum lttng_error_code status = LTTNG_OK;
-	struct lttng_ht_iter iter;
 	char *trace_path = nullptr;
 
 	LTTNG_ASSERT(usess);
@@ -7061,7 +7055,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 		const lttng::urcu::read_lock_guard read_lock;
 
 		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
@@ -7099,8 +7092,11 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				goto error;
 			}
 			/* Add the UST default trace dir to path. */
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
+			for (auto *buf_reg_chan :
+			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+								 decltype(buffer_reg_channel::node),
+								 &buffer_reg_channel::node>(
+				     *reg->registry->channels->ht)) {
 				status =
 					consumer_snapshot_channel(socket,
 								  buf_reg_chan->consumer_key,
@@ -7133,8 +7129,6 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
-			struct lttng_ht_iter chan_iter;
-			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
 			char pathname[PATH_MAX];
@@ -7169,8 +7163,12 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
-			cds_lfht_for_each_entry (
-				ua_sess->channels->ht, &chan_iter.iter, ua_chan, node.node) {
+
+			for (auto *ua_chan :
+			     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+								 decltype(ust_app_channel::node),
+								 &ust_app_channel::node>(
+				     *ua_sess->channels->ht)) {
 				status =
 					consumer_snapshot_channel(socket,
 								  ua_chan->key,
@@ -7227,7 +7225,6 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 						     uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(usess);
 
@@ -7237,12 +7234,11 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *buf_reg_chan;
-
-			const lttng::urcu::read_lock_guard read_lock;
-
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
+			for (auto *buf_reg_chan :
+			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+								 decltype(buffer_reg_channel::node),
+								 &buffer_reg_channel::node>(
+				     *reg->registry->channels->ht)) {
 				if (cur_nr_packets >= buf_reg_chan->num_subbuf) {
 					/*
 					 * Don't take channel into account if we
@@ -7262,18 +7258,17 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 		     lttng::urcu::lfht_iteration_adapter<ust_app,
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
-			struct ust_app_channel *ua_chan;
-			struct ust_app_session *ua_sess;
-			struct lttng_ht_iter chan_iter;
-
-			ua_sess = ust_app_lookup_app_session(usess, app);
+			const auto *ua_sess = ust_app_lookup_app_session(usess, app);
 			if (!ua_sess) {
 				/* Session not associated with this app. */
 				continue;
 			}
 
-			cds_lfht_for_each_entry (
-				ua_sess->channels->ht, &chan_iter.iter, ua_chan, node.node) {
+			for (auto *ua_chan :
+			     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+								 decltype(ust_app_channel::node),
+								 &ust_app_channel::node>(
+				     *ua_sess->channels->ht)) {
 				if (cur_nr_packets >= ua_chan->attr.num_subbuf) {
 					/*
 					 * Don't take channel into account if we
@@ -7445,7 +7440,6 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 {
 	int ret;
 	enum lttng_error_code cmd_ret = LTTNG_OK;
-	struct lttng_ht_iter iter;
 	struct ltt_ust_session *usess = session->ust_session;
 
 	LTTNG_ASSERT(usess);
@@ -7456,7 +7450,6 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 			const lttng::urcu::read_lock_guard read_lock;
 
@@ -7469,8 +7462,11 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 			}
 
 			/* Rotate the data channels. */
-			cds_lfht_for_each_entry (
-				reg->registry->channels->ht, &iter.iter, buf_reg_chan, node.node) {
+			for (auto *buf_reg_chan :
+			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
+								 decltype(buffer_reg_channel::node),
+								 &buffer_reg_channel::node>(
+				     *reg->registry->channels->ht)) {
 				ret = consumer_rotate_channel(socket,
 							      buf_reg_chan->consumer_key,
 							      usess->consumer,
@@ -7518,8 +7514,6 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 							 decltype(ust_app::pid_n),
 							 &ust_app::pid_n>(*ust_app_ht->ht)) {
 			struct consumer_socket *socket;
-			struct lttng_ht_iter chan_iter;
-			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
 			lsu::registry_session *registry;
 			bool app_reference_taken;
@@ -7552,8 +7546,11 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 			LTTNG_ASSERT(registry);
 
 			/* Rotate the data channels. */
-			cds_lfht_for_each_entry (
-				ua_sess->channels->ht, &chan_iter.iter, ua_chan, node.node) {
+			for (auto *ua_chan :
+			     lttng::urcu::lfht_iteration_adapter<ust_app_channel,
+								 decltype(ust_app_channel::node),
+								 &ust_app_channel::node>(
+				     *ua_sess->channels->ht)) {
 				ret = consumer_rotate_channel(socket,
 							      ua_chan->key,
 							      ua_sess->consumer,
