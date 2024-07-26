@@ -480,8 +480,6 @@ end:
 bool session_has_ongoing_rotation(const struct relay_session *session)
 {
 	bool ongoing_rotation = false;
-	struct lttng_ht_iter iter;
-	struct relay_session *iterated_session;
 
 	ASSERT_LOCKED(session->lock);
 
@@ -502,54 +500,52 @@ bool session_has_ongoing_rotation(const struct relay_session *session)
 	 * Sample the 'ongoing_rotation' status of all relay sessions that
 	 * originate from the same session daemon session.
 	 */
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *iterated_session :
+	     lttng::urcu::lfht_iteration_adapter<relay_session,
+						 decltype(relay_session::session_n),
+						 &relay_session::session_n>(*sessions_ht->ht)) {
+		if (!session_get(iterated_session)) {
+			continue;
+		}
 
-		cds_lfht_for_each_entry (
-			sessions_ht->ht, &iter.iter, iterated_session, session_n.node) {
-			if (!session_get(iterated_session)) {
-				continue;
-			}
+		if (session == iterated_session) {
+			/* Skip this session. */
+			goto next_session_no_unlock;
+		}
 
-			if (session == iterated_session) {
-				/* Skip this session. */
-				goto next_session_no_unlock;
-			}
+		pthread_mutex_lock(&iterated_session->lock);
 
-			pthread_mutex_lock(&iterated_session->lock);
+		if (!iterated_session->id_sessiond.is_set) {
+			/*
+			 * Session belongs to a peer that doesn't support
+			 * rotations.
+			 */
+			goto next_session;
+		}
 
-			if (!iterated_session->id_sessiond.is_set) {
-				/*
-				 * Session belongs to a peer that doesn't support
-				 * rotations.
-				 */
-				goto next_session;
-			}
+		if (session->sessiond_uuid != iterated_session->sessiond_uuid) {
+			/* Sessions do not originate from the same sessiond. */
+			goto next_session;
+		}
 
-			if (session->sessiond_uuid != iterated_session->sessiond_uuid) {
-				/* Sessions do not originate from the same sessiond. */
-				goto next_session;
-			}
+		if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
+		    LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
+			/*
+			 * Sessions do not originate from the same sessiond
+			 * session.
+			 */
+			goto next_session;
+		}
 
-			if (LTTNG_OPTIONAL_GET(session->id_sessiond) !=
-			    LTTNG_OPTIONAL_GET(iterated_session->id_sessiond)) {
-				/*
-				 * Sessions do not originate from the same sessiond
-				 * session.
-				 */
-				goto next_session;
-			}
+		ongoing_rotation = iterated_session->ongoing_rotation;
 
-			ongoing_rotation = iterated_session->ongoing_rotation;
+	next_session:
+		pthread_mutex_unlock(&iterated_session->lock);
+	next_session_no_unlock:
+		session_put(iterated_session);
 
-		next_session:
-			pthread_mutex_unlock(&iterated_session->lock);
-		next_session_no_unlock:
-			session_put(iterated_session);
-
-			if (ongoing_rotation) {
-				break;
-			}
+		if (ongoing_rotation) {
+			break;
 		}
 	}
 
@@ -621,8 +617,6 @@ void session_put(struct relay_session *session)
 int session_close(struct relay_session *session)
 {
 	int ret = 0;
-	struct ctf_trace *trace;
-	struct lttng_ht_iter iter;
 	struct relay_stream *stream;
 
 	pthread_mutex_lock(&session->lock);
@@ -632,21 +626,20 @@ int session_close(struct relay_session *session)
 	session->connection_closed = true;
 	pthread_mutex_unlock(&session->lock);
 
+	for (auto *trace :
+	     lttng::urcu::lfht_iteration_adapter<ctf_trace,
+						 decltype(ctf_trace::node),
+						 &ctf_trace::node>(*session->ctf_traces_ht->ht)) {
+		ret = ctf_trace_close(trace);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (session->ctf_traces_ht->ht, &iter.iter, trace, node.node) {
-			ret = ctf_trace_close(trace);
-			if (ret) {
-				goto end;
-			}
-		}
-
-		cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
-		{
-			/* Close streams which have not been published yet. */
-			try_stream_close(stream);
-		}
+		/* Close streams which have not been published yet. */
+		try_stream_close(stream);
 	}
 
 end:
@@ -676,25 +669,21 @@ int session_abort(struct relay_session *session)
 
 void print_sessions()
 {
-	struct lttng_ht_iter iter;
-	struct relay_session *session;
-
 	if (!sessions_ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (sessions_ht->ht, &iter.iter, session, session_n.node) {
-			if (!session_get(session)) {
-				continue;
-			}
-			DBG("session %p refcount %ld session %" PRIu64,
-			    session,
-			    session->ref.refcount,
-			    session->id);
-			session_put(session);
+	for (auto *session :
+	     lttng::urcu::lfht_iteration_adapter<relay_session,
+						 decltype(relay_session::session_n),
+						 &relay_session::session_n>(*sessions_ht->ht)) {
+		if (!session_get(session)) {
+			continue;
 		}
+		DBG("session %p refcount %ld session %" PRIu64,
+		    session,
+		    session->ref.refcount,
+		    session->id);
+		session_put(session);
 	}
 }
