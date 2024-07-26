@@ -1636,20 +1636,16 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	 * have to send a command to clean them up or else they leaked.
 	 */
 	if (!ksess->output_traces && ksess->consumer_fds_sent) {
-		int ret;
-		struct consumer_socket *socket;
-		struct lttng_ht_iter iter;
-
-		/* For each consumer socket. */
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
+		for (auto *socket :
+		     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+							 decltype(consumer_socket::node),
+							 &consumer_socket::node>(
+			     *ksess->consumer->socks->ht)) {
 			struct ltt_kernel_channel *chan;
 
 			/* For each channel, ask the consumer to destroy it. */
 			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-				ret = kernel_consumer_destroy_channel(socket, chan);
+				const auto ret = kernel_consumer_destroy_channel(socket, chan);
 				if (ret < 0) {
 					/* Consumer is probably dead. Use next socket. */
 					continue;
@@ -1715,8 +1711,6 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 {
 	int err, ret, saved_metadata_fd;
 	enum lttng_error_code status = LTTNG_OK;
-	struct consumer_socket *socket;
-	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
 	char *trace_path = nullptr;
 	size_t consumer_path_offset = 0;
@@ -1749,55 +1743,51 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		goto error;
 	}
 
-	{
-		/* Send metadata to consumer and snapshot everything. */
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *socket :
+	     lttng::urcu::lfht_iteration_adapter<consumer_socket,
+						 decltype(consumer_socket::node),
+						 &consumer_socket::node>(*output->socks->ht)) {
+		struct ltt_kernel_channel *chan;
 
-		cds_lfht_for_each_entry (output->socks->ht, &iter.iter, socket, node.node) {
-			struct ltt_kernel_channel *chan;
-
-			pthread_mutex_lock(socket->lock);
-			/* This stream must not be monitored by the consumer. */
-			ret = kernel_consumer_add_metadata(socket, ksess, 0);
-			pthread_mutex_unlock(socket->lock);
-			if (ret < 0) {
-				status = LTTNG_ERR_KERN_META_FAIL;
-				goto error_consumer;
-			}
-
-			/* For each channel, ask the consumer to snapshot it. */
-			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-				status =
-					consumer_snapshot_channel(socket,
-								  chan->key,
-								  output,
-								  0,
-								  &trace_path[consumer_path_offset],
-								  nb_packets_per_stream);
-				if (status != LTTNG_OK) {
-					(void) kernel_consumer_destroy_metadata(socket,
-										ksess->metadata);
-					goto error_consumer;
-				}
-			}
-
-			/* Snapshot metadata, */
-			status = consumer_snapshot_channel(socket,
-							   ksess->metadata->key,
-							   output,
-							   1,
-							   &trace_path[consumer_path_offset],
-							   0);
-			if (status != LTTNG_OK) {
-				goto error_consumer;
-			}
-
-			/*
-			 * The metadata snapshot is done, ask the consumer to destroy it since
-			 * it's not monitored on the consumer side.
-			 */
-			(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
+		pthread_mutex_lock(socket->lock);
+		/* This stream must not be monitored by the consumer. */
+		ret = kernel_consumer_add_metadata(socket, ksess, 0);
+		pthread_mutex_unlock(socket->lock);
+		if (ret < 0) {
+			status = LTTNG_ERR_KERN_META_FAIL;
+			goto error_consumer;
 		}
+
+		/* For each channel, ask the consumer to snapshot it. */
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+			status = consumer_snapshot_channel(socket,
+							   chan->key,
+							   output,
+							   0,
+							   &trace_path[consumer_path_offset],
+							   nb_packets_per_stream);
+			if (status != LTTNG_OK) {
+				(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
+				goto error_consumer;
+			}
+		}
+
+		/* Snapshot metadata, */
+		status = consumer_snapshot_channel(socket,
+						   ksess->metadata->key,
+						   output,
+						   1,
+						   &trace_path[consumer_path_offset],
+						   0);
+		if (status != LTTNG_OK) {
+			goto error_consumer;
+		}
+
+		/*
+		 * The metadata snapshot is done, ask the consumer to destroy it since
+		 * it's not monitored on the consumer side.
+		 */
+		(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
 	}
 
 error_consumer:
@@ -1900,8 +1890,6 @@ enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& sessi
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
-	struct consumer_socket *socket;
-	struct lttng_ht_iter iter;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 
 	LTTNG_ASSERT(ksess);
@@ -1909,43 +1897,41 @@ enum lttng_error_code kernel_rotate_session(const ltt_session::locked_ref& sessi
 
 	DBG("Rotate kernel session %s started (session %" PRIu64 ")", session->name, session->id);
 
-	{
-		/*
-		 * Note that this loop will end after one iteration given that there is
-		 * only one kernel consumer.
-		 */
-		const lttng::urcu::read_lock_guard read_lock;
+	/*
+	 * Note that this loop will end after one iteration given that there is
+	 * only one kernel consumer.
+	 */
+	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								decltype(consumer_socket::node),
+								&consumer_socket::node>(
+		     *ksess->consumer->socks->ht)) {
+		struct ltt_kernel_channel *chan;
 
-		cds_lfht_for_each_entry (
-			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-			struct ltt_kernel_channel *chan;
-
-			/* For each channel, ask the consumer to rotate it. */
-			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-				DBG("Rotate kernel channel %" PRIu64 ", session %s",
-				    chan->key,
-				    session->name);
-				ret = consumer_rotate_channel(socket,
-							      chan->key,
-							      ksess->consumer,
-							      /* is_metadata_channel */ false);
-				if (ret < 0) {
-					status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
-					goto error;
-				}
-			}
-
-			/*
-			 * Rotate the metadata channel.
-			 */
+		/* For each channel, ask the consumer to rotate it. */
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+			DBG("Rotate kernel channel %" PRIu64 ", session %s",
+			    chan->key,
+			    session->name);
 			ret = consumer_rotate_channel(socket,
-						      ksess->metadata->key,
+						      chan->key,
 						      ksess->consumer,
-						      /* is_metadata_channel */ true);
+						      /* is_metadata_channel */ false);
 			if (ret < 0) {
 				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
+		}
+
+		/*
+		 * Rotate the metadata channel.
+		 */
+		ret = consumer_rotate_channel(socket,
+					      ksess->metadata->key,
+					      ksess->consumer,
+					      /* is_metadata_channel */ true);
+		if (ret < 0) {
+			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+			goto error;
 		}
 	}
 
@@ -2244,8 +2230,6 @@ enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& sessio
 {
 	int ret;
 	enum lttng_error_code status = LTTNG_OK;
-	struct consumer_socket *socket;
-	struct lttng_ht_iter iter;
 	struct ltt_kernel_session *ksess = session->kernel_session;
 
 	LTTNG_ASSERT(ksess);
@@ -2259,46 +2243,44 @@ enum lttng_error_code kernel_clear_session(const ltt_session::locked_ref& sessio
 		goto end;
 	}
 
-	{
-		/*
-		 * Note that this loop will end after one iteration given that there is
-		 * only one kernel consumer.
-		 */
-		const lttng::urcu::read_lock_guard read_lock;
+	/*
+	 * Note that this loop will end after one iteration given that there is
+	 * only one kernel consumer.
+	 */
+	for (auto *socket : lttng::urcu::lfht_iteration_adapter<consumer_socket,
+								decltype(consumer_socket::node),
+								&consumer_socket::node>(
+		     *ksess->consumer->socks->ht)) {
+		struct ltt_kernel_channel *chan;
 
-		cds_lfht_for_each_entry (
-			ksess->consumer->socks->ht, &iter.iter, socket, node.node) {
-			struct ltt_kernel_channel *chan;
-
-			/* For each channel, ask the consumer to clear it. */
-			cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
-				DBG("Clear kernel channel %" PRIu64 ", session %s",
-				    chan->key,
-				    session->name);
-				ret = consumer_clear_channel(socket, chan->key);
-				if (ret < 0) {
-					goto error;
-				}
-			}
-
-			if (!ksess->metadata) {
-				/*
-				 * Nothing to do for the metadata.
-				 * This is a snapshot session.
-				 * The metadata is genererated on the fly.
-				 */
-				continue;
-			}
-
-			/*
-			 * Clear the metadata channel.
-			 * Metadata channel is not cleared per se but we still need to
-			 * perform a rotation operation on it behind the scene.
-			 */
-			ret = consumer_clear_channel(socket, ksess->metadata->key);
+		/* For each channel, ask the consumer to clear it. */
+		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+			DBG("Clear kernel channel %" PRIu64 ", session %s",
+			    chan->key,
+			    session->name);
+			ret = consumer_clear_channel(socket, chan->key);
 			if (ret < 0) {
 				goto error;
 			}
+		}
+
+		if (!ksess->metadata) {
+			/*
+			 * Nothing to do for the metadata.
+			 * This is a snapshot session.
+			 * The metadata is genererated on the fly.
+			 */
+			continue;
+		}
+
+		/*
+		 * Clear the metadata channel.
+		 * Metadata channel is not cleared per se but we still need to
+		 * perform a rotation operation on it behind the scene.
+		 */
+		ret = consumer_clear_channel(socket, ksess->metadata->key);
+		if (ret < 0) {
+			goto error;
 		}
 	}
 
