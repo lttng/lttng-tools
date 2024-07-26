@@ -699,8 +699,6 @@ static struct notification_client_list *
 notification_client_list_create(struct notification_thread_state *state,
 				const struct lttng_condition *condition)
 {
-	struct notification_client *client;
-	struct cds_lfht_iter iter;
 	struct notification_client_list *client_list;
 
 	client_list = zmalloc<notification_client_list>();
@@ -726,27 +724,24 @@ notification_client_list_create(struct notification_thread_state *state,
 	 */
 	client_list->condition = lttng_condition_copy(condition);
 
-	{
-		/* Build a list of clients to which this new condition applies. */
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *client : lttng::urcu::lfht_iteration_adapter<
+		     notification_client,
+		     decltype(notification_client::client_socket_ht_node),
+		     &notification_client::client_socket_ht_node>(*state->client_socket_ht)) {
+		struct notification_client_list_element *client_list_element;
 
-		cds_lfht_for_each_entry (
-			state->client_socket_ht, &iter, client, client_socket_ht_node) {
-			struct notification_client_list_element *client_list_element;
-
-			if (!condition_applies_to_client(condition, client)) {
-				continue;
-			}
-
-			client_list_element = zmalloc<notification_client_list_element>();
-			if (!client_list_element) {
-				goto error_put_client_list;
-			}
-
-			CDS_INIT_LIST_HEAD(&client_list_element->node);
-			client_list_element->client = client;
-			cds_list_add(&client_list_element->node, &client_list->clients_list);
+		if (!condition_applies_to_client(condition, client)) {
+			continue;
 		}
+
+		client_list_element = zmalloc<notification_client_list_element>();
+		if (!client_list_element) {
+			goto error_put_client_list;
+		}
+
+		CDS_INIT_LIST_HEAD(&client_list_element->node);
+		client_list_element->client = client;
+		cds_list_add(&client_list_element->node, &client_list->clients_list);
 	}
 
 	client_list->notification_trigger_clients_ht = state->notification_trigger_clients_ht;
@@ -818,13 +813,15 @@ static int evaluate_channel_condition_for_client(const struct lttng_condition *c
 	struct channel_info *channel_info = nullptr;
 	struct channel_key *channel_key = nullptr;
 	struct channel_state_sample *last_sample = nullptr;
-	struct lttng_channel_trigger_list *channel_trigger_list = nullptr;
 
 	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Find the channel associated with the condition. */
-	cds_lfht_for_each_entry (
-		state->channel_triggers_ht, &iter, channel_trigger_list, channel_triggers_ht_node) {
+	for (auto *channel_trigger_list : lttng::urcu::lfht_iteration_adapter<
+		     lttng_channel_trigger_list,
+		     decltype(lttng_channel_trigger_list::channel_triggers_ht_node),
+		     &lttng_channel_trigger_list::channel_triggers_ht_node>(
+		     *state->channel_triggers_ht)) {
 		struct lttng_trigger_list_element *element;
 
 		cds_list_for_each_entry (element, &channel_trigger_list->list, node) {
@@ -1602,32 +1599,26 @@ lttng_session_trigger_list_build(const struct notification_thread_state *state,
 {
 	int trigger_count = 0;
 	struct lttng_session_trigger_list *session_trigger_list = nullptr;
-	struct lttng_trigger_ht_element *trigger_ht_element = nullptr;
-	struct cds_lfht_iter iter;
 
 	session_trigger_list =
 		lttng_session_trigger_list_create(session_name, state->session_triggers_ht);
 
-	{
-		/* Add all triggers applying to the session named 'session_name'. */
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
-			int ret;
-
-			if (!trigger_applies_to_session(trigger_ht_element->trigger,
-							session_name)) {
-				continue;
-			}
-
-			ret = lttng_session_trigger_list_add(session_trigger_list,
-							     trigger_ht_element->trigger);
-			if (ret) {
-				goto error;
-			}
-
-			trigger_count++;
+	for (auto *trigger_ht_element :
+	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
+						 decltype(lttng_trigger_ht_element::node),
+						 &lttng_trigger_ht_element::node>(
+		     *state->triggers_ht)) {
+		if (!trigger_applies_to_session(trigger_ht_element->trigger, session_name)) {
+			continue;
 		}
+
+		const auto ret = lttng_session_trigger_list_add(session_trigger_list,
+								trigger_ht_element->trigger);
+		if (ret) {
+			goto error;
+		}
+
+		trigger_count++;
 	}
 
 	DBG("Found %i triggers that apply to newly created session", trigger_count);
@@ -1695,9 +1686,7 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 		.domain = channel_domain,
 	};
 	struct lttng_channel_trigger_list *channel_trigger_list = nullptr;
-	struct lttng_trigger_ht_element *trigger_ht_element = nullptr;
 	int trigger_count = 0;
-	struct cds_lfht_iter iter;
 	struct session_info *session_info = nullptr;
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -1725,7 +1714,11 @@ static int handle_notification_thread_command_add_channel(struct notification_th
 	}
 
 	/* Build a list of all triggers applying to the new channel. */
-	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
+	for (auto *trigger_ht_element :
+	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
+						 decltype(lttng_trigger_ht_element::node),
+						 &lttng_trigger_ht_element::node>(
+		     *state->triggers_ht)) {
 		struct lttng_trigger_list_element *new_element;
 
 		if (!trigger_applies_to_channel(trigger_ht_element->trigger, new_channel_info)) {
@@ -2264,12 +2257,8 @@ handle_notification_thread_command_list_triggers(struct notification_thread_hand
 {
 	int ret = 0;
 	enum lttng_error_code cmd_result = LTTNG_OK;
-	struct cds_lfht_iter iter;
-	struct lttng_trigger_ht_element *trigger_ht_element;
 	struct lttng_triggers *local_triggers = nullptr;
 	const struct lttng_credentials *creds;
-
-	const lttng::urcu::read_lock_guard read_lock;
 
 	local_triggers = lttng_triggers_create();
 	if (!local_triggers) {
@@ -2278,7 +2267,11 @@ handle_notification_thread_command_list_triggers(struct notification_thread_hand
 		goto end;
 	}
 
-	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
+	for (auto *trigger_ht_element :
+	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
+						 decltype(lttng_trigger_ht_element::node),
+						 &lttng_trigger_ht_element::node>(
+		     *state->triggers_ht)) {
 		/*
 		 * Only return the triggers to which the client has access.
 		 * The root user has visibility over all triggers.
@@ -2334,24 +2327,22 @@ static int handle_notification_thread_command_get_trigger(struct notification_th
 							  enum lttng_error_code *_cmd_result)
 {
 	int ret = -1;
-	struct cds_lfht_iter iter;
-	struct lttng_trigger_ht_element *trigger_ht_element;
 	enum lttng_error_code cmd_result = LTTNG_ERR_TRIGGER_NOT_FOUND;
 	const char *trigger_name;
 	uid_t trigger_owner_uid;
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
-			if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
-				/* Take one reference on the return trigger. */
-				*registered_trigger = trigger_ht_element->trigger;
-				lttng_trigger_get(*registered_trigger);
-				ret = 0;
-				cmd_result = LTTNG_OK;
-				goto end;
-			}
+	for (auto *trigger_ht_element :
+	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
+						 decltype(lttng_trigger_ht_element::node),
+						 &lttng_trigger_ht_element::node>(
+		     *state->triggers_ht)) {
+		if (lttng_trigger_is_equal(trigger, trigger_ht_element->trigger)) {
+			/* Take one reference on the return trigger. */
+			*registered_trigger = trigger_ht_element->trigger;
+			lttng_trigger_get(*registered_trigger);
+			ret = 0;
+			cmd_result = LTTNG_OK;
+			goto end;
 		}
 	}
 
@@ -2462,12 +2453,12 @@ static int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 {
 	int ret = 0;
 	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
-	struct channel_info *channel;
 
-	ASSERT_RCU_READ_LOCKED();
-
-	cds_lfht_for_each_entry (state->channels_ht, &iter, channel, channels_ht_node) {
+	for (auto *channel :
+	     lttng::urcu::lfht_iteration_adapter<channel_info,
+						 decltype(channel_info::channels_ht_node),
+						 &channel_info::channels_ht_node>(
+		     *state->channels_ht)) {
 		struct lttng_trigger_list_element *trigger_list_element;
 		struct lttng_channel_trigger_list *trigger_list;
 		struct cds_lfht_iter lookup_iter;
@@ -2981,30 +2972,25 @@ static void free_notification_trigger_tokens_ht_element_rcu(struct rcu_head *nod
 static void teardown_tracer_notifier(struct notification_thread_state *state,
 				     const struct lttng_trigger *trigger)
 {
-	struct cds_lfht_iter iter;
-	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element;
-
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			state->trigger_tokens_ht, &iter, trigger_tokens_ht_element, node) {
-			if (!lttng_trigger_is_equal(trigger, trigger_tokens_ht_element->trigger)) {
-				continue;
-			}
-
-			event_notifier_error_accounting_unregister_event_notifier(
-				trigger_tokens_ht_element->trigger);
-
-			/* TODO talk to all app and remove it */
-			DBG("Removed trigger from tokens_ht");
-			cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
-
-			call_rcu(&trigger_tokens_ht_element->rcu_node,
-				 free_notification_trigger_tokens_ht_element_rcu);
-
-			break;
+	for (auto *trigger_tokens_ht_element : lttng::urcu::lfht_iteration_adapter<
+		     notification_trigger_tokens_ht_element,
+		     decltype(notification_trigger_tokens_ht_element::node),
+		     &notification_trigger_tokens_ht_element::node>(*state->trigger_tokens_ht)) {
+		if (!lttng_trigger_is_equal(trigger, trigger_tokens_ht_element->trigger)) {
+			continue;
 		}
+
+		event_notifier_error_accounting_unregister_event_notifier(
+			trigger_tokens_ht_element->trigger);
+
+		/* TODO talk to all app and remove it */
+		DBG("Removed trigger from tokens_ht");
+		cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
+
+		call_rcu(&trigger_tokens_ht_element->rcu_node,
+			 free_notification_trigger_tokens_ht_element_rcu);
+
+		break;
 	}
 }
 
@@ -3066,8 +3052,6 @@ handle_notification_thread_command_unregister_trigger(struct notification_thread
 	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_CHANNEL:
 	{
-		struct lttng_channel_trigger_list *trigger_list;
-
 		/*
 		 * Remove trigger from channel_triggers_ht.
 		 *
@@ -3077,8 +3061,11 @@ handle_notification_thread_command_unregister_trigger(struct notification_thread
 		 *
 		 * Iterate on all lists since we don't know the target channels' keys.
 		 */
-		cds_lfht_for_each_entry (
-			state->channel_triggers_ht, &iter, trigger_list, channel_triggers_ht_node) {
+		for (auto *trigger_list : lttng::urcu::lfht_iteration_adapter<
+			     lttng_channel_trigger_list,
+			     decltype(lttng_channel_trigger_list::channel_triggers_ht_node),
+			     &lttng_channel_trigger_list::channel_triggers_ht_node>(
+			     *state->channel_triggers_ht)) {
 			struct lttng_trigger_list_element *trigger_element, *tmp;
 
 			cds_list_for_each_entry_safe (
@@ -3515,23 +3502,19 @@ end:
 
 int handle_notification_thread_client_disconnect_all(struct notification_thread_state *state)
 {
-	struct cds_lfht_iter iter;
-	struct notification_client *client;
 	bool error_encoutered = false;
 
 	DBG("Closing all client connections");
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *client : lttng::urcu::lfht_iteration_adapter<
+		     notification_client,
+		     decltype(notification_client::client_socket_ht_node),
+		     &notification_client::client_socket_ht_node>(*state->client_socket_ht)) {
+		int ret;
 
-		cds_lfht_for_each_entry (
-			state->client_socket_ht, &iter, client, client_socket_ht_node) {
-			int ret;
-
-			ret = notification_thread_client_disconnect(client, state);
-			if (ret) {
-				error_encoutered = true;
-			}
+		ret = notification_thread_client_disconnect(client, state);
+		if (ret) {
+			error_encoutered = true;
 		}
 	}
 
@@ -3541,17 +3524,19 @@ int handle_notification_thread_client_disconnect_all(struct notification_thread_
 int handle_notification_thread_trigger_unregister_all(struct notification_thread_state *state)
 {
 	bool error_occurred = false;
-	struct cds_lfht_iter iter;
-	struct lttng_trigger_ht_element *trigger_ht_element;
 
-	const lttng::urcu::read_lock_guard read_lock;
-	cds_lfht_for_each_entry (state->triggers_ht, &iter, trigger_ht_element, node) {
+	for (auto *trigger_ht_element :
+	     lttng::urcu::lfht_iteration_adapter<lttng_trigger_ht_element,
+						 decltype(lttng_trigger_ht_element::node),
+						 &lttng_trigger_ht_element::node>(
+		     *state->triggers_ht)) {
 		const int ret = handle_notification_thread_command_unregister_trigger(
 			state, trigger_ht_element->trigger, nullptr);
 		if (ret) {
 			error_occurred = true;
 		}
 	}
+
 	return error_occurred ? -1 : 0;
 }
 
