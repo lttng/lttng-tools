@@ -174,18 +174,14 @@ static void ust_error_accounting_entry_put(struct ust_error_accounting_entry *en
  */
 static void put_ref_all_ust_error_accounting_entry()
 {
-	struct lttng_ht_iter iter;
-	struct ust_error_accounting_entry *uid_entry;
-
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
-			ust_error_accounting_entry_put(uid_entry);
-		}
+	for (auto *uid_entry :
+	     lttng::urcu::lfht_iteration_adapter<ust_error_accounting_entry,
+						 decltype(ust_error_accounting_entry::node),
+						 &ust_error_accounting_entry::node>(
+		     *error_counter_uid_ht->ht)) {
+		ust_error_accounting_entry_put(uid_entry);
 	}
 }
 
@@ -194,18 +190,14 @@ static void put_ref_all_ust_error_accounting_entry()
  */
 static void get_ref_all_ust_error_accounting_entry()
 {
-	struct lttng_ht_iter iter;
-	struct ust_error_accounting_entry *uid_entry;
-
 	ASSERT_LOCKED(the_event_notifier_counter.lock);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
-			ust_error_accounting_entry_get(uid_entry);
-		}
+	for (auto *uid_entry :
+	     lttng::urcu::lfht_iteration_adapter<ust_error_accounting_entry,
+						 decltype(ust_error_accounting_entry::node),
+						 &ust_error_accounting_entry::node>(
+		     *error_counter_uid_ht->ht)) {
+		ust_error_accounting_entry_get(uid_entry);
 	}
 }
 
@@ -788,8 +780,6 @@ end:
 static enum event_notifier_error_accounting_status
 event_notifier_error_accounting_ust_get_count(const struct lttng_trigger *trigger, uint64_t *count)
 {
-	struct lttng_ht_iter iter;
-	struct ust_error_accounting_entry *uid_entry;
 	uint64_t error_counter_index, global_sum = 0;
 	enum event_notifier_error_accounting_status status;
 	size_t dimension_indexes[1];
@@ -821,7 +811,11 @@ event_notifier_error_accounting_ust_get_count(const struct lttng_trigger *trigge
 	 * a trigger to a given sessiond is also allowed to create an event
 	 * notifier on all apps that this sessiond is aware of.
 	 */
-	cds_lfht_for_each_entry (error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
+	for (auto *uid_entry :
+	     lttng::urcu::lfht_iteration_adapter<ust_error_accounting_entry,
+						 decltype(ust_error_accounting_entry::node),
+						 &ust_error_accounting_entry::node>(
+		     *error_counter_uid_ht->ht)) {
 		int ret;
 		int64_t local_value = 0;
 		bool overflow = false, underflow = false;
@@ -863,8 +857,6 @@ end:
 static enum event_notifier_error_accounting_status
 event_notifier_error_accounting_ust_clear(const struct lttng_trigger *trigger)
 {
-	struct lttng_ht_iter iter;
-	struct ust_error_accounting_entry *uid_entry;
 	uint64_t error_counter_index;
 	enum event_notifier_error_accounting_status status;
 	size_t dimension_index;
@@ -895,7 +887,11 @@ event_notifier_error_accounting_ust_clear(const struct lttng_trigger *trigger)
 	 * errors) can be generated from any applications that this session
 	 * daemon is managing.
 	 */
-	cds_lfht_for_each_entry (error_counter_uid_ht->ht, &iter.iter, uid_entry, node.node) {
+	for (auto *uid_entry :
+	     lttng::urcu::lfht_iteration_adapter<ust_error_accounting_entry,
+						 decltype(ust_error_accounting_entry::node),
+						 &ust_error_accounting_entry::node>(
+		     *error_counter_uid_ht->ht)) {
 		const int ret =
 			lttng_ust_ctl_counter_clear(uid_entry->daemon_counter, &dimension_index);
 
