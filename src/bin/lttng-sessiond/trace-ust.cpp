@@ -461,7 +461,7 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 
 	try {
 		local_ust_event = lttng::make_unique<ltt_ust_event>();
-	} catch (const std::bad_alloc &ex) {
+	} catch (const std::bad_alloc& ex) {
 		ERR_FMT("Failed to allocate ltt_ust_event");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -751,22 +751,18 @@ end:
  */
 static void fini_id_tracker(struct ust_id_tracker *id_tracker)
 {
-	struct ust_id_tracker_node *tracker_node;
-	struct lttng_ht_iter iter;
-
 	if (!id_tracker->ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *tracker_node :
+	     lttng::urcu::lfht_iteration_adapter<ust_id_tracker_node,
+						 decltype(ust_id_tracker_node::node),
+						 &ust_id_tracker_node::node>(*id_tracker->ht->ht)) {
+		const int ret = cds_lfht_del(id_tracker->ht->ht, &tracker_node->node.node);
 
-		cds_lfht_for_each_entry (id_tracker->ht->ht, &iter.iter, tracker_node, node.node) {
-			const int ret = lttng_ht_del(id_tracker->ht, &iter);
-
-			LTTNG_ASSERT(!ret);
-			destroy_id_tracker_node(tracker_node);
-		}
+		LTTNG_ASSERT(!ret);
+		destroy_id_tracker_node(tracker_node);
 	}
 
 	lttng_ht_destroy(id_tracker->ht);
@@ -1195,25 +1191,17 @@ static void destroy_context_rcu(struct rcu_head *head)
  */
 static void destroy_contexts(struct lttng_ht *ht)
 {
-	int ret;
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-	struct ltt_ust_context *ctx;
-
 	LTTNG_ASSERT(ht);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ht->ht, &iter.iter, node, node) {
-			/* Remove from ordered list. */
-			ctx = lttng::utils::container_of(node, &ltt_ust_context::node);
-			cds_list_del(&ctx->list);
-			/* Remove from channel's hash table. */
-			ret = lttng_ht_del(ht, &iter);
-			if (!ret) {
-				call_rcu(&node->head, destroy_context_rcu);
-			}
+	for (auto *ctx : lttng::urcu::lfht_iteration_adapter<ltt_ust_context,
+							     decltype(ltt_ust_context::node),
+							     &ltt_ust_context::node>(*ht->ht)) {
+		/* Remove from ordered list. */
+		cds_list_del(&ctx->list);
+		/* Remove from channel's hash table. */
+		const auto ret = cds_lfht_del(ht->ht, &ctx->node.node);
+		if (!ret) {
+			call_rcu(&ctx->node.head, destroy_context_rcu);
 		}
 	}
 
@@ -1264,20 +1252,14 @@ static void destroy_event_rcu(struct rcu_head *head)
  */
 static void destroy_events(struct lttng_ht *events)
 {
-	int ret;
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-
 	LTTNG_ASSERT(events);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
-			ret = lttng_ht_del(events, &iter);
-			LTTNG_ASSERT(!ret);
-			call_rcu(&node->head, destroy_event_rcu);
-		}
+	for (auto *event : lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
+							       decltype(ltt_ust_event::node),
+							       &ltt_ust_event::node>(*events->ht)) {
+		const auto ret = cds_lfht_del(events->ht, &event->node.node);
+		LTTNG_ASSERT(!ret);
+		call_rcu(&event->node.head, destroy_event_rcu);
 	}
 
 	lttng_ht_destroy(events);
@@ -1365,21 +1347,14 @@ end:
  */
 static void destroy_channels(struct lttng_ht *channels)
 {
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-
 	LTTNG_ASSERT(channels);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (channels->ht, &iter.iter, node, node) {
-			struct ltt_ust_channel *chan =
-				lttng::utils::container_of(node, &ltt_ust_channel::node);
-
-			trace_ust_delete_channel(channels, chan);
-			trace_ust_destroy_channel(chan);
-		}
+	for (auto *chan :
+	     lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
+						 decltype(ltt_ust_channel::node),
+						 &ltt_ust_channel::node>(*channels->ht)) {
+		trace_ust_delete_channel(channels, chan);
+		trace_ust_destroy_channel(chan);
 	}
 
 	lttng_ht_destroy(channels);
@@ -1401,9 +1376,7 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
-	struct agent *agt;
 	struct buffer_reg_uid *reg, *sreg;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(session);
 
@@ -1412,15 +1385,13 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	/* Cleaning up UST domain */
 	destroy_domain_global(&session->domain_global);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *agt :
+	     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
+		     *session->agents->ht)) {
+		const int ret = cds_lfht_del(session->agents->ht, &agt->node.node);
 
-		cds_lfht_for_each_entry (session->agents->ht, &iter.iter, agt, node.node) {
-			const int ret = lttng_ht_del(session->agents, &iter);
-
-			LTTNG_ASSERT(!ret);
-			agent_destroy(agt);
-		}
+		LTTNG_ASSERT(!ret);
+		agent_destroy(agt);
 	}
 
 	lttng_ht_destroy(session->agents);
