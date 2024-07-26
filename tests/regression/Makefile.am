@@ -143,3 +143,7 @@ TESTS += ust/linking/test_linking \
 	ust/ust-dl/test_ust-dl \
 	ust/type-declarations/test_type_declarations
 endif
+
+if PRECIOUS_TESTS
+.PRECIOUS: $(TEST_LOGS)
+endif

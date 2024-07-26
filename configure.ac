@@ -979,6 +979,18 @@ AS_IF([test "$test_sdt_uprobe" = "autodetect"], [
 
 AM_CONDITIONAL([TEST_SDT_UPROBE], [test "$test_sdt_uprobe" = "yes"])
 
+AC_ARG_ENABLE(
+	[precious-tests],
+	AS_HELP_STRING(
+		[--disable-precious-tests],
+		[Delete log files for interrupted tests]
+	),
+	[precious_tests=$enableval],
+	[precious_tests=yes]
+)
+
+AM_CONDITIONAL([PRECIOUS_TESTS], [test x$precious_tests = xyes])
+
 AC_ARG_ENABLE([lib-lttng-ctl], AS_HELP_STRING([--disable-lib-lttng-ctl],
 	[Disable the build of liblttng-ctl (only possible if no binaries that depend on it are built)]))
 
