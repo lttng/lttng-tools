@@ -497,20 +497,14 @@ void lsu::registry_channel::set_as_registered()
 void lsu::registry_channel::_accept_on_event_classes(
 	lttng::sessiond::trace::trace_class_visitor& visitor) const
 {
-	std::vector<const lttng::sessiond::ust::registry_event *> sorted_event_classes;
+	const lttng::urcu::lfht_iteration_adapter<lsu::registry_event,
+					    decltype(lsu::registry_event::_node),
+					    &lsu::registry_event::_node>
+		events_view(*_events->ht);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock_guard;
-		struct lttng_ht_iter iter;
-		const lttng::sessiond::ust::registry_event *event;
-
-		DIAGNOSTIC_PUSH
-		DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
-		cds_lfht_for_each_entry (_events->ht, &iter.iter, event, _node) {
-			sorted_event_classes.emplace_back(event);
-		}
-		DIAGNOSTIC_POP
-	}
+	/* Copy the event ptrs from the _events ht to this vector which we'll sort. */
+	std::vector<const lttng::sessiond::ust::registry_event *> sorted_event_classes(
+		events_view.begin(), events_view.end());
 
 	std::sort(sorted_event_classes.begin(),
 		  sorted_event_classes.end(),
