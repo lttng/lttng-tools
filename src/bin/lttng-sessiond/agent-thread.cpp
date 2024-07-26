@@ -61,8 +61,6 @@ static void update_agent_app(const struct agent_app *app)
 {
 	struct ltt_session *session, *stmp;
 	struct ltt_session_list *list;
-	struct agent *trigger_agent;
-	struct lttng_ht_iter iter;
 
 	list = session_get_list();
 	LTTNG_ASSERT(list);
@@ -86,17 +84,14 @@ static void update_agent_app(const struct agent_app *app)
 		session_put(session);
 	}
 
-	{
-		/*
-		 * We are protected against the addition of new events by the session
-		 * list lock being held.
-		 */
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			the_trigger_agents_ht_by_domain->ht, &iter.iter, trigger_agent, node.node) {
-			agent_update(trigger_agent, app);
-		}
+	/*
+	 * We are protected against the addition of new events by the session
+	 * list lock being held.
+	 */
+	for (auto *trigger_agent :
+	     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
+		     *the_trigger_agents_ht_by_domain->ht)) {
+		agent_update(trigger_agent, app);
 	}
 }
 
