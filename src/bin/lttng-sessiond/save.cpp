@@ -1097,9 +1097,6 @@ end:
 static int save_ust_events(struct config_writer *writer, struct lttng_ht *events)
 {
 	int ret;
-	struct ltt_ust_event *event;
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
 
 	ret = config_writer_open_element(writer, config_element_events);
 	if (ret) {
@@ -1107,20 +1104,17 @@ static int save_ust_events(struct config_writer *writer, struct lttng_ht *events
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *event : lttng::urcu::lfht_iteration_adapter<ltt_ust_event,
+							       decltype(ltt_ust_event::node),
+							       &ltt_ust_event::node>(*events->ht)) {
+		if (event->internal) {
+			/* Internal events must not be exposed to clients */
+			continue;
+		}
 
-		cds_lfht_for_each_entry (events->ht, &iter.iter, node, node) {
-			event = lttng::utils::container_of(node, &ltt_ust_event::node);
-
-			if (event->internal) {
-				/* Internal events must not be exposed to clients */
-				continue;
-			}
-			ret = save_ust_event(writer, event);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
+		ret = save_ust_event(writer, event);
+		if (ret != LTTNG_OK) {
+			goto end;
 		}
 	}
 
@@ -1179,8 +1173,6 @@ end:
 static int save_agent_events(struct config_writer *writer, struct agent *agent)
 {
 	int ret;
-	struct lttng_ht_iter iter;
-	struct lttng_ht_node_str *node;
 
 	ret = config_writer_open_element(writer, config_element_events);
 	if (ret) {
@@ -1188,29 +1180,26 @@ static int save_agent_events(struct config_writer *writer, struct agent *agent)
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *agent_event :
+	     lttng::urcu::lfht_iteration_adapter<agent_event,
+						 decltype(agent_event::node),
+						 &agent_event::node>(*agent->events->ht)) {
+		ltt_ust_event fake_event;
 
-		cds_lfht_for_each_entry (agent->events->ht, &iter.iter, node, node) {
-			struct agent_event *agent_event;
-			struct ltt_ust_event fake_event;
+		/*
+		 * Initialize a fake ust event to reuse the same serialization
+		 * function since UST and agent events contain the same info
+		 * (and one could wonder why they don't reuse the same
+		 * structures...).
+		 */
+		ret = init_ust_event_from_agent_event(&fake_event, agent_event);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
 
-			agent_event = lttng::utils::container_of(node, &agent_event::node);
-
-			/*
-			 * Initialize a fake ust event to reuse the same serialization
-			 * function since UST and agent events contain the same info
-			 * (and one could wonder why they don't reuse the same
-			 * structures...).
-			 */
-			ret = init_ust_event_from_agent_event(&fake_event, agent_event);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
-			ret = save_ust_event(writer, &fake_event);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
+		ret = save_ust_event(writer, &fake_event);
+		if (ret != LTTNG_OK) {
+			goto end;
 		}
 	}
 
@@ -1991,10 +1980,7 @@ static int save_ust_domain(struct config_writer *writer,
 			   enum lttng_domain_type domain)
 {
 	int ret;
-	struct ltt_ust_channel *ust_chan;
 	const char *buffer_type_string;
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
 	const char *config_domain_name;
 
 	LTTNG_ASSERT(writer);
@@ -2037,17 +2023,14 @@ static int save_ust_domain(struct config_writer *writer,
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (
-			session->ust_session->domain_global.channels->ht, &iter.iter, node, node) {
-			ust_chan = lttng::utils::container_of(node, &ltt_ust_channel::node);
-			if (domain == ust_chan->domain) {
-				ret = save_ust_channel(writer, ust_chan, session->ust_session);
-				if (ret != LTTNG_OK) {
-					goto end;
-				}
+	for (auto *ust_chan : lttng::urcu::lfht_iteration_adapter<ltt_ust_channel,
+								  decltype(ltt_ust_channel::node),
+								  &ltt_ust_channel::node>(
+		     *session->ust_session->domain_global.channels->ht)) {
+		if (domain == ust_chan->domain) {
+			ret = save_ust_channel(writer, ust_chan, session->ust_session);
+			if (ret != LTTNG_OK) {
+				goto end;
 			}
 		}
 	}
@@ -2304,54 +2287,48 @@ end:
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static int save_snapshot_outputs(struct config_writer *writer, struct snapshot *snapshot)
 {
-	int ret;
-	struct lttng_ht_iter iter;
-	struct snapshot_output *output;
-
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(snapshot);
 
-	ret = config_writer_open_element(writer, config_element_snapshot_outputs);
+	int ret = config_writer_open_element(writer, config_element_snapshot_outputs);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *output : lttng::urcu::lfht_iteration_adapter<snapshot_output,
+								decltype(snapshot_output::node),
+								&snapshot_output::node>(
+		     *snapshot->output_ht->ht)) {
+		ret = config_writer_open_element(writer, config_element_output);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end_unlock;
+		}
 
-		cds_lfht_for_each_entry (snapshot->output_ht->ht, &iter.iter, output, node.node) {
-			ret = config_writer_open_element(writer, config_element_output);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_unlock;
-			}
+		ret = config_writer_write_element_string(writer, config_element_name, output->name);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end_unlock;
+		}
 
-			ret = config_writer_write_element_string(
-				writer, config_element_name, output->name);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_unlock;
-			}
+		ret = config_writer_write_element_unsigned_int(
+			writer, config_element_max_size, output->max_size);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end_unlock;
+		}
 
-			ret = config_writer_write_element_unsigned_int(
-				writer, config_element_max_size, output->max_size);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_unlock;
-			}
+		ret = save_consumer_output(writer, output->consumer);
+		if (ret != LTTNG_OK) {
+			goto end_unlock;
+		}
 
-			ret = save_consumer_output(writer, output->consumer);
-			if (ret != LTTNG_OK) {
-				goto end_unlock;
-			}
-
-			/* /output */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end_unlock;
-			}
+		/* /output */
+		ret = config_writer_close_element(writer);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end_unlock;
 		}
 	}
 
