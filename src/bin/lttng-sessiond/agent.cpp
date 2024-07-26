@@ -672,25 +672,20 @@ int agent_send_registration_done(struct agent_app *app)
 int agent_enable_event(struct agent_event *event, enum lttng_domain_type domain)
 {
 	int ret;
-	struct agent_app *app;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(event);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		if (app->domain != domain) {
+			continue;
+		}
 
-		cds_lfht_for_each_entry (
-			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
-			if (app->domain != domain) {
-				continue;
-			}
-
-			/* Enable event on agent application through TCP socket. */
-			ret = enable_event(app, event);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
+		/* Enable event on agent application through TCP socket. */
+		ret = enable_event(app, event);
+		if (ret != LTTNG_OK) {
+			goto error;
 		}
 	}
 
@@ -741,8 +736,6 @@ end:
 int agent_enable_context(const struct lttng_event_context *ctx, enum lttng_domain_type domain)
 {
 	int ret;
-	struct agent_app *app;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(ctx);
 	if (ctx->ctx != LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
@@ -750,29 +743,26 @@ int agent_enable_context(const struct lttng_event_context *ctx, enum lttng_domai
 		goto error;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		struct agent_app_ctx *agent_ctx;
 
-		cds_lfht_for_each_entry (
-			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
-			struct agent_app_ctx *agent_ctx;
+		if (app->domain != domain) {
+			continue;
+		}
 
-			if (app->domain != domain) {
-				continue;
-			}
+		agent_ctx = create_app_ctx(ctx);
+		if (!agent_ctx) {
+			ret = LTTNG_ERR_NOMEM;
+			goto error_unlock;
+		}
 
-			agent_ctx = create_app_ctx(ctx);
-			if (!agent_ctx) {
-				ret = LTTNG_ERR_NOMEM;
-				goto error_unlock;
-			}
-
-			/* Enable event on agent application through TCP socket. */
-			ret = app_context_op(app, agent_ctx, AGENT_CMD_APP_CTX_ENABLE);
-			destroy_app_ctx(agent_ctx);
-			if (ret != LTTNG_OK) {
-				goto error_unlock;
-			}
+		/* Enable event on agent application through TCP socket. */
+		ret = app_context_op(app, agent_ctx, AGENT_CMD_APP_CTX_ENABLE);
+		destroy_app_ctx(agent_ctx);
+		if (ret != LTTNG_OK) {
+			goto error_unlock;
 		}
 	}
 
@@ -792,8 +782,6 @@ error:
 int agent_disable_event(struct agent_event *event, enum lttng_domain_type domain)
 {
 	int ret = LTTNG_OK;
-	struct agent_app *app;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(event);
 	if (!AGENT_EVENT_IS_ENABLED(event)) {
@@ -810,20 +798,17 @@ int agent_disable_event(struct agent_event *event, enum lttng_domain_type domain
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		if (app->domain != domain) {
+			continue;
+		}
 
-		cds_lfht_for_each_entry (
-			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
-			if (app->domain != domain) {
-				continue;
-			}
-
-			/* Enable event on agent application through TCP socket. */
-			ret = disable_event(app, event);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
+		/* Enable event on agent application through TCP socket. */
+		ret = disable_event(app, event);
+		if (ret != LTTNG_OK) {
+			goto error;
 		}
 	}
 
@@ -844,25 +829,20 @@ end:
 static int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type domain)
 {
 	int ret = LTTNG_OK;
-	struct agent_app *app;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(ctx);
 	DBG2("Disabling agent application context %s:%s", ctx->provider_name, ctx->ctx_name);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		if (app->domain != domain) {
+			continue;
+		}
 
-		cds_lfht_for_each_entry (
-			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
-			if (app->domain != domain) {
-				continue;
-			}
-
-			ret = app_context_op(app, ctx, AGENT_CMD_APP_CTX_DISABLE);
-			if (ret != LTTNG_OK) {
-				goto end;
-			}
+		ret = app_context_op(app, ctx, AGENT_CMD_APP_CTX_DISABLE);
+		if (ret != LTTNG_OK) {
+			goto end;
 		}
 	}
 end:
@@ -879,9 +859,7 @@ int agent_list_events(struct lttng_event **events, enum lttng_domain_type domain
 {
 	int ret;
 	size_t nbmem, count = 0;
-	struct agent_app *app;
 	struct lttng_event *tmp_events = nullptr;
-	struct lttng_ht_iter iter;
 
 	LTTNG_ASSERT(events);
 
@@ -895,54 +873,51 @@ int agent_list_events(struct lttng_event **events, enum lttng_domain_type domain
 		goto error;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		ssize_t nb_ev;
+		struct lttng_event *agent_events;
 
-		cds_lfht_for_each_entry (
-			the_agent_apps_ht_by_sock->ht, &iter.iter, app, node.node) {
-			ssize_t nb_ev;
-			struct lttng_event *agent_events;
+		/* Skip domain not asked by the list. */
+		if (app->domain != domain) {
+			continue;
+		}
 
-			/* Skip domain not asked by the list. */
-			if (app->domain != domain) {
-				continue;
-			}
+		nb_ev = list_events(app, &agent_events);
+		if (nb_ev < 0) {
+			ret = nb_ev;
+			goto error;
+		}
 
-			nb_ev = list_events(app, &agent_events);
-			if (nb_ev < 0) {
-				ret = nb_ev;
+		if (count + nb_ev > nbmem) {
+			/* In case the realloc fails, we free the memory */
+			struct lttng_event *new_tmp_events;
+			size_t new_nbmem;
+
+			new_nbmem = std::max(count + nb_ev, nbmem << 1);
+			DBG2("Reallocating agent event list from %zu to %zu entries",
+			     nbmem,
+			     new_nbmem);
+			new_tmp_events = (lttng_event *) realloc(
+				tmp_events, new_nbmem * sizeof(*new_tmp_events));
+			if (!new_tmp_events) {
+				PERROR("realloc agent events");
+				ret = -ENOMEM;
+				free(agent_events);
 				goto error;
 			}
 
-			if (count + nb_ev > nbmem) {
-				/* In case the realloc fails, we free the memory */
-				struct lttng_event *new_tmp_events;
-				size_t new_nbmem;
-
-				new_nbmem = std::max(count + nb_ev, nbmem << 1);
-				DBG2("Reallocating agent event list from %zu to %zu entries",
-				     nbmem,
-				     new_nbmem);
-				new_tmp_events = (lttng_event *) realloc(
-					tmp_events, new_nbmem * sizeof(*new_tmp_events));
-				if (!new_tmp_events) {
-					PERROR("realloc agent events");
-					ret = -ENOMEM;
-					free(agent_events);
-					goto error;
-				}
-
-				/* Zero the new memory */
-				memset(new_tmp_events + nbmem,
-				       0,
-				       (new_nbmem - nbmem) * sizeof(*new_tmp_events));
-				nbmem = new_nbmem;
-				tmp_events = new_tmp_events;
-			}
-			memcpy(tmp_events + count, agent_events, nb_ev * sizeof(*tmp_events));
-			free(agent_events);
-			count += nb_ev;
+			/* Zero the new memory */
+			memset(new_tmp_events + nbmem,
+			       0,
+			       (new_nbmem - nbmem) * sizeof(*new_tmp_events));
+			nbmem = new_nbmem;
+			tmp_events = new_tmp_events;
 		}
+		memcpy(tmp_events + count, agent_events, nb_ev * sizeof(*tmp_events));
+		free(agent_events);
+		count += nb_ev;
 	}
 
 	ret = count;
@@ -1409,41 +1384,35 @@ static void destroy_app_ctx_rcu(struct rcu_head *head)
  */
 void agent_destroy(struct agent *agt)
 {
-	struct lttng_ht_node_str *node;
-	struct lttng_ht_iter iter;
-	struct agent_app_ctx *ctx;
-
 	LTTNG_ASSERT(agt);
 
 	DBG3("Agent destroy");
 
+	for (auto *event :
+	     lttng::urcu::lfht_iteration_adapter<agent_event,
+						 decltype(agent_event::node),
+						 &agent_event::node>(*agt->events->ht)) {
+		int ret;
+
+		/*
+		 * When destroying an event, we have to try to disable it on the
+		 * agent side so the event stops generating data. The return
+		 * value is not important since we have to continue anyway
+		 * destroying the object.
+		 */
+		(void) agent_disable_event(event, agt->domain);
+
+		ret = cds_lfht_del(agt->events->ht, &event->node.node);
+		LTTNG_ASSERT(!ret);
+		call_rcu(&event->node.head, destroy_event_agent_rcu);
+	}
+
+	agent_app_ctx *ctx;
+	cds_list_for_each_entry_rcu(ctx, &agt->app_ctx_list, list_node)
 	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, node, node) {
-			int ret;
-			struct agent_event *event;
-
-			/*
-			 * When destroying an event, we have to try to disable it on the
-			 * agent side so the event stops generating data. The return
-			 * value is not important since we have to continue anyway
-			 * destroying the object.
-			 */
-			event = lttng::utils::container_of(node, &agent_event::node);
-			(void) agent_disable_event(event, agt->domain);
-
-			ret = lttng_ht_del(agt->events, &iter);
-			LTTNG_ASSERT(!ret);
-			call_rcu(&node->head, destroy_event_agent_rcu);
-		}
-
-		cds_list_for_each_entry_rcu(ctx, &agt->app_ctx_list, list_node)
-		{
-			(void) disable_context(ctx, agt->domain);
-			cds_list_del(&ctx->list_node);
-			call_rcu(&ctx->rcu_node, destroy_app_ctx_rcu);
-		}
+		(void) disable_context(ctx, agt->domain);
+		cds_list_del(&ctx->list_node);
+		call_rcu(&ctx->rcu_node, destroy_app_ctx_rcu);
 	}
 
 	lttng_ht_destroy(agt->events);
@@ -1489,22 +1458,14 @@ void agent_destroy_app_by_sock(int sock)
  */
 void agent_app_ht_clean()
 {
-	struct lttng_ht_node_ulong *node;
-	struct lttng_ht_iter iter;
-
 	if (!the_agent_apps_ht_by_sock) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (the_agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
-			struct agent_app *app;
-
-			app = lttng::utils::container_of(node, &agent_app::node);
-			agent_destroy_app_by_sock(app->sock->fd);
-		}
+	for (auto *app : lttng::urcu::
+		     lfht_iteration_adapter<agent_app, decltype(agent_app::node), &agent_app::node>(
+			     *the_agent_apps_ht_by_sock->ht)) {
+		agent_destroy_app_by_sock(app->sock->fd);
 	}
 
 	lttng_ht_destroy(the_agent_apps_ht_by_sock);
@@ -1519,8 +1480,6 @@ void agent_app_ht_clean()
 void agent_update(const struct agent *agt, const struct agent_app *app)
 {
 	int ret;
-	struct agent_event *event;
-	struct lttng_ht_iter iter;
 	struct agent_app_ctx *ctx;
 
 	LTTNG_ASSERT(agt);
@@ -1532,37 +1491,36 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
 	 * We are in the registration path thus if the application is gone,
 	 * there is a serious code flow error.
 	 */
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (agt->events->ht, &iter.iter, event, node.node) {
-			/* Skip event if disabled. */
-			if (!AGENT_EVENT_IS_ENABLED(event)) {
-				continue;
-			}
-
-			ret = enable_event(app, event);
-			if (ret != LTTNG_OK) {
-				DBG2("Agent update unable to enable event %s on app pid: %d sock %d",
-				     event->name,
-				     app->pid,
-				     app->sock->fd);
-				/* Let's try the others here and don't assume the app is dead. */
-				continue;
-			}
+	for (auto *event :
+	     lttng::urcu::lfht_iteration_adapter<agent_event,
+						 decltype(agent_event::node),
+						 &agent_event::node>(*agt->events->ht)) {
+		/* Skip event if disabled. */
+		if (!AGENT_EVENT_IS_ENABLED(event)) {
+			continue;
 		}
 
-		cds_list_for_each_entry_rcu(ctx, &agt->app_ctx_list, list_node)
-		{
-			ret = app_context_op(app, ctx, AGENT_CMD_APP_CTX_ENABLE);
-			if (ret != LTTNG_OK) {
-				DBG2("Agent update unable to add application context %s:%s on app pid: %d sock %d",
-				     ctx->provider_name,
-				     ctx->ctx_name,
-				     app->pid,
-				     app->sock->fd);
-				continue;
-			}
+		ret = enable_event(app, event);
+		if (ret != LTTNG_OK) {
+			DBG2("Agent update unable to enable event %s on app pid: %d sock %d",
+			     event->name,
+			     app->pid,
+			     app->sock->fd);
+			/* Let's try the others here and don't assume the app is dead. */
+			continue;
+		}
+	}
+
+	cds_list_for_each_entry_rcu(ctx, &agt->app_ctx_list, list_node)
+	{
+		ret = app_context_op(app, ctx, AGENT_CMD_APP_CTX_ENABLE);
+		if (ret != LTTNG_OK) {
+			DBG2("Agent update unable to add application context %s:%s on app pid: %d sock %d",
+			     ctx->provider_name,
+			     ctx->ctx_name,
+			     app->pid,
+			     app->sock->fd);
+			continue;
 		}
 	}
 }
@@ -1582,24 +1540,18 @@ int agent_by_event_notifier_domain_ht_create()
  */
 void agent_by_event_notifier_domain_ht_destroy()
 {
-	struct lttng_ht_node_u64 *node;
-	struct lttng_ht_iter iter;
-
 	if (!the_trigger_agents_ht_by_domain) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
+	for (auto *agent :
+	     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
+		     *the_trigger_agents_ht_by_domain->ht)) {
+		const auto ret =
+			cds_lfht_del(the_trigger_agents_ht_by_domain->ht, &agent->node.node);
 
-		cds_lfht_for_each_entry (
-			the_trigger_agents_ht_by_domain->ht, &iter.iter, node, node) {
-			struct agent *agent = lttng::utils::container_of(node, &agent::node);
-			const int ret = lttng_ht_del(the_trigger_agents_ht_by_domain, &iter);
-
-			LTTNG_ASSERT(ret == 0);
-			agent_destroy(agent);
-		}
+		LTTNG_ASSERT(ret == 0);
+		agent_destroy(agent);
 	}
 
 	lttng_ht_destroy(the_trigger_agents_ht_by_domain);
