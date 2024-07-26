@@ -108,25 +108,18 @@ error_ioctl:
  */
 static void destroy_syscall_ht(struct lttng_ht *ht)
 {
-	struct lttng_ht_iter iter;
-	struct syscall *ksyscall;
-
 	DBG3("Destroying syscall hash table.");
 
 	if (!ht) {
 		return;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_lfht_for_each_entry (ht->ht, &iter.iter, ksyscall, node.node) {
-			int ret;
-
-			ret = lttng_ht_del(ht, &iter);
-			LTTNG_ASSERT(!ret);
-			delete ksyscall;
-		}
+	for (auto *ksyscall : lttng::urcu::lfht_iteration_adapter<struct syscall,
+								  decltype(syscall::node),
+								  &syscall::node>(*ht->ht)) {
+		const auto ret = cds_lfht_del(ht->ht, &ksyscall->node.node);
+		LTTNG_ASSERT(!ret);
+		delete ksyscall;
 	}
 
 	lttng_ht_destroy(ht);
