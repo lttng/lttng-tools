@@ -6994,6 +6994,13 @@ int ust_app_recv_notify(int sock)
 
 		break;
 	}
+	case LTTNG_UST_CTL_NOTIFY_CMD_KEY:
+	{
+		DBG2("UST app ustctl register key received");
+		ret = -LTTNG_UST_ERR_NOSYS;
+		//TODO
+		goto error;
+	}
 	default:
 		/* Should NEVER happen. */
 		abort();

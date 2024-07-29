@@ -138,33 +138,80 @@ enum lttng_ust_abi_counter_bitness {
 	LTTNG_UST_ABI_COUNTER_BITNESS_64 = 1,
 };
 
-struct lttng_ust_abi_counter_key_string {
-	uint32_t string_len; /* string length (includes \0) */
-	char str[]; /* Null-terminated string. */
-} LTTNG_PACKED;
-
 struct lttng_ust_abi_key_token {
-	uint32_t len; /* length of this structure. */
-	uint32_t type; /* enum lttng_ust_key_token_type */
-
-	/* Followed by a struct lttng_ust_abi_counter_key_string for LTTNG_UST_ABI_KEY_TOKEN_STRING.
+	uint32_t len;				/* length of child structure. */
+	uint32_t type;				/* enum lttng_ust_abi_key_token_type */
+	/*
+	 * The size of this structure is fixed because it is embedded into
+	 * children structures.
 	 */
 } LTTNG_PACKED;
 
-struct lttng_ust_abi_counter_key_dimension {
-	uint32_t len; /* length of this structure */
-	uint32_t nr_key_tokens;
+/* Length of this structure excludes the following string. */
+struct lttng_ust_abi_key_token_string {
+	struct lttng_ust_abi_key_token parent;
+	uint32_t string_len;		/* string length (includes \0) */
 
-	/* Followed by a variable-length array of key tokens */
+	char str[];			/* Null-terminated string following this structure. */
 } LTTNG_PACKED;
 
+/*
+ * token types event_name and provider_name don't have specific fields,
+ * so they do not need to derive their own specific child structure.
+ */
+
+/*
+ * Dimension indexing: All events should use the same key type to index
+ * a given map dimension.
+ */
+enum lttng_ust_abi_key_type {
+	LTTNG_UST_ABI_KEY_TYPE_TOKENS = 0,		/* Dimension key is a set of tokens. */
+	LTTNG_UST_ABI_KEY_TYPE_INTEGER = 1,		/* Dimension key is an integer value. */
+};
+
+struct lttng_ust_abi_counter_key_dimension {
+	uint32_t len;				/* length of child structure */
+	uint32_t key_type;			/* enum lttng_ust_abi_key_type */
+	/*
+	 * The size of this structure is fixed because it is embedded into
+	 * children structures.
+	 */
+} LTTNG_PACKED;
+
+struct lttng_ust_abi_counter_key_dimension_tokens {
+	struct lttng_ust_abi_counter_key_dimension parent;
+	uint32_t nr_key_tokens;
+
+	/* Followed by an array of nr_key_tokens struct lttng_ust_abi_key_token elements. */
+} LTTNG_PACKED;
+
+/*
+ * The "integer" key type is not implemented yet, but when it will be
+ * introduced in the future, its specific key dimension will allow
+ * defining the function to apply over input argument, bytecode to run
+ * and so on.
+ */
+
+enum lttng_ust_abi_counter_action {
+	LTTNG_UST_ABI_COUNTER_ACTION_INCREMENT = 0,
+
+	/*
+	 * Can be extended with additional actions, such as decrement,
+	 * set value, run bytecode, and so on.
+	 */
+};
+
 struct lttng_ust_abi_counter_event {
-	uint32_t len; /* length of this structure */
+	uint32_t len;				/* length of this structure */
+	uint32_t action;			/* enum lttng_ust_abi_counter_action */
 
 	struct lttng_ust_abi_event event;
-	uint32_t number_key_dimensions; /* array of dimensions is an array of var. len. elements. */
+	uint32_t number_key_dimensions;		/* array of dimensions is an array of var. len. elements. */
 
-	/* Followed by a variable-length array of key dimensions */
+	/*
+	 * Followed by additional data specific to the action, and by a
+	 * variable-length array of key dimensions.
+	 */
 } LTTNG_PACKED;
 
 enum lttng_ust_abi_counter_dimension_flags {
@@ -173,8 +220,9 @@ enum lttng_ust_abi_counter_dimension_flags {
 };
 
 struct lttng_ust_abi_counter_dimension {
-	uint32_t flags; /* enum lttng_ust_abi_counter_dimension_flags */
-	uint64_t size; /* dimension size */
+	uint32_t key_type;			/* enum lttng_ust_abi_key_type */
+	uint32_t flags;				/* enum lttng_ust_abi_counter_dimension_flags */
+	uint64_t size;				/* dimension size (count of entries) */
 	uint64_t underflow_index;
 	uint64_t overflow_index;
 } LTTNG_PACKED;

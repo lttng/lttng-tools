@@ -26,7 +26,7 @@ namespace ust {
 
 class registry_event;
 
-using event_id = uint64_t;
+using event_id = uint32_t;
 
 class registry_channel : public lttng::sessiond::trace::stream_class {
 public:
@@ -74,7 +74,7 @@ public:
 	/* For delayed reclaim */
 	struct rcu_head _rcu_head;
 	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
-	uint32_t _next_event_id;
+	event_id _next_event_id;
 
 private:
 	void _accept_on_event_classes(

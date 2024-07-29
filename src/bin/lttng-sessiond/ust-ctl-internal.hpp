@@ -300,6 +300,7 @@ enum lttng_ust_ctl_notify_cmd {
 	LTTNG_UST_CTL_NOTIFY_CMD_EVENT = 0,
 	LTTNG_UST_CTL_NOTIFY_CMD_CHANNEL = 1,
 	LTTNG_UST_CTL_NOTIFY_CMD_ENUM = 2,
+	LTTNG_UST_CTL_NOTIFY_CMD_KEY = 3,
 };
 
 enum lttng_ust_ctl_channel_header {
@@ -531,8 +532,43 @@ int lttng_ust_ctl_recv_register_event(int sock,
  * Returns 0 on success, negative error value on error.
  */
 int lttng_ust_ctl_reply_register_event(int sock,
-				       uint64_t id, /* id (input) */
+				       uint32_t id, /* id (input) */
 				       int ret_code); /* return code. 0 ok, negative error */
+
+/*
+ * Returns 0 on success, negative UST or system error value on error.
+ */
+int lttng_ust_ctl_recv_register_key(int sock,
+	int *session_objd,		/* session descriptor (output) */
+	int *map_objd,			/* map descriptor (output) */
+	uint32_t *dimension,		/*
+					 * Against which dimension is
+					 * this key expressed. (output)
+					 */
+	uint64_t **dimension_indexes,	/*
+					 * Indexes (output,
+					 * dynamically
+					 * allocated, must be
+					 * free(3)'d by the
+					 * caller if function
+					 * returns success.)
+					 * Contains @dimension
+					 * elements.
+					 */
+	char **key_string,		/*
+					 * key string (output,
+					 * dynamically allocated, must
+					 * be free(3)'d by the caller if
+					 * function returns success.)
+					 */
+	uint64_t *user_token);
+
+/*
+ * Returns 0 on success, negative error value on error.
+ */
+int lttng_ust_ctl_reply_register_key(int sock,
+	uint64_t index,			/* Index within dimension (input) */
+	int ret_code);			/* return code. 0 ok, negative error */
 
 /*
  * Returns 0 on success, negative UST or system error value on error.
@@ -581,6 +617,11 @@ enum lttng_ust_ctl_counter_arithmetic {
 	LTTNG_UST_CTL_COUNTER_ARITHMETIC_SATURATION = 1,
 };
 
+enum lttng_ust_ctl_key_type {
+	LTTNG_UST_CTL_KEY_TYPE_TOKENS = 0,
+	LTTNG_UST_CTL_KEY_TYPE_INTEGER = 1,
+};
+
 /* Used as alloc flags. */
 enum lttng_ust_ctl_counter_alloc {
 	LTTNG_UST_CTL_COUNTER_ALLOC_PER_CPU = (1 << 0),
@@ -595,6 +636,7 @@ struct lttng_ust_ctl_counter_dimension {
 	uint64_t size;
 	uint64_t underflow_index;
 	uint64_t overflow_index;
+	enum lttng_ust_ctl_key_type key_type;
 	uint8_t has_underflow;
 	uint8_t has_overflow;
 };

@@ -22,7 +22,7 @@ namespace lst = lttng::sessiond::trace;
 namespace lsu = lttng::sessiond::ust;
 
 namespace {
-bool is_max_event_id(uint32_t id)
+bool is_max_event_id(lttng::sessiond::ust::event_id id)
 {
 	return id == UINT32_MAX;
 }
