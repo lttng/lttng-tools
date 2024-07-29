@@ -266,43 +266,33 @@ end:
 static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
 {
 	int ret;
-	struct lttng_consumer_channel *channel;
-	struct lttng_consumer_stream *stream;
-	struct lttng_ht_iter iter;
 	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 	const flush_index_cb flush_index = ctx->type == LTTNG_CONSUMER_KERNEL ?
 		consumer_flush_kernel_index :
 		consumer_flush_ust_index;
 
-	channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
+	auto *channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
 	LTTNG_ASSERT(channel);
 
 	if (channel->switch_timer_error) {
-		goto error;
+		return;
 	}
 
 	DBG("Live timer for channel %" PRIu64, channel->key);
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-		cds_lfht_for_each_entry_duplicate(ht->ht,
-						  ht->hash_fct(&channel->key, lttng_ht_seed),
-						  ht->match_fct,
-						  &channel->key,
-						  &iter.iter,
-						  stream,
-						  node_channel_id.node)
-		{
-			ret = check_stream(stream, flush_index);
-			if (ret < 0) {
-				goto error_unlock;
-			}
+	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_stream,
+		     decltype(lttng_consumer_stream::node_channel_id),
+		     &lttng_consumer_stream::node_channel_id,
+		     std::uint64_t>(*ht->ht,
+				    &channel->key,
+				    ht->hash_fct(&channel->key, lttng_ht_seed),
+				    ht->match_fct)) {
+		ret = check_stream(stream, flush_index);
+		if (ret < 0) {
+			return;
 		}
 	}
-error_unlock:
-
-error:
-	return;
 }
 
 static void consumer_timer_signal_thread_qs(unsigned int signr)
@@ -568,24 +558,20 @@ static int sample_channel_positions(struct lttng_consumer_channel *channel,
 				    get_produced_cb get_produced)
 {
 	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct lttng_consumer_stream *stream;
 	bool empty_channel = true;
 	uint64_t high = 0, low = UINT64_MAX;
 	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 
 	*_total_consumed = 0;
 
-	const lttng::urcu::read_lock_guard read_lock;
-
-	cds_lfht_for_each_entry_duplicate(ht->ht,
-					  ht->hash_fct(&channel->key, lttng_ht_seed),
-					  ht->match_fct,
-					  &channel->key,
-					  &iter.iter,
-					  stream,
-					  node_channel_id.node)
-	{
+	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_stream,
+		     decltype(lttng_consumer_stream::node_channel_id),
+		     &lttng_consumer_stream::node_channel_id,
+		     std::uint64_t>(*ht->ht,
+				    &channel->key,
+				    ht->hash_fct(&channel->key, lttng_ht_seed),
+				    ht->match_fct)) {
 		unsigned long produced, consumed, usage;
 
 		empty_channel = false;
@@ -637,6 +623,7 @@ end:
 	if (empty_channel) {
 		ret = -1;
 	}
+
 	return ret;
 }
 
