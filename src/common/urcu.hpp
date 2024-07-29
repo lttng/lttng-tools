@@ -111,7 +111,7 @@ class lfht_iteration_adapter {
 public:
 	/* Nested iterator class defines the iterator for lfht_iteration_adapter. */
 	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
-		/* Allow lfht_iteration_adapter to access private members of iterator_base. */
+		/* Allow lfht_iteration_adapter to access private members of iterator. */
 		friend lfht_iteration_adapter;
 
 	public:
@@ -155,7 +155,7 @@ public:
 				*node);
 		}
 
-	private:
+	protected:
 		iterator(cds_lfht& ht, const cds_lfht_iter& it) : _ht(ht), _it(it)
 		{
 		}
@@ -187,11 +187,110 @@ public:
 		return iterator(_ht, it);
 	}
 
-private:
+protected:
 	/* Reference to the hash table being iterated over. */
 	cds_lfht& _ht;
 	/* RCU read lock held during the iteration. */
 	const lttng::urcu::read_lock_guard read_lock;
+};
+
+/*
+ * The lfht_filtered_iteration_adapter class template wraps the liburcu lfht API to provide
+ * iteration capabilities over a result set. It allows users to iterate over a lock-free hash
+ * table's elements matching a given key with ranged-for semantics while holding the RCU read lock.
+ * The reader lock is held for the lifetime of the iteration adapter (i.e. not the lifetime of the
+ * iterators it provides).
+ */
+template <typename ContainedType, typename NodeType, NodeType ContainedType::*Member, typename KeyType>
+class lfht_filtered_iteration_adapter
+	: public lfht_iteration_adapter<ContainedType, NodeType, Member> {
+public:
+	/* Nested iterator class defines the iterator for lfht_filtered_iteration_adapter. */
+	class iterator : public lfht_iteration_adapter<ContainedType, NodeType, Member>::iterator {
+		/* Allow lfht_filtered_iteration_adapter to access private members of iterator. */
+		friend lfht_filtered_iteration_adapter;
+
+	public:
+		iterator(const iterator& other) = default;
+		iterator(iterator&& other) noexcept = default;
+		~iterator() = default;
+		iterator& operator=(const iterator&) = delete;
+		iterator& operator=(iterator&&) noexcept = delete;
+
+		/* Move to the next element in the result set. */
+		iterator& operator++()
+		{
+			LTTNG_ASSERT(this->_it.node);
+			/* NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast) */
+			cds_lfht_next_duplicate(
+				&this->_ht,
+				_match_function,
+				reinterpret_cast<void *>(const_cast<KeyType *>(_key)),
+				&this->_it);
+			/* NOLINTEND(cppcoreguidelines-pro-type-const-cast) */
+			return *this;
+		}
+
+	private:
+		iterator(cds_lfht& ht,
+			 const cds_lfht_iter& it,
+			 const KeyType *key,
+			 cds_lfht_match_fct match_function) :
+			lfht_iteration_adapter<ContainedType, NodeType, Member>::iterator(ht, it),
+			_key(key),
+			_match_function(match_function)
+		{
+		}
+
+		/* Only used to create an end iterator. */
+		iterator(cds_lfht& ht, const cds_lfht_iter& it) :
+			lfht_iteration_adapter<ContainedType, NodeType, Member>::iterator(ht, it),
+			_key(nullptr),
+			_match_function(nullptr)
+		{
+		}
+
+		const KeyType *_key;
+		const cds_lfht_match_fct _match_function;
+	};
+
+	explicit lfht_filtered_iteration_adapter(cds_lfht& ht,
+						 const KeyType *key,
+						 unsigned long key_hash,
+						 cds_lfht_match_fct match_function) :
+		lfht_iteration_adapter<ContainedType, NodeType, Member>(ht),
+		_key(key),
+		_key_hash(key_hash),
+		_match_function(match_function)
+	{
+	}
+
+	/* Return an iterator to the first result. */
+	iterator begin() const noexcept
+	{
+		cds_lfht_iter it;
+
+		/* NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast) */
+		cds_lfht_lookup(&this->_ht,
+				_key_hash,
+				_match_function,
+				reinterpret_cast<void *>(const_cast<KeyType *>(_key)),
+				&it);
+		/* NOLINTEND(cppcoreguidelines-pro-type-const-cast) */
+		return iterator(this->_ht, it, _key, _match_function);
+	}
+
+	iterator end() const noexcept
+	{
+		const cds_lfht_iter it = {};
+
+		return iterator(this->_ht, it);
+	}
+
+private:
+	const KeyType *_key;
+	const unsigned long _key_hash;
+	const cds_lfht_match_fct _match_function;
 };
 
 } /* namespace urcu */
