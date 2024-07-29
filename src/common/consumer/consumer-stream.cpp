@@ -364,27 +364,19 @@ end_unlock_mutex:
 int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx, uint64_t session_id)
 {
 	int ret;
-	struct lttng_consumer_stream *stream = nullptr;
-	struct lttng_ht_iter iter;
-	struct lttng_ht *ht;
 
 	LTTNG_ASSERT(ctx);
 
-	/* Ease our life a bit. */
-	ht = the_consumer_data.stream_list_ht;
-
-	const lttng::urcu::read_lock_guard read_lock;
-
 	/* Search the metadata associated with the session id of the given stream. */
-
-	cds_lfht_for_each_entry_duplicate(ht->ht,
-					  ht->hash_fct(&session_id, lttng_ht_seed),
-					  ht->match_fct,
-					  &session_id,
-					  &iter.iter,
-					  stream,
-					  node_session_id.node)
-	{
+	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_stream,
+		     decltype(lttng_consumer_stream::node_session_id),
+		     &lttng_consumer_stream::node_session_id,
+		     std::uint64_t>(*the_consumer_data.stream_list_ht->ht,
+				    &session_id,
+				    the_consumer_data.stream_list_ht->hash_fct(&session_id,
+									       lttng_ht_seed),
+				    the_consumer_data.stream_list_ht->match_fct)) {
 		if (!stream->metadata_flag) {
 			continue;
 		}
