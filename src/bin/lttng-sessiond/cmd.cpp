@@ -525,7 +525,6 @@ static enum lttng_error_code list_lttng_kernel_events(char *channel_name,
 {
 	enum lttng_error_code ret_code;
 	int ret;
-	struct ltt_kernel_event *event;
 	struct ltt_kernel_channel *kchan;
 
 	assert(reply_payload);
@@ -546,7 +545,9 @@ static enum lttng_error_code list_lttng_kernel_events(char *channel_name,
 	}
 
 	/* Kernel channels */
-	cds_list_for_each_entry (event, &kchan->events_list.head, list) {
+	for (auto event :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_event, &ltt_kernel_event::list>(
+		     kchan->events_list.head)) {
 		struct lttng_event *tmp_event = lttng_event_create();
 
 		if (!tmp_event) {
@@ -1109,7 +1110,6 @@ error:
 int start_kernel_session(struct ltt_kernel_session *ksess)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
 	/* Open kernel metadata */
 	if (ksess->metadata == nullptr && ksess->output_traces) {
@@ -1131,7 +1131,9 @@ int start_kernel_session(struct ltt_kernel_session *ksess)
 	}
 
 	/* For each channel */
-	cds_list_for_each_entry (kchan, &ksess->channel_list.head, list) {
+	for (auto kchan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     ksess->channel_list.head)) {
 		if (kchan->stream_count == 0) {
 			ret = kernel_open_channel_stream(kchan);
 			if (ret < 0) {
@@ -1170,7 +1172,6 @@ error:
 
 int stop_kernel_session(struct ltt_kernel_session *ksess)
 {
-	struct ltt_kernel_channel *kchan;
 	bool error_occurred = false;
 	int ret;
 
@@ -1197,7 +1198,9 @@ int stop_kernel_session(struct ltt_kernel_session *ksess)
 	}
 
 	/* Flush all buffers after stopping */
-	cds_list_for_each_entry (kchan, &ksess->channel_list.head, list) {
+	for (auto kchan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     ksess->channel_list.head)) {
 		ret = kernel_flush_buffer(kchan);
 		if (ret < 0) {
 			ERR("Kernel flush buffer error");
@@ -3755,10 +3758,11 @@ enum lttng_error_code cmd_list_channels(enum lttng_domain_type domain,
 	case LTTNG_DOMAIN_KERNEL:
 	{
 		/* Kernel channels */
-		struct ltt_kernel_channel *kchan;
 		if (session->kernel_session != nullptr) {
-			cds_list_for_each_entry (
-				kchan, &session->kernel_session->channel_list.head, list) {
+			for (auto kchan :
+			     lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
+								 &ltt_kernel_channel::list>(
+				     session->kernel_session->channel_list.head)) {
 				uint64_t discarded_events, lost_packets;
 				struct lttng_channel_extended *extended;
 
@@ -3951,7 +3955,6 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 {
 	int ret;
 	unsigned int i = 0;
-	struct ltt_session *raw_session_ptr;
 	struct ltt_session_list *list = session_get_list();
 	struct lttng_session_extended *extended = (typeof(extended)) (&sessions[session_count]);
 
@@ -3960,7 +3963,8 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 	 * Iterate over session list and append data after the control struct in
 	 * the buffer.
 	 */
-	cds_list_for_each_entry (raw_session_ptr, &list->head, list) {
+	for (auto raw_session_ptr :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(list->head)) {
 		auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
@@ -5021,10 +5025,11 @@ static uint64_t get_session_size_one_more_packet_per_stream(const ltt_session::l
 	uint64_t tot_size = 0;
 
 	if (session->kernel_session) {
-		struct ltt_kernel_channel *chan;
-		const struct ltt_kernel_session *ksess = session->kernel_session;
+		struct ltt_kernel_session *ksess = session->kernel_session;
 
-		cds_list_for_each_entry (chan, &ksess->channel_list.head, list) {
+		for (auto chan : lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
+								     &ltt_kernel_channel::list>(
+			     ksess->channel_list.head)) {
 			if (cur_nr_packets >= chan->channel->attr.num_subbuf) {
 				/*
 				 * Don't take channel into account if we
