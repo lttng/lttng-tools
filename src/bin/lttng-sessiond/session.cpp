@@ -81,22 +81,24 @@ struct ltt_session_list the_session_list;
  */
 struct ltt_session *session_find_by_name(const char *name)
 {
-	struct ltt_session *iter;
+	struct ltt_session *session_to_return;
 
 	LTTNG_ASSERT(name);
 	ASSERT_SESSION_LIST_LOCKED();
 
 	DBG2("Trying to find session by name %s", name);
 
-	cds_list_for_each_entry (iter, &the_session_list.head, list) {
-		if (!strncmp(iter->name, name, NAME_MAX) && !iter->destroyed) {
+	for (auto session : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     the_session_list.head)) {
+		if (!strncmp(session->name, name, NAME_MAX) && !session->destroyed) {
+			session_to_return = session;
 			goto found;
 		}
 	}
 
 	return nullptr;
 found:
-	return session_get(iter) ? iter : nullptr;
+	return session_get(session_to_return) ? session_to_return : nullptr;
 }
 
 /*
@@ -897,7 +899,6 @@ static enum lttng_error_code session_kernel_open_packets(const ltt_session::lock
 	enum lttng_error_code ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct cds_lfht_node *node;
-	struct ltt_kernel_channel *chan;
 
 	const lttng::urcu::read_lock_guard read_lock;
 
@@ -905,7 +906,9 @@ static enum lttng_error_code session_kernel_open_packets(const ltt_session::lock
 	node = cds_lfht_iter_get_node(&iter.iter);
 	auto *socket = lttng_ht_node_container_of(node, &consumer_socket::node);
 
-	cds_list_for_each_entry (chan, &session->kernel_session->channel_list.head, list) {
+	for (auto chan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     session->kernel_session->channel_list.head)) {
 		int open_ret;
 
 		DBG("Open packet of kernel channel: channel key = %" PRIu64
