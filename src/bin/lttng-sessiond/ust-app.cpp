@@ -564,7 +564,6 @@ static void delete_ust_app_channel(int sock,
 				   const lsu::registry_session::locked_ref& locked_registry)
 {
 	int ret;
-	struct ust_app_stream *stream, *stmp;
 
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
@@ -572,7 +571,9 @@ static void delete_ust_app_channel(int sock,
 	DBG3("UST app deleting channel %s", ua_chan->name);
 
 	/* Wipe stream */
-	cds_list_for_each_entry_safe (stream, stmp, &ua_chan->streams.head, list) {
+	for (auto *stream :
+	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
+		     ua_chan->streams.head)) {
 		cds_list_del(&stream->list);
 		delete_ust_app_stream(sock, stream, app);
 	}
@@ -1971,7 +1972,6 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 				   struct ust_app_channel *ua_chan)
 {
 	int ret;
-	struct ust_app_stream *stream, *stmp;
 
 	LTTNG_ASSERT(app);
 	LTTNG_ASSERT(ua_sess);
@@ -2003,7 +2003,9 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	health_code_update();
 
 	/* Send all streams to application. */
-	cds_list_for_each_entry_safe (stream, stmp, &ua_chan->streams.head, list) {
+	for (auto *stream :
+	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
+		     ua_chan->streams.head)) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = -ENOTCONN; /* Caused by app exiting. */
@@ -3211,7 +3213,6 @@ static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
 				    struct ust_app *app)
 {
 	int ret = 0;
-	struct ust_app_stream *stream, *stmp;
 
 	LTTNG_ASSERT(buf_reg_chan);
 	LTTNG_ASSERT(ua_chan);
@@ -3219,7 +3220,9 @@ static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
 	DBG2("UST app setup buffer registry stream");
 
 	/* Send all streams to application. */
-	cds_list_for_each_entry_safe (stream, stmp, &ua_chan->streams.head, list) {
+	for (auto *stream :
+	     lttng::urcu::list_iteration_adapter<ust_app_stream, &ust_app_stream::list>(
+		     ua_chan->streams.head)) {
 		struct buffer_reg_stream *reg_stream;
 
 		ret = buffer_reg_stream_create(&reg_stream);
@@ -3347,7 +3350,6 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 				   struct ust_app_channel *ua_chan)
 {
 	int ret;
-	struct buffer_reg_stream *reg_stream;
 
 	LTTNG_ASSERT(buf_reg_chan);
 	LTTNG_ASSERT(app);
@@ -3384,7 +3386,9 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 
 	/* Send all streams to application. */
 	pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
-	cds_list_for_each_entry (reg_stream, &buf_reg_chan->streams, lnode) {
+	for (auto *reg_stream :
+	     lttng::urcu::list_iteration_adapter<buffer_reg_stream, &buffer_reg_stream::lnode>(
+		     buf_reg_chan->streams)) {
 		struct ust_app_stream stream = {};
 
 		ret = duplicate_stream_object(reg_stream, &stream);
@@ -4993,8 +4997,6 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		copy_channel_attr_to_ustctl(&ua_sess->metadata_attr, &uchan->attr);
 		ret = 0;
 	} else {
-		struct ltt_ust_context *uctx = nullptr;
-
 		/*
 		 * Create channel onto application and synchronize its
 		 * configuration.
@@ -5011,7 +5013,9 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		}
 
 		/* Add contexts. */
-		cds_list_for_each_entry (uctx, &uchan->ctx_list, list) {
+		for (auto *uctx :
+		     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
+			     uchan->ctx_list)) {
 			ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
 			if (ret) {
 				goto error;
@@ -5469,10 +5473,10 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
-
 		/* Flush all per UID buffers associated to that session. */
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			const lttng::urcu::read_lock_guard read_lock;
 			lsu::registry_session *ust_session_reg;
 			struct consumer_socket *socket;
@@ -5603,13 +5607,13 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
-
 		/*
 		 * Clear quiescent for all per UID buffers associated to
 		 * that session.
 		 */
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			struct consumer_socket *socket;
 			const lttng::urcu::read_lock_guard read_lock;
 
@@ -6934,7 +6938,7 @@ int ust_app_recv_notify(int sock)
 	{
 		DBG2("UST app ustctl register key received");
 		ret = -LTTNG_UST_ERR_NOSYS;
-		//TODO
+		// TODO
 		goto error;
 	}
 	default:
@@ -7050,11 +7054,11 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
-
 		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			struct consumer_socket *socket;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
@@ -7231,9 +7235,9 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(const struct ltt_ust_sessio
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
-
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			for (auto *buf_reg_chan :
 			     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
 								 decltype(buffer_reg_channel::node),
@@ -7447,9 +7451,9 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
-
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			struct consumer_socket *socket;
 			const lttng::urcu::read_lock_guard read_lock;
 
@@ -7603,10 +7607,11 @@ enum lttng_error_code ust_app_create_channel_subdirectories(const struct ltt_ust
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
 	{
-		struct buffer_reg_uid *reg;
 		const lttng::urcu::read_lock_guard read_lock;
 
-		cds_list_for_each_entry (reg, &usess->buffer_reg_uid_list, lnode) {
+		for (auto *reg :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+			     usess->buffer_reg_uid_list)) {
 			fmt_ret = asprintf(&pathname_index,
 					   DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH
 								 "/" DEFAULT_INDEX_DIR,
