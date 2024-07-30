@@ -16,6 +16,7 @@
 #include <iterator>
 #include <mutex>
 #include <urcu.h>
+#include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
 namespace lttng {
@@ -291,6 +292,78 @@ private:
 	const KeyType *_key;
 	const unsigned long _key_hash;
 	const cds_lfht_match_fct _match_function;
+};
+
+template <typename ContainedType, cds_list_head ContainedType::*Member>
+class list_iteration_adapter {
+public:
+	/* Nested iterator class defines the iterator for list_iteration_adapter. */
+	class iterator : public std::iterator<std::input_iterator_tag, std::uint64_t> {
+		/* Allow list_iteration_adapter to access private members of iterator. */
+		friend list_iteration_adapter;
+
+	public:
+		iterator(const iterator& other) = default;
+		iterator(iterator&& other) noexcept = default;
+		~iterator() = default;
+		iterator& operator=(const iterator&) = delete;
+		iterator& operator=(iterator&&) noexcept = delete;
+
+		/* Move to the next element in the hash table. */
+		iterator& operator++()
+		{
+			_node = _node_contents.next;
+			_node_contents = *_node;
+			return *this;
+		}
+
+		bool operator==(const iterator& other) const noexcept
+		{
+			return other._node == _node;
+		}
+
+		bool operator!=(const iterator& other) const noexcept
+		{
+			return !(*this == other);
+		}
+
+		/* Dereference the iterator to access the contained element. */
+		ContainedType *operator*() const
+		{
+			/* Retrieve the element from the node. */
+			return lttng::utils::container_of(_node, Member);
+		}
+
+	protected:
+		explicit iterator(const cds_list_head& node) : _node(&node), _node_contents(node)
+		{
+		}
+
+		/* Current node. */
+		const cds_list_head *_node;
+		/* Copy of node contents to allow safe deletion during the iteration. */
+		cds_list_head _node_contents;
+	};
+
+	explicit list_iteration_adapter(cds_list_head& list) : _list(list)
+	{
+	}
+
+	/* Return an iterator to the beginning of the hash table. */
+	iterator begin() const noexcept
+	{
+		return iterator(*_list.next);
+	}
+
+	/* Return an iterator to the end of the hash table. */
+	iterator end() const noexcept
+	{
+		return iterator(_list);
+	}
+
+protected:
+	/* Reference to the list being iterated over. */
+	cds_list_head& _list;
 };
 
 } /* namespace urcu */
