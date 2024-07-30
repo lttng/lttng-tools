@@ -42,6 +42,7 @@
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
 #include <common/path.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/sessiond-comm/inet.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -1511,17 +1512,17 @@ end:
  */
 static void publish_connection_local_streams(struct relay_connection *conn)
 {
-	struct relay_stream *stream;
 	struct relay_session *session = conn->session;
 
 	/*
 	 * We publish all streams belonging to a session atomically wrt
 	 * session lock.
 	 */
-	pthread_mutex_lock(&session->lock);
-	const lttng::urcu::read_lock_guard read_lock;
-	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
-	{
+	const lttng::pthread::lock_guard session_lock(session->lock);
+
+	for (auto *stream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_stream, &relay_stream::recv_node>(
+		     session->recv_list)) {
 		stream_publish(stream);
 	}
 
@@ -1531,8 +1532,6 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	if (session->viewer_attached) {
 		uatomic_set(&session->new_streams, 1);
 	}
-
-	pthread_mutex_unlock(&session->lock);
 }
 
 static int conform_channel_path(char *channel_path)
