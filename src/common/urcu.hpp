@@ -366,6 +366,58 @@ protected:
 	cds_list_head& _list;
 };
 
+template <typename ContainedType, cds_list_head ContainedType::*Member>
+class rcu_list_iteration_adapter : public list_iteration_adapter<ContainedType, Member> {
+public:
+	/* Nested iterator class defines the iterator for rcu_list_iteration_adapter. */
+	class iterator : public list_iteration_adapter<ContainedType, Member>::iterator {
+		/* Allow rcu_list_iteration_adapter to access private members of iterator. */
+		friend rcu_list_iteration_adapter;
+
+	public:
+		iterator(const iterator& other) = default;
+		iterator(iterator&& other) noexcept = default;
+		~iterator() = default;
+		iterator& operator=(const iterator&) = delete;
+		iterator& operator=(iterator&&) noexcept = delete;
+
+		/* Move to the next element in the hash table. */
+		iterator& operator++()
+		{
+			this->_node = rcu_dereference(this->_node_contents.next);
+			this->_node_contents = *this->_node;
+			return *this;
+		}
+
+	protected:
+		explicit iterator(const cds_list_head& node) :
+			list_iteration_adapter<ContainedType, Member>::iterator(node)
+		{
+		}
+	};
+
+	explicit rcu_list_iteration_adapter(cds_list_head& list) :
+		list_iteration_adapter<ContainedType, Member>(list)
+	{
+	}
+
+	/* Return an iterator to the beginning of the hash table. */
+	iterator begin() const noexcept
+	{
+		return iterator(*rcu_dereference(this->_list.next));
+	}
+
+	/* Return an iterator to the end of the hash table. */
+	iterator end() const noexcept
+	{
+		return iterator(this->_list);
+	}
+
+protected:
+	/* RCU read lock held during the iteration. */
+	const lttng::urcu::read_lock_guard read_lock;
+};
+
 } /* namespace urcu */
 } /* namespace lttng */
 
