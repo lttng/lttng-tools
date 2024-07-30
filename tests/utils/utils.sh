@@ -13,8 +13,14 @@ RELAYD_BIN="lttng-relayd"
 RELAYD_MATCH=".*lttng-relayd.*"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace2"
-OUTPUT_DEST=/dev/null
-ERROR_OUTPUT_DEST=/dev/null
+LTTNG_TEST_LOG_DIR="${LTTNG_TEST_LOG_DIR:-}"
+LTTNG_TEST_VERBOSE_BABELTRACE="${LTTNG_TEST_VERBOSE_BABELTRACE:-}"
+LTTNG_TEST_BABELTRACE_VERBOSITY="${LTTNG_TEST_BABELTRACE_VERBOSITY:-I}"
+LTTNG_TEST_VERBOSE_CLIENT="${LTTNG_TEST_VERBOSE_CLIENT:-}"
+LTTNG_TEST_VERBOSE_RELAYD="${LTTNG_TEST_VERBOSE_RELAYD:-}"
+LTTNG_TEST_VERBOSE_SESSIOND="${LTTNG_TEST_VERBOSE_SESSIOND:-}"
+OUTPUT_DEST="${OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a command output
+ERROR_OUTPUT_DEST="${ERROR_OUTPUT_DEST:-}"  # For 'lttng', some scripts set this to catch a command error output
 MI_XSD_MAJOR_VERSION=4
 MI_XSD_MINOR_VERSION=1
 MI_XSD_PATH="$TESTDIR/../src/common/mi-lttng-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd"
@@ -126,6 +132,47 @@ trap null_pipes SIGPIPE
 if [ -z "$PGREP" ]; then
 	PGREP=pgrep
 fi
+
+function _lttng_client_log_file ()
+{
+	local output_dest="${1}"
+	if [[ -n "${output_dest}" ]]; then
+		if [[ "${output_dest}" != "-" ]]; then
+			echo "${output_dest}"
+		fi
+	elif [[ -n "${LTTNG_TEST_LOG_DIR}" ]]; then
+		if [[ "${LTTNG_TEST_LOG_DIR}" != "-" ]]; then
+			mktemp -p "${LTTNG_TEST_LOG_DIR}" "lttng.XXXXXX"
+		fi
+	else
+		echo "/dev/null"
+	fi
+}
+
+function lttng_client_log_file ()
+{
+	_lttng_client_log_file "${OUTPUT_DEST}"
+}
+
+function lttng_client_err_file ()
+{
+	_lttng_client_log_file "${ERROR_OUTPUT_DEST}"
+}
+
+function lttng_log_file ()
+{
+	local app="${1:-}"
+	if [[ -z "${app}" ]] || [[ -z "${LTTNG_TEST_LOG_DIR}" ]]; then
+		echo "/dev/null"
+		return
+	fi
+
+	if [[ "${LTTNG_TEST_LOG_DIR}" == "-" ]]; then
+		return
+	fi
+
+	mktemp -p "${LTTNG_TEST_LOG_DIR}" "${app}.XXXXXX.log"
+}
 
 # Due to the renaming of threads we need to use the full command (pgrep -f) to
 # identify the pids for multiple lttng related processes. The problem with "pgrep
@@ -380,12 +427,33 @@ function validate_lttng_modules_present ()
 	fi
 
 	# Check for builtin modules.
-	ls /proc/lttng > /dev/null 2>&1
+	ls /proc/lttng >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		return 0
 	fi
 
 	LTTNG_BAIL_OUT "LTTng modules not detected."
+}
+
+# Run the babeltrace binary
+function _run_babeltrace_cmd ()
+{
+	local err_log
+	local opts
+
+	err_log="$(lttng_log_file babeltrace.err)"
+
+	opts=("${@}")
+	if [[ -n "${LTTNG_TEST_VERBOSE_BABELTRACE}" ]]; then
+		opts=('-l' "${LTTNG_TEST_BABELTRACE_VERBOSITY}" "${opts[@]}")
+	fi
+
+	diag "${BABELTRACE_BIN} ${opts[*]}  # Error log: '${err_log:-N/A}'" >&2
+	if [[ -n "${err_log}" ]]; then
+		"${BABELTRACE_BIN}" "${opts[@]}" 2>"${err_log}"
+	else
+		"${BABELTRACE_BIN}" "${opts[@]}"
+	fi
 }
 
 # Run the lttng binary.
@@ -398,8 +466,21 @@ function _run_lttng_cmd
 	local stderr_dest="$2"
 	shift 2
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN $*"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN "$@" 1> "$stdout_dest" 2> "$stderr_dest"
+	opts=("${@}")
+	if [[ -n "${LTTNG_TEST_VERBOSE_CLIENT}" ]] ; then
+		opts=('-vvv' "${opts[@]}")
+	fi
+
+	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN ${opts[*]}"
+	if [[ -n "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
+		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}" 2>"${stderr_dest}"
+	elif [[ -n "${stdout_dest}" ]] && [[ -z "${stderr_dest}" ]]; then
+		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}"
+	elif [[ -z "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
+		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" 2>"${stderr_dest}"
+	else
+		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}"
+	fi
 }
 
 function enable_kernel_lttng_event
@@ -422,7 +503,7 @@ function enable_kernel_lttng_event
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" $chan -s $sess_name -k
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -478,7 +559,7 @@ function lttng_enable_kernel_syscall()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --syscall "$syscall_name" $chan -s $sess_name -k
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -518,7 +599,7 @@ function lttng_disable_kernel_syscall()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-event --syscall "$syscall_name" $chan -s $sess_name -k
 
 	ret=$?
@@ -547,7 +628,7 @@ function lttng_enable_kernel_function_event ()
 	local target="$3"
 	local event_name="$4"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --function="$target" "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --function="$target" "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -569,7 +650,7 @@ function lttng_enable_kernel_userspace_probe_event ()
 	local target="$3"
 	local event_name="$4"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --userspace-probe="$target" "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --userspace-probe="$target" "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -594,7 +675,7 @@ function disable_kernel_lttng_userspace_probe_event_ok ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" disable-event --kernel "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" disable-event --kernel "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
 	ok $? "Disable kernel event $target for session $sess_name"
 }
 function lttng_enable_kernel_channel()
@@ -605,7 +686,7 @@ function lttng_enable_kernel_channel()
 	local channel_name=$4
 	local opts="${@:5}"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -k $channel_name -s $sess_name $opts
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -647,7 +728,7 @@ function lttng_disable_kernel_channel()
 	local sess_name=$2
 	local channel_name=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-channel -k $channel_name -s $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -672,26 +753,37 @@ function start_lttng_relayd_opt()
 {
 	local withtap=$1
 	local process_mode=$2
-	local opt=$3
+	shift 2 || true
+	# This is intentionally not quoted inside the array so something like '-o /tmp/x' is split
+	# shellcheck disable=SC2206
+	local opts=(${@})
+	local log_file="${RELAYD_ERROR_OUTPUT_DEST:-$(lttng_log_file relayd)}"
 
 	DIR=$(readlink -f "$TESTDIR")
 
+	if [[ -n "${LTTNG_TEST_VERBOSE_RELAYD}" ]] ; then
+		opts+=('-vvv')
+	fi
+
+	if [[ -n "${log_file}" ]] ; then
+		diag "Relayd log file: ${log_file}"
+	fi
+
 	if [ -z $(lttng_pgrep "$RELAYD_MATCH") ]; then
 		# shellcheck disable=SC2086
-		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
-		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt -vvv >>/tmp/relayd.log 2>&1 &
-		if [ $? -eq 1 ]; then
-			if [ $withtap -eq "1" ]; then
-				fail "Start lttng-relayd (process mode: $process_mode opt: $opt)"
-			fi
-			return 1
+		if [[ -n "${log_file}" ]]; then
+			$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode "${opts[@]}" >"${log_file}" 2>&1
 		else
-			if [ $withtap -eq "1" ]; then
-				pass "Start lttng-relayd (process mode: $process_mode opt: $opt)"
-			fi
+			$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode "${opts[@]}"
+		fi
+		local ret="${?}"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Start lttng-relayd (process mode: $process_mode opt: ${opts[*]})"
+		else
+			return $ret
 		fi
 	else
-		pass "Start lttng-relayd (opt: $opt)"
+		pass "Start lttng-relayd (opt: ${opts[*]})"
 	fi
 }
 
@@ -742,7 +834,7 @@ function stop_lttng_relayd_opt()
 	diag "Killing (signal $signal) lttng-relayd (pid: $pids)"
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids; then
 		retval=1
 		if [ "$withtap" -eq "1" ]; then
 			fail "Kill relay daemon"
@@ -795,6 +887,8 @@ function start_lttng_sessiond_opt()
 
 	# The rest of the arguments will be passed directly to lttng-sessiond.
 	shift 2
+	local opts=("${@}")
+	local log_file="$(lttng_log_file sessiond)"
 
 	local env_vars=""
 	local consumerd=""
@@ -805,6 +899,13 @@ function start_lttng_sessiond_opt()
 	if [ -n "$TEST_NO_SESSIOND" ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
+	fi
+
+	if [[ -n "${LTTNG_TEST_VERBOSE_SESSIOND}" ]]; then
+		opts+=(
+			'-vvv'
+			'--verbose-consumer'
+		)
 	fi
 
 	DIR=$(readlink -f "$TESTDIR")
@@ -829,8 +930,8 @@ function start_lttng_sessiond_opt()
 	env_vars="${env_vars}$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN"
 
 	if ! validate_kernel_version; then
-	    fail "Start session daemon"
-	    LTTNG_BAIL_OUT "*** Kernel too old for session daemon tests ***"
+		fail "Start session daemon"
+		LTTNG_BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
 	diag "export LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/"
@@ -840,15 +941,24 @@ function start_lttng_sessiond_opt()
 	if [ -z "$(lttng_pgrep "${SESSIOND_MATCH}")" ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
-			diag "env $env_vars --load $load_path --background $consumerd $@"
-			# shellcheck disable=SC2086
-			env $env_vars --load "$load_path" --background "$consumerd" "$@"
+			diag "env $env_vars --load $load_path --background $consumerd ${opts[*]}"
+			if [[ -n "${log_file}" ]]; then
+				# shellcheck disable=SC2086
+				env $env_vars --load "$load_path" --background "$consumerd" "${opts[@]}" >"${log_file}" 2>&1
+			else
+				# shellcheck disable=SC2086
+				env $env_vars --load "$load_path" --background "$consumerd" "${opts[@]}"
+			fi
 		else
-			diag "env $env_vars --background $consumerd $@"
-			# shellcheck disable=SC2086
-			env $env_vars --background "$consumerd" "$@"
+			diag "env $env_vars --background $consumerd ${opts[*]}"
+			if [[ -n "${log_file}" ]]; then
+				# shellcheck disable=SC2086
+				env $env_vars --background "$consumerd" "${opts[@]}" >"${log_file}" 2>&1
+			else
+				# shellcheck disable=SC2086
+				env $env_vars --background "$consumerd" "${opts[@]}"
+			fi
 		fi
-		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
 		if [ "$withtap" -eq "1" ]; then
 			ok $status "Start session daemon"
@@ -913,7 +1023,7 @@ function stop_lttng_sessiond_opt()
 	diag "Killing (signal $signal) $SESSIOND_BIN and lt-$SESSIOND_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids; then
 		retval=1
 		if [ "$withtap" -eq "1" ]; then
 			fail "Kill sessions daemon"
@@ -1000,7 +1110,7 @@ function sigstop_lttng_sessiond_opt()
 	fi
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids; then
 		if [ "$withtap" -eq "1" ]; then
 			fail "Sending SIGSTOP to session daemon"
 		fi
@@ -1072,7 +1182,7 @@ function stop_lttng_consumerd_opt()
 	diag "Killing (signal $signal) $CONSUMERD_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids; then
 		retval=1
 		if [ "$withtap" -eq "1" ]; then
 			fail "Kill consumer daemon"
@@ -1138,7 +1248,7 @@ function sigstop_lttng_consumerd_opt()
 	diag "Sending SIGSTOP to $CONSUMERD_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 
 	# shellcheck disable=SC2086
-	kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	kill -s $signal $pids
 	retval=$?
 
 	if [ $retval -eq 1 ]; then
@@ -1185,7 +1295,7 @@ function list_lttng_with_opts ()
 	local withtap=$1
 	shift
 	local opts=$1
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		list $opts
 	ret=$?
 	if [ $withtap -eq "1" ]; then
@@ -1208,7 +1318,7 @@ function create_lttng_session_no_output ()
 	local sess_name=$1
 	local opts="${@:2}"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		create $sess_name --no-output $opts
 	ok $? "Create session $sess_name in no-output mode"
 }
@@ -1218,7 +1328,7 @@ function create_lttng_session_uri () {
 	local uri=$2
 	local opts="${@:3}"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		create $sess_name -U $uri $opts
 	ok $? "Create session $sess_name with uri:$uri and opts: $opts"
 }
@@ -1238,7 +1348,7 @@ function create_lttng_session ()
 		trace_path="-o $trace_path"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		create "$sess_name" $trace_path $opt
 	ret=$?
 	if [ $expected_to_fail -eq "1" ]; then
@@ -1279,7 +1389,7 @@ function enable_ust_lttng_channel ()
 	local channel_name=$4
 	local opts="${@:5}"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -u $channel_name -s $sess_name $opts
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1316,7 +1426,7 @@ function disable_ust_lttng_channel()
 	local sess_name=$1
 	local channel_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-channel -u $channel_name -s $sess_name
 	ok $? "Disable channel $channel_name for session $sess_name"
 }
@@ -1326,7 +1436,7 @@ function enable_lttng_mmap_overwrite_kernel_channel()
 	local sess_name=$1
 	local channel_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -s $sess_name $channel_name -k --output mmap --overwrite
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
@@ -1336,7 +1446,7 @@ function enable_lttng_mmap_discard_small_kernel_channel()
 	local sess_name=$1
 	local channel_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -s $sess_name $channel_name -k --output mmap --discard --subbuf-size=$(getconf PAGE_SIZE) --num-subbuf=2
 	ok $? "Enable small discard channel $channel_name for session $sess_name"
 }
@@ -1346,7 +1456,7 @@ function enable_lttng_mmap_overwrite_small_kernel_channel()
 	local sess_name=$1
 	local channel_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -s $sess_name $channel_name -k --output mmap --overwrite --subbuf-size=$(getconf PAGE_SIZE) --num-subbuf=2
 	ok $? "Enable small overwrite channel $channel_name for session $sess_name"
 }
@@ -1356,7 +1466,7 @@ function enable_lttng_mmap_overwrite_ust_channel()
 	local sess_name=$1
 	local channel_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-channel -s $sess_name $channel_name -u --output mmap --overwrite
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
@@ -1376,7 +1486,7 @@ function enable_ust_lttng_event ()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" $chan -s "$sess_name" -u
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1421,7 +1531,7 @@ function enable_jul_lttng_event()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" $chan -s $sess_name -j
 	ok $? "Enable JUL event $event_name for session $sess_name"
 }
@@ -1440,7 +1550,7 @@ function enable_jul_lttng_event_loglevel()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -j
 	ok $? "Enable JUL event $event_name for session $sess_name with loglevel $loglevel"
 }
@@ -1458,7 +1568,7 @@ function enable_log4j_lttng_event()
 		chan_opt=("-c" "$channel_name")
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
 	ok $? "Enable LOG4J event '$event_name' for session '$sess_name'"
 }
@@ -1469,7 +1579,7 @@ function enable_log4j_lttng_event_filter()
 	local event_name=$2
 	local filter=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" -s "$sess_name" --log4j --filter "$filter"
 	ok $? "Enable LOG4J event '$event_name' with filter '$filter' for session '$sess_name'"
 }
@@ -1481,7 +1591,7 @@ function enable_log4j_lttng_event_filter_loglevel_only()
 	local filter=$3
 	local loglevel=$4
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --loglevel-only "$loglevel" "$event_name" -s "$sess_name" -l --filter "$filter"
 	ok $? "Enable LOG4J event '$event_name' with filter '$filter' and loglevel-only '$loglevel' for session '$sess_name'"
 }
@@ -1499,7 +1609,7 @@ function enable_log4j_lttng_event_loglevel()
 		chan_opt=("-c" "$channel_name")
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --loglevel "$loglevel" "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
 	ok $? "Enable LOG4J event '$event_name' for session '$sess_name' with loglevel '$loglevel'"
 }
@@ -1518,7 +1628,7 @@ function enable_log4j_lttng_event_loglevel_only()
 		chan_opt=("-c" "$channel_name")
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --loglevel-only "$loglevel" "$event_name" "${chan_opt[@]}" -s "$sess_name" --log4j
 	ok $? "Enable LOG4J event '$event_name' for session '$sess_name' with loglevel-only '$loglevel'"
 }
@@ -1615,7 +1725,7 @@ function enable_python_lttng_event()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "$event_name" $chan -s $sess_name -p
 	ok $? "Enable Python event $event_name for session $sess_name"
 }
@@ -1634,7 +1744,7 @@ function enable_python_lttng_event_loglevel()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event --loglevel $loglevel "$event_name" $chan -s $sess_name -p
 	ok $? "Enable Python event $event_name for session $sess_name with loglevel $loglevel"
 }
@@ -1653,7 +1763,7 @@ function enable_ust_lttng_event_filter()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event $chan "$event_name" -s $sess_name -u --filter "$filter"
 	ok $? "Enable event $event_name with filtering for session $sess_name"
 }
@@ -1669,7 +1779,7 @@ function enable_ust_lttng_event_loglevel()
 		chan=('-c' "${channel_name}")
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "${chan[@]}" "$event_name" -s "${sess_name}" -u --loglevel="${loglevel}"
 	ok $? "Enable event $event_name with loglevel $loglevel"
 }
@@ -1685,7 +1795,7 @@ function enable_ust_lttng_event_loglevel_only()
 		chan=('-c' "${channel_name}")
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-event "${chan[@]}" "$event_name" -s "${sess_name}" -u --loglevel-only "${loglevel}"
 	ok $? "Enable event $event_name with loglevel-only $loglevel"
 }
@@ -1703,7 +1813,7 @@ function disable_ust_lttng_event ()
 		chan="-c $channel_name"
 	fi
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-event "$event_name" -s $sess_name $chan -u
 	ok $? "Disable event $event_name for session $sess_name"
 }
@@ -1722,7 +1832,7 @@ function disable_log4j_lttng_event ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-event "$event_name" -s "$sess_name" --log4j
 	ok $? "Disable LOG4J event '$event_name' for session '$sess_name'"
 }
@@ -1742,7 +1852,7 @@ function disable_python_lttng_event ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		disable-event "$event_name" -s $sess_name -p
 	ok $? "Disable Python event $event_name for session $sess_name"
 }
@@ -1753,7 +1863,7 @@ function start_lttng_tracing_opt ()
 	local expected_to_fail=$2
 	local sess_name=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		start $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1790,7 +1900,7 @@ function stop_lttng_tracing_opt ()
 	local expected_to_fail=$2
 	local sess_name=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		stop $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1828,7 +1938,7 @@ function destroy_lttng_session ()
 	local sess_name=$3
 	shift 3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		destroy $sess_name $@
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1862,7 +1972,7 @@ function destroy_lttng_session_notap ()
 
 function destroy_lttng_sessions ()
 {
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		destroy --all
 	ok $? "Destroy all lttng sessions"
 }
@@ -1874,7 +1984,7 @@ function lttng_snapshot_add_output ()
 	local trace_path=$3
 	local opts=$4
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		snapshot add-output -s $sess_name $trace_path $opts
 	ret=$?
 	if [[ $expected_to_fail -eq 1 ]]; then
@@ -1901,7 +2011,7 @@ function lttng_snapshot_del_output ()
 	local sess_name=$2
 	local id=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		snapshot del-output -s $sess_name $id
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1927,7 +2037,7 @@ function lttng_snapshot_record ()
 	local sess_name=$1
 	local trace_path=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		snapshot record -s "$sess_name" "$trace_path"
 	ok $? "Snapshot recorded"
 }
@@ -1935,7 +2045,7 @@ function lttng_snapshot_record ()
 function lttng_snapshot_list ()
 {
 	local sess_name=$1
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		snapshot list-output -s $sess_name
 	ok $? "Snapshot list"
 }
@@ -1945,7 +2055,7 @@ function lttng_save()
 	local sess_name=$1
 	local opts=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		save $sess_name $opts
 	ok $? "Session saved"
 }
@@ -1955,7 +2065,7 @@ function lttng_load()
 	local expected_to_fail=$1
 	local opts=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		load $opts
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1981,7 +2091,7 @@ function lttng_track()
 	local expected_to_fail="$1"
 	shift 1
 	local opts="$@"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >$OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >"$(lttng_client_log_file)"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -2006,7 +2116,7 @@ function lttng_untrack()
 	local expected_to_fail="$1"
 	shift 1
 	local opts="$@"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >$OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >"$(lttng_client_log_file)"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -2029,13 +2139,13 @@ function lttng_untrack_fail()
 function lttng_track_pid_ok()
 {
 	PID=$1
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" track --kernel --pid=$PID 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" track --kernel --pid=$PID 1>"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
 	ok $? "Lttng track pid on the kernel domain"
 }
 
 function lttng_untrack_kernel_all_ok()
 {
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" untrack --kernel --pid --all 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" untrack --kernel --pid --all 1>"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
 	ok $? "Lttng untrack all pid on the kernel domain"
 }
 
@@ -2081,7 +2191,7 @@ function lttng_untrack_kernel_fail()
 
 function lttng_add_context_list()
 {
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		add-context --list
 	ret=$?
 	ok $ret "Context listing"
@@ -2095,7 +2205,7 @@ function add_context_lttng()
 	local channel_name="$4"
 	local type="$5"
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		add-context -s $session_name -c $channel_name -t $type $domain 
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2133,7 +2243,7 @@ function wait_live_trace_ready ()
 
 	diag "Waiting for live trace at url: $url"
 	while [ $zero_client_match -eq 0 ]; do
-		zero_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "0 client(s) connected" | wc -l)
+		zero_client_match=$(_run_babeltrace_cmd -i lttng-live $url | grep "0 client(s) connected" | wc -l)
 		sleep 0.1
 	done
 	pass "Waiting for live trace at url: $url"
@@ -2146,7 +2256,7 @@ function wait_live_viewer_connect ()
 
 	diag "Waiting for live viewers on url: $url"
 	while [ $one_client_match -eq 0 ]; do
-		one_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "1 client(s) connected" | wc -l)
+		one_client_match=$(_run_babeltrace_cmd -i lttng-live $url | grep "1 client(s) connected" | wc -l)
 		sleep 0.1
 	done
 	pass "Waiting for live viewers on url: $url"
@@ -2176,7 +2286,7 @@ function validate_metadata_event()
 
 	bail_out_if_no_babeltrace
 
-	count=$($BABELTRACE_BIN --output-format=ctf-metadata "$metadata_path" | grep -c "$event_name")
+	count=$(_run_babeltrace_cmd --output-format=ctf-metadata "$metadata_path" | grep -c "$event_name")
 
 	test "$count" -eq "$expected"
 	ok $? "Found $count / $expected metadata event id matching '$event_name'"
@@ -2195,8 +2305,8 @@ function trace_matches()
 
 	bail_out_if_no_babeltrace
 
-	count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
-	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
+	count=$(_run_babeltrace_cmd "$trace_path" | grep -c "$event_name")
+	total=$(_run_babeltrace_cmd "$trace_path" | wc -l)
 
 	test "$count" -eq "$expected"
 
@@ -2216,8 +2326,8 @@ function trace_match_only()
 
 	bail_out_if_no_babeltrace
 
-	count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
-	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
+	count=$(_run_babeltrace_cmd "$trace_path" | grep -c "$event_name")
+	total=$(_run_babeltrace_cmd "$trace_path" | wc -l)
 
 	test "$expected" -eq "$count" && test "$total" -eq "$expected"
 
@@ -2239,7 +2349,7 @@ function validate_trace()
 	IFS=","
 	for event_name in $event_names; do
 		# trace_path is unquoted since callers make use of globbing
-		count=$($BABELTRACE_BIN $trace_path | grep -c "$event_name")
+		count=$(_run_babeltrace_cmd $trace_path | grep -c "$event_name")
 		test "$count" -gt 0
 		ok $? "Found $count events matching '$event_name'"
 	done
@@ -2262,7 +2372,7 @@ function validate_trace_count()
 	OLDIFS=$IFS
 	IFS=","
 	for event_name in $event_names; do
-		count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+		count=$(_run_babeltrace_cmd "$trace_path" | grep -c "$event_name")
 		test "$count" -gt 0
 		ok $? "Found '$count' events matching '$event_name'"
 		total=$(( total + count ))
@@ -2290,7 +2400,7 @@ function validate_trace_count_range_incl_min_excl_max()
 	OLDIFS=$IFS
 	IFS=","
 	for event_name in $event_names; do
-		count=$($BABELTRACE_BIN "$trace_path" | grep -c "$event_name")
+		count=$(_run_babeltrace_cmd "$trace_path" | grep -c "$event_name")
 		test "$count" -ge "$expected_min"
 		ok $? "Found $count events matching '$event_name', expected at least $expected_min"
 		total=$(( total + count ))
@@ -2304,7 +2414,7 @@ function trace_first_line()
 {
 	local trace_path=$1
 
-	$BABELTRACE_BIN "$trace_path" | head -n 1
+	_run_babeltrace_cmd "$trace_path" | head -n 1
 }
 
 # Check that the trace contains at least 1 event matching the grep extended
@@ -2319,7 +2429,7 @@ function validate_trace_exp()
 	bail_out_if_no_babeltrace
 
 	# event_exp is unquoted since it contains multiple grep arguments
-	count=$($BABELTRACE_BIN "$trace_path" | grep -c --extended-regexp $event_exp)
+	count=$(_run_babeltrace_cmd "$trace_path" | grep -c --extended-regexp $event_exp)
 	test "$count" -gt 0
 	ok $? "Found $count events matching expression '$event_exp'"
 }
@@ -2337,8 +2447,8 @@ function validate_trace_only_exp()
 	bail_out_if_no_babeltrace
 
 	# event_exp is unquoted since it contains multiple grep arguments
-	count=$($BABELTRACE_BIN "$trace_path" | grep -c --extended-regexp $event_exp)
-	total=$($BABELTRACE_BIN "$trace_path" | wc -l)
+	count=$(_run_babeltrace_cmd "$trace_path" | grep -c --extended-regexp $event_exp)
+	total=$(_run_babeltrace_cmd "$trace_path" | wc -l)
 
 	test  "$count" -gt 0 && test "$total" -eq "$count"
 	ok $? "Found $count events matching expression '$event_exp' amongst $total events"
@@ -2354,7 +2464,7 @@ function validate_trace_empty()
 
 	bail_out_if_no_babeltrace
 
-	events=$($BABELTRACE_BIN "$trace_path")
+	events=$(_run_babeltrace_cmd "$trace_path")
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		fail "Failed to parse trace"
@@ -2403,7 +2513,7 @@ function regenerate_metadata ()
 	local expected_to_fail=$1
 	local sess_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		regenerate metadata -s $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2429,7 +2539,7 @@ function regenerate_statedump ()
 	local expected_to_fail=$1
 	local sess_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		regenerate statedump -s $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2455,7 +2565,7 @@ function rotate_session ()
 	local expected_to_fail=$1
 	local sess_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		rotate $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2491,7 +2601,7 @@ function lttng_enable_rotation_timer ()
 	local sess_name=$2
 	local period=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-rotation -s $sess_name --timer $period
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2518,7 +2628,7 @@ function lttng_enable_rotation_size ()
 	local sess_name=$2
 	local size=$3
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		enable-rotation -s $sess_name --size $size
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2544,7 +2654,7 @@ function lttng_clear_session ()
 	local expected_to_fail=$1
 	local sess_name=$2
 
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		clear $sess_name
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -2567,7 +2677,7 @@ function lttng_clear_session_fail ()
 
 function lttng_clear_all ()
 {
-	_run_lttng_cmd "$OUTPUT_DEST" "$ERROR_OUTPUT_DEST" \
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
 		clear --all
 	ok $? "Clear all lttng sessions"
 }

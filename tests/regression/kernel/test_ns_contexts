@@ -25,9 +25,8 @@ function add_context_kernel_skip_ok()
 
 	local ret
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" add-context -k \
-		-s "$session_name" -c "$channel_name" \
-	       	-t "$context_name"  1>"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" add-context -k \
+		-s "$session_name" -c "$channel_name" -t "$context_name"
 	ret=$?
 
 	if [ "$ret" == "4" ]; then
@@ -46,11 +45,9 @@ function enable_kernel_lttng_event_filter_ok()
 	local channel_name=$3
 	local filter=$4
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event -k \
-		-c "$channel_name" -s "$session_name" \
-		--syscall "$syscall_name" \
-		-f "$filter" \
-		1>"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" enable-event -k \
+		-c "$channel_name" -s "$session_name" --syscall "$syscall_name" \
+		-f "$filter"
 
 	ok $? "Add syscall with filter"
 }

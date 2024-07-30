@@ -162,7 +162,7 @@ function test_relayd_debug_permission()
 
 		# Redirect the error output to a temporary file
 
-		ERROR_OUTPUT_DEST=$(mktemp -t "tmp.${FUNCNAME[0]}_error_output.XXXXXX")
+		RELAYD_ERROR_OUTPUT_DEST=$(mktemp -t "tmp.${FUNCNAME[0]}_error_output.XXXXXX")
 		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
 
 		pid=$(lttng_pgrep "$RELAYD_MATCH")
@@ -171,13 +171,13 @@ function test_relayd_debug_permission()
 		cwd=$(readlink "/proc/${pid}/cwd")
 		is "$cwd" "$working_dir" "Working directory changed"
 
-		grep -q "$output_pattern" "$ERROR_OUTPUT_DEST"
+		grep -q "$output_pattern" "${RELAYD_ERROR_OUTPUT_DEST}"
 		ok $? "Warning about missing write permission is present"
 
 		stop_lttng_relayd
-		rm "$ERROR_OUTPUT_DEST"
-		rm -rf "$working_dir" "$ERROR_OUTPUT_DEST"
-		ERROR_OUTPUT_DEST=/dev/null
+		rm "${RELAYD_ERROR_OUTPUT_DEST}"
+		rm -rf "$working_dir" "${RELAYD_ERROR_OUTPUT_DEST}"
+		unset RELAYD_ERROR_OUTPUT_DEST
 	}
 }
 
