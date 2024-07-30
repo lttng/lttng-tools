@@ -176,15 +176,11 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 
 void viewer_session_close(struct relay_viewer_session *vsession)
 {
-	struct relay_session *session;
-
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-
-		cds_list_for_each_entry_rcu(session, &vsession->session_list, viewer_session_node)
-		{
-			viewer_session_close_one_session(vsession, session);
-		}
+	for (auto *session :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_session,
+						     &relay_session::viewer_session_node>(
+		     vsession->session_list)) {
+		viewer_session_close_one_session(vsession, session);
 	}
 }
 
@@ -194,7 +190,6 @@ void viewer_session_close(struct relay_viewer_session *vsession)
  */
 int viewer_session_is_attached(struct relay_viewer_session *vsession, struct relay_session *session)
 {
-	struct relay_session *iter;
 	int found = 0;
 
 	pthread_mutex_lock(&session->lock);
@@ -205,14 +200,13 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession, struct rel
 		goto end;
 	}
 
-	{
-		const lttng::urcu::read_lock_guard read_lock;
-		cds_list_for_each_entry_rcu(iter, &vsession->session_list, viewer_session_node)
-		{
-			if (session == iter) {
-				found = 1;
-				break;
-			}
+	for (auto *session_it :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_session,
+						     &relay_session::viewer_session_node>(
+		     vsession->session_list)) {
+		if (session == session_it) {
+			found = 1;
+			break;
 		}
 	}
 
