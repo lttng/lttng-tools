@@ -581,11 +581,12 @@ error_create:
 static unsigned int lttng_sessions_count(uid_t uid, gid_t gid __attribute__((unused)))
 {
 	unsigned int i = 0;
-	struct ltt_session *raw_session_ptr;
 	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Counting number of available session for UID %d", uid);
-	cds_list_for_each_entry (raw_session_ptr, &session_list->head, list) {
+	for (auto *raw_session_ptr :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
 		auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
