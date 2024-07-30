@@ -334,13 +334,14 @@ int buffer_reg_uid_consumer_channel_key(struct cds_list_head *buffer_reg_uid_lis
 					uint64_t *consumer_chan_key)
 {
 	int ret = -1;
-	buffer_reg_uid *uid_reg = nullptr;
 
 	/*
 	 * For the per-uid registry, we have to iterate since we don't have the
 	 * uid and bitness key.
 	 */
-	cds_list_for_each_entry (uid_reg, buffer_reg_uid_list, lnode) {
+	for (auto uid_reg :
+	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+		     *buffer_reg_uid_list)) {
 		auto *session_reg = uid_reg->registry;
 		for (auto *reg_chan :
 		     lttng::urcu::lfht_iteration_adapter<buffer_reg_channel,
@@ -541,12 +542,15 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp, enum lttng_doma
 	case LTTNG_DOMAIN_UST:
 	{
 		int ret;
-		struct buffer_reg_stream *sreg, *stmp;
+
 		/* Wipe stream */
-		cds_list_for_each_entry_safe (sreg, stmp, &regp->streams, lnode) {
-			cds_list_del(&sreg->lnode);
+		for (auto reg_stream :
+		     lttng::urcu::list_iteration_adapter<buffer_reg_stream,
+							 &buffer_reg_stream::lnode>(
+			     regp->streams)) {
+			cds_list_del(&reg_stream->lnode);
 			regp->stream_count--;
-			buffer_reg_stream_destroy(sreg, domain);
+			buffer_reg_stream_destroy(reg_stream, domain);
 		}
 
 		if (regp->obj.ust) {
