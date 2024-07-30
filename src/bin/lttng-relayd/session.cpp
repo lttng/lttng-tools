@@ -617,7 +617,6 @@ void session_put(struct relay_session *session)
 int session_close(struct relay_session *session)
 {
 	int ret = 0;
-	struct relay_stream *stream;
 
 	pthread_mutex_lock(&session->lock);
 	DBG("closing session %" PRIu64 ": is conn already closed %d",
@@ -636,8 +635,9 @@ int session_close(struct relay_session *session)
 		}
 	}
 
-	cds_list_for_each_entry_rcu(stream, &session->recv_list, recv_node)
-	{
+	for (auto *stream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_stream, &relay_stream::recv_node>(
+		     session->recv_list)) {
 		/* Close streams which have not been published yet. */
 		try_stream_close(stream);
 	}
