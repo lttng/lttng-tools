@@ -953,7 +953,6 @@ end:
 static int save_kernel_events(struct config_writer *writer, struct ltt_kernel_channel *kchan)
 {
 	int ret;
-	struct ltt_kernel_event *event;
 
 	ret = config_writer_open_element(writer, config_element_events);
 	if (ret) {
@@ -961,7 +960,9 @@ static int save_kernel_events(struct config_writer *writer, struct ltt_kernel_ch
 		goto end;
 	}
 
-	cds_list_for_each_entry (event, &kchan->events_list.head, list) {
+	for (auto *event :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_event, &ltt_kernel_event::list>(
+		     kchan->events_list.head)) {
 		ret = save_kernel_event(writer, event);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -1297,7 +1298,6 @@ end:
 static int save_kernel_contexts(struct config_writer *writer, struct ltt_kernel_channel *kchan)
 {
 	int ret;
-	struct ltt_kernel_context *ctx;
 
 	if (cds_list_empty(&kchan->ctx_list)) {
 		ret = LTTNG_OK;
@@ -1310,7 +1310,9 @@ static int save_kernel_contexts(struct config_writer *writer, struct ltt_kernel_
 		goto end;
 	}
 
-	cds_list_for_each_entry (ctx, &kchan->ctx_list, list) {
+	for (auto *ctx :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_context, &ltt_kernel_context::list>(
+		     kchan->ctx_list)) {
 		ret = save_kernel_context(writer, &ctx->ctx);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -1451,7 +1453,6 @@ end:
 static int save_ust_context(struct config_writer *writer, struct cds_list_head *ctx_list)
 {
 	int ret;
-	struct ltt_ust_context *ctx;
 
 	LTTNG_ASSERT(writer);
 	LTTNG_ASSERT(ctx_list);
@@ -1462,7 +1463,9 @@ static int save_ust_context(struct config_writer *writer, struct cds_list_head *
 		goto end;
 	}
 
-	cds_list_for_each_entry (ctx, ctx_list, list) {
+	for (auto *ctx :
+	     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
+		     *ctx_list)) {
 		ret = config_writer_open_element(writer, config_element_context);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -1661,7 +1664,6 @@ end:
 static int save_kernel_session(struct config_writer *writer, const ltt_session::locked_ref& session)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
 	LTTNG_ASSERT(writer);
 
@@ -1685,7 +1687,9 @@ static int save_kernel_session(struct config_writer *writer, const ltt_session::
 		goto end;
 	}
 
-	cds_list_for_each_entry (kchan, &session->kernel_session->channel_list.head, list) {
+	for (auto *kchan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     session->kernel_session->channel_list.head)) {
 		ret = save_kernel_channel(writer, kchan);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -2732,9 +2736,10 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr, lttng_sock_cred *cre
 		}
 	} else {
 		struct ltt_session_list *list = session_get_list();
-		struct ltt_session *raw_session_ptr;
 
-		cds_list_for_each_entry (raw_session_ptr, &list->head, list) {
+		for (auto raw_session_ptr :
+		     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+			     list->head)) {
 			auto session = [raw_session_ptr]() {
 				session_get(raw_session_ptr);
 				raw_session_ptr->lock();
