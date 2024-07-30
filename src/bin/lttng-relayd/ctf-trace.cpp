@@ -177,17 +177,16 @@ void ctf_trace_put(struct ctf_trace *trace)
 
 int ctf_trace_close(struct ctf_trace *trace)
 {
-	struct relay_stream *stream;
-
-	const lttng::urcu::read_lock_guard read_lock;
-	cds_list_for_each_entry_rcu(stream, &trace->stream_list, stream_node)
-	{
+	for (auto *stream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_stream, &relay_stream::stream_node>(
+		     trace->stream_list)) {
 		/*
 		 * Close stream since the connection owning the trace is being
 		 * torn down.
 		 */
 		try_stream_close(stream);
 	}
+
 	/*
 	 * Since all references to the trace are held by its streams, we
 	 * don't need to do any self-ref put.
