@@ -15,7 +15,9 @@
 #include "thread.hpp"
 #include "utils.hpp"
 
+#include <common/make-unique-wrapper.hpp>
 #include <common/pipe.hpp>
+#include <common/pthread-lock.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
 
@@ -35,18 +37,18 @@ struct thread_notifiers {
 static int update_kernel_poll(struct lttng_poll_event *events)
 {
 	int ret;
-	struct ltt_kernel_channel *channel;
-	struct ltt_session *session;
 
 	DBG("Updating kernel poll set");
 
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	const struct ltt_session_list *session_list = session_get_list();
 
-	cds_list_for_each_entry (session, &session_list->head, list) {
+	for (auto *session : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
 		if (!session_get(session)) {
 			continue;
 		}
+
 		session_lock(session);
 		if (session->kernel_session == nullptr) {
 			session_unlock(session);
@@ -54,8 +56,9 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			continue;
 		}
 
-		cds_list_for_each_entry (
-			channel, &session->kernel_session->channel_list.head, list) {
+		for (auto *channel : lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
+									 &ltt_kernel_channel::list>(
+			     session->kernel_session->channel_list.head)) {
 			/* Add channel fd to the kernel poll set */
 			ret = lttng_poll_add(events, channel->fd, LPOLLIN | LPOLLRDNORM);
 			if (ret < 0) {
@@ -63,8 +66,10 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 				session_put(session);
 				return -1;
 			}
+
 			DBG("Channel fd %d added to kernel set", channel->fd);
 		}
+
 		session_unlock(session);
 		session_put(session);
 	}
@@ -81,37 +86,39 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 static int update_kernel_stream(int fd)
 {
 	int ret = 0;
-	struct ltt_session *session;
-	struct ltt_kernel_session *ksess;
-	struct ltt_kernel_channel *channel;
 
 	DBG("Updating kernel streams for channel fd %d", fd);
 
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	const struct ltt_session_list *session_list = session_get_list();
 
-	cds_list_for_each_entry (session, &session_list->head, list) {
-		if (!session_get(session)) {
-			continue;
-		}
+	for (auto *raw_session_ptr :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
+		ltt_kernel_session *ksess;
 
-		session_lock(session);
+		const auto session = [raw_session_ptr]() {
+			session_get(raw_session_ptr);
+			raw_session_ptr->lock();
+			return ltt_session::make_locked_ref(*raw_session_ptr);
+		}();
+
 		if (session->kernel_session == nullptr) {
-			session_unlock(session);
-			session_put(session);
 			continue;
 		}
 
 		ksess = session->kernel_session;
 
-		cds_list_for_each_entry (channel, &ksess->channel_list.head, list) {
+		for (auto *channel : lttng::urcu::list_iteration_adapter<ltt_kernel_channel,
+									 &ltt_kernel_channel::list>(
+			     ksess->channel_list.head)) {
 			if (channel->fd != fd) {
 				continue;
 			}
 			DBG("Channel found, updating kernel streams");
 			ret = kernel_open_channel_stream(channel);
 			if (ret < 0) {
-				goto error;
+				return ret;
 			}
 			/* Update the stream global counter */
 			ksess->stream_count_global += ret;
@@ -122,8 +129,7 @@ static int update_kernel_stream(int fd)
 			 * our updated stream fds.
 			 */
 			if (ksess->consumer_fds_sent != 1 || ksess->consumer == nullptr) {
-				ret = -1;
-				goto error;
+				return -1;
 			}
 
 			for (auto *socket :
@@ -131,25 +137,17 @@ static int update_kernel_stream(int fd)
 								 decltype(consumer_socket::node),
 								 &consumer_socket::node>(
 				     *ksess->consumer->socks->ht)) {
-				pthread_mutex_lock(socket->lock);
+				const lttng::pthread::lock_guard socket_lock(*socket->lock);
+
 				ret = kernel_consumer_send_channel_streams(
 					socket, channel, ksess, session->output_traces ? 1 : 0);
-				pthread_mutex_unlock(socket->lock);
 				if (ret < 0) {
-					goto error;
+					return ret;
 				}
 			}
 		}
-
-		session_unlock(session);
-		session_put(session);
 	}
 
-	return ret;
-
-error:
-	session_unlock(session);
-	session_put(session);
 	return ret;
 }
 
