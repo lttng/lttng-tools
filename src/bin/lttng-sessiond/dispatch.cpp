@@ -38,7 +38,6 @@ struct thread_notifiers {
  */
 static void update_ust_app(int app_sock)
 {
-	struct ltt_session *sess, *stmp;
 	const struct ltt_session_list *session_list = session_get_list();
 	struct ust_app *app;
 
@@ -65,7 +64,8 @@ static void update_ust_app(int app_sock)
 	ust_app_global_update_event_notifier_rules(app);
 
 	/* For all tracing session(s) */
-	cds_list_for_each_entry_safe (sess, stmp, &session_list->head, list) {
+	for (auto *sess : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
 		if (!session_get(sess)) {
 			continue;
 		}
@@ -91,7 +91,6 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 	int ret, nb_fd = 0, i;
 	unsigned int fd_added = 0;
 	struct lttng_poll_event events;
-	struct ust_reg_wait_node *wait_node = nullptr, *tmp_wait_node;
 
 	LTTNG_ASSERT(wait_queue);
 
@@ -107,7 +106,9 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		goto error_create;
 	}
 
-	cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue->head, head) {
+	for (auto *wait_node :
+	     lttng::urcu::list_iteration_adapter<ust_reg_wait_node, &ust_reg_wait_node::head>(
+		     wait_queue->head)) {
 		LTTNG_ASSERT(wait_node->app);
 		ret = lttng_poll_add(&events, wait_node->app->sock, LPOLLIN);
 		if (ret < 0) {
@@ -136,18 +137,16 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		const uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 		const int pollfd = LTTNG_POLL_GETFD(&events, i);
 
-		cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue->head, head) {
+		for (auto *wait_node :
+		     lttng::urcu::list_iteration_adapter<ust_reg_wait_node,
+							 &ust_reg_wait_node::head>(
+			     wait_queue->head)) {
 			if (pollfd == wait_node->app->sock && (revents & (LPOLLHUP | LPOLLERR))) {
 				cds_list_del(&wait_node->head);
 				wait_queue->count--;
 				ust_app_put(wait_node->app);
 				free(wait_node);
 
-				/*
-				 * Silence warning of use-after-free in
-				 * cds_list_for_each_entry_safe which uses
-				 * __typeof__(*wait_node).
-				 */
 				wait_node = nullptr;
 				break;
 			} else {
@@ -224,7 +223,7 @@ static void *thread_dispatch_ust_registration(void *data)
 	int ret, err = -1;
 	struct cds_wfcq_node *node;
 	struct ust_command *ust_cmd = nullptr;
-	struct ust_reg_wait_node *wait_node = nullptr, *tmp_wait_node;
+	struct ust_reg_wait_node *wait_node = nullptr;
 	struct ust_reg_wait_queue wait_queue = {
 		.count = 0,
 		.head = {},
@@ -338,16 +337,19 @@ static void *thread_dispatch_ust_registration(void *data)
 				 * Look for the application in the local wait queue and set the
 				 * notify socket if found.
 				 */
-				cds_list_for_each_entry_safe (
-					wait_node, tmp_wait_node, &wait_queue.head, head) {
+				for (auto *wait_node_in_queue :
+				     lttng::urcu::list_iteration_adapter<ust_reg_wait_node,
+									 &ust_reg_wait_node::head>(
+					     wait_queue.head)) {
 					health_code_update();
-					if (wait_node->app->pid == ust_cmd->reg_msg.pid) {
-						wait_node->app->notify_sock = ust_cmd->sock;
-						cds_list_del(&wait_node->head);
+					if (wait_node_in_queue->app->pid == ust_cmd->reg_msg.pid) {
+						wait_node_in_queue->app->notify_sock =
+							ust_cmd->sock;
+						cds_list_del(&wait_node_in_queue->head);
 						wait_queue.count--;
-						app = wait_node->app;
-						free(wait_node);
-						wait_node = nullptr;
+						app = wait_node_in_queue->app;
+						free(wait_node_in_queue);
+
 						DBG3("UST app notify socket %d is set",
 						     ust_cmd->sock);
 						break;
@@ -447,10 +449,12 @@ static void *thread_dispatch_ust_registration(void *data)
 
 error:
 	/* Clean up wait queue. */
-	cds_list_for_each_entry_safe (wait_node, tmp_wait_node, &wait_queue.head, head) {
-		cds_list_del(&wait_node->head);
+	for (auto *wait_node_in_queue :
+	     lttng::urcu::list_iteration_adapter<ust_reg_wait_node, &ust_reg_wait_node::head>(
+		     wait_queue.head)) {
+		cds_list_del(&wait_node_in_queue->head);
 		wait_queue.count--;
-		free(wait_node);
+		free(wait_node_in_queue);
 	}
 
 	/* Empty command queue. */

@@ -345,7 +345,7 @@ public:
 		cds_list_head _node_contents;
 	};
 
-	explicit list_iteration_adapter(cds_list_head& list) : _list(list)
+	explicit list_iteration_adapter(const cds_list_head& list) : _list(list)
 	{
 	}
 
@@ -363,7 +363,7 @@ public:
 
 protected:
 	/* Reference to the list being iterated over. */
-	cds_list_head& _list;
+	const cds_list_head& _list;
 };
 
 template <typename ContainedType, cds_list_head ContainedType::*Member>
@@ -396,7 +396,7 @@ public:
 		}
 	};
 
-	explicit rcu_list_iteration_adapter(cds_list_head& list) :
+	explicit rcu_list_iteration_adapter(const cds_list_head& list) :
 		list_iteration_adapter<ContainedType, Member>(list)
 	{
 	}
