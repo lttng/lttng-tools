@@ -30,7 +30,6 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 				 struct ltt_kernel_context *kctx)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 
 	LTTNG_ASSERT(ksession);
 	LTTNG_ASSERT(kctx);
@@ -38,7 +37,9 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	DBG("Adding kernel context to all channels");
 
 	/* Go over all channels */
-	cds_list_for_each_entry (kchan, &ksession->channel_list.head, list) {
+	for (auto kchan :
+	     lttng::urcu::list_iteration_adapter<ltt_kernel_channel, &ltt_kernel_channel::list>(
+		     ksession->channel_list.head)) {
 		struct ltt_kernel_context *kctx_copy;
 
 		kctx_copy = trace_kernel_copy_context(kctx);
@@ -99,20 +100,21 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 			       const struct lttng_event_context *ctx)
 {
 	int ret;
-	struct ltt_ust_context *uctx = nullptr;
+	struct ltt_ust_context *new_uctx = nullptr;
 
 	LTTNG_ASSERT(usess);
 	LTTNG_ASSERT(uchan);
 	LTTNG_ASSERT(ctx);
 
 	/* Check if context is duplicate */
-	cds_list_for_each_entry (uctx, &uchan->ctx_list, list) {
-		if (trace_ust_match_context(uctx, ctx)) {
+	for (auto uctx_it :
+	     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
+		     uchan->ctx_list)) {
+		if (trace_ust_match_context(uctx_it, ctx)) {
 			ret = LTTNG_ERR_UST_CONTEXT_EXIST;
 			goto duplicate;
 		}
 	}
-	uctx = nullptr;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_JUL:
@@ -152,31 +154,31 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	}
 
 	/* Create ltt UST context */
-	uctx = trace_ust_create_context(ctx);
-	if (uctx == nullptr) {
+	new_uctx = trace_ust_create_context(ctx);
+	if (new_uctx == nullptr) {
 		ret = LTTNG_ERR_UST_CONTEXT_INVAL;
 		goto error;
 	}
 
 	/* Add ltt UST context node to ltt UST channel */
-	lttng_ht_add_ulong(uchan->ctx, &uctx->node);
-	cds_list_add_tail(&uctx->list, &uchan->ctx_list);
+	lttng_ht_add_ulong(uchan->ctx, &new_uctx->node);
+	cds_list_add_tail(&new_uctx->list, &uchan->ctx_list);
 
 	if (!usess->active) {
 		goto end;
 	}
 
-	ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
+	ret = ust_app_add_ctx_channel_glb(usess, uchan, new_uctx);
 	if (ret < 0) {
 		goto error;
 	}
 end:
-	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
+	DBG("Context UST %d added to channel %s", new_uctx->ctx.ctx, uchan->name);
 
 	return 0;
 
 error:
-	free(uctx);
+	free(new_uctx);
 duplicate:
 	return ret;
 }
