@@ -98,7 +98,7 @@ test_before_multiple_apps() {
 		rm -f ${file_sync_before_last}_${i}
 	done
 
-	out=$("$BABELTRACE_BIN" $TRACE_PATH | grep $EVENT_NAME | wc -l)
+	out=$("_run_babeltrace_cmd" $TRACE_PATH | grep $EVENT_NAME | wc -l)
 	if [ $out -eq 0 ]; then
 		fail "Trace validation"
 		diag "No event(s) found. We are supposed to have at least one."
@@ -165,7 +165,7 @@ test_before_app() {
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}
 
-	out=$("$BABELTRACE_BIN" $TRACE_PATH | grep $EVENT_NAME | wc -l)
+	out=$("_run_babeltrace_cmd" $TRACE_PATH | grep $EVENT_NAME | wc -l)
 	if [ $out -eq 0 ]; then
 		fail "Trace validation"
 		diag "No event(s) found. We are supposed to have at least one."

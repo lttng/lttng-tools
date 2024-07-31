@@ -87,7 +87,7 @@ function test_clock_override_metadata()
 	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
 	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"
 
-	$BABELTRACE_BIN -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
+	_run_babeltrace_cmd -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
 	ok $? "Metadata extraction from babeltrace"
 
 	extract_clock_metadata $ctf_metadata_file $clock_metadata_file
@@ -126,7 +126,7 @@ function test_clock_override_timestamp()
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
-	unique_timestamps_count=$($BABELTRACE_BIN -n all $TRACE_PATH | \
+	unique_timestamps_count=$(_run_babeltrace_cmd -n all $TRACE_PATH | \
 		cut -d, -f1 | uniq | wc -l)
 	test $unique_timestamps_count -gt 1
 	ok $? "Unique event timestamps without clock override: $unique_timestamps_count expect >1"
@@ -153,7 +153,7 @@ function test_clock_override_timestamp()
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.
-	unique_timestamps_count=$($BABELTRACE_BIN -n all $TRACE_PATH | \
+	unique_timestamps_count=$(_run_babeltrace_cmd -n all $TRACE_PATH | \
 		cut -d, -f1 | uniq | wc -l)
 	test $unique_timestamps_count -eq 1
 	ok $? "Unique event timestamps with clock override: $unique_timestamps_count expect 1"

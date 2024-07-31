@@ -247,7 +247,6 @@ function test_ust_basic_streaming_live_viewer ()
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
 	local bt_output_path=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_bt_output_path.XXXXXX)
-	local bt_error_path=$(mktemp -t "tmp.${FUNCNAME[0]}_bt_error.XXXXXX")
 	local file_sync_before_exit=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_sync_before_exit.XXXXXX)
 
 	diag "Test ust basic streaming live with viewer"
@@ -260,7 +259,7 @@ function test_ust_basic_streaming_live_viewer ()
 	wait_live_trace_ready net://localhost
 
 	# Connect a live viewer
-	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path --params=session-not-found-action=end 1> $bt_output_path 2> "${bt_error_path}" &
+	_run_babeltrace_cmd -i lttng-live net://localhost/host/$remote_trace_path --params=session-not-found-action=end 1> $bt_output_path &
 	local viewer_pid=$!
 	local viewer_iter=0
 
@@ -292,7 +291,6 @@ function test_ust_basic_streaming_live_viewer ()
 	pass "Wait for viewer to exit"
 
 	rm -f $bt_output_path
-	clean_path "${bt_error_path}"
 	rm -f $file_sync_before_exit
 }
 
@@ -306,7 +304,6 @@ function test_ust_streaming_live_viewer ()
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
 	local bt_output_path=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_bt_output_path.XXXXXX)
-	local bt_error_path=$(mktemp -t "tmp.${FUNCNAME[0]}_bt_error.XXXXXX")
 
 	diag "Test ust streaming live clear with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -318,7 +315,7 @@ function test_ust_streaming_live_viewer ()
 	wait_live_trace_ready net://localhost
 
 	# Connect a live viewer
-	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path --params=session-not-found-action=end 1> $bt_output_path 2> "${bt_error_path}" &
+	_run_babeltrace_cmd -i lttng-live net://localhost/host/$remote_trace_path --params=session-not-found-action=end 1> $bt_output_path &
 	local viewer_pid=$!
 
 	wait_live_viewer_connect net://localhost
@@ -334,7 +331,6 @@ function test_ust_streaming_live_viewer ()
 	pass "Wait for viewer to exit"
 
 	clean_path $bt_output_path
-	clean_path "${bt_error_path}"
 }
 
 function test_ust_streaming_live_viewer_new_metadata_after_clear ()
@@ -348,7 +344,6 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 	local channel_name="chan"
 
 	local bt_output_path=$(mktemp -t "tmp.${FUNCNAME[0]}_bt_output.XXXXXX")
-	local bt_error_path=$(mktemp -t "tmp.${FUNCNAME[0]}_bt_error.XXXXXX")
 	local file_sync_before_exit=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_exit.XXXXXX")
 
 	diag "Test ust streaming live clear with viewer with new metadata after clear"
@@ -368,7 +363,7 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 	wait_live_trace_ready net://localhost
 
 	# Connect a live viewer
-	$BABELTRACE_BIN -i lttng-live "net://localhost/host/$remote_trace_path" --params=session-not-found-action=end 1> "$bt_output_path" 2> "$bt_error_path" &
+	_run_babeltrace_cmd -i lttng-live "net://localhost/host/$remote_trace_path" --params=session-not-found-action=end 1> "$bt_output_path" &
 	local viewer_pid=$!
 	local viewer_iter=0
 
@@ -428,7 +423,6 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 	pass "Wait for viewer to exit"
 
 	clean_path "$bt_output_path"
-	clean_path "$bt_error_path"
 	rm -f "$file_sync_before_exit"
 }
 

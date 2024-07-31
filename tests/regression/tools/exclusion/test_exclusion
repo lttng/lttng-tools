@@ -54,7 +54,7 @@ function dry_run
 	run_apps
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	nb_events=$("$BABELTRACE_BIN" $trace_path | wc -l)
+	nb_events=$("_run_babeltrace_cmd" $trace_path | wc -l)
 	if [ "$nb_events" -ne "0" ]; then
 		ok 0 "Events were found during the dry run without exclusion"
 	else
@@ -87,7 +87,7 @@ function test_exclusion
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=$("$BABELTRACE_BIN" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index 2> /dev/null)
+	stats=$("_run_babeltrace_cmd" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index)
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
@@ -140,7 +140,7 @@ function test_exclusion_tracing_started
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=$("$BABELTRACE_BIN" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index 2> /dev/null)
+	stats=$("_run_babeltrace_cmd" --plugin-path "${BT2_PLUGINS_DIR}" "${trace_path}" -c filter.lttngtest.event_name -p "names=[\"${event_name_expected_to_be_missing}\"]" -c sink.lttngtest.field_stats | grep -v index)
 	if [ ! -z "$stats" ]; then
 		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else

@@ -47,7 +47,7 @@ function test_kernel ()
 	metadata_path=$(find "${expected_path}/${session_name}"* -name "metadata")
 	metadata_path=$(dirname "$metadata_path")
 
-	$BABELTRACE_BIN --output-format=ctf-metadata "${metadata_path}" > "$metadata"
+	_run_babeltrace_cmd --output-format=ctf-metadata "${metadata_path}" > "$metadata"
 
 	# Extract "env" scope
 	awk '/env {/,/};/' < "$metadata" > "$metadata_env"

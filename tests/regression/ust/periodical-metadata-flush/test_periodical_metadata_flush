@@ -68,7 +68,7 @@ function validate_trace()
 {
 	local out
 
-	out=$("$BABELTRACE_BIN" "$TRACE_PATH" | grep -c $EVENT_NAME)
+	out=$("_run_babeltrace_cmd" "$TRACE_PATH" | grep -c $EVENT_NAME)
 	if [ "$out" -eq 0 ]; then
 		fail "Trace validation"
 		diag "No event(s) found. We are supposed to have at least one."

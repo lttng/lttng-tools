@@ -46,7 +46,7 @@ function validate_trace_date
 	local test_date=$1
 	local trace_path=$2
 
-	res=$($BABELTRACE_BIN --clock-date "$trace_path" 2>/dev/null | head -1 | grep $test_date)
+	res=$(_run_babeltrace_cmd --clock-date "$trace_path" | head -1 | grep $test_date)
 	if [ $? -eq 0 ]; then
 		pass "Validate trace at date $test_date"
 		ret=0

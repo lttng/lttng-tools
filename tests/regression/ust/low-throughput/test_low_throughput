@@ -49,7 +49,7 @@ stop_lttng_sessiond
 last_val=0
 out=0
 
-"$BABELTRACE_BIN" $TRACE_PATH | while read event;
+"_run_babeltrace_cmd" $TRACE_PATH | while read event;
 do
 	val=$(echo $event | cut -f10 -d" ")
 	val=${val%?}

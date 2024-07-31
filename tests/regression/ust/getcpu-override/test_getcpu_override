@@ -96,7 +96,7 @@ compare()
 				echo "$(( ${SEQUENCE_SEED[$i]} % $num_cpus))"
 			done
 			diag "Dumping trace"
-			$BABELTRACE_BIN $TRACE_PATH | awk '{print "# " $0}'
+			_run_babeltrace_cmd $TRACE_PATH | awk '{print "# " $0}'
 		fi
 	fi
 }
@@ -113,7 +113,7 @@ test_getcpu_override_fail()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Move output to an array by using =($())
-	local cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	local cpuid_events=($(_run_babeltrace_cmd $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
 	local num_events=${#cpuid_events[*]}
 	test $num_events -eq $NUM_EVENT
 	ok $? "Extraction without getcpu plugin have $num_events/$NUM_EVENT"
@@ -133,7 +133,7 @@ test_getcpu_override()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	local cpuid_events=($($BABELTRACE_BIN $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
+	local cpuid_events=($(_run_babeltrace_cmd $TRACE_PATH | sed -n 's/.*cpu_id = \([0-9]*\).*/\1/p'))
 	local num_events=${#cpuid_events[*]}
 	test $num_events -eq $NUM_EVENT
 	ok $? "Extraction with getcpu plugin have $num_events/$NUM_EVENT"

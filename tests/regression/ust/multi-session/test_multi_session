@@ -41,7 +41,7 @@ test_multi_session() {
 	for i in $(seq 0 3); do
 		stop_lttng_tracing_ok "$SESSION_NAME-$i"
 		destroy_lttng_session_ok "$SESSION_NAME-$i"
-		out=$($BABELTRACE_BIN "$TRACE_PATH/$i" | grep -c "$EVENT_NAME$i")
+		out=$(_run_babeltrace_cmd "$TRACE_PATH/$i" | grep -c "$EVENT_NAME$i")
 		if [ "$out" -ne $NR_ITER ]; then
 			fail "Trace validation of $SESSION_NAME-$i"
 			diag "No events found."

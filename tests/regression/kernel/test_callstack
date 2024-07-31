@@ -76,7 +76,7 @@ function test_user_callstack()
 
 	destroy_lttng_session_ok "$SESSION_NAME"
 
-	"$BABELTRACE_BIN" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --user "$TEST_APP_USERSPACE" $USER_CS_EXPECTED
+	"_run_babeltrace_cmd" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --user "$TEST_APP_USERSPACE" $USER_CS_EXPECTED
 	ok $? "Validate userspace callstack"
 
 	rm -rf "$TRACE_PATH"
@@ -114,7 +114,7 @@ function test_kernel_callstack()
 
 	destroy_lttng_session_ok "$SESSION_NAME"
 
-	"$BABELTRACE_BIN" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --kernel $KERNEL_CS_EXPECTED
+	"_run_babeltrace_cmd" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --kernel $KERNEL_CS_EXPECTED
 	ok $? "Validate kernel callstack"
 
 	rm -rf "$TRACE_PATH"

@@ -214,7 +214,7 @@ function test_kernel_basic_streaming_live_viewer ()
 	wait_live_trace_ready net://localhost
 
 	# Connect a live viewer
-	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
+	_run_babeltrace_cmd -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
 	local viewer_pid=$!
 
 	wait_live_viewer_connect net://localhost
@@ -260,7 +260,7 @@ function test_kernel_streaming_live_viewer ()
 	wait_live_trace_ready net://localhost
 
 	# Connect a live viewer
-	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
+	_run_babeltrace_cmd -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
 	local viewer_pid=$!
 
 	wait_live_viewer_connect net://localhost
