@@ -1279,7 +1279,6 @@ end:
 
 static void destroy_all_sessions_and_wait()
 {
-	struct ltt_session *raw_session_ptr, *tmp;
 	struct ltt_session_list *session_list;
 
 	DBG("Initiating destruction of all sessions");
@@ -1292,7 +1291,9 @@ static void destroy_all_sessions_and_wait()
 	}
 
 	/* Initiate the destruction of all sessions. */
-	cds_list_for_each_entry_safe (raw_session_ptr, tmp, &session_list->head, list) {
+	for (auto raw_session_ptr :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
 		const auto session = [raw_session_ptr]() {
 			session_get(raw_session_ptr);
 			raw_session_ptr->lock();
