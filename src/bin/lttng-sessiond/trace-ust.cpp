@@ -1319,11 +1319,12 @@ void trace_ust_delete_channel(struct lttng_ht *ht, struct ltt_ust_channel *chann
 int trace_ust_regenerate_metadata(struct ltt_ust_session *usess)
 {
 	int ret = 0;
-	struct buffer_reg_uid *uid_reg = nullptr;
 	struct buffer_reg_session *session_reg = nullptr;
 
 	const lttng::urcu::read_lock_guard read_lock;
-	cds_list_for_each_entry (uid_reg, &usess->buffer_reg_uid_list, lnode) {
+	for (auto uid_reg :
+	     lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+		     usess->buffer_reg_uid_list)) {
 		lsu::registry_session *registry;
 
 		session_reg = uid_reg->registry;
@@ -1376,8 +1377,6 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
-	struct buffer_reg_uid *reg, *sreg;
-
 	LTTNG_ASSERT(session);
 
 	DBG2("Trace UST destroy session %" PRIu64, session->id);
@@ -1397,7 +1396,8 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	lttng_ht_destroy(session->agents);
 
 	/* Cleanup UID buffer registry object(s). */
-	cds_list_for_each_entry_safe (reg, sreg, &session->buffer_reg_uid_list, lnode) {
+	for (auto reg : lttng::urcu::list_iteration_adapter<buffer_reg_uid, &buffer_reg_uid::lnode>(
+		     session->buffer_reg_uid_list)) {
 		cds_list_del(&reg->lnode);
 		buffer_reg_uid_remove(reg);
 		buffer_reg_uid_destroy(reg, session->consumer);
