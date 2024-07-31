@@ -128,9 +128,7 @@ function validate_event_count
 	TEMP_FILE=$(mktemp -t tmp.streaming_high_throughput_limit_file1.XXXXXX)
 	TEMP_FILE_2=$(mktemp -t tmp.streaming_high_throughput_limit_file2.XXXXXX)
 
-	traced=$("$BABELTRACE_BIN" "$TRACE_PATH" 2>/dev/null | wc -l)
-	"$BABELTRACE_BIN" "$TRACE_PATH" >/dev/null 2>"$TEMP_FILE_2"
-
+	traced=$("$BABELTRACE_BIN" "$TRACE_PATH" 2>"${TEMP_FILE_2}" | wc -l)
 	cat "$TEMP_FILE_2" | cut -f4 -d " " >"$TEMP_FILE"
 
 	dropped=0
