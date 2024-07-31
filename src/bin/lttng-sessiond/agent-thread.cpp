@@ -59,13 +59,13 @@ const char *default_reg_uri = "tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS;
  */
 static void update_agent_app(const struct agent_app *app)
 {
-	struct ltt_session *session, *stmp;
 	struct ltt_session_list *list;
 
 	list = session_get_list();
 	LTTNG_ASSERT(list);
 
-	cds_list_for_each_entry_safe (session, stmp, &list->head, list) {
+	for (auto *session :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(list->head)) {
 		if (!session_get(session)) {
 			continue;
 		}
