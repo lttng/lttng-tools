@@ -1544,8 +1544,8 @@ void agent_by_event_notifier_domain_ht_destroy()
 		return;
 	}
 
-	for (auto *agent :
-	     lttng::urcu::lfht_iteration_adapter<agent, decltype(agent::node), &agent::node>(
+	for (struct agent *agent :
+	     lttng::urcu::lfht_iteration_adapter<struct agent, decltype(agent::node), &agent::node>(
 		     *the_trigger_agents_ht_by_domain->ht)) {
 		const auto ret =
 			cds_lfht_del(the_trigger_agents_ht_by_domain->ht, &agent->node.node);

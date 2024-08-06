@@ -1181,8 +1181,8 @@ static int save_agent_events(struct config_writer *writer, struct agent *agent)
 		goto end;
 	}
 
-	for (auto *agent_event :
-	     lttng::urcu::lfht_iteration_adapter<agent_event,
+	for (struct agent_event *agent_event :
+	     lttng::urcu::lfht_iteration_adapter<struct agent_event,
 						 decltype(agent_event::node),
 						 &agent_event::node>(*agent->events->ht)) {
 		ltt_ust_event fake_event;
