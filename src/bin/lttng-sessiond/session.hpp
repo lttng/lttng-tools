@@ -574,7 +574,11 @@ public:
 
 	session_not_found_error(const session_not_found_error& other) = default;
 	~session_not_found_error() noexcept override = default;
-	session_not_found_error(session_not_found_error&& other) noexcept = default;
+	/*
+	 * Setting an explicit `noexcept` causes compilation failure on gcc < 5.0
+	 * @see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59526
+	 */
+	session_not_found_error(session_not_found_error&& other) /* noexcept */ = default;
 	session_not_found_error& operator=(const session_not_found_error&) = delete;
 	session_not_found_error& operator=(session_not_found_error&&) noexcept = delete;
 
