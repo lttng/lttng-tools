@@ -148,3 +148,8 @@ endif
 if PRECIOUS_TESTS
 .PRECIOUS: $(TEST_LOGS)
 endif
+
+mostlyclean-local:
+	@for f in $(TESTS); do \
+		rm -rf "$$f.log.d/"; \
+	done

@@ -49,6 +49,7 @@ print_usage ()
   cat <<END
 Usage:
   tap-driver.sh --test-name=NAME --log-file=PATH --trs-file=PATH
+                [--log-file-d={yes|no}]
                 [--expect-failure={yes|no}] [--color-tests={yes|no}]
                 [--enable-hard-errors={yes|no}] [--ignore-exit]
                 [--diagnostic-string=STRING] [--merge|--no-merge]
@@ -61,6 +62,7 @@ END
 # TODO: $log_file, $trs_file and $test_name are defined).
 test_name= # Used for reporting.
 log_file=  # Where to save the result and output of the test script.
+log_file_d=yes  # If a directory "${log_file}.d" should be created and used for LTTng logs
 trs_file=  # Where to save the metadata of the test run.
 post_script= # Script to be run after the test.
 expect_failure=0
@@ -75,6 +77,7 @@ while test $# -gt 0; do
   --version) echo "$me $scriptversion"; exit $?;;
   --test-name) test_name=$2; shift;;
   --log-file) log_file=$2; shift;;
+  --log-file-d) log_file_d=$2; shift;;
   --trs-file) trs_file=$2; shift;;
   --color-tests) color_tests=$2; shift;;
   --expect-failure) expect_failure=$2; shift;;
@@ -150,12 +153,26 @@ TIME_SCRIPT="$(realpath -e -- "$(dirname "$0")")/tap/clock"
     # the outputs in the resulting file for half written lines, eg.
     #   ok 93 - Tes# PERROR - xxxx
     #   t some function
+    ORIG_LTTNG_TEST_LOG_DIR="${LTTNG_TEST_LOG_DIR:-}"
+    LTTNG_TEST_LOG_DIR=""
+    if test "${log_file_d}" = yes && [ ! -e "${log_file}.d" ]; then
+      mkdir -p "${log_file}.d"
+      LTTNG_TEST_LOG_DIR="$(realpath "${log_file}.d")"
+      export LTTNG_TEST_LOG_DIR
+    fi
     if [ "${LTTNG_TESTS_TAP_AUTOTIME:-}" != 0 ]; then
       stdbuf -eL -oL -- "$@"
     else
       "$@"
     fi
-    echo $?
+    ret=$?
+    if [ "${ret}" = "0" ] && test "${log_file_d}" = yes && [ -d "${LTTNG_TEST_LOG_DIR}" ]; then
+      rm -rf "${LTTNG_TEST_LOG_DIR:?}/"
+    fi
+    if [ -n "${ORIG_LTTNG_TEST_LOG_DIR}" ]; then
+      LTTNG_TEST_LOG_DIR="${ORIG_LTTNG_TEST_LOG_DIR}"
+    fi
+    echo $ret
   ) | LC_ALL=C ${AM_TAP_AWK-awk} \
         -v me="$me" \
         -v test_script_name="$test_name" \
