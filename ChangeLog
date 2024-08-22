@@ -1,3 +1,8 @@
+2024-08-22 lttng-tools 2.13.14 (National Take Your Cat to the Vet Day)
+	* Fix: Do not null out lttng_consumer_stream channel on deletion
+	* Fix: Crash when unregistering UST apps during shutdown
+	* lttng-ctl: Hide symbol introduced by fix
+
 2024-04-05 lttng-tools 2.13.13 (National Deep Dish Pizza Day)
 	* Fix: consumerd: leak of tracing buffers on relayd connectivity issue
 	* Fix: consumerd: wrong timer mentioned in error logging
