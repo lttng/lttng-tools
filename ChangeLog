@@ -1,3 +1,10 @@
+2024-08-22 lttng-tools 2.12.16 (National Take Your Cat to the Vet Day)
+	* Fix: Do not null out lttng_consumer_stream channel on deletion
+	* Fix: Crash when unregistering UST apps during shutdown
+	* lttng-ctl: Hide symbol introduced by fix
+	* Fix: consumerd: wrong timer mentioned in error logging
+	* Fix: consumerd: type confusion in lttng_consumer_send_error
+
 2024-03-28 lttng-tools 2.12.15 (Respect Your Cat Day)
 	* Fix: baddr-statedump: use $(LIBTOOL) --mode=execute
 	* Fix: relayd: live client not notified of inactive streams
