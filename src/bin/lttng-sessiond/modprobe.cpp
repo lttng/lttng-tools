@@ -28,6 +28,26 @@
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {
 	{
+		.name = (char *) "lttng-wrapper",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng-statedump",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng-clock",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
+	},
+	{
+		.name = (char *) "lttng-lib-ring-buffer",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+		.loaded = false,
+	},
+	{
 		.name = (char *) "lttng-ring-buffer-client-discard",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
 		.loaded = false,
