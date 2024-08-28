@@ -209,6 +209,17 @@ function randstring()
 	echo
 }
 
+function get_pipe_max_size()
+{
+	if grep -q 'FreeBSD' /etc/os-release ; then
+		# Kernel configuration dependant, but defaults to 64 * 1024
+		# https://github.com/freebsd/freebsd-src/blob/5b0dc991093c82824f6fe566af947f64f5072264/sys/sys/pipe.h#L33
+		echo 65536
+	else
+		cat /proc/sys/fs/pipe-max-size
+	fi
+}
+
 # Return a space-separated string of online CPU IDs, based on
 # /sys/devices/system/cpu/online, or from 0 to nproc - 1 otherwise.
 function get_online_cpus()
