@@ -5,7 +5,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests/utils
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIB_LTTNG_CTL = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
-noinst_PROGRAMS = base_client notification rotation default_pipe_size_getter
+noinst_PROGRAMS = base_client notification rotation
 
 if NO_SHARED
 
@@ -61,9 +61,6 @@ notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
-
-default_pipe_size_getter_SOURCES = default_pipe_size_getter.cpp
-default_pipe_size_getter_LDADD = $(top_builddir)/src/common/libcommon-gpl.la
 
 noinst_SCRIPTS = \
 	test_notification_kernel_buffer_usage \
