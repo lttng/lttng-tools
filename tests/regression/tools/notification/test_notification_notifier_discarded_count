@@ -155,12 +155,7 @@ function test_ust_notifier_discarded_count
 
 	diag "UST event notifer error counter"
 
-	PIPE_SIZE=$("$CURDIR"/default_pipe_size_getter)
-	if [ $? -ne 0 ]; then
-		BAIL_OUT "Failed to get system default pipe size"
-	else
-		diag "Default system pipe size: $PIPE_SIZE bytes"
-	fi
+	PIPE_SIZE=$(get_pipe_max_size)
 
 	# Find the number of events needed to overflow the event notification
 	# pipe buffer. Each LTTng-UST notification is at least 42 bytes long.
@@ -259,12 +254,7 @@ function test_ust_notifier_discarded_count_multi_uid
 	useradd --no-create-home "$new_user"
 	new_uid=$(id -u "$new_user")
 
-	PIPE_SIZE=$("$CURDIR"/default_pipe_size_getter)
-	if [ $? -ne 0 ]; then
-		BAIL_OUT "Failed to get system default pipe size"
-	else
-		diag "Default system pipe size: $PIPE_SIZE bytes"
-	fi
+	PIPE_SIZE=$(get_pipe_max_size)
 
 	# Find the number of events needed to overflow the event notification
 	# pipe buffer. Each LTTng-UST notification is at least 42 bytes long.
@@ -333,12 +323,7 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 	local NR_ITER
 	local new_user="dummy_lttng_test_user"
 
-	PIPE_SIZE=$("$CURDIR"/default_pipe_size_getter)
-	if [ $? -ne 0 ]; then
-		BAIL_OUT "Failed to get system default pipe size"
-	else
-		diag "Default system pipe size: $PIPE_SIZE bytes"
-	fi
+	PIPE_SIZE=$(get_pipe_max_size)
 
 	# Find the number of events needed to overflow the event notification
 	# pipe buffer. Each LTTng-UST notification is at least 42 bytes long.
