@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS = msgpack
+SUBDIRS = msgpack fmt
 
 EXTRA_DIST = optional.hpp fmt nlohmann
 

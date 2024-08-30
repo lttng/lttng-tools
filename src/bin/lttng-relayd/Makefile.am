@@ -35,4 +35,5 @@ lttng_relayd_LDADD = $(URCU_LIBS) \
 		$(top_builddir)/src/common/libcompat.la \
 		$(top_builddir)/src/common/libindex.la \
 		$(top_builddir)/src/common/libhealth.la \
-		$(top_builddir)/src/common/libtestpoint.la
+		$(top_builddir)/src/common/libtestpoint.la \
+		$(top_builddir)/src/vendor/fmt/libfmt.la

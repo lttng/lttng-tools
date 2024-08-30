@@ -598,7 +598,7 @@ template <>
 struct formatter<lttng::sessiond::trace::field_location> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
-	format(const lttng::sessiond::trace::field_location& location, FormatContextType& ctx)
+	format(const lttng::sessiond::trace::field_location& location, FormatContextType& ctx) const
 	{
 		std::string location_str{ "[" };
 
@@ -651,7 +651,7 @@ struct formatter<typename lttng::sessiond::trace::signed_enumeration_type::mappi
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::signed_enumeration_type::mapping::range_t range,
-	       FormatContextType& ctx)
+	       FormatContextType& ctx) const
 	{
 		return format_to(ctx.out(),
 				 details::format_mapping_range<
@@ -666,7 +666,7 @@ struct formatter<typename lttng::sessiond::trace::unsigned_enumeration_type::map
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
 	format(typename lttng::sessiond::trace::unsigned_enumeration_type::mapping::range_t range,
-	       FormatContextType& ctx)
+	       FormatContextType& ctx) const
 	{
 		return format_to(ctx.out(),
 				 details::format_mapping_range<

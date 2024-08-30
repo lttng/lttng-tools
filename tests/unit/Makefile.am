@@ -160,7 +160,8 @@ test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBC
 
 # uuid unit test
 test_uuid_SOURCES = test_uuid.cpp
-test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON_GPL)
+test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # buffer view unit test
 test_buffer_view_SOURCES = test_buffer_view.cpp
@@ -188,4 +189,5 @@ test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS
 
 # Action api
 test_action_SOURCES = test_action.cpp
-test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS)
+test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+	$(top_builddir)/src/vendor/fmt/libfmt.la

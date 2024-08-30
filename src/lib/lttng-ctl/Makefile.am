@@ -27,7 +27,8 @@ EXTRA_DIST = liblttng-ctl.sym
 
 liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/libsessiond-comm.la \
-		$(top_builddir)/src/common/libcommon-lgpl.la
+		$(top_builddir)/src/common/libcommon-lgpl.la \
+		$(top_builddir)/src/vendor/fmt/libfmt.la
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = lttng-ctl.pc

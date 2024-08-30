@@ -77,7 +77,7 @@ template <>
 struct formatter<lttng::sessiond::ust::registry_event> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator
-	format(const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx)
+	format(const lttng::sessiond::ust::registry_event& event, FormatContextType& ctx) const
 	{
 		return format_to(
 			ctx.out(),

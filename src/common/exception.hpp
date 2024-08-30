@@ -216,7 +216,7 @@ template <>
 struct formatter<lttng::source_location> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(const lttng::source_location& location,
-						    FormatContextType& ctx)
+						    FormatContextType& ctx) const
 	{
 		return format_to(ctx.out(),
 				 "{}() {}:{}",

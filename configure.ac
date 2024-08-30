@@ -1268,6 +1268,7 @@ AC_CONFIG_FILES([
 	src/bin/lttng-crash/Makefile
 	src/vendor/Makefile
 	src/vendor/msgpack/Makefile
+	src/vendor/fmt/Makefile
 	tests/Makefile
 	tests/destructive/Makefile
 	tests/meta/Makefile

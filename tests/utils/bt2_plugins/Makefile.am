@@ -23,6 +23,7 @@ lttngtest_la_SOURCES = \
 lttngtest_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
 	$(LD_NO_UNDEFINED) \
+	$(top_builddir)/src/vendor/fmt/libfmt.la \
 	-rpath / -avoid-version -module $(LD_NOTEXT)
 
 lttngtest_la_LIBADD = \

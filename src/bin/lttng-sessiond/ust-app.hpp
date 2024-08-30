@@ -451,7 +451,7 @@ namespace fmt {
 template <>
 struct formatter<ust_app> : formatter<std::string> {
 	template <typename FormatContextType>
-	typename FormatContextType::iterator format(const ust_app& app, FormatContextType& ctx)
+	typename FormatContextType::iterator format(const ust_app& app, FormatContextType& ctx) const
 	{
 		return format_to(
 			ctx.out(),

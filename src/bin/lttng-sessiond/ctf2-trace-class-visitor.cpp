@@ -206,7 +206,7 @@ private:
 						   range_integer_t>::value) {
 				LTTNG_THROW_ERROR(
 					lttng::format("Failed to serialize {}: unexpected role",
-						      _fragment["type"]));
+						      _fragment["type"].get<std::string>()));
 			}
 
 			auto role_array = json::json::array();
@@ -221,7 +221,7 @@ private:
 		if (type.mappings_->size() < 1) {
 			LTTNG_THROW_ERROR(lttng::format(
 				"Failed to serialize {}: enumeration must have at least one mapping",
-				_fragment["type"]));
+				_fragment["type"].get<std::string>()));
 		}
 
 		json::json mappings_value;

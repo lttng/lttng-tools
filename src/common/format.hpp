@@ -16,7 +16,6 @@
 DIAGNOSTIC_PUSH
 DIAGNOSTIC_IGNORE_SUGGEST_ATTRIBUTE_FORMAT
 DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
-#define FMT_HEADER_ONLY
 #include <vendor/fmt/core.h>
 DIAGNOSTIC_POP
 
@@ -31,7 +30,7 @@ template <>
 struct formatter<std::type_info> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(const std::type_info& type_info,
-						    FormatContextType& ctx)
+						    FormatContextType& ctx) const
 	{
 		int status;
 		/*

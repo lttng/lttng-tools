@@ -21,7 +21,7 @@ template <>
 struct formatter<lttng_buffer_type> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(lttng_buffer_type buffer_type,
-						    FormatContextType& ctx)
+						    FormatContextType& ctx) const
 	{
 		auto name = "unknown";
 

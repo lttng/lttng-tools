@@ -94,8 +94,8 @@ liblttng_sessiond_common_la_LIBADD = $(URCU_LIBS) $(KMOD_LIBS) \
 		$(top_builddir)/src/common/libtestpoint.la \
 		$(top_builddir)/src/common/libhealth.la \
 		$(top_builddir)/src/common/libconfig.la \
-		$(top_builddir)/src/common/libstring-utils.la
-
+		$(top_builddir)/src/common/libstring-utils.la \
+		$(top_builddir)/src/vendor/fmt/libfmt.la
 
 if HAVE_LIBLTTNG_UST_CTL
 liblttng_sessiond_common_la_LIBADD += $(UST_CTL_LIBS)

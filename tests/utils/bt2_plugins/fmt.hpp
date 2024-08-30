@@ -21,7 +21,7 @@ template <>
 struct formatter<bt_field_class_type> : formatter<std::string> {
 	template <typename FormatContextType>
 	typename FormatContextType::iterator format(const bt_field_class_type field_class_type,
-						    FormatContextType& ctx)
+						    FormatContextType& ctx) const
 	{
 		const char *name;
 
