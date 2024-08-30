@@ -318,8 +318,7 @@ static ssize_t create_evaluation_from_payload(enum lttng_condition_type type,
 	struct lttng_evaluation *evaluation = nullptr;
 	struct lttng_trace_archive_location *location = nullptr;
 	const struct lttng_evaluation_session_rotation_comm *comm;
-	const lttng_payload_view comm_view =
-		lttng_payload_view_from_view(view, 0, sizeof(*comm));
+	const lttng_payload_view comm_view = lttng_payload_view_from_view(view, 0, sizeof(*comm));
 
 	if (!lttng_payload_view_is_valid(&comm_view)) {
 		goto error;

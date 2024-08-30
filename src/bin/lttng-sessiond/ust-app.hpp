@@ -19,8 +19,8 @@
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
 
-#include <stdint.h>
 #include <list>
+#include <stdint.h>
 
 #define UST_APP_EVENT_LIST_SIZE 32
 

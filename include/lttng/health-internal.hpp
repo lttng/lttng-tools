@@ -26,7 +26,7 @@
 #define HEALTH_POLL_VALUE (1UL << 0)
 #define HEALTH_CODE_VALUE (1UL << 1)
 
-#define HEALTH_IS_IN_POLL(x) ((x) & HEALTH_POLL_VALUE)
+#define HEALTH_IS_IN_POLL(x) ((x) &HEALTH_POLL_VALUE)
 
 struct health_app;
 

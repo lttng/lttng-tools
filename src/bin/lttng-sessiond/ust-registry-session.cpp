@@ -553,8 +553,8 @@ void lsu::registry_session::_accept_on_stream_classes(lst::trace_class_visitor& 
 	ASSERT_LOCKED(_lock);
 
 	const lttng::urcu::lfht_iteration_adapter<lsu::registry_channel,
-					    decltype(lsu::registry_channel::_node),
-					    &lsu::registry_channel::_node>
+						  decltype(lsu::registry_channel::_node),
+						  &lsu::registry_channel::_node>
 		channels_ht_view(*_channels->ht);
 	std::vector<const lttng::sessiond::ust::registry_channel *> sorted_stream_classes(
 		channels_ht_view.begin(), channels_ht_view.end());

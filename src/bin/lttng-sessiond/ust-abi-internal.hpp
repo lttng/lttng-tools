@@ -22,7 +22,7 @@
 
 #ifndef lttng_ust_stringify
 #define lttng_ust_stringify1(x) #x
-#define lttng_ust_stringify(x)  lttng_ust_stringify1(x)
+#define lttng_ust_stringify(x)	lttng_ust_stringify1(x)
 #endif /* lttng_ust_stringify */
 
 #define LTTNG_UST_ABI_SYM_NAME_LEN 256
@@ -139,8 +139,8 @@ enum lttng_ust_abi_counter_bitness {
 };
 
 struct lttng_ust_abi_key_token {
-	uint32_t len;				/* length of child structure. */
-	uint32_t type;				/* enum lttng_ust_abi_key_token_type */
+	uint32_t len; /* length of child structure. */
+	uint32_t type; /* enum lttng_ust_abi_key_token_type */
 	/*
 	 * The size of this structure is fixed because it is embedded into
 	 * children structures.
@@ -150,9 +150,9 @@ struct lttng_ust_abi_key_token {
 /* Length of this structure excludes the following string. */
 struct lttng_ust_abi_key_token_string {
 	struct lttng_ust_abi_key_token parent;
-	uint32_t string_len;		/* string length (includes \0) */
+	uint32_t string_len; /* string length (includes \0) */
 
-	char str[];			/* Null-terminated string following this structure. */
+	char str[]; /* Null-terminated string following this structure. */
 } LTTNG_PACKED;
 
 /*
@@ -165,13 +165,13 @@ struct lttng_ust_abi_key_token_string {
  * a given map dimension.
  */
 enum lttng_ust_abi_key_type {
-	LTTNG_UST_ABI_KEY_TYPE_TOKENS = 0,		/* Dimension key is a set of tokens. */
-	LTTNG_UST_ABI_KEY_TYPE_INTEGER = 1,		/* Dimension key is an integer value. */
+	LTTNG_UST_ABI_KEY_TYPE_TOKENS = 0, /* Dimension key is a set of tokens. */
+	LTTNG_UST_ABI_KEY_TYPE_INTEGER = 1, /* Dimension key is an integer value. */
 };
 
 struct lttng_ust_abi_counter_key_dimension {
-	uint32_t len;				/* length of child structure */
-	uint32_t key_type;			/* enum lttng_ust_abi_key_type */
+	uint32_t len; /* length of child structure */
+	uint32_t key_type; /* enum lttng_ust_abi_key_type */
 	/*
 	 * The size of this structure is fixed because it is embedded into
 	 * children structures.
@@ -202,11 +202,11 @@ enum lttng_ust_abi_counter_action {
 };
 
 struct lttng_ust_abi_counter_event {
-	uint32_t len;				/* length of this structure */
-	uint32_t action;			/* enum lttng_ust_abi_counter_action */
+	uint32_t len; /* length of this structure */
+	uint32_t action; /* enum lttng_ust_abi_counter_action */
 
 	struct lttng_ust_abi_event event;
-	uint32_t number_key_dimensions;		/* array of dimensions is an array of var. len. elements. */
+	uint32_t number_key_dimensions; /* array of dimensions is an array of var. len. elements. */
 
 	/*
 	 * Followed by additional data specific to the action, and by a
@@ -220,9 +220,9 @@ enum lttng_ust_abi_counter_dimension_flags {
 };
 
 struct lttng_ust_abi_counter_dimension {
-	uint32_t key_type;			/* enum lttng_ust_abi_key_type */
-	uint32_t flags;				/* enum lttng_ust_abi_counter_dimension_flags */
-	uint64_t size;				/* dimension size (count of entries) */
+	uint32_t key_type; /* enum lttng_ust_abi_key_type */
+	uint32_t flags; /* enum lttng_ust_abi_counter_dimension_flags */
+	uint64_t size; /* dimension size (count of entries) */
 	uint64_t underflow_index;
 	uint64_t overflow_index;
 } LTTNG_PACKED;

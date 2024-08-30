@@ -498,8 +498,8 @@ void lsu::registry_channel::_accept_on_event_classes(
 	lttng::sessiond::trace::trace_class_visitor& visitor) const
 {
 	const lttng::urcu::lfht_iteration_adapter<lsu::registry_event,
-					    decltype(lsu::registry_event::_node),
-					    &lsu::registry_event::_node>
+						  decltype(lsu::registry_event::_node),
+						  &lsu::registry_event::_node>
 		events_view(*_events->ht);
 
 	/* Copy the event ptrs from the _events ht to this vector which we'll sort. */

@@ -541,36 +541,36 @@ int lttng_ust_ctl_reply_register_event(int sock,
  * Returns 0 on success, negative UST or system error value on error.
  */
 int lttng_ust_ctl_recv_register_key(int sock,
-	int *session_objd,		/* session descriptor (output) */
-	int *map_objd,			/* map descriptor (output) */
-	uint32_t *dimension,		/*
-					 * Against which dimension is
-					 * this key expressed. (output)
-					 */
-	uint64_t **dimension_indexes,	/*
-					 * Indexes (output,
-					 * dynamically
-					 * allocated, must be
-					 * free(3)'d by the
-					 * caller if function
-					 * returns success.)
-					 * Contains @dimension
-					 * elements.
-					 */
-	char **key_string,		/*
-					 * key string (output,
-					 * dynamically allocated, must
-					 * be free(3)'d by the caller if
-					 * function returns success.)
-					 */
-	uint64_t *user_token);
+				    int *session_objd, /* session descriptor (output) */
+				    int *map_objd, /* map descriptor (output) */
+				    uint32_t *dimension, /*
+							  * Against which dimension is
+							  * this key expressed. (output)
+							  */
+				    uint64_t **dimension_indexes, /*
+								   * Indexes (output,
+								   * dynamically
+								   * allocated, must be
+								   * free(3)'d by the
+								   * caller if function
+								   * returns success.)
+								   * Contains @dimension
+								   * elements.
+								   */
+				    char **key_string, /*
+							* key string (output,
+							* dynamically allocated, must
+							* be free(3)'d by the caller if
+							* function returns success.)
+							*/
+				    uint64_t *user_token);
 
 /*
  * Returns 0 on success, negative error value on error.
  */
 int lttng_ust_ctl_reply_register_key(int sock,
-	uint64_t index,			/* Index within dimension (input) */
-	int ret_code);			/* return code. 0 ok, negative error */
+				     uint64_t index, /* Index within dimension (input) */
+				     int ret_code); /* return code. 0 ok, negative error */
 
 /*
  * Returns 0 on success, negative UST or system error value on error.

@@ -72,7 +72,7 @@ enum lttng_crash_type {
 
 /* LTTng ring buffer defines (copied) */
 
-#define HALF_ULONG_BITS(wl) (((wl) * CHAR_BIT) >> 1)
+#define HALF_ULONG_BITS(wl) (((wl) *CHAR_BIT) >> 1)
 
 #define SB_ID_OFFSET_SHIFT(wl) (HALF_ULONG_BITS(wl) + 1)
 #define SB_ID_OFFSET_COUNT(wl) (1UL << SB_ID_OFFSET_SHIFT(wl))
