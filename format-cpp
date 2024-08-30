@@ -6,6 +6,8 @@
 
 expected_formatter_major_version=14
 
+SCRIPT_DIR=$(dirname "$0")/
+
 # Runs the formatter, making sure it's the expected version.
 format_cpp() {
 	local formatter=$1
@@ -35,10 +37,14 @@ format_cpp() {
 	# Using xargs to fail as soon as the formatter fails (`-exec`
 	# won't stop if its subprocess fails).
 	#
+	# Since clang-format 14 does not support ignore files, their
+	# support is crudely emulated here.
+	#
 	# shellcheck disable=SC2086
 	find "$root_dir" -path './src/vendor' -prune \
 		-o -type f \( -name '*\.h' -o -name '*\.hpp' -o -name '*\.c' -o -name '*\.cpp' \) \
-		-not -path '*/\.*' -print0 | xargs -P$(nproc) -n1 -0 $formatter -i --style=file --fallback-style=none
+		-not -path '*/\.*' -print0 | grep -zv -f "$SCRIPT_DIR"/.clang-format-ignore | \
+		xargs -P"$(nproc)" -n1 -0 $formatter -i --style=file --fallback-style=none
 }
 
 if [[ -n "$FORMATTER" ]]; then

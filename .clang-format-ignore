@@ -1,0 +1,2 @@
+extras/bindings/swig/python/lttng_wrap.c
+src/common/filter/filter-parser.cpp
