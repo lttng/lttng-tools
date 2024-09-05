@@ -8,6 +8,7 @@
 #include <common/common.hpp>
 #include <common/compat/errno.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/urcu.hpp>
 
 #include <bin/lttng-sessiond/health-sessiond.hpp>
 #include <bin/lttng-sessiond/session.hpp>
@@ -59,10 +60,9 @@ static char *get_random_string()
  */
 static int find_session_name(const char *name)
 {
-	struct ltt_session *iter;
-
-	cds_list_for_each_entry (iter, &session_list->head, list) {
-		if (strcmp(iter->name, name) == 0) {
+	for (auto *session : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
+		if (strcmp(session->name, name) == 0) {
 			return 0;
 		}
 	}
@@ -73,11 +73,13 @@ static int find_session_name(const char *name)
 static int session_list_count()
 {
 	int count = 0;
-	struct ltt_session *iter;
 
-	cds_list_for_each_entry (iter, &session_list->head, list) {
+	for (auto *session [[maybe_unused]] :
+	     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
 		count++;
 	}
+
 	return count;
 }
 
@@ -86,11 +88,10 @@ static int session_list_count()
  */
 static void empty_session_list()
 {
-	struct ltt_session *iter, *tmp;
-
 	const auto list_lock = lttng::sessiond::lock_session_list();
-	cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
-		session_destroy(iter);
+	for (auto *session : lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+		     session_list->head)) {
+		session_destroy(session);
 	}
 
 	/* Session list must be 0 */
@@ -288,7 +289,6 @@ end:
 static void test_large_session_number()
 {
 	int ret, i, failed = 0;
-	struct ltt_session *iter, *tmp;
 
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		char *tmp_name = get_random_string();
@@ -305,10 +305,12 @@ static void test_large_session_number()
 
 	const auto list_lock = lttng::sessiond::lock_session_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
-		cds_list_for_each_entry_safe (iter, tmp, &session_list->head, list) {
-			ret = destroy_one_session([iter]() {
-				session_get(iter);
-				return ltt_session::make_ref(*iter);
+		for (auto *session :
+		     lttng::urcu::list_iteration_adapter<ltt_session, &ltt_session::list>(
+			     session_list->head)) {
+			ret = destroy_one_session([session]() {
+				session_get(session);
+				return ltt_session::make_ref(*session);
 			}());
 
 			if (ret < 0) {
