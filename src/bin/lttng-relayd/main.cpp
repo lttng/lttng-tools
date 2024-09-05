@@ -1551,13 +1551,15 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	 * but may be unpublished between now and the next GET_NEW_STREAMS from the
 	 * attached live viewer.
 	 */
-	for (auto *viewer_session: lttng::urcu::lfht_iteration_adapter<relay_viewer_session,
-		     decltype(relay_viewer_session::viewer_session_n),
-		     &relay_viewer_session::viewer_session_n>(*viewer_sessions_ht->ht))
-	{
-		for (auto *session_iter: lttng::urcu::rcu_list_iteration_adapter<relay_session,
-			     &relay_session::viewer_session_node>(viewer_session->session_list))
-		{
+	for (auto *viewer_session :
+	     lttng::urcu::lfht_iteration_adapter<relay_viewer_session,
+						 decltype(relay_viewer_session::viewer_session_n),
+						 &relay_viewer_session::viewer_session_n>(
+		     *viewer_sessions_ht->ht)) {
+		for (auto *session_iter :
+		     lttng::urcu::rcu_list_iteration_adapter<relay_session,
+							     &relay_session::viewer_session_node>(
+			     viewer_session->session_list)) {
 			if (session != session_iter) {
 				continue;
 			}

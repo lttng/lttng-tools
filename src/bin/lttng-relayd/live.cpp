@@ -331,7 +331,6 @@ static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 						 decltype(relay_viewer_stream::stream_n),
 						 &relay_viewer_stream::stream_n>(
 		     *viewer_streams_ht->ht)) {
-
 		health_code_update();
 
 		if (!viewer_stream_get(vstream)) {
@@ -364,8 +363,10 @@ static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 	 * Any remaining streams that have been seen, but are perhaps unpublished
 	 * due to a session being destroyed in between attach and get_new_streams.
 	 */
-	for (auto *vstream : lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
-		     &relay_viewer_stream::viewer_stream_node>(viewer_session->unannounced_stream_list)) {
+	for (auto *vstream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+						     &relay_viewer_stream::viewer_stream_node>(
+		     viewer_session->unannounced_stream_list)) {
 		health_code_update();
 		if (!viewer_stream_get(vstream)) {
 			continue;
@@ -390,7 +391,6 @@ static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 		viewer_stream_put(vstream);
 		pthread_mutex_unlock(&viewer_session->unannounced_stream_list_lock);
 		viewer_stream_put(vstream);
-
 	}
 
 	ret = 0;
@@ -411,12 +411,12 @@ end:
  * Return 0 on success or else a negative value.
  */
 int make_viewer_streams(struct relay_session *relay_session,
-			       struct relay_viewer_session *viewer_session,
-			       enum lttng_viewer_seek seek_t,
-			       unsigned int *nb_total,
-			       unsigned int *nb_unsent,
-			       unsigned int *nb_created,
-			       bool *closed)
+			struct relay_viewer_session *viewer_session,
+			enum lttng_viewer_seek seek_t,
+			unsigned int *nb_total,
+			unsigned int *nb_unsent,
+			unsigned int *nb_created,
+			bool *closed)
 {
 	int ret;
 
@@ -430,8 +430,10 @@ int make_viewer_streams(struct relay_session *relay_session,
 	/*
 	 * Check unannounced viewer streams for any that have been seen but are no longer published.
 	 */
-	for (auto *viewer_stream : lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
-		     &relay_viewer_stream::viewer_stream_node>(viewer_session->unannounced_stream_list)) {
+	for (auto *viewer_stream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+						     &relay_viewer_stream::viewer_stream_node>(
+		     viewer_session->unannounced_stream_list)) {
 		if (!viewer_stream_get(viewer_stream)) {
 			DBG("Couldn't get reference for viewer_stream");
 			continue;
@@ -623,12 +625,10 @@ int make_viewer_streams(struct relay_session *relay_session,
 				 * Add the new stream to the list of streams to publish for
 				 * this session.
 				 */
-				pthread_mutex_lock(
-					&viewer_session->unannounced_stream_list_lock);
+				pthread_mutex_lock(&viewer_session->unannounced_stream_list_lock);
 				cds_list_add_rcu(&viewer_stream->viewer_stream_node,
 						 &viewer_session->unannounced_stream_list);
-				pthread_mutex_unlock(
-					&viewer_session->unannounced_stream_list_lock);
+				pthread_mutex_unlock(&viewer_session->unannounced_stream_list_lock);
 				/*
 				 * Get for the unannounced stream list, this should be
 				 * put when the unannounced stream is sent.
@@ -658,7 +658,7 @@ int make_viewer_streams(struct relay_session *relay_session,
 			}
 			/* Update number of total stream counter. */
 			if (nb_total) {
-			   	if (stream->is_metadata) {
+				if (stream->is_metadata) {
 					if (!stream->closed ||
 					    stream->metadata_received >
 						    viewer_stream->metadata_sent) {
@@ -1911,7 +1911,9 @@ static int viewer_get_next_index(struct relay_connection *conn)
 		    conn->viewer_session->current_trace_chunk ?
 			    std::to_string(viewer_session_chunk_id).c_str() :
 			    "None");
-	} else if (vstream->stream_file.trace_chunk && rstream->completed_rotation_count == vstream->last_seen_rotation_count && !rstream->trace_chunk) {
+	} else if (vstream->stream_file.trace_chunk &&
+		   rstream->completed_rotation_count == vstream->last_seen_rotation_count &&
+		   !rstream->trace_chunk) {
 		/*
 		 * When a relay stream is closed, there is a window before the rotation of the
 		 * streams happens, during which the next index may be fetched. If the seen

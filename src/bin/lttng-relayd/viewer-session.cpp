@@ -122,21 +122,24 @@ enum lttng_viewer_attach_return_code viewer_session_attach(struct relay_viewer_s
 		uint32_t unsent = 0;
 		bool closed = false;
 		const int make_viewer_streams_ret = make_viewer_streams(session,
-								  vsession,
-								  LTTNG_VIEWER_SEEK_BEGINNING,
-								  &total,
-								  &unsent,
-								  &created,
-								  &closed);
+									vsession,
+									LTTNG_VIEWER_SEEK_BEGINNING,
+									&total,
+									&unsent,
+									&created,
+									&closed);
 
 		if (make_viewer_streams_ret == 0) {
-			DBG("Created %d new viewer streams while attaching to relay session %" PRIu64, created, session->id);
+			DBG("Created %d new viewer streams while attaching to relay session %" PRIu64,
+			    created,
+			    session->id);
 		} else {
 			/*
 			 * Warning, since the creation of the streams will be retried when
 			 * the viewer next sends the GET_NEW_STREAMS commands.
 			 */
-			WARN("Failed to create new viewer streams while attaching to relay session %" PRIu64 ", ret=%d, total=%d, unsent=%d, created=%d, closed=%d",
+			WARN("Failed to create new viewer streams while attaching to relay session %" PRIu64
+			     ", ret=%d, total=%d, unsent=%d, created=%d, closed=%d",
 			     session->id,
 			     make_viewer_streams_ret,
 			     total,
@@ -223,9 +226,10 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		viewer_stream_put(vstream);
 	}
 
-	for (auto *vstream: lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
-		     &relay_viewer_stream::viewer_stream_node>(vsession->unannounced_stream_list))
-	{
+	for (auto *vstream :
+	     lttng::urcu::rcu_list_iteration_adapter<relay_viewer_stream,
+						     &relay_viewer_stream::viewer_stream_node>(
+		     vsession->unannounced_stream_list)) {
 		if (!viewer_stream_get(vstream)) {
 			continue;
 		}
