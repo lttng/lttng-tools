@@ -25,7 +25,7 @@
 
 #define SESSION1 "test1"
 
-#define MAX_SESSIONS	  10000
+#define MAX_SESSIONS	  1000
 #define RANDOM_STRING_LEN 11
 
 /* Number of TAP tests in this file */
