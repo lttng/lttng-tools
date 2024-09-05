@@ -489,7 +489,11 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	}
 
 	/* Copy event name */
-	strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_ABI_SYM_NAME_LEN);
+	if (lttng_strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
 	local_ust_event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 
 	switch (ev->loglevel_type) {
