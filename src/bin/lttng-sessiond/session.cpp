@@ -472,7 +472,7 @@ static void del_session_ht(struct ltt_session *ls)
 	LTTNG_ASSERT(!ret);
 
 	if (ltt_sessions_ht_empty()) {
-		DBG("Empty ltt_sessions_ht_by_id/name, destroying hast tables");
+		DBG("Empty ltt_sessions_ht_by_id/name, destroying hash tables");
 		ltt_sessions_ht_destroy();
 	}
 }
