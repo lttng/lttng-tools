@@ -76,7 +76,13 @@ private:
 			return;
 		}
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winjected-class-name"
+		static_assert(std::is_class<typename CustomDeleter::deleter>::value,
+			      "CustomDeleter must define a 'deleter' callable class.");
 		const typename CustomDeleter::deleter del;
+#pragma clang diagnostic pop
+
 		del(_value);
 		release();
 	}
