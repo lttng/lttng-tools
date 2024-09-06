@@ -90,10 +90,10 @@ error:
  * On success, returns 0;
  * on error, returns -1.
  */
-static int write_config(const char *file_path, size_t size, char *data)
+static int write_config(const char *file_path, std::size_t size, const char *data)
 {
 	FILE *fp;
-	size_t len;
+	std::size_t len;
 	int ret = 0;
 
 	fp = open_config(file_path, "a");
@@ -266,23 +266,16 @@ char *config_read_session_name_quiet(const char *path)
  */
 int config_add_session_name(const char *path, const char *name)
 {
-	int ret;
-	const char *attr = "session=";
-	/* Max name len accepted plus attribute's len and the NULL byte. */
-	char session_name[NAME_MAX + strlen(attr) + 1];
-
-	/*
-	 * With GNU C <  2.1, snprintf returns -1 if the target buffer is too small;
-	 * With GNU C >= 2.1, snprintf returns the required size (excluding closing null)
-	 */
-	ret = snprintf(session_name, sizeof(session_name), "%s%s\n", attr, name);
-	if (ret < 0) {
-		ret = -1;
-		goto error;
+	std::string attribute;
+	try {
+		attribute = fmt::format("session={}", name);
+	} catch (const std::exception& ex) {
+		ERR_FMT("Failed to format session name attribute for configuration file: {}",
+			ex.what());
+		return -1;
 	}
-	ret = write_config(path, ret, session_name);
-error:
-	return ret;
+
+	return write_config(path, attribute.size(), attribute.c_str());
 }
 
 /*
