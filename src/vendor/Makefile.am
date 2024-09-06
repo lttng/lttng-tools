@@ -10,4 +10,5 @@ noinst_LTLIBRARIES =
 noinst_LTLIBRARIES += argpar/libargpar.la
 argpar_libargpar_la_SOURCES = \
 	argpar/argpar.c \
-	argpar/argpar.h
+	argpar/argpar.h \
+	argpar/argpar.hpp

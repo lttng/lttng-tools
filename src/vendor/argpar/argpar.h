@@ -8,6 +8,7 @@
 #define ARGPAR_ARGPAR_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #if defined(__cplusplus)
 extern "C" {
