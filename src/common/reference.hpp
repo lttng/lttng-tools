@@ -8,6 +8,8 @@
 #ifndef LTTNG_REFERENCE_H
 #define LTTNG_REFERENCE_H
 
+#include <common/macros.hpp>
+
 #include <algorithm>
 #include <utility>
 
@@ -76,12 +78,12 @@ private:
 			return;
 		}
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winjected-class-name"
+		DIAGNOSTIC_PUSH
+		DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME
 		static_assert(std::is_class<typename CustomDeleter::deleter>::value,
 			      "CustomDeleter must define a 'deleter' callable class.");
 		const typename CustomDeleter::deleter del;
-#pragma clang diagnostic pop
+		DIAGNOSTIC_POP
 
 		del(_value);
 		release();

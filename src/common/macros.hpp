@@ -270,6 +270,8 @@ void *memmove(DestinationType *d, const SourceType *s, size_t n) = delete;
 #define DIAGNOSTIC_IGNORE_LOGICAL_OP
 #define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF
+#define DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME \
+	_Pragma("GCC diagnostic ignored \"-Winjected-class-name\"")
 _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #else
 /* GCC */
@@ -285,6 +287,8 @@ _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
 #define DIAGNOSTIC_IGNORE_DUPLICATED_BRANCHES
 #endif /* __GNUG__ && __GNUC__ >= 7 */
 #define DIAGNOSTIC_IGNORE_INVALID_OFFSETOF _Pragma("GCC diagnostic ignored \"-Winvalid-offsetof\"")
+
+#define DIAGNOSTIC_IGNORE_INJECTED_CLASS_NAME
 #endif
 
 /* Used to make specific C++ functions to C code. */
