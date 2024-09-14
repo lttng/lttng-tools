@@ -310,6 +310,13 @@ public:
 							  const_ref::deleter>(session);
 	}
 
+	ltt_session() = default;
+	~ltt_session() = default;
+	ltt_session(ltt_session&&) = delete;
+	ltt_session(const ltt_session&) = delete;
+	ltt_session& operator=(ltt_session&&) = delete;
+	ltt_session& operator=(const ltt_session&) = delete;
+
 	void lock() const noexcept;
 	void unlock() const noexcept;
 
@@ -332,58 +339,58 @@ public:
 	static const_ref find_const_session(ltt_session::id_t id);
 	static const_ref find_const_session(lttng::c_string_view name);
 
-	char name[NAME_MAX];
-	bool has_auto_generated_name;
-	bool name_contains_creation_time;
-	char hostname[LTTNG_HOST_NAME_MAX]; /* Local hostname. */
+	char name[NAME_MAX] = {};
+	bool has_auto_generated_name = false;
+	bool name_contains_creation_time = false;
+	char hostname[LTTNG_HOST_NAME_MAX] = {}; /* Local hostname. */
 	/* Path of the last closed chunk. */
-	char last_chunk_path[LTTNG_PATH_MAX];
-	time_t creation_time;
-	struct ltt_kernel_session *kernel_session;
-	struct ltt_ust_session *ust_session;
-	mutable struct urcu_ref ref_count;
+	char last_chunk_path[LTTNG_PATH_MAX] = {};
+	time_t creation_time = 0;
+	struct ltt_kernel_session *kernel_session = nullptr;
+	struct ltt_ust_session *ust_session = nullptr;
+	mutable struct urcu_ref ref_count = {};
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use
 	 * session_lock() and session_unlock() for that.
 	 */
-	mutable pthread_mutex_t _lock;
-	struct cds_list_head list;
+	mutable pthread_mutex_t _lock = PTHREAD_MUTEX_INITIALIZER;
+	struct cds_list_head list = {};
 	/* session unique identifier */
-	id_t id;
+	id_t id = 0;
 	/* Indicates if the session has been added to the session list and ht.*/
-	bool published;
+	bool published = false;
 	/* Indicates if a destroy command has been applied to this session. */
-	bool destroyed;
+	bool destroyed = false;
 	/* UID/GID of the user owning the session */
-	uid_t uid;
-	gid_t gid;
+	uid_t uid = -1;
+	gid_t gid = -1;
 	/*
 	 * Network session handle. A value of 0 means that there is no remote
 	 * session established.
 	 */
-	uint64_t net_handle;
+	uint64_t net_handle = 0;
 	/*
 	 * This consumer is only set when the create_session_uri call is made.
 	 * This contains the temporary information for a consumer output. Upon
 	 * creation of the UST or kernel session, this consumer, if available, is
 	 * copied into those sessions.
 	 */
-	struct consumer_output *consumer;
+	struct consumer_output *consumer = nullptr;
 	/*
 	 * Indicates whether or not the user has specified an output directory
 	 * or if it was configured using the default configuration.
 	 */
-	bool has_user_specified_directory;
+	bool has_user_specified_directory = false;
 	/* Did at least ONE start command has been triggered?. */
-	bool has_been_started;
+	bool has_been_started = false;
 	/* Is the session active? */
-	bool active;
+	bool active = false;
 
 	/* Snapshot representation in a session. */
-	struct snapshot snapshot;
+	struct snapshot snapshot = {};
 	/* Indicate if the session has to output the traces or not. */
-	unsigned int output_traces;
+	bool output_traces = false;
 	/*
 	 * This session is in snapshot mode. This means that channels enabled
 	 * will be set in overwrite mode by default and must be in mmap
@@ -391,42 +398,42 @@ public:
 	 * is not in "snapshot_mode". This parameter only affects channel
 	 * creation defaults.
 	 */
-	unsigned int snapshot_mode;
+	bool snapshot_mode = false;
 	/*
 	 * A session that has channels that don't use 'mmap' output can't be
 	 * used to capture snapshots. This is set to true whenever a
 	 * 'splice' kernel channel is enabled.
 	 */
-	bool has_non_mmap_channel;
+	bool has_non_mmap_channel = false;
 	/*
 	 * Timer set when the session is created for live reading.
 	 */
-	unsigned int live_timer;
+	unsigned int live_timer = 0;
 	/*
 	 * Path where to keep the shared memory files.
 	 */
-	char shm_path[PATH_MAX];
+	char shm_path[PATH_MAX] = {};
 	/*
 	 * Node in ltt_sessions_ht_by_id.
 	 */
-	struct lttng_ht_node_u64 node;
+	struct lttng_ht_node_u64 node = {};
 	/*
 	 * Node in ltt_sessions_ht_by_name.
 	 */
-	struct lttng_ht_node_str node_by_name;
+	struct lttng_ht_node_str node_by_name = {};
 	/*
 	 * Timer to check periodically if a relay and/or consumer has completed
 	 * the last rotation.
 	 */
-	bool rotation_pending_check_timer_enabled;
-	timer_t rotation_pending_check_timer;
+	bool rotation_pending_check_timer_enabled = false;
+	timer_t rotation_pending_check_timer = nullptr;
 	/* Timer to periodically rotate a session. */
-	bool rotation_schedule_timer_enabled;
-	timer_t rotation_schedule_timer;
+	bool rotation_schedule_timer_enabled = false;
+	timer_t rotation_schedule_timer = nullptr;
 	/* Value for periodic rotations, 0 if disabled. */
-	uint64_t rotate_timer_period;
+	uint64_t rotate_timer_period = 0;
 	/* Value for size-based rotations, 0 if disabled. */
-	uint64_t rotate_size;
+	uint64_t rotate_size = 0;
 	/*
 	 * Keep a state if this session was rotated after the last stop command.
 	 * We only allow one rotation after a stop. At destroy, we also need to
@@ -434,33 +441,33 @@ public:
 	 * chunk. After a stop followed by rotate, all subsequent clear
 	 * (without prior start) will succeed, but will be effect-less.
 	 */
-	bool rotated_after_last_stop;
+	bool rotated_after_last_stop = false;
 	/*
 	 * Track whether the session was cleared after last stop. All subsequent
 	 * clear (without prior start) will succeed, but will be effect-less. A
 	 * subsequent rotate (without prior start) will return an error.
 	 */
-	bool cleared_after_last_stop;
+	bool cleared_after_last_stop = false;
 	/*
 	 * True if the session has had an explicit non-quiet rotation.
 	 */
-	bool rotated;
+	bool rotated = false;
 	/*
 	 * Trigger for size-based rotations.
 	 */
-	struct lttng_trigger *rotate_trigger;
-	LTTNG_OPTIONAL(uint64_t) most_recent_chunk_id;
-	struct lttng_trace_chunk *current_trace_chunk;
-	struct lttng_trace_chunk *chunk_being_archived;
+	struct lttng_trigger *rotate_trigger = nullptr;
+	LTTNG_OPTIONAL(uint64_t) most_recent_chunk_id = {};
+	struct lttng_trace_chunk *current_trace_chunk = nullptr;
+	struct lttng_trace_chunk *chunk_being_archived = nullptr;
 	/* Current state of a rotation. */
-	enum lttng_rotation_state rotation_state;
-	bool quiet_rotation;
-	char *last_archived_chunk_name;
-	LTTNG_OPTIONAL(uint64_t) last_archived_chunk_id;
-	struct lttng_dynamic_array destroy_notifiers;
-	struct lttng_dynamic_array clear_notifiers;
+	enum lttng_rotation_state rotation_state = LTTNG_ROTATION_STATE_NO_ROTATION;
+	bool quiet_rotation = false;
+	char *last_archived_chunk_name = nullptr;
+	LTTNG_OPTIONAL(uint64_t) last_archived_chunk_id = {};
+	struct lttng_dynamic_array destroy_notifiers = {};
+	struct lttng_dynamic_array clear_notifiers = {};
 	/* Session base path override. Set non-null. */
-	char *base_path;
+	char *base_path = nullptr;
 };
 
 /*
@@ -537,19 +544,25 @@ public:
 			/*
 			 * parameter doesn't have enough information to do this safely; it it
 			 * delegated to its parent which uses placement new.
+			 *
+			 * NOLINTBEGIN(modernize-use-equals-default)
+			 *
+			 * default can't be used as the default constructor and destructors are
+			 * implicitly deleted.
 			 */
 			parameter()
 			{
 			}
 
+			~parameter()
+			{
+			}
+			/* NOLINTEND(modernize-use-equals-default) */
+
 			parameter(const parameter&) = delete;
 			parameter(const parameter&&) = delete;
 			parameter& operator=(parameter&) = delete;
 			parameter& operator=(parameter&&) = delete;
-
-			~parameter()
-			{
-			}
 
 			std::string name;
 			ltt_session::id_t id;

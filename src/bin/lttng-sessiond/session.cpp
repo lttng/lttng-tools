@@ -1073,12 +1073,15 @@ static void session_release(struct urcu_ref *ref)
 		trace_ust_free_session(usess);
 		session->ust_session = nullptr;
 	}
+
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	lttng_dynamic_array_reset(&session->clear_notifiers);
 	free(session->last_archived_chunk_name);
 	free(session->base_path);
 	lttng_trigger_put(session->rotate_trigger);
-	free(session);
+
+	delete session;
+
 	if (session_published) {
 		/*
 		 * Notify after free-ing to ensure the memory is
@@ -1191,9 +1194,11 @@ session_create(const char *name, uid_t uid, gid_t gid, struct ltt_session **out_
 			goto error;
 		}
 	}
-	new_session = zmalloc<ltt_session>();
-	if (!new_session) {
-		PERROR("Failed to allocate an ltt_session structure");
+
+	try {
+		new_session = new ltt_session;
+	} catch (std::bad_alloc& ex) {
+		ERR_FMT("Failed to allocate an ltt_session: {}", ex.what());
 		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
 	}
