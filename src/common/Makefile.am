@@ -51,6 +51,7 @@ libcommon_lgpl_la_SOURCES = \
 	buffer-view.hpp buffer-view.cpp \
 	channel.cpp \
 	ctl/format.hpp \
+	ctl/memory.hpp \
 	compiler.hpp \
 	conditions/buffer-usage.cpp \
 	conditions/condition.cpp \
@@ -94,6 +95,7 @@ libcommon_lgpl_la_SOURCES = \
 	log-level-rule.cpp \
 	make-unique.hpp \
 	make-unique-wrapper.hpp \
+	math.hpp \
 	meta-helpers.hpp \
 	mi-lttng.cpp mi-lttng.hpp \
 	notification.cpp \

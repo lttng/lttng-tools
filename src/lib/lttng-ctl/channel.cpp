@@ -160,8 +160,11 @@ lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 	CDS_INIT_LIST_HEAD(&channel->pending_notifications.list);
 
 	{
-		const auto length = std::snprintf(
-			nullptr, 0, DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK, rundir_path.get()) + 1;
+		const auto length = std::snprintf(nullptr,
+						  0,
+						  DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
+						  rundir_path.get()) +
+			1;
 
 		std::vector<char> sock_path;
 		sock_path.reserve(length);

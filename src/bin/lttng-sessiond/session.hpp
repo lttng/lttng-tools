@@ -9,6 +9,7 @@
 #define _LTT_SESSION_H
 
 #include "consumer.hpp"
+#include "domain.hpp"
 #include "snapshot.hpp"
 #include "trace-kernel.hpp"
 #include "trace-ust.hpp"
@@ -320,6 +321,9 @@ public:
 	void lock() const noexcept;
 	void unlock() const noexcept;
 
+	lttng::sessiond::domain& get_domain(lttng::sessiond::domain_class domain);
+	const lttng::sessiond::domain& get_domain(lttng::sessiond::domain_class domain) const;
+
 	lttng::sessiond::user_space_consumer_channel_keys user_space_consumer_channel_keys() const;
 
 	/*
@@ -468,6 +472,11 @@ public:
 	struct lttng_dynamic_array clear_notifiers = {};
 	/* Session base path override. Set non-null. */
 	char *base_path = nullptr;
+
+	lttng::sessiond::multi_channel_domain user_space_domain =
+		lttng::sessiond::multi_channel_domain(lttng::sessiond::domain_class::USER_SPACE);
+	lttng::sessiond::multi_channel_domain kernel_space_domain =
+		lttng::sessiond::multi_channel_domain(lttng::sessiond::domain_class::KERNEL_SPACE);
 };
 
 /*
@@ -597,7 +606,7 @@ public:
 
 	query_parameter query_parameter;
 };
-} // namespace exceptions
+} /* namespace exceptions */
 } /* namespace sessiond */
 } /* namespace lttng */
 

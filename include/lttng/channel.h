@@ -546,8 +546,8 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel
 @sa lttng_channel_set_monitor_timer_interval() --
     Sets the monitor timer period property of a channel summary.
 */
-LTTNG_EXPORT extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *channel,
-								 uint64_t *period);
+LTTNG_EXPORT extern int
+lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, uint64_t *period);
 
 /*!
 @brief
@@ -623,7 +623,7 @@ channels.
 @sa lttng_channel_set_blocking_timeout() --
     Sets the blocking timeout property of a channel summary.
 */
-LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(struct lttng_channel *channel,
+LTTNG_EXPORT extern int lttng_channel_get_blocking_timeout(const struct lttng_channel *channel,
 							   int64_t *timeout);
 
 /*!

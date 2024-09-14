@@ -8,6 +8,8 @@ liblttng_ctl_la_SOURCES = \
 		deprecated-symbols.cpp \
 		destruction-handle.cpp \
 		event.cpp \
+		event-rule-convert.cpp \
+		event-rule-convert.hpp \
 		load.cpp \
 		lttng-ctl.cpp \
 		lttng-ctl-health.cpp \

@@ -72,7 +72,7 @@
 								<enabled>false</enabled>
 								<type>TRACEPOINT</type>
 								<loglevel_type>RANGE</loglevel_type>
-								<loglevel>-1</loglevel>
+								<loglevel>5</loglevel>
 							</event>
 							<event>
 								<name>uevent_disabled</name>

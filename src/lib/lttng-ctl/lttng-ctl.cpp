@@ -11,6 +11,7 @@
  */
 
 #define _LGPL_SOURCE
+#include "event-rule-convert.hpp"
 #include "lttng-ctl-helper.hpp"
 
 #include <common/align.hpp>
@@ -22,12 +23,15 @@
 #include <common/defaults.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/exception.hpp>
 #include <common/filter/filter-ast.hpp>
+/* NOLINTNEXTLINE */
 #include <common/filter/filter-parser.hpp>
 #include <common/filter/memstream.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/tracker.hpp>
 #include <common/unix.hpp>
@@ -1020,77 +1024,74 @@ int lttng_enable_event_with_filter(struct lttng_handle *handle,
 }
 
 /*
- * Depending on the event, return a newly allocated agent filter expression or
- * NULL if not applicable.
+ * Depending on the event, return a new agent filter expression or
+ * an empty string if not applicable.
  *
- * An event with NO loglevel and the name is * will return NULL.
+ * An event with NO loglevel and the name is * will return an empty string.
  */
-static char *
-set_agent_filter(const char *filter, struct lttng_event *ev, struct lttng_domain *domain)
+static std::string build_agent_filter_expression(const char *original_filter_expression,
+						 const lttng_event& ev,
+						 const lttng_domain& domain)
 {
-	int err;
-	char *agent_filter = nullptr;
+	std::string agent_filter;
 
-	LTTNG_ASSERT(ev);
-	LTTNG_ASSERT(domain);
+	try {
+		/* Don't add filter for the '*' event. */
+		std::string logger_name_filter;
 
-	/* Don't add filter for the '*' event. */
-	if (strcmp(ev->name, "*") != 0) {
-		if (filter) {
-			err = asprintf(
-				&agent_filter, "(%s) && (logger_name == \"%s\")", filter, ev->name);
+		if (lttng::c_string_view(ev.name) != "*" &&
+		    lttng::c_string_view(ev.name).len() != 0) {
+			logger_name_filter = fmt::format("logger_name == \"{}\"", ev.name);
+		}
+
+		if (original_filter_expression == nullptr) {
+			agent_filter = std::move(logger_name_filter);
 		} else {
-			err = asprintf(&agent_filter, "logger_name == \"%s\"", ev->name);
-		}
-		if (err < 0) {
-			PERROR("asprintf");
-			goto error;
-		}
-	}
-
-	/* Add loglevel filtering if any for the agent domains. */
-	if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-		const char *op;
-
-		if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
-			/*
-			 * Log4j2 is the only agent domain for which more severe
-			 * logging levels have a lower numerical value.
-			 */
-			if (domain->type == LTTNG_DOMAIN_LOG4J2) {
-				op = "<=";
+			if (logger_name_filter.size() > 0) {
+				agent_filter = fmt::format("({}) && ({})",
+							   original_filter_expression,
+							   logger_name_filter);
 			} else {
-				op = ">=";
+				agent_filter.append(original_filter_expression);
 			}
-		} else {
-			op = "==";
 		}
 
-		if (filter || agent_filter) {
-			char *new_filter;
+		/* Add loglevel filtering if any for the agent domains. */
+		if (ev.loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+			std::string op;
 
-			err = asprintf(&new_filter,
-				       "(%s) && (int_loglevel %s %d)",
-				       agent_filter ? agent_filter : filter,
-				       op,
-				       ev->loglevel);
-			if (agent_filter) {
-				free(agent_filter);
+			if (ev.loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
+				/*
+				 * Log4j2 is the only agent domain for which more severe logging
+				 * levels have a lower numerical value.
+				 */
+				if (domain.type == LTTNG_DOMAIN_LOG4J2) {
+					op = "<=";
+				} else {
+					op = ">=";
+				}
+			} else {
+				op = "==";
 			}
-			agent_filter = new_filter;
-		} else {
-			err = asprintf(&agent_filter, "int_loglevel %s %d", op, ev->loglevel);
+
+			if (original_filter_expression != nullptr || !agent_filter.empty()) {
+				std::string existing_filter = !agent_filter.empty() ?
+					agent_filter :
+					std::string(original_filter_expression);
+
+				agent_filter = fmt::format("({}) && (int_loglevel {} {})",
+							   existing_filter,
+							   op,
+							   ev.loglevel);
+			} else {
+				agent_filter = fmt::format("int_loglevel {} {}", op, ev.loglevel);
+			}
 		}
-		if (err < 0) {
-			PERROR("asprintf");
-			goto error;
-		}
+	} catch (const std::exception& e) {
+		return std::string();
 	}
 
 	return agent_filter;
-error:
-	free(agent_filter);
-	return nullptr;
 }
 
 /*
@@ -1108,35 +1109,48 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 				       int exclusion_count,
 				       char **exclusion_list)
 {
-	struct lttcomm_session_msg lsm = {
+	lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_ENABLE_EVENT,
 		.session = {},
 		.domain = {},
 		.u = {},
 		.fd_count = 0,
 	};
-	struct lttng_payload payload;
+	lttng_payload payload;
 	int ret = 0;
-	unsigned int free_filter_expression = 0;
-	struct filter_parser_ctx *ctx = nullptr;
-	size_t bytecode_len = 0;
 
-	/*
-	 * We have either a filter or some exclusions, so we need to set up
-	 * a variable-length payload from where to send the data.
-	 */
-	lttng_payload_init(&payload);
+	if (ev->type == LTTNG_EVENT_ALL) {
+		/*
+		 * Since we modify the user's parameter, ensure it is set back to its original value
+		 * on exit.
+		 */
+		const auto restore_event_type_value =
+			lttng::make_scope_exit([&ev]() noexcept { ev->type = LTTNG_EVENT_ALL; });
 
-	/*
-	 * Cast as non-const since we may replace the filter expression
-	 * by a dynamically allocated string. Otherwise, the original
-	 * string is not modified.
-	 */
-	char *filter_expression = (char *) original_filter_expression;
+		ev->type = LTTNG_EVENT_TRACEPOINT;
+		const auto tp_ret = lttng_enable_event_with_exclusions(handle,
+								       ev,
+								       channel_name,
+								       original_filter_expression,
+								       exclusion_count,
+								       exclusion_list);
+		if (tp_ret < 0 || handle->domain.type != LTTNG_DOMAIN_KERNEL) {
+			return tp_ret;
+		}
+
+		ev->type = LTTNG_EVENT_SYSCALL;
+		const auto syscall_ret =
+			lttng_enable_event_with_exclusions(handle,
+							   ev,
+							   channel_name,
+							   original_filter_expression,
+							   exclusion_count,
+							   exclusion_list);
+		return syscall_ret;
+	}
 
 	if (handle == nullptr || ev == nullptr) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	/*
@@ -1144,10 +1158,21 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	 * anyway, so treat this corner-case early to eliminate
 	 * lttng_fmemopen error for 0-byte allocation.
 	 */
-	if (filter_expression && filter_expression[0] == '\0') {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+	if (original_filter_expression && strlen(original_filter_expression) == 0) {
+		return -LTTNG_ERR_INVALID;
 	}
+
+	/*
+	 * We have either a filter or some exclusions, so we need to set up
+	 * a variable-length payload from where to send the data.
+	 */
+	lttng_payload_init(&payload);
+	/* Clean-up payload when returning. */
+	auto cleanup_payload =
+		lttng::make_scope_exit([&payload]() noexcept { lttng_payload_reset(&payload); });
+
+	/* The filter expression may be modified below in the case of agent domains. */
+	std::string filter_expression(original_filter_expression ?: "");
 
 	if (ev->name[0] == '\0') {
 		/* Enable all events. */
@@ -1155,74 +1180,128 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		LTTNG_ASSERT(ret == 0);
 	}
 
-	/* Parse filter expression. */
-	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
-	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	if (handle->domain.type == LTTNG_DOMAIN_JUL || handle->domain.type == LTTNG_DOMAIN_LOG4J ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
-		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
-		    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
-		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
-			char *agent_filter;
-
-			/* Setup agent filter if needed. */
-			agent_filter = set_agent_filter(filter_expression, ev, &handle->domain);
-			if (!agent_filter) {
-				if (!filter_expression) {
-					/*
-					 * No agent and no filter, just skip
-					 * everything below.
-					 */
-					goto serialize;
-				}
-			} else {
-				/*
-				 * With an agent filter, the original filter has
-				 * been added to it thus replace the filter
-				 * expression.
-				 */
-				filter_expression = agent_filter;
-				free_filter_expression = 1;
-			}
-		}
-
-		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) == LTTNG_FILTER_MAX_LEN) {
-			ret = -LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-
-		ret = filter_parser_ctx_create_from_filter_expression(filter_expression, &ctx);
-		if (ret) {
-			goto error;
-		}
-
-		bytecode_len = bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b);
-		if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
-			ret = -LTTNG_ERR_FILTER_INVAL;
-			goto error;
+		/* Setup agent filter if needed. */
+		try {
+			filter_expression = build_agent_filter_expression(
+				original_filter_expression, *ev, handle->domain);
+		} catch (const std::bad_alloc& bad_alloc_ex) {
+			return -LTTNG_ERR_NOMEM;
+		} catch (...) {
+			return -LTTNG_ERR_UNK;
 		}
 	}
 
-serialize:
+	if (handle->domain.type == LTTNG_DOMAIN_KERNEL && ev->type == LTTNG_EVENT_ALL) {
+		/*
+		 * Syscall and tracepoints are different instrumentation types that must be
+		 * enabled by separate event rules.
+		 */
+		ev->type = LTTNG_EVENT_SYSCALL;
+		ret = lttng_enable_event_with_exclusions(handle,
+							 ev,
+							 channel_name,
+							 original_filter_expression,
+							 exclusion_count,
+							 exclusion_list);
+		if (ret < 0) {
+			return ret;
+		}
+
+		ev->type = LTTNG_EVENT_TRACEPOINT;
+		ret = lttng_enable_event_with_exclusions(handle,
+							 ev,
+							 channel_name,
+							 original_filter_expression,
+							 exclusion_count,
+							 exclusion_list);
+		if (ret < 0) {
+			return ret;
+		}
+
+		return ret;
+	}
+
+	std::vector<lttng::c_string_view> exclusions_vec;
+	if (exclusion_count > 0) {
+		exclusions_vec.reserve(exclusion_count);
+
+		for (unsigned int i = 0; i < exclusion_count; i++) {
+			exclusions_vec.emplace_back(exclusion_list[i]);
+		}
+	}
+
+	lttng::event_rule_uptr event_rule;
+	try {
+		event_rule = lttng::ctl::create_event_rule_from_lttng_event(
+			*ev,
+			handle->domain.type,
+			original_filter_expression ?
+				nonstd::make_optional(original_filter_expression) :
+				nonstd::nullopt,
+			exclusions_vec);
+	} catch (const lttng::ctl::error& ctl_error) {
+		DBG("%s", ctl_error.what());
+		return -LTTNG_ERR_INVALID;
+	} catch (const std::exception& ex) {
+		DBG("%s", ex.what());
+		return -LTTNG_ERR_UNK;
+	}
+
+	filter_parser_ctx *ctx = nullptr;
+
+	if (filter_expression.size() > 0) {
+		ret = filter_parser_ctx_create_from_filter_expression(filter_expression.c_str(),
+								      &ctx);
+		if (ret) {
+			return -LTTNG_ERR_INVALID;
+		}
+	}
+
+	const auto free_bytecode_ir_and_parser_context = lttng::make_scope_exit([ctx]() noexcept {
+		if (!ctx) {
+			return;
+		}
+
+		filter_bytecode_free(ctx);
+		filter_ir_free(ctx);
+		filter_parser_ctx_free(ctx);
+	});
+
+	const auto bytecode_len =
+		ctx ? (bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b)) : 0;
+	if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
+		return -LTTNG_ERR_INVALID;
+	}
+
 	ret = lttng_event_serialize(ev,
 				    exclusion_count,
 				    exclusion_list,
-				    filter_expression,
+				    filter_expression.size() > 0 ? filter_expression.c_str() :
+								   nullptr,
 				    bytecode_len,
 				    (ctx && bytecode_len) ? &ctx->bytecode->b : nullptr,
 				    &payload);
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
+	}
+
+	if (!lttng_event_rule_validate(event_rule.get())) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	ret = lttng_event_rule_serialize(event_rule.get(), &payload);
+	if (ret) {
+		return -LTTNG_ERR_INVALID;
 	}
 
 	/* If no channel name, send empty string. */
 	ret = lttng_strncpy(
 		lsm.u.enable.channel_name, channel_name ?: "", sizeof(lsm.u.enable.channel_name));
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	/* Domain */
@@ -1231,67 +1310,46 @@ serialize:
 	/* Session name */
 	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
-	/* Length of the serialized event. */
+	/* Length of the serialized event rule. */
 	lsm.u.enable.length = (uint32_t) payload.buffer.size;
 
-	{
-		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
-		const int fd_count = lttng_payload_view_get_fd_handle_count(&view);
-		int fd_to_send;
+	lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
+	const auto fd_count = lttng_payload_view_get_fd_handle_count(&view);
 
-		if (fd_count < 0) {
-			goto error;
+	if (fd_count < 0) {
+		return -LTTNG_ERR_UNK;
+	}
+
+	LTTNG_ASSERT(fd_count == 0 || fd_count == 2);
+
+	std::vector<int> fds_to_send;
+
+	fds_to_send.reserve(fd_count);
+	for (auto i = 0; i < fd_count; i++) {
+		fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
+
+		if (!h) {
+			return -LTTNG_ERR_UNK;
 		}
 
-		LTTNG_ASSERT(fd_count == 0 || fd_count == 1);
-		if (fd_count == 1) {
-			struct fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
-
-			if (!h) {
-				goto error;
-			}
-
-			fd_to_send = fd_handle_get_fd(h);
-			fd_handle_put(h);
-		}
-
-		lsm.fd_count = fd_count;
-
-		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-							fd_count ? &fd_to_send : nullptr,
-							fd_count,
-							view.buffer.size ? view.buffer.data :
-									   nullptr,
-							view.buffer.size,
-							nullptr,
-							nullptr,
-							nullptr);
+		const auto fd_to_send = fd_handle_get_fd(h);
+		fds_to_send.push_back(fd_to_send);
+		fd_handle_put(h);
 	}
 
-error:
-	if (filter_expression && ctx) {
-		filter_bytecode_free(ctx);
-		filter_ir_free(ctx);
-		filter_parser_ctx_free(ctx);
-	}
-	if (free_filter_expression) {
-		/*
-		 * The filter expression has been replaced and must be freed as
-		 * it is not the original filter expression received as a
-		 * parameter.
-		 */
-		free(filter_expression);
-	}
-	/*
-	 * Return directly to the caller and don't ask the sessiond since
-	 * something went wrong in the parsing of data above.
-	 */
-	lttng_payload_reset(&payload);
-	return ret;
+	lsm.fd_count = fd_count;
+
+	return lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+						 fd_count ? fds_to_send.data() : nullptr,
+						 fd_count,
+						 view.buffer.size ? view.buffer.data : nullptr,
+						 view.buffer.size,
+						 nullptr,
+						 nullptr,
+						 nullptr);
 }
 
 int lttng_disable_event_ext(struct lttng_handle *handle,
@@ -1299,35 +1357,18 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			    const char *channel_name,
 			    const char *original_filter_expression)
 {
-	struct lttcomm_session_msg lsm = {
+	lttcomm_session_msg lsm = {
 		.cmd_type = LTTCOMM_SESSIOND_COMMAND_DISABLE_EVENT,
 		.session = {},
 		.domain = {},
 		.u = {},
 		.fd_count = 0,
 	};
-	struct lttng_payload payload;
+	lttng_payload payload;
 	int ret = 0;
-	unsigned int free_filter_expression = 0;
-	struct filter_parser_ctx *ctx = nullptr;
-	size_t bytecode_len = 0;
-
-	/*
-	 * We have either a filter or some exclusions, so we need to set up
-	 * a variable-length payload from where to send the data.
-	 */
-	lttng_payload_init(&payload);
-
-	/*
-	 * Cast as non-const since we may replace the filter expression
-	 * by a dynamically allocated string. Otherwise, the original
-	 * string is not modified.
-	 */
-	char *filter_expression = (char *) original_filter_expression;
 
 	if (handle == nullptr || ev == nullptr) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	/*
@@ -1335,79 +1376,105 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 	 * anyway, so treat this corner-case early to eliminate
 	 * lttng_fmemopen error for 0-byte allocation.
 	 */
-	if (filter_expression && filter_expression[0] == '\0') {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+	if (original_filter_expression && strlen(original_filter_expression) == 0) {
+		return -LTTNG_ERR_INVALID;
 	}
 
-	/* Parse filter expression. */
-	if (filter_expression != nullptr || handle->domain.type == LTTNG_DOMAIN_JUL ||
-	    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
+	/*
+	 * We have either a filter or some exclusions, so we need to set up
+	 * a variable-length payload from where to send the data.
+	 */
+	lttng_payload_init(&payload);
+	/* Clean-up payload when returning. */
+	auto cleanup_payload =
+		lttng::make_scope_exit([&payload]() noexcept { lttng_payload_reset(&payload); });
+
+	/* The filter expression may be modified below in the case of agent domains. */
+	std::string filter_expression(original_filter_expression ?: "");
+
+	if (handle->domain.type == LTTNG_DOMAIN_JUL || handle->domain.type == LTTNG_DOMAIN_LOG4J ||
 	    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
 	    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
-		if (handle->domain.type == LTTNG_DOMAIN_JUL ||
-		    handle->domain.type == LTTNG_DOMAIN_LOG4J ||
-		    handle->domain.type == LTTNG_DOMAIN_LOG4J2 ||
-		    handle->domain.type == LTTNG_DOMAIN_PYTHON) {
-			char *agent_filter;
-
-			/* Setup agent filter if needed. */
-			agent_filter = set_agent_filter(filter_expression, ev, &handle->domain);
-			if (!agent_filter) {
-				if (!filter_expression) {
-					/*
-					 * No JUL and no filter, just skip
-					 * everything below.
-					 */
-					goto serialize;
-				}
-			} else {
-				/*
-				 * With an agent filter, the original filter has
-				 * been added to it thus replace the filter
-				 * expression.
-				 */
-				filter_expression = agent_filter;
-				free_filter_expression = 1;
-			}
-		}
-
-		if (strnlen(filter_expression, LTTNG_FILTER_MAX_LEN) == LTTNG_FILTER_MAX_LEN) {
-			ret = -LTTNG_ERR_FILTER_INVAL;
-			goto error;
-		}
-
-		ret = filter_parser_ctx_create_from_filter_expression(filter_expression, &ctx);
-		if (ret) {
-			goto error;
-		}
-
-		bytecode_len = bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b);
-		if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
-			ret = -LTTNG_ERR_FILTER_INVAL;
-			goto error;
+		/* Setup agent filter if needed. */
+		try {
+			filter_expression = build_agent_filter_expression(
+				original_filter_expression, *ev, handle->domain);
+		} catch (const std::bad_alloc& bad_alloc_ex) {
+			return -LTTNG_ERR_NOMEM;
+		} catch (...) {
+			return -LTTNG_ERR_UNK;
 		}
 	}
 
-serialize:
+	const std::vector<lttng::c_string_view> exclusions_vec;
+	lttng::event_rule_uptr event_rule;
+	if (ev->type != LTTNG_EVENT_ALL) {
+		try {
+			event_rule = lttng::ctl::create_event_rule_from_lttng_event(
+				*ev,
+				handle->domain.type,
+				original_filter_expression ?
+					nonstd::make_optional(original_filter_expression) :
+					nonstd::nullopt,
+				exclusions_vec);
+		} catch (const lttng::ctl::error& ctl_error) {
+			DBG("%s", ctl_error.what());
+			return -LTTNG_ERR_INVALID;
+		} catch (const std::exception& ex) {
+			DBG("%s", ex.what());
+			return -LTTNG_ERR_UNK;
+		}
+	}
+
+	filter_parser_ctx *ctx = nullptr;
+	if (filter_expression.size() > 0) {
+		ret = filter_parser_ctx_create_from_filter_expression(filter_expression.c_str(),
+								      &ctx);
+		if (ret) {
+			return -LTTNG_ERR_INVALID;
+		}
+	}
+
+	const auto free_bytecode_ir_and_parser_context = lttng::make_scope_exit([ctx]() noexcept {
+		if (!ctx) {
+			return;
+		}
+
+		filter_bytecode_free(ctx);
+		filter_ir_free(ctx);
+		filter_parser_ctx_free(ctx);
+	});
+
+	const auto bytecode_len =
+		ctx ? (bytecode_get_len(&ctx->bytecode->b) + sizeof(ctx->bytecode->b)) : 0;
+	if (bytecode_len > LTTNG_FILTER_MAX_LEN) {
+		return -LTTNG_ERR_INVALID;
+	}
+
 	ret = lttng_event_serialize(ev,
 				    0,
 				    nullptr,
-				    filter_expression,
+				    filter_expression.size() > 0 ? filter_expression.c_str() :
+								   nullptr,
 				    bytecode_len,
 				    (ctx && bytecode_len) ? &ctx->bytecode->b : nullptr,
 				    &payload);
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
+	}
+
+	if (event_rule) {
+		ret = lttng_event_rule_serialize(event_rule.get(), &payload);
+		if (ret) {
+			return -LTTNG_ERR_INVALID;
+		}
 	}
 
 	/* If no channel name, send empty string. */
 	ret = lttng_strncpy(
 		lsm.u.disable.channel_name, channel_name ?: "", sizeof(lsm.u.disable.channel_name));
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
 	/* Domain */
@@ -1416,65 +1483,46 @@ serialize:
 	/* Session name */
 	ret = lttng_strncpy(lsm.session.name, handle->session_name, sizeof(lsm.session.name));
 	if (ret) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
+		return -LTTNG_ERR_INVALID;
 	}
 
-	/* Length of the serialized event. */
+	/* Length of the serialized event rule. */
 	lsm.u.disable.length = (uint32_t) payload.buffer.size;
 
-	{
-		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
-		const int fd_count = lttng_payload_view_get_fd_handle_count(&view);
-		int fd_to_send;
+	lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
+	const auto fd_count = lttng_payload_view_get_fd_handle_count(&view);
 
-		if (fd_count < 0) {
-			goto error;
+	if (fd_count < 0) {
+		return -LTTNG_ERR_UNK;
+	}
+
+	LTTNG_ASSERT(fd_count == 0 || fd_count == 2);
+
+	std::vector<int> fds_to_send;
+
+	fds_to_send.reserve(fd_count);
+	for (auto i = 0; i < fd_count; i++) {
+		fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
+
+		if (!h) {
+			return -LTTNG_ERR_UNK;
 		}
 
-		LTTNG_ASSERT(fd_count == 0 || fd_count == 1);
-		if (fd_count == 1) {
-			struct fd_handle *h = lttng_payload_view_pop_fd_handle(&view);
-
-			if (!h) {
-				goto error;
-			}
-
-			fd_to_send = fd_handle_get_fd(h);
-			fd_handle_put(h);
-		}
-
-		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
-							fd_count ? &fd_to_send : nullptr,
-							fd_count,
-							view.buffer.size ? view.buffer.data :
-									   nullptr,
-							view.buffer.size,
-							nullptr,
-							nullptr,
-							nullptr);
+		const auto fd_to_send = fd_handle_get_fd(h);
+		fds_to_send.push_back(fd_to_send);
+		fd_handle_put(h);
 	}
 
-error:
-	if (filter_expression && ctx) {
-		filter_bytecode_free(ctx);
-		filter_ir_free(ctx);
-		filter_parser_ctx_free(ctx);
-	}
-	if (free_filter_expression) {
-		/*
-		 * The filter expression has been replaced and must be freed as
-		 * it is not the original filter expression received as a
-		 * parameter.
-		 */
-		free(filter_expression);
-	}
-	/*
-	 * Return directly to the caller and don't ask the sessiond since
-	 * something went wrong in the parsing of data above.
-	 */
-	lttng_payload_reset(&payload);
-	return ret;
+	lsm.fd_count = fd_count;
+
+	return lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+						 fd_count ? fds_to_send.data() : nullptr,
+						 fd_count,
+						 view.buffer.size ? view.buffer.data : nullptr,
+						 view.buffer.size,
+						 nullptr,
+						 nullptr,
+						 nullptr);
 }
 
 /*
@@ -2663,7 +2711,7 @@ end:
 	return ret;
 }
 
-int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
+int lttng_channel_get_monitor_timer_interval(const struct lttng_channel *chan,
 					     uint64_t *monitor_timer_interval)
 {
 	int ret = 0;
@@ -2700,7 +2748,7 @@ end:
 	return ret;
 }
 
-int lttng_channel_get_blocking_timeout(struct lttng_channel *chan, int64_t *blocking_timeout)
+int lttng_channel_get_blocking_timeout(const struct lttng_channel *chan, int64_t *blocking_timeout)
 {
 	int ret = 0;
 

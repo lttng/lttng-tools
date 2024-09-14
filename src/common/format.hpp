@@ -10,6 +10,8 @@
 #include <common/macros.hpp>
 #include <common/make-unique.hpp>
 
+#include <vendor/optional.hpp>
+
 #include <cxxabi.h>
 #include <string>
 #include <utility>
@@ -44,6 +46,22 @@ struct formatter<std::type_info> : formatter<std::string> {
 		auto it = status == 0 ? formatter<std::string>::format(demangled_name.get(), ctx) :
 					formatter<std::string>::format(type_info.name(), ctx);
 		return it;
+	}
+};
+
+template <typename WrappedType>
+struct formatter<nonstd::optional<WrappedType>> : formatter<WrappedType> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const nonstd::optional<WrappedType>& opt,
+						    FormatContextType& ctx) const
+	{
+		if (opt) {
+			/* Defer formatting to the base formatter for WrappedType. */
+			return formatter<WrappedType>::format(*opt, ctx);
+		} else {
+			/* Print "unset" when the optional has no value. */
+			return format_to(ctx.out(), "unset");
+		}
 	}
 };
 } /* namespace fmt */

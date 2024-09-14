@@ -22,6 +22,8 @@
 #include <common/buffer-view.hpp>
 #include <common/compat/getenv.hpp>
 #include <common/compat/socket.hpp>
+#include <common/ctl/format.hpp>
+#include <common/ctl/memory.hpp>
 #include <common/dynamic-array.hpp>
 #include <common/dynamic-buffer.hpp>
 #include <common/exception.hpp>
@@ -37,6 +39,7 @@
 
 #include <lttng/error-query-internal.hpp>
 #include <lttng/event-internal.hpp>
+#include <lttng/event-rule/event-rule-internal.hpp>
 #include <lttng/lttng.h>
 #include <lttng/session-descriptor-internal.hpp>
 #include <lttng/session-internal.hpp>
@@ -744,7 +747,8 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 						 struct lttng_event **out_event,
 						 char **out_filter_expression,
 						 struct lttng_bytecode **out_bytecode,
-						 struct lttng_event_exclusion **out_exclusion)
+						 struct lttng_event_exclusion **out_exclusion,
+						 lttng::event_rule_uptr& event_rule)
 {
 	int ret;
 	size_t event_len;
@@ -803,7 +807,7 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 	/* Deserialize event. */
 	{
 		ssize_t len;
-		struct lttng_payload_view event_view =
+		lttng_payload_view event_view =
 			lttng_payload_view_from_payload(&event_payload, 0, -1);
 
 		len = lttng_event_create_from_payload(&event_view,
@@ -818,13 +822,29 @@ static enum lttng_error_code receive_lttng_event(struct command_ctx *cmd_ctx,
 			goto end;
 		}
 
-		if (len != event_len) {
-			ERR("Userspace probe location from the received buffer is not the advertised length: header length = %zu" PRIu32
-			    ", payload length = %zd",
-			    event_len,
-			    len);
-			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
-			goto end;
+		lttng_payload_view event_rule_view =
+			lttng_payload_view_from_payload(&event_payload, len, -1);
+
+		/*
+		 * The disable event command, when issued with LTTNG_EVENT_ALL,
+		 * does not provide an event rule.
+		 *
+		 * The semantics of LTTNG_EVENT_ALL vary between enable and disable
+		 * event commands:
+		 *   - enable: means enable all tracepoints and syscalls (if kernel domain).
+		 *   - disable: disable any enabled event regardless of instrumentation type.
+		 */
+		if (event_rule_view.buffer.size > 0) {
+			lttng_event_rule *raw_event_rule;
+			ret = lttng_event_rule_create_from_payload(&event_rule_view,
+								   &raw_event_rule);
+			if (ret < 0) {
+				ERR("Failed to create an event rule from the received buffer");
+				ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+				goto end;
+			}
+
+			event_rule.reset(raw_event_rule);
 		}
 	}
 
@@ -1439,9 +1459,21 @@ skip_domain:
 	}
 	case LTTCOMM_SESSIOND_COMMAND_DISABLE_CHANNEL:
 	{
-		ret = cmd_disable_channel(*target_session,
-					  cmd_ctx->lsm.domain.type,
-					  cmd_ctx->lsm.u.disable.channel_name);
+		try {
+			ret = cmd_disable_channel(*target_session,
+						  cmd_ctx->lsm.domain.type,
+						  cmd_ctx->lsm.u.disable.channel_name);
+		} catch (const std::out_of_range& oor_ex) {
+			const auto channel_name = cmd_ctx->lsm.u.disable.channel_name;
+			const auto domain_type = cmd_ctx->lsm.domain.type;
+
+			ERR_FMT("Failed to disable channel: session_name=`{}`, channel_name=`{}`, domain={}",
+				(*target_session)->name,
+				channel_name,
+				domain_type);
+			ret = LTTNG_ERR_CHAN_NOT_FOUND;
+		}
+
 		break;
 	}
 	case LTTCOMM_SESSIOND_COMMAND_ENABLE_CHANNEL:
@@ -1629,13 +1661,15 @@ skip_domain:
 		char *filter_expression;
 		struct lttng_event_exclusion *exclusions;
 		struct lttng_bytecode *bytecode;
+		lttng::event_rule_uptr event_rule;
 		const enum lttng_error_code ret_code = receive_lttng_event(cmd_ctx,
 									   *sock,
 									   sock_error,
 									   &event,
 									   &filter_expression,
 									   &bytecode,
-									   &exclusions);
+									   &exclusions,
+									   event_rule);
 
 		if (ret_code != LTTNG_OK) {
 			ret = (int) ret_code;
@@ -1653,13 +1687,15 @@ skip_domain:
 					 filter_expression,
 					 exclusions,
 					 bytecode,
-					 the_kernel_poll_pipe[1]) :
+					 the_kernel_poll_pipe[1],
+					 std::move(event_rule)) :
 			cmd_disable_event(cmd_ctx,
 					  *target_session,
 					  event,
 					  filter_expression,
 					  bytecode,
-					  exclusions);
+					  exclusions,
+					  std::move(event_rule));
 		lttng_event_destroy(event);
 		break;
 	}
@@ -2596,6 +2632,9 @@ static void *thread_manage_clients(void *data)
 		} catch (const lttng::sessiond::exceptions::session_not_found_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_SESS_NOT_FOUND;
+		} catch (const lttng::sessiond::exceptions::channel_not_found_error& ex) {
+			log_nested_exceptions(ex);
+			ret = LTTNG_ERR_CHAN_NOT_FOUND;
 		} catch (const lttng::runtime_error& ex) {
 			log_nested_exceptions(ex);
 			ret = LTTNG_ERR_UNK;

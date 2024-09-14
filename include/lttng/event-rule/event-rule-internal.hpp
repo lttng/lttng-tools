@@ -17,6 +17,7 @@
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 
+#include <functional>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -52,6 +53,12 @@ using event_rule_generate_lttng_event_cb = struct lttng_event *(*) (const struct
 using event_rule_mi_serialize_cb = enum lttng_error_code (*)(const struct lttng_event_rule *,
 							     struct mi_writer *);
 
+struct lttng_event_rule;
+
+bool lttng_event_rule_is_equal(const struct lttng_event_rule *a, const struct lttng_event_rule *b);
+
+unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
+
 struct lttng_event_rule {
 	struct urcu_ref ref;
 	enum lttng_event_rule_type type;
@@ -66,12 +73,39 @@ struct lttng_event_rule {
 	event_rule_hash_cb hash;
 	event_rule_generate_lttng_event_cb generate_lttng_event;
 	event_rule_mi_serialize_cb mi_serialize;
+
+	bool operator==(const lttng_event_rule& other) const
+	{
+		return lttng_event_rule_is_equal(this, &other);
+	}
 };
 
 struct lttng_event_rule_comm {
 	/* enum lttng_event_rule_type */
 	int8_t event_rule_type;
 	char payload[];
+};
+
+/* Specialize std::hash for lttng_event_rule (by reference) */
+namespace std {
+template <>
+struct hash<std::reference_wrapper<const lttng_event_rule>> {
+	std::size_t
+	operator()(const std::reference_wrapper<const lttng_event_rule> rule) const noexcept
+	{
+		return lttng_event_rule_hash(&rule.get());
+	}
+};
+} /* namespace std */
+
+/* Implement equality comparison for std::reference_wrapper of lttng_event_rule */
+struct lttng_event_rule_ref_equal {
+	bool operator()(const std::reference_wrapper<const lttng_event_rule> lhs,
+			const std::reference_wrapper<const lttng_event_rule> rhs) const
+	{
+		/* Use the operator== defined for lttng_event_rule. */
+		return lhs.get() == rhs.get();
+	}
 };
 
 void lttng_event_rule_init(struct lttng_event_rule *event_rule, enum lttng_event_rule_type type);
@@ -83,8 +117,6 @@ ssize_t lttng_event_rule_create_from_payload(struct lttng_payload_view *payload,
 
 int lttng_event_rule_serialize(const struct lttng_event_rule *event_rule,
 			       struct lttng_payload *payload);
-
-bool lttng_event_rule_is_equal(const struct lttng_event_rule *a, const struct lttng_event_rule *b);
 
 bool lttng_event_rule_get(struct lttng_event_rule *rule);
 
@@ -118,8 +150,6 @@ lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
 				     struct lttng_event_exclusion **exclusions);
 
 const char *lttng_event_rule_type_str(enum lttng_event_rule_type type);
-
-unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
 
 /*
  * This is a compatibility helper allowing us to generate a sessiond-side (not

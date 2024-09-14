@@ -23,6 +23,7 @@
 #include "lttng-syscall.hpp"
 #include "notification-thread-commands.hpp"
 #include "notification-thread.hpp"
+#include "recording-channel-configuration.hpp"
 #include "rotation-thread.hpp"
 #include "session.hpp"
 #include "timer.hpp"
@@ -32,12 +33,17 @@
 #include <common/buffer-view.hpp>
 #include <common/common.hpp>
 #include <common/compat/string.hpp>
+#include <common/ctl/format.hpp>
 #include <common/defaults.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/exception.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
+#include <common/make-unique-wrapper.hpp>
+#include <common/math.hpp>
 #include <common/payload-view.hpp>
 #include <common/payload.hpp>
 #include <common/relayd/relayd.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/string-utils.hpp>
 #include <common/trace-chunk.hpp>
@@ -76,6 +82,7 @@
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
 
+namespace ls = lttng::sessiond;
 namespace lsu = lttng::sessiond::ust;
 
 static enum lttng_error_code wait_on_path(void *path);
@@ -124,10 +131,11 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& session,
 				     char *filter_expression,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
-				     int wpipe);
+				     int wpipe,
+				     lttng::event_rule_uptr event_rule);
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
-							 const struct lttng_channel *_attr,
+							 const struct lttng_channel& channel_attr,
 							 int wpipe);
 
 /*
@@ -1218,6 +1226,31 @@ error:
 	return ret;
 }
 
+namespace {
+lttng::sessiond::domain_class
+get_domain_class_from_ctl_domain_type(enum lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_KERNEL:
+		return lttng::sessiond::domain_class::KERNEL_SPACE;
+	case LTTNG_DOMAIN_UST:
+		return lttng::sessiond::domain_class::USER_SPACE;
+	case LTTNG_DOMAIN_JUL:
+		return lttng::sessiond::domain_class::JAVA_UTIL_LOGGING;
+	case LTTNG_DOMAIN_LOG4J:
+		return lttng::sessiond::domain_class::LOG4J;
+	case LTTNG_DOMAIN_PYTHON:
+		return lttng::sessiond::domain_class::PYTHON_LOGGING;
+	case LTTNG_DOMAIN_LOG4J2:
+		return lttng::sessiond::domain_class::LOG4J2;
+	default:
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"No suitable conversion exists from lttng_domain_type enum to lttng::sessiond::domain_class: domain={}",
+			domain_type));
+	}
+}
+} /* namespace */
+
 /*
  * Command LTTNG_DISABLE_CHANNEL processed by the client thread.
  */
@@ -1225,19 +1258,21 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 			enum lttng_domain_type domain,
 			char *channel_name)
 {
-	int ret;
-	struct ltt_ust_session *usess;
+	ls::domain& target_domain =
+		session->get_domain(get_domain_class_from_ctl_domain_type(domain));
 
-	usess = session->ust_session;
+	/* Throws if not found. */
+	auto& channel_config = target_domain.get_channel(channel_name);
 
 	const lttng::urcu::read_lock_guard read_lock;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		ret = channel_kernel_disable(session->kernel_session, channel_name);
-		if (ret != LTTNG_OK) {
-			goto error;
+		const auto disable_ret =
+			channel_kernel_disable(session->kernel_session, channel_name);
+		if (disable_ret != LTTNG_OK) {
+			return disable_ret;
 		}
 
 		kernel_wait_quiescent();
@@ -1245,32 +1280,28 @@ int cmd_disable_channel(const ltt_session::locked_ref& session,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		struct ltt_ust_channel *uchan;
-		struct lttng_ht *chan_ht;
+		const auto usess = session->ust_session;
+		const auto chan_ht = usess->domain_global.channels;
+		const auto uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 
-		chan_ht = usess->domain_global.channels;
-
-		uchan = trace_ust_find_channel_by_name(chan_ht, channel_name);
 		if (uchan == nullptr) {
-			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error;
+			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		}
 
-		ret = channel_ust_disable(usess, uchan);
-		if (ret != LTTNG_OK) {
-			goto error;
+		const auto disable_ret = channel_ust_disable(usess, uchan);
+		if (disable_ret != LTTNG_OK) {
+			return disable_ret;
 		}
+
 		break;
 	}
 	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
+		return LTTNG_ERR_UNKNOWN_DOMAIN;
 	}
 
-	ret = LTTNG_OK;
+	channel_config.disable();
 
-error:
-	return ret;
+	return LTTNG_OK;
 }
 
 /*
@@ -1280,80 +1311,86 @@ error:
  */
 int cmd_enable_channel(command_ctx *cmd_ctx, ltt_session::locked_ref& session, int sock, int wpipe)
 {
-	int ret;
-	size_t channel_len;
-	ssize_t sock_recv_len;
-	struct lttng_channel *channel = nullptr;
-	struct lttng_buffer_view view;
-	struct lttng_dynamic_buffer channel_buffer;
 	const struct lttng_domain command_domain = cmd_ctx->lsm.domain;
 
-	lttng_dynamic_buffer_init(&channel_buffer);
-	channel_len = (size_t) cmd_ctx->lsm.u.channel.length;
-	ret = lttng_dynamic_buffer_set_size(&channel_buffer, channel_len);
-	if (ret) {
-		ret = LTTNG_ERR_NOMEM;
-		goto end;
+	if (command_domain.type == LTTNG_DOMAIN_NONE) {
+		return LTTNG_ERR_INVALID;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(sock, channel_buffer.data, channel_len);
+	/* Free buffer contents on function exit using a scope_exit. */
+	lttng_dynamic_buffer channel_buffer;
+	lttng_dynamic_buffer_init(&channel_buffer);
+	auto destroy_buffer = lttng::make_scope_exit(
+		[&channel_buffer]() noexcept { lttng_dynamic_buffer_reset(&channel_buffer); });
+
+	const size_t channel_len = (size_t) cmd_ctx->lsm.u.channel.length;
+
+	const int buffer_alloc_ret = lttng_dynamic_buffer_set_size(&channel_buffer, channel_len);
+	if (buffer_alloc_ret) {
+		return LTTNG_ERR_NOMEM;
+	}
+
+	const auto sock_recv_len = lttcomm_recv_unix_sock(sock, channel_buffer.data, channel_len);
 	if (sock_recv_len < 0 || sock_recv_len != channel_len) {
 		ERR("Failed to receive \"enable channel\" command payload");
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		return LTTNG_ERR_INVALID;
 	}
 
-	view = lttng_buffer_view_from_dynamic_buffer(&channel_buffer, 0, channel_len);
+	auto view = lttng_buffer_view_from_dynamic_buffer(&channel_buffer, 0, channel_len);
 	if (!lttng_buffer_view_is_valid(&view)) {
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		/* lttng_buffer_view_from_dynamic_buffer already logs on error. */
+		return LTTNG_ERR_INVALID;
 	}
 
-	if (lttng_channel_create_from_buffer(&view, &channel) != channel_len) {
-		ERR("Invalid channel payload received in \"enable channel\" command");
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+	auto channel = lttng::make_unique_wrapper<lttng_channel,
+						  lttng_channel_destroy>([&view, channel_len]() {
+		lttng_channel *raw_channel = nullptr;
+
+		if (lttng_channel_create_from_buffer(&view, &raw_channel) != channel_len) {
+			LTTNG_THROW_PROTOCOL_ERROR(
+				"Invalid channel payload received in \"enable channel\" command");
+		}
+
+		return raw_channel;
+	}());
+
+	const auto cmd_ret = cmd_enable_channel_internal(session, &command_domain, *channel, wpipe);
+	if (cmd_ret != LTTNG_OK) {
+		return cmd_ret;
 	}
 
-	ret = cmd_enable_channel_internal(session, &command_domain, channel, wpipe);
-
-end:
-	lttng_dynamic_buffer_reset(&channel_buffer);
-	lttng_channel_destroy(channel);
-	return ret;
+	return LTTNG_OK;
 }
 
 static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref& session,
 							 const struct lttng_domain *domain,
-							 const struct lttng_channel *_attr,
+							 const struct lttng_channel& channel_attr,
 							 int wpipe)
 {
 	enum lttng_error_code ret_code;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
-	struct lttng_channel *attr = nullptr;
 
-	LTTNG_ASSERT(_attr);
 	LTTNG_ASSERT(domain);
 
 	const lttng::urcu::read_lock_guard read_lock;
 
-	attr = lttng_channel_copy(_attr);
-	if (!attr) {
-		ret_code = LTTNG_ERR_NOMEM;
-		goto end;
+	auto new_channel_attr = lttng::make_unique_wrapper<lttng_channel, lttng_channel_destroy>(
+		lttng_channel_copy(&channel_attr));
+	if (!new_channel_attr) {
+		return LTTNG_ERR_NOMEM;
 	}
 
-	len = lttng_strnlen(attr->name, sizeof(attr->name));
+	len = lttng_strnlen(new_channel_attr->name, sizeof(new_channel_attr->name));
 
 	/* Validate channel name */
-	if (attr->name[0] == '.' || memchr(attr->name, '/', len) != nullptr) {
-		ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
-		goto end;
+	if (new_channel_attr->name[0] == '.' ||
+	    memchr(new_channel_attr->name, '/', len) != nullptr) {
+		return LTTNG_ERR_INVALID_CHANNEL_NAME;
 	}
 
-	DBG("Enabling channel %s for session %s", attr->name, session->name);
+	DBG("Enabling channel %s for session %s", new_channel_attr->name, session->name);
 
 	/*
 	 * If the session is a live session, remove the switch timer, the
@@ -1361,8 +1398,8 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	 * beacons for inactive streams.
 	 */
 	if (session->live_timer > 0) {
-		attr->attr.live_timer_interval = session->live_timer;
-		attr->attr.switch_timer_interval = 0;
+		new_channel_attr->attr.live_timer_interval = session->live_timer;
+		new_channel_attr->attr.switch_timer_interval = 0;
 	}
 
 	/* Check for feature support */
@@ -1374,10 +1411,11 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			WARN("Kernel tracer does not support buffer monitoring. "
 			     "Setting the monitor interval timer to 0 "
 			     "(disabled) for channel '%s' of session '%s'",
-			     attr->name,
+			     new_channel_attr->name,
 			     session->name);
-			lttng_channel_set_monitor_timer_interval(attr, 0);
+			lttng_channel_set_monitor_timer_interval(new_channel_attr.get(), 0);
 		}
+
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1388,13 +1426,12 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	case LTTNG_DOMAIN_PYTHON:
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable a channel in an agent domain but the agent thread is not running");
-			ret_code = LTTNG_ERR_AGENT_TRACING_DISABLED;
-			goto error;
+			return LTTNG_ERR_AGENT_TRACING_DISABLED;
 		}
+
 		break;
 	default:
-		ret_code = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
+		return LTTNG_ERR_UNKNOWN_DOMAIN;
 	}
 
 	switch (domain->type) {
@@ -1402,23 +1439,25 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	{
 		struct ltt_kernel_channel *kchan;
 
-		kchan = trace_kernel_get_channel_by_name(attr->name, session->kernel_session);
+		kchan = trace_kernel_get_channel_by_name(new_channel_attr->name,
+							 session->kernel_session);
 		if (kchan == nullptr) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
-				ret_code = LTTNG_ERR_TRACE_ALREADY_STARTED;
-				goto error;
+				return LTTNG_ERR_TRACE_ALREADY_STARTED;
 			}
 
 			if (session->snapshot.nb_output > 0 || session->snapshot_mode) {
 				/* Enforce mmap output for snapshot sessions. */
-				attr->attr.output = LTTNG_EVENT_MMAP;
+				new_channel_attr->attr.output = LTTNG_EVENT_MMAP;
 			}
-			ret_code = channel_kernel_create(session->kernel_session, attr, wpipe);
-			if (attr->name[0] != '\0') {
+
+			ret_code = channel_kernel_create(
+				session->kernel_session, new_channel_attr.get(), wpipe);
+			if (new_channel_attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
 			}
 		} else {
@@ -1426,7 +1465,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		}
 
 		if (ret_code != LTTNG_OK) {
-			goto error;
+			return ret_code;
 		}
 
 		kernel_wait_quiescent();
@@ -1449,68 +1488,221 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 		 * adhered to.
 		 */
 		if (domain->type == LTTNG_DOMAIN_JUL) {
-			if (strncmp(attr->name,
+			if (strncmp(new_channel_attr->name,
 				    DEFAULT_JUL_CHANNEL_NAME,
 				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
-				goto error;
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
-			if (strncmp(attr->name,
+			if (strncmp(new_channel_attr->name,
 				    DEFAULT_LOG4J_CHANNEL_NAME,
 				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
-				goto error;
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J2) {
-			if (strncmp(attr->name,
+			if (strncmp(new_channel_attr->name,
 				    DEFAULT_LOG4J2_CHANNEL_NAME,
 				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
-				goto error;
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
-			if (strncmp(attr->name,
+			if (strncmp(new_channel_attr->name,
 				    DEFAULT_PYTHON_CHANNEL_NAME,
 				    LTTNG_SYMBOL_NAME_LEN - 1) != 0) {
-				ret_code = LTTNG_ERR_INVALID_CHANNEL_NAME;
-				goto error;
+				return LTTNG_ERR_INVALID_CHANNEL_NAME;
 			}
 		}
 
 		chan_ht = usess->domain_global.channels;
 
-		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
+		uchan = trace_ust_find_channel_by_name(chan_ht, new_channel_attr->name);
 		if (uchan == nullptr) {
 			/*
 			 * Don't try to create a channel if the session has been started at
 			 * some point in time before. The tracer does not allow it.
 			 */
 			if (session->has_been_started) {
-				ret_code = LTTNG_ERR_TRACE_ALREADY_STARTED;
-				goto error;
+				return LTTNG_ERR_TRACE_ALREADY_STARTED;
 			}
 
-			ret_code = channel_ust_create(usess, attr, domain->buf_type);
-			if (attr->name[0] != '\0') {
+			ret_code =
+				channel_ust_create(usess, new_channel_attr.get(), domain->buf_type);
+			if (new_channel_attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
 		} else {
 			ret_code = channel_ust_enable(usess, uchan);
 		}
+
 		break;
 	}
 	default:
-		ret_code = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
+		return LTTNG_ERR_UNKNOWN_DOMAIN;
 	}
 
-	if (ret_code == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
+	if (ret_code == LTTNG_OK && new_channel_attr->attr.output != LTTNG_EVENT_MMAP) {
 		session->has_non_mmap_channel = true;
 	}
-error:
-end:
-	lttng_channel_destroy(attr);
+
+	const auto subbuffer_count = channel_attr.attr.num_subbuf;
+
+	const auto switch_timer_period_us = [&channel_attr]() {
+		return channel_attr.attr.switch_timer_interval > 0 ?
+			decltype(ls::recording_channel_configuration::switch_timer_period_us)(
+				channel_attr.attr.switch_timer_interval) :
+			nonstd::nullopt;
+	}();
+
+	const auto read_timer_period_us = [&channel_attr]() {
+		return channel_attr.attr.read_timer_interval > 0 ?
+			decltype(ls::recording_channel_configuration::read_timer_period_us)(
+				channel_attr.attr.read_timer_interval) :
+			nonstd::nullopt;
+	}();
+
+	const auto live_timer_period_us = [&channel_attr]() {
+		return channel_attr.attr.live_timer_interval > 0 ?
+			decltype(ls::recording_channel_configuration::live_timer_period_us)(
+				channel_attr.attr.live_timer_interval) :
+			nonstd::nullopt;
+	}();
+
+	const auto monitor_timer_period_us = [&channel_attr]() {
+		std::uint64_t period;
+		const int ret = lttng_channel_get_monitor_timer_interval(&channel_attr, &period);
+
+		if (ret) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to retrieve monitor timer period from channel: channel_name=`{}`",
+				channel_attr.name));
+		}
+
+		return period > 0 ?
+			decltype(ls::recording_channel_configuration::monitor_timer_period_us)(
+				period) :
+			nonstd::nullopt;
+	}();
+
+	auto blocking_policy = [&channel_attr]() {
+		std::int64_t timeout_us;
+		const int ret = lttng_channel_get_blocking_timeout(&channel_attr, &timeout_us);
+
+		if (ret) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to retrieve blocking timeout from channel: channel_name=`{}`",
+				channel_attr.name));
+		}
+
+		switch (timeout_us) {
+		case 0:
+			return ls::recording_channel_configuration::consumption_blocking_policy(
+				ls::recording_channel_configuration::consumption_blocking_policy::
+					mode::NONE);
+		case -1:
+			return ls::recording_channel_configuration::consumption_blocking_policy(
+				ls::recording_channel_configuration::consumption_blocking_policy::
+					mode::UNBOUNDED);
+		default:
+			if (timeout_us < 0) {
+				/*Negative, but not -1. */
+				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+					"Invalid buffer consumption blocking policy timeout value: timeout_us={}",
+					timeout_us));
+			}
+
+			return ls::recording_channel_configuration::consumption_blocking_policy(
+				ls::recording_channel_configuration::consumption_blocking_policy::
+					mode::TIMED,
+				timeout_us);
+		}
+	}();
+
+	ls::domain& target_domain =
+		session->get_domain(get_domain_class_from_ctl_domain_type(domain->type));
+
+	/* Extract all channel properties needed to initialize the channel. */
+	auto name = std::string(channel_attr.name[0] ? channel_attr.name : DEFAULT_CHANNEL_NAME);
+	const auto is_enabled = !!channel_attr.enabled;
+	const auto buffer_full_policy = [&session](int overwrite_value) {
+		switch (overwrite_value) {
+		case -1:
+			/* Session default. */
+			return session->snapshot_mode ?
+				ls::recording_channel_configuration::buffer_full_policy_t::
+					OVERWRITE_OLDEST_PACKET :
+				ls::recording_channel_configuration::buffer_full_policy_t::
+					DISCARD_EVENT;
+		case 0:
+			return ls::recording_channel_configuration::buffer_full_policy_t::
+				DISCARD_EVENT;
+		case 1:
+			return ls::recording_channel_configuration::buffer_full_policy_t::
+				OVERWRITE_OLDEST_PACKET;
+		default:
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Invalid channel overwrite property value received: value={}",
+				overwrite_value));
+		}
+	}(channel_attr.attr.overwrite);
+	const auto trace_file_size_limit_bytes = channel_attr.attr.tracefile_size ?
+		decltype(ls::recording_channel_configuration::trace_file_size_limit_bytes)(
+			channel_attr.attr.tracefile_size) :
+		nonstd::nullopt;
+
+	const auto trace_file_count_limit = channel_attr.attr.tracefile_count ?
+		decltype(ls::recording_channel_configuration::trace_file_count_limit)(
+			channel_attr.attr.tracefile_count) :
+		nonstd::nullopt;
+
+	/* Validate consumption backend (mmap or splice). */
+	if (target_domain.domain_class_ != ls::domain_class::KERNEL_SPACE &&
+	    channel_attr.attr.output != LTTNG_EVENT_MMAP) {
+		LTTNG_THROW_UNSUPPORTED_ERROR(fmt::format(
+			"Buffer consumption back-end is unsupported by this domain: domain={}, backend=SPLICE",
+			target_domain.domain_class_));
+	}
+
+	const auto buffer_consumption_backend = channel_attr.attr.output == LTTNG_EVENT_MMAP ?
+		ls::recording_channel_configuration::buffer_consumption_backend_t::MMAP :
+		ls::recording_channel_configuration::buffer_consumption_backend_t::SPLICE;
+
+	/* Validate sub-buffer size. */
+	if (!lttng::math::is_power_of_two(channel_attr.attr.subbuf_size) ||
+	    channel_attr.attr.subbuf_size < the_page_size) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Invalid subbuffer size (must be a power of two and equal or larger than the page size): subbuffer_size={}, page_size={}",
+			channel_attr.attr.subbuf_size,
+			the_page_size));
+	}
+
+	const auto subbuffer_size_bytes = channel_attr.attr.subbuf_size;
+
+	/* Validate sub-buffer count. */
+	if (!lttng::math::is_power_of_two(channel_attr.attr.num_subbuf)) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Invalid subbuffer count (must be a power of two): subbuffer_count={}",
+			channel_attr.attr.num_subbuf));
+	}
+
+	try {
+		target_domain.get_channel(name).enable();
+	} catch (const lttng::sessiond::exceptions::channel_not_found_error& ex) {
+		/* Channel doesn't exist, create it. */
+		target_domain.add_channel(is_enabled,
+					  std::move(name),
+					  buffer_full_policy,
+					  buffer_consumption_backend,
+					  subbuffer_size_bytes,
+					  subbuffer_count,
+					  switch_timer_period_us,
+					  read_timer_period_us,
+					  live_timer_period_us,
+					  monitor_timer_period_us,
+					  std::move(blocking_policy),
+					  trace_file_size_limit_bytes,
+					  trace_file_count_limit);
+	}
+
 	return ret_code;
 }
 
@@ -1715,47 +1907,134 @@ end:
 	return ret_code;
 }
 
+namespace {
+/* An unset value means 'match all'. */
+nonstd::optional<lttng::c_string_view>
+get_event_rule_pattern_or_name(const lttng_event_rule& event_rule)
+{
+	lttng_event_rule_status status;
+	const char *pattern_or_name;
+
+	switch (lttng_event_rule_get_type(&event_rule)) {
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
+		status = lttng_event_rule_kernel_syscall_get_name_pattern(&event_rule,
+									  &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+		status = lttng_event_rule_kernel_kprobe_get_event_name(&event_rule,
+								       &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+		status = lttng_event_rule_kernel_tracepoint_get_name_pattern(&event_rule,
+									     &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+		status = lttng_event_rule_kernel_uprobe_get_event_name(&event_rule,
+								       &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		status = lttng_event_rule_user_tracepoint_get_name_pattern(&event_rule,
+									   &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		status = lttng_event_rule_jul_logging_get_name_pattern(&event_rule,
+								       &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		status = lttng_event_rule_log4j_logging_get_name_pattern(&event_rule,
+									 &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		status = lttng_event_rule_python_logging_get_name_pattern(&event_rule,
+									  &pattern_or_name);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING:
+		status = lttng_event_rule_log4j2_logging_get_name_pattern(&event_rule,
+									  &pattern_or_name);
+		break;
+	default:
+		std::abort();
+	}
+
+	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
+		return nonstd::nullopt;
+	}
+
+	LTTNG_ASSERT(status == LTTNG_EVENT_RULE_STATUS_OK);
+	LTTNG_ASSERT(pattern_or_name);
+
+	return pattern_or_name;
+}
+} /* namespace */
+
 /*
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
+ *
+ * Filter and exclusions are simply not handled by the disable event command
+ * at this time.
  */
-int cmd_disable_event(struct command_ctx *cmd_ctx,
-		      ltt_session::locked_ref& locked_session,
-		      struct lttng_event *event,
-		      char *filter_expression,
-		      struct lttng_bytecode *bytecode,
-		      struct lttng_event_exclusion *exclusion)
+lttng_error_code cmd_disable_event(struct command_ctx *cmd_ctx,
+				   ltt_session::locked_ref& locked_session,
+				   struct lttng_event *event,
+				   char *raw_filter_expression,
+				   struct lttng_bytecode *raw_bytecode,
+				   struct lttng_event_exclusion *raw_exclusion,
+				   lttng::event_rule_uptr event_rule)
 {
 	int ret;
 	const ltt_session& session = *locked_session;
-	const char *event_name;
+	const char *event_name = event->name;
 	const char *channel_name = cmd_ctx->lsm.u.disable.channel_name;
 	const enum lttng_domain_type domain = cmd_ctx->lsm.domain.type;
 
 	DBG("Disable event command for event \'%s\'", event->name);
 
-	/*
-	 * Filter and exclusions are simply not handled by the
-	 * disable event command at this time.
-	 *
-	 * FIXME
-	 */
-	(void) filter_expression;
-	(void) exclusion;
+	const auto filter_expression =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
+	const auto bytecode =
+		lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>(raw_bytecode);
+	const auto exclusion =
+		lttng::make_unique_wrapper<lttng_event_exclusion, lttng::memory::free>(
+			raw_exclusion);
+
+	if (!event_rule && event->type != LTTNG_EVENT_ALL) {
+		/* LTTNG_EVENT_ALL is the only case where we don't expect an event rule. */
+		return LTTNG_ERR_INVALID_PROTOCOL;
+	}
 
 	/* Ignore the presence of filter or exclusion for the event */
 	event->filter = 0;
 	event->exclusion = 0;
 
-	event_name = event->name;
+	if (channel_name[0] == '\0') {
+		switch (cmd_ctx->lsm.domain.type) {
+		case LTTNG_DOMAIN_LOG4J:
+			channel_name = DEFAULT_LOG4J_CHANNEL_NAME;
+			break;
+		case LTTNG_DOMAIN_LOG4J2:
+			channel_name = DEFAULT_LOG4J2_CHANNEL_NAME;
+			break;
+		case LTTNG_DOMAIN_JUL:
+			channel_name = DEFAULT_JUL_CHANNEL_NAME;
+			break;
+		case LTTNG_DOMAIN_PYTHON:
+			channel_name = DEFAULT_PYTHON_CHANNEL_NAME;
+			break;
+		default:
+			channel_name = DEFAULT_CHANNEL_NAME;
+			break;
+		}
+	}
 
 	const lttng::urcu::read_lock_guard read_lock;
 
 	/* Error out on unhandled search criteria */
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled || event->pid ||
 	    event->filter || event->exclusion) {
-		ret = LTTNG_ERR_UNK;
-		goto error;
+		return LTTNG_ERR_UNK;
 	}
+
+	const bool pattern_disables_all = lttng::c_string_view(event_name) == "";
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1771,14 +2050,12 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		 * to be provided.
 		 */
 		if (ksess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error_unlock;
+			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, ksess);
 		if (kchan == nullptr) {
-			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
-			goto error_unlock;
+			return LTTNG_ERR_KERN_CHAN_NOT_FOUND;
 		}
 
 		switch (event->type) {
@@ -1788,18 +2065,17 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		case LTTNG_EVENT_PROBE:
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY: /* fall-through */
-			if (event_name[0] == '\0') {
+			if (pattern_disables_all) {
 				ret = event_kernel_disable_event(kchan, nullptr, event->type);
 			} else {
 				ret = event_kernel_disable_event(kchan, event_name, event->type);
 			}
 			if (ret != LTTNG_OK) {
-				goto error_unlock;
+				return static_cast<lttng_error_code>(ret);
 			}
 			break;
 		default:
-			ret = LTTNG_ERR_UNK;
-			goto error_unlock;
+			return LTTNG_ERR_UNK;
 		}
 
 		kernel_wait_quiescent();
@@ -1813,8 +2089,7 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		usess = session.ust_session;
 
 		if (validate_ust_event_name(event_name)) {
-			ret = LTTNG_ERR_INVALID_EVENT_NAME;
-			goto error_unlock;
+			return LTTNG_ERR_INVALID_EVENT_NAME;
 		}
 
 		/*
@@ -1823,34 +2098,28 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		 * to be provided.
 		 */
 		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error_unlock;
+			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
 		uchan = trace_ust_find_channel_by_name(usess->domain_global.channels, channel_name);
 		if (uchan == nullptr) {
-			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error_unlock;
+			return LTTNG_ERR_UST_CHAN_NOT_FOUND;
 		}
 
 		switch (event->type) {
 		case LTTNG_EVENT_ALL:
-			/*
-			 * An empty event name means that everything
-			 * should be disabled.
-			 */
-			if (event->name[0] == '\0') {
+			if (pattern_disables_all) {
 				ret = event_ust_disable_all_tracepoints(usess, uchan);
 			} else {
 				ret = event_ust_disable_tracepoint(usess, uchan, event_name);
 			}
+
 			if (ret != LTTNG_OK) {
-				goto error_unlock;
+				return static_cast<lttng_error_code>(ret);
 			}
 			break;
 		default:
-			ret = LTTNG_ERR_UNK;
-			goto error_unlock;
+			return LTTNG_ERR_UNK;
 		}
 
 		DBG3("Disable UST event %s in channel %s completed", event_name, channel_name);
@@ -1870,43 +2139,43 @@ int cmd_disable_event(struct command_ctx *cmd_ctx,
 		case LTTNG_EVENT_ALL:
 			break;
 		default:
-			ret = LTTNG_ERR_UNK;
-			goto error_unlock;
+			return LTTNG_ERR_UNK;
 		}
 
 		agt = trace_ust_find_agent(usess, domain);
 		if (!agt) {
-			ret = -LTTNG_ERR_UST_EVENT_NOT_FOUND;
-			goto error_unlock;
+			return LTTNG_ERR_UST_EVENT_NOT_FOUND;
 		}
-		/*
-		 * An empty event name means that everything
-		 * should be disabled.
-		 */
-		if (event->name[0] == '\0') {
+
+		if (pattern_disables_all) {
 			ret = event_agent_disable_all(usess, agt);
 		} else {
 			ret = event_agent_disable(usess, agt, event_name);
 		}
+
 		if (ret != LTTNG_OK) {
-			goto error_unlock;
+			return static_cast<lttng_error_code>(ret);
 		}
 
 		break;
 	}
 	default:
-		ret = LTTNG_ERR_UND;
-		goto error_unlock;
+		return LTTNG_ERR_UND;
 	}
 
-	ret = LTTNG_OK;
+	for (const auto& pair : session.get_domain(get_domain_class_from_ctl_domain_type(domain))
+					.get_channel(channel_name)
+					.event_rules) {
+		auto& event_rule_cfg = *pair.second;
 
-error_unlock:
-error:
-	free(exclusion);
-	free(bytecode);
-	free(filter_expression);
-	return ret;
+		const auto this_pattern_or_name =
+			get_event_rule_pattern_or_name(*event_rule_cfg.event_rule);
+		if (pattern_disables_all || (*this_pattern_or_name == event_name)) {
+			event_rule_cfg.disable();
+		}
+	}
+
+	return LTTNG_OK;
 }
 
 /*
@@ -2070,25 +2339,70 @@ end:
 	return ret;
 }
 
+namespace {
+lttng::event_rule_uptr create_agent_internal_event_rule(lttng_domain_type agent_domain,
+							lttng::c_string_view filter_expression)
+{
+	lttng::event_rule_uptr event_rule(lttng_event_rule_user_tracepoint_create());
+
+	if (!event_rule) {
+		LTTNG_THROW_POSIX("Failed to allocate agent internal user space tracer event rule",
+				  ENOMEM);
+	}
+
+	const auto set_pattern_ret = lttng_event_rule_user_tracepoint_set_name_pattern(
+		event_rule.get(), event_get_default_agent_ust_name(agent_domain));
+	if (set_pattern_ret != LTTNG_EVENT_RULE_STATUS_OK) {
+		LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+			"Failed to set agent LTTng-UST event name as event-rule name pattern: domain={}",
+			agent_domain));
+	}
+
+	if (filter_expression) {
+		const auto set_filter_ret = lttng_event_rule_user_tracepoint_set_filter(
+			event_rule.get(), filter_expression.data());
+		if (set_filter_ret != LTTNG_EVENT_RULE_STATUS_OK) {
+			LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
+				"Failed to set agent LTTng-UST event filter expression as event-rule filter: domain={}",
+				filter_expression));
+		}
+	}
+
+	return event_rule;
+}
+} /* namespace */
+
 /*
  * Internal version of cmd_enable_event() with a supplemental
  * "internal_event" flag which is used to enable internal events which should
  * be hidden from clients. Such events are used in the agent implementation to
  * enable the events through which all "agent" events are funeled.
  */
-static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
-			     const struct lttng_domain *domain,
-			     char *channel_name,
-			     struct lttng_event *event,
-			     char *filter_expression,
-			     struct lttng_bytecode *filter,
-			     struct lttng_event_exclusion *exclusion,
-			     int wpipe,
-			     bool internal_event)
+static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_session,
+					  const struct lttng_domain *domain,
+					  char *channel_name,
+					  struct lttng_event *event,
+					  char *raw_filter_expression,
+					  struct lttng_bytecode *raw_bytecode,
+					  struct lttng_event_exclusion *raw_exclusion,
+					  int wpipe,
+					  bool internal_event,
+					  lttng::event_rule_uptr event_rule)
 {
+	if (!event_rule) {
+		return LTTNG_ERR_INVALID_PROTOCOL;
+	}
+
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = nullptr;
-	const ltt_session& session = *locked_session;
+	ltt_session& session = *locked_session;
+
+	auto filter_expression =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
+	auto bytecode =
+		lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>(raw_bytecode);
+	auto exclusion = lttng::make_unique_wrapper<lttng_event_exclusion, lttng::memory::free>(
+		raw_exclusion);
 
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
@@ -2108,12 +2422,13 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 	}
 
 	const lttng::urcu::read_lock_guard read_lock;
+	const auto *user_visible_channel_name = channel_name[0] == '\0' ? DEFAULT_CHANNEL_NAME :
+									  channel_name;
 
 	/* If we have a filter, we must have its filter expression. */
-	if (!!filter_expression ^ !!filter) {
+	if (!!filter_expression ^ !!bytecode) {
 		DBG("Refusing to enable recording event rule as it has an inconsistent filter expression and bytecode specification");
-		ret = LTTNG_ERR_INVALID;
-		goto error;
+		return LTTNG_ERR_INVALID;
 	}
 
 	switch (domain->type) {
@@ -2127,26 +2442,25 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		 * to be provided.
 		 */
 		if (session.kernel_session->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
+			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
 		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
 		if (kchan == nullptr) {
 			attr = channel_new_default_attr(LTTNG_DOMAIN_KERNEL, LTTNG_BUFFER_GLOBAL);
 			if (attr == nullptr) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
-				ret = LTTNG_ERR_INVALID;
-				goto error;
+				return LTTNG_ERR_FATAL;
 			}
 
-			ret = cmd_enable_channel_internal(locked_session, domain, attr, wpipe);
-			if (ret != LTTNG_OK) {
-				goto error;
+			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
+				return LTTNG_ERR_INVALID;
 			}
+
+			ret = cmd_enable_channel_internal(locked_session, domain, *attr, wpipe);
+			if (ret != LTTNG_OK) {
+				return static_cast<lttng_error_code>(ret);
+			}
+
 			channel_created = 1;
 		}
 
@@ -2154,8 +2468,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		kchan = trace_kernel_get_channel_by_name(channel_name, session.kernel_session);
 		if (kchan == nullptr) {
 			/* This sould not happen... */
-			ret = LTTNG_ERR_FATAL;
-			goto error;
+			return LTTNG_ERR_FATAL;
 		}
 
 		switch (event->type) {
@@ -2170,35 +2483,37 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			 * event.
 			 */
 			if (filter_expression) {
-				filter_expression_a = strdup(filter_expression);
+				filter_expression_a = strdup(filter_expression.get());
 				if (!filter_expression_a) {
-					ret = LTTNG_ERR_FATAL;
-					goto error;
+					return LTTNG_ERR_FATAL;
 				}
 			}
-			if (filter) {
-				filter_a = zmalloc<lttng_bytecode>(sizeof(*filter_a) + filter->len);
+
+			if (bytecode) {
+				filter_a =
+					zmalloc<lttng_bytecode>(sizeof(*filter_a) + bytecode->len);
 				if (!filter_a) {
 					free(filter_expression_a);
-					ret = LTTNG_ERR_FATAL;
-					goto error;
+					return LTTNG_ERR_FATAL;
 				}
-				memcpy(filter_a, filter, sizeof(*filter_a) + filter->len);
+
+				memcpy(filter_a, bytecode.get(), sizeof(*filter_a) + bytecode->len);
 			}
+
 			event->type = LTTNG_EVENT_TRACEPOINT; /* Hack */
-			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
-			/* We have passed ownership */
-			filter_expression = nullptr;
-			filter = nullptr;
+			ret = event_kernel_enable_event(
+				kchan, event, filter_expression.release(), bytecode.release());
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
 					kernel_destroy_channel(kchan);
 				}
+
 				free(filter_expression_a);
 				free(filter_a);
-				goto error;
+				return static_cast<lttng_error_code>(ret);
 			}
+
 			event->type = LTTNG_EVENT_SYSCALL; /* Hack */
 			ret = event_kernel_enable_event(
 				kchan, event, filter_expression_a, filter_a);
@@ -2206,8 +2521,9 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			filter_expression_a = nullptr;
 			filter_a = nullptr;
 			if (ret != LTTNG_OK) {
-				goto error;
+				return static_cast<lttng_error_code>(ret);
 			}
+
 			break;
 		}
 		case LTTNG_EVENT_PROBE:
@@ -2215,30 +2531,28 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		case LTTNG_EVENT_FUNCTION:
 		case LTTNG_EVENT_FUNCTION_ENTRY:
 		case LTTNG_EVENT_TRACEPOINT:
-			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
-			/* We have passed ownership */
-			filter_expression = nullptr;
-			filter = nullptr;
+			ret = event_kernel_enable_event(
+				kchan, event, filter_expression.release(), bytecode.release());
 			if (ret != LTTNG_OK) {
 				if (channel_created) {
 					/* Let's not leak a useless channel. */
 					kernel_destroy_channel(kchan);
 				}
-				goto error;
+
+				return static_cast<lttng_error_code>(ret);
 			}
+
 			break;
 		case LTTNG_EVENT_SYSCALL:
-			ret = event_kernel_enable_event(kchan, event, filter_expression, filter);
-			/* We have passed ownership */
-			filter_expression = nullptr;
-			filter = nullptr;
+			ret = event_kernel_enable_event(
+				kchan, event, filter_expression.release(), bytecode.release());
 			if (ret != LTTNG_OK) {
-				goto error;
+				return static_cast<lttng_error_code>(ret);
 			}
+
 			break;
 		default:
-			ret = LTTNG_ERR_UNK;
-			goto error;
+			return LTTNG_ERR_UNK;
 		}
 
 		kernel_wait_quiescent();
@@ -2257,8 +2571,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		 * to be provided.
 		 */
 		if (usess->has_non_default_channel && channel_name[0] == '\0') {
-			ret = LTTNG_ERR_NEED_CHANNEL_NAME;
-			goto error;
+			return LTTNG_ERR_NEED_CHANNEL_NAME;
 		}
 
 		/* Get channel from global UST domain */
@@ -2267,17 +2580,16 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			/* Create default channel */
 			attr = channel_new_default_attr(LTTNG_DOMAIN_UST, usess->buffer_type);
 			if (attr == nullptr) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
-				ret = LTTNG_ERR_INVALID;
-				goto error;
+				return LTTNG_ERR_FATAL;
 			}
 
-			ret = cmd_enable_channel_internal(locked_session, domain, attr, wpipe);
+			if (lttng_strncpy(attr->name, channel_name, sizeof(attr->name))) {
+				return LTTNG_ERR_INVALID;
+			}
+
+			ret = cmd_enable_channel_internal(locked_session, domain, *attr, wpipe);
 			if (ret != LTTNG_OK) {
-				goto error;
+				return static_cast<lttng_error_code>(ret);
 			}
 
 			/* Get the newly created channel reference back */
@@ -2292,8 +2604,7 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			 * are assigned to a userspace subdomain (JUL, Log4J,
 			 * Python, etc.).
 			 */
-			ret = LTTNG_ERR_INVALID_CHANNEL_DOMAIN;
-			goto error;
+			return LTTNG_ERR_INVALID_CHANNEL_DOMAIN;
 		}
 
 		if (!internal_event) {
@@ -2304,23 +2615,22 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			ret = validate_ust_event_name(event->name);
 			if (ret) {
 				WARN("Userspace event name %s failed validation.", event->name);
-				ret = LTTNG_ERR_INVALID_EVENT_NAME;
-				goto error;
+				return LTTNG_ERR_INVALID_EVENT_NAME;
 			}
 		}
 
 		/* At this point, the session and channel exist on the tracer */
-		ret = event_ust_enable_tracepoint(
-			usess, uchan, event, filter_expression, filter, exclusion, internal_event);
-		/* We have passed ownership */
-		filter_expression = nullptr;
-		filter = nullptr;
-		exclusion = nullptr;
-		if (ret == LTTNG_ERR_UST_EVENT_ENABLED) {
-			goto already_enabled;
-		} else if (ret != LTTNG_OK) {
-			goto error;
+		ret = event_ust_enable_tracepoint(usess,
+						  uchan,
+						  event,
+						  filter_expression.release(),
+						  bytecode.release(),
+						  exclusion.release(),
+						  internal_event);
+		if (ret != LTTNG_OK) {
+			return static_cast<lttng_error_code>(ret);
 		}
+
 		break;
 	}
 	case LTTNG_DOMAIN_LOG4J:
@@ -2334,21 +2644,23 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		struct lttng_domain tmp_dom;
 		struct ltt_ust_session *usess = session.ust_session;
 
+		lttng::event_rule_uptr internal_event_rule =
+			create_agent_internal_event_rule(domain->type, filter_expression.get());
+
 		LTTNG_ASSERT(usess);
 
 		if (!agent_tracing_is_enabled()) {
 			DBG("Attempted to enable an event in an agent domain but the agent thread is not running");
-			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
-			goto error;
+			return LTTNG_ERR_AGENT_TRACING_DISABLED;
 		}
 
 		agt = trace_ust_find_agent(usess, domain->type);
 		if (!agt) {
 			agt = agent_create(domain->type);
 			if (!agt) {
-				ret = LTTNG_ERR_NOMEM;
-				goto error;
+				return LTTNG_ERR_NOMEM;
 			}
+
 			agent_add(agt, usess->agents);
 		}
 
@@ -2359,9 +2671,9 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 		uevent.loglevel = -1;
 		default_event_name = event_get_default_agent_ust_name(domain->type);
 		if (!default_event_name) {
-			ret = LTTNG_ERR_FATAL;
-			goto error;
+			return LTTNG_ERR_FATAL;
 		}
+
 		strncpy(uevent.name, default_event_name, sizeof(uevent.name));
 		uevent.name[sizeof(uevent.name) - 1] = '\0';
 
@@ -2391,30 +2703,27 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 			abort();
 		}
 
+		user_visible_channel_name = default_chan_name;
+
 		{
 			char *filter_expression_copy = nullptr;
-			struct lttng_bytecode *filter_copy = nullptr;
+			struct lttng_bytecode *bytecode_copy = nullptr;
 
-			if (filter) {
+			if (bytecode) {
 				const size_t filter_size =
-					sizeof(struct lttng_bytecode) + filter->len;
+					sizeof(struct lttng_bytecode) + bytecode->len;
 
-				filter_copy = zmalloc<lttng_bytecode>(filter_size);
-				if (!filter_copy) {
-					ret = LTTNG_ERR_NOMEM;
-					goto error;
-				}
-				memcpy(filter_copy, filter, filter_size);
-
-				filter_expression_copy = strdup(filter_expression);
-				if (!filter_expression) {
-					ret = LTTNG_ERR_NOMEM;
+				bytecode_copy = zmalloc<lttng_bytecode>(filter_size);
+				if (!bytecode_copy) {
+					return LTTNG_ERR_NOMEM;
 				}
 
-				if (!filter_expression_copy || !filter_copy) {
-					free(filter_expression_copy);
-					free(filter_copy);
-					goto error;
+				memcpy(bytecode_copy, bytecode.get(), filter_size);
+
+				filter_expression_copy = strdup(filter_expression.get());
+				if (!filter_expression_copy) {
+					free(bytecode_copy);
+					return LTTNG_ERR_NOMEM;
 				}
 			}
 
@@ -2423,45 +2732,45 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 							(char *) default_chan_name,
 							&uevent,
 							filter_expression_copy,
-							filter_copy,
+							bytecode_copy,
 							nullptr,
-							wpipe);
+							wpipe,
+							std::move(internal_event_rule));
 		}
 
-		if (ret == LTTNG_ERR_UST_EVENT_ENABLED) {
-			goto already_enabled;
-		} else if (ret != LTTNG_OK) {
-			goto error;
+		if (ret != LTTNG_OK) {
+			return static_cast<lttng_error_code>(ret);
 		}
 
 		/* The wild card * means that everything should be enabled. */
 		if (strncmp(event->name, "*", 1) == 0 && strlen(event->name) == 1) {
-			ret = event_agent_enable_all(usess, agt, event, filter, filter_expression);
+			ret = event_agent_enable_all(
+				usess, agt, event, bytecode.release(), filter_expression.release());
 		} else {
-			ret = event_agent_enable(usess, agt, event, filter, filter_expression);
+			ret = event_agent_enable(
+				usess, agt, event, bytecode.release(), filter_expression.release());
 		}
-		filter = nullptr;
-		filter_expression = nullptr;
+
 		if (ret != LTTNG_OK) {
-			goto error;
+			return static_cast<lttng_error_code>(ret);
 		}
 
 		break;
 	}
 	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
+		return LTTNG_ERR_UND;
 	}
 
-	ret = LTTNG_OK;
+	auto& channel_cfg = session.get_domain(get_domain_class_from_ctl_domain_type(domain->type))
+				    .get_channel(user_visible_channel_name);
+	try {
+		channel_cfg.get_event_rule_configuration(*event_rule).enable();
+	} catch (const lttng::sessiond::exceptions::event_rule_configuration_not_found_error& ex) {
+		DBG("%s", ex.what());
+		channel_cfg.add_event_rule_configuration(true, std::move(event_rule));
+	}
 
-already_enabled:
-error:
-	free(filter_expression);
-	free(filter);
-	free(exclusion);
-	channel_attr_destroy(attr);
-	return ret;
+	return LTTNG_OK;
 }
 
 /*
@@ -2474,7 +2783,8 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 		     char *filter_expression,
 		     struct lttng_event_exclusion *exclusion,
 		     struct lttng_bytecode *bytecode,
-		     int wpipe)
+		     int wpipe,
+		     lttng::event_rule_uptr event_rule)
 {
 	int ret;
 	/*
@@ -2498,7 +2808,8 @@ int cmd_enable_event(struct command_ctx *cmd_ctx,
 				bytecode,
 				exclusion,
 				wpipe,
-				false);
+				false,
+				std::move(event_rule));
 	filter_expression = nullptr;
 	bytecode = nullptr;
 	exclusion = nullptr;
@@ -2517,7 +2828,8 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				     char *filter_expression,
 				     struct lttng_bytecode *filter,
 				     struct lttng_event_exclusion *exclusion,
-				     int wpipe)
+				     int wpipe,
+				     lttng::event_rule_uptr event_rule)
 {
 	return _cmd_enable_event(locked_session,
 				 domain,
@@ -2527,7 +2839,8 @@ static int cmd_enable_event_internal(ltt_session::locked_ref& locked_session,
 				 filter,
 				 exclusion,
 				 wpipe,
-				 true);
+				 true,
+				 std::move(event_rule));
 }
 
 /*
@@ -3045,7 +3358,7 @@ int cmd_set_consumer_uri(const ltt_session::locked_ref& session,
 	 * Make sure to set the session in output mode after we set URI since a
 	 * session can be created without URL (thus flagged in no output mode).
 	 */
-	session->output_traces = 1;
+	session->output_traces = true;
 	if (ksess) {
 		ksess->output_traces = 1;
 	}
@@ -3225,7 +3538,7 @@ cmd_create_session_from_descriptor(struct lttng_session_descriptor *descriptor,
 
 	switch (lttng_session_descriptor_get_type(descriptor)) {
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_SNAPSHOT:
-		new_session->snapshot_mode = 1;
+		new_session->snapshot_mode = true;
 		break;
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_LIVE:
 		new_session->live_timer =
