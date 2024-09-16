@@ -16,8 +16,7 @@ namespace details {
 /* Is operator() of InvocableType is marked as noexcept? */
 template <typename InvocableType>
 struct is_invocation_noexcept
-	: std::integral_constant<bool, noexcept((std::declval<InvocableType>())())> {
-};
+	: std::integral_constant<bool, noexcept((std::declval<InvocableType>())())> {};
 } /* namespace details. */
 
 /*

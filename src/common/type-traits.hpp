@@ -22,16 +22,13 @@ namespace traits {
  *     `false`
  */
 template <typename T, typename... Ts>
-struct is_one_of : std::false_type {
-};
+struct is_one_of : std::false_type {};
 
 template <typename T, typename... Ts>
-struct is_one_of<T, T, Ts...> : std::true_type {
-};
+struct is_one_of<T, T, Ts...> : std::true_type {};
 
 template <typename T, typename U, typename... Ts>
-struct is_one_of<T, U, Ts...> : is_one_of<T, Ts...> {
-};
+struct is_one_of<T, U, Ts...> : is_one_of<T, Ts...> {};
 } /* namespace traits */
 } /* namespace lttng */
 
