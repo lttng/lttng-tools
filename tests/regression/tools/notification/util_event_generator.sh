@@ -61,7 +61,7 @@ function ust_event_generator_toggle_state
 	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
 }
 
-function generator_quit
+function reset_generator_quit
 {
 	generator_quit=0
 }
@@ -84,7 +84,7 @@ function ust_event_generator_run_once_per_transition
 	shift 4
 
 	trap ust_event_generator_toggle_state SIGUSR1
-	trap generator_quit SIGUSR2
+	trap reset_generator_quit SIGUSR2
 
 	while [ $generator_quit -ne 0  ]; do
 		if [[ $ust_event_generator_suspended -eq "1" ]]; then
@@ -103,6 +103,9 @@ function ust_event_generator_run_once_per_transition
 			sleep 0.1
 		fi
 	done
+
+	trap SIGUSR1
+	trap SIGUSR2
 }
 
 # Note: Only one generator can be used at a time per domain type
@@ -122,7 +125,7 @@ function ust_event_generator
 	shift 2
 
 	trap ust_event_generator_toggle_state SIGUSR1
-	trap generator_quit SIGUSR2
+	trap reset_generator_quit SIGUSR2
 
 	while [ $generator_quit -ne 0 ]; do
 		if [[ $ust_event_generator_suspended -eq "1" ]]; then
@@ -136,6 +139,9 @@ function ust_event_generator
 			fi
 		fi
 	done
+
+	trap SIGUSR1
+	trap SIGUSR2
 }
 
 function kernel_event_generator_toggle_state
@@ -159,7 +165,7 @@ function kernel_event_generator_run_once_per_transition
 
 	local run=false
 	trap kernel_event_generator_toggle_state SIGUSR1
-	trap generator_quit SIGUSR2
+	trap reset_generator_quit SIGUSR2
 
 	while [ $generator_quit -ne 0 ]; do
 		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
@@ -177,6 +183,9 @@ function kernel_event_generator_run_once_per_transition
 			sleep 0.1
 		fi
 	done
+
+	trap SIGUSR1
+	trap SIGUSR2
 }
 
 function kernel_event_generator
@@ -193,7 +202,7 @@ function kernel_event_generator
 	shift 2
 
 	trap kernel_event_generator_toggle_state SIGUSR1
-	trap generator_quit SIGUSR2
+	trap reset_generator_quit SIGUSR2
 
 	while [ $generator_quit -ne 0 ]; do
 		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
@@ -206,4 +215,7 @@ function kernel_event_generator
 			fi
 		fi
 	done
+
+	trap SIGUSR1
+	trap SIGUSR2
 }
