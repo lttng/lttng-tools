@@ -2068,9 +2068,6 @@ static int _cmd_enable_event(struct ltt_session *session,
 	assert(event);
 	assert(channel_name);
 
-	/* If we have a filter, we must have its filter expression */
-	assert(!(!!filter_expression ^ !!filter));
-
 	/* Normalize event name as a globbing pattern */
 	strutils_normalize_star_glob_pattern(event->name);
 
@@ -2088,6 +2085,13 @@ static int _cmd_enable_event(struct ltt_session *session,
 	DBG("Enable event command for event \'%s\'", event->name);
 
 	rcu_read_lock();
+
+	/* If we have a filter, we must have its filter expression. */
+	if (!!filter_expression ^ !!filter) {
+		DBG("Refusing to enable recording event rule as it has an inconsistent filter expression and bytecode specification");
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
