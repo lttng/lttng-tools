@@ -2093,9 +2093,6 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
 
-	/* If we have a filter, we must have its filter expression */
-	LTTNG_ASSERT(!(!!filter_expression ^ !!filter));
-
 	/* Normalize event name as a globbing pattern */
 	strutils_normalize_star_glob_pattern(event->name);
 
@@ -2111,6 +2108,13 @@ static int _cmd_enable_event(ltt_session::locked_ref& locked_session,
 	}
 
 	const lttng::urcu::read_lock_guard read_lock;
+
+	/* If we have a filter, we must have its filter expression. */
+	if (!!filter_expression ^ !!filter) {
+		DBG("Refusing to enable recording event rule as it has an inconsistent filter expression and bytecode specification");
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
