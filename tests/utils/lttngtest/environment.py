@@ -151,7 +151,7 @@ class _LiveViewer:
                 else:
                     break
 
-    def wait_until_connected(self, timeout=0):
+    def is_connected(self):
         ctf_live_cc = bt2.find_plugin("ctf").source_component_classes["lttng-live"]
         self._environment._log(
             "Checking for connected clients at 'net://localhost:{}'".format(
@@ -167,6 +167,21 @@ class _LiveViewer:
                 )
             },
         )
+
+        for live_session in query_executor.query():
+            if (
+                live_session["session-name"] == self._session
+                and live_session["client-count"] >= 1
+            ):
+                self._environment._log(
+                    "Session '{}' has {} connected clients".format(
+                        live_session["session-name"], live_session["client-count"]
+                    )
+                )
+                return True
+        return False
+
+    def wait_until_connected(self, timeout=0):
         connected = False
         started = time.time()
         while not connected:
@@ -177,22 +192,11 @@ class _LiveViewer:
                             self._session, time.time() - started
                         )
                     )
-                query_result = query_executor.query()
+
+                connected = self.is_connected()
             except bt2._Error:
                 time.sleep(0.01)
                 continue
-            for live_session in query_result:
-                if (
-                    live_session["session-name"] == self._session
-                    and live_session["client-count"] >= 1
-                ):
-                    connected = True
-                    self._environment._log(
-                        "Session '{}' has {} connected clients".format(
-                            live_session["session-name"], live_session["client-count"]
-                        )
-                    )
-                    break
         return connected
 
     def wait(self):
