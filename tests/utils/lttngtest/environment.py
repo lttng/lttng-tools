@@ -140,6 +140,8 @@ class _LiveViewer:
         while True:
             try:
                 for msg in self._live_iterator:
+                    if type(msg) is bt2._MessageIteratorInactivityMessageConst:
+                        break
                     self._events.append(msg)
                 break
             except bt2.TryAgain as e:
