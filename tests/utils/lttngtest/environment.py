@@ -181,10 +181,10 @@ class _LiveViewer:
                 return True
         return False
 
-    def wait_until_connected(self, timeout=0):
-        connected = False
+    def _wait_until(self, desired_state: bool, timeout=0):
+        connected_state = not desired_state
         started = time.time()
-        while not connected:
+        while connected_state != desired_state:
             try:
                 if timeout != 0 and (time.time() - started) > timeout:
                     raise RuntimeError(
@@ -193,11 +193,17 @@ class _LiveViewer:
                         )
                     )
 
-                connected = self.is_connected()
+                connected_state = self.is_connected()
             except bt2._Error:
                 time.sleep(0.01)
                 continue
-        return connected
+        return connected_state
+
+    def wait_until_disconnected(self, timeout=0):
+        return self._wait_until(False, timeout)
+
+    def wait_until_connected(self, timeout=0):
+        return self._wait_until(True, timeout)
 
     def wait(self):
         if self._live_iterator:
