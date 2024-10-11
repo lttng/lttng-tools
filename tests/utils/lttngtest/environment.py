@@ -822,6 +822,36 @@ class _Environment(logger._Logger):
             self._relayd_output_consumer.daemon = True
             self._relayd_output_consumer.start()
 
+        if os.environ.get("LTTNG_TEST_GDBSERVER_RELAYD") is not None:
+            subprocess.Popen(
+                [
+                    "gdbserver",
+                    "--attach",
+                    "localhost:{}".format(
+                        os.environ.get("LTTNG_TEST_GDBSERVER_RELAYD_PORT", "1025")
+                    ),
+                    str(process.pid),
+                ]
+            )
+
+            if os.environ.get("LTTNG_TEST_GDBSERVER_RELAYD_WAIT", ""):
+                input("Waiting for user input. Press `Enter` to continue")
+            else:
+                subprocess.Popen(
+                    [
+                        "gdb",
+                        "--batch-silent",
+                        "-ex",
+                        "target remote localhost:{}".format(
+                            os.environ.get("LTTNG_TEST_GDBSERVER_RELAYD_PORT", "1025")
+                        ),
+                        "-ex",
+                        "continue",
+                        "-ex",
+                        "disconnect",
+                    ]
+                )
+
         return process
 
     def _launch_lttng_sessiond(self):
@@ -893,6 +923,36 @@ class _Environment(logger._Logger):
 
             # Wait for SIGUSR1, indicating the sessiond is ready to proceed
             wait_queue.wait_for_signal()
+
+        if os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND") is not None:
+            subprocess.Popen(
+                [
+                    "gdbserver",
+                    "--attach",
+                    "localhost:{}".format(
+                        os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
+                    ),
+                    str(process.pid),
+                ]
+            )
+
+            if os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_WAIT", ""):
+                input("Waiting for user input. Press `Enter` to continue")
+            else:
+                subprocess.Popen(
+                    [
+                        "gdb",
+                        "--batch-silent",
+                        "-ex",
+                        "target remote localhost:{}".format(
+                            os.environ.get("LTTNG_TEST_GDBSERVER_SESSIOND_PORT", "1024")
+                        ),
+                        "-ex",
+                        "continue",
+                        "-ex",
+                        "disconnect",
+                    ]
+                )
 
         return process
 

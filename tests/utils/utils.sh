@@ -14,6 +14,12 @@ RELAYD_MATCH=".*lttng-relayd.*"
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace2"
 LTTNG_TEST_LOG_DIR="${LTTNG_TEST_LOG_DIR:-}"
+LTTNG_TEST_GDBSERVER_RELAYD="${LTTNG_TEST_GDBSERVER_RELAYD:-}"
+LTTNG_TEST_GDBSERVER_RELAYD_PORT="${LTTNG_TEST_GDBSERVER_RELAYD_PORT:-1025}"
+LTTNG_TEST_GDBSERVER_RELAYD_WAIT="${LTTNG_TEST_GDBSERVER_RELAYD_WAIT:-}"
+LTTNG_TEST_GDBSERVER_SESSIOND="${LTTNG_TEST_GDBSERVER_SESSIOND:-}"
+LTTNG_TEST_GDBSERVER_SESSIOND_PORT="${LTTNG_TEST_GDBSERVER_SESSIOND_PORT:-1024}"
+LTTNG_TEST_GDBSERVER_SESSIOND_WAIT="${LTTNG_TEST_GDBSERVER_SESSIOND_WAIT:-}"
 LTTNG_TEST_VERBOSE_BABELTRACE="${LTTNG_TEST_VERBOSE_BABELTRACE:-}"
 LTTNG_TEST_BABELTRACE_VERBOSITY="${LTTNG_TEST_BABELTRACE_VERBOSITY:-I}"
 LTTNG_TEST_VERBOSE_CLIENT="${LTTNG_TEST_VERBOSE_CLIENT:-}"
@@ -779,9 +785,21 @@ function start_lttng_relayd_opt()
 		local ret="${?}"
 		if [ $withtap -eq "1" ]; then
 			ok $ret "Start lttng-relayd (process mode: $process_mode opt: ${opts[*]})"
-		else
-			return $ret
 		fi
+
+		if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD}" ]]; then
+			# The 'bash' is required since gdbserver doesn't end up running in the
+			# background with '&'.
+			bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT} $(lttng_pgrep "${RELAYD_MATCH}" | head -n 1)" >/dev/null 2>&1 &
+			if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD_WAIT}" ]]; then
+				read -p "Waiting for user input. Press 'Enter' to continue: "
+			else
+				# Continue blocks this, but when the next break or signal happens,
+				# the process will disconnect and terminate.
+				gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT}" -ex "continue" -ex "disconnect" &
+			fi
+		fi
+		return $ret
 	else
 		pass "Start lttng-relayd (opt: ${opts[*]})"
 	fi
@@ -962,6 +980,19 @@ function start_lttng_sessiond_opt()
 		status=$?
 		if [ "$withtap" -eq "1" ]; then
 			ok $status "Start session daemon"
+		fi
+
+		if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND}" ]]; then
+			# The 'bash' is required since gdbserver doesn't end up running in the
+			# background with '&'.
+			bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT} $(lttng_pgrep "${SESSIOND_MATCH}" | head -n 1)" >/dev/null 2>&1 &
+			if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND_WAIT}" ]]; then
+				read -p "Waiting for user input. Press 'Enter' to continue: "
+			else
+				# Continue blocks this, but when the next break or signal happens,
+				# the process will disconnect and terminate.
+				gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT}" -ex "continue" -ex "disconnect" &
+			fi
 		fi
 	fi
 }
