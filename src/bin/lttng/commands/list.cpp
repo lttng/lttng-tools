@@ -1142,7 +1142,7 @@ static int list_session_agent_events()
 		}
 	} else {
 		/* Pretty print */
-		MSG("Events (Logger name):\n---------------------");
+		MSG("Event rules:\n---------------------");
 		if (count == 0) {
 			MSG("%sNone\n", indent6);
 			goto end;
