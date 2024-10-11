@@ -355,6 +355,7 @@ static ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 
 		pthread_mutex_lock(&viewer_session->unannounced_stream_list_lock);
 		cds_list_del_rcu(&vstream->viewer_stream_node);
+		viewer_stream_put(vstream);
 		pthread_mutex_unlock(&viewer_session->unannounced_stream_list_lock);
 		viewer_stream_put(vstream);
 	}
