@@ -1,8 +1,134 @@
 // Render with Asciidoctor
+:check: ✔
+:ex: ✗
 
 = LTTng-tools Tests
 
 :toc:
+
+== Test harness
+
+The full tests are currently powered via `make check`. Individual tests may
+be run directly by calling their respective script. For example:
+
+[,bash]
+----
+./tests/regression/tools/live/test_ust
+----
+
+New tests must be written using the python framework (see `tests/utils/lttngtest`).
+The purpose of the `lttngtest` framework is to more reliably control and clean-up
+the environment for each test with the eventual long-term goal to be able to
+parallelize some of the tests.
+
+Legacy tests are principally written in bash, and some are in C/C++. C/C++ tests
+must be limited to those that actually require interacting with loaded libraries
+or internal testpoints.
+
+=== Test-related configuration options
+
+ * `PRECIOUS_TESTS`: (Default:{nbsp}yes) When set to  `yes`, test logs will not be deleted after a test failure. This stops tests from being able to automatically rerun with `make check`
+
+=== TAP drivers options ===
+
+. Options supported by the various TAP drivers
+[cols="1,1,1,1,1"]
+|===
+| Option | Description | Python tap-driver | BASH tap-driver | C/C++ tap driver
+
+| `LTTNG_TESTS_TAP_AUTOTIME`
+| Automatically outputs test step timing information
+| {check} | {check} | {check}
+
+| `LTTNG_TEST_LOG_DIR`
+| Sets the default log dir to `<testname>.log.d`
+| {ex} | {check} | {ex}
+
+|===
+
+=== Test environment variables
+
+. Environment variables support across testing frameworks
+[cols="1,1,1,1,1"]
+|===
+| Environment Variable | Description | Python Framework | Bash Framework | C/C++ Framework
+
+| `LTTNG_ENABLE_DESTRUCTIVE_TESTS`
+| When set to `will-break-my-system`, tests that change global state (e.g. clock settings, creating and destroying users, ...) will be run. These tests typically also require being run as the root user.
+| {check} | {check} | {ex}
+
+| `LTTNG_RELAYD_ENV_VARS`
+| Environment variables to forward into test environment
+| {check} | {ex} | {ex}
+
+| `LTTNG_SESSIOND_ENV_VARS`
+| Environment variables to forward into test environment
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_LOG_DIR`
+| Define a directory to which the verbose logs will be written to disk.
+`-` may be used to indicate stdout/stderr respectively.
+Some invocations of programs during the test may override this value to perform the test.
+| {ex} | {check} | {ex}
+
+| `LTTNG_TEST_BABELTRACE_VERBOSITY`
+| Define the level of verbosity for `babeltrace2`. Default:{nbsp}`I`
+| {ex} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_RELAYD`
+| Launch `gdbserver` and attach to newly spawned `lttng-relayd` processes
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_RELAYD_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1025`
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_RELAYD_WAIT`
+| When not empty, the test script will wait for user input before continuing.
+Useful to connect and insert breakpoints before other commands are run.
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_SESSIOND`
+| Launch `gdbserver` and attach to newly spawned `lttng-sessiond` processes
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_SESSIOND`
+| Launch `gdbserver` and attach to newly spawned `lttng-sessiond` processes
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_NO_RELAYD`
+| Do not spawn `lttng-relayd` in test environment
+Used to manually launch one during test troubleshooting
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_SESSIOND_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1024`
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_PRESERVE_TEST_ENV`
+| Do not delete test environment folders on tear-down
+| {check} | {ex} | {ex}
+
+| `LTTNG_TEST_VERBOSE_BABELTRACE`
+| Run `babeltrace2` in it's verbose mode
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_CLIENT`
+| Run `lttng-client` in it's verbose mode
+| {ex} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_RELAYD`
+| Run `lttng-relayd` in it's verbose and debug mode
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_VERBOSE_SESSIOND`
+| Run `lttng-sesiond in it's verbose and debug mode
+| {check} | {check} | {ex}
+
+| `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
+| Do not run kernel (LTTng-modules) tests
+| {ex} | {check} | {ex}
+|===
 
 == Test Anti-Patterns
 
