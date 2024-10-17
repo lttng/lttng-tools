@@ -2654,6 +2654,8 @@ error:
 			destroy_conn,
 			sock_n.node) {
 		health_code_update();
+		fd_tracker_close_unsuspendable_fd(
+			the_fd_tracker, &destroy_conn->sock->fd, 1, close_sock, destroy_conn->sock);
 		connection_put(destroy_conn);
 	}
 	rcu_read_unlock();
