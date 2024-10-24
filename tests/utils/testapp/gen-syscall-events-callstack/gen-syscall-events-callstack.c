@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/**
+/*
  * The process waits for the creation of a file passed as argument from an
  * external processes to execute a syscall and exiting. This is useful for tests
  * in combinaison with LTTng's PID tracker feature where we can trace the kernel

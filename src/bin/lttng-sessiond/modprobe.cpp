@@ -6,7 +6,7 @@
  *
  */
 
-/**
+/*
  * @file modprobe.c
  *
  * @brief modprobe related functions.
@@ -316,7 +316,7 @@ static int probes_capacity;
 #ifdef HAVE_KMOD
 #include <libkmod.h>
 
-/**
+/*
  * @brief Logging function for libkmod integration.
  */
 static ATTR_FORMAT_PRINTF(6, 0) void log_kmod(void *data __attribute__((unused)),
@@ -337,7 +337,7 @@ static ATTR_FORMAT_PRINTF(6, 0) void log_kmod(void *data __attribute__((unused))
 	free(str);
 }
 
-/**
+/*
  * @brief Setup the libkmod context.
  *
  * Create the context, add a custom logging function and preload the
@@ -376,7 +376,7 @@ error:
 	return ret;
 }
 
-/**
+/*
  * @brief Loads the kernel modules in \p modules
  *
  * @param modules	List of modules to load
@@ -435,7 +435,7 @@ error:
 	return ret;
 }
 
-/**
+/*
  * @brief Recursively unload modules.
  *
  * This function implements the same modules unloading behavior as
@@ -476,7 +476,7 @@ static int rmmod_recurse(struct kmod_module *mod)
 	return ret;
 }
 
-/**
+/*
  * @brief Unloads the kernel modules in \p modules
  *
  * @param modules	List of modules to unload
@@ -672,7 +672,7 @@ int modprobe_lttng_control()
 	return modprobe_lttng(kern_modules_control_core, ARRAY_SIZE(kern_modules_control_core));
 }
 
-/**
+/*
  * Grow global list of probes (double capacity or set it to 1 if
  * currently 0 and copy existing data).
  */

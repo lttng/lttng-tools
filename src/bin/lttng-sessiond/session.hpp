@@ -476,7 +476,7 @@ namespace sessiond {
 std::unique_lock<std::mutex> lock_session_list();
 
 namespace exceptions {
-/**
+/*
  * @class session_not_found_error
  * @brief Represents a session-not-found error and provides the parameters used to query the session
  * for use by error-reporting code.

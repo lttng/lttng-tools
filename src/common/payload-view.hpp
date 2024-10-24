@@ -55,7 +55,7 @@ struct lttng_payload_view {
 	} _iterator;
 };
 
-/**
+/*
  * Checks if a payload view's buffer is safe to access.
  *
  * After calling the payload view creation functions, callers should verify
@@ -66,7 +66,7 @@ struct lttng_payload_view {
  */
 bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
 
-/**
+/*
  * Return a payload view referencing a subset of a payload.
  *
  * @payload	Source payload to reference
@@ -78,7 +78,7 @@ bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
 struct lttng_payload_view
 lttng_payload_view_from_payload(const struct lttng_payload *payload, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Return a payload view referencing a subset of a payload referenced by
  * another payload view.
  *
@@ -91,7 +91,7 @@ lttng_payload_view_from_payload(const struct lttng_payload *payload, size_t offs
 struct lttng_payload_view
 lttng_payload_view_from_view(struct lttng_payload_view *view, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Return a payload view referencing a subset of a dynamic buffer.
  *
  * Meant as an adapter for code paths that need to create a payload view
@@ -105,7 +105,7 @@ lttng_payload_view_from_view(struct lttng_payload_view *view, size_t offset, ptr
  */
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 	const struct lttng_dynamic_buffer *buffer, size_t offset, ptrdiff_t len);
-/**
+/*
  *
  * Return a payload view referencing a subset of a dynamic buffer.
  *
@@ -122,7 +122,7 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(const struct lttng
 							      size_t offset,
 							      ptrdiff_t len);
 
-/**
+/*
  * Return a payload view referencing a subset of the memory referenced by a raw
  * pointer.
  *
@@ -136,7 +136,7 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(const struct lttng
 struct lttng_payload_view
 lttng_payload_view_init_from_buffer(const char *src, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Get the number of file descriptor handles left in a payload view.
  *
  * @payload	Payload instance
@@ -145,7 +145,7 @@ lttng_payload_view_init_from_buffer(const char *src, size_t offset, ptrdiff_t le
  */
 int lttng_payload_view_get_fd_handle_count(const struct lttng_payload_view *payload_view);
 
-/**
+/*
  * Pop an fd handle from a payload view.
  *
  * A reference to the returned fd_handle is acquired on behalf of the caller.

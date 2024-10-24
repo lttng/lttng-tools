@@ -44,7 +44,7 @@ void lttng_payload_reset(struct lttng_payload *payload);
  */
 void lttng_payload_clear(struct lttng_payload *payload);
 
-/**
+/*
  * Add an fd to the payload.
  * The payload acquires a reference to the fd_handle.
  *

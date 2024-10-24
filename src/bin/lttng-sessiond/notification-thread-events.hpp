@@ -12,7 +12,7 @@
 
 #include <lttng/domain.h>
 
-/**
+/*
  * Event handling function shall only return an error if
  * the thread should be stopped.
  */

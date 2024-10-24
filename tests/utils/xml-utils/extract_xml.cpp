@@ -46,7 +46,7 @@ static int opt_verbose;
 static int node_exist;
 static bool result = false;
 
-/**
+/*
  * print_xpath_nodes:
  * nodes:  the nodes set.
  * output: the output file handle.

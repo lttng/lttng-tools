@@ -21,7 +21,7 @@ struct lttng_buffer_view {
 	size_t size;
 };
 
-/**
+/*
  * Return a buffer view referencing a subset of the memory referenced by a raw
  * pointer.
  *
@@ -34,7 +34,7 @@ struct lttng_buffer_view {
  */
 struct lttng_buffer_view lttng_buffer_view_init(const char *src, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Checks if a buffer view is safe to access.
  *
  * After calling the buffer view creation functions, callers should verify
@@ -45,7 +45,7 @@ struct lttng_buffer_view lttng_buffer_view_init(const char *src, size_t offset, 
  */
 bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);
 
-/**
+/*
  * Return a buffer view referencing a subset of the memory referenced by another
  * view.
  *
@@ -61,7 +61,7 @@ bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);
 struct lttng_buffer_view
 lttng_buffer_view_from_view(const struct lttng_buffer_view *src, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Return a buffer view referencing a subset of the memory referenced by a
  * dynamic buffer.
  *
@@ -77,7 +77,7 @@ lttng_buffer_view_from_view(const struct lttng_buffer_view *src, size_t offset, 
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 	const struct lttng_dynamic_buffer *src, size_t offset, ptrdiff_t len);
 
-/**
+/*
  * Verify that `buf` contains a string starting at `str` of length
  * `len_with_null_terminator`.
  *

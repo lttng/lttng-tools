@@ -35,7 +35,7 @@
 	throw lttng::invalid_argument_error(msg, LTTNG_SOURCE_LOCATION())
 
 namespace lttng {
-/**
+/*
  * @class source_location
  * @brief Represents the location in the source code where an exception was thrown.
  *
@@ -73,7 +73,7 @@ public:
 	unsigned int line_number;
 };
 
-/**
+/*
  * @class runtime_error
  * @brief Base type for all LTTng exceptions.
  *
@@ -95,7 +95,7 @@ public:
 	lttng::source_location source_location;
 };
 
-/**
+/*
  * @class allocation_failure
  * @brief Represents an allocation failure.
  *
@@ -111,7 +111,7 @@ public:
 	std::size_t allocation_size;
 };
 
-/**
+/*
  * @class out_of_range
  * @brief Represents an out of range access error.
  *
@@ -124,7 +124,7 @@ public:
 			      const lttng::source_location& source_location);
 };
 
-/**
+/*
  * @class unsupported_error
  * @brief Represents an error for unsupported features.
  *
@@ -138,7 +138,7 @@ public:
 };
 
 namespace ctl {
-/**
+/*
  * @class error
  * @brief Wraps lttng_error_code errors for reporting through liblttng-ctl's interface.
  *
@@ -162,7 +162,7 @@ private:
 };
 } /* namespace ctl */
 
-/**
+/*
  * @class posix_error
  * @brief Wraps a POSIX system error, including the location where the error occurred.
  */
@@ -173,7 +173,7 @@ public:
 			     const lttng::source_location& source_location);
 };
 
-/**
+/*
  * @class communication_error
  * @brief Base class for communication errors between components.
  */
@@ -183,7 +183,7 @@ public:
 				     const lttng::source_location& source_location);
 };
 
-/**
+/*
  * @class protocol_error
  * @brief Base class for protocol layer communication errors (encoding or decoding problems).
  */
@@ -193,7 +193,7 @@ public:
 				const lttng::source_location& source_location);
 };
 
-/**
+/*
  * @class invalid_argument_error
  * @brief Represents an error for invalid arguments.
  */

@@ -354,7 +354,7 @@ int utils_stream_file_path(const char *path_name,
 	return ret;
 }
 
-/**
+/*
  * Parse a string that represents a size in human readable format. It
  * supports decimal integers suffixed by 'k', 'K', 'M' or 'G'.
  *
@@ -451,7 +451,7 @@ end:
 	return ret;
 }
 
-/**
+/*
  * Parse a string that represents a time in human readable format. It
  * supports decimal integers suffixed by:
  *     "us" for microsecond,
@@ -709,7 +709,7 @@ int utils_get_count_order_u64(uint64_t x)
 	return fls_u64(x - 1);
 }
 
-/**
+/*
  * Obtain the value of LTTNG_HOME environment variable, if exists.
  * Otherwise returns the value of HOME.
  */
@@ -740,7 +740,7 @@ end:
 	return val;
 }
 
-/**
+/*
  * Get user's home directory. Dynamically allocated, must be freed
  * by the caller.
  */

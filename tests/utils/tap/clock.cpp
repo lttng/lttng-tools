@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only

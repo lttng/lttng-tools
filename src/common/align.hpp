@@ -26,7 +26,7 @@
 
 #define lttng_align_floor(v, align) __lttng_align_floor_mask(v, (__typeof__(v)) (align) -1)
 
-/**
+/*
  * lttng_offset_align - Calculate the offset needed to align an object on its natural
  *                alignment towards higher addresses.
  * @align_drift:  object offset from an "alignment"-aligned address.
@@ -41,7 +41,7 @@
 		(((alignment) - (align_drift)) & ((alignment) -1));                               \
 	})
 
-/**
+/*
  * lttng_offset_align_floor - Calculate the offset needed to align an object
  *                      on its natural alignment towards lower addresses.
  * @align_drift:  object offset from an "alignment"-aligned address.

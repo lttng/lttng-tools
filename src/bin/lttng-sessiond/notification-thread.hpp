@@ -83,7 +83,7 @@ struct notification_thread_handle {
 	sem_t ready;
 };
 
-/**
+/*
  * This thread maintains an internal state associating clients and triggers.
  *
  * In order to speed-up and simplify queries, hash tables providing the
