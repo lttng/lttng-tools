@@ -451,7 +451,7 @@ ssize_t uri_parse(const char *str_uri, struct lttng_uri **uris)
 			}
 
 			port = atoi(port_f);
-			if (port > 0xffff || port <= 0x0) {
+			if (port > 0xffff || port < 0x0) {
 				ERR("Invalid port number %d", port);
 				free(port_f);
 				goto free_error;

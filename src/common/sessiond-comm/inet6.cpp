@@ -86,7 +86,19 @@ error:
 int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 {
 	struct sockaddr_in6 sockaddr = sock->sockaddr.addr.sin6;
-	return bind(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
+	int ret;
+
+	ret = bind(sock->fd, (struct sockaddr *) &sockaddr, sizeof(sockaddr));
+	if (ret) {
+		return ret;
+	}
+
+	if (sockaddr.sin6_port == 0) {
+		socklen_t socklen = sizeof(sock->sockaddr.addr.sin);
+		ret = getsockname(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin, &socklen);
+	}
+
+	return ret;
 }
 
 static int connect_no_timeout(struct lttcomm_sock *sock)

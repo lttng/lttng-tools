@@ -796,6 +796,7 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		goto error;
 	}
 
+	DBG("Bound %s socket fd %d to port %d", name, sock->fd, ntohs(sock->sockaddr.addr.sin.sin_port));
 	ret = sock->ops->listen(sock, -1);
 	if (ret < 0) {
 		goto error;
@@ -2955,24 +2956,12 @@ int relayd_live_create(struct lttng_uri *uri)
 {
 	int ret = 0, retval = 0;
 	void *status;
-	int is_root;
 
 	if (!uri) {
 		retval = -1;
 		goto exit_init_data;
 	}
 	live_uri = uri;
-
-	/* Check if daemon is UID = 0 */
-	is_root = !getuid();
-
-	if (!is_root) {
-		if (live_uri->port < 1024) {
-			ERR("Need to be root to use ports < 1024");
-			retval = -1;
-			goto exit_init_data;
-		}
-	}
 
 	/* Setup the thread apps communication pipe. */
 	if (create_conn_pipe()) {

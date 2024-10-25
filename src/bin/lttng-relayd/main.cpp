@@ -97,7 +97,7 @@ enum relay_connection_status {
 
 /* command line options */
 char *opt_output_path, *opt_working_directory;
-static int opt_daemon, opt_background, opt_print_version, opt_allow_clear = 1;
+static int opt_daemon, opt_background, opt_print_version, opt_allow_clear = 1, opt_dynamic_port_allocation = 0;
 enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
 /* Argument variables */
@@ -263,6 +263,7 @@ static struct option long_options[] = {
 		'p',
 	},
 	{ "disallow-clear", 0, nullptr, 'x' },
+	{ "dynamic-port-allocation", 0, nullptr, '\0' },
 	{
 		nullptr,
 		0,
@@ -320,6 +321,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 				goto end;
 			}
 			lttng_opt_fd_pool_size = (unsigned int) v;
+		} else if (!strcmp(optname, "dynamic-port-allocation")) {
+			opt_dynamic_port_allocation = 1;
 		} else {
 			fprintf(stderr, "unknown option %s", optname);
 			if (arg) {
@@ -337,7 +340,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ERR("Invalid control URI specified");
 				goto end;
 			}
-			if (control_uri->port == 0) {
+			if (control_uri->port == 0 && !opt_dynamic_port_allocation) {
 				control_uri->port = DEFAULT_NETWORK_CONTROL_PORT;
 			}
 		}
@@ -352,7 +355,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ERR("Invalid data URI specified");
 				goto end;
 			}
-			if (data_uri->port == 0) {
+			if (data_uri->port == 0 && !opt_dynamic_port_allocation) {
 				data_uri->port = DEFAULT_NETWORK_DATA_PORT;
 			}
 		}
@@ -367,7 +370,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ERR("Invalid live URI specified");
 				goto end;
 			}
-			if (live_uri->port == 0) {
+			if (live_uri->port == 0 && !opt_dynamic_port_allocation) {
 				live_uri->port = DEFAULT_NETWORK_VIEWER_PORT;
 			}
 		}
@@ -663,7 +666,7 @@ static int set_options(int argc, char **argv)
 	if (control_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_CONTROL_BIND_ADDRESS ":%d",
-			       DEFAULT_NETWORK_CONTROL_PORT);
+			       opt_dynamic_port_allocation ? 0 : DEFAULT_NETWORK_CONTROL_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
 			retval = -1;
@@ -681,7 +684,7 @@ static int set_options(int argc, char **argv)
 	if (data_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_DATA_BIND_ADDRESS ":%d",
-			       DEFAULT_NETWORK_DATA_PORT);
+			       (opt_dynamic_port_allocation) ? 0 : DEFAULT_NETWORK_DATA_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default data address");
 			retval = -1;
@@ -699,7 +702,7 @@ static int set_options(int argc, char **argv)
 	if (live_uri == nullptr) {
 		ret = asprintf(&default_address,
 			       "tcp://" DEFAULT_NETWORK_VIEWER_BIND_ADDRESS ":%d",
-			       DEFAULT_NETWORK_VIEWER_PORT);
+			       (opt_dynamic_port_allocation) ? 0 : DEFAULT_NETWORK_VIEWER_PORT);
 		if (ret < 0) {
 			PERROR("asprintf default viewer control address");
 			retval = -1;
@@ -1034,14 +1037,15 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri, const cha
 		PERROR("Failed to open \"%s\" relay socket", formated_name ?: "Unknown");
 		goto error;
 	}
-	DBG("Listening on %s socket %d", name, sock->fd);
 
+	DBG("Listening on %s socket %d", name, sock->fd);
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
 		PERROR("Failed to bind socket");
 		goto error;
 	}
 
+	DBG("Bound %s socket fd %d to port %d", name, sock->fd, ntohs(sock->sockaddr.addr.sin.sin_port));
 	ret = sock->ops->listen(sock, -1);
 	if (ret < 0) {
 		goto error;

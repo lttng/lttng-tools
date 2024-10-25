@@ -18,6 +18,7 @@ SYNOPSIS
              [option:--live-port='URL'] [option:--output='DIR'] [option:--group='GROUP']
              [option:--verbose]... [option:--working-directory='DIR']
              [option:--group-output-by-host | option:--group-output-by-session] [option:--disallow-clear]
+	     [option:--dynamic-port-allocation]
 
 
 DESCRIPTION
@@ -227,6 +228,13 @@ option:-v, option:--verbose::
 +
 Specify this option up to three times to get more levels of verbosity.
 
+option:--dynamic-port-allocation::
+    When specific any of the control, data, and live ports not specifically
+    given, or which are given a value of '0' will have the port choice delegated
+    to the operating system.
++
+lttng-relayd will write `control.port`, `data.port`, and `live.port` files to
+its run-time directory.
 
 Output
 ~~~~~~

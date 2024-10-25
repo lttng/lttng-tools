@@ -245,7 +245,7 @@ int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr, const char *ip
 
 	LTTNG_ASSERT(sockaddr);
 	LTTNG_ASSERT(ip);
-	LTTNG_ASSERT(port > 0 && port <= 65535);
+	LTTNG_ASSERT(port <= 65535);
 
 	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
 
@@ -275,7 +275,7 @@ int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 
 	LTTNG_ASSERT(sockaddr);
 	LTTNG_ASSERT(ip);
-	LTTNG_ASSERT(port > 0 && port <= 65535);
+	LTTNG_ASSERT(port <= 65535);
 
 	memset(sockaddr, 0, sizeof(struct lttcomm_sockaddr));
 
