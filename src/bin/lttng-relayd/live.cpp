@@ -32,6 +32,7 @@
 #include <common/index/index.hpp>
 #include <common/make-unique-wrapper.hpp>
 #include <common/pthread-lock.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/inet.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -754,14 +755,44 @@ end:
 static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 {
 	int ret, sock_fd;
-	struct lttcomm_sock *sock = nullptr;
 	char uri_str[LTTNG_PATH_MAX];
-	char *formatted_name = nullptr;
+	char relayd_live_port_path[PATH_MAX];
 
-	sock = lttcomm_alloc_sock_from_uri(uri);
-	if (sock == nullptr) {
-		ERR("Allocating socket");
-		goto error;
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"Failed to determine RUNDIR for socket creation");
+	}
+
+	auto relayd_rundir_path = [&rundir_path]() {
+		char *raw_relayd_path = nullptr;
+		const auto fmt_ret =
+			asprintf(&raw_relayd_path, DEFAULT_RELAYD_PATH, rundir_path.get());
+		if (fmt_ret < 0) {
+			LTTNG_THROW_POSIX("Failed to format relayd rundir path", errno);
+		}
+
+		return lttng::make_unique_wrapper<char, lttng::memory::free>(raw_relayd_path);
+	}();
+
+	create_lttng_rundir_with_perm(rundir_path.get());
+	create_lttng_rundir_with_perm(relayd_rundir_path.get());
+	ret = snprintf(relayd_live_port_path,
+		       sizeof(relayd_live_port_path),
+		       DEFAULT_RELAYD_LIVE_PORT_PATH,
+		       relayd_rundir_path.get());
+	if (ret < 0) {
+		LTTNG_THROW_ERROR("Failed to format relayd live port path");
+	}
+
+	auto sock = [uri]() {
+		auto raw_sock = lttcomm_alloc_sock_from_uri(uri);
+		return lttng::make_unique_wrapper<struct lttcomm_sock, lttcomm_destroy_sock>(
+			raw_sock);
+	}();
+	if (!sock) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR("Failed to allocate socket");
 	}
 
 	/*
@@ -770,47 +801,65 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	 */
 	ret = uri_to_str_url(uri, uri_str, sizeof(uri_str));
 	uri_str[sizeof(uri_str) - 1] = '\0';
-	if (ret >= 0) {
-		ret = asprintf(&formatted_name, "%s socket @ %s", name, uri_str);
-		if (ret < 0) {
-			formatted_name = nullptr;
-		}
-	}
-
+	auto formatted_name =
+		fmt::format("'{}' socket @ '{}'", name, ret < 0 ? uri_str : "Unknown");
+	/* Using '&' requires an lvalue. Using `formatted_name.data()` returns an rvalue. */
+	auto formatted_name_data = formatted_name.data();
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
 					       &sock_fd,
-					       (const char **) (formatted_name ? &formatted_name :
-										nullptr),
+					       (const char **) &formatted_name_data,
 					       1,
 					       create_sock,
-					       sock);
+					       sock.get());
 	if (ret) {
-		PERROR("Failed to create \"%s\" socket", formatted_name ?: "Unknown");
-		goto error;
+		LTTNG_THROW_ERROR(lttng::format("Failed to create \"{}\" socket", formatted_name));
 	}
+
+	auto fd_tracker_remove_on_error =
+		lttng::make_scope_exit([&sock, &sock_fd, &relayd_live_port_path]() noexcept {
+			if (sock.get() != nullptr) {
+				if (sock->fd >= 0) {
+					fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+									  &sock_fd,
+									  1,
+									  close_sock,
+									  sock.get());
+				}
+			}
+		});
+
 	DBG("Listening on %s socket %d", name, sock->fd);
-
-	ret = sock->ops->bind(sock);
+	ret = sock->ops->bind(sock.get());
 	if (ret < 0) {
-		PERROR("Failed to bind lttng-live socket");
-		goto error;
+		LTTNG_THROW_POSIX("Failed to bind lttng-live socket", errno);
 	}
 
-	DBG("Bound %s socket fd %d to port %d", name, sock->fd, ntohs(sock->sockaddr.addr.sin.sin_port));
-	ret = sock->ops->listen(sock, -1);
+	if (utils_create_pid_file((pid_t) ntohs(sock->sockaddr.addr.sin.sin_port),
+				  relayd_live_port_path)) {
+		LTTNG_THROW_ERROR("Failed to create and write live port path");
+	}
+
+	auto unlink_relayd_live_port_path_on_error =
+		lttng::make_scope_exit([&relayd_live_port_path]() noexcept {
+			if (unlink(relayd_live_port_path)) {
+				WARN_FMT("Failed to remove live port file at path '{}'",
+					 relayd_live_port_path);
+			}
+		});
+
+	DBG("Bound %s socket fd %d to port %d",
+	    name,
+	    sock->fd,
+	    ntohs(sock->sockaddr.addr.sin.sin_port));
+	ret = sock->ops->listen(sock.get(), -1);
 	if (ret < 0) {
-		goto error;
+		LTTNG_THROW_ERROR("Failed to listen on lttng-live socket");
 	}
 
-	free(formatted_name);
-	return sock;
-
-error:
-	if (sock) {
-		lttcomm_destroy_sock(sock);
-	}
-	free(formatted_name);
-	return nullptr;
+	/* Stop destructors from being invoked when the scope_exits go out of scope. */
+	fd_tracker_remove_on_error.disarm();
+	unlink_relayd_live_port_path_on_error.disarm();
+	return sock.release();
 }
 
 /*
@@ -829,9 +878,10 @@ static void *thread_listener(void *data __attribute__((unused)))
 	health_register(health_relayd, HEALTH_RELAYD_TYPE_LIVE_LISTENER);
 
 	health_code_update();
-
-	live_control_sock = init_socket(live_uri, "Live listener");
-	if (!live_control_sock) {
+	try {
+		live_control_sock = init_socket(live_uri, "Live listener");
+	} catch(const lttng::runtime_error& ex) {
+		ERR("Failed to initialize live socket: %s", ex.what());
 		goto error_sock_control;
 	}
 

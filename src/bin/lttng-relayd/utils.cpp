@@ -12,6 +12,7 @@
 
 #include <common/common.hpp>
 #include <common/defaults.hpp>
+#include <common/exception.hpp>
 #include <common/path.hpp>
 #include <common/utils.hpp>
 
@@ -74,5 +75,52 @@ char *create_output_path(const char *path_name)
 		return create_output_path_auto(path_name);
 	} else {
 		return create_output_path_noauto(path_name);
+	}
+}
+
+void create_lttng_rundir_with_perm(const char *rundir)
+{
+	DBG_FMT("Creating LTTng run directory: `{}`", rundir);
+
+	const auto mkdir_ret = mkdir(rundir, S_IRWXU);
+	if (mkdir_ret < 0) {
+		if (errno != EEXIST) {
+			LTTNG_THROW_POSIX(fmt::format("Failed to create rundir: path=`{}`", rundir),
+					  errno);
+		}
+	}
+
+	const auto is_root = !getuid();
+	if (!is_root) {
+		/* Nothing more to do. */
+		return;
+	}
+
+	gid_t gid;
+	const auto get_group_id_ret = utils_get_group_id(tracing_group_name, true, &gid);
+	if (get_group_id_ret) {
+		/* Default to root group. */
+		gid = 0;
+	}
+
+	const auto chown_ret = chown(rundir, 0, gid);
+	if (chown_ret < 0) {
+		LTTNG_THROW_POSIX(
+			fmt::format("Failed to set group on rundir: path=`{}`, group_id={}",
+				    rundir,
+				    gid),
+			errno);
+	}
+
+	const auto permission_mask = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
+		S_IXOTH;
+	const auto chmod_ret = chmod(rundir, permission_mask);
+	if (chmod_ret < 0) {
+		LTTNG_THROW_POSIX(
+			fmt::format(
+				"Failed to set permissions on rundir: path=`{}`, permission={:o}",
+				rundir,
+				permission_mask),
+			errno);
 	}
 }

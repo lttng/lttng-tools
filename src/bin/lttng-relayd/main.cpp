@@ -1088,23 +1088,72 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 	int i, ret, err = -1;
 	uint32_t nb_fd;
 	struct lttng_poll_event events;
-	struct lttcomm_sock *control_sock, *data_sock;
+	char relayd_data_port_path[PATH_MAX];
+	char relayd_control_port_path[PATH_MAX];
+	struct lttcomm_sock *control_sock = nullptr, *data_sock = nullptr;
+	auto relayd_rundir_path = lttng::make_unique_wrapper<char, lttng::memory::free>(nullptr);
 
 	DBG("[thread] Relay listener started");
 
 	rcu_register_thread();
 	health_register(health_relayd, HEALTH_RELAYD_TYPE_LISTENER);
-
 	health_code_update();
 
+	const auto rundir_path =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(utils_get_rundir(0));
+	if (!rundir_path) {
+		ERR("Failed to determine RUNDIR for listener thread port files");
+		goto error_sock_control;
+	}
+
+	relayd_rundir_path = [&rundir_path]() {
+		char *raw_relayd_path = nullptr;
+		const auto fmt_ret =
+			asprintf(&raw_relayd_path, DEFAULT_RELAYD_PATH, rundir_path.get());
+		if (fmt_ret < 0) {
+			LTTNG_THROW_POSIX("Failed to fomat relayd rundir path", errno);
+		}
+
+		return lttng::make_unique_wrapper<char, lttng::memory::free>(raw_relayd_path);
+	}();
+
+	create_lttng_rundir_with_perm(rundir_path.get());
+	create_lttng_rundir_with_perm(relayd_rundir_path.get());
+	ret = snprintf(relayd_control_port_path, sizeof(relayd_control_port_path), DEFAULT_RELAYD_CONTROL_PORT_PATH, relayd_rundir_path.get());
+	if (ret < 0) {
+		ERR("Failed to format relayd_control_port_path");
+		goto error_sock_control;
+	}
+
+	ret = snprintf(relayd_data_port_path, sizeof(relayd_data_port_path), DEFAULT_RELAYD_DATA_PORT_PATH, relayd_rundir_path.get());
+	if (ret < 0) {
+		ERR("Failed to format relayd_data_port_path");
+		goto error_sock_control;
+	}
+
+	ret = 0;
+	health_code_update();
 	control_sock = relay_socket_create(control_uri, "Control listener");
 	if (!control_sock) {
 		goto error_sock_control;
 	}
 
+	if (auto _ret = utils_create_value_file(ntohs(control_sock->sockaddr.addr.sin.sin_port),
+				    relayd_control_port_path)) {
+		ERR_FMT("Failed to create control port path file: port={}, path=`{}`, ret={}", ntohs(control_sock->sockaddr.addr.sin.sin_port), relayd_control_port_path, _ret);
+		goto error_create_poll;
+		goto error_sock_relay;
+	}
+
 	data_sock = relay_socket_create(data_uri, "Data listener");
 	if (!data_sock) {
 		goto error_sock_relay;
+	}
+
+	if (auto _ret = utils_create_value_file(ntohs(data_sock->sockaddr.addr.sin.sin_port),
+				  relayd_data_port_path)) {
+		ERR_FMT("Failed to create data port path file: port={}, path=`{}`, ret={}", ntohs(data_sock->sockaddr.addr.sin.sin_port), relayd_data_port_path, _ret);
+		goto error_create_poll;
 	}
 
 	/*
@@ -1246,7 +1295,9 @@ error_poll_add:
 error_testpoint:
 	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 error_create_poll:
-	if (data_sock->fd >= 0) {
+	DBG("Removing '%s'", relayd_data_port_path);
+	(void) unlink(relayd_data_port_path);
+	if (data_sock != nullptr && data_sock->fd >= 0) {
 		int data_sock_fd = data_sock->fd;
 
 		ret = fd_tracker_close_unsuspendable_fd(
@@ -1258,7 +1309,9 @@ error_create_poll:
 	}
 	lttcomm_destroy_sock(data_sock);
 error_sock_relay:
-	if (control_sock->fd >= 0) {
+	DBG("Removing '%s'", relayd_control_port_path);
+	(void) unlink(relayd_control_port_path);
+	if (control_sock != nullptr && control_sock->fd >= 0) {
 		int control_sock_fd = control_sock->fd;
 
 		ret = fd_tracker_close_unsuspendable_fd(
@@ -1274,6 +1327,7 @@ error_sock_control:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
+
 	health_unregister(health_relayd);
 	rcu_unregister_thread();
 	DBG("Relay listener thread cleanup complete");
