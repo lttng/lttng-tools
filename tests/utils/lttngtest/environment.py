@@ -677,10 +677,15 @@ class _Environment(logger._Logger):
                 | stat.S_IXOTH,
             )
 
+        self._relayd_control_port = 0
+        self._relayd_data_port = 0
+        self._relayd_live_port = 0
+        self._relayd_env_vars = {}
         self._relayd = (
             self._launch_lttng_relayd() if with_relayd else None
         )  # type: Optional[subprocess.Popen[bytes]]
         self._relayd_output_consumer = None
+        print(self._relayd_env_vars)
 
         self._sessiond = (
             self._launch_lttng_sessiond() if with_sessiond else None
@@ -701,20 +706,61 @@ class _Environment(logger._Logger):
         # type: () -> pathlib.Path
         return self._project_root / "src" / "bin" / "lttng" / "lttng"
 
+    def _relayd_port(self, port_name):
+        port_attr = "_relayd_{}_port".format(port_name)
+        if getattr(self, port_attr) == 0:
+            try:
+                self._update_relayd_port(port_name)
+            except Exception:
+                pass
+        return getattr(self, port_attr)
+
+    def _update_relayd_port(self, port_name):
+        port_attr = "_relayd_{}_port".format(port_name)
+        port_file = self.lttng_relayd_control_directory / "{}.port".format(port_name)
+        try:
+            with open(str(port_file), "r") as f:
+                setattr(self, port_attr, int(f.read()))
+        except Exception as e:
+            self._log("Failed to open port file '{}': {}".format(port_file, str(e)))
+            raise e
+
     @property
     def lttng_relayd_control_port(self):
         # type: () -> int
-        return 5400
+        return self._relayd_port("control")
 
     @property
     def lttng_relayd_data_port(self):
         # type: () -> int
-        return 5401
+        return self._relayd_port("data")
 
     @property
     def lttng_relayd_live_port(self):
         # type: () -> int
-        return 5402
+        return self._relayd_port("live")
+
+    @property
+    def lttng_relayd_control_directory(self):
+        if self.lttng_relayd_env_vars.get("LTTNG_RUNDIR"):
+            return (
+                pathlib.Path(self.lttng_relayd_env_vars.get("LTTNG_RUNDIR")) / "relayd"
+            )
+        else:
+            home_dir = (
+                self.lttng_relayd_env_vars["LTTNG_HOME"]
+                if ("LTTNG_HOME" in self.lttng_relayd_env_vars)
+                else os.environ.get("HOME", os.path.expanduser("~"))
+            )
+            return (
+                pathlib.Path("/var/run/lttng")
+                if os.getuid() == 0
+                else pathlib.Path(home_dir) / ".lttng"
+            ) / "relayd"
+
+    @property
+    def lttng_relayd_env_vars(self):
+        return self._relayd_env_vars
 
     @property
     def preserve_test_env(self):
@@ -827,8 +873,10 @@ class _Environment(logger._Logger):
 
         if self.lttng_home_location is not None:
             relayd_env["LTTNG_HOME"] = str(self.lttng_home_location)
+
+        self._relayd_env_vars = relayd_env
         self._log(
-            "Launching relayd with LTTNG_HOME='${}'".format(
+            "Launching relayd with LTTNG_HOME='{}'".format(
                 str(self.lttng_home_location)
             )
         )
@@ -838,6 +886,7 @@ class _Environment(logger._Logger):
         process = subprocess.Popen(
             [
                 str(relayd_path),
+                "--dynamic-port-allocation",
                 "-C",
                 "tcp://0.0.0.0:{}".format(self.lttng_relayd_control_port),
                 "-D",
@@ -887,6 +936,33 @@ class _Environment(logger._Logger):
                         "disconnect",
                     ]
                 )
+
+        # Wait until the ports are written to the run directory
+        self._log(
+            "Checking for relayd port files in '{}'".format(
+                self.lttng_relayd_control_directory
+            )
+        )
+        while (
+            self.lttng_relayd_control_port == 0
+            or self.lttng_relayd_live_port == 0
+            or self.lttng_relayd_data_port == 0
+        ):
+            self._log(
+                "Waiting for lttng-relayd control ({}), data ({}), and live ({}) ports to be non-zero".format(
+                    self.lttng_relayd_control_port,
+                    self.lttng_relayd_data_port,
+                    self.lttng_relayd_live_port,
+                )
+            )
+            time.sleep(0.1)
+        self._log(
+            "lttng-relayd using the following ports: control {}, data {}, and live {}".format(
+                self.lttng_relayd_control_port,
+                self.lttng_relayd_data_port,
+                self.lttng_relayd_live_port,
+            )
+        )
 
         return process
 
