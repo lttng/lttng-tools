@@ -756,7 +756,7 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	int ret, sock_fd;
 	struct lttcomm_sock *sock = nullptr;
 	char uri_str[LTTNG_PATH_MAX];
-	char *formated_name = nullptr;
+	char *formatted_name = nullptr;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	if (sock == nullptr) {
@@ -771,21 +771,21 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	ret = uri_to_str_url(uri, uri_str, sizeof(uri_str));
 	uri_str[sizeof(uri_str) - 1] = '\0';
 	if (ret >= 0) {
-		ret = asprintf(&formated_name, "%s socket @ %s", name, uri_str);
+		ret = asprintf(&formatted_name, "%s socket @ %s", name, uri_str);
 		if (ret < 0) {
-			formated_name = nullptr;
+			formatted_name = nullptr;
 		}
 	}
 
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker,
 					       &sock_fd,
-					       (const char **) (formated_name ? &formated_name :
+					       (const char **) (formatted_name ? &formatted_name :
 										nullptr),
 					       1,
 					       create_sock,
 					       sock);
 	if (ret) {
-		PERROR("Failed to create \"%s\" socket", formated_name ?: "Unknown");
+		PERROR("Failed to create \"%s\" socket", formatted_name ?: "Unknown");
 		goto error;
 	}
 	DBG("Listening on %s socket %d", name, sock->fd);
@@ -801,14 +801,14 @@ static struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 		goto error;
 	}
 
-	free(formated_name);
+	free(formatted_name);
 	return sock;
 
 error:
 	if (sock) {
 		lttcomm_destroy_sock(sock);
 	}
-	free(formated_name);
+	free(formatted_name);
 	return nullptr;
 }
 
