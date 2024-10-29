@@ -15,13 +15,9 @@ control. The upstream Git repository URL is:
 
 ## Coding standard
 
-See CodingStyle for guidelines style and design guidelines.
+See [CodingStyle](./CodingStyle.md) or style and design guidelines.
 
-Although the LTTng-tools code base is primarily written in C++, it does
-contain C, shell, and Python code as well. There is no official coding
-standard for these languages. However, using a style consistent with the
-rest of the code written in that language is strongly encouraged.
-
+See the [tests README](./tests/README.adoc) for test-related guidelines.
 
 ## Creating and sending a patch
 
