@@ -84,7 +84,7 @@ Some invocations of programs during the test may override this value to perform 
 | {check} | {check} | {ex}
 
 | `LTTNG_TEST_GDBSERVER_RELAYD_WAIT`
-| When not empty, the test script will wait for user input before continuing.
+| When not empty, the test script will wait for user input after starting lttng-relayd before continuing.
 Useful to connect and insert breakpoints before other commands are run.
 | {check} | {check} | {ex}
 
@@ -92,18 +92,19 @@ Useful to connect and insert breakpoints before other commands are run.
 | Launch `gdbserver` and attach to newly spawned `lttng-sessiond` processes
 | {check} | {check} | {ex}
 
-| `LTTNG_TEST_GDBSERVER_SESSIOND`
-| Launch `gdbserver` and attach to newly spawned `lttng-sessiond` processes
+| `LTTNG_TEST_GDBSERVER_SESSIOND_PORT`
+| The TCP port for the gdbserver instance. Default:{nbsp}`1024`
+| {check} | {check} | {ex}
+
+| `LTTNG_TEST_GDBSERVER_SESSIOND_WAIT`
+| When not empty, the test script will wait for user input after starting lttng-sessiond before continuing.
+Useful to connect and insert breakpoints before other commands are run.
 | {check} | {check} | {ex}
 
 | `LTTNG_TEST_NO_RELAYD`
 | Do not spawn `lttng-relayd` in test environment
 Used to manually launch one during test troubleshooting
 | {check} | {ex} | {ex}
-
-| `LTTNG_TEST_GDBSERVER_SESSIOND_PORT`
-| The TCP port for the gdbserver instance. Default:{nbsp}`1024`
-| {check} | {check} | {ex}
 
 | `LTTNG_TEST_PRESERVE_TEST_ENV`
 | Do not delete test environment folders on tear-down
