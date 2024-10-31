@@ -185,7 +185,7 @@ function lttng_log_file ()
 		return
 	fi
 
-	mktemp -p "${LTTNG_TEST_LOG_DIR}" "${app}.XXXXXX.log"
+	mktemp -p "${LTTNG_TEST_LOG_DIR}" "${app}.XXXXXX.logfile"
 }
 
 # Due to the renaming of threads we need to use the full command (pgrep -f) to
