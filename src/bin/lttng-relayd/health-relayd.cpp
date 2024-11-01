@@ -138,7 +138,7 @@ void setup_health_path()
 		const auto fmt_ret =
 			asprintf(&raw_relayd_path, DEFAULT_RELAYD_PATH, rundir_path.get());
 		if (fmt_ret < 0) {
-			LTTNG_THROW_POSIX("Failed to fomat relayd rundir path", errno);
+			LTTNG_THROW_POSIX("Failed to format relayd rundir path", errno);
 		}
 
 		return lttng::make_unique_wrapper<char, lttng::memory::free>(raw_relayd_path);
