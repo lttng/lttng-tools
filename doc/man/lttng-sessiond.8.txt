@@ -394,7 +394,7 @@ session daemons as the root user.
 `LTTNG_UST_APP_PATH`::
     The directory path in which to look for listening sockets as a tracee.
 +
-See man:lttng-ust(1) for more details.
+See man:lttng-ust(3) for more details.
 
 `LTTNG_UST_CTL_PATH`::
     The directory path in which listening sockets for UST applications are opened.
@@ -413,7 +413,7 @@ the same value of the session daemons `LTTNG_UST_CTL_PATH`.
 `LTTNG_UST_ALLOW_BLOCKING`::
     Allow the sessiond to operate as a tracee in blocking mode.
 +
-See man:lttng-ust(1) for more details. lttng-sessiond will refuse to start as a
+See man:lttng-ust(3) for more details. lttng-sessiond will refuse to start as a
 tracee in blocking mode if neither `LTTNG_UST_APP_PATH` nor `LTTNG_UST_CTL_PATH`
 are set, or if both `LTTNG_UST_APP_PATH` and `LTTNG_UST_CTL_PATH` are set to the
 same value.
