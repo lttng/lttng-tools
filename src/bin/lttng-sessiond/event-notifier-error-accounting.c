@@ -690,9 +690,12 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 					(int) app->uid, (int) app->pid,
 					app->name);
 			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
+			lttng_ust_ctl_release_object(-1, new_counter_cpu);
 			goto error_send_cpu_counter_data;
 		}
+		lttng_ust_ctl_release_object(-1, new_counter_cpu);
 	}
+	lttng_ust_ctl_release_object(-1, new_counter);
 
 	app->event_notifier_group.counter = new_counter;
 	new_counter = NULL;
@@ -712,8 +715,6 @@ error_duplicate_cpu_counter:
 			 */
 			break;
 		}
-
-		lttng_ust_ctl_release_object(-1, cpu_counters[i]);
 		free(cpu_counters[i]);
 	}
 
