@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+#
+# SPDX-FileCopyrightText: 2024 Kienan Stewart <kstewart@efficios.com>
+# SPDX-LicenseIdentifier: GPL-2.0-only
+#
+
+"""
+This script runs the tests defined in the environment variable
+`SERIAL_TESTS` one at a time in subprocesses.
+
+For each serial test, `<test>.log` and `<test>.trs` will be produced. The log file
+will contain the line-buffered combined stdout and stderr from the test itself.
+The trs file will be formatted as an autotools trs file.
+
+This test cannot know how many subtests are going to be run before hand, so all
+tests are run and the output produced before emitting a TAP plan and creating it's
+own test and trs log files.
+
+For each test (that is - a TAP `ok`, `not ok`, and `skip` a single line following
+the rough format of the autotools `make check` wrapper will be output to stdout.
+
+    PASS|SKIP|FAIL: testname NN - Description
+
+"""
+
+import logging
+import os
+import pathlib
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+
+test_utils_import_path = pathlib.Path(__file__).absolute().parents[1] / "utils"
+sys.path.append(str(test_utils_import_path))
+
+import lttngtest
+
+# This is not tap 14 compliant, but should suffice
+TAP_OK_LINE_RE = re.compile(r"^ok \d+.*$", re.MULTILINE)
+TAP_SKIP_LINE_RE = re.compile(r"skip \d+.*$", re.MULTILINE)
+TAP_NOT_OK_LINE_RE = re.compile(r"^not ok \d+.*$", re.MULTILINE)
+
+
+def run_tests(test_scripts):
+    """
+    Returns True if all the tests pass or skip
+    """
+    any_failures = False
+    results = []
+    tap = lttngtest.TapGenerator(len(test_scripts))
+    for test_script in test_scripts:
+        stdout, retcode = run_test(test_script)
+        results.append(
+            {
+                "test": test_script,
+                "stdout": stdout,
+                "returncode": retcode,
+                "passed": len(TAP_OK_LINE_RE.findall(stdout)),
+                "failed": len(TAP_NOT_OK_LINE_RE.findall(stdout)),
+                "skipped": len(TAP_SKIP_LINE_RE.findall(stdout)),
+            }
+        )
+        results[-1]["total_test_count"] = (
+            results[-1]["passed"] + results[-1]["failed"] + results[-1]["skipped"]
+        )
+        if retcode == 77:
+            # Special code for 'not platform applicable'
+            # See https://www.gnu.org/software/automake/manual/html_node/Scripts_002dbased-Testsuites.html
+            tap.skip("Test script '{}' returned code 77".format(test_script))
+        else:
+            any_failures = any_failures or (retcode != 0 or results[-1]["failed"] != 0)
+            tap.test(
+                retcode == 0 and results[-1]["failed"] == 0,
+                "Test script '{}' returned code {}. {} passed, {} failed, {} skipped [total: {}]".format(
+                    test_script,
+                    retcode,
+                    results[-1]["passed"],
+                    results[-1]["failed"],
+                    results[-1]["skipped"],
+                    results[-1]["total_test_count"],
+                ),
+            )
+    return not any_failures
+
+
+def run_test(test_script):
+    stdout = ""
+    logging.info("Starting test '{}'".format(test_script))
+
+    # Support logd from the modified tap driver
+    current_test_log_dir = os.environ.get("LTTNG_TEST_LOG_DIR", None)
+    test_env = os.environ.copy()
+    test_log = pathlib.Path("{}.log".format(test_script))
+    test_log_dir = None
+    if current_test_log_dir:
+        test_log_dir = pathlib.Path("{}.log.d".format(test_script))
+        try:
+            test_log_dir.mkdir(parents=True)
+        except pathlib.FileExistsError:
+            pass
+        test_env["LTTNG_TEST_LOG_DIR"] = str(test_log_dir)
+    process = subprocess.Popen(
+        [test_script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=test_env,
+    )
+    while process.returncode is None:
+        try:
+            out, err = process.communicate(timeout=1)
+            stdout += out.decode("utf-8")
+        except subprocess.TimeoutExpired:
+            continue
+    logging.info(
+        "Test '{}' terminated with return code {}".format(
+            test_script, process.returncode
+        )
+    )
+    with open(str(test_log), "w") as f:
+        logging.debug("Wrote test output to '{}'".format(str(test_log)))
+        f.write(stdout)
+    if process.returncode == 0:
+        if test_log_dir:
+            shutil.rmtree(str(test_log_dir))
+    return (stdout, process.returncode)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG, format="# [%(created)f] %(levelname)s:%(name)s:%(message)s"
+    )
+
+    tests = shlex.split(os.environ.get("SERIAL_TESTS", ""))
+    skip_tests = shlex.split(os.environ.get("SKIP_SERIAL_TESTS", ""))
+    if skip_tests:
+        logging.debug("Skipped serial tests: {}".format(skip_tests))
+        tests = [test for test in tests if test not in skip_tests]
+    limit_tests = shlex.split(os.environ.get("TESTS", ""))
+    if limit_tests:
+        logging.debug("Limiting tests to: {}".format(limit_tests))
+        tests = [test for test in tests if test in limit_tests]
+
+    logging.info("Serial tests received %d tests", len(tests))
+    logging.debug("Serial tests: {}".format(tests))
+    if not run_tests(tests):
+        sys.exit(1)

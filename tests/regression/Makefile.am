@@ -2,11 +2,13 @@
 
 SUBDIRS = tools
 
-LOG_DRIVER_FLAGS = --merge --post-script $(top_srcdir)/tests/utils/warn_processes.sh
+LOG_DRIVER_FLAGS = --merge
 LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
 	$(top_srcdir)/tests/utils/tap-driver.sh
 
-TESTS = tools/base-path/test_ust \
+TEST_EXTENSIONS = .serial
+
+SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
@@ -14,11 +16,8 @@ TESTS = tools/base-path/test_ust \
 	tools/streaming/test_kernel \
 	tools/streaming/test_ust \
 	tools/health/test_thread_ok \
-	tools/live/test_early_inactive_app.py \
 	tools/live/test_kernel \
 	tools/live/test_lttng_kernel \
-	tools/live/test_miss_short_lived_app.py \
-	tools/live/test_per_application_leaks.py \
 	tools/live/test_ust \
 	tools/live/test_ust_tracefile_count \
 	tools/live/test_lttng_ust \
@@ -67,12 +66,16 @@ TESTS = tools/base-path/test_ust \
 	tools/trigger/test_list_triggers_cli \
 	tools/trigger/test_remove_trigger_cli \
 	tools/trigger/name/test_trigger_name_backwards_compat \
-	tools/trigger/hidden/test_hidden_trigger \
+	tools/trigger/hidden/test_hidden_trigger
+
+TESTS = tools/live/test_early_inactive_app.py \
+	tools/live/test_miss_short_lived_app.py \
+	tools/live/test_per_application_leaks.py \
 	tools/context/test_ust.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
-	tools/client/test_bug1373_events_differ_only_by_loglevel \
-	tools/client/test_warn_on_shm_too_small.py
+	tools/client/test_warn_on_shm_too_small.py \
+	tests.serial
 
 # Only build kernel tests on Linux.
 if IS_LINUX
@@ -81,7 +84,7 @@ endif # IS_LINUX
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
-TESTS += ust/before-after/test_before_after \
+SERIAL_TESTS += ust/before-after/test_before_after \
 	ust/buffers-pid/test_buffers_pid \
 	ust/multi-session/test_multi_session \
 	ust/nprocesses/test_nprocesses \
@@ -99,30 +102,32 @@ TESTS += ust/before-after/test_before_after \
 	ust/ust-app-ctl-paths/test_path_separators \
 	ust/ust-app-ctl-paths/test_ust_app_ctl_paths \
 	ust/ust-constructor/test_ust_constructor_c_dynamic.py \
-	ust/ust-constructor/test_ust_constructor_c_static.py \
-	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
-	ust/ust-constructor/test_ust_constructor_cpp_static.py \
+	tools/client/test_bug1373_events_differ_only_by_loglevel \
 	tools/config-directory/test_config.py \
 	tools/metadata/test_ust \
 	tools/relayd-grouping/test_ust \
 	tools/trigger/rate-policy/test_ust_rate_policy
 
+TESTS += ust/ust-constructor/test_ust_constructor_c_static.py \
+	ust/ust-constructor/test_ust_constructor_cpp_dynamic.py \
+	ust/ust-constructor/test_ust_constructor_cpp_static.py
+
 if TEST_JAVA_JUL_AGENT
-TESTS += ust/java-jul/test_java_jul \
+SERIAL_TESTS += ust/java-jul/test_java_jul \
 	ust/java-jul/test_ust_app_ctl_path_separators.sh
 endif # TEST_JAVA_JUL_AGENT
 
 if TEST_JAVA_LOG4J_AGENT
-TESTS += ust/java-log4j/test_java_log4j
+SERIAL_TESTS += ust/java-log4j/test_java_log4j
 endif # TEST_JAVA_LOG4J_AGENT
 
 if TEST_JAVA_LOG4J2_AGENT
-TESTS += ust/java-log4j2/test_agent_log4j2_domain_log4j \
+SERIAL_TESTS += ust/java-log4j2/test_agent_log4j2_domain_log4j \
 	ust/java-log4j2/test_agent_log4j2_domain_log4j2
 endif # TEST_JAVA_LOG4J2_AGENT
 
 if IS_LINUX
-TESTS += \
+SERIAL_TESTS += \
 	kernel/test_all_events \
 	kernel/test_callstack \
 	kernel/test_channel \
@@ -142,7 +147,7 @@ endif # IS_LINUX
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
-TESTS += ust/linking/test_linking \
+SERIAL_TESTS += ust/linking/test_linking \
 	ust/daemon/test_daemon \
 	ust/exit-fast/test_exit-fast \
 	ust/fork/test_fork \
@@ -151,6 +156,12 @@ TESTS += ust/linking/test_linking \
 	ust/ust-dl/test_ust-dl \
 	ust/type-declarations/test_type_declarations
 endif
+
+SERIAL_LOG_DRIVER_FLAGS = --merge
+SERIAL_LOG_DRIVER = env SERIAL_TESTS='$(SERIAL_TESTS)' PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
+	$(top_srcdir)/tests/utils/tap-driver.sh
+
+EXTRA_DIST = tests.serial
 
 if PRECIOUS_TESTS
 .PRECIOUS: $(TEST_LOGS)
