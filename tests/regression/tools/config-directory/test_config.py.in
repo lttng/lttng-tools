@@ -317,6 +317,7 @@ if __name__ == "__main__":
             with_relayd=True,
             extra_env_vars=temp_conf["environment_variables"],
             skip_temporary_lttng_home=skip_lttng_home,
+            enable_kernel_domain=lttngtest._Environment.run_kernel_tests(),
         ) as test_env:
             test_config_and_socket_paths(test_env, tap, test_identifier, **temp_conf)
     sys.exit(0 if tap.is_successful else 1)

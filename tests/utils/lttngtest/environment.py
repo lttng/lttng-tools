@@ -642,6 +642,7 @@ class _Environment(logger._Logger):
         with_relayd=False,  # type: bool
         extra_env_vars=dict(),  # type: dict
         skip_temporary_lttng_home=False,  # type: bool
+        enable_kernel_domain=False,  # type: bool
     ):
         super().__init__(log)
         signal.signal(signal.SIGTERM, self._handle_termination_signal)
@@ -688,7 +689,7 @@ class _Environment(logger._Logger):
         print(self._relayd_env_vars)
 
         self._sessiond = (
-            self._launch_lttng_sessiond() if with_sessiond else None
+            self._launch_lttng_sessiond(enable_kernel_domain) if with_sessiond else None
         )  # type: Optional[subprocess.Popen[bytes]]
 
         self._dummy_users = {}  # type: Dictionary[int, string]
@@ -880,6 +881,7 @@ class _Environment(logger._Logger):
                 str(self.lttng_home_location)
             )
         )
+
         verbose = []
         if os.environ.get("LTTNG_TEST_VERBOSE_RELAYD") is not None:
             verbose = ["-vvv"]
@@ -966,7 +968,7 @@ class _Environment(logger._Logger):
 
         return process
 
-    def _launch_lttng_sessiond(self):
+    def _launch_lttng_sessiond(self, enable_kernel_domain=False):
         # type: () -> Optional[subprocess.Popen]
         is_64bits_host = sys.maxsize > 2**32
 
@@ -1012,16 +1014,18 @@ class _Environment(logger._Logger):
                 )
             )
             verbose = []
+            sessiond_command = [
+                str(sessiond_path),
+                consumerd_path_option_name,
+                str(consumerd_path),
+                "--sig-parent",
+            ]
             if os.environ.get("LTTNG_TEST_VERBOSE_SESSIOND") is not None:
-                verbose = ["-vvv", "--verbose-consumer"]
+                sessiond_command.extend(["-vvv", "--verbose-consumer"])
+            if not enable_kernel_domain:
+                sessiond_command.extend(["--no-kernel"])
             process = subprocess.Popen(
-                [
-                    str(sessiond_path),
-                    consumerd_path_option_name,
-                    str(consumerd_path),
-                    "--sig-parent",
-                ]
-                + verbose,
+                sessiond_command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=sessiond_env,
@@ -1222,10 +1226,16 @@ def test_environment(
     with_relayd=False,
     extra_env_vars=dict(),
     skip_temporary_lttng_home=False,
+    enable_kernel_domain=False,
 ):
     # type: (bool, Optional[Callable[[str], None]], bool) -> Iterator[_Environment]
     env = _Environment(
-        with_sessiond, log, with_relayd, extra_env_vars, skip_temporary_lttng_home
+        with_sessiond,
+        log,
+        with_relayd,
+        extra_env_vars,
+        skip_temporary_lttng_home,
+        enable_kernel_domain,
     )
     try:
         yield env
