@@ -995,11 +995,15 @@ class _Environment(logger._Logger):
 
     def _handle_termination_signal(self, signal_number, frame):
         # type: (int, Optional[FrameType]) -> None
-        self._log(
-            "Killed by {signal_name} signal, cleaning-up".format(
-                signal_name=signal.strsignal(signal_number)
+        if sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+            # signal.strsignal is introduced in python 3.8
+            self._log(
+                "Killed by {signal_name} signal, cleaning-up".format(
+                    signal_name=signal.strsignal(signal_number)
+                )
             )
-        )
+        else:
+            self._log("Killed by signal {}, cleaning-up".format(str(signal_number)))
         self._cleanup()
 
     def launch_live_viewer(self, session, hostname=None):
