@@ -20,6 +20,9 @@ struct lttng_session_extended {
 		uint64_t value;
 		uint8_t is_set;
 	} LTTNG_PACKED creation_time;
+	struct {
+		char value[LTTNG_PATH_MAX];
+	} LTTNG_PACKED shm_path;
 } LTTNG_PACKED;
 
 using lttng_session_uptr = std::unique_ptr<

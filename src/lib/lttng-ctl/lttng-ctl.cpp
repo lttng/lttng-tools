@@ -2329,6 +2329,20 @@ end:
 	return ret;
 }
 
+enum lttng_get_session_shm_path_status
+lttng_get_session_shm_path_override(const lttng_session *session, const char **shm_path)
+{
+	struct lttng_session_extended *extended;
+	if (!session || !shm_path || !session->extended.ptr) {
+		return LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER;
+	}
+
+	extended = (lttng_session_extended *) session->extended.ptr;
+	*shm_path = extended->shm_path.value;
+	return strlen(*shm_path) == 0 ? LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET :
+					LTTNG_GET_SESSION_SHM_PATH_STATUS_OK;
+}
+
 int lttng_set_session_shm_path(const char *session_name, const char *shm_path)
 {
 	int ret;

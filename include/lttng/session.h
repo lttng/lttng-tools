@@ -28,6 +28,12 @@ struct lttng_destruction_handle;
 
 #define LTTNG_SESSION_PADDING1 8
 
+enum lttng_get_session_shm_path_status {
+	LTTNG_GET_SESSION_SHM_PATH_STATUS_OK = 0,
+	LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET = 1,
+	LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
+};
+
 /*!
 @brief
     Recording session summary.
@@ -506,6 +512,26 @@ utility.
 */
 LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_dir);
 
+/*!
+@brief
+    Gets the shm_path set for the given session.
+
+@param[in] session
+    Pointer to an struct lttng_session return by lttng_list_sessions.
+
+@param[out] shm_path
+    A pointer to the shm_path in the session structure.
+
+@param[out] set
+    True when the session's shm_path has been explicitly changed from the default.
+
+@lt_pre_conn
+@lt_pre_not_null{session}
+@lt_pre_not_null{shm_path}
+@lt_pre_not_null{set}
+*/
+LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
+lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_path);
 /// @}
 
 #ifdef __cplusplus
