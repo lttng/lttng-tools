@@ -18,7 +18,7 @@ SYNOPSIS
              [option:--live-port='URL'] [option:--output='DIR'] [option:--group='GROUP']
              [option:--verbose]... [option:--working-directory='DIR']
              [option:--group-output-by-host | option:--group-output-by-session] [option:--disallow-clear]
-	     [option:--dynamic-port-allocation]
+	     [option:--dynamic-port-allocation] [option:--pid-file='FILE']
 
 
 DESCRIPTION
@@ -235,6 +235,11 @@ option:--dynamic-port-allocation::
 +
 lttng-relayd will write `control.port`, `data.port`, and `live.port` files to
 its run-time directory.
+
+option:-P, option:--pid-file::
+    Write the PID of the lttng-relayd process to the given file.
++
+This file is not otherwise used by lttng-relayd and is removed at shutdown.
 
 Output
 ~~~~~~

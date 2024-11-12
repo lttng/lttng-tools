@@ -44,6 +44,7 @@
 #include <common/ini-config/ini-config.hpp>
 #include <common/path.hpp>
 #include <common/pthread-lock.hpp>
+#include <common/scope-exit.hpp>
 #include <common/sessiond-comm/inet.hpp>
 #include <common/sessiond-comm/relayd.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -96,8 +97,9 @@ enum relay_connection_status {
 };
 
 /* command line options */
-char *opt_output_path, *opt_working_directory;
-static int opt_daemon, opt_background, opt_print_version, opt_allow_clear = 1, opt_dynamic_port_allocation = 0;
+char *opt_output_path, *opt_working_directory, *opt_pid_file = nullptr;
+static int opt_daemon, opt_background, opt_print_version,
+	opt_allow_clear = 1, opt_dynamic_port_allocation = 0;
 enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
 /* Argument variables */
@@ -211,6 +213,12 @@ static struct option long_options[] = {
 		0,
 		nullptr,
 		'b',
+	},
+	{
+		"pid-file",
+		1,
+		nullptr,
+		'P'
 	},
 	{
 		"group",
@@ -380,6 +388,15 @@ static int set_option(int opt, const char *arg, const char *optname)
 		break;
 	case 'b':
 		opt_background = 1;
+		break;
+	case 'P':
+		opt_pid_file = utils_partial_realpath(arg);
+		if (opt_pid_file == nullptr) {
+			ret = -1;
+			ERR_FMT("Failed to determine partial realpath for PID file at path '{}'",
+				arg);
+			goto end;
+		}
 		break;
 	case 'g':
 		if (lttng_is_setuid_setgid()) {
@@ -4353,6 +4370,14 @@ int main(int argc, char **argv)
 	int ret = 0, retval = 0;
 	void *status;
 	char *unlinked_file_directory_path = nullptr, *output_path = nullptr;
+	auto delete_pid_file = lttng::make_scope_exit([]() noexcept {
+		if (opt_pid_file != nullptr) {
+			if (unlink(opt_pid_file)) {
+				PERROR_FMT("Failed to delete PID file at path '{}'", opt_pid_file);
+			}
+		}
+	});
+	delete_pid_file.disarm();
 
 	/* Parse environment variables */
 	ret = parse_env_options();
@@ -4423,6 +4448,15 @@ int main(int argc, char **argv)
 			/* All errors are already logged. */
 			goto exit_options;
 		}
+	}
+
+	if (opt_pid_file != nullptr) {
+		ret = utils_create_pid_file(getpid(), opt_pid_file);
+		if (ret) {
+			ERR_FMT("Failed to create PID file at path '{}'", opt_pid_file);
+			goto exit_options;
+		}
+		delete_pid_file.arm();
 	}
 
 	sessiond_trace_chunk_registry = sessiond_trace_chunk_registry_create();
@@ -4639,8 +4673,8 @@ exit_options:
 	}
 
 	if (!retval) {
-		exit(EXIT_SUCCESS);
+		return EXIT_SUCCESS;
 	} else {
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 }
