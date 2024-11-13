@@ -32,11 +32,19 @@ import bt2
 class TemporaryDirectory:
     def __init__(self, prefix):
         # type: (str) -> None
+        self._cleanup_callbacks = []
         self._directory_path = tempfile.mkdtemp(prefix=prefix)
 
     def __del__(self):
-        if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1":
-            shutil.rmtree(self._directory_path, ignore_errors=True)
+        try:
+            for func, args, kwargs in self._cleanup_callbacks:
+                func(*args, **kwargs)
+        finally:
+            if os.getenv("LTTNG_TEST_PRESERVE_TEST_ENV", "0") != "1":
+                shutil.rmtree(self._directory_path, ignore_errors=True)
+
+    def add_cleanup_callback(self, func, *args, **kwargs):
+        self._cleanup_callbacks.append((func, args, kwargs))
 
     @property
     def path(self):
