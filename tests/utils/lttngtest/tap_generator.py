@@ -200,4 +200,5 @@ class TapGenerator:
 
     def diagnostic(self, msg):
         # type: (str) -> None
-        print("# {msg}".format(msg=msg), file=sys.stderr, flush=True)
+        for line in str(msg).split("\n"):
+            print("# {msg}".format(msg=line), file=sys.stderr, flush=True)
