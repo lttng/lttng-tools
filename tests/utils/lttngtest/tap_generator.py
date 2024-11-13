@@ -124,6 +124,10 @@ class TapGenerator:
 
         self._last_test_case_id = self._total_test_count
 
+    def skip_all_remaining(self, reason):
+        # type: (str) -> None
+        self.skip(reason, self.remaining_test_cases)
+
     def skip(self, reason, skip_count=1):
         # type: (str, int) -> None
         for i in range(skip_count):
