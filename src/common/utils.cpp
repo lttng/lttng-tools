@@ -17,9 +17,12 @@
 #include <common/compat/getenv.hpp>
 #include <common/compat/string.hpp>
 #include <common/dynamic-buffer.hpp>
+#include <common/exception.hpp>
+#include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/readwrite.hpp>
 #include <common/runas.hpp>
+#include <common/scope-exit.hpp>
 #include <common/string-utils/c-string-view.hpp>
 #include <common/string-utils/format.hpp>
 
@@ -1383,4 +1386,86 @@ int utils_parse_unsigned_long_long(const char *str, unsigned long long *value)
 
 end:
 	return ret;
+}
+
+/*
+ * Get the highest CPU id from a CPU mask.
+ *
+ * Returns the highest CPU id from the mask or throws an exception on error.
+ */
+namespace {
+unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
+{
+	constexpr unsigned int cpu_mask_buffer_length{ DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH };
+	std::array<uint8_t, cpu_mask_buffer_length> possible_cpu_mask{};
+	static int max_possible_cpu_id{ 0 };
+	size_t possible_cpu_mask_len{ 0 };
+	unsigned long cpu_index{ 0 };
+	int i{};
+
+	if (max_possible_cpu_id != 0) {
+		return max_possible_cpu_id;
+	}
+
+	auto possible_cpu_mask_fd = [] {
+		int raw_handle = open(DEFAULT_LINUX_POSSIBLE_CPU_PATH, O_RDONLY);
+		if (raw_handle < 0) {
+			LTTNG_THROW_POSIX(
+				lttng::format("Failed to open possible CPU file, path='{}'",
+					      DEFAULT_LINUX_POSSIBLE_CPU_PATH),
+				errno);
+		}
+		return lttng::file_descriptor(raw_handle);
+	}();
+
+	const ssize_t bytes_read =
+		read(possible_cpu_mask_fd.fd(), possible_cpu_mask.data(), cpu_mask_buffer_length);
+	if (bytes_read == cpu_mask_buffer_length) {
+		uint8_t next{};
+		if (read(possible_cpu_mask_fd.fd(), &next, 1) != 0) {
+			LTTNG_THROW_ERROR(lttng::format(
+				"Possible CPU mask length exceeds maximum configured size: path='{}', max_size={}",
+				DEFAULT_LINUX_POSSIBLE_CPU_PATH,
+				cpu_mask_buffer_length));
+		}
+	}
+
+	possible_cpu_mask_len = (size_t) bytes_read;
+	if (possible_cpu_mask_len < 1) {
+		LTTNG_THROW_ERROR(lttng::format("0 bytes read from possible cpu file path={}",
+						DEFAULT_LINUX_POSSIBLE_CPU_PATH));
+	}
+
+	/* Start from the end to read the last CPU index. */
+	i = possible_cpu_mask_len;
+	for (auto iter = possible_cpu_mask.crbegin(); iter != possible_cpu_mask.crend(); iter++) {
+		/* Break when we hit the first separator. */
+		if ((possible_cpu_mask[i] == ',') || (possible_cpu_mask[i] == '-')) {
+			i++;
+			break;
+		}
+		i--;
+	}
+
+	cpu_index = strtoul((const char *) &possible_cpu_mask.data()[i],
+			    (char **) &possible_cpu_mask.data()[possible_cpu_mask_len],
+			    10);
+	if ((i != possible_cpu_mask_len) && (cpu_index < INT_MAX)) {
+		max_possible_cpu_id = (unsigned int) cpu_index;
+		return max_possible_cpu_id;
+	}
+
+	LTTNG_THROW_ERROR("Unable to determine maximum possible CPU id");
+	return 0;
+}
+} /* namespace */
+
+/*
+ * Return the count of possible CPUs on the system.
+ *
+ * Throws an error on failure.
+ */
+unsigned int utils_get_cpu_count() LTTNG_MAY_THROW
+{
+	return get_max_possible_cpu_id() + 1;
 }

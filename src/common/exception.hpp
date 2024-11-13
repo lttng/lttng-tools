@@ -18,6 +18,16 @@
 #include <string>
 #include <system_error>
 
+/*
+ * Indicate internal functions for which the caller should check exceptions
+ * that may be thrown.
+ *
+ * As the project is transitioning from C-style error return codes towards
+ * exception-based error handling in C++, this may be applied to function
+ * declarations alert users to the use of the different error-handling mechanism.
+ */
+#define LTTNG_MAY_THROW noexcept(false)
+
 #define LTTNG_SOURCE_LOCATION() lttng::source_location(__FILE__, __func__, __LINE__)
 
 #define LTTNG_THROW_CTL(msg, error_code) \

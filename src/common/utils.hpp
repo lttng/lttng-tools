@@ -9,6 +9,7 @@
 #define _COMMON_UTILS_H
 
 #include <common/compat/directory-handle.hpp>
+#include <common/exception.hpp>
 
 #include <lttng/lttng-error.h>
 
@@ -60,6 +61,9 @@ int utils_get_memory_total(uint64_t *value);
 int utils_change_working_directory(const char *path);
 enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *user_id);
 enum lttng_error_code utils_group_id_from_name(const char *group_name, gid_t *group_id);
+unsigned int utils_get_cpu_count() LTTNG_MAY_THROW;
+enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes,
+							  uint64_t *bytes_available);
 
 /*
  * Parse `str` as an unsigned long long value.
