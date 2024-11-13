@@ -309,8 +309,9 @@ static enum lttng_error_code check_enough_available_memory(uint64_t num_bytes_re
 	 * Get the number of CPU currently online to compute the amount of
 	 * memory needed to create a buffer for every CPU.
 	 */
-	num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
-	if (num_cpu == -1) {
+	try {
+		num_cpu = long(utils_get_cpu_count());
+	} catch (const std::exception& ex) {
 		ret_code = LTTNG_ERR_FATAL;
 		goto end;
 	}
