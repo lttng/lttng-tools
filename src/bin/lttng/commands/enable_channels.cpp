@@ -135,6 +135,45 @@ static void set_default_attr(struct lttng_domain *dom)
 	}
 }
 
+static bool system_has_memory_for_channel_buffers(char *session_name, struct lttng_channel *channel, uint64_t *bytes_required, uint64_t *bytes_available) {
+	/*
+	 * Verify that the amount of memory required to create the requested
+	 * buffer is available on the system at the moment.
+	 */
+	unsigned long total_buffer_size_needed_per_cpu {0};
+	const auto spec = lttng::cli::session_spec(lttng::cli::session_spec::type::NAME, session_name);
+	const auto sessions = list_sessions(spec);
+	int ncpus {0};
+
+	if (sessions.size() <= 0) {
+		/* Session not found */
+		ERR_FMT("Session not found, name='{}'", session_name);
+		return false;
+	}
+
+	if (channel->attr.num_subbuf > UINT64_MAX / channel->attr.subbuf_size) {
+		/* Overflow */
+		ERR_FMT("Integer overflow calculating total buffer size per CPU on channel '{}': num_subbuf={}, subbuf_size={}", channel->name, channel->attr.num_subbuf, channel->attr.subbuf_size)
+		return false;
+	}
+
+	total_buffer_size_needed_per_cpu = channel->attr.num_subbuf * channel->attr.subbuf_size;
+	try {
+		ncpus = utils_get_cpu_count();
+	} catch (const std::exception &ex) {
+		ERR_FMT("Exception when getting CPU count: {}", ex.what());
+		return false;
+	}
+
+	/* In snapshot mode, an extra set of buffers is required. */
+	const auto _bytes_required = static_cast<uint64_t>(total_buffer_size_needed_per_cpu * ncpus + sessions[0].snapshot_mode);
+	if (bytes_required != nullptr) {
+		*bytes_required = _bytes_required;
+	}
+
+	return utils_check_enough_available_memory(_bytes_required, bytes_available) == LTTNG_OK;
+}
+
 /*
  * Adding channel using the lttng API.
  */
@@ -142,6 +181,8 @@ static int enable_channel(char *session_name, char *channel_list)
 {
 	struct lttng_channel *channel = nullptr;
 	int ret = CMD_SUCCESS, warn = 0, error = 0, success = 0;
+	auto bytes_required = static_cast<uint64_t>(0);
+	auto bytes_available = static_cast<uint64_t>(0);
 	char *channel_name;
 	struct lttng_domain dom;
 
@@ -280,8 +321,17 @@ static int enable_channel(char *session_name, char *channel_list)
 			}
 		}
 
-		DBG("Enabling channel %s", channel_name);
+		if (!system_has_memory_for_channel_buffers(
+			    session_name, channel, &bytes_required, &bytes_available)) {
+			ERR_FMT("Not enough system memory available for channel '{}'. At least {}MiB required, {}MiB available",
+				channel->name,
+				bytes_required / 1024 / 1024,
+				bytes_available / 1024 / 1024);
+			error = 1;
+			goto error;
+		}
 
+		DBG("Enabling channel %s", channel_name);
 		ret = lttng_enable_channel(handle, channel);
 		if (ret < 0) {
 			bool msg_already_printed = false;
