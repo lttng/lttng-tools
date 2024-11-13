@@ -708,26 +708,29 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         else:
             return out.decode("utf-8")
 
-    def create_session(self, name=None, output=None, live=False):
-        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool) -> lttngctl.Session
+    def create_session(
+        self, name=None, output=None, live=False, snapshot=False, shm_path=None
+    ):
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, Optional[pathlib.Path]) -> lttngctl.Session
         name = name if name else lttngctl.Session._generate_name()
+        args = ["create", name]
 
         if isinstance(output, lttngctl.LocalSessionOutputLocation):
-            output_option = "--output '{output_path}'".format(output_path=output.path)
+            args.extend(["--output", str(output.path)])
         elif isinstance(output, lttngctl.NetworkSessionOutputLocation):
-            output_option = "--set-url '{}'".format(output.url)
+            args.extend(["--set-url", output.url])
         elif output is None:
-            output_option = "--no-output"
+            args.append("--no-output")
         else:
             raise TypeError("LTTngClient only supports local or no output")
 
-        self._run_cmd(
-            "create '{session_name}' {output_option} {live_option}".format(
-                session_name=name,
-                output_option=output_option,
-                live_option="--live" if live else "",
-            )
-        )
+        if live:
+            args.append("--live")
+        if shm_path is not None:
+            args.extend(["--shm-path", str(shm_path)])
+        if snapshot:
+            args.append("--snapshot")
+        self._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Session(self, name, output)
 
     def start_session_by_name(self, name):
