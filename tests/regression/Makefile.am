@@ -71,7 +71,8 @@ TESTS = tools/base-path/test_ust \
 	tools/context/test_ust.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
-	tools/client/test_bug1373_events_differ_only_by_loglevel
+	tools/client/test_bug1373_events_differ_only_by_loglevel \
+	tools/client/test_warn_on_shm_too_small.py
 
 # Only build kernel tests on Linux.
 if IS_LINUX
