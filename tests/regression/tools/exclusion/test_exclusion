@@ -122,6 +122,7 @@ function test_exclusion_tracing_started
 	$TESTAPP_BIN -i 1 -w 10000 \
 		--create-in-main ${file_create_in_main} \
 		--wait-before-first-event ${file_wait_before_first} 2>&1 &
+	tracee_pids+=("${!}")
 
 	while [ ! -f "${file_create_in_main}" ]; do
 		sleep 0.5
@@ -136,7 +137,8 @@ function test_exclusion_tracing_started
 	touch ${file_wait_before_first}
 
 	# Wait for the testapp to finish.
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 
@@ -183,6 +185,7 @@ print_test_banner "$TEST_DESC"
 bail_out_if_no_babeltrace
 
 start_lttng_sessiond
+tracee_pids=()
 
 diag "Enable event without exclusion"
 dry_run

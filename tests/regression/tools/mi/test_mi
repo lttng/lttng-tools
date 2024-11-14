@@ -538,6 +538,7 @@ function test_list_ust_event ()
 
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local pid
 
 	OUTPUT_FILE="list_ust_event.xml"
 
@@ -548,6 +549,7 @@ function test_list_ust_event ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} & 2>/dev/null
+	pid="${!}"
 
 	while [ ! -f "${file_sync_after_first}" ]; do
 		sleep 0.5
@@ -577,8 +579,7 @@ function test_list_ust_event ()
 	test "$num" -ge "12"
 	ok $? "Mi test: $num / 12 ust event fields discovered"
 
-	#Wait for all background processes
-	wait
+	wait "${pid}"
 
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}

@@ -42,6 +42,7 @@ function test_ust_streaming ()
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 	local metadata_path
+	local pid
 
 	diag "Test UST streaming with metadata regeneration"
 	create_lttng_session_uri $SESSION_NAME net://localhost
@@ -50,13 +51,14 @@ function test_ust_streaming ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
+	pid="${!}"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
-	wait
+	wait "${pid}"
 
 	# Expect a valid trace
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -86,6 +88,7 @@ function test_ust_local ()
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 	local metadata_path
+	local pid
 
 	diag "Test UST local with metadata regeneration"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -94,13 +97,14 @@ function test_ust_local ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
+	pid="${!}"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
-	wait
+	wait "${pid}"
 
 	# Expect a valid trace
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -129,6 +133,7 @@ function test_ust_pid ()
 {
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local pid
 
 	diag "Test UST per-pid with metadata regeneration (expect failure)"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -138,13 +143,14 @@ function test_ust_pid ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
+	pid="${!}"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
-	wait
+	wait "${pid}"
 	regenerate_metadata_fail $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -163,6 +169,7 @@ function test_ust_live ()
 {
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local pid
 
 	diag "Test UST live with metadata regeneration (expect failure)"
 	create_lttng_session_uri $SESSION_NAME net://localhost --live
@@ -171,13 +178,14 @@ function test_ust_live ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
+	pid="${!}"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
-	wait
+	wait "${pid}"
 	regenerate_metadata_fail $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME

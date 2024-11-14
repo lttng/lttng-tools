@@ -47,6 +47,7 @@ function run_app
 function run_app_background
 {
 	run_app "${@}" &
+	tracee_pids+=("${!}")
 }
 
 
@@ -72,7 +73,8 @@ function test_log4j_before_start ()
 	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -421,7 +423,8 @@ function test_log4j_destroy_session()
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -436,7 +439,8 @@ function test_log4j_destroy_session()
 	# Run 5 times with a 1 second delay
 	run_app_background 0 1
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -577,6 +581,7 @@ tests=(
 	test_log4j_filter_loglevel
 )
 
+tracee_pids=()
 for fct_test in "${tests[@]}";
 do
 	TRACE_PATH=$(mktemp -d -t tmp.test_java_log4j_trace_path.XXXXXX)

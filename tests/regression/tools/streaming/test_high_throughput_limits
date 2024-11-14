@@ -105,6 +105,7 @@ function run_apps
 		# the status reply from the consumer quite slow thus delaying the
 		# registration done message.
 		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN -i "$NR_ITER" >/dev/null 2>&1 &
+		tracee_pids+=("${!}")
 	done
 }
 
@@ -116,7 +117,8 @@ function test_high_throughput
 	start_lttng_tracing_ok $SESSION_NAME
 	run_apps
 	diag "Waiting for applications to end"
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 	pass "waiting done"
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -179,6 +181,7 @@ check_skip_kernel_test "$NUM_TESTS" "Skipping all tests." ||
 	trap interrupt_cleanup SIGTERM SIGINT
 
 	BW_LIMITS=(3200 400 100)
+	tracee_pids=()
 	for BW in "${BW_LIMITS[@]}";
 	do
 		diag "Test high-throughput with bandwidth limit set to ${BW}kbits"

@@ -61,6 +61,7 @@ function run_app
 function run_app_background
 {
 	run_app "$@" &
+	tracee_pids+=("${!}")
 }
 
 function enable_python_loglevel_only()
@@ -129,7 +130,7 @@ function test_python_before_start ()
 
 	# Wait for the applications started in background
 	echo "1" > ${go_file}
-	wait
+	wait "${tracee_pids[@]}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -762,6 +763,7 @@ else
 	skip_agent=1
 fi
 
+tracee_pids=()
 skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 {
 	start_lttng_sessiond

@@ -389,6 +389,7 @@ function test_ust_pid_streaming_snapshot ()
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event "$file_sync_after_first" \
 		--sync-before-last-event "$file_sync_before_last" 2>&1 &
+	pid="${!}"
 
 	while [ ! -f "${file_sync_after_first}" ]; do
 		sleep 0.5
@@ -397,7 +398,7 @@ function test_ust_pid_streaming_snapshot ()
 	lttng_snapshot_record "$session_name"
 
 	touch "$file_sync_before_last"
-	wait
+	wait "${pid}"
 
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name" --no-wait

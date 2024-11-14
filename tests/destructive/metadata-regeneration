@@ -126,7 +126,7 @@ function test_ust_local ()
 
 	touch "${file_sync_before_last}"
 	# Wait for the applications started in background
-	wait
+	wait "${!}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	validate_trace_date $DATE1 "$TRACE_PATH"
@@ -168,7 +168,7 @@ function test_ust_streaming ()
 	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait
+	wait "${!}"
 	stop_lttng_tracing_ok $SESSION_NAME
 	validate_trace_date $DATE1 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 

@@ -34,6 +34,7 @@ function run_app
 function run_app_background
 {
 	run_app $@ &
+	tracee_pids+=("${!}")
 }
 
 function enable_jul_loglevel_only()
@@ -94,7 +95,8 @@ function test_jul_before_start ()
 	touch ${file_sync_before_last}
 
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -511,7 +513,7 @@ function test_jul_destroy_session()
 	run_app_background 0 1
 
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -530,7 +532,7 @@ function test_jul_destroy_session()
 	run_app_background 0 1
 
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -670,6 +672,7 @@ else
 	withapp=1
 fi
 
+tracee_pids=()
 skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 {
 	start_lttng_sessiond

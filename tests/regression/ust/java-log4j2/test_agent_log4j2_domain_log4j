@@ -48,6 +48,7 @@ function run_app
 function run_app_background
 {
 	run_app "${@}" &
+	tracee_pids+=("${!}")
 }
 
 
@@ -73,7 +74,8 @@ function test_log4j2_before_start ()
 	touch "${file_sync_before_last}"
 
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok "log4j2_before_start"
 	destroy_lttng_session_ok "log4j2_before_start"
@@ -422,7 +424,8 @@ function test_log4j2_destroy_session()
 	# Run 5 times with a 1ms delay
 	run_app_background 0 1
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok "log4j2_destroy_session"
 	destroy_lttng_session_ok "log4j2_destroy_session"
@@ -437,7 +440,8 @@ function test_log4j2_destroy_session()
 	# Run 5 times with a 1ms delay
 	run_app_background 0 1
 	# Wait for the applications started in background
-	wait
+	wait "${tracee_pids[@]}"
+	tracee_pids=()
 
 	stop_lttng_tracing_ok "log4j2_destroy_session"
 	destroy_lttng_session_ok "log4j2_destroy_session"
@@ -578,6 +582,7 @@ tests=(
 	test_log4j2_filter_loglevel
 )
 
+tracee_pids=()
 for fct_test in "${tests[@]}";
 do
 	TRACE_PATH=$(mktemp -d -t tmp.test_java_log4j2_trace_path.XXXXXX)

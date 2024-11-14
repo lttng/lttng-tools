@@ -38,6 +38,7 @@ function enable_channel_per_pid()
 test_after_multiple_apps() {
 	local out
 	local i
+	local tracee_pids=()
 
 	diag "Start multiple applications AFTER tracing is started"
 
@@ -50,8 +51,9 @@ test_after_multiple_apps() {
 	for i in `seq 1 5`; do
 		$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
+		tracee_pids+=("${!}")
 	done
-	wait
+	wait "${tracee_pids[@]}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -64,6 +66,7 @@ test_after_multiple_apps() {
 test_before_multiple_apps() {
 	local out
 	local i
+	local tracee_pids=()
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
@@ -74,6 +77,7 @@ test_before_multiple_apps() {
 			--sync-after-first-event ${file_sync_after_first}_${i} \
 			--sync-before-last-event ${file_sync_before_last}_${i} >/dev/null 2>&1 &
 		ok $? "Start application $i for tracing"
+		tracee_pids+=("${!}")
 	done
 
 	# BEFORE application is spawned
@@ -87,7 +91,7 @@ test_before_multiple_apps() {
 	done
 
 	diag "Waiting for applications to end"
-	wait
+	wait "${tracee_pids[@]}"
 	pass "Waiting done"
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -125,7 +129,7 @@ test_after_app() {
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
 	ok $? "Start application to trace"
-	wait
+	wait "${!}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -137,6 +141,7 @@ test_after_app() {
 
 test_before_app() {
 	local out
+	local pid
 	local file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
@@ -152,12 +157,13 @@ test_before_app() {
 		--sync-after-first-event ${file_sync_after_first} \
 		--sync-before-last-event ${file_sync_before_last} &
 	ok $? "Start application to trace"
+	pid="${!}"
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	touch ${file_sync_before_last}
 
-	wait
+	wait "${pid}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -206,7 +212,7 @@ test_multiple_channels() {
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
 	ok $? "Start application to trace"
-	wait
+	wait "${!}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	trace_match_only $EVENT_NAME $[NR_ITER * 5] $TRACE_PATH

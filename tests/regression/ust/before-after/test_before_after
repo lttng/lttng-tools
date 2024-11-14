@@ -33,7 +33,7 @@ function test_before_apps()
 	start_lttng_tracing_ok $SESSION_NAME
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
-	wait
+	wait "${!}"
 	ok $? "Traced application stopped."
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -62,7 +62,7 @@ function test_after_apps()
 
 	touch ${file_sync_before_last}
 
-	wait
+	wait "${!}"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME

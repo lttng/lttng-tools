@@ -63,10 +63,12 @@ function wait_test_apps()
 
 function stop_test_apps()
 {
-	diag "Stopping $TESTAPP_NAME"
-	kill "${APPS_PID[@]}"
-	wait "${APPS_PID[@]}"
-	APPS_PID=()
+	if [[ -n "${APPS_PID[*]}" ]]; then
+		diag "Stopping $TESTAPP_NAME"
+		kill "${APPS_PID[@]}"
+		wait "${APPS_PID[@]}"
+		APPS_PID=()
+	fi
 }
 
 function snapshot_add_output ()
