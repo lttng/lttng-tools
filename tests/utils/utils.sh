@@ -37,6 +37,7 @@ XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
 XML_NODE_CHECK="${XML_EXTRACT} -e"
 
 declare -a LTTNG_RELAYD_PIDS
+declare -a LTTNG_SESSIOND_PIDS
 
 # To match 20201127-175802
 date_time_pattern="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
@@ -1053,47 +1054,67 @@ function start_lttng_sessiond_opt()
 	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/"}"
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z "$(lttng_pgrep "${SESSIOND_MATCH}")" ] || [ -n "${TEST_IGNORE_EXISTING_SESSIOND}" ]; then
-		# Have a load path ?
-		if [ -n "$load_path" ]; then
-			diag "env $env_vars --load $load_path --background $consumerd ${opts[*]}"
-			if [[ -n "${log_file}" ]]; then
-				# shellcheck disable=SC2086
-				env $env_vars --load "$load_path" --background "$consumerd" "${opts[@]}" >"${log_file}" 2>&1
-			else
-				# shellcheck disable=SC2086
-				env $env_vars --load "$load_path" --background "$consumerd" "${opts[@]}"
-			fi
+	wait_until_ready=1
+	trap 'wait_until_ready=0' SIGUSR1
+	if [ -n "$load_path" ]; then
+		diag "env $env_vars --load $load_path $consumerd ${opts[*]}"
+		if [[ -n "${log_file}" ]]; then
+			# shellcheck disable=SC2086
+			env $env_vars --sig-parent --load "$load_path" "$consumerd" "${opts[@]}" >"${log_file}" 2>&1 &
 		else
-			diag "env $env_vars --background $consumerd ${opts[*]}"
-			if [[ -n "${log_file}" ]]; then
-				# shellcheck disable=SC2086
-				env $env_vars --background "$consumerd" "${opts[@]}" >"${log_file}" 2>&1
-			else
-				# shellcheck disable=SC2086
-				env $env_vars --background "$consumerd" "${opts[@]}"
-			fi
+			# shellcheck disable=SC2086
+			env $env_vars --sig-parent --load "$load_path" "$consumerd" "${opts[@]}" &
 		fi
-		status=$?
-		if [ "$withtap" -eq "1" ]; then
-			ok $status "Start session daemon"
+	else
+		diag "env $env_vars $consumerd ${opts[*]}"
+		if [[ -n "${log_file}" ]]; then
+			# shellcheck disable=SC2086
+			env $env_vars --sig-parent "$consumerd" "${opts[@]}" >"${log_file}" 2>&1 &
+		else
+			# shellcheck disable=SC2086
+			env $env_vars --sig-parent "$consumerd" "${opts[@]}" &
 		fi
-
-		if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND}" ]]; then
-			# The 'bash' is required since gdbserver doesn't end up running in the
-			# background with '&'.
-			bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT} $(lttng_pgrep "${SESSIOND_MATCH}" | head -n 1)" >/dev/null 2>&1 &
-			if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND_WAIT}" ]]; then
-				read -p "Waiting for user input. Press 'Enter' to continue: "
-			else
-				# Continue blocks this, but when the next break or signal happens,
-				# the process will disconnect and terminate.
-				gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT}" -ex "continue" -ex "disconnect" &
-			fi
-		fi
-
-		return $status
 	fi
+
+	status=$?
+	pid="${!}"
+	if [[ "${status}" != "0" ]]; then
+		wait_until_ready=0
+	fi
+
+	while [[ "${wait_until_ready}" -eq "1" ]] ; do
+		sleep 0.1
+		# This PID no longers exists and `--sig-parent` hasn't been received
+		if ! ps -p "${pid}" >/dev/null ; then
+			wait "${pid}"
+			status="${?}"
+			break
+		fi
+	done
+
+	if [[ "${status}" == "0" ]]; then
+		LTTNG_SESSIOND_PIDS+=("${pid}")
+	fi
+
+	if [ "$withtap" -eq "1" ]; then
+		ok $status "Start session daemon"
+	fi
+
+	trap - SIGUSR1
+	if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND}" ]]; then
+		# The 'bash' is required since gdbserver doesn't end up running in the
+		# background with '&'.
+		bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT} $(lttng_pgrep "${SESSIOND_MATCH}" | head -n 1)" >/dev/null 2>&1 &
+		if [[ -n "${LTTNG_TEST_GDBSERVER_SESSIOND_WAIT}" ]]; then
+			read -p "Waiting for user input. Press 'Enter' to continue: "
+		else
+			# Continue blocks this, but when the next break or signal happens,
+			# the process will disconnect and terminate.
+			gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_SESSIOND_PORT}" -ex "continue" -ex "disconnect" &
+		fi
+	fi
+
+	return $status
 }
 
 function start_lttng_sessiond()
@@ -1239,26 +1260,31 @@ function sigstop_lttng_sessiond_opt()
 		return
 	fi
 
-	pids="$(lttng_pgrep "${SESSIOND_MATCH}") $(lttng_pgrep "$RUNAS_MATCH")"
+	pids=("${LTTNG_SESSIOND_PIDS[@]}")
 
 	if [ "$withtap" -eq "1" ]; then
 		diag "Sending SIGSTOP to lt-$SESSIOND_BIN and $SESSIOND_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 	fi
 
+	if [[ -z "${pids[*]}" ]]; then
+		if [[ "${withtap}" -eq "1" ]]; then
+			diag "No lttng-sessiond processes being tracked"
+			skip "No lttng-sessiond to kill"
+		fi
+	fi
+
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids; then
+	if ! kill -s $signal "${pids[@]}"; then
 		if [ "$withtap" -eq "1" ]; then
-			fail "Sending SIGSTOP to session daemon"
+			fail "Sending ${signal} to session daemon"
 		fi
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pids="$(lttng_pgrep "$SESSIOND_MATCH")"
-
 			# Wait until state becomes stopped for session
 			# daemon(s).
 			out=0
-			for sessiond_pid in $pids; do
+			for sessiond_pid in "${pids[@]}"; do
 				state="$(ps -p "$sessiond_pid" -o state= )"
 				if [[ -n "$state" && "$state" != "T" ]]; then
 					out=1
@@ -1270,6 +1296,7 @@ function sigstop_lttng_sessiond_opt()
 			pass "Sending SIGSTOP to session daemon"
 		fi
 	fi
+	LTTNG_SESSIOND_PIDS=()
 }
 
 function sigstop_lttng_sessiond()
