@@ -28,7 +28,9 @@ function enable_ust_lttng_event_per_chan()
 	event_name="$2"
 	chan_name="$3"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" -s $sess_name -c $chan_name -u >/dev/null 2>&1
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
+		enable-event "$event_name" --session "$sess_name"\
+		--channel "$chan_name" --userspace
 	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
 }
 

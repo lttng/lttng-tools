@@ -11,7 +11,7 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 SESSION_NAME="filter-unsupported-ops"
 EVENT_NAME="bogus"
-ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
+ENABLE_EVENT_STDERR=$(mktemp -t tmp.test_filtering_unsupported_ops.XXXXXX)
 TRACE_PATH=$(mktemp -d -t tmp.test_filtering_unsupported_ops_trace_path.XXXXXX)
 NUM_GLOBAL_TESTS=2
 NUM_UST_TESTS=20
@@ -27,8 +27,8 @@ function enable_lttng_event_filter_unsupported
 	event_name="$3"
 	filter="$4"
 
-	enable_cmd="$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event"
-	$enable_cmd $event_name -s $sess_name $domain --filter "$filter" 2> $ENABLE_EVENT_STDERR 1> /dev/null
+	_run_lttng_cmd '/dev/null' "$ENABLE_EVENT_STDERR" enable-event \
+		"$event_name" --session "$sess_name" "$domain" --filter "$filter"
 
 	# Enable must fail
 	if [ $? -eq 0 ]; then

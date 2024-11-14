@@ -43,9 +43,10 @@ function enable_kernel_lttng_channel_size_limit ()
 	test_name+="for session $sess_name: "
 	test_name+="$tracefile_size_limit bytes tracefile limit"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
-	    -k $channel_name -s $sess_name \
-	    -C $tracefile_size_limit >/dev/null 2>&1
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
+		enable-channel \
+		--kernel "$channel_name" --session "$sess_name" \
+		--tracefile-size $tracefile_size_limit
 
 	ok $? "$test_name"
 }
@@ -60,8 +61,9 @@ function enable_kernel_lttng_event_per_channel ()
 	test_name+="for session $sess_name "
 	test_name+="in channel $channel_name"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
-	    -s $sess_name -k -c $channel_name >/dev/null 2>&1
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" \
+		enable-event "$event_name" \
+		--session "$sess_name" --kernel --channel "$channel_name"
 
 	ok $? "$test_name"
 }

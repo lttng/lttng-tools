@@ -664,7 +664,8 @@ function lttng_enable_kernel_userspace_probe_event ()
 	local target="$3"
 	local event_name="$4"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --userspace-probe="$target" "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" enable-event \
+		--kernel --userspace-probe="$target" "$event_name" --session "$sess_name"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
