@@ -169,8 +169,20 @@ by kill and wait.
 
 Why is it flaky ?
 
-It just waits for the last application put in background. Use
-"wait" to wait for all background applications.
+It just waits for the last application put in background. Track the PIDs
+of the applications of interest in an array and use a construction similar
+to the following to wait for them:
+
+```
+## Avoid running `wait ` when the array is empty
+if [[ -n "${pids[*]}" ]]; then
+   wait "${pids[@]}"`
+fi
+```
+
+Avoid `wait` without arguments as it will wait for other background
+prcesses such as lttng-relayd or lttng-sessiond when they are started
+without daemonization.
 
 === Forgetting wait at the end (or error return path) of a test phase that has background applications
 
