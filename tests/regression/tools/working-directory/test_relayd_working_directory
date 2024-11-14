@@ -37,6 +37,7 @@ function test_relayd()
 	# the one we expect. In case of a failure the test will hang.
 	$relayd_bin_path --working-directory "$working_dir" > /dev/null 2>&1 &
 	pid=$!
+	LTTNG_RELAYD_PIDS+=($pid)
 
 	while true; do
 		cwd=$(readlink "/proc/${pid}/cwd")

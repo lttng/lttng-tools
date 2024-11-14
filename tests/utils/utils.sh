@@ -36,6 +36,8 @@ XML_PRETTY="$TESTDIR/utils/xml-utils/pretty_xml"
 XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
 XML_NODE_CHECK="${XML_EXTRACT} -e"
 
+declare -a LTTNG_RELAYD_PIDS
+
 # To match 20201127-175802
 date_time_pattern="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
 # The size of a long on this system
@@ -796,10 +798,18 @@ function lttng_disable_kernel_channel_fail()
 	lttng_disable_kernel_channel 1 "$@"
 }
 
+# If the caller of this function sets process_mode, they must
+# ensure to track the PID of the daemon somehow in order to
+# not spawn multiple instances.
 function start_lttng_relayd_opt()
 {
+	local ret
 	local withtap=$1
 	local process_mode=$2
+	local pid_file=''
+	local pid=''
+	local daemon_timeout=''
+
 	shift 2 || true
 	# This is intentionally not quoted inside the array so something like '-o /tmp/x' is split
 	# shellcheck disable=SC2206
@@ -807,6 +817,11 @@ function start_lttng_relayd_opt()
 	local log_file="${RELAYD_ERROR_OUTPUT_DEST:-$(lttng_log_file relayd)}"
 
 	DIR=$(readlink -f "$TESTDIR")
+
+	if [[ "${LTTNG_RELAYD_PIDS[*]}" ]] ; then
+		pass "lttng-relayd already started"
+		return
+	fi
 
 	if [[ -n "${LTTNG_TEST_VERBOSE_RELAYD}" ]] ; then
 		opts+=('-vvv')
@@ -816,44 +831,84 @@ function start_lttng_relayd_opt()
 		diag "Relayd log file: ${log_file}"
 	fi
 
-	if [ -z $(lttng_pgrep "$RELAYD_MATCH") ]; then
-		# shellcheck disable=SC2086
-		if [[ -n "${log_file}" ]]; then
-			$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode "${opts[@]}" >"${log_file}" 2>&1
-		else
-			$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode "${opts[@]}"
-		fi
-		local ret="${?}"
-		if [ $withtap -eq "1" ]; then
-			ok $ret "Start lttng-relayd (process mode: $process_mode opt: ${opts[*]})"
-		fi
+	if [[ -n "${process_mode}" ]]; then
+		opts+=("${process_mode}")
+		daemon_timeout=50  # 5 seconds
+	fi
 
-		if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD}" ]]; then
-			# The 'bash' is required since gdbserver doesn't end up running in the
-			# background with '&'.
-			bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT} $(lttng_pgrep "${RELAYD_MATCH}" | head -n 1)" >/dev/null 2>&1 &
-			if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD_WAIT}" ]]; then
-				read -p "Waiting for user input. Press 'Enter' to continue: "
-			else
-				# Continue blocks this, but when the next break or signal happens,
-				# the process will disconnect and terminate.
-				gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT}" -ex "continue" -ex "disconnect" &
+	pid_file="$(mktemp -u)"
+	opts+=('--pid-file' "${pid_file}" "--sig-parent")
+	wait_until_ready=1
+	trap 'wait_until_ready=0' SIGUSR1
+	# shellcheck disable=SC2086
+	if [[ -n "${log_file}" ]]; then
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN "${opts[@]}" >"${log_file}" 2>&1 &
+	else
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN "${opts[@]}" &
+	fi
+
+	ret="${?}"
+	if [[ "${ret}" != "0" ]] ; then
+		# Something has gone wrong and receiving sigusr1 is unlikely.
+		wait_until_ready=0
+	fi
+
+	# Wait for the pid file to be created. If the process mode is background or
+	# daemon, this will likely hang.
+	while [[ ! -f "${pid_file}" ]] && [[ "${ret}" == "0" ]]; do
+		sleep 0.1
+		if [[ -n "${daemon_timeout}" ]]; then
+			daemon_timeout=$((daemon_timeout-1))
+			if [[ "${daemon_timeout}" -lt "0" ]]; then
+				diag "Timed out waiting for daemon PID file to be created"
+				ret=1
+				break
 			fi
 		fi
-		return $ret
-	else
-		pass "Start lttng-relayd (opt: ${opts[*]})"
+	done
+
+	pid="$(cat "${pid_file}")"
+	while [[ "${wait_until_ready}" -eq "1" ]] && [[ -n "${pid}" ]]; do
+		sleep 0.1
+		if ! ps -p "${pid}" >/dev/null ; then
+			wait "${pid}"
+			ret="${?}"
+			break
+		fi
+	done
+
+	if [[ "${ret}" == "0" ]]; then
+		LTTNG_RELAYD_PIDS+=("${pid}")
 	fi
+	trap - SIGUSR1
+
+	if [ $withtap -eq "1" ]; then
+		ok $ret "Start lttng-relayd (opts: ${opts[*]})"
+	fi
+
+	if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD}" ]] && [[ -n "${pid}" ]]; then
+		# The 'bash' is required since gdbserver doesn't end up running in the
+		# background with '&'.
+		bash -c "$(which gdbserver) --attach localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT} ${pid} | head -n 1)" >/dev/null 2>&1 &
+		if [[ -n "${LTTNG_TEST_GDBSERVER_RELAYD_WAIT}" ]]; then
+			read -p "Waiting for user input. Press 'Enter' to continue: "
+		else
+			# Continue blocks this, but when the next break or signal happens,
+			# the process will disconnect and terminate.
+			gdb --batch-silent -ex "target remote localhost:${LTTNG_TEST_GDBSERVER_RELAYD_PORT}" -ex "continue" -ex "disconnect" &
+		fi
+	fi
+	return $ret
 }
 
 function start_lttng_relayd()
 {
-	start_lttng_relayd_opt 1 "-b" "$@"
+	start_lttng_relayd_opt 1 "" "$@"
 }
 
 function start_lttng_relayd_notap()
 {
-	start_lttng_relayd_opt 0 "-b" "$@"
+	start_lttng_relayd_opt 0 "" "$@"
 }
 
 function stop_lttng_relayd_opt()
@@ -878,7 +933,7 @@ function stop_lttng_relayd_opt()
 	fi
 
 
-	pids=$(lttng_pgrep "$RELAYD_MATCH")
+	pids=("${LTTNG_RELAYD_PIDS[@]}")
 	if [ -z "$pids" ]; then
 		if [ "$is_cleanup" -eq 1 ]; then
 			:
@@ -890,10 +945,10 @@ function stop_lttng_relayd_opt()
 		return 0
 	fi
 
-	diag "Killing (signal $signal) lttng-relayd (pid: $pids)"
+	diag "Killing (signal $signal) lttng-relayd (pid: ${pids[*]})"
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $pids; then
+	if ! kill -s $signal "${pids[@]}"; then
 		retval=1
 		if [ "$withtap" -eq "1" ]; then
 			fail "Kill relay daemon"
@@ -919,6 +974,7 @@ function stop_lttng_relayd_opt()
 			fi
 		fi
 	fi
+	LTTNG_RELAYD_PIDS=()
 	return $retval
 }
 
