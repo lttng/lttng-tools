@@ -11,7 +11,7 @@ TESTDIR=$CURDIR/../../../
 
 DIR=$(readlink -f "$TESTDIR")
 
-NUM_TESTS=35
+NUM_TESTS=36
 
 source $TESTDIR/utils/utils.sh
 
@@ -26,30 +26,18 @@ function test_relayd()
 	local pid
 	local cwd
 
-
 	diag "Test lttng-relayd normal mode change working directory"
+	start_lttng_relayd "--working-directory $working_dir"
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
 
-	# There is no rendez-vous mechanism that can guarantee the good timing
-	# to check if the workdir directory was changed.
-	# In the case of lttng-sessiond this would be achieved using the
-	# --sig-parent option but lttng-relayd does not have this feature yet.
-	# Fall back on using polling of the value and unblock when the value is
-	# the one we expect. In case of a failure the test will hang.
-	$relayd_bin_path --working-directory "$working_dir" > /dev/null 2>&1 &
-	pid=$!
-	LTTNG_RELAYD_PIDS+=($pid)
-
-	while true; do
-		cwd=$(readlink "/proc/${pid}/cwd")
-		if test "$working_dir" = "$cwd"; then
-			# Working dir for process is valid
-			break
-		fi
-		sleep 0.1
-	done
-
-	# If we are here the test passed
-	pass "Working directory changed"
+	cwd=$(readlink "/proc/${pid}/cwd")
+	test "$working_dir" = "$cwd"
+	ok "${?}" "Working directory changed"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -64,12 +52,16 @@ function test_relayd_daemon()
 	diag "Test lttng-relayd daemon mode change working directory"
 
 	start_lttng_relayd_opt 1 "-d" "--working-directory $working_dir"
-
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p "${pid}" >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
-
 	is "${cwd:-no working directory found}" "$working_dir" "Working directory changed"
 
 	stop_lttng_relayd
@@ -84,9 +76,14 @@ function test_relayd_daemon_no_working_dir()
 
 	diag "Test lttng-relayd daemon mode change working directory"
 
-	start_lttng_relayd_opt 1 "-d" ""
-
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	start_lttng_relayd_opt 1 "-d"
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p $pid >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -105,8 +102,13 @@ function test_relayd_background()
 	diag "Test lttng-relayd background mode change working directory"
 
 	start_lttng_relayd_opt 1 "-b" "--working-directory $working_dir"
-
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p "${pid}" >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -124,9 +126,14 @@ function test_relayd_background_no_working_dir()
 
 	diag "Test lttng-relayd background working directory"
 
-	start_lttng_relayd_opt 1 "-b" ""
-
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	start_lttng_relayd_opt 1 "-b"
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p "${pid}" >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -162,8 +169,13 @@ function test_relayd_debug_permission()
 
 		RELAYD_ERROR_OUTPUT_DEST=$(mktemp -t "tmp.${FUNCNAME[0]}_error_output.XXXXXX")
 		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
-
-		pid=$(lttng_pgrep "$RELAYD_MATCH")
+		# When the relayd is successfully started, the PID will be appended
+		# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+		# the working directory. If relayd fails to start, there will be either
+		# no PID, or a different lttng-relayd PID without the same working
+		# directory and the test will fail.
+		pid="${LTTNG_RELAYD_PIDS[-1]}"
+		ps -p "${pid}" > /dev/null
 		ok $? "Found lttng-relayd"
 
 		cwd=$(readlink "/proc/${pid}/cwd")
@@ -193,11 +205,14 @@ function test_relayd_failure()
 
 	diag "Test lttng-relayd normal mode change non-existing directory"
 
-	$relayd_bin_path -b --working-directory "$working_dir_imaginary" > "$output_dest" 2>&1
+	RELAYD_ERROR_OUTPUT_DEST="${output_dest}" start_lttng_relayd_opt 0 -b "--working-directory $working_dir_imaginary"
 	test $? -eq "1"
 	ok $? "Expect failure to start lttng-relayd for non-existent working directory"
 
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be no PID.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
 	if [ -z "$pid" ]; then
 		pass "No lttng-relayd present"
 	else
@@ -208,8 +223,7 @@ function test_relayd_failure()
 	grep -q "$output_pattern" "$output_dest"
 	ok $? "Found error message: invalid directory"
 
-	rm "$output_dest"
-	rm -rf "$working_dir"
+	rm -rf "$working_dir" "${output_dest}"
 }
 
 function test_relayd_env()
@@ -221,9 +235,15 @@ function test_relayd_env()
 	diag "Test lttng-relayd change working directory from env. variable"
 
 	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir}
-	start_lttng_relayd_opt 1 "-b" ""
+	start_lttng_relayd_opt 1 "-b"
 
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p "${pid}" >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
@@ -246,7 +266,13 @@ function test_relayd_cmdline_overwrite_env()
 	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir_env}
 	start_lttng_relayd_opt 1 "-b" "--working-dir ${working_dir_cmdline}"
 
-	pid=$(lttng_pgrep "$RELAYD_MATCH")
+	# When the relayd is successfully started, the PID will be appended
+	# to `LTTNG_RELAYD_PIDS`. Use the last (most recent) PID for checking
+	# the working directory. If relayd fails to start, there will be either
+	# no PID, or a different lttng-relayd PID without the same working
+	# directory and the test will fail.
+	pid="${LTTNG_RELAYD_PIDS[-1]}"
+	ps -p "${pid}" >/dev/null
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
