@@ -268,7 +268,7 @@ lttng_userspace_probe_location_function_create_no_check(
 	if (open_binary) {
 		binary_fd = open(binary_path, O_RDONLY);
 		if (binary_fd < 0) {
-			PERROR("Error opening the binary");
+			PERROR("Error opening the binary: path=`%s`", binary_path);
 			goto error;
 		}
 
