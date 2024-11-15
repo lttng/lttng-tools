@@ -99,7 +99,7 @@ enum relay_connection_status {
 /* command line options */
 char *opt_output_path, *opt_working_directory, *opt_pid_file = nullptr;
 static int opt_daemon, opt_background, opt_print_version,
-	opt_allow_clear = 1, opt_dynamic_port_allocation = 0;
+	opt_allow_clear = 1, opt_dynamic_port_allocation = 0, opt_sig_parent = 0;
 enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
 /* Argument variables */
@@ -272,6 +272,12 @@ static struct option long_options[] = {
 	},
 	{ "disallow-clear", 0, nullptr, 'x' },
 	{ "dynamic-port-allocation", 0, nullptr, '\0' },
+	{
+		"sig-parent",
+		0,
+		nullptr,
+		'S'
+	},
 	{
 		nullptr,
 		0,
@@ -477,6 +483,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 	case 'x':
 		/* Disallow clear */
 		opt_allow_clear = 0;
+		break;
+	case 'S':
+		opt_sig_parent = getppid();
 		break;
 	default:
 		/* Unknown option or other error.
@@ -4619,6 +4628,11 @@ int main(int argc, char **argv)
 	 * This is where we start awaiting program completion (e.g. through
 	 * signal that asks threads to teardown).
 	 */
+
+	/* Initialization complete, signal parent PID if necessary. */
+	if (opt_sig_parent != 0) {
+		kill(opt_sig_parent, SIGUSR1);
+	}
 
 	ret = relayd_live_join();
 	if (ret) {
