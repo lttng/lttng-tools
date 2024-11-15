@@ -47,7 +47,7 @@ static bool lttng_event_rule_kernel_uprobe_validate(
 
 	/* Required field. */
 	if (!uprobe->name) {
-		ERR("Invalid uprobe event rule: a pattern must be set.");
+		ERR("Invalid uprobe event rule: an event name must be set.");
 		goto end;
 	}
 
