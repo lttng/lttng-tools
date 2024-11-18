@@ -124,6 +124,7 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 		ret = -1;
 		goto end;
 	}
+	session->rotate_condition = NULL;
 
 	ret = notification_thread_command_unregister_trigger(
 			notification_thread_handle, session->rotate_trigger);
@@ -131,6 +132,7 @@ int unsubscribe_session_consumed_size_rotation(struct ltt_session *session,
 		ERR("Session unregister trigger error: %d", ret);
 		goto end;
 	}
+	session->rotate_trigger = NULL;
 
 	ret = 0;
 end:
