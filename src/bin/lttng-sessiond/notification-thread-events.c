@@ -2046,6 +2046,7 @@ int handle_notification_thread_command_add_tracer_event_source(
 				lttng_domain_type_str(element->domain));
 		cds_list_del(&element->node);
 		free(element);
+		cmd_result = LTTNG_ERR_UNK;
 		goto end;
 	}
 
