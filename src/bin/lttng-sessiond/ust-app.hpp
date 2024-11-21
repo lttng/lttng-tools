@@ -360,35 +360,35 @@ struct ust_app {
 	 * application management thread will release a reference to the
 	 * application if the application dies.
 	 */
-	urcu_ref ref;
+	urcu_ref ref = {};
 
 	/* Traffic initiated from the session daemon to the application. */
-	int sock;
-	pthread_mutex_t sock_lock; /* Protects sock protocol. */
+	int sock = -1;
+	pthread_mutex_t sock_lock = {}; /* Protects sock protocol. */
 
 	/* Traffic initiated from the application to the session daemon. */
-	int notify_sock;
-	pid_t pid;
-	pid_t ppid;
-	uid_t uid; /* User ID that owns the apps */
-	gid_t gid; /* Group ID that owns the apps */
+	int notify_sock = static_cast<int>(-1);
+	pid_t pid = static_cast<pid_t>(-1);
+	pid_t ppid = static_cast<pid_t>(-1);
+	uid_t uid = static_cast<uid_t>(-1); /* User ID that owns the apps */
+	gid_t gid = static_cast<gid_t>(-1); /* Group ID that owns the apps */
 
 	/* App ABI. */
-	lttng::sessiond::trace::abi abi;
+	lttng::sessiond::trace::abi abi = {};
 
-	int compatible; /* If the lttng-ust tracer version does not match the
+	int compatible = 0; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
-	struct lttng_ust_abi_tracer_version version;
-	uint32_t v_major; /* Version major number */
-	uint32_t v_minor; /* Version minor number */
+	struct lttng_ust_abi_tracer_version version = {};
+	uint32_t v_major = static_cast<uint32_t>(-1); /* Version major number */
+	uint32_t v_minor = static_cast<uint32_t>(-1); /* Version minor number */
 	/* Extra for the NULL byte. */
-	char name[UST_APP_PROCNAME_LEN + 1];
+	char name[UST_APP_PROCNAME_LEN + 1] = {};
 
-	struct lttng_ht *sessions;
-	struct lttng_ht_node_ulong pid_n;
-	struct lttng_ht_node_ulong sock_n;
-	struct lttng_ht_node_ulong notify_sock_n;
+	struct lttng_ht *sessions = nullptr;
+	struct lttng_ht_node_ulong pid_n = {};
+	struct lttng_ht_node_ulong sock_n = {};
+	struct lttng_ht_node_ulong notify_sock_n = {};
 	/*
 	 * This is a list of ust app session that, once the app is going into
 	 * teardown mode, in the RCU call, each node in this list is removed and
@@ -402,11 +402,11 @@ struct ust_app {
 	/*
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */
-	struct lttng_ht *ust_objd;
+	struct lttng_ht *ust_objd = nullptr;
 	/*
 	 * Hash table containing ust_app_session indexed by objd.
 	 */
-	struct lttng_ht *ust_sessions_objd;
+	struct lttng_ht *ust_sessions_objd = nullptr;
 
 	/*
 	 * If this application is of the agent domain and this is non negative then
@@ -414,12 +414,12 @@ struct ust_app {
 	 * corresponding agent app object. If the lookup fails, this should be set
 	 * to a negative value indicating that the agent application is gone.
 	 */
-	int agent_app_sock;
+	int agent_app_sock = static_cast<int>(-1);
 	/*
 	 * Time at which the app is registred.
 	 * Used for path creation
 	 */
-	time_t registration_time;
+	time_t registration_time = static_cast<time_t>(-1);
 	/*
 	 * Event notifier
 	 */
@@ -428,17 +428,17 @@ struct ust_app {
 		 * Handle to the lttng_ust object representing the event
 		 * notifier group.
 		 */
-		struct lttng_ust_abi_object_data *object;
-		struct lttng_pipe *event_pipe;
-		struct lttng_ust_abi_object_data *counter;
-		struct lttng_ust_abi_object_data **counter_cpu;
-		int nr_counter_cpu;
+		struct lttng_ust_abi_object_data *object = nullptr;
+		struct lttng_pipe *event_pipe = nullptr;
+		struct lttng_ust_abi_object_data *counter = nullptr;
+		struct lttng_ust_abi_object_data **counter_cpu = nullptr;
+		int nr_counter_cpu = 0;
 	} event_notifier_group;
 	/*
 	 * Hashtable indexing the application's event notifier rule's
 	 * (ust_app_event_notifier_rule) by their token's value.
 	 */
-	struct lttng_ht *token_to_event_notifier_rule_ht;
+	struct lttng_ht *token_to_event_notifier_rule_ht = nullptr;
 
 	lttng::sessiond::ust::ctl_field_quirks ctl_field_quirks() const;
 };
