@@ -151,7 +151,10 @@ char *utils_partial_realpath(const char *path)
 		 * return it as is
 		 */
 	} else {
-		strncpy(resolved_path, path, LTTNG_PATH_MAX);
+		const auto strncpy_ret = lttng_strncpy(resolved_path, path, LTTNG_PATH_MAX);
+		if (strncpy_ret) {
+			goto error;
+		}
 	}
 
 	/* Then we return the 'partially' resolved path */
@@ -164,6 +167,7 @@ error:
 	if (try_path_prev != try_path) {
 		free(try_path_prev);
 	}
+
 	return nullptr;
 }
 
