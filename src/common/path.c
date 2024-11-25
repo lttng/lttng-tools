@@ -119,6 +119,8 @@ char *utils_partial_realpath(const char *path)
 	 * what worked and what didn't work
 	 */
 	if (try_path_prev != NULL) {
+		int snprintf_ret;
+
 		/* If we risk to concatenate two '/', we remove one of them */
 		if (try_path_prev[strlen(try_path_prev) - 1] == '/' && prev[0] == '/') {
 			try_path_prev[strlen(try_path_prev) - 1] = '\0';
@@ -135,8 +137,12 @@ char *utils_partial_realpath(const char *path)
 		}
 
 		/* Concatenate the strings */
-		snprintf(resolved_path, LTTNG_PATH_MAX, "%s%s",
-				try_path_prev, cut_path);
+		snprintf_ret = snprintf(resolved_path, LTTNG_PATH_MAX, "%s%s", try_path_prev,
+			cut_path);
+		if (snprintf_ret >= LTTNG_PATH_MAX) {
+			ERR("Path exceeded maximal allowed length while determining canonicalized absolute pathname");
+			goto error;
+		}
 
 		/* Free the allocated memory */
 		free(cut_path);
