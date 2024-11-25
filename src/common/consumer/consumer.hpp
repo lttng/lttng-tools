@@ -102,6 +102,8 @@ struct formatter<lttng_consumer_type> : formatter<std::string> {
 		case LTTNG_CONSUMER_UNKNOWN:
 			name = "unknown consumer";
 			break;
+		default:
+			std::abort();
 		}
 
 		return format_to(ctx.out(), name);
