@@ -10,10 +10,13 @@
 
 #include <common/compat/directory-handle.hpp>
 #include <common/exception.hpp>
+#include <common/string-utils/c-string-view.hpp>
 
 #include <lttng/lttng-error.h>
 
+#include <fstream>
 #include <getopt.h>
+#include <iostream>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -74,5 +77,32 @@ enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes,
  * - `str` contains invalid
  */
 int utils_parse_unsigned_long_long(const char *str, unsigned long long *value);
+
+/*
+ * Write a value to the given path and filename.
+ *
+ * Returns 0 on success and -1 on failure.
+ */
+template <typename ValueType>
+int utils_create_value_file(const ValueType value, const lttng::c_string_view filepath)
+{
+	DBG_FMT("Creating value file: path=`{}`, value={}", filepath, value);
+	try {
+		std::ofstream file;
+
+		file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+		/* Open the file with truncation to create or overwrite the file. */
+		file.open(filepath.data(), std::ios::out | std::ios::trunc);
+		file << value << std::endl;
+	} catch (const std::exception& e) {
+		ERR_FMT("Failed to produce value file: path=`{}`, value={}, error=`{}`",
+			filepath,
+			value,
+			e.what());
+		return -1;
+	}
+
+	return 0;
+}
 
 #endif /* _COMMON_UTILS_H */
