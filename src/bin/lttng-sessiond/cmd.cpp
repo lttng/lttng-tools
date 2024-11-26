@@ -2254,20 +2254,20 @@ int cmd_add_context(struct command_ctx *cmd_ctx,
 
 		chan_count = lttng_ht_get_count(usess->domain_global.channels);
 		if (chan_count == 0) {
-			struct lttng_channel *attr;
 			/* Create default channel */
-			attr = channel_new_default_attr(domain, usess->buffer_type);
-			if (attr == nullptr) {
+			auto attr = lttng::make_unique_wrapper<lttng_channel, channel_attr_destroy>(
+				channel_new_default_attr(domain, usess->buffer_type));
+
+			if (!attr) {
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
 
-			ret = channel_ust_create(usess, attr, usess->buffer_type);
+			ret = channel_ust_create(usess, attr.get(), usess->buffer_type);
 			if (ret != LTTNG_OK) {
-				free(attr);
 				goto error;
 			}
-			channel_attr_destroy(attr);
+
 			chan_ust_created = 1;
 		}
 
