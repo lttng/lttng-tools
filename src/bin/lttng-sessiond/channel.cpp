@@ -477,6 +477,8 @@ enum lttng_error_code channel_ust_create(struct ltt_ust_session *usess,
 				ret_code = LTTNG_ERR_NOMEM;
 				goto error_remove_chan;
 			}
+
+			/* Ownership of agt is transferred. */
 			agent_add(agt, usess->agents);
 		}
 	}

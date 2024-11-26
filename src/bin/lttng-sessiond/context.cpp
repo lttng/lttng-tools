@@ -135,6 +135,8 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 				ret = -LTTNG_ERR_NOMEM;
 				goto error;
 			}
+
+			/* Ownership of agt is transferred. */
 			agent_add(agt, usess->agents);
 		}
 		ret = agent_add_context(ctx, agt);

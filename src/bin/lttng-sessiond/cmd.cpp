@@ -2661,6 +2661,7 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 				return LTTNG_ERR_NOMEM;
 			}
 
+			/* Ownership of agt is transferred. */
 			agent_add(agt, usess->agents);
 		}
 
@@ -4828,6 +4829,7 @@ synchronize_tracer_notifier_register(struct notification_thread_handle *notifica
 				return ret_code;
 			}
 
+			/* Ownership of agt is transferred. */
 			agent_add(agt, the_trigger_agents_ht_by_domain);
 		}
 
