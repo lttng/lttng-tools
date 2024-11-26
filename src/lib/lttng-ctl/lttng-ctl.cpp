@@ -1119,6 +1119,19 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	lttng_payload payload;
 	int ret = 0;
 
+	if (handle == nullptr || ev == nullptr) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	/*
+	 * Empty filter string will always be rejected by the parser
+	 * anyway, so treat this corner-case early to eliminate
+	 * lttng_fmemopen error for 0-byte allocation.
+	 */
+	if (original_filter_expression && strlen(original_filter_expression) == 0) {
+		return -LTTNG_ERR_INVALID;
+	}
+
 	if (ev->type == LTTNG_EVENT_ALL) {
 		/*
 		 * Since we modify the user's parameter, ensure it is set back to its original value
@@ -1147,19 +1160,6 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 							   exclusion_count,
 							   exclusion_list);
 		return syscall_ret;
-	}
-
-	if (handle == nullptr || ev == nullptr) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	/*
-	 * Empty filter string will always be rejected by the parser
-	 * anyway, so treat this corner-case early to eliminate
-	 * lttng_fmemopen error for 0-byte allocation.
-	 */
-	if (original_filter_expression && strlen(original_filter_expression) == 0) {
-		return -LTTNG_ERR_INVALID;
 	}
 
 	/*
