@@ -2706,23 +2706,24 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 		user_visible_channel_name = default_chan_name;
 
 		{
-			char *filter_expression_copy = nullptr;
-			struct lttng_bytecode *bytecode_copy = nullptr;
+			auto filter_expression_copy =
+				lttng::make_unique_wrapper<char, lttng::memory::free>();
+			auto bytecode_copy =
+				lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>();
 
 			if (bytecode) {
 				const size_t filter_size =
 					sizeof(struct lttng_bytecode) + bytecode->len;
 
-				bytecode_copy = zmalloc<lttng_bytecode>(filter_size);
+				bytecode_copy.reset(zmalloc<lttng_bytecode>(filter_size));
 				if (!bytecode_copy) {
 					return LTTNG_ERR_NOMEM;
 				}
 
-				memcpy(bytecode_copy, bytecode.get(), filter_size);
+				memcpy(bytecode_copy.get(), bytecode.get(), filter_size);
 
-				filter_expression_copy = strdup(filter_expression.get());
+				filter_expression_copy.reset(strdup(filter_expression.get()));
 				if (!filter_expression_copy) {
-					free(bytecode_copy);
 					return LTTNG_ERR_NOMEM;
 				}
 			}
@@ -2731,8 +2732,8 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 							&tmp_dom,
 							(char *) default_chan_name,
 							&uevent,
-							filter_expression_copy,
-							bytecode_copy,
+							filter_expression_copy.release(),
+							bytecode_copy.release(),
 							nullptr,
 							wpipe,
 							std::move(internal_event_rule));
