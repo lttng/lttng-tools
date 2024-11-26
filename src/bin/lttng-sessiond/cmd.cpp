@@ -2389,6 +2389,13 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 					  bool internal_event,
 					  lttng::event_rule_uptr event_rule)
 {
+	auto filter_expression =
+		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
+	auto bytecode =
+		lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>(raw_bytecode);
+	auto exclusion = lttng::make_unique_wrapper<lttng_event_exclusion, lttng::memory::free>(
+		raw_exclusion);
+
 	if (!event_rule) {
 		return LTTNG_ERR_INVALID_PROTOCOL;
 	}
@@ -2396,13 +2403,6 @@ static lttng_error_code _cmd_enable_event(ltt_session::locked_ref& locked_sessio
 	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = nullptr;
 	ltt_session& session = *locked_session;
-
-	auto filter_expression =
-		lttng::make_unique_wrapper<char, lttng::memory::free>(raw_filter_expression);
-	auto bytecode =
-		lttng::make_unique_wrapper<lttng_bytecode, lttng::memory::free>(raw_bytecode);
-	auto exclusion = lttng::make_unique_wrapper<lttng_event_exclusion, lttng::memory::free>(
-		raw_exclusion);
 
 	LTTNG_ASSERT(event);
 	LTTNG_ASSERT(channel_name);
