@@ -711,8 +711,8 @@ exit_set_signal_handler:
 	rcu_unregister_thread();
 
 	if (!retval) {
-		exit(EXIT_SUCCESS);
+		return EXIT_SUCCESS;
 	} else {
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 }
