@@ -202,7 +202,6 @@ static void usage()
 	if (ret) {
 		ERR("Cannot show --help for `lttng-crash`");
 		perror("exec");
-		exit(EXIT_FAILURE);
 	}
 }
 
@@ -250,7 +249,7 @@ static int parse_args(int argc, char **argv)
 
 	if (argc < 2) {
 		usage();
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	while ((opt = getopt_long(argc, argv, "+Vhve:x:", long_options, nullptr)) != -1) {
@@ -1163,10 +1162,10 @@ static int view_trace(const char *trace_path, char *viewer_path)
 
 		ret = spawn_viewer(trace_path, viewer_path, false);
 		if (ret) {
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 		/* Never reached */
-		exit(EXIT_SUCCESS);
+		return EXIT_SUCCESS;
 	}
 	return 0;
 }
@@ -1229,5 +1228,5 @@ int main(int argc, char *argv[])
 		}
 	}
 end:
-	exit(has_warning ? EXIT_FAILURE : EXIT_SUCCESS);
+	return has_warning ? EXIT_FAILURE : EXIT_SUCCESS;
 }
