@@ -437,7 +437,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			ERR("Cannot show --help for `lttng-sessiond`");
 			perror("exec");
 		}
-		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
+		return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 	} else if (string_match(optname, "version") || opt == 'V') {
 		opt_print_version = 1;
 	} else if (string_match(optname, "sig-parent") || opt == 'S') {
@@ -2074,9 +2074,9 @@ exit_options:
 
 exit_set_signal_handler:
 	if (!retval) {
-		exit(EXIT_SUCCESS);
+		return EXIT_SUCCESS;
 	} else {
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 }
 
