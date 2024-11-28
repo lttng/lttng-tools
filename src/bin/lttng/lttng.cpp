@@ -148,64 +148,6 @@ static void list_options(FILE *ofp)
 }
 
 /*
- * clean_exit
- */
-__attribute__((noreturn)) static void clean_exit(int code)
-{
-	DBG("Clean exit");
-	exit(code);
-}
-
-/*
- *  sighandler
- *
- *  Signal handler for the daemon
- */
-static void sighandler(int sig)
-{
-	switch (sig) {
-	case SIGTERM:
-		DBG("SIGTERM caught");
-		clean_exit(EXIT_FAILURE);
-		break;
-	default:
-		DBG("Unknown signal %d caught", sig);
-		break;
-	}
-
-	return;
-}
-
-/*
- *  set_signal_handler
- *
- *  Setup signal handler for SIGCHLD and SIGTERM.
- */
-static int set_signal_handler()
-{
-	int ret = 0;
-	struct sigaction sa;
-	sigset_t sigset;
-
-	if ((ret = sigemptyset(&sigset)) < 0) {
-		PERROR("sigemptyset");
-		goto end;
-	}
-
-	sa.sa_handler = sighandler;
-	sa.sa_mask = sigset;
-	sa.sa_flags = 0;
-
-	if ((ret = sigaction(SIGTERM, &sa, nullptr)) < 0) {
-		PERROR("sigaction");
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
-/*
  *  handle_command
  *
  *  Handle the full argv list of a first level command. Will find the command
@@ -342,12 +284,12 @@ static int parse_args(int argc, char **argv)
 	if (lttng_is_setuid_setgid()) {
 		ERR("'%s' is not allowed to be executed as a setuid/setgid binary for security reasons. Aborting.",
 		    argv[0]);
-		clean_exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	if (argc < 2) {
 		show_basic_help();
-		clean_exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	while ((opt = getopt_long(argc, argv, "+Vhnvqg:m:", long_options, nullptr)) != -1) {
@@ -468,21 +410,8 @@ error:
  */
 static int _main(int argc, char *argv[])
 {
-	int ret;
-
 	progname = argv[0] ? argv[0] : "lttng";
-
-	ret = set_signal_handler();
-	if (ret < 0) {
-		clean_exit(ret);
-	}
-
-	ret = parse_args(argc, argv);
-	if (ret != 0) {
-		clean_exit(ret);
-	}
-
-	return 0;
+	return parse_args(argc, argv);
 }
 
 int main(int argc, char **argv)
