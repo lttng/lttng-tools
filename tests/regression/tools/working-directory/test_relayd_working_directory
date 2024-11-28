@@ -69,7 +69,7 @@ function test_relayd_daemon()
 
 	cwd=$(readlink "/proc/${pid}/cwd")
 
-	is "$cwd" "$working_dir" "Working directory changed"
+	is "${cwd:-no working directory found}" "$working_dir" "Working directory changed"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -89,8 +89,7 @@ function test_relayd_daemon_no_working_dir()
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
-
-	is "$cwd" "$expected_working_dir" "Working directory is $expected_working_dir"
+	is "${cwd:-no working directory found}" "$expected_working_dir" "Working directory is $expected_working_dir"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -110,8 +109,7 @@ function test_relayd_background()
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
-
-	is "$cwd" "$working_dir" "Working directory changed"
+	is "${cwd:-no working directory found}" "$working_dir" "Working directory changed"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -131,8 +129,7 @@ function test_relayd_background_no_working_dir()
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
-
-	is "$cwd" "$expected_working_dir" "Working directory is $expected_working_dir"
+	is "${cwd:-no working directory found}" "$expected_working_dir" "Working directory is $expected_working_dir"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -169,7 +166,7 @@ function test_relayd_debug_permission()
 		ok $? "Found lttng-relayd"
 
 		cwd=$(readlink "/proc/${pid}/cwd")
-		is "$cwd" "$working_dir" "Working directory changed"
+		is "${cwd:-no working directory found}" "$working_dir" "Working directory changed"
 
 		grep -q "$output_pattern" "${RELAYD_ERROR_OUTPUT_DEST}"
 		ok $? "Warning about missing write permission is present"
@@ -229,8 +226,7 @@ function test_relayd_env()
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
-
-	is "$cwd" "$working_dir" "Working directory changed"
+	is "${cwd:-no working directory found}" "$working_dir" "Working directory changed"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir"
@@ -253,8 +249,7 @@ function test_relayd_cmdline_overwrite_env()
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
-
-	is "$cwd" "$working_dir_cmdline" "Working directory is the one from command line"
+	is "${cwd:-no working directory found}" "$working_dir_cmdline" "Working directory is the one from command line"
 
 	stop_lttng_relayd
 	rm -rf "$working_dir_env" "$working_dir_cmdline"
