@@ -137,7 +137,6 @@ function test_clock_override_timestamp()
 	diag "Plugin enabled"
 
 	modprobe lttng-clock-plugin-test
-	start_lttng_sessiond
 	modprobe lttng-test
 
 	start_lttng_sessiond
