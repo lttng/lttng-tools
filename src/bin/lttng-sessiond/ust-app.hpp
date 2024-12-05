@@ -112,7 +112,6 @@ struct ust_app_ctx {
 	struct lttng_ust_context_attr ctx;
 	struct lttng_ust_abi_object_data *obj;
 	struct lttng_ht_node_ulong node;
-	struct cds_list_head list;
 };
 
 struct ust_app_event {

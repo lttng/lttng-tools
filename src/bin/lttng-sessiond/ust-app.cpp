@@ -583,7 +583,6 @@ static void delete_ust_app_channel(int sock,
 	     lttng::urcu::lfht_iteration_adapter<ust_app_ctx,
 						 decltype(ust_app_ctx::node),
 						 &ust_app_ctx::node>(*ua_chan->ctx->ht)) {
-		cds_list_del(&ua_ctx->list);
 		ret = cds_lfht_del(ua_chan->ctx->ht, &ua_ctx->node.node);
 		LTTNG_ASSERT(!ret);
 		delete_ust_app_ctx(sock, ua_ctx, app);
@@ -1365,8 +1364,6 @@ static struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx
 	if (ua_ctx == nullptr) {
 		goto error;
 	}
-
-	CDS_INIT_LIST_HEAD(&ua_ctx->list);
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
