@@ -179,7 +179,6 @@ struct ust_app_channel {
 	 * user added them.
 	 */
 	struct lttng_ht *ctx;
-	struct cds_list_head ctx_list;
 
 	struct lttng_ht *events;
 	uint64_t tracefile_size;

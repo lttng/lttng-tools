@@ -1215,7 +1215,6 @@ alloc_ust_app_channel(const char *name,
 	lttng_ht_node_init_str(&ua_chan->node, ua_chan->name);
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
-	CDS_INIT_LIST_HEAD(&ua_chan->ctx_list);
 
 	/* Copy attributes */
 	if (attr) {
@@ -2926,7 +2925,6 @@ static int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 
 	lttng_ht_node_init_ulong(&ua_ctx->node, (unsigned long) ua_ctx->ctx.ctx);
 	lttng_ht_add_ulong(ua_chan->ctx, &ua_ctx->node);
-	cds_list_add_tail(&ua_ctx->list, &ua_chan->ctx_list);
 
 	ret = create_ust_channel_context(ua_chan, ua_ctx, app);
 	if (ret < 0) {
