@@ -170,13 +170,6 @@ Please note that patches should be **as focused as possible**. Do not,
 for instance, fix a bug and correct the indentation of an unrelated
 block of code as part of the same patch.
 
-The project contains a script, [`extras/checkpatch.pl`](extras/checkpatch.pl),
-that performs a number of checks on a patch to ensure it is ready for
-submission. Run this script on your patch and correct any reported
-errors before posting it to the mailing list:
-
-    extras/checkpatch.pl --no-tree 0001-Fix...patch
-
 Once you are confident your patch meets the required guidelines,
 you may use Git's [`send-email`](https://git-scm.com/docs/git-send-email)
 command to send your patch to the mailing list:

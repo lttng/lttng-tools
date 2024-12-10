@@ -73,8 +73,6 @@ compile_commands.json
 /extras/bindings/swig/python/lttng_wrap.c
 /extras/core-handler/crash
 
-.checkpatch.conf
-
 # Tests
 /tests/unit/test_kernel_data
 /tests/unit/test_session
