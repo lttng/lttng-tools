@@ -38,6 +38,19 @@ configure your local check out to use:
 
     git config commit.template .commit_template
 
+A pre-commit hook may also be installed that will use various tools to lint
+stylistic errors before the commit is complete. This hook requires the following
+development tools:
+
+  * clang-tidy
+  * clang-format
+  * python-black
+  * python-clang
+
+The pre-commit hook may be installed with the following command:
+
+    ln -s ../../extras/pre-commit.py .git/hooks/pre-commit
+
 Once your changes have been committed to your local branch, you may use the
 [git-review](https://opendev.org/opendev/git-review) plugin to submit them
 directly to [Gerrit](https://review.lttng.org) using the following command:
