@@ -1,3 +1,6 @@
+2024-12-10 lttng-tools 2.12.17 (National Lager Day)
+	* Fix: lttng-sessiond segfault during session destruction
+
 2024-08-22 lttng-tools 2.12.16 (National Take Your Cat to the Vet Day)
 	* Fix: Do not null out lttng_consumer_stream channel on deletion
 	* Fix: Crash when unregistering UST apps during shutdown
