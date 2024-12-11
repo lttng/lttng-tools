@@ -308,6 +308,26 @@ namespace details {
 		}                                                                                 \
 	} while (0);
 
+#define PERROR_FMT(format_str, args...)                                                           \
+	do {                                                                                      \
+		try {                                                                             \
+			PERROR("%s", lttng::format(format_str, ##args).c_str());                  \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
+#define PWARN_FMT(format_str, args...)                                                            \
+	do {                                                                                      \
+		try {                                                                             \
+			PWARN("%s", lttng::format(format_str, ##args).c_str());                   \
+		} catch (const std::exception& _formatting_exception) {                           \
+			lttng::logging::details::die_formatting_exception(format_str,             \
+									  _formatting_exception); \
+		}                                                                                 \
+	} while (0);
+
 /*
  * Function that format the time and return the reference of log_time.str to
  * the caller. On error, an empty string is returned thus no time will be
