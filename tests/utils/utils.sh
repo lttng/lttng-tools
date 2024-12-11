@@ -68,6 +68,12 @@ if [ -z ${LTTNG_TEST_TEARDOWN_TIMEOUT+x} ]; then
 	LTTNG_TEST_TEARDOWN_TIMEOUT=60
 fi
 
+# Some tests use recent bash syntax, e.g. `array_var[-1]` which was introduced
+# in version 4.2. Bailout with a clear error if the bash version isn't supported.
+if [[ "${BASH_VERSINFO[0]}" -lt "4" ]] || [[ "${BASH_VERSINFO[0]}" == "4" && "${BASH_VERSINFO[1]}" -lt "2" ]]; then
+	BAIL_OUT "Bash version '${BASH_VERSION}' is not supported by the test suite"
+fi
+
 # Enable job monitor mode.
 # Here we are mostly interested in the following from the monitor mode:
 #    All processes run in a separate process group.
