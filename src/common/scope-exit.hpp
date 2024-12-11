@@ -62,6 +62,11 @@ public:
 	scope_exit& operator=(scope_exit&&) = delete;
 	scope_exit() = delete;
 
+	void arm() noexcept
+	{
+		_armed = true;
+	}
+
 	void disarm() noexcept
 	{
 		_armed = false;
