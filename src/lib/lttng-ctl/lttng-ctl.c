@@ -293,67 +293,6 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code check_enough_available_memory(
-		uint64_t num_bytes_requested_per_cpu)
-{
-	int ret;
-	enum lttng_error_code ret_code;
-	unsigned int num_cpu;
-	uint64_t best_mem_info;
-	uint64_t num_bytes_requested_total;
-
-	/*
-	 * Get the number of CPU currently online to compute the amount of
-	 * memory needed to create a buffer for every CPU.
-	 */
-	if (utils_get_cpu_count(&num_cpu) != LTTNG_OK) {
-		ret_code = LTTNG_ERR_FATAL;
-		goto end;
-	}
-
-	if (num_bytes_requested_per_cpu > UINT64_MAX / (uint64_t) num_cpu) {
-		/* Overflow */
-		ret_code = LTTNG_ERR_OVERFLOW;
-		goto end;
-	}
-
-	num_bytes_requested_total =
-			num_bytes_requested_per_cpu * (uint64_t) num_cpu;
-
-	/*
-	 * Try to get the `MemAvail` field of `/proc/meminfo`. This is the most
-	 * reliable estimate we can get but it is only exposed by the kernel
-	 * since 3.14. (See Linux kernel commit:
-	 * 34e431b0ae398fc54ea69ff85ec700722c9da773)
-	 */
-	ret = utils_get_memory_available(&best_mem_info);
-	if (ret >= 0) {
-		goto success;
-	}
-
-	/*
-	 * As a backup plan, use `MemTotal` field of `/proc/meminfo`. This
-	 * is a sanity check for obvious user error.
-	 */
-	ret = utils_get_memory_total(&best_mem_info);
-	if (ret >= 0) {
-		goto success;
-	}
-
-	/* No valid source of information. */
-	ret_code = LTTNG_ERR_NOMEM;
-	goto end;
-
-success:
-	if (best_mem_info >= num_bytes_requested_total) {
-		ret_code = LTTNG_OK;
-	} else {
-		ret_code = LTTNG_ERR_NOMEM;
-	}
-end:
-	return ret_code;
-}
-
 /*
  * Try connect to session daemon with sock_path.
  *
@@ -1515,11 +1454,9 @@ void lttng_channel_destroy(struct lttng_channel *channel)
 int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *in_chan)
 {
-	enum lttng_error_code ret_code;
 	int ret;
 	struct lttng_dynamic_buffer buffer;
 	struct lttcomm_session_msg lsm;
-	uint64_t total_buffer_size_needed_per_cpu = 0;
 	struct lttng_channel *channel = NULL;
 
 	lttng_dynamic_buffer_init(&buffer);
@@ -1527,26 +1464,6 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	/* NULL arguments are forbidden. No default values. */
 	if (handle == NULL || in_chan == NULL) {
 		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	/*
-	 * Verify that the amount of memory required to create the requested
-	 * buffer is available on the system at the moment.
-	 */
-	if (in_chan->attr.num_subbuf >
-			UINT64_MAX / in_chan->attr.subbuf_size) {
-		/* Overflow */
-		ret = -LTTNG_ERR_OVERFLOW;
-		goto end;
-	}
-
-	total_buffer_size_needed_per_cpu =
-			in_chan->attr.num_subbuf * in_chan->attr.subbuf_size;
-	ret_code = check_enough_available_memory(
-			total_buffer_size_needed_per_cpu);
-	if (ret_code != LTTNG_OK) {
-		ret = -ret_code;
 		goto end;
 	}
 

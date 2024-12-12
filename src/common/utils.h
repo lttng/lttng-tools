@@ -54,6 +54,8 @@ enum lttng_error_code utils_user_id_from_name(
 enum lttng_error_code utils_group_id_from_name(
 		const char *group_name, gid_t *group_id);
 enum lttng_error_code utils_get_cpu_count(unsigned int *count);
+enum lttng_error_code utils_check_enough_available_memory(
+		uint64_t num_bytes_requested, uint64_t *num_bytes_available);
 
 /*
  * Parse `str` as an unsigned long long value.

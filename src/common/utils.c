@@ -1397,3 +1397,48 @@ enum lttng_error_code utils_get_cpu_count(unsigned int *count)
 
 	return ret;
 }
+
+enum lttng_error_code utils_check_enough_available_memory(
+		uint64_t num_bytes_requested, uint64_t *num_bytes_available)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	uint64_t best_mem_info;
+
+	/*
+	 * Try to get the `MemAvail` field of `/proc/meminfo`. This is the most
+	 * reliable estimate we can get but it is only exposed by the kernel
+	 * since 3.14. (See Linux kernel commit:
+	 * 34e431b0ae398fc54ea69ff85ec700722c9da773)
+	 */
+	ret = utils_get_memory_available(&best_mem_info);
+	if (ret >= 0) {
+		goto success;
+	}
+
+	/*
+	 * As a backup plan, use `MemTotal` field of `/proc/meminfo`. This
+	 * is a sanity check for obvious user error.
+	 */
+	ret = utils_get_memory_total(&best_mem_info);
+	if (ret >= 0) {
+		goto success;
+	}
+
+	/* No valid source of information. */
+	ret_code = LTTNG_ERR_NOMEM;
+	goto end;
+
+success:
+	if (num_bytes_available != NULL) {
+		*num_bytes_available = best_mem_info;
+	}
+
+	if (best_mem_info >= num_bytes_requested) {
+		ret_code = LTTNG_OK;
+	} else {
+		ret_code = LTTNG_ERR_NOMEM;
+	}
+end:
+	return ret_code;
+}
