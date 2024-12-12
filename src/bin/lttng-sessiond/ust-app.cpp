@@ -848,7 +848,7 @@ static int push_metadata(const lsu::registry_session::locked_ref& locked_registr
 		goto error;
 	}
 
-	/* Get consumer socket to use to push the metadata.*/
+	/* Get consumer socket to use to push the metadata. */
 	socket = consumer_find_socket_by_bitness(locked_registry->abi.bits_per_long, consumer);
 	if (!socket) {
 		ret_val = -1;
@@ -5480,7 +5480,7 @@ static int ust_app_flush_session(struct ltt_ust_session *usess)
 			lsu::registry_session *ust_session_reg;
 			struct consumer_socket *socket;
 
-			/* Get consumer socket to use to push the metadata.*/
+			/* Get consumer socket to use to push the metadata. */
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 								 usess->consumer);
 			if (!socket) {
@@ -5616,7 +5616,7 @@ static int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 			struct consumer_socket *socket;
 			const lttng::urcu::read_lock_guard read_lock;
 
-			/* Get associated consumer socket.*/
+			/* Get associated consumer socket. */
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 								 usess->consumer);
 			if (!socket) {
@@ -6937,7 +6937,6 @@ int ust_app_recv_notify(int sock)
 	{
 		DBG2("UST app ustctl register key received");
 		ret = -LTTNG_UST_ERR_NOSYS;
-		// TODO
 		goto error;
 	}
 	default:
@@ -7067,7 +7066,7 @@ enum lttng_error_code ust_app_snapshot_record(const struct ltt_ust_session *uses
 				continue;
 			}
 
-			/* Get consumer socket to use to push the metadata.*/
+			/* Get consumer socket to use to push the metadata. */
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 								 usess->consumer);
 			if (!socket) {
@@ -7456,7 +7455,7 @@ enum lttng_error_code ust_app_rotate_session(const ltt_session::locked_ref& sess
 			struct consumer_socket *socket;
 			const lttng::urcu::read_lock_guard read_lock;
 
-			/* Get consumer socket to use to push the metadata.*/
+			/* Get consumer socket to use to push the metadata. */
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 								 usess->consumer);
 			if (!socket) {
