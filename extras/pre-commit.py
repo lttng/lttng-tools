@@ -13,15 +13,77 @@ import sys
 import clang.cindex
 
 
+def get_git_config_value(key, default=None):
+    """
+    Get a Git configuration value from the local repository.
+    Returns the default value if the key is not set.
+    """
+    try:
+        value = subprocess.check_output(
+            ["git", "config", "--local", key], stderr=subprocess.DEVNULL
+        ).strip()
+        return value
+    except subprocess.CalledProcessError:
+        return default
+
+
+def get_clang_format_version(clang_format_path):
+    try:
+        # Run the clang-format --version command
+        result = subprocess.check_output(
+            [clang_format_path, "--version"], text=True
+        ).strip()
+
+        # Use regex to extract the version tuple
+        match = re.search(r"version (\d+)\.(\d+)\.(\d+)", result)
+        if match:
+            # Convert the matched groups to integers and return as a tuple
+            version_tuple = tuple(map(int, match.groups()))
+            return version_tuple
+        else:
+            logging.error("Failed to extract version from clang-format output.")
+            return None
+    except FileNotFoundError:
+        logging.error(
+            f"clang-format binary could not be found using {clang_format_path}"
+        )
+        return None
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Failed to run clang-format: {e}")
+        return None
+
+
 def clang_format(files):
+    required_clang_format_major_version = 16
+
     source_files_re = re.compile(r"^.*(\.cpp|\.hpp|\.c|\.h)$")
     files = [f for f in files if source_files_re.match(f)]
     if not files:
         return "No source files for clang-format check", 0
 
+    # Extract the git config value that overrides the location of clang-format.
+    # If none can be found, use the sytem's clang-format.
+    clang_format_path = get_git_config_value("hooks.clangFormatPath", "clang-format")
+    clang_format_version = get_clang_format_version(clang_format_path)
+
+    if clang_format_version is None:
+        return "Failed to determine clang-format version", 1
+
+    cf_major, cf_minor, cf_patch = clang_format_version
+    if cf_major != required_clang_format_major_version:
+        return (
+            f"Invalid clang-format version: binary `{clang_format_path}` is version {cf_major}.{cf_minor}.{cf_patch}, expected version {required_clang_format_major_version}.y.z",
+            1,
+        )
+
     logging.debug("Files for clang-format: {}".format(files))
     format_process = subprocess.Popen(
-        ["clang-format", "--dry-run", "-Werror"] + files,
+        [
+            clang_format_path,
+            "--dry-run",
+            "-Werror",
+        ]
+        + files,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
