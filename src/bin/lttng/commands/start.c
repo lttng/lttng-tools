@@ -6,26 +6,29 @@
  */
 
 #define _LGPL_SOURCE
+#include <fcntl.h>
 #include <popt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/mi-lttng.h>
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/utils.h>
 
 #include "../command.h"
-
 
 static struct mi_writer *writer;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
 #include <lttng-start.1.h>
-;
+		;
 #endif
 
 enum {
@@ -51,14 +54,14 @@ static int mi_print_session(char *session_name, int enabled)
 	}
 
 	/* Print session name element */
-	ret = mi_lttng_writer_write_element_string(writer, config_element_name,
-			session_name);
+	ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, session_name);
 	if (ret) {
 		goto end;
 	}
 
-	ret = mi_lttng_writer_write_element_bool(writer, config_element_enabled,
-			enabled);
+	ret = mi_lttng_writer_write_element_bool(
+			writer, config_element_enabled, enabled);
 	if (ret) {
 		goto end;
 	}
@@ -68,6 +71,157 @@ static int mi_print_session(char *session_name, int enabled)
 
 end:
 	return ret;
+}
+
+static enum lttng_error_code estimate_session_minimum_shm_size(
+		const struct lttng_session *session,
+		unsigned long *estimated_size)
+{
+	unsigned int ncpus = 0;
+	unsigned long est_min_size = 0;
+	struct lttng_handle *handle = NULL;
+	struct lttng_domain *domains = NULL;
+	struct lttng_channel *channels = NULL;
+	int channel_count = 0, domain_count = 0;
+	enum lttng_error_code ret_code = LTTNG_ERR_INVALID;
+
+	if (utils_get_cpu_count(&ncpus) != LTTNG_OK) {
+		ret_code = LTTNG_ERR_EPERM;
+		return ret_code;
+	}
+
+	domain_count = lttng_list_domains(session->name, &domains);
+	if (domain_count < 0) {
+		ERR("Failed to list domains for session '%s'", session->name);
+		return ret_code;
+	}
+
+	for (int domain_idx = 0; domain_idx < domain_count; domain_idx++) {
+		switch (domains[domain_idx].type) {
+		case LTTNG_DOMAIN_UST:
+		case LTTNG_DOMAIN_JUL:
+		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
+			break;
+		default:
+			DBG("Domain %d not supported for shm estimation",
+					domains[domain_idx].type);
+			continue;
+		}
+
+		handle = lttng_create_handle(session->name, &domains[domain_idx]);
+		if (!handle) {
+			ERR("Failed to create lttng handle for session '%s', domain %d",
+					session->name, domains[domain_idx].type);
+			continue;
+		}
+
+		channel_count = lttng_list_channels(handle, &channels);
+		if (channel_count < 0) {
+			ERR("Failed to list channels for session '%s', domain %d",
+					session->name, domains[domain_idx].type);
+			goto error_free_handle;
+		}
+
+		for (int channel_idx = 0; channel_idx < channel_count;
+				channel_idx++) {
+			/*
+			 * This assumes per-uid or per-pid buffers with a
+			 * minimum of one uid or pid.
+			 */
+			est_min_size += ((ncpus + session->snapshot_mode) *
+					channels[channel_idx].attr.num_subbuf *
+					channels[channel_idx].attr.subbuf_size);
+		}
+
+error_free_handle:
+		free(handle);
+		handle = NULL;
+		free(channels);
+		channels = NULL;
+		channel_count = 0;
+	}
+
+	if (estimated_size != NULL) {
+		ret_code = LTTNG_OK;
+		*estimated_size = est_min_size;
+	}
+
+	free(domains);
+	return ret_code;
+}
+
+static void warn_on_small_client_shm(const char *session_name)
+{
+	int fd = -1, session_count = 0;
+	struct statvfs statbuf;
+	unsigned long estimated_size = 0, memfd_device_size = 0;
+	struct lttng_session *sessions = NULL, *this_session = NULL;
+	const char *CLIENT_SHM_TEST_PATH = "/lttng-client-fake";
+	char *parent = NULL;
+
+	session_count = lttng_list_sessions(&sessions);
+	if (session_count <= 0) {
+		return;
+	}
+
+	for (int i = 0; i < session_count; i++) {
+		if (strcmp(session_name, sessions[i].name) == 0) {
+			this_session = &sessions[i];
+			break;
+		}
+	}
+
+	if (this_session == NULL) {
+		goto error_free_sessions;
+	}
+
+	/*
+	 * To avoid making API additions during the stable release cycle, this
+	 * check will assume that the shared memory path for a given session
+	 * has not been overridden.
+	 */
+	fd = shm_open(CLIENT_SHM_TEST_PATH, O_RDWR | O_CREAT, 0700);
+	if (fd < 0) {
+		WARN("Failed to open shared memory at path '%s' errno %d",
+				CLIENT_SHM_TEST_PATH, errno);
+		goto error_free_parent;
+	}
+
+	if (fstatvfs(fd, &statbuf) != 0) {
+		WARN("Failed to get the capacity of the filesystem at the default location use by shm_open error %d",
+				errno);
+		goto error_close_fd;
+	}
+
+	memfd_device_size = statbuf.f_frsize * statbuf.f_blocks;
+	DBG("memfd device id `%lu` has size %lu bytes", statbuf.f_fsid,
+			memfd_device_size);
+	if (estimate_session_minimum_shm_size(this_session, &estimated_size) !=
+			LTTNG_OK) {
+		WARN("Failed to estimate minimum shm size for session '%s'",
+				this_session->name);
+		goto error_close_fd;
+	}
+
+	DBG("Estimated min shm for session '%s': %lu", this_session->name,
+			estimated_size);
+	if (estimated_size >= memfd_device_size) {
+		WARN("The estimated minimum shared memory size for all non-kernel channels of session '%s' is greater than the total shared memory allocated to the default shared memory location (%luMiB >= %luMiB). Tracing for this session may not record events due to allocation failures.",
+				session_name, estimated_size / 1024 / 1024,
+				memfd_device_size / 1024 / 1024);
+	}
+
+error_close_fd:
+	if (fd >= 0) {
+		close(fd);
+		shm_unlink(CLIENT_SHM_TEST_PATH);
+	}
+
+error_free_parent:
+	free(parent);
+error_free_sessions:
+	free(sessions);
 }
 
 /*
@@ -95,12 +249,13 @@ static int start_tracing(const char *arg_session_name)
 	}
 
 	DBG("Starting tracing for session %s", session_name);
-
+	warn_on_small_client_shm(session_name);
 	ret = lttng_start_tracing(session_name);
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_TRACE_ALREADY_STARTED:
-			WARN("Tracing already started for session %s", session_name);
+			WARN("Tracing already started for session %s",
+					session_name);
 			break;
 		default:
 			ERR("%s", lttng_strerror(ret));
