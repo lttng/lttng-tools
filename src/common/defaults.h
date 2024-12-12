@@ -372,6 +372,8 @@
  * relay when a rotation has completed on the consumer.
  */
 #define DEFAULT_ROTATE_PENDING_TIMER	CONFIG_DEFAULT_ROTATE_PENDING_TIMER
+#define DEFAULT_LINUX_POSSIBLE_CPU_PATH "/sys/devices/system/cpu/possible"
+#define DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH 4096
 
 /*
  * Returns the default subbuf size.

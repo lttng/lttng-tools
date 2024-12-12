@@ -53,6 +53,7 @@ enum lttng_error_code utils_user_id_from_name(
 		const char *user_name, uid_t *user_id);
 enum lttng_error_code utils_group_id_from_name(
 		const char *group_name, gid_t *group_id);
+enum lttng_error_code utils_get_cpu_count(unsigned int *count);
 
 /*
  * Parse `str` as an unsigned long long value.

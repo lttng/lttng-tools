@@ -1306,3 +1306,94 @@ int utils_parse_unsigned_long_long(const char *str,
 end:
 	return ret;
 }
+
+/*
+ * Get the highest CPU id from the possible CPU mask
+ */
+static enum lttng_error_code get_max_possible_cpu_id(unsigned int *id)
+{
+	char mask_data[DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH];
+	enum lttng_error_code ret = LTTNG_ERR_INVALID;
+	static int max_possible_cpu_id = -1;
+	unsigned long cpu_index;
+	int mask_fd = -1, i = 0;
+	ssize_t bytes_read;
+
+	if (id == NULL) {
+		goto error;
+	}
+
+	if (max_possible_cpu_id != -1) {
+		*id = max_possible_cpu_id;
+		return LTTNG_OK;
+	}
+
+	mask_fd = open(DEFAULT_LINUX_POSSIBLE_CPU_PATH, O_RDONLY);
+	if (mask_fd < 0) {
+		PERROR("Opening file '%s' failed",
+				DEFAULT_LINUX_POSSIBLE_CPU_PATH);
+		return ret;
+	}
+
+	bytes_read = read(mask_fd, mask_data,
+			DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH);
+	if (bytes_read == DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH) {
+		char next;
+		if (read(mask_fd, &next, 1) != 0) {
+			ERR("Possible CPU mask length exceeds maximum configured size: path='%s', size=%d",
+					DEFAULT_LINUX_POSSIBLE_CPU_PATH,
+					DEFAULT_LINUX_POSSIBLE_CPU_MASK_LENGTH);
+			goto error_close;
+		}
+	}
+
+	if (bytes_read < 1) {
+		ERR("0 bytes read from possible cpu fil path='%s'",
+				DEFAULT_LINUX_POSSIBLE_CPU_PATH);
+		goto error_close;
+	}
+
+	i = bytes_read - 1;
+	while (i >= 0) {
+		if (mask_data[i] == ',' || mask_data[i] == '-') {
+			i++;
+			break;
+		}
+		i--;
+	}
+
+	cpu_index = strtoul((const char *) &mask_data[i],
+			(char **) &mask_data[bytes_read], 10);
+	if ((i != bytes_read) && (cpu_index < INT_MAX)) {
+		max_possible_cpu_id = (int) cpu_index;
+		*id = max_possible_cpu_id;
+		ret = LTTNG_OK;
+	}
+
+error_close:
+	if (mask_fd >= 0) {
+		if (close(mask_fd)) {
+			PERROR("Closing mask fd '%d' failed", mask_fd);
+		}
+	}
+
+error:
+	return ret;
+}
+
+enum lttng_error_code utils_get_cpu_count(unsigned int *count)
+{
+	unsigned int _id = 0;
+	enum lttng_error_code ret = LTTNG_ERR_INVALID;
+
+	if (count == NULL) {
+		return ret;
+	}
+
+	ret = get_max_possible_cpu_id(&_id);
+	if (ret == LTTNG_OK) {
+		*count = _id + 1;
+	}
+
+	return ret;
+}
