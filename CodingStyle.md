@@ -28,7 +28,7 @@ All the project's C++ files follow the [clang-format](https://clang.llvm.org/doc
 
 You _must_ format your changes with clang-format before you contribute a patch.
 
-Note that clang-format 14 is required to use the project's `.clang-format` file.
+Note that clang-format 16 is required to use the project's `.clang-format` file.
 
 Most text editors allow you to format a sub-section of a source file using clang-format to ensure it adheres to the project's style.
 
