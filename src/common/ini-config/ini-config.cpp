@@ -15,13 +15,19 @@
 
 #include <ctype.h>
 
-LTTNG_EXPORT const char *config_str_yes = "yes";
-LTTNG_EXPORT const char *config_str_true = "true";
-LTTNG_EXPORT const char *config_str_on = "on";
-LTTNG_EXPORT const char *config_str_no = "no";
-LTTNG_EXPORT const char *config_str_false = "false";
-LTTNG_EXPORT const char *config_str_off = "off";
+LTTNG_EXPORT extern const char *const config_str_yes;
+LTTNG_EXPORT extern const char *const config_str_true;
+LTTNG_EXPORT extern const char *const config_str_on;
+LTTNG_EXPORT extern const char *const config_str_no;
+LTTNG_EXPORT extern const char *const config_str_false;
+LTTNG_EXPORT extern const char *const config_str_off;
 
+const char *const config_str_yes = "yes";
+const char *const config_str_true = "true";
+const char *const config_str_on = "on";
+const char *const config_str_no = "no";
+const char *const config_str_false = "false";
+const char *const config_str_off = "off";
 namespace {
 struct handler_filter_args {
 	const char *section;

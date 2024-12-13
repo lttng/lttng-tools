@@ -50,12 +50,17 @@ struct session_config_validation_ctx {
 } /* namespace */
 
 const char *const config_element_all = "all";
-LTTNG_EXPORT const char *config_xml_encoding = "UTF-8";
+LTTNG_EXPORT extern const char *const config_xml_encoding;
+const char *const config_xml_encoding = "UTF-8";
 LTTNG_EXPORT size_t config_xml_encoding_bytes_per_char = 2; /* Size of the encoding's largest
 							       character */
-LTTNG_EXPORT const char *config_xml_indent_string = "\t";
-LTTNG_EXPORT const char *config_xml_true = "true";
-LTTNG_EXPORT const char *config_xml_false = "false";
+LTTNG_EXPORT extern const char *const config_xml_indent_string;
+LTTNG_EXPORT extern const char *const config_xml_true;
+LTTNG_EXPORT extern const char *const config_xml_false;
+
+const char *const config_xml_indent_string = "\t";
+const char *const config_xml_true = "true";
+const char *const config_xml_false = "false";
 
 const char *const config_element_channel = "channel";
 const char *const config_element_channels = "channels";
@@ -235,7 +240,7 @@ const char *const config_event_context_vegid = "VEGID";
 const char *const config_event_context_vsgid = "VSGID";
 
 /* Deprecated symbols */
-LTTNG_EXPORT const char *config_element_perf;
+LTTNG_EXPORT extern const char *const config_element_perf;
 
 enum process_event_node_phase {
 	CREATION = 0,
@@ -2769,7 +2774,7 @@ end:
 static int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
-	struct lttng_domain domain {};
+	struct lttng_domain domain{};
 	struct lttng_handle *handle = nullptr;
 	struct lttng_channel *channel = nullptr;
 	xmlNodePtr channels_node = nullptr;
