@@ -168,7 +168,6 @@ libcommon_gpl_la_SOURCES = \
 libcommon_gpl_la_LIBADD = \
 	libcommon-lgpl.la \
 	libpath.la \
-	libini-config.la \
 	libhashtable-gpl.la \
 	libfd-tracker.la
 
@@ -204,7 +203,8 @@ libconfig_la_SOURCES = \
 	config/session-config.hpp
 
 libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
-libconfig_la_LIBADD = ${libxml2_LIBS}
+libconfig_la_LIBADD = ${libxml2_LIBS} \
+	libini-config.la
 
 
 if BUILD_LIB_CONSUMER
