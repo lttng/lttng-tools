@@ -1223,7 +1223,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 		goto end;
 	}
 
-	/* Live timer interval in usec*/
+	/* Live timer interval in usec */
 	ret = mi_lttng_writer_write_element_unsigned_int(
 		writer, config_element_live_timer_interval, attr->live_timer_interval);
 	if (ret) {
@@ -2020,7 +2020,7 @@ int mi_lttng_context(struct mi_writer *writer, struct lttng_event_context *conte
 	}
 
 	/* Special case for PERF_*_COUNTER
-	 * print the lttng_event_perf_counter_ctx*/
+	 * print the lttng_event_perf_counter_ctx */
 	switch (context->ctx) {
 	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
 	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
@@ -2115,7 +2115,7 @@ int mi_lttng_snapshot_list_output(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* Destination of the output (ctrl_url)*/
+	/* Destination of the output (ctrl_url) */
 	ret = mi_lttng_writer_write_element_string(
 		writer, mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
 	if (ret) {
@@ -2176,7 +2176,7 @@ int mi_lttng_snapshot_del_output(struct mi_writer *writer,
 		}
 	}
 
-	/* Snapshot was deleted for session "current_session_name"*/
+	/* Snapshot was deleted for session "current_session_name" */
 	ret = mi_lttng_writer_write_element_string(
 		writer, mi_lttng_element_snapshot_session_name, current_session_name);
 	if (ret) {
@@ -2215,14 +2215,14 @@ int mi_lttng_snapshot_add_output(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* Destination of the output (ctrl_url)*/
+	/* Destination of the output (ctrl_url) */
 	ret = mi_lttng_writer_write_element_string(
 		writer, mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
 	if (ret) {
 		goto end;
 	}
 
-	/* Snapshot added for session "current_session_name"*/
+	/* Snapshot added for session "current_session_name" */
 	ret = mi_lttng_writer_write_element_string(
 		writer, mi_lttng_element_snapshot_session_name, current_session_name);
 	if (ret) {
@@ -2258,16 +2258,16 @@ int mi_lttng_snapshot_record(struct mi_writer *writer,
 
 	/*
 	 * If a valid an URL was given, serialize it,
-	 * else take the command line data and ctrl urls*/
+	 * else take the command line data and ctrl urls */
 	if (url) {
-		/* Destination of the output (ctrl_url)*/
+		/* Destination of the output (ctrl_url) */
 		ret = mi_lttng_writer_write_element_string(
 			writer, mi_lttng_element_snapshot_ctrl_url, url);
 		if (ret) {
 			goto end;
 		}
 	} else if (cmdline_ctrl_url) {
-		/* Destination of the output (ctrl_url)*/
+		/* Destination of the output (ctrl_url) */
 		ret = mi_lttng_writer_write_element_string(
 			writer, mi_lttng_element_snapshot_ctrl_url, cmdline_ctrl_url);
 		if (ret) {
