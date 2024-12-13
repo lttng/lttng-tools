@@ -124,6 +124,10 @@ L\"				BEGIN(string_lit); return STRING_LITERAL_START;
 .				return ERROR;
 %%
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * The lexer symbols were (e.g. lttng_yy_create_buffer) were mistakenly
  * exported in the past, so must stay exported.  Since it is difficult to tweak
@@ -335,3 +339,7 @@ void lttng_yyset_out(FILE *_out_str, yyscan_t yyscanner)
 {
 	return yyset_out(_out_str, yyscanner);
 }
+
+#ifdef __cplusplus
+}
+#endif
