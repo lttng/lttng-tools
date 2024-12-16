@@ -28,12 +28,28 @@ LTTNG_EXPORT extern const char *const config_element_pid_tracker;
 LTTNG_EXPORT extern const char *const config_element_target_pid;
 LTTNG_EXPORT extern const char *const config_element_targets;
 LTTNG_EXPORT extern const char *const config_element_trackers;
+LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_counter;
+LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_cpu_counter;
+LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_thread_counter;
+LTTNG_EXPORT extern const char *const mi_lttng_element_track_untrack_pid_target;
+LTTNG_EXPORT extern const char *const mi_lttng_element_track_untrack_targets;
+LTTNG_EXPORT extern const char *const mi_lttng_element_calibrate;
+LTTNG_EXPORT extern const char *const mi_lttng_element_calibrate_function;
+LTTNG_EXPORT extern const char *const mi_lttng_element_command_calibrate;
 
 const char *const config_element_perf = nullptr;
 const char *const config_element_pid_tracker = nullptr;
 const char *const config_element_target_pid = nullptr;
 const char *const config_element_targets = nullptr;
 const char *const config_element_trackers = nullptr;
+const char *const mi_lttng_context_type_perf_counter = nullptr;
+const char *const mi_lttng_context_type_perf_cpu_counter = nullptr;
+const char *const mi_lttng_context_type_perf_thread_counter = nullptr;
+const char *const mi_lttng_element_track_untrack_pid_target = nullptr;
+const char *const mi_lttng_element_track_untrack_targets = nullptr;
+const char *const mi_lttng_element_calibrate = nullptr;
+const char *const mi_lttng_element_calibrate_function = nullptr;
+const char *const mi_lttng_element_command_calibrate = nullptr;
 
 struct log_time {
 	char str[19];

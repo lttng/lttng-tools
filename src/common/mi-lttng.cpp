@@ -363,16 +363,6 @@ const char *const mi_lttng_element_error_query_results = "error_query_results";
 /* String related to add-context command */
 const char *const mi_lttng_element_context_symbol = "symbol";
 
-/* Deprecated symbols preserved for ABI compatibility. */
-LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_counter;
-LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_cpu_counter;
-LTTNG_EXPORT extern const char *const mi_lttng_context_type_perf_thread_counter;
-LTTNG_EXPORT extern const char *const mi_lttng_element_track_untrack_pid_target;
-LTTNG_EXPORT extern const char *const mi_lttng_element_track_untrack_targets;
-LTTNG_EXPORT extern const char *const mi_lttng_element_calibrate;
-LTTNG_EXPORT extern const char *const mi_lttng_element_calibrate_function;
-LTTNG_EXPORT extern const char *const mi_lttng_element_command_calibrate;
-
 /* This is a merge of jul loglevel and regular loglevel
  * Those should never overlap by definition
  * (see struct lttng_event loglevel)
