@@ -23,11 +23,13 @@ LTTNG_EXPORT size_t default_ust_uid_channel_subbuf_size;
 extern "C" {
 #endif
 
+LTTNG_EXPORT extern const char *const config_element_perf;
 LTTNG_EXPORT extern const char *const config_element_pid_tracker;
 LTTNG_EXPORT extern const char *const config_element_target_pid;
 LTTNG_EXPORT extern const char *const config_element_targets;
 LTTNG_EXPORT extern const char *const config_element_trackers;
 
+const char *const config_element_perf = nullptr;
 const char *const config_element_pid_tracker = nullptr;
 const char *const config_element_target_pid = nullptr;
 const char *const config_element_targets = nullptr;

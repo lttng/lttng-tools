@@ -239,9 +239,6 @@ const char *const config_event_context_vgid = "VGID";
 const char *const config_event_context_vegid = "VEGID";
 const char *const config_event_context_vsgid = "VSGID";
 
-/* Deprecated symbols */
-LTTNG_EXPORT extern const char *const config_element_perf;
-
 enum process_event_node_phase {
 	CREATION = 0,
 	ENABLE = 1,
