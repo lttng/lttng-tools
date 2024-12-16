@@ -49,15 +49,24 @@ struct session_config_validation_ctx {
 };
 } /* namespace */
 
-const char *const config_element_all = "all";
+#ifdef __cpluslus
+extern "C" {
+#endif
+
 LTTNG_EXPORT extern const char *const config_xml_encoding;
-const char *const config_xml_encoding = "UTF-8";
-LTTNG_EXPORT size_t config_xml_encoding_bytes_per_char = 2; /* Size of the encoding's largest
-							       character */
+LTTNG_EXPORT extern const size_t config_xml_encoding_bytes_per_char; /* Size of the encoding's
+									largest character */
 LTTNG_EXPORT extern const char *const config_xml_indent_string;
 LTTNG_EXPORT extern const char *const config_xml_true;
 LTTNG_EXPORT extern const char *const config_xml_false;
 
+#ifdef __cpluslus
+}
+#endif
+
+const char *const config_element_all = "all";
+const char *const config_xml_encoding = "UTF-8";
+const size_t config_xml_encoding_bytes_per_char = 2;
 const char *const config_xml_indent_string = "\t";
 const char *const config_xml_true = "true";
 const char *const config_xml_false = "false";
