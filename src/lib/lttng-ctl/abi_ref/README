@@ -1,0 +1,29 @@
+To produce the lttng-ctl ABI XML:
+=================================
+
+0. Ensure lttng-ust is available
+1. Configure:
+
+    ./bootstrap
+    ./configure --enable-python-bindings --disable-kmod --without-kmod --enable-test-java-agent-all --enable-test-java-agent-log4j2
+
+2. Build
+
+    make -j$(NPROC)
+
+3. Create the XML file:
+
+    abidw --drop-undefined-syms --drop-private-types --headers-dir include/ src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0 > out.xml
+
+To diff the ABI files
+=====================
+
+1. (Optional) Create a new ABI file (see previous section)
+
+2. Run abidiff against the new file
+
+    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/liblttng-ctl.xml out.xml
+
+or
+
+    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/liblttng-ctl.xml src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0
