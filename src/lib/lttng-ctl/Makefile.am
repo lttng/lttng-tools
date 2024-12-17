@@ -21,11 +21,13 @@ liblttng_ctl_la_SOURCES = \
 
 liblttng_ctl_la_LDFLAGS = \
 		$(LT_NO_UNDEFINED) \
-		-export-symbols $(srcdir)/liblttng-ctl.sym
+		-export-symbols $(srcdir)/liblttng-ctl.sym \
+		-Wl,--version-script=$(srcdir)/liblttng-ctl.map
 
 EXTRA_liblttng_ctl_la_DEPENDENCIES = liblttng-ctl.sym
 
-EXTRA_DIST = liblttng-ctl.sym
+EXTRA_DIST = liblttng-ctl.map \
+		liblttng-ctl.sym
 
 liblttng_ctl_la_LIBADD = \
 		$(top_builddir)/src/common/libsessiond-comm.la \
