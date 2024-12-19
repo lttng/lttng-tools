@@ -1163,13 +1163,12 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 		goto error_sock_control;
 	}
 
-	if (auto _ret = utils_create_value_file(ntohs(control_sock->sockaddr.addr.sin.sin_port),
-						relayd_control_port_path)) {
+	if (const auto _ret = utils_create_value_file(
+		    ntohs(control_sock->sockaddr.addr.sin.sin_port), relayd_control_port_path)) {
 		ERR_FMT("Failed to create control port path file: port={}, path=`{}`, ret={}",
 			ntohs(control_sock->sockaddr.addr.sin.sin_port),
 			relayd_control_port_path,
 			_ret);
-		goto error_create_poll;
 		goto error_sock_relay;
 	}
 
