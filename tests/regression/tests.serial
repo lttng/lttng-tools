@@ -99,7 +99,7 @@ def run_test(test_script):
         test_log_dir = pathlib.Path("{}.log.d".format(test_script))
         try:
             test_log_dir.mkdir(parents=True)
-        except pathlib.FileExistsError:
+        except FileExistsError:
             pass
         test_env["LTTNG_TEST_LOG_DIR"] = str(test_log_dir)
     process = subprocess.Popen(
