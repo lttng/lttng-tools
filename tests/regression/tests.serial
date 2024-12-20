@@ -31,6 +31,8 @@ import shlex
 import shutil
 import subprocess
 import sys
+import signal
+import time
 
 test_utils_import_path = pathlib.Path(__file__).absolute().parents[1] / "utils"
 sys.path.append(str(test_utils_import_path))
@@ -38,9 +40,40 @@ sys.path.append(str(test_utils_import_path))
 import lttngtest
 
 # This is not tap 14 compliant, but should suffice
+TAP_PLAN_LINE_RE = re.compile(r"^1\.\.(\d+)$", re.MULTILINE)
 TAP_OK_LINE_RE = re.compile(r"^ok \d+.*$", re.MULTILINE)
 TAP_SKIP_LINE_RE = re.compile(r"skip \d+.*$", re.MULTILINE)
 TAP_NOT_OK_LINE_RE = re.compile(r"^not ok \d+.*$", re.MULTILINE)
+
+test_being_aborted = False
+current_test_process = None
+
+
+def handle_abort(signum, frame):
+    global test_being_aborted
+
+    signal_name = signal.Signals(signum).name
+    logging.warning("Received {}, aborting current test".format(signal_name))
+    test_being_aborted = True
+
+    if current_test_process:
+        logging.info("Forwarding {} to test process".format(signal_name))
+        try:
+            current_test_process.send_signal(signum)
+            current_test_process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            logging.warning(
+                "Test process did not terminate before timeout, sending SIGKILL"
+            )
+            current_test_process.kill()
+            current_test_process.wait()
+    else:
+        logging.debug("No test process to terminate")
+
+
+signal.signal(signal.SIGTERM, handle_abort)
+signal.signal(signal.SIGINT, handle_abort)
+signal.signal(signal.SIGABRT, handle_abort)
 
 
 def run_tests(test_scripts):
@@ -52,16 +85,21 @@ def run_tests(test_scripts):
     tap = lttngtest.TapGenerator(len(test_scripts))
     for test_script in test_scripts:
         stdout, retcode = run_test(test_script)
-        results.append(
-            {
-                "test": test_script,
-                "stdout": stdout,
-                "returncode": retcode,
-                "passed": len(TAP_OK_LINE_RE.findall(stdout)),
-                "failed": len(TAP_NOT_OK_LINE_RE.findall(stdout)),
-                "skipped": len(TAP_SKIP_LINE_RE.findall(stdout)),
-            }
-        )
+        result = {
+            "test": test_script,
+            "stdout": stdout,
+            "returncode": retcode,
+            "passed": len(TAP_OK_LINE_RE.findall(stdout)),
+            "failed": len(TAP_NOT_OK_LINE_RE.findall(stdout)),
+            "skipped": len(TAP_SKIP_LINE_RE.findall(stdout)),
+        }
+        plan_match = TAP_PLAN_LINE_RE.search(stdout)
+        if plan_match:
+            result["planned"] = int(plan_match.group(1))
+        else:
+            result["planned"] = "unknown"
+
+        results.append(result)
         results[-1]["total_test_count"] = (
             results[-1]["passed"] + results[-1]["failed"] + results[-1]["skipped"]
         )
@@ -73,19 +111,27 @@ def run_tests(test_scripts):
             any_failures = any_failures or (retcode != 0 or results[-1]["failed"] != 0)
             tap.test(
                 retcode == 0 and results[-1]["failed"] == 0,
-                "Test script '{}' returned code {}. {} passed, {} failed, {} skipped [total: {}]".format(
+                "Test script '{}' returned code {}. {} passed, {} failed, {} skipped, {} planned [total: {}]".format(
                     test_script,
                     retcode,
                     results[-1]["passed"],
                     results[-1]["failed"],
                     results[-1]["skipped"],
+                    results[-1]["planned"],
                     results[-1]["total_test_count"],
                 ),
             )
+
+        if test_being_aborted:
+            logging.warning("Aborting test suite")
+            break
+
     return not any_failures
 
 
 def run_test(test_script):
+    global current_test_process
+
     stdout = ""
     logging.info("Starting test '{}'".format(test_script))
 
@@ -101,30 +147,31 @@ def run_test(test_script):
         except FileExistsError:
             pass
         test_env["LTTNG_TEST_LOG_DIR"] = str(test_log_dir)
-    process = subprocess.Popen(
+    current_test_process = subprocess.Popen(
         [test_script],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env=test_env,
     )
-    while process.returncode is None:
+    while current_test_process.returncode is None:
         try:
-            out, err = process.communicate(timeout=1)
+            out, err = current_test_process.communicate(timeout=1)
             stdout += out.decode("utf-8")
         except subprocess.TimeoutExpired:
             continue
+
+    return_code = current_test_process.returncode
+    current_test_process = None
     logging.info(
-        "Test '{}' terminated with return code {}".format(
-            test_script, process.returncode
-        )
+        "Test '{}' terminated with return code {}".format(test_script, return_code)
     )
     with open(str(test_log), "w") as f:
         logging.debug("Wrote test output to '{}'".format(str(test_log)))
         f.write(stdout)
-    if process.returncode == 0:
+    if return_code == 0:
         if test_log_dir:
             shutil.rmtree(str(test_log_dir))
-    return (stdout, process.returncode)
+    return (stdout, return_code)
 
 
 if __name__ == "__main__":
