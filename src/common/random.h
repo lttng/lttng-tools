@@ -8,6 +8,7 @@
 #ifndef LTTNG_RANDOM_H
 #define LTTNG_RANDOM_H
 
+#include "common/macros.h"
 #include <stddef.h>
 
 typedef unsigned int seed_t;
@@ -16,6 +17,7 @@ typedef unsigned int seed_t;
  * Get a seed from a reliable source of randomness without blocking. Returns 0
  * on success, -1 on failure.
  */
+LTTNG_HIDDEN
 int lttng_produce_true_random_seed(seed_t *out_seed);
 
 /*
@@ -23,6 +25,7 @@ int lttng_produce_true_random_seed(seed_t *out_seed);
  * but falling back to a pseudo-random seed based on the time and various system
  * configuration values on failure. Returns 0 on success, -1 on failure.
  */
+LTTNG_HIDDEN
 int lttng_produce_best_effort_random_seed(seed_t *out_seed);
 
 #endif /* LTTNG_RANDOM_H */
