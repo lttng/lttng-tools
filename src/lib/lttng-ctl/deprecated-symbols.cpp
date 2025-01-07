@@ -23,3 +23,17 @@ LTTNG_EXPORT const char *config_element_pid_tracker = nullptr;
 LTTNG_EXPORT const char *config_element_target_pid = nullptr;
 LTTNG_EXPORT const char *config_element_targets = nullptr;
 LTTNG_EXPORT const char *config_element_trackers = nullptr;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct log_time {
+	char str[19];
+};
+
+LTTNG_EXPORT thread_local struct log_time error_log_time = {};
+
+#ifdef __cplusplus
+}
+#endif
