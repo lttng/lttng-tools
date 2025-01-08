@@ -687,7 +687,7 @@ function lttng_enable_kernel_function_event ()
 	local target="$3"
 	local event_name="$4"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --function="$target" "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" enable-event --kernel --function="${target}" "${event_name}" -s "${sess_name}"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -735,9 +735,10 @@ function disable_kernel_lttng_userspace_probe_event_ok ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" disable-event --kernel "$event_name" -s "$sess_name" >"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" disable-event --kernel "${event_name}" -s "${sess_name}"
 	ok $? "Disable kernel event $target for session $sess_name"
 }
+
 function lttng_enable_kernel_channel()
 {
 	local withtap=$1
@@ -2003,7 +2004,7 @@ function disable_jul_lttng_event ()
 	local sess_name="$1"
 	local event_name="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN disable-event "$event_name" -s $sess_name -j >/dev/null 2>&1
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" disable-event "${event_name}" -s "${sess_name}" -j
 	ok $? "Disable JUL event $event_name for session $sess_name"
 }
 
@@ -2271,7 +2272,7 @@ function lttng_track()
 	local expected_to_fail="$1"
 	shift 1
 	local opts="$@"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >"$(lttng_client_log_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" track $opts
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -2296,7 +2297,7 @@ function lttng_untrack()
 	local expected_to_fail="$1"
 	shift 1
 	local opts="$@"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >"$(lttng_client_log_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" untrack $opts
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
@@ -2319,13 +2320,13 @@ function lttng_untrack_fail()
 function lttng_track_pid_ok()
 {
 	PID=$1
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" track --kernel --pid=$PID 1>"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" track --kernel --pid="${PID}"
 	ok $? "Lttng track pid on the kernel domain"
 }
 
 function lttng_untrack_kernel_all_ok()
 {
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" untrack --kernel --pid --all 1>"$(lttng_client_log_file)" 2>"$(lttng_client_err_file)"
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" untrack --kernel --pid --all
 	ok $? "Lttng untrack all pid on the kernel domain"
 }
 
@@ -2869,8 +2870,7 @@ function lttng_add_trigger()
 	shift 2
 	local args=("$@")
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --name $trigger_name ${args[*]}"
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --name "$trigger_name" "${args[@]}" 1> /dev/null 2> /dev/null
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" add-trigger --name "${trigger_name}" "${args[@]}"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -2886,8 +2886,7 @@ function lttng_remove_trigger()
 	local trigger_name="$2"
 	shift 2
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger $trigger_name $*"
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" remove-trigger "$trigger_name" "$@" 1> /dev/null 2> /dev/null
+	_run_lttng_cmd "$(lttng_client_log_file)" "$(lttng_client_err_file)" remove-trigger "${trigger_name}" "${@}"
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -2920,9 +2919,7 @@ function list_triggers_matches_ok ()
 	local test_name="$1"
 	local expected_stdout_file="$2"
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN list-triggers"
-
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" list-triggers > "${tmp_stdout}" 2> "${tmp_stderr}"
+	_run_lttng_cmd "${tmp_stdout}" "${tmp_stderr}" list-triggers
 	ok $? "${test_name}: exit code is 0"
 
 	diff -u "${expected_stdout_file}" "${tmp_stdout}"
@@ -2948,9 +2945,8 @@ function list_triggers_matches_mi_ok ()
 	tmp_stdout=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
 	tmp_stderr=$(mktemp -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
 
-	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi xml list-triggers"
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" --mi=xml list-triggers > "${tmp_stdout_raw}" 2> "${tmp_stderr}"
+	_run_lttng_cmd "${tmp_stdout_raw}" "${tmp_stderr}" --mi=xml list-triggers
 	ok $? "${test_name}: exit code is 0"
 
 	# Pretty-fy xml before further test.
