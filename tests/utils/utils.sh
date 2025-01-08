@@ -521,12 +521,6 @@ function _run_lttng_cmd
 	local stderr_dest="$2"
 	shift 2
 
-	if [ "$stdout_dest" = "$stderr_dest" ]; then
-		# The redirection of stderr would overwrite the redirection of
-		# stdout. We cannot proceed.
-		LTTNG_BAIL_OUT "The current \`_run_lttng_cmd\` implementation does not support redirecting stdout and stderr to the same file."
-	fi
-
 	opts=("${@}")
 	if [[ -n "${LTTNG_TEST_VERBOSE_CLIENT}" ]] ; then
 		opts=('-vvv' "${opts[@]}")
@@ -534,7 +528,11 @@ function _run_lttng_cmd
 
 	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN ${opts[*]}"
 	if [[ -n "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
-		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}" 2>"${stderr_dest}"
+		if [[ "${stdout_dest}" == "${stderr_dest}" ]] ; then
+			$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}" 2>&1
+		else
+			$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}" 2>"${stderr_dest}"
+		fi
 	elif [[ -n "${stdout_dest}" ]] && [[ -z "${stderr_dest}" ]]; then
 		$TESTDIR/../src/bin/lttng/$LTTNG_BIN "${opts[@]}" >"${stdout_dest}"
 	elif [[ -z "${stdout_dest}" ]] && [[ -n "${stderr_dest}" ]] ; then
