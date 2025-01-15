@@ -1546,7 +1546,6 @@ void lttng_channel_destroy(struct lttng_channel *channel)
  */
 int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *in_chan)
 {
-	enum lttng_error_code ret_code;
 	int ret;
 	struct lttng_dynamic_buffer buffer;
 	struct lttcomm_session_msg lsm;
