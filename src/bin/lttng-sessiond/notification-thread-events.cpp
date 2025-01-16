@@ -4473,7 +4473,7 @@ int notification_client_list_send_evaluation(struct notification_client_list *cl
 			}
 		}
 
-		if (client->uid != lttng_credentials_get_uid(trigger_creds)) {
+		if (client->uid != lttng_credentials_get_uid(trigger_creds) && client->uid != 0) {
 			DBG("Skipping client at it does not have the permission to receive notification for this trigger");
 			goto skip_client;
 		}
