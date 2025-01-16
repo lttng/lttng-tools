@@ -65,7 +65,6 @@ int send_unix_sock(int sock, void *buf, size_t len)
 	return lttcomm_send_unix_sock(sock, buf, len);
 }
 
-
 void parse_health_env()
 {
 	const char *health_path;

@@ -214,12 +214,7 @@ static struct option long_options[] = {
 		nullptr,
 		'b',
 	},
-	{
-		"pid-file",
-		1,
-		nullptr,
-		'P'
-	},
+	{ "pid-file", 1, nullptr, 'P' },
 	{
 		"group",
 		1,
@@ -272,12 +267,7 @@ static struct option long_options[] = {
 	},
 	{ "disallow-clear", 0, nullptr, 'x' },
 	{ "dynamic-port-allocation", 0, nullptr, '\0' },
-	{
-		"sig-parent",
-		0,
-		nullptr,
-		'S'
-	},
+	{ "sig-parent", 0, nullptr, 'S' },
 	{
 		nullptr,
 		0,
@@ -1071,7 +1061,10 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri, const cha
 		goto error;
 	}
 
-	DBG("Bound %s socket fd %d to port %d", name, sock->fd, ntohs(sock->sockaddr.addr.sin.sin_port));
+	DBG("Bound %s socket fd %d to port %d",
+	    name,
+	    sock->fd,
+	    ntohs(sock->sockaddr.addr.sin.sin_port));
 	ret = sock->ops->listen(sock, -1);
 	if (ret < 0) {
 		goto error;
@@ -1145,13 +1138,19 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 
 	create_lttng_rundir_with_perm(rundir_path.get());
 	create_lttng_rundir_with_perm(relayd_rundir_path.get());
-	ret = snprintf(relayd_control_port_path, sizeof(relayd_control_port_path), DEFAULT_RELAYD_CONTROL_PORT_PATH, relayd_rundir_path.get());
+	ret = snprintf(relayd_control_port_path,
+		       sizeof(relayd_control_port_path),
+		       DEFAULT_RELAYD_CONTROL_PORT_PATH,
+		       relayd_rundir_path.get());
 	if (ret < 0) {
 		ERR("Failed to format relayd_control_port_path");
 		goto error_sock_control;
 	}
 
-	ret = snprintf(relayd_data_port_path, sizeof(relayd_data_port_path), DEFAULT_RELAYD_DATA_PORT_PATH, relayd_rundir_path.get());
+	ret = snprintf(relayd_data_port_path,
+		       sizeof(relayd_data_port_path),
+		       DEFAULT_RELAYD_DATA_PORT_PATH,
+		       relayd_rundir_path.get());
 	if (ret < 0) {
 		ERR("Failed to format relayd_data_port_path");
 		goto error_sock_control;
@@ -1165,8 +1164,11 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 	}
 
 	if (auto _ret = utils_create_value_file(ntohs(control_sock->sockaddr.addr.sin.sin_port),
-				    relayd_control_port_path)) {
-		ERR_FMT("Failed to create control port path file: port={}, path=`{}`, ret={}", ntohs(control_sock->sockaddr.addr.sin.sin_port), relayd_control_port_path, _ret);
+						relayd_control_port_path)) {
+		ERR_FMT("Failed to create control port path file: port={}, path=`{}`, ret={}",
+			ntohs(control_sock->sockaddr.addr.sin.sin_port),
+			relayd_control_port_path,
+			_ret);
 		goto error_create_poll;
 		goto error_sock_relay;
 	}
@@ -1177,8 +1179,11 @@ static void *relay_thread_listener(void *data __attribute__((unused)))
 	}
 
 	if (auto _ret = utils_create_value_file(ntohs(data_sock->sockaddr.addr.sin.sin_port),
-				  relayd_data_port_path)) {
-		ERR_FMT("Failed to create data port path file: port={}, path=`{}`, ret={}", ntohs(data_sock->sockaddr.addr.sin.sin_port), relayd_data_port_path, _ret);
+						relayd_data_port_path)) {
+		ERR_FMT("Failed to create data port path file: port={}, path=`{}`, ret={}",
+			ntohs(data_sock->sockaddr.addr.sin.sin_port),
+			relayd_data_port_path,
+			_ret);
 		goto error_create_poll;
 	}
 

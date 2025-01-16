@@ -1470,13 +1470,14 @@ unsigned int utils_get_cpu_count() LTTNG_MAY_THROW
 	return get_max_possible_cpu_id() + 1;
 }
 
-/**
+/*
  * Returns LTTNG_OK if the system as num_bytes available.
  *
  * If bytes_available is not NULL, the best estimate of the available memory
  * will be recorded at that address.
  */
-enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes, uint64_t *bytes_available)
+enum lttng_error_code utils_check_enough_available_memory(uint64_t num_bytes,
+							  uint64_t *bytes_available)
 {
 	int ret;
 	enum lttng_error_code ret_code;

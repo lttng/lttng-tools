@@ -11,6 +11,6 @@
  */
 
 char *create_output_path(const char *path_name);
-void create_lttng_rundir_with_perm(const char* rundir);
+void create_lttng_rundir_with_perm(const char *rundir);
 
 #endif /* RELAYD_UTILS_H */

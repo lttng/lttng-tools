@@ -880,7 +880,7 @@ static void *thread_listener(void *data __attribute__((unused)))
 	health_code_update();
 	try {
 		live_control_sock = init_socket(live_uri, "Live listener");
-	} catch(const lttng::runtime_error& ex) {
+	} catch (const lttng::runtime_error& ex) {
 		ERR("Failed to initialize live socket: %s", ex.what());
 		goto error_sock_control;
 	}

@@ -135,15 +135,20 @@ static void set_default_attr(struct lttng_domain *dom)
 	}
 }
 
-static bool system_has_memory_for_channel_buffers(char *session_name, struct lttng_channel *channel, uint64_t *bytes_required, uint64_t *bytes_available) {
+static bool system_has_memory_for_channel_buffers(char *session_name,
+						  struct lttng_channel *channel,
+						  uint64_t *bytes_required,
+						  uint64_t *bytes_available)
+{
 	/*
 	 * Verify that the amount of memory required to create the requested
 	 * buffer is available on the system at the moment.
 	 */
-	unsigned long total_buffer_size_needed_per_cpu {0};
-	const auto spec = lttng::cli::session_spec(lttng::cli::session_spec::type::NAME, session_name);
+	unsigned long total_buffer_size_needed_per_cpu{ 0 };
+	const auto spec =
+		lttng::cli::session_spec(lttng::cli::session_spec::type::NAME, session_name);
 	const auto sessions = list_sessions(spec);
-	int ncpus {0};
+	int ncpus{ 0 };
 
 	if (sessions.size() <= 0) {
 		/* Session not found */
@@ -153,20 +158,24 @@ static bool system_has_memory_for_channel_buffers(char *session_name, struct ltt
 
 	if (channel->attr.num_subbuf > UINT64_MAX / channel->attr.subbuf_size) {
 		/* Overflow */
-		ERR_FMT("Integer overflow calculating total buffer size per CPU on channel '{}': num_subbuf={}, subbuf_size={}", channel->name, channel->attr.num_subbuf, channel->attr.subbuf_size)
+		ERR_FMT("Integer overflow calculating total buffer size per CPU on channel '{}': num_subbuf={}, subbuf_size={}",
+			channel->name,
+			channel->attr.num_subbuf,
+			channel->attr.subbuf_size)
 		return false;
 	}
 
 	total_buffer_size_needed_per_cpu = channel->attr.num_subbuf * channel->attr.subbuf_size;
 	try {
 		ncpus = utils_get_cpu_count();
-	} catch (const std::exception &ex) {
+	} catch (const std::exception& ex) {
 		ERR_FMT("Exception when getting CPU count: {}", ex.what());
 		return false;
 	}
 
 	/* In snapshot mode, an extra set of buffers is required. */
-	const auto _bytes_required = static_cast<uint64_t>(total_buffer_size_needed_per_cpu * ncpus + sessions[0].snapshot_mode);
+	const auto _bytes_required = static_cast<uint64_t>(
+		total_buffer_size_needed_per_cpu * ncpus + sessions[0].snapshot_mode);
 	if (bytes_required != nullptr) {
 		*bytes_required = _bytes_required;
 	}
