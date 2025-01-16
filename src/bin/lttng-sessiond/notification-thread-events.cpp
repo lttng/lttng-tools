@@ -4083,7 +4083,7 @@ receive_fds:
 		}
 	}
 
-	/* At this point the message is complete.*/
+	/* At this point the message is complete. */
 	LTTNG_ASSERT(client->communication.inbound.bytes_to_receive == 0 &&
 		     client->communication.inbound.fds_to_receive == 0);
 	ret = client_dispatch_message(client, state);
