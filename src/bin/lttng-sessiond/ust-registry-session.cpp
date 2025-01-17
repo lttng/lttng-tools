@@ -120,13 +120,17 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 
 	if (chan->_events) {
 		/* Destroy all event associated with this registry. */
-		for (auto *event :
-		     lttng::urcu::lfht_iteration_adapter<lsu::registry_event,
-							 decltype(lsu::registry_event::_node),
-							 &lsu::registry_event::_node>(
-			     *chan->_events->ht)) {
-			/* Delete the node from the ht and free it. */
-			ust_registry_channel_destroy_event(chan, event);
+		try {
+			for (auto *event : lttng::urcu::lfht_iteration_adapter<
+				     lsu::registry_event,
+				     decltype(lsu::registry_event::_node),
+				     &lsu::registry_event::_node>(*chan->_events->ht)) {
+				/* Delete the node from the ht and free it. */
+				ust_registry_channel_destroy_event(chan, event);
+			}
+		} catch (const lttng::out_of_range& ex) {
+			ERR_FMT("Corrupted channel events hash table encoutered while destroying channel: {}",
+				ex.what());
 		}
 	}
 
@@ -376,16 +380,20 @@ lsu::registry_session::~registry_session()
 	LTTNG_ASSERT(!ret);
 
 	if (_channels) {
-		/* Destroy all event associated with this registry. */
-		for (auto *chan :
-		     lttng::urcu::lfht_iteration_adapter<lsu::registry_channel,
-							 decltype(lsu::registry_channel::_node),
-							 &lsu::registry_channel::_node>(
-			     *_channels->ht)) {
-			/* Delete the node from the ht and free it. */
-			ret = cds_lfht_del(_channels.get()->ht, &chan->_node.node);
-			LTTNG_ASSERT(!ret);
-			destroy_channel(chan, true);
+		try {
+			/* Destroy all event associated with this registry. */
+			for (auto *chan : lttng::urcu::lfht_iteration_adapter<
+				     lsu::registry_channel,
+				     decltype(lsu::registry_channel::_node),
+				     &lsu::registry_channel::_node>(*_channels->ht)) {
+				/* Delete the node from the ht and free it. */
+				ret = cds_lfht_del(_channels.get()->ht, &chan->_node.node);
+				LTTNG_ASSERT(!ret);
+				destroy_channel(chan, true);
+			}
+		} catch (const lttng::out_of_range& ex) {
+			ERR_FMT("Corrupted channel hash table encountered while destroying session: {}",
+				ex.what());
 		}
 	}
 
@@ -412,12 +420,18 @@ lsu::registry_session::~registry_session()
 
 	/* Destroy the enum hash table */
 	if (_enums) {
-		/* Destroy all enum entries associated with this registry. */
-		for (auto *reg_enum :
-		     lttng::urcu::lfht_iteration_adapter<lsu::registry_enum,
-							 decltype(lsu::registry_enum::node),
-							 &lsu::registry_enum::node>(*_enums->ht)) {
-			_destroy_enum(reg_enum);
+		try {
+			/* Destroy all enum entries associated with this registry. */
+			for (auto *reg_enum :
+			     lttng::urcu::lfht_iteration_adapter<lsu::registry_enum,
+								 decltype(lsu::registry_enum::node),
+								 &lsu::registry_enum::node>(
+				     *_enums->ht)) {
+				_destroy_enum(reg_enum);
+			}
+		} catch (const lttng::out_of_range& ex) {
+			ERR_FMT("Corrupted enum hash table encountered while destroying session: {}",
+				ex.what());
 		}
 	}
 }
