@@ -2001,7 +2001,7 @@ end:
 static int mi_list_session(const char *session_name, struct lttng_session *sessions, int count)
 {
 	int ret, i;
-	unsigned int session_found = 0;
+	bool session_found = false;
 
 	if (session_name == nullptr) {
 		ret = -LTTNG_ERR_SESS_NOT_FOUND;
@@ -2014,7 +2014,7 @@ static int mi_list_session(const char *session_name, struct lttng_session *sessi
 			 * We need to leave it open to append other informations
 			 * like domain, channel, events etc.
 			 */
-			session_found = 1;
+			session_found = true;
 			ret = mi_lttng_session(the_writer, &sessions[i], 1);
 			if (ret) {
 				goto end;
