@@ -1408,7 +1408,7 @@ unsigned int get_max_possible_cpu_id() LTTNG_MAY_THROW
 	}
 
 	auto possible_cpu_mask_fd = [] {
-		int raw_handle = open(DEFAULT_LINUX_POSSIBLE_CPU_PATH, O_RDONLY);
+		const auto raw_handle = open(DEFAULT_LINUX_POSSIBLE_CPU_PATH, O_RDONLY);
 		if (raw_handle < 0) {
 			LTTNG_THROW_POSIX(
 				lttng::format("Failed to open possible CPU file, path='{}'",

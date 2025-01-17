@@ -5043,7 +5043,7 @@ end:
 
 enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consumer_channel *channel)
 {
-	enum lttcomm_return_code ret = LTTCOMM_CONSUMERD_SUCCESS;
+	const auto ret = LTTCOMM_CONSUMERD_SUCCESS;
 
 	if (channel->metadata_stream) {
 		ERR("Open channel packets command attempted on a metadata channel");

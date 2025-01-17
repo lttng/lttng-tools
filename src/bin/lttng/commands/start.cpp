@@ -197,7 +197,7 @@ void warn_on_small_client_shm(const char *session_name)
 		 * into it.
 		 */
 		auto fd = [CLIENT_SHM_TEST_PATH]() {
-			int raw_fd = shm_open(CLIENT_SHM_TEST_PATH, O_RDWR | O_CREAT, 0700);
+			const auto raw_fd = shm_open(CLIENT_SHM_TEST_PATH, O_RDWR | O_CREAT, 0700);
 			if (raw_fd < 0) {
 				LTTNG_THROW_POSIX(
 					lttng::format("Failed to open shared memory at path '%s'",

@@ -217,8 +217,8 @@ static int match_channel_trigger_list(struct cds_lfht_node *node, const void *ke
 	trigger_list =
 		caa_container_of(node, struct lttng_channel_trigger_list, channel_triggers_ht_node);
 
-	return !((channel_key->key != trigger_list->channel_key.key) ||
-		 (channel_key->domain != trigger_list->channel_key.domain));
+	return (channel_key->key == trigger_list->channel_key.key) &&
+		(channel_key->domain == trigger_list->channel_key.domain);
 }
 
 static int match_session_trigger_list(struct cds_lfht_node *node, const void *key)
@@ -239,8 +239,7 @@ static int match_channel_state_sample(struct cds_lfht_node *node, const void *ke
 
 	sample = caa_container_of(node, struct channel_state_sample, channel_state_ht_node);
 
-	return !((channel_key->key != sample->key.key) ||
-		 (channel_key->domain != sample->key.domain));
+	return (channel_key->key == sample->key.key) && (channel_key->domain == sample->key.domain);
 }
 
 static int match_channel_info(struct cds_lfht_node *node, const void *key)
@@ -250,8 +249,8 @@ static int match_channel_info(struct cds_lfht_node *node, const void *key)
 
 	channel_info = caa_container_of(node, struct channel_info, channels_ht_node);
 
-	return !((channel_key->key != channel_info->key.key) ||
-		 (channel_key->domain != channel_info->key.domain));
+	return (channel_key->key == channel_info->key.key) &&
+		(channel_key->domain == channel_info->key.domain);
 }
 
 static int match_trigger(struct cds_lfht_node *node, const void *key)

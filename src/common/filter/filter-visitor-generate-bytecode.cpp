@@ -122,16 +122,15 @@ end:
  * < 0: error
  */
 static int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
-					     const struct ir_load_expression *exp,
-					     const struct ir_load_expression_op *op)
+					     const struct ir_load_expression *exp)
 {
-	struct load_op *insn = NULL;
-	uint32_t insn_len = sizeof(struct load_op) + sizeof(struct field_ref);
+	struct load_op *insn = nullptr;
+	const auto insn_len = sizeof(struct load_op) + sizeof(struct field_ref);
 	struct field_ref ref_offset;
 	uint32_t reloc_offset_u32;
 	uint16_t reloc_offset;
 	enum bytecode_op op_type;
-	char *symbol = NULL;
+	char *symbol = nullptr;
 	int ret;
 
 	ret = load_expression_legacy_match(exp, &op_type, &symbol);
@@ -192,7 +191,7 @@ static int visit_node_load_expression(struct filter_parser_ctx *ctx, const struc
 	 * TODO: if we remove legacy load for application contexts, we
 	 * need to update session bytecode parser as well.
 	 */
-	ret = visit_node_load_expression_legacy(ctx, exp, op);
+	ret = visit_node_load_expression_legacy(ctx, exp);
 	if (ret < 0) {
 		return ret;
 	}
@@ -200,7 +199,7 @@ static int visit_node_load_expression(struct filter_parser_ctx *ctx, const struc
 		return 0; /* legacy */
 	}
 
-	for (; op != NULL; op = op->next) {
+	for (; op != nullptr; op = op->next) {
 		switch (op->type) {
 		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
 		{
@@ -256,7 +255,7 @@ static int visit_node_load_expression(struct filter_parser_ctx *ctx, const struc
 		case IR_LOAD_EXPRESSION_LOAD_FIELD:
 		{
 			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op);
+			const auto insn_len = sizeof(struct load_op);
 
 			insn = (load_op *) calloc(insn_len, 1);
 			if (!insn)
@@ -287,7 +286,7 @@ static int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case IR_DATA_STRING:
 	{
 		struct load_op *insn;
-		uint32_t insn_len =
+		const auto insn_len =
 			sizeof(struct load_op) + strlen(node->u.load.u.string.value) + 1;
 
 		insn = (load_op *) calloc(insn_len, 1);
@@ -327,7 +326,7 @@ static int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case IR_DATA_NUMERIC:
 	{
 		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op) + sizeof(struct literal_numeric);
+		const auto insn_len = sizeof(struct load_op) + sizeof(struct literal_numeric);
 
 		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
@@ -341,7 +340,7 @@ static int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case IR_DATA_FLOAT:
 	{
 		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op) + sizeof(struct literal_double);
+		const auto insn_len = sizeof(struct load_op) + sizeof(struct literal_double);
 
 		insn = (load_op *) calloc(insn_len, 1);
 		if (!insn)
@@ -581,12 +580,12 @@ void filter_bytecode_free(struct filter_parser_ctx *ctx)
 
 	if (ctx->bytecode) {
 		free(ctx->bytecode);
-		ctx->bytecode = NULL;
+		ctx->bytecode = nullptr;
 	}
 
 	if (ctx->bytecode_reloc) {
 		free(ctx->bytecode_reloc);
-		ctx->bytecode_reloc = NULL;
+		ctx->bytecode_reloc = nullptr;
 	}
 }
 

@@ -36,7 +36,7 @@ static int normalize_glob_patterns(struct ir_op *node)
 	case IR_OP_LOAD:
 	{
 		if (node->data_type == IR_DATA_STRING) {
-			enum ir_load_string_type type = node->u.load.u.string.type;
+			const auto type = node->u.load.u.string.type;
 			if (type == IR_LOAD_STRING_TYPE_GLOB_STAR_END ||
 			    type == IR_LOAD_STRING_TYPE_GLOB_STAR) {
 				LTTNG_ASSERT(node->u.load.u.string.value);
@@ -50,7 +50,7 @@ static int normalize_glob_patterns(struct ir_op *node)
 		return normalize_glob_patterns(node->u.unary.child);
 	case IR_OP_BINARY:
 	{
-		int ret = normalize_glob_patterns(node->u.binary.left);
+		const auto ret = normalize_glob_patterns(node->u.binary.left);
 
 		if (ret)
 			return ret;

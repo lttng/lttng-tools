@@ -337,12 +337,12 @@ bool loglevel_log4j2_parse_range_string(const char *str,
 					enum lttng_loglevel_log4j2 *most_severe)
 {
 	int least_severe_int, most_severe_int;
-	bool ret = loglevel_parse_range_string_common(str,
-						      loglevel_log4j2_values,
-						      ARRAY_SIZE(loglevel_log4j2_values),
-						      LTTNG_LOGLEVEL_LOG4J2_FATAL,
-						      &least_severe_int,
-						      &most_severe_int);
+	const auto ret = loglevel_parse_range_string_common(str,
+							    loglevel_log4j2_values,
+							    ARRAY_SIZE(loglevel_log4j2_values),
+							    LTTNG_LOGLEVEL_LOG4J2_FATAL,
+							    &least_severe_int,
+							    &most_severe_int);
 
 	*least_severe = (lttng_loglevel_log4j2) least_severe_int;
 	*most_severe = (lttng_loglevel_log4j2) most_severe_int;

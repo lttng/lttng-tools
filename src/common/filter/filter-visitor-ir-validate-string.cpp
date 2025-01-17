@@ -95,7 +95,7 @@ static int validate_string(struct ir_op *node)
 		return validate_string(node->u.unary.child);
 	case IR_OP_BINARY:
 	{
-		int ret = validate_string(node->u.binary.left);
+		const auto ret = validate_string(node->u.binary.left);
 
 		if (ret)
 			return ret;
