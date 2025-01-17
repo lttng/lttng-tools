@@ -3502,7 +3502,7 @@ end:
 
 int handle_notification_thread_client_disconnect_all(struct notification_thread_state *state)
 {
-	bool error_encoutered = false;
+	bool error_encountered = false;
 
 	DBG("Closing all client connections");
 
@@ -3514,11 +3514,11 @@ int handle_notification_thread_client_disconnect_all(struct notification_thread_
 
 		ret = notification_thread_client_disconnect(client, state);
 		if (ret) {
-			error_encoutered = true;
+			error_encountered = true;
 		}
 	}
 
-	return error_encoutered ? 1 : 0;
+	return error_encountered ? 1 : 0;
 }
 
 int handle_notification_thread_trigger_unregister_all(struct notification_thread_state *state)
@@ -4742,7 +4742,7 @@ dispatch_one_event_notifier_notification(struct notification_thread_state *state
 	case ACTION_EXECUTOR_STATUS_INVALID:
 	case ACTION_EXECUTOR_STATUS_ERROR:
 		/* Fatal error, shut down everything. */
-		ERR("Fatal error encoutered while enqueuing action to the action executor");
+		ERR("Fatal error encountered while enqueuing action to the action executor");
 		ret = -1;
 		goto end_unlock;
 	default:

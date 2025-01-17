@@ -129,7 +129,7 @@ void destroy_channel(lsu::registry_channel *chan, bool notify) noexcept
 				ust_registry_channel_destroy_event(chan, event);
 			}
 		} catch (const lttng::out_of_range& ex) {
-			ERR_FMT("Corrupted channel events hash table encoutered while destroying channel: {}",
+			ERR_FMT("Corrupted channel events hash table encountered while destroying channel: {}",
 				ex.what());
 		}
 	}

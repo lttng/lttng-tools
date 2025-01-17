@@ -1650,7 +1650,7 @@ static int list_process_attr_tracker(enum lttng_process_attr process_attr)
 		ret = CMD_SUCCESS;
 		goto end;
 	default:
-		ERR("Unknown tracking policy encoutered while listing the %s process attribute tracker of session `%s`",
+		ERR("Unknown tracking policy encountered while listing the %s process attribute tracker of session `%s`",
 		    lttng_process_attr_to_string(process_attr),
 		    the_handle->session_name);
 		ret = CMD_FATAL;

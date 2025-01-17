@@ -650,7 +650,7 @@ static struct lttng_event_expr *event_expr_from_payload(struct lttng_payload_vie
 		break;
 	}
 	default:
-		ERR("Invalid event expression type encoutered while deserializing event expression: type = %" PRIu64,
+		ERR("Invalid event expression type encountered while deserializing event expression: type = %" PRIu64,
 		    type);
 		goto error;
 	}

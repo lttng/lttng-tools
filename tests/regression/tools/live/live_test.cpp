@@ -521,7 +521,7 @@ static int get_next_index()
 		if (first_packet_stream_id < 0) {
 			/*
 			 * Initialize the first packet stream id. That is,
-			 * the first active stream encoutered.
+			 * the first active stream encountered.
 			 */
 			first_packet_offset = be64toh(rp.offset);
 			first_packet_len = be64toh(rp.packet_size) / CHAR_BIT;

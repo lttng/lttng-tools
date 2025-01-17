@@ -249,7 +249,7 @@ static int client_handle_transmission_status(struct notification_client *client,
 		    client->id);
 		break;
 	default:
-		ERR("Fatal error encoutered while sending notification to client, client_id = %" PRIu64,
+		ERR("Fatal error encountered while sending notification to client, client_id = %" PRIu64,
 		    client->id);
 		ret = -1;
 		goto end;
