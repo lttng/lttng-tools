@@ -2010,8 +2010,10 @@ static int mi_list_session(const char *session_name, struct lttng_session *sessi
 
 	for (i = 0; i < count; i++) {
 		if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
-			/* We need to leave it open to append other informations
-			 * like domain, channel, events etc.*/
+			/*
+			 * We need to leave it open to append other informations
+			 * like domain, channel, events etc.
+			 */
 			session_found = 1;
 			ret = mi_lttng_session(the_writer, &sessions[i], 1);
 			if (ret) {
