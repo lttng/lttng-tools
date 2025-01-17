@@ -22,8 +22,8 @@ To diff the ABI files
 
 2. Run abidiff against the new file
 
-    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/liblttng-ctl.xml out.xml
+    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/abi.xml out.xml
 
 or
 
-    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/liblttng-ctl.xml src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0
+    abidiff src/lib/lttng-ctl/abi_ref/0.0.0/abi.xml src/lib/lttng-ctl/.libs/liblttng-ctl.so.0.0.0
