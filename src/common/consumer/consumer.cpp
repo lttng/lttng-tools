@@ -2945,8 +2945,6 @@ void *consumer_thread_channel_poll(void *data)
 						lttng_ht_add_unique_u64(channel_ht,
 									&chan->wait_fd_node);
 						/* Add channel to the global poll events list */
-						// FIXME: Empty flag on a pipe pollset, this might
-						// hang on FreeBSD.
 						lttng_poll_add(&events, chan->wait_fd, 0);
 						break;
 					}
