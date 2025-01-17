@@ -10,6 +10,7 @@ SUBDIRS = base-path \
 	filtering \
 	health \
 	live \
+	lttng-ctl \
 	metadata \
 	mi \
 	notification \

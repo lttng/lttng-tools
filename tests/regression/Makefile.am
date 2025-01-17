@@ -71,6 +71,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 TESTS = tools/live/test_early_inactive_app.py \
 	tools/live/test_miss_short_lived_app.py \
 	tools/live/test_per_application_leaks.py \
+	tools/lttng-ctl/test_liblttng-ctl_abi.py \
 	tools/context/test_ust.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
