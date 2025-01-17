@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2024 Kienan Stewart <kstewart@efficios.com>
  *
- * SPDX-License-Identifier: LPGL-2.1-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  */
 
 #include "obj-a.h"

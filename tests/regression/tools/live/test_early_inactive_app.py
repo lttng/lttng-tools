@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # SPDX-FileCopyrightText: 2024 Kienan Stewart <kstewart@efficios.com>
-# SPDX-LicenseIdentifier: LGPL-2.1-only
+# SPDX-License-Identifier: LGPL-2.1-only
 #
 
 """
