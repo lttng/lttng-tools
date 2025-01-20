@@ -147,6 +147,42 @@ def python_blacken(files):
     return stdout.decode("utf-8"), black.returncode
 
 
+def spdx_tags(files):
+    tag_re = re.compile(r"SPDX-(?P<tag>[^ :]+): (?P<value>[^\n]+)")
+    valid_tags = [
+        "License-Identifier",
+        "FileCopyrightText",
+        "URL",
+    ]
+    stdout = ""
+    returncode = 0
+    for f in files:
+        content = ""
+        with open(f, "r") as fd:
+            content = fd.read()
+        has_license = False
+        has_copyrighttext = False
+        for m in tag_re.finditer(content):
+            tag = m.group(1)
+            value = m.group(2)
+            if tag == "License-Identifier":
+                has_license = True
+            elif tag == "FileCopyrightText":
+                has_copyrighttext = True
+            elif tag not in valid_tags:
+                stdout += "File `{}` has unknown SPDX tag `{}`\n".format(f, tag)
+                # This is strict, but lttng-tools usage of SPDX is minimal
+                returncode = 1
+        if not has_license:
+            stdout += "File `{}` is missing SPDX-License-Identifier\n".format(f)
+            returncode = 1
+        if not has_copyrighttext:
+            stdout += "File `{}` is missing SPDX-FileCopyrightText\n".format(f)
+            returncode = 1
+
+    return stdout, returncode
+
+
 if __name__ == "__main__":
     logging.basicConfig()
     failures = []
@@ -163,6 +199,9 @@ if __name__ == "__main__":
         },
         "python-black": {
             "func": python_blacken,
+        },
+        "spdx": {
+            "func": spdx_tags,
         },
     }
 
