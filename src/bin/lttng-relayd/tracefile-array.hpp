@@ -2,7 +2,7 @@
 #define _TRACEFILE_ARRAY_H
 
 /*
- * Copyright (C) 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

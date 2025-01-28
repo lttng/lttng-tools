@@ -3,7 +3,7 @@
  *
  * The "inih" library is distributed under the New BSD license:
  *
- * Copyright (C) 2009 Brush Technology - All rights reserved.
+ * SPDX-FileCopyrightText: 2009 Brush Technology - All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *

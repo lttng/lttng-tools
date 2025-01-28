@@ -2,7 +2,7 @@
 #define LTTNG_COMMON_READWRITE_H
 
 /*
- * Copyright (C) 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

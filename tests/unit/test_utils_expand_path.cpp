@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Raphaël Beamonte <raphael.beamonte@gmail.com>
+ * SPDX-FileCopyrightText: 2013 Raphaël Beamonte <raphael.beamonte@gmail.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

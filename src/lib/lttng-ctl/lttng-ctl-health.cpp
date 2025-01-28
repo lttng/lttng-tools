@@ -3,8 +3,8 @@
  *
  * Linux Trace Toolkit Health Control Library
  *
- * Copyright (C) 2011 EfficiOS Inc.
- * Copyright (C) 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

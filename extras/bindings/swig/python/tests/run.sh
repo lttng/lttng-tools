@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2012 Danny Serres <danny.serres@efficios.com>
+# SPDX-FileCopyrightText: 2012 Danny Serres <danny.serres@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #

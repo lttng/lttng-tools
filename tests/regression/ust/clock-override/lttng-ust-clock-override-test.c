@@ -1,8 +1,8 @@
 /*
  * lttng-clock-override-test.c
  *
- * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2015 Jonthan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Jonthan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

@@ -2,7 +2,7 @@
 #define LTTNG_SPAWN_VIEWER_H
 
 /*
- * Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

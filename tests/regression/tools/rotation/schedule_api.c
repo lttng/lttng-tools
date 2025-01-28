@@ -3,7 +3,7 @@
  *
  * Unit tests for the session rotation schedule API
  *
- * Copyright (C) 2018 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2018 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

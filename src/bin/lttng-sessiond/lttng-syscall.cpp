@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2014 David Goulet <dgoulet@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

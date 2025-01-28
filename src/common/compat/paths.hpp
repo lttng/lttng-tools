@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Michael Jeanson <mjeanson@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Michael Jeanson <mjeanson@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

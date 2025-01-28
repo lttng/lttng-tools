@@ -3,7 +3,7 @@
  *
  * Tests suite for LTTng notification API
  *
- * Copyright (C) 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

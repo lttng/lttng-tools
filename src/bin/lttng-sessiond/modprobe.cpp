@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011 David Goulet <dgoulet@efficios.com>
- * Copyright (C) 2014 Jan Glauber <jan.glauber@gmail.com>
+ * SPDX-FileCopyrightText: 2011 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Jan Glauber <jan.glauber@gmail.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

@@ -3,7 +3,7 @@
  *
  * Unit tests for the condition API.
  *
- * Copyright (C) 2019 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011 EfficiOS Inc.
- * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

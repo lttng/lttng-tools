@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2013 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2013 Christian Babeux <christian.babeux@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #

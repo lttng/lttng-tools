@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Michael Jeanson <mjeanson@efficios.com>
+ * SPDX-FileCopyrightText: 2020 Michael Jeanson <mjeanson@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

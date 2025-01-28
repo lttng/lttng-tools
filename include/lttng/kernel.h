@@ -3,9 +3,9 @@
  *
  * Linux Trace Toolkit Control Library Header File
  *
- * Copyright (C) 2023 Kienan Stewart <kstewart@efficios.com>
+ * SPDX-FileCopyrightText: 2023 Kienan Stewart <kstewart@efficios.com>
  *
- * SPDX-License-Identifier; LGPL-2.1-only
+ * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Antoine Busque <abusque@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Antoine Busque <abusque@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

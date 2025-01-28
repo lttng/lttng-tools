@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Julien Desfossez <jdesfossez@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Julien Desfossez <jdesfossez@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

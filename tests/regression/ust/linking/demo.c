@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2009 Pierre-Marc Fournier
- * Copyright (C) 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2009 Pierre-Marc Fournier
+ * SPDX-FileCopyrightText: 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

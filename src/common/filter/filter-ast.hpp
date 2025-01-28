@@ -6,7 +6,7 @@
  *
  * LTTng filter AST
  *
- * Copyright 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

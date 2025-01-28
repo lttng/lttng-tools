@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011 EfficiOS Inc.
- * Copyright (C) 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

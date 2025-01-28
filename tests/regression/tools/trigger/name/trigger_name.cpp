@@ -3,7 +3,7 @@
  *
  * Tests suite for anonymous, named, and automatic name triggers.
  *
- * Copyright (C) 2021 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2021 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011 EfficiOS Inc.
- * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

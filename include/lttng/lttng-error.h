@@ -6,7 +6,7 @@
  * The following values are all the possible errors the lttng command line
  * client can quit with.
  *
- * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

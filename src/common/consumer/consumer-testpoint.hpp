@@ -2,8 +2,8 @@
 #define CONSUMERD_TESTPOINT_H
 
 /*
- * Copyright (C) 2012 Christian Babeux <christian.babeux@efficios.com>
- * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 Christian Babeux <christian.babeux@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

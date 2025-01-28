@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Geneviève Bastien <gbastien@versatic.net>
+ * SPDX-FileCopyrightText: 2014 Geneviève Bastien <gbastien@versatic.net>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

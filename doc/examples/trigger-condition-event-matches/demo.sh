@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 #
 # SPDX-License-Identifier: MIT
 

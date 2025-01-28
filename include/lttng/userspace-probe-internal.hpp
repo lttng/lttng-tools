@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
- * Copyright (C) 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

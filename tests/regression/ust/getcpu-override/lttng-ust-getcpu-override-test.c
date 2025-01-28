@@ -2,8 +2,8 @@
  * lttng-ust-getcpu-override-test.c
  * Based on lttng-getcpu-override-example.c from LTTng-ust exemple
  *
- * Copyright (C) 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Philippe Proulx <pproulx@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Philippe Proulx <pproulx@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

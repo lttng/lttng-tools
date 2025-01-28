@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
- * Copyright (C) 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
- * Copyright (C) 2018 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2018 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

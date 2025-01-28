@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 (C) Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 (C) Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

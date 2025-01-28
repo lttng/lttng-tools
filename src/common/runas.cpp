@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2011 EfficiOS Inc.
- * Copyright (C) 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2019 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2011 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

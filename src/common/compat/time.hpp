@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Michael Jeanson <mjeanson@efficios.com>
+ * SPDX-FileCopyrightText: 2016 Michael Jeanson <mjeanson@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 EfficiOS, Inc.
+ * SPDX-FileCopyrightText: 2020 EfficiOS, Inc.
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

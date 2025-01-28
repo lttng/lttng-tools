@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
- * Copyright (C) 2013 Raphaël Beamonte <raphael.beamonte@gmail.com>
- * Copyright (C) 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
- * Copyright (C) 2021 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Raphaël Beamonte <raphael.beamonte@gmail.com>
+ * SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2021 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  */

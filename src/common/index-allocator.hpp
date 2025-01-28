@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

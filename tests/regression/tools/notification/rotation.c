@@ -3,7 +3,7 @@
  *
  * Tests suite for LTTng notification API (rotation notifications)
  *
- * Copyright (C) 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

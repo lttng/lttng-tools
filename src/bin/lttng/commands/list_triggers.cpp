@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Simon Marchi <simon.marchi@efficios.com>
+ * SPDX-FileCopyrightText: 2021 Simon Marchi <simon.marchi@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

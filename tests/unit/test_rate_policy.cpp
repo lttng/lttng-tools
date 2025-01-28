@@ -1,7 +1,7 @@
 /*
  * Unit tests for the rate policy object API.
  *
- * Copyright (C) 2019 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

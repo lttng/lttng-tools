@@ -1,8 +1,8 @@
 /*
  * SPDX-License-Identifier: BSD-2-Clause
  *
- * Copyright (C) 2004 Nik Clayton
- * Copyright (C) 2017 Jérémie Galarneau
+ * SPDX-FileCopyrightText: 2004 Nik Clayton
+ * SPDX-FileCopyrightText: 2017 Jérémie Galarneau
  */
 
 #include "../utils.h"

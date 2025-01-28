@@ -1,4 +1,4 @@
-# Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
+# SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 #

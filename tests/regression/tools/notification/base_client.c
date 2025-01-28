@@ -3,7 +3,7 @@
  *
  * Base client application for testing of LTTng notification API
  *
- * Copyright 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

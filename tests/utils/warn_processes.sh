@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016 Michael Jeanson <mjeanson@efficios.com>
+# SPDX-FileCopyrightText: 2016 Michael Jeanson <mjeanson@efficios.com>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #

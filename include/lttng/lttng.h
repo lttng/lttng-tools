@@ -3,7 +3,7 @@
  *
  * Linux Trace Toolkit Control Library Header File
  *
- * Copyright (C) 2011 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2011 EfficiOS Inc.
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

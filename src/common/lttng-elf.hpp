@@ -1,8 +1,8 @@
 #ifndef _LTTNG_ELF_H
 #define _LTTNG_ELF_H
 /*
- * Copyright (C) 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
- * Copyright (C) 2017 Erica Bugden <erica.bugden@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Erica Bugden <erica.bugden@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-or-later
  *

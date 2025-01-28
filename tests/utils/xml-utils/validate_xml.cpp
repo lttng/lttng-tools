@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 EfficiOS Inc.
+ * SPDX-FileCopyrightText: 2014 EfficiOS Inc.
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

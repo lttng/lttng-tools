@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Julien Desfossez <jdesfossez@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Julien Desfossez <jdesfossez@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

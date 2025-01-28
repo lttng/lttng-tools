@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2010 Patrick LeBoutillier <patrick.leboutillier@gmail.com>
+# SPDX-FileCopyrightText: 2010 Patrick LeBoutillier <patrick.leboutillier@gmail.com>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2012 David Goulet <dgoulet@efficios.com>
- * Copyright (C) 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2012 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

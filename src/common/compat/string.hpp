@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2015 Michael Jeanson <mjeanson@efficios.com>
- * Copyright (C) 2015 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Michael Jeanson <mjeanson@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

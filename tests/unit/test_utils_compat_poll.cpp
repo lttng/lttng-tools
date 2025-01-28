@@ -3,7 +3,7 @@
  *
  * Unit tests for the compatibility layer of poll/epoll API.
  *
- * Copyright (C) 2019 Yannick Lamarre <ylamarre@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Yannick Lamarre <ylamarre@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

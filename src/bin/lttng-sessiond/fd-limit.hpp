@@ -2,7 +2,7 @@
 #define _LTTNG_FD_LIMIT_H
 
 /*
- * Copyright (C) 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

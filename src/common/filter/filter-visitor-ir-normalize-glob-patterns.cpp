@@ -3,7 +3,7 @@
  *
  * LTTng filter IR normalize string
  *
- * Copyright 2017 Philippe Proulx <pproulx@efficios.com>
+ * SPDX-FileCopyrightText: 2017 Philippe Proulx <pproulx@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

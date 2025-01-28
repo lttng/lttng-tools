@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Nils Carlson
+ * SPDX-FileCopyrightText: 2011 Nils Carlson
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

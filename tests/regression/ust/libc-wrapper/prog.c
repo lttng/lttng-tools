@@ -1,4 +1,4 @@
-/* Copyright (C) 2009 Pierre-Marc Fournier
+/* SPDX-FileCopyrightText: 2009 Pierre-Marc Fournier
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

@@ -2,7 +2,7 @@
 #define _COMPAT_GETENV_H
 
 /*
- * Copyright (C) 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2014 Geneviève Bastien <gbastien@versatic.net>
+# SPDX-FileCopyrightText: 2014 Geneviève Bastien <gbastien@versatic.net>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 

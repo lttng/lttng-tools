@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2013 Julien Desfossez <jdesfossez@efficios.com>
- * Copyright (C) 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- * Copyright (C) 2013 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Julien Desfossez <jdesfossez@efficios.com>
+ * SPDX-FileCopyrightText: 2013 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2013 David Goulet <dgoulet@efficios.com>
  *
  * SPDX-License-Identifier: MIT
  *

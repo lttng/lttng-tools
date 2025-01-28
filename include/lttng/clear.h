@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2019 Jérémie Galarneau <jeremie.galarneau@efficios.com>
- * Copyright (C) 2019 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * SPDX-FileCopyrightText: 2019 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *
