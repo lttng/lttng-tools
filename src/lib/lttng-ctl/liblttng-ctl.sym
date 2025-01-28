@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2021 Simon Marchi <simon.marchi@efficios.com>
+
 config_buffer_type_global
 config_buffer_type_per_pid
 config_buffer_type_per_uid
