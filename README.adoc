@@ -136,6 +136,8 @@ You need the following tools to build {lt}:
 
 * **http://www.gnu.org/software/autoconf/[GNU{nbsp}Libtool]{nbsp}≥{nbsp}2.2**
 
+* **https://www.gnu.org/software/make/[GNU{nbsp}Make]**
+
 * **https://github.com/westes/flex/[Flex]{nbsp}≥{nbsp}2.5.35**
 
 * **https://www.gnu.org/software/bison/[Bison]{nbsp}≥{nbsp}2.4**
