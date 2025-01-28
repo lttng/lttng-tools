@@ -1,8 +1,6 @@
 /*
- * Copyright (C) 2014 Jérémie Galarneau <jeremie.galarneau@efficios.com>
- *
  * SPDX-License-Identifier: LGPL-2.1-only
- *
+ * SPDX-FileCopyrightText: 2014 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  */
 
 #ifndef CONFIG_SESSION_INTERNAL_H
