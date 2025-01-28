@@ -7,7 +7,6 @@ config_buffer_type_per_uid
 config_domain_type_jul
 config_domain_type_kernel
 config_domain_type_log4j
-config_domain_type_log4j2
 config_domain_type_python
 config_domain_type_ust
 config_element_address
