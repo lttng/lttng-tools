@@ -70,6 +70,10 @@ function get_total_stream_file_size ()
 	local size
 
 	size=$(find "$trace_path" -type f -regex "$stream_name_pattern" -exec du -b -c {} + | tail -n1 | cut -f 1)
+	# Set a default is no files were found. This avoids integer comparison errors with an empty value.
+	if [ -z "${size}" ]; then
+		size=0
+	fi
 	echo "$size"
 }
 
