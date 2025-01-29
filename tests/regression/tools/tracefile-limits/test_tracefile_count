@@ -123,7 +123,23 @@ function test_tracefile_count_limit ()
 	# in stream size.
 	while [ "$stream_size" -ne "$previous_stream_size" ]; do
 		start_lttng_tracing_notap "$session_name"
-		taskset -c "$cpuno" "$TESTAPP_BIN" -i "$num_iter" >/dev/null 2>&1
+		if ! taskset -c "$cpuno" "$TESTAPP_BIN" -i "$num_iter" >/dev/null 2>&1 ; then
+			diag "Taskset failed for CPU ${cpuno}"
+			# This is a case that can happen in the CI cluster which has the CPU
+			# affinities of containers changed at runtime when other colocated
+			# containers are started or stopped and the cluster manager attempts
+			# to rebalance the load across the host's physical resources.
+			#
+			# When this is the first iteration, skip the remaining tests as
+			# most likely all future calls to taskset with this cpu will fail.
+			if [[ "${previous_stream_size}" == "-1" ]]; then
+				stop_lttng_tracing_notap "${session_name}"
+				destroy_lttng_session_ok "${session_name}"
+				skip 0 "Taskset failed on first iteration" 5
+				rm -rf "${trace_path}"
+				return
+			fi
+		fi
 		stop_lttng_tracing_notap "$session_name"
 
 		previous_stream_size="$stream_size"
