@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Copyright (C) 2013 Christian Babeux <christian.babeux@efficios.com>
-# Copyright (C) 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+# SPDX-FileCopyrightText: 2013 Christian Babeux <christian.babeux@efficios.com>
+# SPDX-FileCopyrightText: 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 

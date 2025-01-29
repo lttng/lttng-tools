@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2015 Michael Jeanson <mjeanson@efficios.com>
- * Copyright (C) 2014 David Goulet <dgoulet@efficios.com>
- * Copyright (C) 2014 Christian Babeux <christian.babeux@efficios.com>
+ * SPDX-FileCopyrightText: 2015 Michael Jeanson <mjeanson@efficios.com>
+ * SPDX-FileCopyrightText: 2014 David Goulet <dgoulet@efficios.com>
+ * SPDX-FileCopyrightText: 2014 Christian Babeux <christian.babeux@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
