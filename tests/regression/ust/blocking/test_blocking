@@ -26,7 +26,7 @@ source "$TESTDIR/utils/utils.sh"
 # Run app on a single CPU to ensure we only write in a single ring buffer.
 function run_app()
 {
-	taskset --cpu-list "$(get_any_available_cpu)" $TESTAPP_BIN -i $NUM_EVENT
+	retry_anycpu_taskset $TESTAPP_BIN -i $NUM_EVENT
 	ok $? "Application done"
 }
 

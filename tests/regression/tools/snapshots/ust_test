@@ -224,7 +224,7 @@ function test_ust_local_snapshot_small_discard_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small discard buffers"
-	taskset -cp "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
+	retry_anycpu_taskset $$
 	ok $? "Set current process CPU affinity"
 	create_lttng_session_no_output "$SESSION_NAME"
 	enable_mmap_small_discard_ust_channel "$SESSION_NAME" $CHANNEL_NAME
@@ -260,7 +260,18 @@ function test_ust_local_snapshot_small_discard_buffers ()
 
 	stop_lttng_tracing_ok "$SESSION_NAME"
 	destroy_lttng_session_ok "$SESSION_NAME"
-	taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1
+
+	if ! taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1 ; then
+		# If returning to the original CPU set fails, create a mask e.g. FFF
+		# which encompasses all possible CPUs.
+		mask=''
+		iter=0
+		while [[ "${iter}" -lt $(($(get_possible_cpus_count) / 4 + 1)) ]]; do
+			mask="${mask}F"
+			iter=$((iter+1))
+		done
+		taskset -p "${mask}" $$
+	fi
 }
 
 function test_ust_local_snapshot_small_overwrite_buffers ()
@@ -270,7 +281,7 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 	OLDCPUSET=$(taskset -p $$)
 
 	diag "Test local UST snapshots with small overwrite buffers"
-	taskset -cp "$(get_any_available_cpu)" $$ 1>/dev/null 2>&1
+	retry_anycpu_taskset $$ 1>/dev/null 2>&1
 	ok $? "Set current process CPU affinity"
 	create_lttng_session_no_output "$SESSION_NAME"
 	enable_mmap_small_overwrite_ust_channel "$SESSION_NAME" $CHANNEL_NAME
@@ -306,7 +317,17 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 
 	stop_lttng_tracing_ok "$SESSION_NAME"
 	destroy_lttng_session_ok "$SESSION_NAME"
-	taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1
+	if ! taskset -p "$OLDCPUSET" $$ 1>/dev/null 2>&1 ; then
+		# If returning to the original CPU set fails, create a mask e.g. FFF
+		# which encompasses all possible CPUs.
+		mask=''
+		iter=0
+		while [[ "${iter}" -lt $(($(get_possible_cpus_count) / 4 + 1)) ]]; do
+			mask="${mask}F"
+			iter=$((iter+1))
+		done
+		taskset -p "${mask}" $$
+	fi
 }
 
 function test_ust_local_snapshot_max_size ()

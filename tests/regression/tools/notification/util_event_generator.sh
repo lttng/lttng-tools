@@ -93,7 +93,7 @@ function ust_event_generator_run_once_per_transition
 			run=true
 			sleep 0.5
 		elif [ "$run" = true ]; then
-			taskset -c "$(get_any_available_cpu)" "$test_app" -i "$nr_iter" -w "$nr_usec_wait" "$@"> /dev/null 2>&1
+			retry_anycpu_taskset "$test_app" -i "$nr_iter" -w "$nr_usec_wait" "$@"
 			run=false;
 			if [[ -f $state_file ]]; then
 				rm -rf "$state_file" 2> /dev/null
@@ -133,7 +133,7 @@ function ust_event_generator
 			# Reset the "run" state
 			sleep 0.5
 		else
-			taskset -c "$(get_any_available_cpu)" "$test_app" -i $nr_iter -w $nr_usec_wait "$@" > /dev/null 2>&1
+			retry_anycpu_taskset "$test_app" -i $nr_iter -w $nr_usec_wait "$@"
 			if [[ -f $state_file ]]; then
 				rm -rf "$state_file" 2> /dev/null
 			fi

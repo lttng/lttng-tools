@@ -768,7 +768,7 @@ function test_ust_streaming_tracefile_rotation_overwrite_files ()
 		--tracefile-size=$PAGE_SIZE --tracefile-count=2 --buffers-$buffer_type
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
 	start_lttng_tracing_ok $SESSION_NAME
-	taskset -c "$(get_any_available_cpu)" $TESTAPP_BIN -i 200000
+	retry_anycpu_taskset $TESTAPP_BIN -i 200000
 	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
 	stop_lttng_tracing_ok $SESSION_NAME
 
@@ -783,7 +783,7 @@ function test_ust_streaming_tracefile_rotation_overwrite_files ()
 	fi
 
 	start_lttng_tracing_ok $SESSION_NAME
-	taskset -c "$(get_any_available_cpu)" $TESTAPP_BIN -i 400000
+	retry_anycpu_taskset $TESTAPP_BIN -i 400000
 	stop_lttng_tracing_ok
 
 	if [[ $rotate_before -eq 1 ]]; then

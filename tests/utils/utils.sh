@@ -404,6 +404,59 @@ function conf_proc_count()
 	echo
 }
 
+# Taskset that retries if the cpuset isn't available
+function retry_anycpu_taskset()
+{
+	local err_output
+	local retry=y
+	local ret=0
+	local c
+	local taskset_options='-c'
+
+	if [[ "${#@}" == "1" && "${1}" =~ [0-9]+ ]]; then
+		taskset_options='-cp'
+	fi
+
+	err_output="$(mktemp)"
+	while [[ -n "${retry}" ]]; do
+		c="$(get_any_available_cpu)"
+		taskset "${taskset_options}" "${c}" "${@}" 2> "${err_output}"
+		ret=$?
+		if [[ "${ret}" != "0" ]] ; then
+			if grep -qE '^taskset: failed.*$' "${err_output}" ; then
+				diag "'taskset ${taskset_options} ${c}' failed. Online CPUs: $(get_online_cpus)"
+			else
+				retry=
+				diag "$(cat ${err_output})"
+			fi
+		else
+			# In some cases it's possible that the application started with
+			# the given taskset, but the CPU chosen goes quickly offline before
+			# the process finishes.
+			#
+			# In such a case, the processes are migrated and the CPU masks
+			# updated to a default value, e.g. 0xFFFFFF such that they may
+			# be scheduled anywhere.
+			#
+			local cpu_still_online=
+			diag "Online CPUs: $(get_online_cpus)"
+			while read -r -d ' ' cpu; do
+				if [[ "${c}" == "${cpu}" ]]; then
+					cpu_still_online=y
+					break
+				fi
+			done <<< "$(get_online_cpus)"
+			if [[ "${cpu_still_online}" == "y" ]] ; then
+				retry=
+			else
+				diag "CPU ${c} is offline since taskset was run, retrying"
+			fi
+		fi
+	done
+	rm -f "${err_output}"
+	return "${ret}"
+}
+
 # Usage:
 # check_skip_kernel_test [NB_TESTS] [SKIP_MESSAGE]
 # Return 0 if LTTNG_TOOLS_DISABLE_KERNEL_TESTS was set or the current user is not a root user
