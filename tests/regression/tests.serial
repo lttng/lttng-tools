@@ -191,5 +191,11 @@ if __name__ == "__main__":
 
     logging.info("Serial tests received %d tests", len(tests))
     logging.debug("Serial tests: {}".format(tests))
+
+    if len(tests) == 0:
+        tap = lttngtest.TapGenerator(1)
+        tap.skip("No tests specified by the environment")
+        sys.exit(0)
+
     if not run_tests(tests):
         sys.exit(1)
