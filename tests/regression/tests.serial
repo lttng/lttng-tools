@@ -168,7 +168,9 @@ def run_test(test_script):
     with open(str(test_log), "w") as f:
         logging.debug("Wrote test output to '{}'".format(str(test_log)))
         f.write(stdout)
-    if return_code == 0:
+
+    # Some test scripts can fail but still return a zero exit code
+    if return_code == 0 and len(TAP_NOT_OK_LINE_RE.findall(stdout)) == 0:
         if test_log_dir:
             shutil.rmtree(str(test_log_dir))
     return (stdout, return_code)
