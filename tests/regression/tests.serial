@@ -67,6 +67,7 @@ def handle_abort(signum, frame):
             )
             current_test_process.kill()
             current_test_process.wait()
+        print(current_test_process.stdout.read().decode("utf-8"))
     else:
         logging.debug("No test process to terminate")
 
