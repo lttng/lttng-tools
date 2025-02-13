@@ -172,6 +172,44 @@ struct formatter<lttng_event_rule> : formatter<std::string> {
 	}
 };
 
+template <>
+struct formatter<lttng_condition_type> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(lttng_condition_type condition_type,
+						    FormatContextType& ctx) const
+	{
+		const char *condition_type_name;
+
+		switch (condition_type) {
+		case LTTNG_CONDITION_TYPE_UNKNOWN:
+			condition_type_name = "UNKNOWN";
+			break;
+		case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+			condition_type_name = "SESSION_CONSUMED_SIZE";
+			break;
+		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+			condition_type_name = "BUFFER_USAGE_HIGH";
+			break;
+		case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+			condition_type_name = "BUFFER_USAGE_LOW";
+			break;
+		case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+			condition_type_name = "SESSION_ROTATION_ONGOING";
+			break;
+		case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+			condition_type_name = "SESSION_ROTATION_COMPLETED";
+			break;
+		case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
+			condition_type_name = "EVENT_RULE_MATCHES";
+			break;
+		default:
+			std::abort();
+		}
+
+		return format_to(ctx.out(), "{{type={}}}", condition_type_name);
+	}
+};
+
 } /* namespace fmt */
 
 #endif /* LTTNG_COMMON_CTL_FORMAT_H */

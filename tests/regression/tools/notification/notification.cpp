@@ -10,6 +10,9 @@
  */
 
 #include <common/compat/errno.hpp>
+#include <common/ctl/format.hpp>
+#include <common/ctl/memory.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <lttng/lttng.h>
@@ -1266,6 +1269,45 @@ end:
 	lttng_condition_destroy(condition);
 }
 
+struct notification_reception_result {
+	lttng_notification_channel_status status;
+	lttng::notification_uptr notification;
+};
+
+lttng::notification_uptr
+get_next_notification_skip_type(lttng_notification_channel *notification_channel,
+				const lttng_condition_type ignored_condition_type)
+{
+	while (true) {
+		auto result = [notification_channel]() {
+			lttng_notification *raw_notification;
+			const auto status = lttng_notification_channel_get_next_notification(
+				notification_channel, &raw_notification);
+
+			return notification_reception_result{
+				status, lttng::notification_uptr(raw_notification)
+			};
+		}();
+
+		switch (result.status) {
+		case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
+			if (lttng_condition_get_type(lttng_notification_get_condition(
+				    result.notification.get())) == ignored_condition_type) {
+				continue;
+			} else {
+				return std::move(result.notification);
+			}
+
+			continue;
+		case LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED:
+			continue;
+		default:
+			/* An error has occurred. */
+			return nullptr;
+		}
+	}
+}
+
 void test_buffer_usage_notification_channel(const char *session_name,
 					    const char *channel_name,
 					    const enum lttng_domain_type domain_type,
@@ -1273,17 +1315,14 @@ void test_buffer_usage_notification_channel(const char *session_name,
 {
 	int ret = 0;
 	enum lttng_notification_channel_status nc_status;
-
 	struct lttng_action *low_action = nullptr;
 	struct lttng_action *high_action = nullptr;
-	struct lttng_notification *notification = nullptr;
 	struct lttng_notification_channel *notification_channel = nullptr;
 	struct lttng_trigger *low_trigger = nullptr;
 	struct lttng_trigger *high_trigger = nullptr;
-
 	struct lttng_condition *low_condition = nullptr;
 	struct lttng_condition *high_condition = nullptr;
-
+	lttng::notification_uptr notification;
 	const double low_ratio = 0.0;
 	const double high_ratio = 0.90;
 
@@ -1335,17 +1374,18 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	stop_consumer(argv);
 	lttng_start_tracing(session_name);
 
-	/* Wait for high notification */
-	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
-									     &notification);
-	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+	/*
+	 * Wait for high notification. Skip any low-usage notification since the buffers may
+	 * be observed under the low-usage threshold before being observed as being
+	 * almost-full.
+	 */
+	notification = get_next_notification_skip_type(notification_channel,
+						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
+
+	ok(notification &&
+		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification received after intermediary communication");
-	lttng_notification_destroy(notification);
-	notification = nullptr;
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
@@ -1355,6 +1395,14 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	/*
 	 * Test that communication still work even if there is notification
 	 * waiting for consumption.
+	 *
+	 * This is racy in the sense that nothing guarantees that the sessiond will have
+	 * sent a low-usage notification between wait_data_pending() and the call to
+	 * unsubscribe.
+	 *
+	 * The goal of this test is to ensure that the communication channel is not blocked
+	 * by a pending notification when sending a command and awaiting a reply (status
+	 * code). In that sense, the test doesn't always exercise that specific code path.
 	 */
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
@@ -1365,64 +1413,52 @@ void test_buffer_usage_notification_channel(const char *session_name,
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
 	   "Subscribe with pending notification");
 
-	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
-									     &notification);
-	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+	notification = get_next_notification_skip_type(notification_channel,
+						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+
+	ok(notification &&
+		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 	   "Low notification received after intermediary communication");
-	lttng_notification_destroy(notification);
-	notification = nullptr;
 
 	/* Stop consumer to force a high notification */
 	stop_consumer(argv);
 	resume_application();
 	lttng_start_tracing(session_name);
 
-	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
-									     &notification);
-	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+	notification = get_next_notification_skip_type(notification_channel,
+						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
+
+	ok(notification &&
+		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification received after intermediary communication");
-	lttng_notification_destroy(notification);
-	notification = nullptr;
 
 	suspend_application();
 	lttng_stop_tracing_no_wait(session_name);
 	resume_consumer(argv);
 	wait_data_pending(session_name);
 
-	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
-									     &notification);
-	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+	notification = get_next_notification_skip_type(notification_channel,
+						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+
+	ok(notification &&
+		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 	   "Low notification received after re-subscription");
-	lttng_notification_destroy(notification);
-	notification = nullptr;
 
 	stop_consumer(argv);
 	resume_application();
 	/* Stop consumer to force a high notification */
 	lttng_start_tracing(session_name);
 
-	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel,
-									     &notification);
-	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-		   lttng_condition_get_type(lttng_notification_get_condition(notification)) ==
+	notification = get_next_notification_skip_type(notification_channel,
+						       LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
+
+	ok(notification &&
+		   lttng_condition_get_type(lttng_notification_get_condition(notification.get())) ==
 			   LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 	   "High notification");
-	lttng_notification_destroy(notification);
-	notification = nullptr;
 
 	suspend_application();
 

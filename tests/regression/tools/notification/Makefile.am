@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
 
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils
 
@@ -57,7 +58,8 @@ base_client_LDADD = $(LIB_LTTNG_CTL)
 notification_SOURCES = notification.cpp
 # Tests the deprecated lttng_register_trigger() interface
 notification_CXXFLAGS = -Wno-deprecated-declarations $(AM_CXXFLAGS)
-notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
+notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm \
+	$(top_builddir)/src/vendor/fmt/libfmt.la
 
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm

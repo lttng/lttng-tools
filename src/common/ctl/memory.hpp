@@ -26,6 +26,10 @@ using kernel_location_uptr =
 			lttng::memory::create_deleter_class<lttng_kernel_probe_location,
 							    lttng_kernel_probe_location_destroy>>;
 
+using notification_uptr = std::unique_ptr<
+	lttng_notification,
+	lttng::memory::create_deleter_class<lttng_notification, lttng_notification_destroy>>;
+
 } /* namespace lttng */
 
 #endif /* LTTNG_COMMON_CTL_MEMORY_HPP */
