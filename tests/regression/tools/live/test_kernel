@@ -46,6 +46,7 @@ check_skip_kernel_test &&
 }
 
 modprobe lttng-test
+tap_disable
 
 start_lttng_sessiond_notap
 start_lttng_relayd_notap "-o $TRACE_PATH"

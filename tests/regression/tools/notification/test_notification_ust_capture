@@ -31,6 +31,7 @@ function test_basic_error_path
 	wait $APP_PID 2> /dev/null
 }
 
+tap_disable
 start_lttng_sessiond_notap
 
 test_basic_error_path

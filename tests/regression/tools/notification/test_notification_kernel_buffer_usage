@@ -70,6 +70,8 @@ check_skip_kernel_test &&
 	exit 0
 }
 
+tap_disable
+
 validate_lttng_modules_present
 
 modprobe lttng-test

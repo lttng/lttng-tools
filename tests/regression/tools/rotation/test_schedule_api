@@ -17,6 +17,7 @@ source $TESTDIR/utils/utils.sh
 print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond_notap
+tap_disable
 
 create_lttng_session_notap $SESSION_NAME $TRACE_PATH
 

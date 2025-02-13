@@ -26,7 +26,9 @@ NR_USEC_WAIT=5
 DIR=$(readlink -f $TESTDIR)
 
 source $TESTDIR/utils/utils.sh
+
 start_lttng_sessiond_notap
+tap_disable
 
 create_lttng_session_notap $SESSION_NAME $SESSION_OUTPUT_PATH
 

@@ -54,20 +54,33 @@ function test_buffer_usage_notification
 
 	ust_event_generator "$GEN_UST_EVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" &
 	APP_PID=$!
+	diag "Started generator pid $APP_PID"
 
+	while pgrep notification ; do
+		diag "WARNING: notification already running"
+		kill $(pgrep notification)
+		sleep 1
+	done
+	diag "$CURDIR/notification 2 LTTNG_DOMAIN_UST $APP_PID $TESTAPP_STATE_PATH $SESSION_NAME $CHANNEL_NAME ${consumerd_pipe[@]}"
 	"$CURDIR/notification" 2 LTTNG_DOMAIN_UST $APP_PID "$TESTAPP_STATE_PATH" \
-		$SESSION_NAME $CHANNEL_NAME "${consumerd_pipe[@]}"
+			       $SESSION_NAME $CHANNEL_NAME "${consumerd_pipe[@]}"
 
 	destroy_lttng_session_notap $SESSION_NAME
 
 	# On ungraceful kill the app is cleaned up via the full_cleanup call
 	# Suppress kill message
 	kill -SIGUSR2 $APP_PID
+	diag "About to wait on PID $APP_PID"
 	wait $APP_PID 2> /dev/null
+	diag "Wait done"
 
 	# Just in case cleanup
 	rm -rf "$TRACE_PATH"
+	diag "Test done"
 }
+
+# Avoid spurious messages about exiting before the test output anything on cleanup
+tap_disable
 
 LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
 start_lttng_sessiond_notap

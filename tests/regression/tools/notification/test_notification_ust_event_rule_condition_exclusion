@@ -30,6 +30,7 @@ function test_event_rule_condition_exclusion_notification
 	wait $APP_PID 2> /dev/null
 }
 
+tap_disable
 start_lttng_sessiond_notap
 
 test_event_rule_condition_exclusion_notification

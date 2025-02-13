@@ -38,6 +38,7 @@ check_skip_kernel_test &&
 }
 
 validate_lttng_modules_present
+tap_disable
 
 start_lttng_sessiond_notap
 

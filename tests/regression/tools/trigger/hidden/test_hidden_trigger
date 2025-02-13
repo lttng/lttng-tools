@@ -18,6 +18,7 @@ HIDDEN_TRIGGER_BIN="$CURDIR/hidden_trigger"
 # MUST set TESTDIR before calling those functions
 
 start_lttng_sessiond_notap
+tap_disable
 
 $HIDDEN_TRIGGER_BIN "$TRACE_PATH"
 

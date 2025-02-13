@@ -37,6 +37,7 @@ check_skip_kernel_test &&
 }
 
 validate_lttng_modules_present
+tap_disable
 
 modprobe lttng-test
 

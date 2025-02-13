@@ -26,6 +26,7 @@ DIR=$(readlink -f $TESTDIR)
 source $TESTDIR/utils/utils.sh
 
 echo "$TEST_DESC"
+tap_disable
 
 function setup_live_tracing()
 {

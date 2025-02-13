@@ -11,6 +11,7 @@ source $TESTDIR/utils/utils.sh
 
 # Try to launch a sessiond before invoking the python test script
 start_lttng_sessiond_notap
+tap_disable
 
 python3 ${CURDIR}/test_linking.py
 
