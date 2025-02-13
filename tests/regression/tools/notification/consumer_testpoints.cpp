@@ -26,8 +26,6 @@ using lttng_consumer_get_type_func = enum lttng_consumer_type (*)();
 static lttng_consumer_get_type_func lttng_consumer_get_type;
 
 int lttng_opt_verbose;
-int lttng_opt_mi;
-int lttng_opt_quiet;
 
 static void __attribute__((destructor)) pause_pipe_fini()
 {
@@ -54,6 +52,12 @@ int __testpoint_consumerd_thread_data(void)
 {
 	int ret = 0;
 	const char *pause_pipe_path_prefix, *domain;
+
+	/*
+	 * lttng_opt_verbose does not refer to the same one as loaded in the consumerd.
+	 * For the debug mode for this TU, as it's only used in testing.
+	 */
+	lttng_opt_verbose = 3;
 
 	pause_pipe_path_prefix = lttng_secure_getenv("CONSUMER_PAUSE_PIPE_PATH");
 	if (!pause_pipe_path_prefix) {
