@@ -27,6 +27,7 @@ PLAN:
   plan_no_plan
   plan_skip_all [REASON]
   plan_tests NB_TESTS
+  tap_disable
 
 TEST:
   ok RESULT [NAME]
@@ -102,6 +103,9 @@ unset opt set_u
 # Used to call _cleanup on shell exit
 trap _exit EXIT
 
+tap_disable() {
+  trap - EXIT
+}
 
 plan_no_plan(){
     (( _plan_set != 0 )) && "You tried to plan twice!"
@@ -112,6 +116,7 @@ plan_no_plan(){
 
     return 0
 }
+
 
 
 plan_skip_all(){
