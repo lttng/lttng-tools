@@ -31,9 +31,7 @@ static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
 static char *opt_output;
-static int opt_buffer_uid;
-static int opt_buffer_pid;
-static int opt_buffer_global;
+static int opt_buffer_type = -1;
 static struct {
 	bool set;
 	uint64_t interval;
@@ -65,6 +63,7 @@ enum {
 	OPT_TRACEFILE_SIZE,
 	OPT_TRACEFILE_COUNT,
 	OPT_BLOCKING_TIMEOUT,
+	OPT_BUFFER_OWNERSHIP,
 };
 
 static struct lttng_handle *handle;
@@ -87,9 +86,16 @@ static struct poptOption long_options[] = {
 	{ "read-timer", 0, POPT_ARG_INT, nullptr, OPT_READ_TIMER, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
-	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_uid, 1, nullptr, nullptr },
-	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_pid, 1, nullptr, nullptr },
-	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_global, 1, nullptr, nullptr },
+	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_PER_UID, nullptr, nullptr },
+	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_PER_PID, nullptr, nullptr },
+	{ "buffers-global",
+	  0,
+	  POPT_ARG_VAL,
+	  &opt_buffer_type,
+	  LTTNG_BUFFER_GLOBAL,
+	  nullptr,
+	  nullptr },
+	{ "buffer-ownership", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_OWNERSHIP, nullptr, nullptr },
 	{ "tracefile-size", 'C', POPT_ARG_INT, nullptr, OPT_TRACEFILE_SIZE, nullptr, nullptr },
 	{ "tracefile-count", 'W', POPT_ARG_INT, nullptr, OPT_TRACEFILE_COUNT, nullptr, nullptr },
 	{ "blocking-timeout", 0, POPT_ARG_INT, nullptr, OPT_BLOCKING_TIMEOUT, nullptr, nullptr },
@@ -209,23 +215,32 @@ static int enable_channel(char *session_name, char *channel_list)
 	/* Create lttng domain */
 	if (opt_kernel) {
 		dom.type = LTTNG_DOMAIN_KERNEL;
-		dom.buf_type = LTTNG_BUFFER_GLOBAL;
-		if (opt_buffer_uid || opt_buffer_pid) {
-			ERR("Buffer type not supported for domain -k");
+		switch (opt_buffer_type) {
+		case -1:
+			/* fall-through */
+		case LTTNG_BUFFER_GLOBAL:
+			dom.buf_type = LTTNG_BUFFER_GLOBAL;
+			break;
+		default:
+			ERR("Buffer type not supported for the kernel domain");
 			ret = CMD_ERROR;
 			goto error;
 		}
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
-		if (opt_buffer_pid) {
-			dom.buf_type = LTTNG_BUFFER_PER_PID;
-		} else {
-			if (opt_buffer_global) {
-				ERR("Buffer type not supported for domain -u");
-				ret = CMD_ERROR;
-				goto error;
-			}
+		switch (opt_buffer_type) {
+		case -1:
 			dom.buf_type = LTTNG_BUFFER_PER_UID;
+			break;
+		case LTTNG_BUFFER_PER_PID:
+			/* fall-through */
+		case LTTNG_BUFFER_PER_UID:
+			dom.buf_type = static_cast<enum lttng_buffer_type>(opt_buffer_type);
+			break;
+		default:
+			ERR("Buffer type not supported for the user space domain");
+			ret = CMD_ERROR;
+			goto error;
 		}
 	} else {
 		/* Checked by the caller. */
@@ -724,6 +739,25 @@ int cmd_enable_channels(int argc, const char **argv)
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
+		case OPT_BUFFER_OWNERSHIP:
+		{
+			const lttng::c_string_view ownership(poptGetOptArg(pc));
+
+			if (ownership == "user") {
+				opt_buffer_type = LTTNG_BUFFER_PER_UID;
+			} else if (ownership == "process") {
+				opt_buffer_type = LTTNG_BUFFER_PER_PID;
+			} else if (ownership == "system") {
+				opt_buffer_type = LTTNG_BUFFER_GLOBAL;
+			} else {
+				ERR_FMT("Wrong value for --buffer-ownership: `{}`: "
+					"expecting `user`, `process` or `system",
+					ownership.data());
+				ret = CMD_ERROR;
+				goto end;
+			}
+			break;
+		}
 		default:
 			ret = CMD_UNDEFINED;
 			goto end;
