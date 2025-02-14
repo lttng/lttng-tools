@@ -34,7 +34,7 @@ function enable_channel_per_pid ()
 	sess_name=$1
 	channel_name=$2
 
-	enable_ust_lttng_channel_ok $sess_name $channel_name --buffers-pid
+	enable_ust_lttng_channel_ok $sess_name $channel_name --buffer-ownership=process
 }
 
 # MUST set TESTDIR before calling those functions
@@ -269,7 +269,7 @@ function test_ust_local_size_uid ()
 
 	diag "Test ust local with size-based session rotation per-uid"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_ok $SESSION_NAME "channel0" --buffers-uid
+	enable_ust_lttng_channel_ok $SESSION_NAME "channel0" --buffer-ownership=user
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME
@@ -287,7 +287,7 @@ function test_ust_local_size_pid ()
 
 	diag "Test ust local with size-based session rotation per-pid"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_ok $SESSION_NAME "channel0" --buffers-pid
+	enable_ust_lttng_channel_ok $SESSION_NAME "channel0" --buffer-ownership=process
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 	lttng_enable_rotation_size_ok $SESSION_NAME $size_threshold
 	start_lttng_tracing_ok $SESSION_NAME

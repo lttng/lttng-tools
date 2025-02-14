@@ -139,7 +139,7 @@ function test_per_pid ()
 
 	diag "Test UST metadata env field in per-pid mode"
 	create_lttng_session_ok "$session_name"
-	enable_ust_lttng_channel_ok "$session_name" channel "--buffers-pid"
+	enable_ust_lttng_channel_ok "$session_name" channel "--buffer-ownership=process"
 	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME channel
 	start_lttng_tracing_ok "$session_name"
 

@@ -36,7 +36,7 @@ function enable_lttng_channel_size_limit ()
 	test_name+="$tracefile_size_limit bytes tracefile limit"
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
-	    -u $channel_name -s $sess_name --buffers-pid \
+	    -u $channel_name -s $sess_name --buffer-ownership=process \
 	    --subbuf-size=$PAGE_SIZE \
 	    -C $tracefile_size_limit >/dev/null 2>&1
 

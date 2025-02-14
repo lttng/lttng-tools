@@ -519,9 +519,9 @@ class _Session(lttngctl.Session):
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         buffer_sharing_policy = (
-            "--buffers-uid"
+            "--buffer-ownership=user"
             if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
-            else "--buffers-pid"
+            else "--buffer-ownership=process"
         )
         args = [
             "enable-channel",

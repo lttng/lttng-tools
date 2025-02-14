@@ -396,7 +396,7 @@ function enable_channel_per_uid_mmap_overwrite()
 	sess_name=$1
 	channel_name=$2
 
-	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel --buffers-uid -u "$channel_name" -s "$sess_name" --output mmap --overwrite >/dev/null 2>&1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-channel --buffer-ownership=user -u "$channel_name" -s "$sess_name" --output mmap --overwrite >/dev/null 2>&1
 	ok $? "Enable channel $channel_name per UID for session $sess_name"
 }
 
