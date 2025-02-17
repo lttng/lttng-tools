@@ -10,6 +10,7 @@ TEST_EXTENSIONS = .serial
 
 SERIAL_TESTS = tools/base-path/test_ust \
 	tools/channel/test_channel \
+	tools/channel/test_cli_legacy_channel_buffering_policies.py \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
 	tools/filtering/test_valid_filter \

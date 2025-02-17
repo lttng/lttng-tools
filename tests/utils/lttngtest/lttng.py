@@ -844,3 +844,19 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             )
 
         return ctl_sessions
+
+    def list_session_raw(self, session):
+        list_sessions_xml = self._run_cmd(
+            "list {}".format(session),
+            LTTngClient.CommandOutputFormat.MI_XML
+        )
+
+        root = xml.etree.ElementTree.fromstring(list_sessions_xml)
+        command_output = self._mi_get_in_element(root, "output")
+        sessions = self._mi_get_in_element(command_output, "sessions")
+
+        if len(sessions) > 0:
+            return sessions[0]
+        raise InvalidMI(
+            "Invalid empty 'sessions element in '{}".format(session_mi.tag)
+        )

@@ -2,8 +2,13 @@
 
 AM_CPPFLAGS += -I$(top_srcdir)/tests -I$(srcdir)
 
-noinst_SCRIPTS = test_channel
-EXTRA_DIST = test_channel
+noinst_SCRIPTS =					\
+	test_channel					\
+	test_cli_legacy_channel_buffering_policies.py
+
+EXTRA_DIST =						\
+	test_channel					\
+	test_cli_legacy_channel_buffering_policies.py
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
