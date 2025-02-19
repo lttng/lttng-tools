@@ -211,7 +211,7 @@ function lttng_pgrep ()
 	local full_command_no_argument
 	local command_basename
 
-	possible_pids=$($PGREP -f "$pattern")
+	possible_pids=$($PGREP -f "$pattern" -u "${UID}")
 	if [ -z "$possible_pids" ]; then
 		return 0
 	fi
@@ -486,6 +486,7 @@ function _lttng_modules_loaded_opt
 	local ret
 	local message="%d LTTng modules loaded, expected count "
 
+	check_skip_kernel_test 1 && return
 	if [[ "${fail_when_present}" -eq "1" ]] ; then
 		message+="= 0"
 	else
