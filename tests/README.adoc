@@ -129,6 +129,10 @@ Used to manually launch one during test troubleshooting
 | `LTTNG_TOOLS_DISABLE_KERNEL_TESTS`
 | Do not run kernel (LTTng-modules) tests
 | {ex} | {check} | {ex}
+
+| `LTTNG_TOOLS_TESTS_DISABLE_WARN_LTTNG_PROCESSES`
+| Skip checking for existing LTTng processes when starting `make check`
+| N/A | N/A | N/A
 |===
 
 == Test Anti-Patterns
