@@ -218,7 +218,7 @@ static int enable_channel(char *session_name, char *channel_list)
 			dom.buf_type = LTTNG_BUFFER_GLOBAL;
 			break;
 		default:
-			ERR("Buffer type not supported for the kernel domain");
+			ERR("Buffer ownership not supported for the kernel domain");
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -234,7 +234,7 @@ static int enable_channel(char *session_name, char *channel_list)
 			dom.buf_type = static_cast<enum lttng_buffer_type>(opt_buffer_type);
 			break;
 		default:
-			ERR("Buffer type not supported for the user space domain");
+			ERR("Buffer ownership not supported for the user space domain");
 			ret = CMD_ERROR;
 			goto error;
 		}

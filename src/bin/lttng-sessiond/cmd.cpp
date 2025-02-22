@@ -303,7 +303,7 @@ static int get_ust_runtime_stats(const ltt_session::locked_ref& session,
 		*discarded_events += uchan->per_pid_closed_app_discarded;
 		*lost_packets += uchan->per_pid_closed_app_lost;
 	} else {
-		ERR("Unsupported buffer type");
+		ERR("Unsupported buffer ownership");
 		abort();
 		ret = -1;
 		goto end;

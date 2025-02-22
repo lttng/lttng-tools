@@ -255,9 +255,9 @@ static const char *lttng_error_code_str(lttng_error_code code)
 	case LTTNG_ERR_URL_EXIST:
 		return "URL already exists";
 	case LTTNG_ERR_BUFFER_NOT_SUPPORTED:
-		return "Buffer type not supported";
+		return "Buffer ownership not supported";
 	case LTTNG_ERR_BUFFER_TYPE_MISMATCH:
-		return "Buffer type mismatch for session";
+		return "Buffer ownership mismatch for session";
 	case LTTNG_ERR_NOMEM:
 		return "Not enough memory";
 	case LTTNG_ERR_SNAPSHOT_OUTPUT_EXIST:
