@@ -18,6 +18,7 @@
 #include "ust-registry.hpp"
 
 #include <common/compat/directory-handle.hpp>
+#include <common/compat/getenv.hpp>
 #include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/format.hpp>
@@ -26,6 +27,7 @@
 #include <common/make-unique.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/runas.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/time.hpp>
 #include <common/urcu.hpp>
 
@@ -247,9 +249,17 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 	_app_tracer_version{ .major = major, .minor = minor },
 	_tracing_id{ tracing_id },
 	_clock{ lttng::make_unique<lsu::clock_class>() },
-	_metadata_generating_visitor{ lttng::make_unique<ls::tsdl::trace_class_visitor>(
-		abi,
-		[this](const std::string& fragment) { _append_metadata_fragment(fragment); }) },
+	_metadata_generating_visitor{ [&]() -> std::unique_ptr<trace::trace_class_visitor> {
+		auto func = [this](const std::string& fragment) {
+			_append_metadata_fragment(fragment);
+		};
+
+		if (c_string_view(lttng_secure_getenv("LTTNG_EXPERIMENTAL_FORCE_CTF_2")) == "1") {
+			return lttng::make_unique<ctf2::trace_class_visitor>(std::move(func));
+		}
+
+		return lttng::make_unique<tsdl::trace_class_visitor>(abi, std::move(func));
+	}() },
 	_packet_header{ _create_packet_header() }
 {
 	pthread_mutex_init(&_lock, nullptr);
