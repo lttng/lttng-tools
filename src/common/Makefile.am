@@ -180,12 +180,19 @@ libcommon_gpl_la_SOURCES = \
 	trace-chunk-registry.hpp \
 	uuid.cpp uuid.hpp
 
+noinst_LTLIBRARIES += libtracepoints.la
+libtracepoints_la_CPPFLAGS = $(AM_CPPFLAGS) \
+	-DLTTNG_LIB_DIR=\""$(lttnglibdir)"\"
+libtracepoints_la_LDFLAGS = $(AM_LDFLAGS) $(DL_LIBS)
+libtracepoints_la_SOURCES = \
+	tracepoints.hpp \
+	tracepoints.cpp
+
 libcommon_gpl_la_LIBADD = \
 	libcommon-lgpl.la \
 	libpath.la \
 	libhashtable-gpl.la \
 	libfd-tracker.la
-
 
 # libcompat
 noinst_LTLIBRARIES += libcompat.la
@@ -489,13 +496,11 @@ libstring_utils_la_SOURCES = \
 	string-utils/string-utils.cpp \
 	string-utils/string-utils.hpp
 
-
 # libsystemd-utils
 noinst_LTLIBRARIES += libsystemd-utils.la
 libsystemd_utils_la_SOURCES = \
 	systemd-utils.cpp \
 	systemd-utils.hpp
-
 
 noinst_PROGRAMS = filter-grammar-test
 filter_grammar_test_SOURCES = filter-grammar-test.cpp

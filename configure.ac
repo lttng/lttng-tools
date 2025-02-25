@@ -1310,6 +1310,9 @@ AC_SUBST(lttngeventruleincludedir)
 lttnglibexecdir="${libdir}/lttng/libexec"
 AC_SUBST(lttnglibexecdir)
 
+lttnglibdir="${libdir}/lttng"
+AC_SUBST(lttnglibdir)
+
 AC_ARG_VAR([CLANG2PY], [Path for clang2py])
 AS_IF([test "x$build_tests" = "xyes"], [
 	AC_PATH_PROG([CLANG2PY], [clang2py], [], [$PATH])
@@ -1342,7 +1345,6 @@ AS_IF([test "x$build_tests" = "xyes"], [
 ])
 AM_CONDITIONAL([HAVE_CLANG2PY], [test "$CLANG2PY" != "" && test "x$with_lttng_ust" = "xyes"])
 
-
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
@@ -1365,6 +1367,8 @@ AC_CONFIG_FILES([
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/lttng-ctl.pc
+	src/lib/tpp/Makefile
+	src/lib/tpp/lttng-tpp-common.pc
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
 	src/bin/lttng-sessiond/Makefile

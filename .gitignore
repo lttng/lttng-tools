@@ -70,6 +70,7 @@ compile_commands.json
 /src/bin/lttng-crash/lttng-crash
 /src/bin/lttng-relayd/lttng-relayd
 /src/lib/lttng-ctl/lttng-ctl.pc
+/src/lib/tpp/lttng-tpp-common.pc
 /src/common/filter-grammar-test
 /src/common/filter/filter-lexer.cpp
 /src/common/filter/filter-parser.cpp
