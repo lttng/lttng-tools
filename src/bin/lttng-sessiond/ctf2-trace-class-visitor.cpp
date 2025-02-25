@@ -9,6 +9,7 @@
 
 #include "bin/lttng-sessiond/field.hpp"
 #include "clock-class.hpp"
+#include "common/uuid.hpp"
 #include "ctf2-trace-class-visitor.hpp"
 
 #include <common/exception.hpp>
@@ -57,15 +58,6 @@ nljson::json json_fixed_length_bit_array_field_class_from_type(
 	return make_json_field_class(type_name, std::move(extra_json));
 }
 
-nljson::json json_int_field_class_from_type(const char *const type,
-					    const trace::integer_type& int_type,
-					    nljson::json&& extra_json = nljson::json::object())
-{
-	extra_json["preferred-display-base"] = (unsigned int) int_type.base_;
-	return json_fixed_length_bit_array_field_class_from_type(
-		type, int_type, std::move(extra_json));
-}
-
 const char *ctf_2_role_name(const trace::integer_type::role role) noexcept
 {
 	switch (role) {
@@ -94,14 +86,13 @@ const char *ctf_2_role_name(const trace::integer_type::role role) noexcept
 	}
 }
 
-nljson::json
-json_unsigned_int_field_class_from_type(const char *const type,
-					const trace::integer_type& int_type,
-					nljson::json&& extra_json = nljson::json::object())
+nljson::json json_int_field_class_from_type(const trace::integer_type& int_type,
+					    nljson::json&& extra_json = nljson::json::object())
 {
-	LTTNG_ASSERT(int_type.signedness_ == trace::integer_type::signedness::UNSIGNED);
+	extra_json["preferred-display-base"] = static_cast<unsigned int>(int_type.base_);
 
 	if (!int_type.roles_.empty()) {
+		LTTNG_ASSERT(int_type.signedness_ == trace::integer_type::signedness::UNSIGNED);
 		extra_json["roles"] = [&] {
 			auto json_roles = nljson::json::array();
 
@@ -113,39 +104,29 @@ json_unsigned_int_field_class_from_type(const char *const type,
 		}();
 	}
 
-	return json_int_field_class_from_type(type, int_type, std::move(extra_json));
+	return json_fixed_length_bit_array_field_class_from_type(
+		int_type.signedness_ == trace::integer_type::signedness::SIGNED ?
+			"fixed-length-signed-integer" :
+			"fixed-length-unsigned-integer",
+		int_type,
+		std::move(extra_json));
 }
 
 template <typename EnumerationType>
-nljson::json json_enumeration_field_class_mappings_from_type(const EnumerationType& type)
+nljson::json json_int_field_class_from_type(const EnumerationType& int_type)
 {
-	nljson::json json_mappings;
+	return json_int_field_class_from_type(
+		int_type, { { "mappings", [&] {
+				     nljson::json json_mappings;
 
-	for (const auto& mapping : *type.mappings_) {
-		json_mappings[mapping.name] = { { mapping.range.begin, mapping.range.end } };
-	}
+				     for (const auto& mapping : *int_type.mappings_) {
+					     json_mappings[mapping.name] = {
+						     { mapping.range.begin, mapping.range.end }
+					     };
+				     }
 
-	return json_mappings;
-}
-
-template <bool IsSigned, typename EnumerationType>
-nljson::json json_enumeration_field_class_from_type(const EnumerationType& enumeration_type)
-{
-	nljson::json json_enumeration_field_class{
-		{ "mappings", json_enumeration_field_class_mappings_from_type(enumeration_type) }
-	};
-
-	if (IsSigned) {
-		LTTNG_ASSERT(enumeration_type.roles_.empty());
-		return json_int_field_class_from_type("fixed-length-signed-enumeration",
-						      enumeration_type,
-						      std::move(json_enumeration_field_class));
-	} else {
-		return json_unsigned_int_field_class_from_type(
-			"fixed-length-unsigned-enumeration",
-			enumeration_type,
-			std::move(json_enumeration_field_class));
-	}
+				     return json_mappings;
+			     }() } });
 }
 
 nljson::json json_field_class_from_type(const trace::type& type);
@@ -160,36 +141,37 @@ json_element_field_class_prop_from_array_type(const ArrayType& array_type)
 
 nljson::json json_field_location_from_obj(const trace::field_location& location)
 {
-	nljson::json location_array;
+	return {
+		{ "origin",
+		  [&] {
+			  switch (location.root_) {
+			  case trace::field_location::root::PACKET_HEADER:
+				  return "packet-header";
+			  case trace::field_location::root::PACKET_CONTEXT:
+				  return "packet-context";
+			  case trace::field_location::root::EVENT_RECORD_HEADER:
+				  return "event-record-header";
+			  case trace::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
+				  return "event-record-common-context";
+			  case trace::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
+				  return "event-record-specific-context";
+			  case trace::field_location::root::EVENT_RECORD_PAYLOAD:
+				  return "event-record-payload";
+			  default:
+				  abort();
+			  }
+		  }() },
+		{ "path",
+		  [&] {
+			  nljson::json location_array;
 
-	switch (location.root_) {
-	case trace::field_location::root::PACKET_HEADER:
-		location_array.push_back("packet-header");
-		break;
-	case trace::field_location::root::PACKET_CONTEXT:
-		location_array.push_back("packet-context");
-		break;
-	case trace::field_location::root::EVENT_RECORD_HEADER:
-		location_array.push_back("event-record-header");
-		break;
-	case trace::field_location::root::EVENT_RECORD_COMMON_CONTEXT:
-		location_array.push_back("event-record-common-context");
-		break;
-	case trace::field_location::root::EVENT_RECORD_SPECIFIC_CONTEXT:
-		location_array.push_back("event-record-specific-context");
-		break;
-	case trace::field_location::root::EVENT_RECORD_PAYLOAD:
-		location_array.push_back("event-record-payload");
-		break;
-	default:
-		abort();
-	}
+			  for (auto& elem : location.elements_) {
+				  location_array.emplace_back(elem);
+			  }
 
-	for (auto& elem : location.elements_) {
-		location_array.emplace_back(elem);
-	}
-
-	return location_array;
+			  return location_array;
+		  }() },
+	};
 }
 
 template <typename Type>
@@ -237,11 +219,7 @@ private:
 
 	void visit(const trace::integer_type& type) override
 	{
-		_json_field_class = json_int_field_class_from_type(
-			type.signedness_ == trace::integer_type::signedness::SIGNED ?
-				"fixed-length-signed-integer" :
-				"fixed-length-unsigned-integer",
-			type);
+		_json_field_class = json_int_field_class_from_type(type);
 	}
 
 	void visit(const trace::floating_point_type& type) override
@@ -252,12 +230,12 @@ private:
 
 	void visit(const trace::signed_enumeration_type& type) override
 	{
-		_json_field_class = json_enumeration_field_class_from_type<true>(type);
+		_json_field_class = json_int_field_class_from_type(type);
 	}
 
 	void visit(const trace::unsigned_enumeration_type& type) override
 	{
-		_json_field_class = json_enumeration_field_class_from_type<false>(type);
+		_json_field_class = json_int_field_class_from_type(type);
 	}
 
 	void visit(const trace::static_length_array_type& type) override
@@ -475,9 +453,10 @@ private:
 	nljson::json _json_env;
 };
 
-nljson::json::object_t::value_type make_json_id_prop(const uint64_t id)
+template <typename IdType>
+nljson::json::object_t::value_type make_json_id_prop(IdType&& id)
 {
-	return std::make_pair("id", id);
+	return std::make_pair("id", std::forward<IdType>(id));
 }
 
 } /* namespace */
@@ -511,16 +490,17 @@ void trace_class_visitor::visit(const trace::clock_class& clock_class)
 {
 	_append_metadata_fragment("clock-class", [&] {
 		nljson::json json_fragment{
+			make_json_id_prop(clock_class.name),
 			make_json_name_prop(clock_class.name),
 			{ "description", clock_class.description },
 			{ "frequency", clock_class.frequency },
-			{ "offset",
+			{ "offset-from-origin",
 			  { { "seconds", clock_class.offset / clock_class.frequency },
 			    { "cycles", clock_class.offset % clock_class.frequency } } },
 		};
 
 		if (clock_class.uuid) {
-			json_fragment["uuid"] = *clock_class.uuid;
+			json_fragment["uid"] = lttng::utils::uuid_to_str(*clock_class.uuid);
 		}
 
 		return json_fragment;
@@ -535,7 +515,7 @@ void trace_class_visitor::visit(const trace::stream_class& stream_class)
 		};
 
 		if (stream_class.default_clock_class_name) {
-			json_fragment["default-clock-class-name"] =
+			json_fragment["default-clock-class-id"] =
 				*stream_class.default_clock_class_name;
 		}
 
