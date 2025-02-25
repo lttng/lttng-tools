@@ -459,6 +459,18 @@ nljson::json::object_t::value_type make_json_id_prop(IdType&& id)
 	return std::make_pair("id", std::forward<IdType>(id));
 }
 
+const char *const ctf_2_lttng_ns = "lttng.org,2009";
+
+nljson::json::object_t::value_type make_json_ns_prop()
+{
+	return std::make_pair("namespace", ctf_2_lttng_ns);
+}
+
+nljson::json::object_t::value_type make_json_uid_prop(const lttng_uuid& uuid)
+{
+	return std::make_pair("uid", lttng::utils::uuid_to_str(uuid));
+}
+
 } /* namespace */
 
 void trace_class_visitor::visit(const trace::trace_class& trace_class)
@@ -478,6 +490,9 @@ void trace_class_visitor::visit(const trace::trace_class& trace_class)
 				  trace_class.accept(environment_visitor);
 				  return environment_visitor.release_json_environment();
 			  }() },
+			make_json_ns_prop(),
+			make_json_name_prop(""),
+			make_json_uid_prop(trace_class.uuid),
 		};
 
 		add_scope_field_class_prop_to_json_fragment_from_type(
@@ -494,6 +509,7 @@ void trace_class_visitor::visit(const trace::clock_class& clock_class)
 			make_json_name_prop(clock_class.name),
 			{ "description", clock_class.description },
 			{ "frequency", clock_class.frequency },
+			{ "origin", "unix-epoch" },
 			{ "offset-from-origin",
 			  { { "seconds", clock_class.offset / clock_class.frequency },
 			    { "cycles", clock_class.offset % clock_class.frequency } } },
@@ -544,6 +560,58 @@ void trace_class_visitor::visit(const trace::event_class& event_class)
 
 		add_scope_field_class_prop_to_json_fragment_from_type(
 			json_fragment, "payload-field-class", event_class.payload.get());
+
+		if (event_class.model_emf_uri || event_class.log_level <= 14) {
+			json_fragment["attributes"][ctf_2_lttng_ns] = [&] {
+				nljson::json json_attr;
+
+				if (event_class.model_emf_uri) {
+					json_attr["emf-uri"] = *event_class.model_emf_uri;
+				}
+
+				if (event_class.log_level <= 14) {
+					json_attr["log-level"] = [&] {
+						switch (event_class.log_level) {
+						case 0:
+							return "emergency";
+						case 1:
+							return "alert";
+						case 2:
+							return "critical";
+						case 3:
+							return "error";
+						case 4:
+							return "warning";
+						case 5:
+							return "notice";
+						case 6:
+							return "info";
+						case 7:
+							return "debug:system";
+						case 8:
+							return "debug:program";
+						case 9:
+							return "debug:process";
+						case 10:
+							return "debug:module";
+						case 11:
+							return "debug:unit";
+						case 12:
+							return "debug:function";
+						case 13:
+							return "debug:line";
+						case 14:
+							return "debug";
+						default:
+							abort();
+						}
+					}();
+				}
+
+				return json_attr;
+			}();
+		}
+
 		return json_fragment;
 	}());
 }
