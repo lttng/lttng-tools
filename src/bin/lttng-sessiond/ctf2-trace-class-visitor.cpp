@@ -153,6 +153,16 @@ private:
 		_fragment["field-class"] = field_type_visitor.move_fragment();
 	}
 
+	void visit(const lst::bit_array_type& type) final
+	{
+		_fragment["type"] = "fixed-length-bit-array";
+		_fragment["length"] = type.size;
+		_fragment["byte-order"] = type.byte_order == lst::byte_order::BIG_ENDIAN_ ?
+			"big-endian" :
+			"little-endian";
+		_fragment["alignment"] = type.alignment;
+	}
+
 	void visit(const lst::integer_type& type) final
 	{
 		_fragment["type"] = type.signedness_ == lst::integer_type::signedness::SIGNED ?
@@ -179,7 +189,7 @@ private:
 	void visit(const lst::floating_point_type& type) final
 	{
 		_fragment["type"] = "fixed-length-floating-point-number";
-		_fragment["length"] = type.exponent_digits + type.mantissa_digits;
+		_fragment["length"] = type.size;
 		_fragment["byte-order"] = type.byte_order == lst::byte_order::BIG_ENDIAN_ ?
 			"big-endian" :
 			"little-endian";

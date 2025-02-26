@@ -172,8 +172,7 @@ create_floating_point_type_from_ust_ctl_fields(const lttng_ust_ctl_field *curren
 		return lttng::make_unique<const lst::floating_point_type>(
 			current->type.u._float.alignment,
 			byte_order,
-			current->type.u._float.exp_dig,
-			current->type.u._float.mant_dig);
+			current->type.u._float.exp_dig + current->type.u._float.mant_dig);
 	} catch (lttng::invalid_argument_error& ex) {
 		LTTNG_THROW_PROTOCOL_ERROR(lttng::format(
 			"Invalid floating point attribute in {}: {}", typeid(*current), ex.what()));

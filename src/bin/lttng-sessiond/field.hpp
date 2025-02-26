@@ -104,7 +104,22 @@ private:
 	type::cuptr _type;
 };
 
-class integer_type : public type {
+class bit_array_type : public type {
+public:
+	bit_array_type(unsigned int alignment, byte_order byte_order, unsigned int size);
+
+	type::cuptr copy() const override;
+
+	void accept(type_visitor& visitor) const override;
+
+	const enum byte_order byte_order;
+	const unsigned int size;
+
+protected:
+	bool _is_equal(const type& other) const noexcept override;
+};
+
+class integer_type : public bit_array_type {
 public:
 	enum class signedness {
 		SIGNED,
@@ -137,7 +152,7 @@ public:
 	using roles = std::vector<role>;
 
 	integer_type(unsigned int alignment,
-		     byte_order byte_order,
+		     enum byte_order byte_order,
 		     unsigned int size,
 		     signedness signedness,
 		     base base,
@@ -147,8 +162,6 @@ public:
 
 	void accept(type_visitor& visitor) const override;
 
-	const enum byte_order byte_order;
-	const unsigned int size;
 	/*
 	 * signedness and base are suffixed with '_' to work-around a bug in older
 	 * GCCs (before 6) that do not recognize hidden/shadowed enumeration as valid
@@ -162,20 +175,13 @@ protected:
 	bool _is_equal(const type& other) const noexcept override;
 };
 
-class floating_point_type : public type {
+class floating_point_type : public bit_array_type {
 public:
-	floating_point_type(unsigned int alignment,
-			    byte_order byte_order,
-			    unsigned int exponent_digits,
-			    unsigned int mantissa_digits);
+	floating_point_type(unsigned int alignment, enum byte_order byte_order, unsigned int size);
 
 	type::cuptr copy() const final;
 
 	void accept(type_visitor& visitor) const final;
-
-	const enum byte_order byte_order;
-	const unsigned int exponent_digits;
-	const unsigned int mantissa_digits;
 
 private:
 	bool _is_equal(const type& other) const noexcept final;
@@ -560,6 +566,7 @@ public:
 	type_visitor& operator=(const type_visitor&) = delete;
 	type_visitor& operator=(type_visitor&&) = delete;
 
+	virtual void visit(const bit_array_type& type) = 0;
 	virtual void visit(const integer_type& type) = 0;
 	virtual void visit(const floating_point_type& type) = 0;
 	virtual void visit(const signed_enumeration_type& type) = 0;

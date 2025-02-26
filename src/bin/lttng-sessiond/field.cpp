@@ -96,15 +96,37 @@ const lst::type& lst::field::get_type() const
 	}
 }
 
+lst::bit_array_type::bit_array_type(unsigned int in_alignment,
+				    enum lst::byte_order in_byte_order,
+				    unsigned int in_size) :
+	type(in_alignment), byte_order{ in_byte_order }, size{ in_size }
+{
+}
+
+lst::type::cuptr lst::bit_array_type::copy() const
+{
+	return lttng::make_unique<bit_array_type>(alignment, byte_order, size);
+}
+
+bool lst::bit_array_type::_is_equal(const type& base_other) const noexcept
+{
+	const auto& other = static_cast<decltype(*this)&>(base_other);
+
+	return this->byte_order == other.byte_order && this->size == other.size;
+}
+
+void lst::bit_array_type::accept(type_visitor& visitor) const
+{
+	visitor.visit(*this);
+}
+
 lst::integer_type::integer_type(unsigned int in_alignment,
 				enum lst::byte_order in_byte_order,
 				unsigned int in_size,
 				enum lst::integer_type::signedness in_signedness,
 				enum lst::integer_type::base in_base,
 				roles in_roles) :
-	type(in_alignment),
-	byte_order{ in_byte_order },
-	size{ in_size },
+	bit_array_type(in_alignment, in_byte_order, in_size),
 	signedness_{ in_signedness },
 	base_{ in_base },
 	roles_{ std::move(in_roles) }
@@ -142,34 +164,20 @@ lst::byte_order lst::type::reverse_byte_order(lst::byte_order byte_order) noexce
 
 lst::floating_point_type::floating_point_type(unsigned int in_alignment,
 					      lst::byte_order in_byte_order,
-					      unsigned int in_exponent_digits,
-					      unsigned int in_mantissa_digits) :
-	type(in_alignment),
-	byte_order(in_byte_order),
-	exponent_digits{ in_exponent_digits },
-	mantissa_digits(in_mantissa_digits)
+					      unsigned int in_size) :
+	bit_array_type(in_alignment, in_byte_order, in_size)
 {
-	/* Allowed (exponent, mantissa) pairs. */
-	static const std::set<std::pair<unsigned int, unsigned int>> allowed_pairs{
-		{ 5, 11 }, /* binary16 */
-		{ 8, 24 }, /* binary32 */
-		{ 11, 53 }, /* binary64 */
-		{ 15, 113 }, /* binary128 */
-	};
-
-	if (allowed_pairs.find({ exponent_digits, mantissa_digits }) != allowed_pairs.end()) {
-		/* mantissa and exponent digits is a valid pair. */
+	if (in_size == 32 || in_size == 64) {
 		return;
 	}
 
-	LTTNG_THROW_INVALID_ARGUMENT_ERROR(lttng::format(
-		"Invalid exponent/mantissa values provided while creating {}", typeid(*this)));
+	LTTNG_THROW_INVALID_ARGUMENT_ERROR(
+		lttng::format("Invalid size value provided while creating {}", typeid(*this)));
 }
 
 lst::type::cuptr lst::floating_point_type::copy() const
 {
-	return lttng::make_unique<floating_point_type>(
-		alignment, byte_order, exponent_digits, mantissa_digits);
+	return lttng::make_unique<floating_point_type>(alignment, byte_order, size);
 }
 
 void lst::floating_point_type::accept(type_visitor& visitor) const
@@ -181,9 +189,7 @@ bool lst::floating_point_type::_is_equal(const type& base_other) const noexcept
 {
 	const auto& other = static_cast<decltype(*this)&>(base_other);
 
-	return this->byte_order == other.byte_order &&
-		this->exponent_digits == other.exponent_digits &&
-		this->mantissa_digits == other.mantissa_digits;
+	return this->byte_order == other.byte_order && this->size == other.size;
 }
 
 lst::enumeration_type::enumeration_type(unsigned int in_alignment,

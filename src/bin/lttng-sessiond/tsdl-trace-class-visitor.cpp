@@ -158,6 +158,10 @@ private:
 		_type_overrides.type(field.get_type()).accept(*this);
 	}
 
+	void visit(const lst::bit_array_type& type __attribute__((unused))) final
+	{
+	}
+
 	void visit(const lst::integer_type& type __attribute__((unused))) final
 	{
 	}
@@ -414,6 +418,12 @@ private:
 		_description += ";";
 	}
 
+	void visit(const lst::bit_array_type&) final
+	{
+		/* Unsupported */
+		abort();
+	}
+
 	void visit(const lst::integer_type& type) final
 	{
 		_description += "integer { ";
@@ -500,8 +510,8 @@ private:
 		_description += lttng::format(
 			"floating_point {{ align = {alignment}; mant_dig = {mantissa_digits}; exp_dig = {exponent_digits};",
 			fmt::arg("alignment", type.alignment),
-			fmt::arg("mantissa_digits", type.mantissa_digits),
-			fmt::arg("exponent_digits", type.exponent_digits));
+			fmt::arg("mantissa_digits", type.size == 32 ? 24 : 53),
+			fmt::arg("exponent_digits", type.size == 32 ? 8 : 11));
 
 		/* Defaults to the trace's native byte order. */
 		if (type.byte_order != _trace_abi.byte_order) {
