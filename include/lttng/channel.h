@@ -18,6 +18,11 @@
 extern "C" {
 #endif
 
+enum lttng_channel_allocation_policy {
+	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU = 0,
+	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
+};
+
 /*
  * Tracer channel attributes. For both kernel and user-space.
  *
@@ -675,6 +680,16 @@ channels.
 */
 LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel *channel,
 							   int64_t timeout);
+
+/* TODO:eepp:doc Document this */
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_channel_get_allocation_policy(const struct lttng_channel *chan,
+				    enum lttng_channel_allocation_policy *policy);
+
+/* TODO:eepp:doc Document this */
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_channel_set_allocation_policy(struct lttng_channel *chan,
+				    enum lttng_channel_allocation_policy policy);
 
 #ifdef __cplusplus
 }

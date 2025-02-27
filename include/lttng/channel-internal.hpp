@@ -16,6 +16,8 @@ struct lttng_channel_extended {
 	uint64_t lost_packets;
 	uint64_t monitor_timer_interval;
 	int64_t blocking_timeout;
+	/* enum lttng_channel_allocation_policy */
+	uint8_t allocation_policy;
 } LTTNG_PACKED;
 
 struct lttng_channel_comm {
@@ -39,6 +41,8 @@ struct lttng_channel_comm {
 	uint64_t lost_packets;
 	uint64_t monitor_timer_interval;
 	int64_t blocking_timeout;
+	/* enum lttng_channel_allocation_policy */
+	uint8_t allocation_policy;
 } LTTNG_PACKED;
 
 struct lttng_channel *lttng_channel_create_internal();

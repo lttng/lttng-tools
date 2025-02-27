@@ -2735,6 +2735,54 @@ end:
 	return ret;
 }
 
+enum lttng_error_code
+lttng_channel_get_allocation_policy(const struct lttng_channel *chan,
+				    enum lttng_channel_allocation_policy *policy)
+{
+	if (!chan || !policy) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	const auto extended =
+		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
+	if (!extended) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	*policy = static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
+
+	return LTTNG_OK;
+}
+
+enum lttng_error_code
+lttng_channel_set_allocation_policy(struct lttng_channel *chan,
+				    enum lttng_channel_allocation_policy policy)
+{
+	if (!chan) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	const auto extended = static_cast<struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
+	if (!extended) {
+		return LTTNG_ERR_INVALID;
+	}
+
+	switch (policy) {
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+		/* Fallthrough */
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+		break;
+	default:
+		return LTTNG_ERR_INVALID;
+	}
+
+	extended->allocation_policy = static_cast<uint8_t>(policy);
+
+	return LTTNG_OK;
+}
+
 /*
  * Check if session daemon is alive.
  *
