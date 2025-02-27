@@ -169,6 +169,7 @@ static void copy_channel_attr_to_ustctl(struct lttng_ust_ctl_consumer_channel_at
 	attr->read_timer_interval = uattr->read_timer_interval;
 	attr->output = (lttng_ust_abi_output) uattr->output;
 	attr->blocking_timeout = uattr->u.s.blocking_timeout;
+	attr->type = static_cast<enum lttng_ust_abi_chan_type>(uattr->u.s.type);
 }
 
 /*
@@ -496,8 +497,12 @@ static void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan
 	uint64_t discarded = 0, lost = 0;
 	struct ltt_ust_channel *uchan;
 
-	if (ua_chan->attr.type != LTTNG_UST_ABI_CHAN_PER_CPU) {
+	/* Metadata channels do not have discarded counters. */
+	switch (ua_chan->attr.type) {
+	case LTTNG_UST_ABI_CHAN_METADATA:
 		return;
+	default:
+		break;
 	}
 
 	const lttng::urcu::read_lock_guard read_lock;
@@ -1215,6 +1220,9 @@ alloc_ust_app_channel(const char *name,
 
 	CDS_INIT_LIST_HEAD(&ua_chan->streams.head);
 
+	/* By default, the channel is a per cpu channel. */
+	ua_chan->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+
 	/* Copy attributes */
 	if (attr) {
 		/* Translate from lttng_ust_channel to lttng_ust_ctl_consumer_channel_attr. */
@@ -1225,9 +1233,8 @@ alloc_ust_app_channel(const char *name,
 		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
 		ua_chan->attr.output = (lttng_ust_abi_output) attr->output;
 		ua_chan->attr.blocking_timeout = attr->u.s.blocking_timeout;
+		ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(attr->u.s.type);
 	}
-	/* By default, the channel is a per cpu channel. */
-	ua_chan->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
 
@@ -2404,6 +2411,7 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 	ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
 	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
 	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
+	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);
 
 	/*
 	 * Note that the attribute channel type is not set since the channel on the
@@ -4998,7 +5006,11 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		 * configuration.
 		 */
 		ret = ust_app_channel_allocate(
-			ua_sess, uchan, LTTNG_UST_ABI_CHAN_PER_CPU, usess, &ua_chan);
+			ua_sess,
+			uchan,
+			static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type),
+			usess,
+			&ua_chan);
 		if (ret < 0) {
 			goto error;
 		}

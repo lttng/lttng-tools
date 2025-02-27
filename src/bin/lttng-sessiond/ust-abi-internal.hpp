@@ -57,6 +57,7 @@ enum lttng_ust_abi_output {
 enum lttng_ust_abi_chan_type {
 	LTTNG_UST_ABI_CHAN_PER_CPU = 0,
 	LTTNG_UST_ABI_CHAN_METADATA = 1,
+	LTTNG_UST_ABI_CHAN_GLOBAL = 2,
 };
 
 struct lttng_ust_abi_tracer_version {
@@ -332,6 +333,7 @@ struct lttng_ust_abi_channel_attr {
 	union {
 		struct {
 			int64_t blocking_timeout; /* Blocking timeout (usec) */
+			int8_t type; /* enum lttng_ust_abi_chan_type */
 		} s;
 		char padding[LTTNG_UST_ABI_CHANNEL_ATTR_PADDING];
 	} u;

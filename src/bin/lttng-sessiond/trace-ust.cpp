@@ -286,6 +286,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
 	lus->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
 	lus->metadata_attr.output = LTTNG_UST_ABI_MMAP;
+	lus->metadata_attr.u.s.type = LTTNG_UST_ABI_CHAN_METADATA;
 
 	/*
 	 * Default buffer type. This can be changed through an enable channel
@@ -351,7 +352,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc = zmalloc<ltt_ust_channel>();
 	if (luc == nullptr) {
 		PERROR("ltt_ust_channel zmalloc");
-		goto error;
+		return nullptr;
 	}
 
 	luc->domain = domain;
@@ -367,6 +368,24 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval;
 	luc->attr.u.s.blocking_timeout =
 		((struct lttng_channel_extended *) chan->attr.extended.ptr)->blocking_timeout;
+
+	const auto extended =
+		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
+	const auto allocation_policy =
+		static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
+
+	switch (allocation_policy) {
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+		break;
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_GLOBAL;
+		break;
+	default:
+		PERROR("Unknown channel stream allocation");
+		goto error;
+	}
 
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
@@ -401,8 +420,11 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 
 	DBG2("Trace UST channel %s created", luc->name);
 
-error:
 	return luc;
+
+error:
+	free(luc);
+	return nullptr;
 }
 
 /*

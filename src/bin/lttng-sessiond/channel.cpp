@@ -63,6 +63,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 		chan->attr.live_timer_interval = DEFAULT_KERNEL_CHANNEL_LIVE_TIMER;
 		extended_attr->blocking_timeout = DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
 		extended_attr->monitor_timer_interval = DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
+		extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 		break;
 	case LTTNG_DOMAIN_JUL:
 		channel_name = DEFAULT_JUL_CHANNEL_NAME;
@@ -89,6 +90,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -101,6 +103,7 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 			extended_attr->blocking_timeout = DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
+			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 			break;
 		}
 		break;
@@ -204,10 +207,22 @@ static int channel_validate(struct lttng_channel *attr)
 
 static int channel_validate_kernel(struct lttng_channel *attr)
 {
+	const auto extended =
+		static_cast<const struct lttng_channel_extended *>(attr->attr.extended.ptr);
+
 	/* Kernel channels do not support blocking timeout. */
-	if (((struct lttng_channel_extended *) attr->attr.extended.ptr)->blocking_timeout) {
+	if (extended->blocking_timeout) {
 		return -1;
 	}
+
+	/* Kernel channels only support per-cpu allocation. */
+	switch (extended->allocation_policy) {
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+		break;
+	default:
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -582,6 +597,27 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 
 	lttng_channel_set_blocking_timeout(channel, uchan->attr.u.s.blocking_timeout);
 	lttng_channel_set_monitor_timer_interval(channel, uchan->monitor_timer_interval);
+
+	enum lttng_channel_allocation_policy allocation_policy;
+
+	switch (uchan->attr.u.s.type) {
+	case LTTNG_UST_ABI_CHAN_PER_CPU:
+		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
+		break;
+	case LTTNG_UST_ABI_CHAN_GLOBAL:
+		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL;
+		break;
+	default:
+		ERR_FMT("Unknown channel allocation policy: {}",
+			static_cast<int>(uchan->attr.u.s.type));
+		goto end;
+	}
+
+	if (lttng_channel_set_allocation_policy(channel, allocation_policy) != LTTNG_OK) {
+		ERR("Failed to set channel allocation policy "
+		    "during conversion from ltt_ust_channel to lttng_channel");
+		goto end;
+	}
 
 	ret = channel;
 	channel = nullptr;
