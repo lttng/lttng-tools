@@ -258,12 +258,12 @@ void health_register(struct health_app *ha, int type)
 	LTTNG_ASSERT(type < ha->nr_types);
 
 	/* Init TLS state. */
-	uatomic_set(&health_state.last, 0);
-	uatomic_set(&health_state.last_time.tv_sec, 0);
-	uatomic_set(&health_state.last_time.tv_nsec, 0);
-	uatomic_set(&health_state.current, 0);
-	uatomic_set(&health_state.flags, (health_flags) 0);
-	uatomic_set(&health_state.type, type);
+	health_state.last = 0;
+	health_state.last_time.tv_sec = 0;
+	health_state.last_time.tv_nsec = 0;
+	health_state.current = 0;
+	health_state.flags = (health_flags) 0;
+	health_state.type = type;
 
 	/* Add it to the global TLS state list. */
 	state_lock(ha);
