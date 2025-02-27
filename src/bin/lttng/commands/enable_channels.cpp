@@ -9,6 +9,7 @@
 #include "../command.hpp"
 #include "../utils.hpp"
 
+#include <common/defaults.hpp>
 #include <common/lttng-kernel.hpp>
 #include <common/mi-lttng.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
@@ -32,6 +33,8 @@ static char *opt_session_name;
 static int opt_userspace;
 static char *opt_output;
 static int opt_buffer_type = -1;
+static enum lttng_channel_allocation_policy opt_allocation_policy =
+	DEFAULT_CHANNEL_ALLOCATION_POLICY;
 static struct {
 	bool set;
 	uint64_t interval;
@@ -64,6 +67,7 @@ enum {
 	OPT_TRACEFILE_COUNT,
 	OPT_BLOCKING_TIMEOUT,
 	OPT_BUFFER_OWNERSHIP,
+	OPT_BUFFER_ALLOCATION,
 };
 
 static struct lttng_handle *handle;
@@ -91,6 +95,7 @@ static struct poptOption long_options[] = {
 	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_PER_PID, nullptr, nullptr },
 	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_GLOBAL, nullptr, nullptr },
 	{ "buffer-ownership", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_OWNERSHIP, nullptr, nullptr },
+	{ "buffer-allocation", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_ALLOCATION, nullptr, nullptr },
 	{ "tracefile-size", 'C', POPT_ARG_INT, nullptr, OPT_TRACEFILE_SIZE, nullptr, nullptr },
 	{ "tracefile-count", 'W', POPT_ARG_INT, nullptr, OPT_TRACEFILE_COUNT, nullptr, nullptr },
 	{ "blocking-timeout", 0, POPT_ARG_INT, nullptr, OPT_BLOCKING_TIMEOUT, nullptr, nullptr },
@@ -169,7 +174,14 @@ static bool system_has_memory_for_channel_buffers(char *session_name,
 
 	total_buffer_size_needed_per_cpu = channel->attr.num_subbuf * channel->attr.subbuf_size;
 	try {
-		ncpus = utils_get_cpu_count();
+		switch (opt_allocation_policy) {
+		case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+			ncpus = utils_get_cpu_count();
+			break;
+		case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+			ncpus = 1;
+			break;
+		}
 	} catch (const std::exception& ex) {
 		ERR_FMT("Exception when getting CPU count: {}", ex.what());
 		return false;
@@ -219,6 +231,14 @@ static int enable_channel(char *session_name, char *channel_list)
 			break;
 		default:
 			ERR("Buffer ownership not supported for the kernel domain");
+			ret = CMD_ERROR;
+			goto error;
+		}
+		switch (opt_allocation_policy) {
+		case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+			break;
+		default:
+			ERR_FMT("Buffer allocation not supported for the kernel domain");
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -339,6 +359,13 @@ static int enable_channel(char *session_name, char *channel_list)
 				error = 1;
 				goto error;
 			}
+		}
+
+		ret = lttng_channel_set_allocation_policy(channel, opt_allocation_policy);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to set the channel's buffer allocation");
+			error = 1;
+			goto error;
 		}
 
 		if (!system_has_memory_for_channel_buffers(
@@ -749,6 +776,23 @@ int cmd_enable_channels(int argc, const char **argv)
 				ERR_FMT("Wrong value for --buffer-ownership: `{}`: "
 					"expecting `user`, `process` or `system",
 					ownership.data());
+				ret = CMD_ERROR;
+				goto end;
+			}
+			break;
+		}
+		case OPT_BUFFER_ALLOCATION:
+		{
+			const lttng::c_string_view policy(poptGetOptArg(pc));
+
+			if (policy == "per-cpu") {
+				opt_allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
+			} else if (policy == "per-channel") {
+				opt_allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL;
+			} else {
+				ERR_FMT("Wrong value for --buffer-allocation: `{}`: "
+					"expecting `per-cpu` or `per-channel`",
+					policy.data());
 				ret = CMD_ERROR;
 				goto end;
 			}
