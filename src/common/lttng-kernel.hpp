@@ -329,6 +329,14 @@ struct lttng_kernel_abi_session_creation_time {
 	char iso8601[LTTNG_KERNEL_ABI_SESSION_CREATION_TIME_ISO8601_LEN];
 } LTTNG_PACKED;
 
+/*
+ * kernel session output format
+ */
+enum lttng_kernel_abi_output_format {
+	LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_1_8 = 1,
+	LTTNG_KERNEL_ABI_OUTPUT_FORMAT_CTF_2 = 2,
+};
+
 enum lttng_kernel_abi_tracker_type {
 	LTTNG_KERNEL_ABI_TRACKER_UNKNOWN = -1,
 

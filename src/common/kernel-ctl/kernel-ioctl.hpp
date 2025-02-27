@@ -137,6 +137,7 @@
 #define LTTNG_KERNEL_ABI_SESSION_SET_NAME  _IOW(0xF6, 0x5D, struct lttng_kernel_abi_session_name)
 #define LTTNG_KERNEL_ABI_SESSION_SET_CREATION_TIME \
 	_IOW(0xF6, 0x5E, struct lttng_kernel_abi_session_creation_time)
+#define LTTNG_KERNEL_ABI_SESSION_SET_OUTPUT_FORMAT _IOW(0xF6, 0x5F, uint32_t)
 
 /* Channel FD ioctl */
 #define LTTNG_KERNEL_ABI_STREAM	      _IO(0xF6, 0x62)

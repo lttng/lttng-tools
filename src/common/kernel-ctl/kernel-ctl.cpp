@@ -362,6 +362,11 @@ end:
 	return ret;
 }
 
+int kernctl_session_set_output_format(int fd, enum lttng_kernel_abi_output_format format)
+{
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_SET_OUTPUT_FORMAT, format);
+}
+
 int kernctl_create_stream(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_ABI_OLD_STREAM, LTTNG_KERNEL_ABI_STREAM);

@@ -16,6 +16,7 @@
 #include "ust-field-quirks.hpp"
 #include "ust-registry-session.hpp"
 #include "ust-registry.hpp"
+#include "utils.hpp"
 
 #include <common/compat/directory-handle.hpp>
 #include <common/compat/getenv.hpp>
@@ -254,7 +255,7 @@ lsu::registry_session::registry_session(const struct lst::abi& in_abi,
 			_append_metadata_fragment(fragment);
 		};
 
-		if (c_string_view(lttng_secure_getenv("LTTNG_EXPERIMENTAL_FORCE_CTF_2")) == "1") {
+		if (force_experimental_ctf_2()) {
 			return lttng::make_unique<ctf2::trace_class_visitor>(std::move(func));
 		}
 

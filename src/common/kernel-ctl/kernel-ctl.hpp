@@ -80,6 +80,7 @@ int kernctl_session_regenerate_metadata(int fd);
 int kernctl_session_regenerate_statedump(int fd);
 int kernctl_session_set_name(int fd, const char *name);
 int kernctl_session_set_creation_time(int fd, time_t time);
+int kernctl_session_set_output_format(int fd, enum lttng_kernel_abi_output_format format);
 
 /* Buffer operations */
 

@@ -11,6 +11,7 @@
 #include "snapshot.hpp"
 #include "utils.hpp"
 
+#include <common/compat/getenv.hpp>
 #include <common/error.hpp>
 
 #include <stdlib.h>
@@ -73,4 +74,9 @@ const char *consumer_output_get_base_path(const struct consumer_output *output)
 {
 	return output->type == CONSUMER_DST_LOCAL ? output->dst.session_root_path :
 						    output->dst.net.base_dir;
+}
+
+bool force_experimental_ctf_2()
+{
+	return lttng::c_string_view(lttng_secure_getenv("LTTNG_EXPERIMENTAL_FORCE_CTF_2")) == "1";
 }
