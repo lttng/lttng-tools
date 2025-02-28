@@ -59,6 +59,11 @@ public:
 		OVERWRITE_OLDEST_PACKET,
 	};
 
+	enum class buffer_allocation_policy_t {
+		PER_CPU,
+		PER_CHANNEL,
+	};
+
 	enum class buffer_consumption_backend_t {
 		MMAP,
 		SPLICE,

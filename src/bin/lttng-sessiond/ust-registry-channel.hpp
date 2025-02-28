@@ -35,6 +35,8 @@ public:
 		std::function<void(const registry_channel&, const registry_event&)>;
 
 	registry_channel(uint32_t channel_id,
+			 lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+				 buffer_allocation_policy,
 			 const lttng::sessiond::trace::abi& trace_abi,
 			 std::string default_clock_class_name,
 			 registered_listener_fn channel_registered_listener,

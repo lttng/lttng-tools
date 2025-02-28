@@ -5,6 +5,7 @@
  *
  */
 
+#include "recording-channel-configuration.hpp"
 #include "ust-app.hpp"
 #include "ust-registry-channel.hpp"
 #include "ust-registry-event.hpp"
@@ -242,7 +243,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 	return lttng::make_unique<lst::structure_type>(0, std::move(event_header_fields));
 }
 
-lst::type::cuptr create_packet_context(const lst::abi& trace_abi)
+lst::type::cuptr
+create_packet_context(const lst::abi& trace_abi,
+		      lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+			      buffer_allocation_policy)
 {
 	lst::structure_type::fields packet_context_fields;
 
@@ -319,14 +323,36 @@ lst::type::cuptr create_packet_context(const lst::abi& trace_abi)
 				{ lst::integer_type::role::
 					  DISCARDED_EVENT_RECORD_COUNTER_SNAPSHOT }))));
 
-	/* uint32_t cpu_id */
-	packet_context_fields.emplace_back(lttng::make_unique<lst::field>(
-		"cpu_id",
-		lttng::make_unique<lst::integer_type>(trace_abi.uint32_t_alignment,
-						      trace_abi.byte_order,
-						      32,
-						      lst::integer_type::signedness::UNSIGNED,
-						      lst::integer_type::base::DECIMAL)));
+	/*
+	 * The cpu_id is part of the packet header with channels of that use a
+	 * 'per-cpu' allocation policy. Essentially, this is free because the
+	 * CPU ID needs to be determined in the fast-path of the instrumentation
+	 * to select the stream to write to. Might as well add it to the packet
+	 * header and interpret it as an implicit context.
+	 *
+	 * However, the story is different for other types of channel. For
+	 * example, channel with the per-channel allocation policy have a single
+	 * stream of data, that is a single buffer shared by all CPUs.
+	 * Therefore, to avoid extra time overhead in the instrumentation
+	 * fast-path, and to avoid wasted space in the buffer, the CPU ID is not
+	 * queried and emitted by default for these channels.
+	 *
+	 * For the reasons mentioned above, it is important, for correct decoding
+	 * of the trace, to not expect this field in the packet header if the
+	 * channel is not of the type 'per-cpu'.
+	 */
+	if (buffer_allocation_policy ==
+	    lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t::PER_CPU) {
+		/* uint32_t cpu_id */
+		packet_context_fields.emplace_back(lttng::make_unique<lst::field>(
+			"cpu_id",
+			lttng::make_unique<lst::integer_type>(
+				trace_abi.uint32_t_alignment,
+				trace_abi.byte_order,
+				32,
+				lst::integer_type::signedness::UNSIGNED,
+				lst::integer_type::base::DECIMAL)));
+	}
 
 	return lttng::make_unique<lst::structure_type>(0, std::move(packet_context_fields));
 }
@@ -334,6 +360,8 @@ lst::type::cuptr create_packet_context(const lst::abi& trace_abi)
 
 lsu::registry_channel::registry_channel(
 	unsigned int channel_id,
+	lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+		buffer_allocation_policy,
 	const lst::abi& trace_abi,
 	std::string in_default_clock_class_name,
 	lsu::registry_channel::registered_listener_fn channel_registered_listener,
@@ -364,7 +392,7 @@ lsu::registry_channel::registry_channel(
 	 */
 	_node = {};
 
-	_packet_context = create_packet_context(trace_abi);
+	_packet_context = create_packet_context(trace_abi, buffer_allocation_policy);
 	_event_header = create_event_header(trace_abi, header_type_);
 }
 

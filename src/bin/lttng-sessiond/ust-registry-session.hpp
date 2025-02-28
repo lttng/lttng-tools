@@ -46,7 +46,10 @@ public:
 	virtual lttng_buffer_type buffering_scheme() const noexcept = 0;
 	locked_ref lock() noexcept;
 
-	void add_channel(uint64_t channel_key);
+	void
+	add_channel(uint64_t channel_key,
+		    lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+			    buffer_allocation_policy);
 
 	/* A channel is protected by its parent registry session's lock. */
 	lttng::sessiond::ust::registry_channel& channel(uint64_t channel_key) const;

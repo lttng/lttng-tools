@@ -76,6 +76,23 @@ static pthread_mutex_t next_channel_key_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t _next_session_id;
 static pthread_mutex_t next_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static inline lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
+{
+	switch (type) {
+	case LTTNG_UST_ABI_CHAN_PER_CPU:
+		return lttng::sessiond::recording_channel_configuration::
+			buffer_allocation_policy_t::PER_CPU;
+	case LTTNG_UST_ABI_CHAN_METADATA:
+		/* fall-through  */
+	case LTTNG_UST_ABI_CHAN_GLOBAL:
+		return lttng::sessiond::recording_channel_configuration::
+			buffer_allocation_policy_t::PER_CHANNEL;
+	default:
+		abort();
+	}
+}
+
 /*
  * Return the session registry according to the buffer type of the given
  * session.
@@ -3283,7 +3300,9 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 
 	/* Create and add a channel registry to session. */
 	try {
-		reg_sess->reg.ust->add_channel(ua_chan->tracing_channel_id);
+		reg_sess->reg.ust->add_channel(
+			ua_chan->tracing_channel_id,
+			ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 	} catch (const std::exception& ex) {
 		ERR("Failed to add a channel registry to userspace registry session: %s",
 		    ex.what());
@@ -3589,7 +3608,8 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	/* Create and add a new channel registry to session. */
 	try {
-		registry->add_channel(ua_chan->key);
+		registry->add_channel(ua_chan->key,
+				      ust_channel_type_to_allocation_policy(ua_chan->attr.type));
 	} catch (const std::exception& ex) {
 		ERR("Error creating the UST channel \"%s\" registry instance: %s",
 		    ua_chan->name,

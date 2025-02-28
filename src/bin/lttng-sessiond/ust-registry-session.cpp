@@ -445,7 +445,10 @@ lsu::registry_session::locked_ref lsu::registry_session::lock() noexcept
 /*
  * Initialize registry with default values.
  */
-void lsu::registry_session::add_channel(uint64_t key)
+void lsu::registry_session::add_channel(
+	uint64_t key,
+	lttng::sessiond::recording_channel_configuration::buffer_allocation_policy_t
+		buffer_allocation_policy)
 {
 	const lttng::pthread::lock_guard session_lock_guard(_lock);
 
@@ -461,6 +464,7 @@ void lsu::registry_session::add_channel(uint64_t key)
 
 	auto chan = new lsu::registry_channel(
 		_get_next_channel_id(),
+		buffer_allocation_policy,
 		abi,
 		_clock->name,
 		/* Registered channel listener. */
