@@ -378,10 +378,21 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 	     attr->output,
 	     attr->type);
 
-	if (channel->type == CONSUMER_CHANNEL_TYPE_METADATA)
+	switch (channel->type) {
+	case CONSUMER_CHANNEL_TYPE_METADATA:
+		/* Fallthrough */
+	case CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL:
 		nr_stream_fds = 1;
-	else
+		break;
+	case CONSUMER_CHANNEL_TYPE_DATA_PER_CPU:
 		nr_stream_fds = lttng_ust_ctl_get_nr_stream_per_channel();
+		break;
+	default:
+		ERR("Invalid channel type");
+		ret = -1;
+		goto error_channel_type;
+	}
+
 	stream_fds = calloc<int>(nr_stream_fds);
 	if (!stream_fds) {
 		ret = -1;
@@ -442,6 +453,7 @@ error_open:
 	}
 	free(stream_fds);
 error_alloc:
+error_channel_type:
 	return ret;
 }
 
@@ -1533,8 +1545,17 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Translate and save channel type. */
 		switch (msg.u.ask_channel.type) {
 		case LTTNG_UST_ABI_CHAN_PER_CPU:
-			channel->type = CONSUMER_CHANNEL_TYPE_DATA;
-			attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+			/* fall-through */
+		case LTTNG_UST_ABI_CHAN_GLOBAL:
+
+			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_PER_CPU) {
+				channel->type = CONSUMER_CHANNEL_TYPE_DATA_PER_CPU;
+				attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
+			} else {
+				channel->type = CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL;
+				attr.type = LTTNG_UST_ABI_CHAN_GLOBAL;
+			}
+
 			/*
 			 * Set refcount to 1 for owner. Below, we will
 			 * pass ownership to the

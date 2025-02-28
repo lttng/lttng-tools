@@ -1128,8 +1128,16 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&the_consumer_data.lock);
 
-	if (channel->wait_fd != -1 && channel->type == CONSUMER_CHANNEL_TYPE_DATA) {
-		notify_channel_pipe(ctx, channel, -1, CONSUMER_CHANNEL_ADD);
+	if (channel->wait_fd != -1) {
+		switch (channel->type) {
+		case CONSUMER_CHANNEL_TYPE_DATA_PER_CPU:
+			/* Fallthrough */
+		case CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL:
+			notify_channel_pipe(ctx, channel, -1, CONSUMER_CHANNEL_ADD);
+			break;
+		default:
+			break;
+		}
 	}
 
 	return 0;

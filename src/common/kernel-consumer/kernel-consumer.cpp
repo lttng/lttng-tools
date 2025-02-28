@@ -528,10 +528,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Translate and save channel type. */
 		switch (msg.u.channel.type) {
-		case CONSUMER_CHANNEL_TYPE_DATA:
+		case CONSUMER_CHANNEL_TYPE_DATA_PER_CPU:
+			/* Fallthrough */
 		case CONSUMER_CHANNEL_TYPE_METADATA:
 			new_channel->type = (consumer_channel_type) msg.u.channel.type;
 			break;
+		case CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL:
+			ERR("Invalid channel type for kernel consumer");
+			goto end_nosignal;
 		default:
 			abort();
 			goto end_nosignal;
@@ -549,7 +553,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		} else {
 			ret_add_channel = consumer_add_channel(new_channel, ctx);
 		}
-		if (msg.u.channel.type == CONSUMER_CHANNEL_TYPE_DATA && !ret_add_channel) {
+		if (msg.u.channel.type == CONSUMER_CHANNEL_TYPE_DATA_PER_CPU && !ret_add_channel) {
 			int monitor_start_ret;
 
 			DBG("Consumer starting monitor timer");
