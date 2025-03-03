@@ -187,6 +187,27 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 		goto end;
 	}
 
+	const char *allocation_policy_str;
+
+	switch (attr->u.s.type) {
+	case LTTNG_UST_ABI_CHAN_PER_CPU:
+		allocation_policy_str = config_element_channel_allocation_policy_per_cpu;
+		break;
+	case LTTNG_UST_ABI_CHAN_GLOBAL:
+		allocation_policy_str = config_element_channel_allocation_policy_per_channel;
+		break;
+	default:
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(
+		writer, config_element_channel_allocation_policy, allocation_policy_str);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
 	/*
 	 * Fetch the monitor timer which is located in the parent of
 	 * lttng_ust_channel_attr

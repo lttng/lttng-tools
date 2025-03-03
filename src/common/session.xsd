@@ -28,6 +28,14 @@ elementFormDefault="qualified" version="2.12">
 	</xs:restriction>
 </xs:simpleType>
 
+<!-- Maps to enum lttng_channel_allocation_policy -->
+<xs:simpleType name="channel_allocation_policy_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="PER_CPU" />
+		<xs:enumeration value="PER_CHANNEL" />
+	</xs:restriction>
+</xs:simpleType>
+
 <!--
 Maps to the range allowed for blocking timeout: -1 (block forever),
 0 (do not block), positive integer value (blocking time in usec) limited
@@ -225,6 +233,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:element name="events" type="event_list_type" minOccurs="0"/>
 		<xs:element name="contexts" type="event_context_list_type" minOccurs="0"/>
 		<xs:element name="monitor_timer_interval" type="uint64_type" default="0" minOccurs="0"/>  <!-- usec -->
+		<xs:element name="allocation_policy" type="channel_allocation_policy_type" default="PER_CPU" minOccurs="0"/>
 	</xs:all>
 </xs:complexType>
 

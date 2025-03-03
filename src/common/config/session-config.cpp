@@ -2233,6 +2233,33 @@ static int process_channel_attr_node(xmlNodePtr attr_node,
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			goto end;
 		}
+	} else if (!strcmp((const char *) attr_node->name,
+			   config_element_channel_allocation_policy)) {
+		/* Channel allocation policy */
+
+		const lttng::c_string_view content(
+			reinterpret_cast<const char *>(xmlNodeGetContent(attr_node)));
+		if (!content) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		if (content == config_element_channel_allocation_policy_per_cpu) {
+			ret = lttng_channel_set_allocation_policy(
+				channel, LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU);
+		} else if (content == config_element_channel_allocation_policy_per_channel) {
+			ret = lttng_channel_set_allocation_policy(
+				channel, LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL);
+		} else {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		}
+
+		free(const_cast<char *>(content.data()));
+
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
 	} else if (!strcmp((const char *) attr_node->name, config_element_events)) {
 		/* events */
 		*events_node = attr_node;
