@@ -634,6 +634,9 @@ static int trace_ust_context_type_event_to_ust(enum lttng_event_context_type typ
 	case LTTNG_EVENT_CONTEXT_VSGID:
 		utype = LTTNG_UST_ABI_CONTEXT_VSGID;
 		break;
+	case LTTNG_EVENT_CONTEXT_CPU_ID:
+		utype = LTTNG_UST_ABI_CONTEXT_CPU_ID;
+		break;
 	default:
 		utype = -1;
 		break;

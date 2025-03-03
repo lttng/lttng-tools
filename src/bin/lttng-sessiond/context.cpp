@@ -321,6 +321,8 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_VSGID:
 		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VSGID;
 		break;
+	case LTTNG_EVENT_CONTEXT_CPU_ID:
+		/* fall through */
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 		goto error;

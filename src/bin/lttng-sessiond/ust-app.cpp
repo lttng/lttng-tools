@@ -5007,6 +5007,44 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	return ret;
 }
 
+/*
+ * Determine if the ust-context 'uctx' is redundant for the ust-channel 'uchan'.
+ *
+ * This is used to avoid sending a context registration to UST. However, it
+ * should not be used for filtering context to be added internally by the
+ * session daemon.
+ *
+ * The rationale here is that some contexts are provided implicitly by some
+ * channels.
+ *
+ * LTTNG_UST_ABI_CHAN_PER_CPU:
+ *   LTTNG_UST_ABI_CONTEXT_CPU_ID:
+ *     The CPU ID is implicitly provided in the packer header.
+ */
+static bool is_context_redundant(const struct ltt_ust_channel *uchan,
+				 const struct ltt_ust_context *uctx)
+{
+	const enum lttng_ust_abi_object_type chan_type =
+		static_cast<enum lttng_ust_abi_object_type>(uchan->attr.u.s.type);
+
+	const enum lttng_ust_abi_context_type context_type = uctx->ctx.ctx;
+
+	switch (chan_type) {
+	case LTTNG_UST_ABI_CHAN_PER_CPU:
+		switch (context_type) {
+		case LTTNG_UST_ABI_CONTEXT_CPU_ID:
+			return true;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 /* The ua_sess lock must be held by the caller.  */
 static int ust_app_channel_create(struct ltt_ust_session *usess,
 				  const ust_app_session::locked_weak_ref& ua_sess,
@@ -5044,6 +5082,9 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 		for (auto *uctx :
 		     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
 			     uchan->ctx_list)) {
+			if (is_context_redundant(uchan, uctx)) {
+				continue;
+			}
 			ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
 			if (ret) {
 				goto error;
@@ -6249,6 +6290,10 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 
 	LTTNG_ASSERT(usess->active);
+
+	if (is_context_redundant(uchan, uctx)) {
+		return 0;
+	}
 
 	/* Iterate on all apps. */
 	for (auto *app :

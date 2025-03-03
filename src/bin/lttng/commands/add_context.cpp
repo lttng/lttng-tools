@@ -99,6 +99,7 @@ enum context_type {
 	CONTEXT_VEGID = 39,
 	CONTEXT_VSGID = 40,
 	CONTEXT_TIME_NS = 41,
+	CONTEXT_CPU_ID = 42,
 };
 
 /*
@@ -314,6 +315,7 @@ const struct ctx_opts {
 	{ (char *) "vgid", CONTEXT_VGID },
 	{ (char *) "vegid", CONTEXT_VEGID },
 	{ (char *) "vsgid", CONTEXT_VSGID },
+	{ (char *) "cpu_id", CONTEXT_CPU_ID },
 
 	/* Perf options */
 

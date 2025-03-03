@@ -662,6 +662,12 @@ data type and the name of the resulting context field in traces.
     <td>#LTTNG_DOMAIN_KERNEL and #LTTNG_DOMAIN_UST
     <td>Integer
     <td><code>vsgid</code>
+   <tr>
+     <td>#LTTNG_EVENT_CONTEXT_CPU_ID
+     <td>CPU ID
+     <td>#LTTNG_DOMAIN_KERNEL and #LTTNG_DOMAIN_UST
+     <td>Integer
+     <td><code>cpu_id</code>
 </table>
 
 @ingroup api_channel
@@ -793,6 +799,9 @@ enum lttng_event_context_type {
 
 	/// Boot and monotonic clock namespace ID.
 	LTTNG_EVENT_CONTEXT_TIME_NS = 41,
+
+	/// CPU ID
+	LTTNG_EVENT_CONTEXT_CPU_ID = 42,
 };
 
 /*!
