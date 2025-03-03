@@ -11,6 +11,9 @@
 extern const char *const config_element_all;
 LTTNG_EXPORT extern const char *const config_element_channel;
 LTTNG_EXPORT extern const char *const config_element_channels;
+extern const char *const config_element_channel_allocation_policy;
+extern const char *const config_element_channel_allocation_policy_per_channel;
+extern const char *const config_element_channel_allocation_policy_per_cpu;
 LTTNG_EXPORT extern const char *const config_element_domain;
 LTTNG_EXPORT extern const char *const config_element_domains;
 LTTNG_EXPORT extern const char *const config_element_event;

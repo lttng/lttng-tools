@@ -1103,12 +1103,26 @@ end:
 	return ret;
 }
 
+static const char *allocation_policy_to_string(enum lttng_channel_allocation_policy policy)
+{
+	switch (policy) {
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+		return config_element_channel_allocation_policy_per_cpu;
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+		return config_element_channel_allocation_policy_per_channel;
+	default:
+		return nullptr;
+	}
+}
+
 int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *attr)
 {
 	int ret = 0;
 	struct lttng_channel *chan = caa_container_of(attr, struct lttng_channel, attr);
 	uint64_t discarded_events, lost_packets, monitor_timer_interval;
 	int64_t blocking_timeout;
+	enum lttng_channel_allocation_policy allocation_policy;
+	const char *allocation_policy_str;
 
 	LTTNG_ASSERT(attr);
 
@@ -1129,6 +1143,17 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 
 	ret = lttng_channel_get_blocking_timeout(chan, &blocking_timeout);
 	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_channel_get_allocation_policy(chan, &allocation_policy);
+	if (ret != LTTNG_OK) {
+		goto end;
+	}
+
+	allocation_policy_str = allocation_policy_to_string(allocation_policy);
+	if (!allocation_policy_str) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
@@ -1185,6 +1210,13 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	/* Retry timeout in usec */
 	ret = mi_lttng_writer_write_element_signed_int(
 		writer, config_element_blocking_timeout, blocking_timeout);
+	if (ret) {
+		goto end;
+	}
+
+	/* Allocation policy */
+	ret = mi_lttng_writer_write_element_string(
+		writer, config_element_channel_allocation_policy, allocation_policy_str);
 	if (ret) {
 		goto end;
 	}

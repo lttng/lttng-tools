@@ -73,6 +73,9 @@ const char *const config_xml_false = "false";
 
 const char *const config_element_channel = "channel";
 const char *const config_element_channels = "channels";
+const char *const config_element_channel_allocation_policy = "allocation_policy";
+const char *const config_element_channel_allocation_policy_per_channel = "PER_CHANNEL";
+const char *const config_element_channel_allocation_policy_per_cpu = "PER_CPU";
 const char *const config_element_domain = "domain";
 const char *const config_element_domains = "domains";
 const char *const config_element_event = "event";
