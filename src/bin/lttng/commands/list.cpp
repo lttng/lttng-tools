@@ -1276,6 +1276,18 @@ static void print_timer(const char *timer_name, uint32_t space_count, int64_t va
 	}
 }
 
+static const char *allocation_policy_to_pretty_string(enum lttng_channel_allocation_policy policy)
+{
+	switch (policy) {
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
+		return "per-cpu";
+	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
+		return "per-channel";
+	default:
+		return "unknown";
+	}
+}
+
 /*
  * Pretty print channel
  */
@@ -1284,6 +1296,7 @@ static void print_channel(struct lttng_channel *channel)
 	int ret;
 	uint64_t discarded_events, lost_packets, monitor_timer_interval;
 	int64_t blocking_timeout;
+	enum lttng_channel_allocation_policy allocation_policy;
 
 	ret = lttng_channel_get_discarded_event_count(channel, &discarded_events);
 	if (ret) {
@@ -1309,41 +1322,52 @@ static void print_channel(struct lttng_channel *channel)
 		return;
 	}
 
+	ret = lttng_channel_get_allocation_policy(channel, &allocation_policy);
+	if (ret != LTTNG_OK) {
+		ERR("Failed to retrieve allocation policy of channel");
+		return;
+	}
+
+	const auto allocation_policy_str = allocation_policy_to_pretty_string(allocation_policy);
+
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 	MSG("%sAttributes:", indent4);
-	MSG("%sEvent-loss mode:  %s", indent6, channel->attr.overwrite ? "overwrite" : "discard");
-	MSG("%sSub-buffer size:  %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
-	MSG("%sSub-buffer count: %" PRIu64, indent6, channel->attr.num_subbuf);
+	MSG("%sAllocation policy: %s", indent6, allocation_policy_str);
+	MSG("%sEvent-loss mode:   %s", indent6, channel->attr.overwrite ? "overwrite" : "discard");
+	MSG("%sSub-buffer size:   %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
+	MSG("%sSub-buffer count:  %" PRIu64, indent6, channel->attr.num_subbuf);
 
-	print_timer("Switch timer", 5, channel->attr.switch_timer_interval);
-	print_timer("Read timer", 7, channel->attr.read_timer_interval);
-	print_timer("Monitor timer", 4, monitor_timer_interval);
+	print_timer("Switch timer", 6, channel->attr.switch_timer_interval);
+	print_timer("Read timer", 8, channel->attr.read_timer_interval);
+	print_timer("Monitor timer", 5, monitor_timer_interval);
 
 	if (!channel->attr.overwrite) {
 		if (blocking_timeout == -1) {
-			MSG("%sBlocking timeout: infinite", indent6);
+			MSG("%sBlocking timeout:  infinite", indent6);
 		} else {
-			MSG("%sBlocking timeout: %" PRId64 " %s",
+			MSG("%sBlocking timeout:  %" PRId64 " %s",
 			    indent6,
 			    blocking_timeout,
 			    USEC_UNIT);
 		}
 	}
 
-	MSG("%sTrace file count: %" PRIu64 " per stream",
+	MSG("%sTrace file count:  %" PRIu64 " per stream",
 	    indent6,
 	    channel->attr.tracefile_count == 0 ? 1 : channel->attr.tracefile_count);
 	if (channel->attr.tracefile_size != 0) {
-		MSG("%sTrace file size:  %" PRIu64 " bytes", indent6, channel->attr.tracefile_size);
+		MSG("%sTrace file size:   %" PRIu64 " bytes",
+		    indent6,
+		    channel->attr.tracefile_size);
 	} else {
-		MSG("%sTrace file size:  %s", indent6, "unlimited");
+		MSG("%sTrace file size:   %s", indent6, "unlimited");
 	}
 	switch (channel->attr.output) {
 	case LTTNG_EVENT_SPLICE:
-		MSG("%sOutput mode:      splice", indent6);
+		MSG("%sOutput mode:       splice", indent6);
 		break;
 	case LTTNG_EVENT_MMAP:
-		MSG("%sOutput mode:      mmap", indent6);
+		MSG("%sOutput mode:       mmap", indent6);
 		break;
 	}
 
