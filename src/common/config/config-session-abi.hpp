@@ -180,5 +180,6 @@ extern const char *const config_event_context_vsuid;
 extern const char *const config_event_context_vgid;
 extern const char *const config_event_context_vegid;
 extern const char *const config_event_context_vsgid;
+extern const char *const config_event_context_cpu_id;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */

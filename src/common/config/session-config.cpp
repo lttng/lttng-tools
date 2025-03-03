@@ -250,6 +250,7 @@ const char *const config_event_context_vsuid = "VSUID";
 const char *const config_event_context_vgid = "VGID";
 const char *const config_event_context_vegid = "VEGID";
 const char *const config_event_context_vsgid = "VSGID";
+const char *const config_event_context_cpu_id = "CPU_ID";
 
 enum process_event_node_phase {
 	CREATION = 0,

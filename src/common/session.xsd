@@ -198,6 +198,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:enumeration value="MIGRATABLE" />
 		<xs:enumeration value="CALLSTACK_USER" />
 		<xs:enumeration value="CALLSTACK_KERNEL" />
+		<xs:enumeration value="CPU_ID" />
 	</xs:restriction>
 </xs:simpleType>
 

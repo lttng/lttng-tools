@@ -139,6 +139,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="VGID" />
 			<xs:enumeration value="VEGID" />
 			<xs:enumeration value="VSGID" />
+			<xs:enumeration value="CPU_ID" />
 		</xs:restriction>
 	</xs:simpleType>
 

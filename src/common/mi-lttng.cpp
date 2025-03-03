@@ -623,6 +623,8 @@ static const char *mi_lttng_event_contexttype_string(enum lttng_event_context_ty
 		return config_event_context_vegid;
 	case LTTNG_EVENT_CONTEXT_VSGID:
 		return config_event_context_vsgid;
+	case LTTNG_EVENT_CONTEXT_CPU_ID:
+		return config_event_context_cpu_id;
 	default:
 		return nullptr;
 	}
