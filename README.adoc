@@ -255,6 +255,9 @@ Mailing list::
 IRC channel::
     irc://irc.oftc.net/lttng[`#lttng`] on the OFTC network
 
+Mastodon::
+    https://mastodon.social/@lttng[lttng]
+
 Bug tracker::
     https://bugs.lttng.org/projects/lttng-tools[{lt} bug tracker]
 

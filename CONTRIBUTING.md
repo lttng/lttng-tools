@@ -208,8 +208,8 @@ Keep in mind that reviewing patches is a time-consuming process and,
 as such, may not be done right away. The delays may be affected by the
 current release cycle phase and the complexity of the proposed changes.
 If you think your patch might have been forgotten, please mention it on
-the [`#lttng`](irc://irc.oftc.net/lttng) IRC channel rather than
-resubmitting.
+the [`#lttng`](irc://irc.oftc.net/lttng) IRC channel or
+[`@lttng` on Mastodon](https://mastodon.social/@lttng) rather than resubmitting.
 
 
 ## Release cycle

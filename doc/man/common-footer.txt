@@ -9,7 +9,7 @@ RESOURCES
 * https://lists.lttng.org/[Mailing list] for support and
   development: `lttng-dev@lists.lttng.org`
 * irc://irc.oftc.net/lttng[IRC channel]: `#lttng` on `irc.oftc.net`
-
+* https://mastodon.social/@lttng[Mastodon]
 
 COPYRIGHT
 ---------
