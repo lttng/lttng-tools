@@ -16,7 +16,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=75
+NUM_TESTS=78
 
 source $TESTDIR/utils/utils.sh
 
@@ -24,6 +24,13 @@ source $TESTDIR/utils/utils.sh
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+function get_channel_allocation_policy()
+{
+    local mi_path=$1
+    local channel_name=$2
+    "$XML_EXTRACT" $mi_path "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='$channel_name']/lttng:attributes/lttng:allocation_policy/text()"
+}
 
 function test_basic_load()
 {
@@ -80,6 +87,20 @@ function test_complex_load()
 	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_same_name_diff_llevel' and lttng:loglevel='TRACE_INFO']/lttng:enabled/text()")
 	test $mi_result = "true"
 	ok $?  "Enabled event with same name but different loglevel is in disabled state"
+
+	# Redo the listing to get all channels.
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list $sess > $mi_output_file
+	mi_result=$(get_channel_allocation_policy $mi_output_file "chan1")
+	test $mi_result = "PER_CPU"
+	ok $? "Loading default channel allocation policy expecting PER_CPU"
+
+	mi_result=$(get_channel_allocation_policy $mi_output_file "chan2")
+	test $mi_result = "PER_CPU"
+	ok $? "Loading channel allocation policy PER_CPU"
+
+	mi_result=$(get_channel_allocation_policy $mi_output_file "chan3")
+	test $mi_result = "PER_CHANNEL"
+	ok $? "Loading channel allocation policy PER_CHANNEL"
 
 	destroy_lttng_session_ok $sess
 

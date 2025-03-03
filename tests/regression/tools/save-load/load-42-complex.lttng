@@ -16,6 +16,7 @@
 						<switch_timer_interval>0</switch_timer_interval>
 						<read_timer_interval>200000</read_timer_interval>
 						<output_type>MMAP</output_type>
+						<allocation_policy>PER_CHANNEL</allocation_policy>
 						<tracefile_size>0</tracefile_size>
 						<tracefile_count>0</tracefile_count>
 						<live_timer_interval>1000000</live_timer_interval>
@@ -49,6 +50,7 @@
 						<switch_timer_interval>0</switch_timer_interval>
 						<read_timer_interval>0</read_timer_interval>
 						<output_type>MMAP</output_type>
+						<allocation_policy>PER_CPU</allocation_policy>
 						<tracefile_size>131072</tracefile_size>
 						<tracefile_count>14</tracefile_count>
 						<live_timer_interval>1000000</live_timer_interval>
