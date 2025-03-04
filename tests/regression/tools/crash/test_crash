@@ -23,7 +23,7 @@ OUTPUT_DIR=$(mktemp -d -t tmp.test_crash_shm.XXXXXX)
 
 LAST_APP_PID=
 
-NUM_TESTS=77
+NUM_TESTS=89
 
 source $TESTDIR/utils/utils.sh
 
@@ -40,21 +40,39 @@ bail_out_if_no_babeltrace
 function start_test_app()
 {
 	local tmp_file=$(mktemp -u -t "tmp.${FUNCNAME[0]}.XXXXXX")
+	local before_file=$(mktemp -u -t "tmp.${FUNCNAME[0]}.XXXXXX")
+	local track_pid="${1}"
+	local test_app_args=(
+		"${TESTAPP_BIN}"
+		-i "${NR_ITER}"
+		-w "${NR_USEC_WAIT}"
+		--sync-after-first-event "${tmp_file}"
+	)
+	if [ -n "${track_pid}" ]; then
+		test_app_args+=(
+			--sync-before-first-event "${before_file}"
+		)
+	fi
 
 	# Start application with a temporary file.
-	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &
+	"${test_app_args[@]}" &
 	ret=$?
 	LAST_APP_PID="${!}"
 	APPS_PID="${APPS_PID} ${!}"
 	ok $ret "Start application to trace"
 
+	if [ -n "${track_pid}" ]; then
+		lttng_track_ust_ok --session "${track_pid}" --vpid "${LAST_APP_PID}"
+		touch "${before_file}"
+	fi
+
 	# Wait for the application file to appear indicating that at least one
 	# tracepoint has been fired.
-	while [ ! -f "$tmp_file" ]; do
-		sleep 0.5
+	while [ ! -f "${tmp_file}" ]; do
+		sleep 0.1
 	done
 	diag "Removing test app temporary file $tmp_file"
-	rm -rf $tmp_file
+	rm -rf "${tmp_file}" "${before_file}"
 }
 
 function stop_test_apps()
@@ -101,7 +119,7 @@ function test_shm_path_per_pid()
 	start_lttng_sessiond
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=process"
-
+	lttng_untrack_ust_ok --session "${session_name}" --vpid --all
 	start_lttng_tracing_ok $session_name
 
 	diag "Shm: clean state"
@@ -113,7 +131,7 @@ function test_shm_path_per_pid()
 	# Start first test app
 	diag "Shm: check folder creation and structure"
 
-	start_test_app
+	start_test_app "${session_name}"
 	first_app_pid=$LAST_APP_PID
 	shm_session_path=$(find $shm_path -mindepth 1 -maxdepth 1)
 
@@ -136,7 +154,7 @@ function test_shm_path_per_pid()
 	# Start second application pid
 	diag "Shm: check basic creation of second ust application"
 
-	start_test_app
+	start_test_app "${session_name}"
 	second_app_pid=$LAST_APP_PID
 
 	file_count=$(find $shm_session_path/ust/pid -mindepth 1 -maxdepth 1 | wc -l)
@@ -227,11 +245,13 @@ function test_lttng_crash()
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path --snapshot"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
+	lttng_untrack_ust_ok --session "${session_name}" --vpid --all
 	start_lttng_tracing_ok $session_name
 
 	# Generate 10 events
-	$TESTAPP_BIN -i 10 -w 0
+	NR_ITER=10 start_test_app "${session_name}"
 	stop_lttng_tracing_ok
+	stop_test_apps
 
 	crash_recup_count=$($LTTNG_CRASH $shm_path | wc -l)
 	test $crash_recup_count -eq "10"
@@ -265,11 +285,13 @@ function test_lttng_crash_extraction()
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path --snapshot"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
-
+	lttng_untrack_ust_ok --vpid --all --session "${session_name}"
 	start_lttng_tracing_ok $session_name
+
 	# Generate 10 events
-	$TESTAPP_BIN -i 10 -w 0
+	NR_ITER=10 start_test_app "${session_name}"
 	stop_lttng_tracing_ok
+	stop_test_apps
 
 	$LTTNG_CRASH -x $extraction_path $shm_path
 	ok $? "Extraction of crashed buffers to path"
@@ -361,10 +383,13 @@ function test_lttng_crash_extraction_sigkill()
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffer-ownership=user"
 	enable_ust_lttng_event_ok $session_name $event_name $channel_name
+	lttng_untrack_ust_ok --session "${session_name}" --vpid --all
 	start_lttng_tracing_ok $session_name
 
 	# Generate 10 events
-	$TESTAPP_BIN -i 10 -w 0
+	NR_ITER=10 start_test_app "${session_name}"
+	wait "${LAST_APP_PID}"
+	stop_test_apps
 
 	sigstop_lttng_sessiond
 	sigstop_lttng_consumerd
