@@ -1218,6 +1218,19 @@ class _Environment(logger._Logger):
         self._cleanup()
 
 
+def online_cpus():
+    "Return a set of CPU that are currently online."
+    with open("/sys/devices/system/cpu/online") as online:
+        cpus = set()
+
+        for cpu_range in online.readline().split(","):
+            start, end = cpu_range.split("-")
+
+            for cpu in range(int(start), int(end) + 1):
+                cpus.add(cpu)
+        return cpus
+
+
 @contextlib.contextmanager
 def test_environment(
     with_sessiond,

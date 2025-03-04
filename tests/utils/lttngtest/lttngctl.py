@@ -53,6 +53,12 @@ class VgidContextType(ContextType):
     pass
 
 
+class CPUidContextType(ContextType):
+    """CPU ID of the event."""
+
+    pass
+
+
 class JavaApplicationContextType(ContextType):
     """A java application-specific context field is a piece of state which the application provides."""
 
@@ -96,6 +102,17 @@ class BufferSharingPolicy(enum.Enum):
 
     PerUID = "Per-UID buffering"
     PerPID = "Per-PID buffering"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+
+@enum.unique
+class BufferAllocationPolicy(enum.Enum):
+    """Buffer allocation policy."""
+
+    PerCPU = "Per-CPU allocation"
+    PerChannel = "Per-Channel allocation"
 
     def __repr__(self):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
@@ -619,6 +636,7 @@ class Session(abc.ABC):
         domain,
         channel_name=None,
         buffer_sharing_policy=BufferSharingPolicy.PerUID,
+        buffer_allocation_policy=BufferAllocationPolicy.PerCPU,
     ):
         # type: (TracingDomain, Optional[str], BufferSharingPolicy) -> Channel
         """Add a channel with default attributes to the session."""

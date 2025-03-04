@@ -68,6 +68,8 @@ def _get_context_type_name(context):
         return "vuid"
     elif isinstance(context, lttngctl.VpidContextType):
         return "vpid"
+    elif isinstance(context, lttngctl.CPUidContextType):
+        return "cpu_id"
     elif isinstance(context, lttngctl.JavaApplicationContextType):
         return "$app.{retriever}:{field}".format(
             retriever=context.retriever_name, field=context.field_name
@@ -512,6 +514,7 @@ class _Session(lttngctl.Session):
         domain,
         channel_name=None,
         buffer_sharing_policy=lttngctl.BufferSharingPolicy.PerUID,
+        buffer_allocation_policy=lttngctl.BufferAllocationPolicy.PerCPU,
         subbuf_size=None,
         subbuf_count=None,
     ):
@@ -523,6 +526,11 @@ class _Session(lttngctl.Session):
             if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
             else "--buffer-ownership=process"
         )
+        buffer_allocation_policy = (
+            "--buffer-allocation=per-cpu"
+            if buffer_allocation_policy == lttngctl.BufferAllocationPolicy.PerCPU
+            else "--buffer-allocation=per-channel"
+        )
         args = [
             "enable-channel",
             "--session",
@@ -530,6 +538,7 @@ class _Session(lttngctl.Session):
             "--{}".format(domain_option_name),
             channel_name,
         ]
+        args.append(buffer_allocation_policy)
         if domain != lttngctl.TracingDomain.Kernel:
             args.append(buffer_sharing_policy)
         if subbuf_size is not None:
@@ -568,6 +577,10 @@ class _Session(lttngctl.Session):
     def rotate(self, wait=True):
         # type: (bool) -> None
         self._client.rotate_session_by_name(self.name, wait)
+
+    def snapshot_record(self):
+        # type: () -> None
+        self._client.snapshot_record(self.name)
 
     @property
     def is_active(self):
@@ -773,6 +786,13 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         self._run_cmd(
             "rotate '{session_name}' {wait_option}".format(
                 session_name=name, wait_option="-n" if wait is False else ""
+            )
+        )
+
+    def snapshot_record(self, name):
+        self._run_cmd(
+            "snapshot record --session='{session_name}'".format(
+                session_name=name
             )
         )
 
