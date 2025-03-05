@@ -431,8 +431,8 @@ static int modprobe_lttng(struct kern_modules_param *modules, int entries)
 				PERROR("Unable to load required module `%s`", modules[i].name)
 				goto error;
 			} else {
-				PERROR("Unable to load optional module `%s`; continuing",
-				       modules[i].name);
+				PWARN("Unable to load optional module `%s`; continuing",
+				      modules[i].name);
 				ret = 0;
 			}
 		} else {
