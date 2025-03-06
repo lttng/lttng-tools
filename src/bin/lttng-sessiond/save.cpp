@@ -375,6 +375,8 @@ static const char *get_kernel_context_type_string(enum lttng_kernel_abi_context_
 	case LTTNG_KERNEL_ABI_CONTEXT_VSGID:
 		context_type_string = config_event_context_vsgid;
 		break;
+	case LTTNG_KERNEL_ABI_CONTEXT_CPU_ID:
+		/* fall-through */
 	default:
 		context_type_string = nullptr;
 	}
@@ -446,6 +448,9 @@ static const char *get_ust_context_type_string(enum lttng_ust_abi_context_type c
 		break;
 	case LTTNG_UST_ABI_CONTEXT_VSGID:
 		context_type_string = config_event_context_vsgid;
+		break;
+	case LTTNG_UST_ABI_CONTEXT_CPU_ID:
+		context_type_string = config_event_context_cpu_id;
 		break;
 	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		/*
