@@ -176,6 +176,7 @@ enum lttng_event_output {
 %rename("EVENT_CONTEXT_VEGID") LTTNG_EVENT_CONTEXT_VEGID;
 %rename("EVENT_CONTEXT_VSGID") LTTNG_EVENT_CONTEXT_VSGID;
 %rename("EVENT_CONTEXT_TIME_NS") LTTNG_EVENT_CONTEXT_TIME_NS;
+%rename("EVENT_CONTEXT_CPU_ID") LTTNG_EVENT_CONTEXT_CPU_ID;
 enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PID               = 0,
 	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
@@ -219,6 +220,7 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_VEGID             = 39,
 	LTTNG_EVENT_CONTEXT_VSGID             = 40,
 	LTTNG_EVENT_CONTEXT_TIME_NS           = 41,
+	LTTNG_EVENT_CONTEXT_CPU_ID            = 42,
 };
 
 
@@ -1037,6 +1039,9 @@ struct lttng_event_context {
 				break;
 			case 41:
 				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_TIME_NS)");
+				break;
+			case 42:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_CPU_ID)");
 				break;
 			default:
 				sprintf(temp, "lttng.EventContext; type(%i)", $self->ctx);
