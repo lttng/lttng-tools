@@ -961,6 +961,8 @@ static int get_context_type(xmlChar *context_type)
 		ret = LTTNG_EVENT_CONTEXT_VEGID;
 	} else if (!strcmp((char *) context_type, config_event_context_vsgid)) {
 		ret = LTTNG_EVENT_CONTEXT_VSGID;
+	} else if (!strcmp((char *) context_type, config_event_context_cpu_id)) {
+		ret = LTTNG_EVENT_CONTEXT_CPU_ID;
 	} else {
 		goto error;
 	}
