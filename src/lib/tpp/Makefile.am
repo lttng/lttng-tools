@@ -22,6 +22,15 @@ libtpp_common_la_LIBADD = $(UST_LIBS)
 libtpp_common_la_LDFLAGS = $(AM_LDFLAGS) $(FORCE_SHARED_LIB_OPTIONS)
 pkgconfig_DATA += lttng-tpp-common.pc
 
+plugin_LTLIBRARIES += libtpp-consumerd.la
+libtpp_consumerd_la_SOURCES = \
+	consumerd.hpp \
+	consumerd.cpp
+libtpp_consumerd_la_CXXFLAGS = $(AM_CXXFLAGS) $(UST_CFLAGS)
+libtpp_consumerd_la_LIBADD = $(UST_LIBS)
+libtpp_consumerd_la_LDFLAGS = $(AM_LDFLAGS) $(FORCE_SHARED_LIB_OPTIONS)
+pkgconfig_DATA += lttng-tpp-consumerd.pc
+
 plugin_LTLIBRARIES += libtpp-sessiond.la
 libtpp_sessiond_la_SOURCES = \
 	sessiond.hpp \
