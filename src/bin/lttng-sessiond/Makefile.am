@@ -110,6 +110,7 @@ liblttng_sessiond_common_la_LIBADD = $(URCU_LIBS) $(KMOD_LIBS) \
 		$(top_builddir)/src/common/libcompat.la \
 		$(top_builddir)/src/common/librelayd.la \
 		$(top_builddir)/src/common/libtestpoint.la \
+		$(top_builddir)/src/common/libtracepoints.la \
 		$(top_builddir)/src/common/libhealth.la \
 		$(top_builddir)/src/common/libconfig.la \
 		$(top_builddir)/src/common/libstring-utils.la \
@@ -127,3 +128,8 @@ lttng_sessiond_SOURCES = lttng-sessiond.hpp main.cpp
 lttng_sessiond_LDFLAGS = -rdynamic
 
 lttng_sessiond_LDADD = liblttng-sessiond-common.la
+
+if INSTRUMENT_LTTNG_SESSIOND
+lttng_sessiond_LDFLAGS += $(AM_LDFLAGS) $(DL_LIBS)
+lttng_sessiond_CXXFLAGS = $(AM_CXXFLAGS) $(UST_CFLAGS)
+endif

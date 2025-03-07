@@ -60,6 +60,7 @@
 #include <common/path.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/systemd-utils.hpp>
+#include <common/tracepoints.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/event-internal.hpp>
@@ -85,6 +86,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <urcu/uatomic.h>
+
+#ifdef INSTRUMENT_LTTNG_SESSIOND
+#define LTTNG_UST_TRACEPOINT_DEFINE
+#define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <lib/tpp/common.hpp>
+#include <lib/tpp/sessiond.hpp>
+#endif
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -977,6 +985,22 @@ end:
 }
 
 namespace {
+auto tpp_common = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+auto tpp_sessiond = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+
+void load_tracepoints() __attribute__((unused));
+void load_tracepoints()
+{
+	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
+	::tpp_sessiond = std::move(tracepoints_load("libtpp-sessiond.so"));
+}
+
 std::string dirname_str(const char *dir)
 {
 	auto dir_copy = lttng::make_unique_wrapper<char, lttng::memory::free>(strdup(dir));
@@ -1543,6 +1567,7 @@ static int _main(int argc, char **argv)
 	struct lttng_thread *notification_thread = nullptr;
 	struct lttng_thread *register_apps_thread = nullptr;
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
+	const char *trace_sessiond = lttng_secure_getenv(DEFAULT_TRACE_LTTNG_SESSIOND_ENV);
 
 	logger_set_thread_name("Main", false);
 	init_kernel_workarounds();
@@ -1687,6 +1712,12 @@ static int _main(int argc, char **argv)
 	 * Starting from here, we can create threads. This needs to be after
 	 * lttng_daemonize due to RCU.
 	 */
+
+#ifdef INSTRUMENT_LTTNG_SESSIOND
+	if (trace_sessiond != nullptr && strlen(trace_sessiond) > 0) {
+		::load_tracepoints();
+	}
+#endif
 
 	/*
 	 * Initialize the health check subsystem. This call should set the

@@ -11,6 +11,7 @@
 #ifdef INSTRUMENT_LTTNG_CLIENT
 #define LTTNG_UST_TRACEPOINT_DEFINE
 #define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <lib/tpp/client.hpp>
 #include <lib/tpp/common.hpp>
 #endif
 
