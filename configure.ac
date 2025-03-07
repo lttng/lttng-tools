@@ -1368,6 +1368,7 @@ AC_CONFIG_FILES([
 	src/lib/lttng-ctl/Makefile
 	src/lib/lttng-ctl/lttng-ctl.pc
 	src/lib/tpp/Makefile
+	src/lib/tpp/lttng-tpp-client.pc
 	src/lib/tpp/lttng-tpp-common.pc
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
