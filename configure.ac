@@ -1385,6 +1385,7 @@ AC_CONFIG_FILES([
 	src/lib/tpp/Makefile
 	src/lib/tpp/lttng-tpp-client.pc
 	src/lib/tpp/lttng-tpp-common.pc
+	src/lib/tpp/lttng-tpp-sessiond.pc
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile
 	src/bin/lttng-sessiond/Makefile

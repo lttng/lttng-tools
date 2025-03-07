@@ -72,6 +72,7 @@ compile_commands.json
 /src/lib/lttng-ctl/lttng-ctl.pc
 /src/lib/tpp/lttng-tpp-client.pc
 /src/lib/tpp/lttng-tpp-common.pc
+/src/lib/tpp/lttng-tpp-sessiond.pc
 /src/common/filter-grammar-test
 /src/common/filter/filter-lexer.cpp
 /src/common/filter/filter-parser.cpp
