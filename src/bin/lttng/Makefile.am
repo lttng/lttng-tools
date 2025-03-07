@@ -58,5 +58,11 @@ lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/libstring-utils.la \
 			$(top_builddir)/src/common/libfilter.la \
 			$(top_builddir)/src/common/libargpar-utils.la \
+			$(top_builddir)/src/common/libtracepoints.la \
 			$(top_builddir)/src/vendor/argpar/libargpar.la \
 			$(POPT_LIBS)
+
+if INSTRUMENT_LTTNG_CLIENT
+lttng_LDFLAGS = $(AM_LDFLAGS) $(DL_LIBS)
+lttng_CXXFLAGS += $(UST_CFLAGS)
+endif

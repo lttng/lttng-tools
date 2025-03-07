@@ -32,6 +32,7 @@
 
 /* Environment variable to set internal tracepoint provider search path */
 #define DEFAULT_TRACEPOINT_PROVIDER_PATH_ENV "LTTNG_TP_PATH"
+#define DEFAULT_TRACE_LTTNG_CLIENT_ENV	     "LTTNG_TRACE_CLIENT"
 
 /* Environment variable to set man manpath. */
 #define DEFAULT_MANPATH "LTTNG_MANPATH"

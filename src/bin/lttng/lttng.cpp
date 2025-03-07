@@ -7,12 +7,20 @@
 
 #include "bin/lttng/exception.hpp"
 #include "common/exception.hpp"
+
+#ifdef INSTRUMENT_LTTNG_CLIENT
+#define LTTNG_UST_TRACEPOINT_DEFINE
+#define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <lib/tpp/common.hpp>
+#endif
+
 #define _LGPL_SOURCE
 #include "command.hpp"
 #include "version.hpp"
 
 #include <common/compat/getenv.hpp>
 #include <common/error.hpp>
+#include <common/tracepoints.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng.h>
@@ -43,6 +51,25 @@ int opt_no_sessiond;
 char *opt_sessiond_path;
 
 char *opt_relayd_path;
+
+namespace {
+auto tpp_common = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+auto tpp_client = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+
+void load_tracepoints() __attribute__((unused));
+void load_tracepoints()
+{
+	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
+	::tpp_client = std::move(tracepoints_load("libtpp-client.so"));
+}
+
+} /* namespace */
 
 enum {
 	OPT_RELAYD_PATH,
@@ -420,6 +447,14 @@ static int _main(int argc, char *argv[])
 {
 	progname = argv[0] ? argv[0] : "lttng";
 	lttng_opt_is_tui = true;
+
+#ifdef INSTRUMENT_LTTNG_CLIENT
+	const char *trace_client = lttng_secure_getenv(DEFAULT_TRACE_LTTNG_CLIENT_ENV);
+	if (trace_client != nullptr && strlen(trace_client) > 0) {
+		::load_tracepoints();
+	}
+#endif
+
 	return parse_args(argc, argv);
 }
 

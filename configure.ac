@@ -663,6 +663,15 @@ AS_IF([test "x$with_lttng_ust" = "xyes"], [
 
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$with_lttng_ust" = "xyes"])
 
+AC_ARG_ENABLE([instrumentation_lttng_client],
+    [AS_HELP_STRING([--disable-instrumentation-lttng-client], [Do not instrument LTTng client])],
+    [instrumentation_lttng_client=$enableval], [instrumentation_lttng_client=yes])
+
+AH_TEMPLATE([INSTRUMENT_LTTNG_CLIENT], [Define to instrument the LTTng client])
+AS_IF([test "x$with_lttng_ust" = "xyes" && test "x$instrumentation_lttng_client" = "xyes"],[
+	    AC_DEFINE([INSTRUMENT_LTTNG_CLIENT], [1])], [instrumentation_lttng_client="no"])
+AM_CONDITIONAL([INSTRUMENT_LTTNG_CLIENT], [test "x$instrumentation_lttng_client" = "xyes"])
+
 
 # Check for fmemopen
 AC_CHECK_LIB([c], [fmemopen],
@@ -832,6 +841,12 @@ AX_ADD_AM_MACRO_STATIC([
     "AM_CFLAGS += \$\(CODE_COVERAGE_CFLAGS\)"
     "AM_CXXFLAGS += \$\(CODE_COVERAGE_CXXFLAGS\)"
     "AM_LDFLAGS += \$\(CODE_COVERAGE_LIBS\)"
+])
+
+AS_IF([test "x$enable_code_coverage" = xyes], [
+	AS_IF([test "x$instrumentation_lttng_client" != "xyes"], [
+    		AC_MSG_ERROR([Cannot specify '--disable-instrumentation-N' with '--enable-code-coverage'])
+	])
 ])
 
 # enable building man pages (user's intention)
