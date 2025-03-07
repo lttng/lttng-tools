@@ -42,6 +42,7 @@
 #include <common/fd-tracker/utils.hpp>
 #include <common/futex.hpp>
 #include <common/ini-config/ini-config.hpp>
+#include <common/make-unique.hpp>
 #include <common/path.hpp>
 #include <common/pthread-lock.hpp>
 #include <common/scope-exit.hpp>
@@ -50,6 +51,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/string-utils/format.hpp>
 #include <common/systemd-utils.hpp>
+#include <common/tracepoints.hpp>
 #include <common/urcu.hpp>
 #include <common/uri.hpp>
 #include <common/utils.hpp>
@@ -80,6 +82,13 @@
 #include <urcu/futex.h>
 #include <urcu/rculist.h>
 #include <urcu/uatomic.h>
+
+#ifdef INSTRUMENT_LTTNG_RELAYD
+#define LTTNG_UST_TRACEPOINT_DEFINE
+#define LTTNG_UST_TRACEPOINT_PROBE_DYNAMIC_LINKAGE
+#include <lib/tpp/common.hpp>
+#include <lib/tpp/relayd.hpp>
+#endif
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -279,6 +288,25 @@ static struct option long_options[] = {
 };
 
 static const char *config_ignore_options[] = { "help", "config", "version" };
+
+namespace {
+auto tpp_common = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+auto tpp_relayd = static_cast<std::unique_ptr<
+	void,
+	lttng::memory::create_deleter_class<void, lttng::tracepoints::details::tracepoints_unload>::
+		deleter>>(nullptr);
+
+void load_tracepoints() __attribute__((unused));
+void load_tracepoints()
+{
+	/* Don't load it twice */
+	::tpp_common = std::move(tracepoints_load("libtpp-common.so"));
+	::tpp_relayd = std::move(tracepoints_load("libtpp-relayd.so"));
+}
+} /* namespace */
 
 static void print_version()
 {
@@ -4455,6 +4483,7 @@ int main(int argc, char **argv)
 		}
 	});
 	delete_pid_file.disarm();
+	const char *trace_relayd = lttng_secure_getenv(DEFAULT_TRACE_LTTNG_RELAYD_ENV);
 
 	/* Parse environment variables */
 	ret = parse_env_options();
@@ -4535,6 +4564,12 @@ int main(int argc, char **argv)
 		}
 		delete_pid_file.arm();
 	}
+
+#ifdef INSTRUMENT_LTTNG_RELAYD
+	if (trace_relayd != nullptr && strlen(trace_relayd) > 0) {
+		::load_tracepoints();
+	}
+#endif
 
 	sessiond_trace_chunk_registry = sessiond_trace_chunk_registry_create();
 	if (!sessiond_trace_chunk_registry) {
