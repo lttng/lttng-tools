@@ -1530,6 +1530,32 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			if (new_channel_attr->name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
+
+			/*
+			 * Implicitly add "cpu_id" context to UST domain channels with the
+			 * "per-cpu" allocation policy on creation.
+			 */
+			if (ret_code == LTTNG_OK) {
+				enum lttng_channel_allocation_policy allocation_policy;
+				enum lttng_error_code err = lttng_channel_get_allocation_policy(
+					new_channel_attr.get(), &allocation_policy);
+
+				if ((err == LTTNG_OK) &&
+				    (allocation_policy ==
+				     LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU)) {
+					struct lttng_event_context cpu_id_ctx;
+					cpu_id_ctx.ctx = LTTNG_EVENT_CONTEXT_CPU_ID;
+
+					err = static_cast<enum lttng_error_code>(
+						context_ust_add(usess,
+								domain->type,
+								&cpu_id_ctx,
+								new_channel_attr->name));
+					if (err != LTTNG_OK) {
+						ret_code = err;
+					}
+				}
+			}
 		} else {
 			ret_code = channel_ust_enable(usess, uchan);
 		}

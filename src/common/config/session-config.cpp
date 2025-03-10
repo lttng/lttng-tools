@@ -2421,6 +2421,19 @@ process_context_node(xmlNodePtr context_node, struct lttng_handle *handle, const
 		free(context.u.app_ctx.provider_name);
 		free(context.u.app_ctx.ctx_name);
 	}
+
+	/*
+	 * Don't be pedantic about duplicated UST contexts.
+	 *
+	 * The main rationale of this is because of the implicit "cpu_id"
+	 * context added to channels with the allocation policy "per-cpu".
+	 *
+	 * Since such channels have the "cpu_id" context at their creation, the
+	 * loading of a session can failed because of duplicated context.
+	 */
+	if (ret == -LTTNG_ERR_UST_CONTEXT_EXIST) {
+		ret = 0;
+	}
 end:
 	return ret;
 }
