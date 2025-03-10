@@ -105,20 +105,20 @@ function test_ust_default_name_with_del()
 
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
+	if ! retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
 		stop_test_apps
-		return $?
+		return 1
 	fi
 
 	lttng_snapshot_del_output_ok "$SESSION_NAME" 1
 	snapshot_add_output "$SESSION_NAME" "net://localhost"
-	lttng_snapshot_record "$SESSION_NAME"
+	lttng_snapshot_record "$SESSION_NAME" && sleep 1
 
 	# Validate test with the next ID since a del output was done prior.
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-2" 1
-	if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-2*" ; then
+	if ! retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-2*" ; then
 		stop_test_apps
-		return $?
+		return 1
 	fi
 
 	stop_lttng_tracing_ok "$SESSION_NAME"
@@ -146,7 +146,7 @@ function test_ust_default_name()
 	destroy_lttng_session_ok "$SESSION_NAME"
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
+	retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
 	out=$?
 
 	stop_test_apps
@@ -170,7 +170,7 @@ function test_ust_default_name_custom_uri()
 	destroy_lttng_session_ok "$SESSION_NAME"
 	# Validate test
 	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" 0
-	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
+	retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*"
 	out=$?
 
 	stop_test_apps
@@ -193,7 +193,7 @@ function test_ust_custom_name()
 	start_test_app
 
 	snapshot_add_output "$SESSION_NAME" "net://localhost" $name
-	lttng_snapshot_record "$SESSION_NAME"
+	lttng_snapshot_record "$SESSION_NAME" && sleep 1
 	stop_lttng_tracing_ok "$SESSION_NAME"
 	destroy_lttng_session_ok "$SESSION_NAME"
 
@@ -201,7 +201,7 @@ function test_ust_custom_name()
 		ok 0 "Custom name snapshot exists"
 		# Validate test
 		validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "$name" 0
-		validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name-*"
+		retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name-*"
 		out=$?
 	else
 		fail "No custom name snapshot found"
@@ -224,10 +224,10 @@ function test_ust_n_snapshot()
 	for i in {0..4};
 	do
 		start_lttng_tracing_ok "$SESSION_NAME"
-		lttng_snapshot_record "$SESSION_NAME"
+		lttng_snapshot_record "$SESSION_NAME" && sleep 1
 		stop_lttng_tracing_ok "$SESSION_NAME"
 		validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "$SESSION_NAME" "snapshot-1" "$i"
-		if ! validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
+		if ! retry_validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*" ; then
 			return 1
 		fi
 		set -u

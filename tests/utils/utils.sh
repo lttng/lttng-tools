@@ -2558,6 +2558,32 @@ validate_trace()
 	TAP=1 validate_trace_opt "${@}"
 }
 
+function retry_validate_trace()
+{
+	local retries="${RETRIES:-3}"
+	local sleep="${SLEEP:-1}"
+	local tries=1
+	local event_name="${1}"
+	local path="${2}"
+	local ret="1"
+	local output=""
+
+	while [[ "${tries}" -le "${retries}" ]]; do
+		if ! validate_trace_notap "${event_name}" "${path}"; then
+			tries=$((tries+1))
+			diag "Try ${tries}/${retries} failed to validate event '${event_name}' at path '${path}'"
+			if [[ "${tries}" -lt "${retries}" ]]; then
+				sleep "${sleep}"
+				continue
+			fi
+		else
+			ret="0"
+			break
+		fi
+	done
+	ok $ret "Found events matching '${event_name}'"
+}
+
 # Check that the trace contains at least 1 event matching each name in the
 # comma separated list '$event_names' and a total of '$expected' events.
 function validate_trace_count()
