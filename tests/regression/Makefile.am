@@ -78,6 +78,7 @@ TESTS = tools/live/test_early_inactive_app.py \
 	tools/client/test_session_commands.py \
 	tools/client/test_event_rule_listing.py \
 	tools/client/test_warn_on_shm_too_small.py \
+	tools/channel/test_channel_allocation_policy_per_cpu.py \
 	tests.serial
 
 # Only build kernel tests on Linux.
