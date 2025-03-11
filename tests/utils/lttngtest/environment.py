@@ -686,7 +686,6 @@ class _Environment(logger._Logger):
             self._launch_lttng_relayd() if with_relayd else None
         )  # type: Optional[subprocess.Popen[bytes]]
         self._relayd_output_consumer = None
-        print(self._relayd_env_vars)
 
         self._sessiond = (
             self._launch_lttng_sessiond(enable_kernel_domain) if with_sessiond else None
