@@ -142,7 +142,8 @@ xmlto_verbose_ = $(xmlto_verbose_@AM_DEFAULT_V@)
 xmlto_verbose_0 = @echo "  XMLTO     " $@;
 
 # tools
-ADOC = $(asciidoc_verbose)$(ASCIIDOC) -f $(ASCIIDOC_CONF) -f $(ASCIIDOC_ATTRS_CONF) -d manpage
+ADOC = $(asciidoc_verbose)$(ASCIIDOC) -f $(ASCIIDOC_CONF) -f $(ASCIIDOC_ATTRS_CONF) -d manpage \
+	-a system_lttng_lib_dir="$(lttnglibdir)"
 ADOC_DOCBOOK = $(ADOC) -b docbook
 XTO = $(xmlto_verbose)$(XMLTO) -m $(XSL_FILE) man
 
