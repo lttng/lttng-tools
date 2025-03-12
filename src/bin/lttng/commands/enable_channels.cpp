@@ -71,6 +71,7 @@ static struct lttng_handle *handle;
 const char *output_mmap = "mmap";
 const char *output_splice = "splice";
 
+/* clang-format off */
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
@@ -88,19 +89,14 @@ static struct poptOption long_options[] = {
 	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
 	{ "buffers-uid", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_PER_UID, nullptr, nullptr },
 	{ "buffers-pid", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_PER_PID, nullptr, nullptr },
-	{ "buffers-global",
-	  0,
-	  POPT_ARG_VAL,
-	  &opt_buffer_type,
-	  LTTNG_BUFFER_GLOBAL,
-	  nullptr,
-	  nullptr },
+	{ "buffers-global", 0, POPT_ARG_VAL, &opt_buffer_type, LTTNG_BUFFER_GLOBAL, nullptr, nullptr },
 	{ "buffer-ownership", 0, POPT_ARG_STRING, nullptr, OPT_BUFFER_OWNERSHIP, nullptr, nullptr },
 	{ "tracefile-size", 'C', POPT_ARG_INT, nullptr, OPT_TRACEFILE_SIZE, nullptr, nullptr },
 	{ "tracefile-count", 'W', POPT_ARG_INT, nullptr, OPT_TRACEFILE_COUNT, nullptr, nullptr },
 	{ "blocking-timeout", 0, POPT_ARG_INT, nullptr, OPT_BLOCKING_TIMEOUT, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
+/* clang-format on */
 
 /*
  * Set default attributes depending on those already defined from the command
