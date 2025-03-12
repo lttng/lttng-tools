@@ -95,6 +95,7 @@ enum {
 	OPT_EXCLUDE,
 };
 
+/* clang-format off */
 struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr },
@@ -109,13 +110,7 @@ struct poptOption long_options[] = {
 	{ "python", 'p', POPT_ARG_VAL, &opt_python, 1, nullptr, nullptr },
 	{ "tracepoint", 0, POPT_ARG_NONE, nullptr, OPT_TRACEPOINT, nullptr, nullptr },
 	{ "probe", 0, POPT_ARG_STRING, &opt_probe, OPT_PROBE, nullptr, nullptr },
-	{ "userspace-probe",
-	  0,
-	  POPT_ARG_STRING,
-	  &opt_userspace_probe,
-	  OPT_USERSPACE_PROBE,
-	  nullptr,
-	  nullptr },
+	{ "userspace-probe", 0, POPT_ARG_STRING, &opt_userspace_probe, OPT_USERSPACE_PROBE, nullptr, nullptr },
 	{ "function", 0, POPT_ARG_STRING, &opt_function, OPT_FUNCTION, nullptr, nullptr },
 	{ "syscall", 0, POPT_ARG_NONE, nullptr, OPT_SYSCALL, nullptr, nullptr },
 	{ "loglevel", 0, POPT_ARG_STRING, nullptr, OPT_LOGLEVEL, nullptr, nullptr },
@@ -125,6 +120,7 @@ struct poptOption long_options[] = {
 	{ "exclude", 'x', POPT_ARG_STRING, &opt_exclude, OPT_EXCLUDE, nullptr, nullptr },
 	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr }
 };
+/* clang-format on */
 
 /*
  * Parse probe options.
