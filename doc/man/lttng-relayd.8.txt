@@ -415,6 +415,19 @@ Search for `tcp_keepalive_intvl` in man:tcp(7) to learn more.
 The option:--working-directory option overrides this environment
 variable.
 
+`LTTNG_TP_PATH`::
+    A colon (':') separated set of paths that are used to search for
+    tracepoint providers used in the `lttng-relayd` binary.
+
+`LTTNG_TRACE_RELAYD`::
+    When set to a non-empty value, and the `lttng-relayd` binary has been compiled
+    with LTTng-UST available, the tracepoint providers will be loaded.
++
+The tracepoint providers are searched for in the following locations:
++
+. Each of the paths defined in `LTTNG_TP_PATH`
+. Each of the paths in `LDFLAGS` suffixed with `/lttng`.
+. The configure-time LTTng libdir +{system_lttng_lib_dir}+.
 
 FILES
 -----
