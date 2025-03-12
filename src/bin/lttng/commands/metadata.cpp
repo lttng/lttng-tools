@@ -36,38 +36,16 @@ enum {
 
 static struct mi_writer *writer;
 
+/* clang-format off */
 static struct poptOption long_options[] = {
 	/* { longName, shortName, argInfo, argPtr, value, descrip, argDesc, } */
-	{
-		"help",
-		'h',
-		POPT_ARG_NONE,
-		nullptr,
-		OPT_HELP,
-		nullptr,
-		nullptr,
-	},
+	{ "help", 'h', POPT_ARG_NONE, nullptr, OPT_HELP, nullptr, nullptr, },
 	{ "session", 's', POPT_ARG_STRING, &opt_session_name, 0, nullptr, nullptr },
-	{
-		"list-options",
-		0,
-		POPT_ARG_NONE,
-		nullptr,
-		OPT_LIST_OPTIONS,
-		nullptr,
-		nullptr,
-	},
+	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr},
 	{ "list-commands", 0, POPT_ARG_NONE, nullptr, OPT_LIST_COMMANDS, nullptr, nullptr },
-	{
-		nullptr,
-		0,
-		0,
-		nullptr,
-		0,
-		nullptr,
-		nullptr,
-	},
+	{ nullptr, 0, 0, nullptr, 0, nullptr, nullptr },
 };
+/* clang-format on */
 
 static struct cmd_struct actions[] = {
 	{ "regenerate", metadata_regenerate }, { nullptr, nullptr } /* Array closure */
