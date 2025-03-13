@@ -79,7 +79,7 @@ Debian/Ubuntu package: `babeltrace2 libbabeltrace2-dev`
 +
 Debian/Ubuntu package: `liblttng{nbh}ust{nbh}dev`
 
-* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.4**:
+* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.5**:
   `make{nbsp}check` and tests.
 +
 Debian/Ubuntu package: `python3`
