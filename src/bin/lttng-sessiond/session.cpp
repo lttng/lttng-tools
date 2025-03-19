@@ -1078,8 +1078,12 @@ static void session_release(struct urcu_ref *ref)
 	 * To create such a reference, we need to acquire the lock and acquire a reference (increase
 	 * the ref-count). To ensure the release of the reference does not re-cross the zero value,
 	 * set the refcount to a tombstone value.
+	 *
+	 * The value is arbitrary, but must not trigger a second destruction once the temporary
+	 * reference is 'put' and must be positive as to not trigger the underflow checks in the
+	 * urcu refcount implementation.
 	 */
-	session->ref_count.refcount = 0xDEAD5E55;
+	session->ref_count.refcount = 0xDEAD1;
 	session_notify_destruction([session]() {
 		session_lock(session);
 		session_get(session);
