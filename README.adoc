@@ -265,7 +265,7 @@ GitHub project::
     https://github.com/lttng/lttng-tools/[lttng/lttng{nbh}tools]
 
 Continuous integration::
-    https://ci.lttng.org/job/lttng-tools_master_build/[{lt}'s master build]
+    https://ci.lttng.org/job/lttng-tools_master_linuxbuild/[{lt}'s master build]
     on LTTng's CI
 
 Code review::
