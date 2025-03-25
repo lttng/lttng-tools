@@ -150,7 +150,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 
 	DBG("Kernel consumer snapshot channel %" PRIu64, key);
 
-	/* Prevent channel modifications while we perform the snapshot.*/
+	/* Prevent channel modifications while we perform the snapshot. */
 	const lttng::pthread::lock_guard channe_lock(channel->lock);
 
 	const lttng::urcu::read_lock_guard read_lock;
@@ -159,8 +159,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 	if (channel->output != CONSUMER_CHANNEL_MMAP) {
 		ERR("Unsupported output type for channel \"%s\": mmap output is required to record a snapshot",
 		    channel->name);
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
 	for (auto stream : lttng::urcu::list_iteration_adapter<lttng_consumer_stream,
@@ -182,9 +181,9 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			 * holds a reference to the trace chunk.
 			 */
 			ERR("Failed to acquire reference to channel's trace chunk");
-			ret = -1;
-			goto end;
+			return -1;
 		}
+
 		LTTNG_ASSERT(!stream->trace_chunk);
 		stream->trace_chunk = channel->trace_chunk;
 
@@ -203,13 +202,14 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			ret = consumer_send_relayd_stream(stream, path);
 			if (ret < 0) {
 				ERR("sending stream to relayd");
-				goto end;
+				return ret;
 			}
 		} else {
 			ret = consumer_stream_create_output_files(stream, false);
 			if (ret < 0) {
-				goto end;
+				return ret;
 			}
+
 			DBG("Kernel consumer snapshot stream (%" PRIu64 ")", stream->key);
 		}
 
@@ -225,27 +225,27 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			ret = kernctl_buffer_flush(stream->wait_fd);
 			if (ret < 0) {
 				ERR("Failed to flush kernel stream");
-				goto end;
 			}
-			goto end;
+
+			return ret;
 		}
 
 		ret = lttng_kconsumer_take_snapshot(stream);
 		if (ret < 0) {
 			ERR("Taking kernel snapshot");
-			goto end;
+			return ret;
 		}
 
 		ret = lttng_kconsumer_get_produced_snapshot(stream, &produced_pos);
 		if (ret < 0) {
 			ERR("Produced kernel snapshot position");
-			goto end;
+			return ret;
 		}
 
 		ret = lttng_kconsumer_get_consumed_snapshot(stream, &consumed_pos);
 		if (ret < 0) {
 			ERR("Consumerd kernel snapshot position");
-			goto end;
+			return ret;
 		}
 
 		consumed_pos = consumer_get_consume_start_pos(
@@ -264,8 +264,9 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			if (ret < 0) {
 				if (ret != -EAGAIN) {
 					PERROR("kernctl_get_subbuf snapshot");
-					goto end;
+					return ret;
 				}
+
 				DBG("Kernel consumer get subbuf failed. Skipping it.");
 				consumed_pos += stream->max_sb_size;
 				stream->chan->lost_packets++;
@@ -283,18 +284,18 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			ret = kernctl_get_subbuf_size(stream->wait_fd, &len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_subbuf_size");
-				goto end;
+				return ret;
 			}
 
 			ret = kernctl_get_padded_subbuf_size(stream->wait_fd, &padded_len);
 			if (ret < 0) {
 				ERR("Snapshot kernctl_get_padded_subbuf_size");
-				goto end;
+				return ret;
 			}
 
 			ret = get_current_subbuf_addr(stream, &subbuf_addr);
 			if (ret) {
-				goto end;
+				return ret;
 			}
 
 			subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, padded_len);
@@ -324,11 +325,7 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 	}
 
 	/* All good! */
-	ret = 0;
-	goto end;
-
-end:
-	return ret;
+	return 0;
 }
 
 /*
