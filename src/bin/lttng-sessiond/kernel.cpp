@@ -1810,7 +1810,7 @@ error_consumer:
 error_open_stream:
 	trace_kernel_destroy_metadata(ksess->metadata);
 error:
-	/* Restore metadata state.*/
+	/* Restore metadata state. */
 	ksess->metadata = saved_metadata;
 	ksess->metadata_stream_fd = saved_metadata_fd;
 	free(trace_path);
