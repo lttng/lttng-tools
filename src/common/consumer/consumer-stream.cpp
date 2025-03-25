@@ -502,14 +502,7 @@ static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 	buffer->info.metadata.padded_subbuf_size = new_subbuf_size;
 }
 
-static int metadata_stream_pre_consume_ctf1(struct lttng_consumer_stream *stream,
-					    struct stream_subbuffer *subbuffer)
-{
-	(void) metadata_stream_check_version(stream, subbuffer);
-	return 0;
-}
-
-static int metadata_stream_pre_consume_ctf2(struct lttng_consumer_stream *stream,
+static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
 					    struct stream_subbuffer *subbuffer)
 {
 	(void) metadata_stream_check_version(stream, subbuffer);
@@ -774,14 +767,7 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 		stream->read_subbuffer_ops.unlock = consumer_stream_metadata_unlock_all;
 		stream->read_subbuffer_ops.assert_locked =
 			consumer_stream_metadata_assert_locked_all;
-		if (utils_force_experimental_ctf_2()) {
-			/* Peel-off the packet headers from the metadata packets. */
-			stream->read_subbuffer_ops.pre_consume_subbuffer =
-				metadata_stream_pre_consume_ctf2;
-		} else {
-			stream->read_subbuffer_ops.pre_consume_subbuffer =
-				metadata_stream_pre_consume_ctf1;
-		}
+		stream->read_subbuffer_ops.pre_consume_subbuffer = metadata_stream_pre_consume;
 	} else {
 		const post_consume_cb post_consume_index_op = channel->is_live ?
 			consumer_stream_sync_metadata_index :
