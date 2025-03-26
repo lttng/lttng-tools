@@ -57,7 +57,7 @@ enum lttng_ust_abi_output {
 enum lttng_ust_abi_chan_type {
 	LTTNG_UST_ABI_CHAN_PER_CPU = 0,
 	LTTNG_UST_ABI_CHAN_METADATA = 1,
-	LTTNG_UST_ABI_CHAN_GLOBAL = 2,
+	LTTNG_UST_ABI_CHAN_PER_CHANNEL = 2,
 };
 
 struct lttng_ust_abi_tracer_version {
@@ -242,7 +242,7 @@ struct lttng_ust_abi_counter_conf {
 	uint32_t elem_len; /* array stride (size of lttng_ust_abi_counter_dimension) */
 } LTTNG_PACKED;
 
-struct lttng_ust_abi_counter_global {
+struct lttng_ust_abi_counter_channel {
 	uint32_t len; /* Length of this structure */
 	uint64_t shm_len; /* shm len */
 } LTTNG_PACKED;
@@ -355,7 +355,7 @@ enum lttng_ust_abi_object_type {
 	LTTNG_UST_ABI_OBJECT_TYPE_EVENT_NOTIFIER_GROUP = 4,
 	LTTNG_UST_ABI_OBJECT_TYPE_EVENT_NOTIFIER = 5,
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER = 6,
-	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_GLOBAL = 7,
+	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_CHANNEL = 7,
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_CPU = 8,
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_EVENT = 9,
 };
@@ -384,7 +384,7 @@ struct lttng_ust_abi_object_data {
 		} counter;
 		struct {
 			int shm_fd;
-		} counter_global;
+		} counter_channel;
 		struct {
 			int shm_fd;
 			uint32_t cpu_nr;
@@ -493,9 +493,9 @@ struct lttng_ust_abi_event_exclusion {
 
 /* Counter commands */
 /* (0xD0, 0xD1) reserved for old ABI. */
-#define LTTNG_UST_ABI_COUNTER_GLOBAL LTTNG_UST_ABI_CMDV(0xD2, struct lttng_ust_abi_counter_global)
-#define LTTNG_UST_ABI_COUNTER_CPU    LTTNG_UST_ABI_CMDV(0xD3, struct lttng_ust_abi_counter_cpu)
-#define LTTNG_UST_ABI_COUNTER_EVENT  LTTNG_UST_ABI_CMDV(0xD4, struct lttng_ust_abi_counter_event)
+#define LTTNG_UST_ABI_COUNTER_CHANNEL  LTTNG_UST_ABI_CMDV(0xD2, struct lttng_ust_abi_counter_channel)
+#define LTTNG_UST_ABI_COUNTER_CPU      LTTNG_UST_ABI_CMDV(0xD3, struct lttng_ust_abi_counter_cpu)
+#define LTTNG_UST_ABI_COUNTER_EVENT    LTTNG_UST_ABI_CMDV(0xD4, struct lttng_ust_abi_counter_event)
 
 #define LTTNG_UST_ABI_ROOT_HANDLE 0
 

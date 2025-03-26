@@ -193,7 +193,7 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
 		allocation_policy_str = config_element_channel_allocation_policy_per_cpu;
 		break;
-	case LTTNG_UST_ABI_CHAN_GLOBAL:
+	case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
 		allocation_policy_str = config_element_channel_allocation_policy_per_channel;
 		break;
 	default:

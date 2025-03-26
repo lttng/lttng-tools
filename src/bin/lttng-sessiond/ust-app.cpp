@@ -85,7 +85,7 @@ ust_channel_type_to_allocation_policy(enum lttng_ust_abi_chan_type type)
 			buffer_allocation_policy_t::PER_CPU;
 	case LTTNG_UST_ABI_CHAN_METADATA:
 		/* fall-through  */
-	case LTTNG_UST_ABI_CHAN_GLOBAL:
+	case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
 		return lttng::sessiond::recording_channel_configuration::
 			buffer_allocation_policy_t::PER_CHANNEL;
 	default:

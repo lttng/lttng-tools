@@ -380,7 +380,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 		break;
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL:
-		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_GLOBAL;
+		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CHANNEL;
 		break;
 	default:
 		PERROR("Unknown channel stream allocation");

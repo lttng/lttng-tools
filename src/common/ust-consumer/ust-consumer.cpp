@@ -1546,14 +1546,14 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		switch (msg.u.ask_channel.type) {
 		case LTTNG_UST_ABI_CHAN_PER_CPU:
 			/* fall-through */
-		case LTTNG_UST_ABI_CHAN_GLOBAL:
+		case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
 
 			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_PER_CPU) {
 				channel->type = CONSUMER_CHANNEL_TYPE_DATA_PER_CPU;
 				attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 			} else {
 				channel->type = CONSUMER_CHANNEL_TYPE_DATA_PER_CHANNEL;
-				attr.type = LTTNG_UST_ABI_CHAN_GLOBAL;
+				attr.type = LTTNG_UST_ABI_CHAN_PER_CHANNEL;
 			}
 
 			/*

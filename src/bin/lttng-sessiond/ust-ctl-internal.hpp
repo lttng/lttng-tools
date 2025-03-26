@@ -627,7 +627,7 @@ enum lttng_ust_ctl_key_type {
 /* Used as alloc flags. */
 enum lttng_ust_ctl_counter_alloc {
 	LTTNG_UST_CTL_COUNTER_ALLOC_PER_CPU = (1 << 0),
-	LTTNG_UST_CTL_COUNTER_ALLOC_GLOBAL = (1 << 1),
+	LTTNG_UST_CTL_COUNTER_ALLOC_PER_CHANNEL = (1 << 1),
 };
 
 struct lttng_ust_ctl_daemon_counter;
@@ -647,7 +647,7 @@ struct lttng_ust_ctl_daemon_counter *
 lttng_ust_ctl_create_counter(size_t nr_dimensions,
 			     const struct lttng_ust_ctl_counter_dimension *dimensions,
 			     int64_t global_sum_step,
-			     int global_counter_fd,
+			     int channel_counter_fd,
 			     int nr_counter_cpu_fds,
 			     const int *counter_cpu_fds,
 			     enum lttng_ust_ctl_counter_bitness bitness,
@@ -658,8 +658,8 @@ lttng_ust_ctl_create_counter(size_t nr_dimensions,
 int lttng_ust_ctl_create_counter_data(struct lttng_ust_ctl_daemon_counter *counter,
 				      struct lttng_ust_abi_object_data **counter_data);
 
-int lttng_ust_ctl_create_counter_global_data(struct lttng_ust_ctl_daemon_counter *counter,
-					     struct lttng_ust_abi_object_data **counter_global_data);
+int lttng_ust_ctl_create_counter_channel_data(struct lttng_ust_ctl_daemon_counter *counter,
+					      struct lttng_ust_abi_object_data **counter_channel_data);
 int lttng_ust_ctl_create_counter_cpu_data(struct lttng_ust_ctl_daemon_counter *counter,
 					  int cpu,
 					  struct lttng_ust_abi_object_data **counter_cpu_data);
@@ -673,10 +673,10 @@ void lttng_ust_ctl_destroy_counter(struct lttng_ust_ctl_daemon_counter *counter)
 int lttng_ust_ctl_send_counter_data_to_ust(int sock,
 					   int parent_handle,
 					   struct lttng_ust_abi_object_data *counter_data);
-int lttng_ust_ctl_send_counter_global_data_to_ust(
+int lttng_ust_ctl_send_counter_channel_to_ust(
 	int sock,
 	struct lttng_ust_abi_object_data *counter_data,
-	struct lttng_ust_abi_object_data *counter_global_data);
+	struct lttng_ust_abi_object_data *counter_channel_data);
 int lttng_ust_ctl_send_counter_cpu_data_to_ust(int sock,
 					       struct lttng_ust_abi_object_data *counter_data,
 					       struct lttng_ust_abi_object_data *counter_cpu_data);

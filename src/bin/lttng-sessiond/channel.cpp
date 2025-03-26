@@ -604,7 +604,7 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
 		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
 		break;
-	case LTTNG_UST_ABI_CHAN_GLOBAL:
+	case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
 		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL;
 		break;
 	default:
