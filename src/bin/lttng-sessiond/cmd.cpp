@@ -3423,6 +3423,14 @@ set_session_output_from_descriptor(const ltt_session::locked_ref& session,
 		uri_count = 1;
 		break;
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
+		if (utils_force_experimental_ctf_2()) {
+			/* CTF2 can't be streamed yet. */
+			ERR_FMT("Refusing network output with CTF2 format: session_name=`{}`",
+				session->name);
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+
 		lttng_session_descriptor_get_network_output_uris(descriptor, &uris[0], &uris[1]);
 		uri_count = 2;
 		break;
