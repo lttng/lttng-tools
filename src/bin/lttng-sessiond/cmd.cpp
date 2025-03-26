@@ -1630,7 +1630,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					mode::UNBOUNDED);
 		default:
 			if (timeout_us < 0) {
-				/*Negative, but not -1. */
+				/* Negative, but not -1. */
 				LTTNG_THROW_INVALID_ARGUMENT_ERROR(fmt::format(
 					"Invalid buffer consumption blocking policy timeout value: timeout_us={}",
 					timeout_us));
