@@ -13,6 +13,7 @@
 
 #include <common/defaults.hpp>
 #include <common/urcu.hpp>
+#include <common/utils.hpp>
 
 #include <inttypes.h>
 #include <string.h>
@@ -168,6 +169,16 @@ int snapshot_output_init(const ltt_session::locked_ref& session,
 	}
 
 	ret = output_init(session, max_size, name, uris, nb_uri, consumer, output, snapshot);
+	if (ret) {
+		goto error;
+	}
+
+	if (utils_force_experimental_ctf_2() && uris[0].dtype != LTTNG_DST_PATH) {
+		ERR_FMT("Disallowing the use of a network snapshot output with CTF 2 format: session_name=`{}`",
+			session->name);
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 error:
 	free(uris);
