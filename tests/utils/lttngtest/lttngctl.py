@@ -731,8 +731,10 @@ class Controller(abc.ABC):
     """
 
     @abc.abstractmethod
-    def create_session(self, name=None, output=None):
-        # type: (Optional[str], Optional[SessionOutputLocation]) -> Session
+    def create_session(
+        self, name=None, output=None, live=False, snapshot=False, shm_path=None
+    ):
+        # type: (Optional[str], Optional[lttngctl.SessionOutputLocation], bool, Optional[pathlib.Path]) -> lttngctl.Session
         """
         Create a session with an output. Don't specify an output
         to create a session without an output.
