@@ -251,7 +251,7 @@ def run_test(test, tap, client, snapshot=False, live=False):
             test_app.trace()
             test_app.wait_for_exit()
             if snapshot:
-                session.snapshot_record()
+                session.record_snapshot()
             session.stop()
             return drain_consumer(consumer)
 

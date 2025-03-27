@@ -578,9 +578,18 @@ class _Session(lttngctl.Session):
         # type: (bool) -> None
         self._client.rotate_session_by_name(self.name, wait)
 
-    def snapshot_record(self):
-        # type: () -> None
-        self._client.snapshot_record(self.name)
+    def record_snapshot(self, output_location=None):
+        # type: (Optional[lttngctl.SessionOutputLocation]) -> None
+        if isinstance(output_location, lttngctl.LocalSessionOutputLocation):
+            self._client.snapshot_record(self.name, output_location.path)
+        elif isinstance(output_location, lttngctl.NetworkSessionOutputLocation):
+            self._client.snapshot_record(self.name, output_location.url)
+        elif output_location is not None:
+            raise TypeError(
+                "Expected output_location to be of type LocalSessionOutputLocation or NetworkSessionOutputLocation"
+            )
+        else:
+            self._client.snapshot_record(self.name, None)
 
     @property
     def is_active(self):
@@ -789,10 +798,11 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             )
         )
 
-    def snapshot_record(self, name):
+    def snapshot_record(self, name, output_location=None):
         self._run_cmd(
-            "snapshot record --session='{session_name}'".format(
-                session_name=name
+            "snapshot record --session='{session_name}' {location}".format(
+                session_name=name,
+                location=output_location if output_location else "",
             )
         )
 
@@ -867,8 +877,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
     def list_session_raw(self, session):
         list_sessions_xml = self._run_cmd(
-            "list {}".format(session),
-            LTTngClient.CommandOutputFormat.MI_XML
+            "list {}".format(session), LTTngClient.CommandOutputFormat.MI_XML
         )
 
         root = xml.etree.ElementTree.fromstring(list_sessions_xml)
@@ -877,6 +886,4 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
 
         if len(sessions) > 0:
             return sessions[0]
-        raise InvalidMI(
-            "Invalid empty 'sessions element in '{}".format(session_mi.tag)
-        )
+        raise InvalidMI("Invalid empty 'sessions element in '{}".format(session_mi.tag))

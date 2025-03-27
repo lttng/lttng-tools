@@ -667,6 +667,11 @@ class Session(abc.ABC):
         # type: () -> None
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def record_snapshot(self, output_location=None):
+        # type: (Optional[SessionOutputLocation]) -> None
+        raise NotImplementedError
+
     @abc.abstractproperty
     def kernel_pid_process_attribute_tracker(self):
         # type: () -> Type[ProcessIDProcessAttributeTracker]
