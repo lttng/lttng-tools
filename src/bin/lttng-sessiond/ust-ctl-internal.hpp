@@ -658,8 +658,9 @@ lttng_ust_ctl_create_counter(size_t nr_dimensions,
 int lttng_ust_ctl_create_counter_data(struct lttng_ust_ctl_daemon_counter *counter,
 				      struct lttng_ust_abi_object_data **counter_data);
 
-int lttng_ust_ctl_create_counter_channel_data(struct lttng_ust_ctl_daemon_counter *counter,
-					      struct lttng_ust_abi_object_data **counter_channel_data);
+int lttng_ust_ctl_create_counter_channel_data(
+	struct lttng_ust_ctl_daemon_counter *counter,
+	struct lttng_ust_abi_object_data **counter_channel_data);
 int lttng_ust_ctl_create_counter_cpu_data(struct lttng_ust_ctl_daemon_counter *counter,
 					  int cpu,
 					  struct lttng_ust_abi_object_data **counter_cpu_data);

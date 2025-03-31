@@ -493,9 +493,9 @@ struct lttng_ust_abi_event_exclusion {
 
 /* Counter commands */
 /* (0xD0, 0xD1) reserved for old ABI. */
-#define LTTNG_UST_ABI_COUNTER_CHANNEL  LTTNG_UST_ABI_CMDV(0xD2, struct lttng_ust_abi_counter_channel)
-#define LTTNG_UST_ABI_COUNTER_CPU      LTTNG_UST_ABI_CMDV(0xD3, struct lttng_ust_abi_counter_cpu)
-#define LTTNG_UST_ABI_COUNTER_EVENT    LTTNG_UST_ABI_CMDV(0xD4, struct lttng_ust_abi_counter_event)
+#define LTTNG_UST_ABI_COUNTER_CHANNEL LTTNG_UST_ABI_CMDV(0xD2, struct lttng_ust_abi_counter_channel)
+#define LTTNG_UST_ABI_COUNTER_CPU     LTTNG_UST_ABI_CMDV(0xD3, struct lttng_ust_abi_counter_cpu)
+#define LTTNG_UST_ABI_COUNTER_EVENT   LTTNG_UST_ABI_CMDV(0xD4, struct lttng_ust_abi_counter_event)
 
 #define LTTNG_UST_ABI_ROOT_HANDLE 0
 
