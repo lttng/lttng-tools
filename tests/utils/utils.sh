@@ -2518,11 +2518,12 @@ function trace_match_only()
 
 # Check that the trace contains at least 1 event matching each name in the
 # comma separated list '$event_names'.
-function validate_trace()
+function validate_trace_opt()
 {
 	local event_names=$1
 	local trace_path=$2
-
+	local all_events_ret=0
+	local ret
 	local count
 
 	bail_out_if_no_babeltrace
@@ -2533,9 +2534,28 @@ function validate_trace()
 		# trace_path is unquoted since callers make use of globbing
 		count=$(_run_babeltrace_cmd $trace_path | grep -c "$event_name")
 		test "$count" -gt 0
-		ok $? "Found $count events matching '$event_name'"
+		ret=$?
+		if [[ -n "${TAP:-}" ]]; then
+			ok $ret "Found $count events matching '$event_name'"
+		else
+			diag "Found $count events mathcing '${event_name}'"
+		fi
+		if [[ "${ret}" != "0" ]]; then
+			all_events_ret=$ret
+		fi
 	done
 	IFS=$OLDIFS
+	return $all_events_ret
+}
+
+validate_trace_notap()
+{
+	TAP='' validate_trace_opt "${@}"
+}
+
+validate_trace()
+{
+	TAP=1 validate_trace_opt "${@}"
 }
 
 # Check that the trace contains at least 1 event matching each name in the
