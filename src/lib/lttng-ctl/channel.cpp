@@ -160,19 +160,31 @@ lttng_notification_channel_create(struct lttng_endpoint *endpoint)
 	CDS_INIT_LIST_HEAD(&channel->pending_notifications.list);
 
 	{
-		const auto length = std::snprintf(nullptr,
-						  0,
-						  DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
-						  rundir_path.get()) +
-			1;
+		/*
+		 * Prior to glibc 2.1, snprintf(3) did not conform to C99 and
+		 * would return -1 on truncation.
+		 *
+		 * This made it impossible to call snprintf(3) twice: first to
+		 * determine the required buffer size, and then to perform the
+		 * actual formatting.
+		 *
+		 * Instead, allocate the largest possible buffer size and check
+		 * for any errors or truncation (for glibc < 2.1).
+		 */
+		std::vector<char> sock_path(LTTNG_PATH_MAX);
 
-		std::vector<char> sock_path;
-		sock_path.reserve(length);
-		ret = std::snprintf(sock_path.data(),
-				    length,
-				    DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
-				    rundir_path.get());
-		if (ret < 0 || ret >= LTTNG_PATH_MAX) {
+		const auto length_or_error = std::snprintf(sock_path.data(),
+							   sock_path.size(),
+							   DEFAULT_NOTIFICATION_CHANNEL_UNIX_SOCK,
+							   rundir_path.get());
+
+		/*
+		 * An error could indicate truncation for glibc < 2.1.
+		 *
+		 * The returned length excludes the null-terminating byte. Therefore,
+		 * if the length is equal to the buffer size, truncation has occurred.
+		 */
+		if ((length_or_error < 0) || (length_or_error >= sock_path.size())) {
 			goto error;
 		}
 
