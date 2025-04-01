@@ -5,8 +5,10 @@ This directory contains the sources of the LTTng-tools man pages.
 
 LTTng-tools man pages are written in
 [AsciiDoc](https://asciidoc.org/), and then converted to
-DocBook (XML) using the `asciidoc` command, and finally to troff using
-the appropriate DocBook XSL stylesheet (using the `xmlto` command).
+DocBook (XML) using the
+[`asciidoc` command](https://asciidoc-py.github.io/), and
+finally to troff using the appropriate DocBook XSL stylesheet (using the
+`xmlto` command).
 
 
 Custom XSL stylesheets
