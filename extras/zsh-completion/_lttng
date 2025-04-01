@@ -1246,14 +1246,25 @@ __lttng_complete_create_cmd() {
 __lttng_complete_destroy_cmd() {
   local specs=(
     $help_opt_specs
-    '(-a --all):: : __lttng_complete_session_name all all'
-    '(1 -a --all)'{-a,--all}'[destroy all recording sessions]'
   )
 
   # The `--no-wait` option requires LTTng-tools ≥ 2.8
   if ((minor_version >= 8)); then
     specs+=(
       '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
+    )
+  fi
+
+  specs+=(
+    + '(session)'
+    ':: : __lttng_complete_session_name all all'
+    {-a,--all}'[destroy all recording sessions]'
+  )
+
+  # The `--glob` option requires LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    specs+=(
+      {-g+,--glob=}'[destroy recording sessions matched by a pattern]:globbing pattern:'
     )
   fi
 
@@ -1952,10 +1963,19 @@ __lttng_complete_snapshot_cmd() {
 
 # Adds completions for the arguments of the `start` command.
 __lttng_complete_start_cmd() {
-  local -r specs=(
+  local specs=(
     $help_opt_specs
+    + '(session)'
     ': : __lttng_complete_session_name inactive all'
   )
+
+  # The `--glob` and `--all` options require LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    specs+=(
+      {-a,--all}'[start all recording sessions]'
+      {-g+,--glob=}'[start recording sessions matched by a pattern]:globbing pattern:'
+    )
+  fi
 
   # Add completions
   __lttng_arguments $specs
@@ -1963,11 +1983,20 @@ __lttng_complete_start_cmd() {
 
 # Adds completions for the arguments of the `stop` command.
 __lttng_complete_stop_cmd() {
-  local -r specs=(
+  local specs=(
     $help_opt_specs
     '(-n --no-wait)'{-n,--no-wait}'[exit immediately]'
+    + '(session)'
     ': : __lttng_complete_session_name active all'
   )
+
+  # The `--glob` and `--all` options require LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    specs+=(
+      {-a,--all}'[stop all recording sessions]'
+      {-g+,--glob=}'[stop recording sessions matched by a pattern]:globbing pattern:'
+    )
+  fi
 
   # Add completions
   __lttng_arguments $specs
