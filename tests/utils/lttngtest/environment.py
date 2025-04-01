@@ -77,7 +77,17 @@ class _SignalWaitQueue:
         self._queue.put_nowait(signal_number)
 
     def wait_for_signal(self):
-        self._queue.get(block=True)
+        # This uses a timeout + retry loop to avoid
+        # issues with hanging on yocto kirkstone powerpc
+        wait = True
+        while wait:
+            try:
+                self._queue.get(block=True, timeout=1)
+                wait = False
+            except queue.Empty:
+                continue
+            except Exception as e:
+                raise e
 
     @contextlib.contextmanager
     def intercept_signal(self, signal_number):
