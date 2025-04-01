@@ -102,8 +102,8 @@ List the recording sessions of your Unix user, or of all users if
 your Unix user is `root`, within the connected session daemon with the
 man:lttng-list(1) command.
 
-Start and stop a recording session with the man:lttng-start(1) and
-man:lttng-stop(1) commands.
+Start and stop one or more recording sessions with
+the man:lttng-start(1) and man:lttng-stop(1) commands.
 
 Save and load a recording session with the man:lttng-save(1) and
 man:lttng-load(1) commands.
@@ -114,7 +114,8 @@ man:lttng-track(1) and man:lttng-untrack(1) commands.
 Archive the current trace chunk of (rotate) a recording session with the
 man:lttng-rotate(1) command.
 
-Destroy a recording session with the man:lttng-destroy(1) command.
+Destroy one or more recording session with
+the man:lttng-destroy(1) command.
 
 
 [[modes]]

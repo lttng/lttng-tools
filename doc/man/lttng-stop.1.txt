@@ -1,56 +1,74 @@
 lttng-stop(1)
 =============
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
 ----
-lttng-stop - Stop an LTTng recording session
+lttng-stop - Stop one or more LTTng recording sessions
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *stop* [option:--no-wait] [option:--all | option:--glob 'SESSION' | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *stop* [option:--no-wait]
+      [option:--all | option:--glob='PATTERN' | 'SESSION']
 
 
 DESCRIPTION
 -----------
-The `lttng stop` command stops a recording session, that is, it
-deactivates the LTTng tracers for:
+The `lttng stop` command stops one or more recording sessions, that is,
+it deactivates the LTTng tracers for:
 
 With the 'SESSION' argument::
     The recording session named 'SESSION'.
 
-Without the 'SESSION' argument::
-    The current recording session (see man:lttng-concepts(7) to learn more
-    about the current recording session).
+With the option:--glob='PATTERN' option::
+    The recording sessions of which the globbing pattern
+    'PATTERN' matches the name.
+
+With the option:--all option::
+    *All* the recording sessions of the connected session daemon for
+    your Unix user, or for all users if your Unix user is `root`, as
+    listed in the output of `lttng list` (see man:lttng-list(1)).
++
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
+
+Otherwise::
+    The current recording session.
++
+See man:lttng-concepts(7) to learn more about
+the current recording session.
 
 See man:lttng-concepts(7) to learn more about recording sessions.
 
-The selected recording session must be active (started; see
+The selected recording session(s) must be active (started; see
 man:lttng-start(1)). A recording session is inactive on creation (see
 man:lttng-create(1)).
 
 A `stop-session` trigger action can also stop a recording session (see
 man:lttng-add-trigger(1)).
 
-Start an inactive recording session with the man:lttng-start(1) command.
+Start one or more inactive recording sessions with the
+man:lttng-start(1) command.
 
 By default, the `stop` command ensures that the trace data of the
-selected recording session is valid before it exits. Make the command
+selected recording session(s) is valid before it exits. Make the command
 exit immediately with the option:--no-wait option. In this case,
 however, the traces(s) might not be valid when the command exits, and
 there's no way to know when it/they becomes valid.
 
-If LTTng archived the current trace chunk (see man:lttng-rotate(1) and
-man:lttng-enable-rotation(1)) of the selected recording session at least
-once during its lifetime, the `stop` command renames the current trace
-chunk subdirectory and prints the renamed path. Although it's safe to
-read the content of this renamed subdirectory while the recording
-session remains inactive, it's :not: a trace chunk archive: you need to
-destroy the recording session with man:lttng-destroy(1) or perform a
-rotation with man:lttng-rotate(1) to archive it.
+For each recording session to stop:
+
+* If LTTng archived the current trace chunk (see man:lttng-rotate(1) and
+  man:lttng-enable-rotation(1)) of the recording session at
+  least once during its lifetime, the `stop` command renames the current
+  trace chunk subdirectory and prints the renamed path. Although it's
+  safe to read the content of this renamed subdirectory while the
+  recording session remains inactive, it's :not: a trace chunk archive:
+  you need to destroy the recording session with man:lttng-destroy(1) or
+  perform a rotation with man:lttng-rotate(1) to archive it.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
@@ -58,15 +76,22 @@ See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 include::common-lttng-cmd-options-head.txt[]
 
 
+option:-a, option:--all::
+    Stop all the recording sessions of your Unix user, or of all
+    users if your Unix user is `root`, as listed in the output of
+    man:lttng-list(1).
+
+option:-g 'PATTERN', option:--glob='PATTERN'::
+    Stop the recording sessions of which the
+    globbing pattern 'PATTERN' matches the name.
++
+In 'PATTERN', the `*` character means ``match anything''. To match
+a literal `*` character, use :escwc:.
+
 option:-n, option:--no-wait::
     Do :not: ensure that the trace data of the selected recording
-    session is valid before exiting.
+    session(s) is valid before exiting.
 
-option:-a, option:--all::
-    Stop all sessions.
-
-option:-g, option:--glob::
-    Interpret SESSION as a globbing pattern.
 
 include::common-lttng-cmd-help-options.txt[]
 
@@ -103,7 +128,7 @@ $ lttng stop --no-wait
 ----
 ====
 
-.Stop all sessions.
+.Stop all the recording sessions.
 ====
 See the option:--all option.
 
@@ -113,13 +138,13 @@ $ lttng stop --all
 ----
 ====
 
-.Stop all sessions with the suffix foo.
+.Stop all the recording sessions of which the name starts with `bar`.
 ====
 See the option:--glob option.
 
 [role="term"]
 ----
-$ lttng stop --glob '*foo'
+$ lttng stop --glob='bar*'
 ----
 ====
 

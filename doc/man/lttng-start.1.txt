@@ -1,42 +1,57 @@
 lttng-start(1)
 ==============
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
 ----
-lttng-start - Start an LTTng recording session
+lttng-start - Start one or more LTTng recording session
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *start* [option::--all | option::--glob 'SESSION' | 'SESSION' ]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *start* [option:--all | option:--glob='PATTERN' | 'SESSION']
 
 
 DESCRIPTION
 -----------
-The `lttng start` command starts a recording session, that is, it
-activates the LTTng tracers for:
+The `lttng start` command starts one or more recording sessions, that
+is, it activates the LTTng tracers for:
 
 With the 'SESSION' argument::
     The recording session named 'SESSION'.
 
-Without the 'SESSION' argument::
-    The current recording session (see man:lttng-concepts(7) to learn
-    more about the current recording session).
+With the option:--glob='PATTERN' option::
+    The recording sessions of which the globbing pattern
+    'PATTERN' matches the name.
+
+With the option:--all option::
+    *All* the recording sessions of the connected session daemon for
+    your Unix user, or for all users if your Unix user is `root`, as
+    listed in the output of `lttng list` (see man:lttng-list(1)).
++
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
+
+Otherwise::
+    The current recording session.
++
+See man:lttng-concepts(7) to learn more about
+the current recording session.
 
 See man:lttng-concepts(7) to learn more about recording sessions.
 
-The selected recording session must be inactive (stopped). A recording
-session is inactive on creation (see man:lttng-create(1)).
+The selected recording session(s) must be inactive (stopped). A
+recording session is inactive on creation (see man:lttng-create(1)).
 
 A `start-session` trigger action can also start a recording session
 (see man:lttng-add-trigger(1)).
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-Stop an active recording session with the man:lttng-stop(1) command.
+Stop one or more active recording sessions with the
+man:lttng-stop(1) command.
 
 
 include::common-lttng-cmd-options-head.txt[]
@@ -45,10 +60,17 @@ include::common-lttng-cmd-options-head.txt[]
 include::common-lttng-cmd-help-options.txt[]
 
 option:-a, option:--all::
-    Start all sessions.
+    Start all the recording sessions of your Unix user, or of all
+    users if your Unix user is `root`, as listed in the output of
+    man:lttng-list(1).
 
-option:-g, option:--glob::
-    Interpret SESSION as a globbing pattern.
+option:-g 'PATTERN', option:--glob='PATTERN'::
+    Start the recording sessions of which the
+    globbing pattern 'PATTERN' matches the name.
++
+In 'PATTERN', the `*` character means ``match anything''. To match
+a literal `*` character, use :escwc:.
+
 
 include::common-lttng-cmd-after-options.txt[]
 
@@ -72,9 +94,9 @@ $ lttng start my-session
 ----
 ====
 
-.Start all sessions.
+.Start all the recording sessions.
 ====
-See the option::--all option.
+See the option:--all option.
 
 [role="term"]
 ----
@@ -82,13 +104,13 @@ $ lttng start --all
 ----
 ====
 
-.Start all sessions with the suffix foo.
+.Start all the recording sessions of which the name ends with `foo`.
 ====
-See the option::--glob option.
+See the option:--glob option.
 
 [role="term"]
 ----
-$ lttng start --glob '*foo'
+$ lttng start --glob='*foo'
 ----
 ====
 

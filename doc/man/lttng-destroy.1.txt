@@ -1,17 +1,18 @@
 lttng-destroy(1)
 ================
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
 ----
-lttng-destroy - Destroy LTTng recording sessions
+lttng-destroy - Destroy one or more LTTng recording sessions
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--no-wait] [option:--all | option:--glob 'SESSION' | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--no-wait]
+      [option:--all | option:--glob='PATTERN' | 'SESSION']
 
 
 DESCRIPTION
@@ -20,6 +21,10 @@ The `lttng destroy` command destroys:
 
 With the 'SESSION' argument::
     The recording session named 'SESSION'.
+
+With the option:--glob='PATTERN' option::
+    The recording sessions of which the globbing pattern
+    'PATTERN' matches the name.
 
 With the option:--all option::
     *All* the recording sessions of the connected session daemon for
@@ -30,10 +35,12 @@ See the ``Session daemon connection'' section of man:lttng(1) to learn
 how a user application connects to a session daemon.
 
 Otherwise::
-    The current recording session (see man:lttng-concepts(7) to learn
-    more about the current recording session).
+    The current recording session.
 +
 In that case, the current recording session becomes nonexistent.
++
+See man:lttng-concepts(7) to learn more about
+the current recording session.
 
 See man:lttng-concepts(7) to learn more about recording sessions.
 
@@ -73,11 +80,14 @@ include::common-lttng-cmd-options-head.txt[]
 option:-a, option:--all::
     Destroy all the recording sessions of your Unix user, or of all
     users if your Unix user is `root`, as listed in the output of
-    man:lttng-list(1), instead of the current recording session or the
-    recording session named 'SESSION'.
+    man:lttng-list(1).
 
-option:-g, option:--glob::
-    Interpret SESSION as a globbing pattern.
+option:-g 'PATTERN', option:--glob='PATTERN'::
+    Destroy the recording sessions of which the
+    globbing pattern 'PATTERN' matches the name.
++
+In 'PATTERN', the `*` character means ``match anything''. To match
+a literal `*` character, use :escwc:.
 
 option:-n, option:--no-wait::
     Do :not: ensure that the trace data of the recording session(s) to
@@ -119,7 +129,7 @@ $ lttng destroy my-session
 ----
 ====
 
-.Destroy all recording sessions.
+.Destroy all the recording sessions.
 ====
 See the option:--all option.
 
@@ -129,13 +139,13 @@ $ lttng destroy --all
 ----
 ====
 
-.Destroy all recording sessions with the suffix foo.
+.Destroy all the recording sessions of which the name contains with `meow`.
 ====
 See the option:--glob option.
 
 [role="term"]
 ----
-$ lttng destroy --global '*foo'
+$ lttng destroy --glob='*meow*'
 ----
 ====
 
