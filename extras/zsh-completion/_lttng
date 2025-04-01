@@ -1,6 +1,6 @@
 #compdef lttng
 #
-# Copyright (c) 2015-2023 Philippe Proulx <eeppeliteloop@gmail.com>
+# Copyright (c) 2015-2025 Philippe Proulx <eeppeliteloop@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -1521,6 +1521,31 @@ __lttng_complete_enable_channel_cmd_names() {
   _sequence __lttng_complete_channel_name disabled opt
 }
 
+# Adds completions for a buffer ownership.
+__lttng_complete_buffer_ownership() {
+  local -ra kernel_choices=(
+    'system:use global ring buffers'
+  )
+  local -ra user_choices=(
+    'user:use per-user ring buffers'
+    'process:use per-process ring buffers'
+  )
+  local -a choices
+
+  if __lttng_kernel_domain_opt_is_set; then
+    choices=($kernel_choices)
+  elif __lttng_user_domain_opt_is_set; then
+    choices=($user_choices)
+  else
+    choices=($kernel_choices $user_choices)
+  fi
+
+  # Add completions
+  local expl
+
+  _describe 'buffer ownership' choices
+}
+
 # Adds completions for the arguments of the `enable-channel` command.
 __lttng_complete_enable_channel_cmd() {
   local specs=(
@@ -1553,11 +1578,18 @@ __lttng_complete_enable_channel_cmd() {
     + '(loss-mode)'
     '--discard[discard event records with no available sub-buffer]'
     '(--blocking-timeout)--overwrite[overwrite oldest sub-buffer with no available sub-buffer]'
-    + '(buffering)'
+    + '(buffer-ownership)'
     '(-k --kernel)--buffers-uid[use per-user ring buffers]'
     '(-k --kernel)--buffers-pid[use per-process ring buffers]'
     '(-u --userspace --blocking-timeout)--buffers-global[use global ring buffers]'
   )
+
+  # The `--buffer-ownership` option requires LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    specs+=(
+      '--buffer-ownership=[set the ownership of ring buffers]: : __lttng_complete_buffer_ownership'
+    )
+  fi
 
   # Add completions
   __lttng_arguments $specs
