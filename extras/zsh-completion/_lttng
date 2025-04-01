@@ -1546,6 +1546,22 @@ __lttng_complete_buffer_ownership() {
   _describe 'buffer ownership' choices
 }
 
+# Adds completions for a buffer allocation policy.
+__lttng_complete_buffer_alloc() {
+  local choices=(
+    'per-cpu:allocate sub-buffers for each CPU'
+  )
+
+  if __lttng_user_domain_opt_is_set || ! __lttng_kernel_domain_opt_is_set; then
+    choices+=('per-channel:allocate sub-buffers for each channel')
+  fi
+
+  # Add completions
+  local expl
+
+  _describe 'buffer allocation policy' choices
+}
+
 # Adds completions for the arguments of the `enable-channel` command.
 __lttng_complete_enable_channel_cmd() {
   local specs=(
@@ -1567,6 +1583,13 @@ __lttng_complete_enable_channel_cmd() {
     specs+=(
       '(--kernel --overwrite --buffers-global)--blocking-timeout=[set the blocking timeout]:blocking timeout (µs):'
       '--monitor-timer=[set the monitor timer period]:monitor timer period (µs):'
+    )
+  fi
+
+  # The `buffer-allocation` option require LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    specs+=(
+      '--buffer-allocation=[set the allocation policy of ring buffers]: : __lttng_complete_buffer_alloc'
     )
   fi
 
