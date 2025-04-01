@@ -1599,14 +1599,14 @@ __lttng_complete_enable_event_cmd() {
     )
   fi
 
-  # The Python tracing domain options require LTTng-tools 2.7
+  # The Python tracing domain options require LTTng-tools ≥ 2.7
   if ((minor_version >= 7)); then
     domain_specs+=(
       "($kernel_opts_excl -x --exclude)"{-p,--python}'[select the Python tracing domain]'
     )
   fi
 
-  # The Linux user space probe instrumentation options require LTTng-tools 2.11
+  # The Linux user space probe instrumentation options require LTTng-tools ≥ 2.11
   if ((minor_version >= 11)); then
     ip_specs+=(
       "($non_kernel_opts_excl)--userspace-probe=[only match Linux user space probe events]:user space probe location:"
