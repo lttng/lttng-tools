@@ -348,8 +348,13 @@ __lttng_complete_context_type() {
   )
   local user_types=(
     vpid pthread_id procname ip cgroup_ns ipc_ns mnt_ns net_ns pid_ns
-    time_ns user_ns uts_ns vuid veuid vsuid vgid vegid vsgid cpu_id
+    time_ns user_ns uts_ns vuid veuid vsuid vgid vegid vsgid
   )
+
+  # `cpu_id` user context type requires LTTng-tools ≥ 2.14
+  if ((minor_version >= 14)); then
+    user_types+=(cpu_id)
+  fi
 
   # Set `types` and `domain` depending on the selected tracing domain
   local -a types
