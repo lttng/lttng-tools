@@ -92,7 +92,7 @@ cmd_error_code stop_tracing(const char *session_name)
 
 	ret = lttng_stop_tracing_no_wait(session_name);
 	if (ret < 0) {
-		LTTNG_THROW_CTL(lttng::format("Failed to start session `{}`", session_name),
+		LTTNG_THROW_CTL(lttng::format("Failed to stop session `{}`", session_name),
 				static_cast<lttng_error_code>(-ret));
 	}
 
