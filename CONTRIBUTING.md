@@ -10,7 +10,7 @@ of contributing a patch to LTTng-tools.
 The LTTng-tools project uses [Git](https://git-scm.com/) for version
 control. The upstream Git repository URL is:
 
-    git://git.lttng.org/lttng-tools.git
+    https://git.lttng.org/lttng-tools.git
 
 
 ## Coding standard

@@ -29,7 +29,7 @@
  *   branch: formal-model
  *   commit id: 2a8044f3493046fcc8c67016902dc7beec6f026a
  *
- * Ref: git://git.lttng.org/userspace-rcu.git
+ * Ref: https://git.lttng.org/userspace-rcu.git
  */
 
 /*

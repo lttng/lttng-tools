@@ -33,5 +33,5 @@ Once the session is created, the user can activate events as usual.
 In order to view the live trace, the viewer must implement the live-reading
 protocol. As of now, Babeltrace[1] and LTTngTop[2] implement the protocol.
 
-[1] git://git.efficios.com/babeltrace.git
-[2] git://git.lttng.org/lttngtop.git
+[1] https://git.efficios.com/babeltrace.git
+[2] https://git.lttng.org/lttngtop.git

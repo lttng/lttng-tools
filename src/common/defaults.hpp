@@ -19,7 +19,7 @@
 
 /*
  * This value is defined in the CTF specification (see
- * git://git.efficios.com/ctf.git in the file
+ * https://git.efficios.com/ctf.git in the file
  * common-trace-format-specification.txt.
  */
 #define DEFAULT_METADATA_NAME "metadata"
