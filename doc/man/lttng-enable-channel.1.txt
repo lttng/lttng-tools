@@ -215,7 +215,8 @@ policy, but this may change in the future.
 Event record loss mode
 ~~~~~~~~~~~~~~~~~~~~~~
 option:--blocking-timeout='TIMEOUTUS'::
-    Set the channel's blocking timeout value to __TIMEOUTUS__{nbsp}µs
+    Set the blocking timeout value of the channel
+    to __TIMEOUTUS__{nbsp}µs
     for instrumented applications executed with a set
     `LTTNG_UST_ALLOW_BLOCKING` environment variable.
 +
@@ -269,7 +270,7 @@ option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_metadata_subbuf_num}+
 
 option:--output='TYPE'::
-    Set channel's output type to 'TYPE'.
+    Set the output type of the channel to 'TYPE'.
 +
 'TYPE' is one of:
 +

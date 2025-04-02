@@ -124,7 +124,7 @@ You must use this option to be able to connect to a root session daemon
 nloption:--group='GROUP' option.
 
 option:-m `xml`, option:--mi=++xml++::
-    Print the command's result using a stable XML machine interface (MI)
+    Print the command result using a stable XML machine interface (MI)
     output instead of the default, unstable human-readable output.
 +
 With this mode, `lttng` prints the resulting XML document to the
