@@ -1,6 +1,6 @@
 lttng-sessiond(8)
 =================
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 :daemon-bin-name: lttng-sessiond
 :daemon-ini-section: sessiond
 
@@ -210,6 +210,9 @@ option:--agent-tcp-port='PORT'::
 
 option:-a 'PATH', option:--apps-sock='PATH'::
     Set the application Unix socket path to 'PATH'.
++
+This option sets the application Unix socket path even if you set
+the `LTTNG_UST_CTL_PATH` environment variable.
 
 option:-c 'PATH', option:--client-sock='PATH'::
     Set the client Unix socket path to 'PATH'.
@@ -391,25 +394,6 @@ session daemons as the root user.
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Recording session configuration XML schema definition (XSD) path.
 
-`LTTNG_UST_APP_PATH`::
-    The directory path in which to look for listening sockets as a tracee.
-+
-See man:lttng-ust(3) for more details.
-
-`LTTNG_UST_CTL_PATH`::
-    The directory path in which listening sockets for UST applications are opened.
-    If the value contains a colon (':'), each section delimited by the colons is
-    considered as a separate path.
-+
-The directory must exist prior to starting lttng-sessiond. There is no provision
-for escaping the colons (':') that are used as path separators.
-+
-At this time, paths after the first are ignored and warning issued.
-+
-When `LTTNG_UST_CTL_PATH` is set, the default UST socket paths are not used. When
-tracing an application, start the application with `LTTNG_UST_APP_PATH` set to
-the same value of the session daemons `LTTNG_UST_CTL_PATH`.
-
 `LTTNG_UST_ALLOW_BLOCKING`::
     Allow the sessiond to operate as a tracee in blocking mode.
 +
@@ -417,6 +401,42 @@ See man:lttng-ust(3) for more details. lttng-sessiond will refuse to start as a
 tracee in blocking mode if neither `LTTNG_UST_APP_PATH` nor `LTTNG_UST_CTL_PATH`
 are set, or if both `LTTNG_UST_APP_PATH` and `LTTNG_UST_CTL_PATH` are set to the
 same value.
+
+`LTTNG_UST_CTL_PATH`::
+    Colon-delimited paths of the directories where `lttng-sessiond`
+    places:
++
+--
+* The application registration Unix socket.
++
+NOTE: The option:--apps-sock option overrides this specific path.
+
+* The "wait" shared memory files to wake up instrumented applications
+  that are waiting for a session daemon to start.
+
+* The agent port file.
++
+This file contains the TCP port the agents must connect to
+to enable LTTng tracing.
+--
++
+Any such directory must exist when you start `lttng-sessiond`.
++
+As of LTTng{nbsp}{lttng_version}:
++
+--
+* `lttng-sessiond` ignores any path after the first colon (`:`) and
+  prints a warning.
+
+* You cannot escape a colon within a specific path.
+--
++
+When tracing an application, start it with the
+`LTTNG_UST_APP_PATH` environment variable set to the same value as
+this environment variable.
++
+If not set, the default directory path is the effective control file
+directory (see the `LTTNG_RUNDIR` environment variable).
 
 FILES
 -----
