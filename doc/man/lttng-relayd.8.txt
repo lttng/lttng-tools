@@ -1,6 +1,6 @@
 lttng-relayd(8)
 ===============
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 :daemon-bin-name: lttng-relayd
 :daemon-ini-section: relayd
 
@@ -15,10 +15,10 @@ SYNOPSIS
 [verse]
 *lttng-relayd* [option:--background | option:--daemonize] [option:--config='PATH']
              [option:--control-port='URL'] [option:--data-port='URL'] [option:--fd-pool-size='COUNT']
-             [option:--live-port='URL'] [option:--output='DIR'] [option:--group='GROUP']
-             [option:--verbose]... [option:--working-directory='DIR']
+             [option:--live-port='URL'] [option:--dynamic-port-allocation] [option:--output='DIR']
+             [option:--group='GROUP'] [option:--verbose]... [option:--working-directory='DIR']
              [option:--group-output-by-host | option:--group-output-by-session] [option:--disallow-clear]
-	     [option:--dynamic-port-allocation] [option:--pid-file='FILE'] [option:--sig-parent]
+             [option:--pid-file='FILE'] [option:--sig-parent]
 
 
 DESCRIPTION
@@ -161,6 +161,9 @@ see https://www.ietf.org/rfc/rfc2732.txt[RFC{nbsp}2732].
 
 'PORT'::
     TCP port.
++
+If this value is{nbsp}`0` and the option:--dynamic-port-allocation
+option is set, then the operating system assigns a port number itself.
 
 
 [[options]]
@@ -197,6 +200,17 @@ option:-x, option:--disallow-clear::
 +
 See also the `LTTNG_RELAYD_DISALLOW_CLEAR` environment variable.
 
+option:--dynamic-port-allocation::
+    Let the operating system assign the control, data, and live ports
+    if their respective option is missing (option:--control-port,
+    option:--data-port, and option:--live-port) or if their port number
+    part is{nbsp}`0`.
++
+With this option, `lttng-relayd` writes the `control.port`, `data.port`,
+and `live.port` files, as needed, to its
+runtime and configuration directory (`$LTTNG_HOME/.lttng`). Such a port
+file contains the textual port number (decimal) followed with a newline.
+
 option:--fd-pool-size='SIZE'::
     Set the size of the file descriptor pool to 'SIZE' file descriptors.
 +
@@ -227,14 +241,6 @@ option:-v, option:--verbose::
     Increase verbosity.
 +
 Specify this option up to three times to get more levels of verbosity.
-
-option:--dynamic-port-allocation::
-    When specific any of the control, data, and live ports not specifically
-    given, or which are given a value of '0' will have the port choice delegated
-    to the operating system.
-+
-lttng-relayd will write `control.port`, `data.port`, and `live.port` files to
-its run-time directory.
 
 option:-P, option:--pid-file::
     Write the PID of the lttng-relayd process to the given file.
@@ -272,6 +278,11 @@ Ports
 ~~~~~
 See the ``<<url-format,URL format>>'' section above to learn more about
 the syntax of the 'URL' argument of the following options.
+
+For the following options: if the option:--dynamic-port-allocation
+option is set and the port option is either missing or the port number
+part of 'URL' is{nbsp}`0`, then the operating system assigns a port
+number itself.
 
 option:-C 'URL', option:--control-port='URL'::
     Listen to control data on URL 'URL'.
