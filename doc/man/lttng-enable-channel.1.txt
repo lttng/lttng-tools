@@ -208,6 +208,16 @@ Only available with the option:--userspace option.
 Setting option:--buffer-ownership to `user`, `process`, or `system`
 determines what entity gets a set of per-CPU ring buffers.
 +
+Using this buffer allocation policy implies adding the `cpu_id`
+context field, without any way to remove it, for the created channel,
+similar to running:
++
+[role="term"]
+----
+$ lttng add-context --session=SESSION --channel=CHANNEL \
+                    --type=cpu_id
+----
++
 As of LTTng{nbsp}{lttng_version}, this is the default buffer allocation
 policy, but this may change in the future.
 
