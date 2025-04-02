@@ -18,7 +18,7 @@ SYNOPSIS
              [option:--live-port='URL'] [option:--dynamic-port-allocation] [option:--output='DIR']
              [option:--group='GROUP'] [option:--verbose]... [option:--working-directory='DIR']
              [option:--group-output-by-host | option:--group-output-by-session] [option:--disallow-clear]
-             [option:--pid-file='FILE'] [option:--sig-parent]
+             [option:--pid-file='PATH'] [option:--sig-parent]
 
 
 DESCRIPTION
@@ -48,7 +48,8 @@ system of{nbsp}__RD__.
 By default, `lttng-relayd` doesn't start as a daemon. Make it a daemon
 with the option:--daemonize or option:--background option. With those
 options, `lttng-relayd` ensures the daemon is listening to incoming
-connections before it exits.
+connections before it exits. Make `lttng-relayd` write its process ID
+to a file with the option:--pid-file option.
 
 
 include::common-daemon-cfg.txt[]
@@ -231,6 +232,13 @@ of the relay daemon.
 +
 See also the `LTTNG_RELAYD_HEALTH` environment variable.
 
+option:-P 'PATH', option:--pid-file='PATH'::
+    Write the process ID (PID) of the `lttng-relayd` process to 'PATH'.
++
+Such a file contains the textual PID (decimal) followed with a newline.
++
+`lttng-relayd` doesn't use this file and removes it when it exits.
+
 option:-w 'DIR', option:--working-directory='DIR'::
     Set the working directory of the processes the relay daemon creates
     to 'DIR'.
@@ -241,11 +249,6 @@ option:-v, option:--verbose::
     Increase verbosity.
 +
 Specify this option up to three times to get more levels of verbosity.
-
-option:-P, option:--pid-file::
-    Write the PID of the lttng-relayd process to the given file.
-+
-This file is not otherwise used by lttng-relayd and is removed at shutdown.
 
 option:-S, option:--sig-parent::
     Send the `USR1` signal to the parent process to notify readiness.
