@@ -239,23 +239,24 @@ Such a file contains the textual PID (decimal) followed with a newline.
 +
 `lttng-relayd` doesn't use this file and removes it when it exits.
 
-option:-w 'DIR', option:--working-directory='DIR'::
-    Set the working directory of the processes the relay daemon creates
-    to 'DIR'.
-+
-See also the `LTTNG_RELAYD_WORKING_DIRECTORY` environment variable.
-
-option:-v, option:--verbose::
-    Increase verbosity.
-+
-Specify this option up to three times to get more levels of verbosity.
-
 option:-S, option:--sig-parent::
     Send the `USR1` signal to the parent process to notify readiness.
 +
 You can also use the option:--daemonize or option:--background option,
 in which case `lttng-relayd` ensures the daemon is ready to receive
 client commands before it exits.
+
+option:-v, option:--verbose::
+    Increase verbosity.
++
+Specify this option up to three times to get more levels of verbosity.
+
+option:-w 'DIR', option:--working-directory='DIR'::
+    Set the working directory of the processes the relay daemon creates
+    to 'DIR'.
++
+See also the `LTTNG_RELAYD_WORKING_DIRECTORY` environment variable.
+
 
 Output
 ~~~~~~
