@@ -1,0 +1,49 @@
+// Render with Asciidoctor
+
+= Zsh completion for LTTng command-line programs
+Philippe Proulx
+2 April 2025
+
+The files in this directory are LTTng CLI completion files for the
+https://www.zsh.org/[Z{nbsp}shell].
+
+== How to use
+
+If you already have a configured Zsh completion directory, copy all the
+files starting with `_` from this directory to yours and you're done.
+
+Otherwise:
+
+. Create a Zsh completion directory, for example:
++
+----
+$ mkdir -p ~/.zsh/completion
+----
+
+. In your `pass:[~/.zshrc]` file, add your completion directory to
+  the `fpath` variable:
++
+----
+fpath=(~/.zsh/completion $fpath)
+----
++
+Then ensure `compinit` is initialized:
++
+----
+autoload -U compinit
+compinit -D
+----
+
+. Copy the completion files from this directory to your completion
+  directory:
++
+----
+$ cp _* ~/.zsh/completion
+$ chmod 644 ~/.zsh/completion/_*
+----
+
+To have access to the LTTng completions immediately, reload Zsh:
+
+----
+$ exec zsh
+----
