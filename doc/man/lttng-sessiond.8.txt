@@ -15,7 +15,7 @@ SYNOPSIS
 [verse]
 *lttng-sessiond* [option:--background | option:--daemonize] [option:--sig-parent]
                [option:--config='PATH'] [option:--group='GROUP'] [option:--load='PATH']
-               [option:--agent-tcp-port='PORT']
+               [option:--agent-tcp-port='PORT'] [option:--pidfile='PATH']
                [option:--apps-sock='PATH'] [option:--client-sock='PATH']
                [option:--no-kernel | [option:--kmod-probes='PROBE'[,'PROBE']...]
                               [option:--extra-kmod-probes='PROBE'[,'PROBE']...]
@@ -68,7 +68,8 @@ necessary. You do :not: need to manage the consumer daemons yourself.
 By default, `lttng-sessiond` doesn't start as a daemon. Make it a daemon
 with the option:--daemonize or option:--background option. With those
 options, `lttng-sessiond` ensures the daemon is ready to receive client
-commands before it exits.
+commands before it exits. Make `lttng-sessiond` write its process ID
+to a file with the option:--pidfile option.
 
 NOTE: The LTTng project recommends that you start the session daemon at
 boot time for stable and long-term tracing.
@@ -170,6 +171,12 @@ option:-l 'PATH', option:--load='PATH'::
 +
 See the ``<<load,Recording session configuration loading>>'' section
 above.
+
+option:-p 'PATH', option:--pidfile='PATH'::
+    Write the process ID (PID) of the `lttng-sessiond`
+    process to 'PATH'.
++
+Such a file contains the textual PID (decimal) followed with a newline.
 
 option:-S, option:--sig-parent::
     Send the `USR1` signal to the parent process to notify readiness.
