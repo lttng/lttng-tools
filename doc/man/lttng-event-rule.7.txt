@@ -1,6 +1,6 @@
 lttng-event-rule(7)
 ===================
-:revdate: 18 May 2021
+:revdate: 1 April 2025
 
 
 NAME
@@ -154,25 +154,25 @@ See man:lttng-list(1) to learn more.
 `jul:logging`::
     A `java.util.logging` logging statement.
 +
-List the available `java.util.logging` loggers with `lttng list --jul`
+List the available `java.util.logging` loggers with `lttng list --jul`.
 See man:lttng-list(1) to learn more.
 
 `log4j:logging`::
-    An Apache Log4j 1.x logging statement.
+    An Apache log4j{nbsp}1.x logging statement.
 +
-List the available Apache Log4j 1.x loggers with `lttng list --log4j`
-See man:lttng-list(1) to learn more.
+List the available Apache log4j{nbsp}1.x loggers with
+`lttng list --log4j`. See man:lttng-list(1) to learn more.
 
 `log4j2:logging`::
-    An Apache Log4j 2 logging statement.
+    An Apache Log4j{nbsp}2 logging statement.
 +
-List the available Apache Log4j 2 loggers with `lttng list --log4j2`
-See man:lttng-list(1) to learn more.
+List the available Apache Log4j{nbsp}2 loggers with
+`lttng list --log4j2`. See man:lttng-list(1) to learn more.
 
 `python:logging`::
     A Python logging statement.
 +
-List the available Python loggers with `lttng list --python` See
+List the available Python loggers with `lttng list --python`. See
 man:lttng-list(1) to learn more.
 
 
@@ -709,13 +709,13 @@ As of LTTng{nbsp}{lttng_version}, `jul` is an alias, but this may change
 in the future.
 
 `log4j:logging`:::
-    Apache Log4j 1.x logging statement.
+    Apache log4j{nbsp}1.x logging statement.
 +
 As of LTTng{nbsp}{lttng_version}, `log4j` is an alias, but this may
 change in the future.
 
 `log4j2:logging`:::
-    Apache Log4j 2 logging statement.
+    Apache Log4j{nbsp}2 logging statement.
 +
 As of LTTng{nbsp}{lttng_version}, `log4j2` is an alias, but this may
 change in the future.

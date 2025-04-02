@@ -1,6 +1,6 @@
 lttng-disable-event(1)
 ======================
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
@@ -95,10 +95,10 @@ option:-k, option:--kernel::
     Disable recording event rules in the Linux kernel domain.
 
 option:-l, option:--log4j::
-    Disable recording event rules in the Apache Log4j 1.x domain.
+    Disable recording event rules in the Apache log4j{nbsp}1.x domain.
 
 option:--log4j2::
-    Disable recording event rules in the Apache Log4j 2 domain.
+    Disable recording event rules in the Apache Log4j{nbsp}2 domain.
 
 option:-p, option:--python::
     Disable recording event rules in the Python domain.
@@ -176,7 +176,7 @@ $ lttng disable-event --kernel --tracepoint --all-events
 ----
 ====
 
-.Disable specific Apache Log4j 1.x recording event rules in the default channel of a specific recording session.
+.Disable specific Apache log4j{nbsp}1.x recording event rules in the default channel of a specific recording session.
 ====
 See the option:--session option.
 

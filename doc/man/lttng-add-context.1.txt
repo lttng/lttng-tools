@@ -1,6 +1,6 @@
 lttng-add-context(1)
 ====================
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
@@ -102,7 +102,8 @@ $app.'PROVIDER':__TYPE__
     Context type name.
 --
 +
-Only available with the option:--jul, option:--log4j and option:--log4j2 options.
+Only available with the option:--jul, option:--log4j,
+and option:--log4j2 options.
 
 IMPORTANT: Make sure to **single-quote** 'TYPE' when you run the
 `add-context` command from a shell, as `$` is a special character for
@@ -133,11 +134,11 @@ option:-k, option:--kernel::
 
 option:-l, option:--log4j::
     Add context fields to be recorded to the event records of one or
-    more channels of the Apache Log4j 1.x tracing domain.
+    more channels of the Apache log4j{nbsp}1.x tracing domain.
 
 option:--log4j2::
     Add context fields to be recorded to the event records of one or
-    more channels of the Apache Log4j 2 tracing domain.
+    more channels of the Apache Log4j{nbsp}2 tracing domain.
 
 option:-u, option:--userspace::
     Add context fields to be recorded to the event records of one or

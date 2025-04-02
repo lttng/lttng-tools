@@ -1,6 +1,6 @@
 lttng-list(1)
 =============
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
@@ -32,7 +32,8 @@ Java/Python loggers:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--fields]
-      [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul] [option:--log4j] [option:--log4j2] [option:--python]
+      [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul]
+      [option:--log4j] [option:--log4j2] [option:--python]
 
 
 DESCRIPTION
@@ -78,8 +79,8 @@ With the option:--kernel option::
 With the option:--userspace option::
     The available LTTng user space tracepoints.
 With the option:--jul, option:--log4j, option:--log4j2, and/or option:--python options::
-    The available `java.util.logging`, Apache Log4j 1.x, Apache Log4j 2 and/or Python
-    logger names.
+    The available `java.util.logging`, Apache log4j{nbsp}1.x,
+    Apache Log4j{nbsp}2 and/or Python logger names.
 --
 +
 Also list the available instrumentation point fields with the
@@ -116,17 +117,17 @@ option:-k, option:--kernel::
 
 option:-l, option:--log4j::
     Without the 'SESSION' argument:::
-        List the Apache Log4j 1.x logger names.
+        List the Apache log4j{nbsp}1.x logger names.
     With the 'SESSION' argument:::
-        Only list the Apache Log4j 1.x channels and their recording event
-        rules.
+        Only list the Apache log4j{nbsp}1.x channels and their recording
+        event rules.
 
 option:--log4j2::
     Without the 'SESSION' argument:::
-        List the Apache Log4j 2 logger names.
+        List the Apache Log4j{nbsp}2 logger names.
     With the 'SESSION' argument:::
-        Only list the Apache Log4j 2 channels and their recording event
-        rules.
+        Only list the Apache Log4j{nbsp}2 channels and their recording
+        event rules.
 
 option:-p, option:--python::
     Without the 'SESSION' argument:::
