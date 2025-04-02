@@ -633,39 +633,102 @@ command.
 [[channel-buf-scheme]]
 Buffering scheme
 ~~~~~~~~~~~~~~~~
-A channel has at least one ring buffer per CPU. LTTng always records an
-event to the ring buffer dedicated to the CPU which emits it.
+The buffering scheme of a channel is:
 
-The buffering scheme of a user space channel determines what has its own
-set of per-CPU ring buffers:
+* The **buffer ownership model**: specifies whether the system, each
+  Unix user, or each process owns its own ring buffers.
 
-Per-user buffering (nloption:--buffers-uid option of the man:lttng-enable-channel(1) command)::
-    Allocate one set of ring buffers (one per CPU) shared by all the
-    instrumented processes of:
-        If your Unix user is `root`:::
-            Each Unix user.
-        Otherwise:::
-            Your Unix user.
+* The **buffer allocation policy**: specifies whether LTTng tracers
+  allocate ring buffers per channel or per CPU.
 
-Per-process buffering (nloption:--buffers-pid option of the man:lttng-enable-channel(1) command)::
-    Allocate one set of ring buffers (one per CPU) for each instrumented
-    process of:
-        If your Unix user is `root`:::
-            All Unix users.
-        Otherwise:::
-            Your Unix user.
+The following list shows how LTTng allocates ring buffers based on the
+values of the nloption:--buffer-ownership and
+nloption:--buffer-allocation options of the man:lttng-enable-channel(1)
+command. For all examples, assume that Unix user `alice` created
+the channel `alice-chan` and Unix user `bob` created the channel
+`bob-chan`:
 
-The per-process buffering scheme tends to consume more memory than the
-per-user option because systems generally have more instrumented
+nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-cpu**::
++
+[verse]
+Channel 'alice-channel'
+  For the data produced by any process of user 'alice'
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+Channel 'bob-channel'
+  For the data produced by any process of user 'bob'
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+
+nloption:--buffer-ownership=**process** and nloption:--buffer-allocation=**per-cpu**::
++
+[verse]
+Channel `alice-channel`
+  For the data produced by process 'my-db' of user 'alice'
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+  For the data produced by process 'my-app' of user 'alice'
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+Channel 'bob-channel'
+  For the data produced by process 'my-server' of user 'bob'
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+
+nloption:--buffer-ownership=**system** and nloption:--buffer-allocation=**per-cpu**::
++
+[verse]
+Channel 'alice-channel'
+  For the data of the Linux kernel
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+Channel 'bob-channel'
+  For the data of the Linux kernel
+    Ring buffer for CPU 0
+    Ring buffer for CPU 1
+    Ring buffer for CPU 2
+    Ring buffer for CPU 3
+
+nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-channel**::
++
+[verse]
+Channel 'alice-channel'
+  For the data produced by any process of user 'alice'
+    Single ring buffer for all CPUs
+Channel 'bob-channel'
+  For the data produced by any process of user 'bob'
+    Single ring buffer for all CPUs
+
+nloption:--buffer-ownership=**user** and nloption:--buffer-allocation=**per-channel**::
++
+[verse]
+Channel 'alice-channel'
+  For the data produced by process 'my-db' of user 'alice'
+    Single ring buffer for all CPUs
+  For the data produced by process 'my-app' of user 'alice'
+    Single ring buffer for all CPUs
+Channel 'bob-channel'
+  For the data produced by process 'my-server' of user 'bob'
+    Single ring buffer for all CPUs
+
+The per-process buffer ownership model tends to consume more memory than
+the per-user option because systems generally have more instrumented
 processes than Unix users running instrumented processes. However, the
-per-process buffering scheme ensures that one process having a high
-event throughput won't fill all the shared sub-buffers of the same Unix
-user, only its own.
-
-The buffering scheme of a Linux kernel channel is always to allocate a
-single set of ring buffers for the whole system. This scheme is similar
-to the per-user option, but with a single, global user ``running'' the
-kernel.
+per-process model ensures that one process having a high event
+throughput won't fill all the shared sub-buffers of the same Unix user,
+only its own.
 
 
 [[channel-er-loss-mode]]
@@ -759,7 +822,7 @@ A channel has one or more ring buffer for each CPU of the target system.
 
 See the ``<<channel-buf-scheme,Buffering scheme>>'' section above to
 learn how many ring buffers of a given channel are dedicated to each CPU
-depending on its buffering scheme.
+or to the whole channel depending on its buffering scheme.
 
 Set the size of each sub-buffer the ring buffers of a channel contain
 with the nloption:--subbuf-size option of the

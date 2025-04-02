@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 14 June 2021
+:revdate: 1 April 2025
 
 
 NAME
@@ -17,7 +17,9 @@ Create a Linux kernel channel:
       [option:--discard | option:--overwrite] [option:--output=(**mmap** | **splice**)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
-      [option:--monitor-timer='PERIODUS'] [option:--buffers-global]
+      [option:--monitor-timer='PERIODUS']
+      [option:--buffers-global | option:--buffer-ownership=**system**]
+      [option:--buffer-allocation=**per-cpu**]
       [option:--tracefile-size='SIZE' [option:--tracefile-count='COUNT']]
       [option:--session='SESSION'] 'CHANNEL'
 
@@ -26,7 +28,9 @@ Create a user space channel:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
       [option:--overwrite | [option:--discard] option:--blocking-timeout='TIMEOUTUS']
-      [option:--output=**mmap**] [option:--buffers-uid | option:--buffers-pid]
+      [option:--output=**mmap**] [option:--buffers-uid | option:--buffers-pid |
+                       option:--buffer-ownership=(**user** | **process**)]
+      [option:--buffer-allocation=(**per-cpu** | **per-channel**)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
       [option:--monitor-timer='PERIODUS']
@@ -84,10 +88,10 @@ operations with the `enable-channel` command:
 * Create a channel once its recording session has been active at least
   once.
 
-* Create a user space channel with a given buffering scheme
-  (option:--buffers-uid or option:--buffers-pid options) and create a
-  second user space channel with a different buffering scheme in the
-  same recording session.
+* Create a user space channel with a given buffer ownership model
+  (option:--buffer-ownership set to `user` or `process`) and create a
+  second user space channel with a different buffer ownership model in
+  the same recording session.
 ====
 
 
@@ -112,21 +116,22 @@ option:-s 'SESSION', option:--session='SESSION'::
     instead of the current recording session.
 
 
-Buffering scheme
-~~~~~~~~~~~~~~~~
+Buffer ownership model
+~~~~~~~~~~~~~~~~~~~~~~
 One of:
 
 option:--buffers-global::
-    Allocate a single set of ring buffers for the whole system.
+    Equivalent to option:--buffer-ownership=**system**.
 +
-Only available with the option:--kernel option.
-+
-As of LTTng{nbsp}{lttng_version}, this is the default buffering scheme
-for the Linux kernel tracing domain, but this may change in the future.
+Deprecated.
 
-option:--buffers-pid::
-    Allocate one set of ring buffers (one per CPU) for each instrumented
-    process of:
+option:--buffers-ownership='MODEL'::
+    Depending on 'MODEL':
+
+`process`:::
+    Allocate one set of ring buffers (one per CPU or one for the whole
+    channel, depending on option:--buffer-allocation) for each
+    instrumented process of:
 +
 --
 If you connect to the root session daemon::
@@ -141,8 +146,19 @@ Otherwise::
 +
 Only available with the option:--userspace option.
 
-option:--buffers-uid::
-    Allocate one set of ring buffers (one per CPU) shared by all the
+`system`:::
+    Allocate a single set of ring buffers (one per CPU) for
+    the whole system.
++
+Only available with the option:--kernel option.
++
+As of LTTng{nbsp}{lttng_version}, this is the default buffer ownership
+model for the Linux kernel tracing domain, but this may change in the
+future.
+
+`user`:::
+    Allocate one set of ring buffers (one per CPU or one for the whole
+    channel, depending on option:--buffer-allocation) shared by all the
     instrumented processes of:
 +
 --
@@ -158,8 +174,42 @@ Otherwise::
 +
 Only available with the option:--userspace option.
 +
-As of LTTng{nbsp}{lttng_version}, this is the default buffering scheme
-for the user space tracing domain, but this may change in the future.
+As of LTTng{nbsp}{lttng_version}, this is the default buffer ownership
+model for the user space tracing domain, but this may change in the
+future.
+
+option:--buffers-pid::
+    Equivalent to option:--buffer-ownership=**process**.
++
+Deprecated.
+
+option:--buffers-uid::
+    Equivalent to option:--buffer-ownership=**user**.
++
+Deprecated.
+
+
+Buffer allocation policy
+~~~~~~~~~~~~~~~~~~~~~~~~
+option:--buffer-allocation='POLICY'::
+    Depending on 'POLICY', allocate one ring buffer for:
+
+`per-channel`:::
+    The whole channel.
++
+Setting option:--buffer-ownership to `user` or `process` determines
+what entity gets a channel-wise ring buffer.
++
+Only available with the option:--userspace option.
+
+`per-cpu`:::
+    Each CPU.
++
+Setting option:--buffer-ownership to `user`, `process`, or `system`
+determines what entity gets a set of per-CPU ring buffers.
++
+As of LTTng{nbsp}{lttng_version}, this is the default buffer allocation
+policy, but this may change in the future.
 
 
 Event record loss mode
@@ -209,11 +259,11 @@ The effective value is 'COUNT' rounded up to the next power of two.
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     +{default_ust_uid_channel_subbuf_num}+
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_subbuf_num}+
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_subbuf_num}+
 `metadata` channel:::
     +{default_metadata_subbuf_num}+
@@ -237,11 +287,11 @@ Only available with the option:--kernel option.
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     `mmap`
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     `mmap`
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     `splice`
 `metadata` channel:::
     `mmap`
@@ -260,11 +310,11 @@ with the `PAGE_SIZE` variable).
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     +{default_ust_uid_channel_subbuf_size}+
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_subbuf_size}+
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_subbuf_size}+
 `metadata` channel:::
     +{default_metadata_subbuf_size}+
@@ -305,11 +355,11 @@ Set 'PERIODUS' to `0` to disable the monitor timer.
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     +{default_ust_uid_channel_monitor_timer}+
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_monitor_timer}+
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_monitor_timer}+
 
 option:--read-timer='PERIODUS'::
@@ -320,11 +370,11 @@ Set 'PERIODUS' to `0` to disable the read timer.
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     +{default_ust_uid_channel_read_timer}+
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_read_timer}+
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_read_timer}+
 `metadata` channel:::
     +{default_metadata_read_timer}+
@@ -337,11 +387,11 @@ Set 'PERIODUS' to `0` to disable the switch timer.
 +
 Default values:
 +
-option:--userspace and option:--buffers-uid options:::
+option:--userspace and option:--buffer-ownership=`user` options:::
     +{default_ust_uid_channel_switch_timer}+
-option:--userspace and option:--buffers-pid options:::
+option:--userspace and option:--buffer-ownership=`process` options:::
     +{default_ust_pid_channel_switch_timer}+
-option:--kernel and option:--buffers-global options:::
+option:--kernel and option:--buffer-ownership=`system` options:::
     +{default_kernel_channel_switch_timer}+
 `metadata` channel:::
     +{default_metadata_switch_timer}+
@@ -368,14 +418,25 @@ $ lttng enable-channel --kernel my-channel
 ----
 ====
 
-.Create a user space channel with a per-process buffering scheme in a specific recording session.
+.Create a user space channel with a per-process buffer ownership model in a specific recording session.
 ====
-See the option:--session and option:--buffers-pid options.
+See the option:--session and option:--buffer-ownership options.
 
 [role="term"]
 ----
 $ lttng enable-channel --session=my-session --userspace \
-                       --buffers-pid my-channel
+                       --buffer-ownership=process my-channel
+----
+====
+
+.Create a user space channel with a per-user buffer ownership model (default) and a per-channel buffer allocation policy.
+====
+See the option:--buffer-allocation option.
+
+[role="term"]
+----
+$ lttng enable-channel --userspace \
+                       --buffer-allocation=per-channel my-channel
 ----
 ====
 

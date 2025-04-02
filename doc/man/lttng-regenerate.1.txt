@@ -67,8 +67,8 @@ recording session:
   man:lttng-create(1)).
 
 * If it has user space channels, they're configured to use a
-  per-user buffering scheme (nloption:--buffers-uid option of
-  man:lttng-enable-channel(1)).
+  per-user buffer ownership model (nloption:--buffer-ownership=`user`
+  option of man:lttng-enable-channel(1)).
 +
 See man:lttng-concepts(7) to learn more about channels.
 ====
