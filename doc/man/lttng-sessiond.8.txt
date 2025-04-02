@@ -383,13 +383,19 @@ variable.
 Set to `0` or `-1` to use the timeout of the operating system (default).
 
 `LTTNG_RUNDIR`::
-    The directory for the session daemon's control files. For session
-    daemons running as the root user, this path defaults to the configured
-    `LTTNG_SYSTEM_RUNDIR` (e.g. `/var/run/lttng`). For session daemons
-    running as non-root users, this defaults to `$LTTNG_HOME/.lttng`.
+    The directory containing the control files instead of:
 +
-This environment variable is particularly useful for running multiple
-session daemons as the root user.
+--
+Session daemon of the `root` user (root session daemon)::
+    The value of the `--with-lttng-system-rundir` option when
+    configuring the build of the project (`/var/run/lttng` by default).
+
+Other session daemon::
+    `$LTTNG_HOME/.lttng`
+--
++
+This environment variable is particularly useful to run multiple root
+session daemons.
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Recording session configuration XML schema definition (XSD) path.
