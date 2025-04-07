@@ -133,6 +133,12 @@ class TraceParser:
         self.epoll_wait_exit(event)
 
     ## poll + ppoll
+    def handle_syscall_entry_ppoll_time32(self, event):
+        self.poll_entry(event)
+
+    def handle_syscall_exit_ppoll_time32(self, event):
+        self.poll_exit(event)
+
     def handle_compat_syscall_entry_poll(self, event):
         self.poll_entry(event)
 
@@ -195,6 +201,12 @@ class TraceParser:
         pass
 
     # select + pselect6
+    def handle_syscall_entry_pselect6_time32(self, event):
+        self.select_entry(event)
+
+    def handle_syscall_exit_pselect6_time32(self, event):
+        self.select_exit(event)
+
     def handle_syscall_entry_pselect6(self, event):
         self.select_entry(event)
 

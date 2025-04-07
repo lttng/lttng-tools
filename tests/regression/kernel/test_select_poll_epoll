@@ -10,7 +10,6 @@ TEST_DESC="Kernel tracer - select, poll and epoll payload extraction"
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
 VALIDATE_SCRIPT="$CURDIR/validate_select_poll_epoll.py"
-NUM_TESTS=102
 
 DISABLE_VALIDATE=0
 # Babeltrace python bindings are required for the validation, but
@@ -27,8 +26,29 @@ LAST_WARNING=$(dmesg | grep " WARNING:" | cut -d' ' -f1 | tail -1)
 LAST_OOPS=$(dmesg | grep " OOPS:" | cut -d' ' -f1 | tail -1)
 LAST_BUG=$(dmesg | grep " BUG:" | cut -d' ' -f1 | tail -1)
 
+SUPPORTED_SYSCALL_LIST="$("${CURDIR}/select_poll_epoll --list-supported-test-syscalls")"
+SUPPORTED_SYSCALL_COUNT=$(echo $SUPPORTED_SYSCALLS_LIST | awk -F '[\t,]' '{print NF}')
+NUM_TESTS=$((82 + (2 * SUPPORTED_SYSCALL_COUNT)))
+
 # shellcheck source=../../utils/utils.sh
 source $TESTDIR/utils/utils.sh
+
+function select_valid_syscalls()
+{
+	local syscalls=()
+	IFS=, read -r -a supported_syscalls <<< "${SUPPORTED_SYSCALL_LIST}"
+	IFS=, read -r -a requested_syscalls <<< "${1}"
+
+	for x in "${requested_syscalls[@]}" ; do
+		for y in "${supported_syscalls[@]}" ; do
+			if [[ "${x}" == "${y}" ]]; then
+				syscalls+=("${y}")
+			fi
+		done
+	done
+
+	echo "$(IFS=, ; echo "${syscalls[@]}")"
+}
 
 function check_trace_content()
 {
@@ -51,26 +71,19 @@ function test_working_cases()
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
-	# arm64 does not have epoll_wait
-	uname -m | grep -E "aarch64" >/dev/null 2>&1
-	if test $? = 0; then
-		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_pwait"
-	else
-		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_wait,epoll_pwait"
-	fi
 
 	diag "Working cases for select, pselect6, poll, ppoll and epoll, waiting for input"
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "${SUPPORTED_SYSCALL_LIST}"
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
 	yes | "$CURDIR"/select_poll_epoll --validation-file "$TEST_VALIDATION_OUTPUT_PATH" -t 1
 	stop_lttng_tracing_ok
 
-	validate_trace "$SYSCALL_LIST" "$TRACE_PATH"
+	validate_trace "${SUPPORTED_SYSCALL_LIST}" "$TRACE_PATH"
 	check_trace_content -t 1 --validation-file "$TEST_VALIDATION_OUTPUT_PATH" "$TRACE_PATH"
 
 	destroy_lttng_session_ok $SESSION_NAME
@@ -85,26 +98,18 @@ function test_timeout_cases()
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
-	# arm64 does not have epoll_wait
-	uname -m | grep -E "aarch64" >/dev/null 2>&1
-	if test $? = 0; then
-		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_pwait"
-	else
-		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_wait,epoll_pwait"
-	fi
-
 	diag "Timeout cases (1ms) for select, pselect6, poll, ppoll and epoll"
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME "$SYSCALL_LIST"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "${SUPPORTED_SYSCALL_LIST}"
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
 	yes | "$CURDIR"/select_poll_epoll --validation-file "$TEST_VALIDATION_OUTPUT_PATH" -t 2
 	stop_lttng_tracing_ok
 
-	validate_trace "$SYSCALL_LIST" "$TRACE_PATH"
+	validate_trace "${SUPPORTED_SYSCALL_LIST}" "$TRACE_PATH"
 	check_trace_content -t 2 --validation-file "$TEST_VALIDATION_OUTPUT_PATH" "$TRACE_PATH" 2>/dev/null
 
 	destroy_lttng_session_ok $SESSION_NAME
@@ -116,7 +121,7 @@ function test_timeout_cases()
 function test_pselect_invalid_fd()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="pselect6"
+	SYSCALL_LIST="$(select_valid_syscalls "pselect6,pselect6_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
@@ -131,7 +136,7 @@ function test_pselect_invalid_fd()
 	yes | "$CURDIR"/select_poll_epoll --validation-file "$TEST_VALIDATION_OUTPUT_PATH" -t 3
 	stop_lttng_tracing_ok
 
-	validate_trace "$SYSCALL_LIST" "$TRACE_PATH"
+	validate_trace "${SYSCALL_LIST}" "$TRACE_PATH"
 	check_trace_content -t 3 --validation-file "$TEST_VALIDATION_OUTPUT_PATH" "$TRACE_PATH" 2>/dev/null
 
 	destroy_lttng_session_ok $SESSION_NAME
@@ -143,7 +148,7 @@ function test_pselect_invalid_fd()
 function test_big_ppoll()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="ppoll"
+	SYSCALL_LIST="$(select_valid_syscalls "ppoll,ppoll_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
@@ -170,7 +175,7 @@ function test_big_ppoll()
 function test_ppoll_overflow()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="ppoll"
+	SYSCALL_LIST="$(select_valid_syscalls "ppoll,ppoll_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
@@ -199,7 +204,7 @@ function test_ppoll_overflow()
 function test_pselect_invalid_ptr()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="pselect6"
+	SYSCALL_LIST="$(select_valid_syscalls "pselect6,pselect6_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
@@ -226,7 +231,7 @@ function test_pselect_invalid_ptr()
 function test_ppoll_ulong_max()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="ppoll"
+	SYSCALL_LIST="$(select_valid_syscalls "ppoll,ppoll_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
@@ -307,7 +312,7 @@ function test_epoll_pwait_int_max()
 function test_ppoll_concurrent()
 {
 	SESSION_NAME="syscall_payload"
-	SYSCALL_LIST="ppoll"
+	SYSCALL_LIST="$(select_valid_syscalls "ppoll,ppoll_time32")"
 	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
 	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 

@@ -917,6 +917,45 @@ void print_list(void)
 			"multiple times, waits for input + timeout 1ms\n");
 }
 
+static void print_test_syscalls(void)
+{
+	const char *supported_syscalls[] = {
+#ifdef SYS_select
+			"select",
+#endif
+#if defined SYS_pselect6_time64 && defined SYS_pselect6
+			"pselect6",
+			"pselect6_time32",
+#else
+			"pselect6",
+#endif /* SYS_pselect6_time64 && defined SYS_pselect6 */
+#ifdef SYS_poll
+			"poll",
+#endif
+#if defined SYS_ppoll && defined SYS_ppoll_time64
+			"ppoll",
+			"ppoll_time32",
+#elif defined SYS_ppoll ^ defined SYS_ppoll_time64
+			"ppoll",
+#endif /* defined SYS_ppoll && defined SYS_ppoll_time64 */
+#ifdef SYS_epoll_ctl
+			"epoll_ctl",
+#endif
+#ifdef SYS_epoll_wait
+			"epoll_wait",
+#endif
+#ifdef SYS_epoll_pwait
+			"epoll_pwait",
+#endif
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(supported_syscalls); i++) {
+		fputs(supported_syscalls[i], stdout);
+		fputs(i != ARRAY_SIZE(supported_syscalls) - 1 ? "," : "\n",
+				stdout);
+	}
+}
+
 int main(int argc, const char **argv)
 {
 	int c, ret, test = -1;
@@ -925,15 +964,15 @@ int main(int argc, const char **argv)
 	FILE *test_validation_output_file = NULL;
 	const char *test_validation_output_file_path = NULL;
 	struct poptOption optionsTable[] = {
-		{ "test", 't', POPT_ARG_INT, &test, 0,
-			"Test to run", NULL },
-		{ "list", 'l', 0, 0, 'l',
-			"List of tests (-t X)", NULL },
-		{ "validation-file", 'o', POPT_ARG_STRING, &test_validation_output_file_path, 0,
-			"Test case output", NULL },
-		POPT_AUTOHELP
-		{ NULL, 0, 0, NULL, 0 }
-	};
+			{"test", 't', POPT_ARG_INT, &test, 0, "Test to run",
+					NULL},
+			{"list", 'l', 0, 0, 'l', "List of tests (-t X)", NULL},
+			{"list-supported-test-syscalls", 's', 0, NULL, 's',
+					"List supported test syscalls", NULL},
+			{"validation-file", 'o', POPT_ARG_STRING,
+					&test_validation_output_file_path, 0,
+					"Test case output", NULL},
+			POPT_AUTOHELP{NULL, 0, 0, NULL, 0}};
 	const struct test_case *test_case;
 
 	optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
@@ -951,6 +990,9 @@ int main(int argc, const char **argv)
 		case 'l':
 			print_list();
 			goto end;
+		case 's':
+			print_test_syscalls();
+			goto end;
 		}
 	}
 
@@ -960,7 +1002,8 @@ int main(int argc, const char **argv)
 		goto end;
 	}
 
-	test_validation_output_file = fopen(test_validation_output_file_path, "w+");
+	test_validation_output_file =
+			fopen(test_validation_output_file_path, "w+");
 	if (!test_validation_output_file) {
 		PERROR("Failed to create test validation output file at '%s'",
 				test_validation_output_file_path);
@@ -999,7 +1042,8 @@ int main(int argc, const char **argv)
 		 * All test cases need to provide, at minimum, the pid of the
 		 * test application.
 		 */
-		ret = fprintf(test_validation_output_file, "{ \"pid\": %i }", getpid());
+		ret = fprintf(test_validation_output_file, "{ \"pid\": %i }",
+				getpid());
 		if (ret < 0) {
 			PERROR("Failed to write application pid to test validation file");
 			goto end;
