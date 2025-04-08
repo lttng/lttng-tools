@@ -52,7 +52,12 @@ current_test_process = None
 def handle_abort(signum, frame):
     global test_being_aborted
 
-    signal_name = signal.Signals(signum).name
+    # signal.Signals only exists in python 3.5+
+    try:
+        signal_name = signal.Signals(signum).name
+    except AttributeError:
+        signal_name = "signal #{}".format(signum)
+
     logging.warning("Received {}, aborting current test".format(signal_name))
     test_being_aborted = True
 
