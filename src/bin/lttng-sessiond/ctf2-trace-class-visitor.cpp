@@ -112,6 +112,18 @@ nljson::json json_int_field_class_from_type(const trace::integer_type& int_type,
 		std::move(extra_json));
 }
 
+template <typename EnumerationTypeMapping>
+nljson::json json_int_ranges_from_int_type_mapping(const EnumerationTypeMapping& mapping)
+{
+	auto json_ranges = nljson::json::array();
+
+	for (auto& range : mapping.ranges) {
+		json_ranges.emplace_back(nljson::json{ range.begin, range.end });
+	}
+
+	return json_ranges;
+}
+
 template <typename EnumerationType>
 nljson::json json_int_field_class_from_type(const EnumerationType& int_type)
 {
@@ -119,10 +131,10 @@ nljson::json json_int_field_class_from_type(const EnumerationType& int_type)
 		int_type, { { "mappings", [&] {
 				     nljson::json json_mappings;
 
-				     for (const auto& mapping : *int_type.mappings_) {
-					     json_mappings[mapping.name] = {
-						     { mapping.range.begin, mapping.range.end }
-					     };
+				     for (auto& nameMappingPair : *int_type.mappings_) {
+					     json_mappings[nameMappingPair.first] =
+						     json_int_ranges_from_int_type_mapping(
+							     nameMappingPair.second);
 				     }
 
 				     return json_mappings;
@@ -341,11 +353,11 @@ private:
 
 					  for (auto& choice : type.choices_) {
 						  json_options.emplace_back(nljson::json{
-							  make_json_name_prop(choice.first.name),
-							  make_json_field_class_prop(*choice.second),
+							  make_json_name_prop(choice.name),
+							  make_json_field_class_prop(*choice.type_),
 							  { "selector-field-ranges",
-							    { { choice.first.range.begin,
-								choice.first.range.end } } },
+							    json_int_ranges_from_int_type_mapping(
+								    choice.mapping) },
 						  });
 					  }
 

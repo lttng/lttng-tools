@@ -652,27 +652,25 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 				const auto mapping_it = std::find_if(
 					typed_enumeration.mappings_->begin(),
 					typed_enumeration.mappings_->end(),
-					[&field,
-					 quirks](const typename std::remove_reference<
-						 decltype(typed_enumeration)>::type::mapping&
-							 mapping) {
+					[&field, quirks](
+						const decltype(*typed_enumeration.mappings_
+									->begin())& nameMappingPair) {
 						if (static_cast<bool>(
 							    quirks &
 							    lsu::ctl_field_quirks::
 								    UNDERSCORE_PREFIXED_VARIANT_TAG_MAPPINGS)) {
 							/*
-							 * Check if they match with
-							 * a prepended underscore
-							 * and, if not, perform the
+							 * Check if they match with a prepended
+							 * underscore and, if not, perform the
 							 * regular check.
 							 */
 							if ((std::string("_") + field->name) ==
-							    mapping.name) {
+							    nameMappingPair.first) {
 								return true;
 							}
 						}
 
-						return mapping.name == field->name;
+						return nameMappingPair.first == field->name;
 					});
 
 				if (mapping_it == typed_enumeration.mappings_->end()) {
@@ -682,7 +680,8 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 						selector_field.name));
 				}
 
-				choices.emplace_back(*mapping_it, field->move_type());
+				choices.emplace_back(
+					mapping_it->first, mapping_it->second, field->move_type());
 			},
 			lookup_field,
 			lookup_root,
@@ -748,35 +747,32 @@ lst::type::cuptr create_variant_field_from_ust_ctl_fields(
 
 	/* Choices follow. next_ust_ctl_field is updated as needed. */
 	if (selector_is_signed) {
-		lst::variant_type<lst::signed_enumeration_type::mapping::range_t::range_integer_t>::
-			choices choices = create_typed_variant_choices<int64_t>(
-				current,
-				end,
-				session_attributes,
-				next_ust_ctl_field,
-				lookup_field,
-				lookup_root,
-				current_field_location_elements,
-				choice_count,
-				selector_field,
-				quirks);
+		lst::variant_type<int64_t>::choices choices =
+			create_typed_variant_choices<int64_t>(current,
+							      end,
+							      session_attributes,
+							      next_ust_ctl_field,
+							      lookup_field,
+							      lookup_root,
+							      current_field_location_elements,
+							      choice_count,
+							      selector_field,
+							      quirks);
 
 		return lttng::make_unique<lst::variant_type<int64_t>>(
 			alignment, std::move(selector_field_location), std::move(choices));
 	} else {
-		lst::variant_type<
-			lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::choices
-			choices = create_typed_variant_choices<uint64_t>(
-				current,
-				end,
-				session_attributes,
-				next_ust_ctl_field,
-				lookup_field,
-				lookup_root,
-				current_field_location_elements,
-				choice_count,
-				selector_field,
-				quirks);
+		lst::variant_type<uint64_t>::choices choices =
+			create_typed_variant_choices<uint64_t>(current,
+							       end,
+							       session_attributes,
+							       next_ust_ctl_field,
+							       lookup_field,
+							       lookup_root,
+							       current_field_location_elements,
+							       choice_count,
+							       selector_field,
+							       quirks);
 
 		return lttng::make_unique<lst::variant_type<uint64_t>>(
 			alignment, std::move(selector_field_location), std::move(choices));

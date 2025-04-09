@@ -85,17 +85,19 @@ no_match:
 lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 				     lst::stream_class::header_type header_type)
 {
+	using range_t = lst::unsigned_enumeration_type::mapping::range_t;
+
+	static constexpr auto compact_opt_name = "compact";
+	static constexpr auto extended_opt_name = "extended";
 	lst::structure_type::fields event_header_fields;
 
 	if (header_type == lst::stream_class::header_type::COMPACT) {
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
-		lst::unsigned_enumeration_type::mapping compact_mapping{
-			"compact", lst::unsigned_enumeration_type::mapping::range_t(0, 30)
-		};
-		lst::unsigned_enumeration_type::mapping extended_mapping{ "extended", 31 };
+		lst::unsigned_enumeration_type::mapping compact_mapping{ { range_t{ 0, 30 } } };
+		lst::unsigned_enumeration_type::mapping extended_mapping{ { range_t{ 31 } } };
 
-		enum_mappings->emplace_back(compact_mapping);
-		enum_mappings->emplace_back(extended_mapping);
+		enum_mappings->emplace(compact_opt_name, compact_mapping);
+		enum_mappings->emplace(extended_opt_name, extended_mapping);
 
 		lst::type::cuptr choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(
 			1,
@@ -106,9 +108,7 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 			std::initializer_list<lst::integer_type::role>(
 				{ lst::integer_type::role::EVENT_RECORD_CLASS_ID }));
 
-		lst::variant_type<
-			lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::choices
-			variant_choices;
+		lst::variant_type<range_t::range_integer_t>::choices variant_choices;
 
 		lst::structure_type::fields compact_fields;
 		compact_fields.emplace_back(lttng::make_unique<lst::field>(
@@ -124,7 +124,8 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 
 		auto compact_type =
 			lttng::make_unique<lst::structure_type>(0, std::move(compact_fields));
-		variant_choices.emplace_back(std::move(compact_mapping), std::move(compact_type));
+		variant_choices.emplace_back(
+			compact_opt_name, std::move(compact_mapping), std::move(compact_type));
 
 		lst::structure_type::fields extended_fields;
 		extended_fields.emplace_back(lttng::make_unique<lst::field>(
@@ -150,10 +151,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 
 		lst::type::cuptr extended_type =
 			lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
-		variant_choices.emplace_back(std::move(extended_mapping), std::move(extended_type));
+		variant_choices.emplace_back(
+			extended_opt_name, std::move(extended_mapping), std::move(extended_type));
 
-		auto variant = lttng::make_unique<lst::variant_type<
-			lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>>(
+		auto variant = lttng::make_unique<lst::variant_type<range_t::range_integer_t>>(
 			0,
 			lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
 					    { "id" }),
@@ -165,12 +166,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 			lttng::make_unique<lst::field>("v", std::move(variant)));
 	} else {
 		auto enum_mappings = std::make_shared<lst::unsigned_enumeration_type::mappings>();
-		lst::unsigned_enumeration_type::mapping compact_mapping{
-			"compact", lst::unsigned_enumeration_type::mapping::range_t(0, 65534)
-		};
-		lst::unsigned_enumeration_type::mapping extended_mapping{ "extended", 65535 };
-		enum_mappings->emplace_back(compact_mapping);
-		enum_mappings->emplace_back(extended_mapping);
+		lst::unsigned_enumeration_type::mapping compact_mapping{ { range_t{ 0, 65534 } } };
+		lst::unsigned_enumeration_type::mapping extended_mapping{ { range_t{ 65535 } } };
+		enum_mappings->emplace(compact_opt_name, compact_mapping);
+		enum_mappings->emplace(extended_opt_name, extended_mapping);
 
 		auto choice_enum = lttng::make_unique<lst::unsigned_enumeration_type>(
 			trace_abi.uint16_t_alignment,
@@ -181,9 +180,7 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 			std::initializer_list<lst::integer_type::role>(
 				{ lst::integer_type::role::EVENT_RECORD_CLASS_ID }));
 
-		lst::variant_type<
-			lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>::choices
-			variant_choices;
+		lst::variant_type<range_t::range_integer_t>::choices variant_choices;
 
 		lst::structure_type::fields compact_fields;
 		compact_fields.emplace_back(lttng::make_unique<lst::field>(
@@ -199,7 +196,8 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 
 		lst::type::cuptr compact_type =
 			lttng::make_unique<lst::structure_type>(0, std::move(compact_fields));
-		variant_choices.emplace_back(std::move(compact_mapping), std::move(compact_type));
+		variant_choices.emplace_back(
+			compact_opt_name, std::move(compact_mapping), std::move(compact_type));
 
 		lst::structure_type::fields extended_fields;
 		extended_fields.emplace_back(lttng::make_unique<lst::field>(
@@ -225,10 +223,10 @@ lst::type::cuptr create_event_header(const lst::abi& trace_abi,
 
 		auto extended_type =
 			lttng::make_unique<lst::structure_type>(0, std::move(extended_fields));
-		variant_choices.emplace_back(std::move(extended_mapping), std::move(extended_type));
+		variant_choices.emplace_back(
+			extended_opt_name, std::move(extended_mapping), std::move(extended_type));
 
-		auto variant = lttng::make_unique<lst::variant_type<
-			lst::unsigned_enumeration_type::mapping::range_t::range_integer_t>>(
+		auto variant = lttng::make_unique<lst::variant_type<range_t::range_integer_t>>(
 			0,
 			lst::field_location(lst::field_location::root::EVENT_RECORD_HEADER,
 					    { "id" }),

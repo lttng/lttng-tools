@@ -219,15 +219,15 @@ private:
 		auto new_mappings = std::make_shared<
 			typename lst::typed_enumeration_type<MappingIntegerType>::mappings>();
 
-		for (const auto& mapping : *original_selector.mappings_) {
-			if (unsafe_names_found.find(mapping.name.c_str()) ==
+		for (const auto& nameMappingPair : *original_selector.mappings_) {
+			if (unsafe_names_found.find(nameMappingPair.first.c_str()) ==
 			    unsafe_names_found.end()) {
 				/* Mapping is safe, simply copy it. */
-				new_mappings->emplace_back(mapping);
+				new_mappings->emplace(nameMappingPair);
 			} else {
 				/* Unsafe mapping, rename it and keep the rest of its attributes. */
-				new_mappings->emplace_back(lttng::format("_{}", mapping.name),
-							   mapping.range);
+				new_mappings->emplace(lttng::format("_{}", nameMappingPair.first),
+						      nameMappingPair.second);
 			}
 		}
 
@@ -240,21 +240,23 @@ private:
 	}
 
 	template <typename MappingIntegerType>
-	const typename lst::typed_enumeration_type<MappingIntegerType>::mapping&
-	_find_enumeration_mapping_by_range(
+	const typename lst::typed_enumeration_type<MappingIntegerType>::mappings::const_iterator
+	_find_enumeration_mapping_by_ranges(
 		const typename lst::typed_enumeration_type<MappingIntegerType>& enumeration_type,
-		const typename lst::typed_enumeration_type<MappingIntegerType>::mapping::range_t&
-			target_mapping_range)
+		const typename lst::typed_enumeration_type<MappingIntegerType>::mapping::ranges_t&
+			target_mapping_ranges)
 	{
-		for (const auto& mapping : *enumeration_type.mappings_) {
-			if (mapping.range == target_mapping_range) {
-				return mapping;
+		for (auto it = enumeration_type.mappings_->begin();
+		     it != enumeration_type.mappings_->end();
+		     ++it) {
+			if (it->second.ranges == target_mapping_ranges) {
+				return it;
 			}
 		}
 
 		LTTNG_THROW_ERROR(lttng::format(
-			"Failed to find mapping by range in enumeration while sanitizing a variant: target_mapping_range={}",
-			target_mapping_range));
+			"Failed to find mapping by range in enumeration while sanitizing a variant: first_target_mapping_range={}",
+			*target_mapping_ranges.begin()));
 	}
 
 	/*
@@ -273,14 +275,17 @@ private:
 
 		/* Visit variant choices to sanitize them as needed. */
 		for (const auto& choice : original_variant.choices_) {
-			choice.second->accept(*this);
+			choice.type_->accept(*this);
 		}
 
 		for (const auto& choice : original_variant.choices_) {
-			const auto& sanitized_choice_type = _type_overrides.type(*choice.second);
+			const auto& sanitized_choice_type = _type_overrides.type(*choice.type_);
+			const auto nameMappingPairIt = _find_enumeration_mapping_by_ranges(
+				sanitized_selector, choice.mapping.ranges);
 
-			new_choices.emplace_back(_find_enumeration_mapping_by_range(
-							 sanitized_selector, choice.first.range),
+			LTTNG_ASSERT(nameMappingPairIt != sanitized_selector.mappings_->end());
+			new_choices.emplace_back(nameMappingPairIt->first,
+						 nameMappingPairIt->second,
 						 sanitized_choice_type.copy());
 		}
 
@@ -303,11 +308,11 @@ private:
 		};
 
 		for (const auto& choice : type.choices_) {
-			if (tsdl_protected_keywords.find(choice.first.name) !=
+			if (tsdl_protected_keywords.find(choice.name) !=
 			    tsdl_protected_keywords.cend()) {
 				/* Choice name is illegal, we have to rename it and its matching
 				 * mapping. */
-				unsafe_names_found.insert(choice.first.name.c_str());
+				unsafe_names_found.insert(choice.name.c_str());
 			}
 		}
 
@@ -535,30 +540,30 @@ private:
 
 		const auto mappings_indentation_level = _indentation_level + 1;
 
-		bool first_mapping = true;
-		for (const auto& mapping : *type.mappings_) {
-			if (!first_mapping) {
+		for (auto& nameMappingPair : *type.mappings_) {
+			auto& name = nameMappingPair.first;
+
+			for (auto& range : nameMappingPair.second.ranges) {
+				_description.resize(
+					_description.size() + mappings_indentation_level, '\t');
+
+				if (range.begin == range.end) {
+					_description += lttng::format(
+						"\"{mapping_name}\" = {mapping_value}",
+						fmt::arg("mapping_name", name),
+						fmt::arg("mapping_value", range.begin));
+				} else {
+					_description += lttng::format(
+						"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
+						fmt::arg("mapping_name", name),
+						fmt::arg("mapping_range_begin", range.begin),
+						fmt::arg("mapping_range_end", range.end));
+				}
+
 				_description += ",\n";
 			}
-
-			_description.resize(_description.size() + mappings_indentation_level, '\t');
-			if (mapping.range.begin == mapping.range.end) {
-				_description += lttng::format(
-					"\"{mapping_name}\" = {mapping_value}",
-					fmt::arg("mapping_name", mapping.name),
-					fmt::arg("mapping_value", mapping.range.begin));
-			} else {
-				_description += lttng::format(
-					"\"{mapping_name}\" = {mapping_range_begin} ... {mapping_range_end}",
-					fmt::arg("mapping_name", mapping.name),
-					fmt::arg("mapping_range_begin", mapping.range.begin),
-					fmt::arg("mapping_range_end", mapping.range.end));
-			}
-
-			first_mapping = false;
 		}
 
-		_description += "\n";
 		_description.resize(_description.size() + _indentation_level, '\t');
 		_description += "}";
 	}
@@ -710,10 +715,10 @@ private:
 		 */
 		const auto previous_bypass_identifier_escape = _bypass_identifier_escape;
 		_bypass_identifier_escape = true;
-		for (const auto& field : type.choices_) {
+		for (const auto& choice : type.choices_) {
 			_description.resize(_description.size() + _indentation_level, '\t');
-			field.second->accept(*this);
-			_description += lttng::format(" {};\n", field.first.name);
+			choice.type_->accept(*this);
+			_description += lttng::format(" {};\n", choice.name);
 		}
 
 		_bypass_identifier_escape = previous_bypass_identifier_escape;

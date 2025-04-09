@@ -33,6 +33,8 @@
 #include <stdint.h>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
+#include <utility>
 
 #define CTF_SPEC_MAJOR 1
 #define CTF_SPEC_MINOR 8
@@ -51,7 +53,12 @@ template <class MappingIntegerType>
 typename trace::typed_enumeration_type<MappingIntegerType>::mappings
 mappings_from_ust_ctl_entries(const lttng_ust_ctl_enum_entry *in_entries, size_t in_entry_count)
 {
-	typename trace::typed_enumeration_type<MappingIntegerType>::mappings mappings;
+	using ranges_t = typename lttng::sessiond::trace::typed_enumeration_type<
+		MappingIntegerType>::mapping::ranges_t;
+	using range_t = typename ranges_t::value_type;
+	using tmp_mappings_t = std::unordered_map<std::string, ranges_t>;
+
+	tmp_mappings_t tmp_mappings;
 
 	MappingIntegerType next_range_begin = 0;
 	for (size_t entry_idx = 0; entry_idx < in_entry_count; entry_idx++) {
@@ -66,10 +73,23 @@ mappings_from_ust_ctl_entries(const lttng_ust_ctl_enum_entry *in_entries, size_t
 		}
 
 		next_range_begin = range_end + 1;
-		mappings.emplace_back(
-			entry.string,
-			typename trace::typed_enumeration_type<MappingIntegerType>::mapping::range_t{
-				range_begin, range_end });
+
+		auto it = tmp_mappings.find(entry.string);
+
+		if (it == tmp_mappings.end()) {
+			it = tmp_mappings.emplace(entry.string, ranges_t{}).first;
+		}
+
+		it->second.insert(range_t{ range_begin, range_end });
+	}
+
+	typename trace::typed_enumeration_type<MappingIntegerType>::mappings mappings;
+
+	for (auto& tmpNameMappingPair : tmp_mappings) {
+		mappings.emplace(
+			tmpNameMappingPair.first,
+			typename trace::typed_enumeration_type<MappingIntegerType>::mapping{
+				tmpNameMappingPair.second });
 	}
 
 	return mappings;

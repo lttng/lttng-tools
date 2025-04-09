@@ -15,8 +15,10 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 namespace lttng {
@@ -217,6 +219,11 @@ public:
 	{
 	}
 
+	explicit enumeration_mapping_range(MappingIntegerType in_value) :
+		enumeration_mapping_range(in_value, in_value)
+	{
+	}
+
 	const range_integer_t begin, end;
 };
 
@@ -228,52 +235,49 @@ bool operator==(const enumeration_mapping_range<MappingIntegerType>& lhs,
 }
 
 template <class MappingIntegerType>
+bool operator<(const enumeration_mapping_range<MappingIntegerType>& lhs,
+	       const enumeration_mapping_range<MappingIntegerType>& rhs) noexcept
+{
+	if (lhs.begin != rhs.begin) {
+		return lhs.begin < rhs.begin;
+	}
+
+	return lhs.end < rhs.end;
+}
+
+template <class MappingIntegerType>
 class enumeration_mapping {
 public:
 	using range_t = enumeration_mapping_range<MappingIntegerType>;
+	using ranges_t = std::set<range_t>;
 
-	enumeration_mapping(std::string in_name, MappingIntegerType value) :
-		name{ std::move(in_name) }, range{ value, value }
-	{
-	}
-
-	enumeration_mapping(std::string in_name, range_t in_range) :
-		name{ std::move(in_name) }, range{ in_range }
+	explicit enumeration_mapping(ranges_t in_ranges) : ranges{ std::move(in_ranges) }
 	{
 	}
 
 	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = default;
-	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept :
-		name{ std::move(other.name) }, range{ other.range }
-	{
-	}
-
+	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept = default;
 	enumeration_mapping& operator=(enumeration_mapping&&) = delete;
 	enumeration_mapping& operator=(const enumeration_mapping&) = delete;
 	~enumeration_mapping() = default;
 
-	const std::string name;
-	/*
-	 * Only one range per mapping is supported for the moment as
-	 * the tracers (and CTF 1.8) can't express multiple ranges per
-	 * mapping, which is allowed by CTF 2.
-	 */
-	const range_t range;
+	const ranges_t ranges;
 };
 
 template <class MappingIntegerType>
 bool operator==(const enumeration_mapping<MappingIntegerType>& lhs,
 		const enumeration_mapping<MappingIntegerType>& rhs) noexcept
 {
-	return lhs.name == rhs.name && lhs.range == rhs.range;
+	return lhs.ranges == rhs.ranges;
 }
 } /* namespace details */
 
 template <typename MappingIntegerType>
 class typed_enumeration_type : public enumeration_type {
 public:
+	using range_integer_t = MappingIntegerType;
 	using mapping = details::enumeration_mapping<MappingIntegerType>;
-	using mappings = std::vector<mapping>;
+	using mappings = std::unordered_map<std::string, mapping>;
 
 	static_assert(std::is_integral<MappingIntegerType>::value &&
 			      sizeof(MappingIntegerType) == 8,
@@ -477,18 +481,44 @@ private:
 };
 
 template <typename MappingIntegerType>
-class variant_type : public type {
+class variant_type_choice {
 	static_assert(
-		std::is_same<MappingIntegerType,
-			     unsigned_enumeration_type::mapping::range_t::range_integer_t>::value ||
-			std::is_same<
-				MappingIntegerType,
-				signed_enumeration_type::mapping::range_t::range_integer_t>::value,
+		std::is_same<MappingIntegerType, unsigned_enumeration_type::range_integer_t>::value ||
+			std::is_same<MappingIntegerType,
+				     signed_enumeration_type::range_integer_t>::value,
 		"Variant mapping integer type must be one of those allowed by typed_enumeration_type");
 
 public:
-	using choice =
-		std::pair<const details::enumeration_mapping<MappingIntegerType>, type::cuptr>;
+	using mapping_t = typename typed_enumeration_type<MappingIntegerType>::mapping;
+
+	variant_type_choice(std::string in_name, mapping_t in_mapping, type::cuptr in_type) :
+		name{ std::move(in_name) },
+		mapping{ std::move(in_mapping) },
+		type_{ std::move(in_type) }
+	{
+	}
+
+	~variant_type_choice() = default;
+
+	variant_type_choice(const variant_type_choice& other) = default;
+	variant_type_choice(variant_type_choice&& other) = default;
+	variant_type_choice& operator=(variant_type_choice&&) = delete;
+	variant_type_choice& operator=(const variant_type_choice&) = delete;
+
+	bool operator==(const variant_type_choice& other) const noexcept
+	{
+		return name == other.name && mapping == other.mapping && *type_ == *other.type_;
+	}
+
+	const std::string name;
+	const mapping_t mapping;
+	type::cuptr type_;
+};
+
+template <typename MappingIntegerType>
+class variant_type : public type {
+public:
+	using choice = variant_type_choice<MappingIntegerType>;
 	using choices = std::vector<choice>;
 
 	variant_type(unsigned int in_alignment,
@@ -506,8 +536,9 @@ public:
 
 		copy_of_choices.reserve(choices_.size());
 		for (const auto& current_choice : choices_) {
-			copy_of_choices.emplace_back(current_choice.first,
-						     current_choice.second->copy());
+			copy_of_choices.emplace_back(current_choice.name,
+						     current_choice.mapping,
+						     current_choice.type_->copy());
 		}
 
 		return lttng::make_unique<variant_type<MappingIntegerType>>(
@@ -530,8 +561,7 @@ private:
 				  a.cend(),
 				  b.cbegin(),
 				  [](const choice& choice_a, const choice& choice_b) {
-					  return choice_a.first == choice_b.first &&
-						  *choice_a.second == *choice_b.second;
+					  return choice_a == choice_b;
 				  });
 	}
 
@@ -579,12 +609,9 @@ public:
 	virtual void visit(const static_length_string_type& type) = 0;
 	virtual void visit(const dynamic_length_string_type& type) = 0;
 	virtual void visit(const structure_type& type) = 0;
+	virtual void visit(const variant_type<signed_enumeration_type::range_integer_t>& type) = 0;
 	virtual void
-	visit(const variant_type<signed_enumeration_type::mapping::range_t::range_integer_t>&
-		      type) = 0;
-	virtual void
-	visit(const variant_type<unsigned_enumeration_type::mapping::range_t::range_integer_t>&
-		      type) = 0;
+	visit(const variant_type<unsigned_enumeration_type::range_integer_t>& type) = 0;
 
 protected:
 	type_visitor() = default;
