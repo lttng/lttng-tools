@@ -23,6 +23,7 @@ SUBDIRS = base-path \
 	snapshots \
 	streaming \
 	tracefile-limits \
+	trace-format \
 	tracker \
 	trigger \
 	wildcard \

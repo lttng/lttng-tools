@@ -202,6 +202,30 @@ class TapGenerator:
             if test_case.result is None:
                 test_case.success()
 
+    @contextlib.contextmanager
+    def case_raises(self, description, exception_type):
+        # type: (str) -> Iterator[TestCase]
+        test_case = TestCase(self, description)
+        try:
+            yield test_case
+        except Exception as e:
+            if isinstance(e, exception_type):
+                test_case.success()
+            else:
+                self.diagnostic(
+                    "Unexpected exception `{exception_type}` thrown during test case `{description}`, marking as failure.".format(
+                        description=test_case.description,
+                        exception_type=type(e).__name__,
+                    )
+                )
+
+                if str(e) != "":
+                    self.diagnostic(str(e))
+
+        finally:
+            if test_case.result is None:
+                test_case.fail()
+
     def diagnostic(self, msg):
         # type: (str) -> None
         for line in str(msg).split("\n"):
