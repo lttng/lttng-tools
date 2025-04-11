@@ -1,3 +1,23 @@
+2025-04-11 lttng-tools 2.13.15 (National Poutine Day)
+	* Fix: build with urcu 0.15 on 32bit archs with 64bit time_t
+	* Tests: Make notifier discard count test more robust
+	* Fix: Update lttng-modules load list
+	* Fix: sessiond: notification-thread: add to pollset fails silently
+	* Fix: path: handle truncation in utils_partial_realpath()
+	* Fix: path: handle truncation in utils_partial_realpath()
+	* Fix: sessiond: assertion on inconsistent filter bytecode and expression
+	* Fix: uprobe event-rule: logging mentions pattern instead of name
+	* Fix: relayd: leaked socket for live connections
+	* Fix: unload all kernel modules on sessiond exit
+	* lttng: Warn on session start when client-visible shm path is too small
+	* lttng-ctl/lttng: Move enable-channel memory check to client
+	* lttng-ctl: Use max possible CPUs for per-CPU memory estimation
+	* common: Add helper to get max possible CPU count
+	* lttng-ctl: Mark random seed helpers as hidden
+	* lttng-ctl: Mark notification-internal symbols as hidden
+	* Fix: sessiond: size-based kernel rotation doesn't trigger
+	* Fix: Close per-process event notifier error accounting fds on registration
+
 2024-08-22 lttng-tools 2.13.14 (National Take Your Cat to the Vet Day)
 	* Fix: Do not null out lttng_consumer_stream channel on deletion
 	* Fix: Crash when unregistering UST apps during shutdown
