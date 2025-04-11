@@ -394,14 +394,6 @@ session daemons as the root user.
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Recording session configuration XML schema definition (XSD) path.
 
-`LTTNG_UST_ALLOW_BLOCKING`::
-    Allow the sessiond to operate as a tracee in blocking mode.
-+
-See man:lttng-ust(3) for more details. lttng-sessiond will refuse to start as a
-tracee in blocking mode if neither `LTTNG_UST_APP_PATH` nor `LTTNG_UST_CTL_PATH`
-are set, or if both `LTTNG_UST_APP_PATH` and `LTTNG_UST_CTL_PATH` are set to the
-same value.
-
 `LTTNG_UST_CTL_PATH`::
     Colon-delimited paths of the directories where `lttng-sessiond`
     places:
