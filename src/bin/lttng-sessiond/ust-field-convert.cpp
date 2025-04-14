@@ -653,7 +653,7 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 					typed_enumeration.mappings_->begin(),
 					typed_enumeration.mappings_->end(),
 					[&field, quirks](
-						const decltype(*typed_enumeration.mappings_
+						decltype(*typed_enumeration.mappings_
 									->begin())& nameMappingPair) {
 						if (static_cast<bool>(
 							    quirks &
