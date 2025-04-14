@@ -9,6 +9,7 @@
 #define _COMMON_UTILS_H
 
 #include <common/compat/directory-handle.hpp>
+#include <common/error.hpp>
 #include <common/exception.hpp>
 #include <common/string-utils/c-string-view.hpp>
 
@@ -89,11 +90,22 @@ int utils_create_value_file(const ValueType value, const lttng::c_string_view fi
 	DBG_FMT("Creating value file: path=`{}`, value={}", filepath, value);
 	try {
 		std::ofstream file;
+		const auto tmp_filepath = std::string(filepath.data()) + ".tmp";
 
 		file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-		/* Open the file with truncation to create or overwrite the file. */
-		file.open(filepath.data(), std::ios::out | std::ios::trunc);
+		/* Open the temporary file with truncation to create or overwrite it. */
+		file.open(tmp_filepath, std::ios::out | std::ios::trunc);
 		file << value << std::endl;
+		file.close();
+
+		/* Rename the temporary file to the final filepath. */
+		if (rename(tmp_filepath.c_str(), filepath.data()) != 0) {
+			ERR_FMT("Failed to rename temporary file: temp_path=`{}`, final_path=`{}`, error=`{}`",
+				tmp_filepath,
+				filepath,
+				strerror(errno));
+			return -1;
+		}
 	} catch (const std::exception& e) {
 		ERR_FMT("Failed to produce value file: path=`{}`, value={}, error=`{}`",
 			filepath,
