@@ -256,7 +256,21 @@ public:
 	}
 
 	enumeration_mapping(const enumeration_mapping<MappingIntegerType>& other) = default;
-	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept = default;
+
+	/*
+	 * Explicitly define the move constructor to ensure compatibility with older compilers
+	 * (e.g., GCC 4.8).
+	 *
+	 * Older compilers may generate an implicit exception specification for defaulted move
+	 * constructors that conflicts with the `noexcept` specifier. By explicitly defining the
+	 * move constructor and using `std::move` for member initialization, we avoid this issue
+	 * while maintaining exception safety.
+	 */
+	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept
+		: ranges{ std::move(other.ranges) }
+	{
+	}
+
 	enumeration_mapping& operator=(enumeration_mapping&&) = delete;
 	enumeration_mapping& operator=(const enumeration_mapping&) = delete;
 	~enumeration_mapping() = default;
