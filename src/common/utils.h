@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/macros.h>
 #include <common/compat/directory-handle.h>
 
 #define KIBI_LOG2 10

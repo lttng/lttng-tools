@@ -1381,6 +1381,7 @@ error:
 	return ret;
 }
 
+LTTNG_HIDDEN
 enum lttng_error_code utils_get_cpu_count(unsigned int *count)
 {
 	unsigned int _id = 0;
@@ -1398,6 +1399,7 @@ enum lttng_error_code utils_get_cpu_count(unsigned int *count)
 	return ret;
 }
 
+LTTNG_HIDDEN
 enum lttng_error_code utils_check_enough_available_memory(
 		uint64_t num_bytes_requested, uint64_t *num_bytes_available)
 {
