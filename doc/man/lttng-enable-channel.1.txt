@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 1 April 2025
+:revdate: 15 April 2025
 
 
 NAME
@@ -18,8 +18,7 @@ Create a Linux kernel channel:
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
       [option:--monitor-timer='PERIODUS']
-      [option:--buffers-global | option:--buffer-ownership=**system**]
-      [option:--buffer-allocation=**per-cpu**]
+      [option:--buffer-ownership=**system**] [option:--buffer-allocation=**per-cpu**]
       [option:--tracefile-size='SIZE' [option:--tracefile-count='COUNT']]
       [option:--session='SESSION'] 'CHANNEL'
 
@@ -28,8 +27,7 @@ Create a user space channel:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
       [option:--overwrite | [option:--discard] option:--blocking-timeout='TIMEOUTUS']
-      [option:--output=**mmap**] [option:--buffers-uid | option:--buffers-pid |
-                       option:--buffer-ownership=(**user** | **process**)]
+      [option:--output=**mmap**] [option:--buffer-ownership=(**user** | **process**)]
       [option:--buffer-allocation=(**per-cpu** | **per-channel**)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
