@@ -263,12 +263,12 @@ void health_register(struct health_app *ha, int type)
 	assert(type < ha->nr_types);
 
 	/* Init TLS state. */
-	health_state.last = 0;
-	health_state.last_time.tv_sec = 0;
-	health_state.last_time.tv_nsec = 0;
-	health_state.current = 0;
-	health_state.flags = (enum health_flags) 0;
-	health_state.type = type;
+	URCU_TLS(health_state).last = 0;
+	URCU_TLS(health_state).last_time.tv_sec = 0;
+	URCU_TLS(health_state).last_time.tv_nsec = 0;
+	URCU_TLS(health_state).current = 0;
+	URCU_TLS(health_state).flags = (enum health_flags) 0;
+	URCU_TLS(health_state).type = type;
 
 	/* Add it to the global TLS state list. */
 	state_lock(ha);
