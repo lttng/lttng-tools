@@ -310,7 +310,7 @@ def convert_trace_to_text_details(trace_path, text_output_file_path):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            universal_newlines=True,
         )
         with process.stdout as stdout:
             # The output is consumed line by line while searching for the boundaries
@@ -360,7 +360,7 @@ def convert_trace_to_text_pretty(trace_path, text_output_file_path):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            universal_newlines=True,
         )
         with process.stdout as stdout:
             for line in stdout:
