@@ -267,8 +267,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="O-Beer"
-version_description="An alcoholic drink made from yeast-fermented malt flavored with hops."
+version_name="Orbitales"
+version_description="This release is named after "Orbitales", a bold creation from Noctem Artisans Brasseurs in Québec City. Pitch black and dense—one team member compared the color to used motor oil—this beer offers an intriguing sensory experience. Aged in wood casks, it delivers rich aromas and flavors of blackberry as well as a hint of acidity. There’s no head to speak of, but a whisper of blue cheese funk lingers just enough to keep you curious."
 version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
