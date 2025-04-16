@@ -33,24 +33,26 @@ def compare_text_files(actual_path, expect_path, tap):
             if missing_in_actual:
                 tap.diagnostic("Lines not found in actual file:")
                 for line in missing_in_actual:
-                    tap.diagnostic(f"- {line.rstrip()}")
+                    tap.diagnostic("- {}".format(line.rstrip()))
 
             if missing_in_expected:
                 tap.diagnostic("Extra lines in actual file:")
                 for line in missing_in_expected:
-                    tap.diagnostic(f"- {line.rstrip()}")
+                    tap.diagnostic("- {}".format(line.rstrip()))
 
             raise AssertionError(
-                f"Line count mismatch: got {len(actual_lines)} lines, expected {len(expected_lines)} lines"
+                "Line count mismatch: got {} lines, expected {} lines".format(
+                    len(actual_lines), len(expected_lines)
+                )
             )
 
         for i, (actual_line, expected_line) in enumerate(
             zip(actual_lines, expected_lines)
         ):
             if actual_line != expected_line:
-                tap.diagnostic(f"Difference at line {i+1}:")
-                tap.diagnostic(f"Expected: {expected_line.rstrip()}")
-                tap.diagnostic(f"Actual  : {actual_line.rstrip()}")
+                tap.diagnostic("Difference at line {}:".format(i + 1))
+                tap.diagnostic("Expected: {}".format(expected_line.rstrip()))
+                tap.diagnostic("Actual  : {}".format(actual_line.rstrip()))
 
                 # Highlight the specific difference
                 for j, (a, e) in enumerate(zip(actual_line, expected_line)):
@@ -63,9 +65,11 @@ def compare_text_files(actual_path, expect_path, tap):
                         pointer = " " * marker_pos + "^"
 
                         tap.diagnostic(
-                            f"Differs at position {j}: [...{context.rstrip()}...]"
+                            "Differs at position {}: [...{}...]".format(
+                                j, context.rstrip()
+                            )
                         )
-                        tap.diagnostic(f"{' ' * 16}{pointer}")
+                        tap.diagnostic("{}{}".format(" " * 16, pointer))
                         raise AssertionError("Content mismatch")
 
 
@@ -124,7 +128,9 @@ def check_ctf2_trace_smoketest(session_output_path, tap):
             raise ValueError("Preamble fragment has an unexpected 'type' property")
         if preamble["version"] != 2:
             raise ValueError(
-                f"Preamble fragment has an unexpected 'version' property value ({preamble['version']})"
+                "Preamble fragment has an unexpected 'version' property value ({})".format(
+                    preamble["version"]
+                )
             )
         if len(preamble["uuid"]) != 16:
             raise ValueError(
@@ -175,12 +181,12 @@ def censor_section_lines(lines):
         #
         # We replace the value with a constant string.
         for key, value in fields_to_ignore.items():
-            match = re.match(rf"^(\s*){re.escape(key)}: ", line)
+            match = re.match(r"^(\s*){}: ".format(re.escape(key)), line)
             if match:
                 leading_space = match.group(1)
                 line = re.sub(
-                    rf"^(\s*){re.escape(key)}: .*",
-                    f"{leading_space}{key}: {value}",
+                    r"^(\s*){}: .*".format(re.escape(key)),
+                    "{}{}: {}".format(leading_space, key, value),
                     line,
                 )
                 break
@@ -254,7 +260,7 @@ def censor_section(section_lines):
         first_line,
     )
     if not match:
-        raise AssertionError(f"Invalid section header format: {first_line}")
+        raise AssertionError("Invalid section header format: {}".format(first_line))
 
     trace_id, stream_class_id, stream_id = map(int, match.groups())
     if stream_id != 0 and not is_event_section():
@@ -267,8 +273,8 @@ def censor_section(section_lines):
     # Censor the stream instance ID for event messages as it will vary
     # depending on the core that emitted the event.
     if is_event_section():
-        section_lines[0] = (
-            f"{{Trace {trace_id}, Stream class ID {stream_class_id}, Stream ID S}}\n"
+        section_lines[0] = "{{Trace {}, Stream class ID {}, Stream ID S}}\n".format(
+            trace_id, stream_class_id
         )
     elif is_stream_beginning_section():
         # Remove the declaration of stream instances that are not 0.
@@ -337,7 +343,7 @@ def convert_trace_to_text_details(trace_path, text_output_file_path):
 
     if process.returncode != 0:
         raise RuntimeError(
-            f"Failed to convert trace to text details: {process.stderr.strip()}"
+            "Failed to convert trace to text details: {}".format(process.stderr.strip())
         )
 
 
@@ -372,7 +378,7 @@ def convert_trace_to_text_pretty(trace_path, text_output_file_path):
         process.wait()
     if process.returncode != 0:
         raise RuntimeError(
-            f"Failed to convert trace to text pretty: {process.stderr.strip()}"
+            "Failed to convert trace to text pretty: {}".format(process.stderr.strip())
         )
 
 
@@ -393,13 +399,15 @@ def check_trace_event_counts(session_output_path, expected_event_counts):
         actual_count = event_counts.get(event_name, 0)
         if actual_count != expected_count:
             mismatched_events.append(
-                f"Event '{event_name}': expected {expected_count}, got {actual_count}"
+                "Event '{}': expected {}, got {}".format(
+                    event_name, expected_count, actual_count
+                )
             )
 
     for event_name, actual_count in event_counts.items():
         if event_name not in expected_event_counts:
             mismatched_events.append(
-                f"Unexpected event '{event_name}': got {actual_count}"
+                "Unexpected event '{}': got {}".format(event_name, actual_count)
             )
 
     if mismatched_events:
