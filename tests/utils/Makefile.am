@@ -3,7 +3,7 @@
 SUBDIRS = . tap testapp xml-utils lttngtest bt2_plugins
 
 EXTRA_DIST = utils.sh test_utils.py warn_processes.sh \
-             parse-callstack.py
+             parse-callstack.py tap-driver.sh
 dist_noinst_SCRIPTS = utils.sh test_utils.py tap-driver.sh
 noinst_LTLIBRARIES = libtestutils.la
 
