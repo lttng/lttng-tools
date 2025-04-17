@@ -5,7 +5,7 @@ SUBDIRS = tools
 
 LOG_DRIVER_FLAGS = --merge
 LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
-	$(top_srcdir)/tests/utils/tap-driver.sh
+	$(top_builddir)/tests/utils/tap-driver.sh
 
 TEST_EXTENSIONS = .serial
 
