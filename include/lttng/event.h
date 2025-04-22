@@ -2028,6 +2028,19 @@ ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
 free(event_name_exclusions);
 return ret;
 @endcode
+
+@param[in] handle
+    See lttng_enable_event_with_exclusions().
+@param[in] event_rule
+    See lttng_enable_event_with_exclusions().
+@param[in] channel_name
+    See lttng_enable_event_with_exclusions().
+
+@returns
+    See lttng_enable_event_with_exclusions().
+
+@pre
+    See lttng_enable_event_with_exclusions().
 */
 /* clang-format on */
 LTTNG_EXPORT extern int lttng_enable_event(struct lttng_handle *handle,
@@ -2078,6 +2091,21 @@ ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
 free(event_name_exclusions);
 return ret;
 @endcode
+
+@param[in] handle
+    See lttng_enable_event_with_exclusions().
+@param[in] event_rule
+    See lttng_enable_event_with_exclusions().
+@param[in] channel_name
+    See lttng_enable_event_with_exclusions().
+@param[in] filter_expr
+    See lttng_enable_event_with_exclusions().
+
+@returns
+    See lttng_enable_event_with_exclusions().
+
+@pre
+    See lttng_enable_event_with_exclusions().
 */
 /* clang-format on */
 LTTNG_EXPORT extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
@@ -2241,8 +2269,8 @@ LTTNG_EXPORT extern int lttng_enable_event_with_exclusions(struct lttng_handle *
 @brief
     Alias of lttng_disable_event_ext() which creates a temporary
     recording event rule descriptor, settings its
-    lttng_event::name member to \lt_p{event_name} if not \c NULL and
-    its lttng_event::type member to #LTTNG_EVENT_ALL.
+    lttng_event::name member to \lt_p{event_rule_name}
+    if not \c NULL and its lttng_event::type member to #LTTNG_EVENT_ALL.
 
 @ingroup api_rer
 
@@ -2260,10 +2288,26 @@ if (event_name) {
 event_rule.loglevel = -1;
 return lttng_disable_event_ext(handle, &event_rule, channel_name, NULL);
 @endcode
+
+@param[in] handle
+    See lttng_disable_event_ext().
+@param[in] event_rule_name
+    What to use as the lttng_event::name member of the created
+    temporary event rule descriptor passed to
+    lttng_disable_event_ext().
+@param[in] channel_name
+    See lttng_disable_event_ext().
+
+@returns
+    See lttng_disable_event_ext().
+
+@pre
+    See lttng_disable_event_ext().
 */
-LTTNG_EXPORT extern int
-lttng_disable_event(struct lttng_handle *handle, const char *event_name, const char *channel_name);
 /* clang-format on */
+LTTNG_EXPORT extern int lttng_disable_event(struct lttng_handle *handle,
+					    const char *event_rule_name,
+					    const char *channel_name);
 
 /*!
 @brief
