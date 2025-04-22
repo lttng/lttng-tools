@@ -395,11 +395,25 @@ named \lt_p{session_name}.
 */
 LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 
-/*
- * Gets the status of the kernel tracer.
- *
- * Sets the value of the argument, which must not be null.
- */
+/*!
+@brief
+    Sets \lt_p{*status} to the current status of the
+    LTTng kernel tracer.
+
+@ingroup api_gen
+
+@param[out] status
+    <strong>On success</strong>, this function sets \lt_p{*status} to
+    the current status of the kernel tracer.
+
+@retval #LTTNG_OK
+    Success.
+@retval #LTTNG_ERR_INVALID
+    Unsatisfied precondition.
+
+@lt_pre_conn
+@lt_pre_not_null{status}
+*/
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
 
