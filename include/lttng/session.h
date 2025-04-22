@@ -148,7 +148,13 @@ lttng_session_descriptor_get_session_name().
     Descriptor from which to create a recording session.
 
 @returns
-    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+    <dl>
+      <dt>#LTTNG_OK
+      <dd>Success
+
+      <dt>Another #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_descriptor}
@@ -189,8 +195,13 @@ lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor);
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -238,8 +249,13 @@ LTTNG_EXPORT extern int lttng_create_session(const char *session_name, const cha
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -287,8 +303,13 @@ LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *session_name,
     the channels of the created recording session.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -337,8 +358,13 @@ lttng_destroy_session_no_wait() to avoid a blocking call.
     Name of the recording session to destroy.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -375,8 +401,13 @@ valid.
     Name of the recording session to destroy.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -424,7 +455,13 @@ Use \lt_p{*handle} to wait for the operation to complete.
     @endparblock
 
 @returns
-    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+    <dl>
+      <dt>#LTTNG_OK
+      <dd>Success
+
+      <dt>Another #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -475,8 +512,22 @@ LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
     \lt_p{*creation_timestamp} to the Unix timestamp of the creation of
     \lt_p{session}.
 
+@retval #LTTNG_OK
+    Success.
+@retval #LTTNG_ERR_INVALID
+    Invalid parameter (unsatisfied precondition).
+@retval #LTTNG_ERR_SESSION_NOT_EXIST
+    The recording session summarized by \lt_p{session} isn't accessible
+    within the connected session daemon.
+
 @returns
-    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+    <dl>
+      <dt>#LTTNG_OK
+      <dd>Success
+
+      <dt>Another #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session}
@@ -508,8 +559,13 @@ utility.
     recording session named \lt_p{session_name}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}

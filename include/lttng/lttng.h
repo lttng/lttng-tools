@@ -118,9 +118,9 @@ the tracing group with lttng_set_tracing_group().
       <dd>
 	liblttng-ctl isn't able to connect to a session daemon.
 
-      <dt>Negative value
+      <dt>\em Negative #lttng_error_code enumerator
       <dd>
-	Error: a negative #lttng_error_code enumerator.
+	Error.
     </dl>
     @endparblock
 
@@ -143,8 +143,16 @@ the current Unix tracing group (initially \c tracing) of the library.
     New Unix tracing group of liblttng-ctl.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+
+      <dt>-#LTTNG_ERR_FATAL (negative)
+      <dd>Out of memory.
+    </dl>
 
 @lt_pre_not_null{group}
 @pre
@@ -181,8 +189,13 @@ LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
     Name of the recording session to activate/start.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -225,8 +238,13 @@ or a rotation needs to occur to archive it.
     Name of the recording session to deactivate/stop.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -265,8 +283,13 @@ valid.
     Name of the recording session to deactivate/stop.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -359,9 +382,9 @@ named \lt_p{session_name}.
 	You may \em not read the traces of the recording session named
 	\lt_p{session_name}.
 
-      <dt>Negative value
+      <dt>\em Negative #lttng_error_code enumerator
       <dd>
-	Error: a negative #lttng_error_code enumerator.
+	Error.
     </dl>
     @endparblock
 
@@ -395,8 +418,13 @@ lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
     streams.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -439,8 +467,13 @@ See the preconditions of this function which show important limitations.
     streams.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
@@ -482,8 +515,13 @@ information may be lost.
     state dump event records.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{session_name}
