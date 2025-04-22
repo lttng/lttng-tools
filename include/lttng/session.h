@@ -28,9 +28,18 @@ struct lttng_destruction_handle;
 
 #define LTTNG_SESSION_PADDING1 8
 
+/*!
+@brief
+    Return type of lttng_get_session_shm_path_override().
+*/
 enum lttng_get_session_shm_path_status {
+	/// Success.
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_OK = 0,
+
+	/// Shared memory path isn't set.
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET = 1,
+
+	/// Invalid parameter (unsatisfied precondition).
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
 };
 
@@ -483,7 +492,7 @@ lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *c
 @brief
     Sets the path of the directory containing the shared memory files
     holding the channel ring buffers of the recording session named
-    \lt_p{session_name} on the local file sytem to \lt_p{shm_dir}.
+    \lt_p{session_name} on the local file system to \lt_p{shm_dir}.
 
 Specifying a location on an
 <a href="https://en.wikipedia.org/wiki/Non-volatile_random-access_memory">NVRAM</a>
@@ -514,24 +523,49 @@ LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, con
 
 /*!
 @brief
-    Gets the shm_path set for the given session.
+    Sets \lt_p{*shm_dir} to the path of the custom directory
+    on the local file
+    system containing the shared memory files holding the channel
+    ring buffers of the recording session summarized
+    by \lt_p{session}.
+
+This function only succeeds if the recording session summarized
+by \lt_p{session} has a custom shared memory directory, as set with
+lttng_set_session_shm_path(); it returns
+#LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET otherwise.
 
 @param[in] session
-    Pointer to an struct lttng_session return by lttng_list_sessions.
+    Summary of the recording session,
+    as obtained with lttng_list_sessions(),
+    of which to get the shared memory directory path.
+@param[out] shm_dir
+    @parblock
+    <strong>On success</strong>, this function sets
+    \lt_p{*shm_dir} to the path of the directory on the
+    local file system containing the shared memory files holding
+    the channel ring buffers of \lt_p{session}.
 
-@param[out] shm_path
-    A pointer to the shm_path in the session structure.
+    \lt_p{*shm_dir} remains valid as long as the recording session
+    summary \lt_p{session} exists.
+    @endparblock
 
-@param[out] set
-    True when the session's shm_path has been explicitly changed from the default.
+@retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_OK
+    Success.
+@retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET = 1,
+    Shared memory path isn't set.
+@retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
+    Invalid parameter (unsatisfied precondition).
 
 @lt_pre_conn
 @lt_pre_not_null{session}
+@pre
+    The recording session summarized by \lt_p{session} is accessible
+    within the connected session daemon.
 @lt_pre_not_null{shm_path}
-@lt_pre_not_null{set}
 */
 LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
-lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_path);
+lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_dir);
+
 /// @}
 
 #ifdef __cplusplus
