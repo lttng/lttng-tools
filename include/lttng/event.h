@@ -1622,8 +1622,13 @@ LTTNG_EXPORT extern void lttng_event_destroy(struct lttng_event *event_rule);
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{event_rule}
 @lt_pre_not_null{filter_expr}
@@ -1689,8 +1694,14 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event 
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dt>-#LTTNG_ERR_OVERFLOW (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{event_rule}
 @pre
@@ -1753,8 +1764,13 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event_rule);
     New Linux uprobe location of \lt_p{event_rule}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{event_rule}
 @pre
@@ -1952,8 +1968,13 @@ field for each future event record of the selected channel(s).
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{handle}
@@ -2209,8 +2230,13 @@ type.
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{handle}
@@ -2413,8 +2439,13 @@ event_rule.loglevel = -1;
     Unused: must be \c NULL.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{handle}

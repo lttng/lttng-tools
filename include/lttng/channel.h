@@ -361,8 +361,13 @@ This function, depending on \lt_p{channel->name}:
     Summary of the channel to create or enable.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{handle}
@@ -407,8 +412,13 @@ LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
     Name of the channel to disable within \lt_p{handle}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0 or a positive value
+      <dd>Success
+
+      <dt>\em Negative #lttng_error_code enumerator
+      <dd>Error
+    </dl>
 
 @lt_pre_conn
 @lt_pre_not_null{handle}
@@ -471,8 +481,13 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
     by \lt_p{channel}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @pre
@@ -510,8 +525,13 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
     by \lt_p{channel}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @pre
@@ -542,8 +562,13 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel
     the monitor timer period (µs) property of \lt_p{channel}.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @lt_pre_not_null{period}
@@ -569,8 +594,13 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
     Monitor timer period property to set.
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @pre
@@ -617,8 +647,13 @@ channels.
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @pre
@@ -666,8 +701,13 @@ channels.
     @endparblock
 
 @returns
-    0 on success, or a \em negative #lttng_error_code enumerator
-    otherwise.
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Invalid parameter (unsatisfied precondition).
+    </dl>
 
 @lt_pre_not_null{channel}
 @pre

@@ -87,23 +87,23 @@ clearing operation.
 
 @returns
     @parblock
-    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+    #LTTNG_OK on success, or another enumerator otherwise.
 
     Notable return values:
 
     <table>
       <tr>
-	<td>-#LTTNG_ERR_CLEAR_RELAY_DISALLOWED
+	<td>#LTTNG_ERR_CLEAR_RELAY_DISALLOWED
 	<td>
 	  The relay daemon doesn't allow recording session clearing
 	  operations.
       <tr>
-	<td>-#LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY
+	<td>#LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY
 	<td>
 	  The relay daemon doesn't support the recording session
 	  clearing operation.
       <tr>
-	<td>-#LTTNG_ERR_CLEAR_FAIL_CONSUMER
+	<td>#LTTNG_ERR_CLEAR_FAIL_CONSUMER
 	<td>
 	  A consumer daemon failed to clear the recording session named
 	  \lt_p{session_name}.
