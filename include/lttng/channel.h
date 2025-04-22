@@ -486,7 +486,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}
@@ -530,7 +530,7 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}
@@ -567,7 +567,7 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}
@@ -599,7 +599,7 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}
@@ -652,7 +652,7 @@ channels.
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}
@@ -706,7 +706,7 @@ channels.
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{channel}

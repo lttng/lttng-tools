@@ -1627,7 +1627,7 @@ LTTNG_EXPORT extern void lttng_event_destroy(struct lttng_event *event_rule);
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{event_rule}
@@ -1700,7 +1700,7 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event 
 
       <dt>-#LTTNG_ERR_INVALID (negative)
       <dt>-#LTTNG_ERR_OVERFLOW (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{event_rule}
@@ -1769,7 +1769,7 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event_rule);
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
     </dl>
 
 @lt_pre_not_null{event_rule}
