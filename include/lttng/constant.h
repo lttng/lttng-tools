@@ -30,10 +30,6 @@
 #endif /* #else #ifndef __STDC_LIMIT_MACROS */
 #include <sys/types.h>
 
-/*
- * Event symbol length. Copied from LTTng kernel ABI.
- */
-
 /*!
 @brief
     Maximum symbol length.
