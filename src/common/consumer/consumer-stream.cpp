@@ -503,7 +503,7 @@ static void strip_packet_header_from_subbuffer(struct stream_subbuffer *buffer)
 }
 
 static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
-					    struct stream_subbuffer *subbuffer)
+				       struct stream_subbuffer *subbuffer)
 {
 	(void) metadata_stream_check_version(stream, subbuffer);
 	(void) strip_packet_header_from_subbuffer(subbuffer);

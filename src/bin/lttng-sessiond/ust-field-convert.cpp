@@ -652,9 +652,9 @@ create_typed_variant_choices(const lttng_ust_ctl_field *current,
 				const auto mapping_it = std::find_if(
 					typed_enumeration.mappings_->begin(),
 					typed_enumeration.mappings_->end(),
-					[&field, quirks](
-						decltype(*typed_enumeration.mappings_
-									->begin())& nameMappingPair) {
+					[&field,
+					 quirks](decltype(*typed_enumeration.mappings_
+								   ->begin())& nameMappingPair) {
 						if (static_cast<bool>(
 							    quirks &
 							    lsu::ctl_field_quirks::
