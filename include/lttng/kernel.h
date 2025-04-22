@@ -16,24 +16,47 @@
 extern "C" {
 #endif
 
+/*!
+@brief
+    The status of an LTTng kernel tracer.
+
+@ingroup api_gen
+
+@sa lttng_get_kernel_tracer_status() --
+    Get the current LTTng kernel tracer status.
+*/
 enum lttng_kernel_tracer_status {
-	/* Loaded without error. */
+	/// Loaded without error.
 	LTTNG_KERNEL_TRACER_STATUS_INITIALIZED = 0,
-	/* Unknown error. */
+
+	/// Unknown error.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_UNKNOWN = -1,
-	/* lttng-sessiond isn't running as root. */
+
+	/*!
+	@brief
+	    liblttng-ctl cannot connect to the session daemon of the
+	    \c root user (the root session daemon).
+
+	    See \ref api-gen-sessiond-conn "Session daemon connection".
+	*/
 	LTTNG_KERNEL_TRACER_STATUS_ERR_NEED_ROOT = -2,
-	/* Notifier setup failed. */
+
+	/// Notifier setup failed.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_NOTIFIER = -3,
-	/* Failed to open /proc/lttng. */
+
+	/// Failed to open <code>/proc/lttng</code>.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_OPEN_PROC_LTTNG = -4,
-	/* Version mismatch between kernel tracer and kernel tracer ABI. */
+
+	/// Version mismatch between kernel tracer and kernel tracer ABI.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_VERSION_MISMATCH = -5,
-	/* Kernel module loading failed. */
+
+	/// LTTng kernel module loading failed.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_UNKNOWN = -6,
-	/* Kernel modules missing. */
+
+	/// Missing LTTng kernel modules.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_MISSING = -7,
-	/* Kernel module signature error. */
+
+	/// LTTng kernel module signature error.
 	LTTNG_KERNEL_TRACER_STATUS_ERR_MODULES_SIGNATURE = -8,
 };
 

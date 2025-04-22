@@ -137,7 +137,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/destruction-handle.h" \
                           "@top_srcdir@/include/lttng/domain.h" \
                           "@top_srcdir@/include/lttng/channel.h" \
-                          "@top_srcdir@/include/lttng/event.h"
+                          "@top_srcdir@/include/lttng/event.h" \
+                          "@top_srcdir@/include/lttng/kernel.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO

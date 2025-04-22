@@ -122,6 +122,9 @@ The general \lt_api offers:
   - lttng_session_daemon_alive()
   - lttng_set_tracing_group()
 
+- The lttng_get_kernel_tracer_status() function to get the current
+  LTTng kernel tracer status.
+
 <h1>\anchor api-gen-sessiond-conn Session daemon connection</h1>
 
 Many functions of the \lt_api require a connection to a listening LTTng
