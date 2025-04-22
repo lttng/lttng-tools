@@ -574,6 +574,11 @@ utility.
 @lt_pre_not_null{shm_dir}
 @pre
     \lt_p{shm_dir} is a writable directory.
+
+@sa lttng_get_session_shm_path_override() --
+    Returns the path of the custom directory containing the shared
+    memory files holding the channel ring buffers of a recording
+    session.
 */
 LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_dir);
 
@@ -618,6 +623,11 @@ lttng_set_session_shm_path(); it returns
     The recording session summarized by \lt_p{session} is accessible
     within the connected session daemon.
 @lt_pre_not_null{shm_path}
+
+@sa lttng_set_session_shm_path() --
+    Sets the path of the directory containing the shared
+    memory files holding the channel ring buffers of a recording
+    session.
 */
 LTTNG_EXPORT extern enum lttng_get_session_shm_path_status
 lttng_get_session_shm_path_override(const struct lttng_session *session, const char **shm_dir);
