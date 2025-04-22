@@ -39,7 +39,7 @@ enum lttng_get_session_shm_path_status {
 	/// Shared memory path isn't set.
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET = 1,
 
-	/// Invalid parameter (unsatisfied precondition).
+	/// Unsatisfied precondition.
 	LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
 };
 
@@ -515,7 +515,7 @@ LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
 @retval #LTTNG_OK
     Success.
 @retval #LTTNG_ERR_INVALID
-    Invalid parameter (unsatisfied precondition).
+    Unsatisfied precondition.
 @retval #LTTNG_ERR_SESSION_NOT_EXIST
     The recording session summarized by \lt_p{session} isn't accessible
     within the connected session daemon.
@@ -610,7 +610,7 @@ lttng_set_session_shm_path(); it returns
 @retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_UNSET = 1,
     Shared memory path isn't set.
 @retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
-    Invalid parameter (unsatisfied precondition).
+    Unsatisfied precondition.
 
 @lt_pre_conn
 @lt_pre_not_null{session}

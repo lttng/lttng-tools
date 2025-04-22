@@ -148,7 +148,7 @@ the current Unix tracing group (initially \c tracing) of the library.
       <dd>Success.
 
       <dt>-#LTTNG_ERR_INVALID (negative)
-      <dd>Invalid parameter (unsatisfied precondition).
+      <dd>Unsatisfied precondition.
 
       <dt>-#LTTNG_ERR_FATAL (negative)
       <dd>Out of memory.

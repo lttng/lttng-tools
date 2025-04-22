@@ -380,7 +380,7 @@ enum lttng_error_code {
 	/* 95 */
 	/* 96 */
 
-	/// Invalid parameter (unsatisfied precondition).
+	/// Unsatisfied precondition (invalid parameter, for example).
 	LTTNG_ERR_INVALID = 97,
 
 	/// No user space consumer daemon available.
