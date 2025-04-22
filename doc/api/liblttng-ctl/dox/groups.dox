@@ -149,7 +149,7 @@ liblttng-ctl:
       <dd>
         Try to connect to the root session daemon.
 
-        If the root session daemon isn't running, connect to the
+        If the root session daemon isn't running, then connect to the
         session daemon of \lt_var{U}.
 
       <dt>If \lt_var{U} is not part of the tracing group
@@ -278,7 +278,7 @@ The recording session operations are:
          not it does successfully.
 
       -# <strong>If you have a destruction handle from
-         step&nbsp;1</strong>:
+         step&nbsp;1</strong>, then:
 
          -# Call lttng_destruction_handle_wait_for_completion() to wait
             for the completion of the destruction operation.
@@ -561,7 +561,7 @@ There are three available output URL formats:
         <dd>
           TCP port.
 
-          If it's missing, the default control and data ports are
+          If it's missing, then the default control and data ports are
           respectively \lt_def_net_ctrl_port and
           \lt_def_net_data_port.
 
@@ -740,7 +740,8 @@ To destroy a recording session:
 
 -# <strong>If LTTng performed at least one
    \ref api_session_rotation "rotation" of the destroyed recording
-   session</strong>, call lttng_destruction_handle_get_rotation_state()
+   session</strong>, then
+   call lttng_destruction_handle_get_rotation_state()
    to know whether or not the last rotation was successful and
    lttng_destruction_handle_get_archive_location() to get the location
    of its trace chunk archive.
@@ -1258,8 +1259,8 @@ along with how to configure the sub-buffer size and count for them:
 
   <dt>Low memory system
   <dd>
-    If your target system has a low memory limit, prefer fewer first,
-    then smaller sub-buffers.
+    If your target system has a low memory limit, then
+    prefer fewer first, then smaller sub-buffers.
 
     Even if the system is limited in memory, you want to keep the
     sub-buffers as large as possible to avoid a high sub-buffer
@@ -1283,14 +1284,14 @@ two following configurations have the same ring buffer total size:
   <dt>Two sub-buffers of 4&nbsp;MiB each
   <dd>
     Expect a very low sub-buffer switching frequency, but if LTTng ever
-    needs to overwrite a sub-buffer, half of the event records so far
-    (4&nbsp;MiB) are definitely lost.
+    needs to overwrite a sub-buffer, then half of the event records so
+    far (4&nbsp;MiB) are definitely lost.
 
   <dt>Eight sub-buffers of 1&nbsp;MiB each
   <dd>
     Expect four times the tracer overhead of the configuration above,
-    but if LTTng needs to overwrite a sub-buffer, only the eighth of
-    event records so far (1&nbsp;MiB) are definitely lost.
+    but if LTTng needs to overwrite a sub-buffer, then only the eighth
+    of event records so far (1&nbsp;MiB) are definitely lost.
 </dl>
 
 In \ref api-channel-discard-mode "discard mode", the sub-buffer count
@@ -1315,9 +1316,9 @@ When the size of a trace file reaches the fixed maximum size of the
 channel, LTTng creates another file to contain the next event records.
 LTTng appends a file count to each trace file name in this case.
 
-If you set the trace file size attribute when you create a channel, the
-maximum number of trace files that LTTng creates is <em>unlimited</em>
-by default.
+If you set the trace file size attribute when you create a channel, then
+the maximum number of trace files that LTTng creates is
+<em>unlimited</em> by default.
 
 To limit the size of each trace file that LTTng writes from the
 ring buffers of a channel when you create it:
@@ -1392,9 +1393,9 @@ Each channel can have up to four optional
     channel which belongs to a
     \ref api-session-live-mode "live" recording session.
 
-    If this timer expires but there's no sub-buffer to consume, LTTng
-    sends a message with a timestamp to the connected relay daemon (see
-    \lt_man{lttng-relayd,8}) so that its live readers can progress.
+    If this timer expires but there's no sub-buffer to consume, then
+    LTTng sends a message with a timestamp to the connected relay daemon
+    (see \lt_man{lttng-relayd,8}) so that its live readers can progress.
 
     To set the period of the live timer of a channel when you create
     its recording session:
@@ -1440,7 +1441,7 @@ Each channel can have up to four optional
 
     -# The buffer usage of a given channel becomes less than some value.
 
-    If you disable the monitor timer of a channel&nbsp;\lt_var{C}:
+    If you disable the monitor timer of a channel&nbsp;\lt_var{C}, then:
 
     - The consumed buffer size value of the recording session
       of&nbsp;\lt_var{C} could be wrong for trigger condition
@@ -1879,8 +1880,8 @@ rule&nbsp;\lt_var{ER}, that is:
             Use the C&nbsp;language dot and square bracket notations to
             access nested structure and array/sequence fields. You can
             only use a constant, positive integer number within square
-            brackets. If the index is out of bounds, \lt_var{EXPR} is
-            \b false.
+            brackets. If the index is out of bounds, then
+            \lt_var{EXPR} is \b false.
 
             The value of an enumeration field is an integer.
 
@@ -2272,7 +2273,8 @@ To clear a recording session:
    operation. Without such a handle, you can't know when the clearing
    operation completes and whether or not it does successfully.
 
--# <strong>If you have a clearing handle from step&nbsp;1</strong>:
+-# <strong>If you have a clearing handle from step&nbsp;1</strong>,
+   then:
 
    -# Call lttng_clear_handle_wait_for_completion() to wait for the
       completion of the clearing operation.
