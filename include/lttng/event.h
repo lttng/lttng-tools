@@ -1979,6 +1979,7 @@ LTTNG_EXPORT extern int lttng_add_context(struct lttng_handle *handle,
 					  const char *event_name,
 					  const char *channel_name);
 
+/* clang-format off */
 /*!
 @brief
     Alias of lttng_enable_event_with_exclusions() which passes the
@@ -2005,33 +2006,35 @@ assert(event_name_exclusion_count >= 0);
 
 if (event_name_exclusion_count > 0) {
     event_name_exclusions = calloc(event_name_exclusion_count,
-				   sizeof(*event_name_exclusions));
+                                   sizeof(*event_name_exclusions));
     assert(event_name_exclusions);
 
     for (i = 0; i < event_name_exclusion_count; i++) {
-	const char *event_name_exclusion;
+        const char *event_name_exclusion;
 
-	ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
-					     &event_name_exclusion);
-	assert(ret == 0);
-	event_name_exclusions[i] = (char *) event_name_exclusion;
+        ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
+                                             &event_name_exclusion);
+        assert(ret == 0);
+        event_name_exclusions[i] = (char *) event_name_exclusion;
     }
 }
 
 ret = lttng_event_get_filter_expression(event_rule, &filter_expr);
 assert(ret == 0);
 ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
-					 filter_expr,
-					 event_name_exclusion_count,
-					 event_name_exclusions);
+                                         filter_expr,
+                                         event_name_exclusion_count,
+                                         event_name_exclusions);
 free(event_name_exclusions);
 return ret;
 @endcode
 */
+/* clang-format on */
 LTTNG_EXPORT extern int lttng_enable_event(struct lttng_handle *handle,
 					   struct lttng_event *event_rule,
 					   const char *channel_name);
 
+/* clang-format off */
 /*!
 @brief
     Alias of lttng_enable_event_with_exclusions() which passes the
@@ -2055,27 +2058,28 @@ assert(event_name_exclusion_count >= 0);
 
 if (event_name_exclusion_count > 0) {
     event_name_exclusions = calloc(event_name_exclusion_count,
-				   sizeof(*event_name_exclusions));
+                                   sizeof(*event_name_exclusions));
     assert(event_name_exclusions);
 
     for (i = 0; i < event_name_exclusion_count; i++) {
-	const char *event_name_exclusion;
+        const char *event_name_exclusion;
 
-	ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
-					     &event_name_exclusion);
-	assert(ret == 0);
-	event_name_exclusions[i] = (char *) event_name_exclusion;
+        ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
+                                             &event_name_exclusion);
+        assert(ret == 0);
+        event_name_exclusions[i] = (char *) event_name_exclusion;
     }
 }
 
 ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
-					 filter_expr,
-					 event_name_exclusion_count,
-					 event_name_exclusions);
+                                         filter_expr,
+                                         event_name_exclusion_count,
+                                         event_name_exclusions);
 free(event_name_exclusions);
 return ret;
 @endcode
 */
+/* clang-format on */
 LTTNG_EXPORT extern int lttng_enable_event_with_filter(struct lttng_handle *handle,
 						       struct lttng_event *event_rule,
 						       const char *channel_name,
@@ -2232,6 +2236,7 @@ LTTNG_EXPORT extern int lttng_enable_event_with_exclusions(struct lttng_handle *
 							   int event_name_exclusion_count,
 							   char **event_name_exclusions);
 
+/* clang-format off */
 /*!
 @brief
     Alias of lttng_disable_event_ext() which creates a temporary
@@ -2258,6 +2263,7 @@ return lttng_disable_event_ext(handle, &event_rule, channel_name, NULL);
 */
 LTTNG_EXPORT extern int
 lttng_disable_event(struct lttng_handle *handle, const char *event_name, const char *channel_name);
+/* clang-format on */
 
 /*!
 @brief
