@@ -13,7 +13,6 @@ install-data-local: doxygen-doc
 MOSTLYCLEANFILES = $(DX_CLEANFILES)
 EXTRA_DIST = \
 	Doxyfile.in \
-	DoxygenLayout.xml \
 	style.css \
 	dox \
 	images
