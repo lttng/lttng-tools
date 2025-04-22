@@ -266,8 +266,8 @@ public:
 	 * move constructor and using `std::move` for member initialization, we avoid this issue
 	 * while maintaining exception safety.
 	 */
-	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept
-		: ranges{ std::move(other.ranges) }
+	enumeration_mapping(enumeration_mapping<MappingIntegerType>&& other) noexcept :
+		ranges{ std::move(other.ranges) }
 	{
 	}
 
