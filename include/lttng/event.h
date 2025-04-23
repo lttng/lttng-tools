@@ -76,7 +76,8 @@ is the described enumerator.
 
 Depending on the \lt_obj_domain of the recording event rule, \lt_var{LL}
 is one of the enumerators of #lttng_loglevel, #lttng_loglevel_jul,
-#lttng_loglevel_log4j, or #lttng_loglevel_python.
+#lttng_loglevel_log4j, #lttng_loglevel_log4j2,
+or #lttng_loglevel_python.
 */
 enum lttng_loglevel_type {
 	/// Match events regardless of their log level.
@@ -201,8 +202,7 @@ enum lttng_loglevel_jul {
 @brief
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
-    of an
-    \link #LTTNG_DOMAIN_LOG4J Apache Log4j 1.x\endlink
+    of an \link #LTTNG_DOMAIN_LOG4J Apache&nbsp;log4j&nbsp;1.x\endlink
     recording event rule.
 
 @ingroup api_rer
@@ -256,7 +256,7 @@ enum lttng_loglevel_log4j {
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
     of a
-    \link #LTTNG_DOMAIN_LOG4J2 Apache Log4j 2\endlink
+    \link #LTTNG_DOMAIN_LOG4J2 Apache&nbsp;Log4j&nbsp;2\endlink
     recording event rule.
 
 @ingroup api_rer
@@ -476,7 +476,7 @@ data type and the name of the resulting context field in traces.
       lttng_event_context::lttng_event_context_u::app_ctx member of
       of lttng_event_context::u selects
       a specific application-specific context.
-    <td>#LTTNG_DOMAIN_JUL or #LTTNG_DOMAIN_LOG4J
+    <td>#LTTNG_DOMAIN_JUL, #LTTNG_DOMAIN_LOG4J, or #LTTNG_DOMAIN_LOG4J2
     <td>Integer or string
     <td>Depends on the selected application-specific context
   <tr>
@@ -1324,7 +1324,8 @@ struct lttng_event {
 	    \ref api-rer-conds-ll "instrumentation point log level condition".
 
 	This member must be one of the enumerators of
-	#lttng_loglevel, #lttng_loglevel_jul, #lttng_loglevel_log4j, or
+	#lttng_loglevel, #lttng_loglevel_jul, #lttng_loglevel_log4j,
+	#lttng_loglevel_log4j2, or
 	#lttng_loglevel_python, depending on the
 	\lt_obj_domain when you call lttng_enable_event(),
 	lttng_enable_event_with_filter(), or
