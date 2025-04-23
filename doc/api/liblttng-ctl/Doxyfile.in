@@ -31,6 +31,9 @@ ALIASES                += lt_man_nl{2}="<code><strong>\1</strong>(\2)</code>"
 ALIASES                += lt_man{2}="<a href=\"https://lttng.org/man/\2/\1/v\lt_version_maj_min/\">\lt_man_nl{\1,\2}</a>"
 ALIASES                += lt_man_gen{2}="<a href=\"https://man7.org/linux/man-pages/man\2/\1.\2.html\">\lt_man_nl{\1,\2}</a>"
 ALIASES                += lt_voidp="<code>void&nbsp;*</code>"
+ALIASES                += lt_log4j1="Apache&nbsp;log4j&nbsp;1.x"
+ALIASES                += lt_log4j2="Apache&nbsp;Log4j&nbsp;2"
+ALIASES                += lt_jul="<code>java.util.logging</code>"
 
 # Aliases: preconditions
 ALIASES                += lt_pre_not_null{1}="- \lt_p{\1} is \em not \c NULL."

@@ -775,13 +775,13 @@ There are currently five available tracing domains:
     <td>User space
     <td>#LTTNG_DOMAIN_UST
   <tr>
-    <td><a href="https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html"><code>java.util.logging</code></a> (JUL)
+    <td><a href="https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html">\lt_jul</a> (JUL)
     <td>#LTTNG_DOMAIN_JUL
   <tr>
-    <td><a href="https://logging.apache.org/log4j/1.x/">Apache log4j 1.x</a>
+    <td><a href="https://logging.apache.org/log4j/1.x/">\lt_log4j1</a>
     <td>#LTTNG_DOMAIN_LOG4J
   <tr>
-    <td><a href="https://logging.apache.org/log4j/2.x/">Apache Log4j 2</a>
+    <td><a href="https://logging.apache.org/log4j/2.x/">\lt_log4j2</a>
     <td>#LTTNG_DOMAIN_LOG4J2
   <tr>
     <td><a href="https://docs.python.org/3/library/logging.html">Python logging</a>
@@ -812,9 +812,9 @@ Each ring buffer is divided into multiple <em>sub-buffers</em>. When a
 sub-buffers of one or more channels.
 
 A channel is always associated to a \lt_obj_domain.
-The \link #LTTNG_DOMAIN_JUL <code>java.util.logging</code>\endlink,
-\link #LTTNG_DOMAIN_LOG4J Apache&nbsp;log4j&nbsp;1.x\endlink,
-\link #LTTNG_DOMAIN_LOG4J2 Apache&nbsp;Log4j&nbsp;2\endlink, and
+The \link #LTTNG_DOMAIN_JUL \lt_jul\endlink,
+\link #LTTNG_DOMAIN_LOG4J \lt_log4j1\endlink,
+\link #LTTNG_DOMAIN_LOG4J2 \lt_log4j2\endlink, and
 \link #LTTNG_DOMAIN_PYTHON Python\endlink tracing
 domains each have a default channel which you can't configure.
 
@@ -2264,7 +2264,7 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       <code>lttng_jul:event</code>
 
       Such an event record has a string field <code>logger_name</code>
-      which contains the name of the <code>java.util.logging</code>
+      which contains the name of the \lt_jul
       logger from which LTTng creates&nbsp;\lt_var{E}.
   <tr>
     <td>#LTTNG_DOMAIN_LOG4J
@@ -2273,7 +2273,7 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       <code>lttng_log4j:event</code>
 
       Such an event record has a string field <code>logger_name</code>
-      which contains the name of the Apache&nbsp;log4j&nbsp;1.x logger
+      which contains the name of the \lt_log4j1 logger
       from which LTTng creates&nbsp;\lt_var{E}.
   <tr>
     <td>#LTTNG_DOMAIN_LOG4J2
@@ -2282,7 +2282,7 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
       <code>lttng_log4j2:event</code>
 
       Such an event record has a string field <code>logger_name</code>
-      which contains the name of the Apache&nbsp;Log4j&nbsp;2 logger
+      which contains the name of the \lt_log4j2 logger
       from which LTTng creates&nbsp;\lt_var{E}.
   <tr>
     <td>#LTTNG_DOMAIN_PYTHON
