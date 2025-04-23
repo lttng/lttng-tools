@@ -19,29 +19,54 @@ extern "C" {
 
 /*!
 @brief
-    \ref api-rer-conds-inst-pt-type "Instrumentation type condition"
-    of a recording event
+    \ref api-rer-conds-inst-pt-type "Instrumentation point type condition"
+    of a recording event rule, or instrumentation point type when
+    lttng_list_tracepoints() or lttng_list_syscalls()
+    \ref api-rer-inst-pt-descr "creates" the #lttng_event structure.
 
 @ingroup api_rer
 */
 enum lttng_event_type {
-	/// Match LTTng kernel tracepoint and Linux system call events.
+	/*!
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match LTTng kernel tracepoints or the entry and exit of
+	    Linux system calls.
+	</dl>
+	*/
 	LTTNG_EVENT_ALL = -1,
 
-	/// Match LTTng tracepoint or Java/Python logging events.
+	/*!
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match LTTng tracepoints or Java/Python logging statements.
+
+	  <dt>Instrumentation point descriptor
+	  <dd>
+	    LTTng tracepoint or Java/Python logging statement.
+	</dl>
+	*/
 	LTTNG_EVENT_TRACEPOINT = 0,
 
 	/*!
-	Match Linux
-	<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobe</a>
-	events.
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match Linux
+	    <a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobes</a>.
+	</dl>
 	*/
 	LTTNG_EVENT_PROBE = 1,
 
 	/*!
-	Match Linux
-	<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kretprobe</a>
-	events.
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match Linux
+	    <a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kretprobes</a>.
+	</dl>
 	*/
 	LTTNG_EVENT_FUNCTION = 2,
 
@@ -50,13 +75,26 @@ enum lttng_event_type {
 	LTTNG_EVENT_NOOP = 4,
 	/// @endcond
 
-	/// Match Linux system call events.
+	/*!
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match the entry and exit of Linux system calls.
+
+	  <dt>Instrumentation point descriptor
+	  <dd>
+	    Linux system call.
+	</dl>
+	*/
 	LTTNG_EVENT_SYSCALL = 5,
 
 	/*!
-	Match Linux
-	<a href="https://lwn.net/Articles/499190/">uprobe</a>
-	events.
+	<dl>
+	  <dt>Recording event rule
+	  <dd>
+	    Match Linux
+	    a href="https://lwn.net/Articles/499190/">user space probes</a>.</dl>
+	</dl>
 	*/
 	LTTNG_EVENT_USERSPACE_PROBE = 6,
 };
@@ -96,10 +134,10 @@ enum lttng_loglevel_type {
 /*!
 @brief
     Value of the
-    \ref api-rer-conds-ll "instrumentation point log level condition"=
+    \ref api-rer-conds-ll "instrumentation point log level condition"
     of an LTTng
     \link #LTTNG_DOMAIN_UST user space\endlink tracepoint
-    recording event rule.
+    recording event rule descriptor.
 
 @ingroup api_rer
 
@@ -1150,7 +1188,7 @@ struct lttng_event_context {
 @ingroup api_rer
 
 Such a structure indicates the location of a Linux kprobe/kretprobe for
-a \lt_obj_rer having such an instrumentation point type.
+a \lt_obj_rer having such an instrumentation point type condition.
 
 You must initialize such a structure to zeros before setting its members
 and using it, for example:
@@ -1218,6 +1256,7 @@ struct lttng_event_function_attr {
 #define LTTNG_EVENT_PADDING1 12
 #define LTTNG_EVENT_PADDING2 (LTTNG_SYMBOL_NAME_LEN + 32)
 
+/* clang-format off */
 /*!
 @brief
     \lt_obj_c_rer descriptor.
@@ -1282,120 +1321,170 @@ Destroy a recording event rule descriptor with lttng_event_destroy().
 */
 struct lttng_event {
 	/* Offset 0 */
-	/// \ref api-rer-conds-inst-pt-type "Instrumentation point type condition".
+	/*!
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
+	    \ref api-rer-conds-inst-pt-type "Instrumentation point type condition".
+
+	  <dt>
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>
+	    Instrumentation point type.
+	</dl>
+	*/
 	enum lttng_event_type type;
 
 	/* Offset 4 */
 	/*!
-	    @brief \ref api-rer-conds-event-name "Event name" pattern
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
+	    \ref api-rer-conds-event-name "Event name" pattern
 	    condition.
 
-	If empty, lttng_enable_event(),
-	lttng_enable_event_with_filter(), and
-	lttng_enable_event_with_exclusions() use <code>*</code> (match
-	events with any name).
+	    If empty, lttng_enable_event(),
+	    lttng_enable_event_with_filter(), and
+	    lttng_enable_event_with_exclusions() use <code>*</code>
+	    (match events with any name).
 
-	If the lttng_event::type member is #LTTNG_EVENT_PROBE,
-	#LTTNG_EVENT_FUNCTION, or #LTTNG_EVENT_USERSPACE_PROBE, then
-	this member is actually the name of the created Linux
-	kprobe/kretprobe/uprobe instrumentation point (future event
-	name).
+	    If the lttng_event::type member is #LTTNG_EVENT_PROBE,
+	    #LTTNG_EVENT_FUNCTION, or #LTTNG_EVENT_USERSPACE_PROBE, then
+	    this member is actually the name of the created Linux
+	    kprobe/kretprobe/user space probe instrumentation point
+	    (future event name).
 
-	If this structure is an
-	\ref api-rer-inst-pt-descr "instrumentation point descriptor",
-	then this member is the name of the LTTng tracepoint, Linux
-	system call, or Java/Python logger.
+	  <dt>Instrumentation point descriptor context
+	  <dd>
+	    Name of the LTTng tracepoint, Linux system call, or
+	    Java/Python logger, depending on lttng_event::type.
+	</dl>
 	*/
 	char name[LTTNG_SYMBOL_NAME_LEN];
 
 	/* Offset 260 */
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
 	    Operand of the
 	    \ref api-rer-conds-ll "instrumentation point log level condition".
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>Not applicable.
+	</dl>
 	*/
 	enum lttng_loglevel_type loglevel_type;
 
 	/* Offset 264 */
 	/*!
-	    @brief Value of the
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
+	    Value of the
 	    \ref api-rer-conds-ll "instrumentation point log level condition".
 
-	This member must be one of the enumerators of
-	#lttng_loglevel, #lttng_loglevel_jul, #lttng_loglevel_log4j,
-	#lttng_loglevel_log4j2, or
-	#lttng_loglevel_python, depending on the
-	\lt_obj_domain when you call lttng_enable_event(),
-	lttng_enable_event_with_filter(), or
-	lttng_enable_event_with_exclusions().
+	    This member must be one of the enumerators of
+	    #lttng_loglevel, #lttng_loglevel_jul, #lttng_loglevel_log4j,
+	    #lttng_loglevel_log4j2, or
+	    #lttng_loglevel_python, depending on the
+	    \lt_obj_domain when you call lttng_enable_event(),
+	    lttng_enable_event_with_filter(), or
+	    lttng_enable_event_with_exclusions().
 
-	If this structure is an
-	\ref api-rer-inst-pt-descr "instrumentation point descriptor",
-	then this member is the log level of the LTTng tracepoint or
-	Java/Python logger.
+	  <dt>Instrumentation point descriptor context
+	  <dd>
+	    For a
+	    \link #LTTNG_DOMAIN_UST user space\endlink tracepoint only:
+	    the static log level of the tracepoint, as set by
+	    <code>LTTNG_UST_TRACEPOINT_LOGLEVEL()</code> (see
+	    \lt_man{lttng-ust,3}).
+	</dl>
 	*/
 	int loglevel;
 
 	/* Offset 268 */
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
 	    1 if this recording event rule is enabled, or 0 otherwise.
 
-	This is a read-only member.
+	    This is a read-only member.
 
-	@sa lttng_enable_event() --
-	    Creates or enables a recording event rule.
-	@sa lttng_disable_event_ext() --
-	    Disables a recording event rule.
+	    @sa lttng_enable_event() --
+	        Creates or enables a recording event rule.
+	    @sa lttng_disable_event_ext() --
+	        Disables a recording event rule.
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>Not applicable.
+	</dl>
 	*/
 	int32_t enabled; /* Does not apply: -1 */
 
 	/* Offset 272 */
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>Not applicable.
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>
 	    ID of the process which offers the instrumentation point
 	    described by this structure.
-
-	This is a read-only member.
-
-	This member is \em not part of a recording event rule.
+	</dl>
 	*/
 	pid_t pid;
 
 	/* Offset 276 */
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
 	    1 if the recording event rule described by this has an
 	    \ref api-rer-conds-filter "event payload and context filter"
 	    expression, or 0 otherwise.
 
-	This is a read-only member: use the \lt_p{filter_expr} parameter
-	of lttng_enable_event_with_filter() or
-	lttng_enable_event_with_exclusions() when you create a
-	recording event rule to set an event payload and context
-	filter expression.
+	    This is a read-only member: use the \lt_p{filter_expr}
+	    parameter of lttng_enable_event_with_filter() or
+	    lttng_enable_event_with_exclusions() when you create a
+	    recording event rule to set an event payload and context
+	    filter expression.
 
-	If this member is 1, then get the actual filter expression
-	string with lttng_event_get_filter_expression().
+	    If this member is&nbsp;1, then get the actual filter
+	    expression string with lttng_event_get_filter_expression().
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>Not applicable.
+	</dl>
 	*/
 	unsigned char filter;
 
 	/* Offset 277 */
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
 	    1 if the recording event rule described by this has
 	    \ref api-rer-conds-event-name "event name" exclusion
 	    patterns (part of the event name condition), or 0 otherwise.
 
-	This is a read-only member: use the
-	\lt_p{event_name_exclusion_count} and
-	\lt_p{event_name_exclusions} parameters of
-	lttng_enable_event_with_exclusions() when you create a recording
-	event rule to set event name exclusion patterns.
+	    This is a read-only member: use the
+	    \lt_p{event_name_exclusion_count} and
+	    \lt_p{event_name_exclusions} parameters of
+	    lttng_enable_event_with_exclusions() when you create a
+	    recording event rule to set event name exclusion patterns.
 
-	If this member is 1, then get the actual event name exclusion
-	patterns with lttng_event_get_exclusion_name_count() and
-	lttng_event_get_exclusion_name().
+	    If this member is 1, then get the actual event name
+	    exclusion patterns with
+	    lttng_event_get_exclusion_name_count() and
+	    lttng_event_get_exclusion_name().
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>Not applicable.
+	</dl>
 	*/
 	unsigned char exclusion;
 
@@ -1404,13 +1493,13 @@ struct lttng_event {
 
 	/* Offset 280 */
 	/*!
-	@brief
-	    \ref api-rer-inst-pt-descr "Instrumentation point descriptor"
-	    flags (bitwise OR).
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>Not applicable.
 
-	This is a read-only member.
-
-	This member is \em not part of a recording event rule.
+	  <dt>Instrumentation point descriptor context
+	  <dd>Instrumentation point flags (bitwise OR).
+	</dl>
 	*/
 	enum lttng_event_flag flags;
 
@@ -1446,14 +1535,21 @@ struct lttng_event {
 	}
 
 	/*!
-	@brief
+	<dl>
+	  <dt>Recording event rule context
+	  <dd>
 	    Linux kprobe/kretprobe recording event rule configuration.
 
-	Only valid when the lttng_event::type member is
-	#LTTNG_EVENT_PROBE or #LTTNG_EVENT_FUNCTION.
+	    Only valid when the lttng_event::type member is
+	    #LTTNG_EVENT_PROBE or #LTTNG_EVENT_FUNCTION.
+
+	  <dt>Instrumentation point descriptor context
+	  <dd>Not applicable.
+	</dl>
 	*/
 	attr;
 };
+/* clang-format on */
 
 #define LTTNG_EVENT_FIELD_PADDING (LTTNG_SYMBOL_NAME_LEN + 32)
 
@@ -2024,25 +2120,25 @@ assert(event_name_exclusion_count >= 0);
 
 if (event_name_exclusion_count > 0) {
     event_name_exclusions = calloc(event_name_exclusion_count,
-                                   sizeof(*event_name_exclusions));
+	                           sizeof(*event_name_exclusions));
     assert(event_name_exclusions);
 
     for (i = 0; i < event_name_exclusion_count; i++) {
-        const char *event_name_exclusion;
+	const char *event_name_exclusion;
 
-        ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
-                                             &event_name_exclusion);
-        assert(ret == 0);
-        event_name_exclusions[i] = (char *) event_name_exclusion;
+	ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
+	                                     &event_name_exclusion);
+	assert(ret == 0);
+	event_name_exclusions[i] = (char *) event_name_exclusion;
     }
 }
 
 ret = lttng_event_get_filter_expression(event_rule, &filter_expr);
 assert(ret == 0);
 ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
-                                         filter_expr,
-                                         event_name_exclusion_count,
-                                         event_name_exclusions);
+	                                 filter_expr,
+	                                 event_name_exclusion_count,
+	                                 event_name_exclusions);
 free(event_name_exclusions);
 return ret;
 @endcode
@@ -2089,23 +2185,23 @@ assert(event_name_exclusion_count >= 0);
 
 if (event_name_exclusion_count > 0) {
     event_name_exclusions = calloc(event_name_exclusion_count,
-                                   sizeof(*event_name_exclusions));
+	                           sizeof(*event_name_exclusions));
     assert(event_name_exclusions);
 
     for (i = 0; i < event_name_exclusion_count; i++) {
-        const char *event_name_exclusion;
+	const char *event_name_exclusion;
 
-        ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
-                                             &event_name_exclusion);
-        assert(ret == 0);
-        event_name_exclusions[i] = (char *) event_name_exclusion;
+	ret = lttng_event_get_exclusion_name(event_rule, (size_t) i,
+	                                     &event_name_exclusion);
+	assert(ret == 0);
+	event_name_exclusions[i] = (char *) event_name_exclusion;
     }
 }
 
 ret = lttng_enable_event_with_exclusions(handle, event_rule, channel_name,
-                                         filter_expr,
-                                         event_name_exclusion_count,
-                                         event_name_exclusions);
+	                                 filter_expr,
+	                                 event_name_exclusion_count,
+	                                 event_name_exclusions);
 free(event_name_exclusions);
 return ret;
 @endcode
