@@ -37,13 +37,13 @@ enum lttng_domain_type {
 	/// <code>java.util.logging</code> (JUL).
 	LTTNG_DOMAIN_JUL = 3,
 
-	/// <a href="https://logging.apache.org/log4j/1.x/">Apache log4j 1.x</a>.
+	/// <a href="https://logging.apache.org/log4j/1.x/">\lt_log4j1</a>.
 	LTTNG_DOMAIN_LOG4J = 4,
 
 	/// Python logging.
 	LTTNG_DOMAIN_PYTHON = 5,
 
-	/// <a href="https://logging.apache.org/log4j/2.x/">Apache Log4j 2</a>.
+	/// <a href="https://logging.apache.org/log4j/2.x/">\lt_log4j2</a>.
 	LTTNG_DOMAIN_LOG4J2 = 6,
 };
 

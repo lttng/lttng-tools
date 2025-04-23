@@ -160,9 +160,7 @@ enum lttng_loglevel {
 @brief
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
-    of a
-    \link #LTTNG_DOMAIN_JUL <code>java.util.logging</code>\endlink
-    recording event rule.
+    of a \link #LTTNG_DOMAIN_JUL \lt_jul\endlink recording event rule.
 
 @ingroup api_rer
 
@@ -202,7 +200,7 @@ enum lttng_loglevel_jul {
 @brief
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
-    of an \link #LTTNG_DOMAIN_LOG4J Apache&nbsp;log4j&nbsp;1.x\endlink
+    of an \link #LTTNG_DOMAIN_LOG4J \lt_log4j1\endlink
     recording event rule.
 
 @ingroup api_rer
@@ -256,7 +254,7 @@ enum lttng_loglevel_log4j {
     Value of the
     \ref api-rer-conds-ll "instrumentation point log level condition"
     of a
-    \link #LTTNG_DOMAIN_LOG4J2 Apache&nbsp;Log4j&nbsp;2\endlink
+    \link #LTTNG_DOMAIN_LOG4J2 \lt_log4j2\endlink
     recording event rule.
 
 @ingroup api_rer
