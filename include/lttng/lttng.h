@@ -502,7 +502,7 @@ See the preconditions of this function which show important limitations.
       created in \ref api-session-live-mode "live mode".
     - All the \ref api-channel-channel "channels" of the
       recording session named \lt_p{session_name} use a
-      \ref api-channel-per-user-buf "per-user buffering scheme".
+      \ref api-channel-per-user-buf "user buffering ownership model".
 
 @sa lttng_regenerate_statedump() --
     Regenerates the state dump event records of a recording session.

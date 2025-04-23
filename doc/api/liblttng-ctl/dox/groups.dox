@@ -942,15 +942,22 @@ The properties of a channel are:
     <th>Description
     <th>Access
   <tr>
-    <td>Buffering scheme
+    <td>Buffer ownership model
     <td>
-      See \ref api-channel-buf-scheme "Buffering scheme".
+      See \ref api-channel-buf-ownership-model "Buffer ownership model".
     <td>
       The lttng_domain::buf_type member for the containing tracing
       domain.
 
       All the channels of a given tracing domain share the same
-      buffering scheme.
+      buffer ownership model.
+  <tr>
+    <td>Buffer allocation policy
+    <td>
+      See \ref api-channel-buf-alloc-policy "Buffer allocation policy".
+    <td>
+      - lttng_channel_get_allocation_policy()
+      - lttng_channel_set_allocation_policy()
   <tr>
     <td>Event record loss mode
     <td>
@@ -1031,24 +1038,29 @@ All the properties above are immutable once a channel exists.
 @sa The <em>CHANNEL AND RING BUFFER</em> section of
 \lt_man{lttng-concepts,7}.
 
-<h3>\anchor api-channel-buf-scheme Buffering scheme</h3>
+<h3>\anchor api-channel-buf-ownership-model Buffer ownership model</h3>
 
-A channel has at least one ring buffer per CPU. LTTng always records an
-event to the ring buffer dedicated to the CPU which emits it.
+The buffer ownership model of a channel
+specifies whether the system, each Unix user, or each process
+owns its own ring buffers
+(\ref api-channel-buf-alloc-policy "one per CPU or one for the whole channel").
 
-The <strong><em>buffering scheme</em></strong> of a
-\link #LTTNG_DOMAIN_UST user space\endlink
-channel determines what has its own set of per-CPU
-ring buffers, considering \lt_var{U} is the Unix user of the process
-running liblttng-ctl:
+When you read "allocate ring buffers" below, it's either one per CPU or
+one per channel, depending on the configured
+\ref api-channel-buf-alloc-policy "buffer allocation policy".
+The following diagrams assume a per-CPU allocation policy.
+
+The available \link #LTTNG_DOMAIN_UST user space\endlink
+tracing buffer ownership models are, considering \lt_var{U} is the Unix
+user of the process running liblttng-ctl:
 
 <dl>
   <dt>
     \anchor api-channel-per-user-buf
     \link #LTTNG_BUFFER_PER_UID Per-user buffering\endlink
   <dd>
-    Allocate one set of ring buffers (one per CPU) shared by all the
-    instrumented processes of:
+    Allocate ring buffers to be shared by all the instrumented
+    processes of:
 
     <dl>
       <dt>If \lt_var{U} is <code>root</code>
@@ -1068,8 +1080,7 @@ running liblttng-ctl:
     \anchor api-channel-per-proc-buf
     \link #LTTNG_BUFFER_PER_PID Per-process buffering\endlink
   <dd>
-    Allocate one set of ring buffers (one per CPU) for each
-    instrumented process of:
+    Allocate ring buffers for each instrumented process of:
 
     <dl>
       <dt>If \lt_var{U} is <code>root</code>
@@ -1086,27 +1097,108 @@ running liblttng-ctl:
     </dl>
 </dl>
 
-The per-process buffering scheme tends to consume more memory than the
-per-user option because systems generally have more instrumented
-processes than Unix users running instrumented processes. However, the
-per-process buffering scheme ensures that one process having a high
-event throughput won't fill all the shared sub-buffers of the same Unix
-user, only its own.
+The per-process option tends to consume more memory than the per-user
+option because systems generally have more instrumented processes than
+Unix users running instrumented processes. However, the per-process
+ownership model ensures that one process having a high event throughput
+won't fill all the shared sub-buffers of the same Unix user, only its
+own.
 
-The buffering scheme of a Linux kernel (#LTTNG_DOMAIN_KERNEL) channel is
-always to allocate a single set of ring buffers for the whole system
-(#LTTNG_BUFFER_GLOBAL). This scheme is similar to the
-\ref api-channel-per-user-buf "per-user" one, but with a single, global
-user "running" the kernel.
+The buffer ownership model of a
+\link #LTTNG_DOMAIN_KERNEL Linux kernel\endlink channel is always to
+allocate a single set of ring buffers--one per CPU--for the whole system
+(#LTTNG_BUFFER_GLOBAL). This model is similar to the
+\ref api-channel-per-user-buf "per-user" option
+with a per-channel
+\ref api-channel-buf-alloc-policy "allocation policy",
+but with a single, global user "running" the kernel.
 
-To set the buffering scheme of a channel when you create it:
+To set the buffer ownership model of a channel when you create it:
 
 - Set the lttng_domain::buf_type member of the structure which you pass
   within the #lttng_handle structure to lttng_enable_channel().
 
   Note that, for a given \lt_obj_session, \em all
-  the channels of a given \lt_obj_domain must share the same buffering
-  scheme.
+  the channels of a given \lt_obj_domain must share the same buffer
+  ownership model.
+
+@sa The <em>Buffering scheme</em> section of \lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-buf-alloc-policy Buffer allocation policy</h3>
+
+The buffer allocation policy of a channel
+specifies whether LTTng tracers allocate ring buffers per
+channel or per CPU
+(\ref api-channel-buf-ownership-model "for a given user or process").
+
+When you read "allocate one ring buffer" below, it's either one per user
+or one per process, depending on the configured
+\ref api-channel-buf-ownership-model "buffer ownership model".
+The following diagrams assume a per-user ownership model.
+
+The available \link #LTTNG_DOMAIN_UST user space\endlink
+tracing buffer allocation policies are, considering \lt_var{U} is the
+Unix user of the process running liblttng-ctl:
+
+<dl>
+  <dt>
+    \anchor api-channel-per-cpu-buf
+    \link #LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU Per-CPU buffering\endlink
+  <dd>
+    Allocate one ring buffer for each CPU:
+
+    <dl>
+      <dt>If \lt_var{U} is <code>root</code>
+      <dd>
+        For each Unix user/process.
+
+        @image html per-user-buffering-root.png
+
+      <dt>Otherwise
+      <dd>
+        For \lt_var{U}.
+
+        @image html per-user-buffering.png
+    </dl>
+
+    When you create a channel having this policy, LTTng automatically
+    adds a nonremovable #LTTNG_EVENT_CONTEXT_CPU_ID context field
+    (see lttng_add_context()).
+
+  <dt>
+    \anchor api-channel-per-chan-buf
+    \link #LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL Per-channel buffering\endlink
+  <dd>
+    Allocate one ring buffer for the whole channel:
+
+    <dl>
+      <dt>If \lt_var{U} is <code>root</code>
+      <dd>
+        For each Unix user/process.
+
+        @image html per-channel-buffering-root.png
+
+      <dt>Otherwise
+      <dd>
+        For \lt_var{U}.
+
+        @image html per-channel-buffering.png
+    </dl>
+
+    When you create a channel having this policy, LTTng does \em not
+    automatically adds a #LTTNG_EVENT_CONTEXT_CPU_ID context field:
+    add it manually afterwards with lttng_add_context() if needed.
+</dl>
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, the buffer allocation policy
+of a \link #LTTNG_DOMAIN_KERNEL Linux kernel\endlink channel is always
+to allocate a single set of ring buffers--one per CPU--for
+the whole system.
+
+To set the buffer allocation policy of a channel when you create it:
+
+- Call lttng_channel_set_allocation_policy() with the
+  #lttng_channel structure you pass to lttng_enable_channel().
 
 @sa The <em>Buffering scheme</em> section of \lt_man{lttng-concepts,7}.
 
@@ -1211,11 +1303,9 @@ memory usage.
 
 <h3>\anchor api-channel-sub-buf-size-count Sub-buffer size and count</h3>
 
-A channel has one or more ring buffer for each CPU of the target system.
-
-See \ref api-channel-buf-scheme "Buffering scheme" to learn how many
-ring buffers of a given channel are dedicated to each CPU depending on
-its buffering scheme.
+A channel has one or more ring buffer which LTTng allocates according to
+its configured \ref api-channel-buf-ownership-model "ownership model"
+and \ref api-channel-buf-alloc-policy "allocation policy".
 
 To set the size of each sub-buffer the ring buffers of a channel have
 when you create it:

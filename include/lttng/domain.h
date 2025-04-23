@@ -49,9 +49,10 @@ enum lttng_domain_type {
 
 /*!
 @brief
-    Buffering scheme of a channel.
+    Buffering ownership model of a channel.
 
-See \ref api-channel-buf-scheme "Buffering scheme" to learn more.
+See \ref api-channel-buf-ownership-model "Buffer ownership model"
+to learn more.
 */
 enum lttng_buffer_type {
 	/// Per-process buffering.
@@ -102,8 +103,8 @@ struct lttng_domain {
 
 	/*!
 	@brief
-	    Buffering scheme of all the channels associated to this tracing
-	    domain.
+	    \ref api-channel-buf-ownership-model "Buffer ownership model"
+	    of all the channels associated to this tracing domain.
 	*/
 	enum lttng_buffer_type buf_type;
 
