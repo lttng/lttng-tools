@@ -18,8 +18,18 @@
 extern "C" {
 #endif
 
+/*!
+@brief
+    \ref api-channel-buf-alloc-policy "Buffer allocation policy"
+    of a channel.
+
+@ingroup api_channel
+*/
 enum lttng_channel_allocation_policy {
+	/// \ref api-channel-per-cpu-buf "Per-CPU buffering"
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU = 0,
+
+	/// \ref api-channel-per-chan-buf "Per-channel buffering"
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
@@ -196,6 +206,11 @@ Most properties are part of the lttng_channel::attr member, but the
 following ones have their own dedicated accessors:
 
 <dl>
+  <dt>\ref api-channel-buf-alloc-policy "Buffer allocation policy"
+  <dd>
+    - lttng_channel_get_allocation_policy()
+    - lttng_channel_set_allocation_policy()
+
   <dt>\ref api-channel-monitor-timer "Monitor timer" period
   <dd>
     - lttng_channel_get_monitor_timer_interval()
@@ -389,7 +404,7 @@ This function, depending on \lt_p{channel->name}:
       creation.
     - <strong>If this function must create a new channel</strong>, then
       all the existing channels of \lt_p{handle} have the same
-      \ref api-channel-buf-scheme "buffering scheme".
+      \ref api-channel-buf-ownership-model "buffer ownership model".
 
 @sa lttng_disable_channel() --
     Disables a channel.
@@ -719,14 +734,71 @@ channels.
 LTTNG_EXPORT extern int lttng_channel_set_blocking_timeout(struct lttng_channel *channel,
 							   int64_t timeout);
 
-/* TODO:eepp:doc Document this */
+/*!
+@brief
+    Sets \lt_p{*policy} to the
+    \ref api-channel-buf-alloc-policy "buffer allocation policy"
+    property of the \lt_obj_channel summary \lt_p{channel}.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Summary of the channel of which to get the buffer allocation policy.
+@param[out] policy
+    <strong>On success</strong>, this function sets \lt_p{*policy} to
+    the buffer allocation policy of \lt_p{channel}.
+
+@retval #LTTNG_OK
+    Success.
+@retval #LTTNG_ERR_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    @lt_pre_not_null{policy}
+
+@sa lttng_channel_set_allocation_policy() --
+    Sets the buffer allocation policy property of a channel summary.
+*/
 LTTNG_EXPORT extern enum lttng_error_code
-lttng_channel_get_allocation_policy(const struct lttng_channel *chan,
+lttng_channel_get_allocation_policy(const struct lttng_channel *channel,
 				    enum lttng_channel_allocation_policy *policy);
 
-/* TODO:eepp:doc Document this */
+/*!
+@brief
+    Sets the \ref api-channel-buf-alloc-policy
+    "buffer allocation policy" property of the channel
+    summary \lt_p{channel} to \lt_p{policy}.
+
+@ingroup api_channel
+
+This property only applies to \link #LTTNG_DOMAIN_UST user space\endlink
+channels.
+
+@param[in] channel
+    Channel summary of which to set the buffer allocation policy
+    to \lt_p{policy}.
+@param[in] policy
+    Buffer allocation policy to set.
+
+@retval #LTTNG_OK
+    Success.
+@retval #LTTNG_ERR_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+
+@sa lttng_channel_get_allocation_policy() --
+    Returns the buffer allocation policy property of a channel summary.
+*/
 LTTNG_EXPORT extern enum lttng_error_code
-lttng_channel_set_allocation_policy(struct lttng_channel *chan,
+lttng_channel_set_allocation_policy(struct lttng_channel *channel,
 				    enum lttng_channel_allocation_policy policy);
 
 #ifdef __cplusplus

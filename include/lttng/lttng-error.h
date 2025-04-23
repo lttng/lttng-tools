@@ -115,7 +115,10 @@ enum lttng_error_code {
 	/// URL already exists.
 	LTTNG_ERR_URL_EXIST = 21,
 
-	/// Unsupported \ref api-channel-buf-scheme "buffering scheme".
+	/*!
+	Unsupported
+	\ref api-channel-buf-ownership-model "buffer ownership model".
+	*/
 	LTTNG_ERR_BUFFER_NOT_SUPPORTED = 22,
 
 	/// Nonexistent \lt_obj_session name.
@@ -124,7 +127,7 @@ enum lttng_error_code {
 	/*!
 	A \lt_obj_channel within the given \lt_obj_domain already exists
 	and is configured with another
-	\ref api-channel-buf-scheme "buffering scheme".
+	\ref api-channel-buf-ownership-model "buffer ownership model".
 	*/
 	LTTNG_ERR_BUFFER_TYPE_MISMATCH = 24,
 
@@ -470,7 +473,7 @@ enum lttng_error_code {
 
 	/*!
 	Unsupported
-	\ref api-channel-per-proc-buf "per-process buffering scheme".
+	\ref api-channel-per-proc-buf "process buffer ownership model".
 	*/
 	LTTNG_ERR_PER_PID_SESSION = 120,
 
