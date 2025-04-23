@@ -96,7 +96,8 @@ lttng_destruction_handle_get_result() to know this.
 @retval #LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
+@pre
+    @lt_pre_not_null{handle}
 
 @sa lttng_destruction_handle_get_result() --
     Returns whether or not a recording session destruction operation
@@ -139,12 +140,12 @@ successful.
 @retval #LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
 @pre
-    You successfully waited for the completion of the recording session
-    destruction operation identified by \lt_p{handle} with
-    lttng_destruction_handle_wait_for_completion().
-@lt_pre_not_null{result}
+    @lt_pre_not_null{handle}
+    - You successfully waited for the completion of the recording session
+      destruction operation identified by \lt_p{handle} with
+      lttng_destruction_handle_wait_for_completion().
+    @lt_pre_not_null{result}
 
 @sa lttng_destruction_handle_wait_for_completion() --
     Waits for a recording session destruction operation to complete.
@@ -190,12 +191,12 @@ session rotation during the lifetime of the destroyed recording session.
 @retval #LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
 @pre
-    You successfully waited for the completion of the recording session
-    destruction operation identified by \lt_p{handle} with
-    lttng_destruction_handle_wait_for_completion().
-@lt_pre_not_null{rotation_state}
+    @lt_pre_not_null{handle}
+    - You successfully waited for the completion of the recording
+      session destruction operation identified by \lt_p{handle} with
+      lttng_destruction_handle_wait_for_completion().
+    @lt_pre_not_null{rotation_state}
 
 @sa lttng_destruction_handle_get_archive_location() --
     Get the location of the trace chunk archive which a recording
@@ -240,11 +241,11 @@ session rotation during the lifetime of the destroyed recording session.
 @retval #LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
 @pre
-    lttng_destruction_handle_get_rotation_state() set the
-    #LTTNG_ROTATION_STATE_COMPLETED state for \lt_p{handle}.
-@lt_pre_not_null{location}
+    @lt_pre_not_null{handle}
+    - lttng_destruction_handle_get_rotation_state() set the
+      #LTTNG_ROTATION_STATE_COMPLETED state for \lt_p{handle}.
+    @lt_pre_not_null{location}
 
 @sa lttng_destruction_handle_get_rotation_state() --
     Get the state of the final rotation operation which a recording

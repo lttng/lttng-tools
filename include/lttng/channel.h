@@ -264,7 +264,9 @@ lttng_enable_channel() to create and enable a channel.
     Destroy the returned channel summary with lttng_channel_destroy().
     @endparblock
 
-@lt_pre_not_null{domain}
+
+@pre
+    @lt_pre_not_null{domain}
 
 @sa lttng_channel_destroy() --
     Destroys a channel summary.
@@ -315,14 +317,14 @@ LTTNG_EXPORT extern void lttng_channel_destroy(struct lttng_channel *channel);
     The number of items in \lt_p{*channels} on success, or a \em
     negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{channels}
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{channels}
 */
 LTTNG_EXPORT extern int lttng_list_channels(struct lttng_handle *handle,
 					    struct lttng_channel **channels);
@@ -369,27 +371,25 @@ This function, depending on \lt_p{channel->name}:
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{channel}
-@pre
-    <strong>If this function must create a new channel</strong>, then
-    \lt_p{channel->attr} is \ref api-channel-valid-attr-struct "valid".
-@pre
-    <strong>If this function must create a new channel</strong>, then
-    \lt_p{handle->session_name} names a
-    \lt_obj_session which never became
-    \link lttng_session::enabled active\endlink (started) since its
-    creation.
-@pre
-    <strong>If this function must create a new channel</strong>, then
-    all the existing channels of \lt_p{handle} have the same
-    \ref api-channel-buf-scheme "buffering scheme".
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{channel}
+    - <strong>If this function must create a new channel</strong>, then
+      \lt_p{channel->attr} is
+      \ref api-channel-valid-attr-struct "valid".
+    - <strong>If this function must create a new channel</strong>, then
+      \lt_p{handle->session_name} names a
+      \lt_obj_session which never became
+      \link lttng_session::enabled active\endlink (started) since its
+      creation.
+    - <strong>If this function must create a new channel</strong>, then
+      all the existing channels of \lt_p{handle} have the same
+      \ref api-channel-buf-scheme "buffering scheme".
 
 @sa lttng_disable_channel() --
     Disables a channel.
@@ -420,17 +420,16 @@ LTTNG_EXPORT extern int lttng_enable_channel(struct lttng_handle *handle,
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{channel_name}
-@pre
-    \lt_p{channel_name} names an existing channel within the recording
-    session and tracing domain of \lt_p{handle}.
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{channel_name}
+    - \lt_p{channel_name} names an existing channel within the recording
+      session and tracing domain of \lt_p{handle}.
 
 @sa lttng_enable_channel() --
     Creates or enables a channel.
@@ -453,8 +452,9 @@ Use this function on an lttng_channel::attr member.
 @param[in] attr
     Structure of which to set the members to their default values.
 
-@lt_pre_not_null{domain}
-@lt_pre_not_null{attr}
+@pre
+    @lt_pre_not_null{domain}
+    @lt_pre_not_null{attr}
 */
 LTTNG_EXPORT extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 							struct lttng_channel_attr *attr);
@@ -489,13 +489,12 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
 @pre
-    You obtained \lt_p{channel} with lttng_list_channels().
-@pre
-    The lttng_channel_attr::overwrite member of \lt_p{channel->attr}
-    is 0.
-@lt_pre_not_null{count}
+    @lt_pre_not_null{channel}
+    - You obtained \lt_p{channel} with lttng_list_channels().
+    - The lttng_channel_attr::overwrite member of \lt_p{channel->attr}
+      is 0.
+    @lt_pre_not_null{count}
 
 @sa lttng_channel_get_lost_packet_count() --
     Returns the number of discarded packets (sub-buffers) of a channel.
@@ -533,13 +532,12 @@ channel summaries of a given \lt_obj_session and \lt_obj_domain.
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
 @pre
-    You obtained \lt_p{channel} with lttng_list_channels().
-@pre
-    The lttng_channel_attr::overwrite member of \lt_p{channel->attr}
-    is 1.
-@lt_pre_not_null{count}
+    @lt_pre_not_null{channel}
+    - You obtained \lt_p{channel} with lttng_list_channels().
+    - The lttng_channel_attr::overwrite member of \lt_p{channel->attr}
+      is 1.
+    @lt_pre_not_null{count}
 
 @sa lttng_channel_get_discarded_event_count() --
     Returns the number of discarded event records of a channel.
@@ -570,8 +568,9 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
-@lt_pre_not_null{period}
+@pre
+    @lt_pre_not_null{channel}
+    @lt_pre_not_null{period}
 
 @sa lttng_channel_set_monitor_timer_interval() --
     Sets the monitor timer period property of a channel summary.
@@ -602,9 +601,9 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
 @pre
-    \lt_p{period}&nbsp;≥&nbsp;1
+    @lt_pre_not_null{channel}
+    - \lt_p{period}&nbsp;≥&nbsp;1
 
 @sa lttng_channel_get_monitor_timer_interval() --
     Returns the monitor timer period property of a channel summary.
@@ -655,10 +654,10 @@ channels.
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
 @pre
-    The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
-@lt_pre_not_null{timeout}
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    @lt_pre_not_null{timeout}
 
 @sa lttng_channel_set_blocking_timeout() --
     Sets the blocking timeout property of a channel summary.
@@ -709,11 +708,10 @@ channels.
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{channel}
 @pre
-    The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
-@pre
-    \lt_p{timeout}&nbsp;≥&nbsp;-1
+    @lt_pre_not_null{channel}
+    - The \lt_obj_domain type of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    - \lt_p{timeout}&nbsp;≥&nbsp;-1
 
 @sa lttng_channel_get_blocking_timeout() --
     Returns the blocking timeout property of a channel summary.

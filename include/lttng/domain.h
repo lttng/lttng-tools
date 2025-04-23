@@ -141,10 +141,11 @@ struct lttng_domain {
     The number of items in \lt_p{*domains} on success, or a \em negative
     #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_not_null{domains}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_not_null{domains}
 */
 LTTNG_EXPORT extern int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
 

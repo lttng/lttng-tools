@@ -721,7 +721,7 @@ enum lttng_error_code {
     Human-readable message which corresponds to \lt_p{error_code}.
 
 @pre
-    \lt_p{error_code} is a valid #lttng_error_code enumerator.
+    - \lt_p{error_code} is a valid #lttng_error_code enumerator.
 */
 LTTNG_EXPORT extern const char *lttng_strerror(int error_code);
 
