@@ -22,7 +22,8 @@ import lttngtest
 
 def compare_text_files(actual_path, expect_path, tap):
     # type: (pathlib.Path, pathlib.Path, lttngtest.TapGenerator) -> None
-    with open(actual_path, "r") as actual, open(expect_path, "r") as expected:
+    # open() only accepts objects implementing PathLike as of Python 3.6
+    with open(str(actual_path), "r") as actual, open(str(expect_path), "r") as expected:
         actual_lines = actual.readlines()
         expected_lines = expected.readlines()
 
@@ -81,7 +82,8 @@ def get_metadata_directory(trace_path):
     This function walks the trace path and returns the first directory
     that contains a file named "metadata".
     """
-    for root, dirs, files in os.walk(trace_path):
+    # Prior to python 3.6, os.walk does not accept a pathlib.Path
+    for root, dirs, files in os.walk(str(trace_path)):
         if "metadata" in files:
             return pathlib.Path(root)
     raise FileNotFoundError(
@@ -304,7 +306,8 @@ def convert_trace_to_text_details(trace_path, text_output_file_path):
     the `sink.text.details` component.
     """
     trace_path = get_metadata_directory(trace_path)
-    with open(text_output_file_path, "w") as f:
+    # open() only accepts objects implementing PathLike as of Python 3.6
+    with open(str(text_output_file_path), "w") as f:
         process = subprocess.Popen(
             [
                 "babeltrace2",
@@ -354,7 +357,8 @@ def convert_trace_to_text_pretty(trace_path, text_output_file_path):
     the `sink.text.pretty` component.
     """
     trace_path = get_metadata_directory(trace_path)
-    with open(text_output_file_path, "w") as f:
+    # open() only accepts objects implementing PathLike as of Python 3.6
+    with open(str(text_output_file_path), "w") as f:
         process = subprocess.Popen(
             [
                 "babeltrace2",
