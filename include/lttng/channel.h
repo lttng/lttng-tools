@@ -562,7 +562,7 @@ LTTNG_EXPORT extern int lttng_channel_get_lost_packet_count(struct lttng_channel
 
 /*!
 @brief
-    Sets \lt_p{period} to the
+    Sets \lt_p{*period} to the
     \ref api-channel-monitor-timer "monitor timer" period (µs)
     property of the \lt_obj_channel summary \lt_p{channel}.
 
@@ -628,7 +628,7 @@ LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_ch
 
 /*!
 @brief
-    Sets \lt_p{timeout} to the
+    Sets \lt_p{*timeout} to the
     \ref api-channel-blocking-timeout "blocking timeout"
     property of the \lt_obj_channel summary \lt_p{channel}.
 
