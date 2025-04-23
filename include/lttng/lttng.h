@@ -154,9 +154,9 @@ the current Unix tracing group (initially \c tracing) of the library.
       <dd>Out of memory.
     </dl>
 
-@lt_pre_not_null{group}
 @pre
-    \lt_p{group} names an existing Unix group.
+    @lt_pre_not_null{group}
+    - \lt_p{group} names an existing Unix group.
 */
 LTTNG_EXPORT extern int lttng_set_tracing_group(const char *group);
 
@@ -197,10 +197,11 @@ LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_sess_inactive{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_sess_inactive{session_name}
 
 @sa lttng_stop_tracing() --
     Stops a recording session.
@@ -246,10 +247,11 @@ or a rotation needs to occur to archive it.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_sess_active{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_sess_active{session_name}
 
 @sa lttng_stop_tracing_no_wait() --
     Deactivates a recording session without waiting for the operation
@@ -291,13 +293,13 @@ valid.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_sess_active{session_name}
 @pre
-    No deactivation operation is in progress for the recording session
-    named \lt_p{session_name}.
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_sess_active{session_name}
+    - No deactivation operation is in progress for the recording session
+      named \lt_p{session_name}.
 
 @sa lttng_stop_tracing() --
     Deactivates a recording session, blocking until the operation
@@ -388,10 +390,11 @@ named \lt_p{session_name}.
     </dl>
     @endparblock
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_sess_inactive{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_sess_inactive{session_name}
 */
 LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 
@@ -411,8 +414,9 @@ LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 @retval #LTTNG_ERR_INVALID
     Unsatisfied precondition.
 
-@lt_pre_conn
-@lt_pre_not_null{status}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{status}
 */
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
@@ -440,9 +444,10 @@ lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
 */
 /// @cond DEPRECATED
 LTTNG_DEPRECATED()
@@ -489,16 +494,15 @@ See the preconditions of this function which show important limitations.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
 @pre
-    The recording session named \lt_p{session_name} was \em not created
-    in \ref api-session-live-mode "live mode".
-@pre
-    All the \ref api-channel-channel "channels" of the recording session
-    named \lt_p{session_name} use a
-    \ref api-channel-per-user-buf "per-user buffering scheme".
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    - The recording session named \lt_p{session_name} was \em not
+      created in \ref api-session-live-mode "live mode".
+    - All the \ref api-channel-channel "channels" of the
+      recording session named \lt_p{session_name} use a
+      \ref api-channel-per-user-buf "per-user buffering scheme".
 
 @sa lttng_regenerate_statedump() --
     Regenerates the state dump event records of a recording session.
@@ -537,9 +541,10 @@ information may be lost.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
 
 @sa lttng_regenerate_metadata() --
     Regenerates the metadata streams of a recording session.

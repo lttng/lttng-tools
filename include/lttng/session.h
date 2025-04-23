@@ -156,11 +156,11 @@ lttng_session_descriptor_get_session_name().
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_descriptor}
 @pre
-    If the name property of \lt_p{session_descriptor} is set, then no
-    available recording session has this name.
+    @lt_pre_conn
+    @lt_pre_not_null{session_descriptor}
+    - If the name property of \lt_p{session_descriptor} is set, then no
+      available recording session has this name.
 
 @sa \ref api_session_descr.
 @sa \lt_man{lttng-create,1}
@@ -203,14 +203,13 @@ lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor);
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    No available recording session is named \lt_p{session_name}.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
-    \ref api-session-url "output URL".
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_name_not_auto{session_name}
+    - No available recording session is named \lt_p{session_name}.
+    - <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+      \ref api-session-url "output URL".
 
 @sa lttng_create_session_snapshot() --
     Creates a recording session in snapshot mode.
@@ -257,14 +256,13 @@ LTTNG_EXPORT extern int lttng_create_session(const char *session_name, const cha
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    No available recording session is named \lt_p{session_name}.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
-    \ref api-session-url "output URL".
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_name_not_auto{session_name}
+    - No available recording session is named \lt_p{session_name}.
+    - <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+      \ref api-session-url "output URL".
 
 @sa lttng_create_session() --
     Creates a recording session in local or network streaming mode.
@@ -311,17 +309,15 @@ LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *session_name,
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    No available recording session is named \lt_p{session_name}.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
-    \ref api-session-one-port-url "single-port output URL" or
-    \ref api-session-two-port-url "two-port output URL".
-@pre
-    \lt_p{live_timer_period}&nbsp;≥&nbsp;1
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_name_not_auto{session_name}
+    - No available recording session is named \lt_p{session_name}.
+    - <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+      \ref api-session-one-port-url "single-port output URL" or
+      \ref api-session-two-port-url "two-port output URL".
+    - \lt_p{live_timer_period}&nbsp;≥&nbsp;1
 
 @sa lttng_create_session() --
     Creates a recording session in local or network streaming mode.
@@ -366,9 +362,10 @@ lttng_destroy_session_no_wait() to avoid a blocking call.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
 
 @sa lttng_destroy_session_no_wait() --
     Initiates the destruction operation of a recording session,
@@ -409,12 +406,12 @@ valid.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
 @pre
-    No destruction operation is in progress for the recording session
-    named \lt_p{session_name}.
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    - No destruction operation is in progress for the recording session
+      named \lt_p{session_name}.
 
 @sa lttng_destroy_session() --
     Destroys a recording session, blocking until the operation
@@ -463,12 +460,12 @@ Use \lt_p{*handle} to wait for the operation to complete.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
 @pre
-    No destruction operation is in progress for the recording session
-    named \lt_p{session_name}.
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    - No destruction operation is in progress for the recording session
+      named \lt_p{session_name}.
 
 @sa \lt_man{lttng-destroy,1}
 */
@@ -492,8 +489,9 @@ lttng_destroy_session_ext(const char *session_name, struct lttng_destruction_han
     The number of items in \lt_p{*sessions} on success, or a \em
     negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{sessions}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{sessions}
 
 @sa \lt_man{lttng-list,1}
 */
@@ -529,12 +527,12 @@ LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session}
 @pre
-    The recording session summarized by \lt_p{session} is accessible
-    within the connected session daemon.
-@lt_pre_not_null{creation_timestamp}
+    @lt_pre_conn
+    @lt_pre_not_null{session}
+    - The recording session summarized by \lt_p{session} is accessible
+      within the connected session daemon.
+    @lt_pre_not_null{creation_timestamp}
 */
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *creation_timestamp);
@@ -567,13 +565,13 @@ utility.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
-@lt_pre_sess_never_active{session_name}
-@lt_pre_not_null{shm_dir}
 @pre
-    \lt_p{shm_dir} is a writable directory.
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    @lt_pre_sess_never_active{session_name}
+    @lt_pre_not_null{shm_dir}
+    - \lt_p{shm_dir} is a writable directory.
 
 @sa lttng_get_session_shm_path_override() --
     Returns the path of the custom directory containing the shared
@@ -617,12 +615,12 @@ lttng_set_session_shm_path(); it returns
 @retval #LTTNG_GET_SESSION_SHM_PATH_STATUS_INVALID_PARAMETER = -1,
     Unsatisfied precondition.
 
-@lt_pre_conn
-@lt_pre_not_null{session}
 @pre
-    The recording session summarized by \lt_p{session} is accessible
-    within the connected session daemon.
-@lt_pre_not_null{shm_path}
+    @lt_pre_conn
+    @lt_pre_not_null{session}
+    - The recording session summarized by \lt_p{session} is accessible
+      within the connected session daemon.
+    @lt_pre_not_null{shm_path}
 
 @sa lttng_set_session_shm_path() --
     Sets the path of the directory containing the shared

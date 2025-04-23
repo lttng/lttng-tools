@@ -110,12 +110,12 @@ clearing operation.
     </table>
     @endparblock
 
-@lt_pre_conn
-@lt_pre_not_null{session_name}
-@lt_pre_sess_exists{session_name}
 @pre
-    No clearing operation is in progress for the recording session named
-    \lt_p{session_name}.
+    @lt_pre_conn
+    @lt_pre_not_null{session_name}
+    @lt_pre_sess_exists{session_name}
+    - No clearing operation is in progress for the recording session named
+      \lt_p{session_name}.
 */
 LTTNG_EXPORT extern enum lttng_error_code lttng_clear_session(const char *session_name,
 							      struct lttng_clear_handle **handle);

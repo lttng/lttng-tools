@@ -33,15 +33,15 @@ ALIASES                += lt_man_gen{2}="<a href=\"https://man7.org/linux/man-pa
 ALIASES                += lt_voidp="<code>void&nbsp;*</code>"
 
 # Aliases: preconditions
-ALIASES                += lt_pre_not_null{1}="@pre \lt_p{\1} is \em not \c NULL."
-ALIASES                += lt_pre_valid_c_str{1}="@pre \lt_p{\1} is a valid (null-terminated) C&nbsp;string."
-ALIASES                += lt_pre_sess_exists{1}="@pre \lt_p{\1} names an accessible \ref api_session \"recording session\" within the \ref api-gen-sessiond-conn \"connected session daemon\"."
-ALIASES                += lt_pre_sess_never_active{1}="@pre \lt_p{\1} names a \ref api_session \"recording session\" which never became \link lttng_session::enabled active\endlink (started) since its creation."
-ALIASES                += lt_pre_sess_active{1}="@pre \lt_p{\1} names an \link lttng_session::enabled active\endlink (started) \ref api_session \"recording session\"."
-ALIASES                += lt_pre_sess_inactive{1}="@pre \lt_p{\1} names an \link lttng_session::enabled inactive\endlink (stopped) \ref api_session \"recording session\"."
-ALIASES                += lt_pre_sess_name_not_auto{1}="@pre \lt_p{\1} is not \c auto."
-ALIASES                += lt_pre_conn="@pre liblttng-ctl can \ref api-gen-sessiond-conn \"connect to a session daemon\"."
-ALIASES                += lt_pre_has_type{2}="@pre \lt_p{\1} has the type #\2."
+ALIASES                += lt_pre_not_null{1}="- \lt_p{\1} is \em not \c NULL."
+ALIASES                += lt_pre_valid_c_str{1}="- \lt_p{\1} is a valid (null-terminated) C&nbsp;string."
+ALIASES                += lt_pre_sess_exists{1}="- \lt_p{\1} names an accessible \ref api_session \"recording session\" within the \ref api-gen-sessiond-conn \"connected session daemon\"."
+ALIASES                += lt_pre_sess_never_active{1}="- \lt_p{\1} names a \ref api_session \"recording session\" which never became \link lttng_session::enabled active\endlink (started) since its creation."
+ALIASES                += lt_pre_sess_active{1}="- \lt_p{\1} names an \link lttng_session::enabled active\endlink (started) \ref api_session \"recording session\"."
+ALIASES                += lt_pre_sess_inactive{1}="- \lt_p{\1} names an \link lttng_session::enabled inactive\endlink (stopped) \ref api_session \"recording session\"."
+ALIASES                += lt_pre_sess_name_not_auto{1}="- \lt_p{\1} is not \c auto."
+ALIASES                += lt_pre_conn="- liblttng-ctl can \ref api-gen-sessiond-conn \"connect to a session daemon\"."
+ALIASES                += lt_pre_has_type{2}="- \lt_p{\1} has the type #\2."
 
 # Aliases: default values
 ALIASES                += lt_def_net_ctrl_port="@DEFAULT_NETWORK_CONTROL_PORT@"

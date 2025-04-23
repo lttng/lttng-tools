@@ -1520,18 +1520,17 @@ struct lttng_event_field {
     The number of items in \lt_p{*event_rules} on success, or a
     \em negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{channel_name}
-@pre
-    \lt_p{channel_name} names an existing channel within the recording
-    session and tracing domain of \lt_p{handle}.
-@lt_pre_not_null{event_rules}
+     @lt_pre_conn
+     @lt_pre_not_null{handle}
+     @lt_pre_valid_c_str{handle->session_name}
+     @lt_pre_sess_exists{handle->session_name}
+     - \lt_p{handle->domain} is valid as per the documentation of
+       #lttng_domain.
+     @lt_pre_not_null{channel_name}
+     - \lt_p{channel_name} names an existing channel within the recording
+       session and tracing domain of \lt_p{handle}.
+     @lt_pre_not_null{event_rules}
 */
 LTTNG_EXPORT extern int lttng_list_events(struct lttng_handle *handle,
 					  const char *channel_name,
@@ -1580,8 +1579,8 @@ LTTNG_EXPORT extern struct lttng_event *lttng_event_create(void);
     @endparblock
 
 @pre
-    <strong>If not \c NULL</strong>, \lt_p{event_rule} was created with
-    lttng_event_create().
+    - <strong>If not \c NULL</strong>, \lt_p{event_rule} was created
+      with lttng_event_create().
 
 @sa lttng_event_create() --
     Creates an empty recording event rule descriptor.
@@ -1630,8 +1629,9 @@ LTTNG_EXPORT extern void lttng_event_destroy(struct lttng_event *event_rule);
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{event_rule}
-@lt_pre_not_null{filter_expr}
+@pre
+    @lt_pre_not_null{event_rule}
+    @lt_pre_not_null{filter_expr}
 
 @sa lttng_event::filter --
     Indicates whether or not a recording event rule has an event payload
@@ -1656,7 +1656,8 @@ LTTNG_EXPORT extern int lttng_event_get_filter_expression(struct lttng_event *ev
     Number of event name exclusion patterns of \lt_p{event_rule}, or a
     \em negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_not_null{event_rule}
+@pre
+    @lt_pre_not_null{event_rule}
 
 @sa lttng_event_get_exclusion_name() --
     Returns an event name exclusion pattern by index of a recording
@@ -1703,12 +1704,12 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name_count(struct lttng_event 
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{event_rule}
 @pre
-    \lt_p{index} is less than the number of event name exclusion
-    patterns (as returned by lttng_event_get_exclusion_name_count())
-    of \lt_p{event_rule}.
-@lt_pre_not_null{event_name_exclusion}
+    @lt_pre_not_null{event_rule}
+    - \lt_p{index} is less than the number of event name exclusion
+      patterns (as returned by lttng_event_get_exclusion_name_count())
+      of \lt_p{event_rule}.
+    @lt_pre_not_null{event_name_exclusion}
 
 @sa lttng_event_get_exclusion_name_count() --
     Returns the number of event name exclusion patterns of a recording
@@ -1738,10 +1739,10 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name(struct lttng_event *event
     exists and you don't modify it.
     @endparblock
 
-@lt_pre_not_null{event_rule}
 @pre
-    \lt_p{event_rule->type} (see lttng_event::type) is
-    #LTTNG_EVENT_USERSPACE_PROBE.
+    @lt_pre_not_null{event_rule}
+    - \lt_p{event_rule->type} (see lttng_event::type) is
+      #LTTNG_EVENT_USERSPACE_PROBE.
 
 @sa lttng_event_set_userspace_probe_location() --
     Sets the Linux uprobe location of a recording event rule.
@@ -1772,13 +1773,12 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event_rule);
       <dd>Unsatisfied precondition.
     </dl>
 
-@lt_pre_not_null{event_rule}
 @pre
-    \lt_p{event_rule} was created with lttng_event_create().
-@pre
-    \lt_p{event_rule->type} (see lttng_event::type) is
-    #LTTNG_EVENT_USERSPACE_PROBE.
-@lt_pre_not_null{location}
+    @lt_pre_not_null{event_rule}
+    - \lt_p{event_rule} was created with lttng_event_create().
+    - \lt_p{event_rule->type} (see lttng_event::type) is
+      #LTTNG_EVENT_USERSPACE_PROBE.
+    @lt_pre_not_null{location}
 
 @post
     <strong>On success</strong>, \lt_p{*location} is invalid
@@ -1822,12 +1822,12 @@ lttng_event_set_userspace_probe_location(struct lttng_event *event_rule,
     The number of items in \lt_p{*descrs} on success, or a \em
     negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{descrs}
+     @lt_pre_conn
+     @lt_pre_not_null{handle}
+     - \lt_p{handle->domain} is valid as per the documentation of
+       #lttng_domain.
+     @lt_pre_not_null{descrs}
 
 @sa lttng_list_tracepoint_fields() --
     Returns all the field descriptions of all the available LTTng
@@ -1871,12 +1871,12 @@ LTTNG_EXPORT extern int lttng_list_tracepoints(struct lttng_handle *handle,
     The number of items in \lt_p{*fields} on success, or a \em
     negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{fields}
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{fields}
 
 @sa lttng_list_tracepoints() --
     Returns the descriptors of all the available LTTng tracepoints
@@ -1912,8 +1912,9 @@ LTTNG_EXPORT extern int lttng_list_tracepoint_fields(struct lttng_handle *handle
     The number of items in \lt_p{*descrs} on success, or a \em
     negative #lttng_error_code enumerator otherwise.
 
-@lt_pre_conn
-@lt_pre_not_null{descrs}
+@pre
+    @lt_pre_conn
+    @lt_pre_not_null{descrs}
 
 @sa lttng_list_tracepoint_fields() --
     Returns all the field descriptions of all the available LTTng
@@ -1976,24 +1977,21 @@ field for each future event record of the selected channel(s).
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
-@lt_pre_sess_never_active{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid (you passed a
-    \lt_obj_domain summary to
-    lttng_create_handle() when you created \lt_p{handle}).
-@pre
-    \lt_p{context_field_descriptor} is valid according to the
-    documentation of #lttng_event_context.
-@pre
-    \lt_p{event_name} is \c NULL.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
-    existing channel within the recording session and tracing domain of
-    \lt_p{handle}.
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    @lt_pre_sess_never_active{handle->session_name}
+    - \lt_p{handle->domain} is valid (you passed a
+      \lt_obj_domain summary to
+      lttng_create_handle() when you created \lt_p{handle}).
+    - \lt_p{context_field_descriptor} is valid according to the
+      documentation of #lttng_event_context.
+    - \lt_p{event_name} is \c NULL.
+    - <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
+      existing channel within the recording session and tracing domain
+      of \lt_p{handle}.
 */
 LTTNG_EXPORT extern int lttng_add_context(struct lttng_handle *handle,
 					  struct lttng_event_context *context_field_descriptor,
@@ -2238,40 +2236,32 @@ type.
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{event_rule}
-@pre
-    \lt_p{event_rule} is \ref api-rer-valid-event-struct "valid".
-@pre
-    <strong>If \lt_p{handle->domain.type} is \em not
-    #LTTNG_DOMAIN_KERNEL</strong>, then \lt_p{event_rule->type} is
-    #LTTNG_EVENT_TRACEPOINT.
-@pre
-    <strong>If \lt_p{handle->domain.type} is \em not
-    #LTTNG_DOMAIN_UST</strong>, then \lt_p{event_name_exclusion_count}
-    is&nbsp;0.
-@pre
-    <strong>If this function must enable an existing recording event
-    rule</strong>, then the recording event rule to enable is disabled.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
-    existing channel within the recording session and tracing domain of
-    \lt_p{handle}.
-@pre
-    <strong>If \lt_p{channel_name} is \c NULL</strong>, then
-    \lt_p{handle} contains either no channels or a default channel named
-    \c channel0.
-@pre
-    <strong>If not \c NULL</strong>, \lt_p{filter_expr} is a valid
-    event payload and context filter expression.
-@pre
-    \lt_p{event_name_exclusion_count}&nbsp;≥&nbsp;0.
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{event_rule}
+    - \lt_p{event_rule} is \ref api-rer-valid-event-struct "valid".
+    - <strong>If \lt_p{handle->domain.type} is \em not
+      #LTTNG_DOMAIN_KERNEL</strong>, then \lt_p{event_rule->type} is
+      #LTTNG_EVENT_TRACEPOINT.
+    - <strong>If \lt_p{handle->domain.type} is \em not
+      #LTTNG_DOMAIN_UST</strong>, then \lt_p{event_name_exclusion_count}
+      is&nbsp;0.
+    - <strong>If this function must enable an existing recording event
+      rule</strong>, then the recording event rule to enable is disabled.
+    - <strong>If not \c NULL</strong>, \lt_p{channel_name} names an
+      existing channel within the recording session and tracing
+      domain of \lt_p{handle}.
+    - <strong>If \lt_p{channel_name} is \c NULL</strong>, then
+      \lt_p{handle} contains either no channels or a default
+      channel named \c channel0.
+    - <strong>If not \c NULL</strong>, \lt_p{filter_expr} is a valid
+      event payload and context filter expression.
+    - \lt_p{event_name_exclusion_count}&nbsp;≥&nbsp;0.
 
 @sa lttng_enable_event() --
     Alias which calls this function with the event payload and context
@@ -2447,37 +2437,31 @@ event_rule.loglevel = -1;
       <dd>Error
     </dl>
 
-@lt_pre_conn
-@lt_pre_not_null{handle}
-@lt_pre_valid_c_str{handle->session_name}
-@lt_pre_sess_exists{handle->session_name}
 @pre
-    \lt_p{handle->domain} is valid as per the documentation of
-    #lttng_domain.
-@lt_pre_not_null{event_rule}
-@pre
-    <strong>If \lt_p{handle->domain.type} is \em not
-    #LTTNG_DOMAIN_KERNEL</strong>, then \lt_p{event_rule->type}
-    is #LTTNG_EVENT_ALL.
-@pre
-    <strong>If not #LTTNG_EVENT_ALL</strong>, then
-    \lt_p{event_rule->type} is the instrumentation point type of at
-    least one Linux kernel recording event rule within the selected
-    channel.
-@pre
-    <strong>If not empty</strong>, then \lt_p{event_rule->name} is the
-    exact event name pattern of at least one recording event rule within
-    the selected channel.
-@pre
-    The recording event rules to disable are enabled.
-@pre
-    <strong>If not \c NULL</strong>, then \lt_p{channel_name} names an
-    existing channel within the recording session and tracing domain of
-    \lt_p{handle}.
-@pre
-    <strong>If \lt_p{channel_name} is \c NULL</strong>, then the
-    channel named \c channel0 exists within the recording session and
-    tracing domain of \lt_p{handle}.
+    @lt_pre_conn
+    @lt_pre_not_null{handle}
+    @lt_pre_valid_c_str{handle->session_name}
+    @lt_pre_sess_exists{handle->session_name}
+    - \lt_p{handle->domain} is valid as per the documentation of
+      #lttng_domain.
+    @lt_pre_not_null{event_rule}
+    - <strong>If \lt_p{handle->domain.type} is \em not
+      #LTTNG_DOMAIN_KERNEL</strong>, then \lt_p{event_rule->type}
+      is #LTTNG_EVENT_ALL.
+    - <strong>If not #LTTNG_EVENT_ALL</strong>, then
+      \lt_p{event_rule->type} is the instrumentation point type of at
+      least one Linux kernel recording event rule within the selected
+      channel.
+    - <strong>If not empty</strong>, then \lt_p{event_rule->name} is the
+      exact event name pattern of at least one recording event rule
+      within the selected channel.
+    - The recording event rules to disable are enabled.
+    - <strong>If not \c NULL</strong>, then \lt_p{channel_name} names an
+      existing channel within the recording session and tracing
+      domain of \lt_p{handle}.
+    - <strong>If \lt_p{channel_name} is \c NULL</strong>, then the
+      channel named \c channel0 exists within the recording session and
+      tracing domain of \lt_p{handle}.
 
 @sa lttng_disable_event() --
     Alias which calls this function with \lt_p{event_rule->type}

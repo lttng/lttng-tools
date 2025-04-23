@@ -95,7 +95,8 @@ itself succeeded; use lttng_clear_handle_get_result() to know this.
 @retval #LTTNG_CLEAR_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
+@pre
+    @lt_pre_not_null{handle}
 
 @sa lttng_clear_handle_get_result() --
     Returns whether or not a recording session clearing operation
@@ -137,12 +138,12 @@ successful.
 @retval #LTTNG_CLEAR_HANDLE_STATUS_ERROR
     Other error.
 
-@lt_pre_not_null{handle}
 @pre
-    You successfully waited for the completion of the recording session
-    clearing operation identified by \lt_p{handle} with
-    lttng_clear_handle_wait_for_completion().
-@lt_pre_not_null{result}
+    @lt_pre_not_null{handle}
+    - You successfully waited for the completion of the recording session
+      clearing operation identified by \lt_p{handle} with
+      lttng_clear_handle_wait_for_completion().
+    @lt_pre_not_null{result}
 
 @sa lttng_clear_handle_wait_for_completion() --
     Waits for a recording session clearing operation to complete.

@@ -78,7 +78,8 @@ the returned descriptor.
     \ref api-session-local-mode "local" recording session with an
     output.
 
-@lt_pre_sess_name_not_auto{session_name}
+@pre
+    @lt_pre_sess_name_not_auto{session_name}
 */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
 lttng_session_descriptor_create(const char *session_name);
@@ -138,9 +139,9 @@ lttng_session_descriptor_create(const char *session_name);
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    <strong>If not \c NULL</strong>, \lt_p{trace_dir} is a valid path.
+    @lt_pre_sess_name_not_auto{session_name}
+    - <strong>If not \c NULL</strong>, \lt_p{trace_dir} is a valid path.
 
 @sa lttng_session_descriptor_create() --
     Creates a recording session descriptor to create a
@@ -237,10 +238,10 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
-    combinations shown in the table above.
+    @lt_pre_sess_name_not_auto{session_name}
+    - \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
+      combinations shown in the table above.
 */
 LTTNG_EXPORT extern struct lttng_session_descriptor *lttng_session_descriptor_network_create(
 	const char *session_name, const char *control_url, const char *data_url);
@@ -276,7 +277,8 @@ snapshot with lttng_snapshot_record().
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
+@pre
+    @lt_pre_sess_name_not_auto{session_name}
 
 @sa lttng_session_descriptor_snapshot_local_create() --
     Creates a recording session descriptor to create a
@@ -351,9 +353,9 @@ The name of this initial snapshot output is <code>snapshot-0</code>.
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    <strong>If not \c NULL</strong>, \lt_p{trace_dir} is a valid path.
+    @lt_pre_sess_name_not_auto{session_name}
+    - <strong>If not \c NULL</strong>, \lt_p{trace_dir} is a valid path.
 
 @sa lttng_session_descriptor_snapshot_create() --
     Creates a recording session descriptor to create a
@@ -465,10 +467,10 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
-    combinations shown in the table above.
+    @lt_pre_sess_name_not_auto{session_name}
+    - \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
+      combinations shown in the table above.
 
 @sa lttng_session_descriptor_snapshot_create() --
     Creates a recording session descriptor to create a
@@ -595,12 +597,11 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
     lttng_session_descriptor_destroy().
     @endparblock
 
-@lt_pre_sess_name_not_auto{session_name}
 @pre
-    \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
-    combinations shown in the table above.
-@pre
-    \lt_p{live_timer_period}&nbsp;≥&nbsp;1
+    @lt_pre_sess_name_not_auto{session_name}
+    - \lt_p{control_url} and \lt_p{data_url} satisfy one of the valid
+      combinations shown in the table above.
+    - \lt_p{live_timer_period}&nbsp;≥&nbsp;1
 */
 LTTNG_EXPORT extern struct lttng_session_descriptor *
 lttng_session_descriptor_live_network_create(const char *session_name,
@@ -642,11 +643,11 @@ recording session.
 @retval #LTTNG_SESSION_DESCRIPTOR_STATUS_UNSET
     The name property of \lt_p{session_descriptor} is not set.
 
-@lt_pre_not_null{session_descriptor}
 @pre
-    You successfully called lttng_create_session_ext() with
-    \lt_p{session_descriptor}.
-@lt_pre_not_null{session_name}
+    @lt_pre_not_null{session_descriptor}
+    - You successfully called lttng_create_session_ext() with
+      \lt_p{session_descriptor}.
+    @lt_pre_not_null{session_name}
 */
 LTTNG_EXPORT extern enum lttng_session_descriptor_status
 lttng_session_descriptor_get_session_name(const struct lttng_session_descriptor *session_descriptor,
