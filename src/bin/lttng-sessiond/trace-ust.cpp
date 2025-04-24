@@ -1448,3 +1448,24 @@ void trace_ust_free_session(struct ltt_ust_session *session)
 	consumer_output_put(session->consumer);
 	free(session);
 }
+
+bool trace_ust_runtime_ctl_version_matches_build_version()
+{
+	uint32_t major, minor, patch_level;
+
+	if (lttng_ust_ctl_get_version(&major, &minor, &patch_level)) {
+		ERR("Failed to get liblttng-ust-ctl.so version");
+		return false;
+	}
+
+	if (major != VERSION_MAJOR || minor != VERSION_MINOR) {
+		ERR_FMT("Mismatch between liblttng-ust-ctl.so runtime version ({}.{}) and build version ({}.{})",
+			major,
+			minor,
+			VERSION_MAJOR,
+			VERSION_MINOR);
+		return false;
+	}
+
+	return true;
+}

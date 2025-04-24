@@ -239,6 +239,7 @@ trace_ust_process_attr_tracker_inclusion_set_remove_value(struct ltt_ust_session
 const struct process_attr_tracker *
 trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
 				   enum lttng_process_attr process_attr);
+bool trace_ust_runtime_ctl_version_matches_build_version();
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -389,6 +390,11 @@ trace_ust_get_process_attr_tracker(struct ltt_ust_session *session __attribute__
 				   enum lttng_process_attr process_attr __attribute__((unused)))
 {
 	return NULL;
+}
+
+static inline bool trace_ust_runtime_ctl_version_matches_build_version()
+{
+	return true;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
