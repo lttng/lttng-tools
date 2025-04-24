@@ -1513,6 +1513,16 @@ static int _main(int argc, char **argv)
 	logger_set_thread_name("Main", false);
 	init_kernel_workarounds();
 
+	/*
+	 * This check ensures that the version of liblttng-ust-ctl.so loaded at runtime
+	 * matches the version against which LTTng-tools was built. It acts as a safety net
+	 * to prevent mismatched versions, which could lead to undefined behavior.
+	 */
+	if (!trace_ust_runtime_ctl_version_matches_build_version()) {
+		retval = -1;
+		goto exit_set_signal_handler;
+	}
+
 	rcu_register_thread();
 
 	if (set_signal_handler()) {
