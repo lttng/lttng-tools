@@ -1664,11 +1664,6 @@ bool is_list_empty(const cds_list_head *head)
 {
 	return head == head->next;
 }
-
-bool is_last_element_of_list(const cds_list_head *head)
-{
-	return head->next == head->prev;
-}
 } /* namespace */
 
 ls::user_space_consumer_channel_keys::iterator::iterator(
@@ -1752,6 +1747,7 @@ void ls::user_space_consumer_channel_keys::iterator::_init_per_uid() noexcept
 		return;
 	}
 
+	position.registry_list_head = &_creation_context._session.buffer_reg_uid_list;
 	position.current_registry = lttng::utils::container_of(
 		_creation_context._session.buffer_reg_uid_list.next, &buffer_reg_uid::lnode);
 	lttng_ht_get_first(position.current_registry->registry->channels,
@@ -1781,7 +1777,7 @@ void ls::user_space_consumer_channel_keys::iterator::_advance_one_per_uid()
 
 	if (!cds_lfht_iter_get_node(&_position.channel_iterator.iter)) {
 		/* Reached the last channel of the registry. Move on to the next registry. */
-		if (is_last_element_of_list(&position.current_registry->lnode)) {
+		if (position.current_registry->lnode.next == position.registry_list_head) {
 			_is_end = true;
 			return;
 		}
