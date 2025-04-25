@@ -183,6 +183,7 @@ public:
 					nullptr;
 			} _per_pid;
 			struct {
+				const cds_list_head *registry_list_head = nullptr;
 				buffer_reg_uid *current_registry = nullptr;
 			} _per_uid;
 
