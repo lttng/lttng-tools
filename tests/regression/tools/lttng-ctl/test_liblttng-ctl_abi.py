@@ -22,9 +22,28 @@ sys.path.append(str(test_utils_import_path))
 import lttngtest
 
 
+def get_machine():
+    p = subprocess.Popen(["gcc", "-dumpmachine"], stdout=subprocess.PIPE)
+    p.wait()
+    if p.returncode != 0:
+        return ""
+    return p.stdout.read().decode("utf-8").strip()
+
+
 def test_abi_diff(tap, test_env):
     if not shutil.which("abidw") or not shutil.which("abidiff"):
         tap.skip("abidw and abidiff are not available")
+        return
+
+    if not shutil.which("gcc"):
+        tap.skip("gcc is not available")
+        return
+
+    machine = get_machine()
+    if not machine:
+        tap.skip(
+            "Couldn't determine machine triplet from gcc (got '{}')".format(machine)
+        )
         return
 
     lttngctl_path = (
@@ -35,7 +54,7 @@ def test_abi_diff(tap, test_env):
 
     abi_path = pathlib.Path(
         test_env._project_root
-    ) / "src/lib/lttng-ctl/abi_ref/{}/abi.xml".format(lttngctl_version)
+    ) / "src/lib/lttng-ctl/abi_ref/{}/{}/abi.xml".format(lttngctl_version, machine)
 
     headers_dir = pathlib.Path(test_env._project_root) / "include"
 
