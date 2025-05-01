@@ -8,7 +8,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=96
+NUM_TESTS=90
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -94,7 +94,10 @@ function test_health
 		diag "With relay daemon"
 		RELAYD_ARGS="--relayd-path=${LTTNG_RELAYD_HEALTH}"
 
-		start_lttng_relayd "-o $TRACE_PATH"
+		# When starting with the error test points the "start" can fail
+		# or hang waiting for the PID file which got cleaned up quickly.
+		# Use the background mode with no tap to avoid the hang and failure.
+		start_lttng_relayd_opt 0 "-b" "-o $TRACE_PATH"
 	else
 		RELAYD_ARGS=
 	fi
@@ -151,7 +154,8 @@ fi
 
 skip $foundobj "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
 
-THREAD=("LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
+THREAD=(
+	"LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
 	"LTTNG_SESSIOND_THREAD_MANAGE_APPS"
 	"LTTNG_SESSIOND_THREAD_REG_APPS"
 	"LTTNG_SESSIOND_THREAD_APP_MANAGE_NOTIFY"
