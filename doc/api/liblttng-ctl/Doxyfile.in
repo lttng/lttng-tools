@@ -152,7 +152,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/event-rule/kernel-uprobe.h" \
                           "@top_srcdir@/include/lttng/event-rule/jul-logging.h" \
                           "@top_srcdir@/include/lttng/event-rule/log4j-logging.h" \
-                          "@top_srcdir@/include/lttng/event-rule/log4j2-logging.h"
+                          "@top_srcdir@/include/lttng/event-rule/log4j2-logging.h" \
+                          "@top_srcdir@/include/lttng/event-rule/python-logging.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
