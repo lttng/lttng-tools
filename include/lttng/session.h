@@ -185,7 +185,7 @@ lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor);
 @param[in] output_url
     @parblock
     \ref api-session-url "Output URL" of the recording session to
-    create.
+    create (copied).
 
     If it's a \ref api-session-one-port-url "single-port output URL",
     then the trace data port is \lt_def_net_data_port.
@@ -234,7 +234,7 @@ LTTNG_EXPORT extern int lttng_create_session(const char *session_name, const cha
 @param[in] output_url
     @parblock
     \ref api-session-url "URL" of an initial snapshot output
-    which LTTng adds to this recording session.
+    which LTTng adds to this recording session (copied).
 
     If it's a \ref api-session-one-port-url "single-port output URL",
     then the trace data port is \lt_def_net_data_port.
@@ -289,7 +289,7 @@ LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *session_name,
     @parblock
     \ref api-session-url "Output URL" of the recording session to
     create: \ref api-session-one-port-url "single-port" or
-    \ref api-session-two-port-url "two-port".
+    \ref api-session-two-port-url "two-port" (copied).
 
     If it's a \ref api-session-one-port-url "single-port output URL",
     then the trace data port is \lt_def_net_data_port.
@@ -554,7 +554,7 @@ utility.
     file directory path.
 @param[in] shm_dir
     Path of the directory containing the shared memory files of the
-    recording session named \lt_p{session_name}.
+    recording session named \lt_p{session_name} (copied).
 
 @returns
     <dl>

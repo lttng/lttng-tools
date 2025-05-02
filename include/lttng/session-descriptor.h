@@ -104,7 +104,8 @@ lttng_session_descriptor_create(const char *session_name);
 @param[in] trace_dir
     @parblock
     Absolute path of the directory containing the traces of the
-    recording session you create from the returned descriptor.
+    recording session you create from the returned descriptor
+    (copied).
 
     If \c NULL, the output directory is, after calling
     lttng_create_session_ext(),
@@ -219,12 +220,14 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
 	Indicates where to send the control \em and trace data.
     </dl>
 
+    This function copies \lt_p{control_url}.
+
     If \c NULL, this function uses \lt_def_net_url.
     @endparblock
 @param[in] data_url
     @parblock
     \ref api-session-one-port-url "Single-port output URL" which
-    indicates where to send the trace data.
+    indicates where to send the trace data (copied).
 
     May be <code>NULL</code>: see the table above for the default value
     depending on \lt_p{control_url}.
@@ -318,7 +321,7 @@ The name of this initial snapshot output is <code>snapshot-0</code>.
     @endparblock
 @param[in] trace_dir
     @parblock
-    Absolute path of an initial snapshot output.
+    Absolute path of an initial snapshot output (copied).
 
     If \c NULL, the snapshot output directory is, after calling
     lttng_create_session_ext(),
@@ -446,11 +449,13 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
 	Indicates where to send the control \em and trace data.
     </dl>
 
+    This function copies \lt_p{control_url}.
+
     If \c NULL, this function uses \lt_def_net_url.
     @endparblock
 @param[in] data_url
     @parblock
-    Trace data URL of an initial snapshot output.
+    Trace data URL of an initial snapshot output (copied).
 
     \ref api-session-one-port-url "Single-port output URL" which
     indicates where to send the trace data.
@@ -574,12 +579,14 @@ The valid combinations of \lt_p{control_url} and \lt_p{data_url} are:
 	Indicates where to send the control \em and trace data.
     </dl>
 
+    This function copies \lt_p{control_url}.
+
     If \c NULL, this function uses \lt_def_net_url.
     @endparblock
 @param[in] data_url
     @parblock
     \ref api-session-one-port-url "Single-port output URL" which
-    indicates where to send the trace data.
+    indicates where to send the trace data (copied).
 
     May be <code>NULL</code>: see the table above for the default value
     depending on \lt_p{control_url}.

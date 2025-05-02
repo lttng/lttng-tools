@@ -2296,7 +2296,7 @@ type.
 @param[in] filter_expr
     @parblock
     Event payload and context filter expression of the recording
-    event rule to create or enable.
+    event rule to create or enable (copied).
 
     <strong>If \c NULL</strong>, the created or enabled recording event
     rule has no event payload and context filter expression.
