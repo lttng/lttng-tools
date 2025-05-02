@@ -145,7 +145,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/kernel.h" \
                           "@top_srcdir@/include/lttng/log-level-rule.h" \
                           "@top_srcdir@/include/lttng/event-rule/event-rule.h" \
-                          "@top_srcdir@/include/lttng/event-rule/user-tracepoint.h"
+                          "@top_srcdir@/include/lttng/event-rule/user-tracepoint.h" \
+                          "@top_srcdir@/include/lttng/event-rule/kernel-tracepoint.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
