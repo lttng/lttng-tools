@@ -33,8 +33,8 @@ struct lttng_event_rule;
     of an event rule.
 */
 enum lttng_event_rule_type {
-	/// Unknown (error).
-	LTTNG_EVENT_RULE_TYPE_UNKNOWN = -1,
+	/// Match LTTng kernel tracepoints.
+	LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT = 2,
 
 	/// Match Linux kernel system calls.
 	LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL = 0,
@@ -44,9 +44,6 @@ enum lttng_event_rule_type {
 	<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobes</a>.
 	*/
 	LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE = 1,
-
-	/// Match LTTng kernel tracepoints.
-	LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT = 2,
 
 	/*!
 	Match Linux
@@ -67,15 +64,18 @@ enum lttng_event_rule_type {
 	*/
 	LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING = 6,
 
-	/// Match Python logging statements.
-	LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING = 7,
-
 	/*!
 	Match
 	<a href="https://logging.apache.org/log4j/2.x/">\lt_log4j2</a>
 	logging statements.
 	*/
 	LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING = 8,
+
+	/// Match Python logging statements.
+	LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING = 7,
+
+	/// Unknown (error).
+	LTTNG_EVENT_RULE_TYPE_UNKNOWN = -1,
 };
 
 /*!

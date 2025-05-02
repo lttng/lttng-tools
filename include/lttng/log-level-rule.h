@@ -32,14 +32,14 @@ struct lttng_log_level_rule;
     Log level rule type.
 */
 enum lttng_log_level_rule_type {
-	/// Unknown (error).
-	LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN = -1,
-
 	/// Exact match.
 	LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY = 0,
 
 	/// "At least as severe as" match.
 	LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS = 1,
+
+	/// Unknown (error).
+	LTTNG_LOG_LEVEL_RULE_TYPE_UNKNOWN = -1,
 };
 
 /*!
