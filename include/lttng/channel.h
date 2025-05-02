@@ -279,7 +279,6 @@ lttng_enable_channel() to create and enable a channel.
     Destroy the returned channel summary with lttng_channel_destroy().
     @endparblock
 
-
 @pre
     @lt_pre_not_null{domain}
 
