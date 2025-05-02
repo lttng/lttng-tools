@@ -148,7 +148,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/event-rule/user-tracepoint.h" \
                           "@top_srcdir@/include/lttng/event-rule/kernel-tracepoint.h" \
                           "@top_srcdir@/include/lttng/event-rule/kernel-syscall.h" \
-                          "@top_srcdir@/include/lttng/event-rule/kernel-kprobe.h"
+                          "@top_srcdir@/include/lttng/event-rule/kernel-kprobe.h" \
+                          "@top_srcdir@/include/lttng/event-rule/kernel-uprobe.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
