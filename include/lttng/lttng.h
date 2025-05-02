@@ -140,7 +140,7 @@ How the liblttng-ctl functions
 the current Unix tracing group (initially \c tracing) of the library.
 
 @param[in] group
-    New Unix tracing group of liblttng-ctl.
+    New Unix tracing group of liblttng-ctl (copied).
 
 @returns
     <dl>
