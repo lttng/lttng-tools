@@ -38,6 +38,7 @@ ALIASES                += lt_jul="<code>java.util.logging</code>"
 # Aliases: preconditions
 ALIASES                += lt_pre_not_null{1}="- \lt_p{\1} is \em not \c NULL."
 ALIASES                += lt_pre_valid_c_str{1}="- \lt_p{\1} is a valid (null-terminated) C&nbsp;string."
+ALIASES                += lt_pre_not_empty{1}="- \lt_p{\1} is not empty."
 ALIASES                += lt_pre_sess_exists{1}="- \lt_p{\1} names an accessible \ref api_session \"recording session\" within the \ref api-gen-sessiond-conn \"connected session daemon\"."
 ALIASES                += lt_pre_sess_never_active{1}="- \lt_p{\1} names a \ref api_session \"recording session\" which never became \link lttng_session::enabled active\endlink (started) since its creation."
 ALIASES                += lt_pre_sess_active{1}="- \lt_p{\1} names an \link lttng_session::enabled active\endlink (started) \ref api_session \"recording session\"."
@@ -143,7 +144,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/event.h" \
                           "@top_srcdir@/include/lttng/kernel.h" \
                           "@top_srcdir@/include/lttng/log-level-rule.h" \
-                          "@top_srcdir@/include/lttng/event-rule/event-rule.h"
+                          "@top_srcdir@/include/lttng/event-rule/event-rule.h" \
+                          "@top_srcdir@/include/lttng/event-rule/user-tracepoint.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
