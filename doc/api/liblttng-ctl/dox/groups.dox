@@ -2229,12 +2229,904 @@ To be done.
 @defgroup api_er Event rule API
 @ingroup api_trigger_cond_er_matches
 
-To be done.
+<h1>Concepts</h1>
+
+An <em>instrumentation point</em> is a point, within a piece of
+software, which, when executed, creates an LTTng <em>event</em>.
+See \ref api_inst_pt to learn how to list the available instrumentation
+points.
+
+An <em>event rule</em> is a set of \ref api-er-conds "conditions" to
+match a set of events.
+
+An event has a \ref api-er-event-name "name" and fields.
+
+When LTTng creates an event&nbsp;\lt_var{E}, an event
+rule&nbsp;\lt_var{ER} is said to <em>match</em>&nbsp;\lt_var{E}
+when&nbsp;\lt_var{E} satisfies \em all the conditions
+of&nbsp;\lt_var{ER}. This concept is similar to a regular expression
+which matches a set of strings.
+
+When an event rule matches an event, LTTng \em emits the event,
+therefore attempting to execute one or more actions.
+
+@attention
+    @parblock
+    The event creation and emission processes are \em documentation
+    concepts to help understand the journey from an instrumentation
+    point to the execution of actions.
+
+    The actual creation of an event can be costly because LTTng needs to
+    evaluate the arguments of the instrumentation point.
+
+    In practice, LTTng implements various optimizations for the
+    Linux kernel and user space tracing domains to avoid actually
+    creating an event when the tracer
+    knows, thanks to properties which are independent from the event
+    payload and current
+    \link #lttng_event_context_type context\endlink, that it would never
+    emit such an event. Those properties are:
+
+    - The \ref api-er-conds-inst-pt-type "instrumentation point type".
+
+    - The \ref api-er-conds-event-name "instrumentation point name" (or
+      event name).
+
+    - The \ref api-er-conds-ll "instrumentation point log level".
+
+    In other words: if, for a given instrumentation
+    point&nbsp;\lt_var{IP}, the LTTng tracer knows that it would never
+    emit an event, executing&nbsp;\lt_var{IP} represents a simple
+    boolean variable check and, for a Linux kernel
+    event rule, a few current process attribute checks.
+    @endparblock
+
+The only purpose of an event rule object is to create an
+\link api_trigger_cond_er_matches "event rule matches" trigger condition\endlink
+from it. When the event rule of the trigger condition matches an event,
+LTTng can execute user-defined
+\ref api_trigger_action "actions" such as sending an LTTng
+notification, starting a recording session, and more.
+
+Get the type of an event rule with lttng_event_rule_get_type().
+
+Destroy an event rule with lttng_event_rule_destroy().
+
+@sa
+    - The <em>INSTRUMENTATION POINT, EVENT RULE, AND EVENT</em>
+      section of \lt_man{lttng-concepts,7}.
+    - \lt_man{lttng-event-rule,7}.
+
+<h1>\anchor api-er-conds Event rule conditions</h1>
+
+For LTTng to emit an event&nbsp;\lt_var{E},&nbsp;\lt_var{E}
+must satisfy \em all the conditions of an event
+rule&nbsp;\lt_var{ER}.
+
+You set the following conditions when or after you create \lt_var{ER}
+with one of the creation functions listed below:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Description
+  <tr>
+    <td>
+      \anchor api-er-conds-inst-pt-type
+      \ref api-er-conds-inst-pt-type "Instrumentation point type"
+    <td>
+      \lt_var{E} satisfies the instrumentation point type condition
+      of&nbsp;\lt_var{ER} if the instrumentation point from which LTTng
+      creates&nbsp;\lt_var{E} is, depending on the
+      \link lttng_event_rule_get_type() type\endlink of&nbsp;\lt_var{ER}:
+
+      <dl>
+        <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT
+        <dd>
+          An \ref api_kernel_tp_er "LTTng kernel tracepoint",
+          that is, a statically defined point in the source code of
+          the kernel image or of a kernel module with LTTng kernel
+          tracer macros.
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_kernel_tracepoint_create().
+
+          @sa lttng_list_tracepoints()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL
+        <dd>
+          The entry, exit, or entry and exit of a
+          \ref api_kernel_syscall_er "Linux kernel system call".
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_kernel_syscall_create().
+
+          @sa lttng_list_syscalls()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE
+        <dd>
+          A \ref api_kprobe_er "Linux kprobe",
+          that is, a single probe dynamically placed in the
+          compiled kernel code.
+
+          You indicate the \ref api_kprobe_loc "location" of the Linux
+          kprobe to instrument when you create&nbsp;\lt_var{ER}
+          with lttng_event_rule_kernel_kprobe_create().
+
+          Although lttng_event_rule_kernel_kprobe_create() sets an
+          initial event name from the kprobe location, you can override
+          it with lttng_event_rule_kernel_kprobe_set_event_name().
+
+          The payload of a Linux kprobe event is empty.
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE
+        <dd>
+          A \ref api_uprobe_er "Linux user space probe",
+          that is, a single probe dynamically placed at the
+          entry of a compiled user space application/library
+          function through the kernel.
+
+          You indicate the \ref api_uprobe_loc "location" of the Linux
+          user space probe to instrument when you
+          create&nbsp;\lt_var{ER}
+          with lttng_event_rule_kernel_uprobe_create().
+
+          Although lttng_event_rule_kernel_uprobe_create() sets an
+          initial event name from the user space probe location,
+          you can override it with
+          lttng_event_rule_kernel_uprobe_set_event_name().
+
+          The payload of a Linux user space probe event is empty.
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT
+        <dd>
+          An \ref api_user_tp_er "LTTng user space tracepoint",
+          that is, a statically
+          defined point in the source code of a C/C++
+          application/library with LTTng user space tracer macros.
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_user_tracepoint_create().
+
+          @sa lttng_list_tracepoints()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_JUL_LOGGING
+        <dd>
+          A \ref api_jul_er "\lt_jul logging statement".
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_jul_logging_create().
+
+          @sa lttng_list_tracepoints()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING
+        <dd>
+          An \ref api_log4j1_er "\lt_log4j1 logging statement".
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_log4j_logging_create().
+
+          @sa lttng_list_tracepoints()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING
+        <dd>
+          An \ref api_log4j2_er "\lt_log4j2 logging statement".
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_log4j2_logging_create().
+
+          @sa lttng_list_tracepoints()
+
+        <dt>#LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING
+        <dd>
+          A \ref api_py_er "Python logging statement".
+
+          Create&nbsp;\lt_var{ER} with
+          lttng_event_rule_python_logging_create().
+
+          @sa lttng_list_tracepoints()
+      </dl>
+  <tr>
+    <td>
+      \anchor api-er-conds-event-name
+      \ref api-er-conds-event-name "Event name"
+    <td>
+      An event&nbsp;\lt_var{E} satisfies the event name condition
+      of&nbsp;\lt_var{ER} if the two following statements are
+      \b true:
+
+      - The event name pattern of&nbsp;\lt_var{ER} matches, depending on
+        the \link lttng_event_rule_get_type() type\endlink
+        of&nbsp;\lt_var{ER}
+        (see \ref api-er-conds-inst-pt-type "Instrumentation point type"
+        above):
+
+        <dl>
+          <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT
+          <dt>#LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT
+          <dt>#LTTNG_EVENT_RULE_TYPE_JUL_LOGGING
+          <dt>#LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING
+          <dt>#LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING
+          <dt>#LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING
+          <dd>
+            The full name of the LTTng tracepoint or Java/Python
+            logger from which LTTng creates&nbsp;\lt_var{E}.
+
+            Note that the full name of an
+            LTTng user space tracepoint is
+            <code><em>PROVIDER</em>:<em>NAME</em></code>, where
+            <code><em>PROVIDER</em></code> is the tracepoint
+            provider name and <code><em>NAME</em></code> is the
+            tracepoint name.
+
+          <dt>#LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL
+          <dd>
+            The name of the system call, \em without any
+            <code>sys_</code> prefix, from which LTTng
+            creates&nbsp;\lt_var{E}.
+        </dl>
+
+        When you create&nbsp;\lt_var{ER}, the initial event name pattern
+        is equivalent to <code>*</code> (any event name).
+
+        Set the event name pattern of&nbsp;\lt_var{ER} with one of:
+
+        - lttng_event_rule_kernel_tracepoint_set_name_pattern()
+        - lttng_event_rule_kernel_syscall_set_name_pattern()
+        - lttng_event_rule_user_tracepoint_set_name_pattern()
+        - lttng_event_rule_jul_logging_set_name_pattern()
+        - lttng_event_rule_log4j_logging_set_name_pattern()
+        - lttng_event_rule_log4j2_logging_set_name_pattern()
+        - lttng_event_rule_python_logging_set_name_pattern()
+
+        Get the event name pattern of&nbsp;\lt_var{ER} with one of:
+
+        - lttng_event_rule_kernel_tracepoint_get_name_pattern()
+        - lttng_event_rule_kernel_syscall_get_name_pattern()
+        - lttng_event_rule_user_tracepoint_get_name_pattern()
+        - lttng_event_rule_jul_logging_get_name_pattern()
+        - lttng_event_rule_log4j_logging_get_name_pattern()
+        - lttng_event_rule_log4j2_logging_get_name_pattern()
+        - lttng_event_rule_python_logging_get_name_pattern()
+
+        @sa \ref api-er-event-name "Event name".
+
+      - If the type of&nbsp;\lt_var{ER} is
+        #LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT, then
+        none of the event name exclusion patterns of&nbsp;\lt_var{ER}
+        matches the full name of the user space tracepoint from
+        which LTTng creates&nbsp;\lt_var{E}.
+
+        When you create&nbsp;\lt_var{ER}, the initial event name
+        exclusion pattern set is empty (no exclusions).
+
+        Add an event name exclusion pattern to&nbsp;\lt_var{ER} with
+        lttng_event_rule_user_tracepoint_add_name_pattern_exclusion().
+
+        Get an event name exclusion pattern of&nbsp;\lt_var{ER} with
+        lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index().
+
+      This condition isn't meaningful (always satisfied)
+      if the type of&nbsp;\lt_var{ER}
+      is #LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE or
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE.
+
+      In all cases, the event name and event name exclusion
+      patterns are <em>globbing patterns</em>: the
+      <code>*</code> character means "match anything". To match a
+      literal <code>*</code> character, use <code>\\*</code>.
+  <tr>
+    <td>
+      \anchor api-er-conds-ll
+      \ref api-er-conds-ll "Instrumentation point log level"
+    <td>
+      An event&nbsp;\lt_var{E} satisfies the instrumentation point
+      log level condition of&nbsp;\lt_var{ER} if the log level&nbsp;\lt_var{LL}
+      of the LTTng user space tracepoint or
+      logging statement from which LTTng creates&nbsp;\lt_var{E}
+      satisfies the \ref api_ll_rule "log level rule" \lt_var{LLR}
+      of&nbsp;\lt_var{ER}.
+
+      An event&nbsp;\lt_var{E} satisfies this condition if
+      \lt_var{LL} is, depending on the
+      \link lttng_log_level_rule_get_type() type\endlink
+      of&nbsp;\lt_var{LLR}:
+
+      <dl>
+        <dt>#LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS
+        <dd>
+          At least as severe as what
+          lttng_log_level_rule_at_least_as_severe_as_get_level()
+          returns with&nbsp;\lt_var{LLR}.
+
+        <dt>#LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY
+        <dd>
+          Exactly what lttng_log_level_rule_exactly_get_level()
+          returns with&nbsp;\lt_var{LLR}.
+      </dl>
+
+      If&nbsp;\lt_var{ER} has no log level rule, then this condition
+      is always satisfied.
+
+      This condition isn't meaningful (always satisfied)
+      if the type of&nbsp;\lt_var{ER}
+      is one of:
+
+      - #LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT
+      - #LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL
+      - #LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE
+      - #LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE
+
+      When you create&nbsp;\lt_var{ER}, there's no initial log level
+      rule (this condition is always satisfied).
+
+      Set the log level rule of&nbsp;\lt_var{ER} with one of:
+
+      - lttng_event_rule_user_tracepoint_set_log_level_rule()
+      - lttng_event_rule_jul_logging_set_log_level_rule()
+      - lttng_event_rule_log4j_logging_set_log_level_rule()
+      - lttng_event_rule_log4j2_logging_set_log_level_rule()
+      - lttng_event_rule_python_logging_set_log_level_rule()
+
+      Get the log level rule of&nbsp;\lt_var{ER} with one of:
+
+      - lttng_event_rule_user_tracepoint_get_log_level_rule()
+      - lttng_event_rule_jul_logging_get_log_level_rule()
+      - lttng_event_rule_log4j_logging_get_log_level_rule()
+      - lttng_event_rule_log4j2_logging_get_log_level_rule()
+      - lttng_event_rule_python_logging_get_log_level_rule()
+  <tr>
+    <td>
+      \anchor api-er-conds-filter
+      \ref api-er-conds-filter "Event payload and context filter"
+    <td>
+      An event&nbsp;\lt_var{E} satisfies the event payload and
+      context filter condition of&nbsp;\lt_var{ER}
+      if&nbsp;\lt_var{ER} has no filter expression or if its filter
+      expression&nbsp;\lt_var{EXPR} evaluates to \b true
+      when LTTng creates&nbsp;\lt_var{E}.
+
+      This condition isn't meaningful (always satisfied)
+      if the type of&nbsp;\lt_var{ER} is
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE or
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE.
+
+      When you create&nbsp;\lt_var{ER}, the initial event payload and
+      context filter is equivalent to <code>1</code> (no filter: the
+      condition is always satisfied).
+
+      Set the event payload and context filter expression
+      of&nbsp;\lt_var{ER} with one of:
+
+      - lttng_event_rule_kernel_tracepoint_set_filter()
+      - lttng_event_rule_kernel_syscall_set_filter()
+      - lttng_event_rule_user_tracepoint_set_filter()
+      - lttng_event_rule_jul_logging_set_filter()
+      - lttng_event_rule_log4j_logging_set_filter()
+      - lttng_event_rule_log4j2_logging_set_filter()
+      - lttng_event_rule_python_logging_set_filter()
+
+      Get the event payload and context filter expression
+      of&nbsp;\lt_var{ER} with one of:
+
+      - lttng_event_rule_kernel_tracepoint_get_filter()
+      - lttng_event_rule_kernel_syscall_get_filter()
+      - lttng_event_rule_user_tracepoint_get_filter()
+      - lttng_event_rule_jul_logging_get_filter()
+      - lttng_event_rule_log4j_logging_get_filter()
+      - lttng_event_rule_log4j2_logging_get_filter()
+      - lttng_event_rule_python_logging_get_filter()
+
+      @include{doc} dox/filter-expr.dox
+</table>
+
+<h1>\anchor api-er-event-name Event name</h1>
+
+When LTTng emits an event&nbsp;\lt_var{E}, the resulting event
+has a name which depends on the
+\ref api-er-conds-inst-pt-type "instrumentation point type condition"
+of the event rule&nbsp;\lt_var{ER} which matched&nbsp;\lt_var{E}:
+
+<table>
+  <tr>
+    <th>Instrumentation point type
+    <th>Event name
+  <tr>
+    <td>
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT or
+      #LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT
+    <td>
+      Full name of the tracepoint from which LTTng creates&nbsp;\lt_var{E}.
+
+      Note that the full name of a
+      #LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT event rule is
+      <code><em>PROVIDER</em>:<em>NAME</em></code>, where
+      <code><em>PROVIDER</em></code> is the tracepoint provider name and
+      <code><em>NAME</em></code> is the tracepoint name.
+  <tr>
+    <td>#LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL
+    <td>
+      Location:
+
+      <dl>
+        <dt>Entry
+        <dd>
+          <code>syscall_entry_<em>NAME</em></code>, where
+          <code><em>NAME</em></code> is the name of the system call from
+          which LTTng creates&nbsp;\lt_var{E}, \em without any
+          <code>sys_</code> prefix.
+
+        <dt>Exit
+        <dd>
+          <code>syscall_exit_<em>NAME</em></code>, where
+          <code><em>NAME</em></code> is the name of the system call from
+          which LTTng creates&nbsp;\lt_var{E}, \em without any
+          <code>sys_</code> prefix.
+      </dl>
+  <tr>
+    <td>
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE or
+      #LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE
+    <td>
+      Location:
+
+      <dl>
+        <dt>Entry
+        <dd><code><em>NAME</em>_entry</code>
+
+        <dt>Exit
+        <dd><code><em>NAME</em>_exit</code>
+      </dl>
+
+      where <code><em>NAME</em></code> is the <em>event name</em>
+      of&nbsp;\lt_var{ER}.
+
+      Both lttng_event_rule_kernel_kprobe_create() and
+      lttng_event_rule_kernel_uprobe_create() set an
+      initial event name from the probe location.
+
+      Override the event name of&nbsp;\lt_var{ER} with
+      lttng_event_rule_kernel_kprobe_set_event_name() or
+      lttng_event_rule_kernel_uprobe_set_event_name().
+
+      Get the event name of&nbsp;\lt_var{ER} with
+      lttng_event_rule_kernel_kprobe_get_event_name() or
+      lttng_event_rule_kernel_uprobe_get_event_name().
+  <tr>
+    <td>#LTTNG_EVENT_RULE_TYPE_JUL_LOGGING
+    <td>
+      <code>lttng_jul:event</code>
+
+      Such an event has a string field <code>logger_name</code>
+      which contains the name of the \lt_jul
+      logger from which LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING
+    <td>
+      <code>lttng_log4j:event</code>
+
+      Such an event has a string field <code>logger_name</code>
+      which contains the name of the \lt_log4j1 logger
+      from which LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING
+    <td>
+      <code>lttng_log4j2:event</code>
+
+      Such an event has a string field <code>logger_name</code>
+      which contains the name of the \lt_log4j2 logger
+      from which LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING
+    <td>
+      <code>lttng_python:event</code>
+
+      Such an event has a string field <code>logger_name</code>
+      which contains the name of the Python logger from which LTTng
+      creates&nbsp;\lt_var{E}.
+</table>
 
 @defgroup api_ll_rule Log level rule API
 @ingroup api_er
 
-To be done.
+A <strong><em>log level rule</em></strong> indicates how to match an
+instrumentation point log level within an \ref api_er "event rule".
+
+See the \ref api-er-conds-ll "instrumentation point log level" event
+rule condition to learn more.
+
+Create a log level rule for which a log level must be exactly
+a given value with lttng_log_level_rule_exactly_create().
+
+Create a log level rule for which a log level must be at least
+as severe as a given value with
+lttng_log_level_rule_at_least_as_severe_as_create().
+
+Get the type of a log level rule with
+lttng_log_level_rule_get_type().
+
+Destroy a log level rule with
+lttng_log_level_rule_destroy().
+
+@defgroup api_kernel_tp_er LTTng kernel tracepoint event rule API
+@ingroup api_er
+
+An <strong><em>LTTng kernel tracepoint event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT
+type.
+
+An LTTng kernel tracepoint is a statically defined point in the source
+code of the kernel image or of a kernel module with LTTng kernel
+tracer macros.
+
+Create an LTTng kernel tracepoint event rule with
+lttng_event_rule_kernel_tracepoint_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+an LTTng kernel tracepoint event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>lttng_event_rule_kernel_tracepoint_set_name_pattern()
+    <td>lttng_event_rule_kernel_tracepoint_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_kernel_tracepoint_set_filter()
+    <td>lttng_event_rule_kernel_tracepoint_get_filter()
+</table>
+
+@defgroup api_kernel_syscall_er Linux kernel system call event rule API
+@ingroup api_er
+
+A <strong><em>Linux kernel system call event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL
+type.
+
+A Linux kernel system call event rule matches an event which LTTng
+creates from the entry, exit, or both of a kernel
+<a href="https://en.wikipedia.org/wiki/System_call">system call</a>.
+
+Create a Linux kernel system call event rule with
+lttng_event_rule_kernel_syscall_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+a Linux kernel system call event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>lttng_event_rule_kernel_syscall_set_name_pattern()
+    <td>lttng_event_rule_kernel_syscall_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_kernel_syscall_set_filter()
+    <td>lttng_event_rule_kernel_syscall_get_filter()
+</table>
+
+@defgroup api_kprobe_er Linux kprobe event rule API
+@ingroup api_er
+
+A <strong><em>Linux kprobe event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE
+type.
+
+A Linux
+<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobe</a>
+is a kernel debugging/tracing mechanism that
+intercepts and monitors kernel function calls.
+
+A Linux kprobe lets you insert handlers into nearly any kernel routine
+dynamically at run time, without having to recompile the kernel. LTTng
+is able to attach to such a dynamic probe and create an event from its
+execution.
+
+Create a Linux kprobe event rule with
+lttng_event_rule_kernel_kprobe_create().
+
+lttng_event_rule_kernel_kprobe_create() sets an
+initial event name from the kprobe location. Override
+the event name of a Linux kprobe event rule
+with lttng_event_rule_kernel_kprobe_set_event_name(). Get the
+event name with lttng_event_rule_kernel_kprobe_get_event_name().
+
+Get the location, as passed to lttng_event_rule_kernel_kprobe_create(),
+of a Linux kprobe event rule with
+lttng_event_rule_kernel_kprobe_get_location().
+
+@defgroup api_kprobe_loc Linux kprobe location API
+@ingroup api_kprobe_er
+
+A <strong><em>Linux kprobe location</em></strong> is an object which
+locates a Linux
+<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobe</a>.
+
+The purpose of such an object is to provide the location of the target
+Linux kprobe when you create a
+\ref api_kprobe_er "Linux kprobe event rule".
+
+The two ways to locate a Linux kprobe are:
+
+<table>
+  <tr>
+    <th>Location type
+    <th>Location enumerator
+    <th>Creation function
+  <tr>
+    <td>By offset from a named symbol
+    <td>#LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET
+    <td>lttng_kernel_probe_location_symbol_create()
+  <tr>
+    <td>By address within the kernel
+    <td>#LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS
+    <td>lttng_kernel_probe_location_address_create()
+</table>
+
+Get the type of a Linux kprobe location with
+lttng_kernel_probe_location_get_type().
+
+Destroy a Linux kprobe location with
+lttng_kernel_probe_location_destroy().
+
+@defgroup api_uprobe_er Linux user space probe event rule API
+@ingroup api_er
+
+A <strong><em>Linux user space probe event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE
+type.
+
+A Linux
+<a href="https://www.kernel.org/doc/html/latest/trace/uprobetracer.html">user space probe</a>
+is a user space tracing mechanism that allows intercepting and
+monitoring function calls in user space applications.
+
+A Linux user space probe makes it possible to insert handlers into
+almost any user space function dynamically at run time, without
+modifying or recompiling the application. LTTng can attach to such a
+dynamic probe and and create an event from its execution.
+
+Create a Linux user space probe event rule with
+lttng_event_rule_kernel_uprobe_create().
+
+lttng_event_rule_kernel_uprobe_create() sets an
+initial event name from the user space probe location. Override
+the event name of a Linux user space probe event rule
+with lttng_event_rule_kernel_uprobe_set_event_name(). Get the
+event name with lttng_event_rule_kernel_uprobe_get_event_name().
+
+Get the location, as passed to lttng_event_rule_kernel_uprobe_create(),
+of a Linux kprobe event rule with
+lttng_event_rule_kernel_uprobe_get_location().
+
+@defgroup api_user_tp_er LTTng user space tracepoint event rule API
+@ingroup api_er
+
+An <strong><em>LTTng user space tracepoint event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT
+type.
+
+An LTTng user space tracepoint is a statically
+defined point in the source code of a C/C++
+application/library with LTTng user space tracer macros.
+
+Create an LTTng user space tracepoint event rule with
+lttng_event_rule_user_tracepoint_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+an LTTng user space tracepoint event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>
+      lttng_event_rule_user_tracepoint_set_name_pattern() and
+      lttng_event_rule_user_tracepoint_add_name_pattern_exclusion()
+    <td>
+      lttng_event_rule_user_tracepoint_get_name_pattern() and
+      lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index()
+  <tr>
+    <td>\ref api-er-conds-ll "Instrumentation point log level"
+    <td>lttng_event_rule_user_tracepoint_set_log_level_rule()
+    <td>lttng_event_rule_user_tracepoint_get_log_level_rule()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_user_tracepoint_set_filter()
+    <td>lttng_event_rule_user_tracepoint_get_filter()
+</table>
+
+@defgroup api_jul_er JUL event rule API
+@ingroup api_er
+
+A <strong><em>\lt_jul event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_JUL_LOGGING
+type.
+
+<a href="https://docs.oracle.com/en/java/javase/24/docs/api/index.html">\lt_jul</a>
+(JUL) is a built-in Java framework that provides a simple and
+flexible way to log messages from applications. It supports
+configurable levels of logging, output formatting, and
+log routing through handlers (console and file, for example). The
+LTTng-UST project provides a JUL handler which creates an LTTng event
+from an emitted JUL logging statement.
+
+Create a \lt_jul event rule with
+lttng_event_rule_jul_logging_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+a \lt_jul event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>
+      lttng_event_rule_jul_logging_set_name_pattern()
+    <td>
+      lttng_event_rule_jul_logging_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-ll "Instrumentation point log level"
+    <td>lttng_event_rule_jul_logging_set_log_level_rule()
+    <td>lttng_event_rule_jul_logging_get_log_level_rule()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_jul_logging_set_filter()
+    <td>lttng_event_rule_jul_logging_get_filter()
+</table>
+
+@sa
+    - \ref api_log4j1_er
+    - \ref api_log4j2_er
+
+@defgroup api_log4j1_er Apache log4j 1.x event rule API
+@ingroup api_er
+
+An <strong><em>\lt_log4j1 event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING
+type.
+
+<a href="https://logging.apache.org/log4j/1.x/">\lt_log4j1</a> is a
+widely used Java logging framework that offers a reliable and
+configurable way to log messages from applications. It supports multiple
+logging levels, flexible output formatting, and routing through
+appenders such as console, file, or network destinations. The LTTng-UST
+project provides an \lt_log4j1 appender which creates an LTTng event
+from an emitted log4j&nbsp;1.x logging statement.
+
+Create an \lt_log4j1 event rule with
+lttng_event_rule_log4j_logging_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+an \lt_log4j1 event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>
+      lttng_event_rule_log4j_logging_set_name_pattern()
+    <td>
+      lttng_event_rule_log4j_logging_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-ll "Instrumentation point log level"
+    <td>lttng_event_rule_log4j_logging_set_log_level_rule()
+    <td>lttng_event_rule_log4j_logging_get_log_level_rule()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_log4j_logging_set_filter()
+    <td>lttng_event_rule_log4j_logging_get_filter()
+</table>
+
+@sa
+    - \ref api_jul_er
+    - \ref api_log4j2_er
+
+@defgroup api_log4j2_er Apache Log4j 2 event rule API
+@ingroup api_er
+
+An <strong><em>\lt_log4j2 event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING
+type.
+
+<a href="https://logging.apache.org/log4j/2.x/index.html">\lt_log4j2</a>
+is a modern, high-performance Java logging framework designed as a
+successor to
+\link api_log4j1_er \lt_log4j1\endlink. It provides advanced features
+like asynchronous logging, filtering, and support for custom log levels,
+along with flexible output formatting and routing via appenders (console,
+file, or network, for example). The LTTng-UST project provides an
+\lt_log4j2 appender which creates an LTTng event
+from an emitted Log4j&nbsp;2 logging statement.
+
+Create an \lt_log4j2 event rule with
+lttng_event_rule_log4j2_logging_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+an \lt_log4j2 event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>
+      lttng_event_rule_log4j2_logging_set_name_pattern()
+    <td>
+      lttng_event_rule_log4j2_logging_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-ll "Instrumentation point log level"
+    <td>lttng_event_rule_log4j2_logging_set_log_level_rule()
+    <td>lttng_event_rule_log4j2_logging_get_log_level_rule()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_log4j2_logging_set_filter()
+    <td>lttng_event_rule_log4j2_logging_get_filter()
+</table>
+
+@sa
+    - \ref api_jul_er
+    - \ref api_log4j1_er
+
+@defgroup api_py_er Python logging event rule API
+@ingroup api_er
+
+A <strong><em>Python logging event rule</em></strong> is
+an event rule with the #LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING
+type.
+
+<a href="https://docs.python.org/3/library/logging.html"><code>logging</code></a>
+is a standard Python module that provides a flexible framework for
+emitting log messages from applications. It supports different severity
+levels, configurable formatting, and routing through handlers such as
+console and file output. The LTTng-UST project provides a Python logging
+handler which creates an LTTng event
+from an emitted Python logging statement.
+
+Create a Python logging event rule with
+lttng_event_rule_python_logging_create().
+
+The specific \ref api-er-conds "event rule conditions" accessors of
+a Python logging event rule are:
+
+<table>
+  <tr>
+    <th>Condition
+    <th>Setter
+    <th>Getter
+  <tr>
+    <td>\ref api-er-conds-event-name "Event name"
+    <td>
+      lttng_event_rule_python_logging_set_name_pattern()
+    <td>
+      lttng_event_rule_python_logging_get_name_pattern()
+  <tr>
+    <td>\ref api-er-conds-ll "Instrumentation point log level"
+    <td>lttng_event_rule_python_logging_set_log_level_rule()
+    <td>lttng_event_rule_python_logging_get_log_level_rule()
+  <tr>
+    <td>\ref api-er-conds-filter "Event payload and context filter"
+    <td>lttng_event_rule_python_logging_set_filter()
+    <td>lttng_event_rule_python_logging_get_filter()
+</table>
 
 @defgroup api_ev_expr Event expression API
 @ingroup api_trigger_cond_er_matches
