@@ -30,6 +30,8 @@ struct lttng_log_level_rule;
 /*!
 @brief
     Log level rule type.
+
+Get the type of a log level rule with lttng_log_level_rule_get_type().
 */
 enum lttng_log_level_rule_type {
 	/// Exact match.

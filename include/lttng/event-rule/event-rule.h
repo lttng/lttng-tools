@@ -29,8 +29,12 @@ struct lttng_event_rule;
 
 /*!
 @brief
-    \ref api-er-conds-inst-pt-type "Instrumentation point type condition"
-    of an event rule.
+    Event rule type.
+
+See the
+\ref api-er-conds-inst-pt-type "instrumentation point type" condition.
+
+Get the type of an event rule with lttng_event_rule_get_type().
 */
 enum lttng_event_rule_type {
 	/// Match LTTng kernel tracepoints.
