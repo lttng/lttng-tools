@@ -19,6 +19,7 @@ TESTS = \
 	test_rate_policy \
 	test_kernel_data \
 	test_kernel_probe \
+	test_kprobe_event_rule_event_name \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
@@ -56,6 +57,7 @@ noinst_PROGRAMS = \
 	test_rate_policy \
 	test_kernel_data \
 	test_kernel_probe \
+	test_kprobe_event_rule_event_name \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
@@ -190,6 +192,11 @@ test_unix_socket_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON_GPL) \
 # Kernel probe location api test
 test_kernel_probe_SOURCES = test_kernel_probe.cpp
 test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
+
+# Kernel probe event rule event name test
+test_kprobe_event_rule_event_name_SOURCES = test_kprobe_event_rule_event_name.cpp
+test_kprobe_event_rule_event_name_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Event expression to bytecode test
