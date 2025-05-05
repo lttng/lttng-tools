@@ -7,6 +7,7 @@
 
 #include <common/credentials.hpp>
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
@@ -274,11 +275,49 @@ end:
 	return ret_code;
 }
 
+namespace {
+
+void set_event_rule_event_name_from_location(lttng_event_rule& rule,
+					     const lttng_kernel_probe_location& location)
+{
+	std::string name;
+
+	if (location.type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET) {
+		auto& spec_loc = *lttng::utils::container_of(
+			&location, &lttng_kernel_probe_location_symbol::parent);
+
+		name = spec_loc.symbol_name;
+
+		if (spec_loc.offset > 0) {
+			name += fmt::format("+{:#x}", spec_loc.offset);
+		}
+	} else {
+		LTTNG_ASSERT(location.type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
+
+		auto& spec_loc = *lttng::utils::container_of(
+			&location, &lttng_kernel_probe_location_address::parent);
+
+		name = fmt::format("{:#x}", spec_loc.address);
+	}
+
+	if (lttng_event_rule_kernel_kprobe_set_event_name(&rule, name.c_str()) !=
+	    LTTNG_EVENT_RULE_STATUS_OK) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"lttng_event_rule_kernel_kprobe_set_event_name() failed");
+	}
+}
+
+} /* namespace */
+
 struct lttng_event_rule *
 lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_kernel_kprobe *krule;
+
+	if (!location) {
+		goto end;
+	}
 
 	krule = zmalloc<lttng_event_rule_kernel_kprobe>();
 	if (!krule) {
@@ -300,6 +339,13 @@ lttng_event_rule_kernel_kprobe_create(const struct lttng_kernel_probe_location *
 	krule->parent.mi_serialize = lttng_event_rule_kernel_kprobe_mi_serialize;
 
 	if (kernel_probe_set_location(krule, location)) {
+		lttng_event_rule_destroy(rule);
+		rule = nullptr;
+	}
+
+	try {
+		set_event_rule_event_name_from_location(*rule, *location);
+	} catch (...) {
 		lttng_event_rule_destroy(rule);
 		rule = nullptr;
 	}
