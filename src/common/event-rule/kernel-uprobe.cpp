@@ -7,6 +7,7 @@
 
 #include <common/credentials.hpp>
 #include <common/error.hpp>
+#include <common/exception.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/macros.hpp>
@@ -261,11 +262,48 @@ end:
 	return ret_code;
 }
 
+namespace {
+
+void set_event_rule_event_name_from_location(lttng_event_rule& rule,
+					     const lttng_userspace_probe_location& location)
+{
+	std::string name;
+
+	if (location.type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+		auto& spec_loc = *lttng::utils::container_of(
+			&location, &lttng_userspace_probe_location_function::parent);
+
+		name = fmt::format("elf:{}:{}", spec_loc.binary_path, spec_loc.function_name);
+	} else {
+		LTTNG_ASSERT(location.type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+
+		auto& spec_loc = *lttng::utils::container_of(
+			&location, &lttng_userspace_probe_location_tracepoint::parent);
+
+		name = fmt::format("sdt:{}:{}:{}",
+				   spec_loc.binary_path,
+				   spec_loc.provider_name,
+				   spec_loc.probe_name);
+	}
+
+	if (lttng_event_rule_kernel_uprobe_set_event_name(&rule, name.c_str()) !=
+	    LTTNG_EVENT_RULE_STATUS_OK) {
+		LTTNG_THROW_ALLOCATION_FAILURE_ERROR(
+			"lttng_event_rule_kernel_uprobe_set_event_name() failed");
+	}
+}
+
+} /* namespace */
+
 struct lttng_event_rule *
 lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_event_rule *rule = nullptr;
 	struct lttng_event_rule_kernel_uprobe *urule;
+
+	if (!location) {
+		goto end;
+	}
 
 	urule = zmalloc<lttng_event_rule_kernel_uprobe>();
 	if (!urule) {
@@ -287,6 +325,13 @@ lttng_event_rule_kernel_uprobe_create(const struct lttng_userspace_probe_locatio
 	urule->parent.mi_serialize = lttng_event_rule_kernel_uprobe_mi_serialize;
 
 	if (userspace_probe_set_location(urule, location)) {
+		lttng_event_rule_destroy(rule);
+		rule = nullptr;
+	}
+
+	try {
+		set_event_rule_event_name_from_location(*rule, *location);
+	} catch (...) {
 		lttng_event_rule_destroy(rule);
 		rule = nullptr;
 	}
