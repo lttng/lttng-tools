@@ -73,6 +73,7 @@ SERIAL_TESTS = tools/base-path/test_ust \
 	tools/trace-format/test_trace_format_kernel.py
 
 TESTS = tools/live/test_early_inactive_app.py \
+	tools/live/test_high_latency.py \
 	tools/live/test_miss_short_lived_app.py \
 	tools/live/test_per_application_leaks.py \
 	tools/lttng-ctl/test_liblttng-ctl_abi.py \
