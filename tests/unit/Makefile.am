@@ -20,6 +20,7 @@ TESTS = \
 	test_kernel_data \
 	test_kernel_probe \
 	test_kprobe_event_rule_event_name \
+	test_uprobe_event_rule_event_name \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
@@ -58,6 +59,7 @@ noinst_PROGRAMS = \
 	test_kernel_data \
 	test_kernel_probe \
 	test_kprobe_event_rule_event_name \
+	test_uprobe_event_rule_event_name \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
@@ -197,6 +199,11 @@ test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) 
 # Kernel probe event rule event name test
 test_kprobe_event_rule_event_name_SOURCES = test_kprobe_event_rule_event_name.cpp
 test_kprobe_event_rule_event_name_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
+		      $(top_builddir)/src/vendor/fmt/libfmt.la
+
+# User space probe event rule event name test
+test_uprobe_event_rule_event_name_SOURCES = test_uprobe_event_rule_event_name.cpp
+test_uprobe_event_rule_event_name_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 		      $(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Event expression to bytecode test
