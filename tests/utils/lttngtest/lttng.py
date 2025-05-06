@@ -680,6 +680,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         HUMAN = 1
 
     _MI_NS = "{https://lttng.org/xml/ns/lttng-mi}"
+    _timeout_s = None
 
     def __init__(
         self,
@@ -695,6 +696,17 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
     def _namespaced_mi_element(property):
         # type: (str) -> str
         return LTTngClient._MI_NS + property
+
+    @property
+    def timeout(self):
+        return self._timeout_s
+
+    @timeout.setter
+    def timeout(self, value):
+        if value is None:
+            self._timeout_s = None
+        else:
+            self._timeout_s = int(value)
 
     def _run_cmd(self, command_args, output_format=CommandOutputFormat.MI_XML):
         # type: (str, CommandOutputFormat) -> str
@@ -719,7 +731,7 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=client_env
         )
 
-        out = process.communicate()[0]
+        out = process.communicate(timeout=self.timeout)[0]
 
         if process.returncode != 0:
             decoded_output = out.decode("utf-8")
