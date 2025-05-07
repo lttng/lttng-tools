@@ -93,7 +93,8 @@ enum lttng_event_type {
 	  <dt>Recording event rule
 	  <dd>
 	    Match Linux
-	    a href="https://lwn.net/Articles/499190/">user space probes</a>.</dl>
+	    <a href="https://www.kernel.org/doc/html/latest/trace/uprobetracer.html">user space
+	probes</a>.
 	</dl>
 	*/
 	LTTNG_EVENT_USERSPACE_PROBE = 6,
@@ -1286,8 +1287,8 @@ following ones have their own dedicated accessors:
 
 <dl>
   <dt>
-    Linux uprobe location (when the lttng_event::type member is
-    #LTTNG_EVENT_USERSPACE_PROBE)
+    Linux user space probe location (when the lttng_event::type member
+    is #LTTNG_EVENT_USERSPACE_PROBE)
   <dd>
     - lttng_event_get_userspace_probe_location()
     - lttng_event_set_userspace_probe_location()
@@ -1313,9 +1314,9 @@ satisfies the following constraints:
   documentation of #lttng_event_probe_attr.
 
 - If the lttng_event::type member is #LTTNG_EVENT_USERSPACE_PROBE, then
-  the recording event rule descriptor has a Linux uprobe location
-  (you called lttng_event_set_userspace_probe_location() on it to
-  set it).
+  the recording event rule descriptor has a Linux user space probe
+  location (you called lttng_event_set_userspace_probe_location() on
+  it to set it).
 
 Destroy a recording event rule descriptor with lttng_event_destroy().
 */
@@ -1816,19 +1817,19 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name(struct lttng_event *event
 
 /*!
 @brief
-    Returns the Linux uprobe location of the recording event rule
-    described by \lt_p{event_rule}.
+    Returns the Linux user space probe location of the recording
+    event rule described by \lt_p{event_rule}.
 
 @ingroup api_rer
 
 @param[in] event_rule
     Descriptor of the recording event rule of which to get the
-    Linux uprobe location.
+    Linux user space probe location.
 
 @returns
     @parblock
-    Linux uprobe location of the recording event rule described by
-    \lt_p{event_rule}, or \c NULL if none.
+    Linux user space probe location of the recording event rule
+    described by \lt_p{event_rule}, or \c NULL if none.
 
     The returned location remains valid as long as \lt_p{event_rule}
     exists and you don't modify it.
@@ -1840,7 +1841,7 @@ LTTNG_EXPORT extern int lttng_event_get_exclusion_name(struct lttng_event *event
       #LTTNG_EVENT_USERSPACE_PROBE.
 
 @sa lttng_event_set_userspace_probe_location() --
-    Sets the Linux uprobe location of a recording event rule.
+    Sets the Linux user space probe location of a recording event rule.
 @sa \ref api-rer-conds-inst-pt-type "Instrumentation point type condition".
 */
 LTTNG_EXPORT extern const struct lttng_userspace_probe_location *
@@ -1848,16 +1849,16 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event_rule);
 
 /*!
 @brief
-    Sets the Linux uprobe location of the recording event rule described
-    by \lt_p{event_rule} to \lt_p{location}.
+    Sets the Linux user space probe location of the recording event
+    rule described by \lt_p{event_rule} to \lt_p{location}.
 
 @ingroup api_rer
 
 @param[in] event_rule
     Descriptor of the recording event rule of which to set the
-    Linux uprobe location to \lt_p{location}.
+    Linux user space probe location to \lt_p{location}.
 @param[in] location
-    New Linux uprobe location of \lt_p{event_rule}.
+    New Linux user space probe location of \lt_p{event_rule}.
 
 @returns
     <dl>
@@ -1880,7 +1881,8 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event_rule);
     (its ownership is transfered to \lt_p{event_rule}).
 
 @sa lttng_event_get_userspace_probe_location() --
-    Returns the Linux uprobe location of a recording event rule.
+    Returns the Linux user space probe location of a
+    recording event rule.
 @sa \ref api-rer-conds-inst-pt-type "Instrumentation point type condition".
 */
 LTTNG_EXPORT extern int
