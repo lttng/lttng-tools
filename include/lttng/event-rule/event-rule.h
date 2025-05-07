@@ -37,45 +37,31 @@ See the
 Get the type of an event rule with lttng_event_rule_get_type().
 */
 enum lttng_event_rule_type {
-	/// Match LTTng kernel tracepoints.
+	/// Match \ref api_kernel_tp_er "LTTng kernel tracepoints".
 	LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT = 2,
 
-	/// Match Linux kernel system calls.
+	/// Match \ref api_kernel_syscall_er "Linux kernel system calls".
 	LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL = 0,
 
-	/*!
-	Match Linux
-	<a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobes</a>.
-	*/
+	/// Match \ref api_kprobe_er "Linux kprobes".
 	LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE = 1,
 
-	/*!
-	Match Linux
-	<a href="https://lwn.net/Articles/499190/">user space probes</a>.
-	*/
+	/// Match \ref api_uprobe_er "Linux user space probes".
 	LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE = 3,
 
-	/// Match user space tracepoints.
+	/// Match \ref api_user_tp_er "LTTng user space tracepoints".
 	LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT = 4,
 
-	/// Match \lt_jul (JUL) logging statements.
+	/// Match \link api_jul_er \lt_jul (JUL) logging statements\endlink.
 	LTTNG_EVENT_RULE_TYPE_JUL_LOGGING = 5,
 
-	/*!
-	Match
-	<a href="https://logging.apache.org/log4j/1.x/">\lt_log4j1</a>
-	logging statements.
-	*/
+	/// Match \link api_log4j1_er \lt_log4j1 logging statements\endlink.
 	LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING = 6,
 
-	/*!
-	Match
-	<a href="https://logging.apache.org/log4j/2.x/">\lt_log4j2</a>
-	logging statements.
-	*/
+	/// Match \link api_log4j2_er \lt_log4j2 logging statements\endlink.
 	LTTNG_EVENT_RULE_TYPE_LOG4J2_LOGGING = 8,
 
-	/// Match Python logging statements.
+	/// Match \ref api_py_er "Python logging statements".
 	LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING = 7,
 
 	/// Unknown (error).
