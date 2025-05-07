@@ -191,6 +191,43 @@ root and user session daemons. This makes it possible for both session
 daemons to list the available instrumented applications and their
 \ref api_inst_pt "instrumentation points".
 
+@defgroup api_uprobe_loc Linux user space probe location API
+
+A <strong><em>Linux user space probe location</em></strong> is an object
+which locates a Linux
+<a href="https://www.kernel.org/doc/html/latest/trace/uprobetracer.html">user space probe</a>.
+
+The purpose of such an object is to provide the location of the target
+Linux user space probe when you create:
+
+- A \ref api_rer "Linux user space recording event rule".
+- A \ref api_uprobe_er "Linux user space probe event rule".
+
+The two ways to locate a Linux user space probe are:
+
+<table>
+  <tr>
+    <th>Location type
+    <th>Location enumerator
+    <th>Creation function
+  <tr>
+    <td>By the entry of a user space function within some binary
+    <td>#LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION
+    <td>lttng_userspace_probe_location_function_create()
+  <tr>
+    <td>
+      By a SystemTap Userland Statically Defined Tracing (USDT)
+      probe within some binary
+    <td>#LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT
+    <td>lttng_userspace_probe_location_tracepoint_create()
+</table>
+
+Get the type of a Linux kprobe location with
+lttng_userspace_probe_location_get_type().
+
+Destroy a Linux kprobe location with
+lttng_userspace_probe_location_destroy().
+
 @defgroup api_session Recording session API
 
 A <strong><em>recording session</em></strong> is a stateful dialogue
