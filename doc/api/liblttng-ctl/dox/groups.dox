@@ -1900,7 +1900,7 @@ rule&nbsp;\lt_var{ER}, that is:
 
               <dt>#LTTNG_EVENT_SYSCALL
               <dd>
-                The name of the system call, without any
+                The name of the system call, \em without any
                 <code>sys_</code> prefix, from which LTTng
                 creates&nbsp;\lt_var{E}.
             </dl>
@@ -2105,14 +2105,14 @@ as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
         <dd>
           <code>syscall_entry_<em>NAME</em></code>, where
           <code><em>NAME</em></code> is the name of the system call from
-          which LTTng creates&nbsp;\lt_var{E}, without any
+          which LTTng creates&nbsp;\lt_var{E}, \em without any
           <code>sys_</code> prefix.
 
         <dt>Exit
         <dd>
           <code>syscall_exit_<em>NAME</em></code>, where
           <code><em>NAME</em></code> is the name of the system call from
-          which LTTng creates&nbsp;\lt_var{E}, without any
+          which LTTng creates&nbsp;\lt_var{E}, \em without any
           <code>sys_</code> prefix.
       </dl>
   <tr>
