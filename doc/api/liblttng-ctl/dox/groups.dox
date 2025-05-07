@@ -1794,20 +1794,21 @@ rule&nbsp;\lt_var{ER}, that is:
                 <dt>#LTTNG_EVENT_USERSPACE_PROBE
                 <dd>
                   A Linux
-                  <a href="https://lwn.net/Articles/499190/">uprobe</a>,
+                  <a href="https://www.kernel.org/doc/html/latest/trace/uprobetracer.html">user space probe</a>,
                   that is, a single probe dynamically placed at the
                   entry of a compiled user space application/library
                   function through the kernel.
 
-                  Set and get the location of the uprobe with
+                  Set and get the location of the user space probe with
                   lttng_event_set_userspace_probe_location() and
                   lttng_event_get_userspace_probe_location().
 
                   \link lttng_event::name <code>event_rule.name</code>\endlink
-                  is the name of the created uprobe instrumentation
-                  point (future event name).
+                  is the name of the created user space probe
+                  instrumentation point (future event name).
 
-                  The payload of a Linux uprobe event is empty.
+                  The payload of a Linux user space probe
+                  event is empty.
               </dl>
 
             <dt>#LTTNG_DOMAIN_UST
