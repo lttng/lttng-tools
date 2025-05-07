@@ -70,6 +70,7 @@ headernames := \
 
 $(DX_DOCDIR)/$(PACKAGE).tag: \
 	dox/groups.dox \
+	dox/filter-expr.dox \
 	Doxyfile \
 	style.css \
 	$(addprefix @top_srcdir@/include/lttng/,$(headernames))
