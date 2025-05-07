@@ -1976,16 +1976,11 @@ rule&nbsp;\lt_var{ER}, that is:
           expression \lt_var{EXPR} evaluates to \b true
           when LTTng creates&nbsp;\lt_var{E}.
 
-          This condition is only meaningful when:
-
-          - The \lt_obj_domain containing&nbsp;\lt_var{ER} is
-            #LTTNG_DOMAIN_KERNEL or #LTTNG_DOMAIN_UST: it's always
-            satisfied for the other tracing domains.
-
-          - \link lttng_event::type <code>event_rule.type</code>\endlink
-            is #LTTNG_EVENT_TRACEPOINT or #LTTNG_EVENT_SYSCALL:
-            it's always satisfied for the other
-            \ref api-rer-conds-inst-pt-type "instrumentation point types".
+          This condition is only meaningful when
+          \link lttng_event::type <code>event_rule.type</code>\endlink
+          is #LTTNG_EVENT_TRACEPOINT or #LTTNG_EVENT_SYSCALL:
+          it's always satisfied for the other
+          \ref api-rer-conds-inst-pt-type "instrumentation point types".
 
           Set the event payload and context filter expression of
           \c event_rule when you call
