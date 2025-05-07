@@ -1,0 +1,233 @@
+\lt_var{EXPR} can contain references to the payload fields
+of&nbsp;\lt_var{E} and to the current
+\link #lttng_event_context_type context\endlink fields.
+
+The expected syntax of \lt_var{EXPR} is similar to the syntax
+of a C&nbsp;language conditional expression (an expression
+which an \c if statement can evaluate), but there are a few
+differences:
+
+- A <code><em>NAME</em></code> expression identifies an event
+  payload field named <code><em>NAME</em></code> (a
+  C&nbsp;identifier).
+
+  Use the C&nbsp;language dot and square bracket notations to
+  access nested structure and array/sequence fields. You can
+  only use a constant, positive integer number within square
+  brackets. If the index is out of bounds, then
+  \lt_var{EXPR} is \b false.
+
+  The value of an enumeration field is an integer.
+
+  When a field expression doesn't exist, \lt_var{EXPR} is
+  \b false.
+
+  Examples: <code>my_field</code>, <code>target_cpu</code>,
+  <code>seq[7]</code>, <code>msg.user[1].data[2][17]</code>.
+
+- A <code>$ctx.<em>TYPE</em></code> expression identifies the
+  statically-known context field having the type
+  <code><em>TYPE</em></code> (a C&nbsp;identifier).
+
+  When a field expression doesn't exist, \lt_var{EXPR} is \b
+  false.
+
+  Examples: <code>$ctx.prio</code>,
+  <code>$ctx.preemptible</code>,
+  <code>$ctx.perf:cpu:stalled-cycles-frontend</code>.
+
+- A <code>$app.<em>PROVIDER</em>:<em>TYPE</em></code>
+  expression identifies the application-specific context field
+  having the type <code><em>TYPE</em></code> (a
+  C&nbsp;identifier) from the provider
+  <code><em>PROVIDER</em></code> (a C&nbsp;identifier).
+
+  When a field expression doesn't exist, \lt_var{EXPR} is \b
+  false.
+
+  Example: <code>$app.server:cur_user</code>.
+
+- Compare strings, either string fields or string literals
+  (double-quoted), with the <code>==</code> and
+  <code>!=</code> operators.
+
+  When comparing to a string literal, the <code>*</code>
+  character means “match anything”. To match a literal
+  <code>*</code> character, use <code>\\*</code>.
+
+  Examples: <code>my_field&nbsp;==&nbsp;"user34"</code>,
+  <code>my_field&nbsp;==&nbsp;my_other_field</code>,
+  <code>my_field&nbsp;==&nbsp;"192.168.*"</code>.
+
+- The
+  <a href="https://en.wikipedia.org/wiki/Order_of_operations">precedence table</a>
+  of the operators which are supported in
+  \lt_var{EXPR} is as follows. In this table, the highest
+  precedence is&nbsp;1:
+
+  <table>
+    <tr>
+      <th>Precedence
+      <th>Operator
+      <th>Description
+      <th>Associativity
+    <tr>
+      <td>1
+      <td><code>-</code>
+      <td>Unary minus
+      <td>Right-to-left
+    <tr>
+      <td>1
+      <td><code>+</code>
+      <td>Unary plus
+      <td>Right-to-left
+    <tr>
+      <td>1
+      <td><code>!</code>
+      <td>Logical NOT
+      <td>Right-to-left
+    <tr>
+      <td>1
+      <td><code>~</code>
+      <td>Bitwise NOT
+      <td>Right-to-left
+    <tr>
+      <td>2
+      <td><code>&lt;&lt;</code>
+      <td>Bitwise left shift
+      <td>Left-to-right
+    <tr>
+      <td>2
+      <td><code>&gt;&gt;</code>
+      <td>Bitwise right shift
+      <td>Left-to-right
+    <tr>
+      <td>3
+      <td><code>&amp;</code>
+      <td>Bitwise AND
+      <td>Left-to-right
+    <tr>
+      <td>4
+      <td><code>^</code>
+      <td>Bitwise XOR
+      <td>Left-to-right
+    <tr>
+      <td>5
+      <td><code>|</code>
+      <td>Bitwise OR
+      <td>Left-to-right
+    <tr>
+      <td>6
+      <td><code>&lt;</code>
+      <td>Less than
+      <td>Left-to-right
+    <tr>
+      <td>6
+      <td><code>&lt;=</code>
+      <td>Less than or equal to
+      <td>Left-to-right
+    <tr>
+      <td>6
+      <td><code>&gt;</code>
+      <td>Greater than
+      <td>Left-to-right
+    <tr>
+      <td>6
+      <td><code>&gt;=</code>
+      <td>Greater than or equal to
+      <td>Left-to-right
+    <tr>
+      <td>7
+      <td><code>==</code>
+      <td>Equal to
+      <td>Left-to-right
+    <tr>
+      <td>7
+      <td><code>!=</code>
+      <td>Not equal to
+      <td>Left-to-right
+    <tr>
+      <td>8
+      <td><code>&amp;&amp;</code>
+      <td>Logical AND
+      <td>Left-to-right
+    <tr>
+      <td>9
+      <td><code>||</code>
+      <td>Logical OR
+      <td>Left-to-right
+  </table>
+
+  Parentheses are supported to bypass the default order.
+
+  @attention
+      Unlike the C&nbsp;language, the bitwise AND and OR
+      operators (<code>&amp;</code> and <code>|</code>) in
+      \lt_var{EXPR} take precedence over relational
+      operators (<code>&lt;&lt;</code>, <code>&lt;=</code>,
+      <code>&gt;</code>, <code>&gt;=</code>, <code>==</code>,
+      and <code>!=</code>). This means the expression
+      <code>2&nbsp;&&nbsp;2&nbsp;==&nbsp;2</code>
+      is \b true while the equivalent C&nbsp;expression
+      is \b false.
+
+  The arithmetic operators are :not: supported.
+
+  LTTng first casts all integer constants and fields to signed
+  64-bit integers. The representation of negative integers is
+  two's complement. This means that, for example, the signed
+  8-bit integer field 0xff (-1) becomes 0xffffffffffffffff
+  (still&nbsp;-1) once casted.
+
+  Before a bitwise operator is applied, LTTng casts all its
+  operands to unsigned 64-bit integers, and then casts the
+  result back to a signed 64-bit integer. For the bitwise NOT
+  operator, it's the equivalent of this C&nbsp;expression:
+
+  @code
+  (int64_t) ~((uint64_t) val)
+  @endcode
+
+  For the binary bitwise operators, it's the equivalent of those
+  C&nbsp;expressions:
+
+  @code
+  (int64_t) ((uint64_t) lhs >> (uint64_t) rhs)
+  (int64_t) ((uint64_t) lhs << (uint64_t) rhs)
+  (int64_t) ((uint64_t) lhs & (uint64_t) rhs)
+  (int64_t) ((uint64_t) lhs ^ (uint64_t) rhs)
+  (int64_t) ((uint64_t) lhs | (uint64_t) rhs)
+  @endcode
+
+  If the right-hand side of a bitwise shift operator
+  (<code>&lt;&lt;</code> and <code>&gt;&gt;</code>) is not in
+  the [0,&nbsp;63] range, then \lt_var{EXPR} is \b false.
+
+@note
+    See the \ref api_pais to allow or disallow processes to
+    record LTTng events based on their attributes
+    instead of using equivalent statically-known context
+    fields in \lt_var{EXPR} like <code>$ctx.pid</code>.
+    The former method is much more efficient.
+
+\lt_var{EXPR} examples:
+
+@code{.unparsed}
+msg_id == 23 && size >= 2048
+@endcode
+
+@code{.unparsed}
+$ctx.procname == "lttng*" && (!flag || poel < 34)
+@endcode
+
+@code{.unparsed}
+$app.my_provider:my_context == 17.34e9 || some_enum >= 14
+@endcode
+
+@code{.unparsed}
+$ctx.cpu_id == 2 && filename != "*.log"
+@endcode
+
+@code{.unparsed}
+eax_reg & 0xff7 == 0x240 && x[4] >> 12 <= 0x1234
+@endcode
