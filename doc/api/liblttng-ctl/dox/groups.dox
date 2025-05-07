@@ -1918,7 +1918,7 @@ rule&nbsp;\lt_var{ER}, that is:
             lttng_enable_event_with_exclusions().
 
             Get the event name exclusion patterns of
-            a recording event rule descriptor with
+            \c event_rule with
             lttng_event_get_exclusion_name_count() and
             lttng_event_get_exclusion_name().
 
@@ -1992,7 +1992,7 @@ rule&nbsp;\lt_var{ER}, that is:
           lttng_enable_event_with_exclusions().
 
           Get the event payload and context filter expression of
-          a recording event rule descriptor with
+          \c event_rule descriptor with
           lttng_event_get_filter_expression().
 
           \lt_var{EXPR} can contain references to the payload fields
