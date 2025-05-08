@@ -1403,6 +1403,35 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 	}
 
 	/* Check for feature support */
+	const auto extended = reinterpret_cast<const struct lttng_channel_extended *>(
+		new_channel_attr->attr.extended.ptr);
+
+	if (extended->watchdog_timer_interval.is_set) {
+		if (domain->type != LTTNG_DOMAIN_UST) {
+			WARN_FMT("Watchdog timer is only supported by UST domain: "
+				 "session_name=`{}` channel_name=`{}` domain_type={}",
+				 session->name,
+				 new_channel_attr->name,
+				 domain->type);
+			return LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		}
+
+		switch (domain->buf_type) {
+		case LTTNG_BUFFER_PER_UID:
+			break;
+		default:
+			WARN_FMT(
+				"Userspace domain only support watchdog timer for `user` buffer-ownership: "
+				"session_name=`{}` channel_name=`{}` buffer_ownership=`{}`",
+				session->name,
+				new_channel_attr->name,
+				domain->buf_type == LTTNG_BUFFER_PER_PID	? "process" :
+					domain->buf_type == LTTNG_BUFFER_GLOBAL ? "global" :
+										  "unknown");
+			return LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		}
+	}
+
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -1609,6 +1638,23 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 			nonstd::nullopt;
 	}();
 
+	const auto watchdog_timer_period_us = [&channel_attr]() {
+		std::uint64_t period;
+		const lttng_channel_get_watchdog_timer_interval_status status =
+			lttng_channel_get_watchdog_timer_interval(&channel_attr, &period);
+
+		if (status == LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID) {
+			LTTNG_THROW_ERROR(fmt::format(
+				"Failed to retrieve watchdog timer period from channel: channel_name=`{}`",
+				channel_attr.name));
+		}
+
+		return status == LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK ?
+			decltype(ls::recording_channel_configuration::watchdog_timer_period_us)(
+				period) :
+			nonstd::nullopt;
+	}();
+
 	auto blocking_policy = [&channel_attr]() {
 		std::int64_t timeout_us;
 		const int ret = lttng_channel_get_blocking_timeout(&channel_attr, &timeout_us);
@@ -1724,6 +1770,7 @@ static enum lttng_error_code cmd_enable_channel_internal(ltt_session::locked_ref
 					  read_timer_period_us,
 					  live_timer_period_us,
 					  monitor_timer_period_us,
+					  watchdog_timer_period_us,
 					  std::move(blocking_policy),
 					  trace_file_size_limit_bytes,
 					  trace_file_count_limit);

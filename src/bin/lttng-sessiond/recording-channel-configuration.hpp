@@ -96,6 +96,7 @@ public:
 		const nonstd::optional<timer_period_us>& read_timer_period_us,
 		const nonstd::optional<timer_period_us>& live_timer_period_us,
 		const nonstd::optional<timer_period_us>& monitor_timer_period_us,
+		const nonstd::optional<timer_period_us>& watchdog_timer_period_us,
 		consumption_blocking_policy consumption_blocking_policy,
 		const nonstd::optional<std::uint64_t>& trace_file_size_limit_bytes,
 		const nonstd::optional<unsigned int>& trace_file_count_limit);
@@ -141,6 +142,7 @@ public:
 	const nonstd::optional<timer_period_us> read_timer_period_us;
 	const nonstd::optional<timer_period_us> live_timer_period_us;
 	const nonstd::optional<timer_period_us> monitor_timer_period_us;
+	const nonstd::optional<timer_period_us> watchdog_timer_period_us;
 	const consumption_blocking_policy consumption_blocking_policy_;
 	const nonstd::optional<std::uint64_t> trace_file_size_limit_bytes;
 	const nonstd::optional<unsigned int> trace_file_count_limit;

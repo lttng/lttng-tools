@@ -901,6 +901,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 					unsigned int live_timer_interval,
 					bool is_in_live_session,
 					unsigned int monitor_timer_interval,
+					nonstd::optional<uint64_t> watchdog_timer_interval,
 					int output,
 					int type,
 					uint64_t session_id,
@@ -948,6 +949,12 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.live_timer_interval = live_timer_interval;
 	msg->u.ask_channel.is_live = is_in_live_session;
 	msg->u.ask_channel.monitor_timer_interval = monitor_timer_interval;
+
+	if (watchdog_timer_interval) {
+		LTTNG_OPTIONAL_SET(&msg->u.ask_channel.watchdog_timer_interval,
+				   watchdog_timer_interval.value());
+	}
+
 	msg->u.ask_channel.output = output;
 	msg->u.ask_channel.type = type;
 	msg->u.ask_channel.session_id = session_id;

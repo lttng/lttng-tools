@@ -12,6 +12,7 @@
 #include <common/compat/errno.hpp>
 #include <common/consumer/consumer.hpp>
 
+#include <set>
 #include <stdbool.h>
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -54,7 +55,7 @@ int lttng_ustconsumer_recv_metadata(int sock,
 				    int wait);
 int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
 				       protected_socket& sessiond_metadata_socket,
-				       int consumer_error_socket_fd,
+				       protected_socket& consumer_error_socket,
 				       bool invoked_by_timer,
 				       int wait);
 enum sync_metadata_status lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
@@ -71,6 +72,12 @@ int lttng_ustconsumer_get_sequence_number(struct lttng_consumer_stream *stream, 
 void lttng_ustconsumer_sigbus_handle(void *addr);
 
 uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_t owner_id);
+
+int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel,
+					    std::set<uint32_t>& reclaimed_owner_ids,
+					    size_t& observed_count);
+
+void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -204,7 +211,7 @@ static inline int lttng_ustconsumer_request_metadata(lttng_consumer_channel& cha
 						     __attribute__((unused)),
 						     protected_socket& sessiond_metadata_socket
 						     __attribute__((unused)),
-						     int consumer_error_socket_fd
+						     protected_socket& consumer_error_socket
 						     __attribute__((unused)),
 						     bool invoked_by_timer __attribute__((unused)),
 						     int wait __attribute__((unused)))
@@ -262,6 +269,22 @@ static inline uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t sessi
 								  __attribute__((unused)))
 {
 	return 0;
+}
+
+static inline int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel
+							  __attribute__((unused)),
+							  std::set<uint32_t>& reclaimed_owner_ids
+							  __attribute__((unused))
+							  size_t& observed_count
+							  __attribute__((unused)))
+{
+	return -ENOSYS;
+}
+
+static inline void
+lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel
+					    __attribute__((unused)))
+{
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

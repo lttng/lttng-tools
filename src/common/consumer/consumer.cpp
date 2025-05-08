@@ -377,6 +377,9 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		channel->monitor_timer_task->run(std::chrono::steady_clock::now());
 		consumer_timer_monitor_stop(channel);
 	}
+	if (channel->stall_watchdog_timer_task) {
+		consumer_timer_stall_watchdog_stop(channel);
+	}
 
 	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
@@ -989,6 +992,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 							 enum lttng_event_output output,
 							 uint64_t tracefile_size,
 							 uint64_t tracefile_count,
+							 uint64_t subbuffer_count,
 							 uint64_t session_id_per_pid,
 							 unsigned int monitor,
 							 unsigned int live_timer_interval,
@@ -1023,6 +1027,12 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	channel->relayd_id = relayd_id;
 	channel->tracefile_size = tracefile_size;
 	channel->tracefile_count = tracefile_count;
+
+	/* Only available (and needed) for user space channels. */
+	if (subbuffer_count > 0) {
+		channel->subbuffer_count = subbuffer_count;
+	}
+
 	channel->monitor = monitor;
 	channel->live_timer_interval = live_timer_interval;
 	channel->is_live = is_in_live_session;
@@ -1234,7 +1244,7 @@ restart:
  */
 void lttng_consumer_set_error_sock(struct lttng_consumer_local_data *ctx, int sock)
 {
-	ctx->consumer_error_socket = sock;
+	ctx->consumer_error_socket.fd = sock;
 }
 
 /*
@@ -1249,9 +1259,14 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Send return code to the session daemon.
  * If the socket is not defined, we return 0, it is not a fatal error
  */
-int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_code error_code)
+int lttng_consumer_send_error(protected_socket& consumer_error_socket,
+			      enum lttcomm_return_code error_code)
 {
-	if (consumer_error_socket_fd < 0) {
+	if (consumer_error_socket.fd < 0) {
+		WARN_FMT(
+			"Skipping transmission of error since error socket is negative: error_code=\"{}\" ({})",
+			lttcomm_get_readable_code(error_code),
+			static_cast<int>(error_code));
 		return 0;
 	}
 
@@ -1267,22 +1282,15 @@ int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_
 		lttcomm_get_readable_code(error_code),
 		static_cast<int>(error_code));
 
-	if (consumer_error_socket_fd >= 0) {
-		char bytes_to_send[sizeof(header) + sizeof(payload)];
+	char bytes_to_send[sizeof(header) + sizeof(payload)];
 
-		memcpy(bytes_to_send, &header, sizeof(header));
-		memcpy(bytes_to_send + sizeof(header), &payload, sizeof(payload));
+	memcpy(bytes_to_send, &header, sizeof(header));
+	memcpy(bytes_to_send + sizeof(header), &payload, sizeof(payload));
 
-		return lttcomm_send_unix_sock(
-			consumer_error_socket_fd, bytes_to_send, sizeof(bytes_to_send));
-	} else {
-		WARN_FMT(
-			"Skipping transmission of error since error socket is negative: error_code=\"{}\" ({})",
-			lttcomm_get_readable_code(error_code),
-			static_cast<int>(error_code));
-	}
+	const lttng::pthread::lock_guard socket_lock(consumer_error_socket.lock);
 
-	return 0;
+	return lttcomm_send_unix_sock(
+		consumer_error_socket.fd, bytes_to_send, sizeof(bytes_to_send));
 }
 
 /*
@@ -1412,7 +1420,7 @@ lttng_consumer_create(enum lttng_consumer_type type,
 		goto error;
 	}
 
-	ctx->consumer_error_socket = -1;
+	ctx->consumer_error_socket.fd = -1;
 	ctx->metadata_socket.fd = -1;
 	pthread_mutex_init(&ctx->metadata_socket.lock, nullptr);
 	/* assign the callbacks */
@@ -1529,7 +1537,7 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	destroy_data_stream_ht(data_ht);
 	destroy_metadata_stream_ht(metadata_ht);
 
-	ret = close(ctx->consumer_error_socket);
+	ret = close(ctx->consumer_error_socket.fd);
 	if (ret) {
 		PERROR("close");
 	}

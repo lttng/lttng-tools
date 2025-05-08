@@ -18,7 +18,7 @@ void lttng::consumer::metadata_switch_timer_task::_run(lttng::scheduling::absolu
 	}
 
 	const auto request_ret = lttng_ustconsumer_request_metadata(
-		_channel, _sessiond_metadata_socket, _consumer_error_socket_fd, true, 1);
+		_channel, _sessiond_metadata_socket, _consumer_error_socket, true, 1);
 	if (request_ret < 0) {
 		_channel.switch_timer_error = 1;
 	}

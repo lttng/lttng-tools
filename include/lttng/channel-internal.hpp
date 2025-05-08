@@ -10,11 +10,14 @@
 
 #include <common/error.hpp>
 #include <common/macros.hpp>
+#include <common/optional.hpp>
 
 struct lttng_channel_extended {
 	uint64_t discarded_events;
 	uint64_t lost_packets;
 	uint64_t monitor_timer_interval;
+	/* Only set in UST domain with `user` ownership. */
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
 	int64_t blocking_timeout;
 	/* enum lttng_channel_allocation_policy */
 	uint8_t allocation_policy;
@@ -40,6 +43,8 @@ struct lttng_channel_comm {
 	uint64_t discarded_events;
 	uint64_t lost_packets;
 	uint64_t monitor_timer_interval;
+	/* Only set in UST domain with `user` ownership. */
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
 	int64_t blocking_timeout;
 	/* enum lttng_channel_allocation_policy */
 	uint8_t allocation_policy;

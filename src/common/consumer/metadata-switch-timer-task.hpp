@@ -30,14 +30,14 @@ public:
 	explicit metadata_switch_timer_task(lttng::scheduling::duration_ns period,
 					    lttng_consumer_channel& channel,
 					    protected_socket& sessiond_metadata_socket,
-					    int consumer_error_socket_fd) noexcept :
+					    protected_socket& consumer_error_socket) noexcept :
 		periodic_task(period,
 			      fmt::format("Metadata switch: key={}, session_id={}",
 					  channel.key,
 					  channel.session_id)),
 		_channel(channel),
 		_sessiond_metadata_socket(sessiond_metadata_socket),
-		_consumer_error_socket_fd(consumer_error_socket_fd)
+		_consumer_error_socket(consumer_error_socket)
 	{
 	}
 
@@ -51,7 +51,7 @@ protected:
 private:
 	lttng_consumer_channel& _channel;
 	protected_socket& _sessiond_metadata_socket;
-	const int _consumer_error_socket_fd;
+	protected_socket& _consumer_error_socket;
 };
 } /* namespace consumer */
 } /* namespace lttng */

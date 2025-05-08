@@ -257,7 +257,9 @@ libconsumer_la_SOURCES = \
 	consumer/metadata-switch-timer-task.cpp \
 	consumer/metadata-switch-timer-task.hpp \
 	consumer/monitor-timer-task.cpp \
-	consumer/monitor-timer-task.hpp
+	consumer/monitor-timer-task.hpp \
+	consumer/watchdog-timer-task.cpp \
+	consumer/watchdog-timer-task.hpp
 
 libconsumer_la_LIBADD = \
 	libkernel-consumer.la \

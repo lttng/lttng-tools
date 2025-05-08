@@ -15,6 +15,7 @@
 #include <common/consumer/live-timer-task.hpp>
 #include <common/consumer/metadata-switch-timer-task.hpp>
 #include <common/consumer/monitor-timer-task.hpp>
+#include <common/consumer/watchdog-timer-task.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>
@@ -44,7 +45,7 @@ static int the_channel_monitor_pipe = -1;
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 unsigned int switch_timer_interval_us,
 				 protected_socket& sessiond_metadata_socket,
-				 int consumer_error_socket_fd,
+				 protected_socket& consumer_error_socket,
 				 lttng::scheduling::scheduler& scheduler)
 {
 	LTTNG_ASSERT(channel);
@@ -61,7 +62,7 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				std::chrono::microseconds(switch_timer_interval_us),
 				*channel,
 				sessiond_metadata_socket,
-				consumer_error_socket_fd);
+				consumer_error_socket);
 
 		scheduler.schedule(channel->live_timer_task,
 				   std::chrono::steady_clock::now() +
@@ -177,6 +178,68 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 	/* Cancel the monitor timer task if it is scheduled. */
 	channel->monitor_timer_task->cancel();
 	channel->monitor_timer_task.reset();
+	return 0;
+}
+
+/*
+ * Set the channel's buffer-stall watchdog timer.
+ *
+ * Returns a negative value on error, 0 if a timer was created, and
+ * a positive value if no timer was created (not an error).
+ */
+int consumer_timer_stall_watchdog_start(struct lttng_consumer_channel *channel,
+					protected_socket& consumer_error_socket,
+					unsigned int watchdog_timer_interval_us,
+					lttng::scheduling::scheduler& scheduler)
+{
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->key);
+	LTTNG_ASSERT(!channel->is_deleted);
+	LTTNG_ASSERT(!channel->stall_watchdog_timer_task);
+	LTTNG_ASSERT(channel->subbuffer_count);
+
+	try {
+		/*
+		 * Always create the watchdog timer task even if the timer is
+		 * set to an interval of zero. This allows running the task when
+		 * reaching a quiescent state for the channel, e.g. when the
+		 * associated session is stopped or destroyed.
+		 */
+		channel->stall_watchdog_timer_task =
+			std::make_shared<lttng::consumer::watchdog_timer_task>(
+				std::chrono::microseconds(watchdog_timer_interval_us),
+				*channel,
+				consumer_error_socket);
+		if (watchdog_timer_interval_us != 0) {
+			scheduler.schedule(
+				channel->stall_watchdog_timer_task,
+				std::chrono::steady_clock::now() +
+					std::chrono::microseconds(watchdog_timer_interval_us));
+		}
+
+	} catch (const std::bad_alloc& e) {
+		ERR_FMT("Failed to allocate memory for live timer task: {}: channel_name=`{}`, key={}, session_id={}",
+			e.what(),
+			channel->name,
+			channel->key,
+			channel->session_id);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Stop and delete the channel's watchdog timer.
+ */
+int consumer_timer_stall_watchdog_stop(struct lttng_consumer_channel *channel)
+{
+	LTTNG_ASSERT(channel);
+	LTTNG_ASSERT(channel->stall_watchdog_timer_task);
+
+	/* Cancel the watchdog timer task if it is scheduled. */
+	channel->stall_watchdog_timer_task->cancel();
+	channel->stall_watchdog_timer_task.reset();
 	return 0;
 }
 

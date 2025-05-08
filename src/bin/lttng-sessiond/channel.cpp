@@ -90,6 +90,8 @@ struct lttng_channel *channel_new_default_attr(int dom, enum lttng_buffer_type t
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+			LTTNG_OPTIONAL_SET(&extended_attr->watchdog_timer_interval,
+					   DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER);
 			extended_attr->allocation_policy = DEFAULT_CHANNEL_ALLOCATION_POLICY;
 			break;
 		case LTTNG_BUFFER_PER_PID:
@@ -558,6 +560,7 @@ error:
 struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_channel *uchan)
 {
 	struct lttng_channel *channel = nullptr, *ret = nullptr;
+	const int type = uchan->attr.u.s.type;
 
 	channel = lttng_channel_create_internal();
 	if (!channel) {
@@ -598,9 +601,24 @@ struct lttng_channel *trace_ust_channel_to_lttng_channel(const struct ltt_ust_ch
 	lttng_channel_set_blocking_timeout(channel, uchan->attr.u.s.blocking_timeout);
 	lttng_channel_set_monitor_timer_interval(channel, uchan->monitor_timer_interval);
 
+	if (uchan->watchdog_timer_interval.is_set) {
+		switch (type) {
+		case LTTNG_UST_ABI_CHAN_PER_CPU:
+			/* fall through */
+		case LTTNG_UST_ABI_CHAN_PER_CHANNEL:
+			lttng_channel_set_watchdog_timer_interval(
+				channel, LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval));
+			break;
+		default:
+			ERR_FMT("Watchdog timer is invalid for UST buffer type: buff_type={}",
+				type);
+			goto end;
+		}
+	}
+
 	enum lttng_channel_allocation_policy allocation_policy;
 
-	switch (uchan->attr.u.s.type) {
+	switch (type) {
 	case LTTNG_UST_ABI_CHAN_PER_CPU:
 		allocation_policy = LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU;
 		break;

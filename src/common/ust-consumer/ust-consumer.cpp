@@ -17,6 +17,7 @@
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/consumer.hpp>
+#include <common/consumer/watchdog-timer-task.hpp>
 #include <common/index/index.hpp>
 #include <common/optional.hpp>
 #include <common/pthread-lock.hpp>
@@ -37,6 +38,7 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <pthread.h>
+#include <set>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -109,17 +111,22 @@ static struct lttng_consumer_stream *allocate_stream(int cpu,
 	LTTNG_ASSERT(!channel->is_deleted);
 	LTTNG_ASSERT(ctx);
 
-	stream = consumer_stream_create(channel,
-					channel->key,
-					key,
-					channel->name,
-					channel->relayd_id,
-					channel->session_id,
-					channel->trace_chunk,
-					cpu,
-					&alloc_ret,
-					channel->type,
-					channel->monitor);
+	try {
+		stream = consumer_stream_create(channel,
+						channel->key,
+						key,
+						channel->name,
+						channel->relayd_id,
+						channel->session_id,
+						channel->trace_chunk,
+						cpu,
+						&alloc_ret,
+						channel->type,
+						channel->monitor);
+	} catch (const std::bad_alloc&) {
+		LTTNG_ASSERT(!stream);
+	}
+
 	if (stream == nullptr) {
 		switch (alloc_ret) {
 		case -ENOENT:
@@ -129,7 +136,6 @@ static struct lttng_consumer_stream *allocate_stream(int cpu,
 			 */
 			DBG3("Could not find channel");
 			break;
-		case -ENOMEM:
 		case -EINVAL:
 		default:
 			lttng_consumer_send_error(ctx->consumer_error_socket,
@@ -731,6 +737,8 @@ static int flush_channel(uint64_t chan_key)
 			}
 		}
 	}
+
+	lttng_ustconsumer_quiescent_stalled_channel(*channel);
 
 	/*
 	 * Send one last buffer statistics update to the session daemon. This
@@ -1595,6 +1603,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			(enum lttng_event_output) msg.u.ask_channel.output,
 			msg.u.ask_channel.tracefile_size,
 			msg.u.ask_channel.tracefile_count,
+			msg.u.ask_channel.num_subbuf,
 			msg.u.ask_channel.session_id_per_pid,
 			msg.u.ask_channel.monitor,
 			msg.u.ask_channel.live_timer_interval,
@@ -1698,6 +1707,23 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				ERR("Starting channel monitoring timer failed");
 				goto end_channel_error;
 			}
+
+			if (msg.u.ask_channel.watchdog_timer_interval.is_set) {
+				int stall_watchdog_start_ret = consumer_timer_stall_watchdog_start(
+					channel,
+					ctx->consumer_error_socket,
+					LTTNG_OPTIONAL_GET(
+						msg.u.ask_channel.watchdog_timer_interval),
+					ctx->timer_task_scheduler);
+
+				if (stall_watchdog_start_ret < 0) {
+					ERR("Failed to start buffer-stall watchdog timer of channel: "
+					    "session_id=%" PRIu64 ", channel_name=`%s`",
+					    msg.u.ask_channel.session_id,
+					    msg.u.ask_channel.name);
+					goto end_channel_error;
+				}
+			}
 		}
 
 		health_code_update();
@@ -1723,6 +1749,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			if (channel->monitor_timer_task) {
 				consumer_timer_monitor_stop(channel);
 			}
+			if (channel->stall_watchdog_timer_task) {
+				consumer_timer_stall_watchdog_stop(channel);
+			}
+
 			goto end_channel_error;
 		}
 
@@ -3245,7 +3275,7 @@ error:
  */
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 {
-	int ret;
+	int err;
 
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(stream->ustream);
@@ -3254,8 +3284,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 	DBG("UST consumer checking data pending");
 
 	if (stream->endpoint_status != CONSUMER_ENDPOINT_ACTIVE) {
-		ret = 0;
-		goto end;
+		return 0;
 	}
 
 	if (stream->chan->type == CONSUMER_CHANNEL_TYPE_METADATA) {
@@ -3284,28 +3313,38 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		LTTNG_ASSERT(((int64_t) (contiguous - pushed)) >= 0);
 		if ((contiguous != pushed) ||
 		    (((int64_t) contiguous - pushed) > 0 || contiguous == 0)) {
-			ret = 1; /* Data is pending */
-			goto end;
+			return 1; /* Data is pending */
 		}
 	} else {
-		ret = lttng_ust_ctl_get_next_subbuf(stream->ustream);
-		if (ret == 0) {
+		err = lttng_ust_ctl_get_next_subbuf(stream->ustream);
+		if (err == 0) {
 			/*
 			 * There is still data so let's put back this
 			 * subbuffer.
 			 */
-			ret = lttng_ust_ctl_put_subbuf(stream->ustream);
-			LTTNG_ASSERT(ret == 0);
-			ret = 1; /* Data is pending */
-			goto end;
+			err = lttng_ust_ctl_put_subbuf(stream->ustream);
+			LTTNG_ASSERT(err == 0);
+			return 1; /* Data is pending */
+		}
+
+		/* Check for pending unreadable data. */
+		err = lttng_ustconsumer_sample_snapshot_positions(stream);
+		if (err == 0) {
+			unsigned long reserve_pos, consume_pos;
+			err = lttng_ustconsumer_get_produced_snapshot(stream, &reserve_pos);
+			if (err == 0) {
+				err = lttng_ustconsumer_get_consumed_snapshot(stream, &consume_pos);
+				if (err == 0) {
+					if (reserve_pos != consume_pos) {
+						return 1; /* Unreadable data is pending. */
+					}
+				}
+			}
 		}
 	}
 
 	/* Data is NOT pending so ready to be read. */
-	ret = 0;
-
-end:
-	return ret;
+	return 0;
 }
 
 /*
@@ -3399,7 +3438,7 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
  */
 int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
 				       protected_socket& sessiond_metadata_socket,
-				       int consumer_error_socket_fd,
+				       protected_socket& consumer_error_socket,
 				       bool invoked_by_timer,
 				       int wait)
 {
@@ -3460,8 +3499,7 @@ int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
 	ret = lttcomm_recv_unix_sock(sessiond_metadata_socket.fd, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
 		DBG("Consumer received unexpected message size %d (expects %zu)", ret, sizeof(msg));
-		lttng_consumer_send_error(consumer_error_socket_fd,
-					  LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+		lttng_consumer_send_error(consumer_error_socket, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		/*
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
@@ -3545,15 +3583,13 @@ void lttng_ustconsumer_sigbus_handle(void *addr)
 	lttng_ust_ctl_sigbus_handle(addr);
 }
 
-/*
- * Return the number of pending reclamations.
- */
+/* Return the number of pending reclamations. */
 uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_t owner_id)
 {
 	const auto ht = the_consumer_data.channels_by_session_id_ht;
 	const lttng::pthread::lock_guard consumer_lock(the_consumer_data.lock);
 
-	uint32_t pending_reclamations = 0;
+	auto pending_reclamations = 0U;
 
 	for (auto *channel : lttng::urcu::lfht_filtered_iteration_adapter<
 		     lttng_consumer_channel,
@@ -3579,4 +3615,466 @@ uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_
 	}
 
 	return pending_reclamations;
+}
+
+static bool is_subbuf_state_stalled(const struct stream_subbuffer_transaction_state& old_state,
+				    const struct stream_subbuffer_transaction_state& new_state)
+{
+	if (old_state.owner_id != new_state.owner_id) {
+		return false;
+	}
+
+	if (old_state.hot_commit_count != new_state.hot_commit_count) {
+		return false;
+	}
+
+	if (old_state.cold_commit_count != new_state.cold_commit_count) {
+		return false;
+	}
+
+	return true;
+}
+
+static int take_stream_stall_snapshot(struct lttng_consumer_stream& stream,
+				      std::set<uint32_t>& observed_owner_ids)
+{
+	int err;
+
+	err = lttng_ustconsumer_sample_snapshot_positions(&stream);
+	if ((err < 0) && (err != -EAGAIN)) {
+		ERR_FMT("Failed to snapshot positions of stream: stream_name=`{}`, stream_key={}, error={}",
+			stream.name,
+			stream.key,
+			-err);
+		return err;
+	}
+
+	unsigned long consumed_pos;
+
+	err = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
+	if (err) {
+		ERR_FMT("Failed to get consumed position of stream: stream_name=`{}`, stream_key={}, error={}",
+			stream.name,
+			stream.key,
+			-err);
+		return err;
+	}
+
+	unsigned long produced_pos;
+
+	err = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
+	if (err) {
+		ERR_FMT("Failed to get produced position of stream: stream_name=`{}`, stream_key={}, error={}",
+			stream.name,
+			stream.key,
+			-err);
+		return err;
+	}
+
+	struct lttng_ust_ctl_subbuf_state *state;
+
+	err = lttng_ust_ctl_poll_state_create(stream.ustream, consumed_pos, produced_pos, &state);
+
+	if (err) {
+		ERR_FMT("Failed to create polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+			stream.name,
+			stream.key,
+			-err);
+		return err;
+	}
+
+	while (1) {
+		err = lttng_ust_ctl_poll_state_next(state);
+
+		if (err == 0) {
+			break;
+		}
+
+		if (err < 0) {
+			ERR_FMT("Failed to poll next state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
+			return err;
+		}
+
+		struct stream_subbuffer_transaction_state new_state {};
+
+		err = lttng_ust_ctl_poll_state_owner(state, &new_state.owner_id);
+
+		if (err) {
+			ERR_FMT("Failed to poll sub-buffer owner state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
+			return err;
+		}
+
+		/*
+		 * If UNSET, skip the sub-buffer because we don't want to check
+		 * for stalled when no producers is being present.
+		 *
+		 * If CONSUMER, then we are the owner and we assume we can never
+		 * stall. This can happen if we are fixing or flushing the
+		 * sub-bufffer.
+		 */
+		if ((new_state.owner_id == LTTNG_UST_ABI_OWNER_ID_UNSET) ||
+		    (new_state.owner_id == LTTNG_UST_ABI_OWNER_ID_CONSUMER)) {
+			continue;
+		}
+
+		size_t idx;
+
+		err = lttng_ust_ctl_poll_state_index(state, &idx);
+
+		if (err) {
+			ERR_FMT("Failed to poll sub-buffer index state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+				stream.name,
+				stream.key,
+				-err);
+			return err;
+		}
+
+		if (idx < stream.subbuffer_transaction_states.size()) {
+			err = lttng_ust_ctl_poll_state_cc_hot(state, &new_state.hot_commit_count);
+
+			if (err) {
+				ERR_FMT("Failed to poll sub-buffer hot commit counter state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+					stream.name,
+					stream.key,
+					-err);
+				return err;
+			}
+
+			err = lttng_ust_ctl_poll_state_cc_cold(state, &new_state.cold_commit_count);
+
+			if (err) {
+				ERR_FMT("Failed to poll sub-buffer cold commit counter state of polling object for stream: stream_name=`{}`, stream_key={}, error={}",
+					stream.name,
+					stream.key - err);
+				return err;
+			}
+
+			if (is_subbuf_state_stalled(stream.subbuffer_transaction_states[idx],
+						    new_state)) {
+				WARN_FMT(
+					"Possible stalled sub-buffer in stream: stream_name=`{}`, stream_key={}, subbuffer_index={}, subbuffer_owner={}, subbuffer_hot={}, subbuffer_cold={}",
+					stream.name,
+					stream.key,
+					idx,
+					new_state.owner_id,
+					new_state.hot_commit_count,
+					new_state.cold_commit_count);
+			}
+
+			stream.subbuffer_transaction_states[idx] = new_state;
+		} else {
+			ERR_FMT("Invalid sub-buffer state index provided by ust-ctl: stream_name=`{}`, stream_key={}, index={}, expected_max_index={}",
+				stream.name,
+				stream.key,
+				idx,
+				stream.subbuffer_transaction_states.size());
+		}
+
+		observed_owner_ids.insert(new_state.owner_id);
+	}
+
+	return 0;
+}
+
+static int take_channel_stall_snapshot(struct lttng_consumer_channel *channel,
+				       std::set<uint32_t>& observed_owner_ids)
+{
+	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
+
+	const lttng::urcu::read_lock_guard read_lock;
+	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_stream,
+		     decltype(lttng_consumer_stream::node_channel_id),
+		     &lttng_consumer_stream::node_channel_id,
+		     std::uint64_t>(*ht->ht,
+				    &channel->key,
+				    ht->hash_fct(&channel->key, lttng_ht_seed),
+				    ht->match_fct)) {
+		const lttng::pthread::lock_guard consumer_lock(stream->lock);
+
+		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+			continue;
+		}
+
+		if (stream->metadata_flag) {
+			continue;
+		}
+
+		int err = take_stream_stall_snapshot(*stream, observed_owner_ids);
+
+		if (err != 0) {
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static int fixup_stalled_stream(struct lttng_consumer_stream& stream, std::set<uint32_t>& stalled)
+{
+	LTTNG_ASSERT(!stream.metadata_flag);
+
+	int err;
+
+	err = lttng_ustconsumer_sample_snapshot_positions(&stream);
+	if ((err < 0) && (err != -EAGAIN)) {
+		if (err != -EAGAIN) {
+			ERR_FMT("Taking UST snapshot: {}", -err);
+		}
+		return err;
+	}
+
+	unsigned long consumed_pos;
+
+	err = lttng_ustconsumer_get_consumed_snapshot(&stream, &consumed_pos);
+	if (err) {
+		ERR_FMT("Failed to get consumed position of stream: {}", stream.name);
+		return err;
+	}
+
+	unsigned long produced_pos;
+
+	err = lttng_ustconsumer_get_produced_snapshot(&stream, &produced_pos);
+	if (err) {
+		ERR_FMT("Failed to get produced position of stream: {}", stream.name);
+		return err;
+	}
+
+	std::vector<uint32_t> stalled_array(stalled.size());
+
+	std::copy(stalled.begin(), stalled.end(), stalled_array.begin());
+
+	err = lttng_ust_ctl_fixup_stalled_stream(stream.ustream,
+						 consumed_pos,
+						 produced_pos,
+						 stalled_array.data(),
+						 stalled_array.size());
+
+	/*
+	 * If positive, this gives us the number of sub-buffer channel that
+	 * failed to be fixup. This is not a fatal error and we can retry the
+	 * operation later.
+	 *
+	 * For negative value, there was an unknown error, e.g. invalid
+	 * arguments or un-mapped shared memory.
+	 */
+	if (err > 0) {
+		WARN_FMT(
+			"Failed to fixup {} stalled sub-buffer{} in stream: stream_name=`{}` stream_key={}",
+			err,
+			err > 1 ? "s" : "",
+			stream.name,
+			stream.key);
+		return err;
+	} else if (err < 0) {
+		ERR_FMT("Unknown error while fixing stream: stream_name=`{}` stream_key={} error={}",
+			stream.name,
+			stream.key,
+			-err);
+		return err;
+	}
+
+	return 0;
+}
+
+static int fixup_stalled_channel(struct lttng_consumer_channel *channel,
+				 std::set<uint32_t>& stalled)
+{
+	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
+	bool success = true;
+
+	const lttng::urcu::read_lock_guard read_lock;
+	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_stream,
+		     decltype(lttng_consumer_stream::node_channel_id),
+		     &lttng_consumer_stream::node_channel_id,
+		     std::uint64_t>(*ht->ht,
+				    &channel->key,
+				    ht->hash_fct(&channel->key, lttng_ht_seed),
+				    ht->match_fct)) {
+		const lttng::pthread::lock_guard consumer_lock(stream->lock);
+		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+			continue;
+		}
+
+		if (stream->metadata_flag) {
+			continue;
+		}
+
+		int err = fixup_stalled_stream(*stream, stalled);
+
+		if (err != 0) {
+			success = false;
+		}
+	}
+
+	return success;
+}
+
+int lttng_ustconsumer_fixup_stalled_channel(struct lttng_consumer_channel *channel,
+					    std::set<uint32_t>& reclaimed_owner_ids,
+					    size_t& observed_count)
+{
+	/*
+	 * The fixup require to know the number of sub-buffer in the channel.
+	 *
+	 * For now, only UID userspace channels need to be fixup.
+	 */
+	LTTNG_ASSERT(channel->subbuffer_count.has_value());
+
+	/*
+	 * Copy the pending reclamations. We will remove the copied element
+	 * later if all stalled buffers have been resolved.
+	 */
+	std::set<uint32_t> owner_ids_ready_for_reclamation;
+	{
+		const std::lock_guard<std::mutex> channel_lock(
+			channel->owners_pending_reclamation_lock);
+		std::copy(channel->owners_pending_reclamation.begin(),
+			  channel->owners_pending_reclamation.end(),
+			  std::inserter(owner_ids_ready_for_reclamation,
+					owner_ids_ready_for_reclamation.begin()));
+	}
+
+	std::set<uint32_t> observed_owner_ids{};
+
+	/*
+	 * The goal here is to list the owner-ids observed across all streams of
+	 * the channel. It also updates the last seen state for individual
+	 * sub-buffers of each stream.
+	 *
+	 * The observed owner-ids are then passed to UST-ctl for the fixup.
+	 */
+	if (take_channel_stall_snapshot(channel, observed_owner_ids) != 0) {
+		return -1;
+	}
+
+	DBG_FMT("Observed {} owners in channel {}", observed_owner_ids.size(), channel->name);
+
+	observed_count = observed_owner_ids.size();
+
+	/*
+	 * Set of stalled owner-ids, that is IDs that were observed in the
+	 * sub-buffers and that are ready for reclamation.
+	 *
+	 * We know that they are stalled because they are ready for reclamation
+	 * (dead), yet they can be seen in memory.
+	 */
+	std::set<uint32_t> stalled;
+
+	std::set_intersection(owner_ids_ready_for_reclamation.begin(),
+			      owner_ids_ready_for_reclamation.end(),
+			      observed_owner_ids.begin(),
+			      observed_owner_ids.end(),
+			      std::inserter(stalled, std::begin(stalled)));
+
+	/*
+	 * One might find it to be an optimization to not call
+	 * `fixup_stall_channel` if `stalled` has a size of zero. However, it is
+	 * possible to have stalled buffers with UNSET owners. Thus, always call
+	 * this function so that `lttng_ust_ctl_fixup_stalled_stream` gets
+	 * called for every stream of the channel.
+	 */
+	const bool success = fixup_stalled_channel(channel, stalled);
+
+	/* If the channel was successfully fixup, that is no sub-buffer of every
+	 * streams is not stalled with one of the owner IDs in `stalled`, then
+	 * the set of IDs to reclaim is the set of IDs ready for
+	 * reclamation. Otherwise, it is the difference between the set of owner
+	 * IDs ready to be reclaimed and the set of potentially stalled owner
+	 * IDs.
+	 */
+	if (success) {
+		reclaimed_owner_ids = std::move(owner_ids_ready_for_reclamation);
+	} else {
+		/*
+		 * reclaimed_owner_ids = owner_ids_ready_for_reclamation - stalled
+		 */
+		std::set_difference(owner_ids_ready_for_reclamation.begin(),
+				    owner_ids_ready_for_reclamation.end(),
+				    stalled.begin(),
+				    stalled.end(),
+				    std::inserter(reclaimed_owner_ids,
+						  std::begin(reclaimed_owner_ids)));
+	}
+
+	/* Remove the owner_ids_ready_for_reclamation from the owners set */
+	{
+		const std::lock_guard<std::mutex> channel_lock(
+			channel->owners_pending_reclamation_lock);
+		for (auto owner : reclaimed_owner_ids) {
+			channel->owners_pending_reclamation.erase(owner);
+		}
+	}
+
+	return 0;
+}
+
+void lttng_ustconsumer_quiescent_stalled_channel(struct lttng_consumer_channel& channel)
+{
+	const auto stall_watchdog = channel.stall_watchdog_timer_task;
+
+	if (!stall_watchdog) {
+		return;
+	}
+
+	const auto watchdog =
+		reinterpret_cast<lttng::consumer::watchdog_timer_task *>(stall_watchdog.get());
+
+	LTTNG_ASSERT(channel.subbuffer_count);
+
+	/*
+	 * Loop until all sub-buffer are fixed.
+	 *
+	 * We limit the number of loops to the number of
+	 * sub-buffers. There is no real relation here except that the
+	 * number of turn to fixup can be proportional to the number of
+	 * sub-buffers, although it is not guaranteed that everything
+	 * will be fixed within that number of turn.
+	 *
+	 * In the worst case, all sub-buffers are expected to be
+	 * fixed-up after `subbuffer_count` attempts. However, in the
+	 * unlikely case that a "stall" case isn't handled by the
+	 * recovery algorithm, an error is logged.
+	 */
+	ssize_t observed_owners = 0;
+	for (size_t i = 0; i < channel.subbuffer_count.value(); ++i) {
+		observed_owners = watchdog->run();
+
+		if (observed_owners == 0) {
+			return;
+		}
+
+		if (observed_owners == -1) {
+			ERR_FMT("Error while trying to reach quiescent state: "
+				"channel_name=`{}`, channel_key={}, session_id={}",
+				channel.name,
+				channel.key,
+				channel.session_id);
+
+			(void) poll(nullptr, 0, 10);
+		} else {
+			WARN_FMT(
+				"Owners found in streams while trying to reach quiescent state: "
+				"channel_name=`{}`, channel_key={}, session_id={}, observed_owners={}",
+				channel.name,
+				channel.key,
+				channel.session_id,
+				observed_owners);
+		}
+	}
+
+	ERR_FMT("Owners found in streams while trying to reach quiescent state after exceed number of attempts: "
+		"channel_name=`{}`, channel_key={}, session_id={}, observed_owners={}, max_attempts={}",
+		channel.name,
+		channel.key,
+		channel.session_id,
+		observed_owners,
+		channel.subbuffer_count.value());
 }

@@ -697,6 +697,8 @@ struct lttcomm_consumer_msg {
 			unsigned int live_timer_interval; /* usec */
 			uint8_t is_live; /* is part of a live session */
 			uint32_t monitor_timer_interval; /* usec */
+			LTTNG_OPTIONAL_COMM(uint64_t)
+			LTTNG_PACKED watchdog_timer_interval; /* usec */
 			int32_t output; /* splice, mmap */
 			int32_t type; /* metadata or per_cpu */
 			uint64_t session_id; /* Tracing session id */

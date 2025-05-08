@@ -17,8 +17,9 @@
 
 #include <lttng/lttng.h>
 
+#include <vendor/optional.hpp>
+
 #include <urcu/ref.h>
-#include <vector>
 
 struct snapshot;
 struct snapshot_output;
@@ -245,6 +246,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 					unsigned int live_timer_interval,
 					bool is_in_live_session,
 					unsigned int monitor_timer_interval,
+					nonstd::optional<uint64_t> watchdog_timer_interval,
 					int output,
 					int type,
 					uint64_t session_id,

@@ -33,6 +33,14 @@ enum lttng_channel_allocation_policy {
 	LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CHANNEL = 1,
 };
 
+enum lttng_channel_get_watchdog_timer_interval_status {
+	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK = 0,
+	/* Invalid parameters provided. */
+	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID = 1,
+	/* Information is unset. */
+	LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET = 2,
+};
+
 /*
  * Tracer channel attributes. For both kernel and user-space.
  *
@@ -215,6 +223,11 @@ following ones have their own dedicated accessors:
   <dd>
     - lttng_channel_get_monitor_timer_interval()
     - lttng_channel_set_monitor_timer_interval()
+
+  <dt>\ref api-channel-watchdog-timer "Watchdog timer" period
+  <dd>
+    - lttng_channel_get_watchdog_timer_interval()
+    - lttng_channel_set_watchdog_timer_interval()
 
   <dt>\ref api-channel-blocking-timeout "Blocking timeout"
   <dd>
@@ -624,6 +637,78 @@ lttng_channel_get_monitor_timer_interval(const struct lttng_channel *channel, ui
 */
 LTTNG_EXPORT extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *channel,
 								 uint64_t period);
+
+/*!
+@brief
+    Sets \lt_p{*period} to the
+    \ref api-channel-watchdog-timer "watchdog timer" period (µs)
+    property of the \lt_obj_channel summary \lt_p{channel}.
+
+@ingroup api_channel
+
+@param[in] channel
+    Summary of the channel of which to get the watchdog timer period.
+@param[out] period
+    <strong>On success</strong>, this function sets \lt_p{*period} to
+    the watchdog timer period (µs) property of \lt_p{channel}.
+
+@returns
+    <dl>
+      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK
+      <dd>Success.
+
+      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID
+      <dd>Invalid parameters provided.
+
+      <dt>LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET
+      <dd>Watchdog timer is unset.
+    </dl>
+
+@pre
+    @lt_pre_not_null{channel}
+    @lt_pre_not_null{period}
+
+@sa lttng_channel_get_watchdog_timer_interval() --
+    Returns the watchdog timer period property of a channel summary.
+*/
+LTTNG_EXPORT extern enum lttng_channel_get_watchdog_timer_interval_status
+lttng_channel_get_watchdog_timer_interval(const struct lttng_channel *channel, uint64_t *period);
+
+/*!
+@brief
+    Sets the \ref api-channel-watchdog-timer "watchdog timer" period
+    property of the channel summary \lt_p{channel} to
+    \lt_p{period}&nbsp;µs.
+
+@ingroup api_channel
+
+@param[in] channel
+    Channel summary of which to set the watchdog timer period
+    to \lt_p{period}&nbsp;µs.
+@param[in] period
+    Watchdog timer period property to set.
+
+@returns
+    <dl>
+      <dt>0
+      <dd>Success.
+
+      <dt>-#LTTNG_ERR_INVALID (negative)
+      <dd>Unsatisfied precondition.
+    </dl>
+
+@pre
+    @lt_pre_not_null{channel}
+    - \lt_p{period}&nbsp;≥&nbsp;1
+    - The \lt_obj_domain of \lt_p{channel} is #LTTNG_DOMAIN_UST.
+    - The \ref api-channel-buf-ownership-model "buffer ownership model"
+      of \lt_p{channel} is #LTTNG_BUFFER_PER_UID.
+
+@sa lttng_channel_set_watchdog_timer_interval() --
+    Sets the watchdog timer period property of a channel summary.
+*/
+LTTNG_EXPORT extern int lttng_channel_set_watchdog_timer_interval(struct lttng_channel *channel,
+								  uint64_t period);
 
 /*!
 @brief

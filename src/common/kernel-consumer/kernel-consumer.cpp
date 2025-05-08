@@ -574,6 +574,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 							msg.u.channel.tracefile_size,
 							msg.u.channel.tracefile_count,
 							0,
+							0,
 							msg.u.channel.monitor,
 							msg.u.channel.live_timer_interval,
 							msg.u.channel.is_live,
@@ -733,20 +734,24 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		new_stream = consumer_stream_create(channel,
-						    channel->key,
-						    fd,
-						    channel->name,
-						    channel->relayd_id,
-						    channel->session_id,
-						    channel->trace_chunk,
-						    msg.u.stream.cpu,
-						    &alloc_ret,
-						    channel->type,
-						    channel->monitor);
+		pthread_mutex_lock(&channel->lock);
+		try {
+			new_stream = consumer_stream_create(channel,
+							    channel->key,
+							    fd,
+							    channel->name,
+							    channel->relayd_id,
+							    channel->session_id,
+							    channel->trace_chunk,
+							    msg.u.stream.cpu,
+							    &alloc_ret,
+							    channel->type,
+							    channel->monitor);
+		} catch (const std::bad_alloc&) {
+			LTTNG_ASSERT(!new_stream);
+		}
 		if (new_stream == nullptr) {
 			switch (alloc_ret) {
-			case -ENOMEM:
 			case -EINVAL:
 			default:
 				lttng_consumer_send_error(ctx->consumer_error_socket,

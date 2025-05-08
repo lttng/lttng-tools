@@ -355,6 +355,9 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		return nullptr;
 	}
 
+	const auto extended =
+		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+
 	luc->domain = domain;
 
 	/* Copy UST channel attributes */
@@ -364,18 +367,27 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
-	luc->monitor_timer_interval =
-		((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval;
-	luc->attr.u.s.blocking_timeout =
-		((struct lttng_channel_extended *) chan->attr.extended.ptr)->blocking_timeout;
+	luc->monitor_timer_interval = extended->monitor_timer_interval;
 
-	const auto extended =
-		static_cast<const struct lttng_channel_extended *>(chan->attr.extended.ptr);
+	if (extended->watchdog_timer_interval.is_set) {
+		switch (domain) {
+		case LTTNG_DOMAIN_UST: /* Fallthrough */
+		case LTTNG_DOMAIN_JUL: /* Fallthrough */
+		case LTTNG_DOMAIN_LOG4J: /* Fallthrough */
+		case LTTNG_DOMAIN_PYTHON: /* Fallthrough */
+		case LTTNG_DOMAIN_LOG4J2:
+			LTTNG_OPTIONAL_SET(&luc->watchdog_timer_interval,
+					   LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval));
+			break;
+		default:
+			ERR_FMT("Watchdog timer only valid for UST, JUL, LOG4J, PYTHON and LOG4J2 domains: domain={}",
+				static_cast<int>(domain));
+			goto error;
+		}
+	}
+	luc->attr.u.s.blocking_timeout = extended->blocking_timeout;
 
-	const auto allocation_policy =
-		static_cast<enum lttng_channel_allocation_policy>(extended->allocation_policy);
-
-	switch (allocation_policy) {
+	switch (extended->allocation_policy) {
 	case LTTNG_CHANNEL_ALLOCATION_POLICY_PER_CPU:
 		luc->attr.u.s.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 		break;

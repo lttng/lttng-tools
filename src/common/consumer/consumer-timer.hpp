@@ -17,7 +17,7 @@
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 unsigned int switch_timer_interval_us,
 				 protected_socket& sessiond_metadata_socket,
-				 int consumer_error_socket_fd,
+				 protected_socket& consumer_error_socket,
 				 lttng::scheduling::scheduler& scheduler);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
@@ -28,6 +28,12 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 				 unsigned int monitor_timer_interval_us,
 				 lttng::scheduling::scheduler& scheduler);
 int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
+
+int consumer_timer_stall_watchdog_start(struct lttng_consumer_channel *channel,
+					protected_socket& consumer_error_socket,
+					unsigned int watchdog_timer_interval_us,
+					lttng::scheduling::scheduler& scheduler);
+int consumer_timer_stall_watchdog_stop(struct lttng_consumer_channel *channel);
 
 int consumer_timer_thread_get_channel_monitor_pipe();
 int consumer_timer_thread_set_channel_monitor_pipe(int fd);

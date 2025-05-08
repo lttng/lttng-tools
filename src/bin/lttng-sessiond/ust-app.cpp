@@ -2609,6 +2609,14 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan, struct ltt_ust_
 	ua_chan->attr.switch_timer_interval = uchan->attr.switch_timer_interval;
 	ua_chan->attr.read_timer_interval = uchan->attr.read_timer_interval;
 	ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
+
+	if (uchan->watchdog_timer_interval.is_set) {
+		LTTNG_OPTIONAL_SET(&ua_chan->watchdog_timer_interval,
+				   LTTNG_OPTIONAL_GET(uchan->watchdog_timer_interval));
+	} else {
+		LTTNG_OPTIONAL_UNSET(&ua_chan->watchdog_timer_interval);
+	}
+
 	ua_chan->attr.output = (lttng_ust_abi_output) uchan->attr.output;
 	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
 	ua_chan->attr.type = static_cast<enum lttng_ust_abi_chan_type>(uchan->attr.u.s.type);

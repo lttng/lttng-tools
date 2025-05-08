@@ -16,6 +16,7 @@
 
 #include <common/format.hpp>
 #include <common/index-allocator.hpp>
+#include <common/optional.hpp>
 #include <common/reference.hpp>
 #include <common/scope-exit.hpp>
 #include <common/uuid.hpp>
@@ -181,6 +182,7 @@ struct ust_app_channel {
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
 	uint64_t monitor_timer_interval;
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */

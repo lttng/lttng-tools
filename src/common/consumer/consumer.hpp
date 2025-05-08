@@ -36,6 +36,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <urcu/list.h>
+#include <vector>
 
 struct lttng_consumer_local_data;
 
@@ -156,6 +157,20 @@ struct stream_list {
 /* Stub. */
 struct consumer_metadata_cache;
 
+/*
+ * The owner_id with the value `LTTNG_UST_ABI_OWNER_ID_UNSET` (0), which is
+ * never used to compare with the last seen state. Thus, it is fine to use it as
+ * the first seen value.
+ */
+struct stream_subbuffer_transaction_state {
+	uint32_t owner_id = 0; /*
+				* FIXME:ust-abi-internal This should be
+				* LTTNG_UST_ABI_OWNER_ID_UNSET
+				*/
+	unsigned long hot_commit_count = 0;
+	unsigned long cold_commit_count = 0;
+};
+
 struct lttng_consumer_channel {
 	/*
 	 * Iterate over the streams of this channel. Note that this utility provides the channel's
@@ -268,6 +283,12 @@ struct lttng_consumer_channel {
 	/* For channel monitoring timer. */
 	lttng::scheduling::periodic_task::sptr monitor_timer_task;
 
+	/*
+	 * For channel buffer-stall monitoring timer (only used by user space
+	 * channels) when `subbuffer_count` is not zero.
+	 */
+	lttng::scheduling::periodic_task::sptr stall_watchdog_timer_task;
+
 	/* On-disk circular buffer */
 	uint64_t tracefile_size = 0;
 	uint64_t tracefile_count = 0;
@@ -321,6 +342,8 @@ struct lttng_consumer_channel {
 
 	bool streams_sent_to_relayd = false;
 	uint64_t consumed_size_as_of_last_sample_sent = 0;
+
+	nonstd::optional<uint64_t> subbuffer_count;
 
 	/*
 	 * Reclaim owners set lock.
@@ -751,6 +774,8 @@ struct lttng_consumer_stream {
 		assert_locked_cb assert_locked;
 	} read_subbuffer_ops;
 	struct metadata_bucket *metadata_bucket;
+
+	std::vector<struct stream_subbuffer_transaction_state> subbuffer_transaction_states = {};
 };
 
 /*
@@ -853,7 +878,7 @@ struct lttng_consumer_local_data {
 	int (*on_update_stream)(uint64_t sessiond_key, uint32_t state) = nullptr;
 	lttng_consumer_type type = LTTNG_CONSUMER_UNKNOWN;
 	/* socket to communicate errors with sessiond */
-	int consumer_error_socket = -1;
+	protected_socket consumer_error_socket;
 
 	/*
 	 * Socket to ask metadata to the sessiond.
@@ -1010,7 +1035,8 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Returns the return code of sendmsg : the number of bytes transmitted or -1
  * on error.
  */
-int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_code error_code);
+int lttng_consumer_send_error(protected_socket& consumer_error_socket,
+			      enum lttcomm_return_code error_code);
 
 /*
  * Called from signal handler to ensure a clean exit.
@@ -1055,6 +1081,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 							 enum lttng_event_output output,
 							 uint64_t tracefile_size,
 							 uint64_t tracefile_count,
+							 uint64_t subbuffer_count,
 							 uint64_t session_id_per_pid,
 							 unsigned int monitor,
 							 unsigned int live_timer_interval,

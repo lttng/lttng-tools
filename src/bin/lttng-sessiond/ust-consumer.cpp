@@ -137,6 +137,10 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 					   ua_sess->live_timer_interval,
 					   ua_sess->live_timer_interval != 0,
 					   ua_chan->monitor_timer_interval,
+					   ua_chan->watchdog_timer_interval.is_set ?
+						   nonstd::optional<uint64_t>(LTTNG_OPTIONAL_GET(
+							   ua_chan->watchdog_timer_interval)) :
+						   nonstd::optional<uint64_t>{},
 					   output,
 					   (int) ua_chan->attr.type,
 					   ua_sess->tracing_id,

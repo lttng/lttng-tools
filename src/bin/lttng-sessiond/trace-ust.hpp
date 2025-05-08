@@ -14,6 +14,7 @@
 
 #include <common/defaults.hpp>
 #include <common/hashtable/hashtable.hpp>
+#include <common/optional.hpp>
 #include <common/tracker.hpp>
 
 #include <lttng/lttng.h>
@@ -75,6 +76,8 @@ struct ltt_ust_channel {
 	uint64_t per_pid_closed_app_discarded;
 	uint64_t per_pid_closed_app_lost;
 	uint64_t monitor_timer_interval;
+	/* Only set in UST domain with `user` ownership. */
+	LTTNG_OPTIONAL(uint64_t) watchdog_timer_interval;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

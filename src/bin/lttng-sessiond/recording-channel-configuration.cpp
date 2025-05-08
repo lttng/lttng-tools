@@ -36,6 +36,7 @@ ls::recording_channel_configuration::recording_channel_configuration(
 	const nonstd::optional<timer_period_us>& read_timer_period_us_,
 	const nonstd::optional<timer_period_us>& live_timer_period_us_,
 	const nonstd::optional<timer_period_us>& monitor_timer_period_us_,
+	const nonstd::optional<timer_period_us>& watchdog_timer_period_us_,
 	consumption_blocking_policy blocking_policy,
 	const nonstd::optional<std::uint64_t>& trace_file_size_limit_bytes_,
 	const nonstd::optional<unsigned int>& trace_file_count_limit_) :
@@ -48,6 +49,7 @@ ls::recording_channel_configuration::recording_channel_configuration(
 	read_timer_period_us(read_timer_period_us_),
 	live_timer_period_us(live_timer_period_us_),
 	monitor_timer_period_us(monitor_timer_period_us_),
+	watchdog_timer_period_us(watchdog_timer_period_us_),
 	consumption_blocking_policy_(std::move(blocking_policy)),
 	trace_file_size_limit_bytes(trace_file_size_limit_bytes_),
 	trace_file_count_limit(trace_file_count_limit_),

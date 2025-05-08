@@ -170,6 +170,12 @@ ssize_t lttng_channel_create_from_buffer(const struct lttng_buffer_view *view,
 	extended->discarded_events = channel_comm->discarded_events;
 	extended->lost_packets = channel_comm->lost_packets;
 	extended->monitor_timer_interval = channel_comm->monitor_timer_interval;
+
+	if (channel_comm->watchdog_timer_interval.is_set) {
+		LTTNG_OPTIONAL_SET(&extended->watchdog_timer_interval,
+				   LTTNG_OPTIONAL_GET(channel_comm->watchdog_timer_interval));
+	}
+
 	extended->blocking_timeout = channel_comm->blocking_timeout;
 	extended->allocation_policy = channel_comm->allocation_policy;
 
@@ -223,6 +229,12 @@ int lttng_channel_serialize(struct lttng_channel *channel, struct lttng_dynamic_
 	channel_comm.discarded_events = extended->discarded_events;
 	channel_comm.lost_packets = extended->lost_packets;
 	channel_comm.monitor_timer_interval = extended->monitor_timer_interval;
+
+	if (extended->watchdog_timer_interval.is_set) {
+		LTTNG_OPTIONAL_SET(&channel_comm.watchdog_timer_interval,
+				   LTTNG_OPTIONAL_GET(extended->watchdog_timer_interval));
+	}
+
 	channel_comm.blocking_timeout = extended->blocking_timeout;
 	channel_comm.allocation_policy = extended->allocation_policy;
 
@@ -259,6 +271,8 @@ void lttng_channel_set_default_extended_attr(struct lttng_domain *domain,
 		case LTTNG_BUFFER_PER_UID:
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+			LTTNG_OPTIONAL_SET(&extended_attr->watchdog_timer_interval,
+					   DEFAULT_UST_UID_CHANNEL_WATCHDOG_TIMER);
 			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			break;
 		case LTTNG_BUFFER_PER_PID:

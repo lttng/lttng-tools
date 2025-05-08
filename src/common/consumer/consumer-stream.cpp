@@ -20,6 +20,7 @@
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/macros.hpp>
+#include <common/make-unique.hpp>
 #include <common/relayd/relayd.hpp>
 #include <common/urcu.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
@@ -85,7 +86,7 @@ static void free_stream_rcu(struct rcu_head *head)
 		lttng::utils::container_of(node, &lttng_consumer_stream::node);
 
 	pthread_mutex_destroy(&stream->lock);
-	free(stream);
+	delete stream;
 }
 
 static void consumer_stream_data_lock_all(struct lttng_consumer_stream *stream)
@@ -737,15 +738,9 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 						     unsigned int monitor)
 {
 	int ret;
-	struct lttng_consumer_stream *stream;
 	const lttng::urcu::read_lock_guard read_lock;
 
-	stream = zmalloc<lttng_consumer_stream>();
-	if (stream == nullptr) {
-		PERROR("malloc struct lttng_consumer_stream");
-		ret = -ENOMEM;
-		goto end;
-	}
+	auto stream = lttng::make_unique<lttng_consumer_stream>();
 
 	if (trace_chunk && !lttng_trace_chunk_get(trace_chunk)) {
 		ERR("Failed to acquire trace chunk reference during the creation of a stream");
@@ -821,6 +816,10 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 	     stream->net_seq_idx,
 	     stream->session_id);
 
+	if (channel->subbuffer_count) {
+		stream->subbuffer_transaction_states.resize(channel->subbuffer_count.value());
+	}
+
 	lttng_dynamic_array_init(
 		&stream->read_subbuffer_ops.post_consume_cbs, sizeof(post_consume_cb), nullptr);
 
@@ -862,13 +861,12 @@ struct lttng_consumer_stream *consumer_stream_create(struct lttng_consumer_chann
 		stream->read_subbuffer_ops.consume_subbuffer = consumer_stream_consume_splice;
 	}
 
-	return stream;
+	return stream.release();
 
 error:
 	lttng_trace_chunk_put(stream->trace_chunk);
 	lttng_dynamic_array_reset(&stream->read_subbuffer_ops.post_consume_cbs);
-	free(stream);
-end:
+
 	if (alloc_ret) {
 		*alloc_ret = ret;
 	}
