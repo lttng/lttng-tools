@@ -347,7 +347,7 @@ void lttng_ht_add_unique_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *
 /*
  * Add unique uint64_t node to hashtable.
  */
-void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
+bool lttng_ht_add_unique_u64_or_fail(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
 {
 	struct cds_lfht_node *node_ptr;
 	LTTNG_ASSERT(ht);
@@ -361,7 +361,13 @@ void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node
 				       ht->match_fct,
 				       &node->key,
 				       &node->node);
-	LTTNG_ASSERT(node_ptr == &node->node);
+	return node_ptr == &node->node;
+}
+
+void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node)
+{
+	const bool success = lttng_ht_add_unique_u64_or_fail(ht, node);
+	LTTNG_ASSERT(success);
 }
 
 /*

@@ -96,6 +96,7 @@ void lttng_ht_lookup(struct lttng_ht *ht, const void *key, struct lttng_ht_iter 
 /* Specialized add unique functions */
 void lttng_ht_add_unique_str(struct lttng_ht *ht, struct lttng_ht_node_str *node);
 void lttng_ht_add_unique_ulong(struct lttng_ht *ht, struct lttng_ht_node_ulong *node);
+bool lttng_ht_add_unique_u64_or_fail(struct lttng_ht *ht, struct lttng_ht_node_u64 *node);
 void lttng_ht_add_unique_u64(struct lttng_ht *ht, struct lttng_ht_node_u64 *node);
 void lttng_ht_add_unique_two_u64(struct lttng_ht *ht, struct lttng_ht_node_two_u64 *node);
 struct lttng_ht_node_ulong *lttng_ht_add_replace_ulong(struct lttng_ht *ht,

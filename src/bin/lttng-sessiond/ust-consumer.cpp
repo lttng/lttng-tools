@@ -419,6 +419,12 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	     channel->name,
 	     channel->tracing_channel_id);
 
+	/*
+	 * This effectively transmits the owner-id to the application by storing
+	 * it in the channel.
+	 */
+	lttng_ust_ctl_set_channel_owner_id(channel->obj, app->owner_id_n.key);
+
 	/* Send stream to application. */
 	pthread_mutex_lock(&app->sock_lock);
 	ret = lttng_ust_ctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);

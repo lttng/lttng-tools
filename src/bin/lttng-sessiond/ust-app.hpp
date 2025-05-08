@@ -383,6 +383,7 @@ struct ust_app {
 	struct lttng_ht_node_ulong pid_n = {};
 	struct lttng_ht_node_ulong sock_n = {};
 	struct lttng_ht_node_ulong notify_sock_n = {};
+	struct lttng_ht_node_u64 owner_id_n = {};
 	/*
 	 * This is a list of ust app session that, once the app is going into
 	 * teardown mode, in the RCU call, each node in this list is removed and

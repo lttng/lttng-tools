@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,9 +61,15 @@
 namespace lsu = lttng::sessiond::ust;
 namespace lst = lttng::sessiond::trace;
 
+enum owner_id_allocation_status {
+	OWNER_ID_ALLOCATION_STATUS_OK,
+	OWNER_ID_ALLOCATION_STATUS_FAIL,
+};
+
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
 struct lttng_ht *ust_app_ht_by_notify_sock;
+struct lttng_ht *ust_app_ht_by_owner_id;
 
 static int ust_app_flush_app_session(ust_app& app, ust_app_session& ua_sess);
 
@@ -146,6 +153,112 @@ get_locked_session_registry(const ust_app_session::identifier& identifier)
 	return lsu::registry_session::locked_ref{ session };
 }
 } /* namespace */
+
+/*
+ * Return true if `owner_id` can be used for a new owner.
+ */
+static bool is_legal_owner_id(uint32_t owner_id)
+{
+	/*
+	 * LTTng-UST's ABI defines two values that can never be used by
+	 * applications.
+	 *
+	 * The UNSET value denotes the absence of owner.
+	 *
+	 * The CONSUMER value is used by the consumer-daemons to take ownership
+	 * of sub-buffers in streams. e.g., when doing a stalled sub-buffer
+	 * fixup or when flushing a stream.
+	 *
+	 * All other values are valid.
+	 */
+	switch (owner_id) {
+	case LTTNG_UST_ABI_OWNER_ID_UNSET:
+		/* fall-through */
+	case LTTNG_UST_ABI_OWNER_ID_CONSUMER:
+		return false;
+	}
+
+	return true;
+}
+
+/*
+ * Allocate the owner id for `app`.
+ *
+ * For guaranteeing forward progress, there is a maximum of UINT32_MAX attempts,
+ * which is enough to scan the whole possible value for a owner id.
+ */
+static enum owner_id_allocation_status ust_app_allocate_owner_id(struct ust_app& app)
+{
+	uint64_t attempt_count = 0;
+
+	while (true) {
+		/*
+		 * Although the owner-id node of `app` and the global owner-id
+		 * table are using unsigned 64-bit values as keys, the owner-id
+		 * must be encoded on 32-bit for supporting 32-bit
+		 * applications. This is because the application's producers
+		 * will do atomic operations with their owner-id.
+		 */
+		static uint32_t next_owner_id;
+
+		/*
+		 * Use atomic builtins instead of std::atomic for old toolchains
+		 * support.
+		 *
+		 * Mainly:
+		 *
+		 *   GCC 4 and older.
+		 *   Clang 5 and older.
+		 */
+		const uint32_t new_id = __atomic_fetch_add(&next_owner_id, 1, __ATOMIC_RELAXED);
+
+		if (caa_unlikely(!is_legal_owner_id(new_id))) {
+			continue;
+		}
+
+		/*
+		 * Try to take the ownership by storing the application owner-id
+		 * node into the global owner-id table.
+		 */
+		lttng_ht_node_init_u64(&app.owner_id_n, new_id);
+		if (lttng_ht_add_unique_u64_or_fail(ust_app_ht_by_owner_id, &app.owner_id_n)) {
+			break;
+		}
+
+		if (++attempt_count == UINT32_MAX) {
+			/*
+			 * Wrapped-around looking for an available owner
+			 * identity. This is extremely unlikely, but this check
+			 * allows me to sleep at night.
+			 */
+			ERR("Wrapped around while attempting to allocate an owner identity");
+			lttng_ht_node_init_u64(&app.owner_id_n, LTTNG_UST_ABI_OWNER_ID_UNSET);
+			return OWNER_ID_ALLOCATION_STATUS_FAIL;
+		}
+
+		/* Owner identity already in use, retry allocation. */
+	}
+
+	return OWNER_ID_ALLOCATION_STATUS_OK;
+}
+
+/*
+ * Remove the owner-id node of `app` from the global owner-id table, if and only
+ * if its owner-id is valid.
+ */
+static void ust_app_release_owner_id(struct ust_app& app)
+{
+	const auto owner_id = app.owner_id_n.key;
+
+	if (is_legal_owner_id(owner_id)) {
+		const lttng::urcu::read_lock_guard read_lock;
+		struct lttng_ht_iter iter;
+		lttng_ht_lookup(ust_app_ht_by_owner_id,
+				reinterpret_cast<const void *>(static_cast<uintptr_t>(owner_id)),
+				&iter);
+		lttng_ht_del(ust_app_ht_by_owner_id, &iter);
+	}
+}
 
 /*
  * Return the incremented value of next_channel_key.
@@ -4128,8 +4241,18 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	pthread_mutex_init(&lta->sock_lock, nullptr);
 	lttng_ht_node_init_ulong(&lta->sock_n, (unsigned long) lta->sock);
 
+	if (ust_app_allocate_owner_id(*lta) != OWNER_ID_ALLOCATION_STATUS_OK) {
+		ERR_FMT("Failed to allocate unique owner identity for application: name=`{}`, pid={}, uid={}",
+			msg->name,
+			msg->pid,
+			msg->uid);
+		goto error_free_app;
+	}
+
 	return lta;
 
+error_free_app:
+	delete lta;
 error_free_pipe:
 	lttng_pipe_destroy(event_notifier_event_source_pipe);
 	lttng_fd_put(LTTNG_FD_APPS, 2);
@@ -4817,6 +4940,9 @@ void ust_app_clean_list()
 	if (ust_app_ht_by_notify_sock) {
 		lttng_ht_destroy(ust_app_ht_by_notify_sock);
 	}
+	if (ust_app_ht_by_owner_id) {
+		lttng_ht_destroy(ust_app_ht_by_owner_id);
+	}
 }
 
 /*
@@ -4834,6 +4960,10 @@ int ust_app_ht_alloc()
 	}
 	ust_app_ht_by_notify_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	if (!ust_app_ht_by_notify_sock) {
+		return -1;
+	}
+	ust_app_ht_by_owner_id = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!ust_app_ht_by_owner_id) {
 		return -1;
 	}
 	return 0;
@@ -7094,6 +7224,7 @@ close_socket:
  */
 static void ust_app_destroy(ust_app& app)
 {
+	ust_app_release_owner_id(app);
 	call_rcu(&app.pid_n.head, delete_ust_app_rcu);
 }
 
