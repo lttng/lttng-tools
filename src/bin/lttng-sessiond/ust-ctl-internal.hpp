@@ -14,6 +14,7 @@
 #include <common/macros.hpp>
 
 #include <limits.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 #ifndef LTTNG_UST_UUID_LEN
@@ -57,6 +58,13 @@ struct lttng_ust_context_attr {
 			char *ctx_name;
 		} app_ctx;
 	} u;
+};
+
+struct lttng_ust_ctl_subbuf_state {
+	uint64_t hot_commit_count;
+	uint64_t cold_commit_count;
+	size_t idx;
+	uint32_t owner;
 };
 
 /*
@@ -224,6 +232,18 @@ void lttng_ust_ctl_destroy_stream(struct lttng_ust_ctl_consumer_stream *stream);
 int lttng_ust_ctl_get_mmap_len(struct lttng_ust_ctl_consumer_stream *stream, unsigned long *len);
 int lttng_ust_ctl_get_max_subbuf_size(struct lttng_ust_ctl_consumer_stream *stream,
 				      unsigned long *len);
+
+void lttng_ust_ctl_set_channel_owner_id(struct lttng_ust_abi_object_data *obj, uint32_t id);
+
+int lttng_ust_ctl_fixup_stalled_stream(struct lttng_ust_ctl_consumer_stream *stream,
+				       unsigned long consumed_pos,
+				       unsigned long produced_pos,
+				       uint32_t *ids,
+				       uint32_t length);
+
+int lttng_ust_ctl_get_subbuf_state(struct lttng_ust_ctl_consumer_stream *stream,
+				   unsigned long *consumed_pos,
+				   struct lttng_ust_ctl_subbuf_state *state);
 
 /*
  * For mmap mode, operate on the current packet (between get/put or

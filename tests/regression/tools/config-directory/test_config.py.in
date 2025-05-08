@@ -40,8 +40,8 @@ DEFAULT_SUBSTITUTIONS = {
     "LTTNG_HOME": "@LTTNG_SYSTEM_RUNDIR@" if user_is_root else "{USER_HOME}",
     "RUNDIR": "@LTTNG_SYSTEM_RUNDIR@" if user_is_root else "{LTTNG_HOME}/.lttng",
     # If the values from the lttng-ust headers change, these will need to be updated.
-    "LTTNG_UST_SOCKET_NAME": "lttng-ust-sock-8",
-    "LTTNG_UST_WAIT_FILENAME": "lttng-ust-wait-8",
+    "LTTNG_UST_SOCKET_NAME": "lttng-ust-sock-11",
+    "LTTNG_UST_WAIT_FILENAME": "lttng-ust-wait-11",
 }
 
 DEFAULT_EXPECTED_PATHS = {

@@ -32,8 +32,8 @@
 #define LTTNG_UST_ABI_COMM_MAGIC 0xC57C57C5
 
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
-#define LTTNG_UST_ABI_MAJOR_VERSION		      10
-#define LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE 8
+#define LTTNG_UST_ABI_MAJOR_VERSION		      11
+#define LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE 11
 #define LTTNG_UST_ABI_MINOR_VERSION		      0
 
 #define LTTNG_UST_ABI_CMD_MAX_LEN 4096U
@@ -58,6 +58,11 @@ enum lttng_ust_abi_chan_type {
 	LTTNG_UST_ABI_CHAN_PER_CPU = 0,
 	LTTNG_UST_ABI_CHAN_METADATA = 1,
 	LTTNG_UST_ABI_CHAN_PER_CHANNEL = 2,
+};
+
+enum lttng_ust_abi_owner_id_type {
+	LTTNG_UST_ABI_OWNER_ID_UNSET = 0,
+	LTTNG_UST_ABI_OWNER_ID_CONSUMER = 1,
 };
 
 struct lttng_ust_abi_tracer_version {
@@ -373,6 +378,7 @@ struct lttng_ust_abi_object_data {
 			void *data;
 			int32_t type; /* enum lttng_ust_abi_chan_type */
 			int wakeup_fd;
+			int32_t owner_id;
 		} channel;
 		struct {
 			int shm_fd;
