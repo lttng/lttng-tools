@@ -31,6 +31,7 @@
 #include <lttng/ust-ctl.h>
 #include <lttng/ust-sigbus.h>
 
+#include <algorithm>
 #include <bin/lttng-consumerd/health-consumerd.hpp>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -1622,6 +1623,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		attr.chan_id = msg.u.ask_channel.chan_id;
 		memcpy(attr.uuid, msg.u.ask_channel.uuid, sizeof(attr.uuid));
 		attr.blocking_timeout = msg.u.ask_channel.blocking_timeout;
+		attr.owner_id = LTTNG_UST_ABI_OWNER_ID_CONSUMER;
 
 		/* Match channel buffer type to the UST abi. */
 		switch (msg.u.ask_channel.output) {
@@ -2351,6 +2353,38 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 		goto end_msg_sessiond;
+	}
+	case LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID:
+	{
+		const auto session_id = msg.u.reclaim_session_owner_id.session_id;
+		const auto owner_id = msg.u.reclaim_session_owner_id.owner_id;
+
+		DBG_FMT("Receiving payload of "
+			"LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID command: "
+			"session_id={}, owner_id={}",
+			session_id,
+			owner_id);
+
+		const auto pending_reclamations =
+			lttng_ustconsumer_reclaim_session_owner_id(session_id, owner_id);
+
+		health_code_update();
+
+		const ssize_t ret_send = lttcomm_send_unix_sock(
+			sock, &pending_reclamations, sizeof(pending_reclamations));
+
+		health_code_update();
+
+		if (ret_send != sizeof(pending_reclamations)) {
+			ERR_FMT("Error while sending not pending reclamation channel count: "
+				"session_id={}, owner_id={}, pending_reclamations={}",
+				session_id,
+				owner_id,
+				pending_reclamations);
+			goto error_fatal;
+		}
+
+		break;
 	}
 	default:
 		break;
@@ -3509,4 +3543,40 @@ int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream, uint64
 void lttng_ustconsumer_sigbus_handle(void *addr)
 {
 	lttng_ust_ctl_sigbus_handle(addr);
+}
+
+/*
+ * Return the number of pending reclamations.
+ */
+uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_t owner_id)
+{
+	const auto ht = the_consumer_data.channels_by_session_id_ht;
+	const lttng::pthread::lock_guard consumer_lock(the_consumer_data.lock);
+
+	uint32_t pending_reclamations = 0;
+
+	for (auto *channel : lttng::urcu::lfht_filtered_iteration_adapter<
+		     lttng_consumer_channel,
+		     decltype(lttng_consumer_channel::channels_by_session_id_ht_node),
+		     &lttng_consumer_channel::channels_by_session_id_ht_node,
+		     std::uint64_t>(*ht->ht,
+				    &session_id,
+				    ht->hash_fct(&session_id, lttng_ht_seed),
+				    ht->match_fct)) {
+		const std::lock_guard<std::mutex> channel_lock(
+			channel->owners_pending_reclamation_lock);
+
+		try {
+			channel->owners_pending_reclamation.insert(owner_id);
+			pending_reclamations += 1;
+		} catch (const std::bad_alloc&) {
+			ERR_FMT("Failed to allocate while adding owner-id reclamation to channel: "
+				"channel=`{}` session_id={} owner_id={}",
+				channel->name,
+				session_id,
+				owner_id);
+		}
+	}
+
+	return pending_reclamations;
 }

@@ -70,6 +70,8 @@ int lttng_ustconsumer_get_current_timestamp(struct lttng_consumer_stream *stream
 int lttng_ustconsumer_get_sequence_number(struct lttng_consumer_stream *stream, uint64_t *seq);
 void lttng_ustconsumer_sigbus_handle(void *addr);
 
+uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id, uint32_t owner_id);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline ssize_t lttng_ustconsumer_on_read_subbuffer_mmap(
@@ -254,6 +256,14 @@ static inline int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *
 static inline void lttng_ustconsumer_sigbus_handle(void *addr __attribute__((unused)))
 {
 }
+static inline uint32_t lttng_ustconsumer_reclaim_session_owner_id(uint64_t session_id
+								  __attribute__((unused)),
+								  uint32_t owner_id
+								  __attribute__((unused)))
+{
+	return 0;
+}
+
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTTNG_USTCONSUMER_H */

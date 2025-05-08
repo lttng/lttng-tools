@@ -835,6 +835,10 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t key;
 		} LTTNG_PACKED open_channel_packets;
+		struct {
+			uint64_t session_id;
+			uint32_t owner_id;
+		} LTTNG_PACKED reclaim_session_owner_id;
 	} u;
 } LTTNG_PACKED;
 
@@ -850,6 +854,12 @@ struct lttcomm_consumer_error_msg_error_code {
 	uint8_t error_code;
 } LTTNG_PACKED;
 
+struct lttcomm_consumer_error_msg_owner_reclaim_notification {
+	/* Number of owner in `owners` following this field. */
+	uint32_t length;
+	/* List of owners that are safe to reclaim. */
+	uint32_t owners[];
+} LTTNG_PACKED;
 /*
  * Channel monitoring message returned to the session daemon on every
  * monitor timer expiration.

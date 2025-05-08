@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <mutex>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -55,6 +56,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <urcu/compiler.h>
 #include <vector>
 
@@ -155,6 +157,78 @@ get_locked_session_registry(const ust_app_session::identifier& identifier)
 } /* namespace */
 
 /*
+ * An owner-id is spawned into existance if it is:
+ *
+ *  - not reserved by the UST ABI
+ *
+ *  - not currently used
+ *
+ *  - not pending for reclamation
+ *
+ *  Once a owner-id is created, it can not be used again until it is
+ *  reclaimed. The reclamation process works by storing the owner-id in a
+ *  reclamation table with a reference count equal to the number of channels
+ *  used by the user application that has this owner-id. Channels independently
+ *  check their stream's sub-buffers and notify the sessiond about the owner IDs
+ *  that can be reclaimed, thus decrementing the reference count in the
+ *  reclamation table. Once that refence count is zero, the owner-id is removed
+ *  from the reclamation table and can thus be used again.
+ */
+class pending_owner_id_reclamations {
+public:
+	/*
+	 * Mark `owner_id` for reclamation with `ref_count` left.
+	 *
+	 * `ref_count` represents the number of channels that were used by the
+	 * application. Each channel will eventually reply an acknowledge (see
+	 * `unmark_owner_id()`).
+	 */
+	void mark_owner_id(uint32_t owner_id, uint64_t ref_count)
+	{
+		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		_pending_owner_ids[owner_id] = ref_count;
+	}
+
+	/*
+	 * Decrement the reference count of `owner_id` in the pending
+	 * table. When the reference count hits zero, `owner_id` is removed from
+	 * table.
+	 */
+	void unmark_owner_id(uint32_t owner_id)
+	{
+		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		const auto it = _pending_owner_ids.find(owner_id);
+
+		if (it == _pending_owner_ids.end()) {
+			ERR_FMT("Unmarking from garbage owner-id={} "
+				"but not present in garbage",
+				owner_id);
+			return;
+		}
+
+		if (it->second == 1) {
+			_pending_owner_ids.erase(it);
+		} else {
+			it->second -= 1;
+		}
+	}
+
+	bool is_owner_id_pending_reclamation(uint32_t owner_id)
+	{
+		std::lock_guard<std::mutex> lock(_pending_owner_ids_mutex);
+		return _pending_owner_ids.count(owner_id) != 0;
+	}
+
+private:
+	std::unordered_map<uint32_t, uint64_t> _pending_owner_ids;
+
+	/* Protect accesses of `_pending_owner_ids`. */
+	std::mutex _pending_owner_ids_mutex;
+};
+
+static pending_owner_id_reclamations owner_id_reclamations;
+
+/*
  * Return true if `owner_id` can be used for a new owner.
  */
 static bool is_legal_owner_id(uint32_t owner_id)
@@ -169,7 +243,7 @@ static bool is_legal_owner_id(uint32_t owner_id)
 	 * of sub-buffers in streams. e.g., when doing a stalled sub-buffer
 	 * fixup or when flushing a stream.
 	 *
-	 * All other values are valid.
+	 * All other values are valid if not in the garbage table.
 	 */
 	switch (owner_id) {
 	case LTTNG_UST_ABI_OWNER_ID_UNSET:
@@ -178,7 +252,7 @@ static bool is_legal_owner_id(uint32_t owner_id)
 		return false;
 	}
 
-	return true;
+	return !owner_id_reclamations.is_owner_id_pending_reclamation(owner_id);
 }
 
 /*
@@ -243,21 +317,18 @@ static enum owner_id_allocation_status ust_app_allocate_owner_id(struct ust_app&
 }
 
 /*
- * Remove the owner-id node of `app` from the global owner-id table, if and only
- * if its owner-id is valid.
+ * Release the owner-id of `app`. This only removes the ID from the global
+ * owner-id table, but the ID could still be in the garbage table and not usable
+ * yet.
  */
 static void ust_app_release_owner_id(struct ust_app& app)
 {
-	const auto owner_id = app.owner_id_n.key;
+	const uint64_t owner_id = app.owner_id_n.key;
 
-	if (is_legal_owner_id(owner_id)) {
-		const lttng::urcu::read_lock_guard read_lock;
-		struct lttng_ht_iter iter;
-		lttng_ht_lookup(ust_app_ht_by_owner_id,
-				reinterpret_cast<const void *>(static_cast<uintptr_t>(owner_id)),
-				&iter);
-		lttng_ht_del(ust_app_ht_by_owner_id, &iter);
-	}
+	const lttng::urcu::read_lock_guard read_lock;
+	struct lttng_ht_iter iter;
+	lttng_ht_lookup(ust_app_ht_by_owner_id, reinterpret_cast<const void *>(&owner_id), &iter);
+	lttng_ht_del(ust_app_ht_by_owner_id, &iter);
 }
 
 /*
@@ -4347,6 +4418,13 @@ bool ust_app_supports_counters(const struct ust_app *app)
 	return app->v_major >= 9;
 }
 
+void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners)
+{
+	for (const auto owner : owners) {
+		owner_id_reclamations.unmark_owner_id(owner);
+	}
+}
+
 /*
  * Setup the base event notifier group.
  *
@@ -4468,6 +4546,14 @@ static void ust_app_unregister(ust_app& app)
 {
 	const lttng::urcu::read_lock_guard read_lock;
 
+	DBG_FMT("Unregistering application and building list "
+		"of channels used by the application for "
+		"owner id reclamation: "
+		"app_name=`{}`, app_pid={}, app_uid={}",
+		app.name,
+		app.pid,
+		app.uid);
+
 	/*
 	 * For per-PID buffers, perform "push metadata" and flush all
 	 * application streams before removing app from hash tables,
@@ -4538,6 +4624,18 @@ static void ust_app_unregister(ust_app& app)
 				locked_registry.reset();
 			}
 		}
+
+		const auto pending_reclamations =
+			consumer_reclaim_session_owner_id(*ua_sess, app.owner_id_n.key);
+
+		/*
+		 * Add the UST app owner ID to the set of pending reclamation
+		 * IDs with the number of reclamations sent back from the
+		 * consumer. The ID will be removed later once the consumer can
+		 * confirm that all channels used by the UST app are not stalled
+		 * because of the UST app.
+		 */
+		owner_id_reclamations.mark_owner_id(app.owner_id_n.key, pending_reclamations);
 
 		app.sessions_to_teardown.emplace_back(ua_sess);
 	}

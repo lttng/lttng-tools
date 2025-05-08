@@ -10,6 +10,7 @@
 
 #include "consumer-destination-type.hpp"
 #include "snapshot.hpp"
+#include "ust-app.hpp"
 
 #include <common/consumer/consumer.hpp>
 #include <common/hashtable/hashtable.hpp>
@@ -17,6 +18,7 @@
 #include <lttng/lttng.h>
 
 #include <urcu/ref.h>
+#include <vector>
 
 struct snapshot;
 struct snapshot_output;
@@ -337,6 +339,9 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 				struct lttng_trace_chunk *chunk,
 				enum consumer_trace_chunk_exists_status *result);
 int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key);
+
+unsigned int consumer_reclaim_session_owner_id(const struct ust_app_session& ua_sess,
+					       uint32_t owner_id);
 
 char *setup_channel_trace_path(struct consumer_output *consumer,
 			       const char *session_path,

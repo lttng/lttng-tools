@@ -30,7 +30,9 @@
 #include <vendor/optional.hpp>
 
 #include <limits.h>
+#include <mutex>
 #include <poll.h>
+#include <set>
 #include <stdint.h>
 #include <unistd.h>
 #include <urcu/list.h>
@@ -72,10 +74,12 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
 	LTTNG_CONSUMER_CLEAR_CHANNEL,
 	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
+	LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID,
 };
 
 enum lttng_consumer_error_msg_type : std::uint8_t {
 	LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE,
+	LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION,
 };
 
 enum lttng_consumer_type {
@@ -317,6 +321,26 @@ struct lttng_consumer_channel {
 
 	bool streams_sent_to_relayd = false;
 	uint64_t consumed_size_as_of_last_sample_sent = 0;
+
+	/*
+	 * Reclaim owners set lock.
+	 *
+	 * This lock protects against concurrent read/update of owners_pending_reclamation.
+	 *
+	 * This lock is necessary instead of using the channel lock because the
+	 * channel lock is used while tearing down the channel.
+	 *
+	 * However, the reclamation sets need to be drained on tear-down. Since
+	 * the channel lock is not recursive, we need another lock to protect
+	 * the set.
+	 */
+	std::mutex owners_pending_reclamation_lock;
+
+	/*
+	 * std::set instead of std::unordered_set because std::set_* algorithms
+	 * require sorted ranges.
+	 */
+	std::set<uint32_t> owners_pending_reclamation;
 };
 
 struct stream_subbuffer {

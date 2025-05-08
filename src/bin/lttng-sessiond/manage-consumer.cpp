@@ -141,8 +141,53 @@ handle_consumerd_error_msg_error_code(const lttng_payload_view *error_code_msg_p
 	}
 }
 
+/*
+ * Receive a vector of owner that are free to reclaim.
+ */
+consumerd_error_msg_handling_status handle_consumerd_error_msg_owner_reclaim_notification(
+	const lttng_payload_view *error_code_msg_payload_view)
+{
+	const lttcomm_consumer_error_msg_owner_reclaim_notification *payload;
+
+	if (error_code_msg_payload_view->buffer.size < sizeof(*payload)) {
+		ERR_FMT("Consumer owner reclaim notification message payload too short "
+			"expected_minimum_size={}, actual_size={}",
+			sizeof(*payload),
+			error_code_msg_payload_view->buffer.size);
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+
+	payload = reinterpret_cast<decltype(payload)>(error_code_msg_payload_view->buffer.data);
+
+	if (error_code_msg_payload_view->buffer.size <
+	    (sizeof(*payload) + sizeof(uint32_t) * payload->length)) {
+		ERR_FMT("Consumer owner reclaim notification message payload too short "
+			"expected_minimum_size={}, actual_size={}",
+			sizeof(*payload) + sizeof(uint32_t) * payload->length,
+			error_code_msg_payload_view->buffer.size);
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+
+	std::vector<uint32_t> owners;
+
+	try {
+		owners.reserve(payload->length);
+	} catch (const std::bad_alloc&) {
+		ERR("Failed to allocate memory for owner reclaim notification");
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+
+	for (size_t i = 0; i < payload->length; ++i) {
+		owners.push_back(payload->owners[i]);
+	}
+
+	ust_app_notify_reclaimed_owner_ids(owners);
+
+	return CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK;
+}
+
 consumerd_error_msg_handling_status
-dispatch_consumer_error_msg(lttng_payload_view *msg_payload_view)
+dispatch_consumer_error_msg(struct lttng_payload_view *msg_payload_view)
 {
 	const lttcomm_consumer_error_msg_header *header =
 		reinterpret_cast<decltype(header)>(msg_payload_view->buffer.data);
@@ -156,6 +201,9 @@ dispatch_consumer_error_msg(lttng_payload_view *msg_payload_view)
 	switch (msg_type) {
 	case LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE:
 		return handle_consumerd_error_msg_error_code(&msg_specific_payload_view);
+	case LTTNG_CONSUMER_ERROR_MSG_TYPE_OWNER_RECLAIM_NOTIFICATION:
+		return handle_consumerd_error_msg_owner_reclaim_notification(
+			&msg_specific_payload_view);
 	default:
 		ERR_FMT("Unknown consumer daemon error message type: "
 			"msg_type={}",
@@ -166,7 +214,6 @@ dispatch_consumer_error_msg(lttng_payload_view *msg_payload_view)
 
 consumerd_error_msg_handling_status handle_consumerd_error_socket_in(int consumerd_error_sock)
 {
-	consumerd_error_msg_handling_status result;
 	lttng_payload error_msg_payload;
 
 	lttng_payload_init(&error_msg_payload);

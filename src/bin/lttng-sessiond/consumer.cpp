@@ -2149,3 +2149,108 @@ error:
 	health_code_update();
 	return ret;
 }
+
+/*
+ * Ask the consumer to recover/complete from buffer any transaction initiated
+ * by a given application (based on its owner_id).
+ *
+ * Called with the consumer socket lock held.
+ * Returns 0 on success, or a negative value on error.
+ */
+static int do_consumer_reclaim_session_owner_id(struct consumer_data& consumer,
+						uint64_t session_id,
+						uint32_t owner_id,
+						uint32_t *pending_reclamations)
+{
+	if (consumer.cmd_sock < 0) {
+		return -1;
+	}
+
+	auto consumer_socket =
+		lttng::make_unique_wrapper<struct consumer_socket, consumer_destroy_socket>(
+			consumer_allocate_socket(&consumer.cmd_sock));
+
+	if (!consumer_socket) {
+		ERR_FMT("Failed to create consumer socket wrapper during app owner id reclamation: "
+			"owner_id={}",
+			owner_id);
+		return -1;
+	}
+
+	/*
+	 * I don't expect an application using UINT32_MAX channels, but if it
+	 * does, we should probably split this in multiple messages.
+	 */
+	int socket_ret;
+	const struct lttcomm_consumer_msg msg = {
+		.cmd_type = LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID,
+		.u = {
+			.reclaim_session_owner_id = {
+				.session_id = session_id,
+				.owner_id = owner_id,
+			},
+		},
+	};
+
+	DBG("Sending ̀LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID command header to consumer");
+	socket_ret = consumer_socket_send(consumer_socket.get(), &msg, sizeof(msg));
+	if (socket_ret != 0) {
+		ERR("Failed to send ̀LTTNG_CONSUMER_RECLAIM_SESSION_OWNER_ID command header to consumer");
+		return -1;
+	}
+
+	socket_ret = consumer_socket_recv(
+		consumer_socket.get(), pending_reclamations, sizeof(*pending_reclamations));
+
+	if (socket_ret != 0) {
+		ERR_FMT("Failed to received pending reclamation count while asking for owner reclamation.",
+			owner_id);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Notification the consumer-daemon about channels with keys in
+ * `key_of_channels_used_by_app` about reclamation of app's owner-id.
+ *
+ * Return the number of channels that were not notified about the
+ * reclamation. This can happen if the channels were destroyed while sending the
+ * reclamation request.
+ */
+unsigned int consumer_reclaim_session_owner_id(const struct ust_app_session& ua_sess,
+					       uint32_t owner_id)
+{
+	struct consumer_data *consumer;
+
+	switch (ua_sess.bits_per_long) {
+	case 32:
+		consumer = &the_ustconsumer32_data;
+		break;
+	case 64:
+		consumer = &the_ustconsumer64_data;
+		break;
+	default:
+		return 0;
+	}
+
+	uint32_t pending_reclamations = 0;
+
+	int ret;
+	{
+		const lttng::pthread::lock_guard consumer_lock(consumer->lock);
+		ret = do_consumer_reclaim_session_owner_id(
+			*consumer, ua_sess.tracing_id, owner_id, &pending_reclamations);
+	}
+
+	if (ret) {
+		ERR_FMT("Failed to reclaim application owner id during "
+			"application unregistration: "
+			"session_id={}, owner_id={}",
+			ua_sess.tracing_id,
+			owner_id);
+	}
+
+	return pending_reclamations;
+}

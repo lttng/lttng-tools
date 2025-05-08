@@ -9,6 +9,7 @@
 #ifndef _LTT_UST_APP_H
 #define _LTT_UST_APP_H
 
+#include "lttng-ust-ctl.hpp"
 #include "trace-class.hpp"
 #include "trace-ust.hpp"
 #include "ust-field-quirks.hpp"
@@ -21,6 +22,7 @@
 
 #include <list>
 #include <stdint.h>
+#include <vector>
 
 #define UST_APP_EVENT_LIST_SIZE 32
 
@@ -547,6 +549,8 @@ bool ust_app_supports_counters(const struct ust_app *app);
 bool ust_app_get(ust_app& app);
 void ust_app_put(ust_app *app);
 
+void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners);
+
 using ust_app_reference =
 	std::unique_ptr<ust_app, lttng::memory::create_deleter_class<ust_app, ust_app_put>::deleter>;
 
@@ -833,6 +837,11 @@ static inline void ust_app_get(ust_app& app __attribute__((unused)))
 }
 
 static inline void ust_app_put(ust_app *app __attribute__((unused)))
+{
+}
+
+static inline void ust_app_notify_reclaimed_owner_ids(const std::vector<uint32_t>& owners
+						      __attribute__((unused)))
 {
 }
 
