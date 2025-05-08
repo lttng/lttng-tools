@@ -118,6 +118,17 @@ class BufferAllocationPolicy(enum.Enum):
         return "<%s.%s>" % (self.__class__.__name__, self.name)
 
 
+@enum.unique
+class EventRecordLossMode(enum.Enum):
+    """Event record loss mode."""
+
+    Discard = "Per-CPU allocation"
+    Overwrite = "Per-Channel allocation"
+
+    def __repr__(self):
+        return "<%s.%s>" % (self.__class__.__name__, self.name)
+
+
 class EventRule(abc.ABC):
     """Event rule base class, see LTTNG-EVENT-RULE(7)."""
 
@@ -651,8 +662,11 @@ class Session(abc.ABC):
         channel_name=None,
         buffer_sharing_policy=BufferSharingPolicy.PerUID,
         buffer_allocation_policy=BufferAllocationPolicy.PerCPU,
+        subbuf_size=None,
+        subbuf_count=None,
+        overwrite=None,
     ):
-        # type: (TracingDomain, Optional[str], BufferSharingPolicy) -> Channel
+        # type: (TracingDomain, Optional[str], BufferSharingPolicy, BufferAllocationPolicy, Optional[int], Optional[int], Optional[EventRecordLossMode]) -> Channel
         """Add a channel with default attributes to the session."""
         raise NotImplementedError
 
@@ -666,9 +680,19 @@ class Session(abc.ABC):
         # type: () -> None
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def destroy(self):
-        # type: () -> None
+    def destroy(self, timeout_s=None):
+        # type: (Optional[float]) -> None
+        """
+        Destroy the session.
+
+        If `timeout_s` is specified, wait for the
+        session to be destroyed for up to `timeout_s` seconds. Specifying `0`
+        invokes a non-blocking destroy operation, which will return immediately
+        and the session will be destroyed asynchronously.
+
+        If `timeout_s` is not specified, wait indefinitely for the session to
+        be destroyed.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod

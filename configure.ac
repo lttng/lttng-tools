@@ -1359,6 +1359,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/java-log4j2/Makefile
 	tests/regression/ust/getcpu-override/Makefile
 	tests/regression/ust/clock-override/Makefile
+	tests/regression/ust/stall-buffer/Makefile
 	tests/regression/ust/type-declarations/Makefile
 	tests/regression/ust/rotation-destroy-flush/Makefile
 	tests/regression/ust/blocking/Makefile

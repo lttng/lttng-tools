@@ -65,6 +65,12 @@ class TestCase:
         self._result = result
         self._tap_generator.test(result, self._description)
 
+    def skip(self, reason):
+        if self._result is not None:
+            raise RuntimeError("Can't set test case result twice")
+        self._result = True
+        self._tap_generator.skip("{} {}".format(self.description, reason))
+
     def success(self):
         # type: () -> None
         self._set_result(True)

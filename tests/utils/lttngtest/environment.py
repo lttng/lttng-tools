@@ -502,6 +502,10 @@ class _WaitTraceTestApplication:
     def touch_exit_file(self):
         open(self._compat_pathlike(self._wait_before_exit_file_path), mode="x")
 
+    @property
+    def start_tracing_path(self):
+        return self._compat_pathlike(self._app_start_tracing_file_path)
+
     def trace(self):
         # type: () -> None
         if self._process.poll() is not None:
@@ -540,6 +544,10 @@ class _WaitTraceTestApplication:
                 )
             )
         self._has_returned = True
+
+    @property
+    def status(self):
+        return self._process.poll()
 
     @property
     def vpid(self):

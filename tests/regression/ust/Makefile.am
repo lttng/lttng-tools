@@ -24,6 +24,7 @@ SUBDIRS = \
 	overlap \
 	periodical-metadata-flush \
 	rotation-destroy-flush \
+	stall-buffer \
 	type-declarations \
 	ust-app-ctl-paths \
 	ust-constructor

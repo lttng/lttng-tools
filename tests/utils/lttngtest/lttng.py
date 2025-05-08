@@ -517,22 +517,24 @@ class _Session(lttngctl.Session):
         buffer_allocation_policy=lttngctl.BufferAllocationPolicy.PerCPU,
         subbuf_size=None,
         subbuf_count=None,
-        tracefile_size=None,  # type: Optional[int|str]
-        tracefile_count=None,  # type: Optional[int]
+        tracefile_size=None,
+        tracefile_count=None,
+        event_record_loss_mode=None,
     ):
-        # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy), Optional[str], Optional[str] -> lttngctl.Channel
+        # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy, lttngctl.BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[lttngctl.EventRecordLossMode]) -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
-        buffer_sharing_policy = (
+        buffer_sharing_policy_cli_arg = (
             "--buffer-ownership=user"
             if buffer_sharing_policy == lttngctl.BufferSharingPolicy.PerUID
             else "--buffer-ownership=process"
         )
-        buffer_allocation_policy = (
+        buffer_allocation_policy_cli_arg = (
             "--buffer-allocation=per-cpu"
             if buffer_allocation_policy == lttngctl.BufferAllocationPolicy.PerCPU
             else "--buffer-allocation=per-channel"
         )
+
         args = [
             "enable-channel",
             "--session",
@@ -540,9 +542,9 @@ class _Session(lttngctl.Session):
             "--{}".format(domain_option_name),
             channel_name,
         ]
-        args.append(buffer_allocation_policy)
+        args.append(buffer_allocation_policy_cli_arg)
         if domain != lttngctl.TracingDomain.Kernel:
-            args.append(buffer_sharing_policy)
+            args.append(buffer_sharing_policy_cli_arg)
         if subbuf_size is not None:
             args.extend(["--subbuf-size", str(subbuf_size)])
         if subbuf_count is not None:
@@ -551,6 +553,12 @@ class _Session(lttngctl.Session):
             args.extend(["--tracefile-count", str(tracefile_count)])
         if tracefile_size is not None:
             args.extend(["--tracefile-size", str(tracefile_size)])
+        if event_record_loss_mode is not None:
+            args.append(
+                "--overwrite"
+                if event_record_loss_mode == lttngctl.EventRecordLossMode.Overwrite
+                else "--discard"
+            )
 
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)
@@ -576,16 +584,17 @@ class _Session(lttngctl.Session):
         # type: () -> None
         self._client._run_cmd("clear '{session_name}'".format(session_name=self.name))
 
-    def destroy(self, wait=True):
-        # type: () -> None
+    def destroy(self, timeout_s=None):
+        # type: (Optional[float]) -> None
         args = [
             "destroy",
             self.name,
         ]
-        if not wait:
+        if timeout_s == 0:
             args.append("--no-wait")
+            timeout_s = None
 
-        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
+        self._client._run_cmd(" ".join([shlex.quote(x) for x in args]), timeout_s=timeout_s)
 
     def rotate(self, wait=True):
         # type: (bool) -> None
@@ -735,8 +744,10 @@ class LTTngClient(logger._Logger, lttngctl.Controller):
         else:
             self._timeout_s = int(value)
 
-    def _run_cmd(self, command_args, output_format=CommandOutputFormat.MI_XML):
-        # type: (str, CommandOutputFormat) -> (str, str)
+    def _run_cmd(
+        self, command_args, output_format=CommandOutputFormat.MI_XML, timeout_s=None
+    ):
+        # type: (str, CommandOutputFormat, Optional[float]) -> tuple[str, str]
         """
         Invoke the `lttng` client with a set of arguments. The command is
         executed in the context of the client's test environment.

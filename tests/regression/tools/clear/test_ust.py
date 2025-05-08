@@ -107,7 +107,7 @@ def test_ust_streaming(
         relayd_output_path.glob("{}*".format(session.name)),
         buffer_sharing_policy == lttngtest.lttngctl.BufferSharingPolicy.PerPID,
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(
         received == expected_count,
         "Received {} events, expected {}".format(received, expected_count),
@@ -162,7 +162,7 @@ def test_ust_streaming_rotate_clear(
     received, discarded = lttngtest.count_events(
         relayd_output_path.glob("{}*".format(session.name))
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(
         received == expected_count,
         "Received {} events, expected {}".format(received, expected_count),
@@ -217,7 +217,7 @@ def test_ust_streaming_clear_rotate(
     received, discarded = lttngtest.count_events(
         relayd_output_path.glob("{}*".format(session.name))
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(
         received == expected_count,
         "Received {} events, expected {}".format(received, expected_count),
@@ -291,7 +291,7 @@ def test_ust_streaming_tracefile_rotation(
     counts.append(
         lttngtest.count_events(relayd_output_path.glob("{}*".format(session.name)))
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(*compare_expected_event_count_tuples(counts, expected_counts))
 
 
@@ -368,7 +368,7 @@ def test_ust_streaming_tracefile_rotation_overwrite_files(
         else received_2 > 0 and received_2 < 200000
     )
 
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(
         first_test_pass and second_test_pass,
         "First application received {} events; Second application received {} events".format(
@@ -420,7 +420,7 @@ def test_ust_streaming_no_event(
         buffer_sharing_policy == lttngtest.lttngctl.BufferSharingPolicy.PerPID,
     )
 
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
     tap.test(
         received == expected_count,
         "Received {} events, expected {}".format(received, expected_count),
@@ -717,7 +717,7 @@ def test_ust_local(
         ),
     )
 
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_local_rotate_clear(
@@ -768,7 +768,7 @@ def test_ust_local_rotate_clear(
         ),
     )
 
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_local_clear_rotate(
@@ -819,7 +819,7 @@ def test_ust_local_clear_rotate(
         ),
     )
 
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_local_no_event(
@@ -866,7 +866,7 @@ def test_ust_local_no_event(
 
     # The trace directory should be empty
     tap.test
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_streaming_snapshot(
@@ -943,7 +943,7 @@ def test_ust_streaming_snapshot(
             received, expected_count, received_empty, 0, received_again, expected_count
         ),
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_local_snapshot(
@@ -1016,7 +1016,7 @@ def test_ust_local_snapshot(
             received, expected_count, received_empty, 0, received_again, expected_count
         ),
     )
-    session.destroy(wait=False)
+    session.destroy(timeout_s=0)
 
 
 def test_ust_local_snapshot_per_pid(
