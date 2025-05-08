@@ -1251,14 +1251,35 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  */
 int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_code error_code)
 {
-	if (consumer_error_socket_fd > 0) {
-		const std::int32_t comm_code = std::int32_t(error_code);
+	if (consumer_error_socket_fd < 0) {
+		return 0;
+	}
 
-		static_assert(
-			sizeof(comm_code) >= sizeof(std::underlying_type<lttcomm_return_code>),
-			"Fixed-size communication type too small to accomodate lttcomm_return_code");
+	const struct lttcomm_consumer_error_msg_error_code payload = {
+		.error_code = static_cast<uint8_t>(error_code),
+	};
+	const struct lttcomm_consumer_error_msg_header header = {
+		.msg_type = static_cast<uint8_t>(LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE),
+		.size = sizeof(payload),
+	};
+
+	DBG_FMT("Sending error code to session daemon: error_code=\"{}\" ({})",
+		lttcomm_get_readable_code(error_code),
+		static_cast<int>(error_code));
+
+	if (consumer_error_socket_fd >= 0) {
+		char bytes_to_send[sizeof(header) + sizeof(payload)];
+
+		memcpy(bytes_to_send, &header, sizeof(header));
+		memcpy(bytes_to_send + sizeof(header), &payload, sizeof(payload));
+
 		return lttcomm_send_unix_sock(
-			consumer_error_socket_fd, &comm_code, sizeof(comm_code));
+			consumer_error_socket_fd, bytes_to_send, sizeof(bytes_to_send));
+	} else {
+		WARN_FMT(
+			"Skipping transmission of error since error socket is negative: error_code=\"{}\" ({})",
+			lttcomm_get_readable_code(error_code),
+			static_cast<int>(error_code));
 	}
 
 	return 0;

@@ -15,45 +15,217 @@
 #include "utils.hpp"
 
 #include <common/pipe.hpp>
+#include <common/scope-exit.hpp>
 #include <common/utils.hpp>
 
 #include <fcntl.h>
 #include <signal.h>
 
+#define MAX_ERROR_MSG_PAYLOAD_SIZE 65535
+
 namespace {
+enum consumerd_error_msg_handling_status {
+	CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK,
+	CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR,
+};
+
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	struct consumer_data *consumer_data;
 	sem_t ready;
 	int initialization_result;
 };
-} /* namespace */
 
-static void mark_thread_as_ready(struct thread_notifiers *notifiers)
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Marking consumer management thread as ready");
 	notifiers->initialization_result = 0;
 	sem_post(&notifiers->ready);
 }
 
-static void mark_thread_intialization_as_failed(struct thread_notifiers *notifiers)
+void mark_thread_initialization_as_failed(struct thread_notifiers *notifiers)
 {
 	ERR("Consumer management thread entering error state");
 	notifiers->initialization_result = -1;
 	sem_post(&notifiers->ready);
 }
 
-static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for consumer management thread to be ready");
 	sem_wait(&notifiers->ready);
 	DBG("Consumer management thread is ready");
 }
 
+int receive_consumer_error_msg(int sock, lttng_payload *msg_payload)
+{
+	int ret;
+	uint64_t msg_specific_payload_size;
+
+	DBG("Beginning reception of consumer error message");
+
+	ret = lttng_dynamic_buffer_set_size(&msg_payload->buffer,
+					    sizeof(struct lttcomm_consumer_error_msg_header));
+	if (ret) {
+		PERROR("Failed to allocate a payload buffer for lttcomm_consumer_error_msg_header");
+		return -1;
+	}
+
+	ret = lttcomm_recv_unix_sock(sock, msg_payload->buffer.data, msg_payload->buffer.size);
+	if (ret <= 0) {
+		ERR("Communication error encountered while receiving error message from the consumer daemon");
+		return -1;
+	}
+
+	const lttcomm_consumer_error_msg_header *header =
+		reinterpret_cast<decltype(header)>(msg_payload->buffer.data);
+
+	if (header->size > MAX_ERROR_MSG_PAYLOAD_SIZE) {
+		ERR_FMT("Error message payload received from the consumer daemon exceeds the maximum size: payload_size={}",
+			header->size);
+		return -1;
+	}
+
+	msg_specific_payload_size = header->size;
+	ret = lttng_dynamic_buffer_set_size(&msg_payload->buffer,
+					    msg_payload->buffer.size + msg_specific_payload_size);
+	if (ret) {
+		PERROR_FMT(
+			"Failed to allocate a payload buffer for message-specific payload: message_type={}, payload_size={}",
+			static_cast<int>(header->msg_type),
+			msg_specific_payload_size);
+		return ret;
+	}
+
+	DBG_FMT("Receiving error message type specific payload of consumer error message: msg_specific_payload_size={}",
+		msg_specific_payload_size);
+	ret = lttcomm_recv_unix_sock(sock,
+				     msg_payload->buffer.data +
+					     sizeof(struct lttcomm_consumer_error_msg_header),
+				     msg_specific_payload_size);
+	if (ret <= 0) {
+		ERR("Communication error encountered while receiving error message from the consumer daemon");
+		return -1;
+	}
+
+	DBG_FMT("Completed reception of consumer daemon error message: size={}",
+		msg_payload->buffer.size);
+
+	return 0;
+}
+
+consumerd_error_msg_handling_status
+handle_consumerd_error_msg_error_code(const lttng_payload_view *error_code_msg_payload_view)
+{
+	lttcomm_return_code code;
+	const lttcomm_consumer_error_msg_error_code *payload;
+
+	if (error_code_msg_payload_view->buffer.size < sizeof(*payload)) {
+		ERR_FMT("Consumer error message payload too short to contain "
+			"an error code message: size={}, expected_size={}",
+			error_code_msg_payload_view->buffer.size,
+			sizeof(*payload));
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+
+	payload = reinterpret_cast<decltype(payload)>(error_code_msg_payload_view->buffer.data);
+	code = static_cast<enum lttcomm_return_code>(payload->error_code);
+
+	if (code == LTTCOMM_CONSUMERD_COMMAND_SOCK_READY) {
+		DBG("Consumer daemon reported its command socket is ready");
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK;
+	} else {
+		ERR_FMT("Consumer reported an error: error_code={}",
+			lttcomm_get_readable_code(code));
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+}
+
+consumerd_error_msg_handling_status
+dispatch_consumer_error_msg(lttng_payload_view *msg_payload_view)
+{
+	const lttcomm_consumer_error_msg_header *header =
+		reinterpret_cast<decltype(header)>(msg_payload_view->buffer.data);
+
+	LTTNG_ASSERT(msg_payload_view->buffer.size > sizeof(*header));
+
+	const auto msg_type = static_cast<enum lttng_consumer_error_msg_type>(header->msg_type);
+	const auto msg_specific_payload_view =
+		lttng_payload_view_from_view(msg_payload_view, sizeof(*header), -1);
+
+	switch (msg_type) {
+	case LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE:
+		return handle_consumerd_error_msg_error_code(&msg_specific_payload_view);
+	default:
+		ERR_FMT("Unknown consumer daemon error message type: "
+			"msg_type={}",
+			static_cast<std::uint8_t>(msg_type));
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	}
+}
+
+consumerd_error_msg_handling_status handle_consumerd_error_socket_in(int consumerd_error_sock)
+{
+	consumerd_error_msg_handling_status result;
+	lttng_payload error_msg_payload;
+
+	lttng_payload_init(&error_msg_payload);
+	const auto reset_payload = lttng::make_scope_exit(
+		[&error_msg_payload]() noexcept { lttng_payload_reset(&error_msg_payload); });
+
+	const auto receive_ret =
+		receive_consumer_error_msg(consumerd_error_sock, &error_msg_payload);
+	if (receive_ret) {
+		ERR("Failed to receive consumer daemon error message");
+		return CONSUMERD_ERROR_MSG_HANDLING_STATUS_FATAL_ERROR;
+	} else {
+		auto view = lttng_payload_view_from_payload(&error_msg_payload, 0, -1);
+
+		return dispatch_consumer_error_msg(&view);
+	}
+}
+
+bool receive_consumerd_status(int sock, lttcomm_return_code *code)
+{
+	LTTNG_ASSERT(code);
+
+	lttcomm_consumer_error_msg_header header;
+	auto recv_ret = lttcomm_recv_unix_sock(sock, &header, sizeof(header));
+
+	if (recv_ret != sizeof(header)) {
+		ERR("Failed to get status from consumerd");
+		return false;
+	}
+
+	if (header.msg_type != LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE) {
+		ERR_FMT("Failed to get status from consumerd: expected_msg_type=`{}`, received_msg_type=`{}`",
+			static_cast<std::uint8_t>(LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE),
+			header.msg_type);
+		return false;
+	}
+
+	uint8_t raw_code;
+	if (header.size != sizeof(raw_code)) {
+		ERR("Bad payload size for consumerd error message type "
+		    "LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE");
+		return false;
+	}
+
+	recv_ret = lttcomm_recv_unix_sock(sock, &raw_code, sizeof(raw_code));
+	if (recv_ret != sizeof(raw_code)) {
+		ERR_FMT("Expecting {} bytes in payload but got {}", sizeof(raw_code), recv_ret);
+		return false;
+	}
+
+	*code = static_cast<enum lttcomm_return_code>(raw_code);
+
+	return true;
+}
+
 /*
  * This thread manage the consumer error sent back to the session daemon.
  */
-static void *thread_consumer_management(void *data)
+void *thread_consumer_management(void *data)
 {
 	int sock = -1, i, ret, err = -1, should_quit = 0;
 	uint32_t nb_fd;
@@ -79,13 +251,12 @@ static void *thread_consumer_management(void *data)
 	 */
 	ret = lttng_poll_create(&events, 3, LTTNG_CLOEXEC);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
+		mark_thread_initialization_as_failed(notifiers);
 		goto error_poll;
 	}
 
 	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -96,7 +267,6 @@ static void *thread_consumer_management(void *data)
 	 */
 	ret = lttng_poll_add(&events, consumer_data->err_sock, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -106,14 +276,12 @@ static void *thread_consumer_management(void *data)
 	health_poll_entry();
 
 	if (testpoint(sessiond_thread_manage_consumer)) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
 	ret = lttng_poll_wait(&events, -1);
 	health_poll_exit();
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -130,19 +298,16 @@ static void *thread_consumer_management(void *data)
 		if (pollfd == thread_quit_pipe_fd) {
 			DBG("Activity on thread quit pipe");
 			err = 0;
-			mark_thread_intialization_as_failed(notifiers);
-			goto exit;
+			goto error;
 		} else if (pollfd == consumer_data->err_sock) {
 			/* Event on the registration socket */
 			if (revents & LPOLLIN) {
 				continue;
 			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				ERR("consumer err socket poll error");
-				mark_thread_intialization_as_failed(notifiers);
 				goto error;
 			} else {
 				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-				mark_thread_intialization_as_failed(notifiers);
 				goto error;
 			}
 		}
@@ -150,7 +315,6 @@ static void *thread_consumer_management(void *data)
 
 	sock = lttcomm_accept_unix_sock(consumer_data->err_sock);
 	if (sock < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -165,14 +329,7 @@ static void *thread_consumer_management(void *data)
 	DBG2("Receiving code from consumer err_sock");
 
 	/* Getting status code from consumerd */
-	{
-		std::int32_t comm_code = 0;
-
-		ret = lttcomm_recv_unix_sock(sock, &comm_code, sizeof(comm_code));
-		code = static_cast<decltype(code)>(comm_code);
-	}
-	if (ret <= 0) {
-		mark_thread_intialization_as_failed(notifiers);
+	if (!receive_consumerd_status(sock, &code)) {
 		goto error;
 	}
 
@@ -180,7 +337,6 @@ static void *thread_consumer_management(void *data)
 	if (code != LTTCOMM_CONSUMERD_COMMAND_SOCK_READY) {
 		ERR("consumer error when waiting for SOCK_READY : %s",
 		    lttcomm_get_readable_code((lttcomm_return_code) -code));
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -189,7 +345,6 @@ static void *thread_consumer_management(void *data)
 	consumer_data->metadata_fd = lttcomm_connect_unix_sock(consumer_data->cmd_unix_sock_path);
 	if (consumer_data->cmd_sock < 0 || consumer_data->metadata_fd < 0) {
 		PERROR("consumer connect cmd socket");
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -199,7 +354,6 @@ static void *thread_consumer_management(void *data)
 	consumer_data->metadata_sock.lock = zmalloc<pthread_mutex_t>();
 	if (consumer_data->metadata_sock.lock == nullptr) {
 		PERROR("zmalloc pthread mutex");
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 	pthread_mutex_init(consumer_data->metadata_sock.lock, nullptr);
@@ -212,21 +366,18 @@ static void *thread_consumer_management(void *data)
 	 */
 	ret = lttng_poll_del(&events, consumer_data->err_sock);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
 	/* Add new accepted error socket. */
 	ret = lttng_poll_add(&events, sock, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
 	/* Add metadata socket that is successfully connected. */
 	ret = lttng_poll_add(&events, consumer_data->metadata_fd, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -238,7 +389,6 @@ static void *thread_consumer_management(void *data)
 	 */
 	cmd_socket_wrapper = consumer_allocate_socket(&consumer_data->cmd_sock);
 	if (!cmd_socket_wrapper) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 	cmd_socket_wrapper->lock = &consumer_data->lock;
@@ -247,7 +397,6 @@ static void *thread_consumer_management(void *data)
 	ret = consumer_init(cmd_socket_wrapper, the_sessiond_uuid);
 	if (ret) {
 		ERR("Failed to send sessiond uuid to consumer daemon");
-		mark_thread_intialization_as_failed(notifiers);
 		pthread_mutex_unlock(cmd_socket_wrapper->lock);
 		goto error;
 	}
@@ -256,7 +405,6 @@ static void *thread_consumer_management(void *data)
 	ret = consumer_send_channel_monitor_pipe(cmd_socket_wrapper,
 						 consumer_data->channel_monitor_pipe);
 	if (ret) {
-		mark_thread_intialization_as_failed(notifiers);
 		goto error;
 	}
 
@@ -308,24 +456,11 @@ static void *thread_consumer_management(void *data)
 					ERR("consumer err socket second poll error");
 					goto error;
 				}
-				health_code_update();
-				/* Wait for any consumerd error */
-				{
-					std::int32_t comm_code = 0;
 
-					ret = lttcomm_recv_unix_sock(
-						sock, &comm_code, sizeof(comm_code));
-					code = static_cast<decltype(code)>(comm_code);
+				const auto handling_status = handle_consumerd_error_socket_in(sock);
+				if (handling_status != CONSUMERD_ERROR_MSG_HANDLING_STATUS_OK) {
+					goto exit;
 				}
-				if (ret <= 0) {
-					ERR("consumer closed the command socket");
-					goto error;
-				}
-
-				ERR("consumer return code : %s",
-				    lttcomm_get_readable_code((lttcomm_return_code) -code));
-
-				goto exit;
 			} else if (pollfd == consumer_data->metadata_fd) {
 				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP) &&
 				    !(revents & LPOLLIN)) {
@@ -344,8 +479,9 @@ static void *thread_consumer_management(void *data)
 		health_code_update();
 	}
 
-exit:
 error:
+	mark_thread_initialization_as_failed(notifiers);
+exit:
 	/*
 	 * We lock here because we are about to close the sockets and some other
 	 * thread might be using them so get exclusive access which will abort all
@@ -419,7 +555,7 @@ error_poll:
 	return nullptr;
 }
 
-static bool shutdown_consumer_management_thread(void *data)
+bool shutdown_consumer_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
@@ -427,13 +563,14 @@ static bool shutdown_consumer_management_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-static void cleanup_consumer_management_thread(void *data)
+void cleanup_consumer_management_thread(void *data)
 {
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 
 	lttng_pipe_destroy(notifiers->quit_pipe);
 	free(notifiers);
 }
+} /* namespace */
 
 bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 {

@@ -838,6 +838,18 @@ struct lttcomm_consumer_msg {
 	} u;
 } LTTNG_PACKED;
 
+struct lttcomm_consumer_error_msg_header {
+	/* enum lttng_consumer_error_msg_type */
+	uint8_t msg_type;
+	/* Size of payload following this member. */
+	uint64_t size;
+} LTTNG_PACKED;
+
+struct lttcomm_consumer_error_msg_error_code {
+	/* enum lttcomm_return_code */
+	uint8_t error_code;
+} LTTNG_PACKED;
+
 /*
  * Channel monitoring message returned to the session daemon on every
  * monitor timer expiration.

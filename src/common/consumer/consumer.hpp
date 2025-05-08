@@ -74,6 +74,10 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
 };
 
+enum lttng_consumer_error_msg_type : std::uint8_t {
+	LTTNG_CONSUMER_ERROR_MSG_TYPE_ERROR_CODE,
+};
+
 enum lttng_consumer_type {
 	LTTNG_CONSUMER_UNKNOWN = 0,
 	LTTNG_CONSUMER_KERNEL,

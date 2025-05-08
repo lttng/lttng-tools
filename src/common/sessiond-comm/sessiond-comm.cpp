@@ -118,13 +118,9 @@ static unsigned long network_timeout;
 /*
  * Return ptr to string representing a human readable error code from the
  * lttcomm_return_code enum.
- *
- * These code MUST be negative in other to treat that as an error value.
  */
 const char *lttcomm_get_readable_code(enum lttcomm_return_code code)
 {
-	code = (lttcomm_return_code) -code;
-
 	if (code != LTTCOMM_CONSUMERD_SUCCESS &&
 	    (code < LTTCOMM_CONSUMERD_COMMAND_SOCK_READY || code >= LTTCOMM_NR)) {
 		code = LTTCOMM_CONSUMERD_UNKNOWN_ERROR;
