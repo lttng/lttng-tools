@@ -124,6 +124,13 @@ function test_python_before_start ()
 	# Wait for ready file
 	while [ ! -e ${ready_file} ]; do
 		sleep 0.5
+		if ! ps -p "${tracee_pids[@]}" > /dev/null 2>&1 ; then
+			# Avoid hanging indefinitely. This can happen if
+			# the lttngust python module can't be found and the
+			# test application bails out.
+			diag "Background application failed unexpected"
+			break
+		fi
 	done
 
 	start_lttng_tracing_ok $SESSION_NAME
