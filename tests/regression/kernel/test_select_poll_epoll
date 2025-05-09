@@ -172,7 +172,13 @@ function test_ppoll_fds_buffer_overflow()
 
 	start_lttng_tracing_ok
 	diag "Expect segfaults"
+	# Disable coredumps temporarily so the expected segfault doesn't produce
+	# a core that may be picked up later by test tools that validate no coredumps
+	# were produced during a run.
+	ULIMIT_C=$(ulimit -c)
+	ulimit -c 0
 	yes | "$CURDIR"/select_poll_epoll --validation-file "$TEST_VALIDATION_OUTPUT_PATH" -t ppoll_fds_buffer_overflow
+	ulimit -c "${ULIMIT_C}"
 	stop_lttng_tracing_ok
 
 	validate_trace "$SYSCALL_LIST" "$TRACE_PATH"
