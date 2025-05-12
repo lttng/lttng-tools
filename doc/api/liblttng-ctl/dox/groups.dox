@@ -3136,7 +3136,57 @@ To be done.
 @defgroup api_ev_field_val Event field value API
 @ingroup api_trigger_cond_er_matches
 
-To be done.
+An <strong><em>event field value</em></strong> is
+the payload or context value of an event field.
+
+See \ref api_er to learn more about LTTng events.
+
+When you create an
+\link api_trigger_cond_er_matches "event rule matches"\endlink
+trigger condition, you may append capture descriptors
+with lttng_condition_event_rule_matches_append_capture_descriptor().
+
+Then, when a trigger with such an "event rule matches" condition fires,
+the captured event field values are available through
+lttng_evaluation_event_rule_matches_get_captured_values().
+
+Get the type of an event field value with
+lttng_event_field_value_get_type().
+
+The available event field value types are:
+
+<table>
+  <tr>
+    <th>Event field value type
+    <th>Type enumerator(s)
+    <th>Accessors
+  <tr>
+    <td>Unsigned integer/enumeration
+    <td>
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT and
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM
+    <td>lttng_event_field_value_unsigned_int_get_value()
+  <tr>
+    <td>Signed integer/enumeration
+    <td>
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT and
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM
+    <td>lttng_event_field_value_signed_int_get_value()
+  <tr>
+    <td>Real number
+    <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_REAL
+    <td>lttng_event_field_value_real_get_value()
+  <tr>
+    <td>String
+    <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_STRING
+    <td>lttng_event_field_value_string_get_value()
+  <tr>
+    <td>Array
+    <td>#LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY
+    <td>
+      lttng_event_field_value_array_get_length() and
+      lttng_event_field_value_array_get_element_at_index()
+</table>
 
 @defgroup api_trigger_action Trigger action API
 @ingroup api_trigger
