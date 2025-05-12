@@ -62,7 +62,7 @@ This API documentation has three main modules:
 
   Amongst the interesting available trigger conditions and actions
   are the
-  \link #LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES <em>event rule matches</em>\endlink
+  \link #LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES <em>"event rule matches"</em>\endlink
   condition and the
   \link #LTTNG_ACTION_TYPE_NOTIFY <em>notify</em>\endlink
   action. With those, your application can receive an asynchronous
