@@ -18,215 +18,286 @@ struct lttng_event_field_value;
 extern "C" {
 #endif
 
-/*
- * Types of a event field value expression.
- */
+/*!
+@addtogroup api_ev_field_val
+@{
+*/
+
+/*!
+@brief
+    Event field value type.
+
+Get the type of an event field value with
+lttng_event_field_value_get_type().
+*/
 enum lttng_event_field_value_type {
-	/*
-	 * Unknown.
-	 */
-	LTTNG_EVENT_FIELD_VALUE_TYPE_UNKNOWN = -2,
-
-	/*
-	 * Returned by lttng_event_field_value_get_type() with an
-	 * invalid parameter.
-	 */
-	LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID = -1,
-
-	/*
-	 * Unsigned integer event field value.
-	 */
+	/// Unsigned integer.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT = 0,
 
-	/*
-	 * Signed integer event field value.
-	 */
+	/// Signed integer.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT = 1,
 
-	/*
-	 * Unsigned enumeration event field value.
-	 *
-	 * This type conceptually inherits
-	 * `LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT`.
-	 */
+	/*!
+	Unsigned enumeration.
+
+	Conceptually inherits
+	#LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT.
+	*/
 	LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM = 2,
 
-	/*
-	 * Signed enumeration event field value.
-	 *
-	 * This type conceptually inherits
-	 * `LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT`.
-	 */
+	/*!
+	Signed enumeration.
+
+	Conceptually inherits
+	#LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT.
+	*/
 	LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM = 3,
 
-	/*
-	 * Real event field value.
-	 */
+	/// Real number.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_REAL = 4,
 
-	/*
-	 * String event field value.
-	 */
+	/// String.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_STRING = 5,
 
-	/*
-	 * Array event field value.
-	 */
+	/// Array.
 	LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY = 6,
+
+	/// Unsatisfied precondition.
+	LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID = -1,
+
+	/// Unknown (error).
+	LTTNG_EVENT_FIELD_VALUE_TYPE_UNKNOWN = -2,
 };
 
-/*
- * Event field value API status codes.
- */
+/*!
+@brief
+    Return type of event field value API functions.
+*/
 enum lttng_event_field_value_status {
-	/*
-	 * Event field value is not available.
-	 */
-	LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE = -2,
+	/// Success.
+	LTTNG_EVENT_FIELD_VALUE_STATUS_OK = 0,
 
-	/*
-	 * Invalid parameter.
-	 */
+	/// Unsatisfied precondition.
 	LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID = -1,
 
-	/*
-	 * Success.
-	 */
-	LTTNG_EVENT_FIELD_VALUE_STATUS_OK = 0,
+	/// Event field value is not available.
+	LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE = -2,
 };
 
-/*
- * Returns the type of the event field value `field_val`, or:
- *
- * `LTTNG_EVENT_FIELD_VALUE_TYPE_UNKNOWN`:
- *     The type of `field_val` is unknown as of this version of the
- *     LTTng control library.
- *
- * `LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID`:
- *     `field_val` is `NULL`.
- */
+/*!
+@brief
+    Returns the type of the event field value \lt_p{field_val}.
+
+@param[in] field_val
+    Event field value of which to get the type.
+
+@returns
+    Type of \lt_p{field_val}.
+
+@pre
+    @lt_pre_not_null{field_val}
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_type
 lttng_event_field_value_get_type(const struct lttng_event_field_value *field_val);
 
-/*
- * Sets `*val` to the raw value of the unsigned integer/enumeration
- * event field value `field_val`.
- *
- * Returns:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT` or
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM`.
- *     * `val` is `NULL`.
- */
+/*!
+@brief
+    Sets \lt_p{*val} to the raw value of the
+    unsigned integer event field value \lt_p{field_val}.
+
+@param[in] field_val
+    Unsigned integer event field value of which to get the raw value.
+@param[out] val
+    <strong>On success</strong>, this function sets \lt_p{*val}
+    to the raw value of \lt_p{field_val}.
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    - \lt_p{field_val} has the type
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT or
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM.
+    @lt_pre_not_null{val}
+
+@sa lttng_event_field_value_signed_int_get_value() --
+    Get the raw value of a signed integer event field value.
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_unsigned_int_get_value(const struct lttng_event_field_value *field_val,
 					       uint64_t *val);
 
-/*
- * Sets `*val` to the raw value of the signed integer/enumeration event
- * field value `field_val`.
- *
- * Returns:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT` or
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM`.
- *     * `val` is `NULL`.
- */
+/*!
+@brief
+    Sets \lt_p{*val} to the raw value of the
+    signed integer event field value \lt_p{field_val}.
+
+@param[in] field_val
+    Signed integer event field value of which to get the raw value.
+@param[out] val
+    <strong>On success</strong>, this function sets \lt_p{*val}
+    to the raw value of \lt_p{field_val}.
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    - \lt_p{field_val} has the type
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT or
+      #LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM.
+    @lt_pre_not_null{val}
+
+@sa lttng_event_field_value_unsigned_int_get_value() --
+    Get the raw value of an unsigned integer event field value.
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_signed_int_get_value(const struct lttng_event_field_value *field_val,
 					     int64_t *val);
 
-/*
- * Sets `*val` to the raw value of the real event field value
- * `field_val`.
- *
- * Returns:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_REAL`.
- *     * `val` is `NULL`.
- */
+/*!
+@brief
+    Sets \lt_p{*val} to the raw value of the
+    real number event field value \lt_p{field_val}.
+
+@param[in] field_val
+    Real number event field value of which to get the raw value.
+@param[out] val
+    <strong>On success</strong>, this function sets \lt_p{*val}
+    to the raw value of \lt_p{field_val}.
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_REAL}
+    @lt_pre_not_null{val}
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_real_get_value(const struct lttng_event_field_value *field_val,
 				       double *val);
 
-/*
- * Returns the raw value (an UTF-8 C string) of the string event field
- * value `field_val`, or `NULL` if:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_STRING`.
- */
+/*!
+@brief
+    Sets \lt_p{*val} to the raw value of the
+    string event field value \lt_p{field_val}.
+
+@param[in] field_val
+    String event field value of which to get the raw value.
+@param[out] val
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*val}
+    to the raw value of \lt_p{field_val}.
+
+    \lt_p{field_val} owns \lt_p{*val}.
+
+    \lt_p{*val} remains valid until the next function call
+    with \lt_p{field_val}.
+    @endparblock
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_STRING}
+    @lt_pre_not_null{val}
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_string_get_value(const struct lttng_event_field_value *field_val,
-					 const char **value);
+					 const char **val);
 
-/*
- * Sets `*length` to the length (the number of contained elements) of
- * the array event field value `field_val`.
- *
- * Returns:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY`.
- *     * `length` is `NULL`.
- */
+/*!
+@brief
+    Sets \lt_p{*length} to the length of the
+    array event field value \lt_p{field_val}.
+
+@param[in] field_val
+    Array event field value of which to get the length.
+@param[out] length
+    <strong>On success</strong>, this function sets \lt_p{*length}
+    to the length of \lt_p{field_val}.
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY}
+    @lt_pre_not_null{length}
+
+@sa lttng_event_field_value_array_get_element_at_index() --
+    Get an element of a an array event field value by index.
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_array_get_length(const struct lttng_event_field_value *field_val,
 					 unsigned int *length);
 
-/*
- * Sets `*elem_field_val` to the event field value at index `index` in
- * the array event field value `field_val`.
- *
- * Returns:
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
- *     Success.
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
- *     * `field_val` is `NULL`.
- *     * The type of `field_val` is not
- *       `LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY`.
- *     * `index` is greater than or equal to the length of `field_val`,
- *       as returned by lttng_event_field_value_array_get_length().
- *
- * `LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE`:
- *     * No event field value exists at index `index` within
- *       `field_val`.
- */
+/*!
+@brief
+    Sets \lt_p{*elem_field_val} to the element of the
+    array event field value \lt_p{field_val} at the index
+    \lt_p{index}.
+
+It's possible that \lt_p{field_val} doesn't actually have any element at
+the index \lt_p{index}, in which case this function returns
+#LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE.
+
+@param[in] field_val
+    Array event field value of which to get the element at the index
+    \lt_p{index}.
+@param[in] index
+    Index of the element to get from \lt_p{field_val}.
+@param[out] elem_field_val
+    @parblock
+    <strong>On success</strong>, this function sets
+    \lt_p{*elem_field_val} to the element of \lt_p{field_val} at the
+    index \lt_p{index}.
+
+    \lt_p{field_val} owns \lt_p{*elem_field_val}.
+
+    \lt_p{*elem_field_val} remains valid until the next function call
+    with \lt_p{field_val}.
+    @endparblock
+
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_OK
+    Success.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID
+    Unsatisfied precondition.
+@retval #LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE
+    The element of \lt_p{field_val} at the
+    index \lt_p{index} is not available.
+
+@pre
+    @lt_pre_not_null{field_val}
+    @lt_pre_has_type{field_val,LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY}
+    - \lt_p{index} is less than the number of elements
+      of \lt_p{field_val} (as given by
+      lttng_event_field_value_array_get_length()).
+    @lt_pre_not_null{elem_field_val}
+
+@sa lttng_event_field_value_array_get_length() --
+    Get the length of an array event field value.
+*/
 LTTNG_EXPORT extern enum lttng_event_field_value_status
 lttng_event_field_value_array_get_element_at_index(
 	const struct lttng_event_field_value *field_val,
 	unsigned int index,
 	const struct lttng_event_field_value **elem_field_val);
+
+/// @}
 
 #ifdef __cplusplus
 }
