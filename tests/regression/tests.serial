@@ -153,12 +153,18 @@ def run_test(test_script):
         except FileExistsError:
             pass
         test_env["LTTNG_TEST_LOG_DIR"] = str(test_log_dir)
-    current_test_process = subprocess.Popen(
-        [test_script],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=test_env,
-    )
+    try:
+        current_test_process = subprocess.Popen(
+            [test_script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=test_env,
+        )
+    except Exception as e:
+        logging.error(
+            "Exception while starting test '{}': {}".format(test_script, str(e))
+        )
+        return (str(e), -1)
 
     return_code = 0
     communication_timeout = int(
