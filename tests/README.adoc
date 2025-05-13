@@ -110,6 +110,15 @@ Used to manually launch one during test troubleshooting
 | Do not delete test environment folders on tear-down
 | {check} | {ex} | {ex}
 
+| `LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS`
+| The time in seconds that the serial test runner should read stdout and check
+the test timeout condition. (Default: 60)
+| {check} | N/A | N/A
+
+| `LTTNG_TEST_SERIAL_TEST_TIMEOUT_MINUTES`
+| The time in minutes after which a test run by the serial test runner will be killed. (Default: 30)
+| {check} | N/A | N/A
+
 | `LTTNG_TEST_VERBOSE_BABELTRACE`
 | Run `babeltrace2` in it's verbose mode
 | {check} | {check} | {ex}

@@ -159,21 +159,40 @@ def run_test(test_script):
         stderr=subprocess.STDOUT,
         env=test_env,
     )
-    while current_test_process.returncode is None:
-        try:
-            out, err = current_test_process.communicate(timeout=1)
-            stdout += out.decode("utf-8")
-        except subprocess.TimeoutExpired:
-            continue
+
+    return_code = 0
+    communication_timeout = int(
+        os.getenv("LTTNG_TEST_SERIAL_TEST_POLL_PERIOD_SECONDS", 60)
+    )
+    # abort the test if there is more than 30 minutes without new output
+    test_timeout_minutes = int(os.getenv("LTTNG_TEST_SERIAL_TEST_TIMEOUT_MINUTES", 30))
+    last_output = time.time()
+    with open(str(test_log), "w") as f:
+        while current_test_process.returncode is None:
+            try:
+                out, err = current_test_process.communicate(
+                    timeout=communication_timeout
+                )
+                data = out.decode("utf-8")
+                stdout += data
+                if f.write(data) > 0:
+                    last_output = time.time()
+            except subprocess.TimeoutExpired:
+                logging.info("Test '{}' still running...".format(test_script))
+                if (time.time() - last_output) >= (test_timeout_minutes * 60):
+                    logging.info(
+                        "{}s since last output, aborting test '{}'".format(
+                            time.time() - last_output, test_script
+                        )
+                    )
+                    current_test_process.kill()
+                continue
 
     return_code = current_test_process.returncode
     current_test_process = None
     logging.info(
         "Test '{}' terminated with return code {}".format(test_script, return_code)
     )
-    with open(str(test_log), "w") as f:
-        logging.debug("Wrote test output to '{}'".format(str(test_log)))
-        f.write(stdout)
 
     # Some test scripts can fail but still return a zero exit code
     if return_code == 0 and len(TAP_NOT_OK_LINE_RE.findall(stdout)) == 0:
