@@ -16,6 +16,7 @@
 #include <common/error.hpp>
 #include <common/macros.hpp>
 #include <common/make-unique-wrapper.hpp>
+#include <common/string-utils/c-string-view.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/lttng-error.h>
@@ -42,6 +43,58 @@
 #define CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN 7
 
 namespace {
+using xmlBuffer_uptr =
+	std::unique_ptr<xmlBuffer, lttng::memory::create_deleter_class<xmlBuffer, xmlBufferFree>>;
+
+class encoded_string {
+public:
+	encoded_string() noexcept = default;
+
+	encoded_string(encoded_string&& other) noexcept : _buffer(std::move(other._buffer))
+	{
+	}
+
+	explicit encoded_string(xmlBuffer_uptr buffer) noexcept : _buffer(std::move(buffer))
+	{
+	}
+
+	~encoded_string() noexcept = default;
+
+	encoded_string& operator=(encoded_string&& other) noexcept
+	{
+		if (this != &other) {
+			_buffer = std::move(other._buffer);
+		}
+
+		return *this;
+	}
+
+	/* Copying is disallowed to prevent multiple ownership of the underlying XML buffer. */
+	encoded_string(const encoded_string&) = delete;
+	encoded_string& operator=(const encoded_string&) = delete;
+
+	const xmlChar *value() const noexcept
+	{
+		LTTNG_ASSERT(_buffer);
+		return xmlBufferContent(_buffer.get());
+	}
+
+	/* NOLINTBEGIN(google-explicit-constructor) */
+	operator bool() const noexcept
+	{
+		return !!_buffer;
+	}
+
+	operator const xmlChar *() const noexcept
+	{
+		return value();
+	}
+	/* NOLINTEND(google-explicit-constructor) */
+
+private:
+	xmlBuffer_uptr _buffer;
+};
+
 struct session_config_validation_ctx {
 	xmlSchemaParserCtxtPtr parser_ctx;
 	xmlSchemaPtr schema;
@@ -66,7 +119,7 @@ LTTNG_EXPORT extern const char *const config_xml_false;
 
 const char *const config_element_all = "all";
 const char *const config_xml_encoding = "UTF-8";
-const size_t config_xml_encoding_bytes_per_char = 2;
+const size_t config_xml_encoding_bytes_per_char = 4;
 const char *const config_xml_indent_string = "\t";
 const char *const config_xml_true = "true";
 const char *const config_xml_false = "false";
@@ -264,48 +317,43 @@ struct consumer_output {
 	char *control_uri;
 	char *data_uri;
 };
-} /* namespace */
 
-/*
- * Returns a xmlChar string which must be released using xmlFree().
- */
-static xmlChar *encode_string(const char *in_str)
+encoded_string encode_string(const char *in_str)
 {
-	xmlChar *out_str = nullptr;
-	xmlCharEncodingHandlerPtr handler;
-	int out_len, ret, in_len;
-
 	LTTNG_ASSERT(in_str);
 
-	handler = xmlFindCharEncodingHandler(config_xml_encoding);
+	xmlCharEncodingHandlerPtr handler = xmlFindCharEncodingHandler(config_xml_encoding);
 	if (!handler) {
-		ERR("xmlFindCharEncodingHandler return NULL!. Configure issue!");
-		goto end;
+		ERR_FMT("xmlFindCharEncodingHandler returned null: encoding=`{}`",
+			config_xml_encoding);
+		return encoded_string();
 	}
 
-	in_len = strlen(in_str);
-	/*
-	 * Add 1 byte for the NULL terminted character. The factor 4 here is
-	 * used because UTF-8 characters can take up to 4 bytes.
-	 */
-	out_len = (in_len * 4) + 1;
-	out_str = (xmlChar *) xmlMalloc(out_len);
-	if (!out_str) {
-		goto end;
+	const xmlBuffer_uptr in_buffer(xmlBufferCreate());
+	xmlBuffer_uptr out_buffer(xmlBufferCreate());
+	if (!in_buffer || !out_buffer) {
+		ERR("Failed to allocate XML buffer");
+		return encoded_string();
 	}
 
-	ret = handler->input(out_str, &out_len, (const xmlChar *) in_str, &in_len);
-	if (ret < 0) {
-		xmlFree(out_str);
-		out_str = nullptr;
-		goto end;
+	const auto buffer_add_ret =
+		xmlBufferAdd(in_buffer.get(), reinterpret_cast<const xmlChar *>(in_str), -1);
+	if (buffer_add_ret < 0) {
+		ERR_FMT("Failed to add string to XML buffer: value=`{}`", in_str);
+		return encoded_string();
 	}
 
-	/* out_len is now the size of out_str */
-	out_str[out_len] = '\0';
-end:
-	return out_str;
+	const auto encode_ret = xmlCharEncInFunc(handler, out_buffer.get(), in_buffer.get());
+	if (encode_ret < 0) {
+		ERR_FMT("Failed to encode string: value=`{}`, target_encoding=`{}`",
+			in_str,
+			config_xml_encoding);
+		return encoded_string();
+	}
+
+	return encoded_string(std::move(out_buffer));
 }
+} /* namespace */
 
 struct config_writer *config_writer_create(int fd_output, int indent)
 {
@@ -372,118 +420,84 @@ end:
 
 int config_writer_open_element(struct config_writer *writer, const char *element_name)
 {
-	int ret;
-	xmlChar *encoded_element_name;
-
 	if (!writer || !writer->writer || !element_name || !element_name[0]) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_element_name = encode_string(element_name);
+	const auto encoded_element_name = encode_string(element_name);
 	if (!encoded_element_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterStartElement(writer->writer, encoded_element_name);
-	xmlFree(encoded_element_name);
-end:
-	return ret >= 0 ? 0 : ret;
+	const auto write_ret = xmlTextWriterStartElement(writer->writer, encoded_element_name);
+	return std::min(write_ret, 0);
 }
 
 int config_writer_write_attribute(struct config_writer *writer, const char *name, const char *value)
 {
-	int ret;
-	xmlChar *encoded_name = nullptr;
-	xmlChar *encoded_value = nullptr;
-
 	if (!writer || !writer->writer || !name || !name[0]) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_name = encode_string(name);
+	const auto encoded_name = encode_string(name);
 	if (!encoded_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_value = encode_string(value);
+	const auto encoded_value = encode_string(value);
 	if (!encoded_value) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterWriteAttribute(writer->writer, encoded_name, encoded_value);
-end:
-	xmlFree(encoded_name);
-	xmlFree(encoded_value);
-	return ret >= 0 ? 0 : ret;
+	const auto write_ret =
+		xmlTextWriterWriteAttribute(writer->writer, encoded_name, encoded_value);
+	return std::min(write_ret, 0);
 }
 
 int config_writer_close_element(struct config_writer *writer)
 {
-	int ret;
-
 	if (!writer || !writer->writer) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterEndElement(writer->writer);
-end:
-	return ret >= 0 ? 0 : ret;
+	const auto write_ret = xmlTextWriterEndElement(writer->writer);
+	return std::min(write_ret, 0);
 }
 
 int config_writer_write_element_unsigned_int(struct config_writer *writer,
 					     const char *element_name,
 					     uint64_t value)
 {
-	int ret;
-	xmlChar *encoded_element_name;
-
 	if (!writer || !writer->writer || !element_name || !element_name[0]) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_element_name = encode_string(element_name);
+	const auto encoded_element_name = encode_string(element_name);
 	if (!encoded_element_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterWriteFormatElement(
+	const auto write_ret = xmlTextWriterWriteFormatElement(
 		writer->writer, encoded_element_name, "%" PRIu64, value);
-	xmlFree(encoded_element_name);
-end:
-	return ret >= 0 ? 0 : ret;
+	return std::min(write_ret, 0);
 }
 
 int config_writer_write_element_signed_int(struct config_writer *writer,
 					   const char *element_name,
 					   int64_t value)
 {
-	int ret;
-	xmlChar *encoded_element_name;
-
 	if (!writer || !writer->writer || !element_name || !element_name[0]) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_element_name = encode_string(element_name);
+	const auto encoded_element_name = encode_string(element_name);
 	if (!encoded_element_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterWriteFormatElement(
+	const auto write_ret = xmlTextWriterWriteFormatElement(
 		writer->writer, encoded_element_name, "%" PRIi64, value);
-	xmlFree(encoded_element_name);
-end:
-	return ret >= 0 ? 0 : ret;
+	return std::min(write_ret, 0);
 }
 
 int config_writer_write_element_bool(struct config_writer *writer,
@@ -498,56 +512,41 @@ int config_writer_write_element_double(struct config_writer *writer,
 				       const char *element_name,
 				       double value)
 {
-	int ret;
-	xmlChar *encoded_element_name;
-
 	if (!writer || !writer->writer || !element_name || !element_name[0]) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_element_name = encode_string(element_name);
+	const auto encoded_element_name = encode_string(element_name);
 	if (!encoded_element_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterWriteFormatElement(writer->writer, encoded_element_name, "%f", value);
-	xmlFree(encoded_element_name);
-end:
-	return ret >= 0 ? 0 : ret;
+	const auto write_ret =
+		xmlTextWriterWriteFormatElement(writer->writer, encoded_element_name, "%f", value);
+	return std::min(write_ret, 0);
 }
 
 int config_writer_write_element_string(struct config_writer *writer,
 				       const char *element_name,
 				       const char *value)
 {
-	int ret;
-	xmlChar *encoded_element_name = nullptr;
-	xmlChar *encoded_value = nullptr;
-
 	if (!writer || !writer->writer || !element_name || !element_name[0] || !value) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_element_name = encode_string(element_name);
+	const auto encoded_element_name = encode_string(element_name);
 	if (!encoded_element_name) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	encoded_value = encode_string(value);
+	const auto encoded_value = encode_string(value);
 	if (!encoded_value) {
-		ret = -1;
-		goto end;
+		return -1;
 	}
 
-	ret = xmlTextWriterWriteElement(writer->writer, encoded_element_name, encoded_value);
-end:
-	xmlFree(encoded_element_name);
-	xmlFree(encoded_value);
-	return ret >= 0 ? 0 : ret;
+	const auto write_ret =
+		xmlTextWriterWriteElement(writer->writer, encoded_element_name, encoded_value);
+	return std::min(write_ret, 0);
 }
 
 static ATTR_FORMAT_PRINTF(2, 3) void xml_error_handler(void *ctx __attribute__((unused)),
@@ -2826,7 +2825,7 @@ end:
 static int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
-	struct lttng_domain domain {};
+	struct lttng_domain domain{};
 	struct lttng_handle *handle = nullptr;
 	struct lttng_channel *channel = nullptr;
 	xmlNodePtr channels_node = nullptr;
