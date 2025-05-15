@@ -399,6 +399,14 @@ The following table indicates, for each enumerator, its description, for
 which \lt_obj_domain it's available, and the
 data type and the name of the resulting context field in traces.
 
+All the context field types below, except for
+#LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER,
+#LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER,
+and #LTTNG_EVENT_CONTEXT_APP_CONTEXT, are said to
+be <em>statically known</em>: they have a dedicated enumerator,
+their value is some specific system state, and recording them
+adds an event record context field with a designated name.
+
 <table>
   <tr>
     <th>Enumerator
