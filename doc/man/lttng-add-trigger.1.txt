@@ -114,10 +114,10 @@ Examples: `my_field`, `target_cpu`, `ip`.
     A statically-known context field named 'NAME'.
 +
 List the available statically-known context field names with
-man:lttng-add-context(1).
+man:lttng-add-context(1). As of LTTng{nbsp}{lttng_version},
+context field names starting with `perf:` aren't supported.
 +
-Examples: `$ctx.prio`, `$ctx.preemptible`,
-`$ctx.perf:cpu:stalled-cycles-frontend`.
+Examples: `$ctx.prio`, `$ctx.gid`, `$ctx.preemptible`.
 
 ++$app.++__PROVIDER__++.++__NAME__::
     An application-specific context field named 'NAME' from the
