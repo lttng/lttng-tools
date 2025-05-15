@@ -493,7 +493,7 @@ adds an event record context field with a designated name.
 
       If the lttng_event_context::ctx member of an #lttng_event_context
       structure is #LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER, then the
-      lttng_event_context::lttng_event_context_u::perf_counter member
+      lttng_event_context_u::perf_counter member
       of lttng_event_context::u selects a specific per-CPU perf counter.
     <td>#LTTNG_DOMAIN_KERNEL
     <td>Integer
@@ -505,7 +505,7 @@ adds an event record context field with a designated name.
 
       If the lttng_event_context::ctx member of an #lttng_event_context
       structure is #LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER, then the
-      lttng_event_context::lttng_event_context_u::perf_counter member
+      lttng_event_context_u::perf_counter member
       of lttng_event_context::u selects a specific per-thread
       perf counter.
     <td>#LTTNG_DOMAIN_UST
@@ -518,7 +518,7 @@ adds an event record context field with a designated name.
 
       If the lttng_event_context::ctx member of an #lttng_event_context
       structure is #LTTNG_EVENT_CONTEXT_APP_CONTEXT, then the
-      lttng_event_context::lttng_event_context_u::app_ctx member of
+      lttng_event_context_u::app_ctx member of
       of lttng_event_context::u selects
       a specific application-specific context.
     <td>#LTTNG_DOMAIN_JUL, #LTTNG_DOMAIN_LOG4J, or #LTTNG_DOMAIN_LOG4J2
@@ -911,7 +911,7 @@ enum lttng_event_flag {
 If the lttng_event_context::ctx member of an #lttng_event_context
 structure is #LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER or
 #LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER, then the
-lttng_event_context::lttng_event_context_u::perf_counter member
+lttng_event_context_u::perf_counter member
 of lttng_event_context::u selects a specific perf counter.
 
 You must initialize such a structure to zeros before setting its members
@@ -1106,6 +1106,44 @@ struct lttng_event_perf_counter_ctx {
 
 /*!
 @brief
+    perf counter or application-specific context field
+    descriptor.
+
+@ingroup api_channel
+*/
+union lttng_event_context_u {
+	/*!
+	@brief
+	    perf counter context field descriptor.
+
+	Only used when the lttng_event_context::ctx member
+	is #LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER or
+	#LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER.
+	*/
+	struct lttng_event_perf_counter_ctx perf_counter;
+
+	struct {
+		/// Provider name.
+		char *provider_name;
+
+		/// Type name.
+		char *ctx_name;
+	}
+
+	/*!
+	@brief
+	    Application-specific context field descriptor.
+
+	Only used when the lttng_event_context::ctx member
+	is #LTTNG_EVENT_CONTEXT_APP_CONTEXT.
+	*/
+	app_ctx;
+
+	char padding[LTTNG_EVENT_CONTEXT_PADDING2];
+};
+
+/*!
+@brief
     Context field descriptor.
 
 @ingroup api_channel
@@ -1134,58 +1172,20 @@ struct lttng_event_context {
 	If this member has the value
 	#LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER or
 	#LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER, then you must also set
-	the lttng_event_context::lttng_event_context_u::perf_counter
+	the lttng_event_context_u::perf_counter
 	member of lttng_event_context::u.
 
 	If this member has the value #LTTNG_EVENT_CONTEXT_APP_CONTEXT,
 	then you must also set the
-	lttng_event_context::lttng_event_context_u::app_ctx member
+	lttng_event_context_u::app_ctx member
 	of lttng_event_context::u.
 	*/
 	enum lttng_event_context_type ctx;
 
 	char padding[LTTNG_EVENT_CONTEXT_PADDING1];
 
-	/*!
-	@brief
-	    perf counter or application-specific context field
-	    descriptor.
-
-	@ingroup api_channel
-	*/
-	union lttng_event_context_u {
-		/*!
-		@brief
-		    perf counter context field descriptor.
-
-		Only used when the lttng_event_context::ctx member
-		is #LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER or
-		#LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER.
-		*/
-		struct lttng_event_perf_counter_ctx perf_counter;
-
-		struct {
-			/// Provider name.
-			char *provider_name;
-
-			/// Field type.
-			char *ctx_name;
-		}
-
-		/*!
-		@brief
-		    Application-specific context field descriptor.
-
-		Only used when the lttng_event_context::ctx member
-		is #LTTNG_EVENT_CONTEXT_APP_CONTEXT.
-		*/
-		app_ctx;
-
-		char padding[LTTNG_EVENT_CONTEXT_PADDING2];
-	}
-
 	/// perf counter or application-specific context field descriptor.
-	u;
+	union lttng_event_context_u u;
 };
 
 #define LTTNG_EVENT_PROBE_PADDING1 16
@@ -1265,6 +1265,27 @@ struct lttng_event_function_attr {
 #define LTTNG_EVENT_PADDING1 12
 #define LTTNG_EVENT_PADDING2 (LTTNG_SYMBOL_NAME_LEN + 32)
 
+/*!
+@brief
+    Linux kprobe/kretprobe recording event rule configuration.
+
+@ingroup api_rer
+*/
+union lttng_event_attr_u {
+	/*!
+	@brief
+	    Linux kprobe/kretprobe location.
+
+	Only valid when the lttng_event::type member is
+	#LTTNG_EVENT_PROBE or #LTTNG_EVENT_FUNCTION.
+	*/
+	struct lttng_event_probe_attr probe;
+
+	struct lttng_event_function_attr ftrace;
+
+	char padding[LTTNG_EVENT_PADDING2];
+};
+
 /* clang-format off */
 /*!
 @brief
@@ -1317,7 +1338,7 @@ lttng_event_create().
 satisfies the following constraints:
 
 - If the lttng_event::type member is #LTTNG_EVENT_PROBE or
-  #LTTNG_EVENT_FUNCTION, then the lttng_event::lttng_event_attr_u::probe
+  #LTTNG_EVENT_FUNCTION, then the lttng_event_attr_u::probe
   member of lttng_event::attr is valid according to the
   documentation of #lttng_event_probe_attr.
 
@@ -1523,27 +1544,6 @@ struct lttng_event {
 
 	/* Offset 296 */
 	/*!
-	@brief
-	    Linux kprobe/kretprobe recording event rule configuration.
-
-	@ingroup api_rer
-	*/
-	union lttng_event_attr_u {
-		/*!
-		@brief
-		    Linux kprobe/kretprobe location.
-
-		Only valid when the lttng_event::type member is
-		#LTTNG_EVENT_PROBE or #LTTNG_EVENT_FUNCTION.
-		*/
-		struct lttng_event_probe_attr probe;
-
-		struct lttng_event_function_attr ftrace;
-
-		char padding[LTTNG_EVENT_PADDING2];
-	}
-
-	/*!
 	<dl>
 	  <dt>Recording event rule context
 	  <dd>
@@ -1556,7 +1556,7 @@ struct lttng_event {
 	  <dd>Not applicable.
 	</dl>
 	*/
-	attr;
+	union lttng_event_attr_u attr;
 };
 /* clang-format on */
 
