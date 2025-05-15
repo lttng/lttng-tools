@@ -938,7 +938,7 @@ The channel operations are:
 
       -# Create a \link #lttng_handle recording session handle\endlink
          structure to specify the name of the recording session and the
-         tracing domain of the channel to create.
+         tracing domain of the channel to target.
 
       -# Call lttng_add_context() with the recording session handle
          of step&nbsp;2 and the context field descriptor of step&nbsp;1,
