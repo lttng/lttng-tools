@@ -349,12 +349,12 @@ Examples: `my_field`, `target_cpu`, `seq[7]`, `msg.user[1].data[2][17]`.
   field having the type _TYPE_ (a C{nbsp}identifier).
 +
 List the available statically-known context field names with the
-man:lttng-add-context(1) command.
+man:lttng-add-context(1) command. As of LTTng{nbsp}{lttng_version},
+context field names starting with `perf:` aren't supported.
 +
 When a field expression doesn't exist, 'EXPR' is _false_.
 +
-Examples: `$ctx.prio`, `$ctx.preemptible`,
-`$ctx.perf:cpu:stalled-cycles-frontend`.
+Examples: `$ctx.prio`, `$ctx.gid`, `$ctx.preemptible`.
 
 * A ++$app.++__PROVIDER__++:++__TYPE__ expression identifies the
   application-specific context field having the type _TYPE_ (a
