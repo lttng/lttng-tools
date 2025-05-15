@@ -29,12 +29,19 @@ differences:
   statically-known context field having the type
   <code><em>TYPE</em></code> (a C&nbsp;identifier).
 
+  <code><em>TYPE</em></code> can be any of the
+  statically known names in the “Field name” column
+  of the table of #lttng_event_context_type (that is, excluding the
+  #LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER,
+  #LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER,
+  and #LTTNG_EVENT_CONTEXT_APP_CONTEXT rows).
+
   When a field expression doesn't exist, \lt_var{EXPR} is \b
   false.
 
   Examples: <code>$ctx.prio</code>,
-  <code>$ctx.preemptible</code>,
-  <code>$ctx.perf:cpu:stalled-cycles-frontend</code>.
+  <code>$ctx.gid</code>,
+  <code>$ctx.preemptible</code>.
 
 - A <code>$app.<em>PROVIDER</em>:<em>TYPE</em></code>
   expression identifies the application-specific context field
