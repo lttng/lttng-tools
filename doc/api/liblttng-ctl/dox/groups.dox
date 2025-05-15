@@ -3131,7 +3131,68 @@ a Python logging event rule are:
 @defgroup api_ev_expr Event expression API
 @ingroup api_trigger_cond_er_matches
 
-To be done.
+An <strong><em>event expression</em></strong> is a structured
+representation of logic that can reference event fields, apply
+operators, and compose conditions. Such an object is similar to an
+<a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">abstract
+syntax tree</a> (AST) node of which the dynamic input comes from the
+context and payload fields of an event.
+
+See \ref api_er to learn more about LTTng events.
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, the event expression API
+only offers field reference expressions. Its sole purpose is to append
+capture descriptors to an
+\link api_trigger_cond_er_matches "event rule matches"\endlink
+trigger condition with
+lttng_condition_event_rule_matches_append_capture_descriptor(). With
+more expression types (constants, operators, conditionals, and the
+rest), you'll be able to programmatically create an
+\ref api-er-conds-filter "event payload and context filter" expression.
+
+The available event field expression types are:
+
+<table>
+  <tr>
+    <th>Event expression type
+    <th>Type enumerator
+    <th>Creation function
+    <th>Accessor(s)
+  <tr>
+    <td>Payload field reference
+    <td>#LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD
+    <td>lttng_event_expr_event_payload_field_create()
+    <td>lttng_event_expr_event_payload_field_get_name()
+  <tr>
+    <td>Statically-known context field reference
+    <td>#LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD
+    <td>lttng_event_expr_channel_context_field_create()
+    <td>lttng_event_expr_channel_context_field_get_name()
+  <tr>
+    <td>Application-specific context field reference
+    <td>#LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD
+    <td>lttng_event_expr_app_specific_context_field_create()
+    <td>
+      lttng_event_expr_app_specific_context_field_get_provider_name()
+      and
+      lttng_event_expr_app_specific_context_field_get_type_name()
+  <tr>
+    <td>Array field element reference
+    <td>#LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT
+    <td>lttng_event_expr_array_field_element_create()
+    <td>
+      lttng_event_expr_array_field_element_get_parent_expr() and
+      lttng_event_expr_array_field_element_get_index()
+</table>
+
+Get the type of an event expression with
+lttng_event_expr_get_type().
+
+Check whether or not two event expressions are equal with
+lttng_event_expr_is_equal().
+
+Destroy an event expression with
+lttng_event_expr_destroy().
 
 @defgroup api_ev_field_val Event field value API
 @ingroup api_trigger_cond_er_matches
