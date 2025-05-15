@@ -1801,7 +1801,7 @@ rule&nbsp;\lt_var{ER}, that is:
                   that is, a single probe dynamically placed in the
                   compiled kernel code.
 
-                  \link lttng_event::lttng_event_attr_u::probe
+                  \link lttng_event_attr_u::probe
                   <code>event_rule.attr.probe</code>\endlink
                   indicates the kprobe location,
                   while \link lttng_event::name
@@ -1818,7 +1818,7 @@ rule&nbsp;\lt_var{ER}, that is:
                   that is, two probes dynamically placed at the entry
                   and exit of a function in the compiled kernel code.
 
-                  \link lttng_event::lttng_event_attr_u::probe
+                  \link lttng_event_attr_u::probe
                   <code>event_rule.attr.probe</code>\endlink
                   indicates the kretprobe location,
                   while \link lttng_event::name
