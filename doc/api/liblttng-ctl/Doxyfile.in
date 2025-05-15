@@ -156,7 +156,8 @@ INPUT                   = "@srcdir@/dox/groups.dox" \
                           "@top_srcdir@/include/lttng/event-rule/python-logging.h" \
                           "@top_srcdir@/include/lttng/kernel-probe.h" \
                           "@top_srcdir@/include/lttng/userspace-probe.h" \
-                          "@top_srcdir@/include/lttng/event-field-value.h"
+                          "@top_srcdir@/include/lttng/event-field-value.h" \
+                          "@top_srcdir@/include/lttng/event-expr.h"
 INPUT_ENCODING          = UTF-8
 FILE_PATTERNS           = *.h *.dox
 RECURSIVE               = NO
