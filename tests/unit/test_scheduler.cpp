@@ -36,7 +36,7 @@ private:
 
 void test_task_not_ran_immediately()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -56,7 +56,7 @@ void test_task_not_ran_immediately()
 
 void test_task_not_ran_directly_when_scheduling()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -69,7 +69,7 @@ void test_task_not_ran_directly_when_scheduling()
 
 void test_task_not_ran_before_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -83,7 +83,7 @@ void test_task_not_ran_before_deadline()
 
 void test_task_ran_on_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -100,7 +100,7 @@ void test_task_ran_on_deadline()
 
 void test_task_ran_on_late_tick()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -114,7 +114,7 @@ void test_task_ran_on_late_tick()
 
 void test_task_not_ran_twice()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_ran = false;
 
 	scheduler.tick(1);
@@ -136,7 +136,7 @@ void test_task_not_ran_twice()
 
 void test_tasks_all_ran_after_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_50_ran = false, task_100_ran = false, task_150_ran = false;
 
 	task_once task_50(task_50_ran);
@@ -156,7 +156,7 @@ void test_tasks_all_ran_after_deadline()
 
 void test_tasks_some_ran_after_tick()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	bool task_50_ran = false, task_100_ran = false, task_150_ran = false;
 
 	task_once task_50(task_50_ran);
@@ -176,7 +176,7 @@ void test_tasks_some_ran_after_tick()
 
 void test_lots_of_tasks_ran_in_order()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	std::array<bool, 16> tasks_ran = { false };
 	std::vector<std::pair<std::unique_ptr<task_once>, lttng::scheduling::relative_time_ms>>
 		tasks;
@@ -268,7 +268,7 @@ private:
 
 void test_task_not_ran_before_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
@@ -282,7 +282,7 @@ void test_task_not_ran_before_deadline()
 
 void test_task_ran_on_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
@@ -296,7 +296,7 @@ void test_task_ran_on_deadline()
 
 void test_task_second_run_not_before_deadline()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
@@ -313,7 +313,7 @@ void test_task_second_run_not_before_deadline()
 
 void test_task_rescheduled()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
@@ -333,7 +333,7 @@ void test_task_rescheduled()
 
 void test_task_die()
 {
-	lttng::scheduling::scheduler<16> scheduler;
+	lttng::scheduling::scheduler scheduler;
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */

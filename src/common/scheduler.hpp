@@ -14,6 +14,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <vector>
 
 namespace lttng {
 namespace scheduling {
@@ -21,11 +22,9 @@ namespace scheduling {
 using absolute_time_ms = uint64_t;
 using relative_time_ms = uint64_t;
 
-template <unsigned int>
 class scheduler;
 
 class task {
-	template <unsigned int>
 	friend class scheduler;
 
 public:
@@ -64,7 +63,6 @@ private:
 };
 
 class periodic_task : public task {
-	template <unsigned int>
 	friend class scheduler;
 
 public:
@@ -123,10 +121,15 @@ private:
 	bool _killed = false;
 };
 
-template <unsigned int max_scheduled_tasks>
 class scheduler final {
 public:
-	scheduler() noexcept = default;
+	/*
+	 * gcc 4.8.5 can't generate a default constructor that is noexcept.
+	 * Hence, a trivial one is provided here.
+	 * NOLINTBEGIN (modernize-use-equals-default)
+	 */
+	scheduler() noexcept {};
+	/* NOLINTEND (modernize-use-equals-default) */
 	~scheduler() = default;
 
 	/* Deactivate copy and assignment. */
@@ -186,53 +189,48 @@ private:
 	class task_heap {
 	public:
 		/* Insert task to schedule. */
-		void insert(task& new_task) noexcept
+		void insert(task& new_task)
 		{
-			if (_scheduled_task_count >= max_scheduled_tasks) {
-				/* Internal error, should panic. */
-				return;
-			}
+			/* Position starts at the last element. */
+			auto position = _tasks.size();
 
-			auto pos = _scheduled_task_count;
-			_scheduled_task_count++;
+			_tasks.resize(_tasks.size() + 1, nullptr);
 
-			while (pos > 0 &&
-			       _task_should_run_before(new_task, *_tasks[_parent(pos)])) {
+			while (position > 0 &&
+			       _task_should_run_before(new_task, *_tasks[_parent(position)])) {
 				/* Move parent down until we find the right spot. */
-				_tasks[pos] = _tasks[_parent(pos)];
-				pos = _parent(pos);
+				_tasks[position] = _tasks[_parent(position)];
+				position = _parent(position);
 			}
 
-			_tasks[pos] = &new_task;
+			_tasks[position] = &new_task;
 		}
 
 		/* Peek at task with the nearest deadline. */
 		task *peek() const noexcept
 		{
-			if (_scheduled_task_count != 0) {
-				return _tasks[0];
-			} else {
-				return nullptr;
-			}
+			return _tasks.empty() ? nullptr : _tasks[0];
 		}
 
 		/* Pop task with the nearest deadline. */
 		task *pop() noexcept
 		{
-			switch (_scheduled_task_count) {
+			switch (_tasks.size()) {
 			case 0:
 				return nullptr;
 			case 1:
-				_scheduled_task_count = 0;
-				return _tasks[0];
+				const auto task = *_tasks.begin();
+
+				_tasks.clear();
+				return task;
 			}
 
-			_scheduled_task_count--;
-			const auto res = _tasks[0];
-			_tasks[0] = _tasks[_scheduled_task_count];
+			const auto task = *_tasks.begin();
+			_tasks[0] = *(_tasks.end() - 1);
+			_tasks.resize(_tasks.size() - 1);
 			heapify(0);
 
-			return res;
+			return task;
 		}
 
 	private:
@@ -264,14 +262,14 @@ private:
 				const auto right_idx = _right(i);
 				size_t highest_prio_idx;
 
-				if (left_idx < _scheduled_task_count &&
+				if (left_idx < _tasks.size() &&
 				    _task_should_run_before(*_tasks[left_idx], *_tasks[i])) {
 					highest_prio_idx = left_idx;
 				} else {
 					highest_prio_idx = i;
 				}
 
-				if (right_idx < _scheduled_task_count &&
+				if (right_idx < _tasks.size() &&
 				    _task_should_run_before(*_tasks[right_idx],
 							    *_tasks[highest_prio_idx])) {
 					highest_prio_idx = right_idx;
@@ -288,8 +286,7 @@ private:
 			}
 		}
 
-		unsigned int _scheduled_task_count = 0;
-		task *_tasks[max_scheduled_tasks] = {};
+		std::vector<task *> _tasks;
 	} _task_heap;
 	absolute_time_ms _last_tick_ms = 0;
 };
