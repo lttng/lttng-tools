@@ -2825,7 +2825,7 @@ end:
 static int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
-	struct lttng_domain domain{};
+	struct lttng_domain domain {};
 	struct lttng_handle *handle = nullptr;
 	struct lttng_channel *channel = nullptr;
 	xmlNodePtr channels_node = nullptr;
