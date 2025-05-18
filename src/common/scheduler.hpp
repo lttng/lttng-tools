@@ -10,6 +10,8 @@
 #ifndef LTTNG_SCHEDULING_SCHEDULER_HPP
 #define LTTNG_SCHEDULING_SCHEDULER_HPP
 
+#include <vendor/optional.hpp>
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -47,7 +49,7 @@ public:
 	virtual void run(absolute_time_ms current_time) noexcept = 0;
 	bool scheduled() const noexcept
 	{
-		return _next_scheduled_time;
+		return _next_scheduled_time.has_value();
 	}
 
 private:
@@ -57,8 +59,8 @@ private:
 		return false;
 	}
 
-	/* 0 means not scheduled. */
-	absolute_time_ms _next_scheduled_time = 0;
+	/* nullopt means not scheduled. */
+	nonstd::optional<absolute_time_ms> _next_scheduled_time;
 };
 
 class periodic_task : public task {
@@ -78,8 +80,7 @@ public:
 	 * a regular task and enqueue it manually by providing a relative time
 	 * as the deadline.
 	 */
-	explicit periodic_task(relative_time_ms period_ms) noexcept :
-		_period_ms{ period_ms }, _killed{ false }
+	explicit periodic_task(relative_time_ms period_ms) noexcept : _period_ms{ period_ms }
 	{
 	}
 
@@ -88,7 +89,7 @@ public:
 	periodic_task(periodic_task&&) = delete;
 	periodic_task& operator=(const periodic_task&) = delete;
 	periodic_task& operator=(periodic_task&&) = delete;
-	~periodic_task() = default;
+	~periodic_task() override = default;
 
 	relative_time_ms period_ms() const noexcept
 	{
@@ -118,8 +119,8 @@ private:
 		return !_killed;
 	}
 
-	relative_time_ms _period_ms:15;
-	bool _killed:1;
+	relative_time_ms _period_ms;
+	bool _killed = false;
 };
 
 template <unsigned int max_scheduled_tasks>
@@ -142,10 +143,13 @@ public:
 	}
 
 	/*
-	 * Returns how many milliseconds can elapse before the next tick invocation,
-	 * allowing the thread to sleep when the next task is sufficiently far away.
+	 * Run scheduled tasks that have expired as of the current time.
+	 *
+	 * Returns:
+	 * - The number of milliseconds until the next task, if one is still scheduled.
+	 * - `nonstd::nullopt` if no tasks are currently scheduled.
 	 */
-	relative_time_ms tick(absolute_time_ms current_time_ms) noexcept
+	nonstd::optional<relative_time_ms> tick(absolute_time_ms current_time_ms) noexcept
 	{
 		_last_tick_ms = current_time_ms;
 
@@ -153,14 +157,14 @@ public:
 			auto *task = _task_heap.peek();
 
 			if (!task) {
-				/* No task left to run... Rest in peace. */
-				return UINT16_MAX;
+				/* No tasks left to run. */
+				return nonstd::nullopt;
 			}
 
-			if (task->_next_scheduled_time <= _last_tick_ms) {
+			if (*(task->_next_scheduled_time) <= _last_tick_ms) {
 				run_task(*_task_heap.pop());
 			} else {
-				return task->_next_scheduled_time - current_time_ms;
+				return *(task->_next_scheduled_time) - current_time_ms;
 			}
 		}
 	}
@@ -175,7 +179,7 @@ private:
 
 			schedule_task(task_to_schedule, task_to_schedule.period_ms());
 		} else {
-			task._next_scheduled_time = 0;
+			task._next_scheduled_time.reset();
 		}
 	}
 

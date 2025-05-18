@@ -91,8 +91,11 @@ void test_task_ran_on_deadline()
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
 	scheduler.schedule_task(my_task, 100);
-	scheduler.tick(101);
+
+	const auto tick_ret = scheduler.tick(101);
 	ok(task_ran == true, "Task scheduled @ 101 ran after tick @ 101");
+
+	ok(!tick_ret.has_value(), "Tick @ 101 returned no time until next task");
 }
 
 void test_task_ran_on_late_tick()
@@ -318,8 +321,10 @@ void test_task_rescheduled()
 
 	/* The task should run every 100 ms, starting in 100 ms. */
 	scheduler.schedule_task(my_task, my_task.period_ms());
-	scheduler.tick(100);
+	const auto tick_ret = scheduler.tick(100);
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
+	ok(tick_ret.has_value() && tick_ret == 100, "Tick @ 100 returned time until next task");
+
 	scheduler.tick(200);
 	ok(task_run_count == 2, "Periodic task scheduled @ 200 ran during tick @ 200");
 	scheduler.tick(300);
@@ -353,7 +358,7 @@ void test_task_die()
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-	plan_tests(42);
+	plan_tests(44);
 
 	once_scheduling::test_task_not_ran_immediately();
 	once_scheduling::test_task_not_ran_before_deadline();
