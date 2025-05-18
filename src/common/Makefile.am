@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2012-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
 AUTOMAKE_OPTIONS = subdir-objects
@@ -14,6 +15,7 @@ noinst_HEADERS = \
 	lttng-kernel.hpp \
 	lttng-kernel-old.hpp \
 	macros.hpp \
+	scheduler.hpp \
 	time.hpp \
 	uri.hpp \
 	utils.hpp

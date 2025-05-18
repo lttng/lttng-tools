@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2013-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
 SUBDIRS = ini_config
@@ -25,6 +26,7 @@ TESTS = \
 	test_notification \
 	test_payload \
 	test_relayd_backward_compat_group_by_session \
+	test_scheduler \
 	test_session \
 	test_string_utils \
 	test_unix_socket \
@@ -64,6 +66,7 @@ noinst_PROGRAMS = \
 	test_notification \
 	test_payload \
 	test_relayd_backward_compat_group_by_session \
+	test_scheduler \
 	test_session \
 	test_string_utils \
 	test_unix_socket \
@@ -220,3 +223,7 @@ test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS
 test_action_SOURCES = test_action.cpp
 test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 			$(top_builddir)/src/vendor/fmt/libfmt.la
+
+# Scheduler
+test_scheduler_SOURCES = test_scheduler.cpp
+test_scheduler_LDADD = $(LIBTAP) $(top_builddir)/src/vendor/fmt/libfmt.la
