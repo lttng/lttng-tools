@@ -103,6 +103,7 @@ libcommon_lgpl_la_SOURCES = \
 	notification.cpp \
 	payload.cpp payload.hpp \
 	payload-view.cpp payload-view.hpp \
+	poller.cpp poller.hpp \
 	pthread-lock.hpp \
 	random.cpp random.hpp \
 	readwrite.cpp readwrite.hpp \

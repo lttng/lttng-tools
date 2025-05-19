@@ -14,7 +14,7 @@
 
 namespace lttng {
 
-class eventfd : private stream_descriptor {
+class eventfd : public stream_descriptor {
 public:
 	/* Throws a posix_error exception on failure to create the underlying resource. */
 	explicit eventfd(bool use_semaphore_semantics = true, std::uint64_t initial_value = 0);

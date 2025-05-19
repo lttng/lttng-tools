@@ -25,6 +25,7 @@ TESTS = \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
+	test_poller \
 	test_relayd_backward_compat_group_by_session \
 	test_scheduler \
 	test_session \
@@ -65,6 +66,7 @@ noinst_PROGRAMS = \
 	test_log_level_rule \
 	test_notification \
 	test_payload \
+	test_poller \
 	test_relayd_backward_compat_group_by_session \
 	test_scheduler \
 	test_session \
@@ -227,3 +229,7 @@ test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 # Scheduler
 test_scheduler_SOURCES = test_scheduler.cpp
 test_scheduler_LDADD = $(LIBTAP) $(top_builddir)/src/vendor/fmt/libfmt.la
+
+# Poller
+test_poller_SOURCES = test_poller.cpp
+test_poller_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(top_builddir)/src/vendor/fmt/libfmt.la
