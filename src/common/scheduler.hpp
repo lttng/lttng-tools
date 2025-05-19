@@ -10,8 +10,11 @@
 #ifndef LTTNG_SCHEDULING_SCHEDULER_HPP
 #define LTTNG_SCHEDULING_SCHEDULER_HPP
 
+#include <common/macros.hpp>
+
 #include <vendor/optional.hpp>
 
+#include <memory>
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
@@ -28,6 +31,8 @@ class task {
 	friend class scheduler;
 
 public:
+	using sptr = std::shared_ptr<task>;
+
 	/*
 	 * gcc 4.8.5 can't generate a default constructor that is noexcept.
 	 * Hence, a trivial one is provided here.
@@ -52,7 +57,7 @@ public:
 	}
 
 private:
-	virtual bool must_be_rescheduled() const noexcept
+	virtual bool _must_be_rescheduled() const noexcept
 	{
 		/* A "once" task is not rescheduled once it has run. */
 		return false;
@@ -100,11 +105,6 @@ public:
 		_killed = true;
 	}
 
-	void revive() noexcept
-	{
-		_killed = false;
-	}
-
 	/* Effective at the end of the next tick. */
 	void period_ms(relative_time_ms new_period) noexcept
 	{
@@ -112,7 +112,7 @@ public:
 	}
 
 private:
-	bool must_be_rescheduled() const noexcept override
+	bool _must_be_rescheduled() const noexcept override
 	{
 		return !_killed;
 	}
@@ -139,10 +139,10 @@ public:
 	scheduler& operator=(scheduler&&) = delete;
 
 	/* Schedule a "once" or periodic task in the future. */
-	void schedule_task(task& task, relative_time_ms in_how_many_ms = 0) noexcept
+	void schedule(task::sptr task, relative_time_ms in_how_many_ms = 0) noexcept
 	{
-		task._next_scheduled_time = _last_tick_ms + in_how_many_ms;
-		_task_heap.insert(task);
+		task->_next_scheduled_time = _last_tick_ms + in_how_many_ms;
+		_task_heap.insert(std::move(task));
 	}
 
 	/*
@@ -164,69 +164,70 @@ public:
 				return nonstd::nullopt;
 			}
 
-			if (*(task->_next_scheduled_time) <= _last_tick_ms) {
-				run_task(*_task_heap.pop());
+			if (*task->_next_scheduled_time <= _last_tick_ms) {
+				_run_task(_task_heap.pop());
 			} else {
-				return *(task->_next_scheduled_time) - current_time_ms;
+				LTTNG_ASSERT(task->_next_scheduled_time.has_value());
+				return *task->_next_scheduled_time - current_time_ms;
 			}
 		}
 	}
 
 private:
 	/* Run a task and reschedule it if necessary. */
-	void run_task(task& task) noexcept
+	void _run_task(task::sptr task) noexcept
 	{
-		task.run(_last_tick_ms);
-		if (task.must_be_rescheduled()) {
-			auto& task_to_schedule = static_cast<periodic_task&>(task);
+		task->run(_last_tick_ms);
+		if (task->_must_be_rescheduled()) {
+			auto& periodic_task_to_schedule = static_cast<periodic_task&>(*task);
 
-			schedule_task(task_to_schedule, task_to_schedule.period_ms());
+			schedule(std::move(task), periodic_task_to_schedule.period_ms());
 		} else {
-			task._next_scheduled_time.reset();
+			task->_next_scheduled_time.reset();
 		}
 	}
 
 	class task_heap {
 	public:
 		/* Insert task to schedule. */
-		void insert(task& new_task)
+		void insert(task::sptr new_task)
 		{
 			/* Position starts at the last element. */
 			auto position = _tasks.size();
 
-			_tasks.resize(_tasks.size() + 1, nullptr);
+			_tasks.resize(_tasks.size() + 1);
 
 			while (position > 0 &&
-			       _task_should_run_before(new_task, *_tasks[_parent(position)])) {
+			       _task_should_run_before(*new_task, *_tasks[_parent(position)])) {
 				/* Move parent down until we find the right spot. */
-				_tasks[position] = _tasks[_parent(position)];
+				_tasks[position] = std::move(_tasks[_parent(position)]);
 				position = _parent(position);
 			}
 
-			_tasks[position] = &new_task;
+			_tasks[position] = std::move(new_task);
 		}
 
 		/* Peek at task with the nearest deadline. */
 		task *peek() const noexcept
 		{
-			return _tasks.empty() ? nullptr : _tasks[0];
+			return _tasks.empty() ? nullptr : _tasks.begin()->get();
 		}
 
 		/* Pop task with the nearest deadline. */
-		task *pop() noexcept
+		task::sptr pop() noexcept
 		{
 			switch (_tasks.size()) {
 			case 0:
 				return nullptr;
 			case 1:
-				const auto task = *_tasks.begin();
+				const auto task = std::move(*_tasks.begin());
 
 				_tasks.clear();
 				return task;
 			}
 
-			const auto task = *_tasks.begin();
-			_tasks[0] = *(_tasks.end() - 1);
+			const auto task = std::move(*_tasks.begin());
+			*_tasks.begin() = std::move(*(_tasks.end() - 1));
 			_tasks.resize(_tasks.size() - 1);
 			heapify(0);
 
@@ -286,7 +287,7 @@ private:
 			}
 		}
 
-		std::vector<task *> _tasks;
+		std::vector<task::sptr> _tasks;
 	} _task_heap;
 	absolute_time_ms _last_tick_ms = 0;
 };

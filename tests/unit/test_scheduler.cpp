@@ -40,13 +40,13 @@ void test_task_not_ran_immediately()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/*
 	 * The task is scheduled to run on the next tick (ideally started right after this tick
 	 * completes).
 	 */
-	scheduler.schedule_task(my_task);
+	scheduler.schedule(my_task);
 	ok(task_ran == false, "Task scheduled \"now\" didn't run during scheduling");
 
 	/* Next tick occurs "immediately". */
@@ -60,10 +60,10 @@ void test_task_not_ran_directly_when_scheduling()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ms, so for tick >= 101. */
-	scheduler.schedule_task(my_task, 100);
+	scheduler.schedule(my_task, 100);
 	ok(task_ran == false, "Task scheduled @ 101 not ran right after scheduling");
 }
 
@@ -73,10 +73,10 @@ void test_task_not_ran_before_deadline()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(my_task, 100);
+	scheduler.schedule(my_task, 100);
 	scheduler.tick(10);
 	ok(task_ran == false, "Task scheduled @ 101 not ran after tick @ 10");
 }
@@ -87,10 +87,10 @@ void test_task_ran_on_deadline()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(my_task, 100);
+	scheduler.schedule(my_task, 100);
 
 	const auto tick_ret = scheduler.tick(101);
 	ok(task_ran == true, "Task scheduled @ 101 ran after tick @ 101");
@@ -104,10 +104,10 @@ void test_task_ran_on_late_tick()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(my_task, 100);
+	scheduler.schedule(my_task, 100);
 	scheduler.tick(200);
 	ok(task_ran == true, "Task scheduled @ 101 ran after tick @ 200");
 }
@@ -118,10 +118,10 @@ void test_task_not_ran_twice()
 	bool task_ran = false;
 
 	scheduler.tick(1);
-	task_once my_task(task_ran);
+	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(my_task, 100);
+	scheduler.schedule(my_task, 100);
 	scheduler.tick(200);
 	ok(task_ran, "Task scheduled @ 100 ran after tick @ 200");
 
@@ -139,14 +139,14 @@ void test_tasks_all_ran_after_deadline()
 	lttng::scheduling::scheduler scheduler;
 	bool task_50_ran = false, task_100_ran = false, task_150_ran = false;
 
-	task_once task_50(task_50_ran);
-	task_once task_100(task_100_ran);
-	task_once task_150(task_150_ran);
+	auto task_50 = std::make_shared<task_once>(task_50_ran);
+	auto task_100 = std::make_shared<task_once>(task_100_ran);
+	auto task_150 = std::make_shared<task_once>(task_150_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(task_150, 150);
-	scheduler.schedule_task(task_50, 50);
-	scheduler.schedule_task(task_100, 100);
+	scheduler.schedule(task_150, 150);
+	scheduler.schedule(task_50, 50);
+	scheduler.schedule(task_100, 100);
 	scheduler.tick(200);
 
 	ok(task_50_ran == true, "Task scheduled @ 50 ran after tick @ 200");
@@ -159,14 +159,14 @@ void test_tasks_some_ran_after_tick()
 	lttng::scheduling::scheduler scheduler;
 	bool task_50_ran = false, task_100_ran = false, task_150_ran = false;
 
-	task_once task_50(task_50_ran);
-	task_once task_100(task_100_ran);
-	task_once task_150(task_150_ran);
+	auto task_50 = std::make_shared<task_once>(task_50_ran);
+	auto task_100 = std::make_shared<task_once>(task_100_ran);
+	auto task_150 = std::make_shared<task_once>(task_150_ran);
 
 	/* The task should only run in 100ms, so for ticks >= 101. */
-	scheduler.schedule_task(task_150, 150);
-	scheduler.schedule_task(task_50, 50);
-	scheduler.schedule_task(task_100, 100);
+	scheduler.schedule(task_150, 150);
+	scheduler.schedule(task_50, 50);
+	scheduler.schedule(task_100, 100);
 	scheduler.tick(120);
 
 	ok(task_50_ran == true, "Task scheduled @ 50 ran after tick @ 120");
@@ -178,12 +178,11 @@ void test_lots_of_tasks_ran_in_order()
 {
 	lttng::scheduling::scheduler scheduler;
 	std::array<bool, 16> tasks_ran = { false };
-	std::vector<std::pair<std::unique_ptr<task_once>, lttng::scheduling::relative_time_ms>>
-		tasks;
+	std::vector<std::pair<task_once::sptr, lttng::scheduling::relative_time_ms>> tasks;
 
 	/* Create tasks to be scheduled at ticks 5, 15, 25, 35, etc. */
 	for (unsigned int i = 0; i < tasks_ran.size(); i++) {
-		tasks.emplace_back(lttng::make_unique<task_once>(tasks_ran[i]), (i * 10) + 5);
+		tasks.emplace_back(std::make_shared<task_once>(tasks_ran[i]), (i * 10) + 5);
 	}
 
 	/*
@@ -194,7 +193,7 @@ void test_lots_of_tasks_ran_in_order()
 	std::shuffle(std::begin(tasks), std::end(tasks), std::default_random_engine{});
 
 	for (const auto& task_pair : tasks) {
-		scheduler.schedule_task(*task_pair.first, task_pair.second);
+		scheduler.schedule(task_pair.first, task_pair.second);
 	}
 
 	for (unsigned int i = 0; i < tasks_ran.size() + 1; i++) {
@@ -272,10 +271,10 @@ void test_task_not_ran_before_deadline()
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
-	periodic_task my_task(100, task_run_count);
+	auto my_task = std::make_shared<periodic_task>(100, task_run_count);
 
 	/* The task should run every 100 ms, starting in 100 ms. */
-	scheduler.schedule_task(my_task, my_task.period_ms());
+	scheduler.schedule(my_task, my_task->period_ms());
 	scheduler.tick(50);
 	ok(task_run_count == 0, "Periodic task scheduled @ 100 not run with tick @ 50");
 }
@@ -286,10 +285,10 @@ void test_task_ran_on_deadline()
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
-	periodic_task my_task(100, task_run_count);
+	auto my_task = std::make_shared<periodic_task>(100, task_run_count);
 
 	/* The task should run every 100 ms, starting in 100 ms. */
-	scheduler.schedule_task(my_task, my_task.period_ms());
+	scheduler.schedule(my_task, my_task->period_ms());
 	scheduler.tick(100);
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 }
@@ -300,10 +299,10 @@ void test_task_second_run_not_before_deadline()
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
-	periodic_task my_task(100, task_run_count);
+	auto my_task = std::make_shared<periodic_task>(100, task_run_count);
 
 	/* The task should run every 100 ms, starting in 100 ms. */
-	scheduler.schedule_task(my_task, my_task.period_ms());
+	scheduler.schedule(my_task, my_task->period_ms());
 	scheduler.tick(120);
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 120");
 
@@ -317,10 +316,10 @@ void test_task_rescheduled()
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
-	periodic_task my_task(100, task_run_count);
+	auto my_task = std::make_shared<periodic_task>(100, task_run_count);
 
 	/* The task should run every 100 ms, starting in 100 ms. */
-	scheduler.schedule_task(my_task, my_task.period_ms());
+	scheduler.schedule(my_task, my_task->period_ms());
 	const auto tick_ret = scheduler.tick(100);
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 	ok(tick_ret.has_value() && tick_ret == 100, "Tick @ 100 returned time until next task");
@@ -337,10 +336,10 @@ void test_task_die()
 	unsigned int task_run_count = 0;
 
 	/* Run every 100 ms. */
-	periodic_task_die_after_3 my_task(100, task_run_count);
+	auto my_task = std::make_shared<periodic_task_die_after_3>(100, task_run_count);
 
 	/* The task should run every 100 ms, starting in 100 ms. */
-	scheduler.schedule_task(my_task, my_task.period_ms());
+	scheduler.schedule(my_task, my_task->period_ms());
 	scheduler.tick(100);
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 	scheduler.tick(200);
