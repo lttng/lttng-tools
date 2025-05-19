@@ -77,7 +77,7 @@ private:
 	 * notification that was queued while waiting for a reply to the command is
 	 * eventually consumed.
 	 */
-	lttng::eventfd _notification_channel_subscribtion_change_eventfd;
+	lttng::eventfd _notification_channel_subscription_change_eventfd;
 	lttng_poll_event _events;
 };
 

@@ -451,7 +451,7 @@ ls::rotation_thread::rotation_thread(rotation_thread_timer_queue& rotation_timer
 	}
 
 	if (lttng_poll_add(&_events,
-			   _notification_channel_subscribtion_change_eventfd.fd(),
+			   _notification_channel_subscription_change_eventfd.fd(),
 			   LPOLLIN) < 0) {
 		LTTNG_THROW_ERROR(
 			"Failed to add rotation thread notification channel subscription change eventfd to poll set");
@@ -763,7 +763,7 @@ void ls::rotation_thread::_run()
 			}
 
 			if (fd == _notification_channel->socket ||
-			    fd == _notification_channel_subscribtion_change_eventfd.fd()) {
+			    fd == _notification_channel_subscription_change_eventfd.fd()) {
 				try {
 					_handle_notification_channel_activity();
 				} catch (const lttng::ctl::error& e) {
@@ -776,8 +776,8 @@ void ls::rotation_thread::_run()
 					continue;
 				}
 
-				if (fd == _notification_channel_subscribtion_change_eventfd.fd()) {
-					_notification_channel_subscribtion_change_eventfd
+				if (fd == _notification_channel_subscription_change_eventfd.fd()) {
+					_notification_channel_subscription_change_eventfd
 						.decrement();
 				}
 			} else {
@@ -895,7 +895,7 @@ void ls::rotation_thread::subscribe_session_consumed_size_rotation(ltt_session& 
 	 * Ensure any notification queued during the subscription are consumed by queueing an
 	 * event.
 	 */
-	_notification_channel_subscribtion_change_eventfd.increment();
+	_notification_channel_subscription_change_eventfd.increment();
 
 	const auto register_ret = notification_thread_command_register_trigger(
 		&_notification_thread_handle, trigger.get(), true);
@@ -935,7 +935,7 @@ void ls::rotation_thread::unsubscribe_session_consumed_size_rotation(ltt_session
 	 * Ensure any notification queued during the un-subscription are consumed by queueing an
 	 * event.
 	 */
-	_notification_channel_subscribtion_change_eventfd.increment();
+	_notification_channel_subscription_change_eventfd.increment();
 
 	const auto unregister_status = notification_thread_command_unregister_trigger(
 		&_notification_thread_handle, session.rotate_trigger);
