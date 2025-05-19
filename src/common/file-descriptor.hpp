@@ -15,8 +15,6 @@ namespace lttng {
 /* RAII wrapper around a UNIX file descriptor. */
 class file_descriptor {
 public:
-	file_descriptor() noexcept = default;
-
 	explicit file_descriptor(int raw_fd) noexcept;
 	file_descriptor(const file_descriptor&) = delete;
 	file_descriptor& operator=(const file_descriptor&) = delete;
@@ -25,22 +23,7 @@ public:
 
 	file_descriptor& operator=(file_descriptor&& other) noexcept;
 
-	~file_descriptor() noexcept;
-
-	/*
-	 * Read `size` bytes from the underlying file descriptor, assuming
-	 * raw_fd behaves as a blocking device.
-	 *
-	 * Throws an exception if the requested amount of bytes couldn't be read.
-	 */
-	void read(void *buffer, std::size_t size);
-	/*
-	 * Write `size` bytes to the underlying file descriptor, assuming
-	 * raw_fd behaves as a blocking device.
-	 *
-	 * Throws an exception if the requested amount of bytes couldn't be written.
-	 */
-	void write(const void *buffer, std::size_t size);
+	virtual ~file_descriptor() noexcept;
 
 	int fd() const noexcept;
 
