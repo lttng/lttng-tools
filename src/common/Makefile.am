@@ -110,6 +110,7 @@ libcommon_lgpl_la_SOURCES = \
 	session-descriptor.cpp \
 	snapshot.cpp snapshot.hpp \
 	spawn-viewer.cpp spawn-viewer.hpp \
+	stream-descriptor.cpp stream-descriptor.hpp \
 	thread.cpp thread.hpp \
 	time.cpp \
 	tracker.cpp tracker.hpp \

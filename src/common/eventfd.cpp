@@ -27,7 +27,8 @@ lttng::eventfd::eventfd(bool use_semaphore_semantics, std::uint64_t initial_valu
 		}
 
 		return raw_fd;
-	}())
+	}()),
+	stream_descriptor(fd())
 {
 }
 

@@ -6,11 +6,11 @@
  */
 
 #include <common/error.hpp>
-#include <common/file-descriptor.hpp>
 #include <common/format.hpp>
 #include <common/hashtable/utils.hpp>
 #include <common/random.hpp>
 #include <common/readwrite.hpp>
+#include <common/stream-descriptor.hpp>
 #include <common/time.hpp>
 
 #include <lttng/constant.h>
@@ -139,7 +139,7 @@ lttng::random::seed_t produce_random_seed_from_urandom()
 	 * Open /dev/urandom as a file_descriptor, or throw on error. The
 	 * lambda is used to reduce the scope of the raw fd as much as possible.
 	 */
-	lttng::file_descriptor urandom{ []() {
+	lttng::input_stream_descriptor urandom{ []() {
 		const auto urandom_raw_fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 
 		if (urandom_raw_fd < 0) {

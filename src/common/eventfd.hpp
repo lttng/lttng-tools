@@ -8,13 +8,13 @@
 #ifndef LTTNG_EVENTFD_HPP
 #define LTTNG_EVENTFD_HPP
 
-#include <common/file-descriptor.hpp>
+#include <common/stream-descriptor.hpp>
 
 #include <cstdint>
 
 namespace lttng {
 
-class eventfd : public file_descriptor {
+class eventfd : private stream_descriptor {
 public:
 	/* Throws a posix_error exception on failure to create the underlying resource. */
 	explicit eventfd(bool use_semaphore_semantics = true, std::uint64_t initial_value = 0);
@@ -22,7 +22,10 @@ public:
 	eventfd& operator=(const eventfd&) = delete;
 	eventfd(eventfd&&) = delete;
 	void operator=(eventfd&&) = delete;
-	~eventfd() = default;
+	~eventfd() override = default;
+
+	/* Expose fd() from the base class. */
+	using stream_descriptor::fd;
 
 	/* Throws on error. */
 	void increment(std::uint64_t value = 1);
