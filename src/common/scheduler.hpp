@@ -14,6 +14,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <chrono>
 #include <memory>
 #include <stddef.h>
 #include <stdint.h>
@@ -22,8 +23,8 @@
 namespace lttng {
 namespace scheduling {
 
-using absolute_time_ms = uint64_t;
-using relative_time_ms = uint64_t;
+using absolute_time = std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>;
+using duration_ns = std::chrono::nanoseconds;
 
 class scheduler;
 
@@ -50,7 +51,7 @@ public:
 	task& operator=(task&&) = delete;
 	virtual ~task() = default;
 
-	virtual void run(absolute_time_ms current_time) noexcept = 0;
+	virtual void run(absolute_time current_time) noexcept = 0;
 	bool scheduled() const noexcept
 	{
 		return _next_scheduled_time.has_value();
@@ -64,7 +65,7 @@ private:
 	}
 
 	/* nullopt means not scheduled. */
-	nonstd::optional<absolute_time_ms> _next_scheduled_time;
+	nonstd::optional<absolute_time> _next_scheduled_time;
 };
 
 class periodic_task : public task {
@@ -77,13 +78,13 @@ public:
 	 * As such, a task that couldn't be run at its set period will only run
 	 * once even if the period was exceeded multiple times.
 	 *
-	 * A periodic task will also be re-queued at current_time + period_ms
+	 * A periodic task will also be re-queued at current_time + period
 	 * which can cause the timing of tasks to "drift" when deadlines are
 	 * not honored. If a task needs to be invoked at a precise time, use
 	 * a regular task and enqueue it manually by providing a relative time
 	 * as the deadline.
 	 */
-	explicit periodic_task(relative_time_ms period_ms) noexcept : _period_ms{ period_ms }
+	explicit periodic_task(duration_ns period) noexcept : _period_ns{ period }
 	{
 	}
 
@@ -94,9 +95,9 @@ public:
 	periodic_task& operator=(periodic_task&&) = delete;
 	~periodic_task() override = default;
 
-	relative_time_ms period_ms() const noexcept
+	duration_ns period() const noexcept
 	{
-		return _period_ms;
+		return _period_ns;
 	}
 
 	/* Indicate that this task should no longer be scheduled after the current execution. */
@@ -106,9 +107,9 @@ public:
 	}
 
 	/* Effective at the end of the next tick. */
-	void period_ms(relative_time_ms new_period) noexcept
+	void period(duration_ns new_period) noexcept
 	{
-		_period_ms = new_period;
+		_period_ns = new_period;
 	}
 
 private:
@@ -117,7 +118,7 @@ private:
 		return !_killed;
 	}
 
-	relative_time_ms _period_ms;
+	duration_ns _period_ns;
 	bool _killed = false;
 };
 
@@ -139,9 +140,9 @@ public:
 	scheduler& operator=(scheduler&&) = delete;
 
 	/* Schedule a "once" or periodic task in the future. */
-	void schedule(task::sptr task, relative_time_ms in_how_many_ms = 0) noexcept
+	void schedule(task::sptr task, duration_ns in_how_many_ns = duration_ns(0)) noexcept
 	{
-		task->_next_scheduled_time = _last_tick_ms + in_how_many_ms;
+		task->_next_scheduled_time = _last_tick + in_how_many_ns;
 		_task_heap.insert(std::move(task));
 	}
 
@@ -149,12 +150,13 @@ public:
 	 * Run scheduled tasks that have expired as of the current time.
 	 *
 	 * Returns:
-	 * - The number of milliseconds until the next task, if one is still scheduled.
+	 * - The number of nanoseconds until the next task, if one is still scheduled.
 	 * - `nonstd::nullopt` if no tasks are currently scheduled.
 	 */
-	nonstd::optional<relative_time_ms> tick(absolute_time_ms current_time_ms) noexcept
+	nonstd::optional<duration_ns>
+	tick(absolute_time current_time = std::chrono::steady_clock::now()) noexcept
 	{
-		_last_tick_ms = current_time_ms;
+		_last_tick = current_time;
 
 		while (true) {
 			auto *task = _task_heap.peek();
@@ -164,24 +166,24 @@ public:
 				return nonstd::nullopt;
 			}
 
-			if (*task->_next_scheduled_time <= _last_tick_ms) {
+			if (*task->_next_scheduled_time <= _last_tick) {
 				_run_task(_task_heap.pop());
 			} else {
 				LTTNG_ASSERT(task->_next_scheduled_time.has_value());
-				return *task->_next_scheduled_time - current_time_ms;
+				return *task->_next_scheduled_time - current_time;
 			}
 		}
 	}
 
 private:
-	/* Run a task and reschedule it if necessary. */
+	/* Run a task and reschedule it, if necessary. */
 	void _run_task(task::sptr task) noexcept
 	{
-		task->run(_last_tick_ms);
+		task->run(_last_tick);
 		if (task->_must_be_rescheduled()) {
 			auto& periodic_task_to_schedule = static_cast<periodic_task&>(*task);
 
-			schedule(std::move(task), periodic_task_to_schedule.period_ms());
+			schedule(std::move(task), periodic_task_to_schedule.period());
 		} else {
 			task->_next_scheduled_time.reset();
 		}
@@ -280,16 +282,15 @@ private:
 					break;
 				}
 
-				const auto tmp = _tasks[i];
-				_tasks[i] = _tasks[highest_prio_idx];
-				_tasks[highest_prio_idx] = tmp;
+				std::swap(_tasks[i], _tasks[highest_prio_idx]);
 				i = highest_prio_idx;
 			}
 		}
 
 		std::vector<task::sptr> _tasks;
 	} _task_heap;
-	absolute_time_ms _last_tick_ms = 0;
+	/* Initialized to epoch. */
+	absolute_time _last_tick;
 };
 
 } /* namespace scheduling */
