@@ -182,7 +182,7 @@ private:
  * @class posix_error
  * @brief Wraps a POSIX system error, including the location where the error occurred.
  */
-class posix_error : public std::system_error, lttng::runtime_error {
+class posix_error : public lttng::runtime_error {
 public:
 	explicit posix_error(const std::string& msg,
 			     unsigned int errno_code,
