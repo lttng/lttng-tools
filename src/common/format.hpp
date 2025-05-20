@@ -12,6 +12,7 @@
 
 #include <vendor/optional.hpp>
 
+#include <chrono>
 #include <cxxabi.h>
 #include <string>
 #include <utility>
@@ -61,6 +62,24 @@ struct formatter<nonstd::optional<WrappedType>> : formatter<WrappedType> {
 		} else {
 			/* Print "unset" when the optional has no value. */
 			return format_to(ctx.out(), "unset");
+		}
+	}
+};
+
+template <>
+struct formatter<std::chrono::nanoseconds> : formatter<std::string> {
+	template <typename FormatContextType>
+	typename FormatContextType::iterator format(const std::chrono::nanoseconds ns,
+						    FormatContextType& ctx) const
+	{
+		if (ns.count() >= 1000000000) {
+			return format_to(ctx.out(), "{:.3f} s", ns.count() / 1e9);
+		} else if (ns.count() >= 1000000) {
+			return format_to(ctx.out(), "{:.3f} ms", ns.count() / 1e6);
+		} else if (ns.count() >= 1000) {
+			return format_to(ctx.out(), "{:.3f} µs", ns.count() / 1e3);
+		} else {
+			return format_to(ctx.out(), "{} ns", ns.count());
 		}
 	}
 };

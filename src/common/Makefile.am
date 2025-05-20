@@ -116,6 +116,7 @@ libcommon_lgpl_la_SOURCES = \
 	stream-descriptor.cpp stream-descriptor.hpp \
 	thread.cpp thread.hpp \
 	time.cpp \
+	timerfd.cpp timerfd.hpp \
 	tracker.cpp tracker.hpp \
 	trigger.cpp \
 	type-traits.hpp \

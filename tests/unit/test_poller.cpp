@@ -7,6 +7,7 @@
 #include <common/eventfd.hpp>
 #include <common/make-unique.hpp>
 #include <common/poller.hpp>
+#include <common/timerfd.hpp>
 
 #include <tap/tap.h>
 
@@ -121,18 +122,73 @@ void test_poll_timeout()
 	poller.poll(lttng::poller::timeout_type::WAIT_FOREVER);
 	ok(1, "Poll with an infinite timeout and no FDs returns immediately");
 }
+
+void test_poll_timerfd()
+{
+	lttng::poller poller;
+	lttng::timerfd timer_fd;
+
+	lttng::poller::event_type events = lttng::poller::event_type::NONE;
+	bool fired = false;
+
+	poller.add(timer_fd,
+		   lttng::poller::event_type::READABLE,
+		   [&events, &fired](lttng::poller::event_type e) {
+			   events = e;
+			   fired = true;
+		   });
+
+	const auto before_arming = std::chrono::steady_clock::now();
+	timer_fd.settime(std::chrono::milliseconds(500));
+
+	poller.poll(lttng::poller::timeout_type::WAIT_FOREVER);
+	const auto return_time = std::chrono::steady_clock::now();
+
+	const auto elapsed_time = return_time - before_arming;
+	const auto elapsed_time_ms =
+		std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count();
+	ok(events == lttng::poller::event_type::READABLE,
+	   "Timerfd triggered with a readable event");
+	ok(elapsed_time_ms >= 500,
+	   "Timerfd triggered after at least 500ms elapsed (%ldms)",
+	   elapsed_time_ms);
+
+	events = lttng::poller::event_type::NONE;
+	fired = false;
+	poller.poll(lttng::poller::timeout_type::NO_WAIT);
+	ok(events == lttng::poller::event_type::READABLE && fired == true,
+	   "Timerfd re-triggers immediately if not reset");
+	fmt::print("Timerfd re-triggers immediately if not reset: events={}, fired={}\n",
+		   events,
+		   fired);
+
+	events = lttng::poller::event_type::NONE;
+	fired = false;
+	timer_fd.reset();
+	poller.poll(lttng::poller::timeout_type::NO_WAIT);
+	ok(events == lttng::poller::event_type::NONE && fired == false,
+	   "Timerfd not triggered after poll (one shot behaviour expected)");
+
+	events = lttng::poller::event_type::NONE;
+	fired = false;
+	timer_fd.settime(std::chrono::hours(24));
+	poller.poll(lttng::poller::timeout_ms(500));
+	ok(events == lttng::poller::event_type::NONE && fired == false,
+	   "Timerfd not triggered after poll (24h timerfd set and 500ms timeout)");
+}
 } /* namespace */
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
 	try {
-		plan_tests(11);
+		plan_tests(16);
 
 		test_event_fd_increment_decrement();
 		test_multiple_fds();
 		test_modify_events();
 		test_remove_fd();
 		test_poll_timeout();
+		test_poll_timerfd();
 	} catch (const std::exception& e) {
 		diag("Unhandled exception: %s", e.what());
 		return 1;
