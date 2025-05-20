@@ -49,6 +49,7 @@
 #include <sys/types.h>
 #include <type_traits>
 #include <unistd.h>
+#include <unordered_set>
 
 lttng_consumer_global_data the_consumer_data;
 
@@ -1160,7 +1161,8 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 			     struct pollfd **pollfd,
 			     struct lttng_consumer_stream **local_stream,
 			     struct lttng_ht *ht,
-			     int *nb_inactive_fd)
+			     int *nb_inactive_fd,
+			     const std::unordered_set<int>& cool_down)
 {
 	int i = 0;
 
@@ -1190,6 +1192,11 @@ static int update_poll_array(struct lttng_consumer_local_data *ctx,
 		 * metadata_pipe.
 		 */
 		if (stream->endpoint_status == CONSUMER_ENDPOINT_INACTIVE) {
+			(*nb_inactive_fd)++;
+			continue;
+		}
+
+		if (cool_down.count(stream->wait_fd) != 0) {
 			(*nb_inactive_fd)++;
 			continue;
 		}
@@ -2520,6 +2527,8 @@ void *consumer_thread_data_poll(void *data)
 	int nb_inactive_fd = 0;
 	struct lttng_consumer_local_data *ctx = (lttng_consumer_local_data *) data;
 	ssize_t len;
+	std::unordered_set<int> cool_down;
+	bool cool_down_was_empty = true;
 
 	rcu_register_thread();
 
@@ -2547,7 +2556,7 @@ void *consumer_thread_data_poll(void *data)
 		 * local array as well
 		 */
 		pthread_mutex_lock(&the_consumer_data.lock);
-		if (the_consumer_data.need_update) {
+		if (the_consumer_data.need_update || !cool_down_was_empty || !cool_down.empty()) {
 			free(pollfd);
 			pollfd = nullptr;
 
@@ -2571,7 +2580,7 @@ void *consumer_thread_data_poll(void *data)
 				goto end;
 			}
 			ret = update_poll_array(
-				ctx, &pollfd, local_stream, data_ht, &nb_inactive_fd);
+				ctx, &pollfd, local_stream, data_ht, &nb_inactive_fd, cool_down);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
 				lttng_consumer_send_error(ctx->consumer_error_socket,
@@ -2579,6 +2588,7 @@ void *consumer_thread_data_poll(void *data)
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
+
 			nb_fd = ret;
 			the_consumer_data.need_update = 0;
 		}
@@ -2595,9 +2605,31 @@ void *consumer_thread_data_poll(void *data)
 		if (testpoint(consumerd_thread_data_poll)) {
 			goto end;
 		}
+
+		int timeout;
+
+		/*
+		 * If no file-descriptors are cool-downed, wait until some
+		 * file-descriptors are ready. Otherwise, timeout after 10 ms to
+		 * be fair with cool-downed file-descriptors.
+		 */
+		if (cool_down.empty()) {
+			timeout = -1;
+			cool_down_was_empty = true;
+		} else {
+			timeout = 10;
+			cool_down_was_empty = false;
+		}
+
 		health_poll_entry();
-		num_rdy = poll(pollfd, nb_fd + nb_pipes_fd, -1);
+		num_rdy = poll(pollfd, nb_fd + nb_pipes_fd, timeout);
 		health_poll_exit();
+
+		/*
+		 * Reset the cool-down set for next loop.
+		 */
+		cool_down.clear();
+
 		DBG("poll num_rdy : %d", num_rdy);
 		if (num_rdy == -1) {
 			/*
@@ -2611,8 +2643,8 @@ void *consumer_thread_data_poll(void *data)
 						  LTTCOMM_CONSUMERD_POLL_ERROR);
 			goto end;
 		} else if (num_rdy == 0) {
-			DBG("Polling thread timed out");
-			goto end;
+			/* Timeout. */
+			continue;
 		}
 
 		if (caa_unlikely(data_consumption_paused)) {
@@ -2680,6 +2712,11 @@ void *consumer_thread_data_poll(void *data)
 				DBG("Urgent read on fd %d", pollfd[i].fd);
 				high_prio = 1;
 				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
+
+				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
+					cool_down.insert(pollfd[i].fd);
+				}
+
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
@@ -2711,6 +2748,11 @@ void *consumer_thread_data_poll(void *data)
 			    local_stream[i]->has_data) {
 				DBG("Normal read on fd %d", pollfd[i].fd);
 				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
+
+				if (len == 0 || len == -ENODATA || len == -EAGAIN) {
+					cool_down.insert(pollfd[i].fd);
+				}
+
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
