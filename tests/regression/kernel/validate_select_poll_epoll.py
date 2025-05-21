@@ -6,6 +6,7 @@
 #
 
 import argparse
+import platform
 import pprint
 import sys
 import time
@@ -252,10 +253,13 @@ class WorkingCases(TraceParser):
         self.expect["poll_exit"]["poll_out_nfds1"] = 0
         self.expect["epoll_ctl_entry"]["epoll_ctl_in_add"] = 0
         self.expect["epoll_ctl_exit"]["epoll_ctl_out_ok"] = 0
-        self.expect["epoll_wait_entry"]["epoll_wait_in_ok"] = 0
-        self.expect["epoll_wait_exit"]["epoll_wait_out_fd0"] = 0
         self.expect["epoll_pwait_entry"]["epoll_pwait_in_ok"] = 0
         self.expect["epoll_pwait_exit"]["epoll_pwait_out_fd0"] = 0
+
+        # epoll_wait does not exist linux arm64 and riscv64
+        if platform.machine() not in ["aarch64", "riscv64"]:
+            self.expect["epoll_wait_entry"]["epoll_wait_in_ok"] = 0
+            self.expect["epoll_wait_exit"]["epoll_wait_out_fd0"] = 0
 
     def select_entry(self, event):
         n = event["n"]
