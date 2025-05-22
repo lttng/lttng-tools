@@ -589,6 +589,7 @@ static void delete_ust_app_channel(int sock,
 
 	LTTNG_ASSERT(ua_chan);
 	ASSERT_RCU_READ_LOCKED();
+	ASSERT_SESSION_LIST_LOCKED();
 
 	DBG3("UST app deleting channel %s", ua_chan->name);
 
@@ -3770,8 +3771,6 @@ static int ust_app_channel_allocate(const ust_app_session::locked_weak_ref& ua_s
 	/* Set channel type. */
 	ua_chan->attr.type = type;
 
-	/* Only add the channel if successful on the tracer side. */
-	lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
 end:
 	if (ua_chanp) {
 		*ua_chanp = ua_chan;
@@ -5078,6 +5077,9 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 			goto error;
 		}
 
+		/* Only publish the channel if successfully created on the tracer/consumer. */
+		lttng_ht_add_unique_str(ua_sess->channels, &ua_chan->node);
+
 		/* Add contexts. */
 		for (auto *uctx :
 		     lttng::urcu::list_iteration_adapter<ltt_ust_context, &ltt_ust_context::list>(
@@ -5093,23 +5095,15 @@ static int ust_app_channel_create(struct ltt_ust_session *usess,
 	}
 
 error:
-	if (ret < 0) {
-		switch (ret) {
-		case -ENOTCONN:
-			/*
-			 * The application's socket is not valid. Either a bad socket
-			 * or a timeout on it. We can't inform the caller that for a
-			 * specific app, the session failed so lets continue here.
-			 */
-			ret = 0; /* Not an error. */
-			break;
-		case -ENOMEM:
-		default:
-			break;
-		}
-	}
+	if (ret < 0 && ua_chan) {
+		const auto registry = ust_app_get_session_registry(ua_sess->get_identifier());
+		/* The UST app session lock is held, registry shall not be null. */
+		LTTNG_ASSERT(registry);
 
-	if (ret == 0 && _ua_chan) {
+		const auto locked_registry = registry->lock();
+		delete_ust_app_channel(-1, ua_chan, app, locked_registry);
+		ua_chan = nullptr;
+	} else if (ret == 0 && _ua_chan) {
 		/*
 		 * Only return the application's channel on success. Note
 		 * that the channel can still be part of the application's
@@ -5117,6 +5111,7 @@ error:
 		 */
 		*_ua_chan = ua_chan;
 	}
+
 	return ret;
 }
 
