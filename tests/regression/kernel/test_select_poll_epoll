@@ -140,7 +140,7 @@ function test_ppoll_big()
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST,ppoll_time32
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
@@ -167,7 +167,7 @@ function test_ppoll_fds_buffer_overflow()
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST,ppoll_time32
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
@@ -229,7 +229,7 @@ function test_ppoll_fds_ulong_max()
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST,ppoll_time32
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
@@ -310,7 +310,7 @@ function test_ppoll_concurrent_write()
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
-	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST,ppoll_time32
 	add_context_kernel_ok $SESSION_NAME channel0 pid
 
 	start_lttng_tracing_ok
