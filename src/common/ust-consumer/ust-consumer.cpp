@@ -24,6 +24,7 @@
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/shm.hpp>
 #include <common/urcu.hpp>
+#include <common/ust-consumer/ust-consumer.hpp>
 #include <common/utils.hpp>
 
 #include <lttng/ust-ctl.h>
@@ -1296,6 +1297,49 @@ static void metadata_stream_reset_cache_consumed_position(struct lttng_consumer_
 	stream->ust_metadata_pushed = 0;
 }
 
+static int stream_send_live_beacon(lttng_consumer_stream& stream)
+{
+	uint64_t ts, stream_id;
+	int ret;
+
+	ret = cds_lfht_is_node_deleted(&stream.node.node);
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_ustconsumer_get_current_timestamp(&stream, &ts);
+	if (ret < 0) {
+		ERR("Failed to get the current timestamp");
+		goto end;
+	}
+	ret = lttng_ustconsumer_flush_buffer(&stream, 1);
+	if (ret < 0) {
+		ERR("Failed to flush buffer while flushing index");
+		goto end;
+	}
+	ret = lttng_ustconsumer_take_snapshot(&stream);
+	if (ret < 0) {
+		if (ret != -EAGAIN) {
+			ERR("Taking UST snapshot");
+			ret = -1;
+			goto end;
+		}
+		ret = lttng_ustconsumer_get_stream_id(&stream, &stream_id);
+		if (ret < 0) {
+			PERROR("lttng_ust_ctl_get_stream_id");
+			goto end;
+		}
+		DBG("Stream %" PRIu64 " empty, sending beacon", stream.key);
+		ret = consumer_stream_send_live_beacon(stream, ts, stream_id);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * Receive the metadata updates from the sessiond. Supports receiving
  * overlapping metadata, but is needs to always belong to a contiguous
@@ -1665,7 +1709,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				}
 				consumer_metadata_cache_destroy(channel);
 			}
-			if (channel->live_timer_enabled == 1) {
+			if (channel->live_timer_task) {
 				consumer_timer_live_stop(channel);
 			}
 			if (channel->monitor_timer_enabled == 1) {
@@ -3099,7 +3143,7 @@ static int lttng_ustconsumer_set_stream_ops(struct lttng_consumer_stream *stream
 		stream->read_subbuffer_ops.extract_subbuffer_info = extract_data_subbuffer_info;
 		stream->read_subbuffer_ops.on_sleep = notify_if_more_data;
 		if (stream->chan->is_live) {
-			stream->read_subbuffer_ops.send_live_beacon = consumer_flush_ust_index;
+			stream->read_subbuffer_ops.send_live_beacon = stream_send_live_beacon;
 		}
 	}
 

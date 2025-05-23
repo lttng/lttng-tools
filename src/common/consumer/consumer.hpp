@@ -17,6 +17,7 @@
 #include <common/hashtable/hashtable.hpp>
 #include <common/index/ctf-index.hpp>
 #include <common/pipe.hpp>
+#include <common/scheduler.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
 #include <common/trace-chunk-registry.hpp>
 #include <common/uuid.hpp>
@@ -232,8 +233,9 @@ struct lttng_consumer_channel {
 	int switch_timer_error = 0;
 
 	/* For the live mode */
-	int live_timer_enabled = 0;
 	timer_t live_timer = {};
+	lttng::scheduling::periodic_task::sptr live_timer_task;
+
 	int live_timer_error = 0;
 	/* Channel is part of a live session ? */
 	bool is_live = false;
@@ -410,7 +412,7 @@ using put_next_subbuffer_cb = int (*)(struct lttng_consumer_stream *, struct str
  *
  * Stream and channel locks are acquired during this call.
  */
-using post_consume_cb = int (*)(struct lttng_consumer_stream *,
+using post_consume_cb = int (*)(lttng_consumer_stream&,
 				const struct stream_subbuffer *,
 				struct lttng_consumer_local_data *);
 
@@ -419,7 +421,7 @@ using post_consume_cb = int (*)(struct lttng_consumer_stream *,
  *
  * Stream and channel locks are acquired during this call.
  */
-using send_live_beacon_cb = int (*)(struct lttng_consumer_stream *);
+using send_live_beacon_cb = int (*)(lttng_consumer_stream&);
 
 /*
  * Lock the stream and channel locks and any other stream-type specific

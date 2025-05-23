@@ -239,7 +239,7 @@ static ssize_t consumer_stream_consume_splice(struct lttng_consumer_local_data *
 	return written_bytes;
 }
 
-static int consumer_stream_send_index(struct lttng_consumer_stream *stream,
+static int consumer_stream_send_index(lttng_consumer_stream& stream,
 				      const struct stream_subbuffer *subbuffer,
 				      struct lttng_consumer_local_data *ctx __attribute__((unused)))
 {
@@ -250,12 +250,12 @@ static int consumer_stream_send_index(struct lttng_consumer_stream *stream,
 	 * This is called after consuming the sub-buffer; substract the
 	 * effect this sub-buffer from the offset.
 	 */
-	if (stream->net_seq_idx == (uint64_t) -1ULL) {
-		packet_offset = stream->out_fd_offset - subbuffer->info.data.padded_subbuf_size;
+	if (stream.net_seq_idx == (uint64_t) -1ULL) {
+		packet_offset = stream.out_fd_offset - subbuffer->info.data.padded_subbuf_size;
 	}
 
 	ctf_packet_index_populate(&index, packet_offset, subbuffer);
-	return consumer_stream_write_index(stream, &index);
+	return consumer_stream_write_index(stream, index);
 }
 
 /*
@@ -418,7 +418,7 @@ end:
 	return ret;
 }
 
-static int consumer_stream_sync_metadata_index(struct lttng_consumer_stream *stream,
+static int consumer_stream_sync_metadata_index(lttng_consumer_stream& stream,
 					       const struct stream_subbuffer *subbuffer,
 					       struct lttng_consumer_local_data *ctx)
 {
@@ -426,20 +426,20 @@ static int consumer_stream_sync_metadata_index(struct lttng_consumer_stream *str
 	int ret;
 
 	/* Block until all the metadata is sent. */
-	pthread_mutex_lock(&stream->metadata_timer_lock);
-	LTTNG_ASSERT(!stream->missed_metadata_flush);
-	stream->waiting_on_metadata = true;
-	pthread_mutex_unlock(&stream->metadata_timer_lock);
+	pthread_mutex_lock(&stream.metadata_timer_lock);
+	LTTNG_ASSERT(!stream.missed_metadata_flush);
+	stream.waiting_on_metadata = true;
+	pthread_mutex_unlock(&stream.metadata_timer_lock);
 
-	ret = consumer_stream_sync_metadata(ctx, stream->session_id);
+	ret = consumer_stream_sync_metadata(ctx, stream.session_id);
 
-	pthread_mutex_lock(&stream->metadata_timer_lock);
-	stream->waiting_on_metadata = false;
-	missed_metadata_flush = stream->missed_metadata_flush;
+	pthread_mutex_lock(&stream.metadata_timer_lock);
+	stream.waiting_on_metadata = false;
+	missed_metadata_flush = stream.missed_metadata_flush;
 	if (missed_metadata_flush) {
-		stream->missed_metadata_flush = false;
+		stream.missed_metadata_flush = false;
 	}
-	pthread_mutex_unlock(&stream->metadata_timer_lock);
+	pthread_mutex_unlock(&stream.metadata_timer_lock);
 	if (ret < 0) {
 		goto end;
 	}
@@ -461,7 +461,7 @@ static int consumer_stream_sync_metadata_index(struct lttng_consumer_stream *str
 	 * beacon and a following trace packet.
 	 */
 	if (missed_metadata_flush) {
-		(void) stream->read_subbuffer_ops.send_live_beacon(stream);
+		(void) stream.read_subbuffer_ops.send_live_beacon(stream);
 	}
 end:
 	return ret;
@@ -510,80 +510,79 @@ static int metadata_stream_pre_consume(struct lttng_consumer_stream *stream,
 	return 0;
 }
 
-static bool stream_is_rotating_to_null_chunk(const struct lttng_consumer_stream *stream)
+static bool stream_is_rotating_to_null_chunk(const struct lttng_consumer_stream& stream)
 {
 	bool rotating_to_null_chunk = false;
 
-	if (stream->rotate_position == -1ULL) {
+	if (stream.rotate_position == -1ULL) {
 		/* No rotation ongoing. */
 		goto end;
 	}
 
-	if (stream->trace_chunk == stream->chan->trace_chunk || !stream->chan->trace_chunk) {
+	if (stream.trace_chunk == stream.chan->trace_chunk || !stream.chan->trace_chunk) {
 		rotating_to_null_chunk = true;
 	}
 end:
 	return rotating_to_null_chunk;
 }
 
-enum consumer_stream_open_packet_status
-consumer_stream_open_packet(struct lttng_consumer_stream *stream)
+enum consumer_stream_open_packet_status consumer_stream_open_packet(lttng_consumer_stream& stream)
 {
 	int ret;
 	enum consumer_stream_open_packet_status status;
 	unsigned long produced_pos_before, produced_pos_after;
 
-	ret = lttng_consumer_sample_snapshot_positions(stream);
+	ret = lttng_consumer_sample_snapshot_positions(&stream);
 	if (ret < 0) {
 		ERR("Failed to snapshot positions before post-rotation empty packet flush: stream id = %" PRIu64
 		    ", channel name = %s, session id = %" PRIu64,
-		    stream->key,
-		    stream->chan->name,
-		    stream->chan->session_id);
+		    stream.key,
+		    stream.chan->name,
+		    stream.chan->session_id);
 		status = CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR;
 		goto end;
 	}
 
-	ret = lttng_consumer_get_produced_snapshot(stream, &produced_pos_before);
+	ret = lttng_consumer_get_produced_snapshot(&stream, &produced_pos_before);
 	if (ret < 0) {
 		ERR("Failed to read produced position before post-rotation empty packet flush: stream id = %" PRIu64
 		    ", channel name = %s, session id = %" PRIu64,
-		    stream->key,
-		    stream->chan->name,
-		    stream->chan->session_id);
+		    stream.key,
+		    stream.chan->name,
+		    stream.chan->session_id);
 		status = CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR;
 		goto end;
 	}
 
-	ret = consumer_stream_flush_buffer(stream, false);
+	ret = consumer_stream_flush_buffer(&stream, false);
 	if (ret) {
 		ERR("Failed to flush an empty packet at rotation point: stream id = %" PRIu64
 		    ", channel name = %s, session id = %" PRIu64,
-		    stream->key,
-		    stream->chan->name,
-		    stream->chan->session_id);
+		    stream.key,
+		    stream.chan->name,
+		    stream.chan->session_id);
 		status = CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR;
 		goto end;
 	}
 
-	ret = lttng_consumer_sample_snapshot_positions(stream);
+	ret = lttng_consumer_sample_snapshot_positions(&stream);
 	if (ret < 0) {
 		ERR("Failed to snapshot positions after post-rotation empty packet flush: stream id = %" PRIu64
 		    ", channel name = %s, session id = %" PRIu64,
-		    stream->key,
-		    stream->chan->name,
-		    stream->chan->session_id);
+		    stream.key,
+		    stream.chan->name,
+		    stream.chan->session_id);
 		status = CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR;
 		goto end;
 	}
 
-	ret = lttng_consumer_get_produced_snapshot(stream, &produced_pos_after);
+	ret = lttng_consumer_get_produced_snapshot(&stream, &produced_pos_after);
 	if (ret < 0) {
 		ERR("Failed to read produced position after post-rotation empty packet flush: stream id = %" PRIu64
 		    ", channel name = %s, session id = %" PRIu64,
-		    stream->key,
-		    stream->chan->name,
-		    stream->chan->session_id);
+		    stream.key,
+		    stream.chan->name,
+		    stream.chan->session_id);
 		status = CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR;
 		goto end;
 	}
@@ -596,7 +595,7 @@ consumer_stream_open_packet(struct lttng_consumer_stream *stream)
 		CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED :
 		CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE;
 	if (status == CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED) {
-		stream->opened_packet_in_current_trace_chunk = true;
+		stream.opened_packet_in_current_trace_chunk = true;
 	}
 
 end:
@@ -611,7 +610,7 @@ end:
  * ring-buffer. In that case, a second attempt is performed after consuming
  * a packet since that will have freed enough space in the ring-buffer.
  */
-static int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
+static int post_consume_open_new_packet(lttng_consumer_stream& stream,
 					const struct stream_subbuffer *subbuffer
 					__attribute__((unused)),
 					struct lttng_consumer_local_data *ctx
@@ -619,7 +618,7 @@ static int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
 {
 	int ret = 0;
 
-	if (!stream->opened_packet_in_current_trace_chunk && stream->trace_chunk &&
+	if (!stream.opened_packet_in_current_trace_chunk && stream.trace_chunk &&
 	    !stream_is_rotating_to_null_chunk(stream)) {
 		const enum consumer_stream_open_packet_status status =
 			consumer_stream_open_packet(stream);
@@ -628,10 +627,10 @@ static int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED:
 			DBG("Opened a packet after consuming a packet rotation: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
-			stream->opened_packet_in_current_trace_chunk = true;
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
+			stream.opened_packet_in_current_trace_chunk = true;
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE:
 			/*
@@ -642,10 +641,10 @@ static int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
 			 */
 			DBG("No space left to open a packet after consuming a packet: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
-			stream->opened_packet_in_current_trace_chunk = true;
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
+			stream.opened_packet_in_current_trace_chunk = true;
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR:
 			/* Logged by callee. */
@@ -655,7 +654,7 @@ static int post_consume_open_new_packet(struct lttng_consumer_stream *stream,
 			abort();
 		}
 
-		stream->opened_packet_in_current_trace_chunk = true;
+		stream.opened_packet_in_current_trace_chunk = true;
 	}
 
 end:
@@ -1118,24 +1117,21 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream, struct lttng_
  *
  * Return 0 on success or else a negative value.
  */
-int consumer_stream_write_index(struct lttng_consumer_stream *stream,
-				struct ctf_packet_index *element)
+int consumer_stream_write_index(lttng_consumer_stream& stream, const ctf_packet_index& element)
 {
 	int ret;
 
-	LTTNG_ASSERT(stream);
-	LTTNG_ASSERT(element);
-
 	const lttng::urcu::read_lock_guard read_lock;
-	if (stream->net_seq_idx != (uint64_t) -1ULL) {
+	if (stream.net_seq_idx != (uint64_t) -1ULL) {
 		struct consumer_relayd_sock_pair *relayd;
-		relayd = consumer_find_relayd(stream->net_seq_idx);
+
+		relayd = consumer_find_relayd(stream.net_seq_idx);
 		if (relayd) {
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-			ret = relayd_send_index(&relayd->control_sock,
+			ret = relayd_send_index(relayd->control_sock,
 						element,
-						stream->relayd_stream_id,
-						stream->next_net_seq_num - 1);
+						stream.relayd_stream_id,
+						stream.next_net_seq_num - 1);
 			if (ret < 0) {
 				/*
 				 * Communication error with lttng-relayd,
@@ -1149,12 +1145,12 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		} else {
 			ERR("Stream %" PRIu64 " relayd ID %" PRIu64 " unknown. Can't write index.",
-			    stream->key,
-			    stream->net_seq_idx);
+			    stream.key,
+			    stream.net_seq_idx);
 			ret = -1;
 		}
 	} else {
-		if (lttng_index_file_write(stream->index_file, element)) {
+		if (lttng_index_file_write(stream.index_file, &element)) {
 			ret = -1;
 		} else {
 			ret = 0;
@@ -1370,4 +1366,16 @@ int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream, bool prod
 
 end:
 	return ret;
+}
+
+int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
+				     uint64_t timestamp,
+				     uint64_t stream_id)
+{
+	ctf_packet_index index = {};
+
+	index.stream_id = htobe64(stream_id);
+	index.timestamp_end = htobe64(timestamp);
+
+	return consumer_stream_write_index(stream, index);
 }

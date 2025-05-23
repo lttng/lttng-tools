@@ -367,7 +367,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	/* Destroy streams that might have been left in the stream list. */
 	clean_channel_stream_list(channel);
 
-	if (channel->live_timer_enabled == 1) {
+	if (channel->live_timer_task) {
 		consumer_timer_live_stop(channel);
 	}
 	if (channel->monitor_timer_enabled == 1) {
@@ -3301,18 +3301,18 @@ error_testpoint:
 	return nullptr;
 }
 
-static int post_consume(struct lttng_consumer_stream *stream,
+static int post_consume(lttng_consumer_stream& stream,
 			const struct stream_subbuffer *subbuffer,
 			struct lttng_consumer_local_data *ctx)
 {
 	size_t i;
 	int ret = 0;
 	const size_t count =
-		lttng_dynamic_array_get_count(&stream->read_subbuffer_ops.post_consume_cbs);
+		lttng_dynamic_array_get_count(&stream.read_subbuffer_ops.post_consume_cbs);
 
 	for (i = 0; i < count; i++) {
 		const post_consume_cb op = *(post_consume_cb *) lttng_dynamic_array_get_element(
-			&stream->read_subbuffer_ops.post_consume_cbs, i);
+			&stream.read_subbuffer_ops.post_consume_cbs, i);
 
 		ret = op(stream, subbuffer, ctx);
 		if (ret) {
@@ -3390,7 +3390,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-	ret = post_consume(stream, &subbuffer, ctx);
+	ret = post_consume(*stream, &subbuffer, ctx);
 	if (ret) {
 		goto end;
 	}
@@ -4237,18 +4237,18 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	     stream_idx < lttng_dynamic_pointer_array_get_count(&streams_packet_to_open);
 	     stream_idx++) {
 		enum consumer_stream_open_packet_status status;
-		auto *stream = (lttng_consumer_stream *) lttng_dynamic_pointer_array_get_pointer(
-			&streams_packet_to_open, stream_idx);
+		auto& stream = *((lttng_consumer_stream *) lttng_dynamic_pointer_array_get_pointer(
+			&streams_packet_to_open, stream_idx));
 
-		const lttng::pthread::lock_guard stream_lock(stream->lock);
+		const lttng::pthread::lock_guard stream_lock(stream.lock);
 		status = consumer_stream_open_packet(stream);
 		switch (status) {
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED:
 			DBG("Opened a packet after a rotation: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE:
 			/*
@@ -4258,9 +4258,9 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 */
 			DBG("No space left to open a packet after a rotation: stream id = %" PRIu64
 			    ", channel name = %s, session id = %" PRIu64,
-			    stream->key,
-			    stream->chan->name,
-			    stream->chan->session_id);
+			    stream.key,
+			    stream.chan->name,
+			    stream.chan->session_id);
 			break;
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR:
 			/* Logged by callee. */
@@ -5069,7 +5069,7 @@ enum lttcomm_return_code lttng_consumer_open_channel_packets(struct lttng_consum
 			continue;
 		}
 
-		status = consumer_stream_open_packet(stream);
+		status = consumer_stream_open_packet(*stream);
 		switch (status) {
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED:
 			DBG("Opened a packet in \"open channel packets\" command: stream id = %" PRIu64

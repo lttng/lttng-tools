@@ -82,8 +82,7 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream);
 /*
  * Write index of a specific stream either on the relayd or local disk.
  */
-int consumer_stream_write_index(struct lttng_consumer_stream *stream,
-				struct ctf_packet_index *index);
+int consumer_stream_write_index(lttng_consumer_stream& stream, const ctf_packet_index& index);
 
 int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx, uint64_t session_id);
 
@@ -135,8 +134,7 @@ void consumer_stream_metadata_set_version(struct lttng_consumer_stream *stream,
  *
  * This function must be called with the stream and channel locks held.
  */
-enum consumer_stream_open_packet_status
-consumer_stream_open_packet(struct lttng_consumer_stream *stream);
+enum consumer_stream_open_packet_status consumer_stream_open_packet(lttng_consumer_stream& stream);
 
 /*
  * Flush a stream's buffer.
@@ -148,5 +146,10 @@ consumer_stream_open_packet(struct lttng_consumer_stream *stream);
  * This function must be called with the stream and channel locks held.
  */
 int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream, bool producer_active);
+
+/* Send a live beacon to a stream's associated relay daemon. */
+int consumer_stream_send_live_beacon(lttng_consumer_stream& stream,
+				     uint64_t timestamp,
+				     uint64_t stream_id);
 
 #endif /* LTTNG_CONSUMER_STREAM_H */

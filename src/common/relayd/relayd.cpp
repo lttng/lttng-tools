@@ -46,7 +46,7 @@ static bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *
 /*
  * Send command. Fill up the header and append the data.
  */
-static int send_command(struct lttcomm_relayd_sock *rsock,
+static int send_command(lttcomm_relayd_sock& rsock,
 			enum lttcomm_relayd_command cmd,
 			const void *data,
 			size_t size,
@@ -57,7 +57,7 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 	char *buf;
 	uint64_t buf_size = sizeof(header);
 
-	if (rsock->sock.fd < 0) {
+	if (rsock.sock.fd < 0) {
 		return -ECONNRESET;
 	}
 
@@ -89,12 +89,12 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 	DBG3("Relayd sending command %s of size %" PRIu64,
 	     lttcomm_relayd_command_str(cmd),
 	     buf_size);
-	ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
+	ret = rsock.sock.ops->sendmsg(&rsock.sock, buf, buf_size, flags);
 	if (ret < 0) {
 		PERROR("Failed to send command %s of size %" PRIu64,
 		       lttcomm_relayd_command_str(cmd),
 		       buf_size);
-		ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
+		ret = rsock.sock.ops->sendmsg(&rsock.sock, buf, buf_size, flags);
 		ret = -errno;
 		goto error;
 	}
@@ -108,24 +108,24 @@ alloc_error:
  * Receive reply data on socket. This MUST be call after send_command or else
  * could result in unexpected behavior(s).
  */
-static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size)
+static int recv_reply(lttcomm_relayd_sock& rsock, void *data, size_t size)
 {
 	int ret;
 
-	if (rsock->sock.fd < 0) {
+	if (rsock.sock.fd < 0) {
 		return -ECONNRESET;
 	}
 
 	DBG3("Relayd waiting for reply of size %zu", size);
 
-	ret = rsock->sock.ops->recvmsg(&rsock->sock, data, size, 0);
+	ret = rsock.sock.ops->recvmsg(&rsock.sock, data, size, 0);
 	if (ret <= 0 || ret != size) {
 		if (ret == 0) {
 			/* Orderly shutdown. */
-			DBG("Socket %d has performed an orderly shutdown", rsock->sock.fd);
+			DBG("Socket %d has performed an orderly shutdown", rsock.sock.fd);
 		} else {
 			DBG("Receiving reply failed on sock %d for size %zu with ret %d",
-			    rsock->sock.fd,
+			    rsock.sock.fd,
 			    size,
 			    ret);
 		}
@@ -220,12 +220,12 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	msg->creation_time = htobe64((uint64_t) creation_time);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
+	ret = send_command(*rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
 	if (ret < 0) {
 		goto error;
 	}
 	/* Receive response */
-	ret = recv_reply(rsock, reply, sizeof(*reply));
+	ret = recv_reply(*rsock, reply, sizeof(*reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -240,7 +240,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		ret = -1;
 		goto error;
 	}
-	ret = recv_reply(rsock, output_path, reply->output_path_length);
+	ret = recv_reply(*rsock, output_path, reply->output_path_length);
 	if (ret < 0) {
 		goto error;
 	}
@@ -274,13 +274,13 @@ static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 	msg.snapshot = htobe32(snapshot);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_CREATE_SESSION, &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_CREATE_SESSION, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, reply, sizeof(*reply));
+	ret = recv_reply(*rsock, reply, sizeof(*reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -299,13 +299,13 @@ static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
 	int ret;
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_CREATE_SESSION, nullptr, 0, 0);
+	ret = send_command(*rsock, RELAYD_CREATE_SESSION, nullptr, 0, 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, reply, sizeof(*reply));
+	ret = recv_reply(*rsock, reply, sizeof(*reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -407,7 +407,7 @@ static int relayd_add_stream_2_1(struct lttcomm_relayd_sock *rsock,
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ret = -1;
 		goto error;
@@ -440,7 +440,7 @@ static int relayd_add_stream_2_2(struct lttcomm_relayd_sock *rsock,
 	msg.tracefile_count = htobe64(tracefile_count);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -494,7 +494,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 	msg->trace_chunk_id = htobe64(trace_archive_id);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) msg, msg_length, 0);
+	ret = send_command(*rsock, RELAYD_ADD_STREAM, (void *) msg, msg_length, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -582,7 +582,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock,
 	}
 
 	/* Waiting for reply */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -629,13 +629,13 @@ int relayd_streams_sent(struct lttcomm_relayd_sock *rsock)
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_STREAMS_SENT, nullptr, 0, 0);
+	ret = send_command(*rsock, RELAYD_STREAMS_SENT, nullptr, 0, 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Waiting for reply */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -684,13 +684,13 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 	msg.minor = htobe32(rsock->minor);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_VERSION, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_VERSION, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &msg, sizeof(msg));
+	ret = recv_reply(*rsock, (void *) &msg, sizeof(msg));
 	if (ret < 0) {
 		goto error;
 	}
@@ -748,7 +748,7 @@ int relayd_send_metadata(struct lttcomm_relayd_sock *rsock, size_t len)
 	DBG("Relayd sending metadata of size %zu", len);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_SEND_METADATA, nullptr, len, 0);
+	ret = send_command(*rsock, RELAYD_SEND_METADATA, nullptr, len, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -889,13 +889,13 @@ int relayd_send_close_stream(struct lttcomm_relayd_sock *rsock,
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_CLOSE_STREAM, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_CLOSE_STREAM, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -940,13 +940,13 @@ int relayd_data_pending(struct lttcomm_relayd_sock *rsock,
 	msg.last_net_seq_num = htobe64(last_net_seq_num);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_DATA_PENDING, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_DATA_PENDING, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -985,13 +985,13 @@ int relayd_quiescent_control(struct lttcomm_relayd_sock *rsock, uint64_t metadat
 	msg.stream_id = htobe64(metadata_stream_id);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_QUIESCENT_CONTROL, &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_QUIESCENT_CONTROL, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -1030,13 +1030,13 @@ int relayd_begin_data_pending(struct lttcomm_relayd_sock *rsock, uint64_t id)
 	msg.session_id = htobe64(id);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_BEGIN_DATA_PENDING, &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_BEGIN_DATA_PENDING, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -1079,13 +1079,13 @@ int relayd_end_data_pending(struct lttcomm_relayd_sock *rsock,
 	msg.session_id = htobe64(id);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_END_DATA_PENDING, &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_END_DATA_PENDING, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -1109,8 +1109,8 @@ error:
 /*
  * Send index to the relayd.
  */
-int relayd_send_index(struct lttcomm_relayd_sock *rsock,
-		      struct ctf_packet_index *index,
+int relayd_send_index(lttcomm_relayd_sock& rsock,
+		      const ctf_packet_index& index,
 		      uint64_t relay_stream_id,
 		      uint64_t net_seq_num)
 {
@@ -1118,10 +1118,7 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	struct lttcomm_relayd_index msg;
 	struct lttcomm_relayd_generic_reply reply;
 
-	/* Code flow error. Safety net. */
-	LTTNG_ASSERT(rsock);
-
-	if (rsock->minor < 4) {
+	if (rsock.minor < 4) {
 		DBG("Not sending indexes before protocol 2.4");
 		ret = 0;
 		goto error;
@@ -1134,26 +1131,25 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	msg.net_seq_num = htobe64(net_seq_num);
 
 	/* The index is already in big endian. */
-	msg.packet_size = index->packet_size;
-	msg.content_size = index->content_size;
-	msg.timestamp_begin = index->timestamp_begin;
-	msg.timestamp_end = index->timestamp_end;
-	msg.events_discarded = index->events_discarded;
-	msg.stream_id = index->stream_id;
+	msg.packet_size = index.packet_size;
+	msg.content_size = index.content_size;
+	msg.timestamp_begin = index.timestamp_begin;
+	msg.timestamp_end = index.timestamp_end;
+	msg.events_discarded = index.events_discarded;
+	msg.stream_id = index.stream_id;
 
-	if (rsock->minor >= 8) {
-		msg.stream_instance_id = index->stream_instance_id;
-		msg.packet_seq_num = index->packet_seq_num;
+	if (rsock.minor >= 8) {
+		msg.stream_instance_id = index.stream_instance_id;
+		msg.packet_seq_num = index.packet_seq_num;
 	}
 
 	/* Send command */
-	ret = send_command(
-		rsock,
-		RELAYD_SEND_INDEX,
-		&msg,
-		lttcomm_relayd_index_len(lttng_to_index_major(rsock->major, rsock->minor),
-					 lttng_to_index_minor(rsock->major, rsock->minor)),
-		0);
+	ret = send_command(rsock,
+			   RELAYD_SEND_INDEX,
+			   &msg,
+			   lttcomm_relayd_index_len(lttng_to_index_major(rsock.major, rsock.minor),
+						    lttng_to_index_minor(rsock.major, rsock.minor)),
+			   0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1205,13 +1201,13 @@ int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	msg.version = htobe64(version);
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_RESET_METADATA, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(*rsock, RELAYD_RESET_METADATA, (void *) &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		goto error;
 	}
 
 	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	ret = recv_reply(*rsock, (void *) &reply, sizeof(reply));
 	if (ret < 0) {
 		goto error;
 	}
@@ -1302,14 +1298,14 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	}
 
 	/* Send command. */
-	ret = send_command(sock, RELAYD_ROTATE_STREAMS, payload.data, payload.size, 0);
+	ret = send_command(*sock, RELAYD_ROTATE_STREAMS, payload.data, payload.size, 0);
 	if (ret < 0) {
 		ERR("Failed to send \"rotate stream\" command");
 		goto error;
 	}
 
 	/* Receive response. */
-	ret = recv_reply(sock, &reply, sizeof(reply));
+	ret = recv_reply(*sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		ERR("Failed to receive \"rotate streams\" command reply");
 		goto error;
@@ -1384,13 +1380,13 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock, struct lttng_tra
 		}
 	}
 
-	ret = send_command(sock, RELAYD_CREATE_TRACE_CHUNK, payload.data, payload.size, 0);
+	ret = send_command(*sock, RELAYD_CREATE_TRACE_CHUNK, payload.data, payload.size, 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk creation command to relay daemon");
 		goto end;
 	}
 
-	ret = recv_reply(sock, &reply, sizeof(reply));
+	ret = recv_reply(*sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		ERR("Failed to receive relay daemon trace chunk creation command reply");
 		goto end;
@@ -1463,13 +1459,13 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		},
 	};
 
-	ret = send_command(sock, RELAYD_CLOSE_TRACE_CHUNK, &msg, sizeof(msg), 0);
+	ret = send_command(*sock, RELAYD_CLOSE_TRACE_CHUNK, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk close command to relay daemon");
 		goto end;
 	}
 
-	ret = recv_reply(sock, &reply, sizeof(reply));
+	ret = recv_reply(*sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		ERR("Failed to receive relay daemon trace chunk close command reply");
 		goto end;
@@ -1482,7 +1478,7 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	ret = recv_reply(sock, path, reply.path_length);
+	ret = recv_reply(*sock, path, reply.path_length);
 	if (ret < 0) {
 		ERR("Failed to receive relay daemon trace chunk close command reply");
 		goto end;
@@ -1524,13 +1520,13 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 		.chunk_id = htobe64(chunk_id),
 	};
 
-	ret = send_command(sock, RELAYD_TRACE_CHUNK_EXISTS, &msg, sizeof(msg), 0);
+	ret = send_command(*sock, RELAYD_TRACE_CHUNK_EXISTS, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk exists command to relay daemon");
 		goto end;
 	}
 
-	ret = recv_reply(sock, &reply, sizeof(reply));
+	ret = recv_reply(*sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		ERR("Failed to receive relay daemon trace chunk close command reply");
 		goto end;
@@ -1572,13 +1568,13 @@ int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	ret = send_command(sock, RELAYD_GET_CONFIGURATION, &msg, sizeof(msg), 0);
+	ret = send_command(*sock, RELAYD_GET_CONFIGURATION, &msg, sizeof(msg), 0);
 	if (ret < 0) {
 		ERR("Failed to send get configuration command to relay daemon");
 		goto end;
 	}
 
-	ret = recv_reply(sock, &reply, sizeof(reply));
+	ret = recv_reply(*sock, &reply, sizeof(reply));
 	if (ret < 0) {
 		ERR("Failed to receive relay daemon get configuration command reply");
 		goto end;

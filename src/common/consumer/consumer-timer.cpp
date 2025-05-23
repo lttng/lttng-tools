@@ -12,6 +12,7 @@
 #include <common/consumer/consumer-stream.hpp>
 #include <common/consumer/consumer-testpoint.hpp>
 #include <common/consumer/consumer-timer.hpp>
+#include <common/consumer/live-timer-task.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>
@@ -115,185 +116,6 @@ static void metadata_switch_timer(struct lttng_consumer_local_data *ctx, siginfo
 	case LTTNG_CONSUMER_UNKNOWN:
 		abort();
 		break;
-	}
-}
-
-static int send_empty_index(struct lttng_consumer_stream *stream, uint64_t ts, uint64_t stream_id)
-{
-	int ret;
-	struct ctf_packet_index index;
-
-	memset(&index, 0, sizeof(index));
-	index.stream_id = htobe64(stream_id);
-	index.timestamp_end = htobe64(ts);
-	ret = consumer_stream_write_index(stream, &index);
-	if (ret < 0) {
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-int consumer_flush_kernel_index(struct lttng_consumer_stream *stream)
-{
-	uint64_t ts, stream_id;
-	int ret;
-
-	ret = kernctl_get_current_timestamp(stream->wait_fd, &ts);
-	if (ret < 0) {
-		ERR("Failed to get the current timestamp");
-		goto end;
-	}
-	ret = kernctl_buffer_flush(stream->wait_fd);
-	if (ret < 0) {
-		ERR("Failed to flush kernel stream");
-		goto end;
-	}
-	ret = kernctl_snapshot(stream->wait_fd);
-	if (ret < 0) {
-		if (ret != -EAGAIN && ret != -ENODATA) {
-			PERROR("live timer kernel snapshot");
-			ret = -1;
-			goto end;
-		}
-		ret = kernctl_get_stream_id(stream->wait_fd, &stream_id);
-		if (ret < 0) {
-			PERROR("kernctl_get_stream_id");
-			goto end;
-		}
-		DBG("Stream %" PRIu64 " empty, sending beacon", stream->key);
-		ret = send_empty_index(stream, ts, stream_id);
-		if (ret < 0) {
-			goto end;
-		}
-	}
-	ret = 0;
-end:
-	return ret;
-}
-
-static int check_stream(struct lttng_consumer_stream *stream, flush_index_cb flush_index)
-{
-	int ret;
-
-	/*
-	 * While holding the stream mutex, try to take a snapshot, if it
-	 * succeeds, it means that data is ready to be sent, just let the data
-	 * thread handle that. Otherwise, if the snapshot returns EAGAIN, it
-	 * means that there is no data to read after the flush, so we can
-	 * safely send the empty index.
-	 *
-	 * Doing a trylock and checking if waiting on metadata if
-	 * trylock fails. Bail out of the stream is indeed waiting for
-	 * metadata to be pushed. Busy wait on trylock otherwise.
-	 */
-	for (;;) {
-		ret = pthread_mutex_trylock(&stream->lock);
-		switch (ret) {
-		case 0:
-			break; /* We have the lock. */
-		case EBUSY:
-			pthread_mutex_lock(&stream->metadata_timer_lock);
-			if (stream->waiting_on_metadata) {
-				ret = 0;
-				stream->missed_metadata_flush = true;
-				pthread_mutex_unlock(&stream->metadata_timer_lock);
-				goto end; /* Bail out. */
-			}
-			pthread_mutex_unlock(&stream->metadata_timer_lock);
-			/* Try again. */
-			caa_cpu_relax();
-			continue;
-		default:
-			ERR("Unexpected pthread_mutex_trylock error %d", ret);
-			ret = -1;
-			goto end;
-		}
-		break;
-	}
-	ret = flush_index(stream);
-	pthread_mutex_unlock(&stream->lock);
-end:
-	return ret;
-}
-
-int consumer_flush_ust_index(struct lttng_consumer_stream *stream)
-{
-	uint64_t ts, stream_id;
-	int ret;
-
-	ret = cds_lfht_is_node_deleted(&stream->node.node);
-	if (ret) {
-		goto end;
-	}
-
-	ret = lttng_ustconsumer_get_current_timestamp(stream, &ts);
-	if (ret < 0) {
-		ERR("Failed to get the current timestamp");
-		goto end;
-	}
-	ret = lttng_ustconsumer_flush_buffer(stream, 1);
-	if (ret < 0) {
-		ERR("Failed to flush buffer while flushing index");
-		goto end;
-	}
-	ret = lttng_ustconsumer_take_snapshot(stream);
-	if (ret < 0) {
-		if (ret != -EAGAIN) {
-			ERR("Taking UST snapshot");
-			ret = -1;
-			goto end;
-		}
-		ret = lttng_ustconsumer_get_stream_id(stream, &stream_id);
-		if (ret < 0) {
-			PERROR("lttng_ust_ctl_get_stream_id");
-			goto end;
-		}
-		DBG("Stream %" PRIu64 " empty, sending beacon", stream->key);
-		ret = send_empty_index(stream, ts, stream_id);
-		if (ret < 0) {
-			goto end;
-		}
-	}
-	ret = 0;
-end:
-	return ret;
-}
-
-/*
- * Execute action on a live timer
- */
-static void live_timer(struct lttng_consumer_local_data *ctx, siginfo_t *si)
-{
-	int ret;
-	const struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
-	const flush_index_cb flush_index = ctx->type == LTTNG_CONSUMER_KERNEL ?
-		consumer_flush_kernel_index :
-		consumer_flush_ust_index;
-
-	auto *channel = (lttng_consumer_channel *) si->si_value.sival_ptr;
-	LTTNG_ASSERT(channel);
-	LTTNG_ASSERT(!channel->is_deleted);
-
-	if (channel->switch_timer_error) {
-		return;
-	}
-
-	DBG("Live timer for channel %" PRIu64, channel->key);
-
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		ret = check_stream(stream, flush_index);
-		if (ret < 0) {
-			return;
-		}
 	}
 }
 
@@ -467,10 +289,27 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(channel->key);
 	LTTNG_ASSERT(!channel->is_deleted);
 
+	if (live_timer_interval_us == 0) {
+		/* No creation needed; not an error. */
+		return;
+	}
+
+	try {
+		channel->live_timer_task = std::make_shared<lttng::consumer::live_timer_task>(
+			std::chrono::microseconds(live_timer_interval_us), *channel);
+	} catch (const std::bad_alloc& e) {
+		ERR_FMT("Failed to allocate memory for live timer task: {}: channel_name=`{}`",
+			e.what(),
+			channel->name);
+		return;
+	}
+
 	ret = consumer_channel_timer_start(
 		&channel->live_timer, channel, live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
-
-	channel->live_timer_enabled = !!(ret == 0);
+	if (ret) {
+		ERR_FMT("Failed to start live timer: channel_name=`{}`", channel->name);
+		channel->live_timer_task.reset();
+	}
 }
 
 /*
@@ -487,7 +326,7 @@ void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
 		ERR("Failed to stop live timer");
 	}
 
-	channel->live_timer_enabled = 0;
+	channel->live_timer_task.reset();
 }
 
 /*
@@ -780,7 +619,9 @@ void *consumer_timer_thread(void *data)
 			cmm_smp_mb();
 			DBG("Signal timer metadata thread teardown");
 		} else if (signr == LTTNG_CONSUMER_SIG_LIVE) {
-			live_timer(ctx, &info);
+			auto *channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
+
+			channel->live_timer_task->run(std::chrono::steady_clock::now());
 		} else if (signr == LTTNG_CONSUMER_SIG_MONITOR) {
 			struct lttng_consumer_channel *channel;
 

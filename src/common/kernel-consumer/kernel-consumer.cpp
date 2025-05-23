@@ -1780,6 +1780,44 @@ static int signal_metadata(struct lttng_consumer_stream *stream,
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
 }
 
+static int stream_send_live_beacon(lttng_consumer_stream& stream)
+{
+	uint64_t ts, stream_id;
+	int ret;
+
+	ret = kernctl_get_current_timestamp(stream.wait_fd, &ts);
+	if (ret < 0) {
+		ERR("Failed to get the current timestamp");
+		goto end;
+	}
+	ret = kernctl_buffer_flush(stream.wait_fd);
+	if (ret < 0) {
+		ERR("Failed to flush kernel stream");
+		goto end;
+	}
+	ret = kernctl_snapshot(stream.wait_fd);
+	if (ret < 0) {
+		if (ret != -EAGAIN && ret != -ENODATA) {
+			PERROR("live timer kernel snapshot");
+			ret = -1;
+			goto end;
+		}
+		ret = kernctl_get_stream_id(stream.wait_fd, &stream_id);
+		if (ret < 0) {
+			PERROR("kernctl_get_stream_id");
+			goto end;
+		}
+		DBG("Stream %" PRIu64 " empty, sending beacon", stream.key);
+		ret = consumer_stream_send_live_beacon(stream, ts, stream_id);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+	ret = 0;
+end:
+	return ret;
+}
+
 static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 {
 	int ret = 0;
@@ -1824,7 +1862,7 @@ static int lttng_kconsumer_set_stream_ops(struct lttng_consumer_stream *stream)
 	} else {
 		stream->read_subbuffer_ops.extract_subbuffer_info = extract_data_subbuffer_info;
 		if (stream->chan->is_live) {
-			stream->read_subbuffer_ops.send_live_beacon = consumer_flush_kernel_index;
+			stream->read_subbuffer_ops.send_live_beacon = stream_send_live_beacon;
 		}
 	}
 
