@@ -34,6 +34,15 @@ def kernel_module(module_name):
         subprocess.run(["modprobe", "-r", module_name], check=True)
 
 
+def getconf(name):
+    p = subprocess.Popen(["getconf", str(name)], stdout=subprocess.PIPE)
+    if p.wait() != 0:
+        raise subprocess.CalledProcessError(
+            returncode=p.returncode, cmd=["getconf", str(name)]
+        )
+    return p.stdout.read().decode("utf-8").strip()
+
+
 def capture_local_kernel_trace(environment):
     # type: (lttngtest._Environment) -> pathlib.Path
     session_output_location = lttngtest.LocalSessionOutputLocation(
@@ -85,8 +94,10 @@ if not lttngtest._Environment.run_kernel_tests():
     )
     sys.exit(0)
 
-pretty_expect_path = pretty_expect_path = (
-    pathlib.Path(__file__).absolute().parents[0] / "kernel-local-trace-pretty.expect"
+pretty_expect_path = pretty_expect_path = pathlib.Path(__file__).absolute().parents[
+    0
+] / "kernel-local-trace-pretty.expect{}".format(
+    ".32" if getconf("LONG_BIT") == "32" else ""
 )
 test_local_trace_all_formats(
     tap=tap,
