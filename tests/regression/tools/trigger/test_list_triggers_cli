@@ -1111,6 +1111,10 @@ test_event_rule_matches_userspace_probe_sdt ()
 	local sdt_probe_name="tp1"
 
 	diag "Listing event-rule-matches userspace-probe sdt"
+	if file "${uprobe_sdt_binary}" | grep -q 'ELF 32-bit' >/dev/null ; then
+		skip 0 "Parsing SDT notes fails with 32-bit ELF files" 9
+		return
+	fi
 
 	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kernel:uprobe --location=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} --event-name=ma-probe-sdt --action notify
 
