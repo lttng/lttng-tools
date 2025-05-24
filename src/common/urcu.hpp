@@ -212,14 +212,14 @@ public:
 		friend lfht_filtered_iteration_adapter;
 
 	public:
-		iterator(const iterator& other) = default;
+		iterator(const iterator& other) noexcept = default;
 		iterator(iterator&& other) noexcept = default;
-		~iterator() = default;
+		~iterator() noexcept = default;
 		iterator& operator=(const iterator&) = delete;
 		iterator& operator=(iterator&&) noexcept = delete;
 
 		/* Move to the next element in the result set. */
-		iterator& operator++()
+		iterator& operator++() noexcept
 		{
 			LTTNG_ASSERT(this->_it.node);
 			/* NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast) */
@@ -236,7 +236,7 @@ public:
 		iterator(cds_lfht& ht,
 			 const cds_lfht_iter& it,
 			 const KeyType *key,
-			 cds_lfht_match_fct match_function) :
+			 cds_lfht_match_fct match_function) noexcept :
 			lfht_iteration_adapter<ContainedType, NodeType, Member>::iterator(ht, it),
 			_key(key),
 			_match_function(match_function)
@@ -244,7 +244,7 @@ public:
 		}
 
 		/* Only used to create an end iterator. */
-		iterator(cds_lfht& ht, const cds_lfht_iter& it) :
+		iterator(cds_lfht& ht, const cds_lfht_iter& it) noexcept :
 			lfht_iteration_adapter<ContainedType, NodeType, Member>::iterator(ht, it),
 			_key(nullptr),
 			_match_function(nullptr)
@@ -258,7 +258,7 @@ public:
 	explicit lfht_filtered_iteration_adapter(cds_lfht& ht,
 						 const KeyType *key,
 						 unsigned long key_hash,
-						 cds_lfht_match_fct match_function) :
+						 cds_lfht_match_fct match_function) noexcept :
 		lfht_iteration_adapter<ContainedType, NodeType, Member>(ht),
 		_key(key),
 		_key_hash(key_hash),

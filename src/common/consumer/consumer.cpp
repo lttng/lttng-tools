@@ -370,15 +370,14 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	if (channel->live_timer_task) {
 		consumer_timer_live_stop(channel);
 	}
-	if (channel->monitor_timer_enabled == 1) {
+	if (channel->monitor_timer_task) {
+		/*
+		 * Send a last buffer statistics sample to the session daemon
+		 * to ensure it tracks the amount of data consumed by this channel.
+		 */
+		channel->monitor_timer_task->run(std::chrono::steady_clock::now());
 		consumer_timer_monitor_stop(channel);
 	}
-
-	/*
-	 * Send a last buffer statistics sample to the session daemon
-	 * to ensure it tracks the amount of data consumed by this channel.
-	 */
-	sample_and_send_channel_buffer_stats(channel);
 
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:

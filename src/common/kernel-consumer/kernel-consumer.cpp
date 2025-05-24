@@ -74,7 +74,7 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
  *
  * Returns 0 on success, < 0 on error.
  */
-int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream)
+int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream) noexcept
 {
 	LTTNG_ASSERT(stream);
 
@@ -86,7 +86,8 @@ int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stre
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos)
+int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
+					  unsigned long *pos) noexcept
 {
 	int ret;
 	const int infd = stream->wait_fd;
@@ -104,7 +105,8 @@ int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream, 
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos)
+int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
+					  unsigned long *pos) noexcept
 {
 	int ret;
 	const int infd = stream->wait_fd;

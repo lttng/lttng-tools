@@ -17,12 +17,12 @@
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream);
-int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream);
+int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream) noexcept;
 
 int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
-					    unsigned long *pos);
+					    unsigned long *pos) noexcept;
 int lttng_ustconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
-					    unsigned long *pos);
+					    unsigned long *pos) noexcept;
 
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			       int sock,
@@ -96,7 +96,7 @@ static inline int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *
 }
 
 static inline int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream
-							      __attribute__((unused)))
+							      __attribute__((unused))) noexcept
 {
 	return -ENOSYS;
 }
@@ -104,7 +104,7 @@ static inline int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consu
 static inline int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream
 							  __attribute__((unused)),
 							  unsigned long *pos
-							  __attribute__((unused)))
+							  __attribute__((unused))) noexcept
 {
 	return -ENOSYS;
 }
@@ -112,7 +112,7 @@ static inline int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_
 static inline int lttng_ustconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream
 							  __attribute__((unused)),
 							  unsigned long *pos
-							  __attribute__((unused)))
+							  __attribute__((unused))) noexcept
 {
 	return -ENOSYS;
 }

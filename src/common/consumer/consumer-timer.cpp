@@ -13,6 +13,7 @@
 #include <common/consumer/consumer-testpoint.hpp>
 #include <common/consumer/consumer-timer.hpp>
 #include <common/consumer/live-timer-task.hpp>
+#include <common/consumer/monitor-timer-task.hpp>
 #include <common/kernel-consumer/kernel-consumer.hpp>
 #include <common/kernel-ctl/kernel-ctl.hpp>
 #include <common/urcu.hpp>
@@ -22,9 +23,6 @@
 #include <inttypes.h>
 #include <signal.h>
 
-using sample_positions_cb = int (*)(struct lttng_consumer_stream *);
-using get_consumed_cb = int (*)(struct lttng_consumer_stream *, unsigned long *);
-using get_produced_cb = int (*)(struct lttng_consumer_stream *, unsigned long *);
 using flush_index_cb = int (*)(struct lttng_consumer_stream *);
 
 static struct timer_signal_data timer_signal = {
@@ -343,13 +341,34 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
 	LTTNG_ASSERT(!channel->is_deleted);
-	LTTNG_ASSERT(!channel->monitor_timer_enabled);
+	LTTNG_ASSERT(!channel->monitor_timer_task);
+
+	if (monitor_timer_interval_us == 0) {
+		/* No creation needed; not an error. */
+		return 0;
+	}
+
+	try {
+		channel->monitor_timer_task = std::make_shared<lttng::consumer::monitor_timer_task>(
+			std::chrono::microseconds(monitor_timer_interval_us),
+			*channel,
+			consumer_timer_thread_get_channel_monitor_pipe());
+	} catch (const std::bad_alloc& e) {
+		ERR_FMT("Failed to allocate memory for live timer task: {}: channel_name=`{}`",
+			e.what(),
+			channel->name);
+		return -1;
+	}
 
 	ret = consumer_channel_timer_start(&channel->monitor_timer,
 					   channel,
 					   monitor_timer_interval_us,
 					   LTTNG_CONSUMER_SIG_MONITOR);
-	channel->monitor_timer_enabled = !!(ret == 0);
+	if (ret) {
+		ERR_FMT("Failed to start monitor timer: channel_name=`{}`", channel->name);
+		channel->monitor_timer_task.reset();
+	}
+
 	return ret;
 }
 
@@ -361,7 +380,7 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 	int ret;
 
 	LTTNG_ASSERT(channel);
-	LTTNG_ASSERT(channel->monitor_timer_enabled);
+	LTTNG_ASSERT(channel->monitor_timer_task);
 
 	ret = consumer_channel_timer_stop(&channel->monitor_timer, LTTNG_CONSUMER_SIG_MONITOR);
 	if (ret == -1) {
@@ -369,7 +388,7 @@ int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel)
 		goto end;
 	}
 
-	channel->monitor_timer_enabled = 0;
+	channel->monitor_timer_task.reset();
 end:
 	return ret;
 }
@@ -392,161 +411,6 @@ int consumer_signal_init()
 		return -1;
 	}
 	return 0;
-}
-
-static int sample_channel_positions(struct lttng_consumer_channel *channel,
-				    uint64_t *_highest_use,
-				    uint64_t *_lowest_use,
-				    uint64_t *_total_consumed,
-				    sample_positions_cb sample,
-				    get_consumed_cb get_consumed,
-				    get_produced_cb get_produced)
-{
-	int ret = 0;
-	bool empty_channel = true;
-	uint64_t high = 0, low = UINT64_MAX;
-	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
-
-	*_total_consumed = 0;
-
-	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<
-		     lttng_consumer_stream,
-		     decltype(lttng_consumer_stream::node_channel_id),
-		     &lttng_consumer_stream::node_channel_id,
-		     std::uint64_t>(*ht->ht,
-				    &channel->key,
-				    ht->hash_fct(&channel->key, lttng_ht_seed),
-				    ht->match_fct)) {
-		unsigned long produced, consumed, usage;
-
-		empty_channel = false;
-
-		pthread_mutex_lock(&stream->lock);
-		if (cds_lfht_is_node_deleted(&stream->node.node)) {
-			goto next;
-		}
-
-		ret = sample(stream);
-		if (ret) {
-			ERR("Failed to take buffer position snapshot in monitor timer (ret = %d)",
-			    ret);
-			pthread_mutex_unlock(&stream->lock);
-			goto end;
-		}
-		ret = get_consumed(stream, &consumed);
-		if (ret) {
-			ERR("Failed to get buffer consumed position in monitor timer");
-			pthread_mutex_unlock(&stream->lock);
-			goto end;
-		}
-		ret = get_produced(stream, &produced);
-		if (ret) {
-			ERR("Failed to get buffer produced position in monitor timer");
-			pthread_mutex_unlock(&stream->lock);
-			goto end;
-		}
-
-		usage = produced - consumed;
-		high = (usage > high) ? usage : high;
-		low = (usage < low) ? usage : low;
-
-		/*
-		 * We don't use consumed here for 2 reasons:
-		 *  - output_written takes into account the padding written in the
-		 *    tracefiles when we stop the session;
-		 *  - the consumed position is not the accurate representation of what
-		 *    was extracted from a buffer in overwrite mode.
-		 */
-		*_total_consumed += stream->output_written;
-	next:
-		pthread_mutex_unlock(&stream->lock);
-	}
-
-	*_highest_use = high;
-	*_lowest_use = low;
-end:
-	if (empty_channel) {
-		ret = -1;
-	}
-
-	return ret;
-}
-
-/* Sample and send channel buffering statistics to the session daemon. */
-void sample_and_send_channel_buffer_stats(struct lttng_consumer_channel *channel)
-{
-	int ret;
-	const int channel_monitor_pipe = consumer_timer_thread_get_channel_monitor_pipe();
-	struct lttcomm_consumer_channel_monitor_msg msg = {
-		.key = channel->key,
-		.session_id = channel->session_id,
-		.lowest = 0,
-		.highest = 0,
-		.consumed_since_last_sample = 0,
-	};
-	sample_positions_cb sample;
-	get_consumed_cb get_consumed;
-	get_produced_cb get_produced;
-	uint64_t lowest = 0, highest = 0, total_consumed = 0;
-
-	LTTNG_ASSERT(channel);
-
-	if (channel_monitor_pipe < 0) {
-		return;
-	}
-
-	switch (the_consumer_data.type) {
-	case LTTNG_CONSUMER_KERNEL:
-		sample = lttng_kconsumer_sample_snapshot_positions;
-		get_consumed = lttng_kconsumer_get_consumed_snapshot;
-		get_produced = lttng_kconsumer_get_produced_snapshot;
-		break;
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		sample = lttng_ustconsumer_sample_snapshot_positions;
-		get_consumed = lttng_ustconsumer_get_consumed_snapshot;
-		get_produced = lttng_ustconsumer_get_produced_snapshot;
-		break;
-	default:
-		abort();
-	}
-
-	ret = sample_channel_positions(
-		channel, &highest, &lowest, &total_consumed, sample, get_consumed, get_produced);
-	if (ret) {
-		return;
-	}
-
-	msg.highest = highest;
-	msg.lowest = lowest;
-	msg.consumed_since_last_sample =
-		total_consumed - channel->consumed_size_as_of_last_sample_sent;
-
-	/*
-	 * Writes performed here are assumed to be atomic which is only
-	 * guaranteed for sizes < than PIPE_BUF.
-	 */
-	LTTNG_ASSERT(sizeof(msg) <= PIPE_BUF);
-
-	do {
-		ret = write(channel_monitor_pipe, &msg, sizeof(msg));
-	} while (ret == -1 && errno == EINTR);
-	if (ret == -1) {
-		if (errno == EAGAIN) {
-			/* Not an error, the sample is merely dropped. */
-			DBG("Channel monitor pipe is full; dropping sample for channel key = %" PRIu64,
-			    channel->key);
-		} else {
-			PERROR("write to the channel monitor pipe");
-		}
-	} else {
-		DBG("Sent channel monitoring sample for channel key %" PRIu64
-		    ", (highest = %" PRIu64 ", lowest = %" PRIu64 ")",
-		    channel->key,
-		    msg.highest,
-		    msg.lowest);
-		channel->consumed_size_as_of_last_sample_sent = total_consumed;
-	}
 }
 
 int consumer_timer_thread_get_channel_monitor_pipe()
@@ -623,10 +487,9 @@ void *consumer_timer_thread(void *data)
 
 			channel->live_timer_task->run(std::chrono::steady_clock::now());
 		} else if (signr == LTTNG_CONSUMER_SIG_MONITOR) {
-			struct lttng_consumer_channel *channel;
+			auto *channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
 
-			channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
-			sample_and_send_channel_buffer_stats(channel);
+			channel->monitor_timer_task->run(std::chrono::steady_clock::now());
 		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
 			LTTNG_ASSERT(CMM_LOAD_SHARED(consumer_quit));
 			goto end;

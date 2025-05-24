@@ -228,7 +228,9 @@ libconsumer_la_SOURCES = \
 	consumer/live-timer-task.cpp \
 	consumer/live-timer-task.hpp \
 	consumer/metadata-bucket.cpp \
-	consumer/metadata-bucket.hpp
+	consumer/metadata-bucket.hpp \
+	consumer/monitor-timer-task.cpp \
+	consumer/monitor-timer-task.hpp
 
 libconsumer_la_LIBADD = \
 	libkernel-consumer.la \

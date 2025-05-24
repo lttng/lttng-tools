@@ -743,7 +743,9 @@ static int flush_channel(uint64_t chan_key)
 	 * per channel even in the case of short-lived channels, such as when a
 	 * short-lived app is traced in per-pid mode.
 	 */
-	sample_and_send_channel_buffer_stats(channel);
+	if (channel->monitor_timer_task) {
+		channel->monitor_timer_task->run(std::chrono::steady_clock::now());
+	}
 error:
 	return ret;
 }
@@ -1712,7 +1714,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			if (channel->live_timer_task) {
 				consumer_timer_live_stop(channel);
 			}
-			if (channel->monitor_timer_enabled == 1) {
+			if (channel->monitor_timer_task) {
 				consumer_timer_monitor_stop(channel);
 			}
 			goto end_channel_error;
@@ -2410,7 +2412,7 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
  *
  * Returns 0 on success, < 0 on error.
  */
-int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream) noexcept
 {
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(stream->ustream);
@@ -2424,7 +2426,7 @@ int lttng_ustconsumer_sample_snapshot_positions(struct lttng_consumer_stream *st
  * Returns 0 on success, < 0 on error
  */
 int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
-					    unsigned long *pos)
+					    unsigned long *pos) noexcept
 {
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(stream->ustream);
@@ -2439,7 +2441,7 @@ int lttng_ustconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream
  * Returns 0 on success, < 0 on error
  */
 int lttng_ustconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
-					    unsigned long *pos)
+					    unsigned long *pos) noexcept
 {
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(stream->ustream);

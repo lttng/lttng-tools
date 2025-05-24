@@ -15,9 +15,11 @@
 #include <stdbool.h>
 
 int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream);
-int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream);
-int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos);
-int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream, unsigned long *pos);
+int lttng_kconsumer_sample_snapshot_positions(struct lttng_consumer_stream *stream) noexcept;
+int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
+					  unsigned long *pos) noexcept;
+int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
+					  unsigned long *pos) noexcept;
 int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			     int sock,
 			     struct pollfd *consumer_sockpoll);
