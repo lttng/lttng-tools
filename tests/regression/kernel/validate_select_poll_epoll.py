@@ -224,6 +224,12 @@ class TraceParser:
     def handle_compat_syscall_exit_pselect6(self, event):
         self.select_exit(event)
 
+    def handle_syscall_entry_pselect6_time32(self, event):
+        self.select_entry(event)
+
+    def handle_syscall_entry_pselect6_time32(self, event):
+        self.select_exit(event)
+
     def handle_syscall_entry_select(self, event):
         self.select_entry(event)
 
