@@ -169,10 +169,10 @@ class TraceParser:
         self.poll_exit(event)
 
     def handle_syscall_entry_ppoll_time32(self, event):
-        self.ppoll_entry(event)
+        self.poll_entry(event)
 
     def handle_syscall_exit_ppoll_time32(self, event):
-        self.ppoll_exit(event)
+        self.poll_exit(event)
 
     def poll_entry(self, event):
         pass
