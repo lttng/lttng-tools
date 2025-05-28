@@ -15,7 +15,6 @@ noinst_HEADERS = \
 	lttng-kernel.hpp \
 	lttng-kernel-old.hpp \
 	macros.hpp \
-	scheduler.hpp \
 	time.hpp \
 	uri.hpp \
 	utils.hpp
@@ -167,8 +166,7 @@ libcommon_gpl_la_SOURCES = \
 	shm.cpp shm.hpp \
 	trace-chunk.cpp trace-chunk.hpp \
 	trace-chunk-registry.hpp \
-	uuid.cpp uuid.hpp \
-	waiter.cpp waiter.hpp
+	uuid.cpp uuid.hpp
 
 libcommon_gpl_la_LIBADD = \
 	libcommon-lgpl.la \
@@ -211,6 +209,26 @@ libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
 libconfig_la_LIBADD = ${libxml2_LIBS} \
 	libini-config.la
 
+# libsynchro
+noinst_LTLIBRARIES += libsynchro.la
+libsynchro_la_SOURCES = \
+	waiter.cpp \
+	waiter.hpp
+
+libsynchro_la_CPPFLAGS = $(AM_CPPFLAGS)
+libsynchro_la_LIBADD = $(URCU_LIBS)
+
+
+# libscheduling
+noinst_LTLIBRARIES += libscheduling.la
+libscheduling_la_SOURCES = \
+	scheduler.hpp \
+	task-executor.hpp \
+	task-executor.cpp
+
+libscheduling_la_CPPFLAGS = $(AM_CPPFLAGS)
+libscheduling_la_LIBADD = libsynchro.la
+
 
 if BUILD_LIB_CONSUMER
 noinst_LTLIBRARIES += libconsumer.la
@@ -237,7 +255,8 @@ libconsumer_la_SOURCES = \
 libconsumer_la_LIBADD = \
 	libkernel-consumer.la \
 	librelayd.la \
-	libsessiond-comm.la
+	libsessiond-comm.la \
+	libsynchro.la
 
 if HAVE_LIBLTTNG_UST_CTL
 libconsumer_la_LIBADD += \

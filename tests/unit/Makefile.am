@@ -42,12 +42,14 @@ TESTS = \
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON_GPL=$(top_builddir)/src/common/libcommon-gpl.la
+LIBCOMMON_LGPL=$(top_builddir)/src/common/libcommon-lgpl.la
 LIBSTRINGUTILS=$(top_builddir)/src/common/libstring-utils.la
 LIBFDTRACKER=$(top_builddir)/src/common/libfd-tracker.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/libsessiond-comm.la
 LIBRELAYD=$(top_builddir)/src/common/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
+LIBSCHEDULING=$(top_builddir)/src/common/libscheduling.la
 
 # Define test programs
 noinst_PROGRAMS = \
@@ -228,7 +230,8 @@ test_action_LDADD = $(LIBTAP) $(LIBCOMMON_GPL) $(LIBLTTNG_CTL) $(DL_LIBS) \
 
 # Scheduler
 test_scheduler_SOURCES = test_scheduler.cpp
-test_scheduler_LDADD = $(LIBTAP) $(top_builddir)/src/vendor/fmt/libfmt.la
+test_scheduler_LDADD = $(LIBTAP) $(LIBCOMMON_LGPL) $(LIBSCHEDULING) \
+			$(top_builddir)/src/vendor/fmt/libfmt.la
 
 # Poller
 test_poller_SOURCES = test_poller.cpp

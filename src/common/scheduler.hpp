@@ -15,6 +15,7 @@
 #include <vendor/optional.hpp>
 
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <stddef.h>
@@ -64,11 +65,6 @@ public:
 		_run(current_time);
 	}
 
-	bool scheduled() const noexcept
-	{
-		return _next_scheduled_time.has_value();
-	}
-
 	/*
 	 * Indicate that this task should no longer be scheduled after the current execution.
 	 * When this returns, the caller is guaranteed that the task is not running and that it will
@@ -84,6 +80,12 @@ public:
 		 * _next_scheduled_time is left unchanged since the task may still be in the
 		 * scheduler's heap.
 		 */
+	}
+
+	bool canceled() const noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+		return _canceled;
 	}
 
 protected:
@@ -177,6 +179,8 @@ private:
 
 class scheduler final {
 public:
+	using task_scheduled_callback = std::function<void(absolute_time)>;
+
 	/*
 	 * gcc 4.8.5 can't generate a default constructor that is noexcept.
 	 * Hence, a trivial one is provided here.
@@ -193,11 +197,16 @@ public:
 	scheduler& operator=(scheduler&&) = delete;
 
 	/* Schedule a "once" or periodic task in the future. */
-	void schedule(task::sptr task, duration_ns in_how_many_ns = duration_ns(0)) noexcept
+	void schedule(task::sptr task,
+		      absolute_time when_to_run = std::chrono::steady_clock::now()) noexcept
 	{
 		const std::lock_guard<std::mutex> lock(_mutex);
 
-		task->_set_next_scheduled_time(_last_tick + in_how_many_ns);
+		for (const auto& callback : _task_scheduled_callbacks) {
+			callback(when_to_run);
+		}
+
+		task->_set_next_scheduled_time(when_to_run);
 		_task_heap.insert(std::move(task));
 	}
 
@@ -241,6 +250,12 @@ public:
 		}
 	}
 
+	void add_task_scheduled_callback(task_scheduled_callback callback) noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+		_task_scheduled_callbacks.push_back(std::move(callback));
+	}
+
 private:
 	/* Run a task and reschedule it, if necessary. */
 	void _run_task(task::sptr task) noexcept
@@ -249,7 +264,7 @@ private:
 		if (task->_must_be_rescheduled()) {
 			auto& periodic_task_to_schedule = static_cast<periodic_task&>(*task);
 
-			schedule(std::move(task), periodic_task_to_schedule.period());
+			schedule(std::move(task), _last_tick + periodic_task_to_schedule.period());
 		}
 	}
 
@@ -353,9 +368,11 @@ private:
 
 		std::vector<task::sptr> _tasks;
 	} _task_heap;
+
 	/* Initialized to epoch. */
 	absolute_time _last_tick;
 	std::mutex _mutex;
+	std::vector<task_scheduled_callback> _task_scheduled_callbacks;
 };
 
 } /* namespace scheduling */

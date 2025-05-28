@@ -6,6 +6,7 @@
 
 #include <common/make-unique.hpp>
 #include <common/scheduler.hpp>
+#include <common/task-executor.hpp>
 
 #include <algorithm>
 #include <array>
@@ -13,6 +14,11 @@
 #include <random>
 #include <tap/tap.h>
 #include <vector>
+
+/* For error.hpp */
+int lttng_opt_quiet;
+int lttng_opt_verbose;
+int lttng_opt_mi;
 
 namespace {
 lttng::scheduling::absolute_time ns_to_time_point(std::uint64_t ns)
@@ -50,7 +56,7 @@ void test_task_not_ran_immediately()
 	 * The task is scheduled to run on the next tick (ideally started right after this tick
 	 * completes).
 	 */
-	scheduler.schedule(my_task);
+	scheduler.schedule(my_task, ns_to_time_point(1));
 	ok(task_ran == false, "Task scheduled \"now\" didn't run during scheduling");
 
 	/* Next tick occurs "immediately". */
@@ -67,7 +73,7 @@ void test_task_not_ran_directly_when_scheduling()
 	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ns, so for tick >= 101. */
-	scheduler.schedule(my_task, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(my_task, ns_to_time_point(1) + lttng::scheduling::duration_ns(100));
 	ok(task_ran == false, "Task scheduled @ 101 not ran right after scheduling");
 }
 
@@ -80,7 +86,7 @@ void test_task_not_ran_before_deadline()
 	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(my_task, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(my_task, ns_to_time_point(1) + lttng::scheduling::duration_ns(100));
 	scheduler.tick(ns_to_time_point(10));
 	ok(task_ran == false, "Task scheduled @ 101 not ran after tick @ 10");
 }
@@ -94,7 +100,7 @@ void test_task_ran_on_deadline()
 	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(my_task, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(my_task, ns_to_time_point(1) + lttng::scheduling::duration_ns(100));
 
 	const auto tick_ret = scheduler.tick(ns_to_time_point(101));
 	ok(task_ran == true, "Task scheduled @ 101 ran after tick @ 101");
@@ -111,7 +117,7 @@ void test_task_ran_on_late_tick()
 	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(my_task, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(my_task, ns_to_time_point(1) + lttng::scheduling::duration_ns(100));
 	scheduler.tick(ns_to_time_point(200));
 	ok(task_ran == true, "Task scheduled @ 101 ran after tick @ 200");
 }
@@ -125,7 +131,7 @@ void test_task_not_ran_twice()
 	auto my_task = std::make_shared<task_once>(task_ran);
 
 	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(my_task, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(my_task, ns_to_time_point(1) + lttng::scheduling::duration_ns(100));
 	scheduler.tick(ns_to_time_point(200));
 	ok(task_ran, "Task scheduled @ 100 ran after tick @ 200");
 
@@ -147,10 +153,9 @@ void test_tasks_all_ran_after_deadline()
 	auto task_100 = std::make_shared<task_once>(task_100_ran);
 	auto task_150 = std::make_shared<task_once>(task_150_ran);
 
-	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(task_150, lttng::scheduling::duration_ns(150));
-	scheduler.schedule(task_50, lttng::scheduling::duration_ns(50));
-	scheduler.schedule(task_100, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(task_150, ns_to_time_point(150));
+	scheduler.schedule(task_50, ns_to_time_point(50));
+	scheduler.schedule(task_100, ns_to_time_point(100));
 	scheduler.tick(ns_to_time_point(200));
 
 	ok(task_50_ran == true, "Task scheduled @ 50 ran after tick @ 200");
@@ -167,10 +172,9 @@ void test_tasks_some_ran_after_tick()
 	auto task_100 = std::make_shared<task_once>(task_100_ran);
 	auto task_150 = std::make_shared<task_once>(task_150_ran);
 
-	/* The task should only run in 100ns, so for ticks >= 101. */
-	scheduler.schedule(task_150, lttng::scheduling::duration_ns(150));
-	scheduler.schedule(task_50, lttng::scheduling::duration_ns(50));
-	scheduler.schedule(task_100, lttng::scheduling::duration_ns(100));
+	scheduler.schedule(task_150, ns_to_time_point(150));
+	scheduler.schedule(task_50, ns_to_time_point(50));
+	scheduler.schedule(task_100, ns_to_time_point(100));
 	scheduler.tick(ns_to_time_point(120));
 
 	ok(task_50_ran == true, "Task scheduled @ 50 ran after tick @ 120");
@@ -182,12 +186,12 @@ void test_lots_of_tasks_ran_in_order()
 {
 	lttng::scheduling::scheduler scheduler;
 	std::array<bool, 16> tasks_ran = { false };
-	std::vector<std::pair<task_once::sptr, lttng::scheduling::duration_ns>> tasks;
+	std::vector<std::pair<task_once::sptr, lttng::scheduling::absolute_time>> tasks;
 
 	/* Create tasks to be scheduled at ticks 5, 15, 25, 35, etc. */
 	for (unsigned int i = 0; i < tasks_ran.size(); i++) {
 		tasks.emplace_back(std::make_shared<task_once>(tasks_ran[i]),
-				   std::chrono::nanoseconds((i * 10) + 5));
+				   ns_to_time_point((i * 10) + 5));
 	}
 
 	/*
@@ -277,7 +281,7 @@ void test_task_not_ran_before_deadline()
 						       task_run_count);
 
 	/* The task should run every 100 ns, starting in 100 ns. */
-	scheduler.schedule(my_task, my_task->period());
+	scheduler.schedule(my_task, ns_to_time_point(0) + my_task->period());
 	scheduler.tick(ns_to_time_point(50));
 	ok(task_run_count == 0, "Periodic task scheduled @ 100 not run with tick @ 50");
 }
@@ -292,7 +296,7 @@ void test_task_ran_on_deadline()
 						       task_run_count);
 
 	/* The task should run every 100 ns, starting in 100 ns. */
-	scheduler.schedule(my_task, my_task->period());
+	scheduler.schedule(my_task, ns_to_time_point(0) + my_task->period());
 	scheduler.tick(ns_to_time_point(100));
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 }
@@ -307,7 +311,7 @@ void test_task_second_run_not_before_deadline()
 						       task_run_count);
 
 	/* The task should run every 100 ns, starting in 100 ns. */
-	scheduler.schedule(my_task, my_task->period());
+	scheduler.schedule(my_task, ns_to_time_point(0) + my_task->period());
 	scheduler.tick(ns_to_time_point(120));
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 120");
 
@@ -325,7 +329,7 @@ void test_task_rescheduled()
 						       task_run_count);
 
 	/* The task should run every 100 ns, starting in 100 ns. */
-	scheduler.schedule(my_task, my_task->period());
+	scheduler.schedule(my_task, ns_to_time_point(0) + my_task->period());
 	const auto tick_ret = scheduler.tick(ns_to_time_point(100));
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 	ok(tick_ret.has_value() && tick_ret == lttng::scheduling::duration_ns(100),
@@ -347,7 +351,7 @@ void test_task_die()
 		lttng::scheduling::duration_ns(100), task_run_count);
 
 	/* The task should run every 100 ns, starting in 100 ns. */
-	scheduler.schedule(my_task, my_task->period());
+	scheduler.schedule(my_task, ns_to_time_point(0) + my_task->period());
 	scheduler.tick(ns_to_time_point(100));
 	ok(task_run_count == 1, "Periodic task scheduled @ 100 ran during tick @ 100");
 	scheduler.tick(ns_to_time_point(200));
@@ -359,13 +363,44 @@ void test_task_die()
 	ok(task_run_count == 3,
 	   "Periodic task scheduled to run only three times only ran three times");
 }
-
 } /* namespace periodic_scheduling */
+
+namespace task_execution {
+void test_stop()
+{
+	lttng::scheduling::scheduler scheduler;
+	lttng::scheduling::task_executor executor(scheduler);
+
+	executor.stop();
+
+	ok(true, "Scheduler stopped");
+}
+
+void test_task_die()
+{
+	lttng::scheduling::scheduler scheduler;
+	lttng::scheduling::task_executor executor(scheduler);
+	unsigned int task_run_count = 0;
+
+	auto my_task = std::make_shared<periodic_scheduling::periodic_task_die_after_3>(
+		lttng::scheduling::duration_ns(std::chrono::milliseconds(100)), task_run_count);
+
+	scheduler.schedule(my_task, std::chrono::steady_clock::now() + my_task->period());
+
+	while (!my_task->canceled()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+
+	ok(task_run_count == 3,
+	   "Periodic task scheduled to run only three times only ran three times by task executor");
+}
+
+} /* namespace task_execution */
 } /* namespace */
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 {
-	plan_tests(44);
+	plan_tests(46);
 
 	once_scheduling::test_task_not_ran_immediately();
 	once_scheduling::test_task_not_ran_before_deadline();
@@ -382,6 +417,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv)
 	periodic_scheduling::test_task_ran_on_deadline();
 	periodic_scheduling::test_task_rescheduled();
 	periodic_scheduling::test_task_die();
+
+	task_execution::test_stop();
+	task_execution::test_task_die();
 
 	return exit_status();
 }

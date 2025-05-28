@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2012-2025 EfficiOS Inc.
 # SPDX-License-Identifier: GPL-2.0-only
 
 AM_CPPFLAGS +=-DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
@@ -98,6 +99,7 @@ liblttng_sessiond_common_la_LIBADD = $(URCU_LIBS) $(KMOD_LIBS) \
 		$(top_builddir)/src/common/libhealth.la \
 		$(top_builddir)/src/common/libconfig.la \
 		$(top_builddir)/src/common/libstring-utils.la \
+		$(top_builddir)/src/common/libsynchro.la \
 		$(top_builddir)/src/vendor/fmt/libfmt.la
 
 if HAVE_LIBLTTNG_UST_CTL
