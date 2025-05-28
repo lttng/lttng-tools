@@ -8,8 +8,8 @@
 #include <common/consumer/metadata-switch-timer-task.hpp>
 #include <common/ust-consumer/ust-consumer.hpp>
 
-void lttng::consumer::metadata_switch_timer_task::run(lttng::scheduling::absolute_time current_time
-						      [[maybe_unused]]) noexcept
+void lttng::consumer::metadata_switch_timer_task::_run(lttng::scheduling::absolute_time current_time
+						       [[maybe_unused]]) noexcept
 {
 	LTTNG_ASSERT(!_channel.is_deleted);
 

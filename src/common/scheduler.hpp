@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
@@ -51,11 +52,45 @@ public:
 	task& operator=(task&&) = delete;
 	virtual ~task() = default;
 
-	virtual void run(absolute_time current_time) noexcept = 0;
+	void run(absolute_time current_time) noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+
+		if (_canceled) {
+			/* Task is killed, do not run it. */
+			return;
+		}
+
+		_run(current_time);
+	}
+
 	bool scheduled() const noexcept
 	{
 		return _next_scheduled_time.has_value();
 	}
+
+	/*
+	 * Indicate that this task should no longer be scheduled after the current execution.
+	 * When this returns, the caller is guaranteed that the task is not running and that it will
+	 * not be run in the future.
+	 */
+	void cancel() noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+
+		_canceled = true;
+
+		/*
+		 * _next_scheduled_time is left unchanged since the task may still be in the
+		 * scheduler's heap.
+		 */
+	}
+
+protected:
+	virtual void _run(absolute_time current_time) noexcept = 0;
+
+	mutable std::mutex _mutex;
+	bool _canceled = false;
 
 private:
 	virtual bool _must_be_rescheduled() const noexcept
@@ -64,7 +99,27 @@ private:
 		return false;
 	}
 
-	/* nullopt means not scheduled. */
+	absolute_time _get_next_scheduled_time() const noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+
+		LTTNG_ASSERT(_next_scheduled_time.has_value());
+		return *_next_scheduled_time;
+	}
+
+	void _set_next_scheduled_time(absolute_time next_time) noexcept
+	{
+		const std::lock_guard<std::mutex> lock(_mutex);
+
+		_next_scheduled_time = next_time;
+	}
+
+	/*
+	 * nullopt means not scheduled.
+	 *
+	 * Don't access directly, use _get_next_scheduled_time() and
+	 * _set_next_scheduled_time() to ensure proper locking.
+	 */
 	nonstd::optional<absolute_time> _next_scheduled_time;
 };
 
@@ -100,26 +155,24 @@ public:
 		return _period_ns;
 	}
 
-	/* Indicate that this task should no longer be scheduled after the current execution. */
-	void kill() noexcept
+protected:
+	/*
+	 * This method is used by periodic tasks to cancel themselves when they have run
+	 * enough times.
+	 */
+	void _cancel_no_lock()
 	{
-		_killed = true;
-	}
-
-	/* Effective at the end of the next tick. */
-	void period(duration_ns new_period) noexcept
-	{
-		_period_ns = new_period;
+		_canceled = true;
 	}
 
 private:
 	bool _must_be_rescheduled() const noexcept override
 	{
-		return !_killed;
+		const std::lock_guard<std::mutex> lock(_mutex);
+		return !_canceled;
 	}
 
-	duration_ns _period_ns;
-	bool _killed = false;
+	const duration_ns _period_ns;
 };
 
 class scheduler final {
@@ -142,7 +195,9 @@ public:
 	/* Schedule a "once" or periodic task in the future. */
 	void schedule(task::sptr task, duration_ns in_how_many_ns = duration_ns(0)) noexcept
 	{
-		task->_next_scheduled_time = _last_tick + in_how_many_ns;
+		const std::lock_guard<std::mutex> lock(_mutex);
+
+		task->_set_next_scheduled_time(_last_tick + in_how_many_ns);
 		_task_heap.insert(std::move(task));
 	}
 
@@ -159,19 +214,30 @@ public:
 		_last_tick = current_time;
 
 		while (true) {
-			auto *task = _task_heap.peek();
+			lttng::scheduling::task::sptr task_to_run = nullptr;
 
-			if (!task) {
-				/* No tasks left to run. */
-				return nonstd::nullopt;
+			{
+				const std::lock_guard<std::mutex> lock(_mutex);
+
+				const auto candidate = _task_heap.peek();
+
+				/* If the task heap is empty, return no next task. */
+				if (candidate == nullptr) {
+					return nonstd::nullopt;
+				}
+
+				if (candidate->_get_next_scheduled_time() > _last_tick) {
+					return candidate->_get_next_scheduled_time() - current_time;
+				}
+
+				/* The task is ready to run. */
+				task_to_run = _task_heap.pop();
 			}
 
-			if (*task->_next_scheduled_time <= _last_tick) {
-				_run_task(_task_heap.pop());
-			} else {
-				LTTNG_ASSERT(task->_next_scheduled_time.has_value());
-				return *task->_next_scheduled_time - current_time;
-			}
+			/*
+			 * The scheduler lock doesn't need to be held while the task is being run.
+			 */
+			_run_task(std::move(task_to_run));
 		}
 	}
 
@@ -184,8 +250,6 @@ private:
 			auto& periodic_task_to_schedule = static_cast<periodic_task&>(*task);
 
 			schedule(std::move(task), periodic_task_to_schedule.period());
-		} else {
-			task->_next_scheduled_time.reset();
 		}
 	}
 
@@ -255,7 +319,7 @@ private:
 
 		bool _task_should_run_before(const task& a, const task& b) const noexcept
 		{
-			return a._next_scheduled_time < b._next_scheduled_time;
+			return a._get_next_scheduled_time() < b._get_next_scheduled_time();
 		}
 
 		void heapify(size_t i) noexcept
@@ -291,6 +355,7 @@ private:
 	} _task_heap;
 	/* Initialized to epoch. */
 	absolute_time _last_tick;
+	std::mutex _mutex;
 };
 
 } /* namespace scheduling */

@@ -38,11 +38,12 @@ public:
 	{
 	}
 
+protected:
 	/*
 	 * Beware: should *never* take a mutex also held while consumer_timer_switch_stop() is
 	 * called. It would result in deadlocks.
 	 */
-	void run(lttng::scheduling::absolute_time current_time) noexcept override;
+	void _run(lttng::scheduling::absolute_time current_time) noexcept override;
 
 private:
 	lttng_consumer_channel& _channel;

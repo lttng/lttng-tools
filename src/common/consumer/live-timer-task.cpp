@@ -56,8 +56,8 @@ end:
 }
 } /* namespace */
 
-void lttng::consumer::live_timer_task::run(lttng::scheduling::absolute_time current_time
-					   [[maybe_unused]]) noexcept
+void lttng::consumer::live_timer_task::_run(lttng::scheduling::absolute_time current_time
+					    [[maybe_unused]]) noexcept
 {
 	LTTNG_ASSERT(!_channel.is_deleted);
 

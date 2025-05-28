@@ -34,7 +34,8 @@ public:
 		LTTNG_ASSERT(_channel_monitor_pipe >= 0);
 	}
 
-	void run(lttng::scheduling::absolute_time current_time) noexcept override;
+protected:
+	void _run(lttng::scheduling::absolute_time current_time) noexcept override;
 
 private:
 	lttng_consumer_channel& _channel;

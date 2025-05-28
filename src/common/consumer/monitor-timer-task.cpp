@@ -95,8 +95,8 @@ end:
 } /* namespace */
 
 /* Sample and send channel buffering statistics to the session daemon. */
-void lttng::consumer::monitor_timer_task::run(lttng::scheduling::absolute_time current_time
-					      [[maybe_unused]]) noexcept
+void lttng::consumer::monitor_timer_task::_run(lttng::scheduling::absolute_time current_time
+					       [[maybe_unused]]) noexcept
 {
 	int ret;
 	struct lttcomm_consumer_channel_monitor_msg msg = {

@@ -28,7 +28,7 @@ public:
 	{
 	}
 
-	void run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
+	void _run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
 	{
 		/* Indicate that task executed. */
 		_task_was_scheduled = true;
@@ -234,7 +234,7 @@ public:
 	{
 	}
 
-	void run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
+	void _run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
 	{
 		/* Indicate that task ran. */
 		_value_to_increment++;
@@ -253,13 +253,13 @@ public:
 	{
 	}
 
-	void run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
+	void _run([[maybe_unused]] lttng::scheduling::absolute_time current_time) noexcept override
 	{
 		/* Indicate that task ran. */
 		_value_to_increment++;
 		if (_value_to_increment == 3) {
 			/* This task should no longer run. */
-			kill();
+			_cancel_no_lock();
 		}
 	}
 
