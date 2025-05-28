@@ -74,7 +74,8 @@ static int add_channel(struct lttng_consumer_channel *channel,
 			ret = consumer_add_channel(channel, ctx);
 		} else if (ret < 0) {
 			/* Most likely an ENOMEM. */
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx->consumer_error_socket,
+						  LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto error;
 		}
 	} else {
@@ -129,7 +130,8 @@ static struct lttng_consumer_stream *allocate_stream(int cpu,
 		case -ENOMEM:
 		case -EINVAL:
 		default:
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx->consumer_error_socket,
+						  LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			break;
 		}
 		goto error;
@@ -986,7 +988,8 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	 * Ask the sessiond if we have new metadata waiting and update the
 	 * consumer metadata cache.
 	 */
-	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel, false, 1);
+	ret = lttng_ustconsumer_request_metadata(
+		*metadata_channel, ctx->metadata_socket, ctx->consumer_error_socket, false, 1);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1482,7 +1485,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 * since the caller handles this.
 			 */
 			if (ret_recv > 0) {
-				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+				lttng_consumer_send_error(ctx->consumer_error_socket,
+							  LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 				ret_recv = -1;
 			}
 			return ret_recv;
@@ -1680,8 +1684,11 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				ERR("Allocating metadata cache");
 				goto end_channel_error;
 			}
-			consumer_timer_switch_start(channel, attr.switch_timer_interval);
-			attr.switch_timer_interval = 0;
+
+			consumer_timer_switch_start(channel,
+						    attr.switch_timer_interval,
+						    ctx->metadata_socket,
+						    ctx->consumer_error_socket);
 		} else {
 			int monitor_start_ret;
 
@@ -1706,7 +1713,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret_add_channel = add_channel(channel, ctx);
 		if (ret_add_channel < 0) {
 			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_METADATA) {
-				if (channel->switch_timer_enabled == 1) {
+				if (channel->metadata_switch_timer_task) {
 					consumer_timer_switch_stop(channel);
 				}
 				consumer_metadata_cache_destroy(channel);
@@ -2528,7 +2535,7 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	LTTNG_ASSERT(chan->uchan);
 	LTTNG_ASSERT(chan->buffer_credentials.is_set);
 
-	if (chan->switch_timer_enabled == 1) {
+	if (chan->metadata_switch_timer_task) {
 		consumer_timer_switch_stop(chan);
 	}
 	for (i = 0; i < chan->nr_stream_fds; i++) {
@@ -2581,7 +2588,7 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 	LTTNG_ASSERT(stream);
 	LTTNG_ASSERT(stream->ustream);
 
-	if (stream->chan->switch_timer_enabled == 1) {
+	if (stream->chan->metadata_switch_timer_task) {
 		consumer_timer_switch_stop(stream->chan);
 	}
 	lttng_ust_ctl_destroy_stream(stream->ustream);
@@ -2711,7 +2718,8 @@ lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	 * Request metadata from the sessiond, but don't wait for the flush
 	 * because we locked the metadata thread.
 	 */
-	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel, false, 0);
+	ret = lttng_ustconsumer_request_metadata(
+		*metadata_channel, ctx->metadata_socket, ctx->consumer_error_socket, false, 0);
 	pthread_mutex_lock(&metadata_stream->lock);
 	if (ret < 0) {
 		status = SYNC_METADATA_STATUS_ERROR;
@@ -3272,7 +3280,7 @@ void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata)
 
 	DBG("Closing metadata channel key %" PRIu64, metadata->key);
 
-	if (metadata->switch_timer_enabled == 1) {
+	if (metadata->metadata_switch_timer_task) {
 		consumer_timer_switch_stop(metadata);
 	}
 
@@ -3346,8 +3354,9 @@ void lttng_ustconsumer_close_stream_wakeup(struct lttng_consumer_stream *stream)
  * can cause deadlock involving consumer awaiting for metadata to be
  * pushed out due to concurrent interaction with the session daemon.
  */
-int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-				       struct lttng_consumer_channel *channel,
+int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
+				       protected_socket& sessiond_metadata_socket,
+				       int consumer_error_socket_fd,
 				       bool invoked_by_timer,
 				       int wait)
 {
@@ -3357,9 +3366,8 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	uint64_t len, key, offset, version;
 	int ret;
 
-	LTTNG_ASSERT(channel);
-	LTTNG_ASSERT(!channel->is_deleted);
-	LTTNG_ASSERT(channel->metadata_cache);
+	LTTNG_ASSERT(!channel.is_deleted);
+	LTTNG_ASSERT(channel.metadata_cache);
 
 	memset(&request, 0, sizeof(request));
 
@@ -3376,15 +3384,15 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		break;
 	}
 
-	request.session_id = channel->session_id;
-	request.session_id_per_pid = channel->session_id_per_pid;
+	request.session_id = channel.session_id;
+	request.session_id_per_pid = channel.session_id_per_pid;
 	/*
 	 * Request the application UID here so the metadata of that application can
 	 * be sent back. The channel UID corresponds to the user UID of the session
 	 * used for the rights on the stream file(s).
 	 */
-	request.uid = channel->ust_app_uid;
-	request.key = channel->key;
+	request.uid = channel.ust_app_uid;
+	request.key = channel.key;
 
 	DBG("Sending metadata request to sessiond, session id %" PRIu64 ", per-pid %" PRIu64
 	    ", app UID %u and channel key %" PRIu64,
@@ -3393,11 +3401,11 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	    request.uid,
 	    request.key);
 
-	pthread_mutex_lock(&ctx->metadata_socket_lock);
+	lttng::pthread::lock_guard metadata_socket_lock(sessiond_metadata_socket.lock);
 
 	health_code_update();
 
-	ret = lttcomm_send_unix_sock(ctx->consumer_metadata_socket, &request, sizeof(request));
+	ret = lttcomm_send_unix_sock(sessiond_metadata_socket.fd, &request, sizeof(request));
 	if (ret < 0) {
 		ERR("Asking metadata to sessiond");
 		goto end;
@@ -3406,10 +3414,11 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* Receive the metadata from sessiond */
-	ret = lttcomm_recv_unix_sock(ctx->consumer_metadata_socket, &msg, sizeof(msg));
+	ret = lttcomm_recv_unix_sock(sessiond_metadata_socket.fd, &msg, sizeof(msg));
 	if (ret != sizeof(msg)) {
 		DBG("Consumer received unexpected message size %d (expects %zu)", ret, sizeof(msg));
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+		lttng_consumer_send_error(consumer_error_socket_fd,
+					  LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 		/*
 		 * The ret value might 0 meaning an orderly shutdown but this is ok
 		 * since the caller handles this.
@@ -3421,7 +3430,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 
 	if (msg.cmd_type == LTTNG_ERR_UND) {
 		/* No registry found */
-		(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret_code);
+		(void) consumer_send_status_msg(sessiond_metadata_socket.fd, ret_code);
 		ret = 0;
 		goto end;
 	} else if (msg.cmd_type != LTTNG_CONSUMER_PUSH_METADATA) {
@@ -3435,7 +3444,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	offset = msg.u.push_metadata.target_offset;
 	version = msg.u.push_metadata.version;
 
-	LTTNG_ASSERT(key == channel->key);
+	LTTNG_ASSERT(key == channel.key);
 	if (len == 0) {
 		DBG("No new metadata to receive for key %" PRIu64, key);
 	}
@@ -3443,7 +3452,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	health_code_update();
 
 	/* Tell session daemon we are ready to receive the metadata. */
-	ret = consumer_send_status_msg(ctx->consumer_metadata_socket, LTTCOMM_CONSUMERD_SUCCESS);
+	ret = consumer_send_status_msg(sessiond_metadata_socket.fd, LTTCOMM_CONSUMERD_SUCCESS);
 	if (ret < 0 || len == 0) {
 		/*
 		 * Somehow, the session daemon is not responding anymore or there is
@@ -3454,12 +3463,12 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 
 	health_code_update();
 
-	ret = lttng_ustconsumer_recv_metadata(ctx->consumer_metadata_socket,
+	ret = lttng_ustconsumer_recv_metadata(sessiond_metadata_socket.fd,
 					      key,
 					      offset,
 					      len,
 					      version,
-					      channel,
+					      &channel,
 					      invoked_by_timer,
 					      wait);
 	if (ret >= 0) {
@@ -3467,14 +3476,13 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 		 * Only send the status msg if the sessiond is alive meaning a positive
 		 * ret code.
 		 */
-		(void) consumer_send_status_msg(ctx->consumer_metadata_socket, ret);
+		(void) consumer_send_status_msg(sessiond_metadata_socket.fd, ret);
 	}
+
 	ret = 0;
 
 end:
 	health_code_update();
-
-	pthread_mutex_unlock(&ctx->metadata_socket_lock);
 	return ret;
 }
 

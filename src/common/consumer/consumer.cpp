@@ -1252,17 +1252,16 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Send return code to the session daemon.
  * If the socket is not defined, we return 0, it is not a fatal error
  */
-int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
-			      enum lttcomm_return_code error_code)
+int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_code error_code)
 {
-	if (ctx->consumer_error_socket > 0) {
+	if (consumer_error_socket_fd > 0) {
 		const std::int32_t comm_code = std::int32_t(error_code);
 
 		static_assert(
 			sizeof(comm_code) >= sizeof(std::underlying_type<lttcomm_return_code>),
 			"Fixed-size communication type too small to accomodate lttcomm_return_code");
 		return lttcomm_send_unix_sock(
-			ctx->consumer_error_socket, &comm_code, sizeof(comm_code));
+			consumer_error_socket_fd, &comm_code, sizeof(comm_code));
 	}
 
 	return 0;
@@ -1395,8 +1394,8 @@ lttng_consumer_create(enum lttng_consumer_type type,
 	}
 
 	ctx->consumer_error_socket = -1;
-	ctx->consumer_metadata_socket = -1;
-	pthread_mutex_init(&ctx->metadata_socket_lock, nullptr);
+	ctx->metadata_socket.fd = -1;
+	pthread_mutex_init(&ctx->metadata_socket.lock, nullptr);
 	/* assign the callbacks */
 	ctx->on_buffer_ready = buffer_ready;
 	ctx->on_recv_channel = recv_channel;
@@ -1515,7 +1514,7 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	if (ret) {
 		PERROR("close");
 	}
-	ret = close(ctx->consumer_metadata_socket);
+	ret = close(ctx->metadata_socket.fd);
 	if (ret) {
 		PERROR("close");
 	}
@@ -1936,13 +1935,16 @@ splice_error:
 	/* send the appropriate error description to sessiond */
 	switch (ret) {
 	case EINVAL:
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_EINVAL);
+		lttng_consumer_send_error(ctx->consumer_error_socket,
+					  LTTCOMM_CONSUMERD_SPLICE_EINVAL);
 		break;
 	case ENOMEM:
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_ENOMEM);
+		lttng_consumer_send_error(ctx->consumer_error_socket,
+					  LTTCOMM_CONSUMERD_SPLICE_ENOMEM);
 		break;
 	case ESPIPE:
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_SPLICE_ESPIPE);
+		lttng_consumer_send_error(ctx->consumer_error_socket,
+					  LTTCOMM_CONSUMERD_SPLICE_ESPIPE);
 		break;
 	}
 
@@ -2550,7 +2552,8 @@ void *consumer_thread_data_poll(void *data)
 				ctx, &pollfd, local_stream, data_ht, &nb_inactive_fd);
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
-				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
+				lttng_consumer_send_error(ctx->consumer_error_socket,
+							  LTTCOMM_CONSUMERD_POLL_ERROR);
 				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
@@ -2582,7 +2585,8 @@ void *consumer_thread_data_poll(void *data)
 				goto restart;
 			}
 			PERROR("Poll error");
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
+			lttng_consumer_send_error(ctx->consumer_error_socket,
+						  LTTCOMM_CONSUMERD_POLL_ERROR);
 			goto end;
 		} else if (num_rdy == 0) {
 			DBG("Polling thread timed out");
@@ -3110,8 +3114,8 @@ static int set_metadata_socket(struct lttng_consumer_local_data *ctx,
 	DBG("Metadata connection on client_socket");
 
 	/* Blocking call, waiting for transmission */
-	ctx->consumer_metadata_socket = lttcomm_accept_unix_sock(client_socket);
-	if (ctx->consumer_metadata_socket < 0) {
+	ctx->metadata_socket.fd = lttcomm_accept_unix_sock(client_socket);
+	if (ctx->metadata_socket.fd < 0) {
 		WARN("On accept metadata");
 		ret = -1;
 		goto error;
@@ -3160,7 +3164,8 @@ void *consumer_thread_sessiond_poll(void *data)
 	}
 
 	DBG("Sending ready command to lttng-sessiond");
-	ret = lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_COMMAND_SOCK_READY);
+	ret = lttng_consumer_send_error(ctx->consumer_error_socket,
+					LTTCOMM_CONSUMERD_COMMAND_SOCK_READY);
 	/* return < 0 on error, but == 0 is not fatal */
 	if (ret < 0) {
 		ERR("Error sending ready command to lttng-sessiond");
@@ -3556,7 +3561,7 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 	ret = consumer_send_status_msg(sock, LTTCOMM_CONSUMERD_SUCCESS);
 	if (ret < 0) {
 		/* Somehow, the session daemon is not responding anymore. */
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+		lttng_consumer_send_error(ctx->consumer_error_socket, LTTCOMM_CONSUMERD_FATAL);
 		goto error_nosignal;
 	}
 
@@ -3564,7 +3569,7 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 	ret = lttng_consumer_poll_socket(consumer_sockpoll);
 	if (ret) {
 		/* Needing to exit in the middle of a command: error. */
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
+		lttng_consumer_send_error(ctx->consumer_error_socket, LTTCOMM_CONSUMERD_POLL_ERROR);
 		goto error_nosignal;
 	}
 
@@ -3582,7 +3587,8 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 		 * XXX: Feature request #558 will fix that and avoid this possible
 		 * issue when reaching the fd limit.
 		 */
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+		lttng_consumer_send_error(ctx->consumer_error_socket,
+					  LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 		ret_code = LTTCOMM_CONSUMERD_ERROR_RECV_FD;
 		goto error;
 	}
@@ -3634,7 +3640,7 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 	ret = consumer_send_status_msg(sock, ret_code);
 	if (ret < 0) {
 		/* Somehow, the session daemon is not responding anymore. */
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+		lttng_consumer_send_error(ctx->consumer_error_socket, LTTCOMM_CONSUMERD_FATAL);
 		goto error_nosignal;
 	}
 
@@ -3650,7 +3656,7 @@ void consumer_add_relayd_socket(uint64_t net_seq_idx,
 
 error:
 	if (consumer_send_status_msg(sock, ret_code) < 0) {
-		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_FATAL);
+		lttng_consumer_send_error(ctx->consumer_error_socket, LTTCOMM_CONSUMERD_FATAL);
 	}
 
 error_nosignal:

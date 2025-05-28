@@ -229,6 +229,8 @@ libconsumer_la_SOURCES = \
 	consumer/live-timer-task.hpp \
 	consumer/metadata-bucket.cpp \
 	consumer/metadata-bucket.hpp \
+	consumer/metadata-switch-timer-task.cpp \
+	consumer/metadata-switch-timer-task.hpp \
 	consumer/monitor-timer-task.cpp \
 	consumer/monitor-timer-task.hpp
 

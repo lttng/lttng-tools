@@ -52,8 +52,9 @@ int lttng_ustconsumer_recv_metadata(int sock,
 				    struct lttng_consumer_channel *channel,
 				    bool invoked_by_timer,
 				    int wait);
-int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
-				       struct lttng_consumer_channel *channel,
+int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel,
+				       protected_socket& sessiond_metadata_socket,
+				       int consumer_error_socket_fd,
 				       bool invoked_by_timer,
 				       int wait);
 enum sync_metadata_status lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
@@ -197,9 +198,11 @@ static inline int lttng_ustconsumer_recv_metadata(int sock __attribute__((unused
 	return -ENOSYS;
 }
 
-static inline int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx
+static inline int lttng_ustconsumer_request_metadata(lttng_consumer_channel& channel
 						     __attribute__((unused)),
-						     struct lttng_consumer_channel *channel
+						     protected_socket& sessiond_metadata_socket
+						     __attribute__((unused)),
+						     int consumer_error_socket_fd
 						     __attribute__((unused)),
 						     bool invoked_by_timer __attribute__((unused)),
 						     int wait __attribute__((unused)))

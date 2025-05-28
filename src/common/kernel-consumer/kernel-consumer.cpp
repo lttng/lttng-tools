@@ -508,7 +508,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret_recv = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 		if (ret_recv != sizeof(msg)) {
 			if (ret_recv > 0) {
-				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+				lttng_consumer_send_error(ctx->consumer_error_socket,
+							  LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
 				ret_recv = -1;
 			}
 			return ret_recv;
@@ -581,7 +582,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 							nullptr,
 							nullptr);
 		if (new_channel == nullptr) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+			lttng_consumer_send_error(ctx->consumer_error_socket,
+						  LTTCOMM_CONSUMERD_OUTFD_ERROR);
 			goto end_nosignal;
 		}
 		new_channel->nb_init_stream_left = msg.u.channel.nb_init_streams;
@@ -703,7 +705,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		/* Get stream file descriptor from socket */
 		ret_recv = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 		if (ret_recv != sizeof(fd)) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
+			lttng_consumer_send_error(ctx->consumer_error_socket,
+						  LTTCOMM_CONSUMERD_ERROR_RECV_FD);
 			ret_func = ret_recv;
 			goto end;
 		}
@@ -740,7 +743,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			case -ENOMEM:
 			case -EINVAL:
 			default:
-				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_OUTFD_ERROR);
+				lttng_consumer_send_error(ctx->consumer_error_socket,
+							  LTTCOMM_CONSUMERD_OUTFD_ERROR);
 				break;
 			}
 			pthread_mutex_unlock(&channel->lock);

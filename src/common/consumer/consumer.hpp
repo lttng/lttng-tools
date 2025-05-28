@@ -228,7 +228,7 @@ struct lttng_consumer_channel {
 	lttng::synchro::wait_queue metadata_pushed_wait_queue;
 
 	/* For UST metadata periodical flush */
-	int switch_timer_enabled = 0;
+	lttng::scheduling::periodic_task::sptr metadata_switch_timer_task;
 	timer_t switch_timer = {};
 	int switch_timer_error = 0;
 
@@ -753,6 +753,11 @@ struct consumer_relayd_sock_pair {
 	struct lttng_consumer_local_data *ctx;
 };
 
+struct protected_socket {
+	pthread_mutex_t lock;
+	int fd;
+};
+
 /*
  * UST consumer local data to the program. One or more instance per
  * process.
@@ -805,14 +810,14 @@ struct lttng_consumer_local_data {
 	enum lttng_consumer_type type;
 	/* socket to communicate errors with sessiond */
 	int consumer_error_socket;
-	/* socket to ask metadata to sessiond. */
-	int consumer_metadata_socket;
+
 	/*
-	 * Protect consumer_metadata_socket.
+	 * Socket to ask metadata to the sessiond.
 	 *
-	 * This is nested OUTSIDE the metadata cache lock.
+	 * The lock is nested OUTSIDE the metadata cache lock.
 	 */
-	pthread_mutex_t metadata_socket_lock;
+	protected_socket metadata_socket;
+
 	/* socket to exchange commands with sessiond */
 	char *consumer_command_sock_path;
 	/* communication with splice */
@@ -958,8 +963,7 @@ void lttng_consumer_set_command_sock_path(struct lttng_consumer_local_data *ctx,
  * Returns the return code of sendmsg : the number of bytes transmitted or -1
  * on error.
  */
-int lttng_consumer_send_error(struct lttng_consumer_local_data *ctx,
-			      enum lttcomm_return_code error_code);
+int lttng_consumer_send_error(int consumer_error_socket_fd, enum lttcomm_return_code error_code);
 
 /*
  * Called from signal handler to ensure a clean exit.
