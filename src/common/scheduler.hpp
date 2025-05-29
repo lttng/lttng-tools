@@ -10,6 +10,8 @@
 #ifndef LTTNG_SCHEDULING_SCHEDULER_HPP
 #define LTTNG_SCHEDULING_SCHEDULER_HPP
 
+#include <common/error.hpp>
+#include <common/format.hpp>
 #include <common/macros.hpp>
 
 #include <vendor/optional.hpp>
@@ -45,6 +47,11 @@ public:
 	{
 	}
 	/* NOLINTEND (modernize-use-equals-default) */
+
+	explicit task(std::string name) noexcept : _name(std::move(name))
+	{
+		LTTNG_ASSERT(!_name.empty());
+	}
 
 	/* Deactivate copy and assignment. */
 	task(const task&) = delete;
@@ -123,6 +130,8 @@ private:
 	 * _set_next_scheduled_time() to ensure proper locking.
 	 */
 	nonstd::optional<absolute_time> _next_scheduled_time;
+
+	const std::string _name{ "Anonymous" };
 };
 
 class periodic_task : public task {
@@ -142,6 +151,11 @@ public:
 	 * as the deadline.
 	 */
 	explicit periodic_task(duration_ns period) noexcept : _period_ns{ period }
+	{
+	}
+
+	periodic_task(duration_ns period, std::string name) noexcept :
+		task(std::move(name)), _period_ns{ period }
 	{
 	}
 
@@ -197,8 +211,7 @@ public:
 	scheduler& operator=(scheduler&&) = delete;
 
 	/* Schedule a "once" or periodic task in the future. */
-	void schedule(task::sptr task,
-		      absolute_time when_to_run = std::chrono::steady_clock::now()) noexcept
+	void schedule(task::sptr task, absolute_time when_to_run = std::chrono::steady_clock::now())
 	{
 		const std::lock_guard<std::mutex> lock(_mutex);
 
@@ -246,7 +259,14 @@ public:
 			/*
 			 * The scheduler lock doesn't need to be held while the task is being run.
 			 */
+
+			const auto time_before_task_run = std::chrono::steady_clock::now();
+			DBG_FMT("Running task: name=`{}`", task_to_run->_name);
+
 			_run_task(std::move(task_to_run));
+
+			DBG_FMT("Task completed: duration={}",
+				std::chrono::steady_clock::now() - time_before_task_run);
 		}
 	}
 
