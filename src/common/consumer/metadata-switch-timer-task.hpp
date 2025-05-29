@@ -31,7 +31,10 @@ public:
 					    lttng_consumer_channel& channel,
 					    protected_socket& sessiond_metadata_socket,
 					    int consumer_error_socket_fd) noexcept :
-		periodic_task(period),
+		periodic_task(period,
+			      fmt::format("Metadata switch: key={}, session_id={}",
+					  channel.key,
+					  channel.session_id)),
 		_channel(channel),
 		_sessiond_metadata_socket(sessiond_metadata_socket),
 		_consumer_error_socket_fd(consumer_error_socket_fd)

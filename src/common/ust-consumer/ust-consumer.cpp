@@ -1688,7 +1688,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_timer_switch_start(channel,
 						    attr.switch_timer_interval,
 						    ctx->metadata_socket,
-						    ctx->consumer_error_socket);
+						    ctx->consumer_error_socket,
+						    ctx->timer_task_scheduler);
 		} else {
 			int monitor_start_ret;
 

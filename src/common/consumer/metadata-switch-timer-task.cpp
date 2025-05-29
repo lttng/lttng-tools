@@ -17,10 +17,6 @@ void lttng::consumer::metadata_switch_timer_task::_run(lttng::scheduling::absolu
 		return;
 	}
 
-	DBG_FMT("Metadata switch timer task executing: channel_name=`{}`, channel_key={}",
-		_channel.name,
-		_channel.key);
-
 	const auto request_ret = lttng_ustconsumer_request_metadata(
 		_channel, _sessiond_metadata_socket, _consumer_error_socket_fd, true, 1);
 	if (request_ret < 0) {

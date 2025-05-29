@@ -16,7 +16,6 @@
 
 #include <pthread.h>
 
-#define LTTNG_CONSUMER_SIG_SWITCH   ((SIGRTMIN + 10))
 #define LTTNG_CONSUMER_SIG_TEARDOWN ((SIGRTMIN + 11))
 #define LTTNG_CONSUMER_SIG_EXIT	    ((SIGRTMIN + 14))
 
@@ -38,7 +37,8 @@ struct timer_signal_data {
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 unsigned int switch_timer_interval_us,
 				 protected_socket& sessiond_metadata_socket,
-				 int consumer_error_socket_fd);
+				 int consumer_error_socket_fd,
+				 lttng::scheduling::scheduler& scheduler);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 			       unsigned int live_timer_interval_us,

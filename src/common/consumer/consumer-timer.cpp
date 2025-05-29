@@ -60,10 +60,6 @@ static void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigemptyset");
 	}
-	ret = sigaddset(mask, LTTNG_CONSUMER_SIG_SWITCH);
-	if (ret) {
-		PERROR("sigaddset switch");
-	}
 	ret = sigaddset(mask, LTTNG_CONSUMER_SIG_TEARDOWN);
 	if (ret) {
 		PERROR("sigaddset teardown");
@@ -197,13 +193,12 @@ end:
 	return ret;
 }
 
-/*
- * Set the channel's switch timer.
- */
+/* Start the channel's periodic metadata switching task. */
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 unsigned int switch_timer_interval_us,
 				 protected_socket& sessiond_metadata_socket,
-				 int consumer_error_socket_fd)
+				 int consumer_error_socket_fd,
+				 lttng::scheduling::scheduler& scheduler)
 {
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
@@ -220,38 +215,22 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				*channel,
 				sessiond_metadata_socket,
 				consumer_error_socket_fd);
+
+		scheduler.schedule(channel->live_timer_task,
+				   std::chrono::steady_clock::now() +
+					   std::chrono::microseconds(switch_timer_interval_us));
 	} catch (const std::bad_alloc& e) {
 		ERR_FMT("Failed to allocate memory for metadata switch timer task: {}", e.what());
 		return;
 	}
-
-	const auto ret = consumer_channel_timer_start(&channel->switch_timer,
-						      channel,
-						      switch_timer_interval_us,
-						      LTTNG_CONSUMER_SIG_SWITCH);
-	if (ret) {
-		ERR_FMT("Failed to start metadata switch timer: session_id={}, channel_key={}",
-			channel->session_id,
-			channel->key);
-
-		channel->metadata_switch_timer_task.reset();
-	}
 }
 
-/*
- * Stop and delete the channel's switch timer.
- */
+/* Stop the channel's metadata switching task. */
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 {
-	int ret;
-
 	LTTNG_ASSERT(channel);
 
-	ret = consumer_channel_timer_stop(&channel->switch_timer, LTTNG_CONSUMER_SIG_SWITCH);
-	if (ret == -1) {
-		ERR("Failed to stop switch timer");
-	}
-
+	channel->metadata_switch_timer_task->cancel();
 	channel->metadata_switch_timer_task.reset();
 }
 
@@ -394,8 +373,8 @@ end:
 }
 
 /*
- * This thread is the sighandler for signals LTTNG_CONSUMER_SIG_SWITCH,
- * LTTNG_CONSUMER_SIG_TEARDOWN, and LTTNG_CONSUMER_SIG_EXIT.
+ * This thread is the sighandler for signals LTTNG_CONSUMER_SIG_TEARDOWN
+ * and LTTNG_CONSUMER_SIG_EXIT.
  */
 void *consumer_timer_thread(void *data [[maybe_unused]])
 {
@@ -434,10 +413,6 @@ void *consumer_timer_thread(void *data [[maybe_unused]])
 				PERROR("sigwaitinfo");
 			}
 			continue;
-		} else if (signr == LTTNG_CONSUMER_SIG_SWITCH) {
-			auto *channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
-
-			channel->metadata_switch_timer_task->run(std::chrono::steady_clock::now());
 		} else if (signr == LTTNG_CONSUMER_SIG_TEARDOWN) {
 			cmm_smp_mb();
 			CMM_STORE_SHARED(timer_signal.qs_done, 1);
