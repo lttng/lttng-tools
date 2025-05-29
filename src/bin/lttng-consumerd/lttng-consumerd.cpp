@@ -441,6 +441,15 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
+	/*
+	 * Block RT signals used for UST periodical metadata flush and the live
+	 * timer in main, and create a dedicated thread to handle these signals.
+	 */
+	if (consumer_signal_init()) {
+		retval = -1;
+		goto exit_init_data;
+	}
+
 	/* create the consumer instance with and assign the callbacks */
 	the_consumer_context = lttng_consumer_create(opt_type,
 						     lttng_consumer_read_subbuffer,
@@ -503,15 +512,6 @@ int main(int argc, char **argv)
 		WARN("Cannot connect to error socket (is lttng-sessiond started?)");
 	}
 	lttng_consumer_set_error_sock(the_consumer_context, ret);
-
-	/*
-	 * Block RT signals used for UST periodical metadata flush and the live
-	 * timer in main, and create a dedicated thread to handle these signals.
-	 */
-	if (consumer_signal_init()) {
-		retval = -1;
-		goto exit_init_data;
-	}
 
 	the_consumer_context->type = opt_type;
 

@@ -227,7 +227,7 @@ libscheduling_la_SOURCES = \
 	task-executor.cpp
 
 libscheduling_la_CPPFLAGS = $(AM_CPPFLAGS)
-libscheduling_la_LIBADD = libsynchro.la
+libscheduling_la_LIBADD = libsynchro.la libcommon-lgpl.la
 
 
 if BUILD_LIB_CONSUMER

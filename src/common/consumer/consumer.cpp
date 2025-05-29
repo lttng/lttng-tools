@@ -1387,8 +1387,9 @@ lttng_consumer_create(enum lttng_consumer_type type,
 		     the_consumer_data.type == type);
 	the_consumer_data.type = type;
 
-	ctx = zmalloc<lttng_consumer_local_data>();
-	if (ctx == nullptr) {
+	try {
+		ctx = new lttng_consumer_local_data;
+	} catch (const std::bad_alloc& e) {
 		PERROR("allocating context");
 		goto error;
 	}
@@ -1442,7 +1443,7 @@ error_quit_pipe:
 error_wakeup_pipe:
 	lttng_pipe_destroy(ctx->consumer_data_pipe);
 error_poll_pipe:
-	free(ctx);
+	delete ctx;
 error:
 	return nullptr;
 }
@@ -1525,7 +1526,7 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
 	utils_close_pipe(ctx->consumer_should_quit);
 
 	unlink(ctx->consumer_command_sock_path);
-	free(ctx);
+	delete ctx;
 }
 
 /*
@@ -4607,13 +4608,12 @@ enum lttcomm_return_code lttng_consumer_init_command(struct lttng_consumer_local
 	enum lttcomm_return_code ret;
 	char uuid_str[LTTNG_UUID_STR_LEN];
 
-	if (ctx->sessiond_uuid.is_set) {
+	if (ctx->sessiond_uuid.has_value()) {
 		ret = LTTCOMM_CONSUMERD_ALREADY_SET;
 		goto end;
 	}
 
-	ctx->sessiond_uuid.is_set = true;
-	ctx->sessiond_uuid.value = sessiond_uuid;
+	ctx->sessiond_uuid = sessiond_uuid;
 	ret = LTTCOMM_CONSUMERD_SUCCESS;
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
 	DBG("Received session daemon UUID: %s", uuid_str);

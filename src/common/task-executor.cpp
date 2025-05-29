@@ -61,8 +61,11 @@ lttng::scheduling::task_executor::~task_executor()
 
 void lttng::scheduling::task_executor::_run() noexcept
 {
+	logger_set_thread_name("Timer task executor", true);
 	_is_active.store(true);
 	_launch_waiter.get_waker().wake();
+
+	DBG_FMT("Task executor thread started, waiting for tasks");
 
 	while (_is_active.load()) {
 		_poller.poll(lttng::poller::timeout_type::WAIT_FOREVER);

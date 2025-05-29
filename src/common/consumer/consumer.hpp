@@ -19,11 +19,14 @@
 #include <common/pipe.hpp>
 #include <common/scheduler.hpp>
 #include <common/sessiond-comm/sessiond-comm.hpp>
+#include <common/task-executor.hpp>
 #include <common/trace-chunk-registry.hpp>
 #include <common/uuid.hpp>
 #include <common/waiter.hpp>
 
 #include <lttng/lttng.h>
+
+#include <vendor/optional.hpp>
 
 #include <limits.h>
 #include <poll.h>
@@ -754,8 +757,8 @@ struct consumer_relayd_sock_pair {
 };
 
 struct protected_socket {
-	pthread_mutex_t lock;
-	int fd;
+	pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+	int fd = -1;
 };
 
 /*
@@ -767,9 +770,9 @@ struct lttng_consumer_local_data {
 	 * Function to call when data is available on a buffer.
 	 * Returns the number of bytes read, or negative error value.
 	 */
-	ssize_t (*on_buffer_ready)(struct lttng_consumer_stream *stream,
-				   struct lttng_consumer_local_data *ctx,
-				   bool locked_by_caller);
+	ssize_t (*on_buffer_ready)(lttng_consumer_stream *stream,
+				   lttng_consumer_local_data *ctx,
+				   bool locked_by_caller) = nullptr;
 	/*
 	 * function to call when we receive a new channel, it receives a
 	 * newly allocated channel, depending on the return code of this
@@ -781,7 +784,7 @@ struct lttng_consumer_local_data {
 	 *   == 0 (success, FD is left to library)
 	 *    < 0 (error)
 	 */
-	int (*on_recv_channel)(struct lttng_consumer_channel *channel);
+	int (*on_recv_channel)(lttng_consumer_channel *channel) = nullptr;
 	/*
 	 * function to call when we receive a new stream, it receives a
 	 * newly allocated stream, depending on the return code of this
@@ -793,7 +796,7 @@ struct lttng_consumer_local_data {
 	 *   == 0 (success, FD is left to library)
 	 *    < 0 (error)
 	 */
-	int (*on_recv_stream)(struct lttng_consumer_stream *stream);
+	int (*on_recv_stream)(lttng_consumer_stream *stream) = nullptr;
 	/*
 	 * function to call when a stream is getting updated by the session
 	 * daemon, this function receives the sessiond key and the new
@@ -806,10 +809,10 @@ struct lttng_consumer_local_data {
 	 *   == 0 (success, FD is left to library)
 	 *    < 0 (error)
 	 */
-	int (*on_update_stream)(uint64_t sessiond_key, uint32_t state);
-	enum lttng_consumer_type type;
+	int (*on_update_stream)(uint64_t sessiond_key, uint32_t state) = nullptr;
+	lttng_consumer_type type = LTTNG_CONSUMER_UNKNOWN;
 	/* socket to communicate errors with sessiond */
-	int consumer_error_socket;
+	int consumer_error_socket = -1;
 
 	/*
 	 * Socket to ask metadata to the sessiond.
@@ -819,11 +822,11 @@ struct lttng_consumer_local_data {
 	protected_socket metadata_socket;
 
 	/* socket to exchange commands with sessiond */
-	char *consumer_command_sock_path;
+	char *consumer_command_sock_path = nullptr;
 	/* communication with splice */
-	int consumer_channel_pipe[2];
+	int consumer_channel_pipe[2] = { -1, -1 };
 	/* Data stream poll thread pipe. To transfer data stream to the thread */
-	struct lttng_pipe *consumer_data_pipe;
+	lttng_pipe *consumer_data_pipe = nullptr;
 
 	/*
 	 * Data thread use that pipe to catch wakeup from read subbuffer that
@@ -833,20 +836,23 @@ struct lttng_consumer_local_data {
 	 *
 	 * Both pipes (read/write) are owned and used inside the data thread.
 	 */
-	struct lttng_pipe *consumer_wakeup_pipe;
+	lttng_pipe *consumer_wakeup_pipe = nullptr;
 	/* Indicate if the wakeup thread has been notified. */
-	unsigned int has_wakeup:1;
+	bool has_wakeup = false;
 
 	/* to let the signal handler wake up the fd receiver thread */
-	int consumer_should_quit[2];
+	int consumer_should_quit[2] = { -1, -1 };
 	/* Metadata poll thread pipe. Transfer metadata stream to it */
-	struct lttng_pipe *consumer_metadata_pipe;
+	lttng_pipe *consumer_metadata_pipe = nullptr;
 	/*
 	 * Pipe used by the channel monitoring timers to provide state samples
 	 * to the session daemon (write-only).
 	 */
-	int channel_monitor_pipe;
-	LTTNG_OPTIONAL(lttng_uuid) sessiond_uuid;
+	int channel_monitor_pipe = -1;
+	nonstd::optional<lttng_uuid> sessiond_uuid;
+
+	lttng::scheduling::scheduler timer_task_scheduler;
+	lttng::scheduling::task_executor timer_task_executor{ timer_task_scheduler };
 };
 
 /*
