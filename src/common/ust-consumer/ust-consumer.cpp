@@ -1696,7 +1696,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 						  msg.u.ask_channel.live_timer_interval,
 						  ctx->timer_task_scheduler);
 			monitor_start_ret = consumer_timer_monitor_start(
-				channel, msg.u.ask_channel.monitor_timer_interval);
+				channel,
+				msg.u.ask_channel.monitor_timer_interval,
+				ctx->timer_task_scheduler);
 			if (monitor_start_ret < 0) {
 				ERR("Starting channel monitoring timer failed");
 				goto end_channel_error;

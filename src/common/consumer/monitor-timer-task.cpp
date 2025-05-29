@@ -111,10 +111,6 @@ void lttng::consumer::monitor_timer_task::_run(lttng::scheduling::absolute_time 
 	get_produced_cb get_produced;
 	uint64_t lowest = 0, highest = 0, total_consumed = 0;
 
-	DBG_FMT("Monitor timer task executing: channel_name=`{}`, channel_key={}",
-		_channel.name,
-		_channel.key);
-
 	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		sample = lttng_kconsumer_sample_snapshot_positions;

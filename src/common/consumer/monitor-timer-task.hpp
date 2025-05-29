@@ -27,7 +27,11 @@ public:
 	explicit monitor_timer_task(lttng::scheduling::duration_ns period,
 				    lttng_consumer_channel& channel,
 				    int channel_monitor_pipe) noexcept :
-		periodic_task(period),
+		periodic_task(period,
+			      fmt::format("Monitor: channel_name=`{}`, key={}, session_id={}",
+					  channel.name,
+					  channel.key,
+					  channel.session_id)),
 		_channel(channel),
 		_channel_monitor_pipe(channel_monitor_pipe)
 	{

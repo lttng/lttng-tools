@@ -18,7 +18,6 @@
 
 #define LTTNG_CONSUMER_SIG_SWITCH   ((SIGRTMIN + 10))
 #define LTTNG_CONSUMER_SIG_TEARDOWN ((SIGRTMIN + 11))
-#define LTTNG_CONSUMER_SIG_MONITOR  ((SIGRTMIN + 13))
 #define LTTNG_CONSUMER_SIG_EXIT	    ((SIGRTMIN + 14))
 
 #define CLOCKID CLOCK_MONOTONIC
@@ -46,7 +45,8 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 			       lttng::scheduling::scheduler& scheduler);
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
 int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
-				 unsigned int monitor_timer_interval_us);
+				 unsigned int monitor_timer_interval_us,
+				 lttng::scheduling::scheduler& scheduler);
 int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
 void *consumer_timer_thread(void *data);
 int consumer_signal_init();
