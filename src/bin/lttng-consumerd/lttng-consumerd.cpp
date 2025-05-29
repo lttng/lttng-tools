@@ -43,9 +43,7 @@
 
 /* threads (channel handling, poll, metadata, sessiond) */
 
-static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread,
-	metadata_timer_thread, health_thread;
-static bool metadata_timer_thread_online;
+static pthread_t channel_thread, data_thread, metadata_thread, sessiond_thread, health_thread;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -441,15 +439,6 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
-	/*
-	 * Block RT signals used for UST periodical metadata flush and the live
-	 * timer in main, and create a dedicated thread to handle these signals.
-	 */
-	if (consumer_signal_init()) {
-		retval = -1;
-		goto exit_init_data;
-	}
-
 	/* create the consumer instance with and assign the callbacks */
 	the_consumer_context = lttng_consumer_create(opt_type,
 						     lttng_consumer_read_subbuffer,
@@ -541,22 +530,6 @@ int main(int argc, char **argv)
 	}
 	cmm_smp_mb(); /* Read ready before following operations */
 
-	/*
-	 * Create the thread to manage the UST metadata periodic timer and
-	 * live timer.
-	 */
-	ret = pthread_create(&metadata_timer_thread,
-			     nullptr,
-			     consumer_timer_thread,
-			     (void *) the_consumer_context);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create");
-		retval = -1;
-		goto exit_metadata_timer_thread;
-	}
-	metadata_timer_thread_online = true;
-
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread,
 			     default_pthread_attr(),
@@ -641,9 +614,6 @@ exit_metadata_thread:
 		retval = -1;
 	}
 exit_channel_thread:
-
-exit_metadata_timer_thread:
-
 	ret = pthread_join(health_thread, &status);
 	if (ret) {
 		errno = ret;
@@ -663,34 +633,15 @@ exit_init_data:
 	 */
 	rcu_barrier();
 	lttng_consumer_cleanup();
-	/*
-	 * Tearing down the metadata timer thread in a
-	 * non-fully-symmetric fashion compared to its creation in case
-	 * lttng_consumer_cleanup() ends up tearing down timers (which
-	 * requires the timer thread to be alive).
-	 */
-	if (metadata_timer_thread_online) {
-		/*
-		 * Ensure the metadata timer thread exits only after all other
-		 * threads are gone, because it is required to perform timer
-		 * teardown synchronization.
-		 */
-		kill(getpid(), LTTNG_CONSUMER_SIG_EXIT);
-		ret = pthread_join(metadata_timer_thread, &status);
+
+	ret = consumer_timer_thread_get_channel_monitor_pipe();
+	if (ret >= 0) {
+		ret = close(ret);
 		if (ret) {
-			errno = ret;
-			PERROR("pthread_join metadata_timer_thread");
-			retval = -1;
+			PERROR("close channel monitor pipe");
 		}
-		ret = consumer_timer_thread_get_channel_monitor_pipe();
-		if (ret >= 0) {
-			ret = close(ret);
-			if (ret) {
-				PERROR("close channel monitor pipe");
-			}
-		}
-		metadata_timer_thread_online = false;
 	}
+
 	tmp_ctx = the_consumer_context;
 	the_consumer_context = nullptr;
 	cmm_barrier(); /* Clear ctx for signal handler. */

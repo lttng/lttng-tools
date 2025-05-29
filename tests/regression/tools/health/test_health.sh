@@ -8,7 +8,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=90
+NUM_TESTS=82
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -164,7 +164,6 @@ THREAD=(
 
 	"LTTNG_CONSUMERD_THREAD_CHANNEL"
 	"LTTNG_CONSUMERD_THREAD_METADATA"
-	"LTTNG_CONSUMERD_THREAD_METADATA_TIMER"
 
 	"LTTNG_RELAYD_THREAD_DISPATCHER"
 	"LTTNG_RELAYD_THREAD_WORKER"
@@ -184,7 +183,6 @@ ERROR_STRING=(
 
 	"Thread \"Consumer daemon channel\" is not responding"
 	"Thread \"Consumer daemon metadata\" is not responding"
-	"Thread \"Consumer daemon metadata timer\" is not responding"
 
 	"Thread \"Relay daemon dispatcher\" is not responding in component \"relayd\"."
 	"Thread \"Relay daemon worker\" is not responding in component \"relayd\"."
@@ -220,7 +218,6 @@ NEEDS_ROOT=(
 
 	0
 	0
-	0
 
 	0
 	0
@@ -240,7 +237,6 @@ TEST_CONSUMERD=(
 
 	1
 	1
-	1
 
 	1
 	1
@@ -258,7 +254,6 @@ TEST_RELAYD=(
 	0
 	0
 
-	0
 	0
 	0
 

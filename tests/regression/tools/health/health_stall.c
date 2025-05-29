@@ -177,18 +177,6 @@ int __testpoint_consumerd_thread_sessiond(void)
 	return 0;
 }
 
-LTTNG_EXPORT int __testpoint_consumerd_thread_metadata_timer(void);
-int __testpoint_consumerd_thread_metadata_timer(void)
-{
-	const char *var = "LTTNG_CONSUMERD_THREAD_METADATA_TIMER_STALL";
-
-	if (check_env_var(var)) {
-		do_stall();
-	}
-
-	return 0;
-}
-
 /* Relay daemon */
 
 LTTNG_EXPORT int __testpoint_relayd_thread_dispatcher(void);

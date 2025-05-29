@@ -95,8 +95,6 @@ static const char *get_consumerd_thread_name(health_type_consumerd type)
 		return "Consumer daemon data";
 	case HEALTH_CONSUMERD_TYPE_SESSIOND:
 		return "Consumer daemon session daemon command manager";
-	case HEALTH_CONSUMERD_TYPE_METADATA_TIMER:
-		return "Consumer daemon metadata timer";
 	case NR_HEALTH_CONSUMERD_TYPES:
 		abort();
 	}

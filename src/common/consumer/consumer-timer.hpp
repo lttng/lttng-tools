@@ -14,26 +14,6 @@
 
 #include <common/scheduler.hpp>
 
-#include <pthread.h>
-
-#define LTTNG_CONSUMER_SIG_TEARDOWN ((SIGRTMIN + 11))
-#define LTTNG_CONSUMER_SIG_EXIT	    ((SIGRTMIN + 14))
-
-#define CLOCKID CLOCK_MONOTONIC
-
-/*
- * Handle timer teardown race wrt memory free of private data by consumer
- * signals are handled by a single thread, which permits a synchronization
- * point between handling of each signal. Internal lock ensures mutual
- * exclusion.
- */
-struct timer_signal_data {
-	pthread_t tid; /* thread id managing signals */
-	int setup_done;
-	int qs_done;
-	pthread_mutex_t lock;
-};
-
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 unsigned int switch_timer_interval_us,
 				 protected_socket& sessiond_metadata_socket,
@@ -48,8 +28,6 @@ int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 				 unsigned int monitor_timer_interval_us,
 				 lttng::scheduling::scheduler& scheduler);
 int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
-void *consumer_timer_thread(void *data);
-int consumer_signal_init();
 
 int consumer_timer_thread_get_channel_monitor_pipe();
 int consumer_timer_thread_set_channel_monitor_pipe(int fd);
