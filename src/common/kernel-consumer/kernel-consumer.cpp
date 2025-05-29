@@ -630,7 +630,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			int monitor_start_ret;
 
 			DBG("Consumer starting monitor timer");
-			consumer_timer_live_start(new_channel, msg.u.channel.live_timer_interval);
+			consumer_timer_live_start(new_channel,
+						  msg.u.channel.live_timer_interval,
+						  ctx->timer_task_scheduler);
 			monitor_start_ret = consumer_timer_monitor_start(
 				new_channel, msg.u.channel.monitor_timer_interval);
 			if (monitor_start_ret < 0) {

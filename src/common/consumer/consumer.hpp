@@ -236,7 +236,6 @@ struct lttng_consumer_channel {
 	int switch_timer_error = 0;
 
 	/* For the live mode */
-	timer_t live_timer = {};
 	lttng::scheduling::periodic_task::sptr live_timer_task;
 
 	int live_timer_error = 0;

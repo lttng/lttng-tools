@@ -12,11 +12,12 @@
 
 #include "consumer.hpp"
 
+#include <common/scheduler.hpp>
+
 #include <pthread.h>
 
 #define LTTNG_CONSUMER_SIG_SWITCH   ((SIGRTMIN + 10))
 #define LTTNG_CONSUMER_SIG_TEARDOWN ((SIGRTMIN + 11))
-#define LTTNG_CONSUMER_SIG_LIVE	    ((SIGRTMIN + 12))
 #define LTTNG_CONSUMER_SIG_MONITOR  ((SIGRTMIN + 13))
 #define LTTNG_CONSUMER_SIG_EXIT	    ((SIGRTMIN + 14))
 
@@ -41,7 +42,8 @@ void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
 				 int consumer_error_socket_fd);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
-			       unsigned int live_timer_interval_us);
+			       unsigned int live_timer_interval_us,
+			       lttng::scheduling::scheduler& scheduler);
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
 int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
 				 unsigned int monitor_timer_interval_us);

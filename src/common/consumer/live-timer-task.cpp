@@ -65,10 +65,6 @@ void lttng::consumer::live_timer_task::_run(lttng::scheduling::absolute_time cur
 		return;
 	}
 
-	DBG_FMT("Live timer task executing: channel_name=`{}`, channel_key={}",
-		_channel.name,
-		_channel.key);
-
 	const auto *stream_per_chan_id_ht = the_consumer_data.stream_per_chan_id_ht;
 
 	for (auto *stream : lttng::urcu::lfht_filtered_iteration_adapter<

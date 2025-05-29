@@ -68,10 +68,6 @@ static void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigaddset teardown");
 	}
-	ret = sigaddset(mask, LTTNG_CONSUMER_SIG_LIVE);
-	if (ret) {
-		PERROR("sigaddset live");
-	}
 	ret = sigaddset(mask, LTTNG_CONSUMER_SIG_MONITOR);
 	if (ret) {
 		PERROR("sigaddset monitor");
@@ -263,14 +259,11 @@ void consumer_timer_switch_stop(struct lttng_consumer_channel *channel)
 	channel->metadata_switch_timer_task.reset();
 }
 
-/*
- * Set the channel's live timer.
- */
+/* Start the channel's periodic "live mode" management task. */
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
-			       unsigned int live_timer_interval_us)
+			       unsigned int live_timer_interval_us,
+			       lttng::scheduling::scheduler& scheduler)
 {
-	int ret;
-
 	LTTNG_ASSERT(channel);
 	LTTNG_ASSERT(channel->key);
 	LTTNG_ASSERT(!channel->is_deleted);
@@ -283,35 +276,30 @@ void consumer_timer_live_start(struct lttng_consumer_channel *channel,
 	try {
 		channel->live_timer_task = std::make_shared<lttng::consumer::live_timer_task>(
 			std::chrono::microseconds(live_timer_interval_us), *channel);
-	} catch (const std::bad_alloc& e) {
-		ERR_FMT("Failed to allocate memory for live timer task: {}: channel_name=`{}`",
-			e.what(),
-			channel->name);
-		return;
-	}
 
-	ret = consumer_channel_timer_start(
-		&channel->live_timer, channel, live_timer_interval_us, LTTNG_CONSUMER_SIG_LIVE);
-	if (ret) {
-		ERR_FMT("Failed to start live timer: channel_name=`{}`", channel->name);
-		channel->live_timer_task.reset();
+		scheduler.schedule(channel->live_timer_task,
+				   std::chrono::steady_clock::now() +
+					   std::chrono::microseconds(live_timer_interval_us));
+	} catch (const std::bad_alloc& e) {
+		ERR_FMT("Failed to allocate memory for live timer task: {}: channel_name=`{}`, key={}, session_id={}",
+			e.what(),
+			channel->name,
+			channel->key,
+			channel->session_id);
+		return;
 	}
 }
 
-/*
- * Stop and delete the channel's live timer.
- */
+/* Stop the channel's "live mode" management task. */
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel)
 {
-	int ret;
-
 	LTTNG_ASSERT(channel);
-
-	ret = consumer_channel_timer_stop(&channel->live_timer, LTTNG_CONSUMER_SIG_LIVE);
-	if (ret == -1) {
-		ERR("Failed to stop live timer");
+	if (!channel->live_timer_task) {
+		return;
 	}
 
+	/* Cancel the live timer task if it is scheduled. */
+	channel->live_timer_task->cancel();
 	channel->live_timer_task.reset();
 }
 
@@ -422,8 +410,8 @@ end:
 
 /*
  * This thread is the sighandler for signals LTTNG_CONSUMER_SIG_SWITCH,
- * LTTNG_CONSUMER_SIG_TEARDOWN, LTTNG_CONSUMER_SIG_LIVE, and
- * LTTNG_CONSUMER_SIG_MONITOR, LTTNG_CONSUMER_SIG_EXIT.
+ * LTTNG_CONSUMER_SIG_TEARDOWN, and LTTNG_CONSUMER_SIG_MONITOR,
+ * LTTNG_CONSUMER_SIG_EXIT.
  */
 void *consumer_timer_thread(void *data [[maybe_unused]])
 {
@@ -471,10 +459,6 @@ void *consumer_timer_thread(void *data [[maybe_unused]])
 			CMM_STORE_SHARED(timer_signal.qs_done, 1);
 			cmm_smp_mb();
 			DBG("Signal timer metadata thread teardown");
-		} else if (signr == LTTNG_CONSUMER_SIG_LIVE) {
-			auto *channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
-
-			channel->live_timer_task->run(std::chrono::steady_clock::now());
 		} else if (signr == LTTNG_CONSUMER_SIG_MONITOR) {
 			auto *channel = (lttng_consumer_channel *) info.si_value.sival_ptr;
 

@@ -15,8 +15,6 @@ namespace lttng {
 namespace consumer {
 class live_timer_task : public lttng::scheduling::periodic_task {
 public:
-	using flush_index_cb = int (*)(struct lttng_consumer_stream *);
-
 	live_timer_task() = delete;
 
 	live_timer_task(const live_timer_task&) = delete;
@@ -28,7 +26,12 @@ public:
 
 	explicit live_timer_task(lttng::scheduling::duration_ns period,
 				 lttng_consumer_channel& channel) noexcept :
-		periodic_task(period), _channel(channel)
+		periodic_task(period,
+			      fmt::format("Live: channel_name=`{}`, key={}, session_id={}",
+					  channel.name,
+					  channel.key,
+					  channel.session_id)),
+		_channel(channel)
 	{
 	}
 
