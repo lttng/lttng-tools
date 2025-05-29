@@ -74,6 +74,20 @@ if [[ "${BASH_VERSINFO[0]}" -lt "4" ]] || [[ "${BASH_VERSINFO[0]}" == "4" && "${
 	BAIL_OUT "Bash version '${BASH_VERSION}' is not supported by the test suite"
 fi
 
+if [[ -z "${HOSTNAME}" ]]; then
+	# If bash has not set the built-in HOSTNAME variable, try using
+	# hostname and uname.
+	HOSTNAME="$(hostname)"
+	if [[ -z "${HOSTNAME}" ]]; then
+		HOSTNAME="$(uname -n)"
+	fi
+fi
+
+if [[ -z "${HOSTNAME}" ]]; then
+	echo "Error: HOSTNAME variable not set" >&2
+	exit 1
+fi
+
 # Enable job monitor mode.
 # Here we are mostly interested in the following from the monitor mode:
 #    All processes run in a separate process group.
