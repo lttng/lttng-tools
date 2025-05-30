@@ -41,6 +41,10 @@ static struct {
 } opt_monitor_timer;
 static struct {
 	bool set;
+	uint64_t interval;
+} opt_watchdog_timer;
+static struct {
+	bool set;
 	int64_t value;
 } opt_blocking_timeout;
 
@@ -68,6 +72,7 @@ enum {
 	OPT_BLOCKING_TIMEOUT,
 	OPT_BUFFER_OWNERSHIP,
 	OPT_BUFFER_ALLOCATION,
+	OPT_WATCHDOG_TIMER,
 };
 
 static struct lttng_handle *handle;
@@ -88,6 +93,7 @@ static struct poptOption long_options[] = {
 	{ "num-subbuf", 0, POPT_ARG_INT, nullptr, OPT_NUM_SUBBUF, nullptr, nullptr },
 	{ "switch-timer", 0, POPT_ARG_INT, nullptr, OPT_SWITCH_TIMER, nullptr, nullptr },
 	{ "monitor-timer", 0, POPT_ARG_INT, nullptr, OPT_MONITOR_TIMER, nullptr, nullptr },
+	{ "watchdog-timer", 0, POPT_ARG_INT, nullptr, OPT_WATCHDOG_TIMER, nullptr, nullptr },
 	{ "read-timer", 0, POPT_ARG_INT, nullptr, OPT_READ_TIMER, nullptr, nullptr },
 	{ "list-options", 0, POPT_ARG_NONE, nullptr, OPT_LIST_OPTIONS, nullptr, nullptr },
 	{ "output", 0, POPT_ARG_STRING, &opt_output, 0, nullptr, nullptr },
@@ -218,6 +224,11 @@ static int enable_channel(char *session_name, char *channel_list)
 			ret = CMD_ERROR;
 			goto error;
 		}
+		if (opt_watchdog_timer.set) {
+			ERR("Watchdog timer option not supported for kernel domain (-k)");
+			ret = CMD_ERROR;
+			goto error;
+		}
 	}
 
 	/* Create lttng domain */
@@ -255,6 +266,12 @@ static int enable_channel(char *session_name, char *channel_list)
 			break;
 		default:
 			ERR("Buffer ownership not supported for the user space domain");
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+		if (opt_watchdog_timer.set && (dom.buf_type != LTTNG_BUFFER_PER_UID)) {
+			ERR("Watchdog timer is only valid for channels with the `user` ownership model");
 			ret = CMD_ERROR;
 			goto error;
 		}
@@ -347,6 +364,15 @@ static int enable_channel(char *session_name, char *channel_list)
 								       opt_monitor_timer.interval);
 			if (ret) {
 				ERR("Failed to set the channel's monitor timer interval");
+				error = 1;
+				goto error;
+			}
+		}
+		if (opt_watchdog_timer.set) {
+			ret = lttng_channel_set_watchdog_timer_interval(
+				channel, opt_watchdog_timer.interval);
+			if (ret) {
+				ERR("Failed to set the channel's watchdog timer interval");
 				error = 1;
 				goto error;
 			}
@@ -669,6 +695,25 @@ int cmd_enable_channels(int argc, const char **argv)
 			opt_monitor_timer.set = true;
 			DBG("Channel monitor timer interval set to %" PRIu64 " %s",
 			    opt_monitor_timer.interval,
+			    USEC_UNIT);
+			break;
+		}
+		case OPT_WATCHDOG_TIMER:
+		{
+			uint64_t v;
+
+			errno = 0;
+			opt_arg = poptGetOptArg(pc);
+
+			if (utils_parse_time_suffix(opt_arg, &v) < 0) {
+				ERR("Wrong value for --watchdog-timer parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			opt_watchdog_timer.interval = (uint64_t) v;
+			opt_watchdog_timer.set = true;
+			DBG("Channel watchdog timer interval set to %" PRIu64 " %s",
+			    opt_watchdog_timer.interval,
 			    USEC_UNIT);
 			break;
 		}

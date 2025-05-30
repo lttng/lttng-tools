@@ -520,8 +520,9 @@ class _Session(lttngctl.Session):
         tracefile_size=None,
         tracefile_count=None,
         event_record_loss_mode=None,
+        watchdog_timer_period_us=None,
     ):
-        # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy, lttngctl.BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[lttngctl.EventRecordLossMode]) -> lttngctl.Channel
+        # type: (lttngctl.TracingDomain, Optional[str], lttngctl.BufferSharingPolicy, lttngctl.BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[lttngctl.EventRecordLossMode], Optional[int]) -> lttngctl.Channel
         channel_name = lttngctl.Channel._generate_name()
         domain_option_name = _get_domain_option_name(domain)
         buffer_sharing_policy_cli_arg = (
@@ -559,6 +560,8 @@ class _Session(lttngctl.Session):
                 if event_record_loss_mode == lttngctl.EventRecordLossMode.Overwrite
                 else "--discard"
             )
+        if watchdog_timer_period_us is not None:
+            args.append("--watchdog-timer={}".format(watchdog_timer_period_us))
 
         self._client._run_cmd(" ".join([shlex.quote(x) for x in args]))
         return _Channel(self._client, channel_name, domain, self)

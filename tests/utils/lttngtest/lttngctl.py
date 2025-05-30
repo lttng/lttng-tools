@@ -664,9 +664,12 @@ class Session(abc.ABC):
         buffer_allocation_policy=BufferAllocationPolicy.PerCPU,
         subbuf_size=None,
         subbuf_count=None,
-        overwrite=None,
+        tracefile_size=None,
+        tracefile_count=None,
+        event_record_loss_mode=None,
+        watchdog_timer_period_us=None,
     ):
-        # type: (TracingDomain, Optional[str], BufferSharingPolicy, BufferAllocationPolicy, Optional[int], Optional[int], Optional[EventRecordLossMode]) -> Channel
+        # type: (TracingDomain, Optional[str], BufferSharingPolicy, BufferAllocationPolicy, Optional[int], Optional[int], Optional[int], Optional[int], Optional[EventRecordLossMode], Optional[int]) -> Channel
         """Add a channel with default attributes to the session."""
         raise NotImplementedError
 
