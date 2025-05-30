@@ -257,20 +257,33 @@ static void close_consumer_sockets()
  */
 static void wait_consumer(struct consumer_data *consumer_data)
 {
-	pid_t ret;
-	int status;
-
 	if (consumer_data->pid <= 0) {
 		return;
 	}
 
-	DBG("Waiting for complete teardown of consumerd (PID: %d)", consumer_data->pid);
-	ret = waitpid(consumer_data->pid, &status, 0);
-	if (ret == -1) {
-		PERROR("consumerd waitpid pid: %d", consumer_data->pid)
-	} else if (!WIFEXITED(status)) {
-		ERR("consumerd termination with error: %d", WEXITSTATUS(ret));
+	DBG_FMT("Waiting for complete teardown of consumerd process: consumerd_pid={}",
+		consumer_data->pid);
+
+	int wstatus;
+	const auto wait_ret = waitpid(consumer_data->pid, &wstatus, 0);
+	if (wait_ret == -1) {
+		PERROR("Failed to wait for consumerd process: consumerd_pid=%d",
+		       consumer_data->pid);
+	} else if (WIFEXITED(wstatus)) {
+		const auto exit_status = WEXITSTATUS(wstatus);
+
+		if (exit_status != EXIT_SUCCESS) {
+			ERR_FMT("consumerd process exited with error status: status={}",
+				exit_status);
+		} else {
+			DBG_FMT("consumerd process exited successfully");
+		}
+	} else if (WIFSIGNALED(wstatus)) {
+		const auto signal_nr = WTERMSIG(wstatus);
+
+		ERR_FMT("consumerd process terminated with signal: signal_nr={}", signal_nr);
 	}
+
 	consumer_data->pid = 0;
 }
 
