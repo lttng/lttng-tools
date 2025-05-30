@@ -92,5 +92,6 @@ enum lttng_error_code kernel_register_event_notifier(struct lttng_trigger *trigg
 enum lttng_error_code kernel_unregister_event_notifier(const struct lttng_trigger *trigger);
 
 int kernel_get_notification_fd();
+void kernel_set_notification_fd_registered();
 
 #endif /* _LTT_KERNEL_CTL_H */

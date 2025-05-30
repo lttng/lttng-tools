@@ -63,6 +63,7 @@ int kernel_tracer_fd = -1;
 nonstd::optional<enum lttng_kernel_tracer_status> kernel_tracer_status = nonstd::nullopt;
 int kernel_tracer_event_notifier_group_fd = -1;
 int kernel_tracer_event_notifier_group_notification_fd = -1;
+bool kernel_tracer_event_notifier_group_notification_fd_registered = false;
 struct cds_lfht *kernel_token_to_event_notifier_rule_ht;
 
 const char *kernel_tracer_status_to_str(lttng_kernel_tracer_status status)
@@ -2178,11 +2179,18 @@ void cleanup_kernel_tracer()
 {
 	DBG2("Closing kernel event notifier group notification file descriptor");
 	if (kernel_tracer_event_notifier_group_notification_fd >= 0) {
-		int ret = notification_thread_command_remove_tracer_event_source(
-			the_notification_thread_handle,
-			kernel_tracer_event_notifier_group_notification_fd);
-		if (ret != LTTNG_OK) {
-			ERR("Failed to remove kernel event notifier notification from notification thread");
+		int ret;
+
+		if (kernel_tracer_event_notifier_group_notification_fd_registered) {
+			ret = notification_thread_command_remove_tracer_event_source(
+				the_notification_thread_handle,
+				kernel_tracer_event_notifier_group_notification_fd);
+			if (ret != LTTNG_OK) {
+				ERR("Failed to remove kernel event notifier notification from notification thread");
+			} else {
+				kernel_tracer_event_notifier_group_notification_fd_registered =
+					false;
+			}
 		}
 
 		ret = close(kernel_tracer_event_notifier_group_notification_fd);
@@ -2638,4 +2646,9 @@ error:
 int kernel_get_notification_fd()
 {
 	return kernel_tracer_event_notifier_group_notification_fd;
+}
+
+void kernel_set_notification_fd_registered()
+{
+	kernel_tracer_event_notifier_group_notification_fd_registered = true;
 }

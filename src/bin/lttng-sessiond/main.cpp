@@ -1961,6 +1961,7 @@ static int _main(int argc, char **argv)
 				retval = -1;
 				goto stop_threads;
 			}
+			kernel_set_notification_fd_registered();
 		}
 	}
 
