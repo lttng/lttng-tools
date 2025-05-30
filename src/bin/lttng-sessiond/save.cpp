@@ -16,6 +16,7 @@
 #include <common/config/session-config.hpp>
 #include <common/defaults.hpp>
 #include <common/error.hpp>
+#include <common/optional.hpp>
 #include <common/runas.hpp>
 #include <common/urcu.hpp>
 #include <common/utils.hpp>
@@ -111,6 +112,17 @@ static int save_kernel_channel_attributes(struct config_writer *writer,
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
+		}
+
+		if (ext->watchdog_timer_interval.is_set) {
+			ret = config_writer_write_element_unsigned_int(
+				writer,
+				config_element_watchdog_timer_interval,
+				LTTNG_OPTIONAL_GET(ext->watchdog_timer_interval));
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
 		}
 
 		ret = config_writer_write_element_signed_int(
@@ -218,6 +230,22 @@ static int save_ust_channel_attributes(struct config_writer *writer,
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
+	}
+
+	/*
+	 * Fetch the watchdog timer which is located in the parent of
+	 * lttng_ust_channel_attr
+	 */
+	channel = lttng::utils::container_of(attr, &ltt_ust_channel::attr);
+	if (channel->watchdog_timer_interval.is_set) {
+		ret = config_writer_write_element_unsigned_int(
+			writer,
+			config_element_watchdog_timer_interval,
+			LTTNG_OPTIONAL_GET(channel->watchdog_timer_interval));
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
 	}
 
 	ret = LTTNG_OK;
