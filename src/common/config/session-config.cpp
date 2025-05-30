@@ -166,6 +166,7 @@ const char *const config_element_num_subbuf = "subbuffer_count";
 const char *const config_element_switch_timer_interval = "switch_timer_interval";
 const char *const config_element_read_timer_interval = "read_timer_interval";
 const char *const config_element_monitor_timer_interval = "monitor_timer_interval";
+const char *const config_element_watchdog_timer_interval = "watchdog_timer_interval";
 const char *const config_element_blocking_timeout = "blocking_timeout";
 const char *const config_element_output = "output";
 const char *const config_element_output_type = "output_type";
@@ -2208,6 +2209,29 @@ static int process_channel_attr_node(xmlNodePtr attr_node,
 		}
 
 		ret = lttng_channel_set_monitor_timer_interval(channel, monitor_timer_interval);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+	} else if (!strcmp((const char *) attr_node->name,
+			   config_element_watchdog_timer_interval)) {
+		uint64_t watchdog_timer_interval = 0;
+
+		/* watchdog_timer_interval */
+		xmlChar *content = xmlNodeGetContent(attr_node);
+		if (!content) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		ret = parse_uint(content, &watchdog_timer_interval);
+		free(content);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+
+		ret = lttng_channel_set_watchdog_timer_interval(channel, watchdog_timer_interval);
 		if (ret) {
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			goto end;

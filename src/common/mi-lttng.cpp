@@ -1121,10 +1121,12 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 {
 	int ret = 0;
 	struct lttng_channel *chan = caa_container_of(attr, struct lttng_channel, attr);
-	uint64_t discarded_events, lost_packets, monitor_timer_interval;
+	uint64_t discarded_events, lost_packets, monitor_timer_interval, watchdog_timer_interval;
 	int64_t blocking_timeout;
 	enum lttng_channel_allocation_policy allocation_policy;
 	const char *allocation_policy_str;
+	enum lttng_channel_get_watchdog_timer_interval_status watchdog_timer_status;
+	bool print_watchdog_timer = false;
 
 	LTTNG_ASSERT(attr);
 
@@ -1141,6 +1143,19 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 	ret = lttng_channel_get_monitor_timer_interval(chan, &monitor_timer_interval);
 	if (ret) {
 		goto end;
+	}
+
+	watchdog_timer_status =
+		lttng_channel_get_watchdog_timer_interval(chan, &watchdog_timer_interval);
+	switch (watchdog_timer_status) {
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID:
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET:
+		break;
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK:
+		print_watchdog_timer = true;
+		break;
 	}
 
 	ret = lttng_channel_get_blocking_timeout(chan, &blocking_timeout);
@@ -1207,6 +1222,15 @@ int mi_lttng_channel_attr(struct mi_writer *writer, struct lttng_channel_attr *a
 		writer, config_element_monitor_timer_interval, monitor_timer_interval);
 	if (ret) {
 		goto end;
+	}
+
+	if (print_watchdog_timer) {
+		/* Watchdog timer interval in usec */
+		ret = mi_lttng_writer_write_element_unsigned_int(
+			writer, config_element_watchdog_timer_interval, watchdog_timer_interval);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/* Retry timeout in usec */

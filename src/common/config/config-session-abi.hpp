@@ -46,6 +46,7 @@ LTTNG_EXPORT extern const char *const config_element_num_subbuf;
 LTTNG_EXPORT extern const char *const config_element_switch_timer_interval;
 LTTNG_EXPORT extern const char *const config_element_read_timer_interval;
 extern const char *const config_element_monitor_timer_interval;
+extern const char *const config_element_watchdog_timer_interval;
 extern const char *const config_element_blocking_timeout;
 LTTNG_EXPORT extern const char *const config_element_output;
 LTTNG_EXPORT extern const char *const config_element_output_type;
