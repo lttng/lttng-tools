@@ -1294,9 +1294,11 @@ static const char *allocation_policy_to_pretty_string(enum lttng_channel_allocat
 static void print_channel(struct lttng_channel *channel)
 {
 	int ret;
-	uint64_t discarded_events, lost_packets, monitor_timer_interval;
+	uint64_t discarded_events, lost_packets, monitor_timer_interval, watchdog_timer_interval;
 	int64_t blocking_timeout;
 	enum lttng_channel_allocation_policy allocation_policy;
+	enum lttng_channel_get_watchdog_timer_interval_status watchdog_timer_status;
+	bool print_watchdog_timer = false;
 
 	ret = lttng_channel_get_discarded_event_count(channel, &discarded_events);
 	if (ret) {
@@ -1314,6 +1316,19 @@ static void print_channel(struct lttng_channel *channel)
 	if (ret) {
 		ERR("Failed to retrieve monitor interval of channel");
 		return;
+	}
+
+	watchdog_timer_status =
+		lttng_channel_get_watchdog_timer_interval(channel, &watchdog_timer_interval);
+	switch (watchdog_timer_status) {
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_INVALID:
+		ERR("Failed to retrieve watchdog interval of channel");
+		return;
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_UNSET:
+		break;
+	case LTTNG_CHANNEL_GET_WATCHDOG_TIMER_INTERVAL_STATUS_OK:
+		print_watchdog_timer = true;
+		break;
 	}
 
 	ret = lttng_channel_get_blocking_timeout(channel, &blocking_timeout);
@@ -1340,6 +1355,10 @@ static void print_channel(struct lttng_channel *channel)
 	print_timer("Switch timer", 6, channel->attr.switch_timer_interval);
 	print_timer("Read timer", 8, channel->attr.read_timer_interval);
 	print_timer("Monitor timer", 5, monitor_timer_interval);
+
+	if (print_watchdog_timer) {
+		print_timer("Watchdog timer", 4, watchdog_timer_interval);
+	}
 
 	if (!channel->attr.overwrite) {
 		if (blocking_timeout == -1) {
