@@ -16,35 +16,91 @@ struct lttng_action;
 extern "C" {
 #endif
 
+/*!
+@addtogroup api_trigger_action
+@{
+*/
+
+/*!
+@brief
+    Trigger action type.
+
+Get the type of a trigger action with
+lttng_action_get_type().
+*/
 enum lttng_action_type {
-	LTTNG_ACTION_TYPE_UNKNOWN = -1,
+	/// \ref api_trigger_action_notify "Notify".
 	LTTNG_ACTION_TYPE_NOTIFY = 0,
+
+	/// \ref api_trigger_action_start_session "Start recording session".
 	LTTNG_ACTION_TYPE_START_SESSION = 1,
+
+	/// \ref api_trigger_action_stop_session "Stop recording session".
 	LTTNG_ACTION_TYPE_STOP_SESSION = 2,
+
+	/// \ref api_trigger_action_rotate "Rotate recording session snapshot".
 	LTTNG_ACTION_TYPE_ROTATE_SESSION = 3,
+
+	/// \ref api_trigger_action_snapshot "Take recording session snapshot".
 	LTTNG_ACTION_TYPE_SNAPSHOT_SESSION = 4,
+
+	/// \ref api_trigger_action_list "Trigger action list".
 	LTTNG_ACTION_TYPE_LIST = 5,
+
+	/// Unknown (error).
+	LTTNG_ACTION_TYPE_UNKNOWN = -1,
 };
 
+/*!
+@brief
+    Return type of trigger action API functions.
+*/
 enum lttng_action_status {
+	/// Success.
 	LTTNG_ACTION_STATUS_OK = 0,
+
+	/// Error.
 	LTTNG_ACTION_STATUS_ERROR = -1,
+
+	/* Unused for the moment */
 	LTTNG_ACTION_STATUS_UNKNOWN = -2,
+
+	/// Unsatisfied precondition.
 	LTTNG_ACTION_STATUS_INVALID = -3,
+
+	/// Not set.
 	LTTNG_ACTION_STATUS_UNSET = -4,
 };
 
-/*
- * Get the type of an action.
- *
- * Returns the type of an action on success, LTTNG_ACTION_TYPE_UNKNOWN on error.
- */
+/*!
+@brief
+    Returns the type of the trigger action \lt_p{action}.
+
+@param[in] action
+    Trigger action of which to get the type.
+
+@returns
+    Type of \lt_p{action}.
+
+@pre
+    @lt_pre_not_null{action}
+*/
 LTTNG_EXPORT extern enum lttng_action_type lttng_action_get_type(const struct lttng_action *action);
 
-/*
- * Destroy (frees) an action object.
- */
+/*!
+@brief
+    Destroys the trigger action \lt_p{action}.
+
+@param[in] action
+    @parblock
+    Trigger action to destroy.
+
+    May be \c NULL.
+    @endparblock
+*/
 LTTNG_EXPORT extern void lttng_action_destroy(struct lttng_action *action);
+
+/// @}
 
 #ifdef __cplusplus
 }

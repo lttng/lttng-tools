@@ -18,104 +18,206 @@
 extern "C" {
 #endif
 
-/**
- * Session consumed size conditions allow an action to be taken whenever a
- * session's produced data size crosses a set threshold.
- *
- * These conditions are periodically evaluated against the current session
- * statistics. The period at which these conditions are evaluated is
- * governed by the channels' monitor timer.
- *
- * Session consumed size conditions have the following properties:
- *   - the exact name of the session to be monitored,
- *   - a total consumed size threshold, expressed in bytes.
- *
- * Wildcards, regular expressions or other globbing mechanisms are not supported
- * in session consumed size condition properties.
- */
+/*!
+@addtogroup api_trigger_cond_session_consumed_size
+@{
+*/
 
-/*
- * Create a newly allocated session consumed size condition.
- *
- * A session consumed size condition evaluates to true whenever the sum of all
- * its channels' consumed data size is higher than a set threshold. The
- * consumed data sizes are free running counters.
- *
- * Returns a new condition on success, NULL on failure. This condition must be
- * destroyed using lttng_condition_destroy().
- */
+/*!
+@brief
+    Creates an initial “recording session consumed data size
+    becomes greater than” trigger condition to execute
+    an action when the total consumed size of the tracing
+    data of all the \lt_obj_channels of a given
+    \lt_obj_session becomes greater than some configured threshold.
+
+On success, the returned trigger condition isn't valid yet; you must:
+
+- Set a target recording session name with
+  lttng_condition_session_consumed_size_set_session_name().
+
+- Set a total consumed size threshold with
+  lttng_condition_session_consumed_size_set_threshold().
+
+@returns
+    @parblock
+    Trigger condition with the type
+    #LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE on success,
+    or \c NULL on error.
+
+    Destroy the returned trigger condition with
+    lttng_condition_destroy().
+    @endparblock
+*/
 LTTNG_EXPORT extern struct lttng_condition *lttng_condition_session_consumed_size_create(void);
 
-/*
- * Get the threshold of a session consumed size condition.
- *
- * The session consumed size condition's threshold must have been defined as
- * an absolute value expressed in bytes in order for this call to succeed.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a threshold expressed in
- * bytes, LTTNG_CONDITION_STATUS_INVALID if an invalid parameter is passed, or
- * LTTNG_CONDITION_STATUS_UNSET if a threshold, expressed as an absolute size in
- * bytes, was not set prior to this call.
- */
+/*!
+@brief
+    Sets \lt_p{*threshold} to the total consumed size (bytes) threshold
+    of the “recording session consumed data size becomes greater than”
+    trigger condition \lt_p{condition}.
+
+@param[in] condition
+    “Recording session consumed data size becomes greater than”
+    trigger condition of which to get the total consumed size threshold.
+@param[out] threshold
+    <strong>On success</strong>, this function sets \lt_p{*threshold}
+    to the total consumed size (bytes) of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no total consumed size threshold.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE}
+    @lt_pre_not_null{threshold}
+
+@sa lttng_condition_session_consumed_size_set_threshold() --
+    Set the total consumed size threshold of a
+    “recording session consumed data size becomes greater than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_get_threshold(const struct lttng_condition *condition,
-						    uint64_t *consumed_threshold_bytes);
+						    uint64_t *threshold);
 
-/*
- * Set the threshold of a session consumed size usage condition.
- *
- * Setting a threshold overrides any previously set threshold.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid parameters are passed.
- */
+/*!
+@brief
+    Sets the total consumed size threshold of the
+    “recording session consumed data size becomes greater than”
+    trigger condition \lt_p{condition} to \lt_p{threshold} bytes.
+
+@param[in] condition
+    “Recording session consumed data size becomes greater than” trigger
+    condition of which to set the total consumed size threshold.
+@param[in] threshold
+    Total consumed size (bytes) threshold of \lt_p{condition}.
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE}
+
+@sa lttng_condition_session_consumed_size_get_threshold() --
+    Get the total consumed size threshold of a
+    “recording session consumed data size becomes greater than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_set_threshold(struct lttng_condition *condition,
-						    uint64_t consumed_threshold_bytes);
+						    uint64_t threshold);
 
-/*
- * Get the session name property of a session consumed size condition.
- *
- * The caller does not assume the ownership of the returned session name. The
- * session name shall only be used for the duration of the condition's
- * lifetime, or before a different session name is set.
- *
- * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's session
- * name on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
- * parameter is passed, or LTTNG_CONDITION_STATUS_UNSET if a session name
- * was not set prior to this call.
- */
+/*!
+@brief
+    Sets \lt_p{*session_name} to the target \lt_obj_session name of the
+    “recording session consumed data size becomes greater than” trigger
+    condition \lt_p{condition}.
+
+@param[in] condition
+    “Recording session consumed data size becomes greater than” trigger
+    condition of which to get the target recording session name.
+@param[out] session_name
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*session_name}
+    to the target recording session name of \lt_p{condition}.
+
+    \lt_p{condition} owns \lt_p{*session_name}.
+
+    \lt_p{*session_name} remains valid until the next
+    function call with \lt_p{condition}.
+    @endparblock
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_UNSET
+    \lt_p{condition} has no target recording session name.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE}
+    @lt_pre_not_null{session_name}
+
+@sa lttng_condition_session_consumed_size_set_session_name() --
+    Set the target recording session name of a
+    “recording session consumed data size becomes greater than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_get_session_name(const struct lttng_condition *condition,
 						       const char **session_name);
 
-/*
- * Set the session name property of a session consumed size condition.
- *
- * The passed session name parameter will be copied to the condition.
- *
- * Returns LTTNG_CONDITION_STATUS_OK on success, LTTNG_CONDITION_STATUS_INVALID
- * if invalid parameters are passed.
- */
+/*!
+@brief
+    Sets the target \lt_obj_session name of the
+    “recording session consumed data size becomes greater than”
+    trigger condition \lt_p{condition} to \lt_p{session_name}.
+
+@param[in] condition
+    “Recording session consumed data size becomes greater than” trigger
+    condition of which to set the target recording session name.
+@param[in] session_name
+    Target recording session name of \lt_p{condition} (copied).
+
+@retval #LTTNG_CONDITION_STATUS_OK
+    Success.
+@retval #LTTNG_CONDITION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{condition}
+    @lt_pre_has_type{condition,LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE}
+    @lt_pre_not_null{session_name}
+
+@sa lttng_condition_session_consumed_size_get_session_name() --
+    Get the target recording session name of a
+    “recording session consumed data size becomes greater than”
+    trigger condition.
+*/
 LTTNG_EXPORT extern enum lttng_condition_status
 lttng_condition_session_consumed_size_set_session_name(struct lttng_condition *condition,
 						       const char *session_name);
 
-/**
- * lttng_evaluation_session_consumed_size is specialised lttng_evaluations
- * which allow users to query a number of properties resulting from the
- * evaluation of a condition which evaluated to true.
- */
+/*!
+@brief
+    Sets \lt_p{*consumed_size} to the captured total \lt_obj_session
+    consumed size of the
+    “recording session consumed data size becomes greater than” trigger
+    condition evaluation \lt_p{evaluation}.
 
-/*
- * Get the session consumed property of a session consumed size evaluation.
- *
- * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
- * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
- */
+@param[in] evaluation
+    “Recording session consumed data size becomes greater than” trigger
+    condition evaluation of which to get the captured total recording
+    session consumed size.
+@param[out] consumed_size
+    <strong>On success</strong>, this function sets
+    \lt_p{*consumed_size} to the captured total recording session
+    consumed size (bytes) of \lt_p{evaluation}.
+
+@retval #LTTNG_EVALUATION_STATUS_OK
+    Success.
+@retval #LTTNG_EVALUATION_STATUS_INVALID
+    Unsatisfied precondition.
+
+@pre
+    @lt_pre_not_null{evaluation}
+    @lt_pre_has_type{evaluation,LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE}
+    @lt_pre_not_null{consumed_size}
+*/
 LTTNG_EXPORT extern enum lttng_evaluation_status
 lttng_evaluation_session_consumed_size_get_consumed_size(const struct lttng_evaluation *evaluation,
-							 uint64_t *session_consumed);
+							 uint64_t *consumed_size);
+
+/// @}
 
 #ifdef __cplusplus
 }

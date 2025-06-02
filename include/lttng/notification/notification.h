@@ -14,37 +14,74 @@
 extern "C" {
 #endif
 
+/*!
+@addtogroup api_notif
+@{
+*/
+
 struct lttng_condition;
 struct lttng_evaluation;
+
+/*!
+@struct lttng_notification
+
+@brief
+    Notification (opaque type).
+*/
 struct lttng_notification;
 
-/*
- * Get a notification's condition.
- *
- * The notification retains the ownership of both the condition and evaluation
- * objects. Hence, it is not valid to access those objects after the destruction
- * of their associated notification.
- *
- * The caller should check the condition's type in order to use the appropriate
- * specialized functions to access the condition's properties.
- *
- * Returns an lttng_condition object on success, NULL on error.
- */
+/*!
+@brief
+    Returns the \ref api_trigger_cond "condition" which caused a trigger
+    to send the notification \lt_p{notification}.
+
+@param[in] notification
+    Notification of which to get the satisfied trigger condition.
+
+@returns
+    @parblock
+    Satisfied trigger condition which caused a trigger to send
+    \lt_p{notification}, or \c NULL on error.
+
+    \lt_p{notification} owns the returned trigger condition.
+
+    The returned trigger condition remains valid as long
+    as \lt_p{notification} exists.
+    @endparblock
+
+@pre
+    @lt_pre_not_null{notification}
+*/
 LTTNG_EXPORT extern const struct lttng_condition *
 lttng_notification_get_condition(struct lttng_notification *notification);
 
-/*
- * Get a notification's condition's evaluation.
- *
- * The notification retains the ownership of the evaluation object. Hence, it is
- * not valid to access that object after the destruction of its associated
- * notification.
- *
- * The caller should check the evaluation's type in order to use the appropriate
- * specialized functions to access the evaluation's properties.
- *
- * Returns an lttng_evaluation object on success, NULL on error.
- */
+/*!
+@brief
+    Returns the \ref api-trigger-cond-eval "evaluation" of the
+    \ref api_trigger_cond "condition" which
+    caused a trigger to send the notification \lt_p{notification}.
+
+A trigger condition evaluation contains values which LTTng captured
+when the trigger fired.
+
+@param[in] notification
+    Notification of which to get the evaluation of the
+    satisfied trigger condition.
+
+@returns
+    @parblock
+    Evaluation of the satisfied trigger condition which caused a trigger
+    to send \lt_p{notification}, or \c NULL on error.
+
+    \lt_p{notification} owns the returned trigger condition evaluation.
+
+    The returned trigger condition evaluation remains valid as long
+    as \lt_p{notification} exists.
+    @endparblock
+
+@pre
+    @lt_pre_not_null{notification}
+*/
 LTTNG_EXPORT extern const struct lttng_evaluation *
 lttng_notification_get_evaluation(struct lttng_notification *notification);
 
@@ -57,14 +94,46 @@ lttng_notification_get_evaluation(struct lttng_notification *notification);
  *
  * Returns an lttng_trigger object on success, NULL on error.
  */
+
+/*!
+@brief
+    Returns the trigger which fired to make LTTng send the
+    notification \lt_p{notification}.
+
+@param[in] notification
+    Notification of which to get the firing trigger.
+
+@returns
+    @parblock
+    Trigger which fired, making LTTng send
+    \lt_p{notification}, or \c NULL on error.
+
+    \lt_p{notification} owns the returned trigger.
+
+    The returned trigger remains valid as long
+    as \lt_p{notification} exists.
+    @endparblock
+
+@pre
+    @lt_pre_not_null{notification}
+*/
 LTTNG_EXPORT extern const struct lttng_trigger *
 lttng_notification_get_trigger(struct lttng_notification *notification);
 
-/*
- * Destroys (frees) a notification. The notification's condition and evaluation
- * are destroyed as a side-effect.
- */
+/*!
+@brief
+    Destroys the notification \lt_p{notification}.
+
+@param[in] notification
+    @parblock
+    Notification to destroy.
+
+    May be \c NULL.
+    @endparblock
+*/
 LTTNG_EXPORT extern void lttng_notification_destroy(struct lttng_notification *notification);
+
+/// @}
 
 #ifdef __cplusplus
 }

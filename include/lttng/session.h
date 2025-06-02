@@ -337,7 +337,7 @@ LTTNG_EXPORT extern int lttng_create_session_live(const char *session_name,
 @deprecated
     Use lttng_destroy_session_ext().
 
-"Destroying" a recording session means freeing the resources which the
+“Destroying” a recording session means freeing the resources which the
 LTTng daemons and tracers acquired for it, also making sure to flush all
 the recorded trace data to either the local file system or the connected
 LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
@@ -382,7 +382,7 @@ LTTNG_EXPORT extern int lttng_destroy_session(const char *session_name);
 @deprecated
     Use lttng_destroy_session_ext().
 
-"Destroying" a recording session means freeing the resources which the
+“Destroying” a recording session means freeing the resources which the
 LTTng daemons and tracers acquired for it, also making sure to flush all
 the recorded trace data to either the local file system or the connected
 LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
@@ -425,7 +425,7 @@ LTTNG_EXPORT extern int lttng_destroy_session_no_wait(const char *session_name);
     Initiates a destruction operation of the recording session
     named \lt_p{session_name}.
 
-"Destroying" a recording session means freeing the resources which the
+“Destroying” a recording session means freeing the resources which the
 LTTng daemons and tracers acquired for it, also making sure to flush all
 the recorded trace data to either the local file system or the connected
 LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
