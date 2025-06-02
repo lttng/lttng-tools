@@ -37,7 +37,7 @@ enum lttng_log_level_rule_type {
 	/// Exact match.
 	LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY = 0,
 
-	/// "At least as severe as" match.
+	/// “At least as severe as” match.
 	LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS = 1,
 
 	/// Unknown (error).
@@ -110,11 +110,11 @@ LTTNG_EXPORT extern struct lttng_log_level_rule *lttng_log_level_rule_exactly_cr
     <strong>On success</strong>, this function sets \lt_p{*level}
     to the level of \lt_p{rule}.
 
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_OK
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_OK
     Success.
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_ERROR
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_ERROR
     Error.
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_INVALID
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_INVALID
     Unsatisfied precondition.
 
 @pre
@@ -141,7 +141,7 @@ lttng_log_level_rule_exactly_get_level(const struct lttng_log_level_rule *rule, 
 
 @returns
     @parblock
-    "At least as severe as" log level rule on success,
+    “At least as severe as” log level rule on success,
     or \c NULL on error.
 
     Destroy the returned log level rule with
@@ -153,20 +153,20 @@ lttng_log_level_rule_at_least_as_severe_as_create(int level);
 
 /*!
 @brief
-    Sets \lt_p{*level} to the level of the "at least as severe as" log
+    Sets \lt_p{*level} to the level of the “at least as severe as” log
     level rule \lt_p{rule}.
 
 @param[in] rule
-    "At least as severe as" log level rule of which to get the level.
+    “At least as severe as” log level rule of which to get the level.
 @param[out] level
     <strong>On success</strong>, this function sets \lt_p{*level}
     to the level of \lt_p{rule}.
 
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_OK
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_OK
     Success.
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_ERROR
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_ERROR
     Error.
-@retval LTTNG_LOG_LEVEL_RULE_STATUS_INVALID
+@retval #LTTNG_LOG_LEVEL_RULE_STATUS_INVALID
     Unsatisfied precondition.
 
 @pre
