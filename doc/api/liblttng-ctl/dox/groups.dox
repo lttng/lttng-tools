@@ -34,7 +34,8 @@ section of the LTTng Documentation to learn more.
 
 This API documentation has three main modules:
 
-- The \ref api_session makes it possible to create, manipulate
+- The \ref api_session "recording session API"
+  makes it possible to create, manipulate
   (\ref api_session_snapshot "take a snapshot",
   \ref api_session_rotation "rotate",
   \ref api_session_clear "clear", and the rest), and destroy
@@ -47,18 +48,20 @@ This API documentation has three main modules:
   own \lt_obj_rers. Those objects constitute
   the main configuration of a recording session.
 
-- The \ref api_inst_pt makes it possible to get details about the
+- The \ref api_inst_pt "instrumentation point listing API"
+  makes it possible to get details about the
   available LTTng tracepoints, Java/Python loggers, and Linux kernel
   system calls without needing any \lt_obj_session.
 
-- The \ref api_trigger makes it possible to create and register
-  <em>triggers</em>.
+- The \ref api_trigger "trigger API" makes it possible to
+  create and register <em>triggers</em>.
 
-  A trigger associates a condition to one or more actions: when the
+  A trigger associates a condition to an action: when the
   condition of a trigger is satisfied, LTTng attempts to execute its
-  actions.
+  action.
 
-  This API is fully decoupled from the \ref api_session.
+  This API is fully decoupled from the
+  \ref api_session "recording session API".
 
   Amongst the interesting available trigger conditions and actions
   are the
@@ -72,7 +75,7 @@ This API documentation has three main modules:
 The three modules above often refer to the \ref api_gen which offers
 common enumerations, macros, and functions.
 
-See <a href="modules.html">API reference</a> for the complete table
+See <a href="topics.html">Topics</a> for the complete table
 of contents.
 
 <h2>Build with liblttng-ctl</h2>
@@ -277,7 +280,7 @@ another user's recording session.
 
 @image html many-sessions.png "Each Unix user has its own, private recording sessions."
 
-@sa The <em>RECORDING SESSION</em> section of \lt_man{lttng-concepts,7}.
+@sa The “RECORDING SESSION” section of \lt_man{lttng-concepts,7}.
 
 <h1>Operations</h1>
 
@@ -486,7 +489,7 @@ LTTng offers four <strong><em>recording session modes</em></strong>:
       LTTng forces the
       \ref api-channel-er-loss-mode "event record loss mode" of all
       the channels of such a recording session to be
-      \"\ref api-channel-overwrite-mode "overwrite"\".
+      “\ref api-channel-overwrite-mode "overwrite"”.
     <td>
       - lttng_session_descriptor_snapshot_create()
       - lttng_session_descriptor_snapshot_local_create()
@@ -505,8 +508,7 @@ LTTng offers four <strong><em>recording session modes</em></strong>:
       lttng_session_descriptor_live_network_create()
 </table>
 
-@sa The <em>Recording session modes</em> section of
-\lt_man{lttng-concepts,7}.
+@sa The “Recording session modes” section of \lt_man{lttng-concepts,7}.
 
 <h1>\anchor api-session-url Output URL format</h1>
 
@@ -837,7 +839,7 @@ specify a tracing domain when you create a
 \lt_obj_rer with lttng_enable_event_with_exclusions() because both
 tracing domains could have LTTng tracepoints sharing the same name.
 
-@sa The <em>TRACING DOMAIN</em> section of \lt_man{lttng-concepts,7}.
+@sa The “TRACING DOMAIN” section of \lt_man{lttng-concepts,7}.
 
 <h1>\anchor api-channel-channel Channel</h1>
 
@@ -933,7 +935,7 @@ The channel operations are:
   <tr>
     <td>Event record context field adding
     <td>
-      -# Initialize a #lttng_event_context structure, setting
+      -# Initialize an #lttng_event_context structure, setting
          its properties to describe the context field to be added.
 
       -# Create a \link #lttng_handle recording session handle\endlink
@@ -1072,7 +1074,7 @@ The properties of a channel are:
 
 All the properties above are immutable once a channel exists.
 
-@sa The <em>CHANNEL AND RING BUFFER</em> section of
+@sa The “CHANNEL AND RING BUFFER” section of
 \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-buf-ownership-model Buffer ownership model</h3>
@@ -1082,7 +1084,7 @@ specifies whether the system, each Unix user, or each process
 owns its own ring buffers
 (\ref api-channel-buf-alloc-policy "one per CPU or one for the whole channel").
 
-When you read "allocate ring buffers" below, it's either one per CPU or
+When you read “allocate ring buffers” below, it's either one per CPU or
 one per channel, depending on the configured
 \ref api-channel-buf-alloc-policy "buffer allocation policy".
 The following diagrams assume a per-CPU allocation policy.
@@ -1148,7 +1150,7 @@ allocate a single set of ring buffers--one per CPU--for the whole system
 \ref api-channel-per-user-buf "per-user" option
 with a per-channel
 \ref api-channel-buf-alloc-policy "allocation policy",
-but with a single, global user "running" the kernel.
+but with a single, global user “running” the kernel.
 
 To set the buffer ownership model of a channel when you create it:
 
@@ -1159,7 +1161,7 @@ To set the buffer ownership model of a channel when you create it:
   the channels of a given \lt_obj_domain must share the same buffer
   ownership model.
 
-@sa The <em>Buffering scheme</em> section of \lt_man{lttng-concepts,7}.
+@sa The “Buffering scheme” section of \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-buf-alloc-policy Buffer allocation policy</h3>
 
@@ -1168,7 +1170,7 @@ specifies whether LTTng tracers allocate ring buffers per
 channel or per CPU
 (\ref api-channel-buf-ownership-model "for a given user or process").
 
-When you read "allocate one ring buffer" below, it's either one per user
+When you read “allocate one ring buffer” below, it's either one per user
 or one per process, depending on the configured
 \ref api-channel-buf-ownership-model "buffer ownership model".
 The following diagrams assume a per-user ownership model.
@@ -1223,7 +1225,7 @@ Unix user of the process running liblttng-ctl:
     </dl>
 
     When you create a channel having this policy, LTTng does \em not
-    automatically adds a #LTTNG_EVENT_CONTEXT_CPU_ID context field:
+    automatically adds an #LTTNG_EVENT_CONTEXT_CPU_ID context field:
     add it manually afterwards with lttng_add_context() if needed.
 </dl>
 
@@ -1237,7 +1239,7 @@ To set the buffer allocation policy of a channel when you create it:
 - Call lttng_channel_set_allocation_policy() with the
   #lttng_channel structure you pass to lttng_enable_channel().
 
-@sa The <em>Buffering scheme</em> section of \lt_man{lttng-concepts,7}.
+@sa The “Buffering scheme” section of \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-er-loss-mode Event record loss mode</h3>
 
@@ -1335,7 +1337,7 @@ shows how to fine-tune the sub-buffer size and count of a channel to
 virtually stop losing event records, though at the cost of greater
 memory usage.
 
-@sa The <em>Event record loss mode</em> section of
+@sa The “Event record loss mode” section of
 \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-sub-buf-size-count Sub-buffer size and count</h3>
@@ -1428,7 +1430,7 @@ In \ref api-channel-discard-mode "discard mode", the sub-buffer count
 parameter is pointless: use two sub-buffers and set their size according
 to your requirements.
 
-@sa The <em>Sub-buffer size and count</em> section of
+@sa The “Sub-buffer size and count” section of
 \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-max-trace-file-size-count Maximum trace file size and count</h3>
@@ -1476,7 +1478,7 @@ called <em>trace file rotation</em>.
     which is available since LTTng&nbsp;2.11.
     @endparblock
 
-@sa The <em>Maximum trace file size and count</em> section of
+@sa The “Maximum trace file size and count” section of
 \lt_man{lttng-concepts,7}.
 
 <h3>\anchor api-channel-timers Timers</h3>
@@ -1590,7 +1592,7 @@ Each channel can have up to four optional
       #lttng_channel structure you pass to lttng_enable_channel().
 </dl>
 
-@sa The <em>Timers</em> section of \lt_man{lttng-concepts,7}.
+@sa The “Timers” section of \lt_man{lttng-concepts,7}.
 
 @defgroup api_rer Recording event rule API
 @ingroup api_channel
@@ -1932,7 +1934,7 @@ rule&nbsp;\lt_var{ER}, that is:
           \link lttng_event::name <code>event_rule.name</code>\endlink
           and the event name exclusion patterns of
           \c event_rule are <em>globbing patterns</em>: the
-          <code>*</code> character means "match anything". To match a
+          <code>*</code> character means “match anything”. To match a
           literal <code>*</code> character, use <code>\\*</code>.
       <tr>
         <td>
@@ -2248,13 +2250,13 @@ of&nbsp;\lt_var{ER}. This concept is similar to a regular expression
 which matches a set of strings.
 
 When an event rule matches an event, LTTng \em emits the event,
-therefore attempting to execute one or more actions.
+therefore attempting to execute an action.
 
 @attention
     @parblock
     The event creation and emission processes are \em documentation
     concepts to help understand the journey from an instrumentation
-    point to the execution of actions.
+    point to the execution of an action.
 
     The actual creation of an event can be costly because LTTng needs to
     evaluate the arguments of the instrumentation point.
@@ -2282,10 +2284,10 @@ therefore attempting to execute one or more actions.
     @endparblock
 
 The only purpose of an event rule object is to create an
-\link api_trigger_cond_er_matches "event rule matches" trigger condition\endlink
+\link api_trigger_cond_er_matches “event rule matches” trigger condition\endlink
 from it. When the event rule of the trigger condition matches an event,
-LTTng can execute user-defined
-\ref api_trigger_action "actions" such as sending an LTTng
+LTTng can execute a user-defined
+\ref api_trigger_action "action" such as sending an LTTng
 notification, starting a recording session, and more.
 
 Get the type of an event rule with lttng_event_rule_get_type().
@@ -2293,7 +2295,7 @@ Get the type of an event rule with lttng_event_rule_get_type().
 Destroy an event rule with lttng_event_rule_destroy().
 
 @sa
-    - The <em>INSTRUMENTATION POINT, EVENT RULE, AND EVENT</em>
+    - The “INSTRUMENTATION POINT, EVENT RULE, AND EVENT”
       section of \lt_man{lttng-concepts,7}.
     - \lt_man{lttng-event-rule,7}.
 
@@ -2513,7 +2515,7 @@ with one of the creation functions listed below:
 
       In all cases, the event name and event name exclusion
       patterns are <em>globbing patterns</em>: the
-      <code>*</code> character means "match anything". To match a
+      <code>*</code> character means “match anything”. To match a
       literal <code>*</code> character, use <code>\\*</code>.
   <tr>
     <td>
@@ -2638,7 +2640,7 @@ of the event rule&nbsp;\lt_var{ER} which matched&nbsp;\lt_var{E}:
     <td>
       Full name of the tracepoint from which LTTng creates&nbsp;\lt_var{E}.
 
-      Note that the full name of a
+      Note that the full name of an
       #LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT event rule is
       <code><em>PROVIDER</em>:<em>NAME</em></code>, where
       <code><em>PROVIDER</em></code> is the tracepoint provider name and
@@ -3143,7 +3145,7 @@ See \ref api_er to learn more about LTTng events.
 As of LTTng-tools&nbsp;\lt_version_maj_min, the event expression API
 only offers field reference expressions. Its sole purpose is to append
 capture descriptors to an
-\link api_trigger_cond_er_matches "event rule matches"\endlink
+\link api_trigger_cond_er_matches “event rule matches”\endlink
 trigger condition with
 lttng_condition_event_rule_matches_append_capture_descriptor(). With
 more expression types (constants, operators, conditionals, and the
@@ -3203,11 +3205,11 @@ the payload or context value of an event field.
 See \ref api_er to learn more about LTTng events.
 
 When you create an
-\link api_trigger_cond_er_matches "event rule matches"\endlink
+\link api_trigger_cond_er_matches “event rule matches”\endlink
 trigger condition, you may append capture descriptors
 with lttng_condition_event_rule_matches_append_capture_descriptor().
 
-Then, when a trigger with such an "event rule matches" condition fires,
+Then, when a trigger with such an “event rule matches” condition fires,
 the captured event field values are available through
 lttng_evaluation_event_rule_matches_get_captured_values().
 
@@ -3260,6 +3262,11 @@ To be done.
 To be done.
 
 @defgroup api_error Error query API
+
+To be done.
+
+@defgroup api_error_action_path Trigger action path API
+@ingroup api_error
 
 To be done.
 */
