@@ -382,16 +382,16 @@ static int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *chann
 			 */
 			if (relayd_id != (uint64_t) -1ULL) {
 				if (read_len != packet_args.packet_length) {
-					ERR("Error sending to the relay (ret: %zd != len: %lu)",
-					    read_len,
-					    packet_args.packet_length);
+					ERR_FMT("Error sending to the relay (ret: {} != len: {})",
+						read_len,
+						+packet_args.packet_length);
 					return -1;
 				}
 			} else {
 				if (read_len != packet_args.packet_length_padded) {
-					ERR("Error writing to tracefile (ret: %zd != len: %lu)",
-					    read_len,
-					    packet_args.packet_length_padded);
+					ERR_FMT("Error writing to tracefile (ret: {} != len: {})",
+						read_len,
+						+packet_args.packet_length_padded);
 					return -1;
 				}
 			}
